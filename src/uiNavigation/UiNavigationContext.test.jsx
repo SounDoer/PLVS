@@ -266,6 +266,50 @@ describe("UiNavigationProvider", () => {
     });
   });
 
+  it("lets the window owner handle Dock Panel Settings without a popover target", async () => {
+    const { result } = renderHook(
+      () => {
+        const [openPanelId, setOpenPanelId] = useState(null);
+        useUiNavigationTarget("panelSettings", {
+          prepare: ({ panelId }) => {
+            setOpenPanelId(panelId);
+            return { handled: true };
+          },
+        });
+        useUiSurface({
+          active: openPanelId !== null,
+          kind: "panelSettings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { panelId: openPanelId, presentation: "dock" },
+          onClose: () => setOpenPanelId(null),
+        });
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+    let pending;
+
+    await act(async () => {
+      pending = result.current.showPanelSettings({
+        panelId: "dock-stats",
+        expectedRevision: 7,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      changed: true,
+      surface: {
+        kind: "panelSettings",
+        target: { panelId: "dock-stats", presentation: "dock" },
+      },
+    });
+  });
+
   it("treats a StrictMode effect replay as one mounted surface lifetime", () => {
     const { result } = renderHook(
       () => {

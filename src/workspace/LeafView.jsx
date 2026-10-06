@@ -368,6 +368,8 @@ export function LeafView({ node, path, style }) {
           <div className={PANEL_HEADER_ACTIONS}>
             <PanelInstanceProvider value={panelInstanceData}>
               <PanelSettingsMenu
+                panelId={activeTab}
+                presentation="normal"
                 activeTab={activeModuleId}
                 panelTitle={activeTab ? resolvePanelDisplayName(state, activeTab) : undefined}
                 channelCount={chromeData?.channelCount ?? 0}

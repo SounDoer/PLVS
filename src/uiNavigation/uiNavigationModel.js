@@ -102,6 +102,7 @@ const PUBLIC_TARGET_FIELDS = Object.freeze([
   "section",
   "page",
   "phase",
+  "presentation",
 ]);
 
 function projectTarget(target) {

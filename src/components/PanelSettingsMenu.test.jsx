@@ -1,11 +1,74 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import { PanelSettingsMenu } from "./PanelSettingsMenu.jsx";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
+import { BlockingEditorsProvider } from "@/hooks/BlockingEditorsContext.jsx";
+import {
+  UiNavigationProvider,
+  useUiNavigation,
+  useUiNavigationTarget,
+} from "@/uiNavigation/UiNavigationContext.jsx";
 
 describe("PanelSettingsMenu", () => {
+  it("opens the exact Panel instance through semantic navigation", async () => {
+    /** @type {any} */
+    let navigation;
+    const prepare = vi.fn();
+    function Harness() {
+      navigation = useUiNavigation();
+      useUiNavigationTarget("panelSettings", { prepare });
+      return (
+        <PanelSettingsMenu
+          panelId="stats"
+          activeTab="levelMeter"
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+          panelTitle="Broadcast Meter"
+          onPanelControlsReset={vi.fn()}
+        />
+      );
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 9}>
+          <Harness />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    let pending;
+
+    await act(async () => {
+      pending = navigation.showPanelSettings({
+        panelId: "stats",
+        expectedRevision: 9,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    const response = await pending;
+
+    expect(prepare).toHaveBeenCalledWith({ panelId: "stats" });
+    expect(screen.getByRole("heading", { name: "Broadcast Meter" })).toBeTruthy();
+    expect(response).toMatchObject({
+      changed: true,
+      uiGeneration: 1,
+      surface: {
+        kind: "panelSettings",
+        target: { panelId: "stats", presentation: "normal" },
+      },
+    });
+
+    await expect(
+      navigation.showPanelSettings({
+        panelId: "stats",
+        expectedRevision: 9,
+        expectedUiGeneration: 1,
+      })
+    ).resolves.toMatchObject({ changed: false, uiGeneration: 1 });
+  });
+
   it("dismisses a nested selector before closing panel settings", () => {
     const onChange = vi.fn();
     render(

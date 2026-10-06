@@ -416,6 +416,8 @@ function FullscreenOverlay() {
         <div className={PANEL_HEADER_ACTIONS}>
           <PanelInstanceProvider value={panelInstanceData}>
             <PanelSettingsMenu
+              panelId={fullscreenId}
+              presentation="fullscreen"
               activeTab={fullscreenModuleId}
               panelTitle={resolvePanelDisplayName(state, fullscreenId)}
               channelCount={chromeData?.channelCount ?? 0}

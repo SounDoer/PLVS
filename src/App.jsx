@@ -25,7 +25,12 @@ import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
-import { UiNavigationProvider } from "./uiNavigation/UiNavigationContext.jsx";
+import {
+  UiNavigationProvider,
+  useUiNavigationTarget,
+  useUiSurface,
+} from "./uiNavigation/UiNavigationContext.jsx";
+import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
 import {
   SCENE_OPERATIONS,
   SceneOperationUnavailableError,
@@ -226,6 +231,7 @@ function AppContent() {
     waitForWorkspacePersistenceEnqueue,
     setPanelControlsForPanel,
     setAxisViewport,
+    setActiveTab,
   } = useWorkspaceStore();
   const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
   const visualRuntimeRef = useRef(null);
@@ -2001,6 +2007,39 @@ function AppContent() {
     geometryVersion: dockHeight,
     forceHeaderVisible: notice?.kind === "error",
     onError: onDockAccessoryError,
+  });
+  const preparePanelSettings = useCallback(
+    ({ panelId }) =>
+      preparePanelSettingsNavigation({
+        panelId,
+        windowForm: docked ? "dock" : "normal",
+        workspace: workspaceState,
+        dockPanels,
+        setActiveTab,
+        openDockEditor: dockAccessoryVisibility.openEditor,
+      }),
+    [docked, dockAccessoryVisibility.openEditor, dockPanels, setActiveTab, workspaceState]
+  );
+  useUiNavigationTarget("panelSettings", { prepare: preparePanelSettings });
+  const dockPanelSettingsView = dockAccessoryVisibility.editorView?.startsWith("module:")
+    ? dockAccessoryVisibility.editorView
+    : null;
+  const dockPanelSettingsId = dockPanelSettingsView?.slice("module:".length) ?? null;
+  const dockPanelSettingsActive = Boolean(
+    docked &&
+    dockAccessoryVisibility.editorVisible &&
+    dockPanelSettingsId &&
+    dockPanels.some((panel) => panel.id === dockPanelSettingsId)
+  );
+  useUiSurface({
+    active: dockPanelSettingsActive,
+    kind: "panelSettings",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { panelId: dockPanelSettingsId, presentation: "dock" },
+    onClose: () => dockAccessoryVisibility.closeEditor(dockPanelSettingsView),
   });
   visualRuntimeRef.current = {
     windowForm: docked ? "dock" : "normal",

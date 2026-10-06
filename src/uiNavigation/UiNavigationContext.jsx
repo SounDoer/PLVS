@@ -169,6 +169,20 @@ export function UiNavigationProvider({
     },
     [settlementTimeoutMs]
   );
+  const waitForTarget = useCallback(
+    async (key) => {
+      const deadline = Date.now() + settlementTimeoutMs;
+      for (;;) {
+        const controller = targetsRef.current.get(key)?.current;
+        if (controller) return controller;
+        if (Date.now() >= deadline) {
+          throw createUiNavigationError("uiNotSettled", { kind: key.split(":")[0] });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    },
+    [settlementTimeoutMs]
+  );
   const showTarget = useCallback(
     (kind, target, action, expectedRevision, expectedUiGeneration) =>
       enqueueAction(async () => {
@@ -190,10 +204,27 @@ export function UiNavigationProvider({
           throw createUiNavigationError("uiConflict", { kind });
         }
         const controller = targetsRef.current.get(kind)?.current;
-        if (typeof controller?.show !== "function") {
+        if (!controller) {
           throw createUiNavigationError("surfaceUnavailable", { kind });
         }
-        await controller.show(target);
+        if (kind === "panelSettings") {
+          if (typeof controller.prepare !== "function") {
+            throw createUiNavigationError("surfaceUnavailable", { kind });
+          }
+          const prepared = await controller.prepare(target);
+          if (prepared?.handled !== true) {
+            const panelController = await waitForTarget(`${kind}:${target.panelId}`);
+            if (typeof panelController.show !== "function") {
+              throw createUiNavigationError("surfaceUnavailable", { kind });
+            }
+            await panelController.show(target);
+          }
+        } else {
+          if (typeof controller.show !== "function") {
+            throw createUiNavigationError("surfaceUnavailable", { kind });
+          }
+          await controller.show(target);
+        }
         let surface = await waitForSurface(kind, target);
         const after = commitState((current) => focusUiSurface(current, surface.surfaceId));
         surface = after.surfaces.find((candidate) => candidate.surfaceId === surface.surfaceId);
@@ -205,7 +236,7 @@ export function UiNavigationProvider({
           surface,
         };
       }),
-    [commitState, enqueueAction, getRevision, waitForSurface]
+    [commitState, enqueueAction, getRevision, waitForSurface, waitForTarget]
   );
   const showSettings = useCallback(
     ({ section, expectedRevision, expectedUiGeneration }) =>
@@ -309,12 +340,14 @@ export function useUiSurface({
   return active ? surfaceId : null;
 }
 
-export function useUiNavigationTarget(kind, controller) {
+export function useUiNavigationTarget(kind, targetOrController, maybeController = undefined) {
   const registry = useContext(UiSurfaceRegistryContext);
+  const key = maybeController === undefined ? kind : `${kind}:${targetOrController}`;
+  const controller = maybeController ?? targetOrController;
   const controllerRef = useRef(controller);
   controllerRef.current = controller;
   useEffect(() => {
     if (!registry) return undefined;
-    return registry.registerUiTarget(kind, controllerRef);
-  }, [kind, registry]);
+    return registry.registerUiTarget(key, controllerRef);
+  }, [key, registry]);
 }
