@@ -212,6 +212,30 @@ describe("public flat-library API", () => {
     });
   });
 
+  it("owns profile authoring origin and safe dismissal", () => {
+    const mine = profile("mine", "Mine", -20);
+    seed([mine]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+
+    act(() => result.current.beginEdit(mine.id));
+    expect(result.current.draft.authoring).toMatchObject({ mode: "edit", sourceId: mine.id });
+    expect(result.current.draft.authoring.draftId).toMatch(/^profile-draft-/);
+    act(() => result.current.editDraft((document) => ({ ...document, name: "Changed" })));
+    act(() => result.current.requestDismiss());
+    expect(result.current.draft).not.toBe(null);
+    expect(result.current.discardOpen).toBe(true);
+    act(() => result.current.keepEditing());
+    expect(result.current.discardOpen).toBe(false);
+    act(() => result.current.requestDismiss());
+    act(() => result.current.confirmDiscard());
+    expect(result.current.draft).toBe(null);
+
+    act(() => result.current.beginCreate());
+    expect(result.current.draft.authoring).toMatchObject({ mode: "create", sourceId: null });
+    act(() => result.current.requestDismiss());
+    expect(result.current.draft).toBe(null);
+  });
+
   it("restores a saved profile, its rules, and active selection after remount", () => {
     seed([]);
     const first = renderHook(() => useLoudnessProfile(), { wrapper });

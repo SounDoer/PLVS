@@ -50,6 +50,21 @@ function appliedDocument(props, call = 0) {
 }
 
 describe("LoudnessProfileEditor", () => {
+  it("delegates dismissal intent to the shared owner when controlled", () => {
+    const onDismiss = vi.fn();
+    renderEditor({
+      draft: { editingId: "profile-id", document: threeRuleDocument(), dirty: true },
+      onDismiss,
+      discardOpen: false,
+      onDiscardOpenChange: vi.fn(),
+      onConfirmDiscard: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alertdialog", { name: "Discard profile changes?" })).toBeNull();
+  });
+
   it("warns without replacing a stale profile draft", () => {
     renderEditor({
       draft: {

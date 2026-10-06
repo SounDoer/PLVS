@@ -210,7 +210,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
 
   function createCustomTheme() {
     setSettingsOpen(false);
-    editor.beginCreate("Custom");
+    editor.beginCreate("Custom", undefined, { mode: "create", sourceId: null });
   }
 
   function editActiveCustomTheme() {
@@ -221,21 +221,21 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     if (!isCustomThemeId(id) || editor.isEditingNow()) return;
     setSettingsOpen(false);
     const theme = listCustomThemeDocuments()[id];
-    if (theme) editor.beginEdit(theme);
+    if (theme) editor.beginEdit(theme, { mode: "edit", sourceId: id });
   }
 
   function customizeBuiltinTheme(id) {
     const theme = BUILTIN_THEMES_V2[id];
     if (!theme || editor.isEditingNow()) return;
     setSettingsOpen(false);
-    editor.beginCreate(`${theme.name} Custom`, theme);
+    editor.beginCreate(`${theme.name} Custom`, theme, { mode: "customize", sourceId: id });
   }
 
   function duplicateCustomTheme(id) {
     const theme = listCustomThemeDocuments()[id];
     if (!theme || editor.isEditingNow()) return;
     setSettingsOpen(false);
-    editor.beginCreate(`${theme.name} Copy`, theme);
+    editor.beginCreate(`${theme.name} Copy`, theme, { mode: "duplicate", sourceId: id });
   }
 
   function deleteCustomTheme(id) {

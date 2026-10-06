@@ -197,4 +197,44 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()["custom-1"]).toBeUndefined();
     expect(publish.mock.calls.at(-1)[0].id).toBe("plvs-dark");
   });
+
+  it("owns authoring origin, page navigation, and safe dismissal", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    act(() =>
+      result.current.beginCreate("Light Custom", BUILTIN_THEMES_V2["plvs-light"], {
+        mode: "customize",
+        sourceId: "plvs-light",
+      })
+    );
+
+    expect(result.current.authoring).toEqual({
+      mode: "customize",
+      sourceId: "plvs-light",
+      draftId: "custom-1",
+    });
+    expect(result.current.page).toBe("core");
+    act(() => result.current.setPage("advanced"));
+    expect(result.current.page).toBe("advanced");
+
+    act(() => result.current.updateCore("workspace", "#111111"));
+    act(() => result.current.requestDismiss());
+    expect(result.current.isEditing).toBe(true);
+    expect(result.current.discardOpen).toBe(true);
+
+    act(() => result.current.keepEditing());
+    expect(result.current.discardOpen).toBe(false);
+    act(() => result.current.requestDismiss());
+    act(() => result.current.confirmDiscard());
+    expect(result.current.isEditing).toBe(false);
+    expect(publish.mock.calls.at(-1)[0].id).toBe("plvs-dark");
+  });
+
+  it("dismisses a clean draft directly through the shared intent", () => {
+    const { result } = setup(vi.fn());
+    act(() => result.current.beginCreate("Clean"));
+    act(() => result.current.requestDismiss());
+    expect(result.current.isEditing).toBe(false);
+    expect(result.current.discardOpen).toBe(false);
+  });
 });

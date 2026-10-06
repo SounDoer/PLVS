@@ -23,7 +23,11 @@ export function useThemeEditor(opts) {
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
   const [dirty, setDirty] = useState(false);
   const [stale, setStale] = useState(false);
+  const [authoring, setAuthoring] = useState(null);
+  const [page, setPageState] = useState("core");
+  const [discardOpen, setDiscardOpen] = useState(false);
   const draftRef = useRef(/** @type {object|null} */ (null));
+  const dirtyRef = useRef(false);
   const wasNewRef = useRef(false);
   const restoreThemeRef = useRef(activeTheme);
   const baselineRef = useRef(/** @type {object|null} */ (null));
@@ -80,36 +84,61 @@ export function useThemeEditor(opts) {
     setHistoryAvailability({ undo: false, redo: false });
   }, []);
 
-  const syncDirty = useCallback((next) => {
-    setDirty(JSON.stringify(next) !== JSON.stringify(baselineRef.current));
+  const setDirtyBoth = useCallback((next) => {
+    dirtyRef.current = next;
+    setDirty(next);
+  }, []);
+
+  const syncDirty = useCallback(
+    (next) => {
+      setDirtyBoth(JSON.stringify(next) !== JSON.stringify(baselineRef.current));
+    },
+    [setDirtyBoth]
+  );
+
+  const setPage = useCallback((next) => {
+    if (["core", "palettes", "advanced"].includes(next)) setPageState(next);
   }, []);
 
   const beginEdit = useCallback(
-    (theme) => {
+    (theme, origin = { mode: "edit", sourceId: theme?.id ?? null }) => {
       wasNewRef.current = false;
       restoreThemeRef.current = theme;
       const d = structuredClone(theme);
       setDraftBoth(d);
       resetHistory(d);
-      setDirty(false);
+      setDirtyBoth(false);
       setStale(false);
+      setAuthoring({ ...origin, draftId: d.id });
+      setPageState("core");
+      setDiscardOpen(false);
       applyDraft(d);
     },
-    [applyDraft, resetHistory, setDraftBoth]
+    [applyDraft, resetHistory, setDirtyBoth, setDraftBoth]
   );
 
   const beginCreate = useCallback(
-    (/** @type {string} */ name, baseTheme = activeTheme) => {
+    (
+      /** @type {string} */ name,
+      baseTheme = activeTheme,
+      /** @type {{ mode: string, sourceId: string|null }} */ origin = {
+        mode: "create",
+        sourceId: null,
+      }
+    ) => {
       wasNewRef.current = true;
       restoreThemeRef.current = activeTheme;
       const d = makeCustomThemeV2FromBase(baseTheme, name, makeId);
       setDraftBoth(d);
       resetHistory(d);
-      setDirty(false);
+      setDirtyBoth(false);
       setStale(false);
+      setAuthoring({ ...origin, draftId: d.id });
+      setPageState("core");
+      setDiscardOpen(false);
       applyDraft(d);
     },
-    [activeTheme, applyDraft, makeId, resetHistory, setDraftBoth]
+    [activeTheme, applyDraft, makeId, resetHistory, setDirtyBoth, setDraftBoth]
   );
 
   // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
@@ -288,26 +317,43 @@ export function useThemeEditor(opts) {
     const d = draftRef.current;
     if (d && onSave?.(d, { isNew: wasNewRef.current, stale }) === false) return;
     setDraftBoth(null);
-    setDirty(false);
+    setDirtyBoth(false);
     setStale(false);
+    setAuthoring(null);
+    setDiscardOpen(false);
     if (d) notify();
     onFinish();
-  }, [cancelScheduledPublication, notify, onSave, onFinish, setDraftBoth, stale]);
+  }, [cancelScheduledPublication, notify, onSave, onFinish, setDirtyBoth, setDraftBoth, stale]);
 
   const cancel = useCallback(() => {
     cancelScheduledPublication();
     publish(restoreThemeRef.current);
     setDraftBoth(null);
-    setDirty(false);
+    setDirtyBoth(false);
     setStale(false);
+    setAuthoring(null);
+    setDiscardOpen(false);
     onFinish();
-  }, [cancelScheduledPublication, publish, onFinish, setDraftBoth]);
+  }, [cancelScheduledPublication, publish, onFinish, setDirtyBoth, setDraftBoth]);
+
+  const requestDismiss = useCallback(() => {
+    if (!draftRef.current) return;
+    if (dirtyRef.current) setDiscardOpen(true);
+    else cancel();
+  }, [cancel]);
+
+  const keepEditing = useCallback(() => setDiscardOpen(false), []);
+  const confirmDiscard = useCallback(() => cancel(), [cancel]);
 
   return {
     isEditing: draft != null,
     draft,
     dirty,
     stale,
+    authoring,
+    page,
+    setPage,
+    discardOpen,
     canSave: normalizeThemeDocumentShape(draft) != null,
     canUndo: historyAvailability.undo,
     canRedo: historyAvailability.redo,
@@ -328,6 +374,9 @@ export function useThemeEditor(opts) {
     syncSource,
     save,
     cancel,
+    requestDismiss,
+    keepEditing,
+    confirmDiscard,
     isEditingNow: () => draftRef.current != null,
   };
 }

@@ -280,8 +280,21 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
  * Nothing here writes `document.id`. `normalizeRuleDocument` rejects an id-less document, which
  * would blank the preview mid-edit.
  */
-export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, onMove }) {
-  const [discardOpen, setDiscardOpen] = useState(false);
+export function LoudnessProfileEditor({
+  draft,
+  onEdit,
+  onSave,
+  onCancel,
+  onDismiss = null,
+  discardOpen: controlledDiscardOpen = undefined,
+  onDiscardOpenChange = undefined,
+  onConfirmDiscard = undefined,
+  pos,
+  onMove,
+}) {
+  const [localDiscardOpen, setLocalDiscardOpen] = useState(false);
+  const discardOpen = controlledDiscardOpen ?? localDiscardOpen;
+  const setDiscardOpen = onDiscardOpenChange ?? setLocalDiscardOpen;
   const ref = useRef(null);
   const nameInputRef = useRef(null);
 
@@ -390,6 +403,10 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   const displayRuleIds = draggingId ? orderedIds : ruleIds;
 
   function handleCancel() {
+    if (onDismiss) {
+      onDismiss();
+      return;
+    }
     if (draft.dirty) setDiscardOpen(true);
     else onCancel();
   }
@@ -551,7 +568,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         description="Unsaved rule edits will be discarded."
         cancelLabel="Keep Editing"
         confirmLabel="Discard Changes"
-        onConfirm={onCancel}
+        onConfirm={onConfirmDiscard ?? onCancel}
       />
     </>
   );

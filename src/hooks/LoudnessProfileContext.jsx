@@ -93,6 +93,8 @@ function readPresets() {
   };
 }
 
+const createDraftId = () => `profile-draft-${crypto.randomUUID()}`;
+
 function reconcileLoudnessProfileDraft(draft, profiles) {
   if (!draft?.editingId) return draft;
   const latest = profiles.find((profile) => profile.id === draft.editingId) ?? null;
@@ -169,6 +171,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   /// Like ThemeEditor, this draft is an in-memory preview with no persistence side effects to
   /// unwind: cancel is throwing an object away.
   const [draft, setDraft] = useState(null);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   /// The ref mirrors the draft synchronously, the way `useThemeEditor` keeps a `draftRef`, and for
   /// the same reason: save has to read the draft as it is, not as it was last rendered. Two calls
@@ -215,7 +218,13 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
 
   const beginCreate = useCallback(() => {
     if (draftBlocks()) return;
-    putDraft({ editingId: null, document: createProfileDraft(), dirty: false });
+    putDraft({
+      editingId: null,
+      document: createProfileDraft(),
+      dirty: false,
+      authoring: { mode: "create", sourceId: null, draftId: createDraftId() },
+    });
+    setDiscardOpen(false);
   }, [draftBlocks, putDraft]);
 
   const beginEdit = useCallback(
@@ -233,7 +242,9 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
         baseDocument: structuredClone(found),
         document: structuredClone(found),
         dirty: false,
+        authoring: { mode: "edit", sourceId: id, draftId: createDraftId() },
       });
+      setDiscardOpen(false);
     },
     [draftBlocks, putDraft, state.profiles, state.active]
   );
@@ -247,7 +258,20 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     [putDraft]
   );
 
-  const cancelDraft = useCallback(() => putDraft(null), [putDraft]);
+  const cancelDraft = useCallback(() => {
+    putDraft(null);
+    setDiscardOpen(false);
+  }, [putDraft]);
+
+  const requestDismiss = useCallback(() => {
+    const current = draftRef.current;
+    if (!current) return;
+    if (current.dirty) setDiscardOpen(true);
+    else cancelDraft();
+  }, [cancelDraft]);
+
+  const keepEditing = useCallback(() => setDiscardOpen(false), []);
+  const confirmDiscard = useCallback(() => cancelDraft(), [cancelDraft]);
 
   /// The only path out of the overlay that writes anything. Insert when `editingId` is null,
   /// replace in place otherwise -- editing twice must not leave two entries behind.
@@ -459,6 +483,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       profiles: state.profiles,
       referenceLufs: document?.referenceLufs ?? null,
       draft,
+      discardOpen,
       // The provider already refuses these; the popover renders them disabled because a button
       // that silently does nothing is worse than one that looks disabled.
       draftBlocksLibraryActions: draft != null,
@@ -466,6 +491,9 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       beginEdit,
       editDraft,
       cancelDraft,
+      requestDismiss,
+      keepEditing,
+      confirmDiscard,
       saveDraft,
       select,
       selectOff,
@@ -494,10 +522,14 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       state,
       document,
       draft,
+      discardOpen,
       beginCreate,
       beginEdit,
       editDraft,
       cancelDraft,
+      requestDismiss,
+      keepEditing,
+      confirmDiscard,
       saveDraft,
       select,
       selectOff,

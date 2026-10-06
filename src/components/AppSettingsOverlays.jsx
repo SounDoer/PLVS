@@ -279,6 +279,12 @@ export function AppSettingsOverlays({
           canSave={editor.canSave}
           onSave={editor.save}
           onCancel={editor.cancel}
+          onDismiss={editor.requestDismiss}
+          discardOpen={editor.discardOpen}
+          onDiscardOpenChange={(open) => (open ? editor.requestDismiss() : editor.keepEditing())}
+          onConfirmDiscard={editor.confirmDiscard}
+          page={editor.page}
+          onPageChange={editor.setPage}
           onDelete={undefined}
           dirty={editor.dirty}
           stale={editor.stale}
@@ -293,6 +299,12 @@ export function AppSettingsOverlays({
           onEdit={loudnessProfile.editDraft}
           onSave={loudnessProfile.saveDraft}
           onCancel={loudnessProfile.cancelDraft}
+          onDismiss={loudnessProfile.requestDismiss}
+          discardOpen={loudnessProfile.discardOpen}
+          onDiscardOpenChange={(open) =>
+            open ? loudnessProfile.requestDismiss() : loudnessProfile.keepEditing()
+          }
+          onConfirmDiscard={loudnessProfile.confirmDiscard}
           pos={loudnessProfilePos}
           onMove={setLoudnessProfilePos}
         />

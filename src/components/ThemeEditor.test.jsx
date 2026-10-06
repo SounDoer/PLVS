@@ -33,6 +33,29 @@ const BASE_PROPS = {
 };
 
 describe("ThemeEditor", () => {
+  it("delegates page and dismissal intent to a shared owner when controlled", () => {
+    const onPageChange = vi.fn();
+    const onDismiss = vi.fn();
+    render(
+      <ThemeEditor
+        {...BASE_PROPS}
+        dirty
+        page="core"
+        onPageChange={onPageChange}
+        onDismiss={onDismiss}
+        discardOpen={false}
+        onDiscardOpenChange={vi.fn()}
+        onConfirmDiscard={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onPageChange).toHaveBeenCalledWith("advanced");
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alertdialog", { name: "Discard theme changes?" })).toBeNull();
+  });
+
   it("previews fixed fills without attenuating trace strokes", () => {
     const draft = structuredClone(DRAFT);
     render(<ThemeEditor {...BASE_PROPS} draft={draft} />);

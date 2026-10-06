@@ -166,6 +166,37 @@ describe("useCustomThemeSettings", () => {
       colorScheme: "light",
       core: BUILTIN_THEMES_V2["plvs-light"].core,
     });
+    expect(result.current.editor.authoring).toMatchObject({
+      mode: "customize",
+      sourceId: "plvs-light",
+    });
+  });
+
+  it("records create, edit, and duplicate authoring origins", () => {
+    const shared = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-shared",
+      name: "Shared",
+    };
+    upsertCustomTheme(shared);
+    const { result } = renderCustomThemeSettings(() => "custom-draft");
+
+    act(() => result.current.createCustomTheme());
+    expect(result.current.editor.authoring).toMatchObject({ mode: "create", sourceId: null });
+    act(() => result.current.editor.cancel());
+
+    act(() => result.current.editCustomTheme(shared.id));
+    expect(result.current.editor.authoring).toMatchObject({
+      mode: "edit",
+      sourceId: shared.id,
+    });
+    act(() => result.current.editor.cancel());
+
+    act(() => result.current.duplicateCustomTheme(shared.id));
+    expect(result.current.editor.authoring).toMatchObject({
+      mode: "duplicate",
+      sourceId: shared.id,
+    });
   });
 
   it("falls back to the matching builtin scheme when deleting the selected theme", () => {

@@ -97,6 +97,12 @@ const CORE_COLORS = [
  *   canSave?: boolean,
  *   onSave: (...args: any[]) => any,
  *   onCancel: (...args: any[]) => any,
+ *   onDismiss?: (...args: any[]) => any,
+ *   discardOpen?: boolean,
+ *   onDiscardOpenChange?: (...args: any[]) => any,
+ *   onConfirmDiscard?: (...args: any[]) => any,
+ *   page?: "core"|"palettes"|"advanced",
+ *   onPageChange?: (...args: any[]) => any,
  *   onDelete?: (...args: any[]) => any,
  *   dirty: boolean,
  *   stale?: boolean,
@@ -123,14 +129,30 @@ export function ThemeEditor({
   canSave = true,
   onSave,
   onCancel,
+  onDismiss,
+  discardOpen: controlledDiscardOpen,
+  onDiscardOpenChange,
+  onConfirmDiscard,
+  page: controlledPage,
+  onPageChange,
   onDelete,
   dirty,
   stale = false,
   pos,
   onMove,
 }) {
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-  const [page, setPage] = useState("core");
+  const [localDiscardOpen, setLocalDiscardOpen] = useState(false);
+  const [localPage, setLocalPage] = useState("core");
+  const discardDialogOpen = controlledDiscardOpen ?? localDiscardOpen;
+  const page = controlledPage ?? localPage;
+  const setDiscardDialogOpen = onDiscardOpenChange ?? setLocalDiscardOpen;
+  const setPage = useCallback(
+    (next) => {
+      if (controlledPage === undefined) setLocalPage(next);
+      onPageChange?.(next);
+    },
+    [controlledPage, onPageChange]
+  );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [focusTarget, setFocusTarget] = useState(null);
   const builtinCore = BUILTIN_THEMES_V2[`plvs-${draft.colorScheme}`].core;
@@ -189,6 +211,10 @@ export function ThemeEditor({
   }
 
   function handleCancel() {
+    if (onDismiss) {
+      onDismiss();
+      return;
+    }
     if (!dirty) {
       onCancel();
       return;
@@ -416,7 +442,7 @@ export function ThemeEditor({
         description="Unsaved edits will be discarded and the previous theme will be restored."
         cancelLabel="Keep Editing"
         confirmLabel="Discard Changes"
-        onConfirm={onCancel}
+        onConfirm={onConfirmDiscard ?? onCancel}
       />
       {previewOpen ? (
         <ThemePreview
