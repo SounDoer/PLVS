@@ -1,0 +1,338 @@
+/** @vitest-environment jsdom */
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { act, renderHook } from "@testing-library/react";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import {
+  UiNavigationProvider,
+  useUiNavigation,
+  useUiNavigationTarget,
+  useUiSurface,
+} from "./UiNavigationContext.jsx";
+
+afterEach(() => {
+  delete window.__PLVS_INITIAL_STATE__;
+});
+
+function wrapper({ children }) {
+  return (
+    <BlockingEditorsProvider>
+      <UiNavigationProvider
+        displayName="Studio"
+        windowForm="normal"
+        windowVisible
+        getRevision={() => 7}
+      >
+        {children}
+      </UiNavigationProvider>
+    </BlockingEditorsProvider>
+  );
+}
+
+function shortSettlementWrapper({ children }) {
+  return (
+    <BlockingEditorsProvider>
+      <UiNavigationProvider getRevision={() => 7} settlementTimeoutMs={10}>
+        {children}
+      </UiNavigationProvider>
+    </BlockingEditorsProvider>
+  );
+}
+
+describe("UiNavigationProvider", () => {
+  it("fails loudly when a command consumer is outside the provider", () => {
+    expect(() => renderHook(() => useUiNavigation())).toThrow(/UiNavigationProvider/);
+  });
+
+  it("inspects the selected workbench before any surface is registered", () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      instanceId: "instance-1",
+      workspaceId: "workspace-1",
+    };
+
+    const { result } = renderHook(() => useUiNavigation(), { wrapper });
+
+    expect(result.current.uiGeneration).toBe(0);
+    expect(result.current.inspectUi()).toEqual({
+      uiGeneration: 0,
+      workbench: {
+        instanceId: "instance-1",
+        workspaceId: "workspace-1",
+        displayName: "Studio",
+      },
+      window: { form: "normal", visible: true },
+      activeBlockingEditors: [],
+      topSurfaceId: null,
+      surfaces: [],
+    });
+  });
+
+  it("publishes a mounted semantic surface through inspection", () => {
+    const { result } = renderHook(
+      () => {
+        const surfaceId = useUiSurface({
+          active: true,
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+        });
+        return { navigation: useUiNavigation(), surfaceId };
+      },
+      { wrapper }
+    );
+
+    expect(result.current.surfaceId).toMatch(/^ui-/);
+    expect(result.current.navigation.inspectUi()).toMatchObject({
+      uiGeneration: 1,
+      topSurfaceId: result.current.surfaceId,
+      surfaces: [
+        {
+          surfaceId: result.current.surfaceId,
+          kind: "settings",
+          target: { section: "appearance" },
+        },
+      ],
+    });
+  });
+
+  it("closes only the exact mounted surface through its visible Close intent", async () => {
+    const onClose = vi.fn();
+    const { result } = renderHook(
+      () => {
+        const [open, setOpen] = useState(true);
+        const surfaceId = useUiSurface({
+          active: open,
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+          onClose: () => {
+            onClose();
+            setOpen(false);
+          },
+        });
+        return { navigation: useUiNavigation(), surfaceId };
+      },
+      { wrapper }
+    );
+    const surfaceId = result.current.surfaceId;
+
+    let pending;
+    await act(async () => {
+      pending = result.current.navigation.closeSurface({
+        surfaceId,
+        expectedRevision: 7,
+        expectedUiGeneration: 1,
+      });
+      await Promise.resolve();
+    });
+    await pending;
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(result.current.navigation.inspectUi()).toMatchObject({
+      uiGeneration: 2,
+      topSurfaceId: null,
+      surfaces: [],
+    });
+  });
+
+  it("serializes duplicate Close requests so the visible intent runs once", async () => {
+    const onClose = vi.fn();
+    const { result } = renderHook(
+      () => {
+        const [open, setOpen] = useState(true);
+        const surfaceId = useUiSurface({
+          active: open,
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+          onClose: () => {
+            onClose();
+            setOpen(false);
+          },
+        });
+        return { navigation: useUiNavigation(), surfaceId };
+      },
+      { wrapper }
+    );
+    const request = {
+      surfaceId: result.current.surfaceId,
+      expectedRevision: 7,
+      expectedUiGeneration: 1,
+    };
+    /** @type {Promise<PromiseSettledResult<any>[]> | undefined} */
+    let pendingOutcomes;
+
+    await act(async () => {
+      pendingOutcomes = Promise.allSettled([
+        result.current.navigation.closeSurface(request),
+        result.current.navigation.closeSurface(request),
+      ]);
+      await Promise.resolve();
+    });
+    if (!pendingOutcomes) throw new Error("Close outcomes were not captured.");
+    const outcomes = await pendingOutcomes;
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(outcomes.map(({ status }) => status)).toEqual(["fulfilled", "rejected"]);
+    if (outcomes[1].status !== "rejected") throw new Error("Second Close request was accepted.");
+    expect(outcomes[1].reason).toMatchObject({ reason: "uiGenerationConflict" });
+  });
+
+  it("reports not settled when the visible Close intent leaves the surface mounted", async () => {
+    const onClose = vi.fn();
+    const { result } = renderHook(
+      () => {
+        const surfaceId = useUiSurface({
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+          onClose,
+        });
+        return { navigation: useUiNavigation(), surfaceId };
+      },
+      { wrapper: shortSettlementWrapper }
+    );
+
+    await expect(
+      result.current.navigation.closeSurface({
+        surfaceId: result.current.surfaceId,
+        expectedRevision: 7,
+        expectedUiGeneration: 1,
+      })
+    ).rejects.toMatchObject({ reason: "uiNotSettled" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(result.current.navigation.inspectUi().surfaces).toHaveLength(1);
+  });
+
+  it("shows Settings through its owner and returns the registered surface", async () => {
+    const show = vi.fn();
+    const { result } = renderHook(
+      () => {
+        const [open, setOpen] = useState(false);
+        const [section, setSection] = useState("behavior");
+        useUiNavigationTarget("settings", {
+          show: ({ section: nextSection }) => {
+            show(nextSection);
+            setSection(nextSection);
+            setOpen(true);
+          },
+        });
+        useUiSurface({
+          active: open,
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section },
+          onClose: () => setOpen(false),
+        });
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+    let pending;
+
+    await act(async () => {
+      pending = result.current.showSettings({
+        section: "appearance",
+        expectedRevision: 7,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    const response = await pending;
+
+    expect(show).toHaveBeenCalledWith("appearance");
+    expect(response).toMatchObject({
+      changed: true,
+      revision: 7,
+      uiGeneration: 1,
+      action: "ui.show.settings",
+      surface: { kind: "settings", target: { section: "appearance" } },
+    });
+  });
+
+  it("treats a StrictMode effect replay as one mounted surface lifetime", () => {
+    const { result } = renderHook(
+      () => {
+        useUiSurface({
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "behavior" },
+          onClose: vi.fn(),
+        });
+        return useUiNavigation();
+      },
+      { wrapper, reactStrictMode: true }
+    );
+
+    expect(result.current.inspectUi()).toMatchObject({
+      uiGeneration: 1,
+      surfaces: [{ kind: "settings", target: { section: "behavior" } }],
+    });
+  });
+
+  it("moves an already-open target to the top when show focuses it", async () => {
+    const { result } = renderHook(
+      () => {
+        useUiNavigationTarget("settings", { show: vi.fn() });
+        useUiSurface({
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+          onClose: vi.fn(),
+        });
+        useUiSurface({
+          kind: "panelSettings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { panelId: "stats" },
+          onClose: vi.fn(),
+        });
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+    expect(result.current.inspectUi().surfaces.map(({ kind }) => kind)).toEqual([
+      "settings",
+      "panelSettings",
+    ]);
+    /** @type {any} */
+    let response;
+
+    await act(async () => {
+      response = await result.current.showSettings({
+        section: "appearance",
+        expectedRevision: 7,
+        expectedUiGeneration: 2,
+      });
+    });
+    expect(response.uiGeneration).toBe(3);
+    expect(result.current.inspectUi().surfaces.map(({ kind }) => kind)).toEqual([
+      "panelSettings",
+      "settings",
+    ]);
+  });
+});

@@ -25,6 +25,7 @@ import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
+import { UiNavigationProvider } from "./uiNavigation/UiNavigationContext.jsx";
 import {
   SCENE_OPERATIONS,
   SceneOperationUnavailableError,
@@ -206,9 +207,11 @@ export default function App() {
         {/* Outside LoudnessProfileProvider: the profile draft registers itself as a blocking
             editor, and so does the theme editor further down in AppContent. */}
         <BlockingEditorsProvider>
-          <LoudnessProfileProvider>
-            <AppContent />
-          </LoudnessProfileProvider>
+          <UiNavigationProvider>
+            <LoudnessProfileProvider>
+              <AppContent />
+            </LoudnessProfileProvider>
+          </UiNavigationProvider>
         </BlockingEditorsProvider>
       </MeterRuntimeProvider>
     </WorkspaceProvider>

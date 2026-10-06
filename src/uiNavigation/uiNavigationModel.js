@@ -167,6 +167,18 @@ export function unmountUiSurface(state, surfaceId) {
   });
 }
 
+export function focusUiSurface(state, surfaceId) {
+  const index = state.surfaces.findIndex((surface) => surface.surfaceId === surfaceId);
+  if (index < 0 || index === state.surfaces.length - 1) return state;
+  const surfaces = [...state.surfaces];
+  const [surface] = surfaces.splice(index, 1);
+  surfaces.push(surface);
+  return Object.freeze({
+    uiGeneration: state.uiGeneration + 1,
+    surfaces: Object.freeze(surfaces),
+  });
+}
+
 export function projectUiInspection(state, { workbench, window, activeBlockingEditors }) {
   return {
     uiGeneration: state.uiGeneration,
