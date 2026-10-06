@@ -157,9 +157,10 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
 
   for (const [family, initial] of Object.entries(initialFamilies)) {
     const final = await run([family, "inspect", "--json"]);
+    const finalState = final[family] ?? final;
     for (const entry of restoration.filter((candidate) => candidate.family === family)) {
       for (const [key, value] of Object.entries(entry.verify)) {
-        if (!sameJson(final[key], value))
+        if (!sameJson(finalState[key], value))
           throw new Error(`Restoration verification failed for ${family}.${key}.`);
       }
     }
@@ -215,7 +216,12 @@ async function main(args) {
   const privateDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-"));
   try {
     const manifest = JSON.parse(await readFile(resolve(repositoryRoot, manifestPath), "utf8"));
-    const executable = await buildPlvsCli();
+    for (const scenario of manifest.scenarios ?? []) {
+      if (typeof scenario.screenshot?.output === "string") {
+        await mkdir(dirname(join(resolvedOut, scenario.screenshot.output)), { recursive: true });
+      }
+    }
+    const { executable } = buildPlvsCli({ identity: "development" });
     const invoke = async (commandArgs) => {
       const child = spawnSync(executable, commandArgs, {
         cwd: repositoryRoot,

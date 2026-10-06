@@ -144,3 +144,27 @@ plvs-cli ui close $shown.result.surface.surfaceId `
 
 Scenario tools should restore durable state through the owning Agent Control families, close only
 the exact surfaces they opened, and verify final state with both `inspect` and `ui inspect`.
+
+## Visual walkthrough tooling
+
+The repository's ordinary product-surface walkthrough uses only `plvs-cli`:
+
+```powershell
+npm run ui:walkthrough -- --manifest scripts/ui-walkthrough/product-surfaces.example.json --out-dir artifacts/ui-walkthrough
+```
+
+Copy the example and replace its explicit workbench instance ID. The checked manifest accepts one
+semantic UI target per scenario, contained screenshot outputs, optional bounded Settings/View
+patches, and an exact declaration of every durable field touched. The runner refuses a pre-existing
+surface, blocking editor, event decision, missing capability, undeclared field, arbitrary command,
+shell string, selector, generic confirmation, or output path escape. It writes temporary mutation
+documents in a private directory, dismisses only the surface it opened, restores in reverse order,
+and records success or bounded failure evidence in `report.json`.
+
+Settings, normal or Dock Panel Settings, clean Theme/Profile drafts, blank Feedback, and ordinary
+Workspace/Dock captures belong on this path. Development-only fixtures remain appropriate for real
+update phases, crash and fatal variants, close timing, stale library conflicts, dirty discard and
+validation states, color pickers, native file/permission dialogs, clipboard/drag/shortcut input,
+menus/tooltips/hover/focus, hotplug/capture failures, and renderer/performance probes. The isolated
+community-preview renderer may continue to use Playwright because it renders a browser preview
+application, not the running PLVS workbench.

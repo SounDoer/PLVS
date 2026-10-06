@@ -89,16 +89,11 @@ export function validateWalkthroughManifest(manifest) {
 
     if (!plain(scenario.screenshot) || !SCREENSHOT_TARGETS.has(scenario.screenshot.target))
       issues.push(`${path}.screenshot.target is invalid.`);
-    if (
-      unknownFields(scenario.screenshot, new Set(["target", "panelId", "output"])).length > 0
-    )
+    if (unknownFields(scenario.screenshot, new Set(["target", "panelId", "output"])).length > 0)
       issues.push(`${path}.screenshot contains an unknown field.`);
     if (!safeRelativeOutput(scenario.screenshot?.output))
       issues.push(`${path}.screenshot.output must be a contained relative path.`);
-    if (
-      scenario.screenshot?.target === "panel" &&
-      typeof scenario.screenshot.panelId !== "string"
-    )
+    if (scenario.screenshot?.target === "panel" && typeof scenario.screenshot.panelId !== "string")
       issues.push(`${path}.screenshot.panelId is required.`);
 
     const declaredTouches = new Set(scenario.touches ?? []);
@@ -137,7 +132,9 @@ export function requiredWalkthroughMethods(manifest) {
   const methods = new Set(["app.capabilities", "app.inspect", "ui.inspect", "visual.screenshot"]);
   for (const scenario of manifest.scenarios) {
     methods.add(UI_TARGETS[scenario.ui.kind].method);
-    methods.add(["settings", "panelSettings"].includes(scenario.ui.kind) ? "ui.close" : "ui.cancel");
+    methods.add(
+      ["settings", "panelSettings"].includes(scenario.ui.kind) ? "ui.close" : "ui.cancel"
+    );
     for (const step of scenario.durable) {
       methods.add(`${step.family}.inspect`);
       methods.add(`${step.family}.update`);
@@ -171,7 +168,9 @@ export function buildRestorationLedger(manifest, snapshots) {
         const identity = `${step.family}.${key}`;
         if (seen.has(identity)) continue;
         seen.add(identity);
-        patch[key] = structuredClone(snapshots[step.family]?.[key]);
+        const snapshot = snapshots[step.family];
+        const state = snapshot?.[step.family] ?? snapshot;
+        patch[key] = structuredClone(state?.[key]);
       }
       if (Object.keys(patch).length > 0) {
         entries.push({ family: step.family, patch, verify: structuredClone(patch) });
