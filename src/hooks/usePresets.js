@@ -39,6 +39,45 @@ async function readWindowBounds() {
 }
 
 /**
+ * What `usePresets` hands out: the list, which preset is active and whether it has drifted, and
+ * the operations on them. Everything that shows or drives presets takes this.
+ * @typedef {ReturnType<typeof usePresets>} PresetsApi
+ */
+
+/**
+ * The read-only part of {@link PresetsApi}, for callers that only report it.
+ * @typedef {{
+ *   list?: { id: string, name: string }[],
+ *   activeId?: string | null,
+ *   dirty?: boolean,
+ *   blocked?: boolean,
+ * }} PresetsSummary
+ */
+
+/**
+ * What a surface needs to list presets and apply one: the tray menu takes exactly this, and
+ * falls back to an empty one before the app has handed it the real thing.
+ * @typedef {{
+ *   list: { id: string, name: string }[],
+ *   activeId: string | null,
+ *   dirty?: boolean,
+ *   blocked?: boolean,
+ *   apply: (id: string) => void | Promise<unknown>,
+ * }} PresetsMenu
+ */
+
+/**
+ * What the Presets popover needs on top of the menu: the operations that change the list.
+ * @typedef {PresetsMenu & {
+ *   save: (name: string) => unknown,
+ *   update: (id: string) => unknown,
+ *   rename: (id: string, name: string) => unknown,
+ *   remove: (id: string) => unknown,
+ *   reorder?: (ids: string[]) => unknown,
+ * }} PresetsEditor
+ */
+
+/**
  * @param {{
  *   windowPinned?: boolean,
  *   setWindowPinned?: (...args: any[]) => any,
@@ -48,7 +87,7 @@ async function readWindowBounds() {
  *   setSurfaceOpacity?: (...args: any[]) => any,
  *   glassEnabled?: boolean,
  *   setGlassEnabled?: (...args: any[]) => any,
- *   dock?: any,
+ *   dock?: import("../workspace/types.js").DockScene,
  *   applyDockPreset?: (...args: any[]) => any,
  *   applySurfaceOpacity?: (...args: any[]) => any,
  *   dockPresetUnavailableReason?: (...args: any[]) => any,

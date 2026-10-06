@@ -25,7 +25,7 @@ const NOOP_PRESETS = {
  * Popover body for preset management. Receives the `presets` controller
  * from usePresets(). Whole-row click applies; row-tail icons do
  * Update / Rename / Delete. Rename is inline.
- * @param {{ presets?: any, showTitle?: boolean, onExport?: (...args: any[]) => any }} props
+ * @param {{ presets?: import("../hooks/usePresets.js").PresetsEditor, showTitle?: boolean, onExport?: (...args: any[]) => any }} props
  */
 export function PresetsPopoverContent({
   presets = NOOP_PRESETS,

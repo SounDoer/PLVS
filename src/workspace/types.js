@@ -144,6 +144,26 @@
  *   },
  * }} Preset
  *
+ * The Dock as a scene describes it: whether the strip is up, where it sits and what is on it.
+ * A preset stores one, and `usePresets` reads the live one to take a snapshot.
+ *
+ * @typedef {{
+ *   enabled: boolean,
+ *   edge: string,
+ *   monitor?: string | null,
+ *   reserveSpace?: boolean,
+ *   height?: number,
+ *   panelsById?: Record<PanelId, PanelInstance>,
+ *   panelOrder?: PanelId[],
+ *   panelSizesById?: Record<PanelId, any>,
+ *   controlsByPanelId?: Record<PanelId, object>,
+ * }} DockScene
+ *
+ * What Agent Control is told about the Dock: the scene, plus whether this platform has a Dock at
+ * all and whether it is currently suspended.
+ *
+ * @typedef {DockScene & { supported?: boolean, suspended?: boolean }} AgentControlDock
+ *
  * @typedef {{
  *   targetPath: number[],
  *   zone: 'tabs' | 'above' | 'below' | 'left' | 'right',

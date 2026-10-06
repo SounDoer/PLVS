@@ -288,7 +288,7 @@ async function buildMenu(cfg) {
  *   defaultOutputLabel?: string,
  *   sourceBusy?: boolean,
  *   onSelectSource?: (...args: any[]) => any,
- *   presets?: any,
+ *   presets?: import("./usePresets.js").PresetsMenu,
  * }} options
  */
 export function useTray({

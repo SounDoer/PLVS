@@ -164,7 +164,7 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
  *   dockEdge: string,
  *   onDockChange: (...args: any[]) => any,
  *   dockDisabled: boolean,
- *   presets: any,
+ *   presets: import("../hooks/usePresets.js").PresetsEditor,
  *   onExportLibraryItem?: (...args: any[]) => any,
  *   setSettingsOpen: (...args: any[]) => any,
  * }} props
