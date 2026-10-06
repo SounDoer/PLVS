@@ -38,7 +38,42 @@ import {
 /// settings all read the same document, and a preview draft has to be visible to every one of
 /// them at once -- a draft held in any single consumer would be invisible to the other three.
 
-const LoudnessProfileContext = createContext(null);
+/**
+ * A stored Loudness Profile as the app carries it: an id, a name and its rules.
+ * @typedef {{ id: string, name: string, referenceLufs?: number | null, [key: string]: any }} LoudnessProfileDocument
+ */
+
+/**
+ * What the provider hands out: the library and which profile is active, the draft being edited,
+ * the operations the app's own UI uses, and under `control` the plan/commit pairs Agent Control
+ * drives the same library through.
+ * @typedef {{
+ *   active: string | null,
+ *   document: LoudnessProfileDocument | null,
+ *   profiles: LoudnessProfileDocument[],
+ *   referenceLufs: number | null,
+ *   draft: Record<string, any> | null,
+ *   draftBlocksLibraryActions: boolean,
+ *   beginCreate: (...args: any[]) => any,
+ *   beginEdit: (...args: any[]) => any,
+ *   editDraft: (...args: any[]) => any,
+ *   cancelDraft: (...args: any[]) => any,
+ *   saveDraft: (...args: any[]) => any,
+ *   select: (...args: any[]) => any,
+ *   selectOff: (...args: any[]) => any,
+ *   removeProfile: (...args: any[]) => any,
+ *   reorderProfiles: (...args: any[]) => any,
+ *   snapshotForPreset: (...args: any[]) => any,
+ *   applyPresetSnapshot: (...args: any[]) => any,
+ *   control: Record<
+ *     | "assertAllowed" | "planSelect" | "planCreate" | "planUpdate" | "planRename" | "planDelete"
+ *     | "planReorder" | "commit" | "select" | "create" | "update" | "rename" | "delete" | "reorder",
+ *     (...args: any[]) => any
+ *   >,
+ * }} LoudnessProfileApi
+ */
+
+const LoudnessProfileContext = createContext(/** @type {LoudnessProfileApi | null} */ (null));
 
 function readState() {
   return normalizeLoudnessProfiles(settingsStore.read().loudnessProfiles);
@@ -494,13 +529,19 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
 
 /** Fixed, side-effect-free Profile context for trusted visual fixtures. */
 export function LoudnessProfilePreviewProvider({ document, children }) {
+  // Only what a panel reads. A fixture has no library to edit, so the operations are left out, and
+  // nothing mounted under this provider calls them.
   const value = useMemo(
-    () => ({
-      document,
-      referenceLufs: document?.referenceLufs ?? null,
-      draft: null,
-      state: { active: "preview", profiles: document ? [document] : [] },
-    }),
+    () =>
+      /** @type {LoudnessProfileApi} */ (
+        /** @type {Partial<LoudnessProfileApi>} */ ({
+          document,
+          referenceLufs: document?.referenceLufs ?? null,
+          draft: null,
+          active: "preview",
+          profiles: document ? [document] : [],
+        })
+      ),
     [document]
   );
   return (

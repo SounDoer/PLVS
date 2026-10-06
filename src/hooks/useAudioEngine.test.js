@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { standIn } from "../testing/standIn.js";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
@@ -100,7 +101,8 @@ function useHarness({
     channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    transport: { running: true, halt, recordAudioDrop },
+    // the engine also reads lifecycle and the mark* callbacks; this harness leaves them out
+    transport: standIn({ running: true, halt, recordAudioDrop }),
     display,
     intake: props.intake,
     defaultSampleRateRef: props.defaultSampleRateRef,

@@ -125,7 +125,7 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
 
 /**
  * @param {{
- *   loudnessProfile: any,
+ *   loudnessProfile: import("../hooks/LoudnessProfileContext.jsx").LoudnessProfileApi,
  *   loudnessProfileStats: any,
  *   autoHideControls: any,
  *   onPointerEnter: (...args: any[]) => any,

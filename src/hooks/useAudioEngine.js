@@ -55,7 +55,10 @@ const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
  *   channelRolesRef: { current: any },
  *   dialogueGatingRef: { current: any },
  *   dialogueVadEngineRef: { current: any },
- *   transport: any,
+ *   transport: Pick<
+ *     ReturnType<typeof import("./useCaptureTransport.js").useCaptureTransport>,
+ *     "running" | "lifecycle" | "halt" | "markStarted" | "markStopped" | "markStopFailed" | "recordAudioDrop"
+ *   >,
  *   display: any,
  *   defaultSampleRateRef: { current: any },
  *   measurementOwner?: any,
