@@ -77,57 +77,40 @@ example `task03`. All output goes under `artifacts/app-state/`, which `.gitignor
 
    Expected: exits 0.
 
-2. Make sure no development build is running, then cold-start one on an isolated profile:
+2. Run the capture script, which is untracked and was written in Task 0:
 
    ```bash
-   powershell -NoProfile -Command "Get-Process plvs -ErrorAction SilentlyContinue | Where-Object { \$_.Path -like '*target\debug\plvs.exe' } | ForEach-Object { taskkill /PID \$_.Id /T /F }"
+   bash artifacts/app-state/recipe.sh <label>
    ```
 
-   ```bash
-   npm run desktop -- -- -- --plvs-test-app-data-root "C:\Users\shenxichen\repos\PLVS\artifacts\app-state\data-<label>"
-   ```
+   It stops any development build by PID, cold-starts one on an isolated profile, saves
+   `inspect --json`, runs two walkthroughs, stops the app and compares with the baseline. Three
+   facts found while capturing the baseline shape it:
 
-   Run the second command in the background. The data directory must not exist beforehand.
+   - The isolated profile lives outside the repository (`%TEMP%\plvs-app-state\data-<label>`).
+     Inside the repository the first-run storage rename fails with "Access is denied", because
+     Vite's watcher holds the new directory open.
+   - The CLI finds an isolated app only when `PLVS_TEST_IDENTITY_ROOT` points at that profile's
+     `multi-instance` directory.
+   - Two launches of the same code differ in `$.device.observedAt` and
+     `$.loudnessProfile.activeId` (a timestamp and an identifier seeded on first run), and in the
+     meter contents of any screenshot that shows analysed audio. The snapshot comparison ignores
+     those two paths. The walkthrough runs twice: once without the audio fixture, which is
+     deterministic, and once with the stock manifest.
 
-3. Wait until the frontend answers, then read the instance ID:
+3. Expected output:
 
-   ```bash
-   npm run --silent desktop:control -- instances --json
-   ```
+   - `identical apart from revision`;
+   - `pixel compare (empty)` exits 0 with every image `identical`;
+   - `pixel compare (data)` may report changed pixels. Baseline against baseline measured 1933 to
+     4364 per image, all inside the meters. Open the difference images under
+     `artifacts/app-state/<label>/diff-data/` and confirm nothing outside plotted meter data
+     changed.
 
-   Expected: `"ok":true` with one instance. `frontendNotReady` right after start is normal; retry
-   after five seconds.
+   A task that needs the app left running for a hand check passes `keep` as a second argument and
+   stops the app by PID afterwards.
 
-4. Save the state snapshot and compare it with the baseline:
-
-   ```bash
-   npm run --silent desktop:control -- inspect --json > artifacts/app-state/<label>-inspect.json
-   ```
-
-   ```bash
-   node artifacts/app-state/compare-inspect.cjs artifacts/app-state/baseline-inspect.json artifacts/app-state/<label>-inspect.json
-   ```
-
-   Expected: `identical apart from revision`.
-
-5. Capture the walkthrough and compare pixels. Copy
-   `scripts/ui-walkthrough/product-surfaces.example.json` to
-   `artifacts/app-state/<label>-manifest.json` and replace `REPLACE-WITH-INSTANCE-ID` with the ID
-   from step 3.
-
-   ```bash
-   npm run ui:walkthrough -- --manifest artifacts/app-state/<label>-manifest.json --out-dir artifacts/app-state/<label>
-   ```
-
-   ```bash
-   npm run ui:compare -- --before artifacts/app-state/baseline --after artifacts/app-state/<label> --out-dir artifacts/app-state/<label>-diff
-   ```
-
-   Expected: the comparison exits 0 with no changed image.
-
-6. Stop the development app with the command from step 2.
-
-If step 4 or 5 reports a difference, the task is not done. Find the cause; do not re-baseline.
+If the snapshot or the empty walkthrough reports a difference, the task is not done. Find the cause; do not re-baseline.
 
 ---
 
