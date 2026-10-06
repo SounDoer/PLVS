@@ -12,6 +12,12 @@ import { useSourceActions } from "../runtime/SourceActionsContext.jsx";
 import { useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useAnalysisSession } from "../runtime/AnalysisSessionContext.jsx";
+import { useDisplaySnapshot } from "../runtime/DisplaySnapshotContext.jsx";
+import { useSceneGuard } from "../hooks/SceneGuardContext.jsx";
+import { firstHistoryTimestampMs, latestHistoryTimestampMs } from "../lib/historyTimestamps.js";
+import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
+import { roleTokensToLabels } from "../math/channelRoles.js";
+import { standardLayoutIdForCount } from "../math/channelLayoutTable.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
 import { buildTransportSnapshot } from "./transportControl.js";
@@ -22,35 +28,10 @@ import { useAgentControlBridge } from "./useAgentControlBridge.js";
 
 /**
  * Agent Control as a component, so it can sit inside the domain providers and read them itself.
- * Each domain that gains an owner moves its wiring from `App.jsx` into this file; the areas still
- * listed in the props are the ones `AppContent` owns for now.
+ * It builds every area from the owning domain. The props are what `AppContent` still owns: whether
+ * Agent Control is enabled, the runtime descriptor, and visual capture.
  *
- * @param {Omit<Parameters<typeof useAgentControlBridge>[0], | "dock"
- *   | "executeDock"
- *   | "dockContext"
- *   | "viewContext"
- *   | "presets"
- *   | "loudnessProfile"
- *   | "hasLoudnessReference"
- *   | "customThemes"
- *   | "theme"
- *   | "transport"
- *   | "transportContext"
- *   | "executeTransport"
- *   | "uiNavigation"
- *   | "device"
- *   | "workspace"
- *   | "replaceWorkspace"
- *   | "setPanelControlsForPanel"
- *   | "waitForWorkspacePersistenceEnqueue"
- *   | "settings"
- *   | "settingsContext"
- *   | "applySettings"> & {
- *   dockContext: Omit<
- *     import("./useAgentControlBridge.js").AgentControlDockContext,
- *     "transitioning" | "monitors" | "fallbackMonitor" | "monitorRects" | "monitorInventoryReady"
- *   >,
- * }} props
+ * @param {Pick<Parameters<typeof useAgentControlBridge>[0], "enabled" | "runtime" | "visual">} props
  */
 export function AgentControlBridge(props) {
   const {
@@ -321,8 +302,14 @@ export function AgentControlBridge(props) {
     channelLabelRuntime,
     setChannelRolesForControl,
     setDialogueVadEngineForControl,
+    derivedAnalysisRequests,
+    analysisRequests,
+    fileDurationMs,
   } = useAnalysisSession();
   const { channelLabelOverride, channelRoles } = channelLabelRuntime;
+  const { histSourceList } = useDisplaySnapshot();
+  const { activeBlockingEditors } = useSceneGuard();
+  const { historyRetentionSec, channelLabelOverrides } = settings;
   const { sourceMode, running, fileSessions } = meterRuntime;
   const agentControlSettingsContext = useMemo(
     () => ({
@@ -444,8 +431,78 @@ export function AgentControlBridge(props) {
     ]
   );
 
+  const agentControlAnalysisContext = useMemo(
+    () => {
+      const firstTimestampMs = firstHistoryTimestampMs(histSourceList);
+      const latestTimestampMs = latestHistoryTimestampMs(histSourceList);
+      const measuredDurationSec =
+        Number.isFinite(firstTimestampMs) && Number.isFinite(latestTimestampMs)
+          ? Math.max(0, (latestTimestampMs - firstTimestampMs) / 1000)
+          : 0;
+      const availableDurationSec =
+        sourceMode === "file" && Number.isFinite(fileDurationMs)
+          ? Math.min(historyRetentionSec, fileDurationMs / 1000)
+          : Math.min(historyRetentionSec, measuredDurationSec);
+      return {
+        channelCount,
+        channelLabels: channelLabelRuntime.channelAutoLabels,
+        dialogueDetectionActive: dialogueGating,
+        spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
+        timeMaxWindowSec: Math.max(60, availableDurationSec),
+        timeMaxOffsetSec: Math.max(0, availableDurationSec - 5),
+      };
+    },
+    // The history ring mutates in place; its version intentionally invalidates this snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      channelCount,
+      channelLabelRuntime.channelAutoLabels,
+      dialogueGating,
+      derivedAnalysisRequests.spectralWaveform,
+      fileDurationMs,
+      histSourceList,
+      histSourceList.version,
+      historyRetentionSec,
+      sourceMode,
+    ]
+  );
+  const measurementChannelLabels = useCallback(
+    (record) => {
+      const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
+      if (count <= 0) return [];
+      const override = channelLabelOverrides[count];
+      const autoLayoutId = standardLayoutIdForCount(count);
+      return getPeakMeterChannelLabels(count, {
+        formatId: autoLayoutId ?? undefined,
+        resolvedLayout: autoLayoutId ? undefined : "unknown",
+        overrideLabels: override ? roleTokensToLabels(override) : null,
+      });
+    },
+    [channelLabelOverrides]
+  );
+  const agentControlMeasurementContext = useMemo(
+    () => ({
+      getLiveMeasurement: meterRuntime.getLiveMeasurement,
+      subscribeLiveMeasurement: meterRuntime.subscribeLiveMeasurement,
+      getChannelLabels: measurementChannelLabels,
+      liveState: meterRuntime.liveLifecycle,
+      vectorscopeRequests: analysisRequests.vectorscope,
+      dialogueActive: dialogueGating,
+    }),
+    [
+      analysisRequests.vectorscope,
+      dialogueGating,
+      measurementChannelLabels,
+      meterRuntime.getLiveMeasurement,
+      meterRuntime.subscribeLiveMeasurement,
+      meterRuntime.liveLifecycle,
+    ]
+  );
+
   useAgentControlBridge({
     ...props,
+    analysisContext: agentControlAnalysisContext,
+    measurementContext: agentControlMeasurementContext,
     workspace: workspaceState,
     replaceWorkspace,
     setPanelControlsForPanel,
@@ -466,7 +523,10 @@ export function AgentControlBridge(props) {
     viewContext: agentControlViewContext,
     dock: agentControlDock,
     dockContext: {
-      ...props.dockContext,
+      platform: props.runtime.platform,
+      ...agentControlAnalysisContext,
+      sourceMode,
+      activeEditors: activeBlockingEditors,
       transitioning: dockTransitioning,
       monitors: agentControlMonitors,
       fallbackMonitor: agentControlFallbackMonitor,

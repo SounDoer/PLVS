@@ -18,8 +18,9 @@ import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
-import { SceneGuardProvider, useSceneGuard } from "./hooks/SceneGuardContext.jsx";
+import { SceneGuardProvider } from "./hooks/SceneGuardContext.jsx";
 import { errorDetails } from "./lib/errorDetails.js";
+import { latestHistoryTimestampMs } from "./lib/historyTimestamps.js";
 import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
 import {
   UiNavigationProvider,
@@ -42,8 +43,6 @@ import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
-import { roleTokensToLabels } from "./math/channelRoles.js";
-import { standardLayoutIdForCount } from "./math/channelLayoutTable.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
@@ -246,7 +245,6 @@ function AppContent() {
   } = meterRuntime;
   const {
     fileSession,
-    dialogueGating,
     exportFileAnalysisReport,
     copyFileAnalysisReportMarkdown,
     vectorscopeResetEpoch,
@@ -278,21 +276,13 @@ function AppContent() {
       handleCancel: handleCloseCancel,
     },
   } = useAppLifecycle();
-  const {
-    setSettingsOpen,
-    resolvedThemeId,
-    focusView,
-    channelLabelOverrides,
-    surfaceOpacity,
-    glassEnabled,
-  } = settings;
+  const { setSettingsOpen, resolvedThemeId, focusView, surfaceOpacity, glassEnabled } = settings;
   // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
   // draft, and preset capture and apply both need its snapshot helpers. One
   // writer for the reference too - null when Off, which every consumer treats as
   // "there is nothing to show". Reading it this early is safe: it is a context
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
-  const { activeBlockingEditors } = useSceneGuard();
   const {
     docked,
     dockEdge,
@@ -448,13 +438,7 @@ function AppContent() {
       : targetTimestampMs;
 
   const latestTimestampMs = useMemo(() => {
-    const last =
-      histSourceList.length > 0
-        ? typeof histSourceList.rowAt === "function"
-          ? histSourceList.rowAt(histSourceList.length - 1)
-          : histSourceList[histSourceList.length - 1]
-        : null;
-    return Number.isFinite(last?.timestampMs) ? last.timestampMs : undefined;
+    return latestHistoryTimestampMs(histSourceList);
     // The history ring mutates in place; its version is an intentional cache invalidator.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [histSourceList, histSourceList.version]);
@@ -479,9 +463,7 @@ function AppContent() {
     resetChannelLabels,
     vectorscopePairOptions,
     spectrumChannelOptions,
-    derivedAnalysisRequests,
     analysisRequests,
-    fileDurationMs,
     channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
@@ -529,78 +511,6 @@ function AppContent() {
       historyPerformanceRequestKeysRef.current
     );
   }, [analysisRequests]);
-  const agentControlAnalysisContext = useMemo(
-    () => {
-      const first =
-        histSourceList.length > 0
-          ? typeof histSourceList.rowAt === "function"
-            ? histSourceList.rowAt(0)
-            : histSourceList[0]
-          : null;
-      const measuredDurationSec =
-        Number.isFinite(first?.timestampMs) && Number.isFinite(latestTimestampMs)
-          ? Math.max(0, (latestTimestampMs - first.timestampMs) / 1000)
-          : 0;
-      const availableDurationSec =
-        sourceMode === "file" && Number.isFinite(fileDurationMs)
-          ? Math.min(historyRetentionSec, fileDurationMs / 1000)
-          : Math.min(historyRetentionSec, measuredDurationSec);
-      return {
-        channelCount,
-        channelLabels: channelLabelRuntime.channelAutoLabels,
-        dialogueDetectionActive: dialogueGating,
-        spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
-        timeMaxWindowSec: Math.max(60, availableDurationSec),
-        timeMaxOffsetSec: Math.max(0, availableDurationSec - 5),
-      };
-    },
-    // The history ring mutates in place; its version intentionally invalidates this snapshot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      channelCount,
-      channelLabelRuntime.channelAutoLabels,
-      dialogueGating,
-      derivedAnalysisRequests.spectralWaveform,
-      fileDurationMs,
-      histSourceList,
-      histSourceList.version,
-      historyRetentionSec,
-      latestTimestampMs,
-      sourceMode,
-    ]
-  );
-  const measurementChannelLabels = useCallback(
-    (record) => {
-      const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
-      if (count <= 0) return [];
-      const override = channelLabelOverrides[count];
-      const autoLayoutId = standardLayoutIdForCount(count);
-      return getPeakMeterChannelLabels(count, {
-        formatId: autoLayoutId ?? undefined,
-        resolvedLayout: autoLayoutId ? undefined : "unknown",
-        overrideLabels: override ? roleTokensToLabels(override) : null,
-      });
-    },
-    [channelLabelOverrides]
-  );
-  const agentControlMeasurementContext = useMemo(
-    () => ({
-      getLiveMeasurement: meterRuntime.getLiveMeasurement,
-      subscribeLiveMeasurement: meterRuntime.subscribeLiveMeasurement,
-      getChannelLabels: measurementChannelLabels,
-      liveState: meterRuntime.liveLifecycle,
-      vectorscopeRequests: analysisRequests.vectorscope,
-      dialogueActive: dialogueGating,
-    }),
-    [
-      analysisRequests.vectorscope,
-      dialogueGating,
-      measurementChannelLabels,
-      meterRuntime.getLiveMeasurement,
-      meterRuntime.subscribeLiveMeasurement,
-      meterRuntime.liveLifecycle,
-    ]
-  );
   const agentControlVisual = useMemo(
     () => ({
       platformCapabilities: visualPlatformCapabilities,
@@ -626,14 +536,6 @@ function AppContent() {
       (agentControlEnabled || isParticipantInstance()) &&
       visualPlatformCapabilities !== null,
     runtime: agentControlRuntime,
-    dockContext: {
-      platform: agentControlRuntime.platform,
-      ...agentControlAnalysisContext,
-      sourceMode,
-      activeEditors: activeBlockingEditors,
-    },
-    analysisContext: agentControlAnalysisContext,
-    measurementContext: agentControlMeasurementContext,
     visual: agentControlVisual,
   };
   const spectrumValueKey =

@@ -37,6 +37,8 @@ vi.mock("../hooks/LoudnessProfileContext.jsx", () => ({
 vi.mock("../settings/SettingsContext.jsx", () => ({
   useAppSettings: () => ({
     customThemes: {},
+    historyRetentionSec: 3600,
+    channelLabelOverrides: {},
     autostartReady: true,
     clearReady: true,
     clearCapturing: false,
@@ -49,6 +51,8 @@ vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
   useMeterRuntime: () => ({
     sourceMode: "live",
     liveLifecycle: "stopped",
+    getLiveMeasurement: () => null,
+    subscribeLiveMeasurement: () => () => {},
     running: false,
     liveDeviceTransition: null,
     fileSessions: [],
@@ -88,12 +92,21 @@ vi.mock("../runtime/AnalysisSessionContext.jsx", () => ({
       channelLabelTokens: ["L", "R"],
       channelAutoLabels: ["L", "R"],
     },
+    derivedAnalysisRequests: { spectralWaveform: false },
+    analysisRequests: { vectorscope: [] },
+    fileDurationMs: undefined,
     setChannelRolesForControl: async () => {},
     setDialogueVadEngineForControl: async () => {},
   }),
 }));
 vi.mock("./settingsControl.js", () => ({
   buildPublicSettings: (_settings, context) => ({ fromContext: context.channelCount }),
+}));
+vi.mock("../runtime/DisplaySnapshotContext.jsx", () => ({
+  useDisplaySnapshot: () => ({ histSourceList: [{ timestampMs: 0 }, { timestampMs: 90_000 }] }),
+}));
+vi.mock("../hooks/SceneGuardContext.jsx", () => ({
+  useSceneGuard: () => ({ activeBlockingEditors: [] }),
 }));
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
   useAppLifecycle: () => ({ updateBusy: false }),
@@ -109,8 +122,7 @@ describe("AgentControlBridge", () => {
   it("renders nothing and builds each owned area from its owner", () => {
     const props = standIn({
       enabled: false,
-      runtime: { available: false },
-      dockContext: { platform: "x" },
+      runtime: { available: false, platform: "x" },
     });
     const { container } = render(<AgentControlBridge {...props} />);
 
@@ -132,6 +144,19 @@ describe("AgentControlBridge", () => {
     expect(typeof passed.executeTransport).toBe("function");
     expect(typeof passed.uiNavigation.inspectUi).toBe("function");
     expect(passed.device).toMatchObject({ runtimeUnavailable: false, snapshot: null });
+    expect(passed.analysisContext).toMatchObject({
+      channelCount: 2,
+      channelLabels: ["L", "R"],
+      timeMaxWindowSec: 90,
+      timeMaxOffsetSec: 85,
+    });
+    expect(passed.dockContext).toMatchObject({
+      channelCount: 2,
+      sourceMode: "live",
+      activeEditors: [],
+    });
+    expect(passed.measurementContext.liveState).toBe("stopped");
+    expect(typeof passed.measurementContext.getChannelLabels).toBe("function");
     expect(passed.workspace).toEqual({ panelsById: {}, panelOrder: [] });
     expect(typeof passed.replaceWorkspace).toBe("function");
     expect(passed.settings).toEqual({ fromContext: 2 });
