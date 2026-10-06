@@ -178,7 +178,7 @@ export function panRange({ min, max, absMin, absMax, deltaPx, axisPx, scale }) {
  *   absMin: number,
  *   absMax: number,
  *   minSpan?: number,
- *   pinnedMax: any,
+ *   pinnedMax: boolean,
  *   mustInclude: number,
  * }} options
  */

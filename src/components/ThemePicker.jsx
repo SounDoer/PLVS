@@ -89,7 +89,7 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
 
 /**
  * @param {{
- *   value: any,
+ *   value: string,
  *   customThemes: any,
  *   onSelect: (...args: any[]) => any,
  *   onCustomize: (...args: any[]) => any,

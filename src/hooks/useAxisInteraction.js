@@ -20,7 +20,7 @@ import { useAxisSize } from "./useAxisSize";
  *   defaultMin: number,
  *   defaultMax: number,
  *   minSpan: number,
- *   scale: any,
+ *   scale: string,
  *   onRangeChange: (...args: any[]) => any,
  *   pinnedMax?: boolean,
  *   mustInclude?: number,

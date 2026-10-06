@@ -6,7 +6,7 @@ const UNIT_VISIBILITY_CLASSES = {
 /**
  * @param {{
  *   label: string,
- *   value: any,
+ *   value: string,
  *   unit: string,
  *   align?: string,
  *   indicator?: import("react").ReactNode,

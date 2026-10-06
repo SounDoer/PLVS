@@ -663,7 +663,7 @@ function SettingsOptionRow({
  *   label: import("react").ReactNode,
  *   ariaLabel?: string,
  *   options: any,
- *   value: any,
+ *   value: string,
  *   onChange?: (...args: any[]) => any,
  *   open?: boolean,
  *   onOpenChange?: (...args: any[]) => any,

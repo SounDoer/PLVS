@@ -80,7 +80,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
  * @param {{
  *   runtime: any,
  *   revision: number,
- *   workspace: any,
+ *   workspace: import("../workspace/types.js").WorkspaceState,
  *   presets: any,
  *   appearance: any,
  *   loudnessProfile: any,

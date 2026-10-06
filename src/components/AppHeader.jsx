@@ -33,7 +33,7 @@ const SOURCES_POPOVER_CLASS =
 const TOOLBAR_TRIGGER_OPEN_CLASS =
   "group-data-[state=open]:bg-ui-hover group-data-[state=open]:text-foreground";
 
-/** @param {{ primary: any, secondary?: any, selected: any, onSelect: (...args: any[]) => any, ariaLabel: string }} props */
+/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string }} props */
 function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
     <MenuRow aria-label={ariaLabel} onClick={onSelect}>
