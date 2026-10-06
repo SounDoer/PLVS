@@ -9,11 +9,9 @@ import {
 import {
   deriveBackendAnalysisRequests,
   deriveChannelLabelRuntime,
-  deriveDialogueRuntime,
 } from "./runtime/appRuntimeDerivations.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { normalizePanelControls } from "./lib/panelControls.js";
-import { normalizeAxisViewport } from "./workspace/axisViewports.js";
 import {
   useLoudnessHistory,
   HIST_SAMPLE_SEC,
@@ -29,7 +27,6 @@ import { errorDetails } from "./lib/errorDetails.js";
 import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
 import {
   UiNavigationProvider,
-  useUiNavigation,
   useUiNavigationEnvironment,
   useUiNavigationTarget,
   useUiSurface,
@@ -42,6 +39,8 @@ import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
 import { SourceProvider, useSource } from "./runtime/SourceContext.jsx";
+import { SourceActionsProvider, useSourceActions } from "./runtime/SourceActionsContext.jsx";
+import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
@@ -86,13 +85,10 @@ import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
-import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useRuntimeCoordination } from "./runtime/coordination.js";
-import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
-import { useDialogueEngineRestart } from "./hooks/useDialogueEngineRestart.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
 import packageInfo from "../package.json";
@@ -100,10 +96,8 @@ import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { AgentControlBridge } from "./agentControl/AgentControlBridge.jsx";
 import { useVisualCaptureSurfaces } from "./agentControl/useVisualCaptureSurfaces.js";
 import { buildPublicSettings } from "./agentControl/settingsControl.js";
-import { buildTransportSnapshot } from "./agentControl/transportControl.js";
 
 const APP_VERSION = packageInfo.version;
-const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 const DevUiVisualFixture = import.meta.env.DEV
   ? lazy(() => import("./dev/UiVisualFixture.jsx"))
   : null;
@@ -211,7 +205,9 @@ export default function App() {
                     <WindowChromeProvider>
                       <PresetsProvider>
                         <SourceProvider>
-                          <AppContent />
+                          <SourceActionsProvider>
+                            <AppContent />
+                          </SourceActionsProvider>
                         </SourceProvider>
                       </PresetsProvider>
                     </WindowChromeProvider>
@@ -237,47 +233,16 @@ function AppContent() {
     selectedSnapshotTimeMs,
     showClock,
   } = useMeterDisplayState();
-  const uiNavigation = useUiNavigation();
   const {
     state: workspaceState,
     replaceWorkspace,
     waitForWorkspacePersistenceEnqueue,
     setPanelControlsForPanel,
-    setAxisViewport,
     setActiveTab,
   } = useWorkspaceStore();
   const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
   const visualRuntimeRef = useRef(null);
-  const sharedTimeViewport = useMemo(
-    () => normalizeAxisViewport("time", workspaceState.axisViewports?.time),
-    [workspaceState.axisViewports?.time]
-  );
-  const sharedTimeViewportRef = useRef(sharedTimeViewport);
-  useEffect(() => {
-    sharedTimeViewportRef.current = sharedTimeViewport;
-  }, [sharedTimeViewport]);
-  const setHistoryWindowSec = useCallback(
-    (nextWindowSec) => {
-      const current = sharedTimeViewportRef.current;
-      const windowSec =
-        typeof nextWindowSec === "function" ? nextWindowSec(current.windowSec) : nextWindowSec;
-      const next = { ...current, windowSec };
-      sharedTimeViewportRef.current = next;
-      setAxisViewport("time", next);
-    },
-    [setAxisViewport]
-  );
-  const setHistoryOffsetSec = useCallback(
-    (nextOffsetSec) => {
-      const current = sharedTimeViewportRef.current;
-      const offsetSec =
-        typeof nextOffsetSec === "function" ? nextOffsetSec(current.offsetSec) : nextOffsetSec;
-      const next = { ...current, offsetSec };
-      sharedTimeViewportRef.current = next;
-      setAxisViewport("time", next);
-    },
-    [setAxisViewport]
-  );
+  const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
   const {
     sourceMode,
@@ -287,25 +252,31 @@ function AppContent() {
     analyzingFileSession,
     activeFileId,
     analyzingFileId,
-    startLive,
-    stopLive,
     startLiveForControl,
     stopLiveForControl,
     beginDeviceRestartForControl,
     stopFileAnalysis,
     switchSource,
-    clearActiveSource,
-    clearLiveForControl,
-    beginFileAnalysis: beginRuntimeFileAnalysis,
-    beginFileAnalysisForControl,
-    reanalyzeFile,
-    reanalyzeFileForControl,
-    selectFile,
-    removeFile,
-    clearFiles,
   } = meterRuntime;
-  const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
-  const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
+  const {
+    fileSession,
+    dialogueGating,
+    exportFileAnalysisReport,
+    copyFileAnalysisReportMarkdown,
+    vectorscopeResetEpoch,
+    stereoMapResetEpoch,
+    clearAll,
+    openFile,
+    onSelectFile,
+    onStopFile,
+    onReanalyzeFile,
+    onRemoveFile,
+    onClearAllFiles,
+    handleDropFile,
+    onStartClick,
+    onSourceTransportAction,
+    onSourceModeChange,
+  } = useSourceActions();
   const settings = useAppSettings();
   const { onClearRef, windowPinned: pinned } = settings;
   const packTransfer = usePackTransfer();
@@ -512,7 +483,6 @@ function AppContent() {
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
-  const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const normalizedPanelControls = useMemo(() => {
     const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
     return normalizePanelControls(
@@ -789,7 +759,6 @@ function AppContent() {
   );
   const { channelLabelOverride } = channelLabelRuntime;
   const { channelRoles } = channelLabelRuntime;
-  const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const dialogueVadEngine = settings.dialogueVadEngine;
   const {
     channelRolesRef,
@@ -877,15 +846,6 @@ function AppContent() {
     () => buildPublicSettings(settings, agentControlSettingsContext),
     [agentControlSettingsContext, settings]
   );
-  const agentControlTransport = useMemo(
-    () =>
-      buildTransportSnapshot(meterRuntime, {
-        requestedDeviceId: captureDeviceId,
-        atLiveEdge: selectedOffset < 0,
-        docked,
-      }),
-    [captureDeviceId, docked, meterRuntime, selectedOffset]
-  );
   const measurementChannelLabels = useCallback(
     (record) => {
       const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
@@ -964,15 +924,6 @@ function AppContent() {
       previewSelection,
       updateBusy,
     ]
-  );
-  const currentFileAnalysisSettings = useCallback(
-    () => ({
-      dialogue: {
-        enabled: dialogueGating,
-        engine: dialogueGating ? settings.dialogueVadEngine : null,
-      },
-    }),
-    [dialogueGating, settings.dialogueVadEngine]
   );
   const applyAgentControlSettings = useCallback(
     async (next, { changed, effects }) => {
@@ -1059,84 +1010,6 @@ function AppContent() {
       settings,
     ]
   );
-  const executeAgentControlTransport = useCallback(
-    async (/** @type {string} */ method, params) => {
-      if (method === "transport.source.live") {
-        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-        switchSource("live");
-        return {};
-      }
-      if (method === "transport.source.file") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        return {};
-      }
-      if (method === "transport.live.start") {
-        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-        switchSource("live");
-        await startLiveForControl();
-        return {};
-      }
-      if (method === "transport.live.stop") {
-        await stopLiveForControl();
-        return {};
-      }
-      if (method === "transport.live.clear") {
-        await clearLiveForControl();
-        return {};
-      }
-      if (method === "transport.file.analyze") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        const run = beginFileAnalysisForControl(params.path, currentFileAnalysisSettings());
-        if (!run) throw new Error("FILE analysis was not accepted.");
-        await run.accepted;
-        const { sessionId } = run;
-        return { sessionId };
-      }
-      if (method === "transport.file.reanalyze") {
-        switchSource("file");
-        const run = reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
-        if (!run) throw new Error("FILE reanalysis was not accepted.");
-        await run.accepted;
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.stop") {
-        await stopFileAnalysis(params.sessionId);
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.select") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        selectFile(params.sessionId);
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.remove") {
-        await removeFile(params.sessionId);
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.clear") {
-        await clearFiles();
-        return {};
-      }
-      throw new Error(`Unsupported Transport method: ${method}`);
-    },
-    [
-      analyzingFileId,
-      beginFileAnalysisForControl,
-      clearFiles,
-      clearLiveForControl,
-      currentFileAnalysisSettings,
-      meterRuntime.liveLifecycle,
-      reanalyzeFileForControl,
-      removeFile,
-      selectFile,
-      startLiveForControl,
-      stopFileAnalysis,
-      stopLiveForControl,
-      switchSource,
-    ]
-  );
   const agentControlBridgeProps = {
     enabled:
       agentControlRuntime.available === true &&
@@ -1150,12 +1023,6 @@ function AppContent() {
     settings: agentControlSettings,
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
-    transport: agentControlTransport,
-    transportContext: {
-      docked,
-      deviceTransitioning: meterRuntime.liveDeviceTransition !== null,
-    },
-    executeTransport: executeAgentControlTransport,
     device: agentControlDevice,
     dockContext: {
       platform: agentControlRuntime.platform,
@@ -1166,7 +1033,6 @@ function AppContent() {
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
     visual: agentControlVisual,
-    uiNavigation,
   };
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
@@ -1325,48 +1191,6 @@ function AppContent() {
     setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
   };
 
-  const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({
-    fileSession,
-    appVersion: APP_VERSION,
-    raiseNotice,
-    loudnessProfile,
-  });
-  const {
-    clearAll,
-    openFile,
-    onSelectFile,
-    onStopFile,
-    onReanalyzeFile,
-    onRemoveFile,
-    onClearAllFiles,
-    handleDropFile,
-    onStartClick,
-    onSourceTransportAction,
-    onSourceModeChange,
-  } = useSourceTransportActions({
-    sourceMode,
-    running,
-    selectedOffset,
-    setSelectedOffset,
-    setHistoryOffsetSec,
-    setHistoryWindowSec,
-    startLive,
-    stopLive,
-    switchSource,
-    clearActiveSource,
-    beginRuntimeFileAnalysis,
-    reanalyzeFile,
-    selectFile,
-    removeFile,
-    clearFiles,
-    stopFileAnalysis,
-    activeFileSession,
-    getFileAnalysisSettings: currentFileAnalysisSettings,
-    onClearSucceeded: () => {
-      setVectorscopeResetEpoch((epoch) => epoch + 1);
-      setStereoMapResetEpoch((epoch) => epoch + 1);
-    },
-  });
   const stopRuntimeForCoordination = useCallback(async () => {
     if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
     if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
@@ -1382,8 +1206,6 @@ function AppContent() {
     start: startRuntimeAfterCoordination,
     show: onShowWindow,
   });
-  onClearRef.current = clearAll;
-  useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {

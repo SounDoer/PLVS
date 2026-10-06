@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { availableMonitors, currentMonitor, primaryMonitor } from "@tauri-apps/api/window";
 import { useDock } from "../dock/DockContext.jsx";
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
 import { usePresetLibrary } from "../hooks/PresetsContext.jsx";
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
+import { useMeterDisplayState, useMeterRuntime } from "../runtime/MeterRuntimeContext.jsx";
+import { useSource } from "../runtime/SourceContext.jsx";
+import { useSourceActions } from "../runtime/SourceActionsContext.jsx";
+import { useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
+import { buildTransportSnapshot } from "./transportControl.js";
 import { isTauri } from "../ipc/env.js";
 import { supportsDockMode } from "../lib/platform.js";
 import { readAgentControlRuntime } from "./appSnapshot.js";
@@ -23,7 +28,11 @@ import { useAgentControlBridge } from "./useAgentControlBridge.js";
  *   | "loudnessProfile"
  *   | "hasLoudnessReference"
  *   | "customThemes"
- *   | "theme"> & {
+ *   | "theme"
+ *   | "transport"
+ *   | "transportContext"
+ *   | "executeTransport"
+ *   | "uiNavigation"> & {
  *   dockContext: Omit<
  *     import("./useAgentControlBridge.js").AgentControlDockContext,
  *     "transitioning" | "monitors" | "fallbackMonitor" | "monitorRects" | "monitorInventoryReady"
@@ -145,11 +154,120 @@ export function AgentControlBridge(props) {
   );
 
   const presets = usePresetLibrary();
+  const uiNavigation = useUiNavigation();
+  const meterRuntime = useMeterRuntime();
+  const {
+    analyzingFileId,
+    stopFileAnalysis,
+    switchSource,
+    stopLiveForControl,
+    startLiveForControl,
+    clearLiveForControl,
+    beginFileAnalysisForControl,
+    reanalyzeFileForControl,
+    selectFile,
+    removeFile,
+    clearFiles,
+  } = meterRuntime;
+  const { selectedOffset } = useMeterDisplayState();
+  const { captureDeviceId } = useSource();
+  const { currentFileAnalysisSettings } = useSourceActions();
+  const agentControlTransport = useMemo(
+    () =>
+      buildTransportSnapshot(meterRuntime, {
+        requestedDeviceId: captureDeviceId,
+        atLiveEdge: selectedOffset < 0,
+        docked,
+      }),
+    [captureDeviceId, docked, meterRuntime, selectedOffset]
+  );
+  const executeAgentControlTransport = useCallback(
+    async (/** @type {string} */ method, params) => {
+      if (method === "transport.source.live") {
+        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+        switchSource("live");
+        return {};
+      }
+      if (method === "transport.source.file") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        return {};
+      }
+      if (method === "transport.live.start") {
+        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+        switchSource("live");
+        await startLiveForControl();
+        return {};
+      }
+      if (method === "transport.live.stop") {
+        await stopLiveForControl();
+        return {};
+      }
+      if (method === "transport.live.clear") {
+        await clearLiveForControl();
+        return {};
+      }
+      if (method === "transport.file.analyze") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        const run = beginFileAnalysisForControl(params.path, currentFileAnalysisSettings());
+        if (!run) throw new Error("FILE analysis was not accepted.");
+        await run.accepted;
+        const { sessionId } = run;
+        return { sessionId };
+      }
+      if (method === "transport.file.reanalyze") {
+        switchSource("file");
+        const run = reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
+        if (!run) throw new Error("FILE reanalysis was not accepted.");
+        await run.accepted;
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.stop") {
+        await stopFileAnalysis(params.sessionId);
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.select") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        selectFile(params.sessionId);
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.remove") {
+        await removeFile(params.sessionId);
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.clear") {
+        await clearFiles();
+        return {};
+      }
+      throw new Error(`Unsupported Transport method: ${method}`);
+    },
+    [
+      analyzingFileId,
+      beginFileAnalysisForControl,
+      clearFiles,
+      clearLiveForControl,
+      currentFileAnalysisSettings,
+      meterRuntime.liveLifecycle,
+      reanalyzeFileForControl,
+      removeFile,
+      selectFile,
+      startLiveForControl,
+      stopFileAnalysis,
+      stopLiveForControl,
+      switchSource,
+    ]
+  );
   const loudnessProfile = useLoudnessProfile();
   const settings = useAppSettings();
 
   useAgentControlBridge({
     ...props,
+    transport: agentControlTransport,
+    transportContext: { docked, deviceTransitioning: meterRuntime.liveDeviceTransition !== null },
+    executeTransport: executeAgentControlTransport,
+    uiNavigation,
     presets,
     loudnessProfile,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),

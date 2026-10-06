@@ -40,6 +40,28 @@ vi.mock("../settings/SettingsContext.jsx", () => ({
     themeControl: { readState: () => ({ appearance: {}, themes: [] }) },
   }),
 }));
+vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
+  useMeterRuntime: () => ({
+    sourceMode: "live",
+    liveLifecycle: "stopped",
+    liveDeviceTransition: null,
+    fileSessions: [],
+    activeFileId: null,
+    analyzingFileId: null,
+  }),
+  useMeterDisplayState: () => ({ selectedOffset: -1 }),
+}));
+vi.mock("../runtime/SourceContext.jsx", () => ({
+  useSource: () => ({ captureDeviceId: "default" }),
+}));
+vi.mock("../runtime/SourceActionsContext.jsx", () => ({
+  useSourceActions: () => ({
+    currentFileAnalysisSettings: () => ({ dialogue: { enabled: false, engine: null } }),
+  }),
+}));
+vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
+  useUiNavigation: () => ({ inspectUi: () => ({}) }),
+}));
 
 import { AgentControlBridge } from "./AgentControlBridge.jsx";
 import { standIn } from "../testing/standIn.js";
@@ -66,6 +88,10 @@ describe("AgentControlBridge", () => {
     expect(typeof passed.executeDock).toBe("function");
     expect(passed.viewContext).toMatchObject({ docked: false, view: { surfaceOpacity: 100 } });
     expect(typeof passed.viewContext.applyView).toBe("function");
+    expect(passed.transport).toMatchObject({ source: "live" });
+    expect(passed.transportContext).toEqual({ docked: false, deviceTransitioning: false });
+    expect(typeof passed.executeTransport).toBe("function");
+    expect(typeof passed.uiNavigation.inspectUi).toBe("function");
     expect(passed.presets).toMatchObject({ activeId: null });
     expect(passed.hasLoudnessReference).toBe(false);
     expect(passed.theme.state).toEqual({ appearance: {}, themes: [] });
