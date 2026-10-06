@@ -79,7 +79,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
 /**
  * @param {{
  *   runtime: any,
- *   revision: any,
+ *   revision: number,
  *   workspace: any,
  *   presets: any,
  *   appearance: any,

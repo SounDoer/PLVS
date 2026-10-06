@@ -13,9 +13,9 @@ export const MANAGEMENT_ROW_ACTIONS_CLASS =
  *   label: any,
  *   icon: any,
  *   onClick: any,
- *   className?: any,
+ *   className?: string,
  *   disabled?: any,
- *   tip?: any,
+ *   tip?: string,
  *   tipSide?: any,
  *   tipAlign?: any,
  * }} props

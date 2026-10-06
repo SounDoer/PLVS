@@ -178,14 +178,14 @@ function resolveDockPanelDisplayName(state, panelId) {
  *   panels: any,
  *   modules?: any,
  *   vectorscopeSettingsAvailable?: any,
- *   onAdd: any,
- *   onRename: any,
- *   onRemove: any,
- *   onReorder: any,
- *   onReset: any,
+ *   onAdd: (...args: any[]) => any,
+ *   onRename: (...args: any[]) => any,
+ *   onRemove: (...args: any[]) => any,
+ *   onReorder: (...args: any[]) => any,
+ *   onReset: (...args: any[]) => any,
  *   isDefault?: any,
- *   onHover: any,
- *   onOpenSettings: any,
+ *   onHover: (...args: any[]) => any,
+ *   onOpenSettings: (...args: any[]) => any,
  * }} props
  */
 export function DockModulesEditor({

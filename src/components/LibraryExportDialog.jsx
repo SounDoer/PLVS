@@ -27,7 +27,7 @@ function itemCountLabel(count) {
 /**
  * Chooses one Library kind, then delegates its item selection to the existing picker.
  * @param {{
- *   open: any,
+ *   open: boolean,
  *   itemsByType?: any,
  *   dependenciesByType?: any,
  *   onExport?: (...args: any[]) => any,

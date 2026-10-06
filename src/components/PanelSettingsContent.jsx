@@ -79,8 +79,8 @@ export function SettingsGroup({ children }) {
 // hidden behind the settings header.
 /**
  * @param {{
- *   label: any,
- *   tooltip?: any,
+ *   label: string,
+ *   tooltip?: string,
  *   action?: any,
  *   controlAction?: any,
  *   children: any,
@@ -441,13 +441,13 @@ export function SettingsRangeInput({
 
 /**
  * @param {{
- *   ariaLabel: any,
+ *   ariaLabel: string,
  *   value: any,
  *   min: any,
  *   max: any,
  *   step?: any,
- *   suffix?: any,
- *   onCommit: any,
+ *   suffix?: string,
+ *   onCommit: (...args: any[]) => any,
  * }} props
  */
 export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suffix, onCommit }) {
@@ -603,7 +603,7 @@ export function WaveformSettingsRows({
   );
 }
 
-/** @param {{ ariaLabel: any, summary: any, open: any, onToggle: any, className?: any }} props */
+/** @param {{ ariaLabel: string, summary: string, open: boolean, onToggle: (...args: any[]) => any, className?: any }} props */
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
   const DisclosureIcon = open ? ChevronUp : ChevronDown;
 
@@ -629,9 +629,9 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) 
  * @param {{
  *   children: any,
  *   checked?: any,
- *   className?: any,
+ *   className?: string,
  *   checkClassName?: any,
- *   role: any,
+ *   role: string,
  *   [key: string]: any,
  * }} props
  */
@@ -896,10 +896,10 @@ function toggleId(ids, id) {
  * @param {{
  *   visibleIds: any,
  *   orderedIds: any,
- *   onToggle: any,
- *   onReorder: any,
- *   onReset?: any,
- *   showReset?: any,
+ *   onToggle: (...args: any[]) => any,
+ *   onReorder: (...args: any[]) => any,
+ *   onReset?: (...args: any[]) => any,
+ *   showReset?: boolean,
  * }} props
  */
 export function StatsMetricsSettingsRow({
@@ -944,14 +944,14 @@ export function StatsMetricsSettingsRow({
 /// editor here would be a competing writer. The `ref` layer toggle stays.
 /**
  * @param {{
- *   showGrid?: any,
+ *   showGrid?: boolean,
  *   visibleLayerIds: any,
- *   grid?: any,
+ *   grid?: boolean,
  *   yMinDb: any,
  *   yMaxDb: any,
- *   onVisibleLayerIdsChange: any,
- *   onGridChange?: any,
- *   onYRangeChange: any,
+ *   onVisibleLayerIdsChange: (...args: any[]) => any,
+ *   onGridChange?: (...args: any[]) => any,
+ *   onYRangeChange: (...args: any[]) => any,
  * }} props
  */
 export function LoudnessSettingsRows({
@@ -1025,12 +1025,12 @@ export function LoudnessSettingsRows({
 
 /**
  * @param {{
- *   showPeak?: any,
- *   showPeakLabels?: any,
- *   showDisplay?: any,
- *   showGrid?: any,
+ *   showPeak?: boolean,
+ *   showPeakLabels?: boolean,
+ *   showDisplay?: boolean,
+ *   showGrid?: boolean,
  *   maxMode: any,
- *   peakLabels?: any,
+ *   peakLabels?: boolean,
  *   speedPercent: any,
  *   octaveSmoothing: any,
  *   tiltDbPerOctave: any,
@@ -1038,15 +1038,15 @@ export function LoudnessSettingsRows({
  *   xMaxFreq: any,
  *   yMinDb: any,
  *   yMaxDb: any,
- *   grid?: any,
- *   onMaxModeChange: any,
- *   onPeakLabelsChange?: any,
- *   onSpeedChange: any,
- *   onOctaveSmoothingChange: any,
- *   onTiltChange: any,
- *   onXRangeChange: any,
- *   onYRangeChange: any,
- *   onGridChange?: any,
+ *   grid?: boolean,
+ *   onMaxModeChange: (...args: any[]) => any,
+ *   onPeakLabelsChange?: (...args: any[]) => any,
+ *   onSpeedChange: (...args: any[]) => any,
+ *   onOctaveSmoothingChange: (...args: any[]) => any,
+ *   onTiltChange: (...args: any[]) => any,
+ *   onXRangeChange: (...args: any[]) => any,
+ *   onYRangeChange: (...args: any[]) => any,
+ *   onGridChange?: (...args: any[]) => any,
  * }} props
  */
 export function SpectrumDisplaySettingsRows({
@@ -1202,7 +1202,7 @@ const SLOT_WIDGETS = new Set(["custom", "customRow"]);
  * One `openKey` for the whole group rather than a piece of state per select: only one popover can
  * be open at a time anyway, and a per-row flag would have to be declared next to the widget, which
  * is exactly the second list this is removing.
- * @param {{ tab: any, controls: any, onChange: any, slots?: any }} props
+ * @param {{ tab: string, controls: any, onChange: any, slots?: any }} props
  */
 function PanelControlRows({ tab, controls, onChange, slots = {} }) {
   const [openKey, setOpenKey] = useState(null);

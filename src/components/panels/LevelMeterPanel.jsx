@@ -190,10 +190,10 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
  * @param {{
  *   value: any,
  *   yRange: any,
- *   dataAttribute?: any,
+ *   dataAttribute?: string,
  *   className: any,
  *   onReset?: any,
- *   resetLabel?: any,
+ *   resetLabel?: string,
  * }} props
  */
 function AxisValueMarker({

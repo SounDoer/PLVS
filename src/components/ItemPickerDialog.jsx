@@ -75,7 +75,7 @@ function AlsoIncluded({ children }) {
 /**
  * @param {{
  *   open: any,
- *   mode: any,
+ *   mode: string,
  *   type: any,
  *   items?: any,
  *   dependencies?: any,
@@ -83,7 +83,7 @@ function AlsoIncluded({ children }) {
  *   onExport?: (...args: any[]) => any,
  *   onConfirm?: (...args: any[]) => any,
  *   onAction?: (...args: any[]) => any,
- *   onBack?: any,
+ *   onBack?: (...args: any[]) => any,
  *   onClose?: (...args: any[]) => any,
  * }} props
  */

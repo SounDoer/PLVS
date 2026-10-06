@@ -84,9 +84,9 @@ function SettingsSection({ children, className }) {
 /**
  * @param {{
  *   children: any,
- *   label?: any,
+ *   label?: string,
  *   labelNode?: any,
- *   className?: any,
+ *   className?: string,
  *   [key: string]: any,
  * }} props
  */
@@ -124,7 +124,7 @@ function SettingsDivider() {
   return <div className="border-t border-border" />;
 }
 
-/** @param {{ className?: any, [key: string]: any }} props */
+/** @param {{ className?: string, [key: string]: any }} props */
 function SettingsSwitch({ className, ...props }) {
   return (
     <Switch
@@ -159,8 +159,8 @@ function IconButton({ children, className, ...props }) {
  *   hasUpdate?: any,
  *   updateStatus?: any,
  *   onCheckForUpdate?: any,
- *   onInstallUpdate?: any,
- *   openExternalUrl?: any,
+ *   onInstallUpdate?: (...args: any[]) => any,
+ *   openExternalUrl?: (...args: any[]) => any,
  *   autostartEnabled?: any,
  *   setAutostartEnabled?: any,
  *   autostartReady?: any,
@@ -190,25 +190,25 @@ function IconButton({ children, className, ...props }) {
  *   customizeBuiltinTheme?: any,
  *   duplicateCustomTheme?: any,
  *   deleteCustomTheme?: any,
- *   onExportTheme?: any,
+ *   onExportTheme?: (...args: any[]) => any,
  *   themeControlsDisabled?: any,
- *   onExportConfiguration?: any,
- *   onImportConfiguration?: any,
- *   onResetConfiguration?: any,
- *   configurationBusy?: any,
- *   configurationStatus?: any,
- *   onLibraryExport?: any,
+ *   onExportConfiguration?: (...args: any[]) => any,
+ *   onImportConfiguration?: (...args: any[]) => any,
+ *   onResetConfiguration?: (...args: any[]) => any,
+ *   configurationBusy?: boolean,
+ *   configurationStatus?: string,
+ *   onLibraryExport?: (...args: any[]) => any,
  *   onSharedPackImport?: any,
  *   packBusy?: any,
  *   packStatus?: any,
  *   agentControlStatus?: any,
- *   agentControlBusy?: any,
- *   onSetAgentControlEnabled?: any,
+ *   agentControlBusy?: boolean,
+ *   onSetAgentControlEnabled?: (...args: any[]) => any,
  *   askToSendCrashReports?: any,
  *   crashReportSettingBusy?: any,
  *   crashReportSettingError?: any,
  *   onAskToSendCrashReports?: any,
- *   onOpenFeedback?: any,
+ *   onOpenFeedback?: (...args: any[]) => any,
  * }} props
  */
 export function SettingsPanel({

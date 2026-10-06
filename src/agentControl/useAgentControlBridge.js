@@ -492,11 +492,11 @@ function transportMutationMatches(method, params, execution, snapshot) {
 
 /**
  * @param {{
- *   enabled: any,
+ *   enabled: boolean,
  *   runtime: any,
  *   workspace: any,
  *   replaceWorkspace: any,
- *   setPanelControlsForPanel: any,
+ *   setPanelControlsForPanel: (...args: any[]) => any,
  *   waitForWorkspacePersistenceEnqueue: any,
  *   presets: any,
  *   settings: any,

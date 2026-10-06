@@ -20,13 +20,13 @@ import { LAYER_PRIORITY } from "./ui/layers.js";
  *   settings: any,
  *   channelSettings: any,
  *   updateControls: any,
- *   appVersion: any,
+ *   appVersion: string,
  *   loudnessProfile: any,
  *   presets: any,
  *   crashReportSetting: any,
  *   crashReporting: any,
  *   packTransfer?: any,
- *   onAgentControlEnabledChange?: any,
+ *   onAgentControlEnabledChange?: (...args: any[]) => any,
  * }} props
  */
 export function AppSettingsOverlays({

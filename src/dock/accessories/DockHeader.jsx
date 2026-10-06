@@ -14,7 +14,7 @@ import { SourceTransportCluster } from "../../components/SourceTransportCluster.
 import { HoverTip } from "../../components/HoverTip.jsx";
 import { cn } from "../../lib/utils.js";
 
-/** @param {{ state: any, onAction: any, onPointer: any }} props */
+/** @param {{ state: any, onAction: (...args: any[]) => any, onPointer: (...args: any[]) => any }} props */
 export function DockHeader({ state, onAction, onPointer }) {
   const isWindows = /Win/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;

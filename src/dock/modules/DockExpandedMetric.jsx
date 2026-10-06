@@ -10,8 +10,8 @@ const UNIT_VISIBILITY_CLASSES = {
  *   unit: any,
  *   align?: any,
  *   indicator?: any,
- *   unitVisibility?: any,
- *   labelClassName?: any,
+ *   unitVisibility?: string,
+ *   labelClassName?: string,
  *   valueClassName?: any,
  *   statId?: any,
  * }} props

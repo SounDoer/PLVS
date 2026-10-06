@@ -276,9 +276,9 @@ async function buildMenu(cfg) {
  * @param {{
  *   running: any,
  *   windowVisible?: boolean,
- *   onStartClick: any,
- *   onToggleWindow: any,
- *   onQuit: any,
+ *   onStartClick: (...args: any[]) => any,
+ *   onToggleWindow: (...args: any[]) => any,
+ *   onQuit: (...args: any[]) => any,
  *   colorScheme: any,
  *   updateBusy?: boolean,
  *   audioOutputs?: any,

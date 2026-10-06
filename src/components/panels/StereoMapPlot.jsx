@@ -571,20 +571,20 @@ function drawGrid(ctx, xTicks, yTicks, width, height, dpr, color) {
  */
 /**
  * @param {{
- *   mode: any,
+ *   mode: string,
  *   bandCentersHz?: any,
  *   points?: any,
  *   holdValues?: any,
- *   holdVisible?: any,
+ *   holdVisible?: boolean,
  *   range: any,
  *   xMinHz?: any,
  *   xMaxHz?: any,
- *   paletteKey?: any,
+ *   paletteKey?: string,
  *   themeColors?: any,
  *   sourceVersion?: any,
- *   energyFadePercent?: any,
- *   colorBlendPercent?: any,
- *   gridVisible?: any,
+ *   energyFadePercent?: number,
+ *   colorBlendPercent?: number,
+ *   gridVisible?: boolean,
  *   xTicks?: any,
  *   yTicks?: any,
  * }} props

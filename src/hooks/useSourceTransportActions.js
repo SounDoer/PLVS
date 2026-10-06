@@ -8,8 +8,8 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   running: any,
  *   selectedOffset: any,
  *   setSelectedOffset: any,
- *   setHistoryOffsetSec: any,
- *   setHistoryWindowSec: any,
+ *   setHistoryOffsetSec: (...args: any[]) => any,
+ *   setHistoryWindowSec: (...args: any[]) => any,
  *   startLive: any,
  *   stopLive: any,
  *   switchSource: any,
@@ -21,8 +21,8 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   clearFiles: any,
  *   stopFileAnalysis: any,
  *   activeFileSession: any,
- *   getFileAnalysisSettings: any,
- *   onClearSucceeded: any,
+ *   getFileAnalysisSettings: (...args: any[]) => any,
+ *   onClearSucceeded: (...args: any[]) => any,
  * }} options
  */
 export function useSourceTransportActions({

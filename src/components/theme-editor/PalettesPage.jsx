@@ -32,8 +32,8 @@ const FREQUENCY_COLORS = [
  *   kind: any,
  *   palette: any,
  *   onApplyPreset: any,
- *   customAvailable?: any,
- *   onSelectCustom?: any,
+ *   customAvailable?: boolean,
+ *   onSelectCustom?: (...args: any[]) => any,
  * }} props
  */
 function PalettePresetSelect({

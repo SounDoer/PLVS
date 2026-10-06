@@ -562,9 +562,9 @@ function SettingsBody({
  *   vectorscopeOptions: any,
  *   spectrumOptions: any,
  *   channelCount: any,
- *   onChange: any,
- *   onReset: any,
- *   onBack: any,
+ *   onChange: (...args: any[]) => any,
+ *   onReset: (...args: any[]) => any,
+ *   onBack: (...args: any[]) => any,
  * }} props
  */
 export function DockModuleSettings({

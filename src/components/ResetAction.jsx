@@ -12,18 +12,18 @@ import { cn } from "@/lib/utils";
  */
 /**
  * @param {{
- *   label: any,
+ *   label: string,
  *   onReset: any,
  *   isDefault?: any,
- *   tip?: any,
- *   defaultTip?: any,
- *   confirmLabel?: any,
- *   cancelLabel?: any,
+ *   tip?: string,
+ *   defaultTip?: string,
+ *   confirmLabel?: string,
+ *   cancelLabel?: string,
  *   side?: any,
  *   align?: any,
- *   compact?: any,
+ *   compact?: boolean,
  *   className?: any,
- *   onArmedChange?: any,
+ *   onArmedChange?: (...args: any[]) => any,
  *   [key: string]: any,
  * }} props
  */

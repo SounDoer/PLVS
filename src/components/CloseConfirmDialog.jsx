@@ -19,12 +19,12 @@ const ROW_LABEL_CLASS = "text-[length:var(--ui-fs-control)] font-medium text-mut
 
 /**
  * @param {{
- *   open: any,
+ *   open: boolean,
  *   error?: any,
- *   busy?: any,
- *   onConfirm: any,
- *   onRetry: any,
- *   onCancel: any,
+ *   busy?: boolean,
+ *   onConfirm: (...args: any[]) => any,
+ *   onRetry: (...args: any[]) => any,
+ *   onCancel: (...args: any[]) => any,
  * }} props
  */
 export function CloseConfirmDialog({
