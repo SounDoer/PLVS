@@ -4,6 +4,9 @@ import { packIssue } from "./packV2.js";
 
 export const COMMUNITY_ARTIFACT_VALIDATOR_VERSION = 1;
 
+/**
+ * @param {string} text
+ */
 async function sha256Text(text) {
   const bytes = new TextEncoder().encode(text);
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
@@ -19,6 +22,10 @@ function canonicalPackText(raw) {
   return `${JSON.stringify(raw, null, 2)}\n`;
 }
 
+/**
+ * @param {string} fileName
+ * @param {string} type
+ */
 function validateFileName(fileName, type) {
   if (fileName == null) return;
   const extension = `.${PACK_KINDS[type].extension}`;

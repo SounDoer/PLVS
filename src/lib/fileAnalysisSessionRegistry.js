@@ -114,6 +114,9 @@ export function addFileEntry(history, options) {
   );
 }
 
+/**
+ * @param {string} id
+ */
 export function selectFileEntry(history, id) {
   if (!history.sessionsById[id]) return history;
   return createHistory({
@@ -122,6 +125,9 @@ export function selectFileEntry(history, id) {
   });
 }
 
+/**
+ * @param {string} id
+ */
 export function updateFileEntry(history, id, updater) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
@@ -130,6 +136,9 @@ export function updateFileEntry(history, id, updater) {
   return replaceEntry(history, id, updatedEntry);
 }
 
+/**
+ * @param {string} id
+ */
 export function startFileAnalysisEntry(history, id, options = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
@@ -152,6 +161,9 @@ export function startFileAnalysisEntry(history, id, options = {}) {
   });
 }
 
+/**
+ * @param {string} id
+ */
 export function markFileAnalysisComplete(history, id, payload = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
@@ -171,6 +183,9 @@ export function markFileAnalysisComplete(history, id, payload = {}) {
   });
 }
 
+/**
+ * @param {string} id
+ */
 export function markFileAnalysisError(history, id, payload = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
@@ -185,6 +200,9 @@ export function markFileAnalysisError(history, id, payload = {}) {
   });
 }
 
+/**
+ * @param {string} id
+ */
 export function removeFileEntry(history, id) {
   if (!history.sessionsById[id]) return history;
   return removeEntryById(history, id);

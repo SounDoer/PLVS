@@ -9,6 +9,9 @@ const FIELDS = [
   "tonality",
 ];
 
+/**
+ * @param {number} channelCount
+ */
 function schema(channelCount) {
   return {
     name: "WaveformVisualHistorySlab",
@@ -31,12 +34,18 @@ function schema(channelCount) {
       }
       return copy;
     },
-    payloadBytes: (chunk) =>
+    payloadBytes: (
+      /** @type {{ [x: string]: { byteLength: number; }; timestamps: { byteLength: any; }; }} */ chunk
+    ) =>
       chunk.timestamps.byteLength +
       FIELDS.reduce((total, field) => total + chunk[field].byteLength, 0),
   };
 }
 
+/**
+ * @param {number} row
+ * @param {number} channelCount
+ */
 function rowFrom(chunk, row, channelCount) {
   const first = row * channelCount;
   const last = first + channelCount;
@@ -50,6 +59,9 @@ function detailedStats(base, channelCount) {
 }
 
 export class WaveformVisualHistorySlab extends ChunkedHistorySlab {
+  /**
+   * @param {number} capacity
+   */
   constructor(capacity, channelCount) {
     if (!Number.isInteger(channelCount) || channelCount < 0) {
       throw new RangeError("WaveformVisualHistorySlab channelCount must be non-negative");
@@ -74,11 +86,17 @@ export class WaveformVisualHistorySlab extends ChunkedHistorySlab {
     });
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row, this._channelCount) : undefined;
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }
@@ -106,6 +124,9 @@ export class FrozenWaveformVisualHistory extends FrozenChunkedHistory {
     this._channelCount = channelCount;
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row, this._channelCount) : undefined;

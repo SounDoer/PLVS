@@ -72,6 +72,9 @@ function payloadBytes(chunk) {
 
 const SCHEMA = { name: "AudioSnapHistorySlab", createChunk, cloneChunk, payloadBytes };
 
+/**
+ * @param {number} row
+ */
 function rowFrom(chunk, row) {
   const result = { timestampMs: chunk.timestamps[row] };
   for (const field of SCALAR_FIELDS) result[field] = chunk[field][row];
@@ -90,6 +93,9 @@ function rowFrom(chunk, row) {
 
 /** Packed storage for the audio-snap column of the scalar history. */
 export class AudioSnapHistorySlab extends ChunkedHistorySlab {
+  /**
+   * @param {number} capacity
+   */
   constructor(capacity) {
     super(capacity, SCHEMA);
   }
@@ -100,26 +106,45 @@ export class AudioSnapHistorySlab extends ChunkedHistorySlab {
    * `vectorscopePairY` to 1) are `buildAudioSnap`'s job, not this one. The `-Infinity` written here
    * for a non-number field is a storage sentinel for a malformed row, not a per-field default.
    */
+  /**
+   * `snap` is expected to be `buildAudioSnap`'s output (`src/lib/FrameIntake.js`), where every
+   * scalar field is already a number -- per-field defaults (e.g. `dialogueLra` falling back to 0,
+   * `vectorscopePairY` to 1) are `buildAudioSnap`'s job, not this one. The `-Infinity` written here
+   * for a non-number field is a storage sentinel for a malformed row, not a per-field default.
+   * @param {number} timestampMs
+   */
   push(snap, timestampMs) {
-    this.appendRow(timestampMs, (chunk, row) => {
-      for (const field of SCALAR_FIELDS) {
-        const value = snap?.[field];
-        chunk[field][row] = typeof value === "number" ? value : -Infinity;
+    this.appendRow(
+      timestampMs,
+      (
+        /** @type {{ [x: string]: { append: (arg0: any) => void; }; dialoguePercent: { [x: string]: any; }; dialogueActiveNow: { [x: string]: number; }; loudnessLayoutKnown: { [x: string]: number; }; }} */ chunk,
+        row
+      ) => {
+        for (const field of SCALAR_FIELDS) {
+          const value = snap?.[field];
+          chunk[field][row] = typeof value === "number" ? value : -Infinity;
+        }
+        chunk.dialoguePercent[row] = Number.isFinite(snap?.dialoguePercent)
+          ? snap.dialoguePercent
+          : Number.NaN;
+        chunk.dialogueActiveNow[row] = snap?.dialogueActiveNow ? 1 : 0;
+        chunk.loudnessLayoutKnown[row] = snap?.loudnessLayoutKnown === false ? 0 : 1;
+        for (const field of CHANNEL_FIELDS) chunk[field].append(snap?.[field]);
       }
-      chunk.dialoguePercent[row] = Number.isFinite(snap?.dialoguePercent)
-        ? snap.dialoguePercent
-        : Number.NaN;
-      chunk.dialogueActiveNow[row] = snap?.dialogueActiveNow ? 1 : 0;
-      chunk.loudnessLayoutKnown[row] = snap?.loudnessLayoutKnown === false ? 0 : 1;
-      for (const field of CHANNEL_FIELDS) chunk[field].append(snap?.[field]);
-    });
+    );
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row) : undefined;
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }
@@ -138,11 +163,17 @@ export class AudioSnapHistorySlab extends ChunkedHistorySlab {
 }
 
 export class FrozenAudioSnapHistory extends FrozenChunkedHistory {
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row) : undefined;
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     return this.rowAt(index);
   }

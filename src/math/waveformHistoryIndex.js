@@ -83,13 +83,10 @@ export class WaveformHistoryIndex {
    */
   queryRange(startSequence, endSequence) {
     const retainedStart = this._index.retainedStartSequence;
-    const result = this._index.queryRange(
-      startSequence,
-      endSequence,
-      (/** @type {number} */ sequence) =>
-        typeof this._rawRows.at === "function"
-          ? this._rawRows.at(sequence - retainedStart)
-          : this._rawRows[sequence - retainedStart]
+    const result = this._index.queryRange(startSequence, endSequence, (sequence) =>
+      typeof this._rawRows.at === "function"
+        ? this._rawRows.at(sequence - retainedStart)
+        : this._rawRows[sequence - retainedStart]
     );
     const stats = this._index.lastQueryStats();
     this._batchQueryStats.queries += 1;

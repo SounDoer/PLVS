@@ -18,6 +18,10 @@ function mergeMax(target, source) {
   }
 }
 
+/**
+ * @param {number} row
+ * @param {number} pairValueCount
+ */
 function accumulatePackedPairs(chunk, row, pairValueCount, peak) {
   const offset = row * pairValueCount;
   accumulatePairSourceIntoBins(
@@ -28,6 +32,9 @@ function accumulatePackedPairs(chunk, row, pairValueCount, peak) {
   );
 }
 
+/**
+ * @param {number} pairValueCount
+ */
 function chunkSchema(pairValueCount) {
   return {
     name: "VectorscopeHistorySlab",
@@ -46,7 +53,9 @@ function chunkSchema(pairValueCount) {
       polarMax: chunk.polarMax.slice(),
       correlation: chunk.correlation.slice(0, chunk.rowCount),
     }),
-    payloadBytes: (chunk) =>
+    payloadBytes: (
+      /** @type {{ timestamps: { byteLength: any; }; pairs: { byteLength: any; }; polarMax: { byteLength: any; }; correlation: { byteLength: any; }; }} */ chunk
+    ) =>
       chunk.timestamps.byteLength +
       chunk.pairs.byteLength +
       chunk.polarMax.byteLength +
@@ -54,6 +63,11 @@ function chunkSchema(pairValueCount) {
   };
 }
 
+/**
+ * @param {number} retainedStartSequence
+ * @param {number} retainedEndSequence
+ * @param {number} index
+ */
 function polarMaxHoldInChunks(
   chunks,
   retainedStartSequence,
@@ -82,6 +96,10 @@ function polarMaxHoldInChunks(
   return smoothPolarBins(peak);
 }
 
+/**
+ * @param {number} row
+ * @param {number} pairValueCount
+ */
 function rowFrom(chunk, row, pairValueCount) {
   const offset = row * pairValueCount;
   const packedPairs = chunk.pairs.subarray(offset, offset + pairValueCount);
@@ -92,6 +110,9 @@ function rowFrom(chunk, row, pairValueCount) {
       pairs ??= Float32Array.from(packedPairs, (value) => decodeNormalized(value) ?? 0);
       return pairs;
     },
+    /**
+     * @param {number} index
+     */
     pairAt(index) {
       return index >= 0 && index < pairValueCount
         ? decodeNormalized(packedPairs[index])
@@ -111,6 +132,10 @@ function packedStorageStats(base) {
 }
 
 export class VectorscopeHistorySlab extends ChunkedHistorySlab {
+  /**
+   * @param {number} capacity
+   * @param {number} pairValueCount
+   */
   constructor(capacity, pairValueCount) {
     if (pairValueCount <= 0) {
       throw new RangeError("VectorscopeHistorySlab pairValueCount must be > 0");
@@ -147,12 +172,18 @@ export class VectorscopeHistorySlab extends ChunkedHistorySlab {
     });
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
     return rowFrom(found.chunk, found.row, this._pairValueCount);
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }
@@ -198,12 +229,18 @@ export class FrozenVectorscopeHistory extends FrozenChunkedHistory {
     return POLAR_LEVEL_BIN_COUNT;
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
     return rowFrom(found.chunk, found.row, this._pairValueCount);
   }
 
+  /**
+   * @param {number} index
+   */
   polarMaxHoldAt(index) {
     return polarMaxHoldInChunks(
       this._chunks,

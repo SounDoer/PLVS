@@ -23,11 +23,13 @@ export function deriveBackendAnalysisRequests(requests) {
       speedPercent: request.speedPercent,
       octaveSmoothing: request.octaveSmoothing,
     })),
-    vectorscope: requests.vectorscopeRequests.map((request) => ({
-      key: request.key,
-      x: request.pair.x,
-      y: request.pair.y,
-    })),
+    vectorscope: requests.vectorscopeRequests.map(
+      (/** @type {{ key: any; pair: { x: any; y: any; }; }} */ request) => ({
+        key: request.key,
+        x: request.pair.x,
+        y: request.pair.y,
+      })
+    ),
     stereoMap: requests.stereoMapRequests.map((request) => ({
       key: request.key,
       pair: request.pair,

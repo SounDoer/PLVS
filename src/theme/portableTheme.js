@@ -40,10 +40,18 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
 
+/**
+ * @param {string} path
+ */
 function collectUnknownFields(raw, allowed, path, issues) {
   if (!isPlainObject(raw)) return;
   for (const field of Object.keys(raw)) {
@@ -53,6 +61,9 @@ function collectUnknownFields(raw, allowed, path, issues) {
   }
 }
 
+/**
+ * @param {string} kind
+ */
 function withoutPresetProvenance(raw, kind) {
   if (!isPlainObject(raw)) return raw;
   if (kind === "intensity") return { stops: raw.stops };
@@ -146,6 +157,9 @@ export class PortableThemeError extends Error {
 }
 
 /** Strictly validate and canonicalize a portable, id-free Theme document. */
+/**
+ * Strictly validate and canonicalize a portable, id-free Theme document.
+ */
 export function validatePortableTheme(raw) {
   if (!isPlainObject(raw)) {
     throw new PortableThemeError([
@@ -223,6 +237,11 @@ export function validatePortableTheme(raw) {
  * PortableThemeError; valid documents retain all visual findings for review, but visual quality
  * never changes communityPublication eligibility.
  */
+/**
+ * Strict community-intake result for one portable Theme. Invalid documents throw
+ * PortableThemeError; valid documents retain all visual findings for review, but visual quality
+ * never changes communityPublication eligibility.
+ */
 export function assessPortableThemeCommunityPublication(raw) {
   const document = validatePortableTheme(raw);
   const authoring = validateThemeDocument(asAuthoringDocument(document));
@@ -233,6 +252,9 @@ export function assessPortableThemeCommunityPublication(raw) {
 }
 
 /** Convert any readable persisted Theme into its stable, provenance-free portable form. */
+/**
+ * Convert any readable persisted Theme into its stable, provenance-free portable form.
+ */
 export function themeToPortable(raw) {
   const theme = normalizeThemeDocument(raw);
   if (!theme) {
@@ -247,6 +269,10 @@ export function themeToPortable(raw) {
 }
 
 /** Convert a portable Theme into the current persisted shape using a caller-owned local ID. */
+/**
+ * Convert a portable Theme into the current persisted shape using a caller-owned local ID.
+ * @param {string} id
+ */
 export function portableToStoredTheme(raw, id) {
   const normalizedId = normalizeThemeId(id);
   if (!normalizedId) {
@@ -260,11 +286,17 @@ export function portableToStoredTheme(raw, id) {
 }
 
 /** Canonical UTF-8 JSON input used for portable Theme identity. */
+/**
+ * Canonical UTF-8 JSON input used for portable Theme identity.
+ */
 export function serializePortableTheme(raw) {
   return JSON.stringify(validatePortableTheme(raw));
 }
 
 /** A reproducible content identity that deliberately excludes local IDs and preset provenance. */
+/**
+ * A reproducible content identity that deliberately excludes local IDs and preset provenance.
+ */
 export async function hashPortableTheme(raw) {
   const bytes = new TextEncoder().encode(serializePortableTheme(raw));
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);

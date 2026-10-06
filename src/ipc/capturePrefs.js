@@ -13,6 +13,9 @@ const STORE_KEY = "captureDeviceId";
 /** Legacy key (pre–plugin-store); still read once for migration. */
 export const LEGACY_CAPTURE_DEVICE_LS_KEY = "plvs.captureDeviceId";
 
+/**
+ * @param {string} raw
+ */
 function validateId(raw) {
   if (raw === "default") return "default";
   if (typeof raw === "string" && /^(lb|cap)-[0-9a-f]{32}$/.test(raw)) return raw;

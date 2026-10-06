@@ -41,7 +41,7 @@ export function buildSpectrumSvgFromBandsAndDb(centers, db, range = {}) {
   // flat line along the bottom edge that reads as a measurement. A row wholly off the chart is
   // not drawn at all.
   const floorDb = spectrumFloorDb(range);
-  if (!db.some((/** @type {number} */ value) => value >= floorDb)) return "";
+  if (!db.some((value) => value >= floorDb)) return "";
   const xs = spectrumXStrings(centers, range);
   const projectY = spectrumDbToYProjector(range);
   const pts = new Array(centers.length);

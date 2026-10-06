@@ -3,6 +3,9 @@
 // does need them, resolvePanelDefinition, lives in registry.jsx.
 import { MODULE_CATALOG } from "./moduleCatalog.js";
 
+/**
+ * @param {string} moduleId
+ */
 export function createPanelId(moduleId, panelsById = {}) {
   if (!panelsById[moduleId]) return moduleId;
   let index = 2;
@@ -10,11 +13,17 @@ export function createPanelId(moduleId, panelsById = {}) {
   return `${moduleId}-${index}`;
 }
 
+/**
+ * @param {string} value
+ */
 export function trimCustomTitle(value) {
   const trimmed = String(value ?? "").trim();
   return trimmed || null;
 }
 
+/**
+ * @param {string} moduleId
+ */
 export function createPanel(moduleId, panelsById = {}, overrides = {}) {
   const id = overrides.id ?? createPanelId(moduleId, panelsById);
   const customTitle = trimCustomTitle(overrides.customTitle);
@@ -26,6 +35,9 @@ export function createPanel(moduleId, panelsById = {}, overrides = {}) {
   };
 }
 
+/**
+ * @param {string} panelId
+ */
 export function resolvePanelModuleId(state, panelId) {
   return state.panelsById?.[panelId]?.moduleId ?? null;
 }
@@ -43,6 +55,9 @@ export function hasKnownModulesOnly(stateLike) {
   return Object.values(panelsById).every((panel) => Boolean(MODULE_CATALOG[panel?.moduleId]));
 }
 
+/**
+ * @param {string} panelId
+ */
 export function resolvePanelDisplayName(state, panelId) {
   const panel = state.panelsById?.[panelId];
   if (!panel) return panelId;

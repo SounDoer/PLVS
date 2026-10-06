@@ -11,10 +11,25 @@
  * and owns the freeze lifecycle.
  */
 
+/**
+ * Two-timeline snapshot reconciliation, extracted from useSnapshot.
+ *
+ * History snaps fill at HIST_SAMPLE_SEC (10 Hz); visual snaps at VISUAL_HIST_SAMPLE_SEC
+ * (25 Hz). When a history point is selected, each timeline is matched to the selected
+ * timestamp independently (or by cadence when entries carry no timestamp). Band centers are
+ * session-constant, so taking them from the hist-rate entry while taking dbList from the
+ * visual-rate entry is intentional and time-safe.
+ *
+ * Pure: no React, no FrameIntake, no SVG. The hook builds SVG paths from the returned data
+ * and owns the freeze lifecycle.
+ */
 function lengthOf(entries) {
   return entries ? entries.length : 0;
 }
 
+/**
+ * @param {number} index
+ */
 function rowAt(entries, index) {
   if (!entries) return undefined;
   if (typeof entries.rowAt === "function") return entries.rowAt(index);
@@ -22,6 +37,9 @@ function rowAt(entries, index) {
   return entries[index];
 }
 
+/**
+ * @param {number} i
+ */
 function timestampAt(entries, i) {
   if (!entries) return undefined;
   if (typeof entries.timestampAt === "function") return entries.timestampAt(i);
@@ -43,7 +61,7 @@ export function nearestTimestampIndex(entries, targetMs) {
   if (!hasTimestampEntries(entries) || !Number.isFinite(targetMs)) return -1;
 
   const length = lengthOf(entries);
-  const upperBound = (value, low = 0) => {
+  const upperBound = (/** @type {number} */ value, low = 0) => {
     let high = length;
     while (low < high) {
       const mid = low + Math.floor((high - low) / 2);

@@ -27,6 +27,10 @@ const SECTION_TYPES = {
 /** The section area starts here so every element size below divides its offset. */
 const SECTION_AREA_ALIGNMENT = 8;
 
+/**
+ * @param {number} offset
+ * @param {number} alignment
+ */
 function alignUp(offset, alignment) {
   const remainder = offset % alignment;
   return remainder === 0 ? offset : offset + (alignment - remainder);
@@ -36,6 +40,10 @@ function isDescriptor(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) && "$bin" in value;
 }
 
+/**
+ * Walk the envelope, collecting every `$bin` descriptor together with where it sits, so the caller
+ * can overwrite it once the section offsets are known. Descriptors never nest inside one another.
+ */
 /**
  * Walk the envelope, collecting every `$bin` descriptor together with where it sits, so the caller
  * can overwrite it once the section offsets are known. Descriptors never nest inside one another.

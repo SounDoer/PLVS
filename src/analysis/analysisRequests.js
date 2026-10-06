@@ -85,6 +85,10 @@ export function stereoMapRequestKeyFromControls(panelControls) {
   return `stereoMap:pair:${pair.x}:${pair.y}:sp${speedPercent}:sm${smoothingToken}`;
 }
 
+/**
+ * @param {string} key
+ * @param {string} panelId
+ */
 function pushRequest(map, key, panelId, payload) {
   const existing = map.get(key);
   if (existing) {
@@ -94,6 +98,9 @@ function pushRequest(map, key, panelId, payload) {
   map.set(key, { key, panelIds: [panelId], ...payload });
 }
 
+/**
+ * @param {string} panelId
+ */
 function dockPanelIdentity(panelId) {
   return `dock:${panelId}`;
 }
@@ -129,7 +136,7 @@ export function deriveAnalysisRequests(
   const stereoMapByKey = new Map();
   let spectralWaveform = false;
 
-  const addStereoMapRequest = (panelId, controls) => {
+  const addStereoMapRequest = (/** @type {string} */ panelId, controls) => {
     const measurement = stereoMapMeasurementControlsFromControls(controls);
     // Only a channel count we actually know can rule the pair out. An unusable one means "not
     // reported yet" -- see the parameter docs above for why that must not suppress the request.
@@ -189,6 +196,15 @@ export function deriveAnalysisRequests(
   };
 }
 
+/**
+ * The analysis keys whose history is worth keeping: one per open panel, with no dock merge and no
+ * availability gate.
+ *
+ * This deliberately does not reuse `deriveAnalysisRequests`. That answers "what should Rust
+ * compute right now", which is a different question -- a panel whose channel pair is momentarily
+ * unavailable is still open and still wants its history. Deriving retention from the request list
+ * would delete it.
+ */
 /**
  * The analysis keys whose history is worth keeping: one per open panel, with no dock merge and no
  * availability gate.

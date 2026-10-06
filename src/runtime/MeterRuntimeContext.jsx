@@ -57,7 +57,7 @@ export function MeterRuntimeProvider({ children }) {
       display.clearNotice();
     }
   };
-  const switchSource = (nextMode) => {
+  const switchSource = (/** @type {string} */ nextMode) => {
     if (nextMode === sourceMode) return;
 
     display.clearNotice();
@@ -238,8 +238,8 @@ export function MeterRuntimeProvider({ children }) {
   });
   const verbs = useMemo(() => {
     const forward =
-      (name) =>
-      (...args) =>
+      (/** @type {string} */ name) =>
+      (/** @type {any} */ ...args) =>
         verbImplsRef.current[name](...args);
     return {
       startLive: forward("startLive"),

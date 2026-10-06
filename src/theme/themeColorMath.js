@@ -1,15 +1,24 @@
 import { oklchToHex } from "./colorTransform.js";
 
+/**
+ * @param {number} value
+ */
 function byteToHex(value) {
   return Math.round(value).toString(16).padStart(2, "0");
 }
 
 const CSS_NUMBER_PATTERN = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
 
+/**
+ * @param {string} value
+ */
 function parseCssNumber(value) {
   return CSS_NUMBER_PATTERN.test(value) ? Number(value) : null;
 }
 
+/**
+ * @param {string} value
+ */
 function parseRgbChannel(value) {
   const raw = value.trim();
   if (raw.endsWith("%")) {
@@ -22,6 +31,9 @@ function parseRgbChannel(value) {
   return Number.isFinite(channel) && channel >= 0 && channel <= 255 ? channel : null;
 }
 
+/**
+ * @param {string} value
+ */
 function normalizeHex(value) {
   let match = /^#([0-9a-f]{3})$/i.exec(value);
   if (match) {
@@ -32,6 +44,9 @@ function normalizeHex(value) {
   return match ? `#${match[1].toLowerCase()}` : null;
 }
 
+/**
+ * @param {string} value
+ */
 function normalizeRgb(value) {
   const comma = /^rgb\(\s*([^,/\s]+)\s*,\s*([^,/\s]+)\s*,\s*([^,/\s]+)\s*\)$/i.exec(value);
   const space = /^rgb\(\s*([^,/\s]+)\s+([^,/\s]+)\s+([^,/\s]+)\s*\)$/i.exec(value);
@@ -42,6 +57,9 @@ function normalizeRgb(value) {
   return `#${channels.map(byteToHex).join("")}`;
 }
 
+/**
+ * @param {string} value
+ */
 function normalizeOklch(value) {
   const match = /^oklch\(\s*([^/\s]+)\s+([^/\s]+)\s+([^/\s]+)\s*\)$/i.exec(value);
   if (!match) return null;
@@ -90,6 +108,9 @@ export function normalizeOpaqueColor(raw) {
   return normalizeHex(value) ?? normalizeRgb(value) ?? normalizeOklch(value);
 }
 
+/**
+ * @param {string} value
+ */
 export function isOpaqueHexColor(value) {
   return typeof value === "string" && /^#[0-9a-f]{6}$/.test(value);
 }

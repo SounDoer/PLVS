@@ -1,5 +1,8 @@
 import { hexToOklch } from "./colorTransform.js";
 
+/**
+ * @param {string} hex
+ */
 function channels(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
@@ -13,11 +16,19 @@ export function relativeLuminance(hex) {
   return r * 0.2126 + g * 0.7152 + b * 0.0722;
 }
 
+/**
+ * @param {string} a
+ * @param {string} b
+ */
 export function themeContrastRatio(a, b) {
   const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/**
+ * @param {string} a
+ * @param {string} b
+ */
 export function themeColorDistance(a, b) {
   const first = hexToOklch(a);
   const second = hexToOklch(b);

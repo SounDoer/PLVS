@@ -2,6 +2,9 @@ import { mixOpaqueColors } from "../colorMix.js";
 import { normalizeThemeDocumentShape } from "../themeSchema.js";
 
 /** Preserve authored legacy Border appearance on Panel Surface, and inherited Grid colours. */
+/**
+ * Preserve authored legacy Border appearance on Panel Surface, and inherited Grid colours.
+ */
 export function migrateThemeSemantics2(raw) {
   if (raw?.formatVersion !== 2 || raw?.semanticsVersion !== 2) return null;
   const theme = normalizeThemeDocumentShape({ ...raw, semanticsVersion: 4 });

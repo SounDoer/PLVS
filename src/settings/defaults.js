@@ -30,6 +30,9 @@ export function normalizeReferenceLufs(raw) {
   return Number.isFinite(n) && n >= -70 && n <= 0 ? n : DEFAULT_REFERENCE_LUFS;
 }
 
+/**
+ * @param {string} raw
+ */
 export function normalizeCloseAction(raw) {
   return CLOSE_ACTION_OPTIONS.includes(raw) ? raw : DEFAULT_CLOSE_ACTION;
 }
@@ -59,10 +62,16 @@ export function normalizeHistoryRetentionSec(raw) {
   return HISTORY_RETENTION_OPTIONS_SEC.includes(raw) ? raw : DEFAULT_HISTORY_RETENTION_SEC;
 }
 
+/**
+ * @param {string} raw
+ */
 export function normalizeDialogueVadEngine(raw) {
   return normalizeDialogueVadEngineValue(raw);
 }
 
+/**
+ * @param {string} raw
+ */
 export function normalizeInterfaceSize(raw) {
   return INTERFACE_SIZE_OPTIONS.some(({ id }) => id === raw) ? raw : DEFAULT_INTERFACE_SIZE;
 }

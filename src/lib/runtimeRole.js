@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from "react";
 
+/**
+ * @type {boolean}
+ */
 let coordinatorOverride;
 const listeners = new Set();
 
@@ -19,6 +22,9 @@ export function isParticipantInstance() {
   return !currentRole();
 }
 
+/**
+ * @param {boolean} isCoordinator
+ */
 export function setCoordinatorRole(isCoordinator) {
   const previous = currentRole();
   coordinatorOverride = typeof isCoordinator === "boolean" ? isCoordinator : undefined;

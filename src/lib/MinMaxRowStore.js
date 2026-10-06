@@ -24,10 +24,14 @@ const SCHEMA = {
   name: "MinMaxRowStore",
   createChunk,
   cloneChunk,
-  payloadBytes: (chunk) =>
-    chunk.timestamps.byteLength + chunk.mins.byteLength + chunk.maxes.byteLength,
+  payloadBytes: (
+    /** @type {{ timestamps: { byteLength: any; }; mins: { byteLength: any; }; maxes: { byteLength: any; }; }} */ chunk
+  ) => chunk.timestamps.byteLength + chunk.mins.byteLength + chunk.maxes.byteLength,
 };
 
+/**
+ * @param {number} row
+ */
 function rowFrom(chunk, row) {
   return { mins: chunk.mins.at(row), maxes: chunk.maxes.at(row) };
 }
@@ -52,6 +56,9 @@ export class MinMaxRowStore extends ChunkedHistorySlab {
     });
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row) : undefined;
@@ -71,6 +78,9 @@ export class MinMaxRowStore extends ChunkedHistorySlab {
 }
 
 export class FrozenMinMaxRowStore extends FrozenChunkedHistory {
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row) : undefined;

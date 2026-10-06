@@ -16,6 +16,11 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -59,6 +64,10 @@ function validateRule(raw, index, issues) {
   }
 }
 
+/**
+ * Strictly validates an id-free public authoring document, then passes it through the same
+ * normalizer used by editor preview and persistence. Returns a normalized, id-free clone.
+ */
 /**
  * Strictly validates an id-free public authoring document, then passes it through the same
  * normalizer used by editor preview and persistence. Returns a normalized, id-free clone.
@@ -122,15 +131,24 @@ function validatedPlan(loudnessProfiles, presets, rawDocument, build) {
   }
 }
 
+/**
+ * @param {boolean} selectionChanged
+ */
 function withDirtyPreset(presets, selectionChanged) {
   if (!selectionChanged || presets?.activeId == null || presets.dirty === true) return presets;
   return { ...presets, dirty: true };
 }
 
+/**
+ * @param {string} selection
+ */
 function profileIdFromSelection(selection) {
   return selection === LOUDNESS_PROFILE_OFF ? null : selection;
 }
 
+/**
+ * @param {string} selection
+ */
 export function planLoudnessProfileSelect(loudnessProfiles, presets, selection) {
   const profileId = profileIdFromSelection(selection);
   if (profileId !== null && !loudnessProfiles.profiles.some(({ id }) => id === profileId)) {
@@ -208,6 +226,9 @@ export function planLoudnessProfileCreate(loudnessProfiles, presets, rawDocument
   });
 }
 
+/**
+ * @param {string} profileId
+ */
 export function planLoudnessProfileUpdate(loudnessProfiles, profileId, rawDocument) {
   const existing = loudnessProfiles.profiles.find(({ id }) => id === profileId);
   if (!existing) return notFound(loudnessProfiles, undefined, profileId);
@@ -229,6 +250,10 @@ export function planLoudnessProfileUpdate(loudnessProfiles, profileId, rawDocume
   });
 }
 
+/**
+ * @param {string} profileId
+ * @param {string} name
+ */
 export function planLoudnessProfileRename(loudnessProfiles, profileId, name) {
   const existing = loudnessProfiles.profiles.find(({ id }) => id === profileId);
   if (!existing) return notFound(loudnessProfiles, undefined, profileId);
@@ -254,6 +279,9 @@ export function planLoudnessProfileRename(loudnessProfiles, profileId, name) {
   };
 }
 
+/**
+ * @param {string} profileId
+ */
 export function planLoudnessProfileDelete(loudnessProfiles, presets, profileId) {
   const existing = loudnessProfiles.profiles.find(({ id }) => id === profileId);
   if (!existing) return notFound(loudnessProfiles, presets, profileId);

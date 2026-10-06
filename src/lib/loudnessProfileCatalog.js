@@ -41,17 +41,31 @@ export const RULEABLE_METRIC_IDS = STATS_CANONICAL_ORDER.filter(
 
 const RULEABLE_METRIC_SET = new Set(RULEABLE_METRIC_IDS);
 
+/**
+ * @param {string} metricId
+ * @param {string} op
+ * @param {number} value
+ */
 function rule(metricId, op, value, severity = "fail") {
   return { metricId, op, value, severity };
 }
 
 /// A target band `t ± (minus, plus)` expressed as the two breach rules it really is.
+/**
+ * @param {string} metricId
+ * @param {number} t
+ * @param {number} minus
+ * @param {number} plus
+ */
 function band(metricId, t, minus, plus, severity = "fail") {
   return [rule(metricId, ">", t + plus, severity), rule(metricId, "<", t - minus, severity)];
 }
 
 /// A rule the user has just added but not filled in. Severity defaults to `fail`; a user who wants
 /// a softer breach changes it. `op` defaults to `>` (a ceiling), the commonest case.
+/**
+ * @param {string} metricId
+ */
 export function createEmptyRule(metricId) {
   if (!RULEABLE_METRIC_SET.has(metricId)) return null;
   return { metricId, op: ">", value: undefined, severity: "fail" };
@@ -80,6 +94,9 @@ export function createProfileDraft() {
 
 /// Sets a document's reference. Reference is decoupled from judgement now -- it only draws the
 /// guide line -- so this writes nothing but the field.
+/**
+ * @param {number} referenceLufs
+ */
 export function withReferenceLufs(document, referenceLufs) {
   if (!document) return document;
   return { ...document, referenceLufs };
@@ -99,12 +116,18 @@ export function watchedMetricIds(document) {
   return seen;
 }
 
+/**
+ * @param {string} id
+ */
 export function profileSelectionId(id) {
   return `${PROFILE_PREFIX}${id}`;
 }
 
 /// Parses a selection id into { kind, id }. Unknown shapes read as Off so a corrupt persisted
 /// value degrades to the default rather than throwing.
+/**
+ * @param {string} selection
+ */
 export function parseSelection(selection) {
   if (typeof selection === "string" && selection.startsWith(PROFILE_PREFIX)) {
     const id = selection.slice(PROFILE_PREFIX.length);

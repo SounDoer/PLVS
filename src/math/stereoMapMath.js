@@ -329,7 +329,7 @@ export function deriveStereoMapRow(mode, row, range) {
   visitDerivedModes(
     row,
     [mode],
-    (_visitedMode, index, value, /** @type {string} */ state, opacity, db) => {
+    (_visitedMode, index, value, state, opacity, db) => {
       energy[index] = db;
       values[index] = value;
       points[index] =

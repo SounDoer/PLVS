@@ -1,4 +1,8 @@
 /** Build deterministic first-paint CSS from a compiled Theme V2 CSS binding map. */
+/**
+ * Build deterministic first-paint CSS from a compiled Theme V2 CSS binding map.
+ * @param {string} radiusCss
+ */
 export function buildThemeFallbackCssV2(cssBindings, radiusCss) {
   const lines = [
     "/* AUTO-GENERATED — run `npm run theme:generate` after editing Theme V2 builtins */",

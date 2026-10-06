@@ -38,6 +38,9 @@ function deepEqual(a, b) {
 }
 
 /// ` (2)`, incrementing until free. Applies to the incoming item only; a local name never changes.
+/**
+ * @param {string} name
+ */
 function freeName(name, taken) {
   if (!taken.has(name)) return name;
   let n = 2;
@@ -147,10 +150,18 @@ function canonicalizeStoredPresetProfile(preset) {
   return kind === "profile" ? preset : { ...preset, loudnessProfileActive: LOUDNESS_PROFILE_OFF };
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function importWarning(code, path, message, details) {
   return { severity: "warning", code, path, message, ...(details ? { details } : {}) };
 }
 
+/**
+ * @param {string} basePath
+ */
 function collisionWarnings(plan, incoming, basePath) {
   return plan.flatMap((entry, index) => {
     const source = incoming[index];

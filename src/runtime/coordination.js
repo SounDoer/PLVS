@@ -14,6 +14,9 @@ function operationId() {
   return globalThis.crypto?.randomUUID?.() ?? `operation-${Date.now()}-${Math.random()}`;
 }
 
+/**
+ * @param {string} outcome
+ */
 async function acknowledge(command, outcome, detail = null) {
   await invoke("runtime_ack_command", {
     commandId: command.commandId,
@@ -22,6 +25,10 @@ async function acknowledge(command, outcome, detail = null) {
   });
 }
 
+/**
+ * @param {string} action
+ * @param {string} id
+ */
 async function issue(action, id, instanceIds = null) {
   return invoke("runtime_issue_commands", {
     action,
@@ -228,6 +235,9 @@ export async function commitGlobalOperation(operation) {
   await invoke("runtime_finish_operation", { operationId: operation.id });
 }
 
+/**
+ * @param {string} action
+ */
 export async function issueInstanceCommand(instanceId, action) {
   const id = operationId();
   const issued = await issue(action, id, [instanceId]);

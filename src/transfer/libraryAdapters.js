@@ -82,6 +82,9 @@ const adapters = {
   },
 };
 
+/**
+ * @param {string} type
+ */
 export function getAdapter(type) {
   const adapter = adapters[type];
   if (!adapter) throw new Error(`Unknown library type: ${type}`);

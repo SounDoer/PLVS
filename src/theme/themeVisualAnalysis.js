@@ -49,6 +49,10 @@ function contrastWarning(resolved, spec) {
   });
 }
 
+/**
+ * @param {string} first
+ * @param {string} second
+ */
 function separationWarning(resolved, first, second, options) {
   const distance = themeColorDistance(resolved.roles[first], resolved.roles[second]);
   if (distance >= options.targetDistance) return null;
@@ -229,6 +233,9 @@ export const THEME_SEPARATION_CHECKS = [
   ],
 ];
 
+/**
+ * @param {string} id
+ */
 function targetFor(id) {
   if (id.startsWith("palette.")) return { page: "palettes", id };
   if (id.startsWith("core.")) return { page: "core", id };

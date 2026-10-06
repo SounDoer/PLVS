@@ -58,6 +58,10 @@ export const AXIS_VIEWPORTS = {
 };
 
 /** @returns {string[]} the axis kinds this module can link, empty for modules with none */
+/**
+ * @returns {string[]} the axis kinds this module can link, empty for modules with none
+ * @param {string} moduleId
+ */
 export function axisKindsForModule(moduleId) {
   return Object.keys(AXIS_VIEWPORTS).filter((kindId) => AXIS_VIEWPORTS[kindId].members[moduleId]);
 }
@@ -100,11 +104,21 @@ export function normalizeAxisViewport(kindId, raw) {
 }
 
 /** @returns {{ minKey: string, maxKey: string } | null} the panel control keys holding a member's local range */
+/**
+ * @returns {{minKey: string;maxKey: string;} | null} the panel control keys holding a member's local range
+ * @param {string} kindId
+ * @param {string} moduleId
+ */
 export function localRangeKeys(kindId, moduleId) {
   return AXIS_VIEWPORTS[kindId]?.members[moduleId] ?? null;
 }
 
 /** @returns {AxisViewport | null} a member's dormant local range, in its kind's own shape */
+/**
+ * @returns {AxisViewport | null} a member's dormant local range, in its kind's own shape
+ * @param {string} kindId
+ * @param {string} moduleId
+ */
 export function readLocalRange(kindId, moduleId, panelControls) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   const keys = localRangeKeys(kindId, moduleId);
@@ -120,6 +134,11 @@ export function readLocalRange(kindId, moduleId, panelControls) {
 }
 
 /** @returns {object} a panel-controls patch putting a range under a member's own keys */
+/**
+ * @returns {object} a panel-controls patch putting a range under a member's own keys
+ * @param {string} kindId
+ * @param {string} moduleId
+ */
 export function writeLocalRange(kindId, moduleId, viewport) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   const keys = localRangeKeys(kindId, moduleId);
@@ -139,6 +158,12 @@ export function writeLocalRange(kindId, moduleId, viewport) {
  *
  * @returns {AxisViewports}
  */
+/**
+ * Repairs the whole `axisViewports` map. Payloads written before a kind existed get its default,
+ * and a kind that has since been removed is dropped rather than carried forever -- the table above
+ * is the only list of what exists.
+ * @returns {AxisViewports}
+ */
 export function normalizeAxisViewportsState(raw) {
   return /** @type {AxisViewports} */ (
     Object.fromEntries(
@@ -154,6 +179,13 @@ export function normalizeAxisViewportsState(raw) {
  * How many panels are currently navigating a kind's shared viewport. Membership is derived, never
  * stored: a panel counts when its module is a member of the kind and its flag is on. Pass
  * `excludePanelId` to ask the question as it will stand once that panel has left.
+ */
+/**
+ * How many panels are currently navigating a kind's shared viewport. Membership is derived, never
+ * stored: a panel counts when its module is a member of the kind and its flag is on. Pass
+ * `excludePanelId` to ask the question as it will stand once that panel has left.
+ * @param {string} kindId
+ * @param {string} [excludePanelId]
  */
 export function countLinkedParticipants(state, kindId, excludePanelId) {
   const descriptor = AXIS_VIEWPORTS[kindId];
@@ -172,6 +204,12 @@ export function countLinkedParticipants(state, kindId, excludePanelId) {
  *
  * @returns {(AxisViewport & { linked: boolean }) | null} null for a panel outside the kind
  */
+/**
+ * The range a panel should actually render, and whether it came from the group. This is the only
+ * question a panel asks: it never learns where the value is stored.
+ * @returns {(AxisViewport & {linked: boolean;}) | null} null for a panel outside the kind
+ * @param {string} kindId
+ */
 export function resolveAxisViewport(state, panelId, kindId) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   const moduleId = state?.panelsById?.[panelId]?.moduleId;
@@ -184,6 +222,11 @@ export function resolveAxisViewport(state, panelId, kindId) {
   return { ...readLocalRange(kindId, moduleId, controls), linked: false };
 }
 
+/**
+ * Which axis kind a panel-settings range row belongs to, matched by the control key it edits. Lets
+ * the data-driven row renderer hang a link toggle on the right row without a second table naming
+ * the same keys.
+ */
 /**
  * Which axis kind a panel-settings range row belongs to, matched by the control key it edits. Lets
  * the data-driven row renderer hang a link toggle on the right row without a second table naming

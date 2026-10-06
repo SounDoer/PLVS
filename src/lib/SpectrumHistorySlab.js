@@ -22,12 +22,20 @@ function sameBands(a, b) {
   return true;
 }
 
+/**
+ * @param {number} offset
+ * @param {number} bandCount
+ */
 function copyPrimaryRow(target, offset, bandCount, values) {
   for (let i = 0; i < bandCount; i += 1) {
     target[offset + i] = encodeCentiDb(values?.[i]);
   }
 }
 
+/**
+ * @param {number} offset
+ * @param {number} bandCount
+ */
 function copySecondaryRow(target, offset, bandCount, values) {
   for (let i = 0; i < bandCount; i += 1) {
     target[offset + i] = encodeCentiDb(values?.[i]);
@@ -40,6 +48,9 @@ function mergePackedMax(target, source) {
   }
 }
 
+/**
+ * @param {number} offset
+ */
 function mergePackedRow(target, source, offset) {
   for (let i = 0; i < target.length; i += 1) {
     const value = source[offset + i];
@@ -47,6 +58,9 @@ function mergePackedRow(target, source, offset) {
   }
 }
 
+/**
+ * @param {number} bandCount
+ */
 function chunkSchema(bands, bandCount) {
   return {
     name: "SpectrumHistorySlab",
@@ -78,7 +92,9 @@ function chunkSchema(bands, bandCount) {
       maxB: chunk.maxB?.slice() ?? null,
       hasB: chunk.hasB?.slice(0, chunk.rowCount) ?? null,
     }),
-    payloadBytes: (chunk) =>
+    payloadBytes: (
+      /** @type {{ timestamps: { byteLength: any; }; dbA: { byteLength: any; }; maxA: { byteLength: any; }; dbB: { byteLength: any; }; maxB: { byteLength: any; }; hasB: { byteLength: any; }; }} */ chunk
+    ) =>
       chunk.timestamps.byteLength +
       chunk.dbA.byteLength +
       chunk.maxA.byteLength +
@@ -88,6 +104,13 @@ function chunkSchema(bands, bandCount) {
   };
 }
 
+/**
+ * @param {number} retainedStartSequence
+ * @param {number} retainedEndSequence
+ * @param {number} index
+ * @param {number} bandCount
+ * @param {boolean} hasSecondary
+ */
 function maxHoldInChunks(
   chunks,
   retainedStartSequence,
@@ -133,6 +156,9 @@ function decodePrimary(value) {
   return decodeCentiDb(value);
 }
 
+/**
+ * @param {number} value
+ */
 function decodeSecondary(value) {
   return value === CENTI_DB_NO_VALUE ? NaN : decodeCentiDb(value);
 }
@@ -141,6 +167,10 @@ function decodedRow(source, decode) {
   return Float32Array.from(source, decode);
 }
 
+/**
+ * @param {number} row
+ * @param {number} bandCount
+ */
 function rowFrom(chunk, row, bandCount, bands) {
   const offset = row * bandCount;
   const primary = chunk.dbA.subarray(offset, offset + bandCount);
@@ -161,9 +191,15 @@ function rowFrom(chunk, row, bandCount, bands) {
       dbListB ??= decodedRow(secondary, decodeSecondary);
       return dbListB;
     },
+    /**
+     * @param {number} index
+     */
     dbAt(index) {
       return index >= 0 && index < bandCount ? decodePrimary(primary[index]) : undefined;
     },
+    /**
+     * @param {number} index
+     */
     dbBAt(index) {
       if (!secondary || index < 0 || index >= bandCount) return undefined;
       return decodeSecondary(secondary[index]);
@@ -188,6 +224,9 @@ function emptyGapQueryStats() {
   return { chunksInspected: 0, rowsScanned: 0 };
 }
 
+/**
+ * @param {number} maxGapMs
+ */
 function appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs) {
   if (
     Number.isFinite(previousTimestampMs) &&
@@ -198,6 +237,13 @@ function appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs) 
   }
 }
 
+/**
+ * @param {number} retainedStartSequence
+ * @param {number} retainedEndSequence
+ * @param {number} startIndex
+ * @param {number} endIndex
+ * @param {number} maxGapMs
+ */
 function timestampGapBoundariesInChunks(
   chunks,
   retainedStartSequence,
@@ -257,6 +303,9 @@ function timestampGapBoundariesInChunks(
 }
 
 export class SpectrumHistorySlab extends ChunkedHistorySlab {
+  /**
+   * @param {number} capacity
+   */
   constructor(capacity, bands) {
     const grid = bands ?? [];
     super(capacity, chunkSchema(grid, grid.length));
@@ -278,10 +327,18 @@ export class SpectrumHistorySlab extends ChunkedHistorySlab {
     return this._hasSecondary;
   }
 
+  /**
+   * @param {number} index
+   */
   timestampAt(index) {
     return readableTimestamp(super.timestampAt(index));
   }
 
+  /**
+   * @param {number} startIndex
+   * @param {number} endIndex
+   * @param {number} maxGapMs
+   */
   timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
     const result = timestampGapBoundariesInChunks(
       this._chunks,
@@ -337,12 +394,18 @@ export class SpectrumHistorySlab extends ChunkedHistorySlab {
     });
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
     return rowFrom(found.chunk, found.row, this._bandCount, this._bands);
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }
@@ -396,10 +459,18 @@ export class FrozenSpectrumHistory extends FrozenChunkedHistory {
     this._lastGapQueryStats = emptyGapQueryStats();
   }
 
+  /**
+   * @param {number} index
+   */
   timestampAt(index) {
     return readableTimestamp(super.timestampAt(index));
   }
 
+  /**
+   * @param {number} startIndex
+   * @param {number} endIndex
+   * @param {number} maxGapMs
+   */
   timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
     const result = timestampGapBoundariesInChunks(
       this._chunks,
@@ -417,12 +488,18 @@ export class FrozenSpectrumHistory extends FrozenChunkedHistory {
     return { ...this._lastGapQueryStats };
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
     return rowFrom(found.chunk, found.row, this._bandCount, this._bands);
   }
 
+  /**
+   * @param {number} index
+   */
   maxHoldAt(index) {
     return maxHoldInChunks(
       this._chunks,

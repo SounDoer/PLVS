@@ -20,12 +20,18 @@ export function normalizePanelControlsById(panelsById = {}, panelControlsById = 
   );
 }
 
+/**
+ * @param {string} panelId
+ */
 export function getPanelControls(state, panelId) {
   return normalizePanelControls(
     state?.panelControlsById?.[panelId] ?? state?.panelControls ?? DEFAULT_PANEL_CONTROLS
   );
 }
 
+/**
+ * @param {string} panelId
+ */
 export function updatePanelControlsById(panelControlsById, panelId, panelControls) {
   return {
     ...panelControlsById,

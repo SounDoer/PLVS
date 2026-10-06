@@ -11,6 +11,9 @@
  */
 export function createLocalStorageBackend() {
   return {
+    /**
+     * @param {string} key
+     */
     get(key) {
       if (typeof localStorage === "undefined") return null;
       try {
@@ -23,12 +26,18 @@ export function createLocalStorageBackend() {
         return null;
       }
     },
+    /**
+     * @param {string} key
+     */
     set(key, value) {
       if (typeof localStorage === "undefined") return;
       try {
         localStorage.setItem(key, JSON.stringify(value));
       } catch (_) {}
     },
+    /**
+     * @param {string} key
+     */
     remove(key) {
       if (typeof localStorage === "undefined") return;
       try {
@@ -36,6 +45,9 @@ export function createLocalStorageBackend() {
       } catch (_) {}
     },
     async flush() {},
+    /**
+     * @param {string} key
+     */
     subscribe(key, fn) {
       if (typeof window === "undefined") return () => {};
       const onStorage = (e) => {

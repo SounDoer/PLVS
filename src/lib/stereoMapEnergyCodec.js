@@ -14,12 +14,19 @@ function packedCentiDb(value) {
   return decodeCentiDb(encodeCentiDb(value));
 }
 
+/**
+ * @param {number} energyDb
+ * @param {number} gateDb
+ */
 function visibilityRegion(energyDb, gateDb) {
   if (energyDb < gateDb) return 0;
   if (energyDb < gateDb + GATE_FADE_DB) return 1;
   return 2;
 }
 
+/**
+ * @param {number} peakDb
+ */
 export function stereoMapGateDb(peakDb) {
   return Math.max(GATE_FLOOR_DB, peakDb - GATE_BELOW_PEAK_DB);
 }
@@ -56,6 +63,10 @@ export function encodeStereoMapRelativeEnergy(packedPeakDb, energyDb) {
 }
 
 /** @param {number} packedPeakDb already through the centi-dB codec; see the encoder. */
+/**
+ * @param {number} packedPeakDb already through the centi-dB codec; see the encoder.
+ * @param {number} code
+ */
 export function decodeStereoMapRelativeEnergy(packedPeakDb, code) {
   if (code === STEREO_MAP_ENERGY_INVALID) return null;
   if (code === STEREO_MAP_ENERGY_BELOW_GATE) return -Infinity;
@@ -63,6 +74,10 @@ export function decodeStereoMapRelativeEnergy(packedPeakDb, code) {
   return packedPeakDb - code * STEREO_MAP_ENERGY_STEP_DB;
 }
 
+/**
+ * @param {number} peakDb
+ * @param {number} energyDb
+ */
 export function quantizeStereoMapEnergyForDisplay(peakDb, energyDb) {
   const packedPeakDb = packedCentiDb(peakDb);
   return decodeStereoMapRelativeEnergy(

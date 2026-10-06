@@ -22,6 +22,9 @@ export const DEFAULT_DIALOGUE_VAD_ENGINE = "firered";
 
 const DIALOGUE_VAD_ENGINE_IDS = new Set(DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => option.id));
 
+/**
+ * @param {string} value
+ */
 export function normalizeDialogueVadEngine(value) {
   return DIALOGUE_VAD_ENGINE_IDS.has(value) ? value : DEFAULT_DIALOGUE_VAD_ENGINE;
 }

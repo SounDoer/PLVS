@@ -32,6 +32,9 @@ function defaultFileName(descriptor, items) {
   return `${safe}.${descriptor.extension}`;
 }
 
+/**
+ * @param {string} fileName
+ */
 function downloadInBrowser(fileName, contents) {
   const blob = new Blob([contents], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -60,7 +63,7 @@ export function usePackTransfer() {
    * user was still choosing, and re-checking the same rows to try again is pure busywork.
    */
   const exportSelection = useCallback(
-    async (type, selectedIds) => {
+    async (/** @type {"presets" | "loudness" | "themes"} */ type, selectedIds) => {
       if (operationActiveRef.current) return "cancelled";
       operationActiveRef.current = true;
       setStatus("");
@@ -95,7 +98,7 @@ export function usePackTransfer() {
   );
 
   const beginImport = useCallback(
-    async (type) => {
+    async (/** @type {"presets" | "loudness" | "themes"} */ type) => {
       if (operationActiveRef.current) return;
       operationActiveRef.current = true;
       setStatus("");
@@ -163,7 +166,7 @@ export function usePackTransfer() {
   }, [setStatus]);
 
   const beginThemePaste = useCallback(
-    async (text) => {
+    async (/** @type {string} */ text) => {
       if (operationActiveRef.current) return;
       operationActiveRef.current = true;
       setBusy(true);

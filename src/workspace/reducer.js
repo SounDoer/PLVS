@@ -39,6 +39,9 @@ function resolveTargetPath(tree, anchorTab, fallbackPath) {
   return found ?? fallbackPath;
 }
 
+/**
+ * @param {number[]} path
+ */
 function isPathValid(root, path) {
   let node = root;
   for (const idx of path) {
@@ -66,6 +69,9 @@ export function normalizePinnedPanelsById(panelsById, pinnedPanelsById) {
   );
 }
 
+/**
+ * @param {string} dimension
+ */
 function getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension) {
   if (!node || !pinnedPanelsById) return [];
   if (node.type === "leaf") return node.tabs.filter((id) => pinnedPanelsById[id]);
@@ -91,6 +97,9 @@ function getPinnedSizeInNode(node, pinnedPanelsById, dimension) {
   return sizes.length > 0 ? Math.max(...sizes) : null;
 }
 
+/**
+ * @param {string} dimension
+ */
 function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
   if (!Number.isFinite(px)) return pinnedPanelsById;
   const ids = getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension);
@@ -102,6 +111,10 @@ function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
   return next;
 }
 
+/**
+ * @param {number[]} sizes
+ * @param {string} dimension
+ */
 function applyResizeSnapshotToSizes(sizes, node, pinnedPanelsById, dimension, childSizesPx) {
   if (!Array.isArray(childSizesPx)) return sizes;
   const visibleChildren = childSizesPx.filter(

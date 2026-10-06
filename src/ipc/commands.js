@@ -11,6 +11,12 @@ import { decodeFrameWire } from "./frameWire.js";
  * as an ArrayBuffer, so what reaches `onFrame` is the same frame shape as before, with those rows
  * as typed array views.
  */
+/**
+ * Frames arrive as one binary message: a JSON envelope with Spectrum's band rows moved into typed
+ * sections behind it (`src-tauri/src/ipc/frame_encode.rs`). Tauri hands a `Raw` body to the channel
+ * as an ArrayBuffer, so what reaches `onFrame` is the same frame shape as before, with those rows
+ * as typed array views.
+ */
 function frameFromChannelMessage(message) {
   const body =
     message && typeof message === "object" && "message" in message ? message.message : message;
@@ -32,6 +38,10 @@ export async function previewAudioDevice(deviceId) {
 }
 
 /** @returns {Promise<string | null | undefined>} Current v2 id, or nothing if unknown/unplugged. */
+/**
+ * @returns {Promise<string | null | undefined>} Current v2 id, or nothing if unknown/unplugged.
+ * @param {string} deviceId
+ */
 export function migrateCaptureDeviceId(deviceId) {
   return invoke("migrate_capture_device_id", { deviceId });
 }
@@ -97,6 +107,11 @@ export function applyWindowBounds(bounds) {
 }
 
 /** Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic. */
+/**
+ * Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic.
+ * @param {boolean} reserveSpace
+ * @param {number} height
+ */
 export function enterDock(edge, reserveSpace, monitor, height) {
   return invoke("enter_dock", { edge, reserveSpace, monitor, height });
 }
@@ -125,6 +140,10 @@ export function setDockHeight({ height, persist = true }) {
 }
 
 /** Temporarily hide/show the complete Dock form without changing dockState.enabled. */
+/**
+ * Temporarily hide/show the complete Dock form without changing dockState.enabled.
+ * @param {boolean} suspended
+ */
 export function setDockSuspended(suspended) {
   return invoke("set_dock_suspended", { suspended });
 }
@@ -173,14 +192,24 @@ export function resetProfileCommand() {
   return invoke("reset_profile");
 }
 
+/**
+ * @param {string} path
+ */
 export function readProfileFile(path) {
   return invoke("read_profile_file", { path });
 }
 
+/**
+ * @param {string} path
+ * @param {string} contents
+ */
 export function writeProfileFile(path, contents) {
   return invoke("write_profile_file", { path, contents });
 }
 
+/**
+ * @param {string} path
+ */
 export function writeTextFile(path, contents) {
   return invoke("write_text_file", { path, contents });
 }
@@ -210,31 +239,51 @@ export function getVisualCaptureCapabilities() {
 }
 
 /** Capture one settled PLVS WebView region into the app-owned artifact staging directory. */
+/**
+ * Capture one settled PLVS WebView region into the app-owned artifact staging directory.
+ */
 export function captureVisualScreenshot(request) {
   return invoke("visual_capture_screenshot", { request });
 }
 
 /** Start a native video-only recording from settled semantic geometry. */
+/**
+ * Start a native video-only recording from settled semantic geometry.
+ */
 export function startVisualRecording(request) {
   return invoke("visual_recording_start", { request });
 }
 
 /** Read the latest process-local native recording state. */
+/**
+ * Read the latest process-local native recording state.
+ * @param {string} recordingId
+ */
 export function inspectVisualRecording(recordingId) {
   return invoke("visual_recording_inspect", { request: { recordingId } });
 }
 
 /** Forward a private ResizeObserver update to the active native session. */
+/**
+ * Forward a private ResizeObserver update to the active native session.
+ */
 export function updateVisualRecordingGeometry(request) {
   return invoke("visual_recording_update_geometry", { request });
 }
 
 /** Forward the current Live/File lifecycle state to measured-source silence accounting. */
+/**
+ * Forward the current Live/File lifecycle state to measured-source silence accounting.
+ */
 export function updateVisualRecordingAudioState(request) {
   return invoke("visual_recording_update_audio_state", { request });
 }
 
 /** Request idempotent native stop and bounded finalization. */
+/**
+ * Request idempotent native stop and bounded finalization.
+ * @param {string} recordingId
+ */
 export function stopVisualRecording(recordingId) {
   return invoke("visual_recording_stop", { request: { recordingId } });
 }
@@ -249,6 +298,9 @@ export function setChannelRoles(roles) {
   return invoke("set_channel_roles", { roles });
 }
 
+/**
+ * @param {number} enabled
+ */
 export function setDialogueGating(enabled) {
   return invoke("set_dialogue_gating", { enabled: !!enabled });
 }
@@ -282,6 +334,9 @@ export function recordFrontendCrash(input) {
   return invoke("record_frontend_crash", { input });
 }
 
+/**
+ * @param {string} message
+ */
 export function logFrontendError(message) {
   return invoke("log_frontend_error", { message });
 }
@@ -290,10 +345,16 @@ export function readPendingCrashReport() {
   return invoke("read_pending_crash_report");
 }
 
+/**
+ * @param {string} id
+ */
 export function discardCrashReport(id) {
   return invoke("discard_crash_report", { id });
 }
 
+/**
+ * @param {boolean} enabled
+ */
 export function setCrashPromptEnabled(enabled) {
   return invoke("set_crash_prompt_enabled", { enabled });
 }

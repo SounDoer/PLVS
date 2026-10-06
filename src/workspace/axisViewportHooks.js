@@ -11,6 +11,13 @@ import { useWorkspaceStore } from "./WorkspaceContext.jsx";
  * The panel receives a range, whether it came from the group, and two setters that already know
  * where to write. It never learns that a shared viewport exists.
  */
+/**
+ * Builds the axis-viewport half of a panel's instance data. Both places that mount a panel — the
+ * normal leaf and the fullscreen overlay — call this, so the two cannot drift.
+ *
+ * The panel receives a range, whether it came from the group, and two setters that already know
+ * where to write. It never learns that a shared viewport exists.
+ */
 export function usePanelAxisViewports(panelId) {
   const { state, setAxisViewport, joinAxisViewport, leaveAxisViewport, setPanelControlsForPanel } =
     useWorkspaceStore();
@@ -127,6 +134,9 @@ export function useAxisViewport(kindId, localKeys) {
 }
 
 /** The membership-only view used by controls that do not edit a min/max range directly. */
+/**
+ * The membership-only view used by controls that do not edit a min/max range directly.
+ */
 export function useAxisViewportLink(kindId) {
   const instance = usePanelInstanceData();
   const viewport = instance?.axisViewports?.[kindId] ?? null;

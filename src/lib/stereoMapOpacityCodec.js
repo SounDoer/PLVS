@@ -31,6 +31,9 @@ export const STEREO_MAP_OPACITY_RAMP_LEVELS = STEREO_MAP_OPACITY_OPAQUE - 1;
 /** Worst error a ramp code can carry: half a bin. */
 export const STEREO_MAP_OPACITY_WORST_ERROR = 0.5 / STEREO_MAP_OPACITY_RAMP_LEVELS;
 
+/**
+ * @param {number} peakDb
+ */
 export function stereoMapGateDb(peakDb) {
   return Math.max(GATE_FLOOR_DB, peakDb - GATE_BELOW_PEAK_DB);
 }
@@ -53,6 +56,10 @@ export function encodeStereoMapOpacity(peakDb, energyDb) {
 }
 
 /** @returns {number | null} opacity in [0, 1], or null when the band has no value. */
+/**
+ * @returns {number | null} opacity in [0, 1], or null when the band has no value.
+ * @param {number} code
+ */
 export function decodeStereoMapOpacity(code) {
   if (code === STEREO_MAP_OPACITY_INVALID) return null;
   if (code === STEREO_MAP_OPACITY_HIDDEN) return 0;
@@ -61,6 +68,9 @@ export function decodeStereoMapOpacity(code) {
 }
 
 /** The opacity a live row renders with, without going through storage. */
+/**
+ * The opacity a live row renders with, without going through storage.
+ */
 export function stereoMapOpacityFor(peakDb, energyDb) {
   if (!Number.isFinite(peakDb) || !Number.isFinite(energyDb)) return null;
   const gateDb = stereoMapGateDb(peakDb);
@@ -78,14 +88,25 @@ export function createStereoMapOpacityPlane(entryCount) {
 }
 
 /** @returns {Uint8Array} a copy holding the first `entryCount` entries. */
+/**
+ * @returns {Uint8Array} a copy holding the first `entryCount` entries.
+ * @param {number} entryCount
+ */
 export function sliceStereoMapOpacityPlane(plane, entryCount) {
   return plane.slice(0, (entryCount + 1) >> 1);
 }
 
+/**
+ * @param {number} index
+ */
 export function readStereoMapOpacityCode(plane, index) {
   return (plane[index >> 1] >> ((index & 1) << 2)) & 0x0f;
 }
 
+/**
+ * @param {number} index
+ * @param {number} code
+ */
 export function writeStereoMapOpacityCode(plane, index, code) {
   const byte = index >> 1;
   const shift = (index & 1) << 2;

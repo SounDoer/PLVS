@@ -18,6 +18,9 @@ export const PROFILE_VERSION = 1;
 export const PROFILE_EXTENSION = "plvsconfig";
 
 export class ProfileValidationError extends Error {
+  /**
+   * @param {string} message
+   */
   constructor(message) {
     super(message);
     this.name = "ProfileValidationError";
@@ -32,6 +35,9 @@ function clonePlainObject(value) {
   return isPlainObject(value) ? { ...value } : {};
 }
 
+/**
+ * @param {string} value
+ */
 function normalizeCaptureDeviceId(value) {
   if (value === "default") return "default";
   if (typeof value !== "string") return "default";
@@ -139,6 +145,9 @@ function normalizeThemes(raw) {
   return { themes, order };
 }
 
+/**
+ * @param {string} value
+ */
 function normalizeClearShortcut(value) {
   return typeof value === "string" && value.trim() ? value : DEFAULT_CLEAR_SHORTCUT;
 }

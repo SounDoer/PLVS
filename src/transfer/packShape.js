@@ -84,6 +84,9 @@ export const PACK_KINDS = {
   },
 };
 
+/**
+ * @param {string} type
+ */
 export function packDescriptor(type) {
   const descriptor = PACK_KINDS[type];
   if (!descriptor) throw new Error(`Unknown pack type: ${type}`);
@@ -100,6 +103,9 @@ export function referencedProfileIds(presets) {
   return ids;
 }
 
+/**
+ * @param {string} type
+ */
 export function buildPack(
   type,
   items,
@@ -252,6 +258,9 @@ export function buildPack(
 const CONFIGURATION_PROFILE_KIND = "configuration-profile";
 
 export class PackValidationError extends Error {
+  /**
+   * @param {string} message
+   */
   constructor(message, issues = []) {
     super(message);
     this.name = "PackValidationError";
@@ -259,10 +268,18 @@ export class PackValidationError extends Error {
   }
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return packIssue(code, path, message);
 }
 
+/**
+ * @param {string} prefix
+ */
 function prefixIssues(issues, prefix) {
   return prefixPackIssues(issues, prefix);
 }
@@ -358,6 +375,9 @@ function parsePortablePresetItems(raw) {
     invalidEntryCode: "invalidPresetEntry",
     invalidIdCode: "invalidPresetId",
     duplicateIdCode: "duplicatePresetId",
+    /**
+     * @param {string} id
+     */
     convert(document, id) {
       return portableToStoredPreset(document, id, {
         resolveDependencyId: (dependencyId) =>
@@ -369,7 +389,10 @@ function parsePortablePresetItems(raw) {
   const referencedDependencyIds = new Set(
     Array.isArray(raw.items)
       ? raw.items
-          .map((item) => item?.loudnessProfile?.dependencyId)
+          .map(
+            (/** @type {{ loudnessProfile: { dependencyId: any; }; }} */ item) =>
+              item?.loudnessProfile?.dependencyId
+          )
           .filter((id) => typeof id === "string")
       : []
   );
@@ -390,10 +413,16 @@ function parsePortablePresetItems(raw) {
   return { items: presets.items, loudnessProfiles: profiles.items };
 }
 
+/**
+ * @param {string} kind
+ */
 function descriptorForKind(kind) {
   return Object.values(PACK_KINDS).find((entry) => entry.kind === kind) ?? null;
 }
 
+/**
+ * @param {string} expectedType
+ */
 export function parsePack(raw, expectedType) {
   const expected = packDescriptor(expectedType);
 
@@ -472,6 +501,9 @@ export function parsePack(raw, expectedType) {
   return parsed;
 }
 
+/**
+ * @param {string} text
+ */
 function parseJsonText(text) {
   if (typeof text !== "string") {
     throw new PackValidationError("This file could not be read.", [
@@ -499,6 +531,11 @@ function parseJsonText(text) {
 }
 
 /** Enforces the encoded byte limit before JSON parsing, then applies the normal family parser. */
+/**
+ * Enforces the encoded byte limit before JSON parsing, then applies the normal family parser.
+ * @param {string} text
+ * @param {string} expectedType
+ */
 export function parsePackText(text, expectedType) {
   return parsePack(parseJsonText(text), expectedType);
 }
@@ -506,6 +543,11 @@ export function parsePackText(text, expectedType) {
 /**
  * Dispatches one shared Item file by its document kind, then runs the same strict family parser.
  * @returns {{ type: "loudness" | "presets" | "themes", pack: any }}
+ */
+/**
+ * Dispatches one shared Item file by its document kind, then runs the same strict family parser.
+ * @returns {{type: "loudness" | "presets" | "themes";pack: any;}}
+ * @param {string} text
  */
 export function parseSharedPackText(text) {
   const raw = parseJsonText(text);
@@ -554,6 +596,9 @@ function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {
 }
 
 /** Parse the canonical portable Theme copied by a community page, without inventing a new format. */
+/**
+ * Parse the canonical portable Theme copied by a community page, without inventing a new format.
+ */
 export function parseClipboardTheme(raw) {
   return parsePortableThemeTransfer(raw, {
     invalidMessage: "Clipboard doesn't contain a PLVS Theme.",

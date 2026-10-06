@@ -120,11 +120,17 @@ export const STATS_CANONICAL_ORDER = [
 const STAT_DECIMALS = { correlation: 2, dialogueCoverage: 0 };
 
 /// @returns {number} decimals for `metricId`, defaulting to the 1 that `fmtMetric` renders.
+/**
+ * @param {string} metricId
+ */
 export function statDecimals(metricId) {
   return STAT_DECIMALS[metricId] ?? 1;
 }
 
 /// Round `value` to what the panel can show for `metricId`. Non-finite input passes through.
+/**
+ * @param {string} metricId
+ */
 export function roundToStatPrecision(metricId, value) {
   if (!Number.isFinite(value)) return value;
   const factor = 10 ** statDecimals(metricId);

@@ -10,6 +10,12 @@ export const DragContext = createContext(null);
  * Compute drop target from mouse position using elementsFromPoint.
  * Returns { targetPath, zone, tabIndex? } or null.
  */
+/**
+ * Compute drop target from mouse position using elementsFromPoint.
+ * Returns { targetPath, zone, tabIndex? } or null.
+ * @param {number} x
+ * @param {number} y
+ */
 function computeDropTarget(x, y) {
   const elements = document.elementsFromPoint?.(x, y) ?? [];
 

@@ -13,6 +13,11 @@ export function isObjectRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 export function packIssue(code, path, message, details) {
   return {
     severity: "error",
@@ -23,6 +28,9 @@ export function packIssue(code, path, message, details) {
   };
 }
 
+/**
+ * @param {string} prefix
+ */
 export function prefixPackIssues(issues, prefix) {
   return issues.map((entry) => ({
     severity: entry.severity ?? "error",
@@ -31,6 +39,9 @@ export function prefixPackIssues(issues, prefix) {
   }));
 }
 
+/**
+ * @param {string} value
+ */
 export function normalizePortableItemId(value) {
   if (typeof value !== "string" || !PORTABLE_ITEM_ID.test(value)) return null;
   return RESERVED_ITEM_IDS.has(value) ? null : value;
@@ -60,6 +71,9 @@ function exceedsDepthLimit(raw) {
 }
 
 /** Resource checks shared by legacy and strict Pack parsing. */
+/**
+ * Resource checks shared by legacy and strict Pack parsing.
+ */
 export function collectPackResourceIssues(raw) {
   const issues = [];
   const byteLength = encodedByteLength(raw);
@@ -84,6 +98,9 @@ export function collectPackResourceIssues(raw) {
 }
 
 /** Strictly validates the family-neutral part of a Pack V2 envelope. */
+/**
+ * Strictly validates the family-neutral part of a Pack V2 envelope.
+ */
 export function collectPackV2EnvelopeIssues(raw, { allowedDependencyKind = null } = {}) {
   const issues = [...collectPackResourceIssues(raw)];
   for (const field of Object.keys(raw)) {
@@ -213,6 +230,9 @@ export function collectPackV2EnvelopeIssues(raw, { allowedDependencyKind = null 
   return issues;
 }
 
+/**
+ * Validates IDs and converts every primary Item while aggregating all detectable issues.
+ */
 /**
  * Validates IDs and converts every primary Item while aggregating all detectable issues.
  */

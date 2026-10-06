@@ -129,6 +129,13 @@ function normalizeThresholdPair(row, raw) {
     : { [row.minKey]: row.defaultMin, [row.maxKey]: row.defaultMax };
 }
 
+/**
+ * @param {string} mode
+ * @param {string} minKey
+ * @param {string} maxKey
+ * @param {number} defaultMin
+ * @param {number} defaultMax
+ */
 function levelMeterThresholdRow(mode, minKey, maxKey, defaultMin, defaultMax) {
   return {
     minKey,
@@ -153,6 +160,9 @@ function levelMeterThresholdRow(mode, minKey, maxKey, defaultMin, defaultMax) {
 
 const KINDS = {
   /** One of a fixed id list; anything else falls back to the default. */
+  /**
+   * One of a fixed id list; anything else falls back to the default.
+   */
   enum(row, raw) {
     const value = readStored(raw, row);
     return row.options.includes(value) ? value : row.default;
@@ -169,12 +179,19 @@ const KINDS = {
   },
 
   /** Wraps into [0, 360) rather than clamping -- spinning past 360 in a drag is legitimate. */
+  /**
+   * Wraps into [0, 360) rather than clamping -- spinning past 360 in a drag is legitimate.
+   */
   degrees(row, raw) {
     const value = readStored(raw, row);
     if (!isNumber(value)) return row.default;
     return ((value % 360) + 360) % 360;
   },
 
+  /**
+   * A channel-index pair `{ x, y }`. `legacyMembers` names the fields a control used to store the
+   * pair under, for the same reason `legacyKeys` exists one level up.
+   */
   /**
    * A channel-index pair `{ x, y }`. `legacyMembers` names the fields a control used to store the
    * pair under, for the same reason `legacyKeys` exists one level up.
@@ -190,6 +207,9 @@ const KINDS = {
   },
 
   /** A subset of known ids, deduped, unknown ids dropped, order as stored. */
+  /**
+   * A subset of known ids, deduped, unknown ids dropped, order as stored.
+   */
   idList(row, raw) {
     const value = readStored(raw, row);
     if (!Array.isArray(value)) return [...row.default];
@@ -201,6 +221,9 @@ const KINDS = {
   },
 
   /** Every known id exactly once: stored order first, then the template backfills the rest. */
+  /**
+   * Every known id exactly once: stored order first, then the template backfills the rest.
+   */
   orderedIdList(row, raw) {
     const value = readStored(raw, row);
     const ordered = [];
@@ -909,6 +932,9 @@ const CONTROLS = [
 ];
 
 /** A row's contribution to a normalized record: `{ key: value }`, or both bounds for a range. */
+/**
+ * A row's contribution to a normalized record: `{ key: value }`, or both bounds for a range.
+ */
 function normalizeRow(row, raw) {
   const source = row.readMin ? { ...raw, [row.minKey]: row.readMin(raw) } : raw;
   if (row.normalize) {
@@ -941,6 +967,9 @@ function buildDefaults() {
 export const DEFAULT_PANEL_CONTROLS = buildDefaults();
 
 /** @returns {import("../workspace/types.js").PanelControls} */
+/**
+ * @returns {import("../workspace/types.js").PanelControls}
+ */
 export function normalizePanelControls(raw) {
   const normalized = /** @type {import("../workspace/types.js").PanelControls} */ ({});
   for (const row of CONTROLS) {
@@ -953,6 +982,12 @@ export function normalizePanelControls(raw) {
  * The rows one settings tab renders, in table order. A row carries its own label, widget and
  * visibility rule, so a new control appears in the settings panel by being added to the table --
  * there is no second list of controls to keep in step.
+ */
+/**
+ * The rows one settings tab renders, in table order. A row carries its own label, widget and
+ * visibility rule, so a new control appears in the settings panel by being added to the table --
+ * there is no second list of controls to keep in step.
+ * @param {string} tab
  */
 export function panelControlUiRows(tab) {
   return CONTROLS.filter((row) => row.ui?.tab === tab).sort(
@@ -972,6 +1007,12 @@ for (const row of CONTROLS) {
  * different key -- the Dock does -- so that the repair rule lives in one place even where the key
  * names do not match.
  */
+/**
+ * Repairs one control's value by its own row. For surfaces that store the same control under a
+ * different key -- the Dock does -- so that the repair rule lives in one place even where the key
+ * names do not match.
+ * @param {string} key
+ */
 export function normalizePanelControlValue(key, value) {
   const row = ROW_BY_KEY.get(key);
   if (!row) throw new Error(`Unknown panel control: ${key}`);
@@ -979,6 +1020,10 @@ export function normalizePanelControlValue(key, value) {
 }
 
 /** The range counterpart of normalizePanelControlValue, keyed by the range's min key. */
+/**
+ * The range counterpart of normalizePanelControlValue, keyed by the range's min key.
+ * @param {string} minKey
+ */
 export function normalizePanelControlRange(minKey, rawMin, rawMax) {
   const row = RANGE_ROW_BY_MIN_KEY.get(minKey);
   if (!row) throw new Error(`Unknown panel control range: ${minKey}`);

@@ -17,6 +17,9 @@ export function collectPackItems(type, ids) {
   const library = getAdapter(type).list();
 
   let items = library;
+  /**
+   * @type {string[]}
+   */
   let missingIds = [];
   if (ids !== null) {
     const byId = new Map(library.map((item) => [item.id, item]));

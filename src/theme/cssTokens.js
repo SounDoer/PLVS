@@ -13,6 +13,19 @@ import { themeRuntime } from "./themeRuntime.js";
  * theme-owned token (the generated `--ui-*` set); a property some other code path can rewrite
  * without the theme changing does not belong in this cache.
  */
+/**
+ * CSS custom properties read once per theme instead of once per frame.
+ *
+ * Several panels resolve a token -- a stroke width, a fill opacity, an axis font -- inside the
+ * paint they run for every frame. `getComputedStyle` is not a cheap read: it can force a style
+ * recalculation, and a renderer profile put `getPropertyValue` alone at 3% of the frame time,
+ * spent re-resolving values that only change when the theme does.
+ *
+ * The theme runtime's snapshot is that "when": a new theme compiles to a new object, so comparing
+ * its identity is enough to know the answers are stale. Everything cached here must therefore be a
+ * theme-owned token (the generated `--ui-*` set); a property some other code path can rewrite
+ * without the theme changing does not belong in this cache.
+ */
 let cachedGeneration = null;
 let byElement = new WeakMap();
 

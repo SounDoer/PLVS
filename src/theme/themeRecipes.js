@@ -18,6 +18,9 @@ const SURFACE_STEP = {
   dark: { muted: 0.028, raised: 0.042, control: 0.103 },
   light: { muted: 0.02, raised: 0.03, control: 0.08 },
 };
+/**
+ * @param {string} hex
+ */
 function hexChannels(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
@@ -27,14 +30,23 @@ function channelsHex(channels) {
   return `#${channels.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`;
 }
 
+/**
+ * @param {string} hex
+ */
 function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
 }
 
+/**
+ * @param {string} hex
+ */
 function desaturate(hex) {
   return oklchToHex({ ...hexToOklch(hex), C: 0 });
 }
 
+/**
+ * @param {number} opacity
+ */
 function effect(color, opacity) {
   return { color, opacity };
 }
@@ -42,6 +54,9 @@ function effect(color, opacity) {
 const SOLID = THEME_VALUE_KINDS.SOLID_COLOR;
 const EFFECT = THEME_VALUE_KINDS.COLOR_EFFECT;
 
+/**
+ * @param {string} outputKind
+ */
 function recipe(inputKinds, outputKind, resolve) {
   return Object.freeze({ inputKinds, outputKind, resolve });
 }
@@ -112,13 +127,16 @@ export const THEME_RECIPES = Object.freeze({
 export function recipeContract(recipeName, roleValueKind) {
   const definition = THEME_RECIPES[recipeName];
   if (!definition) return null;
-  const resolveKind = (kind) => (kind === "$output" ? roleValueKind : kind);
+  const resolveKind = (/** @type {string} */ kind) => (kind === "$output" ? roleValueKind : kind);
   return {
     inputKinds: definition.inputKinds.map((signature) => signature.map(resolveKind)),
     outputKind: resolveKind(definition.outputKind),
   };
 }
 
+/**
+ * @param {string} kind
+ */
 export function isThemeValueOfKind(value, kind) {
   if (kind === THEME_VALUE_KINDS.SOLID_COLOR) {
     return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);

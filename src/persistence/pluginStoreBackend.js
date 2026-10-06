@@ -121,16 +121,25 @@ export function createPluginStoreBackend() {
   }
 
   const backend = {
+    /**
+     * @param {string} key
+     */
     get(key) {
       const v = cache.get(key);
       return v && typeof v === "object" && !Array.isArray(v) ? v : null;
     },
+    /**
+     * @param {string} key
+     */
     set(key, value) {
       assertWritableSurface(key);
       cache.set(key, value);
       dirty.set(key, "set");
       scheduleBatch();
     },
+    /**
+     * @param {string} key
+     */
     remove(key) {
       assertWritableSurface(key);
       cache.delete(key);

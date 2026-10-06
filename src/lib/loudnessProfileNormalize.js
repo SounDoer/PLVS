@@ -27,6 +27,9 @@ function normalizeReference(raw) {
   return raw >= -70 && raw <= 0 ? raw : null;
 }
 
+/**
+ * @param {string} raw
+ */
 function normalizeSeverity(raw) {
   return raw === "fail" ? "fail" : "warn";
 }
@@ -67,6 +70,9 @@ export function normalizeRuleDocument(raw) {
 }
 
 /// Resolves the persisted selection, falling back to Off whenever the selected profile is absent.
+/**
+ * @param {string} raw
+ */
 function normalizeActive(raw, profiles) {
   const { kind, id } = parseSelection(raw);
   if (kind !== "profile") return LOUDNESS_PROFILE_OFF;

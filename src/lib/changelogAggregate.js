@@ -11,6 +11,9 @@
 
 const SECTION_HEADER = /^## \[([^\]]+)\]/gm;
 
+/**
+ * @param {string} raw
+ */
 function parseVersion(raw) {
   if (typeof raw !== "string") return null;
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(raw.replace(/^v/i, "").trim());
@@ -18,6 +21,10 @@ function parseVersion(raw) {
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
+/**
+ * @param {number[]} version
+ * @param {number[]} baseline
+ */
 function isNewer(version, baseline) {
   for (let i = 0; i < 3; i++) {
     if (version[i] !== baseline[i]) return version[i] > baseline[i];
@@ -25,6 +32,10 @@ function isNewer(version, baseline) {
   return false;
 }
 
+/**
+ * @param {string} body
+ * @param {string} currentVersion
+ */
 export function sliceChangelogSince(body, currentVersion) {
   if (typeof body !== "string" || body.trim() === "") return "";
 

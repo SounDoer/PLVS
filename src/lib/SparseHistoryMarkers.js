@@ -4,6 +4,9 @@ function emptyQueryStats() {
   return { binarySearchReads: 0, markersInspected: 0, markersReturned: 0 };
 }
 
+/**
+ * @param {number} sequence
+ */
 function lowerBound(entries, sequence, stats) {
   let low = 0;
   let high = entries.length;
@@ -16,6 +19,12 @@ function lowerBound(entries, sequence, stats) {
   return low;
 }
 
+/**
+ * @param {number} retainedStart
+ * @param {number} retainedEnd
+ * @param {number} startIndex
+ * @param {number} endIndex
+ */
 function queryEntries(entries, retainedStart, retainedEnd, startIndex, endIndex) {
   const stats = emptyQueryStats();
   const retainedRows = retainedEnd - retainedStart;
@@ -72,6 +81,10 @@ export class SparseHistoryMarkers {
     this._version += 1;
   }
 
+  /**
+   * @param {number} startIndex
+   * @param {number} endIndex
+   */
   query(startIndex, endIndex) {
     const result = queryEntries(
       this._markers,
@@ -128,6 +141,10 @@ class FrozenSparseHistoryMarkers {
     return this._version;
   }
 
+  /**
+   * @param {number} startIndex
+   * @param {number} endIndex
+   */
   query(startIndex, endIndex) {
     const result = queryEntries(
       this._markers,

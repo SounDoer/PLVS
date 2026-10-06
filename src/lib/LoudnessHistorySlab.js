@@ -50,12 +50,19 @@ const SCHEMA = { name: "LoudnessHistorySlab", createChunk, cloneChunk, payloadBy
  * Sub-blocks are stored flat at stride 2 * channelCount, and the channel count is whatever this
  * row's extrema carried, so the count is derived rather than stored.
  */
+/**
+ * Sub-blocks are stored flat at stride 2 * channelCount, and the channel count is whatever this
+ * row's extrema carried, so the count is derived rather than stored.
+ */
 function subCountFrom(chunk, row) {
   const channels = chunk.waveformMin.lengthAt(row) || chunk.waveformMax.lengthAt(row);
   if (channels === 0) return 0;
   return Math.floor(chunk.waveformSubPairs.lengthAt(row) / (2 * channels));
 }
 
+/**
+ * @param {number} row
+ */
 function rowFrom(chunk, row) {
   return {
     m: chunk.m[row],
@@ -76,6 +83,9 @@ function readValue(view, index, key) {
 
 /** Packed storage for the loudness column of the scalar history. */
 export class LoudnessHistorySlab extends ChunkedHistorySlab {
+  /**
+   * @param {number} capacity
+   */
   constructor(capacity) {
     super(capacity, SCHEMA);
   }
@@ -91,15 +101,26 @@ export class LoudnessHistorySlab extends ChunkedHistorySlab {
   }
 
   /** One loudness value, for hot paths that would otherwise materialise a whole row. */
+  /**
+   * One loudness value, for hot paths that would otherwise materialise a whole row.
+   * @param {number} index
+   * @param {string} key
+   */
   valueAt(index, key) {
     return readValue(this, index, key);
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row) : undefined;
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }
@@ -118,15 +139,25 @@ export class LoudnessHistorySlab extends ChunkedHistorySlab {
 }
 
 export class FrozenLoudnessHistory extends FrozenChunkedHistory {
+  /**
+   * @param {number} index
+   * @param {string} key
+   */
   valueAt(index, key) {
     return readValue(this, index, key);
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     const found = this.chunkAt(index);
     return found ? rowFrom(found.chunk, found.row) : undefined;
   }
 
+  /**
+   * @param {number} index
+   */
   at(index) {
     return this.rowAt(index);
   }

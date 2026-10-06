@@ -19,11 +19,17 @@ function compatibilityKey(document) {
   return `${document.formatVersion}:${document.semanticsVersion}`;
 }
 
+/**
+ * @param {string} value
+ */
 function validVersion(value) {
   return typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value);
 }
 
 /** Build the exact Dark/Light and compatibility copy consumed by a community Theme page. */
+/**
+ * Build the exact Dark/Light and compatibility copy consumed by a community Theme page.
+ */
 export function buildCommunityThemePresentation(
   raw,
   { compatibility = COMMUNITY_THEME_COMPATIBILITY } = {}
@@ -59,6 +65,9 @@ export function buildCommunityThemePresentation(
 }
 
 /** A public page cannot ship vague compatibility copy while the release mapping is unresolved. */
+/**
+ * A public page cannot ship vague compatibility copy while the release mapping is unresolved.
+ */
 export function requireResolvedCommunityThemePresentation(raw, options) {
   const presentation = buildCommunityThemePresentation(raw, options);
   if (presentation.compatibility.status !== "resolved") {

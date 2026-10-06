@@ -44,6 +44,9 @@ function isNodeEmpty(node, panelsById) {
   return node.children.every((c) => isNodeEmpty(c, panelsById));
 }
 
+/**
+ * @param {string} dimension
+ */
 function getSubtreeMinSize(node, state, dimension) {
   if (node.type === "leaf") {
     const mins = node.tabs
@@ -61,14 +64,24 @@ function getSubtreeMinSize(node, state, dimension) {
   return isAdditive ? childMins.reduce((a, b) => a + b, 0) : Math.max(...childMins);
 }
 
+/**
+ * @param {number} value
+ */
 function formatFlexFactor(value) {
   return Number(value.toFixed(6)).toString();
 }
 
+/**
+ * @param {number} value
+ */
 function formatPx(value) {
   return Number(value.toFixed(3)).toString();
 }
 
+/**
+ * @param {number[]} visibleSizes
+ * @param {number} dividerCount
+ */
 export function getSplitSizingContext(visibleSizes, dividerCount, pinnedPixels = []) {
   const isPinned = (i) => Number.isFinite(pinnedPixels[i]) && pinnedPixels[i] > 0;
   const fixedSizes = visibleSizes.filter((s, i) => s !== null && !isPinned(i));
@@ -86,6 +99,9 @@ export function getSplitSizingContext(visibleSizes, dividerCount, pinnedPixels =
   };
 }
 
+/**
+ * @param {number} size
+ */
 export function getSplitChildStyle(size, sizingContext, pinnedPx = null) {
   const baseStyle = { minWidth: 0, minHeight: 0 };
   if (Number.isFinite(pinnedPx) && pinnedPx > 0) {
@@ -104,6 +120,9 @@ export function getSplitChildStyle(size, sizingContext, pinnedPx = null) {
   return { flex: `0 0 calc((${availableSpace}) * ${factor})`, ...baseStyle };
 }
 
+/**
+ * @param {string} dimension
+ */
 function getPinnedSizesForNode(node, state, dimension) {
   if (!node || !state.pinnedPanelsById) return [];
   if (node.type === "leaf") {
@@ -118,6 +137,9 @@ function getPinnedSizesForNode(node, state, dimension) {
   return node.children.flatMap((child) => getPinnedSizesForNode(child, state, dimension));
 }
 
+/**
+ * @param {string} direction
+ */
 export function getPinnedSizeForNode(node, state, direction) {
   const dimension = direction === "h" ? "width" : "height";
   const sizes = getPinnedSizesForNode(node, state, dimension);

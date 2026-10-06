@@ -82,6 +82,9 @@ export function readPersistedInterfaceSize() {
   return normalizeInterfaceSize(settingsStore.read().interfaceSize);
 }
 
+/**
+ * @param {string} rawSize
+ */
 export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
   const size = normalizeInterfaceSize(rawSize);
   if (size === "small") return prefs;
@@ -114,6 +117,10 @@ export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
   };
 }
 
+/**
+ * @param {string} rawSize
+ * @param {string} surface
+ */
 export function resolveInterfacePreferencesForSurface(prefs, rawSize, surface) {
   return resolveInterfacePreferences(prefs, isDockAccessorySurface(surface) ? "small" : rawSize);
 }

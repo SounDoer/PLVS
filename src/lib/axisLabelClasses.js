@@ -16,6 +16,10 @@ const AXIS_LABEL_POSITION = {
   },
 };
 
+/**
+ * @param {string} axis
+ * @param {string} position
+ */
 export function axisLabelClass(axis, position, extra = "") {
   const base = AXIS_LABEL_BASE[axis];
   const placement = AXIS_LABEL_POSITION[axis]?.[position];

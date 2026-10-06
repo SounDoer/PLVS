@@ -3,6 +3,9 @@ import { applyPalettePreset } from "./palettePresets.js";
 export const DEFAULT_THEME_ID = "plvs-dark";
 export const THEME_IDS = Object.freeze(["plvs-dark", "plvs-light"]);
 
+/**
+ * @param {string} id
+ */
 export function isThemeId(id) {
   return typeof id === "string" && THEME_IDS.includes(id);
 }
@@ -65,6 +68,9 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
   }),
 });
 
+/**
+ * @param {string} id
+ */
 export function getBuiltinThemeV2(id) {
   return BUILTIN_THEMES_V2[id] ?? BUILTIN_THEMES_V2["plvs-dark"];
 }

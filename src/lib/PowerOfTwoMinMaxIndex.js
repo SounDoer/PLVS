@@ -7,6 +7,9 @@ const EMPTY_QUERY_STATS = Object.freeze({
   summaryBucketsVisited: 0,
 });
 
+/**
+ * @param {number} valueCount
+ */
 function levelSchema(valueCount) {
   return {
     name: "MinMaxLevel",
@@ -24,11 +27,16 @@ function levelSchema(valueCount) {
       mins: chunk.mins.slice(0, chunk.rowCount * valueCount),
       maxes: chunk.maxes.slice(0, chunk.rowCount * valueCount),
     }),
-    payloadBytes: (chunk) =>
-      chunk.timestamps.byteLength + chunk.mins.byteLength + chunk.maxes.byteLength,
+    payloadBytes: (
+      /** @type {{ timestamps: { byteLength: any; }; mins: { byteLength: any; }; maxes: { byteLength: any; }; }} */ chunk
+    ) => chunk.timestamps.byteLength + chunk.mins.byteLength + chunk.maxes.byteLength,
   };
 }
 
+/**
+ * @param {number} bucketIndex
+ * @param {number} valueCount
+ */
 function bucketFrom(view, bucketIndex, valueCount) {
   if (view.length === 0) return undefined;
   // A level has no clock, so the base slab's timestamp column carries the absolute bucket index.
@@ -47,11 +55,19 @@ function bucketFrom(view, bucketIndex, valueCount) {
 
 /** One level of the pyramid: bucket n covers [n * width, (n + 1) * width). */
 class MinMaxLevel extends ChunkedHistorySlab {
+  /**
+   * @param {number} capacityBuckets
+   * @param {number} valueCount
+   */
   constructor(capacityBuckets, valueCount) {
     super(capacityBuckets, levelSchema(valueCount));
     this._valueCount = valueCount;
   }
 
+  /**
+   * @param {number[]} mins
+   * @param {number[]} maxes
+   */
   push(bucketIndex, mins, maxes) {
     this.appendRow(bucketIndex, (chunk, row) => {
       const first = row * this._valueCount;
@@ -90,6 +106,9 @@ class FrozenMinMaxLevel extends FrozenChunkedHistory {
   }
 }
 
+/**
+ * @param {number} valueCount
+ */
 function mergeNode(result, node, valueCount) {
   for (let value = 0; value < valueCount; value++) {
     result.mins[value] = Math.min(result.mins[value], node.mins[value] ?? 0);
@@ -113,6 +132,16 @@ function validateRange(startInclusive, endInclusive, rawRowAt) {
  * by the trailing zeros of `sequence` and by floor(log2(remaining)). Falls back to `maxLevel` for
  * sequences past what the 32-bit intrinsics cover, where the loop's own tests take over.
  */
+/**
+ * The highest bucket level worth trying at `sequence` with `remaining` rows left.
+ *
+ * A bucket at level L spans 2^L rows and must start on a multiple of 2^L, so the level is capped
+ * by the trailing zeros of `sequence` and by floor(log2(remaining)). Falls back to `maxLevel` for
+ * sequences past what the 32-bit intrinsics cover, where the loop's own tests take over.
+ * @param {number} maxLevel
+ * @param {number} sequence
+ * @param {number} remaining
+ */
 function startingLevel(maxLevel, sequence, remaining) {
   if (sequence > 0x7fffffff || remaining > 0x7fffffff) return maxLevel;
   const alignment = sequence === 0 ? maxLevel : 31 - Math.clz32(sequence & -sequence);
@@ -120,6 +149,10 @@ function startingLevel(maxLevel, sequence, remaining) {
   return Math.min(maxLevel, alignment, fits);
 }
 
+/**
+ * @param {number} startInclusive
+ * @param {number} endInclusive
+ */
 function queryRange(view, startInclusive, endInclusive, rawRowAt) {
   validateRange(startInclusive, endInclusive, rawRowAt);
   const stats = {
@@ -189,6 +222,10 @@ function queryRange(view, startInclusive, endInclusive, rawRowAt) {
  */
 
 class MinMaxIndexView {
+  /**
+   * @param {number} startInclusive
+   * @param {number} endInclusive
+   */
   queryRange(startInclusive, endInclusive, rawRowAt) {
     return queryRange(this, startInclusive, endInclusive, rawRowAt);
   }
@@ -199,6 +236,12 @@ class MinMaxIndexView {
   }
 
   /** @this {MinMaxIndexView & MinMaxIndexState} */
+  /**
+   * @this {MinMaxIndexView & MinMaxIndexState}
+   * @param {number} level
+   * @param {number} startSequence
+   * @param {number} width
+   */
   _bucketAtStart(level, startSequence, width) {
     const store = this._levels[level];
     if (!store) return undefined;
@@ -349,6 +392,9 @@ export class PowerOfTwoMinMaxIndex extends MinMaxIndexView {
     this._version++;
   }
 
+  /**
+   * @param {number} level
+   */
   _ensureLevel(level) {
     if (!this._levels[level]) {
       const width = 2 ** level;

@@ -40,10 +40,18 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
 
+/**
+ * @param {string} path
+ */
 function unknownFields(raw, allowed, path, issues) {
   if (!isPlainObject(raw)) return;
   for (const field of Object.keys(raw)) {
@@ -53,24 +61,39 @@ function unknownFields(raw, allowed, path, issues) {
   }
 }
 
+/**
+ * @param {string} path
+ * @param {string} label
+ */
 function requirePlainObject(raw, path, label, issues) {
   if (isPlainObject(raw)) return true;
   issues.push(issue("invalidObject", path, `${label} must be a plain object.`));
   return false;
 }
 
+/**
+ * @param {string} path
+ */
 function validateColor(raw, path, issues) {
   if (!normalizeOpaqueColor(raw)) {
     issues.push(issue("invalidColor", path, "The value must be an opaque CSS color."));
   }
 }
 
+/**
+ * @param {string} path
+ */
 function validateColorRecord(raw, path, keys, issues) {
   if (!requirePlainObject(raw, path, "The color group", issues)) return;
   unknownFields(raw, new Set(keys), path, issues);
   for (const key of keys) validateColor(raw[key], `${path}.${key}`, issues);
 }
 
+/**
+ * @param {string} raw
+ * @param {string} kind
+ * @param {string} path
+ */
 function validatePresetId(raw, kind, path, issues) {
   if (raw === null) return;
   if (typeof raw !== "string" || !getPalettePreset(kind, raw)) {
@@ -86,6 +109,9 @@ function validatePresetId(raw, kind, path, issues) {
   }
 }
 
+/**
+ * @param {string} kind
+ */
 function validateSimplePalette(raw, kind, colorKeys, issues) {
   const path = `$.palettes.${kind}`;
   if (!requirePlainObject(raw, path, "The palette", issues)) return;
@@ -204,6 +230,9 @@ export class ThemeDocumentError extends Error {
 }
 
 /** Strictly validate and normalize a complete, id-free current public Theme document. */
+/**
+ * Strictly validate and normalize a complete, id-free current public Theme document.
+ */
 export function validateThemeDocument(raw) {
   if (!isPlainObject(raw)) {
     throw new ThemeDocumentError([
@@ -292,10 +321,16 @@ function customTheme(state, id) {
   return state.themes.find((theme) => theme.id === id) ?? null;
 }
 
+/**
+ * @param {string} id
+ */
 function anyTheme(state, id) {
   return BUILTIN_THEMES_V2[id] ?? customTheme(state, id);
 }
 
+/**
+ * @param {string} id
+ */
 function notFound(state, id) {
   return invalid(state, [issue("themeNotFound", "$.themeId", `Theme ${id} was not found.`)]);
 }
@@ -310,10 +345,18 @@ function mutableTheme(state, id) {
   return theme ? { theme } : { error: notFound(state, id) };
 }
 
+/**
+ * @param {string} mode
+ * @param {string} selectedThemeId
+ * @param {string} resolvedThemeId
+ */
 function appearance(mode, selectedThemeId, resolvedThemeId) {
   return { mode, selectedThemeId, resolvedThemeId };
 }
 
+/**
+ * @param {string[]} changed
+ */
 function withAppearance(state, nextAppearance, changed) {
   if (JSON.stringify(state.appearance) === JSON.stringify(nextAppearance))
     return invalid(state, []);
@@ -339,11 +382,17 @@ export function listThemeSummaries(state) {
   ];
 }
 
+/**
+ * @param {string} themeId
+ */
 export function planThemeSelect(state, themeId) {
   if (!anyTheme(state, themeId)) return notFound(state, themeId);
   return withAppearance(state, appearance("fixed", themeId, themeId), ["themes.appearance"]);
 }
 
+/**
+ * @param {string} resolvedSystemThemeId
+ */
 export function planThemeFollowSystem(state, resolvedSystemThemeId) {
   const resolved = BUILTIN_THEMES_V2[resolvedSystemThemeId] ? resolvedSystemThemeId : "plvs-dark";
   return withAppearance(state, appearance("system", null, resolved), ["themes.appearance"]);
@@ -408,6 +457,9 @@ export function planThemeCreate(state, rawDocument, { makeId } = {}) {
   });
 }
 
+/**
+ * @param {string} themeId
+ */
 export function planThemeUpdate(state, themeId, rawDocument) {
   const target = mutableTheme(state, themeId);
   if (target.error) return target.error;
@@ -425,6 +477,10 @@ export function planThemeUpdate(state, themeId, rawDocument) {
   });
 }
 
+/**
+ * @param {string} themeId
+ * @param {string} name
+ */
 export function planThemeRename(state, themeId, name) {
   const target = mutableTheme(state, themeId);
   if (target.error) return target.error;
@@ -503,6 +559,9 @@ export function planThemeDuplicate(state, themeId, name, { makeId } = {}) {
   };
 }
 
+/**
+ * @param {string} themeId
+ */
 export function planThemeDelete(state, themeId) {
   const target = mutableTheme(state, themeId);
   if (target.error) return target.error;

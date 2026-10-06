@@ -34,6 +34,9 @@ export class RaggedFloatColumn {
   }
 
   /** Appends one row's values. Rows are written in order and never revisited. */
+  /**
+   * Appends one row's values. Rows are written in order and never revisited.
+   */
   append(values) {
     const count = values?.length ?? 0;
     this._ensure(this._used + count);
@@ -70,6 +73,9 @@ export class RaggedFloatColumn {
     return copy;
   }
 
+  /**
+   * @param {number} capacity
+   */
   _ensure(capacity) {
     if (capacity <= this._values.length) return;
     let next = Math.max(1, this._values.length);

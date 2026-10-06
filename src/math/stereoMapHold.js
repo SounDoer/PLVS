@@ -93,7 +93,7 @@ export function accumulateStereoMapHold(summary, primitiveRow, scratch) {
   const derivationScratch = scratch ?? createStereoMapDerivationScratch(summary.bandCount);
   visitStereoMapDerivedPoints(
     primitiveRow,
-    (mode, index, value, /** @type {string} */ state, /** @type {number} */ opacity) => {
+    (mode, index, value, state, opacity) => {
       if (state !== "valid" || opacity !== 1) return;
       const minimum = MINIMUM_TARGETS[mode];
       if (minimum) updateExtreme(summary, minimum.valueKey, minimum.validKey, index, value, false);

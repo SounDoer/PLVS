@@ -19,6 +19,9 @@ export const SCENE_OPERATIONS = {
 /// `code` and `operation` are the stable contract on every refusal below. Nothing may branch on
 /// `message`: it is user copy and will be reworded.
 export class SceneOperationRefusedError extends Error {
+  /**
+   * @param {string} message
+   */
   constructor(message, { operation, code }) {
     super(message);
     this.operation = operation;
@@ -28,6 +31,9 @@ export class SceneOperationRefusedError extends Error {
 
 /// A draft-style editor is open. Recoverable by the user, and `editors` says what to finish.
 export class SceneOperationBlockedError extends SceneOperationRefusedError {
+  /**
+   * @param {string} operation
+   */
   constructor(operation, editors) {
     super(SCENE_OPERATION_BLOCKED_MESSAGE, { operation, code: "editorActive" });
     this.name = "SceneOperationBlockedError";
@@ -48,6 +54,10 @@ const UNAVAILABLE_MESSAGES = {
 const UNAVAILABLE_CODES = { fileMode: "fileModeActive" };
 
 export class SceneOperationUnavailableError extends SceneOperationRefusedError {
+  /**
+   * @param {string} operation
+   * @param {string} reason
+   */
   constructor(operation, reason) {
     super(UNAVAILABLE_MESSAGES[`${operation}:${reason}`] ?? "This is unavailable right now.", {
       operation,
@@ -79,6 +89,10 @@ export function sceneOperationUnavailableReason(operation, { sourceMode } = {}) 
  * @returns {error is SceneOperationRefusedError & { editors?: string[], reason?: string }} the
  *   subclasses add `editors` and `reason`; a caller reads them only after checking they are there
  */
+/**
+* @returns {error is SceneOperationRefusedError & {editors?: string[];reason?: string;}} the
+subclasses add `editors` and `reason`; a caller reads them only after checking they are there
+*/
 export function isSceneOperationRefused(error) {
   return error instanceof SceneOperationRefusedError;
 }

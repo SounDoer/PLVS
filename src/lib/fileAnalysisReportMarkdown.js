@@ -14,15 +14,25 @@ function fixed(value, decimals = 1) {
   return Number.isFinite(value) ? value.toFixed(decimals) : null;
 }
 
+/**
+ * @param {string} text
+ */
 function withUnit(text, unit) {
   if (text == null) return MISSING;
   return unit ? `${text} ${unit}` : text;
 }
 
+/**
+ * @param {string} label
+ * @param {string} value
+ */
 function item(label, value) {
   return `- ${label}: ${value}`;
 }
 
+/**
+ * @param {number} value
+ */
 function pad2(value) {
   return String(value).padStart(2, "0");
 }
@@ -39,6 +49,9 @@ function formatExportedAt(iso) {
   return `${day} ${time} (UTC${sign}${pad2(Math.floor(abs / 60))}:${pad2(abs % 60)})`;
 }
 
+/**
+ * @param {string} metricId
+ */
 function metricValue(metricId, summary) {
   const field = REPORT_PROFILE_METRIC_FIELDS[metricId];
   const text = field ? fixed(summary[field], statDecimals(metricId)) : null;

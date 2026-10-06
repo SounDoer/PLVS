@@ -27,6 +27,9 @@ function freezeAudio(audio) {
   return Object.freeze(frozen);
 }
 
+/**
+ * @param {boolean} dialogueActive
+ */
 function freezeRecord(frame, audio, generation, receivedAtMs, dialogueActive) {
   return Object.freeze({
     generation,

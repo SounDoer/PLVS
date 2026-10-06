@@ -8,6 +8,9 @@ export const PEAK_DB_MAX = 3;
 const PEAK_DB_RNG = PEAK_DB_MAX - PEAK_DB_MIN;
 
 /** 0..1 linear position: +3 dB → 1, -60 dB → 0 */
+/**
+ * 0..1 linear position: +3 dB → 1, -60 dB → 0
+ */
 export function peakFrac(v) {
   const c = Math.max(PEAK_DB_MIN, Math.min(PEAK_DB_MAX, Number.isFinite(v) ? v : PEAK_DB_MIN));
   return (c - PEAK_DB_MIN) / PEAK_DB_RNG;
@@ -16,6 +19,11 @@ export function peakFrac(v) {
 /**
  * Normalized position from the top of the dial/plot: +3 dB → 0, -60 dB → 1.
  * Same (1 - frac) mapping as other meters for reuse across components.
+ */
+/**
+ * Normalized position from the top of the dial/plot: +3 dB → 0, -60 dB → 1.
+ * Same (1 - frac) mapping as other meters for reuse across components.
+ * @param {number} v
  */
 export function peakFromTopFrac(v, range = {}) {
   if (Number.isFinite(range.min) && Number.isFinite(range.max)) {
@@ -30,6 +38,9 @@ export const LOUDNESS_DB_MAX = 0;
 const LOUDNESS_DB_RNG = LOUDNESS_DB_MAX - LOUDNESS_DB_MIN;
 
 /** Loudness: from-top normalized position; -3 dB → 0, -64 dB → 1 on this axis. */
+/**
+ * Loudness: from-top normalized position; -3 dB → 0, -64 dB → 1 on this axis.
+ */
 export function rangedFromTopFrac(v, min, max) {
   const safeMin = Number.isFinite(min) ? min : 0;
   const safeMax = Number.isFinite(max) && max > safeMin ? max : safeMin + 1;
@@ -49,6 +60,9 @@ export function loudnessFromTopFrac(v, range = {}) {
 }
 
 /** Loudness History y for SVG viewBox height 220 (must match App buildHistoryPath). */
+/**
+ * Loudness History y for SVG viewBox height 220 (must match App buildHistoryPath).
+ */
 export function loudnessHistY(v, viewH = 220, range = {}) {
   return viewH * loudnessFromTopFrac(v, range);
 }
@@ -90,11 +104,19 @@ function normalizeSpectrumRange(range = {}) {
   return { yMaxDb, yMinDb, yRangeDb: Math.max(1, yMaxDb - yMinDb) };
 }
 
+/**
+ * @param {number} yMinDb
+ * @param {number} yMaxDb
+ * @param {number} yRangeDb
+ */
 function projectDb(d, yMinDb, yMaxDb, yRangeDb) {
   const dd = Math.max(yMinDb, Math.min(yMaxDb, Number.isFinite(d) ? d : yMinDb));
   return SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD - ((dd - yMinDb) / yRangeDb) * SPEC_PLOT_H;
 }
 
+/**
+ * @param {number} d
+ */
 export function spectrumDbToYViewBox(d, range = {}) {
   const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
   return projectDb(d, yMaxDb - yRangeDb, yMaxDb, yRangeDb);
@@ -120,6 +142,10 @@ export function spectrumFloorDb(range = {}) {
 }
 
 /** Tick line top as fraction of full viewBox height (same coords as spectrum trace) */
+/**
+ * Tick line top as fraction of full viewBox height (same coords as spectrum trace)
+ * @param {number} d
+ */
 export function spectrumDbToTopFrac(d, range = {}) {
   return spectrumDbToYViewBox(d, range) / SPEC_VIEW_H;
 }
@@ -129,6 +155,10 @@ const LOG20K = Math.log10(20000);
 const LOG_DEN = LOG20K - LOG20;
 
 /** Frequency Hz → [0,1] for log horizontal axis tick placement */
+/**
+ * Frequency Hz → [0,1] for log horizontal axis tick placement
+ * @param {number} f
+ */
 export function freqToXFrac(f) {
   const ff = Math.max(20, Math.min(20000, f));
   return (Math.log10(ff) - LOG20) / LOG_DEN;
@@ -143,10 +173,16 @@ export function freqToFracInRange(f, minHz = 20, maxHz = 20000) {
   return (Math.log10(ff) - logMin) / (logMax - logMin);
 }
 
+/**
+ * @param {number} f
+ */
 export function rangedFreqToXFrac(f, minHz = 20, maxHz = 20000) {
   return freqToFracInRange(f, minHz, maxHz);
 }
 
+/**
+ * @param {number} f
+ */
 export function rangedFreqToYFrac(f, minHz = 20, maxHz = 20000) {
   return 1 - freqToFracInRange(f, minHz, maxHz);
 }
@@ -254,11 +290,17 @@ const FREQ_NICE_TIERS = [
   [1, 1.25, 1.6, 2, 2.5, 3.15, 4, 5, 6.3, 8],
 ];
 
+/**
+ * @param {number} value
+ */
 function formatDb(value) {
   const r = Math.round(value);
   return r > 0 ? `+${r}` : `${r}`;
 }
 
+/**
+ * @param {number} hz
+ */
 export function formatFreqLabel(hz) {
   if (hz >= 1000) {
     const k = Math.round((hz / 1000) * 10) / 10;
@@ -267,6 +309,10 @@ export function formatFreqLabel(hz) {
   return `${Math.round(hz)}`;
 }
 
+/**
+ * @param {number} minDb
+ * @param {number} maxDb
+ */
 export function buildAdaptiveDbTicks(minDb, maxDb, axisPx = 300) {
   if (!(maxDb > minDb)) return [{ v: maxDb, lb: formatDb(maxDb) }];
   const maxTicks = Math.max(2, Math.floor(axisPx / 32));
@@ -298,6 +344,11 @@ export function buildAdaptiveDbTicks(minDb, maxDb, axisPx = 300) {
   );
 }
 
+/**
+ * @param {number[]} mantissas
+ * @param {number} minHz
+ * @param {number} maxHz
+ */
 function niceFreqsInRange(mantissas, minHz, maxHz) {
   const out = [];
   const startDecade = Math.floor(Math.log10(minHz));
@@ -312,6 +363,10 @@ function niceFreqsInRange(mantissas, minHz, maxHz) {
   return out;
 }
 
+/**
+ * @param {number} minHz
+ * @param {number} maxHz
+ */
 export function buildAdaptiveFreqTicks(minHz, maxHz, axisPx = 500) {
   if (!(maxHz > minHz)) return [{ v: maxHz, lb: formatFreqLabel(maxHz) }];
   const maxTicks = Math.max(2, Math.floor(axisPx / 40));
@@ -340,6 +395,11 @@ export function buildAdaptiveFreqTicks(minHz, maxHz, axisPx = 500) {
  * Narrow log ranges produce more pixel slots than distinct round labels, which otherwise
  * renders runs like "1k, 1k, 1.1k, 1.1k"; collapse those to one tick per label.
  */
+/**
+ * Drops interior ticks whose formatted label repeats a neighbour (both endpoints kept).
+ * Narrow log ranges produce more pixel slots than distinct round labels, which otherwise
+ * renders runs like "1k, 1k, 1.1k, 1.1k"; collapse those to one tick per label.
+ */
 function dedupeAdjacentLabels(ticks) {
   if (ticks.length <= 2) return ticks;
   const kept = [ticks[0]];
@@ -352,6 +412,9 @@ function dedupeAdjacentLabels(ticks) {
   return kept;
 }
 
+/**
+ * @param {number} axisPx
+ */
 function filterTicksByPixelGap(
   ticks,
   axisPx,

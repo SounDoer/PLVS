@@ -1,5 +1,8 @@
 import { oklchToHex } from "./cssColorConversion.js"; // string oklch(...) -> hex/rgba
 
+/**
+ * @param {number} n
+ */
 function clamp01(n) {
   return Math.max(0, Math.min(1, n));
 }
@@ -13,7 +16,7 @@ export function toEditable(value) {
   // rgb/rgba
   m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(v);
   if (m) {
-    const hx = (n) => Number(n).toString(16).padStart(2, "0");
+    const hx = (/** @type {string} */ n) => Number(n).toString(16).padStart(2, "0");
     return {
       hex: `#${hx(m[1])}${hx(m[2])}${hx(m[3])}`,
       alpha: m[4] == null ? 1 : clamp01(parseFloat(m[4])),

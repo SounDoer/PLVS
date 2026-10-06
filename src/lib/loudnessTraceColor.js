@@ -14,6 +14,9 @@ const SEVERITY_COLOR = {
 };
 const SEVERITY_RANK = { warn: 1, fail: 2 };
 
+/**
+ * @param {number} value
+ */
 function worstSeverityAt(rules, value) {
   let worst = null;
   for (const rule of rules) {
@@ -25,6 +28,9 @@ function worstSeverityAt(rules, value) {
   return worst;
 }
 
+/**
+ * @param {string} normalColor
+ */
 export function loudnessTraceGradientStops(rules, yRange, normalColor) {
   const filled = (rules ?? []).filter(
     (rule) => Number.isFinite(rule.value) && (rule.op === ">" || rule.op === "<")
@@ -34,7 +40,8 @@ export function loudnessTraceGradientStops(rules, yRange, normalColor) {
   const { min, max } = yRange ?? {};
   if (!(Number.isFinite(min) && Number.isFinite(max) && max > min)) return null;
 
-  const offsetOf = (value) => Math.max(0, Math.min(1, (max - value) / (max - min)));
+  const offsetOf = (/** @type {number} */ value) =>
+    Math.max(0, Math.min(1, (max - value) / (max - min)));
   const colorOf = (severity) => (severity ? SEVERITY_COLOR[severity] : normalColor);
 
   // Threshold values strictly inside the visible range split it into bands, high -> low. A

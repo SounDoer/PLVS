@@ -285,6 +285,9 @@ export class FrameIntake {
     this._pendingFrequencyMarker = null;
   }
 
+  /**
+   * @param {number} visualMaxSamples
+   */
   pushVisualHistRow(row, visualMaxSamples, defaultSampleRate) {
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._visualTimestamp);
     const visualChannelCount = Math.max(
@@ -391,6 +394,10 @@ export class FrameIntake {
    * The keys whose history is worth keeping, and the retention window in milliseconds. Supplied by
    * the app from the open panels; see `deriveRetainedAnalysisKeys`.
    */
+  /**
+   * The keys whose history is worth keeping, and the retention window in milliseconds. Supplied by
+   * the app from the open panels; see `deriveRetainedAnalysisKeys`.
+   */
   setRetainedVisualKeys(keysByFamily, windowMs) {
     this._retainedVisualKeys = keysByFamily ?? null;
     this._visualRetentionWindowMs = Number.isFinite(windowMs) ? windowMs : null;
@@ -405,6 +412,11 @@ export class FrameIntake {
    * window. Runs on frame arrival rather than on a timer, which is what makes eviction pause while
    * capture is stopped: no frames, no sweep, and the recording in memory stays whole.
    */
+  /**
+   * Drops slabs no open panel needs, and slabs whose newest row has aged out of the retention
+   * window. Runs on frame arrival rather than on a timer, which is what makes eviction pause while
+   * capture is stopped: no frames, no sweep, and the recording in memory stays whole.
+   */
   _sweepVisualHistories(nowMs) {
     const retained = this._retainedVisualKeys;
     if (!retained || !Number.isFinite(nowMs)) return;
@@ -413,6 +425,9 @@ export class FrameIntake {
     this._sweepVisualFamily(this._visualStereoMapHistByKey, retained.stereoMap, nowMs);
   }
 
+  /**
+   * @param {number} nowMs
+   */
   _sweepVisualFamily(slabsByKey, retainedKeys, nowMs) {
     if (!(retainedKeys instanceof Set)) return;
     const windowMs = this._visualRetentionWindowMs;
@@ -514,15 +529,27 @@ export class FrameIntake {
   getVisualWaveformHist() {
     return this._visualWaveformHist;
   }
+  /**
+   * @param {string} key
+   */
   getVisualSpectrumHistByKey(key) {
     return this._visualSpectrumHistByKey.get(key) ?? null;
   }
+  /**
+   * @param {string} key
+   */
   getVisualVectorscopeHistByKey(key) {
     return this._visualVectorscopeHistByKey.get(key) ?? null;
   }
+  /**
+   * @param {string} key
+   */
   getVisualStereoMapHistByKey(key) {
     return this._visualStereoMapHistByKey.get(key) ?? null;
   }
+  /**
+   * @param {string} key
+   */
   getSpectrogramSnapsForKey(key) {
     return this._visualSpectrumHistByKey.get(key) ?? EMPTY_SPECTRUM_VIEW;
   }

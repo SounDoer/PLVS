@@ -15,12 +15,18 @@ import { READINESS_GATED_METRIC_IDS, isRuleEmpty } from "./loudnessProfileCatalo
 
 const SEVERITY_RANK = { warn: 1, fail: 2 };
 
+/**
+ * @param {number} value
+ */
 function ruleFires(rule, value) {
   if (rule.op === ">") return value > rule.value;
   if (rule.op === "<") return value < rule.value;
   return false;
 }
 
+/**
+ * @param {string} metricId
+ */
 function evaluateMetric(metricId, rules, sample) {
   // Integrated-family readouts are meaningless until the engine says they are ready.
   if (READINESS_GATED_METRIC_IDS.has(metricId) && !sample.integratedReady) return "pending";

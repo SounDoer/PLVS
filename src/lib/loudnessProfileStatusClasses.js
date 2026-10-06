@@ -37,6 +37,9 @@ const MARKER_CLASS = {
 /// (returns undefined, so the caller's `text-primary` shows through); under a profile it follows
 /// the status, and anything not warning or failing -- including an unwatched metric -- stays white,
 /// so only an actual breach pulls the eye.
+/**
+ * @param {boolean} profileActive
+ */
 export function loudnessMeterMarkerClass(status, profileActive) {
   if (!profileActive) return undefined;
   return MARKER_CLASS[status] ?? "text-foreground";

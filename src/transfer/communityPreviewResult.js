@@ -34,10 +34,18 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message, details) {
   return { severity: "error", code, path, message, ...(details ? { details } : {}) };
 }
 
+/**
+ * @param {string} path
+ */
 function unknownFields(raw, allowed, path, issues) {
   if (!isPlainObject(raw)) return;
   for (const field of Object.keys(raw)) {
@@ -161,7 +169,7 @@ export function validateCommunityPreviewResult(plan, raw) {
     }
     const expectedViewport = expected.viewport;
     // A cropped asset is cut out of its viewport, so the viewport bounds its size instead of fixing it.
-    const fits = (size, viewportSize) =>
+    const fits = (/** @type {number} */ size, /** @type {number} */ viewportSize) =>
       expected.crop ? size <= viewportSize : size === viewportSize;
     if (
       !Number.isSafeInteger(asset.width) ||

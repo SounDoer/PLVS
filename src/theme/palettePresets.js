@@ -101,40 +101,60 @@ const PRESETS = Object.freeze({
 
 export const PALETTE_KINDS = Object.freeze(Object.keys(PRESETS));
 
+/**
+ * @param {string} kind
+ */
 export function listPalettePresets(kind) {
   return PRESETS[kind] ?? [];
 }
 
+/**
+ * @param {string} kind
+ * @param {string} id
+ */
 export function getPalettePreset(kind, id) {
   return listPalettePresets(kind).find((preset) => preset.id === id) ?? null;
 }
 
+/**
+ * @param {string} kind
+ */
 export function findMatchingPalettePresetId(kind, palette) {
   if (!palette || typeof palette !== "object") return null;
-  const match = listPalettePresets(kind).find((preset) => {
-    if (kind === "intensity") {
-      return (
-        Array.isArray(palette.stops) &&
-        palette.stops.length === preset.value.length &&
-        palette.stops.every(
-          (stop, index) =>
-            stop.position === preset.value[index].position &&
-            stop.color === preset.value[index].color
-        )
-      );
+  const match = listPalettePresets(kind).find(
+    (/** @type {{ value: string | { [s: string]: any; } | ArrayLike<any>; }} */ preset) => {
+      if (kind === "intensity") {
+        return (
+          Array.isArray(palette.stops) &&
+          palette.stops.length === preset.value.length &&
+          palette.stops.every(
+            (stop, index) =>
+              stop.position === preset.value[index].position &&
+              stop.color === preset.value[index].color
+          )
+        );
+      }
+      return Object.entries(preset.value).every(([key, color]) => palette[key] === color);
     }
-    return Object.entries(preset.value).every(([key, color]) => palette[key] === color);
-  });
+  );
   return match?.id ?? null;
 }
 
 /** Return an editable snapshot; saved themes never inherit future preset changes. */
+/**
+ * Return an editable snapshot; saved themes never inherit future preset changes.
+ * @param {string} kind
+ * @param {string} id
+ */
 export function applyPalettePreset(kind, id) {
   const preset = getPalettePreset(kind, id);
   if (!preset) return null;
   return { presetId: preset.id, ...structuredClonePresetValue(kind, preset.value) };
 }
 
+/**
+ * @param {string} kind
+ */
 function structuredClonePresetValue(kind, value) {
   if (kind === "intensity") return { stops: value.map((stop) => ({ ...stop })) };
   return { ...value };

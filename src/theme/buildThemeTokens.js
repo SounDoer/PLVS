@@ -16,8 +16,9 @@ export function buildThemeTokens(theme) {
   const scheme = theme.colorScheme === "light" ? "light" : "dark";
   const { accent, accentSecondary, signal } = theme.seeds;
 
-  const snap = (hex) => oklchToHex(transform(hexToOklch(hex), SNAP[scheme]));
-  const sibling = (hex) => oklchToHex(transform(hexToOklch(hex), SIBLING[scheme]));
+  const snap = (/** @type {string} */ hex) => oklchToHex(transform(hexToOklch(hex), SNAP[scheme]));
+  const sibling = (/** @type {string} */ hex) =>
+    oklchToHex(transform(hexToOklch(hex), SIBLING[scheme]));
 
   const accentSnap = snap(accent);
   const shortterm = sibling(accent);

@@ -24,6 +24,9 @@ function joinParts(parts) {
   return parts.filter(Boolean).join(" - ");
 }
 
+/**
+ * @param {string} value
+ */
 function titleCaseToken(value) {
   if (!value) return "";
   const normalized = String(value).replace(/[_-]+/g, " ").trim();
@@ -128,6 +131,9 @@ export function formatCompactSessionMetadata(session) {
   ]);
 }
 
+/**
+ * @param {string} suffix
+ */
 export function formatMetric(value, suffix) {
   return Number.isFinite(value) ? `${value.toFixed(1)} ${suffix}` : `-- ${suffix}`;
 }

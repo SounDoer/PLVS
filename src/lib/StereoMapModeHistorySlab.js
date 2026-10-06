@@ -43,10 +43,18 @@ function sameGrid(a, b) {
   return true;
 }
 
+/**
+ * @param {number} rowCapacity
+ * @param {number} bandCount
+ */
 function createModePlane(rowCapacity, bandCount) {
   return createStereoMapValuePlane(rowCapacity * bandCount);
 }
 
+/**
+ * @param {string} mode
+ * @param {number} bandCount
+ */
 function createModeSummary(mode, bandCount) {
   // Summaries hold the same 12-bit codes the planes do, so Hold can compare them without decoding.
   const minimum = new Uint16Array(bandCount).fill(INVALID);
@@ -55,6 +63,10 @@ function createModeSummary(mode, bandCount) {
   return { minimum, maximum };
 }
 
+/**
+ * @param {number} sequenceStart
+ * @param {number} bandCount
+ */
 function createChunk(sequenceStart, bandCount, modes) {
   const modePlanes = {};
   const modeRows = {};
@@ -113,6 +125,11 @@ function cloneChunk(chunk) {
   };
 }
 
+/**
+ * @param {number} index
+ * @param {number} value
+ * @param {boolean} maximum
+ */
 function updateExtreme(target, index, value, maximum) {
   if (value === INVALID) return;
   if (target[index] === INVALID || (maximum ? value > target[index] : value < target[index])) {
@@ -120,11 +137,19 @@ function updateExtreme(target, index, value, maximum) {
   }
 }
 
+/**
+ * @param {string} mode
+ * @param {number} band
+ * @param {number} encoded
+ */
 function updateSummary(summary, mode, band, encoded) {
   updateExtreme(summary.minimum, band, encoded, mode === STEREO_MAP_MODES.MS_RATIO_DB);
   if (summary.maximum) updateExtreme(summary.maximum, band, encoded, true);
 }
 
+/**
+ * @param {string} mode
+ */
 function mergeSummary(target, source, mode) {
   for (let band = 0; band < target.minimum.length; band += 1) {
     updateSummary(target, mode, band, source.minimum[band]);
@@ -132,6 +157,9 @@ function mergeSummary(target, source, mode) {
   }
 }
 
+/**
+ * @param {string} mode
+ */
 function decodeHold(mode, summary) {
   const minimum = Array.from(summary.minimum, (value) => decodeStereoMapValue(mode, value));
   if (mode !== STEREO_MAP_MODES.POSITION) return minimum;
@@ -141,6 +169,9 @@ function decodeHold(mode, summary) {
   };
 }
 
+/**
+ * @param {number} opacity
+ */
 function projectPoint(value, opacity, { lowerBound, upperBound }) {
   if (value === null || Number.isNaN(value)) return { state: "invalid" };
   if (value < lowerBound) return { state: "belowRange", value: lowerBound, opacity };
@@ -204,6 +235,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  /**
+   * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
+   * @param {number} sequence
+   */
   _find(sequence) {
     return this._chunks.find(
       (chunk) => sequence >= chunk.sequenceStart && sequence < chunk.sequenceStart + chunk.rowCount
@@ -211,6 +246,9 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  /**
+   * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
+   */
   _sequenceAt(index) {
     return Number.isInteger(index) && index >= 0 && index < this.length
       ? this._startSequence + index
@@ -218,6 +256,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  /**
+   * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
+   * @param {number} index
+   */
   timestampAt(index) {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return NaN;
@@ -226,6 +268,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  /**
+   * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
+   * @param {number} index
+   */
   rowAt(index) {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return undefined;
@@ -261,6 +307,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  /**
+   * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
+   * @param {number} index
+   */
   holdAt(
     index,
     epoch = /** @type {StereoMapModeHistoryState} */ (/** @type {unknown} */ (this))._epoch
@@ -310,6 +360,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  /**
+   * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
+   * @param {number} timestampMs
+   */
   holdAtOrBeforeTimestamp(
     timestampMs,
     epoch = /** @type {StereoMapModeHistoryState} */ (/** @type {unknown} */ (this))._epoch
@@ -345,6 +399,9 @@ class StereoMapModeHistoryView {
 }
 
 export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
+  /**
+   * @param {string[]} modes
+   */
   constructor(capacity, modes) {
     super();
     if (!Number.isInteger(capacity) || capacity <= 0)
@@ -365,6 +422,9 @@ export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
     return this._capacity;
   }
 
+  /**
+   * @param {string[]} modes
+   */
   setRetainedModes(modes) {
     const next = normalizedModes(modes);
     this._chunks = this._chunks.map((storedChunk) => {

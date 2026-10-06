@@ -8,12 +8,18 @@ import { hashPortablePreset } from "./portablePreset.js";
 
 export const COMMUNITY_CATALOGUE_METADATA_VERSION = 1;
 
+/**
+ * @param {string} type
+ */
 async function itemHash(type, document) {
   if (type === "loudness") return hashPortableLoudnessProfile(document);
   if (type === "presets") return hashPortablePreset(document);
   return hashPortableTheme(document);
 }
 
+/**
+ * @param {string} type
+ */
 function contentSummary(type, document) {
   if (type === "loudness") {
     return {
@@ -32,6 +38,9 @@ function contentSummary(type, document) {
   return { colorScheme: document.colorScheme };
 }
 
+/**
+ * @param {string} type
+ */
 function systemFacets(type, document, compatibility = {}) {
   return {
     itemType: type,
@@ -43,6 +52,9 @@ function systemFacets(type, document, compatibility = {}) {
   };
 }
 
+/**
+ * @param {string} type
+ */
 function compactPreviewPlan(type, plan) {
   if (type === "themes") {
     return {

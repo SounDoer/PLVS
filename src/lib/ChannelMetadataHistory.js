@@ -9,6 +9,9 @@ function sameMetadata(left, right) {
   );
 }
 
+/**
+ * @param {number} sequence
+ */
 function metadataAt(changes, sequence) {
   let low = 0;
   let high = changes.length;
@@ -32,12 +35,19 @@ function metadataAt(changes, sequence) {
 
 class MetadataView {
   /** @this {MetadataView & MetadataState} */
+  /**
+   * @this {MetadataView & MetadataState}
+   */
   at(index) {
     if (!Number.isInteger(index) || index < 0 || index >= this.length) return undefined;
     return metadataAt(this._changes, this._retainedStart + index);
   }
 
   /** @this {MetadataView & MetadataState} */
+  /**
+   * @this {MetadataView & MetadataState}
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }

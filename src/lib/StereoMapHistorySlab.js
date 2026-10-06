@@ -56,6 +56,10 @@ function createCanonicalizationScratch(bandCount) {
   };
 }
 
+/**
+ * @param {number[]} values
+ * @param {string} message
+ */
 function canonicalizeFloat32(target, values, message) {
   for (let index = 0; index < target.length; index += 1) {
     const value = Math.fround(values[index]);
@@ -103,6 +107,9 @@ function canonicalizeRow(state, { timestampMs, sampleRateHz, bandCentersHz, pl, 
   return scratch;
 }
 
+/**
+ * @param {number} bandCount
+ */
 function createChunk(sequenceStart, bandCount, epoch) {
   return {
     sequenceStart,
@@ -129,12 +136,29 @@ function createChunk(sequenceStart, bandCount, epoch) {
  * a re-derivation. A full chunk needs no final checkpoint — its own `holdSummary` already covers
  * every row, and a query including all of them merges that whole-chunk summary instead.
  */
+/**
+ * Snapshot the chunk's running Hold prefix every
+ * {@link HOLD_CHECKPOINT_STRIDE}
+ *  rows, so a query
+ * targeting a row inside this chunk can start from the nearest checkpoint instead of re-deriving
+ * every row from the chunk's start. `holdCheckpoints[j]` covers rows `[0, (j + 1) * stride)`.
+ *
+ * This is free beyond the copy itself: `chunk.holdSummary` is already the running prefix that
+ *
+ * {@link StereoMapHistorySlab#append}
+ *  maintains row by row, so a checkpoint is a memcpy of it, not
+ * a re-derivation. A full chunk needs no final checkpoint — its own `holdSummary` already covers
+ * every row, and a query including all of them merges that whole-chunk summary instead.
+ */
 function pushHoldCheckpoint(chunk) {
   if (chunk.rowCount % HOLD_CHECKPOINT_STRIDE !== 0) return;
   if (chunk.rowCount >= chunk.rowCapacity) return;
   chunk.holdCheckpoints.push(copyStereoMapHoldSummary(chunk.holdSummary));
 }
 
+/**
+ * @param {number} row
+ */
 function primitiveRowFromChunk(chunk, row, bandCentersHz) {
   const firstValue = row * bandCentersHz.length;
   const lastValue = firstValue + bandCentersHz.length;
@@ -151,6 +175,13 @@ function primitiveRowFromChunk(chunk, row, bandCentersHz) {
  * freeze copies a partially-evicted tail: the copy renumbers its rows from zero, so the source
  * chunk's summary and checkpoints (which count from the source's own row 0) no longer describe it.
  */
+/**
+ * Re-derive a Hold summary, plus its checkpoints, for a contiguous row range of `chunk`. Used when
+ * freeze copies a partially-evicted tail: the copy renumbers its rows from zero, so the source
+ * chunk's summary and checkpoints (which count from the source's own row 0) no longer describe it.
+ * @param {number} firstRow
+ * @param {number} rowCount
+ */
 function summarizeChunkRows(chunk, firstRow, rowCount, bandCentersHz, scratch) {
   const summary = createStereoMapHoldSummary(bandCentersHz.length);
   const holdCheckpoints = [];
@@ -164,6 +195,9 @@ function summarizeChunkRows(chunk, firstRow, rowCount, bandCentersHz, scratch) {
   return { summary, holdCheckpoints };
 }
 
+/**
+ * @param {number} retainedStartSequence
+ */
 function copyActiveTail(chunk, retainedStartSequence, bandCentersHz, scratch) {
   const bandCount = bandCentersHz.length;
   const firstRow = Math.max(0, retainedStartSequence - chunk.sequenceStart);
@@ -233,6 +267,9 @@ function derivationScratchBytes(scratch) {
   );
 }
 
+/**
+ * @param {number} sequence
+ */
 function findChunkIndex(chunks, sequence) {
   let low = 0;
   let high = chunks.length - 1;
@@ -272,6 +309,29 @@ function findChunk(chunks, sequence) {
  * whole, evicted prefix included, so folding it whole here makes historical Hold agree with live
  * Hold rather than diverge from it. Fully evicted chunks are dropped in `dropExpiredChunks`, so the
  * over-inclusion can never exceed the oldest retained chunk.
+ */
+/**
+ * Fold one chunk's rows into `summary`, from the chunk's own first row up to (and including)
+ * `endSequenceExclusive - 1`. Used for the two chunks a Hold query cannot serve from the cached
+ * cross-chunk prefix: the front chunk, and the target chunk itself (which may be unsealed or only
+ * partially included).
+ *
+ * Three tiers, cheapest first: a fully-included sealed chunk is one whole-summary merge; a partial
+ * include starts from the nearest
+ * {@link pushHoldCheckpoint}
+ *  checkpoint; only the rows past that
+ * checkpoint — always fewer than
+ * {@link HOLD_CHECKPOINT_STRIDE}
+ *  — are re-derived.
+ *
+ * Eviction is deliberately not honoured here. Bounding the front chunk to `state.startSequence`
+ * would force a scan from the retention boundary, unbounded by any checkpoint (Hold extrema cannot
+ * be subtracted, so a prefix checkpoint cannot be "rewound" past evicted rows) — the one remaining
+ * per-scrub term that grew to a full chunk. `liveHoldValues` has always merged the front chunk
+ * whole, evicted prefix included, so folding it whole here makes historical Hold agree with live
+ * Hold rather than diverge from it. Fully evicted chunks are dropped in `dropExpiredChunks`, so the
+ * over-inclusion can never exceed the oldest retained chunk.
+ * @param {number} endSequenceExclusive
  */
 function foldChunkPrefix(state, chunk, endSequenceExclusive, summary, stats) {
   const chunkEnd = chunk.sequenceStart + chunk.rowCount;
@@ -323,6 +383,25 @@ function foldChunkPrefix(state, chunk, endSequenceExclusive, summary, stats) {
  * the next time a query needs it, so no work is wasted computing an incremental step from a stale
  * base.
  */
+/**
+ * Push a cached "prefix Hold" for a newly-sealed chunk about to be appended at `state.chunks[i]`:
+ * the merge of every chunk strictly between the retained front chunk (index 0, exclusive — it may
+ * still be partially evicted, so it is deliberately never folded into any cached prefix) and this
+ * new chunk. `state.holdPrefixCache[1]` is always empty by definition; every later entry is one
+ * incremental merge step from the previous chunk's own cached prefix plus its own already-final
+ * holdSummary — O(bandCount), not a rescan of the whole retained history.
+ *
+ * The cache is a plain array parallel to `state.chunks`, owned by this state alone — never a
+ * field on the (possibly cross-view-shared) chunk object itself. A sealed chunk object can be
+ * referenced by both a live slab and one or more frozen snapshots of it, each with its own chunk
+ * array and therefore its own valid prefix at a given position; caching on the shared object would
+ * let one view's rebuild silently corrupt another's.
+ *
+ * When the cache is currently dirty (a prior eviction hasn't been rebuilt yet), this leaves the
+ * array short: `ensureHoldPrefixCache` will fill in every entry from index 1 onward in one pass
+ * the next time a query needs it, so no work is wasted computing an incremental step from a stale
+ * base.
+ */
 function attachHoldPrefixBefore(state) {
   const priorLength = state.chunks.length;
   if (priorLength === 0 || state.holdPrefixDirty) return;
@@ -346,6 +425,16 @@ function attachHoldPrefixBefore(state) {
  * new one. This is O(retainedChunks * bandCount), but it runs once per eviction event rather than
  * once per query — the many Hold queries between eviction events each stay O(bandCount).
  */
+/**
+ * Rebuild every chunk's cached prefix Hold (see
+ * {@link attachHoldPrefixBefore}
+ * ) from scratch.
+ * Only needed after eviction removes chunks from the front: the chunk that used to sit at index 1
+ * (whose cached prefix is always empty) is gone, so every surviving chunk's cached prefix was
+ * computed relative to a front chunk that no longer exists and must be recomputed relative to the
+ * new one. This is O(retainedChunks * bandCount), but it runs once per eviction event rather than
+ * once per query — the many Hold queries between eviction events each stay O(bandCount).
+ */
 function ensureHoldPrefixCache(state) {
   if (!state.holdPrefixDirty) return;
   const { chunks } = state;
@@ -363,6 +452,9 @@ function ensureHoldPrefixCache(state) {
   state.holdPrefixDirty = false;
 }
 
+/**
+ * @param {number} sequence
+ */
 function rowFromChunk(chunk, sequence, bandCentersHz, sampleRateHz) {
   const row = sequence - chunk.sequenceStart;
   const firstValue = row * bandCentersHz.length;
@@ -377,6 +469,9 @@ function rowFromChunk(chunk, sequence, bandCentersHz, sampleRateHz) {
   };
 }
 
+/**
+ * @param {string} field
+ */
 function arrayTypeAcrossChunks(chunks, field) {
   if (chunks.length === 0) return null;
   let type = null;
@@ -445,32 +540,37 @@ function storageDiagnostics(state) {
     holdPrefix: 0,
   };
 
-  state.chunks.forEach((chunk, index) => {
-    allocated.timestamps += chunk.timestamps?.byteLength ?? 0;
-    allocated.pl += chunk.pl?.byteLength ?? 0;
-    allocated.pr += chunk.pr?.byteLength ?? 0;
-    allocated.c += chunk.c?.byteLength ?? 0;
-    allocated.holdIndex += stereoMapHoldSummaryByteLength(chunk.holdSummary);
-    allocated.holdCheckpoints += holdCheckpointBytes(chunk);
-    // Only chunks at index >= 1 carry a cached prefix (index 0 is the possibly-partially-evicted
-    // front chunk, deliberately never cached — see `attachHoldPrefixBefore`).
-    const prefix = index === 0 ? null : state.holdPrefixCache[index];
-    allocated.holdPrefix += prefix ? stereoMapHoldSummaryByteLength(prefix) : 0;
+  state.chunks.forEach(
+    (
+      /** @type {{ timestamps: { byteLength: any; BYTES_PER_ELEMENT: any; }; pl: { byteLength: any; BYTES_PER_ELEMENT: any; }; pr: { byteLength: any; BYTES_PER_ELEMENT: any; }; c: { byteLength: any; BYTES_PER_ELEMENT: any; }; holdSummary: any; sequenceStart: number; rowCount: any; }} */ chunk,
+      index
+    ) => {
+      allocated.timestamps += chunk.timestamps?.byteLength ?? 0;
+      allocated.pl += chunk.pl?.byteLength ?? 0;
+      allocated.pr += chunk.pr?.byteLength ?? 0;
+      allocated.c += chunk.c?.byteLength ?? 0;
+      allocated.holdIndex += stereoMapHoldSummaryByteLength(chunk.holdSummary);
+      allocated.holdCheckpoints += holdCheckpointBytes(chunk);
+      // Only chunks at index >= 1 carry a cached prefix (index 0 is the possibly-partially-evicted
+      // front chunk, deliberately never cached — see `attachHoldPrefixBefore`).
+      const prefix = index === 0 ? null : state.holdPrefixCache[index];
+      allocated.holdPrefix += prefix ? stereoMapHoldSummaryByteLength(prefix) : 0;
 
-    const retainedStart = Math.max(state.startSequence, chunk.sequenceStart);
-    const retainedEnd = Math.min(state.endSequence, chunk.sequenceStart + chunk.rowCount);
-    const retainedRows = Math.max(0, retainedEnd - retainedStart);
-    used.timestamps += retainedRows * (chunk.timestamps?.BYTES_PER_ELEMENT ?? 0);
-    used.pl += retainedRows * state.bandCentersHz.length * (chunk.pl?.BYTES_PER_ELEMENT ?? 0);
-    used.pr += retainedRows * state.bandCentersHz.length * (chunk.pr?.BYTES_PER_ELEMENT ?? 0);
-    used.c += retainedRows * state.bandCentersHz.length * (chunk.c?.BYTES_PER_ELEMENT ?? 0);
-    // The Hold index is a fixed-size per-band summary, not a per-row buffer, so partial
-    // retention within a chunk does not shrink it: allocated and used always match.
-    used.holdIndex += stereoMapHoldSummaryByteLength(chunk.holdSummary);
-    // Checkpoints are fixed-size per-band summaries too, so partial retention never shrinks them.
-    used.holdCheckpoints += holdCheckpointBytes(chunk);
-    used.holdPrefix += prefix ? stereoMapHoldSummaryByteLength(prefix) : 0;
-  });
+      const retainedStart = Math.max(state.startSequence, chunk.sequenceStart);
+      const retainedEnd = Math.min(state.endSequence, chunk.sequenceStart + chunk.rowCount);
+      const retainedRows = Math.max(0, retainedEnd - retainedStart);
+      used.timestamps += retainedRows * (chunk.timestamps?.BYTES_PER_ELEMENT ?? 0);
+      used.pl += retainedRows * state.bandCentersHz.length * (chunk.pl?.BYTES_PER_ELEMENT ?? 0);
+      used.pr += retainedRows * state.bandCentersHz.length * (chunk.pr?.BYTES_PER_ELEMENT ?? 0);
+      used.c += retainedRows * state.bandCentersHz.length * (chunk.c?.BYTES_PER_ELEMENT ?? 0);
+      // The Hold index is a fixed-size per-band summary, not a per-row buffer, so partial
+      // retention within a chunk does not shrink it: allocated and used always match.
+      used.holdIndex += stereoMapHoldSummaryByteLength(chunk.holdSummary);
+      // Checkpoints are fixed-size per-band summaries too, so partial retention never shrinks them.
+      used.holdCheckpoints += holdCheckpointBytes(chunk);
+      used.holdPrefix += prefix ? stereoMapHoldSummaryByteLength(prefix) : 0;
+    }
+  );
 
   return {
     arrayTypes: {
@@ -497,6 +597,9 @@ class StereoMapHistoryView {
     return state.endSequence - state.startSequence;
   }
 
+  /**
+   * @param {number} index
+   */
   timestampAt(index) {
     const state = stateOf(this);
     const sequence = sequenceAt(state, index);
@@ -505,6 +608,9 @@ class StereoMapHistoryView {
     return chunk.timestamps[sequence - chunk.sequenceStart];
   }
 
+  /**
+   * @param {number} index
+   */
   rowAt(index) {
     const state = stateOf(this);
     const sequence = sequenceAt(state, index);
@@ -521,6 +627,9 @@ class StereoMapHistoryView {
     return stateOf(this).epoch;
   }
 
+  /**
+   * @param {number} index
+   */
   holdAt(index, epoch = this.epoch) {
     const state = stateOf(this);
     const targetSequence = sequenceAt(state, index);
@@ -559,6 +668,11 @@ class StereoMapHistoryView {
   /**
    * Resolve the Hold query for the last row at or before `timestampMs` (timestamps are
    * monotonic across appends). Returns null when no retained row is at or before it.
+   */
+  /**
+   * Resolve the Hold query for the last row at or before `timestampMs` (timestamps are
+   * monotonic across appends). Returns null when no retained row is at or before it.
+   * @param {number} timestampMs
    */
   holdAtOrBeforeTimestamp(timestampMs, epoch = this.epoch) {
     const length = this.length;
@@ -621,6 +735,9 @@ function dropExpiredChunks(state) {
 }
 
 export class StereoMapHistorySlab extends StereoMapHistoryView {
+  /**
+   * @param {number} capacity
+   */
   constructor(capacity) {
     super();
     assertCapacity(capacity);

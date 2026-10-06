@@ -34,6 +34,9 @@ export async function hashCommunityPreviewFixture(value) {
     .join("")}`;
 }
 
+/**
+ * @param {string} type
+ */
 function previewAssets(type, portableItem) {
   if (type === "loudness") {
     return [
@@ -79,6 +82,12 @@ function previewAssets(type, portableItem) {
  * Produces the complete, serializable input for the pinned Community preview renderer. It accepts
  * only already-publishable Pack V2 artifacts and owns every runtime value that would otherwise
  * depend on the machine, clock, audio engine, persistence, locale, or animation timing.
+ */
+/**
+ * Produces the complete, serializable input for the pinned Community preview renderer. It accepts
+ * only already-publishable Pack V2 artifacts and owns every runtime value that would otherwise
+ * depend on the machine, clock, audio engine, persistence, locale, or animation timing.
+ * @param {string} type
  */
 export async function buildCommunityPreviewPlan(rawPack, type) {
   if (type !== "loudness" && type !== "presets") {

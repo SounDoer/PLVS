@@ -56,6 +56,9 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {string} path
+ */
 function collectUnknownFields(raw, allowed, path, issues) {
   if (!isPlainObject(raw)) return;
   for (const field of Object.keys(raw)) {
@@ -65,12 +68,19 @@ function collectUnknownFields(raw, allowed, path, issues) {
   }
 }
 
+/**
+ * @param {string} key
+ * @param {string} path
+ */
 function booleanField(raw, key, path, issues) {
   if (typeof raw?.[key] !== "boolean") {
     issues.push(packIssue("invalidType", `${path}.${key}`, `${key} must be a boolean.`));
   }
 }
 
+/**
+ * @param {string} prefix
+ */
 function prefixPlannerIssues(issues, prefix) {
   return prefixPackIssues(issues, prefix);
 }
@@ -126,6 +136,9 @@ function omitDefaultControls(controls, defaults) {
 }
 
 /** Converts one saved local Preset into the id-free portable authoring document. */
+/**
+ * Converts one saved local Preset into the id-free portable authoring document.
+ */
 export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
   const snapshot = buildPublicPresetSnapshot(raw, { loudnessProfiles });
   // Import fills an omitted control with its default, so writing only changed controls keeps the
@@ -381,6 +394,9 @@ function applyPortableAxes(view, panels, keyToId, issues) {
   view.axisViewports = normalizeAxisViewportsState({ ...view.axisViewports, ...shared });
 }
 
+/**
+ * @param {boolean} hasLoudnessReference
+ */
 function compileWorkspace(raw, hasLoudnessReference, issues) {
   if (!isPlainObject(raw)) {
     issues.push(packIssue("invalidWorkspace", "$.workspace", "workspace must be an object."));
@@ -479,20 +495,24 @@ function compileWorkspace(raw, hasLoudnessReference, issues) {
   view.pinnedPanelsById = normalizePinnedPanelsById(
     view.panelsById,
     Object.fromEntries(
-      raw.panels.flatMap((panel) => {
-        const panelId = keyToId.get(panel.key);
-        return panelId && panel.pinnedSize
-          ? [
-              [
-                panelId,
-                {
-                  width: panel.pinnedSize.widthCssPx,
-                  height: panel.pinnedSize.heightCssPx,
-                },
-              ],
-            ]
-          : [];
-      })
+      raw.panels.flatMap(
+        (
+          /** @type {{ key: string; pinnedSize: { widthCssPx: any; heightCssPx: any; }; }} */ panel
+        ) => {
+          const panelId = keyToId.get(panel.key);
+          return panelId && panel.pinnedSize
+            ? [
+                [
+                  panelId,
+                  {
+                    width: panel.pinnedSize.widthCssPx,
+                    height: panel.pinnedSize.heightCssPx,
+                  },
+                ],
+              ]
+            : [];
+        }
+      )
     )
   );
   return view;
@@ -534,6 +554,9 @@ function compilePresentation(raw, issues) {
   };
 }
 
+/**
+ * @param {boolean} hasLoudnessReference
+ */
 function compileDock(raw, hasLoudnessReference, issues) {
   const path = "$.dock";
   if (!isPlainObject(raw) || typeof raw.enabled !== "boolean") {
@@ -705,6 +728,9 @@ function compilePortablePreset(raw, { resolveDependencyId = (id) => id } = {}) {
 }
 
 /** Strictly validates and canonicalizes an id-free Portable Preset V1 document. */
+/**
+ * Strictly validates and canonicalizes an id-free Portable Preset V1 document.
+ */
 export function validatePortablePreset(raw) {
   return compilePortablePreset(raw).canonical;
 }

@@ -48,12 +48,20 @@ export class ChunkedHistorySlab {
   }
 
   /** The stored timestamp, which is -Infinity for a row that arrived without a usable one. */
+  /**
+   * The stored timestamp, which is -Infinity for a row that arrived without a usable one.
+   * @param {number} index
+   */
   timestampAt(index) {
     const found = this.chunkAt(index);
     if (!found) return NaN;
     return found.chunk.timestamps[found.row];
   }
 
+  /**
+   * Appends one row. `writeRow(chunk, row)` fills in the metric's own fields; the timestamp and
+   * all the bookkeeping around it are written here.
+   */
   /**
    * Appends one row. `writeRow(chunk, row)` fills in the metric's own fields; the timestamp and
    * all the bookkeeping around it are written here.
@@ -79,6 +87,10 @@ export class ChunkedHistorySlab {
   }
 
   /** Locates a retained row: the chunk holding it and its offset inside that chunk. */
+  /**
+   * Locates a retained row: the chunk holding it and its offset inside that chunk.
+   * @param {number} index
+   */
   chunkAt(index) {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return null;
@@ -146,6 +158,9 @@ export class ChunkedHistorySlab {
     };
   }
 
+  /**
+   * @param {number} index
+   */
   _sequenceAt(index) {
     if (index < 0 || index >= this.length) return null;
     return this._startSequence + index;
@@ -197,12 +212,18 @@ export class FrozenChunkedHistory {
     return 0;
   }
 
+  /**
+   * @param {number} index
+   */
   timestampAt(index) {
     const found = this.chunkAt(index);
     if (!found) return NaN;
     return found.chunk.timestamps[found.row];
   }
 
+  /**
+   * @param {number} index
+   */
   chunkAt(index) {
     if (index < 0 || index >= this.length) return null;
     const sequence = this._startSequence + index;
@@ -223,15 +244,24 @@ export class FrozenChunkedHistory {
   }
 }
 
+/**
+ * @param {number} sequence
+ */
 export function chunkIdForSequence(sequence) {
   return Math.floor(sequence / VISUAL_HISTORY_CHUNK_ROWS);
 }
 
+/**
+ * @param {number} sequence
+ */
 export function chunkOffsetForSequence(sequence) {
   return sequence % VISUAL_HISTORY_CHUNK_ROWS;
 }
 
 /** The per-chunk fields the core owns; a schema spreads this into its own chunk shape. */
+/**
+ * The per-chunk fields the core owns; a schema spreads this into its own chunk shape.
+ */
 export function baseChunk(sequenceStart) {
   return {
     sequenceStart,

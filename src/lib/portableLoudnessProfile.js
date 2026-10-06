@@ -24,6 +24,11 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -54,6 +59,9 @@ function portableFromAuthoring(document) {
 }
 
 /** Strictly validates and canonicalizes an id-free portable Loudness Profile. */
+/**
+ * Strictly validates and canonicalizes an id-free portable Loudness Profile.
+ */
 export function validatePortableLoudnessProfile(raw) {
   if (!isPlainObject(raw)) {
     throw new PortableLoudnessProfileError([
@@ -156,6 +164,9 @@ export function validatePortableLoudnessProfile(raw) {
 }
 
 /** Converts a readable stored Profile into its stable, id-free portable document. */
+/**
+ * Converts a readable stored Profile into its stable, id-free portable document.
+ */
 export function loudnessProfileToPortable(raw) {
   if (!isPlainObject(raw)) {
     throw new PortableLoudnessProfileError([
@@ -174,6 +185,9 @@ export function loudnessProfileToPortable(raw) {
 }
 
 /** Converts a portable document into the current stored shape using a caller-owned local ID. */
+/**
+ * Converts a portable document into the current stored shape using a caller-owned local ID.
+ */
 export function portableToStoredLoudnessProfile(raw, id) {
   if (typeof id !== "string" || id.length === 0) {
     throw new PortableLoudnessProfileError([
@@ -190,6 +204,9 @@ export function portableToStoredLoudnessProfile(raw, id) {
 }
 
 /** Strict Community-intake result shared by the future catalogue validator and CI. */
+/**
+ * Strict Community-intake result shared by the future catalogue validator and CI.
+ */
 export function assessPortableLoudnessProfileCommunityPublication(raw) {
   const document = validatePortableLoudnessProfile(raw);
   return {
@@ -202,11 +219,17 @@ export function assessPortableLoudnessProfileCommunityPublication(raw) {
 }
 
 /** Canonical UTF-8 JSON input used for portable Loudness Profile identity. */
+/**
+ * Canonical UTF-8 JSON input used for portable Loudness Profile identity.
+ */
 export function serializePortableLoudnessProfile(raw) {
   return JSON.stringify(validatePortableLoudnessProfile(raw));
 }
 
 /** A reproducible content identity that deliberately excludes the pack-local item ID. */
+/**
+ * A reproducible content identity that deliberately excludes the pack-local item ID.
+ */
 export async function hashPortableLoudnessProfile(raw) {
   const bytes = new TextEncoder().encode(serializePortableLoudnessProfile(raw));
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);

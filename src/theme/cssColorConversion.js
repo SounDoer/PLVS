@@ -35,7 +35,7 @@ export function oklchToHex(value) {
   const bLin = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3;
 
   // Linear sRGB → gamma-corrected sRGB
-  const toGamma = (c) => {
+  const toGamma = (/** @type {number} */ c) => {
     const clamped = Math.max(0, Math.min(1, c));
     return clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
   };

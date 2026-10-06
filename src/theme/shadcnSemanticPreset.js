@@ -190,6 +190,10 @@ export function buildThemeFallbackCss(semanticDark, radiusCss) {
   return parts.join("\n") + "\n";
 }
 
+/**
+ * @param {string} name
+ * @param {string} value
+ */
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
   document.documentElement.style.setProperty(name, String(value));

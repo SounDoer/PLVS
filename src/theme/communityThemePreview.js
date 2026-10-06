@@ -82,6 +82,11 @@ function isPlainObject(value) {
  * author metadata, uploaded screenshots, URLs, thumbnails, and other media never enter this trust
  * boundary, so every publishable image has to be produced by the versioned PLVS render plan.
  */
+/**
+ * The preview generator deliberately accepts only the immutable portable Theme. Catalogue copy,
+ * author metadata, uploaded screenshots, URLs, thumbnails, and other media never enter this trust
+ * boundary, so every publishable image has to be produced by the versioned PLVS render plan.
+ */
 export function validateCommunityThemePreviewRequest(raw) {
   if (!isPlainObject(raw)) {
     throw new CommunityThemePreviewRequestError([
@@ -102,6 +107,9 @@ export function validateCommunityThemePreviewRequest(raw) {
 }
 
 /** Build the complete, deterministic render plan for one immutable Theme artefact. */
+/**
+ * Build the complete, deterministic render plan for one immutable Theme artefact.
+ */
 export async function buildCommunityThemePreviewPlan(raw) {
   const { theme: assessment } = validateCommunityThemePreviewRequest(raw);
   const contentHash = await hashPortableTheme(assessment.document);
@@ -134,6 +142,10 @@ export async function buildCommunityThemePreviewPlan(raw) {
   };
 }
 
+/**
+ * Seal only the exact PNG set named by the PLVS contract. This rejects missing, additional, or
+ * externally sourced images before a catalogue record can reference them.
+ */
 /**
  * Seal only the exact PNG set named by the PLVS contract. This rejects missing, additional, or
  * externally sourced images before a catalogue record can reference them.

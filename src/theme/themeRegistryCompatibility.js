@@ -1,9 +1,18 @@
 import { getThemeRole } from "./themeRoleRegistry.js";
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
 
+/**
+ * Validate public override intent against the current Role Registry. Shape and
+ * color syntax belong to themeSchema/themeLibrary and are intentionally absent.
+ */
 /**
  * Validate public override intent against the current Role Registry. Shape and
  * color syntax belong to themeSchema/themeLibrary and are intentionally absent.

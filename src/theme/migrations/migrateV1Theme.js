@@ -122,10 +122,18 @@ function migrateSingleVersionShape(raw) {
   });
 }
 
+/**
+ * @param {number} r
+ * @param {number} g
+ * @param {number} b
+ */
 function rgbHex(r, g, b) {
   return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/**
+ * @param {string} value
+ */
 function overrideFromCss(value) {
   if (/^#[0-9a-f]{6}$/i.test(value)) return { kind: "color", value: value.toLowerCase() };
   const match = /^rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)$/i.exec(value);
@@ -137,6 +145,9 @@ function overrideFromCss(value) {
 }
 
 /** Convert one valid legacy custom-theme document into current authoring intent. */
+/**
+ * Convert one valid legacy custom-theme document into current authoring intent.
+ */
 export function migrateV1Theme(raw) {
   if (!raw || typeof raw !== "object" || raw.version != null) return null;
   if (typeof raw.id !== "string" || !raw.id.startsWith("custom-")) return null;
@@ -225,6 +236,9 @@ export function migrateV1Theme(raw) {
 }
 
 /** Explicitly migrate the former single-version Theme V2 shape. */
+/**
+ * Explicitly migrate the former single-version Theme V2 shape.
+ */
 export function migrateV2Theme(raw) {
   if (!raw || typeof raw !== "object" || raw.version !== 2) return null;
   return migrateSingleVersionShape(raw);
@@ -339,6 +353,9 @@ export function migrateThemeDocument(raw) {
 }
 
 /** One versioned ingress for individual persisted custom-theme documents. */
+/**
+ * One versioned ingress for individual persisted custom-theme documents.
+ */
 export function normalizeThemeDocument(raw) {
   return migrateThemeDocument(raw)?.theme ?? null;
 }

@@ -18,6 +18,10 @@ function safeFileBase(name) {
  * Build both public delivery choices from the exact same canonical bytes. The website can change
  * button presentation without creating a clipboard-only or download-only Theme representation.
  */
+/**
+ * Build both public delivery choices from the exact same canonical bytes. The website can change
+ * button presentation without creating a clipboard-only or download-only Theme representation.
+ */
 export async function buildCommunityThemeDistribution(raw) {
   const document = validatePortableTheme(raw);
   const contents = serializePortableTheme(document);

@@ -41,6 +41,9 @@ function normalizeColorRecord(raw, keys) {
   return result;
 }
 
+/**
+ * @param {string} raw
+ */
 function normalizePresetId(raw) {
   if (raw == null || raw === "") return null;
   return normalizeThemeId(raw);

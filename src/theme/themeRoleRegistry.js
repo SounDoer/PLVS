@@ -14,6 +14,9 @@ const LEGACY_KIND_TO_VALUE_KIND = Object.freeze({
   effect: THEME_VALUE_KINDS.COLOR_EFFECT,
 });
 
+/**
+ * @param {string} id
+ */
 function role(id, options) {
   const { kind, ...rest } = options;
   return {
@@ -25,6 +28,9 @@ function role(id, options) {
   };
 }
 
+/**
+ * @param {string} id
+ */
 function direct(id, kind = "color", options = {}) {
   return role(id, {
     kind,
@@ -35,14 +41,20 @@ function direct(id, kind = "color", options = {}) {
   });
 }
 
+/**
+ * @param {string[]} allowedModes
+ */
 function advanced(section, label, description, allowedModes, references = []) {
   return { section, label, description, allowedModes, references };
 }
 
-const colorOverride = (section, label, description) =>
-  advanced(section, label, description, ["color"]);
+const colorOverride = (
+  /** @type {string} */ section,
+  /** @type {string} */ label,
+  /** @type {string} */ description
+) => advanced(section, label, description, ["color"]);
 
-const dataOverride = (section, label, description, references) =>
+const dataOverride = (section, label, /** @type {string} */ description, references) =>
   advanced(section, label, description, ["color", "reference"], references);
 
 const RAW_THEME_ROLE_REGISTRY = [
@@ -824,6 +836,14 @@ function moduleRoles() {
   ];
 }
 
+/**
+ * @param {string} id
+ * @param {string} section
+ * @param {string} label
+ * @param {string} dependency
+ * @param {string} recipe
+ * @param {string[]} references
+ */
 function moduleColor(id, section, label, dependency, recipe, bindings, references, extra = []) {
   return role(id, {
     kind: "color",
@@ -882,6 +902,9 @@ export function validateThemeRoleRegistry(roles) {
   return errors;
 }
 
+/**
+ * @param {string[]} errors
+ */
 function validateAdvanced(entry, byId, errors) {
   if (!entry.advanced) return;
   const { section, label, description, allowedModes, references = [] } = entry.advanced;
@@ -909,6 +932,9 @@ function validateAdvanced(entry, byId, errors) {
   }
 }
 
+/**
+ * @param {string[]} errors
+ */
 function validateRecipeContract(entry, byId, errors) {
   const contract = recipeContract(entry.recipe, entry.valueKind);
   if (!contract || !Array.isArray(entry.dependencies)) return;
@@ -933,6 +959,9 @@ function validateRecipeContract(entry, byId, errors) {
   }
 }
 
+/**
+ * @param {string[]} errors
+ */
 function validateBindings(entry, owners, errors) {
   if (!entry.bindings || typeof entry.bindings !== "object" || Array.isArray(entry.bindings)) {
     errors.push(`Bindings for ${entry.id} must be an object.`);
@@ -959,6 +988,9 @@ function validateBindings(entry, owners, errors) {
   }
 }
 
+/**
+ * @param {string[]} errors
+ */
 function validateCycles(byId, errors) {
   const visiting = new Set();
   const visited = new Set();
@@ -979,6 +1011,9 @@ function validateCycles(byId, errors) {
   for (const id of byId.keys()) visit(id, []);
 }
 
+/**
+ * @param {string[]} errors
+ */
 function validateAuthoringConsumers(byId, errors) {
   const consumed = new Set();
   for (const entry of byId.values()) {
@@ -1000,6 +1035,9 @@ export function createThemeRoleRegistry(roles) {
 export const THEME_ROLE_REGISTRY = createThemeRoleRegistry(RAW_THEME_ROLE_REGISTRY);
 const THEME_ROLES_BY_ID = new Map(THEME_ROLE_REGISTRY.map((entry) => [entry.id, entry]));
 
+/**
+ * @param {string} id
+ */
 export function getThemeRole(id) {
   return THEME_ROLES_BY_ID.get(id) ?? null;
 }

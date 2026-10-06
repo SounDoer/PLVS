@@ -11,6 +11,9 @@ function clone(value) {
   return value == null ? value : structuredClone(value);
 }
 
+/**
+ * @param {string} key
+ */
 function documentsFor(key, value) {
   if (key === "plvs:presets") return Array.isArray(value?.list) ? value.list : [];
   if (key === "plvs:themes") {
@@ -35,11 +38,17 @@ function documentsFor(key, value) {
   return null;
 }
 
+/**
+ * @param {string} key
+ */
 function kindFor(key) {
   if (key === "plvs:settings") return "loudnessProfile";
   return DOMAIN_KIND[key] ?? null;
 }
 
+/**
+ * @param {string} key
+ */
 function domainFor(key) {
   if (key === "plvs:settings") return "settings";
   if (key === "plvs:workspace") return "workspace";
@@ -209,6 +218,9 @@ export function createMultiInstanceBackend() {
       globalPreferenceRevisions.set(key, revision);
   }
 
+  /**
+   * @param {string} key
+   */
   async function persistKey(key) {
     const value = cache.get(key) || {};
     if (key === "plvs:settings" && Object.hasOwn(value, "askToSendCrashReports")) {
@@ -259,10 +271,16 @@ export function createMultiInstanceBackend() {
     }
   }
 
+  /**
+   * @param {string} key
+   */
   function notify(key, event) {
     for (const listener of subscribers.get(key) || []) listener(event);
   }
 
+  /**
+   * @param {string} kind
+   */
   function applyRemoteCollection(kind, hydrated) {
     const remoteRevision = hydrated.libraryCollectionRevisions?.[kind] ?? 0;
     const key =
@@ -334,6 +352,9 @@ export function createMultiInstanceBackend() {
     return refreshing;
   }
 
+  /**
+   * @param {string} action
+   */
   async function resolveConflict(
     action,
     { makeId = /** @type {() => string} */ (() => crypto.randomUUID()) } = {}
@@ -404,22 +425,34 @@ export function createMultiInstanceBackend() {
   }
 
   return {
+    /**
+     * @param {string} key
+     */
     get(key) {
       const value = cache.get(key);
       return value && typeof value === "object" && !Array.isArray(value) ? value : null;
     },
+    /**
+     * @param {string} key
+     */
     set(key, value) {
       assertWritableSurface(key);
       cache.set(key, clone(value));
       dirty.set(key, true);
       schedule();
     },
+    /**
+     * @param {string} key
+     */
     remove(key) {
       assertWritableSurface(key);
       cache.delete(key);
       dirty.set(key, true);
       schedule();
     },
+    /**
+     * @param {string} key
+     */
     subscribe(key, listener) {
       if (!subscribers.has(key)) subscribers.set(key, new Set());
       subscribers.get(key).add(listener);
@@ -434,6 +467,9 @@ export function createMultiInstanceBackend() {
       listener(clone(pendingConflict));
       return () => conflictSubscribers.delete(listener);
     },
+    /**
+     * @param {string} kind
+     */
     reportLibraryConflict(kind, document) {
       publishConflict({ kind, id: document?.id ?? null, document: clone(document) });
     },

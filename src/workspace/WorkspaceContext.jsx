@@ -102,55 +102,55 @@ export function WorkspaceProvider({ children }) {
         markPresetDirty();
         bound.setView(view);
       },
-      setTree: (...args) => {
+      setTree: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.setTree(...args);
       },
-      moveTab: (...args) => {
+      moveTab: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.moveTab(...args);
       },
-      resizeChildren: (...args) => {
+      resizeChildren: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.resizeChildren(...args);
       },
-      addPanel: (...args) => {
+      addPanel: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.addPanel(...args);
       },
-      addPanelAt: (...args) => {
+      addPanelAt: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.addPanelAt(...args);
       },
-      removePanel: (...args) => {
+      removePanel: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.removePanel(...args);
       },
-      renamePanel: (...args) => {
+      renamePanel: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.renamePanel(...args);
       },
-      setPanelPinned: (...args) => {
+      setPanelPinned: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.setPanelPinned(...args);
       },
-      setPanelControlsForPanel: (...args) => {
+      setPanelControlsForPanel: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.setPanelControlsForPanel(...args);
       },
-      resetPanelControlsForPanel: (...args) => {
+      resetPanelControlsForPanel: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.resetPanelControlsForPanel(...args);
       },
-      setAxisViewport: (...args) => {
+      setAxisViewport: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.setAxisViewport(...args);
       },
-      joinAxisViewport: (...args) => {
+      joinAxisViewport: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.joinAxisViewport(...args);
       },
-      leaveAxisViewport: (...args) => {
+      leaveAxisViewport: (/** @type {any} */ ...args) => {
         markPresetDirty();
         bound.leaveAxisViewport(...args);
       },

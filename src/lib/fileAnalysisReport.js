@@ -21,6 +21,9 @@ function finiteOrNull(value) {
   return Number.isFinite(value) ? value : null;
 }
 
+/**
+ * @param {string} value
+ */
 function stringOrNull(value) {
   return typeof value === "string" && value.trim() ? value : null;
 }

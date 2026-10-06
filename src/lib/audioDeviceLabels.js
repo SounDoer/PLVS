@@ -1,3 +1,6 @@
+/**
+ * @param {string} label
+ */
 function splitPrimaryAndSecondary(label) {
   const open = label.indexOf(" (");
   if (open <= 0 || !label.endsWith(")")) {
@@ -12,6 +15,9 @@ function splitPrimaryAndSecondary(label) {
   return { primary, secondary };
 }
 
+/**
+ * @param {string} label
+ */
 export function formatAudioDeviceLabel(label) {
   const full = typeof label === "string" && label.trim() ? label.trim() : "Unknown device";
   const compact = full.split(/\s+[—–]\s+/)[0]?.trim() || full;

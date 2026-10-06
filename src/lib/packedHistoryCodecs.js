@@ -38,6 +38,9 @@ export function encodeCentiDb(value) {
   return Math.max(CENTI_DB_MIN, Math.min(CENTI_DB_MAX, Math.round(value * 100)));
 }
 
+/**
+ * @param {number} value
+ */
 export function decodeCentiDb(value) {
   return value === CENTI_DB_NO_VALUE ? -Infinity : value / 100;
 }
@@ -47,16 +50,25 @@ export function encodeNormalized(value) {
   return Math.round(Math.max(-1, Math.min(1, value)) * NORMALIZED_SCALE);
 }
 
+/**
+ * @param {number} value
+ */
 export function decodeNormalized(value) {
   return value === NORMALIZED_INVALID ? null : value / NORMALIZED_SCALE;
 }
 
+/**
+ * @param {string} mode
+ */
 function assertStereoMapMode(mode) {
   if (!NORMALIZED_STEREO_MAP_MODES.has(mode) && !DB_STEREO_MAP_MODES.has(mode)) {
     throw new TypeError(`Unknown Stereo Map mode: ${String(mode)}`);
   }
 }
 
+/**
+ * @param {string} mode
+ */
 export function encodeStereoMapValue(mode, value) {
   assertStereoMapMode(mode);
   if (value === null || Number.isNaN(value)) return STEREO_MAP_VALUE_INVALID;
@@ -71,6 +83,10 @@ export function encodeStereoMapValue(mode, value) {
   return DB_FIRST_FINITE_CODE + Math.round(((clamped - DB_FLOOR) / DB_SPAN) * DB_FINITE_STEPS);
 }
 
+/**
+ * @param {string} mode
+ * @param {number} code
+ */
 export function decodeStereoMapValue(mode, code) {
   assertStereoMapMode(mode);
   if (code === STEREO_MAP_VALUE_INVALID) return null;
@@ -96,6 +112,10 @@ export function createStereoMapValuePlane(entryCount) {
 }
 
 /** @returns {{ hi: Uint8Array, lo: Uint8Array }} a copy holding the first `entryCount` entries. */
+/**
+ * @returns {{hi: Uint8Array;lo: Uint8Array;}} a copy holding the first `entryCount` entries.
+ * @param {number} entryCount
+ */
 export function sliceStereoMapValuePlane(plane, entryCount) {
   return {
     hi: plane.hi.slice(0, entryCount),
@@ -107,11 +127,18 @@ export function stereoMapValuePlaneBytes(plane) {
   return plane.hi.byteLength + plane.lo.byteLength;
 }
 
+/**
+ * @param {number} index
+ */
 export function readStereoMapValueCode(plane, index) {
   const nibble = (plane.lo[index >> 1] >> ((index & 1) << 2)) & 0x0f;
   return (plane.hi[index] << 4) | nibble;
 }
 
+/**
+ * @param {number} index
+ * @param {number} code
+ */
 export function writeStereoMapValueCode(plane, index, code) {
   plane.hi[index] = code >> 4;
   const byte = index >> 1;

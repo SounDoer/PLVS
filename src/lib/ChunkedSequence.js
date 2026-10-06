@@ -1,19 +1,34 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 
+/**
+ * @param {string} label
+ */
 function validatePositiveInteger(value, label) {
   if (!Number.isInteger(value) || value <= 0) {
     throw new RangeError(`${label} must be a positive integer`);
   }
 }
 
+/**
+ * @param {number} sequence
+ * @param {number} chunkRows
+ */
 function chunkId(sequence, chunkRows) {
   return Math.floor(sequence / chunkRows);
 }
 
+/**
+ * @param {number} sequence
+ * @param {number} chunkRows
+ */
 function chunkOffset(sequence, chunkRows) {
   return sequence % chunkRows;
 }
 
+/**
+ * @param {number} sequenceStart
+ * @param {number} chunkRows
+ */
 function createChunk(sequenceStart, chunkRows) {
   return {
     sequenceStart,
@@ -40,17 +55,28 @@ function sealChunk(chunk) {
 
 class SequenceView {
   /** @this {SequenceView & SequenceState} */
+  /**
+   * @this {SequenceView & SequenceState}
+   * @param {number} index
+   */
   at(index) {
     const found = this._valueLocation(index);
     return found ? found.chunk.values[found.offset] : undefined;
   }
 
   /** @this {SequenceView & SequenceState} */
+  /**
+   * @this {SequenceView & SequenceState}
+   * @param {number} index
+   */
   rowAt(index) {
     return this.at(index);
   }
 
   /** @this {SequenceView & SequenceState} */
+  /**
+   * @this {SequenceView & SequenceState}
+   */
   timestampAt(index) {
     return this.at(index)?.timestampMs;
   }

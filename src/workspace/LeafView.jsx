@@ -175,6 +175,9 @@ function nodeHasVisiblePanels(node, panelsById) {
   return node.children.some((child) => nodeHasVisiblePanels(child, panelsById));
 }
 
+/**
+ * @param {string} dimension
+ */
 function getMeasuredSize(el, dimension) {
   if (!el) return 0;
   const rect = el.getBoundingClientRect();

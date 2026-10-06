@@ -45,6 +45,9 @@ const SEVERITY_COLOR = Object.freeze({
 const SEVERITY_RANK = Object.freeze({ warn: 1, fail: 2 });
 const STATUS_RANK = Object.freeze({ ok: 1, pending: 1, warn: 2, fail: 3 });
 
+/**
+ * @param {string} direction
+ */
 function gradient(direction) {
   const { safe, warning, critical } = LEVEL_METER_COLORS;
   return `linear-gradient(${direction}, ${safe} 0%, ${warning} ${
@@ -52,6 +55,10 @@ function gradient(direction) {
   }%, ${critical} 100%)`;
 }
 
+/**
+ * @param {number} warningDb
+ * @param {number} criticalDb
+ */
 export function thresholdZones(warningDb, criticalDb) {
   return [
     { db: -Infinity, color: LEVEL_METER_COLORS.safe },
@@ -62,6 +69,9 @@ export function thresholdZones(warningDb, criticalDb) {
 
 /// Only ceilings colour the bar. Live loudness drops to silence between phrases, so a floor would
 /// hold the bottom of the bar red. Floors stay judged in Stats.
+/**
+ * @param {string} metricId
+ */
 export function profileZones(document, metricId) {
   const metricIds = new Set([metricId, MAX_METRIC[metricId]]);
   const ceilings = (document?.rules ?? [])
@@ -82,11 +92,16 @@ export function profileZones(document, metricId) {
 /// Hard cuts: each zone is painted from its own level to the next zone's, clamped to the visible
 /// range. Always a `background-image`, even for one colour, so a caller can size or clip it without
 /// switching between `background-color` and `background-image`.
+/**
+ * @param {number} viewMin
+ * @param {number} viewMax
+ * @param {string} direction
+ */
 export function zonesToGradient(zones, viewMin, viewMax, direction) {
   if (zones.length === 1) {
     return `linear-gradient(${direction}, ${zones[0].color}, ${zones[0].color})`;
   }
-  const percent = (db) => {
+  const percent = (/** @type {number} */ db) => {
     const value = Math.min(100, Math.max(0, ((db - viewMin) / (viewMax - viewMin)) * 100));
     return `${Number(value.toFixed(3))}%`;
   };
@@ -124,6 +139,10 @@ export function levelMeterBackground({
 /// The Floating Value marker's status: the metric's own rules, as its Stats row judges them, and
 /// the Max metric's ceilings, as the bar colour at the marker's position does under Level Zones.
 /// The worse wins; `undefined` means nothing judges the metric.
+/**
+ * @param {string} metricId
+ * @param {number} value
+ */
 export function levelMeterMarkerStatus(document, metricId, value) {
   if (!document) return undefined;
   const own = loudnessProfileEvaluate(document, { values: { [metricId]: value } })[metricId];

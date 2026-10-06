@@ -36,6 +36,12 @@ export const MODULE_REGISTRY = {
  * siblings in `panelInstances.js` so that file stays free of the panel components — an import there
  * is paid by every logic-only module that touches panel state.
  */
+/**
+ * The one panel lookup that needs the React half of a module. It lives here rather than beside its
+ * siblings in `panelInstances.js` so that file stays free of the panel components — an import there
+ * is paid by every logic-only module that touches panel state.
+ * @param {string} panelId
+ */
 export function resolvePanelDefinition(state, panelId) {
   const moduleId = resolvePanelModuleId(state, panelId);
   return moduleId ? MODULE_REGISTRY[moduleId] : null;

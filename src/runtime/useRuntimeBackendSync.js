@@ -60,10 +60,13 @@ export function useRuntimeBackendSync({
     channelRolesRef.current = nextRoles;
   }, []);
 
-  const setDialogueVadEngineForControl = useCallback(async (nextEngine) => {
-    if (isTauri()) await setDialogueVadEngine(nextEngine);
-    dialogueVadEngineRef.current = nextEngine;
-  }, []);
+  const setDialogueVadEngineForControl = useCallback(
+    async (/** @type {Parameters<typeof setDialogueVadEngine>[0]} */ nextEngine) => {
+      if (isTauri()) await setDialogueVadEngine(nextEngine);
+      dialogueVadEngineRef.current = nextEngine;
+    },
+    []
+  );
 
   return {
     channelRolesRef,

@@ -9,6 +9,9 @@ import { watchedMetricIds } from "./loudnessProfileCatalog.js";
 /// Watched metrics the profile needs that are not visible in Stats, in the profile's own order. A
 /// rule the user has added but not yet filled in is not watched, so it is skipped -- fulfilling it
 /// would push a row on screen for a metric nothing is judging yet.
+/**
+ * @param {string[]} statsVisibleIds
+ */
 export function listMissingPreferredMetrics(document, statsVisibleIds) {
   if (!document) return [];
   const visible = new Set(statsVisibleIds ?? []);
@@ -17,6 +20,9 @@ export function listMissingPreferredMetrics(document, statsVisibleIds) {
 
 /// Appends the missing ids, preserving the order of what is already shown. Append-only: the user
 /// arranged those rows, so fulfilling a profile's needs must never reorder or remove them.
+/**
+ * @param {string[]} statsVisibleIds
+ */
 export function planShowMissing(statsVisibleIds, missingIds) {
   const visible = statsVisibleIds ?? [];
   const seen = new Set(visible);

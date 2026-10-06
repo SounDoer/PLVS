@@ -1,7 +1,13 @@
 // sRGB gamma <-> linear
+/**
+ * @param {number} c
+ */
 function toLinear(c) {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
+/**
+ * @param {number} c
+ */
 function toGamma(c) {
   const x = Math.max(0, Math.min(1, c));
   return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
@@ -39,7 +45,7 @@ export function oklchToHex({ L, C, H }) {
   const r = toGamma(4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3);
   const g = toGamma(-1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3);
   const bl = toGamma(-0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3);
-  const hx = (v) =>
+  const hx = (/** @type {number} */ v) =>
     Math.round(v * 255)
       .toString(16)
       .padStart(2, "0");

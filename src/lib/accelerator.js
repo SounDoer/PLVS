@@ -3,6 +3,9 @@ const BARE_MODIFIER_KEYS = ["Control", "Meta", "Alt", "Shift", "OS", "Dead"];
 const DISPLAY_SPECIAL = { Escape: "Esc" };
 
 /** Build a Tauri accelerator string from a KeyboardEvent-like object, or null if invalid. */
+/**
+ * Build a Tauri accelerator string from a KeyboardEvent-like object, or null if invalid.
+ */
 export function keyEventToAccelerator(e) {
   const key = e.key;
   if (typeof key !== "string" || BARE_MODIFIER_KEYS.includes(key)) return null;
@@ -18,6 +21,9 @@ export function keyEventToAccelerator(e) {
   return [...mods, main].join("+");
 }
 
+/**
+ * @param {string} str
+ */
 export function isValidAccelerator(str) {
   if (typeof str !== "string" || !str.includes("+")) return false;
   const parts = str.split("+");
@@ -26,6 +32,9 @@ export function isValidAccelerator(str) {
   return mods.length >= 1 && keys.length === 1 && keys[0].length >= 1;
 }
 
+/**
+ * @param {string} str
+ */
 export function formatAcceleratorForDisplay(str, { isMac = false } = {}) {
   if (typeof str !== "string") return "";
   return str
@@ -40,6 +49,10 @@ export function formatAcceleratorForDisplay(str, { isMac = false } = {}) {
 }
 
 /** True when a KeyboardEvent-like object produces exactly `accel`. */
+/**
+ * True when a KeyboardEvent-like object produces exactly `accel`.
+ * @param {string} accel
+ */
 export function eventMatchesAccelerator(e, accel) {
   return keyEventToAccelerator(e) === accel;
 }

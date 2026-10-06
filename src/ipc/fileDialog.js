@@ -69,6 +69,9 @@ export async function saveFileAnalysisReportFile(
 }
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+/**
+ * @returns {Promise<string | null>} Absolute path, or null if the user cancelled.
+ */
 export async function pickPackFile(descriptor) {
   const selected = await open({
     multiple: false,
@@ -89,6 +92,10 @@ export async function pickSharedPackFile() {
 }
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+/**
+ * @returns {Promise<string | null>} Absolute path, or null if the user cancelled.
+ * @param {string} defaultPath
+ */
 export async function savePackFile(descriptor, defaultPath) {
   const selected = await save({
     defaultPath,

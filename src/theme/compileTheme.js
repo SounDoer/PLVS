@@ -17,10 +17,18 @@ export class ThemeCompilerError extends Error {
   }
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function compilerError(code, path, message) {
   return new ThemeCompilerError([{ code, path, message }]);
 }
 
+/**
+ * @param {string} roleId
+ */
 function directValue(roleId, theme) {
   if (roleId.startsWith("core.")) return theme.core[roleId.slice("core.".length)];
   if (roleId.startsWith("palette.status.")) {
@@ -36,6 +44,9 @@ function directValue(roleId, theme) {
   return undefined;
 }
 
+/**
+ * @param {string} valueKind
+ */
 function cssValue(value, valueKind) {
   if (valueKind === THEME_VALUE_KINDS.SOLID_COLOR) return value;
   if (valueKind === THEME_VALUE_KINDS.COLOR_EFFECT) return rgbaCssValue(value);
@@ -76,6 +87,9 @@ function resolveOverride(entry, override, roles, automaticValue) {
 }
 
 /** Purely compile one current, normalized Theme authoring document into runtime output. */
+/**
+ * Purely compile one current, normalized Theme authoring document into runtime output.
+ */
 export function compileTheme(rawTheme, options = {}) {
   const theme = normalizeThemeDocumentShape(rawTheme);
   if (!theme) {

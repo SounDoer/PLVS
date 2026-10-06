@@ -39,6 +39,9 @@ function turnOffLegacySpectrogramGrid(controlsById) {
   );
 }
 
+/**
+ * @param {number} version
+ */
 function migrateWorkspace(raw, version) {
   const { customPresets: _customPresets, activePresetId: _activePresetId, ...rest } = raw;
   if (version >= WORKSPACE_DOMAIN_VERSION) return rest;
@@ -59,6 +62,9 @@ function migrateSettings(raw) {
   return rest;
 }
 
+/**
+ * @param {number} version
+ */
 function migratePresets(raw, version) {
   if (!Array.isArray(raw.list)) return raw;
   return {
@@ -108,6 +114,9 @@ export function resolveLibraryConflict(action) {
   return backend.resolveLibraryConflict?.(action) ?? Promise.resolve(null);
 }
 
+/**
+ * @param {string} kind
+ */
 export function reportLibraryConflict(kind, document) {
   backend.reportLibraryConflict?.(kind, document);
 }

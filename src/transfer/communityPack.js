@@ -29,6 +29,11 @@ const ASSESSORS = {
  * Strict validation for one immutable Community artifact. Ordinary desktop packs may carry many
  * primary Items; a Community Listing Release always has exactly one.
  */
+/**
+ * Strict validation for one immutable Community artifact. Ordinary desktop packs may carry many
+ * primary Items; a Community Listing Release always has exactly one.
+ * @param {string} expectedType
+ */
 export function validatePublishablePack(raw, expectedType) {
   const family = ASSESSORS[expectedType];
   if (!family) {
@@ -62,10 +67,11 @@ export function validatePublishablePack(raw, expectedType) {
   }
 
   const { id: _id, ...portableItem } = raw.items[0];
-  const dependencyIds = (raw.dependencies ?? []).flatMap((group) =>
-    group?.kind === "loudness-profile" && Array.isArray(group.items)
-      ? group.items.map(({ id }) => id)
-      : []
+  const dependencyIds = (raw.dependencies ?? []).flatMap(
+    (/** @type {{ kind: string; items: { id: any; }[]; }} */ group) =>
+      group?.kind === "loudness-profile" && Array.isArray(group.items)
+        ? group.items.map(({ id }) => id)
+        : []
   );
   let assessment;
   try {

@@ -20,15 +20,24 @@ export class RingBuffer {
   }
 
   // 0 = oldest, length-1 = newest
+  /**
+   * @param {number} i
+   */
   at(i) {
     if (i < 0 || i >= this._size) return undefined;
     return this._buf[(this._head + i) % this._cap];
   }
 
+  /**
+   * @param {number} i
+   */
   rowAt(i) {
     return this.at(i);
   }
 
+  /**
+   * @param {number} i
+   */
   timestampAt(i) {
     return this.at(i)?.timestampMs;
   }

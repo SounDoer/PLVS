@@ -61,6 +61,9 @@ export function upsertCustomTheme(theme) {
 }
 
 /** Replace the complete ordered custom Theme library and notify its React owner once. */
+/**
+ * Replace the complete ordered custom Theme library and notify its React owner once.
+ */
 export function replaceCustomThemesOrdered(documents, { notify = true } = {}) {
   if (!Array.isArray(documents)) return false;
   const themes = {};
@@ -76,6 +79,9 @@ export function replaceCustomThemesOrdered(documents, { notify = true } = {}) {
   return true;
 }
 
+/**
+ * @param {string} id
+ */
 export function removeCustomTheme(id) {
   const { themes, order } = readState();
   const { [id]: _drop, ...rest } = themes;

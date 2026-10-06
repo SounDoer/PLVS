@@ -1,6 +1,10 @@
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { UI_PREFERENCES } from "./data.js";
 
+/**
+ * @param {string} name
+ * @param {string} value
+ */
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
   document.documentElement.style.setProperty(name, String(value));

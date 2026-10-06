@@ -74,6 +74,9 @@ export function createThemeRuntime({ apply = applyResolvedThemeToDocument } = {}
   }
 
   /** @returns {() => void} unsubscribe */
+  /**
+   * @returns {() => void} unsubscribe
+   */
   function subscribe(select, listener, equal = Object.is) {
     const subscription = { select, listener, equal };
     subscriptions.add(subscription);
