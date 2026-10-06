@@ -1,7 +1,7 @@
 import { PanelSettingsHeader } from "../../components/PanelSettingsHeader.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "../../components/ui/surfaceStyles.js";
 
-/** @param {{ title: any, onBack?: any, onReset?: any, resetIsDefault?: boolean, children: any }} props */
+/** @param {{ title: any, onBack?: (...args: any[]) => any, onReset?: (...args: any[]) => any, resetIsDefault?: boolean, children: import("react").ReactNode }} props */
 export function DockEditorShell({ title, onBack, onReset, resetIsDefault = false, children }) {
   const hasNavigation = Boolean(onBack || onReset);
 

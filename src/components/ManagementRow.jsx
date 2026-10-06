@@ -10,11 +10,11 @@ export const MANAGEMENT_ROW_ACTIONS_CLASS =
 
 /**
  * @param {{
- *   label: any,
- *   icon: any,
- *   onClick: any,
+ *   label: string,
+ *   icon: import("react").ReactNode,
+ *   onClick: (...args: any[]) => any,
  *   className?: string,
- *   disabled?: any,
+ *   disabled?: boolean,
  *   tip?: string,
  *   tipSide?: any,
  *   tipAlign?: any,

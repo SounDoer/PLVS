@@ -48,16 +48,16 @@ const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
  * @param {{
  *   captureDeviceId?: string,
  *   captureFormatSignature?: string,
- *   histMaxSamples: any,
- *   visualMaxSamples: any,
- *   audioRef: any,
+ *   histMaxSamples: number,
+ *   visualMaxSamples: number,
+ *   audioRef: { current: any },
  *   intake: any,
- *   channelRolesRef: any,
- *   dialogueGatingRef: any,
- *   dialogueVadEngineRef: any,
+ *   channelRolesRef: { current: any },
+ *   dialogueGatingRef: { current: any },
+ *   dialogueVadEngineRef: { current: any },
  *   transport: any,
  *   display: any,
- *   defaultSampleRateRef: any,
+ *   defaultSampleRateRef: { current: any },
  *   measurementOwner?: any,
  * }} options
  */

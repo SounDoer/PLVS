@@ -561,7 +561,7 @@ function SettingsBody({
  *   controls: any,
  *   vectorscopeOptions: any,
  *   spectrumOptions: any,
- *   channelCount: any,
+ *   channelCount: number,
  *   onChange: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,
  *   onBack: (...args: any[]) => any,

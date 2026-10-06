@@ -18,13 +18,13 @@ import { Button } from "@/components/ui/button";
  *   fileSessions: any,
  *   activeFileId: any,
  *   analyzingFileId: any,
- *   onSelectFile: any,
- *   onReanalyzeFile: any,
- *   onRemoveFile: any,
- *   onClearAllFiles: any,
- *   onStopFile: any,
- *   onExportReport: any,
- *   onCopyReport: any,
+ *   onSelectFile: (...args: any[]) => any,
+ *   onReanalyzeFile: (...args: any[]) => any,
+ *   onRemoveFile: (...args: any[]) => any,
+ *   onClearAllFiles: (...args: any[]) => any,
+ *   onStopFile: (...args: any[]) => any,
+ *   onExportReport: (...args: any[]) => any,
+ *   onCopyReport: (...args: any[]) => any,
  * }} props
  */
 export function FileAnalysisSummary({

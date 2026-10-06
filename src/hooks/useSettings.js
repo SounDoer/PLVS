@@ -10,7 +10,7 @@ import { useInterfaceSizeSetting } from "./useInterfaceSizeSetting.js";
 import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
 
-/** @param {{ onClearRef?: any }} [options] */
+/** @param {{ onClearRef?: { current: any } }} [options] */
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { autostartEnabled, setAutostartEnabled, setAutostartEnabledForControl, autostartReady } =

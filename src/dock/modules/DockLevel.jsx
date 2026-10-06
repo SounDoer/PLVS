@@ -79,7 +79,7 @@ function ChannelReadout({ value, style }) {
   );
 }
 
-/** @param {{ value: any, onReset: any, style?: any, expanded: any, label: any, unit: any }} props */
+/** @param {{ value: any, onReset: (...args: any[]) => any, style?: any, expanded: boolean, label: any, unit: any }} props */
 function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
     tip: onReset ? "Reset TP Max" : undefined,

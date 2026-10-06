@@ -66,12 +66,12 @@ import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
  *   sessionId?: string,
  *   intake?: any,
  *   updateFileSession?: any,
- *   setAnalyzingFileId?: any,
- *   setFileSession?: any,
+ *   setAnalyzingFileId?: (...args: any[]) => any,
+ *   setFileSession?: (...args: any[]) => any,
  *   raiseNotice?: any,
  *   shouldDriveDisplay?: (...args: any[]) => any,
  *   selectedOffset?: number,
- *   fileAnalysisAcceptanceRef?: any,
+ *   fileAnalysisAcceptanceRef?: { current: any },
  * }} props
  */
 function Harness({

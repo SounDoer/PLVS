@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 /**
  * @param {{
  *   label: string,
- *   onReset: any,
- *   isDefault?: any,
+ *   onReset: (...args: any[]) => any,
+ *   isDefault?: boolean,
  *   tip?: string,
  *   defaultTip?: string,
  *   confirmLabel?: string,
@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
  *   side?: any,
  *   align?: any,
  *   compact?: boolean,
- *   className?: any,
+ *   className?: string,
  *   onArmedChange?: (...args: any[]) => any,
  *   [key: string]: any,
  * }} props

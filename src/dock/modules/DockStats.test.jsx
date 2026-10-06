@@ -299,7 +299,7 @@ describe("Dock Stats and the main window under one provider", () => {
   // the same profile must not read as a breach in one surface and neutral in the other.
   /**
    * @param {any} displayAudio
-   * @param {{ heightMode?: string, onProfile?: any }} [options]
+   * @param {{ heightMode?: string, onProfile?: (...args: any[]) => any }} [options]
    */
   function renderBothSurfaces(displayAudio, { heightMode = "standard", onProfile } = {}) {
     function ProfileHandle() {

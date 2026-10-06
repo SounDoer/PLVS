@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { standIn } from "../testing/standIn.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
@@ -195,7 +196,7 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
   };
   const renderView = () => (
     <AppSettingsOverlays
-      settings={settings}
+      settings={standIn(settings)}
       channelSettings={channelSettings}
       updateControls={updateControls}
       appVersion="0.0.0"
@@ -561,7 +562,7 @@ describe("Loudness Profile editor wiring", () => {
         <>
           <LoudnessProfilePopoverContent profile={hook.result.current} />
           <AppSettingsOverlays
-            settings={makeSettings()}
+            settings={standIn(makeSettings())}
             channelSettings={{
               channelCount: 2,
               channelLabelTokens: [],

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
  * Empty state shown when a panel's request key has no history at the selected snapshot time
  * because the request did not exist yet.
  */
-/** @param {{ message: string, className?: any }} props */
+/** @param {{ message: string, className?: string }} props */
 export function SnapshotEmptyState({ message, className }) {
   return (
     <div

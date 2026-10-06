@@ -97,7 +97,7 @@ function compactPreviewPlan(type, plan) {
  * Derives only machine-owned Catalogue fields. Listing copy, author identity, tags, licence, and
  * release notes are intentionally absent because none of them are facts contained in a Pack.
  * @param {string} text
- * @param {{ fileName?: any }} [options]
+ * @param {{ fileName?: string }} [options]
  */
 export async function deriveCommunityCatalogueMetadata(text, { fileName } = {}) {
   const validation = await validateCommunityArtifactText(text, { fileName });

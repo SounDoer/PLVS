@@ -17,15 +17,15 @@ import { LAYER_PRIORITY } from "./ui/layers.js";
 
 /**
  * @param {{
- *   settings: any,
+ *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: any,
  *   updateControls: any,
  *   appVersion: string,
- *   loudnessProfile: any,
- *   presets: any,
- *   crashReportSetting: any,
- *   crashReporting: any,
- *   packTransfer?: any,
+ *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
+ *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
+ *   crashReportSetting: ReturnType<typeof import("../hooks/useCrashReportSetting.js").useCrashReportSetting>,
+ *   crashReporting: ReturnType<typeof import("../hooks/useCrashReporting.js").useCrashReporting>,
+ *   packTransfer?: ReturnType<typeof import("../transfer/usePackTransfer.js").usePackTransfer>,
  *   onAgentControlEnabledChange?: (...args: any[]) => any,
  * }} props
  */

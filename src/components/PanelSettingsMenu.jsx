@@ -42,10 +42,10 @@ function spectrumKeyFromSelection(sel) {
  *   channelCount?: number,
  *   spectrumOptions?: any,
  *   spectrumValueKey?: string,
- *   onSpectrumViewChange?: any,
- *   onSpectrumMaxHoldToggle?: any,
+ *   onSpectrumViewChange?: (...args: any[]) => any,
+ *   onSpectrumMaxHoldToggle?: (...args: any[]) => any,
  *   panelControls?: any,
- *   onPanelControlsChange?: any,
+ *   onPanelControlsChange?: (...args: any[]) => any,
  * }} options
  */
 function hasPanelSettings({

@@ -1,7 +1,7 @@
 import { PANEL_HEADER_TITLE_GROUP } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
 
-/** @param {{ icon: any, title: any, className?: string, [key: string]: any }} props */
+/** @param {{ icon: import("react").ElementType, title: any, className?: string, [key: string]: any }} props */
 export function PanelTitleGroup({ icon: Icon, title, className, ...props }) {
   return (
     <div data-panel-title-group className={cn(PANEL_HEADER_TITLE_GROUP, className)} {...props}>

@@ -52,7 +52,7 @@ function validateFileName(fileName, type) {
  * accepts only strict Pack V2, one primary Item, canonical UTF-8 JSON formatting, and the matching
  * public extension. The returned hash identifies the exact bytes that were validated.
  * @param {string} text
- * @param {{ fileName?: any }} [options]
+ * @param {{ fileName?: string }} [options]
  */
 export async function validateCommunityArtifactText(text, { fileName } = {}) {
   const { type } = parseSharedPackText(text);

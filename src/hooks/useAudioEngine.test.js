@@ -41,10 +41,10 @@ import {
 
 /**
  * @param {{
- *   setAudio: any,
- *   setSelectedOffset: any,
+ *   setAudio: (...args: any[]) => any,
+ *   setSelectedOffset: (...args: any[]) => any,
  *   raiseNotice: any,
- *   setShowClock: any,
+ *   setShowClock: (...args: any[]) => any,
  *   resetTimer: any,
  *   stopTimer?: any,
  *   halt: any,

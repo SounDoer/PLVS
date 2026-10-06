@@ -418,12 +418,12 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
 
 /**
  * @param {{
- *   canvasRef: any,
- *   glCanvasRef: any,
- *   snapRef: any,
- *   projectionRef: any,
- *   oldestMs: any,
- *   newestMs: any,
+ *   canvasRef: { current: any },
+ *   glCanvasRef: { current: any },
+ *   snapRef: { current: any },
+ *   projectionRef: { current: any },
+ *   oldestMs: number,
+ *   newestMs: number,
  *   sampleMs: number,
  *   selectedOffset: any,
  *   selectionXFrac: number,
@@ -439,7 +439,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
  *   colorize: boolean,
  *   floor: boolean,
  *   mode: string,
- *   themeColors: any,
+ *   themeColors: ReturnType<typeof import("../theme/useResolvedTheme.js").useResolvedTheme>,
  *   sourceVersion?: number,
  *   canvasSizeRevision?: number,
  *   enabled?: boolean,

@@ -6,7 +6,7 @@ import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 /**
  * @param {{
  *   value: any,
- *   onChange: any,
+ *   onChange: (...args: any[]) => any,
  *   isMac?: boolean,
  *   disabled?: boolean,
  *   onRecordingChange?: (...args: any[]) => any,

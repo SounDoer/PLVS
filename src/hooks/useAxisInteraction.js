@@ -21,7 +21,7 @@ import { useAxisSize } from "./useAxisSize";
  *   defaultMax: any,
  *   minSpan: any,
  *   scale: any,
- *   onRangeChange: any,
+ *   onRangeChange: (...args: any[]) => any,
  *   pinnedMax?: boolean,
  *   mustInclude?: any,
  * }} options

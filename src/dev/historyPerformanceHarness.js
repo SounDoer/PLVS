@@ -224,7 +224,7 @@ function measureScalarSnapshot(intake) {
  * @param {{
  *   intake?: any,
  *   publishAudio?: any,
- *   onProgress?: any,
+ *   onProgress?: (...args: any[]) => any,
  *   scalarRows?: any,
  *   visualRows?: any,
  *   fullVisual?: boolean,

@@ -8,9 +8,9 @@ import { getDockPanelSizing } from "./dockPanelSizing.js";
  *   rightPanel: any,
  *   leftBasis: any,
  *   rightBasis: any,
- *   disabled?: any,
- *   onResize: any,
- *   onReset: any,
+ *   disabled?: boolean,
+ *   onResize: (...args: any[]) => any,
+ *   onReset: (...args: any[]) => any,
  * }} props
  */
 export function DockPanelResizeHandle({

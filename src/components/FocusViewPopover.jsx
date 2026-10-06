@@ -44,7 +44,7 @@ function FocusSwitch({ id, label, checked, onCheckedChange }) {
  *   setBorderless?: (...args: any[]) => any,
  *   surfaceOpacity?: any,
  *   setSurfaceOpacity?: (...args: any[]) => any,
- *   glassEnabled?: any,
+ *   glassEnabled?: boolean,
  *   setGlassEnabled?: (...args: any[]) => any,
  *   showDock?: boolean,
  *   dockEdge?: any,

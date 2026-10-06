@@ -38,7 +38,7 @@ function makeController(overrides = {}) {
   };
 }
 
-/** @param {{ overrides?: any, stats?: any, showTitle?: boolean, onExport?: any }} [options] */
+/** @param {{ overrides?: any, stats?: any, showTitle?: boolean, onExport?: (...args: any[]) => any }} [options] */
 function renderPopover({ overrides, stats, showTitle = true, onExport } = {}) {
   const profile = makeController(overrides);
   const view = render(

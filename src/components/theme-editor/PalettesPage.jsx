@@ -31,7 +31,7 @@ const FREQUENCY_COLORS = [
  * @param {{
  *   kind: any,
  *   palette: any,
- *   onApplyPreset: any,
+ *   onApplyPreset: (...args: any[]) => any,
  *   customAvailable?: boolean,
  *   onSelectCustom?: (...args: any[]) => any,
  * }} props

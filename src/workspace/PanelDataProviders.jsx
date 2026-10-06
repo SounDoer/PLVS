@@ -11,7 +11,7 @@ import {
  *   historyData: any,
  *   metricsData: any,
  *   panelChromeData: any,
- *   children: any,
+ *   children: import("react").ReactNode,
  * }} props
  */
 export function PanelDataProviders({

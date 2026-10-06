@@ -174,7 +174,7 @@ function nextAnimationFrame(windowObject, signal) {
  *   expectedRevision: any,
  *   getRevision: any,
  *   signal: any,
- *   timeoutMs?: any,
+ *   timeoutMs?: number,
  *   documentObject?: any,
  *   windowObject?: any,
  *   windowLabel?: string,

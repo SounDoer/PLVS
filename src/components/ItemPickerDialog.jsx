@@ -74,7 +74,7 @@ function AlsoIncluded({ children }) {
 /// centred and a drag only lasts for the current open.
 /**
  * @param {{
- *   open: any,
+ *   open: boolean,
  *   mode: string,
  *   type: any,
  *   items?: any,

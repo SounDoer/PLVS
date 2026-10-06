@@ -42,7 +42,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   footer: any,
  *   docked?: boolean,
  *   dockProps?: any,
- *   children?: any,
+ *   children?: import("react").ReactNode,
  *   recordingState?: any,
  * }} props
  */

@@ -82,8 +82,8 @@ export function SettingsGroup({ children }) {
  *   label: string,
  *   tooltip?: string,
  *   action?: any,
- *   controlAction?: any,
- *   children: any,
+ *   controlAction?: import("react").ReactNode,
+ *   children: import("react").ReactNode,
  * }} props
  */
 export function SettingsRow({ label, tooltip, action, controlAction, children }) {
@@ -603,7 +603,7 @@ export function WaveformSettingsRows({
   );
 }
 
-/** @param {{ ariaLabel: string, summary: string, open: boolean, onToggle: (...args: any[]) => any, className?: any }} props */
+/** @param {{ ariaLabel: string, summary: string, open: boolean, onToggle: (...args: any[]) => any, className?: string }} props */
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
   const DisclosureIcon = open ? ChevronUp : ChevronDown;
 
@@ -627,10 +627,10 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) 
 
 /**
  * @param {{
- *   children: any,
- *   checked?: any,
+ *   children: import("react").ReactNode,
+ *   checked?: boolean,
  *   className?: string,
- *   checkClassName?: any,
+ *   checkClassName?: string,
  *   role: string,
  *   [key: string]: any,
  * }} props
@@ -661,12 +661,12 @@ function SettingsOptionRow({
 /**
  * @param {{
  *   label: any,
- *   ariaLabel?: any,
+ *   ariaLabel?: string,
  *   options: any,
  *   value: any,
- *   onChange?: any,
+ *   onChange?: (...args: any[]) => any,
  *   open?: any,
- *   onOpenChange?: any,
+ *   onOpenChange?: (...args: any[]) => any,
  * }} props
  */
 export function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOpenChange }) {
@@ -947,8 +947,8 @@ export function StatsMetricsSettingsRow({
  *   showGrid?: boolean,
  *   visibleLayerIds: any,
  *   grid?: boolean,
- *   yMinDb: any,
- *   yMaxDb: any,
+ *   yMinDb: number,
+ *   yMaxDb: number,
  *   onVisibleLayerIdsChange: (...args: any[]) => any,
  *   onGridChange?: (...args: any[]) => any,
  *   onYRangeChange: (...args: any[]) => any,
@@ -1031,13 +1031,13 @@ export function LoudnessSettingsRows({
  *   showGrid?: boolean,
  *   maxMode: any,
  *   peakLabels?: boolean,
- *   speedPercent: any,
+ *   speedPercent: number,
  *   octaveSmoothing: any,
  *   tiltDbPerOctave: any,
  *   xMinFreq: any,
  *   xMaxFreq: any,
- *   yMinDb: any,
- *   yMaxDb: any,
+ *   yMinDb: number,
+ *   yMaxDb: number,
  *   grid?: boolean,
  *   onMaxModeChange: (...args: any[]) => any,
  *   onPeakLabelsChange?: (...args: any[]) => any,
@@ -1202,7 +1202,7 @@ const SLOT_WIDGETS = new Set(["custom", "customRow"]);
  * One `openKey` for the whole group rather than a piece of state per select: only one popover can
  * be open at a time anyway, and a per-row flag would have to be declared next to the widget, which
  * is exactly the second list this is removing.
- * @param {{ tab: string, controls: any, onChange: any, slots?: any }} props
+ * @param {{ tab: string, controls: import("../workspace/types.js").PanelControls, onChange: (...args: any[]) => any, slots?: any }} props
  */
 function PanelControlRows({ tab, controls, onChange, slots = {} }) {
   const [openKey, setOpenKey] = useState(null);
@@ -1353,26 +1353,26 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
 /**
  * @param {{
  *   activeTab?: any,
- *   channelCount?: any,
+ *   channelCount?: number,
  *   vectorscopeOptions?: any,
  *   vectorscopeValueKey?: any,
  *   vectorscopeDisplayLabel?: any,
- *   onVectorscopeChange?: any,
+ *   onVectorscopeChange?: (...args: any[]) => any,
  *   spectrumOptions?: any,
  *   spectrumValueKey?: any,
  *   spectrumDisplayLabel?: any,
- *   onSpectrumChange?: any,
+ *   onSpectrumChange?: (...args: any[]) => any,
  *   spectrumView?: any,
  *   spectrumViewLegend?: any,
- *   onSpectrumViewChange?: any,
+ *   onSpectrumViewChange?: (...args: any[]) => any,
  *   spectrumMaxMode?: any,
- *   onSpectrumMaxModeChange?: any,
+ *   onSpectrumMaxModeChange?: (...args: any[]) => any,
  *   stereoMapPairOptions?: any,
  *   stereoMapPairValueKey?: any,
  *   stereoMapPairDisplayLabel?: any,
- *   onStereoMapPairChange?: any,
+ *   onStereoMapPairChange?: (...args: any[]) => any,
  *   panelControls?: any,
- *   onPanelControlsChange?: any,
+ *   onPanelControlsChange?: (...args: any[]) => any,
  * }} props
  */
 export function PanelSettingsContent({

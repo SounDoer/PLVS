@@ -572,13 +572,13 @@ function drawGrid(ctx, xTicks, yTicks, width, height, dpr, color) {
 /**
  * @param {{
  *   mode: string,
- *   bandCentersHz?: any,
+ *   bandCentersHz?: ArrayLike<number>,
  *   points?: any,
  *   holdValues?: any,
  *   holdVisible?: boolean,
  *   range: any,
- *   xMinHz?: any,
- *   xMaxHz?: any,
+ *   xMinHz?: number,
+ *   xMaxHz?: number,
  *   paletteKey?: string,
  *   themeColors?: any,
  *   sourceVersion?: any,

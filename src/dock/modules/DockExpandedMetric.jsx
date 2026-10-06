@@ -9,10 +9,10 @@ const UNIT_VISIBILITY_CLASSES = {
  *   value: any,
  *   unit: any,
  *   align?: any,
- *   indicator?: any,
+ *   indicator?: import("react").ReactNode,
  *   unitVisibility?: string,
  *   labelClassName?: string,
- *   valueClassName?: any,
+ *   valueClassName?: string,
  *   statId?: any,
  * }} props
  */

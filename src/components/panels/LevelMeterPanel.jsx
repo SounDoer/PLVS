@@ -191,8 +191,8 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
  *   value: any,
  *   yRange: any,
  *   dataAttribute?: string,
- *   className: any,
- *   onReset?: any,
+ *   className: string,
+ *   onReset?: (...args: any[]) => any,
  *   resetLabel?: string,
  * }} props
  */

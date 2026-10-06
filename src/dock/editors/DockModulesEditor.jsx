@@ -177,13 +177,13 @@ function resolveDockPanelDisplayName(state, panelId) {
  * @param {{
  *   panels: any,
  *   modules?: any,
- *   vectorscopeSettingsAvailable?: any,
+ *   vectorscopeSettingsAvailable?: boolean,
  *   onAdd: (...args: any[]) => any,
  *   onRename: (...args: any[]) => any,
  *   onRemove: (...args: any[]) => any,
  *   onReorder: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,
- *   isDefault?: any,
+ *   isDefault?: boolean,
  *   onHover: (...args: any[]) => any,
  *   onOpenSettings: (...args: any[]) => any,
  * }} props

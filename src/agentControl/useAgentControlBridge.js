@@ -494,7 +494,7 @@ function transportMutationMatches(method, params, execution, snapshot) {
  * @param {{
  *   enabled: boolean,
  *   runtime: any,
- *   workspace: any,
+ *   workspace: import("../workspace/types.js").WorkspaceState,
  *   replaceWorkspace: any,
  *   setPanelControlsForPanel: (...args: any[]) => any,
  *   waitForWorkspacePersistenceEnqueue: any,

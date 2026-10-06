@@ -381,7 +381,7 @@ describe("PanelSettingsContent time range row", () => {
   });
 });
 
-/** @param {{ value?: any, panelChromeData?: any, children: any }} props */
+/** @param {{ value?: any, panelChromeData?: any, children: import("react").ReactNode }} props */
 function TestPanelDataProviders({ value = {}, panelChromeData = value, children }) {
   return (
     <PanelDataProviders

@@ -1,6 +1,6 @@
 export const CHART_CROSSHAIR_CLASS = "border-dashed border-muted-foreground/60";
 
-/** @param {{ leftPct: any, topPct?: any }} props */
+/** @param {{ leftPct: number, topPct?: number }} props */
 export function ChartCrosshair({ leftPct, topPct }) {
   return (
     <>

@@ -91,13 +91,13 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
  * @param {{
  *   value: any,
  *   customThemes: any,
- *   onSelect: any,
- *   onCustomize: any,
- *   onEdit: any,
- *   onDuplicate: any,
+ *   onSelect: (...args: any[]) => any,
+ *   onCustomize: (...args: any[]) => any,
+ *   onEdit: (...args: any[]) => any,
+ *   onDuplicate: (...args: any[]) => any,
  *   onExport?: (...args: any[]) => any,
- *   onDelete: any,
- *   onCreate: any,
+ *   onDelete: (...args: any[]) => any,
+ *   onCreate: (...args: any[]) => any,
  *   disabled?: boolean,
  * }} props
  */

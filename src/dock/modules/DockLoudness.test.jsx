@@ -13,7 +13,7 @@ import { LoudnessHistoryIndex } from "../../math/loudnessHistoryIndex.js";
  *   loudnessDisplayIndex?: any,
  *   controls?: any,
  *   heightMode?: string,
- *   referenceLufs?: any,
+ *   referenceLufs?: number,
  *   momentaryRules?: any,
  *   shortTermRules?: any,
  * }} options
