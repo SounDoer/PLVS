@@ -30,12 +30,14 @@ vi.mock("../../hooks/useSpectrogram3dCanvas", () => ({
 // out. MouseEvent already carries clientX/clientY, so subclassing it is enough for the fields this
 // suite reads.
 if (typeof window.PointerEvent === "undefined") {
-  window.PointerEvent = class PointerEvent extends MouseEvent {
-    constructor(type, params = {}) {
-      super(type, params);
-      this.pointerId = params.pointerId ?? 0;
+  window.PointerEvent = /** @type {any} */ (
+    class PointerEvent extends MouseEvent {
+      constructor(type, params = {}) {
+        super(type, params);
+        this.pointerId = params.pointerId ?? 0;
+      }
     }
-  };
+  );
 }
 
 function viewOf(rows) {
@@ -86,8 +88,9 @@ function spectrogramPanelTree(value = {}, props = {}) {
   } = value;
   const base = { ...baseAudioData, ...history };
   const frameData = {
-    channelCount: channelCount ?? base.channelCount,
-    spectrumChannelOptions: spectrumChannelOptions ?? base.spectrumChannelOptions,
+    channelCount: channelCount ?? /** @type {any} */ (base).channelCount,
+    spectrumChannelOptions:
+      spectrumChannelOptions ?? /** @type {any} */ (base).spectrumChannelOptions,
     resolvedThemeId: resolvedThemeId ?? base.resolvedThemeId,
   };
   return (
@@ -110,8 +113,8 @@ beforeEach(() => {
     disconnect() {}
   }
 
-  window.ResizeObserver = ResizeObserverStub;
-  globalThis.ResizeObserver = ResizeObserverStub;
+  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
 });
 
 describe("SpectrogramPanel", () => {
@@ -571,14 +574,15 @@ describe("SpectrogramPanel", () => {
       vi.unstubAllGlobals();
     }
     const canvas = container.querySelector("canvas");
-    canvas.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 300,
-      bottom: 150,
-      width: 300,
-      height: 150,
-    });
+    canvas.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 150,
+        width: 300,
+        height: 150,
+      });
 
     const projectionRef = vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].projectionRef;
     const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 60, width: 300, height: 150 });
@@ -627,14 +631,15 @@ describe("SpectrogramPanel", () => {
     // the range: the zoom still happens, so the assertions below survive without this stub, but the
     // gesture under test would not be the one that ships. A real rect makes it the mid-rail zoom a
     // user performs.
-    rail.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 32,
-      bottom: 300,
-      width: 32,
-      height: 300,
-    });
+    rail.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 32,
+        bottom: 300,
+        width: 32,
+        height: 300,
+      });
     fireEvent.wheel(rail, { deltaY: -100, clientY: 150 });
 
     expect(onPanelControlsChange).toHaveBeenCalled();
@@ -658,14 +663,15 @@ describe("SpectrogramPanel", () => {
 
     const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
     rail.setPointerCapture = () => {};
-    rail.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 32,
-      bottom: 300,
-      width: 32,
-      height: 300,
-    });
+    rail.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 32,
+        bottom: 300,
+        width: 32,
+        height: 300,
+      });
 
     fireEvent.pointerDown(rail, { button: 0, clientY: 150 });
     fireEvent.pointerMove(rail, { clientY: 40 });
@@ -688,14 +694,15 @@ describe("SpectrogramPanel", () => {
 
     // The rail starts at 100-10000 here (see above), so its endpoint tick reads "10k", not "20k".
     const rail = screen.getByText("10k").closest("div[class*='shrink-0']");
-    rail.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 32,
-      bottom: 300,
-      width: 32,
-      height: 300,
-    });
+    rail.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 32,
+        bottom: 300,
+        width: 32,
+        height: 300,
+      });
 
     fireEvent.mouseDown(rail, { button: 0, clientY: 150 });
     fireEvent.mouseMove(window, { clientY: 100 });
@@ -848,14 +855,15 @@ describe("SpectrogramPanel", () => {
     });
     const canvas = container.querySelector("canvas");
     stubPointerCapture(canvas);
-    canvas.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 300,
-      bottom: 150,
-      width: 300,
-      height: 150,
-    });
+    canvas.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 150,
+        width: 300,
+        height: 150,
+      });
 
     fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
@@ -888,14 +896,15 @@ describe("SpectrogramPanel", () => {
     });
     const canvas = container.querySelector("canvas");
     stubPointerCapture(canvas);
-    canvas.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 300,
-      bottom: 150,
-      width: 300,
-      height: 150,
-    });
+    canvas.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 150,
+        width: 300,
+        height: 150,
+      });
 
     fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
@@ -920,14 +929,15 @@ describe("SpectrogramPanel", () => {
     });
     const canvas = container.querySelector("canvas");
     stubPointerCapture(canvas);
-    canvas.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 300,
-      bottom: 150,
-      width: 300,
-      height: 150,
-    });
+    canvas.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 150,
+        width: 300,
+        height: 150,
+      });
 
     fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
@@ -961,14 +971,15 @@ describe("SpectrogramPanel", () => {
       });
       const canvas = container.querySelector("canvas");
       stubPointerCapture(canvas);
-      canvas.getBoundingClientRect = () => ({
-        left: 0,
-        top: 0,
-        right: 300,
-        bottom: 150,
-        width: 300,
-        height: 150,
-      });
+      canvas.getBoundingClientRect = () =>
+        /** @type {DOMRect} */ ({
+          left: 0,
+          top: 0,
+          right: 300,
+          bottom: 150,
+          width: 300,
+          height: 150,
+        });
 
       fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
       fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
@@ -1000,14 +1011,15 @@ describe("SpectrogramPanel", () => {
     });
     const canvas = container.querySelector("canvas");
     stubPointerCapture(canvas);
-    canvas.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      right: 300,
-      bottom: 150,
-      width: 300,
-      height: 150,
-    });
+    canvas.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 150,
+        width: 300,
+        height: 150,
+      });
 
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });

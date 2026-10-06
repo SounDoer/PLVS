@@ -189,19 +189,23 @@ beforeEach(() => {
   // AppBar reserve-space scenarios are Windows-only. Pin the mocked Tauri
   // surface to that platform so these smoke tests do not inherit the CI host.
   vi.spyOn(window.navigator, "platform", "get").mockReturnValue("Win32");
-  isTauri.mockReturnValue(false);
-  listAudioDevices.mockResolvedValue([]);
-  previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
-  readPendingCrashReport.mockReset().mockResolvedValue(null);
-  emitTo.mockClear();
-  enterDock.mockClear().mockResolvedValue(undefined);
-  exitDock.mockClear().mockResolvedValue(undefined);
-  getDockState.mockClear().mockResolvedValue(undefined);
-  setDockAccessories.mockClear().mockResolvedValue(undefined);
-  setDockReserveSpace.mockClear().mockResolvedValue(undefined);
-  setDockSuspended.mockClear().mockResolvedValue(undefined);
-  invoke.mockClear().mockResolvedValue(undefined);
-  pickMediaFile.mockResolvedValue(null);
+  vi.mocked(isTauri).mockReturnValue(false);
+  vi.mocked(listAudioDevices).mockResolvedValue([]);
+  vi.mocked(previewAudioDevice).mockResolvedValue({
+    sampleRateHz: 48000,
+    channels: 2,
+    label: "Mock",
+  });
+  vi.mocked(readPendingCrashReport).mockReset().mockResolvedValue(null);
+  vi.mocked(emitTo).mockClear();
+  vi.mocked(enterDock).mockClear().mockResolvedValue(undefined);
+  vi.mocked(exitDock).mockClear().mockResolvedValue(undefined);
+  vi.mocked(getDockState).mockClear().mockResolvedValue(undefined);
+  vi.mocked(setDockAccessories).mockClear().mockResolvedValue(undefined);
+  vi.mocked(setDockReserveSpace).mockClear().mockResolvedValue(undefined);
+  vi.mocked(setDockSuspended).mockClear().mockResolvedValue(undefined);
+  vi.mocked(invoke).mockClear().mockResolvedValue(undefined);
+  vi.mocked(pickMediaFile).mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
@@ -217,20 +221,22 @@ beforeEach(() => {
       unobserve() {}
       disconnect() {}
     };
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    save: vi.fn(),
-    restore: vi.fn(),
-    clearRect: vi.fn(),
-    beginPath: vi.fn(),
-    moveTo: vi.fn(),
-    lineTo: vi.fn(),
-    closePath: vi.fn(),
-    setTransform: vi.fn(),
-    fill: vi.fn(),
-    stroke: vi.fn(),
-    putImageData: vi.fn(),
-    createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
-  });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+    /** @type {any} */ ({
+      save: vi.fn(),
+      restore: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      setTransform: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      putImageData: vi.fn(),
+      createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+    })
+  );
 });
 
 afterEach(() => {
@@ -369,7 +375,7 @@ describe("App smoke", () => {
   });
 
   it("uses a custom light theme's color scheme for native window surfaces", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     const light = makeCustomThemeFromBase(
       BUILTIN_THEMES["plvs-light"],
       "Custom Light",
@@ -432,8 +438,8 @@ describe("App smoke", () => {
   });
 
   it("uses the source type and formatted default output label in the footer", async () => {
-    isTauri.mockReturnValue(true);
-    previewAudioDevice.mockResolvedValue({
+    vi.mocked(isTauri).mockReturnValue(true);
+    vi.mocked(previewAudioDevice).mockResolvedValue({
       sampleRateHz: 48000,
       channels: 2,
       label: "Speakers (Realtek USB Audio)",
@@ -445,7 +451,7 @@ describe("App smoke", () => {
   });
 
   it("starts file analysis from the File source action and shows the summary surface", async () => {
-    pickMediaFile.mockResolvedValue("C:\\mix.wav");
+    vi.mocked(pickMediaFile).mockResolvedValue("C:\\mix.wav");
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Source: Live" }));
@@ -457,7 +463,7 @@ describe("App smoke", () => {
   });
 
   it("marks the active preset dirty after manual window bounds changes", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     vi.spyOn(Date, "now").mockReturnValue(1_000);
     render(<App />);
 
@@ -470,7 +476,7 @@ describe("App smoke", () => {
     expect((await screen.findAllByText("Mix")).length).toBeGreaterThan(0);
     await waitFor(() => expect(tauriEventHandlers.has("window-bounds-changed")).toBe(true));
 
-    Date.now.mockReturnValue(3_000);
+    vi.mocked(Date.now).mockReturnValue(3_000);
     tauriEventHandlers.get("window-bounds-changed")();
 
     expect((await screen.findAllByText("Mix *")).length).toBeGreaterThan(0);
@@ -512,7 +518,7 @@ describe("App smoke", () => {
   });
 
   it("renders the dock strip (not the workspace header) when boot state is docked", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
     render(<App />);
 
@@ -523,10 +529,10 @@ describe("App smoke", () => {
   });
 
   it("restores the normal window to ask about a saved crash report after a docked boot", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     settingsStore.patch({ askToSendCrashReports: true });
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
-    readPendingCrashReport.mockResolvedValue({
+    vi.mocked(readPendingCrashReport).mockResolvedValue({
       schemaVersion: 1,
       id: "20260916T120000Z-01234567",
       createdAt: "2026-09-16T12:00:00Z",
@@ -545,7 +551,7 @@ describe("App smoke", () => {
   });
 
   it("keeps macOS in normal mode and ignores Dock while applying the rest of a preset", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     vi.spyOn(window.navigator, "platform", "get").mockReturnValue("MacIntel");
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
     presetsStore.patch({
@@ -581,7 +587,7 @@ describe("App smoke", () => {
   });
 
   it("applies monitor from a dock preset", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY1", reserveSpace: true },
     };
@@ -630,7 +636,7 @@ describe("App smoke", () => {
   });
 
   it("selects and reorders Loudness Profiles from the Dock editor through the main window", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
     const second = { ...TEST_PROFILE, id: "second-profile", name: "Second profile" };
     settingsStore.patch({
@@ -663,7 +669,7 @@ describe("App smoke", () => {
   });
 
   it("restores a normal preset's bounds and window attributes in one Dock exit", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY2" },
     };
@@ -717,12 +723,13 @@ describe("App smoke", () => {
   });
 
   it("serializes rapid reserve toggles from the dock header", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
+    /** @type {any} */
     let releaseFirst;
-    setDockReserveSpace.mockImplementationOnce(
+    vi.mocked(setDockReserveSpace).mockImplementationOnce(
       () => new Promise((resolve) => (releaseFirst = resolve))
     );
     render(<App />);
@@ -752,11 +759,13 @@ describe("App smoke", () => {
   });
 
   it("keeps the Dock header visible with actionable reserve-space errors", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
-    setDockReserveSpace.mockRejectedValueOnce(new Error("ABM_NEW rejected registration"));
+    vi.mocked(setDockReserveSpace).mockRejectedValueOnce(
+      new Error("ABM_NEW rejected registration")
+    );
     render(<App />);
     await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
 
@@ -778,25 +787,29 @@ describe("App smoke", () => {
     );
     await waitFor(() =>
       expect(
-        emitTo.mock.calls.some(
-          ([surface, eventName, snapshot]) =>
-            surface === "dock-header" &&
-            eventName === "dock-accessory://state" &&
-            snapshot?.payload?.notice?.text ===
-              "Could not reserve screen space. Dock remains an overlay." &&
-            snapshot.payload.notice.details ===
-              "Reserve screen space failed: ABM_NEW rejected registration"
-        )
+        vi
+          .mocked(emitTo)
+          .mock.calls.some(
+            ([surface, eventName, snapshot]) =>
+              surface === "dock-header" &&
+              eventName === "dock-accessory://state" &&
+              /** @type {any} */ (snapshot)?.payload?.notice?.text ===
+                "Could not reserve screen space. Dock remains an overlay." &&
+              /** @type {any} */ (snapshot).payload.notice.details ===
+                "Reserve screen space failed: ABM_NEW rejected registration"
+          )
       ).toBe(true)
     );
   });
 
   it("restores the main window when Dock accessory controls cannot open", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
-    setDockAccessories.mockRejectedValueOnce(new Error("dock editor position: access denied"));
+    vi.mocked(setDockAccessories).mockRejectedValueOnce(
+      new Error("dock editor position: access denied")
+    );
     render(<App />);
 
     await waitFor(() => expect(exitDock).toHaveBeenCalledOnce());

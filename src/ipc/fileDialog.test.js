@@ -17,7 +17,7 @@ describe("MEDIA_EXTENSIONS", () => {
 
 describe("pickMediaFile", () => {
   it("opens the dialog plugin with the media filter and returns the selected path", async () => {
-    open.mockResolvedValue("C:\\mix.wav");
+    vi.mocked(open).mockResolvedValue("C:\\mix.wav");
 
     await expect(pickMediaFile()).resolves.toBe("C:\\mix.wav");
 
@@ -29,17 +29,17 @@ describe("pickMediaFile", () => {
   });
 
   it("normalizes cancelled or multi-select results to null", async () => {
-    open.mockResolvedValue(["C:\\mix.wav"]);
+    vi.mocked(open).mockResolvedValue(["C:\\mix.wav"]);
     await expect(pickMediaFile()).resolves.toBeNull();
 
-    open.mockResolvedValue(null);
+    vi.mocked(open).mockResolvedValue(null);
     await expect(pickMediaFile()).resolves.toBeNull();
   });
 });
 
 describe("saveFileAnalysisReportFile", () => {
   it("filters the save dialog by report format", async () => {
-    save.mockResolvedValue("C:\\report.md");
+    vi.mocked(save).mockResolvedValue("C:\\report.md");
 
     await expect(saveFileAnalysisReportFile("mix-plvs-report.md", "markdown")).resolves.toBe(
       "C:\\report.md"

@@ -178,7 +178,7 @@ function queryRange(view, startInclusive, endInclusive, rawRowAt) {
  * @typedef {{
  *   _capacity: number,
  *   _maxLevel: number,
- *   _levels: any[],
+ *   _levels: readonly any[],
  *   _retainedStartSequence: number,
  *   _retainedEndSequence: number,
  *   _valueCount: number,

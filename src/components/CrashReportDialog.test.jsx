@@ -81,7 +81,9 @@ describe("CrashReportDialog", () => {
     fireEvent.blur(screen.getByLabelText("Your email (optional)"));
 
     expect(screen.getByText("Enter a valid email or leave it blank.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Send" })).disabled
+    ).toBe(true);
   });
 
   it("deletes only after a successful send and then closes", async () => {
@@ -100,7 +102,7 @@ describe("CrashReportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await screen.findByText("Could not send the report. It is still saved on this device.");
-    expect(note.value).toBe("my draft");
+    expect(/** @type {HTMLInputElement} */ (note).value).toBe("my draft");
     expect(props.onDiscard).not.toHaveBeenCalled();
     expect(props.onClose).not.toHaveBeenCalled();
   });

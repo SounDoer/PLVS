@@ -35,7 +35,9 @@ describe("CopyableTextBlock", () => {
   });
 
   it("keeps the text available for manual selection when copying fails", async () => {
-    navigator.clipboard.writeText.mockRejectedValueOnce(new Error("clipboard unavailable"));
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
+      new Error("clipboard unavailable")
+    );
     render(<CopyableTextBlock value={VALUE} ariaLabel="copy prompt starter" />);
 
     const copy = screen.getByRole("button", { name: "copy prompt starter" });

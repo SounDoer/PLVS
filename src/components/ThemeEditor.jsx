@@ -97,7 +97,7 @@ const CORE_COLORS = [
  *   canSave?: any,
  *   onSave: any,
  *   onCancel: any,
- *   onDelete: any,
+ *   onDelete?: any,
  *   dirty: any,
  *   stale?: any,
  *   pos: any,

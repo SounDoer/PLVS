@@ -93,6 +93,7 @@ function contextStub() {
 
 const RANGE = { lowerBound: -1, upperBound: 1 };
 
+/** @param {{ invalidLast?: boolean }} [options] */
 function threeBandPoints({ invalidLast = false } = {}) {
   return [
     { value: -0.5, opacity: 1, state: "ok" },
@@ -117,7 +118,7 @@ describe("StereoMapPlot", () => {
 
   it("draws one gradient-filled and stroked path per continuous run with Grid off", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -142,7 +143,7 @@ describe("StereoMapPlot", () => {
 
   it("breaks the curve at an invalid band instead of interpolating across it", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -164,7 +165,7 @@ describe("StereoMapPlot", () => {
     // per-stop: a per-draw alpha would apply one edge's fade to the whole run. The fill's constant
     // factor is the one part that can ride on globalAlpha, which the canvas multiplies in.
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -188,7 +189,7 @@ describe("StereoMapPlot", () => {
 
   it("applies Energy Fade Strength at draw time and redraws live", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const props = {
       mode: STEREO_MAP_MODES.CORRELATION,
       bandCentersHz: [100, 1000],
@@ -212,7 +213,7 @@ describe("StereoMapPlot", () => {
 
   it("keeps fixed fill opacity when theme colors change", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const props = {
       mode: STEREO_MAP_MODES.CORRELATION,
       bandCentersHz: [100, 1000],
@@ -230,16 +231,18 @@ describe("StereoMapPlot", () => {
   });
 
   it("colors Position mode as a continuous blend between the primary and secondary tokens", () => {
-    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: (name) =>
-        ({
-          "--ui-stereo-map-primary": "#ff0000",
-          "--ui-stereo-map-secondary": "#0000ff",
-          "--border": "#888888",
-        })[name] ?? "",
-    });
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
+      /** @type {any} */ ({
+        getPropertyValue: (name) =>
+          ({
+            "--ui-stereo-map-primary": "#ff0000",
+            "--ui-stereo-map-secondary": "#0000ff",
+            "--border": "#888888",
+          })[name] ?? "",
+      })
+    );
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.POSITION}
@@ -264,7 +267,7 @@ describe("StereoMapPlot", () => {
 
   it("limits Position mixing to Color Blend width and redraws a zero-width hard split", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const props = {
       mode: STEREO_MAP_MODES.POSITION,
       bandCentersHz: [100, 10000],
@@ -310,7 +313,7 @@ describe("StereoMapPlot", () => {
 
   it("keeps the zero-width hard split when a Position band lands exactly on center", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.POSITION}
@@ -336,17 +339,19 @@ describe("StereoMapPlot", () => {
   });
 
   it("colors Correlation as Bad at -1 and Good at +1 via the three-stop signal tokens", () => {
-    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: (name) =>
-        ({
-          "--ui-stereo-map-critical-range": "#ff0000",
-          "--ui-stereo-map-warning-range": "#00ff00",
-          "--ui-stereo-map-safe-range": "#0000ff",
-          "--border": "#888888",
-        })[name] ?? "",
-    });
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
+      /** @type {any} */ ({
+        getPropertyValue: (name) =>
+          ({
+            "--ui-stereo-map-critical-range": "#ff0000",
+            "--ui-stereo-map-warning-range": "#00ff00",
+            "--ui-stereo-map-safe-range": "#0000ff",
+            "--border": "#888888",
+          })[name] ?? "",
+      })
+    );
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
 
     render(
       <StereoMapPlot
@@ -364,16 +369,18 @@ describe("StereoMapPlot", () => {
     expect(ctx.gradients[0].stops[0].color).toBe("rgba(255, 0, 0, 1)");
 
     const ctx2 = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx2);
-    const styleSpy2 = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: (name) =>
-        ({
-          "--ui-stereo-map-critical-range": "#ff0000",
-          "--ui-stereo-map-warning-range": "#00ff00",
-          "--ui-stereo-map-safe-range": "#0000ff",
-          "--border": "#888888",
-        })[name] ?? "",
-    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx2));
+    const styleSpy2 = vi.spyOn(window, "getComputedStyle").mockReturnValue(
+      /** @type {any} */ ({
+        getPropertyValue: (name) =>
+          ({
+            "--ui-stereo-map-critical-range": "#ff0000",
+            "--ui-stereo-map-warning-range": "#00ff00",
+            "--ui-stereo-map-safe-range": "#0000ff",
+            "--border": "#888888",
+          })[name] ?? "",
+      })
+    );
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -391,16 +398,18 @@ describe("StereoMapPlot", () => {
   });
 
   it("colors M/S Ratio as a binary primary/secondary split by sign, merging same-color segments", () => {
-    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: (name) =>
-        ({
-          "--ui-stereo-map-primary": "#ff0000",
-          "--ui-stereo-map-secondary": "#0000ff",
-          "--border": "#888888",
-        })[name] ?? "",
-    });
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
+      /** @type {any} */ ({
+        getPropertyValue: (name) =>
+          ({
+            "--ui-stereo-map-primary": "#ff0000",
+            "--ui-stereo-map-secondary": "#0000ff",
+            "--border": "#888888",
+          })[name] ?? "",
+      })
+    );
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.MS_RATIO_DB}
@@ -433,7 +442,9 @@ describe("StereoMapPlot", () => {
 
   it("draws two Hold outlines for Position (maximum + minimum) and one for other modes", () => {
     const ctxPosition = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctxPosition);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ (ctxPosition)
+    );
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.POSITION}
@@ -449,7 +460,9 @@ describe("StereoMapPlot", () => {
     expect(ctxPosition.strokedAlphas.slice(-2)).toEqual([1, 1]);
 
     const ctxOther = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctxOther);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ (ctxOther)
+    );
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -467,7 +480,7 @@ describe("StereoMapPlot", () => {
 
   it("omits Hold outlines when holdVisible is false even with Hold data present", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -484,7 +497,7 @@ describe("StereoMapPlot", () => {
 
   it("breaks Hold outline runs at invalid (null) values, same as the main curve", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -501,7 +514,7 @@ describe("StereoMapPlot", () => {
 
   it("skips redrawing when a rerender changes nothing that affects the picture", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const props = {
       mode: STEREO_MAP_MODES.CORRELATION,
       bandCentersHz: [100, 1000, 10000],
@@ -532,10 +545,12 @@ describe("StereoMapPlot", () => {
     // of jank the canvas rewrite was meant to remove. Colors/size must come from cached refs unless
     // paletteKey/themeId or the element's actual size changed.
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
-    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: () => "",
-    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
+      /** @type {any} */ ({
+        getPropertyValue: () => "",
+      })
+    );
     const props = {
       mode: STEREO_MAP_MODES.CORRELATION,
       bandCentersHz: [100, 1000, 10000],
@@ -564,10 +579,12 @@ describe("StereoMapPlot", () => {
 
   it("does not read CSS colors again after the active theme is applied", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
-    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: () => "",
-    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
+      /** @type {any} */ ({
+        getPropertyValue: () => "",
+      })
+    );
     const props = {
       mode: STEREO_MAP_MODES.CORRELATION,
       bandCentersHz: [100, 1000, 10000],
@@ -590,7 +607,7 @@ describe("StereoMapPlot", () => {
 
   it("redraws when a point's value actually changes", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const props = {
       mode: STEREO_MAP_MODES.CORRELATION,
       bandCentersHz: [100, 1000, 10000],
@@ -622,7 +639,9 @@ describe("StereoMapPlot", () => {
     const bandCentersHz = Array.from({ length: 20 }, (_, i) => 100 * 1.3 ** i);
 
     const calmCtx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(calmCtx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ (calmCtx)
+    );
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -633,7 +652,9 @@ describe("StereoMapPlot", () => {
     );
 
     const busyCtx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(busyCtx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ (busyCtx)
+    );
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -661,7 +682,7 @@ describe("StereoMapPlot", () => {
       baselineWidths.push(ctx.lineWidth);
       stroke();
     });
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const { container } = render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
@@ -695,7 +716,7 @@ describe("StereoMapPlot", () => {
       strokes.push(ctx.lineWidth);
       stroke();
     });
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     render(
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}

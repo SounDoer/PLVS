@@ -115,7 +115,7 @@ describe("floorLineGeometry", () => {
 describe("createSurfaceRenderer alpha compositing", () => {
   it("asks for a premultiplied-alpha canvas", () => {
     const { canvas, contextOptions } = recordingCanvas();
-    createSurfaceRenderer(canvas);
+    createSurfaceRenderer(/** @type {any} */ (canvas));
     expect(contextOptions[0]).toMatchObject({
       kind: "webgl2",
       options: { premultipliedAlpha: true },
@@ -124,14 +124,14 @@ describe("createSurfaceRenderer alpha compositing", () => {
 
   it("blends premultiplied colour, so alpha is applied exactly once", () => {
     const { canvas, calls } = recordingCanvas();
-    drawOnce(createSurfaceRenderer(canvas));
+    drawOnce(createSurfaceRenderer(/** @type {any} */ (canvas)));
     const blends = calls.filter(([name]) => name.startsWith("blendFunc"));
     expect(blends).toEqual([["blendFunc", "ONE", "ONE_MINUS_SRC_ALPHA"]]);
   });
 
   it("uses the same resolved Grid colour for the floor outline and subdivisions", () => {
     const { canvas, calls } = recordingCanvas();
-    drawOnce(createSurfaceRenderer(canvas));
+    drawOnce(createSurfaceRenderer(/** @type {any} */ (canvas)));
     const gridUploads = calls.filter(
       ([name, , value]) =>
         name === "uniform4fv" && JSON.stringify(value) === JSON.stringify([0.1, 0.2, 0.3, 1])
@@ -142,7 +142,7 @@ describe("createSurfaceRenderer alpha compositing", () => {
 
   it("writes premultiplied colour from every fragment shader", () => {
     const { canvas, calls } = recordingCanvas();
-    createSurfaceRenderer(canvas);
+    createSurfaceRenderer(/** @type {any} */ (canvas));
     const fragmentSources = calls
       .filter(([name, , source]) => name === "shaderSource" && source.includes("out vec4 colour"))
       .map(([, , source]) => source);

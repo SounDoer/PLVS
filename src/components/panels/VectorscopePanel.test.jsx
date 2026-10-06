@@ -51,18 +51,20 @@ function vectorscopePanelTree(audioData) {
 
 describe("VectorscopePanel", () => {
   function mockCanvas() {
-    return vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      save: vi.fn(),
-      restore: vi.fn(),
-      clearRect: vi.fn(),
-      beginPath: vi.fn(),
-      closePath: vi.fn(),
-      arc: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      fill: vi.fn(),
-      stroke: vi.fn(),
-    });
+    return vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ ({
+        save: vi.fn(),
+        restore: vi.fn(),
+        clearRect: vi.fn(),
+        beginPath: vi.fn(),
+        closePath: vi.fn(),
+        arc: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        fill: vi.fn(),
+        stroke: vi.fn(),
+      })
+    );
   }
 
   it("keeps the trace stroke width independent from SVG scaling", () => {
@@ -595,7 +597,7 @@ describe("VectorscopePanel hold slow mode", () => {
       lineTo: vi.fn(),
       stroke: vi.fn(),
     };
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     const rows = [
       { pairs: [0.1, 0.1], timestampMs: 1000 },
       { pairs: [0.2, 0.2], timestampMs: 1040 },

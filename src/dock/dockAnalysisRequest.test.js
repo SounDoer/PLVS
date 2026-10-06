@@ -15,7 +15,9 @@ import {
   mergeDockSpectrumRequest,
 } from "./dockAnalysisRequest.js";
 
-const EMPTY_DERIVED = deriveAnalysisRequests({ tree: null, panelsById: {}, panelOrder: [] });
+const EMPTY_DERIVED = deriveAnalysisRequests(
+  /** @type {any} */ ({ tree: null, panelsById: {}, panelOrder: [] })
+);
 
 describe("mergeDockSpectrumRequest", () => {
   it("is a no-op when dock spectrum is inactive", () => {
@@ -326,7 +328,7 @@ describe("subset invariant: every dock-merged computed key is retained", () => {
   it("keeps every dock-merged computed key inside the dock-merged retained set", () => {
     const workspace = workspaceState();
     const requested = mergeDockAnalysisRequests(
-      deriveAnalysisRequests(workspace, { channelCount: 6 }),
+      deriveAnalysisRequests(/** @type {any} */ (workspace), { channelCount: 6 }),
       dockPanels
     );
     const retained = mergeDockRetainedKeys(deriveRetainedAnalysisKeys(workspace), dockPanels);

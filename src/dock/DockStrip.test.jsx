@@ -10,8 +10,8 @@ beforeAll(() => {
     observe() {}
     disconnect() {}
   }
-  window.ResizeObserver = ResizeObserverStub;
-  globalThis.ResizeObserver = ResizeObserverStub;
+  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
 });
 
 const BASE_PROPS = {
@@ -196,8 +196,10 @@ describe("DockStrip", () => {
       onPanelResize,
     });
     const [spectrum, level] = screen.getAllByTestId("dock-module");
-    vi.spyOn(spectrum, "getBoundingClientRect").mockReturnValue({ width: 1200 });
-    vi.spyOn(level, "getBoundingClientRect").mockReturnValue({ width: 200 });
+    vi.spyOn(spectrum, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({ width: 1200 })
+    );
+    vi.spyOn(level, "getBoundingClientRect").mockReturnValue(/** @type {any} */ ({ width: 200 }));
     const divider = screen.getByRole("separator", {
       name: /resize spectrum and levelMeter/i,
     });

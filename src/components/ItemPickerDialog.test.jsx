@@ -8,12 +8,14 @@ import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 // silently NaNs out. MouseEvent already carries clientX/clientY, so subclassing it is enough
 // (same shim as SpectrogramPanel.test.jsx).
 if (typeof window.PointerEvent === "undefined") {
-  window.PointerEvent = class PointerEvent extends MouseEvent {
-    constructor(type, params = {}) {
-      super(type, params);
-      this.pointerId = params.pointerId ?? 0;
+  window.PointerEvent = /** @type {any} */ (
+    class PointerEvent extends MouseEvent {
+      constructor(type, params = {}) {
+        super(type, params);
+        this.pointerId = params.pointerId ?? 0;
+      }
     }
-  };
+  );
 }
 
 // jsdom reports zero-size boxes and doesn't implement setPointerCapture, so both are stubbed the
@@ -67,7 +69,9 @@ describe("ItemPickerDialog pick mode", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByRole("button", { name: "Export" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Export" })).disabled
+    ).toBe(true);
   });
 
   it("shows a dependency row only once the preset that needs it is checked", () => {

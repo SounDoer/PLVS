@@ -64,7 +64,7 @@ describe("FrameIntake", () => {
 
   it("preserves history and visual timestamps for cross-rate alignment", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ timestampMs: 1200 }), HIST_MAX, SR);
+    intake.pushHistRow(makeRow({ timestampMs: 1200 }), HIST_MAX);
     intake.pushVisualHistRow(
       {
         timestampMs: 1240,
@@ -89,7 +89,7 @@ describe("FrameIntake", () => {
     });
     intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
 
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
 
     expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
       { type: "frequencyChannelChange", from: "L/R", to: "C" },
@@ -106,8 +106,8 @@ describe("FrameIntake", () => {
       vectorscopePairLabel: "L/R",
     });
 
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
+    intake.pushHistRow(makeRow(), HIST_MAX);
 
     expect(intake.getLoudnessHistory()).toHaveLength(2);
     expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([null, null]);
@@ -122,7 +122,7 @@ describe("FrameIntake", () => {
     intake.setCurrentChannelMetadata({ frequencyLabel: "C", vectorscopePairLabel: "L/R" });
     intake.setCurrentChannelMetadata({ frequencyLabel: "LFE" });
 
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
 
     expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "LFE", vectorscopePairLabel: "L/R" },
@@ -133,7 +133,7 @@ describe("FrameIntake", () => {
     const intake = new FrameIntake();
     intake.setCurrentChannelMetadata({ frequencyLabel: "", vectorscopePairLabel: "" });
 
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
 
     expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "", vectorscopePairLabel: "" },
@@ -144,8 +144,8 @@ describe("FrameIntake", () => {
     const intake = new FrameIntake();
     intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
 
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
+    intake.pushHistRow(makeRow(), HIST_MAX);
 
     expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
       { type: "frequencyChannelChange", from: "L/R", to: "C" },
@@ -159,7 +159,7 @@ describe("FrameIntake", () => {
       if (index === 1 || index === 4) {
         intake.setPendingFrequencyMarker({ from: `${index}`, to: `${index + 1}` });
       }
-      intake.pushHistRow(makeRow({ timestampMs: index * 100 }), 3, SR);
+      intake.pushHistRow(makeRow({ timestampMs: index * 100 }), 3);
     }
 
     expect(intake.getSparseFrequencyChannelMarkers().query(0, 2)).toEqual([
@@ -179,11 +179,11 @@ describe("FrameIntake", () => {
   it("rebuilds and clears the sparse marker index with scalar history", () => {
     const intake = new FrameIntake();
     intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
-    intake.pushHistRow(makeRow(), 3, SR);
+    intake.pushHistRow(makeRow(), 3);
     const original = intake.getSparseFrequencyChannelMarkers();
     const frozen = intake.snapshotSparseFrequencyChannelMarkers();
 
-    intake.pushHistRow(makeRow(), 4, SR);
+    intake.pushHistRow(makeRow(), 4);
     const rebuilt = intake.getSparseFrequencyChannelMarkers();
     expect(rebuilt).not.toBe(original);
     expect(rebuilt.capacity).toBe(4);
@@ -197,7 +197,7 @@ describe("FrameIntake", () => {
   it("reset clears frequency markers and channel metadata history", () => {
     const intake = new FrameIntake();
     intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
 
     intake.reset();
 
@@ -207,7 +207,7 @@ describe("FrameIntake", () => {
 
   it("pushHistRow records loudness values correctly", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ lufsMomentary: -18, lufsShortTerm: -20 }), HIST_MAX, SR);
+    intake.pushHistRow(makeRow({ lufsMomentary: -18, lufsShortTerm: -20 }), HIST_MAX);
     const entry = intake.getLoudnessHistory().rowAt(0);
     expect(entry.m).toBe(-18);
     expect(entry.st).toBe(-20);
@@ -216,7 +216,7 @@ describe("FrameIntake", () => {
   it("pushHistRow clamps ring to histMaxSamples", () => {
     const intake = new FrameIntake();
     for (let i = 0; i < HIST_MAX + 3; i++) {
-      intake.pushHistRow(makeRow(), HIST_MAX, SR);
+      intake.pushHistRow(makeRow(), HIST_MAX);
     }
     expect(intake.getLoudnessHistory()).toHaveLength(HIST_MAX);
     expect(intake.getAudioSnap()).toHaveLength(HIST_MAX);
@@ -238,14 +238,13 @@ describe("FrameIntake", () => {
           lufsMomentary: -20 - index,
           correlation: index / 10,
         }),
-        3,
-        SR
+        3
       );
     }
 
     const frozen = intake.snapshotScalarHistory();
     for (let index = 3; index < 8; index += 1) {
-      intake.pushHistRow(makeRow({ timestampMs: index * 100, correlation: index / 10 }), 3, SR);
+      intake.pushHistRow(makeRow({ timestampMs: index * 100, correlation: index / 10 }), 3);
     }
 
     expect(frozen.loudness.toArray().map((row) => row.timestampMs)).toEqual([0, 100, 200]);
@@ -269,8 +268,7 @@ describe("FrameIntake", () => {
           lufsShortTerm: -40 + sequence,
           timestampMs: sequence * 100,
         }),
-        4,
-        SR
+        4
       );
     }
 
@@ -290,11 +288,11 @@ describe("FrameIntake", () => {
 
   it("rebuilds and clears the loudness index with scalar history", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ lufsMomentary: -20 }), 3, SR);
+    intake.pushHistRow(makeRow({ lufsMomentary: -20 }), 3);
     const original = intake.getLoudnessDisplayIndex();
     const frozen = intake.snapshotLoudnessDisplayIndex();
 
-    intake.pushHistRow(makeRow({ lufsMomentary: -10 }), 5, SR);
+    intake.pushHistRow(makeRow({ lufsMomentary: -10 }), 5);
     const rebuilt = intake.getLoudnessDisplayIndex();
     expect(rebuilt).not.toBe(original);
     expect(rebuilt.capacity).toBe(5);
@@ -319,8 +317,7 @@ describe("FrameIntake", () => {
           waveformMax: [sequence / 16],
           timestampMs: sequence * 100,
         }),
-        4,
-        SR
+        4
       );
     }
 
@@ -337,11 +334,11 @@ describe("FrameIntake", () => {
 
   it("rebuilds, freezes, and clears the waveform index with scalar history", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ waveformMin: [-0.25], waveformMax: [0.5] }), 3, SR);
+    intake.pushHistRow(makeRow({ waveformMin: [-0.25], waveformMax: [0.5] }), 3);
     const original = intake.getWaveformHistoryIndex();
     const frozen = intake.snapshotWaveformHistoryIndex();
 
-    intake.pushHistRow(makeRow({ waveformMin: [-0.8], waveformMax: [0.9] }), 5, SR);
+    intake.pushHistRow(makeRow({ waveformMin: [-0.8], waveformMax: [0.9] }), 5);
     const rebuilt = intake.getWaveformHistoryIndex();
     expect(rebuilt).not.toBe(original);
     expect(rebuilt.capacity).toBe(5);
@@ -393,7 +390,7 @@ describe("FrameIntake", () => {
   it("pushHistRow rebuilds scalar rings when histMaxSamples changes", () => {
     const intake = new FrameIntake();
     for (let i = 0; i < 3; i++) {
-      intake.pushHistRow(makeRow(), HIST_MAX, SR);
+      intake.pushHistRow(makeRow(), HIST_MAX);
     }
     expect(intake.getLoudnessHistory()).toHaveLength(3);
     expect(intake.getAudioSnap()).toHaveLength(3);
@@ -406,7 +403,7 @@ describe("FrameIntake", () => {
       intake.getChannelMetadataSnap(),
     ];
 
-    intake.pushHistRow(makeRow(), HIST_MAX + 2, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX + 2);
 
     const rebuilt = [
       intake.getLoudnessHistory(),
@@ -421,21 +418,21 @@ describe("FrameIntake", () => {
 
   it("pushHistRow treats non-finite as -Infinity", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ lufsMomentary: NaN, correlation: undefined }), HIST_MAX, SR);
+    intake.pushHistRow(makeRow({ lufsMomentary: NaN, correlation: undefined }), HIST_MAX);
     expect(intake.getLoudnessHistory().rowAt(0).m).toBe(-Infinity);
     expect(intake.getCorrSnap().rowAt(0)).toBe(-Infinity);
   });
 
   it("pushFrame without histTick does not touch the hist rings", () => {
     const intake = new FrameIntake();
-    intake.pushFrame(makeFrame(), HIST_MAX);
+    intake.pushFrame(makeFrame(), HIST_MAX, SR);
     expect(intake.getLoudnessHistory()).toHaveLength(0);
   });
 
   it("pushFrame with histTick pushes to all rings", () => {
     const intake = new FrameIntake();
     const row = makeRow();
-    intake.pushFrame(makeFrame({ loudnessHistTick: row }), HIST_MAX);
+    intake.pushFrame(makeFrame({ loudnessHistTick: row }), HIST_MAX, SR);
     expect(intake.getLoudnessHistory()).toHaveLength(1);
     expect(intake.getCorrSnap()).toHaveLength(1);
   });
@@ -454,7 +451,7 @@ describe("FrameIntake", () => {
     ];
     intake.reset();
     expect(rings.every((ring) => ring.length === 0)).toBe(true);
-    expect(rings.every((ring) => Array.from(ring).length === 0)).toBe(true);
+    expect(rings.every((ring) => Array.from(/** @type {any} */ (ring)).length === 0)).toBe(true);
     expect(intake.getLoudnessHistory()).toBe(rings[0]);
   });
 
@@ -462,8 +459,7 @@ describe("FrameIntake", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(
       makeRow({ lufsMomentary: -20, correlation: 0.5, vectorscopePairX: 2, vectorscopePairY: 3 }),
-      HIST_MAX,
-      SR
+      HIST_MAX
     );
     const snap = intake.getAudioSnap().rowAt(0);
     expect(snap.momentary).toBe(-20);
@@ -1013,10 +1009,10 @@ describe("FrameIntake", () => {
       (_, i) => 20 * Math.pow(2, (i / 957) * Math.log2(1000))
     );
     const dbList = centers.map(() => -50);
-    const out = buildSpectrumDataSnapshot(
-      { spectrumBandCentersHz: centers, spectrumSmoothDb: dbList },
-      { defaultSampleRate: 48000 }
-    );
+    const out = buildSpectrumDataSnapshot({
+      spectrumBandCentersHz: centers,
+      spectrumSmoothDb: dbList,
+    });
     expect(out.bands.length).toBe(centers.length);
     expect(out.bands[0].fCenter).toBeCloseTo(centers[0]);
     expect(out.dbList.length).toBe(dbList.length);
@@ -1093,8 +1089,7 @@ describe("FrameIntake", () => {
         waveformSubPairs: pairs,
         waveformSubCount: 1,
       }),
-      HIST_MAX,
-      SR
+      HIST_MAX
     );
     const row = intake.getLoudnessHistory().rowAt(0);
     expect(row.waveformSubCount).toBe(1);
@@ -1104,7 +1099,7 @@ describe("FrameIntake", () => {
 
   it("pushHistRow defaults sub-pairs to an empty Float32Array when absent", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
     const row = intake.getLoudnessHistory().rowAt(0);
     expect(row.waveformSubPairs).toBeInstanceOf(Float32Array);
     expect(row.waveformSubPairs).toHaveLength(0);
@@ -1118,8 +1113,8 @@ describe("FrameIntake", () => {
     const intake = new FrameIntake();
     const pairs = new Float32Array([0, 0, 0, 0]);
 
-    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
-    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
+    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX);
+    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX);
 
     expect(Array.from(intake.getLoudnessHistory().rowAt(0).waveformSubPairs)).toEqual([0, 0, 0, 0]);
     expect(Array.from(intake.getLoudnessHistory().rowAt(1).waveformSubPairs)).toEqual([0, 0, 0, 0]);

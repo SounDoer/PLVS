@@ -263,7 +263,7 @@ describe("SourceTransportCluster", () => {
     );
 
     const action = screen.getByRole("button", { name: "REANALYZE" });
-    expect(action.disabled).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (action).disabled).toBe(true);
     fireEvent.click(action);
     expect(onPrimaryAction).not.toHaveBeenCalled();
   });

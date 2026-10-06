@@ -163,6 +163,19 @@ function nextAnimationFrame(windowObject, signal) {
   });
 }
 
+/**
+ * @param {{
+ *   target: any,
+ *   workspace: any,
+ *   expectedRevision?: any,
+ *   getRevision: any,
+ *   signal?: any,
+ *   timeoutMs?: any,
+ *   documentObject?: any,
+ *   windowObject?: any,
+ *   windowLabel?: string,
+ * }} options
+ */
 export async function settleVisualSurface({
   target,
   workspace,

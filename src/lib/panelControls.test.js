@@ -173,11 +173,11 @@ describe("panelControls", () => {
   });
 
   it("drops the dialogue VAD engine, which is now a global setting", () => {
-    expect(normalizePanelControls({}).dialogueVadEngine).toBeUndefined();
+    expect(/** @type {any} */ (normalizePanelControls({})).dialogueVadEngine).toBeUndefined();
     expect(
-      normalizePanelControls({ dialogueVadEngine: "silero" }).dialogueVadEngine
+      /** @type {any} */ (normalizePanelControls({ dialogueVadEngine: "silero" })).dialogueVadEngine
     ).toBeUndefined();
-    expect(DEFAULT_PANEL_CONTROLS.dialogueVadEngine).toBeUndefined();
+    expect(/** @type {any} */ (DEFAULT_PANEL_CONTROLS).dialogueVadEngine).toBeUndefined();
   });
 
   it("does not carry a loudness reference: the active Loudness Profile owns it", () => {
@@ -791,7 +791,9 @@ describe("spectrogramMode", () => {
   });
 
   it("no longer carries the retired spectrogram3d boolean", () => {
-    expect(normalizePanelControls({ spectrogram3d: true }).spectrogram3d).toBeUndefined();
+    expect(
+      /** @type {any} */ (normalizePanelControls({ spectrogram3d: true })).spectrogram3d
+    ).toBeUndefined();
   });
 
   it("offers exactly the three documented modes, in order", () => {

@@ -96,6 +96,7 @@ function renderPresetsWithProfile() {
   );
 }
 
+/** @returns {import("../workspace/types.js").LeafNode} */
 function leaf(tabs, activeTab = tabs[0]) {
   return { type: "leaf", tabs: [...tabs], activeTab };
 }
@@ -352,7 +353,7 @@ describe("usePresets", () => {
     renderPresetHook();
     await act(async () => {});
 
-    Date.now.mockReturnValue(2000);
+    vi.mocked(Date.now).mockReturnValue(2000);
     act(() => {
       mocks.windowBoundsHandler();
     });
@@ -389,7 +390,7 @@ describe("usePresets", () => {
     });
     expect(presetsStore.read().dirty).toBe(false);
 
-    Date.now.mockReturnValue(2000);
+    vi.mocked(Date.now).mockReturnValue(2000);
     act(() => {
       mocks.windowBoundsHandler();
     });
@@ -687,6 +688,7 @@ describe("usePresets", () => {
         controlsByPanelId: { spectrum: { channel: { type: "single", channel: 0 } } },
       };
       const { result } = renderPresetHook({ dock });
+      /** @type {any} */
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Docked");
@@ -699,6 +701,7 @@ describe("usePresets", () => {
     it("apply calls applyDockPreset with the preset dock (or a disabled default)", async () => {
       const applyDockPreset = vi.fn(async () => {});
       const { result } = renderPresetHook({ applyDockPreset });
+      /** @type {any} */
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Normal");
@@ -806,6 +809,7 @@ describe("usePresets", () => {
     it("presets without a dock field apply as dock-disabled (backward compat)", async () => {
       const applyDockPreset = vi.fn(async () => {});
       const { result } = renderPresetHook({ applyDockPreset });
+      /** @type {any} */
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Legacy");
@@ -885,6 +889,7 @@ describe("usePresets", () => {
         },
       };
       const { result } = renderPresetHook({ dock, applyDockPreset });
+      /** @type {any} */
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Stats dock");
@@ -921,6 +926,7 @@ describe("usePresets", () => {
         controlsByPanelId: { loudness: { metric: "integrated" } },
       };
       const { result } = renderPresetHook({ dock, applyDockPreset });
+      /** @type {any} */
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Dock");

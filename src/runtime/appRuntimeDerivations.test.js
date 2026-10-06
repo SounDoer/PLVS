@@ -8,10 +8,12 @@ import {
   deriveDialogueRuntime,
 } from "./appRuntimeDerivations.js";
 
+/** @returns {import("../workspace/types.js").LeafNode} */
 function leaf(ids) {
   return { type: "leaf", tabs: ids, activeTab: ids[0] };
 }
 
+/** @param {{ panelsById: any, panelOrder?: any, panelControlsById?: any }} options */
 function workspace({ panelsById, panelOrder = Object.keys(panelsById), panelControlsById = {} }) {
   return {
     tree: leaf(panelOrder),
@@ -34,7 +36,9 @@ describe("app runtime derivations", () => {
       panelOrder: ["p1", "p2"],
       panelControlsById: {},
     });
-    const payload = deriveBackendAnalysisRequests(deriveAnalysisRequests(state));
+    const payload = deriveBackendAnalysisRequests(
+      deriveAnalysisRequests(/** @type {any} */ (state))
+    );
     expect(payload).toEqual({ ...fixtures.wirePayload, stereoMap: [], spectralWaveform: false });
   });
 
@@ -93,12 +97,14 @@ describe("app runtime derivations", () => {
     const makePayload = (displayControls) =>
       deriveBackendAnalysisRequests(
         deriveAnalysisRequests(
-          workspace({
-            panelsById: { map: { id: "map", moduleId: "stereo-map" } },
-            panelControlsById: {
-              map: { ...measurementControls, ...displayControls },
-            },
-          }),
+          /** @type {any} */ (
+            workspace({
+              panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+              panelControlsById: {
+                map: { ...measurementControls, ...displayControls },
+              },
+            })
+          ),
           { channelCount: 2 }
         )
       );

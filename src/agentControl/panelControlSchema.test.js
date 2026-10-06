@@ -82,11 +82,17 @@ describe("buildPublicPanelControlSchema", () => {
       channelLabels: ["L", "R", "C", "LFE", "Ls", "Rs"],
     });
 
-    expect(assumed.channelTopology).toEqual({ status: "assumed", channelCount: 2 });
+    expect(/** @type {any} */ (assumed).channelTopology).toEqual({
+      status: "assumed",
+      channelCount: 2,
+    });
     expect(assumed.properties.channel.options).toEqual([
       { title: "Ch 1+Ch 2", value: { type: "pair", x: 0, y: 1 } },
     ]);
-    expect(detected.channelTopology).toEqual({ status: "detected", channelCount: 6 });
+    expect(/** @type {any} */ (detected).channelTopology).toEqual({
+      status: "detected",
+      channelCount: 6,
+    });
     expect(detected.properties.channel.options).toContainEqual({
       title: "C",
       value: { type: "single", ch: 2 },

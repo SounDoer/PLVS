@@ -47,7 +47,9 @@ describe("PresetsPopoverContent", () => {
 
   it("disables Add when the name input is empty", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
-    expect(screen.getByRole("button", { name: "Add preset" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Add preset" })).disabled
+    ).toBe(true);
   });
 
   it("calls save with the trimmed name and clears the input", () => {
@@ -386,18 +388,38 @@ describe("PresetsPopoverContent under an active blocking editor", () => {
   it("disables scene operations and explains why", () => {
     render(<PresetsPopoverContent presets={PRESETS} />);
 
-    expect(screen.getByRole("button", { name: "Apply preset Mixing" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Update preset Mixing" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Add preset" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Apply preset Mixing" }))
+        .disabled
+    ).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (
+        screen.getByRole("button", { name: "Update preset Mixing" })
+      ).disabled
+    ).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Add preset" })).disabled
+    ).toBe(true);
     expect(screen.getByText("Finish or cancel the active editor first.")).toBeTruthy();
   });
 
   it("leaves the library actions alone", () => {
     render(<PresetsPopoverContent presets={PRESETS} />);
 
-    expect(screen.getByRole("button", { name: "Rename preset Mixing" }).disabled).toBe(false);
-    expect(screen.getByRole("button", { name: "Delete preset Mixing" }).disabled).toBe(false);
-    expect(screen.getByRole("button", { name: "Reorder Mixing" }).disabled).toBe(false);
+    expect(
+      /** @type {HTMLButtonElement} */ (
+        screen.getByRole("button", { name: "Rename preset Mixing" })
+      ).disabled
+    ).toBe(false);
+    expect(
+      /** @type {HTMLButtonElement} */ (
+        screen.getByRole("button", { name: "Delete preset Mixing" })
+      ).disabled
+    ).toBe(false);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Reorder Mixing" }))
+        .disabled
+    ).toBe(false);
   });
 
   it("does not apply on a click that lands before the disabled state renders", () => {
@@ -423,7 +445,10 @@ describe("PresetsPopoverContent under an active blocking editor", () => {
   it("shows no caption and no disabled buttons when nothing is open", () => {
     render(<PresetsPopoverContent presets={{ ...PRESETS, blocked: false }} />);
 
-    expect(screen.getByRole("button", { name: "Apply preset Mixing" }).disabled).toBe(false);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Apply preset Mixing" }))
+        .disabled
+    ).toBe(false);
     expect(screen.queryByText("Finish or cancel the active editor first.")).toBe(null);
   });
 });

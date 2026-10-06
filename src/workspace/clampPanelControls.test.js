@@ -29,7 +29,7 @@ describe("deriveClampedPanelControls", () => {
       { id: "b", moduleId: "spectrum", controls: { spectrumChannel: { type: "single", ch: 4 } } },
     ]);
 
-    const updates = deriveClampedPanelControls(state, STEREO_CTX);
+    const updates = deriveClampedPanelControls(/** @type {any} */ (state), STEREO_CTX);
 
     expect(updates).toHaveLength(1);
     expect(updates[0].panelId).toBe("b");
@@ -45,7 +45,7 @@ describe("deriveClampedPanelControls", () => {
       },
     ]);
 
-    const updates = deriveClampedPanelControls(state, STEREO_CTX);
+    const updates = deriveClampedPanelControls(/** @type {any} */ (state), STEREO_CTX);
 
     expect(updates).toHaveLength(1);
     expect(updates[0].panelId).toBe("g");
@@ -57,7 +57,7 @@ describe("deriveClampedPanelControls", () => {
       { id: "v", moduleId: "vectorscope", controls: { vectorscopePair: { x: 0, y: 4 } } },
     ]);
 
-    const updates = deriveClampedPanelControls(state, STEREO_CTX);
+    const updates = deriveClampedPanelControls(/** @type {any} */ (state), STEREO_CTX);
 
     expect(updates).toHaveLength(1);
     expect(updates[0].panelId).toBe("v");
@@ -75,7 +75,7 @@ describe("deriveClampedPanelControls", () => {
       { id: "m", moduleId: "levelMeter", controls: {} },
     ]);
 
-    expect(deriveClampedPanelControls(state, STEREO_CTX)).toEqual([]);
+    expect(deriveClampedPanelControls(/** @type {any} */ (state), STEREO_CTX)).toEqual([]);
   });
 
   it("clamps a stereo map panel's out-of-range pair, reusing the Vectorscope pair fallback", () => {
@@ -83,7 +83,7 @@ describe("deriveClampedPanelControls", () => {
       { id: "sm", moduleId: "stereo-map", controls: { stereoMapPair: { x: 0, y: 4 } } },
     ]);
 
-    const updates = deriveClampedPanelControls(state, STEREO_CTX);
+    const updates = deriveClampedPanelControls(/** @type {any} */ (state), STEREO_CTX);
 
     expect(updates).toHaveLength(1);
     expect(updates[0].panelId).toBe("sm");
@@ -95,6 +95,6 @@ describe("deriveClampedPanelControls", () => {
       { id: "sm", moduleId: "stereo-map", controls: { stereoMapPair: { x: 0, y: 1 } } },
     ]);
 
-    expect(deriveClampedPanelControls(state, STEREO_CTX)).toEqual([]);
+    expect(deriveClampedPanelControls(/** @type {any} */ (state), STEREO_CTX)).toEqual([]);
   });
 });

@@ -462,7 +462,11 @@ describe("SettingsPanel", () => {
     const painted = Array.from(
       row.querySelectorAll("[style*='background-color'], [style*='color']")
     )
-      .map((node) => node.style.backgroundColor || node.style.color)
+      .map(
+        (node) =>
+          /** @type {HTMLElement} */ (node).style.backgroundColor ||
+          /** @type {HTMLElement} */ (node).style.color
+      )
       .filter(Boolean);
 
     for (const key of [
@@ -530,8 +534,10 @@ describe("SettingsPanel", () => {
     expect(
       screen.getByText("Finish editing the current theme before changing theme settings.")
     ).toBeTruthy();
-    expect(screen.getByLabelText("Appearance").disabled).toBe(true);
-    expect(screen.getByLabelText("Theme").disabled).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (screen.getByLabelText("Appearance")).disabled).toBe(
+      true
+    );
+    expect(/** @type {HTMLButtonElement} */ (screen.getByLabelText("Theme")).disabled).toBe(true);
     // Add Theme lives inside the picker panel, so locking the trigger is what
     // keeps it out of reach.
     expect(screen.queryByRole("button", { name: "Add Theme" })).toBeNull();
@@ -541,14 +547,18 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        vectorscopePairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        onVectorscopePairChange={vi.fn()}
-        spectrumChannelOptions={[
-          { key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } },
-          { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
-        ]}
-        spectrumChannelSel={{ type: "single", ch: 2 }}
-        onSpectrumChannelChange={vi.fn()}
+        {
+          /** @type {any} */ ...{
+            vectorscopePairOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
+            onVectorscopePairChange: vi.fn(),
+            spectrumChannelOptions: [
+              { key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } },
+              { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+            ],
+            spectrumChannelSel: { type: "single", ch: 2 },
+            onSpectrumChannelChange: vi.fn(),
+          }
+        }
       />
     );
 
@@ -699,7 +709,7 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} />);
     const toggle = screen.getByRole("switch", { name: /open at login/i });
     expect(toggle).toBeTruthy();
-    expect(toggle.disabled).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (toggle).disabled).toBe(true);
   });
 
   it("renders Open at login switch checked when autostartEnabled is true", () => {
@@ -713,7 +723,7 @@ describe("SettingsPanel", () => {
     );
     const toggle = screen.getByRole("switch", { name: /open at login/i });
     expect(toggle.getAttribute("data-state")).toBe("checked");
-    expect(toggle.disabled).toBe(false);
+    expect(/** @type {HTMLButtonElement} */ (toggle).disabled).toBe(false);
   });
 
   it("renders Close Behavior select with current value", () => {
@@ -977,7 +987,11 @@ describe("SettingsPanel — Channel labels", () => {
         channelLabelHasOverride={false}
       />
     );
-    expect(screen.getByRole("button", { name: "Reset channel labels" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (
+        screen.getByRole("button", { name: "Reset channel labels" })
+      ).disabled
+    ).toBe(true);
   });
 
   it("resets channel labels only after confirming", () => {

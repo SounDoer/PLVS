@@ -19,7 +19,7 @@ describe("Settings numeric drafts", () => {
     act(() => input.focus());
     fireEvent.change(input, { target: { value: "-40" } });
     fireEvent.keyDown(input, { key: "Escape" });
-    expect(input.value).toBe("-60");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("-60");
     expect(commit).not.toHaveBeenCalled();
   });
   it("does not commit an empty number as zero", () => {
@@ -28,7 +28,7 @@ describe("Settings numeric drafts", () => {
     const input = screen.getByLabelText("number");
     fireEvent.change(input, { target: { value: " " } });
     fireEvent.blur(input);
-    expect(input.value).toBe("5");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("5");
     expect(commit).not.toHaveBeenCalled();
   });
   it("restores an empty range bound instead of changing it to zero", () => {
@@ -45,7 +45,7 @@ describe("Settings numeric drafts", () => {
     const input = screen.getByLabelText("minimum");
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.blur(input);
-    expect(input.value).toBe("-60");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("-60");
     expect(commit).not.toHaveBeenCalled();
   });
 });

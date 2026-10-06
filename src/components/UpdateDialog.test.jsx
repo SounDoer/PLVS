@@ -103,8 +103,13 @@ describe("UpdateDialog", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: "Cancel" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Updating..." }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Cancel" })).disabled
+    ).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Updating..." }))
+        .disabled
+    ).toBe(true);
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.click(screen.getByTestId("update-overlay"));
     expect(onCancel).not.toHaveBeenCalled();
@@ -117,12 +122,12 @@ describe("UpdateDialog", () => {
     expect(indeterminate.getAttribute("aria-valuenow")).toBeNull();
     expect(indeterminate.textContent).toBe("");
     expect(indeterminate.firstElementChild.className).toContain("update-progress-indeterminate");
-    expect(indeterminate.firstElementChild.style.width).toBe("");
+    expect(/** @type {HTMLElement} */ (indeterminate.firstElementChild).style.width).toBe("");
 
     rerender(<UpdateDialog {...BASE_PROPS} installStatus="installing" downloadProgress={0.4} />);
     const determinate = screen.getByRole("progressbar", { name: "Update download" });
     expect(determinate.getAttribute("aria-valuenow")).toBe("40");
-    expect(determinate.firstElementChild.style.width).toBe("40%");
+    expect(/** @type {HTMLElement} */ (determinate.firstElementChild).style.width).toBe("40%");
     expect(determinate.textContent).toBe("");
     expect(screen.queryByText("40%")).toBeNull();
   });

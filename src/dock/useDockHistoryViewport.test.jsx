@@ -46,12 +46,13 @@ describe("useDockHistoryViewport", () => {
     // Cancel for real, so the frame queued before the teardown can never run and reset the ref.
     const frames = new Map();
     let nextFrameId = 1;
-    window.requestAnimationFrame.mockImplementation((callback) => {
+    vi.mocked(window.requestAnimationFrame).mockImplementation((callback) => {
       frames.set(nextFrameId, callback);
       return nextFrameId++;
     });
-    window.cancelAnimationFrame.mockImplementation((id) => frames.delete(id));
+    vi.mocked(window.cancelAnimationFrame).mockImplementation((id) => frames.delete(id));
     // Hidden Activity runs effect cleanups but keeps refs, as StrictMode and Fast Refresh do.
+    /** @type {"visible" | "hidden"} */
     let mode = "visible";
     const wrapper = ({ children }) => <Activity mode={mode}>{children}</Activity>;
     const { result, rerender } = renderHook(() => useDockHistoryViewport({ maxWindowSec: 3600 }), {

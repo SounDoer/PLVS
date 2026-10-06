@@ -60,6 +60,7 @@ describe("useAgentControlSettings", () => {
     const { result } = renderHook(() => useAgentControlSettings({ settingsOpen: true }));
     await waitFor(() => expect(result.current.agentControlStatus).toEqual(READY));
 
+    /** @type {any} */
     let settled;
     await act(async () => {
       settled = await result.current.setAgentControlEnabled(true);

@@ -88,8 +88,8 @@ describe("serializeWorkspaceLayout", () => {
     });
 
     const layout = serializeWorkspaceLayout(current);
-    expect(layout.direction).toBe("horizontal");
-    expect(layout.weights).toEqual([0.2, 0.5, 0.3]);
+    expect(/** @type {any} */ (layout).direction).toBe("horizontal");
+    expect(/** @type {any} */ (layout).weights).toEqual([0.2, 0.5, 0.3]);
     expect(layout.children[2]).toMatchObject({ direction: "vertical" });
     expect(layout.children[2]).not.toHaveProperty("weights");
   });
@@ -307,11 +307,11 @@ describe("compileWorkspaceLayout", () => {
   it("enforces depth, panel-count, and payload ceilings", () => {
     let deep = { type: "panel", key: "deep-panel", moduleId: "spectrum" };
     for (let index = 0; index < MAX_LAYOUT_DEPTH; index += 1) {
-      deep = {
+      deep = /** @type {any} */ ({
         type: "split",
         direction: "horizontal",
         children: [deep, { type: "panel", key: `depth-side-${index}`, moduleId: "waveform" }],
-      };
+      });
     }
     expect(() => compileWorkspaceLayout(deep, workspace())).toThrowError(
       expect.objectContaining({ reason: "layout_too_deep" })

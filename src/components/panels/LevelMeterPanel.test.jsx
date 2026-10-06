@@ -389,7 +389,8 @@ describe("LevelMeterPanel", () => {
       expect(container.querySelector("[data-level-value]")?.textContent).toBe("-30.0")
     );
     expect(
-      container.querySelector("[data-level-meter-bar-fill]")?.dataset.levelMeterFillValue
+      /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-bar-fill]"))?.dataset
+        .levelMeterFillValue
     ).toBe("-30.0");
 
     rerender(
@@ -407,7 +408,8 @@ describe("LevelMeterPanel", () => {
       expect(container.querySelector("[data-level-value]")?.textContent).toBe("-30.0")
     );
     expect(
-      container.querySelector("[data-level-meter-bar-fill]")?.dataset.levelMeterFillValue
+      /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-bar-fill]"))?.dataset
+        .levelMeterFillValue
     ).toBe("-34.0");
   });
 
@@ -451,8 +453,8 @@ describe("LevelMeterPanel", () => {
     expect(screen.getByText("-18.0")).toBeTruthy();
     const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
     expect(fills).toHaveLength(2);
-    expect(fills[0].dataset.levelMeterFillValue).toBe("-26.0");
-    expect(fills[1].dataset.levelMeterFillValue).toBe("-18.0");
+    expect(/** @type {HTMLElement} */ (fills[0]).dataset.levelMeterFillValue).toBe("-26.0");
+    expect(/** @type {HTMLElement} */ (fills[1]).dataset.levelMeterFillValue).toBe("-18.0");
   });
 
   it("tracks RMS playback max from RMS values even when peak signal is below the playback gate", async () => {
@@ -477,8 +479,8 @@ describe("LevelMeterPanel", () => {
     await waitFor(() => expect(screen.getByText("-20.0")).toBeTruthy());
     expect(screen.getByText("-18.0")).toBeTruthy();
     const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
-    expect(fills[0].dataset.levelMeterFillValue).toBe("-26.0");
-    expect(fills[1].dataset.levelMeterFillValue).toBe("-18.0");
+    expect(/** @type {HTMLElement} */ (fills[0]).dataset.levelMeterFillValue).toBe("-26.0");
+    expect(/** @type {HTMLElement} */ (fills[1]).dataset.levelMeterFillValue).toBe("-18.0");
   });
 
   it("replaces RMS playback max when a new lower playback starts", async () => {
@@ -512,8 +514,8 @@ describe("LevelMeterPanel", () => {
     await waitFor(() => expect(screen.getByText("-32.0")).toBeTruthy());
     expect(screen.getByText("-36.0")).toBeTruthy();
     const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
-    expect(fills[0].dataset.levelMeterFillValue).toBe("-32.0");
-    expect(fills[1].dataset.levelMeterFillValue).toBe("-36.0");
+    expect(/** @type {HTMLElement} */ (fills[0]).dataset.levelMeterFillValue).toBe("-32.0");
+    expect(/** @type {HTMLElement} */ (fills[1]).dataset.levelMeterFillValue).toBe("-36.0");
   });
 
   it("replaces playback max when a new lower playback starts", async () => {
@@ -566,12 +568,12 @@ describe("LevelMeterPanel", () => {
     const marker = container.querySelector("[data-level-tp-max-marker]");
     expect(marker?.textContent).toBe("-1.0▲");
     const arrow = marker.querySelector("[data-marker-out-of-range]");
-    expect(arrow?.dataset.markerOutOfRange).toBe("above");
+    expect(/** @type {HTMLElement} */ (arrow)?.dataset.markerOutOfRange).toBe("above");
     expect(arrow.className).toContain("ml-[0.3ch]");
     // Out of flow, or its margin alone would shift the right-aligned digits out of the column.
     expect(arrow.className).toContain("absolute");
     expect(arrow.className).toContain("left-full");
-    expect(marker.style.top).toBe("0%");
+    expect(/** @type {HTMLElement} */ (marker).style.top).toBe("0%");
     expect(marker.className).not.toContain("-translate-y-1/2");
   });
 
@@ -583,10 +585,11 @@ describe("LevelMeterPanel", () => {
 
     const marker = container.querySelector("[data-level-tp-max-marker]");
     expect(marker?.textContent).toBe("-70.0▼");
-    expect(marker.querySelector("[data-marker-out-of-range]")?.dataset.markerOutOfRange).toBe(
-      "below"
-    );
-    expect(marker.style.top).toBe("100%");
+    expect(
+      /** @type {HTMLElement} */ (marker.querySelector("[data-marker-out-of-range]"))?.dataset
+        .markerOutOfRange
+    ).toBe("below");
+    expect(/** @type {HTMLElement} */ (marker).style.top).toBe("100%");
     expect(marker.className).toContain("-translate-y-full");
   });
 
@@ -633,7 +636,7 @@ describe("LevelMeterPanel", () => {
 
     const marker = container.querySelector("[data-level-value-marker]");
     expect(marker?.textContent).toBe("-2.0▲");
-    expect(marker.style.top).toBe("0%");
+    expect(/** @type {HTMLElement} */ (marker).style.top).toBe("0%");
   });
 
   describe("ticks near a readout marker", () => {
@@ -714,7 +717,8 @@ describe("LevelMeterPanel", () => {
 
       const scale = container.querySelector("[data-level-meter-y-axis-scale]");
       await waitFor(() => expect(tickByLabel(container, "-5")).toBeTruthy());
-      for (const tick of scale.children) expect(tick.style.opacity).toBe("");
+      for (const tick of scale.children)
+        expect(/** @type {HTMLElement} */ (tick).style.opacity).toBe("");
     });
   });
 
@@ -722,8 +726,10 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({ displayAudio: { peakDb: [-9.9, -9.9] } });
 
     const gradient = container.querySelector("[data-level-meter-gradient]");
-    expect(gradient.style.transform).not.toMatch(/scale/);
-    const topInsetPct = parseFloat(gradient.style.clipPath.match(/inset\(([-\d.]+)%/)[1]);
+    expect(/** @type {HTMLElement} */ (gradient).style.transform).not.toMatch(/scale/);
+    const topInsetPct = parseFloat(
+      /** @type {HTMLElement} */ (gradient).style.clipPath.match(/inset\(([-\d.]+)%/)[1]
+    );
     expect(topInsetPct).toBeCloseTo(((3 - -9.9) / 63) * 100, 3);
   });
 
@@ -740,7 +746,7 @@ describe("LevelMeterPanel", () => {
     });
 
     const gradient = container.querySelector("[data-level-meter-gradient]");
-    expect(gradient.dataset.levelMeterGradient).toBe(
+    expect(/** @type {HTMLElement} */ (gradient).dataset.levelMeterGradient).toBe(
       zonesToGradient(thresholdZones(-12, -3), -30, 0, "to top")
     );
   });
@@ -749,18 +755,20 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "rms", levelMeterBarColors: "levelZones" },
     });
-    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
-      zonesToGradient(thresholdZones(-18, -9), -60, 3, "to top")
-    );
+    expect(
+      /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-gradient]")).dataset
+        .levelMeterGradient
+    ).toBe(zonesToGradient(thresholdZones(-18, -9), -60, 3, "to top"));
   });
 
   it("shows the Momentary trace colour under the starter Profile, which has no Momentary rule", () => {
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });
-    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
-      "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
-    );
+    expect(
+      /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-gradient]")).dataset
+        .levelMeterGradient
+    ).toBe("linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))");
   });
 
   it("shows the Momentary trace colour under Profile Off", () => {
@@ -770,9 +778,10 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });
-    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
-      "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
-    );
+    expect(
+      /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-gradient]")).dataset
+        .levelMeterGradient
+    ).toBe("linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))");
   });
 
   it("follows a Momentary Max ceiling from the active Profile", () => {
@@ -790,9 +799,10 @@ describe("LevelMeterPanel", () => {
       panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });
 
-    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
-      zonesToGradient(profileZones(profileWithCeiling, "momentary"), -64, 0, "to top")
-    );
+    expect(
+      /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-gradient]")).dataset
+        .levelMeterGradient
+    ).toBe(zonesToGradient(profileZones(profileWithCeiling, "momentary"), -64, 0, "to top"));
   });
 
   it("draws the Gradient by default and ignores the Profile there", () => {
@@ -812,7 +822,8 @@ describe("LevelMeterPanel", () => {
     for (const levelMeterMode of ["peak", "momentary"]) {
       const { container, unmount } = renderPanel({ panelControls: { levelMeterMode } });
       expect(
-        container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient
+        /** @type {HTMLElement} */ (container.querySelector("[data-level-meter-gradient]")).dataset
+          .levelMeterGradient
       ).toBe(gradient);
       unmount();
     }

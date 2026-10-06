@@ -355,6 +355,7 @@ describe("draft versus library actions", () => {
     act(() => result.current.beginCreate());
     act(() => result.current.editDraft((document) => ({ ...document, name: "Half typed" })));
 
+    /** @type {any} */
     let thrown = null;
     act(() => {
       try {
@@ -417,6 +418,7 @@ describe("draft versus library actions", () => {
     ];
 
     for (const call of calls) {
+      /** @type {any} */
       let thrown;
       act(() => {
         try {
@@ -482,6 +484,7 @@ describe("shared command-grade operations", () => {
     seed([]);
     presetsStore.patch({ list: [], activeId: "preset", dirty: false });
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    /** @type {any} */
     let created;
     act(() => {
       created = result.current.control.create(
@@ -497,6 +500,7 @@ describe("shared command-grade operations", () => {
     });
     expect(result.current.active).toBe(profileSelectionId("new-id"));
 
+    /** @type {any} */
     let renamed;
     act(() => {
       renamed = result.current.control.rename("new-id", "  Renamed  ");

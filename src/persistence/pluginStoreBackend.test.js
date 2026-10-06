@@ -25,7 +25,7 @@ describe("pluginStoreBackend", () => {
     storeSave.mockReset().mockImplementation(async () => {});
     storeDelete.mockReset().mockImplementation(async (k) => saved.push(["__delete__", k]));
     storeGet.mockReset().mockImplementation(async () => null);
-    globalThis.window = globalThis.window || {};
+    globalThis.window = /** @type {any} */ (globalThis.window || {});
     window.__PLVS_INITIAL_STATE__ = {
       "plvs:settings": { referenceLufs: -20 },
       "plvs:presets": { list: [], activeId: null },
@@ -162,7 +162,9 @@ describe("pluginStoreBackend", () => {
   });
 
   it("backend.flush() waits for both set operations and save()", async () => {
+    /** @type {any} */
     let releaseSet;
+    /** @type {any} */
     let releaseSave;
     storeSet.mockImplementationOnce(
       () => new Promise((resolve) => (releaseSet = () => resolve(undefined)))

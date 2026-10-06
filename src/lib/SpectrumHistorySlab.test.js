@@ -347,8 +347,8 @@ describe("SpectrumHistorySlab", () => {
 
   it("EMPTY_SPECTRUM_VIEW is an empty read-only view", () => {
     expect(EMPTY_SPECTRUM_VIEW.length).toBe(0);
-    expect(EMPTY_SPECTRUM_VIEW.timestampAt(0)).toBeNaN();
-    expect(EMPTY_SPECTRUM_VIEW.rowAt(0)).toBeUndefined();
+    expect(EMPTY_SPECTRUM_VIEW.timestampAt()).toBeNaN();
+    expect(EMPTY_SPECTRUM_VIEW.rowAt()).toBeUndefined();
   });
 
   it("returns decoded rows without exposing packed retained storage", () => {

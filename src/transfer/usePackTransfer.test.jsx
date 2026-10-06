@@ -57,7 +57,7 @@ function deferred() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  isTauri.mockReturnValue(true);
+  vi.mocked(isTauri).mockReturnValue(true);
   settingsStore.reset();
   presetsStore.reset();
   themesStore.reset();
@@ -93,6 +93,7 @@ describe("usePackTransfer export", () => {
         profiles: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
       },
     });
+    /** @type {any} */
     const saveDialog = deferred();
     savePackFile.mockReturnValue(saveDialog.promise);
     const { result } = renderHook(() => usePackTransfer());
@@ -190,7 +191,7 @@ describe("usePackTransfer export", () => {
   });
 
   it("downloads a Blob instead of writing through Tauri outside the desktop app", async () => {
-    isTauri.mockReturnValue(false);
+    vi.mocked(isTauri).mockReturnValue(false);
     const createObjectURL = vi.fn().mockReturnValue("blob:mock");
     const revokeObjectURL = vi.fn();
     URL.createObjectURL = createObjectURL;
@@ -270,7 +271,9 @@ describe("usePackTransfer export outcome", () => {
 
 describe("usePackTransfer import", () => {
   it("becomes busy only after the shared-item dialog returns a file", async () => {
+    /** @type {any} */
     const picker = deferred();
+    /** @type {any} */
     const reader = deferred();
     pickSharedPackFile.mockReturnValue(picker.promise);
     readProfileFile.mockReturnValue(reader.promise);

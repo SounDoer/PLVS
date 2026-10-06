@@ -2,6 +2,29 @@ import { useCallback } from "react";
 import { UI_PREFERENCES } from "../uiPreferences.js";
 import { pickMediaFile } from "../ipc/fileDialog.js";
 
+/**
+ * @param {{
+ *   sourceMode: any,
+ *   running: any,
+ *   selectedOffset: any,
+ *   setSelectedOffset: any,
+ *   setHistoryOffsetSec: any,
+ *   setHistoryWindowSec: any,
+ *   startLive: any,
+ *   stopLive: any,
+ *   switchSource: any,
+ *   clearActiveSource: any,
+ *   beginRuntimeFileAnalysis: any,
+ *   reanalyzeFile: any,
+ *   selectFile: any,
+ *   removeFile: any,
+ *   clearFiles: any,
+ *   stopFileAnalysis: any,
+ *   activeFileSession: any,
+ *   getFileAnalysisSettings: any,
+ *   onClearSucceeded?: any,
+ * }} options
+ */
 export function useSourceTransportActions({
   sourceMode,
   running,

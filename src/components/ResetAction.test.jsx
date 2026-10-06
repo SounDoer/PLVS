@@ -7,7 +7,7 @@ it("stays visible but disabled while the controlled values use defaults", () => 
   render(<ResetAction label="Reset layout" isDefault onReset={vi.fn()} />);
 
   const reset = screen.getByRole("button", { name: "Reset layout" });
-  expect(reset.disabled).toBe(true);
+  expect(/** @type {HTMLButtonElement} */ (reset).disabled).toBe(true);
   fireEvent.mouseEnter(reset.parentElement);
   expect(screen.getByRole("tooltip").textContent).toBe("Using Defaults");
 });

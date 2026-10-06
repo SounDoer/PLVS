@@ -39,6 +39,22 @@ import {
   stopAudioCapture,
 } from "../ipc/commands.js";
 
+/**
+ * @param {{
+ *   setAudio: any,
+ *   setSelectedOffset: any,
+ *   raiseNotice: any,
+ *   setShowClock: any,
+ *   resetTimer: any,
+ *   stopTimer?: any,
+ *   halt: any,
+ *   recordAudioDrop?: any,
+ *   histMaxSamples?: number,
+ *   visualMaxSamples?: number,
+ *   selectedOffset?: number,
+ *   [key: string]: any,
+ * }} options
+ */
 function useHarness({
   setAudio,
   setSelectedOffset,
@@ -95,7 +111,7 @@ function useHarness({
 describe("useAudioEngine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    listAudioDevices.mockResolvedValue([
+    vi.mocked(listAudioDevices).mockResolvedValue([
       {
         id: "lb-main",
         label: "Speakers",
@@ -104,13 +120,13 @@ describe("useAudioEngine", () => {
         channels: 2,
       },
     ]);
-    previewAudioDevice.mockResolvedValue({
+    vi.mocked(previewAudioDevice).mockResolvedValue({
       label: "Speakers",
       sampleRateHz: 48000,
       channels: 2,
     });
-    startAudioCapture.mockResolvedValue(undefined);
-    stopAudioCapture.mockResolvedValue(undefined);
+    vi.mocked(startAudioCapture).mockResolvedValue(undefined);
+    vi.mocked(stopAudioCapture).mockResolvedValue(undefined);
   });
 
   it("starts process loopback for a stable application selection", async () => {
@@ -209,7 +225,7 @@ describe("useAudioEngine", () => {
   });
 
   it("raises a transport notice when native capture cannot start", async () => {
-    listAudioDevices.mockRejectedValue(new Error("Audio unavailable"));
+    vi.mocked(listAudioDevices).mockRejectedValue(new Error("Audio unavailable"));
     const props = {
       intake: { reset: vi.fn() },
       setAudio: vi.fn(),
@@ -286,7 +302,7 @@ describe("useAudioEngine", () => {
     expect(result.current.frameRef.current).toBe(0);
     expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
 
-    const recoveredFrame = startAudioCapture.mock.calls[0][0].onFrame;
+    const recoveredFrame = vi.mocked(startAudioCapture).mock.calls[0][0].onFrame;
     act(() => recoveredFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
     expect(props.raiseNotice).toHaveBeenCalledWith(
       "info",
@@ -372,7 +388,7 @@ describe("useAudioEngine", () => {
     expect(measurementOwner.beginSession).toHaveBeenCalledBefore(measurementOwner.commitSession);
     expect(measurementOwner.abortSession).not.toHaveBeenCalled();
 
-    const onFrame = startAudioCapture.mock.calls[0][0].onFrame;
+    const onFrame = vi.mocked(startAudioCapture).mock.calls[0][0].onFrame;
     act(() => onFrame({ seq: 1, peakDb: [-4], rmsDb: [-16] }));
     expect(measurementOwner.capture).toHaveBeenCalledWith(
       expect.objectContaining({ seq: 1 }),
@@ -382,7 +398,7 @@ describe("useAudioEngine", () => {
   });
 
   it("aborts a pending LIVE measurement session when native start fails", async () => {
-    startAudioCapture.mockRejectedValueOnce(new Error("start failed"));
+    vi.mocked(startAudioCapture).mockRejectedValueOnce(new Error("start failed"));
     const measurementOwner = {
       beginSession: vi.fn(),
       commitSession: vi.fn(),
@@ -407,7 +423,7 @@ describe("useAudioEngine", () => {
 
   it("awaits native shutdown before starting the newly selected running device", async () => {
     let releaseStop;
-    stopAudioCapture.mockReturnValueOnce(
+    vi.mocked(stopAudioCapture).mockReturnValueOnce(
       new Promise((resolve) => {
         releaseStop = resolve;
       })
@@ -490,7 +506,7 @@ describe("useAudioEngine", () => {
     );
     await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
 
-    const onFrame = startAudioCapture.mock.calls[0][0].onFrame;
+    const onFrame = vi.mocked(startAudioCapture).mock.calls[0][0].onFrame;
     onFrame({ peakDb: [-6], lufsMomentary: -9 });
 
     expect(intake.pushFrame).toHaveBeenCalledOnce();

@@ -80,8 +80,8 @@ describe("AxisRail", () => {
 
   it("stays inert without an interaction, and wires one up when given", () => {
     const { container: passive } = render(<AxisRail axis="y" ticks={TICKS} />);
-    expect(passive.firstChild.style.cursor).toBe("");
-    expect(passive.firstChild.className).not.toContain("hover:bg-");
+    expect(/** @type {HTMLElement} */ (passive.firstChild).style.cursor).toBe("");
+    expect(/** @type {HTMLElement} */ (passive.firstChild).className).not.toContain("hover:bg-");
 
     const onWheel = vi.fn();
     const { container: live } = render(
@@ -96,8 +96,8 @@ describe("AxisRail", () => {
         }}
       />
     );
-    expect(live.firstChild.style.cursor).toBe("ns-resize");
-    expect(live.firstChild.className).toContain("hover:bg-");
+    expect(/** @type {HTMLElement} */ (live.firstChild).style.cursor).toBe("ns-resize");
+    expect(/** @type {HTMLElement} */ (live.firstChild).className).toContain("hover:bg-");
   });
 
   it("highlights from either the rail's own gesture or the plot area's", () => {
@@ -112,17 +112,21 @@ describe("AxisRail", () => {
       <AxisRail axis="y" ticks={TICKS} interaction={{ ...base, isActive: false }} />
     );
 
-    expect(fromRail.firstChild.className).toContain("text-foreground");
-    expect(fromPlot.firstChild.className).toContain("text-foreground");
-    expect(idle.firstChild.className).not.toContain("text-foreground");
+    expect(/** @type {HTMLElement} */ (fromRail.firstChild).className).toContain("text-foreground");
+    expect(/** @type {HTMLElement} */ (fromPlot.firstChild).className).toContain("text-foreground");
+    expect(/** @type {HTMLElement} */ (idle.firstChild).className).not.toContain("text-foreground");
   });
 
   it("applies the chart inset only when the plot it labels does", () => {
     const { container: inset } = render(<AxisRail axis="y" ticks={TICKS} inset />);
     const { container: flush } = render(<AxisRail axis="y" ticks={TICKS} />);
 
-    expect(inset.firstChild.firstChild.className).toContain("ui-chart-inset-top");
-    expect(flush.firstChild.firstChild.className).not.toContain("ui-chart-inset-top");
+    expect(/** @type {HTMLElement} */ (inset.firstChild.firstChild).className).toContain(
+      "ui-chart-inset-top"
+    );
+    expect(/** @type {HTMLElement} */ (flush.firstChild.firstChild).className).not.toContain(
+      "ui-chart-inset-top"
+    );
   });
 
   it("updates a tick's text in place when its key stays put", () => {

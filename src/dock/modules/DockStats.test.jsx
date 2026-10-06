@@ -95,7 +95,10 @@ describe("DockStats", () => {
     expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 72px)");
     expect(stats[0].className).toContain("flex");
     expect(stats[0].style.gap).toBe("2px");
-    expect(screen.getByText("M").closest("[data-testid='dock-stat-label']")?.title).toBe("");
+    expect(
+      /** @type {HTMLElement} */ (screen.getByText("M").closest("[data-testid='dock-stat-label']"))
+        ?.title
+    ).toBe("");
   });
 
   it.each(["standard", "expanded"])(
@@ -194,8 +197,8 @@ describe("DockStats", () => {
     expect(screen.getByText("8")).toBeTruthy();
     expect(screen.queryByText("9")).toBeNull();
     const lastVisibleStat = screen.getByText("8").closest("[data-testid='dock-stat']");
-    expect(lastVisibleStat?.style.gridRow).toBe("3");
-    expect(lastVisibleStat?.style.gridColumn).toBe("5");
+    expect(/** @type {HTMLElement} */ (lastVisibleStat)?.style.gridRow).toBe("3");
+    expect(/** @type {HTMLElement} */ (lastVisibleStat)?.style.gridColumn).toBe("5");
   });
 
   it("keeps an incomplete final row aligned on the shared grid", () => {
@@ -211,15 +214,24 @@ describe("DockStats", () => {
 
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("6");
     expect(screen.getAllByTestId("dock-stat")).toHaveLength(15);
-    expect(screen.getByText("v11").closest("[data-testid='dock-stat']")?.style).toMatchObject({
+    expect(
+      /** @type {HTMLElement} */ (screen.getByText("v11").closest("[data-testid='dock-stat']"))
+        ?.style
+    ).toMatchObject({
       gridRow: "2",
       gridColumn: "11",
     });
-    expect(screen.getByText("v12").closest("[data-testid='dock-stat']")?.style).toMatchObject({
+    expect(
+      /** @type {HTMLElement} */ (screen.getByText("v12").closest("[data-testid='dock-stat']"))
+        ?.style
+    ).toMatchObject({
       gridRow: "3",
       gridColumn: "1",
     });
-    expect(screen.getByText("v14").closest("[data-testid='dock-stat']")?.style).toMatchObject({
+    expect(
+      /** @type {HTMLElement} */ (screen.getByText("v14").closest("[data-testid='dock-stat']"))
+        ?.style
+    ).toMatchObject({
       gridRow: "3",
       gridColumn: "5",
     });
@@ -285,6 +297,10 @@ describe("Dock Stats and the main window under one provider", () => {
 
   // Both surfaces rendered in one tree, sharing one LoudnessProfileProvider: the same metric under
   // the same profile must not read as a breach in one surface and neutral in the other.
+  /**
+   * @param {any} displayAudio
+   * @param {{ heightMode?: string, onProfile?: any }} [options]
+   */
   function renderBothSurfaces(displayAudio, { heightMode = "standard", onProfile } = {}) {
     function ProfileHandle() {
       const profile = useLoudnessProfile();
@@ -342,7 +358,7 @@ describe("Dock Stats and the main window under one provider", () => {
       let profile;
       const { container } = renderBothSurfaces(
         { tpMax: -5 },
-        { heightMode, onProfile: (p) => (profile = p) }
+        /** @type {any} */ ({ heightMode, onProfile: (p) => (profile = p) })
       );
 
       // -5 dBTP clears the test profile's -1 limit, so both surfaces start neutral.

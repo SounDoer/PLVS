@@ -22,7 +22,7 @@ describe("useUpdateCheck", () => {
   });
 
   it("checks for updates on mount", async () => {
-    checkForUpdate.mockResolvedValue({
+    vi.mocked(checkForUpdate).mockResolvedValue({
       latestVersion: "0.2.4",
       releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
       hasUpdate: true,
@@ -39,7 +39,7 @@ describe("useUpdateCheck", () => {
   });
 
   it("exposes a manual refresh that returns to checking while the request is pending", async () => {
-    checkForUpdate.mockResolvedValueOnce({
+    vi.mocked(checkForUpdate).mockResolvedValueOnce({
       latestVersion: null,
       releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
       hasUpdate: false,
@@ -50,7 +50,7 @@ describe("useUpdateCheck", () => {
     await waitFor(() => expect(result.current.updateInfo.status).toBe("ok"));
 
     let resolveRefresh;
-    checkForUpdate.mockImplementationOnce(
+    vi.mocked(checkForUpdate).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           resolveRefresh = resolve;
@@ -77,7 +77,7 @@ describe("useUpdateCheck", () => {
 
   it("checks again on the 12 hour interval", async () => {
     vi.useFakeTimers();
-    checkForUpdate.mockResolvedValue({
+    vi.mocked(checkForUpdate).mockResolvedValue({
       latestVersion: null,
       releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
       hasUpdate: false,
@@ -97,7 +97,7 @@ describe("useUpdateCheck", () => {
 
   it("does not check from a participant and starts checking after promotion", async () => {
     window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
-    checkForUpdate.mockResolvedValue(null);
+    vi.mocked(checkForUpdate).mockResolvedValue(null);
     const { result } = renderHook(() => useUpdateCheck(0));
     expect(result.current.updateInfo.status).toBe("unavailable");
     expect(checkForUpdate).not.toHaveBeenCalled();

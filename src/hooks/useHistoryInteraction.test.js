@@ -147,8 +147,9 @@ describe("useHistoryInteraction", () => {
       setHistoryHudHold: vi.fn(),
     };
     // Hidden Activity runs effect cleanups but keeps refs, as StrictMode and Fast Refresh do.
+    /** @type {"visible" | "hidden"} */
     let mode = "visible";
-    const wrapper = ({ children }) => createElement(Activity, { mode }, children);
+    const wrapper = ({ children }) => createElement(Activity, { mode, children });
     const { result, rerender } = renderHook(() => useHistoryInteraction(props), { wrapper });
 
     act(() => result.current.onHistoryWheel(makeWheelEvent(-1)));

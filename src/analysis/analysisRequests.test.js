@@ -8,10 +8,12 @@ import {
   vectorscopeRequestKeyFromControls,
 } from "./analysisRequests.js";
 
+/** @returns {import("../workspace/types.js").LeafNode} */
 function leaf(ids) {
   return { type: "leaf", tabs: ids, activeTab: ids[0] };
 }
 
+/** @param {{ panelsById: any, panelOrder?: any, panelControlsById?: any, tree?: any }} options */
 function state({ panelsById, panelOrder = Object.keys(panelsById), panelControlsById = {}, tree }) {
   return {
     tree: tree ?? leaf(panelOrder),
@@ -42,25 +44,27 @@ describe("analysisRequests", () => {
       Object.keys(panelsById).map((panelId) => [panelId, { ...DEFAULT_PANEL_CONTROLS }])
     );
     const baseline = deriveAnalysisRequests(
-      state({ panelsById, panelControlsById: baselineControls })
+      /** @type {any} */ (state({ panelsById, panelControlsById: baselineControls }))
     );
     const withGrids = deriveAnalysisRequests(
-      state({
-        panelsById,
-        panelControlsById: {
-          ...baselineControls,
-          loudness: { ...baselineControls.loudness, loudnessGrid: true },
-          spectrum: { ...baselineControls.spectrum, spectrumGrid: true },
-          spectrogram: { ...baselineControls.spectrogram, spectrogram3dFloor: true },
-          stereo: {
-            ...baselineControls.stereo,
-            stereoMapPositionGrid: true,
-            stereoMapCorrelationGrid: true,
-            stereoMapMonoLossGrid: true,
-            stereoMapMsRatioGrid: true,
+      /** @type {any} */ (
+        state({
+          panelsById,
+          panelControlsById: {
+            ...baselineControls,
+            loudness: { ...baselineControls.loudness, loudnessGrid: true },
+            spectrum: { ...baselineControls.spectrum, spectrumGrid: true },
+            spectrogram: { ...baselineControls.spectrogram, spectrogram3dFloor: true },
+            stereo: {
+              ...baselineControls.stereo,
+              stereoMapPositionGrid: true,
+              stereoMapCorrelationGrid: true,
+              stereoMapMonoLossGrid: true,
+              stereoMapMsRatioGrid: true,
+            },
           },
-        },
-      })
+        })
+      )
     );
 
     expect(withGrids).toEqual(baseline);
@@ -90,13 +94,15 @@ describe("analysisRequests", () => {
         panelControlsById: { waveform: { ...DEFAULT_PANEL_CONTROLS, ...controls } },
       });
 
-    expect(deriveAnalysisRequests(makeState({})).spectralWaveform).toBe(false);
+    expect(deriveAnalysisRequests(/** @type {any} */ (makeState({}))).spectralWaveform).toBe(false);
     expect(
-      deriveAnalysisRequests(makeState({ waveformFrequencyColor: true })).spectralWaveform
+      deriveAnalysisRequests(/** @type {any} */ (makeState({ waveformFrequencyColor: true })))
+        .spectralWaveform
     ).toBe(true);
-    expect(deriveAnalysisRequests(makeState({ waveformCentroid: true })).spectralWaveform).toBe(
-      true
-    );
+    expect(
+      deriveAnalysisRequests(/** @type {any} */ (makeState({ waveformCentroid: true })))
+        .spectralWaveform
+    ).toBe(true);
   });
 
   it("deduplicates identical spectrum requests", () => {
@@ -107,7 +113,7 @@ describe("analysisRequests", () => {
       },
     });
 
-    const result = deriveAnalysisRequests(s);
+    const result = deriveAnalysisRequests(/** @type {any} */ (s));
 
     expect(result.spectrumRequests).toHaveLength(1);
     expect(result.spectrumRequests[0]).toMatchObject({
@@ -133,7 +139,7 @@ describe("analysisRequests", () => {
       },
     });
 
-    const requests = deriveAnalysisRequests(s).spectrumRequests;
+    const requests = deriveAnalysisRequests(/** @type {any} */ (s)).spectrumRequests;
     expect(requests.map((r) => r.key)).toEqual([
       "spectrum:pair:0:1:combined:sp25:smoff",
       "spectrum:single:2:combined:sp25:smoff",
@@ -201,16 +207,18 @@ describe("analysisRequests", () => {
 
   it("deduplicates matching Stereo Map Workspace instances", () => {
     const result = deriveAnalysisRequests(
-      state({
-        panelsById: {
-          map: { id: "map", moduleId: "stereo-map" },
-          "map-2": { id: "map-2", moduleId: "stereo-map" },
-        },
-        panelControlsById: {
-          map: stereoMapControls(0, 1),
-          "map-2": stereoMapControls(0, 1),
-        },
-      }),
+      /** @type {any} */ (
+        state({
+          panelsById: {
+            map: { id: "map", moduleId: "stereo-map" },
+            "map-2": { id: "map-2", moduleId: "stereo-map" },
+          },
+          panelControlsById: {
+            map: stereoMapControls(0, 1),
+            "map-2": stereoMapControls(0, 1),
+          },
+        })
+      ),
       { channelCount: 2 }
     );
 
@@ -228,10 +236,12 @@ describe("analysisRequests", () => {
   it("deduplicates matching Workspace and future Dock Stereo Map instances", () => {
     const controls = stereoMapControls(0, 1);
     const result = deriveAnalysisRequests(
-      state({
-        panelsById: { map: { id: "map", moduleId: "stereo-map" } },
-        panelControlsById: { map: controls },
-      }),
+      /** @type {any} */ (
+        state({
+          panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+          panelControlsById: { map: controls },
+        })
+      ),
       {
         channelCount: 2,
         additionalPanelInstances: [{ panelId: "dock-map", moduleId: "stereo-map", controls }],
@@ -245,15 +255,17 @@ describe("analysisRequests", () => {
   it("keeps distinct Workspace and future Dock Stereo Map requests", () => {
     const workspaceIds = ["map", "map-2", "map-3", "map-4"];
     const result = deriveAnalysisRequests(
-      state({
-        panelsById: Object.fromEntries(
-          workspaceIds.map((id) => [id, { id, moduleId: "stereo-map" }])
-        ),
-        panelOrder: workspaceIds,
-        panelControlsById: Object.fromEntries(
-          workspaceIds.map((id, index) => [id, stereoMapControls(index, index + 1)])
-        ),
-      }),
+      /** @type {any} */ (
+        state({
+          panelsById: Object.fromEntries(
+            workspaceIds.map((id) => [id, { id, moduleId: "stereo-map" }])
+          ),
+          panelOrder: workspaceIds,
+          panelControlsById: Object.fromEntries(
+            workspaceIds.map((id, index) => [id, stereoMapControls(index, index + 1)])
+          ),
+        })
+      ),
       {
         channelCount: 6,
         additionalPanelInstances: [
@@ -275,10 +287,12 @@ describe("analysisRequests", () => {
   it("keeps same-key Workspace and future Dock panel identities distinct", () => {
     const controls = stereoMapControls(0, 1);
     const result = deriveAnalysisRequests(
-      state({
-        panelsById: { map: { id: "map", moduleId: "stereo-map" } },
-        panelControlsById: { map: controls },
-      }),
+      /** @type {any} */ (
+        state({
+          panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+          panelControlsById: { map: controls },
+        })
+      ),
       {
         channelCount: 2,
         additionalPanelInstances: [{ panelId: "map", moduleId: "stereo-map", controls }],
@@ -298,9 +312,12 @@ describe("analysisRequests", () => {
       panelOrder.map((id, index) => [id, stereoMapControls(index, index + 1)])
     );
 
-    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }), {
-      channelCount: 6,
-    });
+    const result = deriveAnalysisRequests(
+      /** @type {any} */ (state({ panelsById, panelOrder, panelControlsById })),
+      {
+        channelCount: 6,
+      }
+    );
 
     expect(result.stereoMapRequests).toHaveLength(5);
   });
@@ -321,9 +338,12 @@ describe("analysisRequests", () => {
       ...stereoMapIds.map((id, index) => [id, stereoMapControls(index, index + 1)]),
     ]);
 
-    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }), {
-      channelCount: 5,
-    });
+    const result = deriveAnalysisRequests(
+      /** @type {any} */ (state({ panelsById, panelOrder, panelControlsById })),
+      {
+        channelCount: 5,
+      }
+    );
 
     expect(result.spectrumRequests).toHaveLength(4);
     expect(result.stereoMapRequests).toHaveLength(4);
@@ -335,16 +355,18 @@ describe("analysisRequests", () => {
       panelControlsById: { map: stereoMapControls(0, 1) },
     });
 
-    expect(deriveAnalysisRequests(workspaceState, { channelCount: 1 }).stereoMapRequests).toEqual(
-      []
-    );
+    expect(
+      deriveAnalysisRequests(/** @type {any} */ (workspaceState), { channelCount: 1 })
+        .stereoMapRequests
+    ).toEqual([]);
 
     const unavailablePairState = state({
       panelsById: { map: { id: "map", moduleId: "stereo-map" } },
       panelControlsById: { map: stereoMapControls(0, 2) },
     });
     expect(
-      deriveAnalysisRequests(unavailablePairState, { channelCount: 2 }).stereoMapRequests
+      deriveAnalysisRequests(/** @type {any} */ (unavailablePairState), { channelCount: 2 })
+        .stereoMapRequests
     ).toEqual([]);
   });
 
@@ -362,7 +384,10 @@ describe("analysisRequests", () => {
         panelControlsById: { map: stereoMapControls(0, 1) },
       });
 
-      expect(deriveAnalysisRequests(workspaceState, { channelCount }).stereoMapRequests).toEqual([
+      expect(
+        deriveAnalysisRequests(/** @type {any} */ (workspaceState), { channelCount })
+          .stereoMapRequests
+      ).toEqual([
         {
           key: "stereoMap:pair:0:1:sp25:sm12",
           panelIds: ["map"],
@@ -377,15 +402,17 @@ describe("analysisRequests", () => {
   it("deduplicates an additional Stereo Map instance with an existing key", () => {
     const workspaceIds = ["map-1", "map-2", "map-3", "map-4"];
     const result = deriveAnalysisRequests(
-      state({
-        panelsById: Object.fromEntries(
-          workspaceIds.map((id) => [id, { id, moduleId: "stereo-map" }])
-        ),
-        panelOrder: workspaceIds,
-        panelControlsById: Object.fromEntries(
-          workspaceIds.map((id, index) => [id, stereoMapControls(index, index + 1)])
-        ),
-      }),
+      /** @type {any} */ (
+        state({
+          panelsById: Object.fromEntries(
+            workspaceIds.map((id) => [id, { id, moduleId: "stereo-map" }])
+          ),
+          panelOrder: workspaceIds,
+          panelControlsById: Object.fromEntries(
+            workspaceIds.map((id, index) => [id, stereoMapControls(index, index + 1)])
+          ),
+        })
+      ),
       {
         channelCount: 5,
         additionalPanelInstances: [
@@ -428,7 +455,9 @@ describe("analysisRequests", () => {
       },
     });
 
-    expect(deriveAnalysisRequests(s).spectrumRequests[0].panelIds).toEqual(["spectrogram"]);
+    expect(deriveAnalysisRequests(/** @type {any} */ (s)).spectrumRequests[0].panelIds).toEqual([
+      "spectrogram",
+    ]);
   });
 
   it("derives vectorscope pair requests", () => {
@@ -444,7 +473,7 @@ describe("analysisRequests", () => {
       },
     });
 
-    expect(deriveAnalysisRequests(s).vectorscopeRequests[0]).toMatchObject({
+    expect(deriveAnalysisRequests(/** @type {any} */ (s)).vectorscopeRequests[0]).toMatchObject({
       key: "vectorscope:pair:1:2",
       pair: { x: 1, y: 2 },
       panelIds: ["vectorscope"],
@@ -470,7 +499,7 @@ describe("analysisRequests", () => {
       },
     });
 
-    expect(deriveAnalysisRequests(s).vectorscopeRequests).toEqual([
+    expect(deriveAnalysisRequests(/** @type {any} */ (s)).vectorscopeRequests).toEqual([
       {
         key: "vectorscope:pair:0:1",
         pair: { x: 0, y: 1 },
@@ -491,7 +520,9 @@ describe("analysisRequests", () => {
       ])
     );
 
-    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }));
+    const result = deriveAnalysisRequests(
+      /** @type {any} */ (state({ panelsById, panelOrder, panelControlsById }))
+    );
 
     expect(result.vectorscopeRequests).toHaveLength(5);
   });
@@ -514,7 +545,9 @@ describe("analysisRequests", () => {
       ])
     );
 
-    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }));
+    const result = deriveAnalysisRequests(
+      /** @type {any} */ (state({ panelsById, panelOrder, panelControlsById }))
+    );
 
     expect(result.spectrumRequests).toHaveLength(5);
     expect(result.spectrumRequests.map((request) => request.panelIds[0])).toEqual(panelOrder);
@@ -522,14 +555,16 @@ describe("analysisRequests", () => {
 
   it("ignores stale panels not present in the tree", () => {
     const result = deriveAnalysisRequests(
-      state({
-        panelsById: {
-          spectrum: { id: "spectrum", moduleId: "spectrum" },
-          "spectrum-2": { id: "spectrum-2", moduleId: "spectrum" },
-        },
-        panelOrder: ["spectrum", "spectrum-2"],
-        tree: leaf(["spectrum"]),
-      })
+      /** @type {any} */ (
+        state({
+          panelsById: {
+            spectrum: { id: "spectrum", moduleId: "spectrum" },
+            "spectrum-2": { id: "spectrum-2", moduleId: "spectrum" },
+          },
+          panelOrder: ["spectrum", "spectrum-2"],
+          tree: leaf(["spectrum"]),
+        })
+      )
     );
 
     expect(result.spectrumRequests[0].panelIds).toEqual(["spectrum"]);
@@ -579,9 +614,10 @@ describe("analysisRequests", () => {
         panelsById: { sm: { moduleId: "stereo-map" } },
         panelControlsById: { sm: DEFAULT_PANEL_CONTROLS },
       });
-      expect(deriveAnalysisRequests(workspace, { channelCount: 1 }).stereoMapRequests).toHaveLength(
-        0
-      );
+      expect(
+        deriveAnalysisRequests(/** @type {any} */ (workspace), { channelCount: 1 })
+          .stereoMapRequests
+      ).toHaveLength(0);
       expect(deriveRetainedAnalysisKeys(workspace).stereoMap).toContain(
         stereoMapRequestKeyFromControls(DEFAULT_PANEL_CONTROLS)
       );
@@ -644,7 +680,7 @@ describe("analysisRequests", () => {
         },
       });
 
-      const requested = deriveAnalysisRequests(workspace, { channelCount: 2 });
+      const requested = deriveAnalysisRequests(/** @type {any} */ (workspace), { channelCount: 2 });
       const retained = deriveRetainedAnalysisKeys(workspace);
 
       for (const { requestField, retainedField } of FAMILIES) {

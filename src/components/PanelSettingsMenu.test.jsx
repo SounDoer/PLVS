@@ -126,7 +126,11 @@ describe("PanelSettingsMenu", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
-    expect(screen.getByRole("button", { name: "Reset Level Meter settings" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (
+        screen.getByRole("button", { name: "Reset Level Meter settings" })
+      ).disabled
+    ).toBe(true);
   });
 
   it("renders spectrogram settings trigger when only range controls are available", () => {

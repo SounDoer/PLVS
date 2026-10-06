@@ -13,7 +13,7 @@ import { setCoordinatorRole } from "../lib/runtimeRole.js";
 describe("useAutostart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isTauri.mockReturnValue(false);
+    vi.mocked(isTauri).mockReturnValue(false);
     delete window.__PLVS_INITIAL_STATE__;
     setCoordinatorRole(undefined);
   });
@@ -26,8 +26,8 @@ describe("useAutostart", () => {
   });
 
   it("reads current autostart state on mount in Tauri environment", async () => {
-    isTauri.mockReturnValue(true);
-    invoke.mockResolvedValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
+    vi.mocked(invoke).mockResolvedValue(true);
     const { result } = renderHook(() => useAutostart());
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
     expect(result.current.autostartEnabled).toBe(true);
@@ -35,9 +35,9 @@ describe("useAutostart", () => {
   });
 
   it("calls enable command and updates state when toggled on", async () => {
-    isTauri.mockReturnValue(true);
-    invoke.mockResolvedValueOnce(false);
-    invoke.mockResolvedValue(undefined);
+    vi.mocked(isTauri).mockReturnValue(true);
+    vi.mocked(invoke).mockResolvedValueOnce(false);
+    vi.mocked(invoke).mockResolvedValue(undefined);
     const { result } = renderHook(() => useAutostart());
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
     await act(async () => {
@@ -48,9 +48,9 @@ describe("useAutostart", () => {
   });
 
   it("calls disable command and updates state when toggled off", async () => {
-    isTauri.mockReturnValue(true);
-    invoke.mockResolvedValueOnce(true);
-    invoke.mockResolvedValue(undefined);
+    vi.mocked(isTauri).mockReturnValue(true);
+    vi.mocked(invoke).mockResolvedValueOnce(true);
+    vi.mocked(invoke).mockResolvedValue(undefined);
     const { result } = renderHook(() => useAutostart());
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
     await act(async () => {
@@ -61,8 +61,8 @@ describe("useAutostart", () => {
   });
 
   it("stays not ready when is_enabled call rejects", async () => {
-    isTauri.mockReturnValue(true);
-    invoke.mockRejectedValue(new Error("unavailable"));
+    vi.mocked(isTauri).mockReturnValue(true);
+    vi.mocked(invoke).mockRejectedValue(new Error("unavailable"));
     const { result } = renderHook(() => useAutostart());
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
@@ -71,13 +71,13 @@ describe("useAutostart", () => {
   });
 
   it("lets a participant update the shared preference without owning the OS registration", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       isCoordinator: false,
       globalPreferences: { openAtLogin: false },
       multiInstancePersistence: { globalPreferenceRevisions: { openAtLogin: 3 } },
     };
-    invoke.mockResolvedValueOnce({ openAtLogin: 4 });
+    vi.mocked(invoke).mockResolvedValueOnce({ openAtLogin: 4 });
     const { result } = renderHook(() => useAutostart());
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
 
@@ -92,7 +92,7 @@ describe("useAutostart", () => {
   });
 
   it("applies the shared preference after this process becomes coordinator", async () => {
-    isTauri.mockReturnValue(true);
+    vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       isCoordinator: false,
       globalPreferences: { openAtLogin: true },
@@ -102,7 +102,7 @@ describe("useAutostart", () => {
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
     expect(invoke).not.toHaveBeenCalled();
 
-    invoke.mockResolvedValue(false);
+    vi.mocked(invoke).mockResolvedValue(false);
     act(() => setCoordinatorRole(true));
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("plugin:autostart|enable"));

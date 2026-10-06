@@ -90,11 +90,17 @@ describe("LoudnessProfileEditor", () => {
   it("renders each rule as metric, operator and value", () => {
     renderEditor();
     expect(screen.getByRole("combobox", { name: "Rule 1 operator" }).textContent).toBe(">");
-    expect(screen.getByLabelText("Rule 1 value").value).toBe("-22.5");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Rule 1 value")).value).toBe(
+      "-22.5"
+    );
     expect(screen.getByRole("combobox", { name: "Rule 2 operator" }).textContent).toBe("<");
-    expect(screen.getByLabelText("Rule 2 value").value).toBe("-23.5");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Rule 2 value")).value).toBe(
+      "-23.5"
+    );
     // Padded to the metric's decimals: the rule holds -1, the field reads -1.0.
-    expect(screen.getByLabelText("Rule 3 value").value).toBe("-1.0");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Rule 3 value")).value).toBe(
+      "-1.0"
+    );
   });
 
   it("commits a value on blur, not per keystroke", () => {
@@ -132,7 +138,7 @@ describe("LoudnessProfileEditor", () => {
     fireEvent.change(input, { target: { value: "-23.456789" } });
     fireEvent.blur(input);
     expect(appliedDocument(props).rules[0].value).toBe(-23.5);
-    expect(input.value).toBe("-23.5");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("-23.5");
   });
 
   it("keeps two decimals on Correlation, which reads at two", () => {
@@ -235,7 +241,7 @@ describe("LoudnessProfileEditor", () => {
     const props = renderEditor();
     const container = screen.getByTestId("loudness-rule-order-list");
     // Three 40px rows starting at the viewport top, matching usePointerReorder.dom.test.jsx.
-    container.getBoundingClientRect = () => ({ top: 0, height: 120 });
+    container.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: 0, height: 120 });
 
     const grip = screen.getByRole("button", { name: "Reorder rule 3" });
     act(() => grip.dispatchEvent(pointerEvent("pointerdown")));
@@ -254,7 +260,7 @@ describe("LoudnessProfileEditor", () => {
   it("re-renders with the dragged order applied, aria-labels following the new positions", () => {
     const props = renderEditor();
     const container = screen.getByTestId("loudness-rule-order-list");
-    container.getBoundingClientRect = () => ({ top: 0, height: 120 });
+    container.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: 0, height: 120 });
 
     const grip = screen.getByRole("button", { name: "Reorder rule 3" });
     act(() => grip.dispatchEvent(pointerEvent("pointerdown")));
@@ -291,7 +297,9 @@ describe("LoudnessProfileEditor", () => {
       },
     });
     expect(screen.getByText("No rules — this profile does not judge any metrics.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(false);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Save" })).disabled
+    ).toBe(false);
   });
 
   it("shows a named profile statically and opens editing from the rename icon", () => {
@@ -328,9 +336,9 @@ describe("LoudnessProfileEditor", () => {
 
     const input = screen.getByLabelText("Loudness Profile name");
     expect(document.activeElement).toBe(input);
-    expect(input.value).toBe("Untitled");
-    expect(input.selectionStart).toBe(0);
-    expect(input.selectionEnd).toBe("Untitled".length);
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("Untitled");
+    expect(/** @type {HTMLInputElement} */ (input).selectionStart).toBe(0);
+    expect(/** @type {HTMLInputElement} */ (input).selectionEnd).toBe("Untitled".length);
   });
 
   it("opens a fresh draft with Untitled focused and selected", () => {
@@ -343,9 +351,9 @@ describe("LoudnessProfileEditor", () => {
     });
     const input = screen.getByLabelText("Loudness Profile name");
     expect(document.activeElement).toBe(input);
-    expect(input.value).toBe("Untitled");
-    expect(input.selectionStart).toBe(0);
-    expect(input.selectionEnd).toBe("Untitled".length);
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("Untitled");
+    expect(/** @type {HTMLInputElement} */ (input).selectionStart).toBe(0);
+    expect(/** @type {HTMLInputElement} */ (input).selectionEnd).toBe("Untitled".length);
   });
 
   it("commits the name on blur and never rewrites the document id", () => {
@@ -427,7 +435,7 @@ describe("LoudnessProfileEditor", () => {
     fireEvent.blur(input);
 
     const save = screen.getByRole("button", { name: "Save" });
-    expect(save.disabled).toBe(false);
+    expect(/** @type {HTMLButtonElement} */ (save).disabled).toBe(false);
     fireEvent.click(save);
 
     expect(appliedDocument(props).name).toBe("");
@@ -468,7 +476,7 @@ describe("LoudnessProfileEditor", () => {
     moved.rules[0].value = -18;
     rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
 
-    expect(input.value).toBe("-30");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("-30");
   });
 
   it("adopts an incoming value when the field is not focused", () => {
@@ -480,7 +488,9 @@ describe("LoudnessProfileEditor", () => {
     moved.rules[0].value = -18;
     rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
 
-    expect(screen.getByLabelText("Rule 1 value").value).toBe("-18.0");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Rule 1 value")).value).toBe(
+      "-18.0"
+    );
   });
 
   it("pads a settled value out to the metric's decimals", () => {
@@ -489,7 +499,7 @@ describe("LoudnessProfileEditor", () => {
     fireEvent.change(input, { target: { value: "14" } });
     fireEvent.blur(input);
     expect(appliedDocument(props).rules[0].value).toBe(14);
-    expect(input.value).toBe("14.0");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("14.0");
   });
 
   it("pads Correlation out to two decimals", () => {
@@ -502,7 +512,9 @@ describe("LoudnessProfileEditor", () => {
         dirty: false,
       },
     });
-    expect(screen.getByLabelText("Rule 1 value").value).toBe("0.50");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Rule 1 value")).value).toBe(
+      "0.50"
+    );
   });
 
   it("leaves Dialogue Coverage whole, which reads at no decimals", () => {
@@ -516,11 +528,11 @@ describe("LoudnessProfileEditor", () => {
       },
     });
     const input = screen.getByLabelText("Rule 1 value");
-    expect(input.value).toBe("60");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("60");
     fireEvent.change(input, { target: { value: "61.7" } });
     fireEvent.blur(input);
     expect(appliedDocument(props).rules[0].value).toBe(62);
-    expect(input.value).toBe("62");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("62");
   });
 
   it("keeps half-typed input untouched until it settles", () => {
@@ -528,6 +540,6 @@ describe("LoudnessProfileEditor", () => {
     const input = screen.getByLabelText("Rule 1 value");
     input.focus();
     fireEvent.change(input, { target: { value: "-2" } });
-    expect(input.value).toBe("-2");
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("-2");
   });
 });

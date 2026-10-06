@@ -81,7 +81,7 @@ function contextStub() {
 
 function mockCanvas() {
   const ctx = contextStub();
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
   return ctx;
 }
 
@@ -95,19 +95,21 @@ function mockCanvasPerElement() {
 }
 
 function mockStereoMapColors() {
-  return vi.spyOn(window, "getComputedStyle").mockReturnValue({
-    getPropertyValue: (name) =>
-      ({
-        "--ui-stereo-map-primary": "#111111",
-        "--ui-stereo-map-primary-snap": "#111111",
-        "--ui-stereo-map-secondary": "#222222",
-        "--ui-stereo-map-secondary-snap": "#222222",
-        "--ui-stereo-map-critical-range": "#444444",
-        "--ui-stereo-map-warning-range": "#333333",
-        "--ui-stereo-map-safe-range": "#555555",
-        "--border": "#666666",
-      })[name] ?? "",
-  });
+  return vi.spyOn(window, "getComputedStyle").mockReturnValue(
+    /** @type {any} */ ({
+      getPropertyValue: (name) =>
+        ({
+          "--ui-stereo-map-primary": "#111111",
+          "--ui-stereo-map-primary-snap": "#111111",
+          "--ui-stereo-map-secondary": "#222222",
+          "--ui-stereo-map-secondary-snap": "#222222",
+          "--ui-stereo-map-critical-range": "#444444",
+          "--ui-stereo-map-warning-range": "#333333",
+          "--ui-stereo-map-safe-range": "#555555",
+          "--border": "#666666",
+        })[name] ?? "",
+    })
+  );
 }
 function hexToRgb(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -127,6 +129,14 @@ function primitiveRow() {
   };
 }
 
+/**
+ * @param {{
+ *   result?: any,
+ *   channelCount?: number,
+ *   selectedControls?: any,
+ *   historyData?: any,
+ * }} [options]
+ */
 function renderWith({
   result,
   channelCount = 2,
@@ -179,7 +189,7 @@ describe("DockStereoMap", () => {
 
   it("renders the current curve and fill for the keyed live result", () => {
     const ctx = mockCanvas();
-    const { container } = renderWith({ result: primitiveRow() });
+    const { container } = renderWith(/** @type {any} */ ({ result: primitiveRow() }));
     const plot = container.querySelector('[data-stereo-map-plot="position"]');
     expect(plot).toBeTruthy();
     // At least one curve segment (fill + stroke); nothing draws a line at zero.
@@ -188,12 +198,15 @@ describe("DockStereoMap", () => {
   });
 
   it("shows top/bottom pair labels only in Position mode", () => {
-    renderWith({ result: primitiveRow() });
+    renderWith(/** @type {any} */ ({ result: primitiveRow() }));
     expect(screen.getByTestId("dock-stereo-map-pair-labels")).toBeTruthy();
 
     const { container } = renderWith({
       result: primitiveRow(),
-      selectedControls: { ...controls, stereoMapMode: STEREO_MAP_MODES.CORRELATION },
+      selectedControls: {
+        ...controls,
+        stereoMapMode: /** @type {any} */ (STEREO_MAP_MODES.CORRELATION),
+      },
     });
     expect(container.querySelector('[data-testid="dock-stereo-map-pair-labels"]')).toBeNull();
   });
@@ -216,7 +229,7 @@ describe("DockStereoMap", () => {
       result: primitiveRow(),
       selectedControls: {
         ...controls,
-        stereoMapMode: STEREO_MAP_MODES.CORRELATION,
+        stereoMapMode: /** @type {any} */ (STEREO_MAP_MODES.CORRELATION),
         stereoMapHold: false,
       },
       historyData: { getStereoMapHistoryForKey },
@@ -230,7 +243,7 @@ describe("DockStereoMap", () => {
       result: primitiveRow(),
       selectedControls: {
         ...controls,
-        stereoMapMode: STEREO_MAP_MODES.CORRELATION,
+        stereoMapMode: /** @type {any} */ (STEREO_MAP_MODES.CORRELATION),
         stereoMapHold: true,
       },
       historyData: { getStereoMapHistoryForKey },
@@ -252,11 +265,13 @@ describe("DockStereoMap", () => {
     });
     const getStereoMapHistoryForKey = (candidateKey) => (candidateKey === key ? slab : null);
 
-    const { container: dockContainer } = renderWith({
-      result: primitiveRow(),
-      selectedControls: { ...controls, stereoMapHold: true },
-      historyData: { getStereoMapHistoryForKey },
-    });
+    const { container: dockContainer } = renderWith(
+      /** @type {any} */ ({
+        result: primitiveRow(),
+        selectedControls: { ...controls, stereoMapHold: true },
+        historyData: { getStereoMapHistoryForKey },
+      })
+    );
 
     // Same shared slab.liveHoldValues() the Workspace panel reads (StereoMapHistorySlab), not a
     // private per-instance accumulator: both consumers of this key must see the identical points.
@@ -268,14 +283,16 @@ describe("DockStereoMap", () => {
   });
 
   it("renders no hover, wheel, pan, axis, or snapshot chrome", () => {
-    const { container } = renderWith({ result: primitiveRow() });
+    const { container } = renderWith(/** @type {any} */ ({ result: primitiveRow() }));
     expect(container.querySelector('[data-testid="stereo-map-chart"]')).toBeNull();
     expect(container.querySelector("[data-stereo-map-hover]")).toBeNull();
     expect(container.textContent).not.toMatch(/Hz/);
   });
 
   it("renders compact placeholders (no curve) for mono input", () => {
-    const { container } = renderWith({ result: primitiveRow(), channelCount: 1 });
+    const { container } = renderWith(
+      /** @type {any} */ ({ result: primitiveRow(), channelCount: 1 })
+    );
     const plot = container.querySelector('[data-stereo-map-plot="position"]');
     expect(plot).toBeTruthy();
     expect(plot.querySelectorAll("[data-stereo-map-segment]").length).toBe(0);
@@ -283,14 +300,14 @@ describe("DockStereoMap", () => {
 
   it("does not treat channelCount 0 (not started yet) as mono", () => {
     const ctx = mockCanvas();
-    renderWith({ result: primitiveRow(), channelCount: 0 });
+    renderWith(/** @type {any} */ ({ result: primitiveRow(), channelCount: 0 }));
     // Unlike genuine mono input, a not-yet-started channel count must still draw the curve once a
     // result is available for the key.
     expect(ctx.stroke).toHaveBeenCalled();
   });
 
   it("renders compact placeholders (no curve) while the keyed request is pending", () => {
-    const { container } = renderWith({ result: null });
+    const { container } = renderWith(/** @type {any} */ ({ result: null }));
     const plot = container.querySelector('[data-stereo-map-plot="position"]');
     expect(plot).toBeTruthy();
     expect(plot.querySelectorAll("[data-stereo-map-segment]").length).toBe(0);

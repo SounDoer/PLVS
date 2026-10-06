@@ -39,7 +39,7 @@ describe("PanelSettingsHeader", () => {
     render(<PanelSettingsHeader title="Stats" onReset={vi.fn()} isDefault />);
 
     const reset = screen.getByRole("button", { name: "Reset Stats settings" });
-    expect(reset.disabled).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (reset).disabled).toBe(true);
     fireEvent.mouseEnter(reset.parentElement);
     expect(screen.getByRole("tooltip").textContent).toBe("Using Defaults");
   });

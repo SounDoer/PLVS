@@ -25,7 +25,9 @@ vi.mock("../ipc/commands.js", () => ({
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
 // Only presetsStore is faked; the dock/profile hand-off below drives the real settingsStore.
 vi.mock("../persistence/index.js", async () => ({
-  ...(await vi.importActual("../persistence/index.js")),
+  .../** @type {typeof import("../persistence/index.js")} */ (
+    await vi.importActual("../persistence/index.js")
+  ),
   presetsStore: { read: mocks.readPresets, patch: mocks.patchPresets },
 }));
 
@@ -114,13 +116,15 @@ describe("useDockMode", () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: false, edge: "top", reserveSpace: true, height: 56 },
     };
-    mocks.enterDock.mockResolvedValueOnce({
-      enabled: true,
-      edge: "top",
-      monitor: "monitor-1",
-      reserveSpace: false,
-      height: 56,
-    });
+    mocks.enterDock.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        enabled: true,
+        edge: "top",
+        monitor: "monitor-1",
+        reserveSpace: false,
+        height: 56,
+      })
+    );
     const { result } = renderHook(() => useDockMode());
 
     let effective;
@@ -263,12 +267,14 @@ describe("useDockMode", () => {
   });
 
   it("stores the monitor resolved by the dock IPC call", async () => {
-    mocks.enterDock.mockResolvedValueOnce({
-      enabled: true,
-      edge: "top",
-      monitor: "\\\\.\\DISPLAY2",
-      reserveSpace: true,
-    });
+    mocks.enterDock.mockResolvedValueOnce(
+      /** @type {any} */ ({
+        enabled: true,
+        edge: "top",
+        monitor: "\\\\.\\DISPLAY2",
+        reserveSpace: true,
+      })
+    );
     const { result } = renderHook(() => useDockMode());
     await act(() => result.current.enterDockMode("top", true, "\\\\.\\DISPLAY2"));
     expect(mocks.enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2", undefined);
@@ -457,6 +463,7 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
       }
     );
 
+    /** @type {any} */
     let thrown = null;
     act(() => {
       try {

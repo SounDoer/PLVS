@@ -37,7 +37,7 @@ beforeAll(() => {
     observe() {}
     disconnect() {}
   }
-  globalThis.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
 });
 
 afterEach(() => {
@@ -134,13 +134,17 @@ describe("Community preview browser harness", () => {
     expect(screen.getByText("Surfaces")).toBeTruthy();
     semantic.unmount();
 
-    const statsAsset = plan.assets.find(({ sceneId }) => sceneId === "stats-file");
+    const statsAsset = /** @type {any} */ (plan.assets).find(
+      ({ sceneId }) => sceneId === "stats-file"
+    );
     render(<CommunityPreviewApp plan={plan} asset={statsAsset} />);
     expect(screen.getByText("Stats")).toBeTruthy();
     expect(screen.getByText("Integrated")).toBeTruthy();
     cleanup();
 
-    const spectrogramAsset = plan.assets.find(({ sceneId }) => sceneId === "spectrogram-heatmap");
+    const spectrogramAsset = /** @type {any} */ (plan.assets).find(
+      ({ sceneId }) => sceneId === "spectrogram-heatmap"
+    );
     render(<CommunityPreviewApp plan={plan} asset={spectrogramAsset} />);
     expect(screen.getByText("Spectrogram")).toBeTruthy();
   });
@@ -157,7 +161,9 @@ describe("Community preview browser harness", () => {
     const expected = compileTheme(light);
     const dark = compileTheme(BUILTIN_THEMES_V2["plvs-dark"]);
     const root = document.documentElement;
-    const asset = plan.assets.find(({ sceneId }) => sceneId === "spectrogram-heatmap");
+    const asset = /** @type {any} */ (plan.assets).find(
+      ({ sceneId }) => sceneId === "spectrogram-heatmap"
+    );
 
     publishCommunityPreviewTheme(plan, asset);
     const { container } = render(<CommunityPreviewApp plan={plan} asset={asset} />);

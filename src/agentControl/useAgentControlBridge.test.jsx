@@ -237,6 +237,53 @@ function request(method, params = {}, id = "req-1") {
   };
 }
 
+/**
+ * @param {{
+ *   enabled?: boolean,
+ *   flush?: any,
+ *   hasLoudnessReference?: boolean,
+ *   analysisContext?: any,
+ *   measurementContext?: any,
+ *   loudnessProfiles?: any,
+ *   loudnessProfilesFromStore?: boolean,
+ *   loudnessProfile?: any,
+ *   customThemes?: any,
+ *   themeState?: any,
+ *   themeControl?: any,
+ *   capturePresetSnapshot?: (...args: any[]) => any,
+ *   assertPresetOperationAllowed?: (...args: any[]) => any,
+ *   agentSettings?: any,
+ *   agentSettingsContext?: any,
+ *   applyAgentSettings?: any,
+ *   agentView?: any,
+ *   agentViewContext?: any,
+ *   agentVisual?: any,
+ *   applyAgentView?: any,
+ *   agentTransport?: any,
+ *   agentDock?: any,
+ *   agentDockContext?: any,
+ *   executeAgentDock?: any,
+ *   resolveAgentDock?: any,
+ *   controlledAgentSettings?: boolean,
+ *   executeAgentTransport?: any,
+ *   agentDevice?: any,
+ *   agentDeviceLive?: any,
+ *   previewAgentDevice?: any,
+ *   commitAgentDevice?: any,
+ *   beginAgentDeviceRestart?: any,
+ *   deviceRuntimeUnavailable?: boolean,
+ *   onDeviceState?: (...args: any[]) => any,
+ *   presets?: any,
+ *   presetLibraryFromStore?: boolean,
+ *   applyPresetToWorkspace?: boolean,
+ *   presetApplyBarrier?: any,
+ *   exportConfiguration?: any,
+ *   importConfiguration?: any,
+ *   normalizeConfiguration?: any,
+ *   relaunchAfterConfigurationChange?: any,
+ *   onStore?: (...args: any[]) => any,
+ * }} props
+ */
 function Harness({
   enabled = true,
   flush = vi.fn(async () => {}),
@@ -514,6 +561,7 @@ function Harness({
   return null;
 }
 
+/** @param {{ onProfile?: (...args: any[]) => any, [key: string]: any }} props */
 function ProfileHarness({ onProfile = () => {}, ...props }) {
   const loudnessProfile = useLoudnessProfile();
   onProfile(loudnessProfile);
@@ -545,6 +593,7 @@ function mountWithProfiles(options = {}) {
   };
 }
 
+/** @param {{ onTheme?: (...args: any[]) => any, [key: string]: any }} props */
 function ThemeHarness({ onTheme = () => {}, ...props }) {
   const themeSettings = useThemeSettings();
   const theme = useCustomThemeSettings({
@@ -684,11 +733,13 @@ function visualControl(overrides = {}) {
 
 beforeEach(() => {
   localStorage.clear();
-  window.matchMedia = vi.fn(() => ({
-    matches: true,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  }));
+  window.matchMedia = /** @type {any} */ (
+    vi.fn(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  );
   adapter.handler = null;
   adapter.order.length = 0;
   adapter.responses.length = 0;
@@ -875,6 +926,7 @@ describe("useAgentControlBridge", () => {
     });
 
     it("keeps screenshot work outside the mutation queue and rejects a concurrent capture", async () => {
+      /** @type {any} */
       const firstSettlement = createDeferred();
       const visual = visualControl({ settle: vi.fn(() => firstSettlement.promise) });
       mount({ agentVisual: visual });
@@ -905,6 +957,7 @@ describe("useAgentControlBridge", () => {
     });
 
     it("cancels an owned screenshot settlement when the bridge unmounts", async () => {
+      /** @type {any} */
       let observedSignal;
       const visual = visualControl({
         settle: vi.fn((_target, { signal }) => {
@@ -1087,6 +1140,7 @@ describe("useAgentControlBridge", () => {
 
     it("keeps recording wait outside the mutation queue and returns terminal correlation metadata", async () => {
       const recordingId = `rec-${"b".repeat(32)}`;
+      /** @type {any} */
       const inspected = createDeferred();
       const visual = visualControl({
         platformCapabilities: {
@@ -1293,6 +1347,7 @@ describe("useAgentControlBridge", () => {
     });
 
     it("waits for real running restart readiness before success", async () => {
+      /** @type {any} */
       const ready = createDeferred();
       const beginRestart = vi.fn(() => ready.promise);
       mount({
@@ -1449,6 +1504,7 @@ describe("useAgentControlBridge", () => {
     it("rechecks generation after preview and fails a hotplug race before restart or commit", async () => {
       const commit = vi.fn();
       const beginRestart = vi.fn();
+      /** @type {any} */
       const secondPreview = createDeferred();
       const preview = vi.fn().mockResolvedValueOnce({}).mockReturnValueOnce(secondPreview.promise);
       let owner;
@@ -1509,7 +1565,7 @@ describe("useAgentControlBridge", () => {
       const persistence = vi.fn(async (deviceId, { setDeviceState }) => {
         setDeviceState((current) => ({ ...current, requestedId: deviceId }));
         const error = new Error("disk full");
-        error.stateCommitted = true;
+        /** @type {any} */ (error).stateCommitted = true;
         throw error;
       });
       mount({ commitAgentDevice: persistence });
@@ -3040,6 +3096,7 @@ describe("useAgentControlBridge", () => {
     ["preset.apply", { presetId: "preset-1" }],
   ])("refuses %s when a blocking editor opens during scene capture", async (method, params) => {
     const flush = vi.fn(async () => {});
+    /** @type {any} */
     const snapshot = createDeferred();
     const capturePresetSnapshot = vi.fn(() => snapshot.promise);
     let editorOpen = false;
@@ -3144,6 +3201,7 @@ describe("useAgentControlBridge", () => {
       return response.result.revision;
     };
     try {
+      /** @type {any} */
       const hung = createDeferred();
       const view = mount({ executeAgentDock: vi.fn(() => hung.promise) });
       await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
@@ -3259,6 +3317,7 @@ describe("useAgentControlBridge", () => {
 
   it("publishes one revision after all staggered Preset Apply commits settle", async () => {
     const flush = vi.fn(async () => {});
+    /** @type {any} */
     const presetApplyBarrier = createDeferred();
     const target = {
       id: "preset-1",
@@ -4048,6 +4107,7 @@ describe("useAgentControlBridge", () => {
   });
 
   it("serializes requests and never sends a late response after unmount", async () => {
+    /** @type {any} */
     let releaseFlush;
     const flush = vi.fn(() => new Promise((resolve) => (releaseFlush = resolve)));
     const view = mount({ flush });
@@ -4292,16 +4352,21 @@ describe("useAgentControlBridge", () => {
 
   it("relaunches only after the CLI has received a persisted configuration result", async () => {
     const configuration = { app: "PLVS", kind: "configuration-profile", version: 1 };
+    /** @type {any} */
     const delivery = createDeferred();
     const order = [];
     const importConfiguration = vi.fn(async () => order.push("persisted"));
     const relaunchAfterConfigurationChange = vi.fn(async () => order.push("relaunched"));
-    adapter.respond.mockImplementationOnce(async (response) => {
-      adapter.responses.push(response);
-      order.push("response-started");
-      await delivery.promise;
-      order.push("response-delivered");
-    });
+    adapter.respond.mockImplementationOnce(
+      /** @type {any} */ (
+        async (response) => {
+          adapter.responses.push(response);
+          order.push("response-started");
+          await delivery.promise;
+          order.push("response-delivered");
+        }
+      )
+    );
     mount({
       importConfiguration,
       normalizeConfiguration: (value) => value,
@@ -5174,12 +5239,14 @@ describe("useAgentControlBridge", () => {
       // The assertion has to be on rendered state: a store read would pass whether or not the
       // write went through the adapters, and it is `notifyLocal` inside them that makes the
       // theme list re-read at all.
-      window.matchMedia = vi.fn((query) => ({
-        matches: false,
-        media: query,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }));
+      window.matchMedia = /** @type {any} */ (
+        vi.fn((query) => ({
+          matches: false,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }))
+      );
       mount();
       await waitUntilReady();
       const themes = renderHook(() => useThemeSettings());
@@ -5374,7 +5441,11 @@ describe("useAgentControlBridge", () => {
 
       for (const [method, params] of cases) {
         const response = await send(
-          request(method, { ...params, expectedRevision: 0, dryRun: true }, `dry-${method}`)
+          request(
+            method,
+            { .../** @type {any} */ (params), expectedRevision: 0, dryRun: true },
+            `dry-${method}`
+          )
         );
         expect(response.result).toMatchObject({
           dryRun: true,
@@ -5408,7 +5479,7 @@ describe("useAgentControlBridge", () => {
         ["loudnessProfile.reorder", { profileIds: ["prof-a", "prof-b"] }],
       ]) {
         const response = await send(
-          request(method, { ...params, expectedRevision: 0 }, `noop-${method}`)
+          request(method, { .../** @type {any} */ (params), expectedRevision: 0 }, `noop-${method}`)
         );
         expect(response.result).toMatchObject({ dryRun: false, changed: false, revision: 0 });
       }
@@ -5429,7 +5500,11 @@ describe("useAgentControlBridge", () => {
         ["loudnessProfile.reorder", { profileIds: ["prof-b", "prof-a"] }],
       ]) {
         const response = await send(
-          request(method, { ...params, expectedRevision: 9 }, `stale-${method}`)
+          request(
+            method,
+            { .../** @type {any} */ (params), expectedRevision: 9 },
+            `stale-${method}`
+          )
         );
         expect(response.error.data.reason).toBe("revisionConflict");
       }
@@ -5494,7 +5569,11 @@ describe("useAgentControlBridge", () => {
         ["loudnessProfile.delete", { profileId: "prof-a" }],
       ]) {
         const response = await send(
-          request(method, { ...params, expectedRevision: 0 }, `blocked-${method}`)
+          request(
+            method,
+            { .../** @type {any} */ (params), expectedRevision: 0 },
+            `blocked-${method}`
+          )
         );
         expect(response.error.data).toMatchObject({
           reason: "editorActive",

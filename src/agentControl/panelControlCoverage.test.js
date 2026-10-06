@@ -19,7 +19,7 @@ const { readKeys } = vi.hoisted(() => ({ readKeys: new Set() }));
  * named in a comment or in an unrelated branch; this counts only keys the code actually reads.
  */
 vi.mock("../lib/panelControls.js", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = /** @type {typeof import("../lib/panelControls.js")} */ (await importOriginal());
   return {
     ...actual,
     normalizePanelControls: (raw) =>

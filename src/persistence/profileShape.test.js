@@ -137,7 +137,8 @@ describe("profileShape", () => {
     "turns a missing or legacy preset selection Off (%s)",
     (loudnessProfileActive) => {
       const preset = { ...VALID_PRESET };
-      if (loudnessProfileActive !== undefined) preset.loudnessProfileActive = loudnessProfileActive;
+      if (loudnessProfileActive !== undefined)
+        /** @type {any} */ (preset).loudnessProfileActive = loudnessProfileActive;
 
       const profile = buildProfileSnapshot({
         settings: {

@@ -1,6 +1,7 @@
 /**
  * Tests for the tree-based workspace reducer (replaces dock-based reducer.test.js).
  */
+/** @import { AnyTreeNode } from "./types.js" */
 import { describe, it, expect } from "vitest";
 import { workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
@@ -12,10 +13,12 @@ import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** @returns {import("./types.js").LeafNode} */
 function leaf(tabs, activeTab = tabs[0]) {
   return { type: "leaf", tabs: [...tabs], activeTab };
 }
 
+/** @returns {import("./types.js").SplitNode} */
 function split(direction, children, sizes) {
   return { type: "split", direction, children, sizes: sizes ?? children.map(() => null) };
 }
@@ -61,8 +64,8 @@ describe("RESIZE_CHILDREN", () => {
       type: "RESIZE_CHILDREN",
       payload: { path: [], aboveIdx: 0, aboveSize: 0.7, belowSize: 0.3 },
     });
-    expect(next.tree.sizes[0]).toBe(0.7);
-    expect(next.tree.sizes[1]).toBe(0.3);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[0]).toBe(0.7);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[1]).toBe(0.3);
   });
 
   it("keeps non-adjacent visible children stable when resizing a divider", () => {
@@ -92,10 +95,10 @@ describe("RESIZE_CHILDREN", () => {
       },
     });
 
-    expect(next.tree.sizes[0]).toBeCloseTo(200 / 800);
-    expect(next.tree.sizes[1]).toBeCloseTo(250 / 800);
-    expect(next.tree.sizes[2]).toBeCloseTo(150 / 800);
-    expect(next.tree.sizes[3]).toBeCloseTo(200 / 800);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[0]).toBeCloseTo(200 / 800);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[1]).toBeCloseTo(250 / 800);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[2]).toBeCloseTo(150 / 800);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[3]).toBeCloseTo(200 / 800);
   });
 
   it("updates sizes in a nested SplitNode", () => {
@@ -106,9 +109,9 @@ describe("RESIZE_CHILDREN", () => {
       type: "RESIZE_CHILDREN",
       payload: { path: [0], aboveIdx: 0, aboveSize: 0.6, belowSize: 0.25 },
     });
-    expect(next.tree.children[0].sizes[0]).toBe(0.6);
-    expect(next.tree.children[0].sizes[1]).toBe(0.25);
-    expect(next.tree.children[1]).toBe(root.children[1]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].sizes[0]).toBe(0.6);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].sizes[1]).toBe(0.25);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1]).toBe(root.children[1]);
   });
 
   it("does not stretch a pinned panel's height when resizing an outer same-direction divider", () => {
@@ -188,10 +191,10 @@ describe("RESIZE_CHILDREN", () => {
     });
 
     expect(next.pinnedPanelsById.spectrum.height).toBe(250);
-    expect(next.tree.sizes[0]).toBeCloseTo(200 / 550);
-    expect(next.tree.sizes[1]).toBeCloseTo(200 / 550);
-    expect(next.tree.sizes[2]).toBeNull();
-    expect(next.tree.sizes[3]).toBeCloseTo(150 / 550);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[0]).toBeCloseTo(200 / 550);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[1]).toBeCloseTo(200 / 550);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[2]).toBeNull();
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[3]).toBeCloseTo(150 / 550);
   });
 
   it("does not rewrite a deeply nested pin when resizing an outer same-direction divider", () => {
@@ -232,7 +235,7 @@ describe("SET_ACTIVE_TAB", () => {
       type: "SET_ACTIVE_TAB",
       payload: { path: [0], tabId: "loudness" },
     });
-    expect(next.tree.children[0].activeTab).toBe("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].activeTab).toBe("loudness");
   });
 
   it("does not touch other leaves", () => {
@@ -242,7 +245,7 @@ describe("SET_ACTIVE_TAB", () => {
       type: "SET_ACTIVE_TAB",
       payload: { path: [0], tabId: "loudness" },
     });
-    expect(next.tree.children[1]).toBe(right);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1]).toBe(right);
   });
 });
 
@@ -292,8 +295,8 @@ describe("panel instances", () => {
     // The whole pre-existing tree stays one flex-filling ("null") sibling — only the new
     // leaf gets a fixed, modest share — so existing panels don't collapse to half the window.
     expect(next.tree.type).toBe("split");
-    expect(next.tree.sizes).toEqual([null, 0.3]);
-    expect(next.tree.children[1]).toEqual({
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes).toEqual([null, 0.3]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1]).toEqual({
       type: "leaf",
       tabs: ["spectrum-2"],
       activeTab: "spectrum-2",
@@ -425,14 +428,14 @@ describe("SET_FOCUS", () => {
       activeTab: "levelMeter",
     };
     const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "loudness" } });
-    expect(next.tree.activeTab).toBe("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).activeTab).toBe("loudness");
     expect(next).not.toHaveProperty("focusId");
   });
 
   it("makes focused tab active in its leaf (split tree)", () => {
     const root = split("h", [leaf(["levelMeter", "loudness"], "levelMeter"), leaf(["spectrum"])]);
     const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "loudness" } });
-    expect(next.tree.children[0].activeTab).toBe("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].activeTab).toBe("loudness");
   });
 
   it("does not change tree when module is already active", () => {
@@ -441,7 +444,9 @@ describe("SET_FOCUS", () => {
       type: "SET_FOCUS",
       payload: { id: "levelMeter" },
     });
-    expect(next.tree.children?.[0] ?? next.tree).toMatchObject({ activeTab: "levelMeter" });
+    expect(/** @type {AnyTreeNode} */ (next.tree).children?.[0] ?? next.tree).toMatchObject({
+      activeTab: "levelMeter",
+    });
   });
 });
 
@@ -490,9 +495,12 @@ describe("ADD_PANEL_AT", () => {
 
     expect(next.panelsById["stereo-map"]).toEqual({ id: "stereo-map", moduleId: "stereo-map" });
     expect(next.panelOrder).toContain("stereo-map");
-    expect(next.tree.children[0].tabs).toEqual(["levelMeter", "stereo-map"]);
-    expect(next.tree.children[0].activeTab).toBe("stereo-map");
-    expect(next.tree.children[1].tabs).toEqual(["loudness"]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].tabs).toEqual([
+      "levelMeter",
+      "stereo-map",
+    ]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].activeTab).toBe("stereo-map");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].tabs).toEqual(["loudness"]);
   });
 
   it("splits the target leaf evenly, unlike root-level ADD_PANEL's smaller default slice", () => {
@@ -504,10 +512,10 @@ describe("ADD_PANEL_AT", () => {
     });
 
     expect(next.tree.type).toBe("split");
-    expect(next.tree.direction).toBe("h");
-    expect(next.tree.sizes).toEqual([null, null]);
-    expect(next.tree.children[0].tabs).toEqual(["levelMeter"]);
-    expect(next.tree.children[1].tabs).toEqual(["stereo-map"]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).direction).toBe("h");
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes).toEqual([null, null]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].tabs).toEqual(["levelMeter"]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].tabs).toEqual(["stereo-map"]);
   });
 
   it("places the new panel above a nested target leaf without disturbing its siblings", () => {
@@ -518,12 +526,16 @@ describe("ADD_PANEL_AT", () => {
       payload: { moduleId: "stereo-map", drop: { targetPath: [1], zone: "above" } },
     });
 
-    expect(next.tree.direction).toBe("h");
-    expect(next.tree.children[0].tabs).toEqual(["levelMeter"]);
-    expect(next.tree.children[1].direction).toBe("v");
-    expect(next.tree.children[1].sizes).toEqual([null, null]);
-    expect(next.tree.children[1].children[0].tabs).toEqual(["stereo-map"]);
-    expect(next.tree.children[1].children[1].tabs).toEqual(["loudness"]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).direction).toBe("h");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].tabs).toEqual(["levelMeter"]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].direction).toBe("v");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].sizes).toEqual([null, null]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].children[0].tabs).toEqual([
+      "stereo-map",
+    ]);
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].children[1].tabs).toEqual([
+      "loudness",
+    ]);
   });
 });
 
@@ -541,9 +553,9 @@ describe("MOVE_TAB: zone=tabs", () => {
     });
     // left leaf emptied → pruned → root unwraps to right leaf
     expect(next.tree.type).toBe("leaf");
-    expect(next.tree.tabs).toContain("levelMeter");
-    expect(next.tree.tabs).toContain("loudness");
-    expect(next.tree.activeTab).toBe("levelMeter"); // moved tab becomes active
+    expect(/** @type {AnyTreeNode} */ (next.tree).tabs).toContain("levelMeter");
+    expect(/** @type {AnyTreeNode} */ (next.tree).tabs).toContain("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).activeTab).toBe("levelMeter"); // moved tab becomes active
   });
 });
 
@@ -557,9 +569,9 @@ describe("MOVE_TAB: zone=below", () => {
     });
     // levelMeter removed from [0] → left leaf empty → root = loudness leaf
     // Then levelMeter inserted below loudness → V[loudness, levelMeter]
-    expect(next.tree.direction).toBe("v");
-    expect(next.tree.children[0].tabs).toContain("loudness");
-    expect(next.tree.children[1].tabs).toContain("levelMeter");
+    expect(/** @type {AnyTreeNode} */ (next.tree).direction).toBe("v");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].tabs).toContain("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].tabs).toContain("levelMeter");
   });
 
   it("adjusts path when source removal changes tree structure", () => {
@@ -572,9 +584,9 @@ describe("MOVE_TAB: zone=below", () => {
       type: "MOVE_TAB",
       payload: { sourceId: "levelMeter", drop: { targetPath: [1], zone: "below" } },
     });
-    expect(next.tree.direction).toBe("v");
-    expect(next.tree.children[0].tabs).toContain("loudness");
-    expect(next.tree.children[1].tabs).toContain("levelMeter");
+    expect(/** @type {AnyTreeNode} */ (next.tree).direction).toBe("v");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].tabs).toContain("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].tabs).toContain("levelMeter");
   });
 });
 
@@ -587,9 +599,9 @@ describe("MOVE_TAB: zone=right", () => {
       payload: { sourceId: "loudness", drop: { targetPath: [0], zone: "right" } },
     });
     // loudness removed from [1] → root = leaf(levelMeter); then loudness inserted right of levelMeter
-    expect(next.tree.direction).toBe("h");
-    expect(next.tree.children[0].tabs).toContain("levelMeter");
-    expect(next.tree.children[1].tabs).toContain("loudness");
+    expect(/** @type {AnyTreeNode} */ (next.tree).direction).toBe("h");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[0].tabs).toContain("levelMeter");
+    expect(/** @type {AnyTreeNode} */ (next.tree).children[1].tabs).toContain("loudness");
   });
 });
 
@@ -767,8 +779,8 @@ describe("SET_PANEL_PINNED", () => {
     });
 
     expect(next.pinnedPanelsById).toEqual({});
-    expect(next.tree.sizes[0]).toBe(0.4);
-    expect(next.tree.sizes[1]).toBe(0.6);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[0]).toBe(0.4);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[1]).toBe(0.6);
   });
 
   it("normalizes sibling ratios against remaining space when pinning", () => {
@@ -798,9 +810,9 @@ describe("SET_PANEL_PINNED", () => {
     });
 
     expect(next.pinnedPanelsById.spectrum).toEqual({ width: 680, height: 260 });
-    expect(next.tree.sizes[0]).toBeCloseTo(140 / 320);
-    expect(next.tree.sizes[1]).toBeNull();
-    expect(next.tree.sizes[2]).toBeCloseTo(180 / 320);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[0]).toBeCloseTo(140 / 320);
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[1]).toBeNull();
+    expect(/** @type {AnyTreeNode} */ (next.tree).sizes[2]).toBeCloseTo(180 / 320);
   });
 });
 
@@ -857,6 +869,6 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
     expect(next.panelControlsById.levelMeter).toEqual(
       normalizePanelControls(DEFAULT_PANEL_CONTROLS)
     );
-    expect(next.panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
+    expect(/** @type {any} */ (next.panelControlsById.loudness).loudnessReferenceLufs).toBe(-14);
   });
 });

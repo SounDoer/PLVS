@@ -187,7 +187,7 @@ describe("DockLevel", () => {
     renderWith({ displayAudio: { peakDb: [-12, -30] } });
     for (const bar of screen.getAllByTestId("dock-level-bar")) {
       expect(bar.className).not.toContain("bg-");
-      expect(bar.firstChild.dataset.levelMeterGradient).toBe(
+      expect(/** @type {HTMLElement} */ (bar.firstChild).dataset.levelMeterGradient).toBe(
         "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
           "var(--ui-level-critical) 100%)"
       );
@@ -198,8 +198,8 @@ describe("DockLevel", () => {
     renderWith({ displayAudio: { peakDb: [-12, -30] } });
     for (const bar of screen.getAllByTestId("dock-level-bar")) {
       const fill = bar.firstChild;
-      const widthPct = parseFloat(fill.style.width);
-      const gradientPct = parseFloat(fill.style.backgroundSize);
+      const widthPct = parseFloat(/** @type {HTMLElement} */ (fill).style.width);
+      const gradientPct = parseFloat(/** @type {HTMLElement} */ (fill).style.backgroundSize);
       expect((widthPct * gradientPct) / 100).toBeCloseTo(100, 6);
     }
   });
@@ -215,7 +215,7 @@ describe("DockLevel", () => {
       }
     );
     const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
-    expect(fill.dataset.levelMeterGradient).toBe(
+    expect(/** @type {HTMLElement} */ (fill).dataset.levelMeterGradient).toBe(
       zonesToGradient(thresholdZones(-10, -2), -60, 3, "to right")
     );
   });
@@ -223,10 +223,10 @@ describe("DockLevel", () => {
   it("no longer floods the whole bar critical at clip", () => {
     renderWith({ displayAudio: { peakDb: [0, 0] } });
     const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
-    expect(fill.dataset.levelMeterGradient).toBe(
+    expect(/** @type {HTMLElement} */ (fill).dataset.levelMeterGradient).toBe(
       "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, var(--ui-level-critical) 100%)"
     );
-    expect(fill.style.backgroundColor).toBe("");
+    expect(/** @type {HTMLElement} */ (fill).style.backgroundColor).toBe("");
   });
 
   it("shows the Short-term trace colour when no Profile judges Short-term", () => {
@@ -238,9 +238,10 @@ describe("DockLevel", () => {
         levelMeterBarColors: "levelZones",
       }
     );
-    expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
-      "linear-gradient(to right, var(--ui-loudness-shortterm), var(--ui-loudness-shortterm))"
-    );
+    expect(
+      /** @type {HTMLElement} */ (screen.getByTestId("dock-level-bar").firstChild).dataset
+        .levelMeterGradient
+    ).toBe("linear-gradient(to right, var(--ui-loudness-shortterm), var(--ui-loudness-shortterm))");
   });
 
   it("follows a Short-term Max ceiling from the active Profile", () => {
@@ -261,7 +262,10 @@ describe("DockLevel", () => {
         levelMeterBarColors: "levelZones",
       }
     );
-    expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
+    expect(
+      /** @type {HTMLElement} */ (screen.getByTestId("dock-level-bar").firstChild).dataset
+        .levelMeterGradient
+    ).toBe(
       "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-safe) 71.875%, var(--ui-level-critical) 71.875%, var(--ui-level-critical) 100%)"
     );
   });

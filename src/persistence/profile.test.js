@@ -22,6 +22,7 @@ const TEST_PRESET = {
   loudnessProfileActive: "profile:test-profile",
 };
 
+/** @param {{ tauri?: boolean, commandMocks?: any }} [options] */
 async function importProfileModule({ tauri = false, commandMocks = {} } = {}) {
   vi.resetModules();
   vi.doMock("../ipc/env.js", () => ({ isTauri: () => tauri }));
@@ -42,6 +43,7 @@ async function importProfileModule({ tauri = false, commandMocks = {} } = {}) {
   return import("./profile.js");
 }
 
+/** @param {{ commandMocks?: any, persistenceMocks: any }} options */
 async function importProfileModuleWithPersistenceMocks({ commandMocks = {}, persistenceMocks }) {
   vi.resetModules();
   vi.doMock("../ipc/env.js", () => ({ isTauri: () => true }));
@@ -60,7 +62,7 @@ async function importProfileModuleWithPersistenceMocks({ commandMocks = {}, pers
   }));
   vi.doMock("./pluginStoreBackend.js", () => persistenceMocks);
   vi.doMock("./index.js", async (importOriginal) => ({
-    ...(await importOriginal()),
+    .../** @type {typeof import("./index.js")} */ (await importOriginal()),
     flushPersistence: persistenceMocks.flushPersistence,
   }));
   return import("./profile.js");

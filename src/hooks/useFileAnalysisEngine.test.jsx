@@ -53,6 +53,22 @@ import { probeFileAnalysis, startFileAnalysis, stopFileAnalysis } from "../ipc/c
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
+/**
+ * @param {{
+ *   enabled?: boolean,
+ *   path?: string,
+ *   runId?: number,
+ *   sessionId?: string,
+ *   intake?: any,
+ *   updateFileSession?: any,
+ *   setAnalyzingFileId?: any,
+ *   setFileSession?: any,
+ *   raiseNotice?: any,
+ *   shouldDriveDisplay?: (...args: any[]) => any,
+ *   selectedOffset?: number,
+ *   fileAnalysisAcceptanceRef?: any,
+ * }} props
+ */
 function Harness({
   enabled = true,
   path = "C:/mix/final.wav",
@@ -73,33 +89,35 @@ function Harness({
   const frameRef = useRef(0);
   const defaultSampleRateRef = useRef(48000);
 
-  const api = useFileAnalysisEngine({
-    filePath: path,
-    enabled,
-    runId,
-    sessionId,
-    histMaxSamples: 10,
-    visualMaxSamples: 10,
-    audioRef,
-    defaultSampleRateRef,
-    intake,
-    updateFileSession,
-    setAnalyzingFileId,
-    setFileSession,
-    display: {
-      frameRef,
-      selectedOffsetRef,
-      latestAudioRef,
-      setAudio: vi.fn(),
-      setSelectedOffset: vi.fn(),
-      raiseNotice,
-    },
-    shouldDriveDisplay,
-    fileAnalysisAcceptanceRef,
-  });
+  const api = useFileAnalysisEngine(
+    /** @type {any} */ ({
+      filePath: path,
+      enabled,
+      runId,
+      sessionId,
+      histMaxSamples: 10,
+      visualMaxSamples: 10,
+      audioRef,
+      defaultSampleRateRef,
+      intake,
+      updateFileSession,
+      setAnalyzingFileId,
+      setFileSession,
+      display: {
+        frameRef,
+        selectedOffsetRef,
+        latestAudioRef,
+        setAudio: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        raiseNotice,
+      },
+      shouldDriveDisplay,
+      fileAnalysisAcceptanceRef,
+    })
+  );
 
-  window.__fileApi = api;
-  window.__selectedOffsetRef = selectedOffsetRef;
+  /** @type {any} */ (window).__fileApi = api;
+  /** @type {any} */ (window).__selectedOffsetRef = selectedOffsetRef;
   return null;
 }
 
@@ -128,13 +146,13 @@ beforeEach(() => {
   eventCallbacks.progress = null;
   eventCallbacks.completed = null;
   eventCallbacks.error = null;
-  isTauri.mockReturnValue(true);
+  vi.mocked(isTauri).mockReturnValue(true);
 });
 
 afterEach(() => {
   vi.clearAllMocks();
-  delete window.__fileApi;
-  delete window.__selectedOffsetRef;
+  delete (/** @type {any} */ (window).__fileApi);
+  delete (/** @type {any} */ (window).__selectedOffsetRef);
 });
 
 describe("useFileAnalysisEngine", () => {
@@ -191,11 +209,11 @@ describe("useFileAnalysisEngine", () => {
     renderHarness({ shouldDriveDisplay });
     await waitFor(() => expect(buildTauriFrameApply).toHaveBeenCalledOnce());
 
-    const options = buildTauriFrameApply.mock.calls[0][0];
+    const options = /** @type {any} */ (buildTauriFrameApply).mock.calls[0][0];
     expect(options.shouldDriveDisplay).toBe(shouldDriveDisplay);
     expect(options.latestAudioRef).toEqual(expect.objectContaining({ current: { peakDb: [] } }));
     expect(options.shouldPublishDisplay()).toBe(true);
-    window.__selectedOffsetRef.current = 0;
+    /** @type {any} */ (window).__selectedOffsetRef.current = 0;
     expect(options.shouldPublishDisplay()).toBe(false);
   });
 
@@ -305,7 +323,7 @@ describe("useFileAnalysisEngine", () => {
     await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
 
     await act(async () => {
-      await window.__fileApi.stop();
+      await /** @type {any} */ (window).__fileApi.stop();
     });
 
     expect(stopFileAnalysis).toHaveBeenCalled();
@@ -322,7 +340,7 @@ describe("useFileAnalysisEngine", () => {
   });
 
   it("preserves the targeted session entry shape in browser fallback", async () => {
-    isTauri.mockReturnValue(false);
+    vi.mocked(isTauri).mockReturnValue(false);
     const updateFileSession = vi.fn();
     const raiseNotice = vi.fn();
 

@@ -8,14 +8,15 @@ function mountedWorkspaceSurface() {
   const surface = document.createElement("main");
   surface.setAttribute("data-visual-capture-surface", "workspace");
   surface.setAttribute("data-visual-capture-ready", "true");
-  surface.getBoundingClientRect = () => ({
-    left: 0,
-    top: 0,
-    right: 500,
-    bottom: 300,
-    width: 500,
-    height: 300,
-  });
+  surface.getBoundingClientRect = () =>
+    /** @type {DOMRect} */ ({
+      left: 0,
+      top: 0,
+      right: 500,
+      bottom: 300,
+      width: 500,
+      height: 300,
+    });
   document.body.append(surface);
   return surface;
 }

@@ -75,30 +75,32 @@ function createIntakeSpy() {
 
 describe("history performance harness", () => {
   it("stores visual rows under active keys from the analysis request resolver", async () => {
-    const requests = deriveAnalysisRequests({
-      tree: {
-        type: "leaf",
-        tabs: ["spectrum-panel", "vectorscope-panel"],
-        activeTab: "spectrum-panel",
-      },
-      panelsById: {
-        "spectrum-panel": { id: "spectrum-panel", moduleId: "spectrum" },
-        "vectorscope-panel": { id: "vectorscope-panel", moduleId: "vectorscope" },
-      },
-      panelOrder: ["spectrum-panel", "vectorscope-panel"],
-      panelControlsById: {
-        "spectrum-panel": {
-          ...DEFAULT_PANEL_CONTROLS,
-          spectrumSpeedPercent: 75,
-          spectrumTiltDbPerOctave: 1.5,
-          spectrumOctaveSmoothing: "1/3",
+    const requests = deriveAnalysisRequests(
+      /** @type {any} */ ({
+        tree: {
+          type: "leaf",
+          tabs: ["spectrum-panel", "vectorscope-panel"],
+          activeTab: "spectrum-panel",
         },
-        "vectorscope-panel": {
-          ...DEFAULT_PANEL_CONTROLS,
-          vectorscopePair: { x: 1, y: 2 },
+        panelsById: {
+          "spectrum-panel": { id: "spectrum-panel", moduleId: "spectrum" },
+          "vectorscope-panel": { id: "vectorscope-panel", moduleId: "vectorscope" },
         },
-      },
-    });
+        panelOrder: ["spectrum-panel", "vectorscope-panel"],
+        panelControlsById: {
+          "spectrum-panel": {
+            ...DEFAULT_PANEL_CONTROLS,
+            spectrumSpeedPercent: 75,
+            spectrumTiltDbPerOctave: 1.5,
+            spectrumOctaveSmoothing: "1/3",
+          },
+          "vectorscope-panel": {
+            ...DEFAULT_PANEL_CONTROLS,
+            vectorscopePair: { x: 1, y: 2 },
+          },
+        },
+      })
+    );
     const spectrumKey = requests.spectrumRequests[0].key;
     const vectorscopeKey = requests.vectorscopeRequests[0].key;
     expect(spectrumKey).toContain(":sp75:sm");

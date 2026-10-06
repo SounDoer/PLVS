@@ -15,8 +15,8 @@ describe("useAxisSize", () => {
       observe() {}
       disconnect() {}
     }
-    window.ResizeObserver = ResizeObserverStub;
-    globalThis.ResizeObserver = ResizeObserverStub;
+    window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+    globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
   });
 
   afterEach(() => {
@@ -24,24 +24,28 @@ describe("useAxisSize", () => {
   });
 
   it("measures a y axis rail's height", () => {
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
-      top: 0,
-      left: 0,
-      width: 60,
-      height: 90,
-    });
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        top: 0,
+        left: 0,
+        width: 60,
+        height: 90,
+      })
+    );
     const onMeasure = vi.fn();
     render(<Probe axis="y" onMeasure={onMeasure} />);
     expect(onMeasure).toHaveBeenLastCalledWith(90);
   });
 
   it("measures an x axis rail's width", () => {
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
-      top: 0,
-      left: 0,
-      width: 420,
-      height: 24,
-    });
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        top: 0,
+        left: 0,
+        width: 420,
+        height: 24,
+      })
+    );
     const onMeasure = vi.fn();
     render(<Probe axis="x" onMeasure={onMeasure} />);
     expect(onMeasure).toHaveBeenLastCalledWith(420);

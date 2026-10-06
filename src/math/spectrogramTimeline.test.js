@@ -42,7 +42,7 @@ describe("spectrogramTimeWindow", () => {
 
   it("returns null when history has no timestamps", () => {
     expect(spectrogramTimeWindow([], 0, 3)).toBeNull();
-    expect(spectrogramTimeWindow([{}], 0, 3)).toBeNull();
+    expect(spectrogramTimeWindow([/** @type {any} */ ({})], 0, 3)).toBeNull();
   });
 
   it("spans the full requested window when fewer samples exist (right-aligned, no stretch)", () => {

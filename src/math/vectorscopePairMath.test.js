@@ -16,8 +16,8 @@ describe("buildVectorscopePairOptions", () => {
     expect(opts.map((o) => o.key)).toEqual(["0-1", "2-3", "0-2", "0-3", "1-2", "1-3"]);
     expect(opts[0].label).toBe("L/R");
     expect(opts[1].label).toBe("Ls/Rs");
-    expect(opts[0].group).toBe("Common");
-    expect(opts[2].group).toBe("All pairs");
+    expect(/** @type {any} */ (opts[0]).group).toBe("Common");
+    expect(/** @type {any} */ (opts[2]).group).toBe("All pairs");
   });
 
   test("uses 5.1 strip names for six channels", () => {

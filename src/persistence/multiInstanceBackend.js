@@ -334,7 +334,10 @@ export function createMultiInstanceBackend() {
     return refreshing;
   }
 
-  async function resolveConflict(action, { makeId = () => crypto.randomUUID() } = {}) {
+  async function resolveConflict(
+    action,
+    { makeId = /** @type {() => string} */ (() => crypto.randomUUID()) } = {}
+  ) {
     if (!pendingConflict) return null;
     const conflict = pendingConflict;
     const key =

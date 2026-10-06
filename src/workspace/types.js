@@ -16,6 +16,19 @@
  *
  * @typedef {SplitNode | LeafNode} TreeNode
  *
+ * A node read without first checking which kind it is: every field of both kinds, all optional.
+ * For code that walks to a node at a known path, where naming the kind at each step would only
+ * restate the path -- tests asserting on a result tree, mostly. Product code narrows on `type`.
+ *
+ * @typedef {{
+ *   type: "leaf" | "split",
+ *   tabs?: PanelId[],
+ *   activeTab?: PanelId,
+ *   direction?: "h" | "v",
+ *   children?: AnyTreeNode[],
+ *   sizes?: (number | null)[],
+ * }} AnyTreeNode
+ *
  * One flat record shared by every module; `src/lib/panelControls.js` owns the defaults and the
  * repair rule of each key, and its table is what this has to stay in step with.
  *

@@ -64,7 +64,9 @@ describe("ColorControl", () => {
     const row = screen.getByLabelText(/accent hex/i).parentElement;
     const swatch = row.querySelector("span[aria-hidden]");
     expect(swatch).toBeTruthy();
-    expect(swatch.style.backgroundColor).toBe("rgba(251, 146, 60, 0.5)");
+    expect(/** @type {HTMLElement} */ (swatch).style.backgroundColor).toBe(
+      "rgba(251, 146, 60, 0.5)"
+    );
   });
 
   it("uses the custom range style for alpha", () => {
@@ -82,7 +84,7 @@ describe("ColorControl", () => {
     rerender(<ColorControl label="Accent" value="#22d3ee" onChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /accent/i }));
 
-    expect(screen.getByLabelText(/hex/i).value).toBe("#22d3ee");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText(/hex/i)).value).toBe("#22d3ee");
   });
 
   it("accepts pasted RGB and OKLCH while preserving incomplete text", () => {
@@ -93,7 +95,7 @@ describe("ColorControl", () => {
 
     fireEvent.input(text, { target: { value: "#12" } });
     expect(onChange).not.toHaveBeenCalled();
-    expect(text.value).toBe("#12");
+    expect(/** @type {HTMLInputElement} */ (text).value).toBe("#12");
 
     fireEvent.input(text, { target: { value: "rgb(34 211 238)" } });
     fireEvent.blur(text);

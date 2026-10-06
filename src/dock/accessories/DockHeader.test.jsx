@@ -43,10 +43,12 @@ describe("DockHeader", () => {
     render(<DockHeader state={STATE} onAction={onAction} onPointer={onPointer} />);
     fireEvent.pointerEnter(screen.getByTestId("dock-header"));
     const modulesButton = screen.getByRole("button", { name: "Edit modules" });
-    vi.spyOn(modulesButton, "getBoundingClientRect").mockReturnValue({
-      left: 320,
-      width: 24,
-    });
+    vi.spyOn(modulesButton, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        left: 320,
+        width: 24,
+      })
+    );
     fireEvent.click(modulesButton);
     fireEvent.pointerLeave(screen.getByTestId("dock-header"));
     expect(onPointer.mock.calls).toEqual([[true], [false]]);
@@ -128,7 +130,9 @@ describe("DockHeader", () => {
     const button = screen.getByRole("button", { name: "Loudness Profile" });
     expect(button.classList.contains("text-foreground")).toBe(false);
 
-    vi.spyOn(button, "getBoundingClientRect").mockReturnValue({ left: 100, width: 20 });
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({ left: 100, width: 20 })
+    );
     fireEvent.click(button);
     expect(onAction).toHaveBeenCalledWith("open-editor", {
       view: "loudness-profile",

@@ -98,6 +98,7 @@ describe("useAudioDevices", () => {
   });
 
   it("publishes one coherent inventory snapshot and awaits selection persistence", async () => {
+    /** @type {any} */
     const save = deferred();
     mocks.saveCaptureDeviceId.mockReturnValueOnce(save.promise);
     const { result } = renderHook(() => useAudioDevices());
@@ -137,6 +138,7 @@ describe("useAudioDevices", () => {
   });
 
   it("preflights and awaits the normal Live restart around a running selection", async () => {
+    /** @type {any} */
     const restart = deferred();
     const beginDeviceRestartForControl = vi.fn(() => restart.promise);
     const { result } = renderHook(() =>
@@ -267,6 +269,7 @@ describe("useAudioDevices", () => {
   });
 
   it("keeps a committed selection when the normal Live restart fails", async () => {
+    /** @type {any} */
     const restart = deferred();
     const { result } = renderHook(() =>
       useAudioDevices({
@@ -313,7 +316,9 @@ describe("useAudioDevices", () => {
   });
 
   it("drops a stale Automatic preview instead of overwriting a newer inventory", async () => {
+    /** @type {any} */
     const firstPreview = deferred();
+    /** @type {any} */
     const secondPreview = deferred();
     mocks.previewAudioDevice
       .mockReturnValueOnce(firstPreview.promise)
@@ -346,6 +351,7 @@ describe("useAudioDevices", () => {
   });
 
   it("cancels pending inventory and migration work on unmount", async () => {
+    /** @type {any} */
     const preview = deferred();
     mocks.previewAudioDevice.mockReturnValue(preview.promise);
     const { unmount } = renderHook(() => useAudioDevices());

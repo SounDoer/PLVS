@@ -128,9 +128,18 @@ describe("ThemeEditor", () => {
     expect(screen.queryByLabelText("status palette preset")).toBeNull();
     expect(screen.queryByLabelText("frequency palette preset")).toBeNull();
     expect(screen.queryByLabelText("interface palette preset")).toBeNull();
-    expect(screen.getByLabelText("Reset status palette to PLVS").disabled).toBe(true);
-    expect(screen.getByLabelText("Reset frequency palette to PLVS").disabled).toBe(true);
-    expect(screen.getByLabelText("Reset interface palette to PLVS").disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset status palette to PLVS"))
+        .disabled
+    ).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset frequency palette to PLVS"))
+        .disabled
+    ).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset interface palette to PLVS"))
+        .disabled
+    ).toBe(true);
     expect(document.querySelector('[data-palette-preset-action="status"]').className).toContain(
       "w-10"
     );
@@ -318,8 +327,14 @@ describe("ThemeEditor", () => {
   it("exposes disabled Undo and Redo actions until history exists", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
 
-    expect(screen.getByRole("button", { name: "Undo theme change" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Redo theme change" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Undo theme change" }))
+        .disabled
+    ).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Redo theme change" }))
+        .disabled
+    ).toBe(true);
   });
 
   it("commits a name edit from the confirm button", () => {

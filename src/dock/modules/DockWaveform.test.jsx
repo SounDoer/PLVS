@@ -17,8 +17,8 @@ beforeAll(() => {
     observe() {}
     disconnect() {}
   }
-  window.ResizeObserver = ResizeObserverStub;
-  globalThis.ResizeObserver = ResizeObserverStub;
+  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
 });
 
 // Extrema are rounded to f32 the way real ones already are: they reach the frontend as Rust f32
@@ -67,7 +67,7 @@ function mockCanvas(width = 100, height = 40) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext = vi.fn(() => context);
+  canvas.getContext = /** @type {any} */ (vi.fn(() => context));
   return { canvas, context };
 }
 
@@ -95,15 +95,18 @@ describe("DockWaveform", () => {
 
   it("paints asymmetric min and max envelopes with stroke and token fill", () => {
     const { canvas, context } = mockCanvas();
-    paintDockWaveformCanvas(canvas, {
-      mins: [[-0.75, -0.75]],
-      maxes: [[0.25, 0.25]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[-0.75, -0.75]],
+        maxes: [[0.25, 0.25]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+      })
+    );
 
     expect(context.lineTo).toHaveBeenCalledWith(1, 15);
     expect(context.lineTo).toHaveBeenCalledWith(1, 35);
@@ -117,15 +120,18 @@ describe("DockWaveform", () => {
     const lineWidths = [];
     context.stroke = vi.fn(() => lineWidths.push(context.lineWidth));
 
-    paintDockWaveformCanvas(canvas, {
-      mins: [[-0.75, -0.75]],
-      maxes: [[0.25, 0.25]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[-0.75, -0.75]],
+        maxes: [[0.25, 0.25]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+      })
+    );
 
     expect(lineWidths).toEqual([2.5]);
   });
@@ -142,15 +148,18 @@ describe("DockWaveform", () => {
     });
     context.stroke = vi.fn(() => strokes.push({ lineWidth: context.lineWidth, transform }));
 
-    paintDockWaveformCanvas(canvas, {
-      mins: [[-0.75, -0.75]],
-      maxes: [[0.25, 0.25]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[-0.75, -0.75]],
+        maxes: [[0.25, 0.25]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+      })
+    );
 
     expect(strokes).toEqual([{ lineWidth: 1.5, transform: [1, 0, 0, 2, 0, 0] }]);
     expect(transform).toEqual([1, 0, 0, 1, 0, 0]);
@@ -162,16 +171,19 @@ describe("DockWaveform", () => {
     context.globalAlpha = 1;
     context.fill = vi.fn(() => fillAlphas.push(context.globalAlpha));
 
-    paintDockWaveformCanvas(canvas, {
-      mins: [[-0.75, -0.75]],
-      maxes: [[0.25, 0.25]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-      themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[-0.75, -0.75]],
+        maxes: [[0.25, 0.25]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+        themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
+      })
+    );
 
     expect(fillAlphas).toEqual([0.12]);
     expect(context.globalAlpha).toBe(1);
@@ -183,20 +195,23 @@ describe("DockWaveform", () => {
     context.globalAlpha = 1;
     context.fill = vi.fn(() => fillAlphas.push(context.globalAlpha));
 
-    paintDockWaveformCanvas(canvas, {
-      mins: [[-0.75, -0.75]],
-      maxes: [[0.25, 0.25]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-      frequencyColor: true,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      dominantFrequencyHz: [[100, 1000]],
-      tonality: [[0.2, 0.2]],
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[-0.75, -0.75]],
+        maxes: [[0.25, 0.25]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+        frequencyColor: true,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        dominantFrequencyHz: [[100, 1000]],
+        tonality: [[0.2, 0.2]],
+      })
+    );
 
     expect(fillAlphas).toEqual([1, 1]);
   });
@@ -204,20 +219,23 @@ describe("DockWaveform", () => {
   it("overlaps adjacent Frequency Color bodies to avoid sub-pixel seams", () => {
     const { canvas, context } = mockCanvas();
 
-    paintDockWaveformCanvas(canvas, {
-      mins: [[-0.5, -0.5]],
-      maxes: [[0.5, 0.5]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-      frequencyColor: true,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      dominantFrequencyHz: [[100, 1000]],
-      tonality: [[0.8, 0.8]],
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[-0.5, -0.5]],
+        maxes: [[0.5, 0.5]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+        frequencyColor: true,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        dominantFrequencyHz: [[100, 1000]],
+        tonality: [[0.8, 0.8]],
+      })
+    );
 
     expect(context.moveTo).toHaveBeenCalledWith(-0.5, 10);
     expect(context.lineTo).toHaveBeenCalledWith(1.5, 10);
@@ -226,20 +244,23 @@ describe("DockWaveform", () => {
   it("fills a one-sided positive Frequency Color bucket back to the zero line", () => {
     const { canvas, context } = mockCanvas();
 
-    paintDockWaveformCanvas(canvas, {
-      mins: [[0.25, 0.25]],
-      maxes: [[0.5, 0.5]],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      channelCount: 1,
-      frequencyColor: true,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      dominantFrequencyHz: [[100, 100]],
-      tonality: [[0.8, 0.8]],
-    });
+    paintDockWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [[0.25, 0.25]],
+        maxes: [[0.5, 0.5]],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        channelCount: 1,
+        frequencyColor: true,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        dominantFrequencyHz: [[100, 100]],
+        tonality: [[0.8, 0.8]],
+      })
+    );
 
     expect(context.lineTo).toHaveBeenCalledWith(1, 20);
   });

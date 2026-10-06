@@ -10,6 +10,7 @@ vi.mock("../ipc/commands.js", () => ({ recordFrontendCrash }));
 
 import { AppCrashBoundary } from "./AppCrashBoundary.jsx";
 
+/** @returns {import("react").ReactNode} never returns: it throws while rendering */
 function ThrowingChild() {
   throw Object.assign(new Error("render failed"), {
     name: "TypeError",

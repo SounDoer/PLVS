@@ -129,7 +129,8 @@ describe("useViewsChromeReveal", () => {
     const added = [];
     const addSpy = vi.spyOn(window, "addEventListener");
     addSpy.mockImplementation(function (type, listener, options) {
-      if (options && options.signal) added.push({ type, signal: options.signal });
+      if (options && /** @type {any} */ (options).signal)
+        added.push({ type, signal: /** @type {any} */ (options).signal });
       return EventTarget.prototype.addEventListener.call(this, type, listener, options);
     });
 

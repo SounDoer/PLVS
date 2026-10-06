@@ -146,6 +146,17 @@ export function panRange({ min, max, absMin, absMax, deltaPx, axisPx, scale }) {
 //   mustInclude  A reference value has to stay on screen: M/S Ratio is read against 0 dB, so the
 //                window slides until it touches zero and stops there instead of sailing past. The
 //                span is preserved -- clamping the offending bound instead would let a pan zoom.
+/**
+ * @param {{
+ *   min: any,
+ *   max: any,
+ *   absMin: any,
+ *   absMax: any,
+ *   minSpan?: number,
+ *   pinnedMax?: any,
+ *   mustInclude?: any,
+ * }} options
+ */
 export function applyRangeConstraints({
   min,
   max,

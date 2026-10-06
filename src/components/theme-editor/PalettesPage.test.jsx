@@ -69,12 +69,18 @@ it("keeps Custom intensity stops across preset comparisons until Reset Custom", 
   render(<Harness />);
   const addStop = screen.getByRole("button", { name: "Add Stop" });
   expect(addStop.parentElement.lastElementChild).toBe(addStop);
-  expect(screen.getByLabelText("Reset Custom intensity palette").disabled).toBe(true);
+  expect(
+    /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset Custom intensity palette"))
+      .disabled
+  ).toBe(true);
 
   fireEvent.click(addStop);
   expect(screen.getByRole("button", { name: "Stop 12" })).toBeTruthy();
   expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Custom");
-  expect(screen.getByLabelText("Reset Custom intensity palette").disabled).toBe(false);
+  expect(
+    /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset Custom intensity palette"))
+      .disabled
+  ).toBe(false);
 
   fireEvent.click(screen.getByLabelText("intensity palette preset"));
   fireEvent.click(screen.getByRole("option", { name: "Viridis" }));
@@ -88,7 +94,10 @@ it("keeps Custom intensity stops across preset comparisons until Reset Custom", 
   fireEvent.click(screen.getByLabelText("Confirm reset Custom intensity palette"));
   expect(screen.queryByRole("button", { name: "Stop 12" })).toBeNull();
   expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Viridis");
-  expect(screen.getByLabelText("Reset Custom intensity palette").disabled).toBe(true);
+  expect(
+    /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset Custom intensity palette"))
+      .disabled
+  ).toBe(true);
 
   fireEvent.click(screen.getByLabelText("intensity palette preset"));
   expect(screen.queryByRole("option", { name: "Custom" })).toBeNull();

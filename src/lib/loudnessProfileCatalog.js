@@ -57,6 +57,7 @@ export function createEmptyRule(metricId) {
   return { metricId, op: ">", value: undefined, severity: "fail" };
 }
 
+/** @type {() => string} */
 const defaultMakeId = () => crypto.randomUUID();
 
 export function createStarterProfile(makeId = defaultMakeId) {

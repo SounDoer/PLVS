@@ -55,10 +55,13 @@ describe("useSpectrogramCanvas", () => {
       return 1;
     });
     vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
-      clearRect: vi.fn(),
-      putImageData,
-    }));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () =>
+        /** @type {any} */ ({
+          clearRect: vi.fn(),
+          putImageData,
+        })
+    );
     vi.stubGlobal(
       "ImageData",
       class ImageDataStub {

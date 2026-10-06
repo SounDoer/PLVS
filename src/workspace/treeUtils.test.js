@@ -1,3 +1,4 @@
+/** @import { AnyTreeNode } from "./types.js" */
 import { describe, it, expect } from "vitest";
 import { updateNode, findLeafWithTab, removeTab, insertLeaf, pruneTree } from "./treeUtils.js";
 
@@ -5,10 +6,12 @@ import { updateNode, findLeafWithTab, removeTab, insertLeaf, pruneTree } from ".
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** @returns {import("./types.js").LeafNode} */
 function leaf(tabs, activeTab = tabs[0]) {
   return { type: "leaf", tabs: [...tabs], activeTab };
 }
 
+/** @returns {import("./types.js").SplitNode} */
 function split(direction, children, sizes) {
   return {
     type: "split",
@@ -25,6 +28,7 @@ function split(direction, children, sizes) {
 describe("updateNode", () => {
   it("updates root when path is []", () => {
     const root = leaf(["levelMeter"]);
+    /** @type {AnyTreeNode} */
     const result = updateNode(root, [], (n) => ({ ...n, activeTab: "loudness" }));
     expect(result.activeTab).toBe("loudness");
     expect(root.activeTab).toBe("levelMeter"); // immutable
@@ -32,6 +36,7 @@ describe("updateNode", () => {
 
   it("updates leaf at path [0]", () => {
     const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
+    /** @type {AnyTreeNode} */
     const result = updateNode(root, [0], (n) => ({ ...n, activeTab: "levelMeter" }));
     expect(result.children[0].activeTab).toBe("levelMeter");
     expect(result.children[1]).toBe(root.children[1]); // sibling reference unchanged
@@ -40,6 +45,7 @@ describe("updateNode", () => {
   it("updates leaf at nested path [1, 0]", () => {
     const inner = split("v", [leaf(["spectrum"]), leaf(["spectrogram"])]);
     const root = split("h", [leaf(["levelMeter"]), inner]);
+    /** @type {AnyTreeNode} */
     const result = updateNode(root, [1, 0], (n) => ({ ...n, activeTab: "spectrum" }));
     expect(result.children[1].children[0].activeTab).toBe("spectrum");
     expect(result.children[0]).toBe(root.children[0]);
@@ -102,6 +108,7 @@ describe("pruneTree", () => {
   it("unwraps single-remaining-child SplitNode to its child", () => {
     const validLeaf = leaf(["loudness"]);
     const root = split("h", [{ type: "leaf", tabs: [], activeTab: null }, validLeaf]);
+    /** @type {AnyTreeNode} */
     const result = pruneTree(root);
     expect(result?.type).toBe("leaf");
     expect(result?.tabs).toEqual(["loudness"]);
@@ -109,6 +116,7 @@ describe("pruneTree", () => {
 
   it("preserves SplitNode with two valid children", () => {
     const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
+    /** @type {AnyTreeNode} */
     const result = pruneTree(root);
     expect(result?.type).toBe("split");
     expect(result?.children).toHaveLength(2);
@@ -117,6 +125,7 @@ describe("pruneTree", () => {
   it("prunes empty leaf in nested split and unwraps", () => {
     const inner = split("v", [{ type: "leaf", tabs: [], activeTab: null }, leaf(["spectrum"])]);
     const root = split("h", [leaf(["levelMeter"]), inner]);
+    /** @type {AnyTreeNode} */
     const result = pruneTree(root);
     // inner had one empty leaf → pruned → inner unwraps to spectrum leaf
     expect(result?.children[1]?.type).toBe("leaf");
@@ -136,18 +145,21 @@ describe("removeTab", () => {
 
   it("removes a tab leaving other tabs in the leaf", () => {
     const root = leaf(["levelMeter", "loudness"], "levelMeter");
+    /** @type {AnyTreeNode} */
     const result = removeTab(root, "loudness");
     expect(result?.tabs).toEqual(["levelMeter"]);
   });
 
   it("updates activeTab when active tab is removed from multi-tab leaf", () => {
     const root = leaf(["levelMeter", "loudness"], "loudness");
+    /** @type {AnyTreeNode} */
     const result = removeTab(root, "loudness");
     expect(result?.activeTab).toBe("levelMeter");
   });
 
   it("keeps activeTab unchanged when a non-active tab is removed", () => {
     const root = leaf(["levelMeter", "loudness"], "levelMeter");
+    /** @type {AnyTreeNode} */
     const result = removeTab(root, "loudness");
     expect(result?.activeTab).toBe("levelMeter");
   });
@@ -158,6 +170,7 @@ describe("removeTab", () => {
 
   it("prunes empty leaf and unwraps single-child split", () => {
     const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
+    /** @type {AnyTreeNode} */
     const result = removeTab(root, "levelMeter");
     expect(result?.type).toBe("leaf");
     expect(result?.tabs).toEqual(["loudness"]);
@@ -165,6 +178,7 @@ describe("removeTab", () => {
 
   it("preserves siblings when removing tab from a 3-child split", () => {
     const root = split("v", [leaf(["levelMeter"]), leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = removeTab(root, "levelMeter");
     expect(result?.type).toBe("split");
     expect(result?.children).toHaveLength(2);
@@ -180,6 +194,7 @@ describe("removeTab", () => {
 describe("insertLeaf: zone=tabs", () => {
   it("inserts tab at tabIndex=0 in target leaf", () => {
     const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [1], "tabs", leaf(["spectrum"]), 0);
     expect(result?.children[1].tabs).toEqual(["spectrum", "loudness"]);
     expect(result?.children[1].activeTab).toBe("spectrum");
@@ -187,6 +202,7 @@ describe("insertLeaf: zone=tabs", () => {
 
   it("inserts tab at end of target leaf", () => {
     const root = leaf(["loudness", "levelMeter"], "loudness");
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [], "tabs", leaf(["spectrum"]), 2);
     expect(result?.tabs).toEqual(["loudness", "levelMeter", "spectrum"]);
   });
@@ -199,6 +215,7 @@ describe("insertLeaf: zone=tabs", () => {
 describe("insertLeaf: zone=above/below on root leaf", () => {
   it("zone=above wraps root leaf in V-split, new leaf first", () => {
     const root = leaf(["loudness"]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [], "above", leaf(["levelMeter"]));
     expect(result?.type).toBe("split");
     expect(result?.direction).toBe("v");
@@ -208,6 +225,7 @@ describe("insertLeaf: zone=above/below on root leaf", () => {
 
   it("zone=below wraps root leaf in V-split, new leaf last", () => {
     const root = leaf(["loudness"]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [], "below", leaf(["levelMeter"]));
     expect(result?.direction).toBe("v");
     expect(result?.children[0].tabs).toEqual(["loudness"]);
@@ -221,6 +239,7 @@ describe("insertLeaf: zone=above/below promotion in V-split parent", () => {
     const A = leaf(["loudness"]);
     const B = leaf(["spectrum"]);
     const root = split("v", [A, B]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [1], "above", leaf(["levelMeter"]));
     expect(result?.direction).toBe("v");
     expect(result?.children).toHaveLength(3);
@@ -232,6 +251,7 @@ describe("insertLeaf: zone=above/below promotion in V-split parent", () => {
   it("zone=below inserts sibling after target in existing V-split", () => {
     // V[A, B] → drop below A → V[A, new, B]
     const root = split("v", [leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [0], "below", leaf(["levelMeter"]));
     expect(result?.direction).toBe("v");
     expect(result?.children).toHaveLength(3);
@@ -245,6 +265,7 @@ describe("insertLeaf: zone=above/below no promotion in H-split parent", () => {
   it("zone=above on leaf in H-split wraps leaf in V-split", () => {
     // H[A, B] → drop above B → H[A, V[new, B]]
     const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [1], "above", leaf(["levelMeter"]));
     expect(result?.direction).toBe("h");
     expect(result?.children[1].type).toBe("split");
@@ -261,6 +282,7 @@ describe("insertLeaf: zone=above/below no promotion in H-split parent", () => {
 describe("insertLeaf: zone=left/right on root leaf", () => {
   it("zone=left wraps root leaf in H-split, new leaf first", () => {
     const root = leaf(["loudness"]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [], "left", leaf(["levelMeter"]));
     expect(result?.type).toBe("split");
     expect(result?.direction).toBe("h");
@@ -270,6 +292,7 @@ describe("insertLeaf: zone=left/right on root leaf", () => {
 
   it("zone=right wraps root leaf in H-split, new leaf last", () => {
     const root = leaf(["loudness"]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [], "right", leaf(["levelMeter"]));
     expect(result?.direction).toBe("h");
     expect(result?.children[0].tabs).toEqual(["loudness"]);
@@ -281,6 +304,7 @@ describe("insertLeaf: zone=left/right promotion in H-split parent", () => {
   it("zone=right promotes into existing H-split", () => {
     // H[A, B] → drop right of A → H[A, new, B]
     const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [0], "right", leaf(["levelMeter"]));
     expect(result?.direction).toBe("h");
     expect(result?.children).toHaveLength(3);
@@ -292,6 +316,7 @@ describe("insertLeaf: zone=left/right promotion in H-split parent", () => {
   it("zone=left promotes into existing H-split", () => {
     // H[A, B] → drop left of B → H[A, new, B]
     const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [1], "left", leaf(["levelMeter"]));
     expect(result?.direction).toBe("h");
     expect(result?.children).toHaveLength(3);
@@ -303,6 +328,7 @@ describe("insertLeaf: zone=right no promotion in V-split parent", () => {
   it("zone=right on leaf in V-split wraps leaf in H-split", () => {
     // V[A, B] → drop right of A → V[H[A, new], B]
     const root = split("v", [leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [0], "right", leaf(["levelMeter"]));
     expect(result?.direction).toBe("v");
     expect(result?.children[0].type).toBe("split");
@@ -318,6 +344,7 @@ describe("insertLeaf: zone=right no promotion in V-split parent", () => {
 
 describe("insertLeaf: new splits use flex-fill sizes (null), not fixed px", () => {
   it("wrapping root leaf in a new split uses sizes [null, null]", () => {
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(leaf(["loudness"]), [], "right", leaf(["levelMeter"]));
     expect(result?.sizes).toEqual([null, null]);
   });
@@ -325,6 +352,7 @@ describe("insertLeaf: new splits use flex-fill sizes (null), not fixed px", () =
   it("wrapping a nested leaf in a new split uses sizes [null, null]", () => {
     // H[A, B] — drop above B — B gets wrapped in V[new, B]; inner split sizes [null, null]
     const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [1], "above", leaf(["levelMeter"]));
     expect(result?.children[1].sizes).toEqual([null, null]);
   });
@@ -332,6 +360,7 @@ describe("insertLeaf: new splits use flex-fill sizes (null), not fixed px", () =
   it("promotion into existing split inserts new sibling with size null", () => {
     // H[A, B] — drop right of A — promotes to H[A, new, B]; new size is null
     const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])], [null, null]);
+    /** @type {AnyTreeNode} */
     const result = insertLeaf(root, [0], "right", leaf(["levelMeter"]));
     expect(result?.sizes[1]).toBeNull();
   });

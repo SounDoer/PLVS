@@ -482,7 +482,9 @@ describe("AppSettingsOverlays", () => {
     await waitFor(() => expect(mocks.savePackFile).toHaveBeenCalled());
     const dialog = screen.getByRole("dialog", { name: "Export Presets" });
     // Still open, and still holding what the user had chosen.
-    expect(within(dialog).getByRole("checkbox", { name: "P1" }).checked).toBe(true);
+    expect(
+      /** @type {HTMLInputElement} */ (within(dialog).getByRole("checkbox", { name: "P1" })).checked
+    ).toBe(true);
   });
 
   it("surfaces the pack transfer status after an import attempt outside the desktop app", async () => {

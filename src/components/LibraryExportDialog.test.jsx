@@ -19,7 +19,10 @@ describe("LibraryExportDialog", () => {
     expect(screen.getByRole("dialog", { name: "Export Saved Items" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Loudness Profiles 2 items/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Presets 1 item/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Themes 0 items/ }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: /Themes 0 items/ }))
+        .disabled
+    ).toBe(true);
   });
 
   it("opens the existing item picker for one type and can return to the type list", () => {

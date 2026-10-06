@@ -17,10 +17,12 @@ function ActionsProbe({ onActions }) {
   return null;
 }
 
+/** @returns {import("./types.js").LeafNode} */
 function leaf(tabs, activeTab = tabs[0]) {
   return { type: "leaf", tabs: [...tabs], activeTab };
 }
 
+/** @returns {import("./types.js").SplitNode} */
 function split(direction, children, sizes) {
   return { type: "split", direction, children, sizes: sizes ?? children.map(() => null) };
 }
@@ -33,6 +35,7 @@ describe("WorkspaceContext fullscreenId", () => {
       "plvs:workspace",
       JSON.stringify({ ...DEFAULT_WORKSPACE_STATE, fullscreenId: "levelMeter" })
     );
+    /** @type {any} */
     let captured = null;
     render(
       <WorkspaceProvider>
@@ -50,6 +53,7 @@ describe("WorkspaceContext fullscreenId", () => {
         pinnedPanelsById: { spectrum: { width: 640, height: 260 } },
       })
     );
+    /** @type {any} */
     let captured = null;
     render(
       <WorkspaceProvider>
@@ -62,6 +66,7 @@ describe("WorkspaceContext fullscreenId", () => {
   it("normalizes older stored workspaces without pinned panel sizes", () => {
     const { pinnedPanelsById: _pinnedPanelsById, ...legacyState } = DEFAULT_WORKSPACE_STATE;
     localStorage.setItem("plvs:workspace", JSON.stringify(legacyState));
+    /** @type {any} */
     let captured = null;
     render(
       <WorkspaceProvider>
@@ -87,6 +92,7 @@ describe("WorkspaceContext initState unknown module guard", () => {
         panelOrder: [...DEFAULT_WORKSPACE_STATE.panelOrder, "loudnessStats"],
       })
     );
+    /** @type {any} */
     let captured = null;
     render(
       <WorkspaceProvider>
@@ -213,6 +219,7 @@ describe("WorkspaceContext active preset divergence", () => {
     const presetPatch = vi.spyOn(presetsStore, "patch");
     const persistedPatch = vi.spyOn(workspaceStore, "patchCoalesced");
     const snapshots = [];
+    /** @type {any} */
     let actions = null;
     render(
       <WorkspaceProvider>
@@ -251,6 +258,7 @@ describe("WorkspaceContext active preset divergence", () => {
   });
 
   it("settles persistence waiters only after panel controls have been enqueued", async () => {
+    /** @type {any} */
     let actions = null;
     render(
       <WorkspaceProvider>

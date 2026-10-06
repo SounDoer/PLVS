@@ -44,6 +44,23 @@ const CLEARED_AUDIO_STATE = {
 
 const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
 
+/**
+ * @param {{
+ *   captureDeviceId?: string,
+ *   captureFormatSignature?: string,
+ *   histMaxSamples: any,
+ *   visualMaxSamples: any,
+ *   audioRef: any,
+ *   intake?: any,
+ *   channelRolesRef: any,
+ *   dialogueGatingRef: any,
+ *   dialogueVadEngineRef: any,
+ *   transport: any,
+ *   display: any,
+ *   defaultSampleRateRef?: any,
+ *   measurementOwner?: any,
+ * }} options
+ */
 export function useAudioEngine({
   captureDeviceId = "default",
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */

@@ -10,8 +10,8 @@ describe("useAxisInteraction", () => {
       observe() {}
       disconnect() {}
     }
-    window.ResizeObserver = ResizeObserverStub;
-    globalThis.ResizeObserver = ResizeObserverStub;
+    window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+    globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
   });
 
   afterEach(() => {

@@ -64,6 +64,15 @@ export function createLatestDockAccessoryUpdater({ command = setDockAccessoriesW
   };
 }
 
+/**
+ * @param {{
+ *   active: any,
+ *   edge: any,
+ *   geometryVersion?: any,
+ *   forceHeaderVisible?: boolean,
+ *   onError?: any,
+ * }} options
+ */
 export function useDockAccessoryVisibility({
   active,
   edge,

@@ -64,13 +64,13 @@ describe("clampSpectrumChannelToAvailable", () => {
   it("returns sel when valid", () => {
     const opts = buildSpectrumChannelOptions(6, ["L", "R", "C", "LFE", "Ls", "Rs"]);
     const sel = { type: "single", ch: 2 };
-    expect(clampSpectrumChannelToAvailable(sel, opts)).toEqual(sel);
+    expect(clampSpectrumChannelToAvailable(/** @type {any} */ (sel), opts)).toEqual(sel);
   });
 
   it("falls back to first option when sel key is not in options", () => {
     const opts = buildSpectrumChannelOptions(2, ["L", "R"]);
     const sel = { type: "single", ch: 2 }; // not in 2ch options
-    const result = clampSpectrumChannelToAvailable(sel, opts);
+    const result = clampSpectrumChannelToAvailable(/** @type {any} */ (sel), opts);
     expect(result).toEqual({ type: "pair", x: 0, y: 1 });
   });
 

@@ -188,11 +188,7 @@ describe("fileAnalysisSessionRegistry", () => {
   });
 
   it("clears sessions, order, and ids", () => {
-    let history = createInitialFileHistory();
-    history = makeEntry(history, "one");
-    history = startFileAnalysisEntry(history, "one");
-
-    expect(clearFileHistory(history)).toEqual(createInitialFileHistory());
+    expect(clearFileHistory()).toEqual(createInitialFileHistory());
   });
 
   it("resets an entry when analysis starts and records completion payloads", () => {

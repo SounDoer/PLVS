@@ -6,6 +6,18 @@ import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { DockLoudness } from "./DockLoudness.jsx";
 import { LoudnessHistoryIndex } from "../../math/loudnessHistoryIndex.js";
 
+/**
+ * @param {{
+ *   displayAudio: any,
+ *   histSourceList?: any,
+ *   loudnessDisplayIndex?: any,
+ *   controls?: any,
+ *   heightMode?: string,
+ *   referenceLufs?: any,
+ *   momentaryRules?: any,
+ *   shortTermRules?: any,
+ * }} options
+ */
 function renderWith({
   displayAudio,
   histSourceList = [],

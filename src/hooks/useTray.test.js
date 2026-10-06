@@ -76,9 +76,9 @@ const defaultProps = {
 };
 
 // Collects the options object passed to every top-level MenuItem.new call.
-const menuItemOptions = () => MenuItem.new.mock.calls.map(([o]) => o);
-const checkItemOptions = () => CheckMenuItem.new.mock.calls.map(([o]) => o);
-const submenuOptions = () => Submenu.new.mock.calls.map(([o]) => o);
+const menuItemOptions = () => vi.mocked(MenuItem.new).mock.calls.map(([o]) => o);
+const checkItemOptions = () => vi.mocked(CheckMenuItem.new).mock.calls.map(([o]) => o);
+const submenuOptions = () => vi.mocked(Submenu.new).mock.calls.map(([o]) => o);
 const findText = (options, text) => options.find((o) => o.text === text);
 const createdHandleForText = (factory, text) => {
   const index = factory.mock.calls.findIndex(([options]) => options.text === text);
@@ -101,12 +101,14 @@ describe("useTray", () => {
     invoke.mockResolvedValue([]);
     coordination.issue.mockResolvedValue();
     coordination.quitAll.mockResolvedValue();
-    isMacOS.mockReturnValue(false);
-    useTaskbarColorScheme.mockReturnValue(null);
-    resolveResource.mockImplementation(async (name) => `/fake/${name}`);
-    TrayIcon.getById.mockResolvedValue(null);
-    TrayIcon.removeById.mockResolvedValue(undefined);
-    TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: vi.fn() });
+    vi.mocked(isMacOS).mockReturnValue(false);
+    vi.mocked(useTaskbarColorScheme).mockReturnValue(null);
+    vi.mocked(resolveResource).mockImplementation(async (name) => `/fake/${name}`);
+    vi.mocked(TrayIcon.getById).mockResolvedValue(null);
+    vi.mocked(TrayIcon.removeById).mockResolvedValue(undefined);
+    vi.mocked(TrayIcon.new).mockResolvedValue(
+      /** @type {any} */ ({ setMenu: vi.fn(), close: vi.fn() })
+    );
   });
 
   afterEach(() => vi.clearAllMocks());
@@ -152,7 +154,7 @@ describe("useTray", () => {
   });
 
   it("chooses the icon from the Windows taskbar mode, not the PLVS theme", async () => {
-    useTaskbarColorScheme.mockReturnValue("light");
+    vi.mocked(useTaskbarColorScheme).mockReturnValue("light");
     renderHook(() => useTray({ ...defaultProps, colorScheme: "dark" }));
     await act(async () => {});
     expect(useTaskbarColorScheme).toHaveBeenLastCalledWith(true);
@@ -161,7 +163,7 @@ describe("useTray", () => {
   });
 
   it("does not follow the taskbar on macOS, where the icon is a template image", async () => {
-    isMacOS.mockReturnValue(true);
+    vi.mocked(isMacOS).mockReturnValue(true);
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     expect(useTaskbarColorScheme).toHaveBeenLastCalledWith(false);
@@ -169,13 +171,15 @@ describe("useTray", () => {
 
   it("swaps the icon when the taskbar mode changes", async () => {
     const setIcon = vi.fn();
-    TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), setIcon, close: vi.fn() });
-    useTaskbarColorScheme.mockReturnValue("dark");
+    vi.mocked(TrayIcon.new).mockResolvedValue(
+      /** @type {any} */ ({ setMenu: vi.fn(), setIcon, close: vi.fn() })
+    );
+    vi.mocked(useTaskbarColorScheme).mockReturnValue("dark");
     const { rerender } = renderHook(() => useTray(defaultProps));
     await act(async () => {});
     expect(setIcon).not.toHaveBeenCalled();
 
-    useTaskbarColorScheme.mockReturnValue("light");
+    vi.mocked(useTaskbarColorScheme).mockReturnValue("light");
     await act(async () => rerender());
 
     expect(Image.fromPath).toHaveBeenLastCalledWith("/fake/icons/tray-light.png");
@@ -184,13 +188,14 @@ describe("useTray", () => {
 
   it("applies a taskbar mode that arrives while the tray is being created", async () => {
     const setIcon = vi.fn();
+    /** @type {any} */
     const pending = deferred();
-    TrayIcon.new.mockReturnValue(pending.promise);
+    vi.mocked(TrayIcon.new).mockReturnValue(pending.promise);
     const { rerender } = renderHook(() => useTray(defaultProps));
     await act(async () => {});
     expect(resolveResource).toHaveBeenCalledWith("icons/tray-dark.png");
 
-    useTaskbarColorScheme.mockReturnValue("light");
+    vi.mocked(useTaskbarColorScheme).mockReturnValue("light");
     await act(async () => rerender());
     await act(async () => pending.resolve({ setMenu: vi.fn(), setIcon, close: vi.fn() }));
 
@@ -215,7 +220,7 @@ describe("useTray", () => {
     menuItemOptions()
       .filter((item) => item.text === "Start")
       .at(-1)
-      .action();
+      .action("start");
 
     expect(invoke).toHaveBeenCalledWith("runtime_route_instance_transport", {
       instanceId: "two",
@@ -239,10 +244,10 @@ describe("useTray", () => {
 
     menuItemOptions()
       .find((item) => item.text === "Show")
-      .action();
+      .action("show");
     menuItemOptions()
       .find((item) => item.text === "Quit Workbench")
-      .action();
+      .action("quit");
     findText(menuItemOptions(), "Quit PLVS").action();
 
     expect(coordination.issue).toHaveBeenNthCalledWith(1, "one", "show");
@@ -258,7 +263,7 @@ describe("useTray", () => {
 
   it("removes any existing singleton tray before creating a new one", async () => {
     const existingClose = vi.fn();
-    TrayIcon.getById.mockResolvedValue({ close: existingClose });
+    vi.mocked(TrayIcon.getById).mockResolvedValue(/** @type {any} */ ({ close: existingClose }));
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     expect(TrayIcon.getById).toHaveBeenCalledWith(PLVS_TRAY_ID);
@@ -268,17 +273,17 @@ describe("useTray", () => {
   });
 
   it("toggles the window only when a macOS left click is released", async () => {
-    isMacOS.mockReturnValue(true);
+    vi.mocked(isMacOS).mockReturnValue(true);
     const onToggleWindow = vi.fn();
     renderHook(() => useTray({ ...defaultProps, onToggleWindow }));
     await act(async () => {});
-    const trayOptions = TrayIcon.new.mock.calls[0][0];
+    const trayOptions = vi.mocked(TrayIcon.new).mock.calls[0][0];
 
     expect(trayOptions.showMenuOnLeftClick).toBe(false);
-    trayOptions.action({ type: "Click", button: "Left", buttonState: "Down" });
+    trayOptions.action(/** @type {any} */ ({ type: "Click", button: "Left", buttonState: "Down" }));
     expect(onToggleWindow).not.toHaveBeenCalled();
 
-    trayOptions.action({ type: "Click", button: "Left", buttonState: "Up" });
+    trayOptions.action(/** @type {any} */ ({ type: "Click", button: "Left", buttonState: "Up" }));
     expect(onToggleWindow).toHaveBeenCalledOnce();
   });
 
@@ -286,18 +291,18 @@ describe("useTray", () => {
     const onToggleWindow = vi.fn();
     renderHook(() => useTray({ ...defaultProps, onToggleWindow }));
     await act(async () => {});
-    const trayOptions = TrayIcon.new.mock.calls[0][0];
+    const trayOptions = vi.mocked(TrayIcon.new).mock.calls[0][0];
 
     expect(trayOptions.showMenuOnLeftClick).toBe(false);
-    trayOptions.action({ type: "Click", button: "Left", buttonState: "Down" });
+    trayOptions.action(/** @type {any} */ ({ type: "Click", button: "Left", buttonState: "Down" }));
     expect(onToggleWindow).not.toHaveBeenCalled();
 
-    trayOptions.action({ type: "Click", button: "Left", buttonState: "Up" });
+    trayOptions.action(/** @type {any} */ ({ type: "Click", button: "Left", buttonState: "Up" }));
     expect(onToggleWindow).toHaveBeenCalledOnce();
   });
 
   it("keeps the Show/Hide menu action wired to the latest window callback", async () => {
-    isMacOS.mockReturnValue(true);
+    vi.mocked(isMacOS).mockReturnValue(true);
     const firstToggleWindow = vi.fn();
     const secondToggleWindow = vi.fn();
     const { rerender } = renderHook(
@@ -326,9 +331,9 @@ describe("useTray", () => {
   });
 
   it("includes a platform Show/Hide item on macOS", async () => {
-    isMacOS.mockReturnValue(true);
+    vi.mocked(isMacOS).mockReturnValue(true);
     const setMenu = vi.fn();
-    TrayIcon.new.mockResolvedValue({ setMenu, close: vi.fn() });
+    vi.mocked(TrayIcon.new).mockResolvedValue(/** @type {any} */ ({ setMenu, close: vi.fn() }));
     const { rerender } = renderHook(
       ({ windowVisible }) => useTray({ ...defaultProps, windowVisible }),
       { initialProps: { windowVisible: true } }
@@ -336,7 +341,7 @@ describe("useTray", () => {
     await act(async () => {});
     expect(findText(menuItemOptions(), "Hide Window")).toBeTruthy();
 
-    MenuItem.new.mockClear();
+    vi.mocked(MenuItem.new).mockClear();
     rerender({ windowVisible: false });
     await act(async () => {});
     expect(findText(menuItemOptions(), "Show Window")).toBeTruthy();
@@ -392,7 +397,7 @@ describe("useTray", () => {
       { id: "out-1", label: "Speakers", isSystemOutputMonitor: true },
       { id: "out-2", label: "Headphones", isSystemOutputMonitor: true },
     ];
-    TrayIcon.new.mockResolvedValue(tray);
+    vi.mocked(TrayIcon.new).mockResolvedValue(/** @type {any} */ (tray));
 
     const { result } = renderHook(() => {
       const [selectedId, setSelectedId] = useState("default");
@@ -436,7 +441,7 @@ describe("useTray", () => {
       processId: 4321,
       processIds: [4321],
     };
-    TrayIcon.new.mockResolvedValue(tray);
+    vi.mocked(TrayIcon.new).mockResolvedValue(/** @type {any} */ (tray));
 
     const { rerender } = renderHook(
       ({ captureApplications }) =>
@@ -462,13 +467,14 @@ describe("useTray", () => {
 
   it("serializes source availability updates when native menu calls finish out of order", async () => {
     const tray = { setMenu: vi.fn(), close: vi.fn() };
-    TrayIcon.new.mockResolvedValue(tray);
+    vi.mocked(TrayIcon.new).mockResolvedValue(/** @type {any} */ (tray));
     const { rerender } = renderHook(({ sourceBusy }) => useTray({ ...defaultProps, sourceBusy }), {
       initialProps: { sourceBusy: false },
     });
     await act(async () => {});
 
     const sourceHandle = await createdHandleForText(Submenu.new, "Source: Output · Automatic");
+    /** @type {any} */
     const delayedDisable = deferred();
     let nativeEnabled = true;
     sourceHandle.setEnabled.mockImplementation((enabled) => {
@@ -654,11 +660,11 @@ describe("useTray", () => {
   });
 
   it("disables Presets and Quit but not Start/Stop or Source while updating (macOS)", async () => {
-    isMacOS.mockReturnValue(true);
+    vi.mocked(isMacOS).mockReturnValue(true);
     const setMenu = vi.fn();
     const onToggleWindow = vi.fn();
     const onQuit = vi.fn();
-    TrayIcon.new.mockResolvedValue({ setMenu, close: vi.fn() });
+    vi.mocked(TrayIcon.new).mockResolvedValue(/** @type {any} */ ({ setMenu, close: vi.fn() }));
     const { rerender } = renderHook(
       ({ updateBusy }) => useTray({ ...defaultProps, onToggleWindow, onQuit, updateBusy }),
       { initialProps: { updateBusy: false } }
@@ -666,8 +672,8 @@ describe("useTray", () => {
     await act(async () => {});
     const staleQuit = findText(menuItemOptions(), "Quit").action;
     const staleToggleWindow = findText(menuItemOptions(), "Hide Window").action;
-    MenuItem.new.mockClear();
-    Submenu.new.mockClear();
+    vi.mocked(MenuItem.new).mockClear();
+    vi.mocked(Submenu.new).mockClear();
 
     rerender({ updateBusy: true });
     await act(async () => {});
@@ -693,10 +699,10 @@ describe("useTray", () => {
   it("closes an orphaned tray if effect is cancelled before TrayIcon.new resolves", async () => {
     let resolveTrayNew;
     const orphanClose = vi.fn();
-    TrayIcon.new.mockImplementation(
+    vi.mocked(TrayIcon.new).mockImplementation(
       () =>
         new Promise((res) => {
-          resolveTrayNew = () => res({ setMenu: vi.fn(), close: orphanClose });
+          resolveTrayNew = () => res(/** @type {any} */ ({ setMenu: vi.fn(), close: orphanClose }));
         })
     );
     const { unmount } = renderHook(() => useTray(defaultProps));
@@ -711,8 +717,10 @@ describe("useTray", () => {
   it("closes the singleton tray before a profile reload", async () => {
     const currentClose = vi.fn();
     const existingClose = vi.fn();
-    TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: currentClose });
-    TrayIcon.getById.mockResolvedValue({ close: existingClose });
+    vi.mocked(TrayIcon.new).mockResolvedValue(
+      /** @type {any} */ ({ setMenu: vi.fn(), close: currentClose })
+    );
+    vi.mocked(TrayIcon.getById).mockResolvedValue(/** @type {any} */ ({ close: existingClose }));
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     await closeTrayIcon();

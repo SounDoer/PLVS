@@ -2,21 +2,6 @@ import { describe, expect, it } from "vitest";
 import { WaveformHistoryIndex } from "./waveformHistoryIndex.js";
 import { MinMaxRowStore } from "../lib/MinMaxRowStore.js";
 
-function rawRow(rows, retainedStart, sequence) {
-  const row = rows[sequence - retainedStart];
-  if (!row) return row;
-  return {
-    mins: Array.from(
-      { length: Math.max(row.waveformMin?.length ?? 0, row.waveformMax?.length ?? 0) },
-      (_, channel) => row.waveformMin?.[channel] ?? 0
-    ),
-    maxes: Array.from(
-      { length: Math.max(row.waveformMin?.length ?? 0, row.waveformMax?.length ?? 0) },
-      (_, channel) => row.waveformMax?.[channel] ?? 0
-    ),
-  };
-}
-
 describe("WaveformHistoryIndex", () => {
   it("indexes dynamic channel widths with missing channels treated as zero", () => {
     const index = new WaveformHistoryIndex(8);
@@ -35,7 +20,7 @@ describe("WaveformHistoryIndex", () => {
     expect(index.valueCount).toBe(3);
     expect(index.retainedStartSequence).toBe(0);
     expect(index.retainedEndSequence).toBe(3);
-    expect(index.queryRange(0, 2, (sequence) => rawRow(rows, 0, sequence))).toEqual({
+    expect(index.queryRange(0, 2)).toEqual({
       mins: [-0.75, -0.875, -0.125],
       maxes: [0.5, 0.875, 0.25],
     });
@@ -60,9 +45,7 @@ describe("WaveformHistoryIndex", () => {
     expect(index.retainedStartSequence).toBe(8);
     expect(index.retainedEndSequence).toBe(13);
     index.beginQueryBatch();
-    expect(
-      index.queryRange(8, 12, (sequence) => rawRow(rows, index.retainedStartSequence, sequence))
-    ).toEqual({
+    expect(index.queryRange(8, 12)).toEqual({
       mins: [-12, -5.5],
       maxes: [12, 11 / 4],
     });
@@ -88,7 +71,7 @@ describe("WaveformHistoryIndex", () => {
     const frozenVersion = frozen.version;
 
     index.append({ waveformMin: [-1], waveformMax: [1] });
-    expect(frozen.queryRange(0, 2, (sequence) => rawRow(rows, 0, sequence))).toEqual({
+    expect(frozen.queryRange(0, 2)).toEqual({
       mins: [-0.5, -0.75],
       maxes: [0.875, 0.5],
     });

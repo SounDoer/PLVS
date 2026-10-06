@@ -84,7 +84,9 @@ describe("buildTauriFrameApply", () => {
       audioState = next;
     };
     const latestAudioRef = { current: audioState };
-    const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio, latestAudioRef }));
+    const { applyFrame } = buildTauriFrameApply(
+      /** @type {any} */ (makeOptions({ setAudio, latestAudioRef }))
+    );
 
     applyFrame({
       peakDb: [],
@@ -112,7 +114,9 @@ describe("buildTauriFrameApply", () => {
     const latestAudioRef = makeOptions().latestAudioRef;
     const frame = { seq: 8, peakDb: [-7], rmsDb: [-20], integrated: -23 };
     const { applyFrame } = buildTauriFrameApply(
-      makeOptions({ latestAudioRef, onReducedFrame, shouldPublishDisplay: () => false })
+      /** @type {any} */ (
+        makeOptions({ latestAudioRef, onReducedFrame, shouldPublishDisplay: () => false })
+      )
     );
 
     applyFrame(frame);
@@ -128,7 +132,7 @@ describe("buildTauriFrameApply", () => {
 
   it("acks the latest seq every 6th frame so the bridge can bound its backlog", () => {
     const ackFrames = vi.fn();
-    const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));
+    const { applyFrame } = buildTauriFrameApply(/** @type {any} */ (makeOptions({ ackFrames })));
     for (let i = 1; i <= 12; i++) {
       applyFrame({ peakDb: [], seq: i });
     }
@@ -138,7 +142,7 @@ describe("buildTauriFrameApply", () => {
 
   it("does not ack when the frame carries no seq", () => {
     const ackFrames = vi.fn();
-    const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));
+    const { applyFrame } = buildTauriFrameApply(/** @type {any} */ (makeOptions({ ackFrames })));
     for (let i = 1; i <= 6; i++) {
       applyFrame({ peakDb: [] });
     }
@@ -152,13 +156,15 @@ describe("buildTauriFrameApply", () => {
     const latest = { marker: "active-source" };
     const latestAudioRef = { current: latest };
     const { applyFrame } = buildTauriFrameApply(
-      makeOptions({
-        setAudio,
-        ackFrames,
-        latestAudioRef,
-        intake: { pushFrame, pushVisualHistRow() {} },
-        shouldDriveDisplay: () => false,
-      })
+      /** @type {any} */ (
+        makeOptions({
+          setAudio,
+          ackFrames,
+          latestAudioRef,
+          intake: { pushFrame, pushVisualHistRow() {} },
+          shouldDriveDisplay: () => false,
+        })
+      )
     );
 
     for (let i = 1; i <= 6; i++) {
@@ -181,13 +187,15 @@ describe("buildTauriFrameApply", () => {
       current: makeOptions().latestAudioRef.current,
     };
     const { applyFrame } = buildTauriFrameApply(
-      makeOptions({
-        setAudio,
-        ackFrames,
-        latestAudioRef,
-        intake: { pushFrame, pushVisualHistRow() {} },
-        shouldPublishDisplay: () => false,
-      })
+      /** @type {any} */ (
+        makeOptions({
+          setAudio,
+          ackFrames,
+          latestAudioRef,
+          intake: { pushFrame, pushVisualHistRow() {} },
+          shouldPublishDisplay: () => false,
+        })
+      )
     );
 
     for (let i = 1; i <= 6; i++) {
@@ -212,7 +220,9 @@ describe("buildTauriFrameApply", () => {
   it("publishes the reduced latest frame normally in live mode", () => {
     const setAudio = vi.fn();
     const latestAudioRef = { current: makeOptions().latestAudioRef.current };
-    const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio, latestAudioRef }));
+    const { applyFrame } = buildTauriFrameApply(
+      /** @type {any} */ (makeOptions({ setAudio, latestAudioRef }))
+    );
 
     applyFrame({ peakDb: [-9], lufsMomentary: -12 });
 
@@ -226,11 +236,13 @@ describe("buildTauriFrameApply", () => {
     const histMaxSamples = { current: 10 };
     const visualMaxSamples = { current: 20 };
     const { applyFrame } = buildTauriFrameApply(
-      makeOptions({
-        histMaxSamples,
-        visualMaxSamples,
-        intake: { pushFrame, pushVisualHistRow() {} },
-      })
+      /** @type {any} */ (
+        makeOptions({
+          histMaxSamples,
+          visualMaxSamples,
+          intake: { pushFrame, pushVisualHistRow() {} },
+        })
+      )
     );
 
     applyFrame({ peakDb: [] });
@@ -250,7 +262,9 @@ describe("buildTauriFrameApply", () => {
     const setAudio = (next) => {
       audioState = next;
     };
-    const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio, latestAudioRef }));
+    const { applyFrame } = buildTauriFrameApply(
+      /** @type {any} */ (makeOptions({ setAudio, latestAudioRef }))
+    );
     const spectrumResultsByKey = { "spectrum:pair:0:1:combined": { smoothDb: [-30, -40] } };
     const vectorscopeResultsByKey = { "vectorscope:pair:0:1": { path: "v" } };
     applyFrame({
@@ -280,7 +294,7 @@ describe("buildTauriFrameApply", () => {
     let audioState = { spectrumResultsByKey: {}, vectorscopeResultsByKey: {} };
     const latestAudioRef = { current: audioState };
     const { applyFrame } = buildTauriFrameApply(
-      makeOptions({ setAudio: (next) => (audioState = next), latestAudioRef })
+      /** @type {any} */ (makeOptions({ setAudio: (next) => (audioState = next), latestAudioRef }))
     );
     const centers = [100, 1000];
 

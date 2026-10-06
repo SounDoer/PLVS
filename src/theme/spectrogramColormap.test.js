@@ -34,10 +34,12 @@ describe("spectrogram colormap", () => {
   });
 
   it("accepts normalized Theme V2 intensity stops", () => {
-    const lut = buildSpectrogramLut([
-      { position: 0, color: "#000004" },
-      { position: 1, color: "#fcffa4" },
-    ]);
+    const lut = buildSpectrogramLut(
+      /** @type {any} */ ([
+        { position: 0, color: "#000004" },
+        { position: 1, color: "#fcffa4" },
+      ])
+    );
     expect(Array.from(lut.slice(0, 3))).toEqual([0, 0, 4]);
     expect(Array.from(lut.slice(-3))).toEqual([252, 255, 164]);
   });

@@ -106,8 +106,12 @@ describe("PanelSettingsContent frequency link toggle", () => {
       })
     );
 
-    expect(screen.getByLabelText(`${ariaLabel} min`).value).toBe("200");
-    expect(screen.getByLabelText(`${ariaLabel} max`).value).toBe("5000");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText(`${ariaLabel} min`)).value).toBe(
+      "200"
+    );
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText(`${ariaLabel} max`)).value).toBe(
+      "5000"
+    );
   });
 
   it.each([["spectrum"], ["spectrogram"], ["stereo-map"]])(
@@ -280,8 +284,8 @@ describe("PanelSettingsContent time range row", () => {
     );
     const [min, max] = timeRangeInputs();
 
-    expect(min.value).toBe("30");
-    expect(max.value).toBe("0");
+    expect(/** @type {HTMLInputElement} */ (min).value).toBe("30");
+    expect(/** @type {HTMLInputElement} */ (max).value).toBe("0");
   });
 
   it("reads up from the left in file mode, the way the rail does", () => {
@@ -295,7 +299,9 @@ describe("PanelSettingsContent time range row", () => {
     );
     const [min, max] = timeRangeInputs();
 
-    expect(Number(min.value)).toBeLessThan(Number(max.value));
+    expect(Number(/** @type {HTMLInputElement} */ (min).value)).toBeLessThan(
+      Number(/** @type {HTMLInputElement} */ (max).value)
+    );
   });
 
   it("carries no unit suffix, matching the frequency row", () => {
@@ -308,8 +314,8 @@ describe("PanelSettingsContent time range row", () => {
     );
     const [min] = timeRangeInputs();
 
-    expect(min.value).toBe("30");
-    expect(min.value).not.toContain("s");
+    expect(/** @type {HTMLInputElement} */ (min).value).toBe("30");
+    expect(/** @type {HTMLInputElement} */ (min).value).not.toContain("s");
   });
 
   it("commits an edit to the shared window and offset", () => {
@@ -361,6 +367,7 @@ describe("PanelSettingsContent time range row", () => {
   });
 });
 
+/** @param {{ value?: any, panelChromeData?: any, children: any }} props */
 function TestPanelDataProviders({ value = {}, panelChromeData = value, children }) {
   return (
     <PanelDataProviders
@@ -389,8 +396,8 @@ beforeEach(() => {
     disconnect() {}
   }
 
-  window.ResizeObserver = ResizeObserverStub;
-  globalThis.ResizeObserver = ResizeObserverStub;
+  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
 });
 
 afterEach(() => {
@@ -434,14 +441,14 @@ describe("PanelSettingsContent", () => {
     );
     const lowMidInput = screen.getByLabelText("waveform low mid split");
     const midHighInput = screen.getByLabelText("waveform mid high split");
-    expect(lowMidInput.value).toBe("200");
-    expect(midHighInput.value).toBe("2000");
+    expect(/** @type {HTMLInputElement} */ (lowMidInput).value).toBe("200");
+    expect(/** @type {HTMLInputElement} */ (midHighInput).value).toBe("2000");
     expect(screen.getAllByText("Hz")).toHaveLength(2);
 
     fireEvent.change(lowMidInput, { target: { value: "2500" } });
     fireEvent.keyDown(lowMidInput, { key: "Enter" });
     expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
-    expect(lowMidInput.value).toBe("200");
+    expect(/** @type {HTMLInputElement} */ (lowMidInput).value).toBe("200");
 
     fireEvent.change(lowMidInput, { target: { value: "320" } });
     fireEvent.keyDown(lowMidInput, { key: "Enter" });
@@ -489,9 +496,9 @@ describe("PanelSettingsContent", () => {
     expect(modeRow?.className).not.toContain("grid-cols-[4.75rem");
     expect(modeRow?.className).not.toContain("min-h-7");
     expect(modeRow?.className).not.toContain("gap-4");
-    expect(container.firstChild?.className).toContain("w-full");
-    expect(container.firstChild?.className).toContain("max-w-full");
-    expect(container.firstChild?.className).not.toContain("w-[17rem]");
+    expect(/** @type {HTMLElement} */ (container.firstChild)?.className).toContain("w-full");
+    expect(/** @type {HTMLElement} */ (container.firstChild)?.className).toContain("max-w-full");
+    expect(/** @type {HTMLElement} */ (container.firstChild)?.className).not.toContain("w-[17rem]");
     expect(screen.getByText("Peak")).toBeTruthy();
 
     expect(screen.getByRole("combobox", { name: "level meter mode" })).toBeTruthy();
@@ -529,8 +536,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Warning / Critical")).toBeTruthy();
     expect(screen.queryByLabelText("level meter rms thresholds warning")).toBeNull();
     const warning = screen.getByLabelText("level meter peak thresholds warning");
-    expect(warning.value).toBe("-6");
-    expect(screen.getByLabelText("level meter peak thresholds critical").value).toBe("-1");
+    expect(/** @type {HTMLInputElement} */ (warning).value).toBe("-6");
+    expect(
+      /** @type {HTMLInputElement} */ (
+        screen.getByLabelText("level meter peak thresholds critical")
+      ).value
+    ).toBe("-1");
 
     fireEvent.change(warning, { target: { value: "-12" } });
     fireEvent.keyDown(warning, { key: "Enter" });
@@ -553,7 +564,7 @@ describe("PanelSettingsContent", () => {
     fireEvent.change(warning, { target: { value: "0" } });
     fireEvent.keyDown(warning, { key: "Enter" });
     expect(onPanelControlsChange).not.toHaveBeenCalled();
-    expect(warning.value).toBe("-6");
+    expect(/** @type {HTMLInputElement} */ (warning).value).toBe("-6");
   });
 
   it("refuses a critical threshold below warning", () => {
@@ -570,7 +581,7 @@ describe("PanelSettingsContent", () => {
     fireEvent.change(critical, { target: { value: "-10" } });
     fireEvent.keyDown(critical, { key: "Enter" });
     expect(onPanelControlsChange).not.toHaveBeenCalled();
-    expect(critical.value).toBe("-1");
+    expect(/** @type {HTMLInputElement} */ (critical).value).toBe("-1");
   });
 
   it("accepts equal warning and critical", () => {
@@ -603,7 +614,10 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={vi.fn()}
       />
     );
-    expect(screen.getByLabelText("level meter rms thresholds warning").value).toBe("-18");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter rms thresholds warning"))
+        .value
+    ).toBe("-18");
 
     rerender(
       <PanelSettingsContent
@@ -725,8 +739,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Playback Max")).toBeTruthy();
     expect(screen.queryByText("Floating Value")).toBeNull();
     expect(screen.queryByText("TP Max")).toBeNull();
-    expect(screen.getByLabelText("level meter range min").value).toBe("-60");
-    expect(screen.getByLabelText("level meter range max").value).toBe("3");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range min")).value
+    ).toBe("-60");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range max")).value
+    ).toBe("3");
   });
 
   // Same reason as the spectrogram's Time Range row: the range sits in the control table so its
@@ -781,8 +799,12 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.getByLabelText("level meter range min").value).toBe("-60");
-    expect(screen.getByLabelText("level meter range max").value).toBe("3");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range min")).value
+    ).toBe("-60");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range max")).value
+    ).toBe("3");
     fireEvent.change(screen.getByLabelText("level meter range min"), {
       target: { value: "-48" },
     });
@@ -808,8 +830,12 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={onPanelControlsChange}
       />
     );
-    expect(screen.getByLabelText("level meter range min").value).toBe("-48");
-    expect(screen.getByLabelText("level meter range max").value).toBe("0");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range min")).value
+    ).toBe("-48");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range max")).value
+    ).toBe("0");
 
     rerender(
       <PanelSettingsContent
@@ -818,8 +844,12 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={onPanelControlsChange}
       />
     );
-    expect(screen.getByLabelText("level meter range min").value).toBe("-64");
-    expect(screen.getByLabelText("level meter range max").value).toBe("0");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range min")).value
+    ).toBe("-64");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("level meter range max")).value
+    ).toBe("0");
     fireEvent.change(screen.getByLabelText("level meter range min"), {
       target: { value: "-48" },
     });
@@ -1012,7 +1042,7 @@ describe("PanelSettingsContent", () => {
       />
     );
     const persistence = screen.getByLabelText("vectorscope polar sample persistence");
-    expect(persistence.value).toBe("400");
+    expect(/** @type {HTMLInputElement} */ (persistence).value).toBe("400");
     fireEvent.change(persistence, { target: { value: "650" } });
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ vectorscopePolarSamplePersistenceMs: 650 })
@@ -1203,7 +1233,7 @@ describe("PanelSettingsContent", () => {
     );
 
     const fade = screen.getByLabelText("stereo map energy fade strength");
-    expect(fade.value).toBe("75");
+    expect(/** @type {HTMLInputElement} */ (fade).value).toBe("75");
     fireEvent.change(fade, { target: { value: "60" } });
     expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
@@ -1226,7 +1256,7 @@ describe("PanelSettingsContent", () => {
     );
 
     const blend = screen.getByLabelText("stereo map color blend");
-    expect(blend.value).toBe("50");
+    expect(/** @type {HTMLInputElement} */ (blend).value).toBe("50");
     fireEvent.change(blend, { target: { value: "30" } });
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ stereoMapColorBlendPercent: 30 })
@@ -1342,8 +1372,16 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={vi.fn()}
       />
     );
-    expect(screen.getByLabelText("stereo map mono loss level range min").value).toBe("-24");
-    expect(screen.getByLabelText("stereo map mono loss level range max").value).toBe("0");
+    expect(
+      /** @type {HTMLInputElement} */ (
+        screen.getByLabelText("stereo map mono loss level range min")
+      ).value
+    ).toBe("-24");
+    expect(
+      /** @type {HTMLInputElement} */ (
+        screen.getByLabelText("stereo map mono loss level range max")
+      ).value
+    ).toBe("0");
 
     rerender(
       <PanelSettingsContent
@@ -1357,8 +1395,16 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={vi.fn()}
       />
     );
-    expect(screen.getByLabelText("stereo map m/s ratio level range min").value).toBe("-48");
-    expect(screen.getByLabelText("stereo map m/s ratio level range max").value).toBe("24");
+    expect(
+      /** @type {HTMLInputElement} */ (
+        screen.getByLabelText("stereo map m/s ratio level range min")
+      ).value
+    ).toBe("-48");
+    expect(
+      /** @type {HTMLInputElement} */ (
+        screen.getByLabelText("stereo map m/s ratio level range max")
+      ).value
+    ).toBe("24");
   });
 
   it("falls back to the first spectrum option when the value key is stale", () => {
@@ -1569,8 +1615,12 @@ describe("PanelSettingsContent", () => {
       screen.getByText("Layers").compareDocumentPosition(screen.getByText("Loudness Range")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(screen.getByLabelText("loudness range min").value).toBe("-64");
-    expect(screen.getByLabelText("loudness range max").value).toBe("0");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("loudness range min")).value
+    ).toBe("-64");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("loudness range max")).value
+    ).toBe("0");
     fireEvent.change(screen.getByLabelText("loudness range min"), {
       target: { value: "-48" },
     });
@@ -1799,10 +1849,18 @@ describe("PanelSettingsContent", () => {
     // two is what this whole control layout exists to prevent, so pin that they stay distinct.
     expect(screen.getByLabelText("spectrum octave smoothing")).toBeTruthy();
     expect(screen.queryByLabelText("spectrum octave smoothing").tagName).not.toBe("INPUT");
-    expect(screen.getByLabelText("spectrum frequency range min").value).toBe("20");
-    expect(screen.getByLabelText("spectrum frequency range max").value).toBe("20000");
-    expect(screen.getByLabelText("spectrum level range min").value).toBe("-96");
-    expect(screen.getByLabelText("spectrum level range max").value).toBe("-12");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum frequency range min")).value
+    ).toBe("20");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum frequency range max")).value
+    ).toBe("20000");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum level range min")).value
+    ).toBe("-96");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum level range max")).value
+    ).toBe("-12");
     expect(screen.getByLabelText("spectrum level range min").getAttribute("type")).toBe("text");
     expect(screen.getByLabelText("spectrum level range max").getAttribute("type")).toBe("text");
     expect(screen.getByLabelText("spectrum level range max").style.width).toBe("4.5ch");
@@ -1842,8 +1900,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("3.00 dB/oct")).toBeTruthy();
     expect(screen.queryByText("Tilt: 3.00 dB/oct")).toBeNull();
 
-    expect(screen.getByLabelText("spectrum level range min").value).toBe("-96");
-    expect(screen.getByLabelText("spectrum level range max").value).toBe("-12");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum level range min")).value
+    ).toBe("-96");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum level range max")).value
+    ).toBe("-12");
   });
 
   it("commits spectrum display control changes", () => {
@@ -1938,9 +2000,15 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.getByLabelText("spectrum frequency range min").value).toBe("20");
-    expect(screen.getByLabelText("spectrum frequency range max").value).toBe("20000");
-    expect(screen.getByLabelText("spectrum level range min").value).toBe("-64");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum frequency range min")).value
+    ).toBe("20");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum frequency range max")).value
+    ).toBe("20000");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum level range min")).value
+    ).toBe("-64");
     expect(screen.getByLabelText("spectrum level range min").style.width).toBe("4.5ch");
   });
 
@@ -2039,8 +2107,14 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("spectrum frequency range max")).toBeNull();
     expect(screen.queryByLabelText("spectrum level range max")).toBeNull();
     expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
-    expect(screen.getByLabelText("spectrogram frequency range min").value).toBe("20");
-    expect(screen.getByLabelText("spectrogram frequency range max").value).toBe("20000");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrogram frequency range min"))
+        .value
+    ).toBe("20");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrogram frequency range max"))
+        .value
+    ).toBe("20000");
 
     fireEvent.change(screen.getByLabelText("spectrogram frequency range min"), {
       target: { value: "100" },
@@ -2075,8 +2149,14 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByText("Frequency Range")).toBeTruthy();
-    expect(screen.getByLabelText("spectrogram frequency range min").value).toBe("20");
-    expect(screen.getByLabelText("spectrogram frequency range max").value).toBe("20000");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrogram frequency range min"))
+        .value
+    ).toBe("20");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrogram frequency range max"))
+        .value
+    ).toBe("20000");
   });
 
   // Mode leads because it decides which of the rows below it even exist, then the rows that apply
@@ -2446,7 +2526,7 @@ describe("PanelSettingsContent", () => {
       </WorkspaceProvider>
     );
     const leafEl = container.querySelector("[data-leaf]");
-    leafEl.getBoundingClientRect = () => ({ width: 320, height: 180 });
+    leafEl.getBoundingClientRect = () => /** @type {DOMRect} */ ({ width: 320, height: 180 });
 
     const pinButton = screen.getByRole("button", { name: "Pin panel size" });
     expect(pinButton.querySelector("svg")?.getAttribute("class")).toContain(
@@ -2509,7 +2589,7 @@ describe("PanelSettingsContent", () => {
     );
 
     const leaves = container.querySelectorAll("[data-leaf]");
-    expect(leaves[0].style.flex).toBe("0 0 360px");
+    expect(/** @type {HTMLElement} */ (leaves[0]).style.flex).toBe("0 0 360px");
     const slotPinButton = screen
       .getAllByRole("button", { name: "Pin panel size" })
       .find((button) => {
@@ -2563,9 +2643,9 @@ describe("PanelSettingsContent", () => {
     );
 
     const pinnedLeaf = container.querySelector("[data-leaf]");
-    expect(pinnedLeaf.style.flex).toBe("0 0 320px");
-    expect(pinnedLeaf.style.height).toBe("180px");
-    expect(pinnedLeaf.style.alignSelf).toBe("flex-start");
+    expect(/** @type {HTMLElement} */ (pinnedLeaf).style.flex).toBe("0 0 320px");
+    expect(/** @type {HTMLElement} */ (pinnedLeaf).style.height).toBe("180px");
+    expect(/** @type {HTMLElement} */ (pinnedLeaf).style.alignSelf).toBe("flex-start");
   });
 
   it("uses the settings menu in the fullscreen header", () => {

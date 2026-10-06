@@ -32,13 +32,19 @@ describe("FeedbackDialog", () => {
 
   it("disables submit until content is entered", () => {
     render(<FeedbackDialog onClose={vi.fn()} />);
-    expect(screen.getByLabelText("attach diagnostics").checked).toBe(false);
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("attach diagnostics")).checked
+    ).toBe(false);
     expect(screen.getByText(/version, system details, and the last 200 log lines/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Send" })).disabled
+    ).toBe(true);
     fireEvent.input(screen.getByLabelText("Feedback content"), {
       target: { value: "Great app!" },
     });
-    expect(screen.getByRole("button", { name: "Send" }).disabled).toBe(false);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Send" })).disabled
+    ).toBe(false);
   });
 
   it("blocks submit and shows an inline error for a malformed email", () => {
@@ -51,12 +57,14 @@ describe("FeedbackDialog", () => {
     });
     fireEvent.blur(screen.getByLabelText("Your email (optional)"));
     expect(screen.getByText("Enter a valid email or leave it blank.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Send" })).disabled
+    ).toBe(true);
   });
 
   it("submits content and email, shows success, and closes after a delay", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    submitFeedback.mockResolvedValue(true);
+    vi.mocked(submitFeedback).mockResolvedValue(true);
     const onClose = vi.fn();
     render(<FeedbackDialog onClose={onClose} />);
 
@@ -88,13 +96,14 @@ describe("FeedbackDialog", () => {
       app: { version: "0.15.4", os: "windows", arch: "x86_64" },
       logs: ["last line"],
     };
+    /** @type {any} */
     let resolveDiagnostics;
     readFeedbackDiagnostics.mockReturnValue(
       new Promise((resolve) => {
         resolveDiagnostics = resolve;
       })
     );
-    submitFeedback.mockResolvedValue(false);
+    vi.mocked(submitFeedback).mockResolvedValue(false);
     render(<FeedbackDialog onClose={vi.fn()} />);
     fireEvent.input(screen.getByLabelText("Feedback content"), {
       target: { value: "Great app!" },
@@ -102,7 +111,10 @@ describe("FeedbackDialog", () => {
     fireEvent.click(screen.getByLabelText("attach diagnostics"));
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
-    expect(screen.getByRole("button", { name: "Preparing..." }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Preparing..." }))
+        .disabled
+    ).toBe(true);
     resolveDiagnostics(diagnostics);
     await waitFor(() =>
       expect(submitFeedback).toHaveBeenCalledWith({
@@ -121,7 +133,7 @@ describe("FeedbackDialog", () => {
         app: { version: "0.15.4", os: "windows", arch: "x86_64" },
         logs: [],
       });
-    submitFeedback.mockResolvedValue(false);
+    vi.mocked(submitFeedback).mockResolvedValue(false);
     render(<FeedbackDialog onClose={vi.fn()} />);
     fireEvent.input(screen.getByLabelText("Feedback content"), {
       target: { value: "Great app!" },
@@ -133,7 +145,9 @@ describe("FeedbackDialog", () => {
       await screen.findByText("Could not prepare diagnostics. Nothing was sent.")
     ).toBeTruthy();
     expect(submitFeedback).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("attach diagnostics").checked).toBe(true);
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("attach diagnostics")).checked
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(readFeedbackDiagnostics).toHaveBeenCalledTimes(2));
@@ -141,7 +155,7 @@ describe("FeedbackDialog", () => {
   });
 
   it("shows a failure message and preserves input when the request fails", async () => {
-    submitFeedback.mockResolvedValue(false);
+    vi.mocked(submitFeedback).mockResolvedValue(false);
     render(<FeedbackDialog onClose={vi.fn()} />);
 
     fireEvent.input(screen.getByLabelText("Feedback content"), {
@@ -150,6 +164,8 @@ describe("FeedbackDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText("Failed to send, please try again.")).toBeTruthy();
-    expect(screen.getByLabelText("Feedback content").value).toBe("Great app!");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Feedback content")).value).toBe(
+      "Great app!"
+    );
   });
 });

@@ -390,6 +390,35 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
   ctx.restore();
 }
 
+/**
+ * @param {{
+ *   canvasRef: any,
+ *   glCanvasRef?: any,
+ *   snapRef: any,
+ *   projectionRef: any,
+ *   oldestMs: any,
+ *   newestMs: any,
+ *   sampleMs: any,
+ *   selectedOffset: any,
+ *   selectionXFrac: any,
+ *   frozenSnaps: any,
+ *   colormapLut: any,
+ *   minHz?: number,
+ *   maxHz?: number,
+ *   dbFloor: any,
+ *   tiltDbPerOctave?: number,
+ *   azimuthDeg: any,
+ *   elevationDeg: any,
+ *   heightGain: any,
+ *   colorize: any,
+ *   floor: any,
+ *   mode: any,
+ *   themeColors: any,
+ *   sourceVersion?: number,
+ *   canvasSizeRevision?: number,
+ *   enabled?: boolean,
+ * }} options
+ */
 export function useSpectrogram3dCanvas({
   canvasRef,
   glCanvasRef,

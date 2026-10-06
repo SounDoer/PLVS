@@ -164,7 +164,10 @@ describe("FocusViewPopoverContent", () => {
       render(
         <FocusViewPopoverContent showDock dockDisabled dockEdge={null} onDockChange={vi.fn()} />
       );
-      expect(screen.getByRole("combobox", { name: "Dock position" }).disabled).toBe(true);
+      expect(
+        /** @type {HTMLButtonElement} */ (screen.getByRole("combobox", { name: "Dock position" }))
+          .disabled
+      ).toBe(true);
     });
 
     it("is hidden when showDock is false (non-Tauri)", () => {

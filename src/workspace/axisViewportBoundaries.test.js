@@ -22,7 +22,10 @@ describe("SET_VIEW carries the shared viewport", () => {
 
   it("repairs a preset written before the feature rather than leaving a hole", () => {
     const next = workspaceReducer(
-      { ...DEFAULT_WORKSPACE_STATE, axisViewports: { frequency: { min: 200, max: 5000 } } },
+      {
+        ...DEFAULT_WORKSPACE_STATE,
+        axisViewports: /** @type {any} */ ({ frequency: { min: 200, max: 5000 } }),
+      },
       { type: "SET_VIEW", payload: { ...DEFAULT_WORKSPACE_STATE, axisViewports: undefined } }
     );
 

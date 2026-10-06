@@ -52,8 +52,12 @@ describe("DockModuleSettings", () => {
     };
     const onChange = renderSettings("waveform", { controls });
 
-    expect(screen.getByLabelText("waveform low mid split").value).toBe("200");
-    expect(screen.getByLabelText("waveform mid high split").value).toBe("2000");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("waveform low mid split")).value
+    ).toBe("200");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("waveform mid high split")).value
+    ).toBe("2000");
     fireEvent.click(screen.getByLabelText("waveform centroid"));
     expect(onChange).toHaveBeenCalledWith({ ...controls, waveformCentroid: true });
   });
@@ -76,7 +80,7 @@ describe("DockModuleSettings", () => {
     };
     const onChange = renderSettings("level", { controls });
     const critical = screen.getByLabelText("level meter peak thresholds critical");
-    expect(critical.value).toBe("-1");
+    expect(/** @type {HTMLInputElement} */ (critical).value).toBe("-1");
     fireEvent.change(critical, { target: { value: "0" } });
     fireEvent.keyDown(critical, { key: "Enter" });
     expect(onChange).toHaveBeenCalledWith({
@@ -145,8 +149,12 @@ describe("DockModuleSettings", () => {
     expect(screen.queryByLabelText("Show loudness reference")).toBeNull();
     // The reference value belongs to the active Loudness Profile, not to this panel.
     expect(screen.queryByLabelText("Loudness reference")).toBeNull();
-    expect(screen.getByLabelText("loudness range min").value).toBe("-64");
-    expect(screen.getByLabelText("loudness range max").value).toBe("0");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("loudness range min")).value
+    ).toBe("-64");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("loudness range max")).value
+    ).toBe("0");
     const settingsRows = screen.getByText("Readouts").closest("div")?.parentElement?.children;
     expect(settingsRows?.[settingsRows.length - 1]?.textContent).toContain("Readouts");
 
@@ -198,7 +206,7 @@ describe("DockModuleSettings", () => {
     const onChange = renderSettings("correlation", { controls });
     const persistence = screen.getByLabelText("Vectorscope polar sample persistence");
 
-    expect(persistence.value).toBe("400");
+    expect(/** @type {HTMLInputElement} */ (persistence).value).toBe("400");
     fireEvent.change(persistence, { target: { value: "650" } });
     expect(onChange).toHaveBeenCalledWith({
       ...controls,
@@ -255,7 +263,7 @@ describe("DockModuleSettings", () => {
   it("shows Dock Color Blend only for Stereo Map Position", () => {
     const onChange = renderSettings("stereoMap", { channelCount: 2 });
     const blend = screen.getByLabelText("Stereo Map color blend");
-    expect(blend.value).toBe("50");
+    expect(/** @type {HTMLInputElement} */ (blend).value).toBe("50");
     fireEvent.change(blend, { target: { value: "25" } });
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap,
@@ -323,9 +331,15 @@ describe("DockModuleSettings", () => {
   it("exposes Spectrum Frequency Range and quarter-decibel tilt steps", () => {
     renderSettings("spectrum");
 
-    expect(screen.getByLabelText("spectrum frequency range min").value).toBe("20");
-    expect(screen.getByLabelText("spectrum frequency range max").value).toBe("20000");
-    expect(screen.getByLabelText("spectrum tilt").step).toBe("0.25");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum frequency range min")).value
+    ).toBe("20");
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum frequency range max")).value
+    ).toBe("20000");
+    expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("spectrum tilt")).step).toBe(
+      "0.25"
+    );
     expect(screen.queryByText("3.00 dB/oct")).toBeNull();
     fireEvent.mouseEnter(screen.getByLabelText("spectrum tilt"));
     expect(
@@ -365,7 +379,10 @@ describe("DockModuleSettings", () => {
     expect(screen.getByText("4 visible")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     expect(screen.getAllByRole("checkbox")).toHaveLength(15);
-    expect(screen.getByRole("button", { name: "Reset stats" }).disabled).toBe(true);
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Reset stats" }))
+        .disabled
+    ).toBe(true);
     fireEvent.click(screen.getByRole("checkbox", { name: "Integrated Dynamics" }));
     expect(onChange).toHaveBeenCalledWith({
       ...controls,

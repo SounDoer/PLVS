@@ -64,7 +64,7 @@ describe("planMerge", () => {
 
   it("never changes a local entry", () => {
     const existing = [A];
-    planMerge(existing, [{ ...A, referenceLufs: -16 }], { makeId: counter() });
+    planMerge(existing, /** @type {any} */ ([{ ...A, referenceLufs: -16 }]), { makeId: counter() });
     expect(existing).toEqual([{ id: "a", name: "Alpha", referenceLufs: -23, rules: [] }]);
   });
 

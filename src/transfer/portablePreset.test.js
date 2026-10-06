@@ -103,7 +103,7 @@ describe("Portable Preset V1", () => {
         controlsByPanelId: { levelMeter: { readout: "truePeakMax" } },
       },
     });
-    source.panelControlsById.vectorscope.vectorscopeMaxHold = true;
+    /** @type {any} */ (source.panelControlsById.vectorscope).vectorscopeMaxHold = true;
     const sparse = presetToPortable(source);
     const full = structuredClone(sparse);
     const snapshot = buildPublicPresetSnapshot(source);
@@ -394,11 +394,11 @@ describe("Portable Preset V1", () => {
     }));
     let layout = { type: "panel", key: "deep-0" };
     for (let index = 1; index < MAX_LAYOUT_DEPTH + 2; index += 1) {
-      layout = {
+      layout = /** @type {any} */ ({
         type: "split",
         direction: "horizontal",
         children: [layout, { type: "panel", key: `deep-${index}` }],
-      };
+      });
     }
     deep.workspace.layout = layout;
     expect(() => validatePortablePreset(deep)).toThrowError(

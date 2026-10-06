@@ -136,19 +136,21 @@ function contextStub() {
 // Distinct resolved colors per token so a stroke's color unambiguously identifies whether it came
 // from the Hold outline (always the primary token) or the curve itself (signal/blend tokens).
 function mockStereoMapColors() {
-  return vi.spyOn(window, "getComputedStyle").mockReturnValue({
-    getPropertyValue: (name) =>
-      ({
-        "--ui-stereo-map-primary": "#111111",
-        "--ui-stereo-map-primary-snap": "#111111",
-        "--ui-stereo-map-secondary": "#222222",
-        "--ui-stereo-map-secondary-snap": "#222222",
-        "--ui-stereo-map-critical-range": "#444444",
-        "--ui-stereo-map-warning-range": "#333333",
-        "--ui-stereo-map-safe-range": "#555555",
-        "--border": "#666666",
-      })[name] ?? "",
-  });
+  return vi.spyOn(window, "getComputedStyle").mockReturnValue(
+    /** @type {any} */ ({
+      getPropertyValue: (name) =>
+        ({
+          "--ui-stereo-map-primary": "#111111",
+          "--ui-stereo-map-primary-snap": "#111111",
+          "--ui-stereo-map-secondary": "#222222",
+          "--ui-stereo-map-secondary-snap": "#222222",
+          "--ui-stereo-map-critical-range": "#444444",
+          "--ui-stereo-map-warning-range": "#333333",
+          "--ui-stereo-map-safe-range": "#555555",
+          "--border": "#666666",
+        })[name] ?? "",
+    })
+  );
 }
 function hexToRgb(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -162,7 +164,7 @@ const STEREO_MAP_PRIMARY_CSS = hexToRgb(
 describe("StereoMapPanel", () => {
   function mockCanvas() {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
     return ctx;
   }
 
@@ -455,12 +457,14 @@ describe("StereoMapPanel", () => {
     );
 
     const chart = screen.getByTestId("stereo-map-chart");
-    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 1000,
-      height: 260,
-    });
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 260,
+      })
+    );
     fireEvent.pointerMove(chart, { clientX: 10, clientY: 130 });
 
     // Band 0 (100 Hz) is near the left edge; Position there is 0% (equal energy).
@@ -484,12 +488,14 @@ describe("StereoMapPanel", () => {
     );
 
     const chart = screen.getByTestId("stereo-map-chart");
-    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 1000,
-      height: 260,
-    });
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 260,
+      })
+    );
     // Band 0 (100 Hz, near the left edge) is equal-energy in-phase: M/S Ratio is negative
     // infinity there, which clips to the configured -48 dB lower bound.
     fireEvent.pointerMove(chart, { clientX: 10, clientY: 130 });
@@ -615,12 +621,14 @@ describe("StereoMapPanel", () => {
     );
 
     const chart = screen.getByTestId("stereo-map-chart");
-    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 1000,
-      height: 260,
-    });
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 260,
+      })
+    );
     fireEvent.wheel(chart, { clientX: 500, clientY: 130, deltaY: -100 });
 
     expect(onPanelControlsChange).toHaveBeenCalled();
@@ -690,12 +698,14 @@ describe("StereoMapPanel", () => {
     );
 
     const yAxis = container.querySelector('[style*="ns-resize"]');
-    vi.spyOn(yAxis, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 24,
-      height: 200,
-    });
+    vi.spyOn(yAxis, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        left: 0,
+        top: 0,
+        width: 24,
+        height: 200,
+      })
+    );
     fireEvent.mouseDown(yAxis, { button: 0, clientY: 100 });
     fireEvent.mouseMove(window, { clientY: 100 - 400 });
     fireEvent.mouseUp(window);
@@ -735,12 +745,14 @@ describe("StereoMapPanel", () => {
     );
 
     const chart = screen.getByTestId("stereo-map-chart");
-    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
-      left: 0,
-      top: 0,
-      width: 1000,
-      height: 260,
-    });
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
+      /** @type {any} */ ({
+        left: 0,
+        top: 0,
+        width: 1000,
+        height: 260,
+      })
+    );
     // Horizontal intent: deltaX dominates, so this pans rather than zooming.
     fireEvent.wheel(chart, { clientX: 500, clientY: 130, deltaX: 120, deltaY: 0 });
 

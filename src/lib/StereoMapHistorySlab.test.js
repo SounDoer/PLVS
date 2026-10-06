@@ -166,10 +166,10 @@ describe("StereoMapHistorySlab", () => {
     row.pl[0] = 999;
     row.pr[0] = 999;
     row.c[0] = 999;
-    slab._bandCentersHz?.fill(999);
-    slab._chunks?.[0]?.pl.fill(999);
-    frozen._bandCentersHz?.fill(999);
-    frozen._chunks?.[0]?.pl.fill(999);
+    /** @type {any} */ (slab)._bandCentersHz?.fill(999);
+    /** @type {any} */ (slab)._chunks?.[0]?.pl.fill(999);
+    /** @type {any} */ (frozen)._bandCentersHz?.fill(999);
+    /** @type {any} */ (frozen)._chunks?.[0]?.pl.fill(999);
 
     expect(Object.getOwnPropertyNames(slab)).toEqual([]);
     expect(Object.getOwnPropertyNames(frozen)).toEqual([]);
@@ -187,9 +187,9 @@ describe("StereoMapHistorySlab", () => {
 
     expect(Object.keys(slab)).toEqual([]);
     expect(Object.values(slab)).toEqual([]);
-    expect(slab.rows).toBeUndefined();
-    expect(slab._chunks).toBeUndefined();
-    expect(slab._bandCentersHz).toBeUndefined();
+    expect(/** @type {any} */ (slab).rows).toBeUndefined();
+    expect(/** @type {any} */ (slab)._chunks).toBeUndefined();
+    expect(/** @type {any} */ (slab)._bandCentersHz).toBeUndefined();
   });
 
   it("reports typed-plane layout and allocated versus used bytes for sealed and active chunks", () => {
@@ -419,7 +419,9 @@ describe("StereoMapHistorySlab", () => {
   it("freezes an empty slab", () => {
     const frozen = new StereoMapHistorySlab(2).freeze();
 
-    expect(() => new FrozenStereoMapHistory({})).toThrow(/direct construction/);
+    expect(() => new FrozenStereoMapHistory(/** @type {any} */ ({}))).toThrow(
+      /direct construction/
+    );
     expect(frozen.length).toBe(0);
     expect(frozen.timestampAt(0)).toBeNaN();
     expect(frozen.rowAt(0)).toBeUndefined();
@@ -665,8 +667,8 @@ describe("StereoMapHistorySlab", () => {
 
   it("floors timestamp Hold queries without including the nearest future row", () => {
     const slab = new StereoMapHistorySlab(4);
-    appendHoldRow(slab, 0, { timestampMs: 20 });
-    appendHoldRow(slab, 1, { timestampMs: 40, c: -1 });
+    appendHoldRow(slab, 0, /** @type {any} */ ({ timestampMs: 20 }));
+    appendHoldRow(slab, 1, /** @type {any} */ ({ timestampMs: 40, c: -1 }));
 
     expect(slab.holdAtOrBeforeTimestamp(10, slab.epoch)).toBeNull();
     expect(

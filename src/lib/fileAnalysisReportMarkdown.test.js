@@ -156,7 +156,7 @@ describe("renderFileAnalysisReportMarkdown", () => {
 
   it("omits the profile when off and dialogue when disabled", () => {
     const markdown = render(
-      { ...SESSION, analysisSettings: { dialogue: { enabled: false } } },
+      { ...SESSION, analysisSettings: { dialogue: /** @type {any} */ ({ enabled: false }) } },
       null
     );
 

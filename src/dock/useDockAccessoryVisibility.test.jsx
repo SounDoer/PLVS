@@ -17,7 +17,7 @@ vi.mock("../ipc/commands.js", () => ({
 describe("useDockAccessoryVisibility", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    cursorOverDockSurfaces.mockResolvedValue(true);
+    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -44,7 +44,7 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("repairs a missed pointer leave from live native window geometry", async () => {
-    cursorOverDockSurfaces.mockResolvedValue(false);
+    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
     const { result } = renderHook(() =>
       useDockAccessoryVisibility({ active: true, edge: "bottom" })
     );
@@ -62,7 +62,7 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("repairs a missed re-enter after native geometry hid the header", async () => {
-    cursorOverDockSurfaces.mockResolvedValue(false);
+    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
     const { result } = renderHook(() =>
       useDockAccessoryVisibility({ active: true, edge: "bottom" })
     );
@@ -75,7 +75,7 @@ describe("useDockAccessoryVisibility", () => {
     act(() => vi.advanceTimersByTime(0));
     expect(result.current.headerVisible).toBe(false);
 
-    cursorOverDockSurfaces.mockResolvedValue(true);
+    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
     await act(async () => {
       vi.advanceTimersByTime(33);
       await Promise.resolve();
@@ -87,7 +87,7 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("does not fight reliable DOM enter and leave events when native geometry agrees", async () => {
-    cursorOverDockSurfaces.mockResolvedValue(true);
+    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
     const { result } = renderHook(() =>
       useDockAccessoryVisibility({ active: true, edge: "bottom" })
     );
@@ -99,7 +99,7 @@ describe("useDockAccessoryVisibility", () => {
     });
     expect(result.current.headerVisible).toBe(true);
 
-    cursorOverDockSurfaces.mockResolvedValue(false);
+    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
     act(() => result.current.onStripPointerLeave());
     act(() => vi.advanceTimersByTime(0));
     expect(result.current.headerVisible).toBe(false);
@@ -114,7 +114,7 @@ describe("useDockAccessoryVisibility", () => {
 
   it("does not let a stale cursor result overwrite a newer pointer enter", async () => {
     let resolveCursor;
-    cursorOverDockSurfaces.mockReturnValue(
+    vi.mocked(cursorOverDockSurfaces).mockReturnValue(
       new Promise((resolve) => {
         resolveCursor = resolve;
       })
@@ -252,6 +252,7 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("coalesces rapid accessory updates to the latest state", async () => {
+    /** @type {any} */
     let resolveFirst;
     const command = vi
       .fn()

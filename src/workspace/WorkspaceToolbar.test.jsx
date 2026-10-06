@@ -76,7 +76,7 @@ describe("ModulesPopoverContent", () => {
     );
 
     const resetAtDefaults = screen.getByRole("button", { name: "Reset layout" });
-    expect(resetAtDefaults.disabled).toBe(true);
+    expect(/** @type {HTMLButtonElement} */ (resetAtDefaults).disabled).toBe(true);
     fireEvent.click(screen.getByLabelText("Delete Level Meter"));
     fireEvent.click(screen.getByLabelText("Confirm delete Level Meter"));
     fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
@@ -238,30 +238,33 @@ describe("panel placement preview", () => {
     const leaf = view.container.querySelector("[data-leaf]");
     const body = view.container.querySelector("[data-leaf-body]");
     const tabs = view.container.querySelector("[data-leaf-tabs]");
-    leaf.getBoundingClientRect = () => ({
-      left: 0,
-      right: 200,
-      top: 0,
-      bottom: 130,
-      width: 200,
-      height: 130,
-    });
-    body.getBoundingClientRect = () => ({
-      left: 0,
-      right: 200,
-      top: 30,
-      bottom: 130,
-      width: 200,
-      height: 100,
-    });
-    tabs.getBoundingClientRect = () => ({
-      left: 0,
-      right: 200,
-      top: 0,
-      bottom: 30,
-      width: 200,
-      height: 30,
-    });
+    leaf.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        right: 200,
+        top: 0,
+        bottom: 130,
+        width: 200,
+        height: 130,
+      });
+    body.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        right: 200,
+        top: 30,
+        bottom: 130,
+        width: 200,
+        height: 100,
+      });
+    tabs.getBoundingClientRect = () =>
+      /** @type {DOMRect} */ ({
+        left: 0,
+        right: 200,
+        top: 0,
+        bottom: 30,
+        width: 200,
+        height: 30,
+      });
     return { ...view, leaf, body, tabs, onDrop };
   }
 
@@ -280,10 +283,10 @@ describe("panel placement preview", () => {
 
     const preview = view.container.querySelector("[data-drop-preview]");
     const hint = preview?.querySelector("[data-drop-hint]");
-    expect(preview?.dataset.dropZone).toBe("right");
+    expect(/** @type {HTMLElement} */ (preview)?.dataset.dropZone).toBe("right");
     expect(preview?.className).toContain("w-1/2");
     expect(preview?.className).not.toContain("border");
-    expect(preview?.style.backgroundColor).toContain("transparent");
+    expect(/** @type {HTMLElement} */ (preview)?.style.backgroundColor).toContain("transparent");
     expect(hint?.className).toContain("flex-col");
     expect(hint?.className).toContain("items-center");
     expect(hint?.className).not.toContain("border");
@@ -312,7 +315,9 @@ describe("panel placement preview", () => {
 
     expect(view.container.querySelector("[data-drop-preview]")).toBeNull();
     expect(screen.getByText("Stats · No Drop Target")).toBeTruthy();
-    expect(document.querySelector("[data-drag-ghost]")?.dataset.dropValid).toBe("false");
+    expect(
+      /** @type {HTMLElement} */ (document.querySelector("[data-drag-ghost]"))?.dataset.dropValid
+    ).toBe("false");
     expect(document.querySelector("[data-drag-ghost]")?.className).not.toContain("border");
     expect(document.querySelector("[data-drag-ghost]")?.className).not.toContain("bg-card");
 

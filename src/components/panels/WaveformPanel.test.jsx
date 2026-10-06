@@ -15,7 +15,9 @@ const { sliceSpectralWaveformMetricsMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../math/spectralWaveformMath.js", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = /** @type {typeof import("../../math/spectralWaveformMath.js")} */ (
+    await importOriginal()
+  );
   return {
     ...actual,
     sliceSpectralWaveformMetrics: (...args) => {
@@ -79,8 +81,9 @@ function renderPanel(value = {}, props = {}) {
 function waveformPanelTree(value = {}, props = {}) {
   const { panelVisible = true, panelControls, ...shared } = value;
   const frameData = {
-    channelCount: shared.channelCount ?? baseAudioData.channelCount,
-    peakLabelContext: shared.peakLabelContext ?? baseAudioData.peakLabelContext,
+    channelCount: /** @type {any} */ (shared).channelCount ?? baseAudioData.channelCount,
+    peakLabelContext:
+      /** @type {any} */ (shared).peakLabelContext ?? baseAudioData.peakLabelContext,
   };
   return (
     <FrameDataProvider value={frameData}>
@@ -103,8 +106,8 @@ beforeEach(() => {
     disconnect() {}
   }
 
-  window.ResizeObserver = ResizeObserverStub;
-  globalThis.ResizeObserver = ResizeObserverStub;
+  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
 });
 
 afterEach(() => {
@@ -130,27 +133,30 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
     document.documentElement.style.setProperty("--ui-waveform-trace-snap", "#badbad");
 
-    drawWaveformCanvas(canvas, {
-      mins: [-0.5, -0.5],
-      maxes: [0.5, 0.5],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      selected: true,
-      themeColors: {
-        trace: "#111111",
-        snapshot: "#123456",
-        frequencyLow: "#ff0000",
-        frequencyMid: "#00ff00",
-        frequencyHigh: "#0000ff",
-        frequencyNeutral: "#888888",
-        centroid: "#ffffff",
-      },
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [-0.5, -0.5],
+        maxes: [0.5, 0.5],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        selected: true,
+        themeColors: /** @type {any} */ ({
+          trace: "#111111",
+          snapshot: "#123456",
+          frequencyLow: "#ff0000",
+          frequencyMid: "#00ff00",
+          frequencyHigh: "#0000ff",
+          frequencyNeutral: "#888888",
+          centroid: "#ffffff",
+        }),
+      })
+    );
 
     expect(strokes).toEqual(["#123456"]);
     expect(fills).toEqual(["#123456"]);
@@ -173,17 +179,20 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [-0.75, -0.75],
-      maxes: [0.25, 0.25],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      selected: false,
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [-0.75, -0.75],
+        maxes: [0.25, 0.25],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        selected: false,
+      })
+    );
 
     expect(lineWidths).toEqual([2.5]);
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
@@ -212,19 +221,22 @@ describe("drawWaveformCanvas", () => {
     canvas.height = 80;
     Object.defineProperty(canvas, "clientWidth", { value: 100 });
     Object.defineProperty(canvas, "clientHeight", { value: 40 });
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [-0.75, -0.75],
-      maxes: [0.25, 0.25],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      selected: false,
-      centroid: true,
-      spectralCentroidHz: [1000, 1000],
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [-0.75, -0.75],
+        maxes: [0.25, 0.25],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        selected: false,
+        centroid: true,
+        spectralCentroidHz: [1000, 1000],
+      })
+    );
 
     const anisotropic = [1, 0, 0, 2, 0, 0];
     expect(strokes).toEqual([
@@ -258,17 +270,20 @@ describe("drawWaveformCanvas", () => {
     canvas.height = 81;
     Object.defineProperty(canvas, "clientWidth", { value: 100 });
     Object.defineProperty(canvas, "clientHeight", { value: 40 });
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [],
-      maxes: [],
-      bucketCount: 0,
-      fracPhase: 0,
-      firstBucket: -1,
-      lastBucket: -1,
-      selected: false,
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [],
+        maxes: [],
+        bucketCount: 0,
+        fracPhase: 0,
+        firstBucket: -1,
+        lastBucket: -1,
+        selected: false,
+      })
+    );
 
     expect(moves).toEqual([]);
     expect(strokes).toEqual([]);
@@ -290,18 +305,21 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [-0.75, -0.75],
-      maxes: [0.25, 0.25],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      selected: false,
-      themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [-0.75, -0.75],
+        maxes: [0.25, 0.25],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        selected: false,
+        themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
+      })
+    );
 
     expect(fillAlphas).toEqual([0.12]);
     expect(context.globalAlpha).toBe(1);
@@ -323,22 +341,25 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [-0.75, -0.75],
-      maxes: [0.25, 0.25],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      selected: false,
-      frequencyColor: true,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      dominantFrequencyHz: [100, 1000],
-      tonality: [0.2, 0.2],
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [-0.75, -0.75],
+        maxes: [0.25, 0.25],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        selected: false,
+        frequencyColor: true,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        dominantFrequencyHz: [100, 1000],
+        tonality: [0.2, 0.2],
+      })
+    );
 
     expect(fillAlphas).toEqual([1, 1]);
   });
@@ -358,21 +379,24 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [-0.5, -0.5],
-      maxes: [0.5, 0.5],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      frequencyColor: true,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      dominantFrequencyHz: [100, 1000],
-      tonality: [0.8, 0.8],
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [-0.5, -0.5],
+        maxes: [0.5, 0.5],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        frequencyColor: true,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        dominantFrequencyHz: [100, 1000],
+        tonality: [0.8, 0.8],
+      })
+    );
 
     expect(context.moveTo).toHaveBeenCalledWith(-0.5, 10);
     expect(context.lineTo).toHaveBeenCalledWith(1.5, 10);
@@ -393,22 +417,25 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = vi.fn(() => context);
+    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
 
-    drawWaveformCanvas(canvas, {
-      mins: [0.25, 0.25],
-      maxes: [0.5, 0.5],
-      bucketCount: 2,
-      fracPhase: 0,
-      firstBucket: 0,
-      lastBucket: 1,
-      selected: false,
-      frequencyColor: true,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      dominantFrequencyHz: [100, 100],
-      tonality: [0.8, 0.8],
-    });
+    drawWaveformCanvas(
+      canvas,
+      /** @type {any} */ ({
+        mins: [0.25, 0.25],
+        maxes: [0.5, 0.5],
+        bucketCount: 2,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 1,
+        selected: false,
+        frequencyColor: true,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        dominantFrequencyHz: [100, 100],
+        tonality: [0.8, 0.8],
+      })
+    );
 
     expect(context.lineTo).toHaveBeenCalledWith(1, 20);
   });
@@ -449,7 +476,7 @@ describe("WaveformPanel", () => {
     expect(lane?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
     expect(timeAxisRow?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
     expect(timeAxisSpacer?.className).toContain("w-[var(--ui-chart-y-axis-rail-w)]");
-    expect(interactionOverlay?.style.left).toBe(
+    expect(/** @type {HTMLElement} */ (interactionOverlay)?.style.left).toBe(
       "calc(var(--ui-chart-y-axis-rail-w) + var(--ui-chart-axis-gap))"
     );
   });
@@ -470,11 +497,11 @@ describe("WaveformPanel", () => {
     const chart = container.querySelector("[data-waveform-interaction-overlay]");
 
     fireEvent.pointerMove(chart, { ctrlKey: false });
-    expect(chart?.style.cursor).toBe("crosshair");
+    expect(/** @type {HTMLElement} */ (chart)?.style.cursor).toBe("crosshair");
 
     fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
 
-    expect(chart?.style.cursor).toBe("grab");
+    expect(/** @type {HTMLElement} */ (chart)?.style.cursor).toBe("grab");
   });
 
   it("highlights the time axis when time changes elsewhere", () => {
@@ -610,7 +637,9 @@ describe("WaveformPanel", () => {
       fill: vi.fn(),
       stroke: vi.fn(),
     };
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ (context)
+    );
     vi.spyOn(HTMLCanvasElement.prototype, "clientWidth", "get").mockReturnValue(100);
     vi.spyOn(HTMLCanvasElement.prototype, "clientHeight", "get").mockReturnValue(40);
 
@@ -650,16 +679,18 @@ describe("WaveformPanel", () => {
       y: 0,
       toJSON: () => ({}),
     });
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      clearRect: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      closePath: vi.fn(),
-      setTransform: vi.fn(),
-      fill: vi.fn(),
-      stroke: vi.fn(),
-    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      /** @type {any} */ ({
+        clearRect: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        closePath: vi.fn(),
+        setTransform: vi.fn(),
+        fill: vi.fn(),
+        stroke: vi.fn(),
+      })
+    );
     sliceWaveformSubHistoryMock.mockImplementation((histSourceList) => {
       const maxL = histSourceList?.[0]?.timestampMs === 1100 ? 1 : 0.5;
       return {
