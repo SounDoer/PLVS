@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 
 function transitionError(lifecycle) {
-  const error = new Error(`LIVE transport is ${lifecycle}.`);
+  const error = /** @type {Error & { code?: string }} */ (
+    new Error(`LIVE transport is ${lifecycle}.`)
+  );
   error.code = "transitionInProgress";
   return error;
 }
@@ -99,6 +101,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
 
   const clearAudioDrop = () => setAudioDrop(null);
 
+  /** @param {{ resolvedDeviceId?: any }} [options] */
   const markStarted = ({ resolvedDeviceId: nextDeviceId = null } = {}) => {
     setResolvedDeviceId(nextDeviceId);
     setStartedAt(Date.now());

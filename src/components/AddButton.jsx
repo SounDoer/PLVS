@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const ADD_BUTTON_CLASS =
   "flex h-[var(--ui-control-h)] w-full items-center justify-center gap-1 rounded-md border border-dashed border-border px-2 text-[length:var(--ui-fs-control)] text-muted-foreground hover:border-muted-foreground hover:bg-ui-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50";
 
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & { label: string } & React.RefAttributes<HTMLButtonElement>>} */
 export const AddButton = React.forwardRef(function AddButton(
   { label, className, "aria-label": ariaLabel, ...props },
   ref

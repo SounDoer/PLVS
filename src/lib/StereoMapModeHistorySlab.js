@@ -159,39 +159,65 @@ function payloadBytes(chunk) {
   return total;
 }
 
+/**
+ * Fields `StereoMapModeHistoryView` reads but leaves to its subclasses to assign.
+ *
+ * @typedef {{
+ *   _chunks: any[],
+ *   _modes: Set<string>,
+ *   _bandCentersHz: Float32Array,
+ *   _sampleRateHz: number,
+ *   _startSequence: number,
+ *   _endSequence: number,
+ *   _epoch: number,
+ *   _version: number,
+ *   _sharedSealedChunks?: number,
+ *   _copiedTailRows?: number,
+ *   _copiedTailBytes?: number,
+ * }} StereoMapModeHistoryState
+ */
+
 class StereoMapModeHistoryView {
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   get length() {
     return this._endSequence - this._startSequence;
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   get version() {
     return this._version ?? 0;
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   get epoch() {
     return this._epoch;
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   get sampleRateHz() {
     return this._sampleRateHz;
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   get retainedModes() {
     return new Set(this._modes);
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   _find(sequence) {
     return this._chunks.find(
       (chunk) => sequence >= chunk.sequenceStart && sequence < chunk.sequenceStart + chunk.rowCount
     );
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   _sequenceAt(index) {
     return Number.isInteger(index) && index >= 0 && index < this.length
       ? this._startSequence + index
       : null;
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   timestampAt(index) {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return NaN;
@@ -199,6 +225,7 @@ class StereoMapModeHistoryView {
     return chunk.timestamps[sequence - chunk.sequenceStart];
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   rowAt(index) {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return undefined;
@@ -233,7 +260,8 @@ class StereoMapModeHistoryView {
     };
   }
 
-  holdAt(index, epoch = this._epoch) {
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  holdAt(index, epoch = /** @type {any} */ (this)._epoch) {
     const target = this._sequenceAt(index);
     if (target == null || epoch !== this._epoch) return null;
     const summaries = {};
@@ -278,7 +306,8 @@ class StereoMapModeHistoryView {
     return { values, stats };
   }
 
-  holdAtOrBeforeTimestamp(timestampMs, epoch = this._epoch) {
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
+  holdAtOrBeforeTimestamp(timestampMs, epoch = /** @type {any} */ (this)._epoch) {
     let low = 0;
     let high = this.length - 1;
     let found = -1;
@@ -292,6 +321,7 @@ class StereoMapModeHistoryView {
     return found < 0 ? null : this.holdAt(found, epoch);
   }
 
+  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   storageStats() {
     const allocatedBytes = this._chunks.reduce((total, chunk) => total + payloadBytes(chunk), 0);
     return {

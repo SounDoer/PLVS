@@ -475,6 +475,41 @@ function transportMutationMatches(method, params, execution, snapshot) {
   return false;
 }
 
+/**
+ * @param {{
+ *   enabled: any,
+ *   runtime: any,
+ *   workspace: any,
+ *   replaceWorkspace: any,
+ *   setPanelControlsForPanel: any,
+ *   waitForWorkspacePersistenceEnqueue: any,
+ *   presets: any,
+ *   settings: any,
+ *   settingsContext?: any,
+ *   applySettings?: (...args: any[]) => any,
+ *   transport: any,
+ *   transportContext?: any,
+ *   executeTransport?: (...args: any[]) => any,
+ *   device?: any,
+ *   dock: any,
+ *   dockContext?: any,
+ *   executeDock?: (...args: any[]) => any,
+ *   loudnessProfiles?: any,
+ *   loudnessProfile?: any,
+ *   customThemes?: any,
+ *   theme?: any,
+ *   hasLoudnessReference?: boolean,
+ *   analysisContext?: any,
+ *   measurementContext?: any,
+ *   viewContext?: any,
+ *   visual?: any,
+ *   flush?: any,
+ *   exportConfiguration?: any,
+ *   importConfiguration?: any,
+ *   normalizeConfiguration?: any,
+ *   relaunchAfterConfigurationChange?: any,
+ * }} options
+ */
 export function useAgentControlBridge({
   enabled,
   runtime,

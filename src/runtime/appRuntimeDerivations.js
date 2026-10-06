@@ -63,11 +63,12 @@ export function deriveChannelLabelRuntime({ channelCount, channelLabelOverrides 
     overrideLabels,
     channelAutoLabels,
     channelLabelTokens: channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),
-    peakLabelContext: {
-      formatId: displayLayoutId ?? undefined,
-      resolvedLayout: displayLayoutId ? undefined : "unknown",
-      overrideLabels,
-    },
+    peakLabelContext:
+      /** @type {import("../math/peakMeterChannelLabels.js").PeakMeterChannelLabelsContext} */ ({
+        formatId: displayLayoutId ?? undefined,
+        resolvedLayout: displayLayoutId ? undefined : "unknown",
+        overrideLabels,
+      }),
   };
 }
 

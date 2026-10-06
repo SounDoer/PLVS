@@ -81,6 +81,15 @@ function SettingsSection({ children, className }) {
   );
 }
 
+/**
+ * @param {{
+ *   children: any,
+ *   label?: any,
+ *   labelNode?: any,
+ *   className?: any,
+ *   [key: string]: any,
+ * }} props
+ */
 function SettingsRow({ children, label, labelNode, className, ...props }) {
   return (
     <div data-settings-row className={cn(ROW_CLASS, className)} {...props}>

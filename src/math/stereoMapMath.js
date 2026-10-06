@@ -23,6 +23,7 @@ function validateMode(mode) {
   }
 }
 
+/** @param {{ lowerBound?: any, upperBound?: any }} [options] */
 function validateRange({ lowerBound, upperBound } = {}) {
   if (!Number.isFinite(lowerBound) || !Number.isFinite(upperBound)) {
     throw new TypeError("Stereo Map range bounds must be finite numbers");
@@ -42,6 +43,7 @@ function validateOpacity(opacity) {
   }
 }
 
+/** @param {{ pl?: any, pr?: any, c?: any }} [options] */
 function normalizePrimitive({ pl, pr, c } = {}) {
   if (![pl, pr, c].every(Number.isFinite)) return null;
 

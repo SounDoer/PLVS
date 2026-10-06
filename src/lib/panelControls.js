@@ -225,6 +225,57 @@ const AXIS_LINK_CONTROLS = Object.values(AXIS_VIEWPORTS).map((kind) => ({
   default: true,
 }));
 
+/**
+ * The settings-panel face of a row: where it shows, what draws it, and the widget's own limits.
+ *
+ * @typedef {{
+ *   tab: string,
+ *   label?: string,
+ *   widget?: string,
+ *   ariaLabel?: string,
+ *   tooltip?: string,
+ *   order?: number,
+ *   options?: readonly any[],
+ *   showWhen?: (controls: any) => boolean,
+ *   resettable?: boolean,
+ *   commitOnRelease?: boolean,
+ *   min?: number,
+ *   max?: number,
+ *   step?: number,
+ *   fixedMax?: number,
+ *   format?: (value: number) => string,
+ * }} PanelControlRowUi
+ */
+
+/**
+ * One row of the table. A single-value row has `key`, `kind` and `default`; a range row has
+ * `minKey` / `maxKey` and their defaults and bounds instead. Read `key ?? minKey` for a row's
+ * identity.
+ *
+ * @typedef {{
+ *   key?: string,
+ *   kind?: string,
+ *   default?: any,
+ *   options?: readonly string[],
+ *   min?: number,
+ *   max?: number,
+ *   round?: boolean,
+ *   legacyKeys?: string[],
+ *   legacyMembers?: string[],
+ *   minKey?: string,
+ *   maxKey?: string,
+ *   defaultMin?: number,
+ *   defaultMax?: number,
+ *   absMin?: number,
+ *   absMax?: number,
+ *   minSpan?: number,
+ *   readMin?: (raw: any) => any,
+ *   normalize?: (row: PanelControlRow, raw: any) => any,
+ *   ui?: PanelControlRowUi,
+ * }} PanelControlRow
+ */
+
+/** @type {PanelControlRow[]} */
 const CONTROLS = [
   {
     key: "levelMeterMode",
@@ -868,8 +919,9 @@ function normalizeRow(row, raw) {
   return { [row.key]: KINDS[row.kind](row, source) };
 }
 
+/** @returns {import("../workspace/types.js").PanelControls} */
 function buildDefaults() {
-  const defaults = {};
+  const defaults = /** @type {any} */ ({});
   for (const row of CONTROLS) {
     if (row.key) {
       defaults[row.key] = Array.isArray(row.default)
@@ -887,8 +939,9 @@ function buildDefaults() {
 
 export const DEFAULT_PANEL_CONTROLS = buildDefaults();
 
+/** @returns {import("../workspace/types.js").PanelControls} */
 export function normalizePanelControls(raw) {
-  const normalized = {};
+  const normalized = /** @type {any} */ ({});
   for (const row of CONTROLS) {
     Object.assign(normalized, normalizeRow(row, raw));
   }

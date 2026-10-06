@@ -8,6 +8,7 @@ import { IconAction } from "@/components/ui/icon-action";
 function iconForHint(item) {
   const text = String(item).toLowerCase();
   const baseCls = "h-[1.1em] w-[1.1em] shrink-0 text-muted-foreground";
+  /** @type {import("react").SVGProps<SVGSVGElement>} */
   const common = {
     viewBox: "0 0 24 24",
     className: baseCls,

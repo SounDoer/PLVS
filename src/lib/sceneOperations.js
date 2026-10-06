@@ -64,6 +64,10 @@ export class SceneOperationUnavailableError extends SceneOperationRefusedError {
 /// The mode rules, kept here rather than inline in App so they can be read and tested as rules.
 /// Editors are not one of them: which editors are open is registry state, not a fact about the
 /// mode, and lives in `hooks/BlockingEditorsContext.jsx`.
+/**
+ * @param {any} operation
+ * @param {{ sourceMode?: any }} [options]
+ */
 export function sceneOperationUnavailableReason(operation, { sourceMode } = {}) {
   // FILE mode forbids the dock outright. It is a state conflict rather than a missing capability,
   // so it refuses; a platform with no dock support degrades instead and reports no reason here.
@@ -71,6 +75,10 @@ export function sceneOperationUnavailableReason(operation, { sourceMode } = {}) 
   return null;
 }
 
+/**
+ * @returns {error is SceneOperationRefusedError & { editors?: string[], reason?: string }} the
+ *   subclasses add `editors` and `reason`; a caller reads them only after checking they are there
+ */
 export function isSceneOperationRefused(error) {
   return error instanceof SceneOperationRefusedError;
 }

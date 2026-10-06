@@ -374,6 +374,11 @@ function generatedTheme(state, document, makeId) {
   return { theme: normalizeThemeDocumentShape({ id, ...document }) };
 }
 
+/**
+ * @param {any} state
+ * @param {any} rawDocument
+ * @param {{ makeId?: any }} [options]
+ */
 export function planThemeCreate(state, rawDocument, { makeId } = {}) {
   return validatedPlan(state, rawDocument, (document) => {
     if (typeof makeId !== "function") {
@@ -444,6 +449,12 @@ export function planThemeRename(state, themeId, name) {
   };
 }
 
+/**
+ * @param {any} state
+ * @param {any} themeId
+ * @param {any} name
+ * @param {{ makeId?: any }} [options]
+ */
 export function planThemeDuplicate(state, themeId, name, { makeId } = {}) {
   const source = anyTheme(state, themeId);
   if (!source) return notFound(state, themeId);

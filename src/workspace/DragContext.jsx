@@ -15,7 +15,7 @@ function computeDropTarget(x, y) {
 
   const leafEl = elements.find((el) => el.hasAttribute("data-leaf"));
   if (leafEl) {
-    const targetPath = JSON.parse(leafEl.dataset.leafPath ?? "[]");
+    const targetPath = JSON.parse(/** @type {HTMLElement} */ (leafEl).dataset.leafPath ?? "[]");
 
     const tabsEl = leafEl.querySelector("[data-leaf-tabs]");
     const bodyEl = leafEl.querySelector("[data-leaf-body]");

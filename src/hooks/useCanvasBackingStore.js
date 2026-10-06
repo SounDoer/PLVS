@@ -22,6 +22,9 @@ function backingAxis(cssPx, devicePx, dpr, cap) {
  * snapping, so a backing store of that size maps 1:1 onto the screen and nothing is resampled. The
  * rounded `css x dpr` fallback can be one pixel off, which blurs 1 px lines slightly. A capped axis
  * is resampled by design, so it always uses the cap.
+ * @param {any} box
+ * @param {any} dpr
+ * @param {{ maxDprX?: any, maxDprY?: any }} [options]
  */
 export function canvasBackingSize(box, dpr, { maxDprX, maxDprY } = {}) {
   return {

@@ -183,21 +183,23 @@ export function useSpectrogramCanvas({
   enabled = true,
 }) {
   const rafRef = useRef(null);
-  const paramsRef = useRef({});
-  const cacheRef = useRef({
-    W: 0,
-    H: 0,
-    yToBand: null,
-    yTiltDb: null,
-    bands: null,
-    tiltDbPerOctave: NaN,
-    imageData: null,
-    // Which instant the leftmost painted column stands for, and the view it was painted from.
-    // Together they say whether the image on screen can be slid instead of redrawn.
-    paintedOldestMs: NaN,
-    paintedSpan: NaN,
-    paintedSnaps: null,
-  });
+  const paramsRef = useRef(/** @type {Record<string, any>} */ ({}));
+  const cacheRef = useRef(
+    /** @type {Record<string, any>} */ ({
+      W: 0,
+      H: 0,
+      yToBand: null,
+      yTiltDb: null,
+      bands: null,
+      tiltDbPerOctave: NaN,
+      imageData: null,
+      // Which instant the leftmost painted column stands for, and the view it was painted from.
+      // Together they say whether the image on screen can be slid instead of redrawn.
+      paintedOldestMs: NaN,
+      paintedSpan: NaN,
+      paintedSnaps: null,
+    })
+  );
   const lastPaintRef = useRef({
     len: -1,
     version: -1,

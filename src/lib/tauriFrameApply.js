@@ -118,6 +118,11 @@ export function applyBandGrid(frame, cache) {
  * @param {import("./FrameIntake.js").FrameIntake} opts.intake
  * @param {import("react").MutableRefObject<number>} opts.frameRef
  * @param {import("react").MutableRefObject<number | undefined>} opts.defaultSampleRateRef
+ * @param {(audio: any) => void} opts.setAudio
+ * @param {import("react").MutableRefObject<any>} opts.latestAudioRef
+ * @param {(...args: any[]) => any} opts.ackFrames
+ * @param {() => boolean} [opts.shouldDriveDisplay]
+ * @param {() => boolean} [opts.shouldPublishDisplay]
  * @param {(frame: object, audio: object) => void} [opts.onReducedFrame]
  */
 export function buildTauriFrameApply({

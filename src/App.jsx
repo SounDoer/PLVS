@@ -468,7 +468,10 @@ function AppContent() {
             rollbackCompleted = false;
           }
         }
-        const failure = error instanceof Error ? error : new Error(String(error));
+        const failure =
+          /** @type {Error & { partial?: boolean, rollback?: string, changed?: any }} */ (
+            error instanceof Error ? error : new Error(String(error))
+          );
         failure.partial = !rollbackCompleted;
         failure.rollback = rollbackCompleted ? "completed" : "partial";
         failure.changed = [];
@@ -683,7 +686,14 @@ function AppContent() {
   // NOTE: there is no in-flight guard against rapid dock transitions (v1 accepts
   // this; a fast toggle spam could interleave enter/exit IPC calls).
   const exitDockRestoringAttributes = useCallback(
-    async ({ reportError = true, bounds, decorations, alwaysOnTop } = {}) => {
+    async (
+      /** @type {{ reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any }} */ {
+        reportError = true,
+        bounds,
+        decorations,
+        alwaysOnTop,
+      } = {}
+    ) => {
       clearNotice();
       try {
         await exitDockMode({

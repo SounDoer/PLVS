@@ -91,7 +91,7 @@ export function CrashReportDialog({
           <textarea
             aria-label="Crash report note (optional)"
             value={note}
-            onInput={(event) => setNote(event.target.value)}
+            onInput={(event) => setNote(/** @type {HTMLTextAreaElement} */ (event.target).value)}
             maxLength={2000}
             rows={3}
             placeholder="What were you doing when PLVS quit? (optional)"
@@ -101,7 +101,7 @@ export function CrashReportDialog({
             aria-label="Your email (optional)"
             type="email"
             value={email}
-            onInput={(event) => setEmail(event.target.value)}
+            onInput={(event) => setEmail(/** @type {HTMLInputElement} */ (event.target).value)}
             onBlur={() => setEmailTouched(true)}
             placeholder="you@example.com (optional)"
             className="rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] outline-none"

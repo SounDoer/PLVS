@@ -212,7 +212,10 @@ function ReadoutRegion({
   );
 }
 
-/** Compact Peak/RMS/Loudness meter for the Dock strip. */
+/**
+ * Compact Peak/RMS/Loudness meter for the Dock strip.
+ * @param {{ controls?: any, heightMode?: string }} props
+ */
 export function DockLevel({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();
   const mode = MODE_META[controls.levelMeterMode] ? controls.levelMeterMode : "peak";

@@ -27,6 +27,7 @@ function forwardOrdinaryError(kind, reason) {
   });
 }
 
+/** @param {{ promptEnabled?: boolean }} [options] */
 export function useCrashReporting({ promptEnabled = true } = {}) {
   const [pendingReport, setPendingReport] = useState(null);
 

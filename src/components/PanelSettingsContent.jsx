@@ -77,6 +77,15 @@ export function SettingsGroup({ children }) {
 // The label tip is portaled rather than absolutely positioned above the label: the settings body
 // scrolls, so an in-flow tip on one of the first rows is clipped by that container and reads as
 // hidden behind the settings header.
+/**
+ * @param {{
+ *   label: any,
+ *   tooltip?: any,
+ *   action?: any,
+ *   controlAction?: any,
+ *   children: any,
+ * }} props
+ */
 export function SettingsRow({ label, tooltip, action, controlAction, children }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
     tip: tooltip,
@@ -1189,6 +1198,7 @@ const SLOT_WIDGETS = new Set(["custom", "customRow"]);
  * One `openKey` for the whole group rather than a piece of state per select: only one popover can
  * be open at a time anyway, and a per-row flag would have to be declared next to the widget, which
  * is exactly the second list this is removing.
+ * @param {{ tab: any, controls: any, onChange: any, slots?: any }} props
  */
 function PanelControlRows({ tab, controls, onChange, slots = {} }) {
   const [openKey, setOpenKey] = useState(null);

@@ -20,16 +20,29 @@ function metadataAt(changes, sequence) {
   return low > 0 ? changes.at(low - 1).metadata : undefined;
 }
 
+/**
+ * Fields `MetadataView` reads but leaves to its subclasses to assign.
+ *
+ * @typedef {{
+ *   length: number,
+ *   _changes: any,
+ *   _retainedStart: number,
+ * }} MetadataState
+ */
+
 class MetadataView {
+  /** @this {MetadataView & MetadataState} */
   at(index) {
     if (!Number.isInteger(index) || index < 0 || index >= this.length) return undefined;
     return metadataAt(this._changes, this._retainedStart + index);
   }
 
+  /** @this {MetadataView & MetadataState} */
   rowAt(index) {
     return this.at(index);
   }
 
+  /** @this {MetadataView & MetadataState} */
   *[Symbol.iterator]() {
     for (let index = 0; index < this.length; index += 1) yield this.at(index);
   }
@@ -38,10 +51,12 @@ class MetadataView {
     return Array.from(this);
   }
 
+  /** @this {MetadataView & MetadataState} */
   get changeCount() {
     return this._changes.length;
   }
 
+  /** @this {MetadataView & MetadataState} */
   storageStats() {
     const changes = this._changes.storageStats();
     return {

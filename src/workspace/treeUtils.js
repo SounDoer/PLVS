@@ -31,9 +31,9 @@ function getNode(root, path) {
 export function updateNode(root, path, updater) {
   if (path.length === 0) return updater(root);
   const [idx, ...rest] = path;
-  const newChildren = [...root.children];
+  const newChildren = [.../** @type {SplitNode} */ (root).children];
   newChildren[idx] = updateNode(newChildren[idx], rest, updater);
-  return { ...root, children: newChildren };
+  return { .../** @type {SplitNode} */ (root), children: newChildren };
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ export function removeTab(root, tabId) {
 
   const parentPath = path.slice(0, -1);
   const leafIdx = path[path.length - 1];
-  const newRoot = updateNode(root, parentPath, (parent) => {
+  const newRoot = updateNode(root, parentPath, (/** @type {SplitNode} */ parent) => {
     const newChildren = parent.children.filter((_, i) => i !== leafIdx);
     const newSizes = parent.sizes.filter((_, i) => i !== leafIdx);
     return { ...parent, children: newChildren, sizes: newSizes };
@@ -134,6 +134,7 @@ export function removeTab(root, tabId) {
 // insertLeaf
 // ---------------------------------------------------------------------------
 
+/** @type {Record<string, SplitNode["direction"]>} */
 const ZONE_DIR = { above: "v", below: "v", left: "h", right: "h" };
 const ZONE_BEFORE = { above: true, left: true, below: false, right: false };
 
@@ -154,7 +155,7 @@ const ZONE_BEFORE = { above: true, left: true, below: false, right: false };
  */
 export function insertLeaf(root, targetPath, zone, newLeaf, tabIndex = 0, newLeafSize = null) {
   if (zone === "tabs") {
-    return updateNode(root, targetPath, (target) => {
+    return updateNode(root, targetPath, (/** @type {LeafNode} */ target) => {
       const tabs = [...target.tabs];
       tabs.splice(tabIndex, 0, ...newLeaf.tabs);
       return { ...target, tabs, activeTab: newLeaf.activeTab ?? newLeaf.tabs[0] };
@@ -178,7 +179,7 @@ export function insertLeaf(root, targetPath, zone, newLeaf, tabIndex = 0, newLea
   if (parent.direction === dir) {
     // Promotion: insert as sibling in the existing split
     const insertAt = before ? targetIdx : targetIdx + 1;
-    return updateNode(root, parentPath, (p) => {
+    return updateNode(root, parentPath, (/** @type {SplitNode} */ p) => {
       const newChildren = [...p.children];
       const newSizes = [...p.sizes];
       newChildren.splice(insertAt, 0, newLeaf);

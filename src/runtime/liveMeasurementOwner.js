@@ -40,7 +40,10 @@ function freezeRecord(frame, audio, generation, receivedAtMs, dialogueActive) {
   });
 }
 
-/** Process-local owner for the latest immutable LIVE semantic sample. */
+/**
+ * Process-local owner for the latest immutable LIVE semantic sample.
+ * @param {{ now?: (...args: any[]) => any }} [options]
+ */
 export function createLiveMeasurementOwner({ now = () => Date.now() } = {}) {
   let generation = 0;
   let latest = null;

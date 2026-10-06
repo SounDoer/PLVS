@@ -10,6 +10,22 @@ import {
 import { useAxisActivePulse } from "./useAxisActivePulse";
 import { useAxisSize } from "./useAxisSize";
 
+/**
+ * @param {{
+ *   axis: any,
+ *   min: any,
+ *   max: any,
+ *   absMin: any,
+ *   absMax: any,
+ *   defaultMin: any,
+ *   defaultMax: any,
+ *   minSpan: any,
+ *   scale: any,
+ *   onRangeChange: any,
+ *   pinnedMax?: boolean,
+ *   mustInclude?: any,
+ * }} options
+ */
 export function useAxisInteraction({
   axis,
   min,

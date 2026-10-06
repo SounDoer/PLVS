@@ -54,7 +54,10 @@ function computePlotBox(width, height, expanded, isPolar) {
   return { w: side, h: side };
 }
 
-/** Compact live Vectorscope with a dedicated correlation readout. */
+/**
+ * Compact live Vectorscope with a dedicated correlation readout.
+ * @param {{ controls?: any, heightMode?: string }} props
+ */
 export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
   const historyData = useHistoryData();

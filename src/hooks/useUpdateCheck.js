@@ -6,9 +6,11 @@ export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 export function useUpdateCheck(intervalMs = UPDATE_CHECK_INTERVAL_MS) {
   const isCoordinator = useCoordinatorRole();
-  const [updateInfo, setUpdateInfo] = useState({
-    status: isCoordinator ? "checking" : "unavailable",
-  });
+  const [updateInfo, setUpdateInfo] = useState(
+    /** @type {{ status: string, [key: string]: any }} */ ({
+      status: isCoordinator ? "checking" : "unavailable",
+    })
+  );
   const mountedRef = useRef(false);
   const inFlightRef = useRef(false);
 

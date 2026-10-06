@@ -224,6 +224,7 @@ function withPanelKeys(moduleId, raw) {
   return source;
 }
 
+/** @returns {Record<string, any> | null} the module's own control record; its keys depend on `moduleId` */
 export function normalizeDockModuleControls(moduleId, raw) {
   const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId];
   if (!defaults) return null;

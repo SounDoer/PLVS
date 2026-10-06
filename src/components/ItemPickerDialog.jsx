@@ -72,6 +72,21 @@ function AlsoIncluded({ children }) {
 /// adjustments and so remembers where the user left it (`settings.themeEditorPos`), this dialog is a
 /// one-shot pick-or-review-then-close: there is nothing to remember it for, so it always reopens
 /// centred and a drag only lasts for the current open.
+/**
+ * @param {{
+ *   open: any,
+ *   mode: any,
+ *   type: any,
+ *   items?: any,
+ *   dependencies?: any,
+ *   review?: any,
+ *   onExport?: (...args: any[]) => any,
+ *   onConfirm?: (...args: any[]) => any,
+ *   onAction?: (...args: any[]) => any,
+ *   onBack?: any,
+ *   onClose?: (...args: any[]) => any,
+ * }} props
+ */
 export function ItemPickerDialog({
   open,
   mode,

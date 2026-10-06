@@ -33,6 +33,18 @@ function spectrumKeyFromSelection(sel) {
   return sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
 }
 
+/**
+ * @param {{
+ *   activeTab?: any,
+ *   channelCount?: number,
+ *   spectrumOptions?: any,
+ *   spectrumValueKey?: string,
+ *   onSpectrumViewChange?: any,
+ *   onSpectrumMaxHoldToggle?: any,
+ *   panelControls?: any,
+ *   onPanelControlsChange?: any,
+ * }} options
+ */
 function hasPanelSettings({
   activeTab,
   channelCount = 0,
@@ -98,11 +110,16 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
         align="end"
         sideOffset={6}
         onEscapeKeyDown={(event) => {
-          if (event.target.closest?.("[data-settings-select-menu], .plvs-input"))
+          if (
+            /** @type {Element} */ (event.target).closest?.(
+              "[data-settings-select-menu], .plvs-input"
+            )
+          )
             event.preventDefault();
         }}
         onInteractOutside={(event) => {
-          if (event.target.closest?.("[data-settings-select-menu]")) event.preventDefault();
+          if (/** @type {Element} */ (event.target).closest?.("[data-settings-select-menu]"))
+            event.preventDefault();
         }}
         className="flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1"
       >

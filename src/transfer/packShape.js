@@ -503,7 +503,10 @@ export function parsePackText(text, expectedType) {
   return parsePack(parseJsonText(text), expectedType);
 }
 
-/** Dispatches one shared Item file by its document kind, then runs the same strict family parser. */
+/**
+ * Dispatches one shared Item file by its document kind, then runs the same strict family parser.
+ * @returns {{ type: "loudness" | "presets" | "themes", pack: any }}
+ */
 export function parseSharedPackText(text) {
   const raw = parseJsonText(text);
   if (raw?.kind === PORTABLE_THEME_KIND) {
@@ -518,7 +521,10 @@ export function parseSharedPackText(text) {
   if (!descriptor || raw?.app !== PACK_APP) {
     throw new PackValidationError("This is not a PLVS shared item file.");
   }
-  return { type: descriptor.type, pack: parsePack(raw, descriptor.type) };
+  return {
+    type: /** @type {"loudness" | "presets" | "themes"} */ (descriptor.type),
+    pack: parsePack(raw, descriptor.type),
+  };
 }
 
 function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {

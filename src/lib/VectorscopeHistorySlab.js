@@ -188,6 +188,7 @@ export class VectorscopeHistorySlab extends ChunkedHistorySlab {
 }
 
 export class FrozenVectorscopeHistory extends FrozenChunkedHistory {
+  /** @param {{ pairValueCount: any } & ConstructorParameters<typeof FrozenChunkedHistory>[0]} options */
   constructor({ pairValueCount, ...storage }) {
     super(storage);
     this._pairValueCount = pairValueCount;

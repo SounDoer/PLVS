@@ -100,6 +100,7 @@ export class WaveformVisualHistorySlab extends ChunkedHistorySlab {
 }
 
 export class FrozenWaveformVisualHistory extends FrozenChunkedHistory {
+  /** @param {{ channelCount: any } & ConstructorParameters<typeof FrozenChunkedHistory>[0]} options */
   constructor({ channelCount, ...storage }) {
     super(storage);
     this._channelCount = channelCount;

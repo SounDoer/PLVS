@@ -69,7 +69,9 @@ export function ColorControl({ label, value, onChange, allowAlpha = true, descri
               max="1"
               step="0.01"
               value={alpha}
-              onInput={(e) => emit(hex, parseFloat(e.target.value))}
+              onInput={(e) =>
+                emit(hex, parseFloat(/** @type {HTMLInputElement} */ (e.target).value))
+              }
               className="plvs-range w-full"
               style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
             />
@@ -80,7 +82,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true, descri
               aria-label={`${label} hex`}
               value={colorText}
               onInput={(event) => {
-                const raw = event.target.value;
+                const raw = /** @type {HTMLInputElement} */ (event.target).value;
                 setColorText(raw);
               }}
               aria-invalid={!normalizeOpaqueColor(colorText) || undefined}

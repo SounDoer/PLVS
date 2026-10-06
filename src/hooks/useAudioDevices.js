@@ -69,6 +69,7 @@ function emptyInventory() {
 /**
  * Shared owner for device inventory, Automatic preview, persisted selection, and legacy migration.
  * GUI, tray, engine runtime, and Agent Control all consume this one coherent controller.
+ * @param {{ liveLifecycle?: string, beginDeviceRestartForControl?: any }} [options]
  */
 export function useAudioDevices({
   liveLifecycle = "stopped",
@@ -124,7 +125,9 @@ export function useAudioDevices({
               : null,
           }));
         }
-        const failure = error instanceof Error ? error : new Error(String(error));
+        const failure = /** @type {Error & { stateCommitted?: boolean }} */ (
+          error instanceof Error ? error : new Error(String(error))
+        );
         failure.stateCommitted = true;
         throw failure;
       }
@@ -154,7 +157,9 @@ export function useAudioDevices({
         return commitCaptureDevice(nextId, options);
       }
       if (["starting", "stopping"].includes(liveLifecycle)) {
-        const error = new Error(`LIVE transport is ${liveLifecycle}.`);
+        const error = /** @type {Error & { code?: string }} */ (
+          new Error(`LIVE transport is ${liveLifecycle}.`)
+        );
         error.code = "transitionInProgress";
         throw error;
       }
@@ -163,7 +168,9 @@ export function useAudioDevices({
         await previewSelection(nextId);
       } catch (error) {
         if (nextId !== "default" || liveLifecycle === "running") {
-          const failure = error instanceof Error ? error : new Error(String(error));
+          const failure = /** @type {Error & { code?: string }} */ (
+            error instanceof Error ? error : new Error(String(error))
+          );
           failure.code = "deviceUnavailable";
           throw failure;
         }

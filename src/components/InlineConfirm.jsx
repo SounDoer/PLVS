@@ -11,11 +11,14 @@ import { IconAction } from "@/components/ui/icon-action";
  * reusing the rename x/check idiom. Confirm runs `onConfirm` and returns to idle;
  * Escape, the x, or unmount cancels with no effect.
  *
+ * @param {object} props
  * @param {(arm: () => void) => React.ReactNode} props.trigger
  * @param {() => void} props.onConfirm
  * @param {string} props.confirmLabel  aria-label for the confirm button
  * @param {string} props.cancelLabel   aria-label for the cancel button
+ * @param {string} [props.className]
  * @param {(armed: boolean) => void} [props.onArmedChange]
+ * @param {boolean} [props.preserveTriggerSize]
  */
 export function InlineConfirm({
   trigger,

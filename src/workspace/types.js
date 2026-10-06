@@ -1,5 +1,5 @@
 /**
- * @typedef {'levelMeter' | 'loudness' | 'stats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
+ * @typedef {'levelMeter' | 'loudness' | 'stats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform' | 'stereo-map'} ModuleId
  * @typedef {string} PanelId
  * @typedef {{
  *   id: PanelId,
@@ -16,22 +16,57 @@
  *
  * @typedef {SplitNode | LeafNode} TreeNode
  *
+ * One flat record shared by every module; `src/lib/panelControls.js` owns the defaults and the
+ * repair rule of each key, and its table is what this has to stay in step with.
+ *
  * @typedef {{
+ *   levelMeterMode: string,
+ *   levelMeterPlaybackMax: boolean,
+ *   levelMeterValueMarker: boolean,
+ *   levelMeterTpMaxMarker: boolean,
+ *   levelMeterBarColors: string,
  *   vectorscopePair: { x: number, y: number },
  *   vectorscopeMode: 'lissajous' | 'polarSample' | 'polarLevel',
  *   vectorscopePolarSamplePersistenceMs: number,
  *   vectorscopePolarLevelMaxHold: boolean,
  *   spectrumChannel: { type: 'pair', x: number, y: number } | { type: 'single', ch: number },
- *   spectrumView: string,
+ *   spectrumView: "combined"|"lr"|"ms",
  *   spectrumMaxMode: "off"|"decay"|"hold",
- *   levelMeterMode: string,
- *   levelMeterPlaybackMax: boolean,
- *   levelMeterValueMarker: boolean,
- *   levelMeterTpMaxMarker: boolean,
+ *   spectrumPeakLabels: boolean,
+ *   spectrumSpeedPercent: number,
+ *   spectrumTiltDbPerOctave: number,
+ *   spectrumOctaveSmoothing: string,
+ *   spectrumXMinFreq: number,
+ *   spectrumXMaxFreq: number,
+ *   spectrumYMinDb: number,
+ *   spectrumYMaxDb: number,
+ *   spectrogramYMinFreq: number,
+ *   spectrogramYMaxFreq: number,
+ *   spectrogramDbFloor: number,
+ *   spectrogramMode: string,
+ *   spectrogram3dColorize: boolean,
+ *   spectrogram3dHeightGain: number,
+ *   spectrogram3dAzimuthDeg: number,
+ *   spectrogram3dElevationDeg: number,
+ *   spectrogram3dFloor: boolean,
+ *   loudnessYMinDb: number,
+ *   loudnessYMaxDb: number,
+ *   levelMeterPeakWarningDb: number,
+ *   levelMeterPeakCriticalDb: number,
+ *   levelMeterRmsWarningDb: number,
+ *   levelMeterRmsCriticalDb: number,
+ *   levelMeterYMinDb: number,
+ *   levelMeterYMaxDb: number,
  *   statsVisibleIds: string[],
  *   statsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
+ *   loudnessGrid: boolean,
+ *   spectrumGrid: boolean,
  *   stereoMapMode: 'position' | 'correlation' | 'monoLossDb' | 'msRatioDb',
+ *   stereoMapPositionGrid: boolean,
+ *   stereoMapCorrelationGrid: boolean,
+ *   stereoMapMonoLossGrid: boolean,
+ *   stereoMapMsRatioGrid: boolean,
  *   stereoMapPair: { x: number, y: number },
  *   stereoMapHold: boolean,
  *   stereoMapSpeedPercent: number,
@@ -43,11 +78,25 @@
  *   stereoMapMonoLossYMinDb: number,
  *   stereoMapMsRatioYMinDb: number,
  *   stereoMapMsRatioYMaxDb: number,
+ *   waveformFrequencyColor: boolean,
+ *   waveformLowMidSplitHz: number,
+ *   waveformMidHighSplitHz: number,
+ *   waveformCentroid: boolean,
  *   historyWindowSec: number,
  *   historyOffsetSec: number,
  *   linkFrequencyViewport: boolean,
  *   linkTimeViewport: boolean,
  * }} PanelControls
+ *
+ * The shared viewport of each linkable axis kind; `axisViewports.js` owns the list of kinds.
+ *
+ * @typedef {{
+ *   frequency: { min: number, max: number },
+ *   time: { windowSec: number, offsetSec: number },
+ * }} AxisViewports
+ *
+ * `panelControls` is the single shared record from before each panel had its own; nothing writes
+ * it any more, but the readers still fall back to it for a panel with no record of its own.
  *
  * @typedef {{
  *   tree: TreeNode,
@@ -55,11 +104,9 @@
  *   panelOrder: PanelId[],
  *   fullscreenId: PanelId | null,
  *   panelControlsById: Record<PanelId, PanelControls>,
+ *   panelControls?: PanelControls,
  *   pinnedPanelsById: Record<PanelId, PinnedPanelSize>,
- *   axisViewports: {
- *     frequency: { min: number, max: number },
- *     time: { windowSec: number, offsetSec: number },
- *   },
+ *   axisViewports: AxisViewports,
  * }} WorkspaceState
  *
  * @typedef {{
@@ -71,10 +118,7 @@
  *   panelOrder: PanelId[],
  *   panelControlsById: Record<PanelId, PanelControls>,
  *   pinnedPanelsById?: Record<PanelId, PinnedPanelSize>,
- *   axisViewports?: {
- *     frequency: { min: number, max: number },
- *     time: { windowSec: number, offsetSec: number },
- *   },
+ *   axisViewports?: AxisViewports,
  *   dock?: {
  *     enabled: boolean,
  *     edge: 'top' | 'bottom',

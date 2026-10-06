@@ -63,6 +63,7 @@ async function buildSourceItems({
     action: () => onSelectSource("default"),
   });
   handles.set("default", automatic);
+  /** @type {Array<CheckMenuItem | PredefinedMenuItem | MenuItem>} */
   const items = [automatic];
   for (const [header, sources] of [
     ["Output", audioOutputs],
@@ -265,6 +266,25 @@ async function buildMenu(cfg) {
   };
 }
 
+/**
+ * @param {{
+ *   running: any,
+ *   windowVisible?: boolean,
+ *   onStartClick: any,
+ *   onToggleWindow: any,
+ *   onQuit: any,
+ *   colorScheme: any,
+ *   updateBusy?: boolean,
+ *   audioOutputs?: any,
+ *   audioInputs?: any,
+ *   captureApplications?: any,
+ *   safeAudioDeviceId?: string,
+ *   defaultOutputLabel?: string,
+ *   sourceBusy?: boolean,
+ *   onSelectSource?: (...args: any[]) => any,
+ *   presets?: any,
+ * }} options
+ */
 export function useTray({
   running,
   windowVisible = true,

@@ -9,6 +9,7 @@ import { ACTIVE_PULSE_MS } from "../math/axisInteractionMath";
 // axis, and an {x, y} pair for the spectrum, where a single gesture lights one axis or the other.
 // Pass an object from module scope, not a literal -- a fresh identity each render would rebuild
 // every callback below.
+/** @param {any} [idle] a bare boolean or an `{ x, y }` pair, as described above */
 export function useAxisActivePulse(idle = false) {
   const timerRef = useRef(null);
   const [active, setActive] = useState(idle);

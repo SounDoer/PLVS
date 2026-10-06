@@ -652,7 +652,7 @@ export function fadeGridFrequencyEdges(heights, count, pointCount, fadeFrac) {
  *        samples the time axis at only `steps + 1` positions, so rows past that add grid-build
  *        cost without adding a single resolvable sample. (Nearest-row sampling would additionally
  *        ALIAS there; interpolation between rows is what keeps a sub-row window slide smooth.)
- * @param {Uint16Array} args.rowLut from `buildRowLut`
+ * @param {{ rows: any, weights: any, [key: string]: any }} args.rowLut from `buildRowLut`
  * @param {Uint32Array} args.lut from `buildSurfaceLut`
  * @param {number} args.heightGain the Height Scale multiplier
  * @param {number} args.highlightArgb colour for the scrubbed row

@@ -1,4 +1,4 @@
-/** @import { WorkspaceState, DropTarget, TreeNode } from './types.js' */
+/** @import { WorkspaceState, DropTarget, TreeNode, SplitNode, LeafNode } from './types.js' */
 import {
   createDefaultPanelControls,
   normalizePanelControlsById,
@@ -195,7 +195,7 @@ export function workspaceReducer(state, action) {
       } = action.payload;
       const actualBelowIdx = belowIdx ?? aboveIdx + 1;
       let pinnedPanelsById = state.pinnedPanelsById ?? {};
-      const newTree = updateNode(state.tree, path, (node) => {
+      const newTree = updateNode(state.tree, path, (/** @type {SplitNode} */ node) => {
         const sizes = [...node.sizes];
         sizes[aboveIdx] = aboveSize;
         sizes[actualBelowIdx] = belowSize;
@@ -239,6 +239,7 @@ export function workspaceReducer(state, action) {
     case "ADD_PANEL": {
       const { moduleId } = action.payload;
       const panel = createPanel(moduleId, state.panelsById);
+      /** @type {LeafNode} */
       const newLeaf = { type: "leaf", tabs: [panel.id], activeTab: panel.id };
       return {
         ...state,
@@ -257,6 +258,7 @@ export function workspaceReducer(state, action) {
     case "ADD_PANEL_AT": {
       const { moduleId, drop } = action.payload;
       const panel = createPanel(moduleId, state.panelsById);
+      /** @type {LeafNode} */
       const newLeaf = { type: "leaf", tabs: [panel.id], activeTab: panel.id };
       return {
         ...state,
@@ -323,7 +325,7 @@ export function workspaceReducer(state, action) {
       const targetLeaf = (() => {
         try {
           let node = state.tree;
-          for (const idx of targetPath) node = node.children[idx];
+          for (const idx of targetPath) node = /** @type {SplitNode} */ (node).children[idx];
           return node.type === "leaf" ? node : null;
         } catch (_) {
           return null;
@@ -337,6 +339,7 @@ export function workspaceReducer(state, action) {
       const resolvedPath = resolveTargetPath(treeAfterRemove, anchorTab, targetPath);
       const safeTargetPath = isPathValid(treeAfterRemove, resolvedPath) ? resolvedPath : [];
 
+      /** @type {LeafNode} */
       const newLeaf = { type: "leaf", tabs: [sourceId], activeTab: sourceId };
       const newTree = insertLeaf(treeAfterRemove, safeTargetPath, zone, newLeaf, tabIndex);
 
@@ -484,7 +487,7 @@ export function workspaceReducer(state, action) {
 // Bound action creators
 // ---------------------------------------------------------------------------
 
-/** @param {React.Dispatch} dispatch */
+/** @param {React.Dispatch<any>} dispatch */
 export function bindWorkspaceActions(dispatch) {
   return {
     setTree: (tree) => dispatch({ type: "SET_TREE", payload: { tree } }),

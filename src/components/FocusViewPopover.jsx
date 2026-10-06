@@ -34,6 +34,24 @@ function FocusSwitch({ id, label, checked, onCheckedChange }) {
   );
 }
 
+/**
+ * @param {{
+ *   pinned?: boolean,
+ *   setPinned?: (...args: any[]) => any,
+ *   focusView?: any,
+ *   setAutoHideControls?: (...args: any[]) => any,
+ *   setCompactPanels?: (...args: any[]) => any,
+ *   setBorderless?: (...args: any[]) => any,
+ *   surfaceOpacity?: any,
+ *   setSurfaceOpacity?: (...args: any[]) => any,
+ *   glassEnabled?: any,
+ *   setGlassEnabled?: (...args: any[]) => any,
+ *   showDock?: boolean,
+ *   dockEdge?: any,
+ *   onDockChange?: (...args: any[]) => any,
+ *   dockDisabled?: boolean,
+ * }} props
+ */
 export function FocusViewPopoverContent({
   pinned = false,
   setPinned = () => {},
@@ -96,7 +114,9 @@ export function FocusViewPopoverContent({
           max={100}
           step={1}
           value={surfaceOpacity}
-          onInput={(e) => setSurfaceOpacity(Number(e.target.value))}
+          onInput={(e) =>
+            setSurfaceOpacity(Number(/** @type {HTMLInputElement} */ (e.target).value))
+          }
           className="plvs-range w-20"
           style={{ "--range-pct": `${surfaceOpacity}%` }}
         />

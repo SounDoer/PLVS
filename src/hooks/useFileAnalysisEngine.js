@@ -65,7 +65,9 @@ export function useFileAnalysisEngine({
       const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
       fileAnalysisAcceptanceRef?.current.delete(sessionId);
       if (acceptance) {
-        const error = new Error("File analysis runs in the desktop app");
+        const error = /** @type {Error & { sessionId?: any, stage?: string }} */ (
+          new Error("File analysis runs in the desktop app")
+        );
         error.sessionId = sessionId;
         error.stage = "availability";
         acceptance.reject(error);
@@ -183,7 +185,9 @@ export function useFileAnalysisEngine({
         const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
         fileAnalysisAcceptanceRef?.current.delete(sessionId);
         if (acceptance) {
-          const failure = err instanceof Error ? err : new Error(message);
+          const failure = /** @type {Error & { sessionId?: any, stage?: any }} */ (
+            err instanceof Error ? err : new Error(message)
+          );
           failure.sessionId = sessionId;
           failure.stage = stage;
           acceptance.reject(failure);

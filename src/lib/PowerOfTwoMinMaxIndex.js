@@ -172,15 +172,33 @@ function queryRange(view, startInclusive, endInclusive, rawRowAt) {
   return result;
 }
 
+/**
+ * Fields `MinMaxIndexView` reads but leaves to its subclasses to assign.
+ *
+ * @typedef {{
+ *   _capacity: number,
+ *   _maxLevel: number,
+ *   _levels: any[],
+ *   _retainedStartSequence: number,
+ *   _retainedEndSequence: number,
+ *   _valueCount: number,
+ *   _version: number,
+ *   _lastQueryStats: any,
+ *   _bucketScratch?: any,
+ * }} MinMaxIndexState
+ */
+
 class MinMaxIndexView {
   queryRange(startInclusive, endInclusive, rawRowAt) {
     return queryRange(this, startInclusive, endInclusive, rawRowAt);
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   lastQueryStats() {
     return { ...this._lastQueryStats };
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   _bucketAtStart(level, startSequence, width) {
     const store = this._levels[level];
     if (!store) return undefined;
@@ -204,6 +222,7 @@ class MinMaxIndexView {
     return scratch;
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   storageStats() {
     const levels = [];
     let sharedSealedChunks = 0;
@@ -221,22 +240,27 @@ class MinMaxIndexView {
     return { levels, sharedSealedChunks, copiedTailRows, copiedReferences };
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   get capacity() {
     return this._capacity;
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   get retainedStartSequence() {
     return this._retainedStartSequence;
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   get retainedEndSequence() {
     return this._retainedEndSequence;
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   get valueCount() {
     return this._valueCount;
   }
 
+  /** @this {MinMaxIndexView & MinMaxIndexState} */
   get version() {
     return this._version;
   }

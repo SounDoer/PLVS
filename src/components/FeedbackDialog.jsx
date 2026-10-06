@@ -77,7 +77,7 @@ export function FeedbackDialog({ onClose }) {
         <textarea
           aria-label="Feedback content"
           value={content}
-          onInput={(e) => setContent(e.target.value)}
+          onInput={(e) => setContent(/** @type {HTMLTextAreaElement} */ (e.target).value)}
           rows={5}
           placeholder="What's on your mind?"
           className="resize-none rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] outline-none"
@@ -86,7 +86,7 @@ export function FeedbackDialog({ onClose }) {
           aria-label="Your email (optional)"
           type="email"
           value={email}
-          onInput={(e) => setEmail(e.target.value)}
+          onInput={(e) => setEmail(/** @type {HTMLInputElement} */ (e.target).value)}
           onBlur={() => setEmailTouched(true)}
           placeholder="you@example.com (optional)"
           className="h-[var(--ui-control-h)] rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] outline-none"

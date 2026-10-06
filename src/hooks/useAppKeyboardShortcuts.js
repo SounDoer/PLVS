@@ -53,7 +53,9 @@ export function useAppKeyboardShortcuts({
       } = shortcutHandlerRef.current;
       const tag = document.activeElement?.tagName ?? "";
       const editable =
-        tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        /** @type {HTMLElement | null} */ (document.activeElement)?.isContentEditable;
       if (eventMatchesAccelerator(e, clearCombo)) {
         e.preventDefault();
         if (isRunning || hasClock) clear();

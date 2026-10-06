@@ -104,6 +104,17 @@ export const FREQUENCY_VIEWPORT = { absMin: 20, absMax: 20000, minSpan: 1, scale
 
 // Reads the value under the pointer. X axes are mirrored: they read left-to-right, while
 // pixelTo*Value measures its fraction from the far end.
+/**
+ * @param {{
+ *   rect: any,
+ *   clientX?: any,
+ *   clientY?: any,
+ *   axis: any,
+ *   scale: any,
+ *   min: any,
+ *   max: any,
+ * }} options
+ */
 export function anchorFromPointer({ rect, clientX, clientY, axis, scale, min, max }) {
   const isY = axis === "y";
   const size = Math.max(1, isY ? rect.height : rect.width);

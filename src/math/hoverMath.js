@@ -208,7 +208,7 @@ export function findMarkerNoteAtX(xFrac, markers, hitFrac = 0.015) {
  * @param {number} newestMs - visible window end
  * @param {number} sampleMs - nominal visual sample period (ms); also the hover tolerance
  * @param {{ xFrac: number, label: string }[]} [markerNotes] marker notes shown near vertical markers
- * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string, markerNoteLabel?: string } | null}
+ * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string, noteLabel?: string, markerNoteLabel?: string } | null}
  */
 export function computeSpectrogramHoverPoint(
   xFrac,
@@ -356,6 +356,9 @@ export function formatStereoMapEnergy(db) {
 /**
  * Formats the current-value hover readout for a Stereo Map point, dispatching to the mode-specific
  * formatter. `point` is invalid/gated → "-".
+ * @param {any} mode
+ * @param {any} point
+ * @param {{ firstLabel?: any, secondLabel?: any }} [options]
  */
 export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = {}) {
   if (!point || point.state === "invalid") return "-";
@@ -374,6 +377,7 @@ export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = 
  * one formatting path. Hold values are already fully valid measurements (only valid points update
  * Hold), so there is no "invalid" state here — only "no Hold recorded yet" (null in, "-" out).
  */
+/** @returns {{ state: "finite"|"belowRange"|"aboveRange"|"invalid", value?: number } | null} */
 export function clipStereoMapHoldValue(rawValue, range) {
   if (rawValue === null || rawValue === undefined || Number.isNaN(rawValue)) return null;
   if (rawValue < range.lowerBound) return { state: "belowRange", value: range.lowerBound };

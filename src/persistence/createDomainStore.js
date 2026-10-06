@@ -22,6 +22,7 @@ const COALESCE_DELAY_MS = 250;
  *     set: (key: string, value: object) => void,
  *     remove: (key: string) => void,
  *     subscribe: (key: string, fn: () => void) => () => void,
+ *     flush?: (name: string) => Promise<void> | void,
  *   },
  *   migrate?: (raw: object, version: number) => object,
  *   writeVersion?: number,
@@ -41,6 +42,7 @@ export function createDomainStore({
   // values shadow a write that arrived from outside it -- another window, or a boot that seeds
   // storage directly -- which is exactly the state a reader is trying to observe.
   let pending = null;
+  /** @type {ReturnType<typeof setTimeout> | 0} */
   let flushTimer = 0;
 
   function read() {

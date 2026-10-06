@@ -575,6 +575,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
         }
       }
     }
+    /** @type {[string, Set<string>][]} */
     const enumFields = [
       ["view", new Set(["combined", "lr", "ms"])],
       ["maxMode", new Set(["off", "decay", "hold"])],
@@ -756,11 +757,16 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       for (const key of ["colorize", "grid"]) {
         if (hasOwn(threeD, key)) validateBoolean(threeD[key], `$.threeD.${key}`, issues);
       }
-      for (const [key, min, max, maxExclusive] of [
+      for (const [
+        key,
+        min,
+        max,
+        maxExclusive,
+      ] of /** @type {[string, number, number, boolean][]} */ ([
         ["azimuthDeg", 0, 360, true],
         ["elevationDeg", 5, 85, false],
         ["heightScale", 0.3, 3, false],
-      ]) {
+      ])) {
         if (
           hasOwn(threeD, key) &&
           (!Number.isFinite(threeD[key]) ||

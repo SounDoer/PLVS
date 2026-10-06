@@ -29,24 +29,38 @@ function sealChunk(chunk) {
   Object.freeze(chunk);
 }
 
+/**
+ * Fields `SequenceView` reads but leaves to its subclasses to assign.
+ *
+ * @typedef {{
+ *   length: number,
+ *   _valueLocation: (index: number) => any,
+ * }} SequenceState
+ */
+
 class SequenceView {
+  /** @this {SequenceView & SequenceState} */
   at(index) {
     const found = this._valueLocation(index);
     return found ? found.chunk.values[found.offset] : undefined;
   }
 
+  /** @this {SequenceView & SequenceState} */
   rowAt(index) {
     return this.at(index);
   }
 
+  /** @this {SequenceView & SequenceState} */
   timestampAt(index) {
     return this.at(index)?.timestampMs;
   }
 
+  /** @this {SequenceView & SequenceState} */
   toArray() {
     return Array.from(this);
   }
 
+  /** @this {SequenceView & SequenceState} */
   *[Symbol.iterator]() {
     for (let index = 0; index < this.length; index += 1) yield this.at(index);
   }

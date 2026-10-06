@@ -35,6 +35,7 @@ export async function setDockAccessoriesWhenReady(
   }
 }
 
+/** @param {{ command?: any }} [options] */
 export function createLatestDockAccessoryUpdater({ command = setDockAccessoriesWhenReady } = {}) {
   let latestRequest = 0;
   let pending = null;

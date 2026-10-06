@@ -221,7 +221,7 @@ export class FrameIntake {
    * @param {object} frame AudioFramePayload from Tauri
    * @param {number} histMaxSamples ring capacity
    * @param {number} defaultSampleRate capture/file sample rate; stamped onto Stereo Map history rows
-   * @param {boolean} [freezeSpectrum] retained for call-site compatibility
+   * @param {boolean} [_freezeSpectrum] retained for call-site compatibility
    * @param {number} [visualMaxSamples] when >0, also ingest visual history ticks/batches
    */
   pushFrame(

@@ -127,7 +127,7 @@ function normalizeOverrides(raw) {
  * Normalize the current Theme authoring shape. Registry compatibility is a separate boundary;
  * this function validates only declared versions and color/palette structure.
  *
- * @param {unknown} raw
+ * @param {any} raw untrusted input; every field is validated below before it is used
  * @returns {object|null}
  */
 export function normalizeThemeDocumentShape(raw) {

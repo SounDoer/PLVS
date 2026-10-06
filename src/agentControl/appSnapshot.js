@@ -15,6 +15,14 @@ function featureGateAvailable(featureGate, visual) {
   return false;
 }
 
+/**
+ * @param {{
+ *   workspace: any,
+ *   panelId: any,
+ *   hasLoudnessReference?: boolean,
+ *   analysisContext?: any,
+ * }} options
+ */
 export function buildAgentControlPanelSnapshot({
   workspace,
   panelId,
@@ -62,6 +70,23 @@ export function buildAgentControlCapabilities(runtime, revision) {
   };
 }
 
+/**
+ * @param {{
+ *   runtime: any,
+ *   revision: any,
+ *   workspace: any,
+ *   presets: any,
+ *   appearance: any,
+ *   loudnessProfile: any,
+ *   settings: any,
+ *   transport: any,
+ *   device: any,
+ *   dock: any,
+ *   view: any,
+ *   hasLoudnessReference?: boolean,
+ *   analysisContext?: any,
+ * }} options
+ */
 export function buildAgentControlSnapshot({
   runtime,
   revision,

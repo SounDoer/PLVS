@@ -67,7 +67,7 @@ export const DEFAULT_TREE = {
   ],
 };
 
-/** @type {WorkspaceState} */
+/** @type {WorkspaceState["panelsById"]} */
 export const DEFAULT_PANELS_BY_ID = Object.fromEntries(
   DEFAULT_MODULE_IDS.map((moduleId) => {
     const panel = createPanel(moduleId, {}, { id: moduleId });
@@ -96,6 +96,7 @@ export const DEFAULT_PANEL_CONTROLS_BY_ID = normalizePanelControlsById(
   )
 );
 
+/** @type {WorkspaceState} */
 export const DEFAULT_WORKSPACE_STATE = {
   tree: DEFAULT_TREE,
   panelsById: DEFAULT_PANELS_BY_ID,

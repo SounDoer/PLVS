@@ -17,7 +17,7 @@ export const STATUS_DISMISS_MS = 6000;
  */
 export function useTransientStatus(dismissMs = STATUS_DISMISS_MS) {
   const [status, setStatusState] = useState("");
-  const timerRef = useRef(0);
+  const timerRef = useRef(/** @type {ReturnType<typeof setTimeout> | 0} */ (0));
 
   useEffect(
     () => () => {

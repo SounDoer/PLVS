@@ -35,6 +35,7 @@ export function buildSpectrumChannelOptions(channelCount, labels) {
 
   if (layout) {
     const { pairs, singles } = KNOWN_LAYOUTS[layout];
+    /** @type {SpectrumChannelOption[]} */
     const opts = [];
     for (const [x, y] of pairs) {
       const lx = labels[x] ?? `Ch ${x + 1}`;
@@ -49,6 +50,7 @@ export function buildSpectrumChannelOptions(channelCount, labels) {
   }
 
   // Unknown channel count: adjacent pairs only.
+  /** @type {SpectrumChannelOption[]} */
   const opts = [];
   for (let i = 0; i + 1 < n; i += 2) {
     const lx = labels[i] ?? `Ch ${i + 1}`;

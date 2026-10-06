@@ -166,6 +166,11 @@ export function updatePolarLevelEnvelope(previous, target, elapsedMs, { settled 
   return next;
 }
 
+/**
+ * @param {any} previous
+ * @param {any} envelope
+ * @param {{ enabled?: any, reset?: boolean }} [options]
+ */
 export function updatePolarMaxHold(previous, envelope, { enabled, reset = false } = {}) {
   if (!enabled) return null;
   if (reset || !previous || previous.length !== envelope.length) return Float64Array.from(envelope);

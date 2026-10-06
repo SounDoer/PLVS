@@ -48,7 +48,7 @@ function foldRowInto(target, row, secondary = false) {
  * Bucket `b` covers rows `[0, (b + 1) * bucketRows)`, so a query starts from the previous bucket
  * and replays fewer than `bucketRows` rows instead of folding from row 0 every time.
  *
- * @param {{ length: number, rowAt: (index: number) => object|undefined }} history
+ * @param {{ length: number, rowAt: (index: number) => any, maxHoldAt?: Function }} history
  * @param {number} bucketRows
  */
 export function buildSpectrumMaxHoldTable(history, bucketRows) {

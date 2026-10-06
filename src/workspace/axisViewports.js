@@ -61,7 +61,7 @@ export function axisKindsForModule(moduleId) {
   return Object.keys(AXIS_VIEWPORTS).filter((kindId) => AXIS_VIEWPORTS[kindId].members[moduleId]);
 }
 
-/** @returns {{ min: number, max: number }} a repaired shared viewport, whatever it was handed */
+/** @returns {any} a repaired shared viewport in its kind's own shape (see `AxisViewports`) */
 export function normalizeAxisViewport(kindId, raw) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   if (!descriptor) return null;
@@ -74,7 +74,7 @@ export function localRangeKeys(kindId, moduleId) {
   return AXIS_VIEWPORTS[kindId]?.members[moduleId] ?? null;
 }
 
-/** @returns {{ min: number, max: number } | null} a member's dormant local range */
+/** @returns {any} a member's dormant local range in its kind's own shape, or null */
 export function readLocalRange(kindId, moduleId, panelControls) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   const keys = localRangeKeys(kindId, moduleId);
@@ -105,14 +105,16 @@ export function writeLocalRange(kindId, moduleId, viewport) {
  * and a kind that has since been removed is dropped rather than carried forever -- the table above
  * is the only list of what exists.
  *
- * @returns {Record<string, { min: number, max: number }>}
+ * @returns {import("./types.js").AxisViewports}
  */
 export function normalizeAxisViewportsState(raw) {
-  return Object.fromEntries(
-    Object.keys(AXIS_VIEWPORTS).map((kindId) => [
-      kindId,
-      normalizeAxisViewport(kindId, raw?.[kindId]),
-    ])
+  return /** @type {any} */ (
+    Object.fromEntries(
+      Object.keys(AXIS_VIEWPORTS).map((kindId) => [
+        kindId,
+        normalizeAxisViewport(kindId, raw?.[kindId]),
+      ])
+    )
   );
 }
 

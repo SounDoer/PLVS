@@ -3,6 +3,15 @@ import { Button } from "@/components/ui/button";
 import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 
+/**
+ * @param {{
+ *   value: any,
+ *   onChange: any,
+ *   isMac?: boolean,
+ *   disabled?: boolean,
+ *   onRecordingChange?: (...args: any[]) => any,
+ * }} props
+ */
 export function ShortcutCapture({
   value,
   onChange,

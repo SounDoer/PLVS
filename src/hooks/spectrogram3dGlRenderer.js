@@ -221,6 +221,7 @@ function uniformMap(gl, program, names) {
  *          is broken.
  */
 export function createSurfaceRenderer(canvas) {
+  /** @type {{ draw: Function, resize: Function, dispose: Function, state: "ok"|"lost"|"dead" }} */
   const api = { draw, resize, dispose, state: "ok" };
   let gl = null;
   let gpu = null;

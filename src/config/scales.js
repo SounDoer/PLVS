@@ -352,7 +352,12 @@ function dedupeAdjacentLabels(ticks) {
   return kept;
 }
 
-function filterTicksByPixelGap(ticks, axisPx, topPxForTick, isProtected = () => false) {
+function filterTicksByPixelGap(
+  ticks,
+  axisPx,
+  topPxForTick,
+  isProtected = /** @type {(tick: any) => boolean} */ (() => false)
+) {
   if (ticks.length <= 2) return ticks;
   const minGapPx = Math.min(ADAPTIVE_TICK_MIN_GAP_PX, Math.max(0, axisPx / 2 - 1));
   const first = ticks[0];

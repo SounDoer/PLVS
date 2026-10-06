@@ -150,6 +150,8 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
  * `showIfClipped(el)` measures `el` (default: the anchor) and shows the tip when its content
  * overflows its box. Callers whose clipped text is a descendant (a Select's value span) pass that
  * element instead of the anchor.
+ *
+ * @param {{ tip?: string, side?: "bottom" | "top" | "left" | "right", align?: "start" | "center" | "end" }} opts
  */
 export function useTruncationTip({ tip, side = "top", align = "start" }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, side, align });

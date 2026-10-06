@@ -206,6 +206,23 @@ function measureScalarSnapshot(intake) {
   };
 }
 
+/**
+ * @param {{
+ *   intake?: any,
+ *   publishAudio?: any,
+ *   onProgress?: any,
+ *   scalarRows?: any,
+ *   visualRows?: any,
+ *   fullVisual?: boolean,
+ *   spectrumKeys?: any,
+ *   vectorscopeKeys?: any,
+ *   stereoMapKeys?: any,
+ *   scheduler?: any,
+ *   scalarBatchSize?: number,
+ *   visualBatchSize?: number,
+ *   globalTarget?: any,
+ * }} [options]
+ */
 export function seedHistoryPerformance({
   intake,
   publishAudio,

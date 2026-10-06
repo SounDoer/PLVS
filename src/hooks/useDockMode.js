@@ -43,6 +43,7 @@ function normalizeDockState(raw) {
  * cancel the profile draft instead, which is the silent discard this guard
  * exists to prevent. Passed in rather than reached for: the dock knows it is a
  * monitoring posture, not which editors that strands.
+ * @param {{ assertSceneOperationAllowed?: (...args: any[]) => any }} [options]
  */
 export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   const [dock, setDock] = useState(() =>

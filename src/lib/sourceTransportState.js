@@ -49,6 +49,14 @@ function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selected
   };
 }
 
+/**
+ * @param {{
+ *   selectedOffset?: number,
+ *   selectedMediaTimeMs: any,
+ *   fileSession?: any,
+ *   analyzingFileSession?: any,
+ * }} options
+ */
 function deriveFileState({
   selectedOffset = -1,
   selectedMediaTimeMs,

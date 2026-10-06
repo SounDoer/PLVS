@@ -73,6 +73,10 @@ function normalizeActive(raw, profiles) {
   return profiles.some((profile) => profile.id === id) ? raw : LOUDNESS_PROFILE_OFF;
 }
 
+/**
+ * @param {any} raw
+ * @param {{ makeId?: any }} [options]
+ */
 export function normalizeLoudnessProfiles(raw, { makeId } = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.profiles)) {
     // First run (or unreadable storage): seed the starter profile and select it, so a new user

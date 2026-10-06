@@ -78,6 +78,7 @@ export function MeterRuntimeProvider({ children }) {
     }
     setSourceMode("live");
   };
+  /** @param {{ strict?: boolean }} [options] */
   const clearLiveSource = async ({ strict = false } = {}) => {
     if (isTauri()) {
       try {

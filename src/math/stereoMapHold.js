@@ -37,7 +37,9 @@ export function createStereoMapHoldSummary(bandCount) {
 export function copyStereoMapHoldSummary(summary) {
   const copy = { bandCount: summary.bandCount };
   for (const [key, value] of Object.entries(summary)) {
-    if (ArrayBuffer.isView(value)) copy[key] = value.slice();
+    if (ArrayBuffer.isView(value)) {
+      copy[key] = /** @type {ArrayBufferView & { slice(): ArrayBufferView }} */ (value).slice();
+    }
   }
   return copy;
 }

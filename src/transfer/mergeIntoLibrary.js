@@ -16,6 +16,7 @@ import {
 /// That is also why the review dialog can show the outcome before anything is written: this
 /// function produces the whole answer without touching the library.
 
+/** @type {() => string} */
 const defaultMakeId = () => crypto.randomUUID();
 
 /// Value equality over the plain-JSON documents these libraries store. `JSON.stringify` would be
@@ -54,6 +55,7 @@ export function planMerge(existing, incoming, { makeId = defaultMakeId, equal = 
   const byId = new Map(existing.map((item) => [item.id, item]));
   const takenNames = new Set(existing.map((item) => item.name));
   const additions = [];
+  /** @type {ReturnType<typeof planMerge>["plan"]} */
   const plan = [];
 
   for (const item of incoming) {
@@ -193,7 +195,8 @@ function collisionWarnings(plan, incoming, basePath) {
 export function planPackImport(
   type,
   pack,
-  { existingItems, existingProfiles = [], makeId = defaultMakeId } = {}
+  // The default only keeps the destructuring from throwing; `existingItems` is still required.
+  { existingItems, existingProfiles = [], makeId = defaultMakeId } = /** @type {any} */ ({})
 ) {
   if (type === "themes" && pack.identity === "content") {
     const { additions, plan } = planContentMerge(existingItems, pack.items, makeId);

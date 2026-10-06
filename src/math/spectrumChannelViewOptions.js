@@ -8,7 +8,11 @@ export const SPECTRUM_VIEW_OPTIONS = [
   { key: "ms", label: "M / S" },
 ];
 
-/** View modes only apply to pair selections (singles are always one curve). */
+/**
+ * View modes only apply to pair selections (singles are always one curve).
+ * @param {SpectrumChannelSel} sel
+ * @returns {sel is Extract<SpectrumChannelSel, { type: "pair" }>}
+ */
 export function spectrumViewApplies(sel) {
   return sel?.type === "pair";
 }

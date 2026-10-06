@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 
+/** @param {{ suspended?: boolean }} [options] */
 export function useAlwaysOnTop({ suspended = false } = {}) {
   const [pinned, setPinned] = useState(() => {
     return settingsStore.read().windowPinned === true;

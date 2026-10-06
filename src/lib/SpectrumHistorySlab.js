@@ -303,6 +303,7 @@ export class SpectrumHistorySlab extends ChunkedHistorySlab {
     return sameBands(this._bands, bands ?? []);
   }
 
+  /** @param {{ bands: any, dbList: any, dbListB?: any, timestampMs: any }} row */
   push({ bands, dbList, dbListB, timestampMs }) {
     if (!this.matchesBands(bands)) {
       throw new RangeError("SpectrumHistorySlab cannot store rows with a different band grid");
@@ -386,6 +387,7 @@ export class SpectrumHistorySlab extends ChunkedHistorySlab {
 }
 
 export class FrozenSpectrumHistory extends FrozenChunkedHistory {
+  /** @param {{ bands: any, bandCount: any, hasSecondary: any } & ConstructorParameters<typeof FrozenChunkedHistory>[0]} options */
   constructor({ bands, bandCount, hasSecondary, ...storage }) {
     super(storage);
     this._bands = bands ?? [];

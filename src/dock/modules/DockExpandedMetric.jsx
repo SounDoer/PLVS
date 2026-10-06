@@ -13,6 +13,7 @@ const UNIT_VISIBILITY_CLASSES = {
  *   unitVisibility?: any,
  *   labelClassName?: any,
  *   valueClassName?: any,
+ *   statId?: any,
  * }} props
  */
 export function DockExpandedMetric({

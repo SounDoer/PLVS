@@ -9,9 +9,11 @@ const noop = () => {};
 /**
  * @param {{
  *   activeTheme: object,
- *   onSave: (theme: object, options: {isNew: boolean}) => boolean|void,
+ *   onSave: (theme: object, options: {isNew: boolean, stale?: boolean}) => boolean|void,
  *   publish?: (theme: object) => void,
  *   makeId?: () => string,
+ *   onChange?: (...args: any[]) => void,
+ *   onFinish?: (...args: any[]) => void,
  * }} opts
  */
 export function useThemeEditor(opts) {

@@ -1,5 +1,6 @@
 import { SPECTROGRAM_DB_MAX, SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
+/** @type {SpectrogramColorStops} */
 export const INFERNO_COLORMAP_STOPS = Object.freeze([
   [0, [0, 0, 4]],
   [26, [30, 12, 47]],

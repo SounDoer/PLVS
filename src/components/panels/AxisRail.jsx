@@ -35,6 +35,8 @@ export function tickPosition(index, frac, count) {
  * @param {boolean} [props.inset] Apply the chart's vertical inset. Y rails only.
  * @param {object} [props.railRef] Ref for a passive rail that still has to be measured. Ignored
  *   when `interaction` is given, which brings its own.
+ * @param {string} [props.className]
+ * @param {import("react").ReactNode} [props.children]
  * @param {object} [props.scaleProps] Extra props for the tick track, for panels that hang test or
  *   layout hooks off it.
  */

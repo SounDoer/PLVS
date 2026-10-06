@@ -17,6 +17,7 @@ import { LAYER_ABOVE_EDITOR } from "@/components/ui/layers.js";
  *
  * Its layer sits above a draggable editor panel, which is where both discard confirmations live.
  *
+ * @param {object} props
  * @param {boolean} props.open
  * @param {(open: boolean) => void} props.onOpenChange
  * @param {string} props.title

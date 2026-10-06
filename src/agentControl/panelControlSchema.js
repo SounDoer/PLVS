@@ -99,7 +99,10 @@ function root(properties, additions = {}) {
 
 export function buildPublicPanelControlSchema(moduleId, panelControls, context = {}) {
   const controls = normalizePanelControls(panelControls);
-  const defaults = readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context);
+  // The public record's keys depend on `moduleId`; each branch below reads only its own.
+  const defaults = /** @type {Record<string, any>} */ (
+    readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context)
+  );
 
   if (moduleId === "levelMeter") {
     const loudnessMode =

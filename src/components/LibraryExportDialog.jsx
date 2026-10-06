@@ -21,7 +21,16 @@ function itemCountLabel(count) {
   return `${count} ${count === 1 ? "item" : "items"}`;
 }
 
-/** Chooses one Library kind, then delegates its item selection to the existing picker. */
+/**
+ * Chooses one Library kind, then delegates its item selection to the existing picker.
+ * @param {{
+ *   open: any,
+ *   itemsByType?: any,
+ *   dependenciesByType?: any,
+ *   onExport?: (...args: any[]) => any,
+ *   onClose?: (...args: any[]) => any,
+ * }} props
+ */
 export function LibraryExportDialog({
   open,
   itemsByType = {},

@@ -418,7 +418,7 @@ export function useSpectrogram3dCanvas({
   enabled = true,
 }) {
   const rafRef = useRef(null);
-  const paramsRef = useRef({});
+  const paramsRef = useRef(/** @type {Record<string, any>} */ ({}));
   const cacheRef = useRef({
     pointCount: 0,
     minHz: 0,
@@ -429,12 +429,14 @@ export function useSpectrogram3dCanvas({
     yTiltDb: null,
   });
   const offscreenRef = useRef(null);
-  const surfaceLutRef = useRef({
-    colorize: undefined,
-    dbFloor: NaN,
-    colormapLut: null,
-    lut: null,
-  });
+  const surfaceLutRef = useRef(
+    /** @type {Record<string, any>} */ ({
+      colorize: undefined,
+      dbFloor: NaN,
+      colormapLut: null,
+      lut: null,
+    })
+  );
   const resolveArgbRef = useRef(makeArgbResolver());
   // The GL renderer, and the canvas it was built against. Surface mode mounts a fresh canvas every
   // time it is entered, and a renderer holds a context bound to one canvas, so the pair has to be

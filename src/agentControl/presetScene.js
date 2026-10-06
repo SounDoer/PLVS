@@ -296,6 +296,12 @@ export function planPresetUpdate(presets, presetId, snapshot) {
   };
 }
 
+/**
+ * @param {any} presets
+ * @param {any} presetId
+ * @param {any} currentSnapshot
+ * @param {{ targetPreset?: any }} [options]
+ */
 export function planPresetApply(presets, presetId, currentSnapshot, { targetPreset } = {}) {
   const savedPreset = presets.list.find(({ id }) => id === presetId);
   const preset = targetPreset?.id === presetId ? targetPreset : savedPreset;

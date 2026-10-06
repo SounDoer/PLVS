@@ -87,6 +87,20 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
   );
 }
 
+/**
+ * @param {{
+ *   value: any,
+ *   customThemes: any,
+ *   onSelect: any,
+ *   onCustomize: any,
+ *   onEdit: any,
+ *   onDuplicate: any,
+ *   onExport?: (...args: any[]) => any,
+ *   onDelete: any,
+ *   onCreate: any,
+ *   disabled?: boolean,
+ * }} props
+ */
 export function ThemePicker({
   value,
   customThemes,

@@ -256,6 +256,7 @@ export function analyzeResolvedThemeVisuals(resolved) {
     if (result) warnings.push(result);
   }
 
+  /** @type {[string, string, string, number][]} */
   const surfacePairs = [
     ["interface.surface.panel", "interface.surface.raised", "Panel and Raised Surface", 0.015],
     ["interface.surface.control", "interface.surface.muted", "Control and Muted Surface", 0.04],

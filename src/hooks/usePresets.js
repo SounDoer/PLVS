@@ -38,6 +38,27 @@ async function readWindowBounds() {
   }
 }
 
+/**
+ * @param {{
+ *   windowPinned?: boolean,
+ *   setWindowPinned?: (...args: any[]) => any,
+ *   focusView?: any,
+ *   setFocusView?: (...args: any[]) => any,
+ *   surfaceOpacity?: number,
+ *   setSurfaceOpacity?: (...args: any[]) => any,
+ *   glassEnabled?: boolean,
+ *   setGlassEnabled?: (...args: any[]) => any,
+ *   dock?: any,
+ *   applyDockPreset?: (...args: any[]) => any,
+ *   applySurfaceOpacity?: (...args: any[]) => any,
+ *   dockPresetUnavailableReason?: (...args: any[]) => any,
+ *   onApplyError?: (...args: any[]) => any,
+ *   snapshotLoudnessProfile?: (...args: any[]) => any,
+ *   applyLoudnessProfileSnapshot?: (...args: any[]) => any,
+ *   assertSceneOperationAllowed?: (...args: any[]) => any,
+ *   blockingEditors?: any,
+ * }} [options]
+ */
 export function usePresets({
   windowPinned = false,
   setWindowPinned = () => {},

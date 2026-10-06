@@ -40,6 +40,7 @@ export function isThemePublication(value) {
   );
 }
 
+/** @param {{ apply?: any }} [options] */
 export function createThemeRuntime({ apply = applyResolvedThemeToDocument } = {}) {
   let revision = 0;
   let current = null;
@@ -72,6 +73,7 @@ export function createThemeRuntime({ apply = applyResolvedThemeToDocument } = {}
     return publishAuthoring(authoring ?? BUILTIN_THEMES_V2["plvs-dark"]);
   }
 
+  /** @returns {() => void} unsubscribe */
   function subscribe(select, listener, equal = Object.is) {
     const subscription = { select, listener, equal };
     subscriptions.add(subscription);

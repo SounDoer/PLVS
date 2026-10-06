@@ -62,7 +62,9 @@ export function buildCommunityThemePresentation(
 export function requireResolvedCommunityThemePresentation(raw, options) {
   const presentation = buildCommunityThemePresentation(raw, options);
   if (presentation.compatibility.status !== "resolved") {
-    const error = new Error("The minimum compatible PLVS release has not been assigned.");
+    const error = /** @type {Error & { code?: string }} */ (
+      new Error("The minimum compatible PLVS release has not been assigned.")
+    );
     error.name = "CommunityThemeCompatibilityError";
     error.code = "minimumAppVersionPending";
     throw error;
