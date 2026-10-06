@@ -6,6 +6,7 @@ import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { runningAppCommandEntries } from "./commandManifest.js";
 import { buildModuleList } from "./moduleControl.js";
+import { UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 /**
  * @param {string} featureGate
@@ -62,18 +63,38 @@ export function buildAgentControlPanelSnapshot({
  */
 export function buildAgentControlCapabilities(runtime, revision) {
   const visual = runtime?.visual;
+  const methods = runningAppCommandEntries
+    .filter(({ featureGate }) => featureGateAvailable(featureGate, visual))
+    .map(({ wireMethod }) => wireMethod);
+  const hasMethod = (method) => methods.includes(method);
   return {
     revision,
     appVersion: String(runtime.appVersion),
     protocolVersion: 1,
-    features: visual
-      ? {
-          visual: {
-            screenshot: visual.screenshot === true,
-            recording: visual.recording === true,
-          },
-        }
-      : {},
+    features: {
+      ...(hasMethod("ui.inspect")
+        ? {
+            uiNavigation: {
+              inspect: true,
+              close: hasMethod("ui.close"),
+              show: {
+                settings: hasMethod("ui.show.settings")
+                  ? { sections: UI_SETTINGS_SECTIONS }
+                  : false,
+                panelSettings: hasMethod("ui.show.panelSettings"),
+              },
+            },
+          }
+        : {}),
+      ...(visual
+        ? {
+            visual: {
+              screenshot: visual.screenshot === true,
+              recording: visual.recording === true,
+            },
+          }
+        : {}),
+    },
     runtime: {
       available: runtime.available === true,
       appName: String(runtime.appName),
@@ -81,9 +102,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
       identifier: String(runtime.identifier),
       platform: String(runtime.platform),
     },
-    methods: runningAppCommandEntries
-      .filter(({ featureGate }) => featureGateAvailable(featureGate, visual))
-      .map(({ wireMethod }) => wireMethod),
+    methods,
     modules: buildModuleList(),
   };
 }

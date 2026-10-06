@@ -16,8 +16,8 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(96);
-    expect(runningAppCommandEntries).toHaveLength(91);
+    expect(commandEntries).toHaveLength(100);
+    expect(runningAppCommandEntries).toHaveLength(95);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
   });
@@ -54,6 +54,21 @@ describe("command manifest", () => {
       featureGate: "visual.screenshot",
       outputFile: "required",
     });
+    expect(commandEntryById.get("ui.inspect")).toMatchObject({
+      path: ["ui", "inspect"],
+      operation: "query",
+      expectedRevision: "none",
+    });
+    for (const id of ["ui.show.settings", "ui.show.panelSettings", "ui.close"]) {
+      expect(commandEntryById.get(id)).toMatchObject({
+        operation: "action",
+        expectedRevision: "required",
+        dryRun: false,
+      });
+      expect(commandEntryById.get(id).wireParams.required).toEqual(
+        expect.arrayContaining(["expectedRevision", "expectedUiGeneration"])
+      );
+    }
     expect(commandEntryById.get("doctor")).toMatchObject({
       execution: "offline",
       json: "optional",

@@ -614,6 +614,7 @@ function transportMutationMatches(method, params, execution, snapshot) {
  *   measurementContext?: Partial<AgentControlMeasurementContext>,
  *   viewContext?: Partial<AgentControlViewContext>,
  *   visual?: Partial<AgentControlVisual>,
+ *   uiNavigation?: ReturnType<typeof import("../uiNavigation/UiNavigationContext.jsx").useUiNavigation>,
  *   flush?: (...args: any[]) => any,
  *   exportConfiguration?: (...args: any[]) => any,
  *   importConfiguration?: (...args: any[]) => any,
@@ -648,6 +649,7 @@ export function useAgentControlBridge({
   measurementContext = {},
   viewContext = {},
   visual = null,
+  uiNavigation = null,
   flush = flushPersistence,
   exportConfiguration = exportProfile,
   importConfiguration = importProfile,
@@ -1085,6 +1087,75 @@ export function useAgentControlBridge({
             requestId,
             result: buildAgentControlCapabilities(capabilityRuntime, controlRevisionRef.current),
           };
+        }
+        if (request.method === "ui.inspect") {
+          if (!uiNavigation?.inspectUi) {
+            throw semanticFailure(
+              "surfaceUnavailable",
+              "$.method",
+              "UI Navigation is unavailable in the current app state.",
+              -32042
+            );
+          }
+          return {
+            requestId,
+            result: { revision: controlRevisionRef.current, ...uiNavigation.inspectUi() },
+          };
+        }
+        if (["ui.show.settings", "ui.show.panelSettings", "ui.close"].includes(request.method)) {
+          const currentRevision = controlRevisionRef.current;
+          if (request.params.expectedRevision !== currentRevision) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `App state changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+          if (!uiNavigation?.inspectUi) {
+            throw semanticFailure(
+              "surfaceUnavailable",
+              "$.method",
+              "UI Navigation is unavailable in the current app state.",
+              -32042
+            );
+          }
+          try {
+            const actionResult =
+              request.method === "ui.show.settings"
+                ? await uiNavigation.showSettings(request.params)
+                : request.method === "ui.show.panelSettings"
+                  ? await uiNavigation.showPanelSettings(request.params)
+                  : await uiNavigation.closeSurface(request.params);
+            const ui = uiNavigation.inspectUi();
+            return {
+              requestId,
+              result: {
+                ...actionResult,
+                changed: actionResult?.changed !== false,
+                action: actionResult?.action ?? request.method,
+                revision: controlRevisionRef.current,
+                uiGeneration: ui.uiGeneration,
+                ui,
+              },
+            };
+          } catch (error) {
+            if (typeof error?.reason !== "string") throw error;
+            throw semanticFailure(
+              error.reason,
+              error.reason === "uiGenerationConflict"
+                ? "$.params.expectedUiGeneration"
+                : "$.params",
+              error.message,
+              error.reason === "revisionConflict" ? -32004 : -32042,
+              {
+                ...error.details,
+                currentRevision: controlRevisionRef.current,
+                currentUiGeneration: uiNavigation.inspectUi().uiGeneration,
+              }
+            );
+          }
         }
         if (request.method === "visual.describe") {
           const visualControl = latestVisualRef.current;
@@ -3947,6 +4018,7 @@ export function useAgentControlBridge({
     measurementContext,
     viewContext,
     visual,
+    uiNavigation,
     applySettings,
     executeTransport,
     device,

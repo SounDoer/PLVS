@@ -27,6 +27,8 @@ import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
 import {
   UiNavigationProvider,
+  useUiNavigation,
+  useUiNavigationEnvironment,
   useUiNavigationTarget,
   useUiSurface,
 } from "./uiNavigation/UiNavigationContext.jsx";
@@ -225,6 +227,7 @@ export default function App() {
 
 function AppContent() {
   const meterRuntime = useMeterRuntime();
+  const uiNavigation = useUiNavigation();
   const {
     state: workspaceState,
     replaceWorkspace,
@@ -577,6 +580,10 @@ function AppContent() {
   });
 
   const [windowVisible, setWindowVisible] = useState(true);
+  useUiNavigationEnvironment({
+    windowForm: docked ? "dock" : "normal",
+    windowVisible,
+  });
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -1673,6 +1680,7 @@ function AppContent() {
     measurementContext: agentControlMeasurementContext,
     viewContext: agentControlViewContext,
     visual: agentControlVisual,
+    uiNavigation,
   });
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;

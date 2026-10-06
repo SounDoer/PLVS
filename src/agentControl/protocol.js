@@ -1,6 +1,7 @@
 import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
+import { UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const TRANSPORT_ACTIONS = new Set([
@@ -86,6 +87,24 @@ function validateExpectedRevision(params) {
   return null;
 }
 
+function validateExpectedUiGeneration(params) {
+  if (params.expectedUiGeneration === undefined) {
+    return error(
+      "uiGenerationRequired",
+      "$.params.expectedUiGeneration",
+      "expectedUiGeneration is required for every UI action.",
+      -32602
+    );
+  }
+  if (!Number.isSafeInteger(params.expectedUiGeneration) || params.expectedUiGeneration < 0) {
+    return invalidParams(
+      "$.params.expectedUiGeneration",
+      "expectedUiGeneration must be a non-negative safe integer."
+    );
+  }
+  return null;
+}
+
 export function normalizeAgentControlRequest(input) {
   if (!isPlainJsonObject(input)) {
     return error("invalidRequest", "$", "Request must be a plain JSON object.", -32600);
@@ -109,6 +128,61 @@ export function normalizeAgentControlRequest(input) {
   }
   if (!isPlainJsonObject(input.params)) {
     return invalidParams("$.params", "Request params must be a plain JSON object.");
+  }
+
+  if (input.method === "ui.inspect") {
+    const field = Object.keys(input.params)[0];
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    return { ok: true, request: { id: input.id, method: input.method, params: {} } };
+  }
+
+  if (["ui.show.settings", "ui.show.panelSettings", "ui.close"].includes(input.method)) {
+    const targetField =
+      input.method === "ui.show.settings"
+        ? "section"
+        : input.method === "ui.show.panelSettings"
+          ? "panelId"
+          : "surfaceId";
+    const field = unknownField(
+      input.params,
+      new Set([targetField, "expectedRevision", "expectedUiGeneration"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const generationError = validateExpectedUiGeneration(input.params);
+    if (generationError) return generationError;
+    if (targetField === "section" && !UI_SETTINGS_SECTIONS.includes(input.params.section)) {
+      return invalidParams(
+        "$.params.section",
+        `section must be one of: ${UI_SETTINGS_SECTIONS.join(", ")}.`
+      );
+    }
+    if (
+      targetField === "panelId" &&
+      (typeof input.params.panelId !== "string" || input.params.panelId.length === 0)
+    ) {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    if (
+      targetField === "surfaceId" &&
+      (typeof input.params.surfaceId !== "string" ||
+        !/^ui-[a-z0-9-]{16,60}$/.test(input.params.surfaceId))
+    ) {
+      return invalidParams("$.params.surfaceId", "surfaceId must be an exact UI surface ID.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          [targetField]: input.params[targetField],
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
   }
 
   if (input.method === "visual.describe") {

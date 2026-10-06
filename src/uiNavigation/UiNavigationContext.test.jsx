@@ -7,6 +7,7 @@ import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import {
   UiNavigationProvider,
   useUiNavigation,
+  useUiNavigationEnvironment,
   useUiNavigationTarget,
   useUiSurface,
 } from "./UiNavigationContext.jsx";
@@ -66,6 +67,20 @@ describe("UiNavigationProvider", () => {
       topSurfaceId: null,
       surfaces: [],
     });
+  });
+
+  it("tracks the live window form and visibility owned by the app", () => {
+    const { result, rerender } = renderHook(
+      ({ form, visible }) => {
+        useUiNavigationEnvironment({ windowForm: form, windowVisible: visible });
+        return useUiNavigation();
+      },
+      { wrapper, initialProps: { form: "normal", visible: true } }
+    );
+
+    rerender({ form: "dock", visible: false });
+
+    expect(result.current.inspectUi().window).toEqual({ form: "dock", visible: false });
   });
 
   it("publishes a mounted semantic surface through inspection", () => {
@@ -132,7 +147,12 @@ describe("UiNavigationProvider", () => {
       });
       await Promise.resolve();
     });
-    await pending;
+    await expect(pending).resolves.toMatchObject({
+      changed: true,
+      action: "ui.close",
+      uiGeneration: 2,
+      surface: { surfaceId, kind: "settings" },
+    });
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(result.current.navigation.inspectUi()).toMatchObject({

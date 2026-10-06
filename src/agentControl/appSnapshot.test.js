@@ -35,6 +35,10 @@ describe("agent-control app snapshots", () => {
       methods: [
         "app.capabilities",
         "app.inspect",
+        "ui.inspect",
+        "ui.show.settings",
+        "ui.show.panelSettings",
+        "ui.close",
         "measurement.describe",
         "measurement.inspect",
         "measurement.wait",
@@ -119,7 +123,27 @@ describe("agent-control app snapshots", () => {
         "dock.panel.update",
         "dock.panel.reset",
       ],
-      features: {},
+      features: {
+        uiNavigation: {
+          inspect: true,
+          close: true,
+          show: {
+            settings: {
+              sections: [
+                "behavior",
+                "shortcuts",
+                "appearance",
+                "analysis",
+                "channels",
+                "transfer",
+                "agent-control",
+                "about",
+              ],
+            },
+            panelSettings: true,
+          },
+        },
+      },
     });
     expect(capabilities).not.toHaveProperty("cliVersion");
     expect(capabilities).not.toHaveProperty("commands");
@@ -292,7 +316,7 @@ describe("agent-control app snapshots", () => {
 
   it("advertises visual methods and dynamic feature flags without inferring Windows support", () => {
     const unavailable = buildAgentControlCapabilities(runtime, 4);
-    expect(unavailable.features).toEqual({});
+    expect(unavailable.features).toHaveProperty("uiNavigation");
     expect(unavailable.methods).not.toContain("visual.describe");
 
     const available = buildAgentControlCapabilities(

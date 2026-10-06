@@ -52,10 +52,59 @@ describe("normalizeAgentControlRequest", () => {
     "dock.describe",
     "dock.inspect",
     "visual.describe",
+    "ui.inspect",
   ])("accepts %s with empty params", (method) => {
     expect(normalizeAgentControlRequest(request(method))).toEqual({
       ok: true,
       request: { id: "req-1", method, params: {} },
+    });
+  });
+
+  describe("UI navigation requests", () => {
+    it.each([
+      ["ui.show.settings", { section: "appearance" }],
+      ["ui.show.panelSettings", { panelId: "stats-2" }],
+      ["ui.close", { surfaceId: `ui-${"a".repeat(16)}` }],
+    ])("requires and preserves both concurrency tokens for %s", (method, target) => {
+      const params = { ...target, expectedRevision: 4, expectedUiGeneration: 7 };
+      expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+        ok: true,
+        request: { id: "req-1", method, params },
+      });
+
+      for (const missing of ["expectedRevision", "expectedUiGeneration"]) {
+        const incomplete = { ...params };
+        delete incomplete[missing];
+        expect(normalizeAgentControlRequest(request(method, incomplete))).toMatchObject({
+          ok: false,
+          error: {
+            reason: missing === "expectedRevision" ? "revisionRequired" : "uiGenerationRequired",
+            path: `$.params.${missing}`,
+          },
+        });
+      }
+    });
+
+    it("rejects unsafe UI generations and unknown fields", () => {
+      expect(
+        normalizeAgentControlRequest(
+          request("ui.show.settings", {
+            section: "appearance",
+            expectedRevision: 4,
+            expectedUiGeneration: -1,
+          })
+        ).error
+      ).toMatchObject({ reason: "invalidParams", path: "$.params.expectedUiGeneration" });
+      expect(
+        normalizeAgentControlRequest(
+          request("ui.show.settings", {
+            section: "appearance",
+            expectedRevision: 4,
+            expectedUiGeneration: 7,
+            dryRun: true,
+          })
+        ).error.path
+      ).toBe("$.params.dryRun");
     });
   });
 

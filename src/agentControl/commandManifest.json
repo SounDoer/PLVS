@@ -78,6 +78,196 @@
       }
     },
     {
+      "id": "ui.inspect",
+      "family": "ui",
+      "path": ["ui", "inspect"],
+      "usage": "plvs-cli ui inspect --json",
+      "summary": "Inspect the current semantic UI surfaces.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "ui.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": { "type": "boolean" }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "ui.show.settings",
+      "family": "ui",
+      "path": ["ui", "show", "settings"],
+      "usage": "plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open or focus a Settings section without applying changes.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.settings",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--section",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": [
+              "behavior",
+              "shortcuts",
+              "appearance",
+              "analysis",
+              "channels",
+              "transfer",
+              "agent-control",
+              "about"
+            ]
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": { "type": "boolean" }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["section", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "section": {
+            "type": "string",
+            "enum": [
+              "behavior",
+              "shortcuts",
+              "appearance",
+              "analysis",
+              "channels",
+              "transfer",
+              "agent-control",
+              "about"
+            ]
+          },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.show.panelSettings",
+      "family": "ui",
+      "path": ["ui", "show", "panel-settings"],
+      "usage": "plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open or focus settings for one Panel instance.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.panelSettings",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "panelId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.close",
+      "family": "ui",
+      "path": ["ui", "close"],
+      "usage": "plvs-cli ui close --surface-id <id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Close one exact non-draft UI surface through its normal Close intent.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.close",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surfaceId", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "surfaceId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "measurement.describe",
       "family": "measurement",
       "path": ["measurement", "describe"],

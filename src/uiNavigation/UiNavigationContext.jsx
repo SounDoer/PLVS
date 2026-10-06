@@ -26,10 +26,15 @@ export function UiNavigationProvider({
   displayName = "PLVS",
   windowForm = "normal",
   windowVisible = true,
-  getRevision = () => 0,
+  getRevision = () => null,
   settlementTimeoutMs = 3000,
 }) {
   const [state, setState] = useState(createUiNavigationState);
+  const [environment, setEnvironment] = useState(() => ({
+    displayName,
+    windowForm,
+    windowVisible: windowVisible === true,
+  }));
   const stateRef = useRef(state);
   stateRef.current = state;
   const countsRef = useRef(new Map());
@@ -110,7 +115,7 @@ export function UiNavigationProvider({
     ({ surfaceId, expectedRevision, expectedUiGeneration }) =>
       enqueueAction(async () => {
         const currentRevision = getRevision();
-        if (expectedRevision !== currentRevision) {
+        if (Number.isSafeInteger(currentRevision) && expectedRevision !== currentRevision) {
           throw Object.assign(new Error("The Agent Control revision changed."), {
             reason: "revisionConflict",
             details: { expectedRevision, currentRevision },
@@ -149,7 +154,13 @@ export function UiNavigationProvider({
           if (currentEntry) currentEntry.actionPending = false;
           throw error;
         }
-        return { action: "close", surfaceId };
+        return {
+          changed: true,
+          action: "ui.close",
+          revision: getRevision(),
+          uiGeneration: stateRef.current.uiGeneration,
+          surface,
+        };
       }),
     [enqueueAction, getRevision, waitForSurfaceAbsent]
   );
@@ -187,7 +198,7 @@ export function UiNavigationProvider({
     (kind, target, action, expectedRevision, expectedUiGeneration) =>
       enqueueAction(async () => {
         const currentRevision = getRevision();
-        if (expectedRevision !== currentRevision) {
+        if (Number.isSafeInteger(currentRevision) && expectedRevision !== currentRevision) {
           throw Object.assign(new Error("The Agent Control revision changed."), {
             reason: "revisionConflict",
             details: { expectedRevision, currentRevision },
@@ -266,21 +277,24 @@ export function UiNavigationProvider({
         workbench: {
           instanceId: typeof boot.instanceId === "string" ? boot.instanceId : null,
           workspaceId: typeof boot.workspaceId === "string" ? boot.workspaceId : null,
-          displayName,
+          displayName: environment.displayName,
         },
-        window: { form: windowForm, visible: windowVisible === true },
+        window: { form: environment.windowForm, visible: environment.windowVisible },
         activeBlockingEditors,
       }),
-    [
-      activeBlockingEditors,
-      boot.instanceId,
-      boot.workspaceId,
-      displayName,
-      state,
-      windowForm,
-      windowVisible,
-    ]
+    [activeBlockingEditors, boot.instanceId, boot.workspaceId, environment, state]
   );
+  const updateEnvironment = useCallback((next) => {
+    setEnvironment((current) => {
+      const resolved = {
+        displayName: next.displayName ?? current.displayName,
+        windowForm: next.windowForm ?? current.windowForm,
+        windowVisible:
+          next.windowVisible === undefined ? current.windowVisible : next.windowVisible === true,
+      };
+      return JSON.stringify(resolved) === JSON.stringify(current) ? current : resolved;
+    });
+  }, []);
   const value = useMemo(
     () => ({
       uiGeneration: state.uiGeneration,
@@ -288,8 +302,16 @@ export function UiNavigationProvider({
       showSettings,
       showPanelSettings,
       closeSurface,
+      updateEnvironment,
     }),
-    [closeSurface, inspectUi, showPanelSettings, showSettings, state.uiGeneration]
+    [
+      closeSurface,
+      inspectUi,
+      showPanelSettings,
+      showSettings,
+      state.uiGeneration,
+      updateEnvironment,
+    ]
   );
   const registry = useMemo(
     () => ({ registerUiSurface, updateUiSurface, registerUiTarget }),
@@ -308,6 +330,16 @@ export function useUiNavigation() {
   const value = useContext(UiNavigationContext);
   if (!value) throw new Error("useUiNavigation must be used inside UiNavigationProvider");
   return value;
+}
+
+export function useUiNavigationEnvironment(environment) {
+  const navigation = useUiNavigation();
+  const environmentKey = JSON.stringify(environment);
+  useEffect(() => {
+    navigation.updateEnvironment(environment);
+    // The serialized public environment is the update boundary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [environmentKey, navigation.updateEnvironment]);
 }
 
 export function useUiSurface({

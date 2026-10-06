@@ -259,6 +259,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentView?: any,
  *   agentViewContext?: any,
  *   agentVisual?: any,
+ *   agentUi?: any,
  *   applyAgentView?: (...args: any[]) => any,
  *   agentTransport?: any,
  *   agentDock?: any,
@@ -305,6 +306,20 @@ function Harness({
   agentView = defaultView,
   agentViewContext = {},
   agentVisual = null,
+  agentUi = {
+    uiGeneration: 0,
+    inspectUi: () => ({
+      uiGeneration: 0,
+      workbench: { instanceId: null, workspaceId: null, displayName: "PLVS" },
+      window: { form: "normal", visible: true },
+      activeBlockingEditors: [],
+      topSurfaceId: null,
+      surfaces: [],
+    }),
+    showSettings: async () => ({}),
+    showPanelSettings: async () => ({}),
+    closeSurface: async () => ({}),
+  },
   applyAgentView,
   agentTransport = transport,
   agentDock = dock,
@@ -501,6 +516,7 @@ function Harness({
         }),
     },
     visual: agentVisual,
+    uiNavigation: agentUi,
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
@@ -1678,7 +1694,7 @@ describe("useAgentControlBridge", () => {
       protocolVersion: 1,
       revision: 0,
       methods: expect.arrayContaining(["app.capabilities", "app.wait"]),
-      features: {},
+      features: { uiNavigation: expect.any(Object) },
     });
     expect(capabilities.result).not.toHaveProperty("cliVersion");
     expect(capabilities.result).not.toHaveProperty("revisions");
@@ -1699,6 +1715,59 @@ describe("useAgentControlBridge", () => {
     const second = await send(request("app.inspect", {}, "inspect-2"));
     expect(second.result.revision).toBe(1);
     expect(second.result.workspace.layout).toEqual({ type: "panel", panelId: "spectrum" });
+  });
+
+  it("routes UI inspection and actions through the semantic controller", async () => {
+    const showSettings = vi.fn(async () => ({
+      changed: true,
+      action: "ui.show.settings",
+      uiGeneration: 3,
+      surface: { surfaceId: `ui-${"b".repeat(16)}`, kind: "settings" },
+    }));
+    const inspectUi = vi.fn(() => ({
+      uiGeneration: showSettings.mock.calls.length > 0 ? 3 : 2,
+      workbench: { instanceId: "instance-1", workspaceId: "workspace-1", displayName: "Studio" },
+      window: { form: "normal", visible: true },
+      activeBlockingEditors: [],
+      topSurfaceId: showSettings.mock.calls.length > 0 ? `ui-${"b".repeat(16)}` : null,
+      surfaces:
+        showSettings.mock.calls.length > 0
+          ? [{ surfaceId: `ui-${"b".repeat(16)}`, kind: "settings" }]
+          : [],
+    }));
+    mount({
+      agentUi: {
+        uiGeneration: 2,
+        inspectUi,
+        showSettings,
+        showPanelSettings: vi.fn(),
+        closeSurface: vi.fn(),
+      },
+    });
+    await waitUntilReady();
+
+    const inspected = await send(request("ui.inspect", {}, "ui-inspect"));
+    expect(inspected.result).toMatchObject({ revision: 0, uiGeneration: 2 });
+
+    const shown = await send(
+      request(
+        "ui.show.settings",
+        { section: "appearance", expectedRevision: 0, expectedUiGeneration: 2 },
+        "ui-show"
+      )
+    );
+    expect(showSettings).toHaveBeenCalledWith({
+      section: "appearance",
+      expectedRevision: 0,
+      expectedUiGeneration: 2,
+    });
+    expect(shown.result).toMatchObject({
+      changed: true,
+      action: "ui.show.settings",
+      revision: 0,
+      uiGeneration: 3,
+      ui: { uiGeneration: 3 },
+    });
   });
 
   it("lists and describes Modules before a Panel instance exists", async () => {
