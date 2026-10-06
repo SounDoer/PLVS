@@ -2,6 +2,34 @@ export const FILE_ANALYSIS_HISTORY_LIMIT = 5;
 
 const ANALYSIS_COMPLETE_STATES = new Set(["complete", "error", "ready"]);
 
+/**
+ * One file in the analysis history, from the moment it is added.
+ * @typedef {{
+ *   id: string,
+ *   path: string,
+ *   fileName: string,
+ *   state: "ready" | "analyzing" | "complete" | "error",
+ *   metadata: any,
+ *   summary: any,
+ *   progress: number,
+ *   error: any,
+ *   intake: any,
+ *   historyTruncated: boolean,
+ *   historyCoveredMs: number | null,
+ *   createdAt: number,
+ *   analyzedAt: number | null,
+ *   decodedFrames: number,
+ *   runId: number,
+ *   analysisSettings: any,
+ * }} FileSession
+ */
+
+/**
+ * A file session as the UI is handed one: the app passes `{ state: "empty" }` when no file is
+ * selected and some callers default to an empty record, so every field may be absent.
+ * @typedef {Partial<Omit<FileSession, "state">> & { state?: FileSession["state"] | "empty" }} FileSessionView
+ */
+
 function generateFileSessionId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
   return `file-analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`;

@@ -79,7 +79,7 @@ const CORE_COLORS = [
  */
 /**
  * @param {{
- *   draft: any,
+ *   draft: import("../theme/themeSchema.js").ThemeDocument,
  *   onName: (...args: any[]) => any,
  *   onColorScheme?: (...args: any[]) => any,
  *   onCore: (...args: any[]) => any,

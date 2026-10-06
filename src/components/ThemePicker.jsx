@@ -90,7 +90,7 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
 /**
  * @param {{
  *   value: string,
- *   customThemes: any,
+ *   customThemes: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["customThemes"],
  *   onSelect: (...args: any[]) => any,
  *   onCustomize: (...args: any[]) => any,
  *   onEdit: (...args: any[]) => any,

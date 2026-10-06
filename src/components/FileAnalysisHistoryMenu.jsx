@@ -32,7 +32,7 @@ function detailLabel(session) {
 
 /**
  * @param {{
- *   fileSessions?: any[],
+ *   fileSessions?: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[],
  *   activeFileId?: string,
  *   analyzingFileId?: string,
  *   onSelectFile: (...args: any[]) => any,

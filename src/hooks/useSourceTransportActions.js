@@ -20,7 +20,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   removeFile: (...args: any[]) => any,
  *   clearFiles: (...args: any[]) => any,
  *   stopFileAnalysis: (...args: any[]) => any,
- *   activeFileSession: any,
+ *   activeFileSession: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView | null,
  *   getFileAnalysisSettings: (...args: any[]) => any,
  *   onClearSucceeded: (...args: any[]) => any,
  * }} options

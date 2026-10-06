@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
 /**
  * @param {{
- *   fileSession: any,
- *   fileSessions: any[],
+ *   fileSession: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView,
+ *   fileSessions: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[],
  *   activeFileId: string,
  *   analyzingFileId: string,
  *   onSelectFile: (...args: any[]) => any,

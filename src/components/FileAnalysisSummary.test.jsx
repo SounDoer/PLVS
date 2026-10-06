@@ -11,10 +11,10 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(currentDir, "FileAnalysisSummary.jsx"), "utf8");
 
 const menuProps = {
-  fileSessions: [
+  fileSessions: /** @type {import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[]} */ ([
     { id: "one", fileName: "one.wav", state: "complete", summary: { durationMs: 1000 } },
     { id: "two", fileName: "two.wav", state: "error", error: "Failed" },
-  ],
+  ]),
   activeFileId: "one",
   analyzingFileId: null,
   onSelectFile: undefined,

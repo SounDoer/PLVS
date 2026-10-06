@@ -10,6 +10,18 @@ import { buildModuleList } from "./moduleControl.js";
 /**
  * @param {string} featureGate
  */
+/**
+ * What the app knows about the running analysis that a snapshot reports alongside the workspace.
+ * @typedef {{
+ *   channelCount: number,
+ *   channelLabels: string[],
+ *   dialogueDetectionActive: boolean,
+ *   spectralWaveformActive: boolean,
+ *   timeMaxWindowSec: number,
+ *   timeMaxOffsetSec: number,
+ * }} AgentControlAnalysisContext
+ */
+
 function featureGateAvailable(featureGate, visual) {
   if (featureGate === undefined) return true;
   if (featureGate === "visual") return visual !== undefined;
@@ -23,7 +35,7 @@ function featureGateAvailable(featureGate, visual) {
  *   workspace: any,
  *   panelId: string,
  *   hasLoudnessReference?: boolean,
- *   analysisContext?: any,
+ *   analysisContext?: Partial<AgentControlAnalysisContext>,
  * }} options
  */
 export function buildAgentControlPanelSnapshot({
@@ -90,7 +102,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
  *   dock: Partial<ReturnType<typeof import("./dockControl.js").buildDockSnapshot>>,
  *   view: any,
  *   hasLoudnessReference?: boolean,
- *   analysisContext?: any,
+ *   analysisContext?: Partial<AgentControlAnalysisContext>,
  * }} options
  */
 export function buildAgentControlSnapshot({

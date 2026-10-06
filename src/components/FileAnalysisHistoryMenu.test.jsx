@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(currentDir, "FileAnalysisHistoryMenu.jsx"), "utf8");
 
+/** @type {import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[]} */
 const sessions = [
   {
     id: "ready",

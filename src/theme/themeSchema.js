@@ -127,11 +127,26 @@ function normalizeOverrides(raw) {
 }
 
 /**
+ * A theme as it is authored and stored: the core colors, the four palettes, and per-role
+ * overrides on top of what those derive.
+ * @typedef {{
+ *   formatVersion: number,
+ *   semanticsVersion: number,
+ *   id: string,
+ *   name: string,
+ *   colorScheme: "light" | "dark",
+ *   core: Record<string, any>,
+ *   palettes: { status: any, intensity: any, frequency: any, interface: any },
+ *   overrides: Record<string, any>,
+ * }} ThemeDocument
+ */
+
+/**
  * Normalize the current Theme authoring shape. Registry compatibility is a separate boundary;
  * this function validates only declared versions and color/palette structure.
  *
  * @param {unknown} raw
- * @returns {object|null}
+ * @returns {ThemeDocument | null}
  */
 export function normalizeThemeDocumentShape(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;

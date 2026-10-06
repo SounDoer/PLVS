@@ -53,8 +53,8 @@ function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selected
  * @param {{
  *   selectedOffset?: number,
  *   selectedMediaTimeMs: number,
- *   fileSession?: any,
- *   analyzingFileSession?: any,
+ *   fileSession?: import("./fileAnalysisSessionRegistry.js").FileSessionView | null,
+ *   analyzingFileSession?: import("./fileAnalysisSessionRegistry.js").FileSessionView | null,
  * }} options
  */
 function deriveFileState({

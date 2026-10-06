@@ -210,7 +210,7 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
   );
 }
 
-/** @param {{ draft: any, onClose: (...args: any[]) => any, onJump?: (...args: any[]) => any }} props */
+/** @param {{ draft: import("../../theme/themeSchema.js").ThemeDocument, onClose: (...args: any[]) => any, onJump?: (...args: any[]) => any }} props */
 export function ThemePreview({ draft, onClose, onJump }) {
   const [page, setPage] = useState("overview");
   const resolved = useMemo(() => compileTheme(draft), [draft]);
