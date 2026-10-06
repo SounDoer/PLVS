@@ -27,7 +27,6 @@ import {
   useUiSurface,
 } from "./uiNavigation/UiNavigationContext.jsx";
 import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
-import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
@@ -36,10 +35,10 @@ import { SourceActionsProvider, useSourceActions } from "./runtime/SourceActions
 import { AppLifecycleProvider, useAppLifecycle } from "./hooks/AppLifecycleContext.jsx";
 import { DisplaySnapshotProvider, useDisplaySnapshot } from "./runtime/DisplaySnapshotContext.jsx";
 import { AnalysisSessionProvider, useAnalysisSession } from "./runtime/AnalysisSessionContext.jsx";
+import { useLoudnessProfileStats } from "./hooks/useLoudnessProfileStats.js";
 import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
-import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
@@ -407,69 +406,7 @@ function AppContent() {
     };
   }, [loudnessProfile.document]);
 
-  // Missing-stats fulfillment spans every Stats panel: the profile's needs are a session-level
-  // statement, so a row added for it should appear wherever Stats is shown. Union for detection,
-  // append per panel for the fix -- each panel keeps the order its user arranged.
-  const statsPanelIds = useMemo(
-    () =>
-      workspaceState.panelOrder.filter((id) => workspaceState.panelsById[id]?.moduleId === "stats"),
-    [workspaceState]
-  );
-  // Dock Stats is a second implementation with its own visible ids (dockModuleControls), so both
-  // sets have to be unioned for detection and both appended to on fulfill. Missing either half
-  // makes Show missing look like it worked while one surface keeps hiding the rows.
-  const dockStatsPanelIds = useMemo(
-    () =>
-      Object.values(dockLayout.panelsById ?? {})
-        .filter((panel) => panel?.moduleId === "stats")
-        .map((panel) => panel.id),
-    [dockLayout.panelsById]
-  );
-  const loudnessProfileStats = useMemo(() => {
-    if (statsPanelIds.length === 0 && dockStatsPanelIds.length === 0) return null;
-
-    const workspaceControls = statsPanelIds.map((panelId) => ({
-      panelId,
-      controls: normalizePanelControls(getPanelControls(workspaceState, panelId)),
-      apply: setPanelControlsForPanel,
-    }));
-    const dockControls = dockStatsPanelIds.map((panelId) => ({
-      panelId,
-      controls: normalizeDockModuleControls("stats", dockLayout.controlsByPanelId?.[panelId]),
-      apply: dockLayout.setPanelControls,
-    }));
-    const everyStatsSurface = [...workspaceControls, ...dockControls];
-
-    const seen = new Set();
-    for (const { controls } of everyStatsSurface) {
-      for (const id of controls.statsVisibleIds) seen.add(id);
-    }
-
-    return {
-      visibleIds: [...seen],
-      onShowMissing: () => {
-        for (const { panelId, controls, apply } of everyStatsSurface) {
-          const missing = listMissingPreferredMetrics(
-            loudnessProfile.document,
-            controls.statsVisibleIds
-          );
-          if (missing.length === 0) continue;
-          apply(panelId, {
-            ...controls,
-            statsVisibleIds: planShowMissing(controls.statsVisibleIds, missing),
-          });
-        }
-      },
-    };
-  }, [
-    statsPanelIds,
-    dockStatsPanelIds,
-    workspaceState,
-    dockLayout.controlsByPanelId,
-    dockLayout.setPanelControls,
-    loudnessProfile.document,
-    setPanelControlsForPanel,
-  ]);
+  const loudnessProfileStats = useLoudnessProfileStats();
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
