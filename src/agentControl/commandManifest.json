@@ -226,7 +226,7 @@
       "id": "ui.close",
       "family": "ui",
       "path": ["ui", "close"],
-      "usage": "plvs-cli ui close --surface-id <id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "usage": "plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json",
       "summary": "Close one exact non-draft UI surface through its normal Close intent.",
       "execution": "runningApp",
       "operation": "action",
@@ -235,14 +235,15 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
-      "positionals": [],
-      "options": [
+      "positionals": [
         {
-          "name": "--surface-id",
+          "name": "surface-id",
           "mapsTo": "surfaceId",
           "required": true,
           "value": { "type": "string" }
-        },
+        }
+      ],
+      "options": [
         {
           "name": "--expected-revision",
           "required": true,

@@ -30,6 +30,22 @@ pub enum ControlCommand {
   Text(Box<ControlCommand>),
   Capabilities,
   Inspect,
+  UiInspect,
+  UiShowSettings {
+    section: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  UiShowPanelSettings {
+    panel_id: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  UiClose {
+    surface_id: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
   MeasurementRead {
     method: String,
   },
@@ -282,6 +298,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
       return Err(format!("The {command} command requires --json."));
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
+    [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "view" => return parse_view_args(rest),
     [command, rest @ ..] if command == "module" => return parse_module_args(rest),
@@ -302,7 +319,150 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|ui|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+}
+
+fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, String> {
+  let raw = raw.ok_or_else(|| format!("Missing value for {option}."))?;
+  let value = raw
+    .parse::<u64>()
+    .map_err(|_| format!("The {option} value must be a non-negative safe integer."))?;
+  if value > MAX_SAFE_REVISION {
+    return Err(format!(
+      "The {option} value must be a non-negative safe integer."
+    ));
+  }
+  Ok(value)
+}
+
+fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(ControlCommand::FamilyHelp("ui".to_string()));
+  }
+  if args == ["inspect", "--json"] {
+    return Ok(ControlCommand::UiInspect);
+  }
+  let (kind, mut index) = match args {
+    [show, target, ..] if show == "show" && target == "settings" => ("settings", 2),
+    [show, target, ..] if show == "show" && target == "panel-settings" => ("panel-settings", 2),
+    [close, ..] if close == "close" => ("close", 1),
+    _ => return Err(USAGE.to_string()),
+  };
+  let mut section = None;
+  let mut panel_id = None;
+  let mut surface_id = None;
+  let mut expected_revision = None;
+  let mut expected_ui_generation = None;
+  let mut json = false;
+  while index < args.len() {
+    let option = args[index].as_str();
+    match option {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--section" if kind == "settings" && section.is_none() => {
+        section = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --section.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--panel-id" if kind == "panel-settings" && panel_id.is_none() => {
+        panel_id = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --panel-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      "--expected-ui-generation" if expected_ui_generation.is_none() => {
+        expected_ui_generation = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-ui-generation",
+        )?);
+        index += 2;
+      }
+      value if kind == "close" && !value.starts_with("--") && surface_id.is_none() => {
+        surface_id = Some(value.to_string());
+        index += 1;
+      }
+      value if value.starts_with("--") => {
+        return Err(format!("Unknown or duplicate option: {value}"))
+      }
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("UI navigation actions require --json.".to_string());
+  }
+  let expected_revision = expected_revision
+    .ok_or_else(|| "UI navigation actions require --expected-revision.".to_string())?;
+  let expected_ui_generation = expected_ui_generation
+    .ok_or_else(|| "UI navigation actions require --expected-ui-generation.".to_string())?;
+  match kind {
+    "settings" => {
+      let section = section.ok_or_else(|| "The Settings target requires --section.".to_string())?;
+      if ![
+        "behavior",
+        "shortcuts",
+        "appearance",
+        "analysis",
+        "channels",
+        "transfer",
+        "agent-control",
+        "about",
+      ]
+      .contains(&section.as_str())
+      {
+        return Err("Unknown Settings section.".to_string());
+      }
+      Ok(ControlCommand::UiShowSettings {
+        section,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "panel-settings" => {
+      let panel_id = panel_id
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "The Panel Settings target requires --panel-id.".to_string())?;
+      Ok(ControlCommand::UiShowPanelSettings {
+        panel_id,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "close" => {
+      let surface_id =
+        surface_id.ok_or_else(|| "The UI close action requires a surface ID.".to_string())?;
+      let entropy = surface_id.strip_prefix("ui-").unwrap_or("");
+      if !(16..=60).contains(&entropy.len())
+        || !entropy.chars().all(|character| {
+          character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
+        })
+      {
+        return Err("The UI close action requires an exact UI surface ID.".to_string());
+      }
+      Ok(ControlCommand::UiClose {
+        surface_id,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    _ => unreachable!("UI kind was validated above"),
+  }
 }
 
 fn parse_text_control_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -2568,6 +2728,11 @@ impl ControlFailure {
       | (
         _,
         "revisionRequired"
+        | "uiGenerationRequired"
+        | "uiSurfaceNotFound"
+        | "uiTargetNotFound"
+        | "surfaceUnavailable"
+        | "uiActionUnavailable"
         | "resourceNotFound"
         | "moduleNotFound"
         | "panelNotFound"
@@ -2585,6 +2750,10 @@ impl ControlFailure {
       (
         _,
         "revisionConflict"
+        | "uiGenerationConflict"
+        | "uiTargetNotVisible"
+        | "uiConflict"
+        | "uiBusy"
         | "editorActive"
         | "busy"
         | "operationNotAllowed"
@@ -2603,7 +2772,7 @@ impl ControlFailure {
         | "deviceInventoryChanged"
         | "deviceUnavailable",
       ) => 4,
-      (_, "timeout" | "cancelled") => 5,
+      (_, "timeout" | "cancelled" | "uiNotSettled") => 5,
       _ => 1,
     };
     Self {
@@ -2632,6 +2801,10 @@ fn command_name(command: &ControlCommand) -> String {
     }
     ControlCommand::Capabilities => "app.capabilities".to_string(),
     ControlCommand::Inspect => "app.inspect".to_string(),
+    ControlCommand::UiInspect => "ui.inspect".to_string(),
+    ControlCommand::UiShowSettings { .. } => "ui.show.settings".to_string(),
+    ControlCommand::UiShowPanelSettings { .. } => "ui.show.panelSettings".to_string(),
+    ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
@@ -2717,6 +2890,7 @@ fn request_for_command<R: Read>(
   let params = match command {
     ControlCommand::Capabilities
     | ControlCommand::Inspect
+    | ControlCommand::UiInspect
     | ControlCommand::MeasurementRead { .. }
     | ControlCommand::ViewRead { .. }
     | ControlCommand::ModuleList
@@ -2730,6 +2904,33 @@ fn request_for_command<R: Read>(
     | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect
     | ControlCommand::VisualDescribe => serde_json::json!({}),
+    ControlCommand::UiShowSettings {
+      section,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "section": section,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::UiShowPanelSettings {
+      panel_id,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "panelId": panel_id,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::UiClose {
+      surface_id,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "surfaceId": surface_id,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
     ControlCommand::TransportReport {
       session_id,
       report_format,
@@ -3788,6 +3989,163 @@ mod tests {
   }
 
   #[test]
+  fn parses_and_builds_ui_navigation_commands() {
+    assert_eq!(
+      parse_control_args(&args(&["ui", "inspect", "--json"])),
+      Ok(ControlCommand::UiInspect)
+    );
+    assert_eq!(
+      parse_control_args(&args(&["ui", "inspect", "--format", "text"])),
+      Ok(ControlCommand::Text(Box::new(ControlCommand::UiInspect)))
+    );
+
+    let settings = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "settings",
+      "--section",
+      "appearance",
+      "--expected-ui-generation",
+      "7",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      settings,
+      ControlCommand::UiShowSettings {
+        section: "appearance".to_string(),
+        expected_revision: 4,
+        expected_ui_generation: 7,
+      }
+    );
+    let request = request_for_command(&settings, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "ui.show.settings");
+    assert_eq!(
+      request.params,
+      serde_json::json!({
+        "section": "appearance",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
+    let panel = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "panel-settings",
+      "--panel-id",
+      "stats-2",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&panel), "ui.show.panelSettings");
+    assert_eq!(
+      request_for_command(&panel, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "panelId": "stats-2",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
+    let close = parse_control_args(&args(&[
+      "ui",
+      "close",
+      "ui-aaaaaaaaaaaaaaaa",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&close), "ui.close");
+    assert_eq!(
+      request_for_command(&close, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "surfaceId": "ui-aaaaaaaaaaaaaaaa",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+  }
+
+  #[test]
+  fn rejects_unsafe_or_incomplete_ui_navigation_commands() {
+    for invalid in [
+      args(&["ui", "inspect"]),
+      args(&[
+        "ui",
+        "show",
+        "settings",
+        "--expected-revision",
+        "4",
+        "--json",
+      ]),
+      args(&[
+        "ui",
+        "show",
+        "settings",
+        "--section",
+        "unknown",
+        "--expected-revision",
+        "4",
+        "--expected-ui-generation",
+        "7",
+        "--json",
+      ]),
+      args(&[
+        "ui",
+        "show",
+        "panel-settings",
+        "--panel-id",
+        "stats",
+        "--expected-revision",
+        "4",
+        "--expected-ui-generation",
+        "-1",
+        "--json",
+      ]),
+      args(&[
+        "ui",
+        "close",
+        "not-a-surface",
+        "--expected-revision",
+        "4",
+        "--expected-ui-generation",
+        "7",
+        "--json",
+      ]),
+      args(&[
+        "ui",
+        "close",
+        "ui-aaaaaaaaaaaaaaaa",
+        "--expected-revision",
+        "4",
+        "--expected-ui-generation",
+        "7",
+        "--dry-run",
+        "--json",
+      ]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
+  #[test]
   fn multiple_candidates_return_a_structured_instance_selection_error() {
     let instances = vec![crate::coordinator::InstanceSummary {
       instance_id: "instance-a".to_string(),
@@ -3820,6 +4178,9 @@ mod tests {
       "name" => "Name".to_string(),
       "session-id" => "file-1".to_string(),
       "recording-id" => format!("rec-{}", "a".repeat(32)),
+      "section" => "appearance".to_string(),
+      "surface-id" => format!("ui-{}", "a".repeat(16)),
+      "id" => "stats".to_string(),
       "main|workspace" | "main|workspace|panel|dock-header|dock-editor" => "main".to_string(),
       "n" => "0".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
@@ -5322,6 +5683,11 @@ mod tests {
   fn stable_app_error_classes_map_to_the_v1_exit_contract() {
     let cases = [
       ("revisionRequired", None, 3),
+      ("uiGenerationRequired", None, 3),
+      ("uiSurfaceNotFound", None, 3),
+      ("uiTargetNotFound", None, 3),
+      ("surfaceUnavailable", None, 3),
+      ("uiActionUnavailable", None, 3),
       ("resourceNotFound", None, 3),
       ("panelNotFound", None, 3),
       ("axisNotFound", None, 3),
@@ -5331,6 +5697,10 @@ mod tests {
       ("dockPanelNotFound", None, 3),
       ("monitorNotFound", None, 3),
       ("revisionConflict", None, 4),
+      ("uiGenerationConflict", None, 4),
+      ("uiTargetNotVisible", None, 4),
+      ("uiConflict", None, 4),
+      ("uiBusy", None, 4),
       ("editorActive", None, 4),
       ("operationNotAllowed", None, 4),
       ("waitLimitReached", None, 4),
@@ -5350,6 +5720,7 @@ mod tests {
       ("deviceUnavailable", None, 4),
       ("timeout", None, 5),
       ("cancelled", None, 5),
+      ("uiNotSettled", None, 5),
       ("unexpectedRuntimeFailure", None, 1),
       ("deviceStartFailed", None, 1),
       ("invalidControls", Some(-32602), 3),
