@@ -48,7 +48,14 @@ function dockVectorscopeTree(
       }}
     >
       <HistoryDataProvider value={historyData}>
-        <DockVectorscope controls={selectedControls} heightMode={heightMode} />
+        <DockVectorscope
+          controls={
+            /** @type {import("../dockModuleControls.js").DockModuleProps<"correlation">} */ (
+              selectedControls
+            )
+          }
+          heightMode={heightMode}
+        />
       </HistoryDataProvider>
     </FrameDataProvider>
   );

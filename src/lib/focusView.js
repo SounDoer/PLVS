@@ -1,3 +1,9 @@
+/**
+ * How the window strips itself down when it is being watched rather than operated.
+ * @typedef {{ autoHideControls: boolean, compactPanels: boolean, borderless: boolean }} FocusView
+ */
+
+/** @type {FocusView} */
 export const DEFAULT_FOCUS_VIEW = {
   autoHideControls: false,
   compactPanels: false,

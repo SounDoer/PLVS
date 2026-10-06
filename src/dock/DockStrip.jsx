@@ -11,7 +11,7 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 /**
  * @param {{
  *   panels?: any,
- *   controls: any,
+ *   controls: import("./dockModuleControls.js").DockStripControls,
  *   hoveredPanelId?: string,
  *   edge?: string,
  *   height?: number,

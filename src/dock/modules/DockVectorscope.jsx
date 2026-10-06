@@ -66,7 +66,7 @@ function computePlotBox(width, height, expanded, isPolar) {
 
 /**
  * Compact live Vectorscope with a dedicated correlation readout.
- * @param {{ controls?: any, heightMode?: string }} props
+ * @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"correlation">, heightMode?: string }} props
  */
 export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();

@@ -246,6 +246,26 @@ function withPanelKeys(moduleId, raw) {
  */
 
 /**
+ * What the strip gives every module alongside that module's own stored controls: the shared
+ * history viewport and its gesture handlers, the transport state, and which panel this is.
+ * @typedef {{
+ *   controlsByPanelId?: Record<string, object>,
+ *   sourceTransportState?: any,
+ *   dockHistoryWindowSec?: number,
+ *   dockHistoryHud?: any,
+ *   onDockHistoryWheel?: (...args: any[]) => any,
+ *   onDockHistoryPointerDown?: (...args: any[]) => any,
+ *   panelId?: string,
+ * }} DockStripControls
+ */
+/**
+ * The `controls` prop of one Dock module: its own controls, as far as they are stored, merged
+ * over what the strip shares with all of them.
+ * @template {DockModuleId} M
+ * @typedef {Partial<DockModuleControls<M>> & DockStripControls} DockModuleProps
+ */
+
+/**
  * @template {DockModuleId} M
  * @overload
  * @param {M} moduleId

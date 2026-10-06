@@ -35,7 +35,7 @@ const baseProps = {
   metricsData: {},
   runtimeEnginesProps: {},
   fileDropProps: {},
-  focusView: { autoHideControls: false },
+  focusView: { autoHideControls: false, compactPanels: false, borderless: false },
   focusControlsVisible: true,
   shellHandlers: {},
   headerProps: {},

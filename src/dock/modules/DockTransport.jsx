@@ -1,5 +1,5 @@
 /** Timer-only transport module. Capture controls remain in the accessory header. */
-/** @param {{ controls: any }} props */
+/** @param {{ controls: import("../dockModuleControls.js").DockStripControls }} props */
 export function DockTransport({ controls }) {
   const state = controls?.sourceTransportState;
   if (!state) return null;

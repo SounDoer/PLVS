@@ -81,7 +81,7 @@ async function readWindowBounds() {
  * @param {{
  *   windowPinned?: boolean,
  *   setWindowPinned?: (...args: any[]) => any,
- *   focusView?: any,
+ *   focusView?: import("../lib/focusView.js").FocusView,
  *   setFocusView?: (...args: any[]) => any,
  *   surfaceOpacity?: number,
  *   setSurfaceOpacity?: (...args: any[]) => any,

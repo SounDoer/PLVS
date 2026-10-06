@@ -218,7 +218,7 @@ function ReadoutRegion({
 
 /**
  * Compact Peak/RMS/Loudness meter for the Dock strip.
- * @param {{ controls?: any, heightMode?: string }} props
+ * @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"level">, heightMode?: string }} props
  */
 export function DockLevel({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();

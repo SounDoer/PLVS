@@ -38,7 +38,7 @@ function FocusSwitch({ id, label, checked, onCheckedChange }) {
  * @param {{
  *   pinned?: boolean,
  *   setPinned?: (...args: any[]) => any,
- *   focusView?: any,
+ *   focusView?: import("../lib/focusView.js").FocusView,
  *   setAutoHideControls?: (...args: any[]) => any,
  *   setCompactPanels?: (...args: any[]) => any,
  *   setBorderless?: (...args: any[]) => any,

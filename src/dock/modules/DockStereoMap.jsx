@@ -28,7 +28,7 @@ function rangeForMode(mode, controls) {
  * No axes, hover marker, wheel zoom, pan, or snapshot interaction — Dock never browses history.
  * `StereoMapPlot` is already pure presentation (the Workspace panel wraps it with the
  * interactive chrome separately), so it is reused here as-is for the compact render.
- * @param {{ controls?: any }} props
+ * @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"stereoMap"> }} props
  */
 export function DockStereoMap({ controls = {} }) {
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();

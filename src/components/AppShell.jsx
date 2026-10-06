@@ -32,7 +32,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   metricsData: any,
  *   runtimeEnginesProps: any,
  *   fileDropProps: any,
- *   focusView: any,
+ *   focusView: import("../lib/focusView.js").FocusView,
  *   focusControlsVisible: boolean,
  *   shellHandlers: any,
  *   headerProps: any,
