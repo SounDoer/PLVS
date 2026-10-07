@@ -8,6 +8,7 @@ import {
   STEREO_MAP_GRID_KEYS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
+  panelControlRowFace,
   panelControlUiRows,
 } from "./panelControls.js";
 import { STATS_OPTIONS } from "./statsCatalog.js";
@@ -977,5 +978,26 @@ describe("Level Meter bar colors", () => {
     expect(rows.indexOf(barColors)).toBeLessThan(
       rows.findIndex((row) => row.minKey === "levelMeterPeakWarningDb")
     );
+  });
+});
+
+describe("panelControlRowFace", () => {
+  it("returns a single face only for its own tab", () => {
+    const row = { key: "a", ui: { tab: "spectrum", label: "Tilt" } };
+    expect(panelControlRowFace(row, "spectrum")).toBe(row.ui);
+    expect(panelControlRowFace(row, "spectrogram")).toBeUndefined();
+  });
+
+  it("picks the face for the tab from a list, so one control can differ per tab", () => {
+    const spectrum = { tab: "spectrum", ariaLabel: "spectrum tilt" };
+    const spectrogram = { tab: "spectrogram", ariaLabel: "spectrogram tilt", order: 15 };
+    const row = { key: "a", ui: [spectrum, spectrogram] };
+    expect(panelControlRowFace(row, "spectrum")).toBe(spectrum);
+    expect(panelControlRowFace(row, "spectrogram")).toBe(spectrogram);
+    expect(panelControlRowFace(row, "waveform")).toBeUndefined();
+  });
+
+  it("has no face for a row the settings panel does not show", () => {
+    expect(panelControlRowFace({ key: "a" }, "spectrum")).toBeUndefined();
   });
 });

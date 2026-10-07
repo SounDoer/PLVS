@@ -30,13 +30,16 @@ const SLOT_WIDGETS = new Set(["custom", "customRow"]);
  * One `openKey` for the whole group rather than a piece of state per select: only one popover can
  * be open at a time anyway, and a per-row flag would have to be declared next to the widget, which
  * is exactly the second list this is removing.
- * @param {{ tab: string, controls: import("../../workspace/types.js").PanelControls, onChange: (...args: any[]) => any, slots?: Record<string, import("react").ReactNode> }} props
+ *
+ * `onChange` receives only the keys a change touches. The record those keys live in is the
+ * surface's: a panel's holds every control and is repaired whole, the Dock's holds a module's subset
+ * plus keys the table does not know, so each merges and repairs the patch by its own rule.
+ * @param {{ rows: ReturnType<typeof panelControlUiRows>, tab: string, controls: Record<string, any>, onChange: (changes: Record<string, any>) => any, slots?: Record<string, import("react").ReactNode> }} props
  */
-export function PanelControlRows({ tab, controls, onChange, slots = {} }) {
+export function ControlRows({ rows, tab, controls, onChange: commit, slots = {} }) {
   const [openKey, setOpenKey] = useState(null);
-  const commit = (changes) => onChange(normalizePanelControls({ ...controls, ...changes }));
 
-  return panelControlUiRows(tab)
+  return rows
     .filter((row) => !row.ui.showWhen || row.ui.showWhen(controls))
     .filter((row) => !SLOT_WIDGETS.has(row.ui.widget) || slots[row.key ?? row.minKey])
     .map((row) => {
@@ -75,6 +78,22 @@ export function PanelControlRows({ tab, controls, onChange, slots = {} }) {
         </SettingsRow>
       );
     });
+}
+
+/**
+ * A panel's settings tab, straight from the table.
+ * @param {{ tab: string, controls: import("../../workspace/types.js").PanelControls, onChange: (...args: any[]) => any, slots?: Record<string, import("react").ReactNode> }} props
+ */
+export function PanelControlRows({ tab, controls, onChange, slots }) {
+  return (
+    <ControlRows
+      rows={panelControlUiRows(tab)}
+      tab={tab}
+      controls={controls}
+      onChange={(changes) => onChange(normalizePanelControls({ ...controls, ...changes }))}
+      slots={slots}
+    />
+  );
 }
 
 function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKey) {

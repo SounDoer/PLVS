@@ -32,6 +32,16 @@ the reference captured on `463b9463`. The gate is zero changed pixels. A run who
 are the 1724-pixel highlight on another panel's header settings icon is repeated (see the spec,
 Verification); any difference inside a settings surface fails.
 
+The zero-pixel gate needs an attached RDP session. Detached, the window renders at 1280x800 and two
+captures of the same code differ by up to about twenty popover-edge pixels, each by one level in
+one channel. `ps-walk.sh` detects this and compares against a detached reference of the starting
+source with `artifacts/app-state/ps-compare.mjs` instead: same size, no channel off by more than 1,
+fewer than 100 pixels touched. Commits verified only that way are listed here and get the strict
+run before anything is pushed:
+
+- Stage 1 (all three commits, one run at the end of the stage).
+- Stage 2 (one commit covering 2.1 and 2.2).
+
 Move convention for Stage 1: function bodies move verbatim, checked with
 `git diff --color-moved=dimmed-zebra`.
 

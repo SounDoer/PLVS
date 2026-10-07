@@ -250,6 +250,8 @@ const AXIS_LINK_CONTROLS = Object.values(AXIS_VIEWPORTS).map((kind) => ({
 
 /**
  * The settings-panel face of a row: where it shows, what draws it, and the widget's own limits.
+ * A control shown on more than one tab carries a list of these, one per tab, because the label,
+ * position and `aria-label` are the tab's and not the control's.
  *
  * @typedef {{
  *   tab: string,
@@ -294,7 +296,7 @@ const AXIS_LINK_CONTROLS = Object.values(AXIS_VIEWPORTS).map((kind) => ({
  *   minSpan?: number,
  *   readMin?: (raw: any) => any,
  *   normalize?: (row: PanelControlRow, raw: any) => any,
- *   ui?: PanelControlRowUi,
+ *   ui?: PanelControlRowUi | PanelControlRowUi[],
  * }} PanelControlRow
  */
 
@@ -979,20 +981,28 @@ export function normalizePanelControls(raw) {
 }
 
 /**
- * The rows one settings tab renders, in table order. A row carries its own label, widget and
- * visibility rule, so a new control appears in the settings panel by being added to the table --
- * there is no second list of controls to keep in step.
- */
-/**
- * The rows one settings tab renders, in table order. A row carries its own label, widget and
- * visibility rule, so a new control appears in the settings panel by being added to the table --
- * there is no second list of controls to keep in step.
+ * The face a row shows on one tab, or undefined when the row is not on that tab.
+ * @param {PanelControlRow} row
  * @param {string} tab
+ * @returns {PanelControlRowUi | undefined}
+ */
+export function panelControlRowFace(row, tab) {
+  if (Array.isArray(row.ui)) return row.ui.find((face) => face.tab === tab);
+  return row.ui?.tab === tab ? row.ui : undefined;
+}
+
+/**
+ * The rows one settings tab renders, in table order, each with `ui` resolved to that tab's face. A
+ * row carries its own label, widget and visibility rule, so a new control appears in the settings
+ * panel by being added to the table -- there is no second list of controls to keep in step.
+ * @param {string} tab
+ * @returns {(PanelControlRow & { ui: PanelControlRowUi })[]}
  */
 export function panelControlUiRows(tab) {
-  return CONTROLS.filter((row) => row.ui?.tab === tab).sort(
-    (a, b) => (a.ui.order ?? 0) - (b.ui.order ?? 0)
-  );
+  return CONTROLS.flatMap((row) => {
+    const ui = panelControlRowFace(row, tab);
+    return ui ? [{ ...row, ui }] : [];
+  }).sort((a, b) => (a.ui.order ?? 0) - (b.ui.order ?? 0));
 }
 
 const ROW_BY_KEY = new Map();
