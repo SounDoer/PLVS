@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -29,6 +29,10 @@ import { DisplaySnapshotProvider, useDisplaySnapshot } from "./runtime/DisplaySn
 import { AnalysisSessionProvider, useAnalysisSession } from "./runtime/AnalysisSessionContext.jsx";
 import { useLoudnessProfileStats } from "./hooks/useLoudnessProfileStats.js";
 import { DockAccessoriesProvider, useDockAccessories } from "./dock/DockAccessoriesContext.jsx";
+import {
+  AgentControlStateProvider,
+  useAgentControlState,
+} from "./agentControl/AgentControlStateContext.jsx";
 import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
@@ -39,87 +43,18 @@ import { usePackTransfer } from "./transfer/usePackTransfer.js";
 import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { isTauri } from "./ipc/env.js";
-import { isParticipantInstance } from "./lib/runtimeRole.js";
-import {
-  captureVisualScreenshot,
-  getVisualCaptureCapabilities,
-  inspectVisualRecording,
-  resetTruePeakMax,
-  startVisualRecording,
-  stopVisualRecording,
-  updateVisualRecordingAudioState,
-  updateVisualRecordingGeometry,
-} from "./ipc/commands.js";
+import { resetTruePeakMax } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
 import packageInfo from "../package.json";
-import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { AgentControlBridge } from "./agentControl/AgentControlBridge.jsx";
-import { useVisualCaptureSurfaces } from "./agentControl/useVisualCaptureSurfaces.js";
 
 const APP_VERSION = packageInfo.version;
 const DevUiVisualFixture = import.meta.env.DEV
   ? lazy(() => import("./dev/UiVisualFixture.jsx"))
   : null;
-
-function nextPaint(signal) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException("Visual settlement was cancelled.", "AbortError"));
-      return;
-    }
-    const onAbort = () => {
-      cancelAnimationFrame(frame);
-      reject(new DOMException("Visual settlement was cancelled.", "AbortError"));
-    };
-    const frame = requestAnimationFrame(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    });
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
-}
-
-async function settleDockAccessory(target, runtime, options) {
-  const geometry = runtime?.accessoryGeometry?.[target.kind];
-  if (!geometry?.visible || !(geometry.width > 0 && geometry.height > 0)) {
-    throw Object.assign(new Error("The requested Dock accessory is unavailable."), {
-      reason: "targetUnavailable",
-    });
-  }
-  await document.fonts?.ready;
-  await nextPaint(options.signal);
-  await nextPaint(options.signal);
-  const revision = options.getRevision();
-  if (options.expectedRevision !== undefined && revision !== options.expectedRevision) {
-    throw Object.assign(new Error("The Agent Control revision changed before capture."), {
-      reason: "revisionConflict",
-      details: { expectedRevision: options.expectedRevision, currentRevision: revision },
-    });
-  }
-  const uiGeneration = options.getUiGeneration?.() ?? 0;
-  if (options.expectedUiGeneration !== undefined && uiGeneration !== options.expectedUiGeneration) {
-    throw Object.assign(new Error("The visible UI changed before capture."), {
-      reason: "uiGenerationConflict",
-      details: {
-        expectedUiGeneration: options.expectedUiGeneration,
-        currentUiGeneration: uiGeneration,
-      },
-    });
-  }
-  const viewport = { width: geometry.width, height: geometry.height };
-  return {
-    target,
-    windowLabel: target.kind === "dockHeader" ? "dock-header" : "dock-editor",
-    rect: { x: 0, y: 0, ...viewport },
-    viewport,
-    devicePixelRatio: window.devicePixelRatio || 1,
-    revision,
-    uiGeneration,
-  };
-}
 
 export function historyPerformanceHarnessOptionsFromSearch(search) {
   const params = new URLSearchParams(search);
@@ -191,7 +126,10 @@ export default function App() {
                                   {/* Reads Dock, Presets, LoudnessProfile, SourceActions,
                                       DisplaySnapshot and AnalysisSession. */}
                                   <DockAccessoriesProvider>
-                                    <AppContent />
+                                    {/* Reads nothing. Shared by the bridge and the shell. */}
+                                    <AgentControlStateProvider>
+                                      <AppContent />
+                                    </AgentControlStateProvider>
                                   </DockAccessoriesProvider>
                                 </AnalysisSessionProvider>
                               </DisplaySnapshotProvider>
@@ -215,12 +153,7 @@ function AppContent() {
   const meterRuntime = useMeterRuntime();
   const { notice, selectedOffset, setSelectedOffset, showClock } = useMeterDisplayState();
   const { state: workspaceState } = useWorkspaceStore();
-  const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
-  const {
-    visibility: dockAccessoryVisibility,
-    hoveredDockPanelId,
-    visualRuntimeRef,
-  } = useDockAccessories();
+  const { visibility: dockAccessoryVisibility, hoveredDockPanelId } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
   const { sourceMode, running, fileSessions, activeFileSession, activeFileId, analyzingFileId } =
@@ -312,32 +245,8 @@ function AppContent() {
   const { setAudio } = display;
 
   const presets = usePresetLibrary();
-  const agentControlRuntime = useMemo(readAgentControlRuntime, []);
-  const [visualPlatformCapabilities, setVisualPlatformCapabilities] = useState(null);
-  const [visualRecordingState, setVisualRecordingState] = useState(null);
-  useEffect(() => {
-    if (agentControlRuntime.available !== true) return undefined;
-    let cancelled = false;
-    getVisualCaptureCapabilities()
-      .then((capabilities) => {
-        if (!cancelled) setVisualPlatformCapabilities(capabilities);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setVisualPlatformCapabilities({
-            platform: agentControlRuntime.platform ?? "unknown",
-            screenshot: { available: false, targets: [] },
-            recording: { available: false, targets: [], audioSources: [], cursorModes: [] },
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [agentControlRuntime]);
-  const [agentControlEnabled, setAgentControlEnabled] = useState(
-    () => agentControlRuntime.enabled === true
-  );
+  const { recordingState: visualRecordingState, setEnabled: setAgentControlEnabled } =
+    useAgentControlState();
 
   const historyRetentionSec = settings.historyRetentionSec;
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
@@ -457,33 +366,6 @@ function AppContent() {
       historyPerformanceRequestKeysRef.current
     );
   }, [analysisRequests]);
-  const agentControlVisual = useMemo(
-    () => ({
-      platformCapabilities: visualPlatformCapabilities,
-      getRuntime: () => visualRuntimeRef.current,
-      settle: (target, options) =>
-        target.kind === "dockHeader" || target.kind === "dockEditor"
-          ? settleDockAccessory(target, visualRuntimeRef.current, options)
-          : visualCaptureSurfaces.settle(target, options),
-      captureScreenshot: captureVisualScreenshot,
-      startRecording: startVisualRecording,
-      inspectRecording: inspectVisualRecording,
-      stopRecording: stopVisualRecording,
-      updateRecordingGeometry: updateVisualRecordingGeometry,
-      updateRecordingAudioState: updateVisualRecordingAudioState,
-      subscribe: visualCaptureSurfaces.subscribe,
-      setRecordingState: setVisualRecordingState,
-    }),
-    [visualCaptureSurfaces, visualPlatformCapabilities, visualRuntimeRef]
-  );
-  const agentControlBridgeProps = {
-    enabled:
-      agentControlRuntime.available === true &&
-      (agentControlEnabled || isParticipantInstance()) &&
-      visualPlatformCapabilities !== null,
-    runtime: agentControlRuntime,
-    visual: agentControlVisual,
-  };
   const spectrumValueKey =
     spectrumChannelUi.type === "pair"
       ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
@@ -745,7 +627,7 @@ function AppContent() {
 
   return (
     <>
-      <AgentControlBridge {...agentControlBridgeProps} />
+      <AgentControlBridge />
       <AppShell
         docked={docked}
         dockProps={dockProps}

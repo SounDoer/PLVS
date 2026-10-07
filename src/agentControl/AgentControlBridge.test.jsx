@@ -108,6 +108,21 @@ vi.mock("../runtime/DisplaySnapshotContext.jsx", () => ({
 vi.mock("../hooks/SceneGuardContext.jsx", () => ({
   useSceneGuard: () => ({ activeBlockingEditors: [] }),
 }));
+vi.mock("./AgentControlStateContext.jsx", () => ({
+  useAgentControlState: () => ({
+    runtime: { available: true, platform: "x" },
+    enabled: true,
+    platformCapabilities: { platform: "x" },
+    setRecordingState: () => {},
+  }),
+}));
+vi.mock("../dock/DockAccessoriesContext.jsx", () => ({
+  useDockAccessories: () => ({ visualRuntimeRef: { current: { windowForm: "normal" } } }),
+}));
+vi.mock("./useVisualCaptureSurfaces.js", () => ({
+  useVisualCaptureSurfaces: () => ({ settle: async () => "surface", subscribe: () => () => {} }),
+}));
+vi.mock("../lib/runtimeRole.js", () => ({ isParticipantInstance: () => false }));
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
   useAppLifecycle: () => ({ updateBusy: false }),
 }));
@@ -116,19 +131,18 @@ vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
 }));
 
 import { AgentControlBridge } from "./AgentControlBridge.jsx";
-import { standIn } from "../testing/standIn.js";
 
 describe("AgentControlBridge", () => {
-  it("renders nothing and builds each owned area from its owner", () => {
-    const props = standIn({
-      enabled: false,
-      runtime: { available: false, platform: "x" },
-    });
-    const { container } = render(<AgentControlBridge {...props} />);
+  it("renders nothing and builds every area from its owner", async () => {
+    const { container } = render(<AgentControlBridge />);
 
     expect(container.innerHTML).toBe("");
     const passed = useAgentControlBridge.mock.calls.at(-1)[0];
-    expect(passed.enabled).toBe(false);
+    expect(passed.enabled).toBe(true);
+    expect(passed.runtime).toEqual({ available: true, platform: "x" });
+    expect(passed.visual.platformCapabilities).toEqual({ platform: "x" });
+    expect(passed.visual.getRuntime()).toEqual({ windowForm: "normal" });
+    await expect(passed.visual.settle({ kind: "panel" }, {})).resolves.toBe("surface");
     expect(passed.dock).toMatchObject({ enabled: false, edge: "bottom", height: 72 });
     expect(passed.dockContext).toMatchObject({
       platform: "x",

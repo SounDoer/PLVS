@@ -25,15 +25,27 @@ import { isTauri } from "../ipc/env.js";
 import { supportsDockMode } from "../lib/platform.js";
 import { readAgentControlRuntime } from "./appSnapshot.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
+import { useAgentControlState } from "./AgentControlStateContext.jsx";
+import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
+import { settleDockAccessory } from "./settleDockAccessory.js";
+import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
+import { isParticipantInstance } from "../lib/runtimeRole.js";
+import {
+  captureVisualScreenshot,
+  inspectVisualRecording,
+  startVisualRecording,
+  stopVisualRecording,
+  updateVisualRecordingAudioState,
+  updateVisualRecordingGeometry,
+} from "../ipc/commands.js";
 
 /**
  * Agent Control as a component, so it can sit inside the domain providers and read them itself.
- * It builds every area from the owning domain. The props are what `AppContent` still owns: whether
- * Agent Control is enabled, the runtime descriptor, and visual capture.
- *
- * @param {Pick<Parameters<typeof useAgentControlBridge>[0], "enabled" | "runtime" | "visual">} props
+ * It builds every area from the owning domain and takes nothing from its parent.
  */
-export function AgentControlBridge(props) {
+export function AgentControlBridge() {
+  const { runtime, enabled, platformCapabilities, setRecordingState } = useAgentControlState();
+  const { visualRuntimeRef } = useDockAccessories();
   const {
     docked,
     dockEdge,
@@ -132,19 +144,11 @@ export function AgentControlBridge(props) {
   const agentControlViewContext = useMemo(
     () => ({
       view: { pinned, focusView, surfaceOpacity, glassEnabled },
-      platform: props.runtime.platform,
+      platform: runtime.platform,
       docked,
       applyView: applyViewState,
     }),
-    [
-      props.runtime.platform,
-      applyViewState,
-      docked,
-      focusView,
-      glassEnabled,
-      surfaceOpacity,
-      pinned,
-    ]
+    [runtime.platform, applyViewState, docked, focusView, glassEnabled, surfaceOpacity, pinned]
   );
 
   const presets = usePresetLibrary();
@@ -499,8 +503,34 @@ export function AgentControlBridge(props) {
     ]
   );
 
+  const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
+  const agentControlVisual = useMemo(
+    () => ({
+      platformCapabilities,
+      getRuntime: () => visualRuntimeRef.current,
+      settle: (target, options) =>
+        target.kind === "dockHeader" || target.kind === "dockEditor"
+          ? settleDockAccessory(target, visualRuntimeRef.current, options)
+          : visualCaptureSurfaces.settle(target, options),
+      captureScreenshot: captureVisualScreenshot,
+      startRecording: startVisualRecording,
+      inspectRecording: inspectVisualRecording,
+      stopRecording: stopVisualRecording,
+      updateRecordingGeometry: updateVisualRecordingGeometry,
+      updateRecordingAudioState: updateVisualRecordingAudioState,
+      subscribe: visualCaptureSurfaces.subscribe,
+      setRecordingState,
+    }),
+    [platformCapabilities, setRecordingState, visualCaptureSurfaces, visualRuntimeRef]
+  );
+
   useAgentControlBridge({
-    ...props,
+    enabled:
+      runtime.available === true &&
+      (enabled || isParticipantInstance()) &&
+      platformCapabilities !== null,
+    runtime,
+    visual: agentControlVisual,
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
     workspace: workspaceState,
@@ -523,7 +553,7 @@ export function AgentControlBridge(props) {
     viewContext: agentControlViewContext,
     dock: agentControlDock,
     dockContext: {
-      platform: props.runtime.platform,
+      platform: runtime.platform,
       ...agentControlAnalysisContext,
       sourceMode,
       activeEditors: activeBlockingEditors,
