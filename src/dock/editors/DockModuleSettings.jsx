@@ -1,10 +1,9 @@
 import { useState } from "react";
-import {
-  SpectrumDisplaySettingsRows,
-  StatsMetricsSettingsRow,
-} from "../../components/panel-settings/PanelSettingsControls.jsx";
+import { SpectrumDisplaySettingsRows } from "../../components/panel-settings/PanelSettingsControls.jsx";
 import { LoudnessLayersControl } from "../../components/panel-settings/LoudnessSettings.jsx";
 import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
+import { toggleId } from "../../components/panel-settings/selectionKeys.js";
+import { StatsMetricsSettingsRow } from "../../components/panel-settings/StatsSettings.jsx";
 import { WaveformSplitRows } from "../../components/panel-settings/WaveformSettings.jsx";
 import {
   SettingsGroup,
@@ -284,19 +283,27 @@ function SettingsBody({
   }
   if (moduleId === "stats") {
     return (
-      <StatsMetricsSettingsRow
-        visibleIds={controls.statsVisibleIds}
-        orderedIds={controls.statsOrder}
-        onToggle={(id) =>
-          onChange({
-            ...controls,
-            statsVisibleIds: controls.statsVisibleIds.includes(id)
-              ? controls.statsVisibleIds.filter((value) => value !== id)
-              : [...controls.statsVisibleIds, id],
-          })
-        }
-        onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
-        showReset={false}
+      <ControlRows
+        rows={dockSettingsRows(moduleId)}
+        tab={dockSettingsTab(moduleId)}
+        controls={controls}
+        onChange={(changes) => onChange({ ...controls, ...changes })}
+        slots={{
+          statsVisibleIds: (
+            <StatsMetricsSettingsRow
+              visibleIds={controls.statsVisibleIds}
+              orderedIds={controls.statsOrder}
+              onToggle={(id) =>
+                onChange({
+                  ...controls,
+                  statsVisibleIds: toggleId(controls.statsVisibleIds, id),
+                })
+              }
+              onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
+              showReset={false}
+            />
+          ),
+        }}
       />
     );
   }

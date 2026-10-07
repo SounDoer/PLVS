@@ -731,6 +731,8 @@ const CONTROLS = [
       "psr",
       "plr",
     ],
+    // `customRow`: one sortable list edits this key and statsOrder together.
+    ui: { tab: "stats", widget: "customRow" },
   },
   {
     key: "statsOrder",
