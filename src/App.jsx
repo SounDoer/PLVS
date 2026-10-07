@@ -20,7 +20,6 @@ import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
 import { SceneGuardProvider } from "./hooks/SceneGuardContext.jsx";
 import { errorDetails } from "./lib/errorDetails.js";
-import { latestHistoryTimestampMs } from "./lib/historyTimestamps.js";
 import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
 import {
   UiNavigationProvider,
@@ -46,7 +45,6 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
-import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { isTauri } from "./ipc/env.js";
@@ -194,7 +192,7 @@ export default function App() {
                             {/* Reads Settings, Dock, WindowChrome, Presets, Source and
                                 SourceActions. */}
                             <AppLifecycleProvider>
-                              {/* Reads MeterRuntime. Its value changes per meter frame. */}
+                              {/* Reads MeterRuntime and SourceActions. Its value changes per meter frame. */}
                               <DisplaySnapshotProvider>
                                 {/* Reads DisplaySnapshot, Workspace, Dock, Settings and
                                     SourceActions. */}
@@ -220,29 +218,15 @@ export default function App() {
 
 function AppContent() {
   const meterRuntime = useMeterRuntime();
-  const {
-    notice,
-    raiseNotice,
-    clearNotice,
-    selectedOffset,
-    setSelectedOffset,
-    selectedSnapshotTimeMs,
-    showClock,
-  } = useMeterDisplayState();
+  const { notice, raiseNotice, clearNotice, selectedOffset, setSelectedOffset, showClock } =
+    useMeterDisplayState();
   const { state: workspaceState, setActiveTab } = useWorkspaceStore();
   const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
   const visualRuntimeRef = useRef(null);
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
-  const {
-    sourceMode,
-    running,
-    fileSessions,
-    activeFileSession,
-    analyzingFileSession,
-    activeFileId,
-    analyzingFileId,
-  } = meterRuntime;
+  const { sourceMode, running, fileSessions, activeFileSession, activeFileId, analyzingFileId } =
+    meterRuntime;
   const {
     fileSession,
     exportFileAnalysisReport,
@@ -332,7 +316,6 @@ function AppContent() {
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { setAudio } = display;
-  const { elapsedMsRef } = display.clock;
 
   const reportSceneError = useCallback(
     (error, fallbackMessage, detailPrefix) =>
@@ -407,12 +390,12 @@ function AppContent() {
     hasHistoryData,
     correlation,
     channelMetadata,
-    targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
     resolveStereoMapSnapshotForKey,
     channelCount,
+    sourceTransportState,
   } = useDisplaySnapshot();
 
   const { historyChartInteractive, totalSamples, statsMetrics } = useLoudnessHistory({
@@ -429,31 +412,6 @@ function AppContent() {
     return Math.max(0, Math.min(20, pct));
   }, []);
   const vsGridDiagFar = 100 - vsGridDiagInset;
-  // In file mode the selected history sample's timestamp is absolute media time (>= 0); clamp it so
-  // a scrub past the decoded tail never renders a negative time in the transport pill. Live mode
-  // keeps the raw value (its timeline is wall-clock relative).
-  const selectedMediaTimeMs =
-    sourceMode === "file" && Number.isFinite(targetTimestampMs)
-      ? Math.max(0, targetTimestampMs)
-      : targetTimestampMs;
-
-  const latestTimestampMs = useMemo(() => {
-    return latestHistoryTimestampMs(histSourceList);
-    // The history ring mutates in place; its version is an intentional cache invalidator.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [histSourceList, histSourceList.version]);
-
-  const sourceTransportState = deriveSourceTransportState({
-    sourceMode,
-    running,
-    selectedOffset,
-    latestTimestampMs,
-    elapsedMs: elapsedMsRef.current,
-    selectedSnapshotTimeMs,
-    selectedMediaTimeMs,
-    fileSession,
-    analyzingFileSession,
-  });
   const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
   const {
     channelLabelRuntime,

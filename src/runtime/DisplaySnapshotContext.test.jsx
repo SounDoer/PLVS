@@ -1,35 +1,91 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { act, render, renderHook } from "@testing-library/react";
-import { MeterRuntimeProvider, useMeterRuntimeAssembly } from "./MeterRuntimeContext.jsx";
+import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import { UiNavigationProvider } from "../uiNavigation/UiNavigationContext.jsx";
+import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
+import { SettingsProvider } from "../settings/SettingsContext.jsx";
+import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
+import { stubMatchMedia } from "../testing/matchMedia.js";
+import {
+  MeterRuntimeProvider,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "./MeterRuntimeContext.jsx";
+import { SourceActionsProvider } from "./SourceActionsContext.jsx";
 import { DisplaySnapshotProvider, useDisplaySnapshot } from "./DisplaySnapshotContext.jsx";
 
-describe("DisplaySnapshotProvider", () => {
-  it("reports no channels before any frame and follows the live frame's channel count", () => {
-    /** @type {ReturnType<typeof useMeterRuntimeAssembly>} */
-    let assembly;
-    /** @type {ReturnType<typeof useDisplaySnapshot>} */
-    let snapshot;
-    function Probe() {
-      assembly = useMeterRuntimeAssembly();
-      snapshot = useDisplaySnapshot();
-      return null;
-    }
-    render(
+function mount() {
+  const seen = {
+    assembly: /** @type {ReturnType<typeof useMeterRuntimeAssembly>} */ (null),
+    runtime: /** @type {ReturnType<typeof useMeterRuntime>} */ (null),
+    snapshot: /** @type {ReturnType<typeof useDisplaySnapshot>} */ (null),
+  };
+  function Probe() {
+    seen.assembly = useMeterRuntimeAssembly();
+    seen.runtime = useMeterRuntime();
+    seen.snapshot = useDisplaySnapshot();
+    return null;
+  }
+  render(
+    <WorkspaceProvider>
       <MeterRuntimeProvider>
-        <DisplaySnapshotProvider>
-          <Probe />
-        </DisplaySnapshotProvider>
+        <BlockingEditorsProvider>
+          <UiNavigationProvider>
+            <LoudnessProfileProvider>
+              <SettingsProvider>
+                <SourceActionsProvider>
+                  <DisplaySnapshotProvider>
+                    <Probe />
+                  </DisplaySnapshotProvider>
+                </SourceActionsProvider>
+              </SettingsProvider>
+            </LoudnessProfileProvider>
+          </UiNavigationProvider>
+        </BlockingEditorsProvider>
       </MeterRuntimeProvider>
-    );
+    </WorkspaceProvider>
+  );
+  return seen;
+}
 
-    expect(snapshot.channelCount).toBe(0);
-    expect(snapshot.hasHistoryData).toBe(false);
+describe("DisplaySnapshotProvider", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    stubMatchMedia();
+    settingsStore.reset();
+    workspaceStore.reset();
+    presetsStore.reset();
+  });
 
-    act(() => assembly.display.setAudio((current) => ({ ...current, peakDb: [-3, -4, -5] })));
+  it("reports no channels before any frame and follows the live frame's channel count", () => {
+    const seen = mount();
 
-    expect(snapshot.channelCount).toBe(3);
-    expect(snapshot.displayAudio.peakDb).toEqual([-3, -4, -5]);
+    expect(seen.snapshot.channelCount).toBe(0);
+    expect(seen.snapshot.hasHistoryData).toBe(false);
+
+    act(() => seen.assembly.display.setAudio((current) => ({ ...current, peakDb: [-3, -4, -5] })));
+
+    expect(seen.snapshot.channelCount).toBe(3);
+    expect(seen.snapshot.displayAudio.peakDb).toEqual([-3, -4, -5]);
+  });
+
+  it("describes the transport pill: ready, then running", () => {
+    const seen = mount();
+
+    expect(seen.snapshot.sourceTransportState).toMatchObject({
+      sourceLabel: "Live",
+      statusLabel: "Ready",
+      actionKind: "startLive",
+    });
+
+    act(() => seen.runtime.startLive());
+
+    expect(seen.snapshot.sourceTransportState).toMatchObject({
+      chromeState: "live",
+      actionKind: "stopLive",
+    });
   });
 
   it("refuses the hook outside the provider", () => {
