@@ -1080,9 +1080,7 @@ describe("PanelSettingsContent", () => {
         { key: "0-1", label: "L/R", x: 0, y: 1 },
         { key: "0-2", label: "L/C", x: 0, y: 2 },
       ],
-      stereoMapPairValueKey: "0-1",
       stereoMapPairDisplayLabel: "L/R",
-      onStereoMapPairChange: vi.fn(),
       panelControls: DEFAULT_PANEL_CONTROLS,
       onPanelControlsChange,
     };
@@ -1100,7 +1098,6 @@ describe("PanelSettingsContent", () => {
       key: "ArrowDown",
     });
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
-    expect(props.onStereoMapPairChange).toHaveBeenCalledWith({ x: 0, y: 2 });
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ stereoMapPair: { x: 0, y: 2 } })
     );
@@ -1125,9 +1122,7 @@ describe("PanelSettingsContent", () => {
       <PanelSettingsContent
         activeTab="stereo-map"
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        stereoMapPairValueKey="0-1"
         stereoMapPairDisplayLabel="L/R"
-        onStereoMapPairChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1153,9 +1148,7 @@ describe("PanelSettingsContent", () => {
       <PanelSettingsContent
         activeTab="stereo-map"
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        stereoMapPairValueKey="0-1"
         stereoMapPairDisplayLabel="L/R"
-        onStereoMapPairChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1178,9 +1171,7 @@ describe("PanelSettingsContent", () => {
       <PanelSettingsContent
         activeTab="stereo-map"
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        stereoMapPairValueKey="0-1"
         stereoMapPairDisplayLabel="L/R"
-        onStereoMapPairChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1200,9 +1191,7 @@ describe("PanelSettingsContent", () => {
     const props = {
       activeTab: "stereo-map",
       stereoMapPairOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
-      stereoMapPairValueKey: "0-1",
       stereoMapPairDisplayLabel: "L/R",
-      onStereoMapPairChange: vi.fn(),
       onPanelControlsChange,
     };
     const { rerender } = render(
@@ -1232,9 +1221,7 @@ describe("PanelSettingsContent", () => {
       <PanelSettingsContent
         activeTab="stereo-map"
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        stereoMapPairValueKey="0-1"
         stereoMapPairDisplayLabel="L/R"
-        onStereoMapPairChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1259,9 +1246,7 @@ describe("PanelSettingsContent", () => {
       <PanelSettingsContent
         activeTab="stereo-map"
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        stereoMapPairValueKey="0-1"
         stereoMapPairDisplayLabel="L/R"
-        onStereoMapPairChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />

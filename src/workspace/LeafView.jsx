@@ -33,8 +33,6 @@ import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
 import { IconAction } from "@/components/ui/icon-action";
 
-const noop = () => {};
-
 // ---------------------------------------------------------------------------
 // TabPill
 // ---------------------------------------------------------------------------
@@ -375,9 +373,7 @@ export function LeafView({ node, path, style }) {
                 channelCount={chromeData?.channelCount ?? 0}
                 vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
                 stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
-                stereoMapPairValueKey={chromeData?.stereoMapPairValueKey ?? ""}
                 stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
-                onStereoMapPairChange={noop}
                 spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
                 spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
                 panelControls={panelControls}

@@ -273,7 +273,6 @@ function AppContent() {
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
-  const spectrumMaxModeUi = normalizedPanelControls.spectrumMaxMode;
 
   const { intakeRef, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
 
@@ -374,7 +373,6 @@ function AppContent() {
     spectrumChannelOptions.find((o) => o.key === spectrumValueKey)?.label ??
     spectrumChannelOptions[0]?.label ??
     "L/R";
-  const vectorscopeValueKey = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
   const vectorscopeChannelLabels = getPeakMeterChannelLabels(
     channelCount >= 2 ? channelCount : 2,
     peakLabelContext
@@ -384,7 +382,6 @@ function AppContent() {
     y: vectorscopePairUi.y,
     channelLabels: vectorscopeChannelLabels,
   });
-  const spectrumDisplayLabel = channelMetadata?.frequencyLabel ?? spectrumLiveLabel;
   const vectorscopeDisplayLabel = channelMetadata?.vectorscopePairLabel ?? vectorscopeLiveLabel;
 
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
@@ -419,30 +416,18 @@ function AppContent() {
       compactPanels: focusView.compactPanels,
       channelCount,
       vectorscopePairOptions,
-      vectorscopeValueKey,
-      vectorscopeDisplayLabel,
       stereoMapPairOptions: vectorscopePairOptions,
-      stereoMapPairValueKey: vectorscopeValueKey,
       stereoMapPairDisplayLabel: vectorscopeDisplayLabel,
       spectrumChannelOptions,
-      spectrumValueKey,
-      spectrumDisplayLabel,
-      spectrumView: spectrumViewUi,
       spectrumViewLegend: spectrumViewLegendValue,
-      spectrumMaxMode: spectrumMaxModeUi,
     }),
     [
       focusView.compactPanels,
       channelCount,
       vectorscopePairOptions,
-      vectorscopeValueKey,
       vectorscopeDisplayLabel,
       spectrumChannelOptions,
-      spectrumValueKey,
-      spectrumDisplayLabel,
-      spectrumViewUi,
       spectrumViewLegendValue,
-      spectrumMaxModeUi,
     ]
   );
 

@@ -9,9 +9,7 @@ import { SettingsGroup, SettingsSelect } from "./SettingsWidgets.jsx";
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function StereoMapSettings({
   stereoMapPairOptions = [],
-  stereoMapPairValueKey = "",
   stereoMapPairDisplayLabel = "",
-  onStereoMapPairChange,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -20,10 +18,11 @@ export function StereoMapSettings({
 
   const normalizedPanelControls = normalizePanelControls(panelControls);
   const showPair = stereoMapPairOptions.length > 0;
-  const effectiveStereoMapPairValueKey =
-    stereoMapKeyFromPair(normalizedPanelControls.stereoMapPair) || stereoMapPairValueKey;
   const { matchedOption, selectedOption } = showPair
-    ? getSelectedOption(stereoMapPairOptions, effectiveStereoMapPairValueKey)
+    ? getSelectedOption(
+        stereoMapPairOptions,
+        stereoMapKeyFromPair(normalizedPanelControls.stereoMapPair)
+      )
     : { matchedOption: null, selectedOption: null };
   const pairLabel = matchedOption
     ? selectedOption.label
@@ -47,14 +46,12 @@ export function StereoMapSettings({
               onChange={(key) => {
                 const opt = stereoMapPairOptions.find((option) => option.key === key);
                 if (opt) {
-                  const nextPair = { x: opt.x, y: opt.y };
                   onPanelControlsChange(
                     normalizePanelControls({
                       ...normalizedPanelControls,
-                      stereoMapPair: nextPair,
+                      stereoMapPair: { x: opt.x, y: opt.y },
                     })
                   );
-                  onStereoMapPairChange?.(nextPair);
                 }
               }}
             />

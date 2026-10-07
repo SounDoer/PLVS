@@ -132,6 +132,35 @@ hands to the panels, and assembles the props for the shell. It owns no domain st
 is mounted as `AgentControlBridge` (`src/agentControl/`), which reads every area from its owner
 and takes nothing from `AppContent`.
 
+### Panel settings and the control table
+
+`src/lib/panelControls.js` holds one row per persisted panel control: its default, the rule that
+repairs a stored value, and — for a control that has a settings row — a `ui` face with the tab,
+label, widget, order, `aria-label`, tooltip, visibility rule and commit rule. A control shown on
+several tabs carries one face per tab. Both settings surfaces draw from these rows with one
+renderer (`ControlRows` in `src/components/panel-settings/PanelControlRows.jsx`):
+
+- **A panel's settings popover** draws every row of the panel's tab.
+- **The Dock editor** draws the same rows filtered to the controls a Dock module stores
+  (`DOCK_MODULE_CONTROL_KEYS` in `src/dock/dockModuleControls.js`), merged with the few rows only
+  the strip has, which are declared beside that list in the same row shape.
+
+Adding a control to the table is what puts it on screen; adding its key to the Dock's list is what
+puts it in the Dock. Do not restate a label, a bound, a step or a commit-on-release flag in a
+settings component.
+
+The renderer reports only the keys a change touches. Each surface merges that patch into its own
+record and repairs it by its own rule, because the records differ: a panel's holds every control,
+a Dock module's holds a subset plus keys the table does not know.
+
+A row the table cannot draw is a **slot** (`widget: "custom"` or `"customRow"`): the table owns
+that the row exists and where it sits, and the surface supplies the control. Slots are for content
+the table cannot know — channel choices that come from the device, the layers the active Loudness
+Profile offers, the sortable metrics list — not a to-do list.
+
+Agent Control does not read the `ui` faces. Its schema and mapping work from the normalized control
+record, so a settings row can move or be relabelled without touching the Agent Control contract.
+
 ---
 
 ## 3. Directory layout

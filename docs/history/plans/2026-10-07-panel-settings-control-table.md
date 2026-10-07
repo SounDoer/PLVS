@@ -41,6 +41,10 @@ run before anything is pushed:
 
 - Stage 1 (all three commits, one run at the end of the stage).
 - Stage 2 (one commit covering 2.1 and 2.2).
+- Stage 3 (six commits; screenshot runs after 3.1, after 3.4 covering 3.2 to 3.4, after 3.5 and
+  after 3.6). The props each module no longer reads were removed with that module rather than in
+  Stage 4, so that a test never outlives the path it covers by a commit.
+- Stage 4.
 
 Move convention for Stage 1: function bodies move verbatim, checked with
 `git diff --color-moved=dimmed-zebra`.

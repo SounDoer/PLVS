@@ -3,6 +3,7 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
   DOCK_CONTROL_MODULE_IDS,
+  dockSettingsRows,
   isDefaultDockModuleControls,
   normalizeDockControlsByModuleId,
   normalizeDockModuleControls,
@@ -404,5 +405,46 @@ describe("updateDockModuleControls", () => {
     expect(next.loudness.loudnessHistoryVisibleLayerIds).toEqual(["momentary"]);
     expect(next.spectrum).toBe(controls.spectrum);
     expect(updateDockModuleControls(controls, "ghost", {})).toBe(controls);
+  });
+});
+
+describe("dockSettingsRows", () => {
+  // The editor draws what these rows say and nothing else, so a control a module stores but no row
+  // covers would be stored, repaired and impossible to change.
+  it.each(DOCK_CONTROL_MODULE_IDS)("gives every control %s stores a settings row", (moduleId) => {
+    const covered = new Set(
+      dockSettingsRows(moduleId).flatMap((row) => [row.key, row.minKey, row.maxKey])
+    );
+    const uncovered = Object.keys(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId]).filter(
+      (key) => !covered.has(key)
+    );
+    // statsOrder has no row of its own: the Metrics list edits it together with statsVisibleIds.
+    expect(uncovered).toEqual(moduleId === "stats" ? ["statsOrder"] : []);
+  });
+
+  it("shows only rows for controls the module stores", () => {
+    for (const moduleId of DOCK_CONTROL_MODULE_IDS) {
+      const stored = Object.keys(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId]);
+      for (const row of dockSettingsRows(moduleId)) {
+        expect(stored).toContain(row.key ?? row.minKey);
+      }
+    }
+  });
+
+  it("places the Dock-only rows among the panel's rows", () => {
+    expect(dockSettingsRows("level").map((row) => row.key ?? row.minKey)).toEqual([
+      "levelMeterMode",
+      "readout",
+      "levelMeterBarColors",
+      "levelMeterPeakWarningDb",
+      "levelMeterRmsWarningDb",
+      "showLabels",
+    ]);
+    expect(dockSettingsRows("loudness").at(-1).key).toBe("showReadouts");
+  });
+
+  it("drops the 3D sentence from the Spectrogram dB Floor tooltip, which the strip has no use for", () => {
+    const row = dockSettingsRows("spectrogram").find((item) => item.key === "spectrogramDbFloor");
+    expect(row.ui.tooltip).not.toContain("3D");
   });
 });

@@ -82,17 +82,10 @@ import { createContext, useContext } from "react";
  *   compactPanels: boolean,
  *   channelCount: any,
  *   vectorscopePairOptions: { x: number; y: number; label: string; key: string; }[],
- *   vectorscopeValueKey: string,
- *   vectorscopeDisplayLabel: any,
  *   stereoMapPairOptions: { x: number; y: number; label: string; key: string; }[],
- *   stereoMapPairValueKey: string,
  *   stereoMapPairDisplayLabel: any,
  *   spectrumChannelOptions: any,
- *   spectrumValueKey: string,
- *   spectrumDisplayLabel: any,
- *   spectrumView: string,
  *   spectrumViewLegend: { token: "primary" | "secondary"; label: string; }[],
- *   spectrumMaxMode: string,
  * }} PanelChromeData
  */
 
