@@ -1241,7 +1241,7 @@ describe("PanelSettingsContent", () => {
     );
   });
 
-  it("orders stereo map Mode and its mode-local Grid before Channel pair and Max hold", () => {
+  it("orders stereo map Mode first and Grid last before the ranges, as the other panels do", () => {
     const { container } = render(
       <PanelSettingsContent
         activeTab="stereo-map"
@@ -1253,11 +1253,11 @@ describe("PanelSettingsContent", () => {
     );
 
     const text = container.textContent;
-    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Grid"));
-    expect(text.indexOf("Grid")).toBeLessThan(text.indexOf("Channel Pair"));
     expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel Pair"));
     expect(text.indexOf("Channel Pair")).toBeLessThan(text.indexOf("Max Hold"));
     expect(text.indexOf("Max Hold")).toBeLessThan(text.indexOf("Speed"));
+    expect(text.indexOf("Color Blend")).toBeLessThan(text.indexOf("Grid"));
+    expect(text.indexOf("Grid")).toBeLessThan(text.indexOf("Frequency Range"));
     expect(text.indexOf("Speed")).toBeLessThan(text.indexOf("Smoothing"));
     expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("Frequency Range"));
   });

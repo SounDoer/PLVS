@@ -882,7 +882,7 @@ const CONTROLS = [
       widget: "switch",
       ariaLabel: "stereo map grid",
       tooltip: GRID_TOOLTIP,
-      order: -5,
+      order: 80,
       showWhen: (controls) => controls.stereoMapMode === mode,
     },
   })),
@@ -993,6 +993,7 @@ const CONTROLS = [
       label: "Frequency Range",
       widget: "range",
       ariaLabel: "stereo map frequency range",
+      order: 90,
     },
   },
   {
@@ -1006,6 +1007,7 @@ const CONTROLS = [
       label: "Level Range",
       widget: "rangeMin",
       ariaLabel: "stereo map mono loss level range",
+      order: 100,
       // Mono Loss is a loss, so the upper bound is fixed at 0 dB; only the floor is editable.
       fixedMax: 0,
       showWhen: (controls) => controls.stereoMapMode === STEREO_MAP_MODES.MONO_LOSS_DB,
@@ -1026,6 +1028,7 @@ const CONTROLS = [
       label: "Level Range",
       widget: "range",
       ariaLabel: "stereo map m/s ratio level range",
+      order: 100,
       showWhen: (controls) => controls.stereoMapMode === STEREO_MAP_MODES.MS_RATIO_DB,
     },
     normalize(row, raw) {
