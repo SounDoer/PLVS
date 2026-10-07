@@ -16,17 +16,9 @@ import {
 } from "./hooks/useLoudnessHistory.js";
 import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
-import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
 import { SceneGuardProvider } from "./hooks/SceneGuardContext.jsx";
-import { errorDetails } from "./lib/errorDetails.js";
-import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
-import {
-  UiNavigationProvider,
-  useUiNavigationTarget,
-  useUiSurface,
-} from "./uiNavigation/UiNavigationContext.jsx";
-import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
+import { UiNavigationProvider } from "./uiNavigation/UiNavigationContext.jsx";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
@@ -36,9 +28,8 @@ import { AppLifecycleProvider, useAppLifecycle } from "./hooks/AppLifecycleConte
 import { DisplaySnapshotProvider, useDisplaySnapshot } from "./runtime/DisplaySnapshotContext.jsx";
 import { AnalysisSessionProvider, useAnalysisSession } from "./runtime/AnalysisSessionContext.jsx";
 import { useLoudnessProfileStats } from "./hooks/useLoudnessProfileStats.js";
+import { DockAccessoriesProvider, useDockAccessories } from "./dock/DockAccessoriesContext.jsx";
 import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
-import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
-import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
@@ -197,7 +188,11 @@ export default function App() {
                                 {/* Reads DisplaySnapshot, Workspace, Dock, Settings and
                                     SourceActions. */}
                                 <AnalysisSessionProvider>
-                                  <AppContent />
+                                  {/* Reads Dock, Presets, LoudnessProfile, SourceActions,
+                                      DisplaySnapshot and AnalysisSession. */}
+                                  <DockAccessoriesProvider>
+                                    <AppContent />
+                                  </DockAccessoriesProvider>
                                 </AnalysisSessionProvider>
                               </DisplaySnapshotProvider>
                             </AppLifecycleProvider>
@@ -218,11 +213,14 @@ export default function App() {
 
 function AppContent() {
   const meterRuntime = useMeterRuntime();
-  const { notice, raiseNotice, clearNotice, selectedOffset, setSelectedOffset, showClock } =
-    useMeterDisplayState();
-  const { state: workspaceState, setActiveTab } = useWorkspaceStore();
+  const { notice, selectedOffset, setSelectedOffset, showClock } = useMeterDisplayState();
+  const { state: workspaceState } = useWorkspaceStore();
   const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
-  const visualRuntimeRef = useRef(null);
+  const {
+    visibility: dockAccessoryVisibility,
+    hoveredDockPanelId,
+    visualRuntimeRef,
+  } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
   const { sourceMode, running, fileSessions, activeFileSession, activeFileId, analyzingFileId } =
@@ -272,12 +270,8 @@ function AppContent() {
     dockEdge,
     dockHeight,
     dockPreviewHeight,
-    dockSuspended,
-    reserveSpace,
-    toggleReserveSpace,
     layout: dockLayout,
     historyViewport: dockHistoryViewport,
-    exitDockRestoringAttributes,
     onDockChange,
     onDockHeightChange,
   } = useDock();
@@ -316,12 +310,6 @@ function AppContent() {
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { setAudio } = display;
-
-  const reportSceneError = useCallback(
-    (error, fallbackMessage, detailPrefix) =>
-      reportSceneOperationError(raiseNotice, error, fallbackMessage, detailPrefix),
-    [raiseNotice]
-  );
 
   const presets = usePresetLibrary();
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
@@ -486,7 +474,7 @@ function AppContent() {
       subscribe: visualCaptureSurfaces.subscribe,
       setRecordingState: setVisualRecordingState,
     }),
-    [visualCaptureSurfaces, visualPlatformCapabilities]
+    [visualCaptureSurfaces, visualPlatformCapabilities, visualRuntimeRef]
   );
   const agentControlBridgeProps = {
     enabled:
@@ -519,7 +507,6 @@ function AppContent() {
 
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
-  const dockPanels = dockLayout.panels;
   const captureCurrentSnapshot = useCallback(() => {
     if (!historyChartInteractive || totalSamples <= 0) return;
     setSelectedOffset(0);
@@ -533,258 +520,6 @@ function AppContent() {
     }
     setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
   };
-
-  const onDockAccessoryError = useCallback(
-    async (accessoryError) => {
-      if (!docked) return;
-      const result = await exitDockRestoringAttributes({ reportError: false });
-      if (result.ok) {
-        raiseNotice(
-          "error",
-          "Dock controls could not open. The main window was restored.",
-          errorDetails("Dock accessory failed", accessoryError)
-        );
-        return;
-      }
-      raiseNotice(
-        "error",
-        "Dock controls could not open, and the main window could not be restored.",
-        `${errorDetails("Dock accessory failed", accessoryError)}\n${errorDetails(
-          "Restore window failed",
-          result.error
-        )}`
-      );
-    },
-    [docked, exitDockRestoringAttributes, raiseNotice]
-  );
-  const dockAccessoryVisibility = useDockAccessoryVisibility({
-    active: docked && !dockSuspended,
-    edge: dockEdge,
-    geometryVersion: dockHeight,
-    forceHeaderVisible: notice?.kind === "error",
-    onError: onDockAccessoryError,
-  });
-  const preparePanelSettings = useCallback(
-    ({ panelId }) =>
-      preparePanelSettingsNavigation({
-        panelId,
-        windowForm: docked ? "dock" : "normal",
-        workspace: workspaceState,
-        dockPanels,
-        setActiveTab,
-        openDockEditor: dockAccessoryVisibility.openEditor,
-      }),
-    [docked, dockAccessoryVisibility.openEditor, dockPanels, setActiveTab, workspaceState]
-  );
-  useUiNavigationTarget("panelSettings", { prepare: preparePanelSettings });
-  const dockPanelSettingsView = dockAccessoryVisibility.editorView?.startsWith("module:")
-    ? dockAccessoryVisibility.editorView
-    : null;
-  const dockPanelSettingsId = dockPanelSettingsView?.slice("module:".length) ?? null;
-  const dockPanelSettingsActive = Boolean(
-    docked &&
-    dockAccessoryVisibility.editorVisible &&
-    dockPanelSettingsId &&
-    dockPanels.some((panel) => panel.id === dockPanelSettingsId)
-  );
-  useUiSurface({
-    active: dockPanelSettingsActive,
-    kind: "panelSettings",
-    origin: "navigable",
-    blocking: false,
-    dismissible: true,
-    supportedActions: ["close"],
-    target: { panelId: dockPanelSettingsId, presentation: "dock" },
-    onClose: () => dockAccessoryVisibility.closeEditor(dockPanelSettingsView),
-  });
-  visualRuntimeRef.current = {
-    windowForm: docked ? "dock" : "normal",
-    sourceMode,
-    availableScreenshotTargets: docked
-      ? [
-          "main",
-          ...(dockAccessoryVisibility.headerVisible ? ["dockHeader"] : []),
-          ...(dockAccessoryVisibility.editorVisible ? ["dockEditor"] : []),
-        ]
-      : ["main", "workspace", "panel"],
-    availableAudioSources: sourceMode === "live" ? ["none", "measuredSource"] : ["none"],
-    accessoryGeometry: {
-      dockHeader: {
-        visible: docked && !dockSuspended && dockAccessoryVisibility.headerVisible,
-        width: window.innerWidth,
-        height: 44,
-      },
-      dockEditor: {
-        visible: docked && !dockSuspended && dockAccessoryVisibility.editorVisible,
-        width: dockAccessoryVisibility.editorSize.width,
-        height: dockAccessoryVisibility.editorSize.height,
-      },
-    },
-  };
-  const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
-  const dockHeaderState = useMemo(
-    () => ({
-      sourceTransportState,
-      clearDisabled: !running && !showClock,
-      notice,
-      edge: dockEdge,
-      reserveSpace,
-      editorView: dockAccessoryVisibility.editorView,
-      // Configuration metadata is separate from the toolbar's open/closed presentation.
-      activeCleanPreset: presets.activeId != null && !presets.dirty,
-      loudnessProfileActive: loudnessProfile.active !== LOUDNESS_PROFILE_OFF,
-    }),
-    [
-      dockAccessoryVisibility.editorView,
-      dockEdge,
-      loudnessProfile.active,
-      notice,
-      presets.activeId,
-      presets.dirty,
-      reserveSpace,
-      running,
-      showClock,
-      sourceTransportState,
-    ]
-  );
-  const dockEditorState = useMemo(
-    () => ({
-      view: dockAccessoryVisibility.editorView,
-      panels: dockLayout.panels,
-      panelsById: dockLayout.panelsById,
-      panelOrder: dockLayout.panelOrder,
-      controlsByPanelId: dockLayout.controlsByPanelId,
-      isDefault: dockLayout.isDefault,
-      vectorscopeOptions: vectorscopePairOptions,
-      spectrumOptions: spectrumChannelOptions,
-      channelCount,
-      vectorscopeSettingsAvailable: true,
-      presets: {
-        list: presets.list.map(({ id, name }) => ({ id, name })),
-        activeId: presets.activeId,
-        dirty: presets.dirty,
-        blocked: presets.blocked,
-      },
-      // Names only: Dock lists and switches profiles, the rules stay with the main window.
-      loudnessProfile: {
-        active: loudnessProfile.active,
-        profiles: loudnessProfile.profiles.map(({ id, name }) => ({ id, name })),
-        draftBlocksLibraryActions: loudnessProfile.draftBlocksLibraryActions,
-      },
-    }),
-    [
-      dockAccessoryVisibility.editorView,
-      dockLayout.controlsByPanelId,
-      dockLayout.isDefault,
-      dockLayout.panelOrder,
-      dockLayout.panels,
-      dockLayout.panelsById,
-      channelCount,
-      loudnessProfile.active,
-      loudnessProfile.draftBlocksLibraryActions,
-      loudnessProfile.profiles,
-      presets.activeId,
-      presets.blocked,
-      presets.dirty,
-      presets.list,
-      spectrumChannelOptions,
-      vectorscopePairOptions,
-    ]
-  );
-  const onDockAccessoryAction = useCallback(
-    ({ type, payload }) => {
-      if (type === "source-primary") onSourceTransportAction(payload.actionKind);
-      else if (type === "clear") clearAll();
-      else if (type === "open-editor") {
-        setHoveredDockPanelId(null);
-        dockAccessoryVisibility.openEditor(payload.view, payload.anchorX);
-      } else if (type === "close-editor") {
-        setHoveredDockPanelId(null);
-        dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
-      } else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
-      else if (type === "set-edge") void onDockChange(payload.edge);
-      else if (type === "toggle-reserve-space") {
-        clearNotice();
-        void toggleReserveSpace().catch((error) =>
-          raiseNotice(
-            "error",
-            reserveSpace
-              ? "Could not release reserved screen space. Dock remains reserved."
-              : "Could not reserve screen space. Dock remains an overlay.",
-            errorDetails("Reserve screen space failed", error)
-          )
-        );
-      } else if (type === "restore-window") {
-        setHoveredDockPanelId(null);
-        void exitDockRestoringAttributes();
-      } else if (type === "toggle-module") dockLayout.toggle(payload.moduleId);
-      else if (type === "add-module") {
-        dockLayout.addPanel(payload.moduleId);
-      } else if (type === "rename-module") {
-        dockLayout.renamePanel(payload.panelId, payload.name);
-      } else if (type === "remove-module") {
-        dockLayout.removePanel(payload.panelId);
-      } else if (type === "reorder-module") {
-        if (Array.isArray(payload.panelOrder)) dockLayout.setPanelOrder(payload.panelOrder);
-        else dockLayout.reorder(payload.from, payload.to);
-      } else if (type === "reset-modules") {
-        dockLayout.resetLayout();
-      } else if (type === "hover-module") {
-        setHoveredDockPanelId(typeof payload.panelId === "string" ? payload.panelId : null);
-      } else if (type === "open-module-settings") {
-        dockAccessoryVisibility.openEditor(`module:${payload.panelId}`);
-      } else if (type === "update-module-controls") {
-        dockLayout.setPanelControls(payload.panelId, payload.controls);
-      } else if (type === "reset-module-controls") {
-        dockLayout.resetPanelControls(payload.panelId);
-      } else if (type === "apply-preset") {
-        clearNotice();
-        // The dock row greys these out, but the refusal still has to land somewhere: the strip is
-        // a separate webview and its buttons can be a render behind this window's guard.
-        void presets
-          .apply(payload.presetId)
-          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
-      } else if (type === "save-preset") {
-        void presets
-          .save(payload.name)
-          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
-      } else if (type === "update-preset") {
-        void presets
-          .update(payload.presetId)
-          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
-      } else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
-      // Dock's Loudness Profile list is a separate webview with its own settings cache, so it never
-      // writes the store itself: the choice lands here, in the provider that owns the state.
-      else if (type === "select-loudness-profile") {
-        if (typeof payload.selection === "string") loudnessProfile.select(payload.selection);
-      } else if (type === "reorder-loudness-profiles") {
-        if (Array.isArray(payload.profileIds)) loudnessProfile.reorderProfiles(payload.profileIds);
-      } else if (type === "delete-preset") presets.remove(payload.presetId);
-      else if (type === "reorder-preset") presets.reorder(payload.presetIds);
-    },
-    [
-      clearAll,
-      clearNotice,
-      dockAccessoryVisibility,
-      dockLayout,
-      exitDockRestoringAttributes,
-      loudnessProfile,
-      onDockChange,
-      onSourceTransportAction,
-      presets,
-      raiseNotice,
-      reportSceneError,
-      reserveSpace,
-      toggleReserveSpace,
-    ]
-  );
-  useDockAccessoryBridge({
-    active: docked,
-    headerState: dockHeaderState,
-    editorState: dockEditorState,
-    onAction: onDockAccessoryAction,
-    onPointer: dockAccessoryVisibility.onAccessoryPointer,
-  });
 
   useEffect(() => {
     intakeRef.current.setCurrentChannelMetadata({
