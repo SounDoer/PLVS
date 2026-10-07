@@ -20,7 +20,6 @@ import {
   MultiSelectList,
   SETTINGS_DETAIL_SURFACE_CLASS,
   SettingsChoiceSelect,
-  SettingsNumberInput,
   SettingsOptionRow,
   SettingsRangeInput,
   SettingsRow,
@@ -28,64 +27,6 @@ import {
   SettingsSlider,
   SettingsSwitch,
 } from "./SettingsWidgets.jsx";
-
-export function WaveformSettingsRows({
-  frequencyColor,
-  lowMidSplitHz,
-  midHighSplitHz,
-  centroid,
-  onFrequencyColorChange,
-  onLowMidSplitChange,
-  onMidHighSplitChange,
-  onCentroidChange,
-}) {
-  return (
-    <>
-      <SettingsRow label="Frequency Color">
-        <SettingsSwitch
-          aria-label="waveform frequency color"
-          checked={frequencyColor}
-          onCheckedChange={onFrequencyColorChange}
-        />
-      </SettingsRow>
-      {frequencyColor ? (
-        <>
-          <SettingsRow label="Low / Mid Split">
-            <SettingsNumberInput
-              ariaLabel="waveform low mid split"
-              value={lowMidSplitHz}
-              min={20}
-              max={20000}
-              suffix="Hz"
-              onCommit={(/** @type {number} */ nextValue) =>
-                nextValue < midHighSplitHz ? onLowMidSplitChange(nextValue) : false
-              }
-            />
-          </SettingsRow>
-          <SettingsRow label="Mid / High Split">
-            <SettingsNumberInput
-              ariaLabel="waveform mid high split"
-              value={midHighSplitHz}
-              min={20}
-              max={20000}
-              suffix="Hz"
-              onCommit={(/** @type {number} */ nextValue) =>
-                nextValue > lowMidSplitHz ? onMidHighSplitChange(nextValue) : false
-              }
-            />
-          </SettingsRow>
-        </>
-      ) : null}
-      <SettingsRow label="Centroid">
-        <SettingsSwitch
-          aria-label="waveform centroid"
-          checked={centroid}
-          onCheckedChange={onCentroidChange}
-        />
-      </SettingsRow>
-    </>
-  );
-}
 
 export function SpectrumViewChipLabel({ fallbackLabel, legend }) {
   if (!legend?.length) return fallbackLabel;

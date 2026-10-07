@@ -3,9 +3,9 @@ import {
   LoudnessSettingsRows,
   SpectrumDisplaySettingsRows,
   StatsMetricsSettingsRow,
-  WaveformSettingsRows,
 } from "../../components/panel-settings/PanelSettingsControls.jsx";
 import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
+import { WaveformSplitRows } from "../../components/panel-settings/WaveformSettings.jsx";
 import {
   SettingsGroup,
   SettingsRangeInput,
@@ -307,21 +307,25 @@ function SettingsBody({
   }
   if (moduleId === "waveform") {
     return (
-      <WaveformSettingsRows
-        frequencyColor={controls.waveformFrequencyColor}
-        lowMidSplitHz={controls.waveformLowMidSplitHz}
-        midHighSplitHz={controls.waveformMidHighSplitHz}
-        centroid={controls.waveformCentroid}
-        onFrequencyColorChange={(waveformFrequencyColor) =>
-          onChange({ ...controls, waveformFrequencyColor })
-        }
-        onLowMidSplitChange={(waveformLowMidSplitHz) =>
-          onChange({ ...controls, waveformLowMidSplitHz })
-        }
-        onMidHighSplitChange={(waveformMidHighSplitHz) =>
-          onChange({ ...controls, waveformMidHighSplitHz })
-        }
-        onCentroidChange={(waveformCentroid) => onChange({ ...controls, waveformCentroid })}
+      <ControlRows
+        rows={dockSettingsRows(moduleId)}
+        tab={dockSettingsTab(moduleId)}
+        controls={controls}
+        onChange={(changes) => onChange({ ...controls, ...changes })}
+        slots={{
+          waveformLowMidSplitHz: (
+            <WaveformSplitRows
+              lowMidSplitHz={controls.waveformLowMidSplitHz}
+              midHighSplitHz={controls.waveformMidHighSplitHz}
+              onLowMidSplitChange={(waveformLowMidSplitHz) =>
+                onChange({ ...controls, waveformLowMidSplitHz })
+              }
+              onMidHighSplitChange={(waveformMidHighSplitHz) =>
+                onChange({ ...controls, waveformMidHighSplitHz })
+              }
+            />
+          ),
+        }}
       />
     );
   }

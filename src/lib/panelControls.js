@@ -917,7 +917,18 @@ const CONTROLS = [
       return { [row.minKey]: min, [row.maxKey]: max };
     },
   },
-  { key: "waveformFrequencyColor", kind: "boolean", default: false },
+  {
+    key: "waveformFrequencyColor",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "waveform",
+      label: "Frequency Color",
+      widget: "switch",
+      ariaLabel: "waveform frequency color",
+      order: 10,
+    },
+  },
   {
     /// The two splits are repaired as a unit: a stored pair that is out of order is not repaired
     /// bound by bound, both fall back to their defaults.
@@ -927,6 +938,14 @@ const CONTROLS = [
     defaultMax: 2000,
     absMin: 20,
     absMax: 20000,
+    // `customRow`: the pair is two labelled rows, each refusing a value on the wrong side of the
+    // other, which no single widget draws.
+    ui: {
+      tab: "waveform",
+      widget: "customRow",
+      order: 20,
+      showWhen: (controls) => controls.waveformFrequencyColor,
+    },
     normalize(row, raw) {
       const lowMid = Math.round(
         clampNumber(raw?.[row.minKey], row.absMin, row.absMax, row.defaultMin)
@@ -939,7 +958,18 @@ const CONTROLS = [
         : { [row.minKey]: row.defaultMin, [row.maxKey]: row.defaultMax };
     },
   },
-  { key: "waveformCentroid", kind: "boolean", default: false },
+  {
+    key: "waveformCentroid",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "waveform",
+      label: "Centroid",
+      widget: "switch",
+      ariaLabel: "waveform centroid",
+      order: 30,
+    },
+  },
   {
     key: "historyWindowSec",
     kind: "number",
@@ -949,9 +979,12 @@ const CONTROLS = [
     // The Time Range row, anchored here because this is the control it edits. `customRow` for the
     // same reason as the Level Meter range above: the row owns its own label and axis-link toggle,
     // and its value comes from the live history viewport rather than from a panel control.
-    // The Waveform and Loudness tabs show the same row but render it by hand, because their tabs
-    // are hand-written throughout -- the same split spectrumTiltDbPerOctave already carries.
-    ui: { tab: "spectrogram", widget: "customRow", order: 100 },
+    // One face per tab that has a time axis. The Loudness tab shows the same row but renders it by
+    // hand, because that tab is hand-written throughout.
+    ui: [
+      { tab: "spectrogram", widget: "customRow", order: 100 },
+      { tab: "waveform", widget: "customRow", order: 40 },
+    ],
   },
   {
     key: "historyOffsetSec",
