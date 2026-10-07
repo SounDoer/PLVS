@@ -1,6 +1,7 @@
 import { normalizePanelControls } from "@/lib/panelControls.js";
 
-import { LoudnessSettingsRows, TimeRangeRow } from "./PanelSettingsControls.jsx";
+import { TimeRangeRow } from "./AxisRangeRows.jsx";
+import { LoudnessSettingsRows } from "./PanelSettingsControls.jsx";
 import { SettingsGroup } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */

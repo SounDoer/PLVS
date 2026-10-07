@@ -1,6 +1,6 @@
 import { normalizePanelControls } from "@/lib/panelControls.js";
 
-import { PanelControlRows } from "./PanelSettingsControls.jsx";
+import { PanelControlRows } from "./PanelControlRows.jsx";
 import { SettingsGroup, SettingsRangeInput, SettingsRow } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */

@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
+import { getSelectedOption, spectrumKeyFromSelection } from "./panel-settings/selectionKeys.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { normalizePanelControls } from "@/lib/panelControls.js";
@@ -22,22 +23,6 @@ const PANEL_SETTINGS_TITLES = {
   waveform: "Waveform",
   "stereo-map": "Stereo Map",
 };
-
-/**
- * @param {string} valueKey
- */
-function getSelectedOption(options, valueKey) {
-  const matchedOption = options.find((opt) => opt.key === valueKey);
-  return {
-    matchedOption,
-    selectedOption: matchedOption ?? options[0],
-  };
-}
-
-function spectrumKeyFromSelection(sel) {
-  if (!sel) return "";
-  return sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
-}
 
 /**
  * @param {{

@@ -1,7 +1,8 @@
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
 
-import { StatsMetricsSettingsRow, toggleId } from "./PanelSettingsControls.jsx";
+import { StatsMetricsSettingsRow } from "./PanelSettingsControls.jsx";
+import { toggleId } from "./selectionKeys.js";
 import { SettingsGroup } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */

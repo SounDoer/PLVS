@@ -2,11 +2,8 @@ import { useState } from "react";
 
 import { normalizePanelControls } from "@/lib/panelControls.js";
 
-import {
-  PanelControlRows,
-  getSelectedOption,
-  stereoMapKeyFromPair,
-} from "./PanelSettingsControls.jsx";
+import { PanelControlRows } from "./PanelControlRows.jsx";
+import { getSelectedOption, stereoMapKeyFromPair } from "./selectionKeys.js";
 import { SettingsGroup, SettingsSelect } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */

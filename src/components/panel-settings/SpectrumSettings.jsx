@@ -3,14 +3,10 @@ import { useState } from "react";
 import { SPECTRUM_OCTAVE_SMOOTHING_OPTIONS, normalizePanelControls } from "@/lib/panelControls.js";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 
-import {
-  PanelControlRows,
-  SpectrumDisplaySettingsRows,
-  SpectrumViewChipLabel,
-  TimeRangeRow,
-  getSelectedOption,
-  spectrumKeyFromSelection,
-} from "./PanelSettingsControls.jsx";
+import { TimeRangeRow } from "./AxisRangeRows.jsx";
+import { PanelControlRows } from "./PanelControlRows.jsx";
+import { SpectrumDisplaySettingsRows, SpectrumViewChipLabel } from "./PanelSettingsControls.jsx";
+import { getSelectedOption, spectrumKeyFromSelection } from "./selectionKeys.js";
 import {
   SettingsChoiceSelect,
   SettingsGroup,

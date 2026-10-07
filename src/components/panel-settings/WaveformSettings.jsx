@@ -1,6 +1,7 @@
 import { normalizePanelControls } from "@/lib/panelControls.js";
 
-import { TimeRangeRow, WaveformSettingsRows } from "./PanelSettingsControls.jsx";
+import { TimeRangeRow } from "./AxisRangeRows.jsx";
+import { WaveformSettingsRows } from "./PanelSettingsControls.jsx";
 import { SettingsGroup } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */

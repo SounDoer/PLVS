@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { VECTORSCOPE_MODE_OPTIONS, normalizePanelControls } from "@/lib/panelControls.js";
 
-import { getSelectedOption, vectorscopeKeyFromPair } from "./PanelSettingsControls.jsx";
+import { getSelectedOption, vectorscopeKeyFromPair } from "./selectionKeys.js";
 import {
   SettingsGroup,
   SettingsRow,
