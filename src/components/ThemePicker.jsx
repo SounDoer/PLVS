@@ -167,7 +167,7 @@ export function ThemePicker({
             }
           />
         ))}
-        <div className="mt-1 border-t border-border px-2 pb-1 pt-2 text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
+        <div className="mt-1 px-2 py-1 text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
           Custom
         </div>
         {customThemes.map((theme) => (

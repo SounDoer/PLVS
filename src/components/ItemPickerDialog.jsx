@@ -49,7 +49,7 @@ function PlanRow({ entry }) {
 /// directions: on export these get written into the file, on import they get added to the library.
 function AlsoIncluded({ children }) {
   return (
-    <section className="mt-3 border-t border-border pt-2">
+    <section className="mt-3">
       <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
         Also Included: Loudness Profiles
       </h3>
@@ -237,7 +237,7 @@ export function ItemPickerDialog({
           ) : null}
 
           {mode === "review" && warnings.length > 0 ? (
-            <section className="mt-3 border-t border-border pt-2" aria-label="Import Warnings">
+            <section className="mt-3" aria-label="Import Warnings">
               <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
                 Adaptations
               </h3>

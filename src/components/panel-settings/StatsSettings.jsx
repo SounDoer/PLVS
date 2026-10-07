@@ -77,7 +77,7 @@ export function SortableStatsList({
           />
         ))}
       </Reorder.Group>
-      <div className="mt-0 flex justify-end border-t border-border pt-0">
+      <div className="mt-0 flex justify-end pt-0">
         <ResetAction
           label="Reset stats"
           isDefault={!showReset}

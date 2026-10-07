@@ -548,7 +548,7 @@ export function LoudnessProfileEditor({
             </p>
           )}
 
-          <div className="border-t border-border pt-1">
+          <div>
             <AddButton label="Add Rule" onClick={addRule} />
           </div>
         </div>

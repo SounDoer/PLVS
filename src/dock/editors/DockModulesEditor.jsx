@@ -285,7 +285,7 @@ export function DockModulesEditor({
           <p className="px-2 py-3 text-xs text-muted-foreground">No modules</p>
         )}
 
-        <div className="mt-1 flex items-center gap-1 border-t border-border pt-1">
+        <div className="mt-1 flex items-center gap-1">
           <AddButton
             label="Add Module"
             className="min-w-0 flex-1"

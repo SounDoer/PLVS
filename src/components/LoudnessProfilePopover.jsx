@@ -198,7 +198,7 @@ export function LoudnessProfilePopoverContent({
       ) : null}
 
       {missingIds.length > 0 ? (
-        <div className="border-t border-border px-2 py-1">
+        <div className="px-2 py-1">
           {/* Deliberately says nothing about dialogue gating: showing those rows is what enables
               the sidechain, but that is an implementation detail, not a thing to ask the user
               to reason about. */}

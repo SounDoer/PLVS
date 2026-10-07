@@ -66,10 +66,7 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
   const descriptionId = useId();
   const warningText = warnings.map((item) => item.message).join(" ");
   return (
-    <div
-      data-theme-target={role.id}
-      className="flex flex-col gap-1 border-t border-border py-2 first:border-t-0"
-    >
+    <div data-theme-target={role.id} className="flex flex-col gap-1 py-2">
       <HoverTip
         tip={role.advanced.description}
         side="right"
@@ -145,7 +142,7 @@ function SectionRoles({ section, roles, roleProps }) {
     if (!grouped.length) return null;
     return (
       <div key={group}>
-        <div className="border-t border-border px-1 pt-2 pb-1 text-[length:var(--ui-fs-axis)] font-semibold tracking-wide text-muted-foreground uppercase first:border-t-0">
+        <div className="px-1 pt-2 pb-1 text-[length:var(--ui-fs-axis)] font-semibold tracking-wide text-muted-foreground uppercase">
           {group}
         </div>
         {grouped.map((role) => (
@@ -283,7 +280,7 @@ export function AdvancedPage({
               />
             </div>
             {isExpanded ? (
-              <div className="border-t border-border px-2">
+              <div className="px-2">
                 <SectionRoles section={section} roles={roles} roleProps={roleProps} />
               </div>
             ) : null}

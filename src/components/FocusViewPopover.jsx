@@ -130,40 +130,37 @@ export function FocusViewPopoverContent({
         />
       ) : null}
       {showDock && supportsDockMode() ? (
-        <>
-          <div className="mx-2 border-t border-border" />
-          <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1">
-            <Label
-              htmlFor="focus-view-dock"
-              className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
+        <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1">
+          <Label
+            htmlFor="focus-view-dock"
+            className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
+          >
+            Dock
+          </Label>
+          <Select
+            value={dockEdge ?? "off"}
+            onValueChange={(value) => onDockChange(value === "off" ? null : value)}
+            disabled={dockDisabled}
+          >
+            <SelectTrigger
+              id="focus-view-dock"
+              aria-label="Dock position"
+              variant="inline"
+              className="min-w-[4.75rem]"
             >
-              Dock
-            </Label>
-            <Select
-              value={dockEdge ?? "off"}
-              onValueChange={(value) => onDockChange(value === "off" ? null : value)}
-              disabled={dockDisabled}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              align="end"
+              variant="inline"
+              className="[&_[data-slot=select-item]]:pr-8"
             >
-              <SelectTrigger
-                id="focus-view-dock"
-                aria-label="Dock position"
-                variant="inline"
-                className="min-w-[4.75rem]"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent
-                align="end"
-                variant="inline"
-                className="[&_[data-slot=select-item]]:pr-8"
-              >
-                <SelectItem value="off">Off</SelectItem>
-                <SelectItem value="top">Top</SelectItem>
-                <SelectItem value="bottom">Bottom</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </>
+              <SelectItem value="off">Off</SelectItem>
+              <SelectItem value="top">Top</SelectItem>
+              <SelectItem value="bottom">Bottom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       ) : null}
     </div>
   );
