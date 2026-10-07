@@ -31,7 +31,6 @@ import { UI_PREFERENCES } from "../preferences/data.js";
 const SPLIT_DIVIDER_SIZE_REM = UI_PREFERENCES.layout.shell.gapRem.base;
 const SPLIT_SNAP_THRESHOLD_PX = 10;
 const SPLIT_SNAP_RELEASE_THRESHOLD_PX = 18;
-const noop = () => {};
 
 // ---------------------------------------------------------------------------
 // Empty-node helper and min-size helper for a subtree
@@ -423,14 +422,7 @@ function FullscreenOverlay() {
               channelCount={chromeData?.channelCount ?? 0}
               vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
               spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
-              spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
-              spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
-              onSpectrumChange={noop}
-              spectrumView={chromeData?.spectrumView ?? "combined"}
               spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
-              onSpectrumViewChange={noop}
-              spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
-              onSpectrumMaxModeChange={noop}
               panelControls={panelControls}
               onPanelControlsChange={onPanelControlsChange}
               onPanelControlsReset={onPanelControlsReset}

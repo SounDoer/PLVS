@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { SpectrumDisplaySettingsRows } from "../../components/panel-settings/PanelSettingsControls.jsx";
 import { LoudnessLayersControl } from "../../components/panel-settings/LoudnessSettings.jsx";
 import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
 import { toggleId } from "../../components/panel-settings/selectionKeys.js";
@@ -30,6 +29,7 @@ import {
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   SPECTRUM_TILT_TOOLTIP,
 } from "../../lib/panelControls.js";
+import { SPECTRUM_VIEW_OPTIONS } from "../../math/spectrumChannelViewOptions.js";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 
 const STEREO_MAP_MODE_OPTIONS = [
@@ -194,58 +194,30 @@ function SettingsBody({
     const showChannel = channelCount == null ? true : channelCount > 2 && channelOptions.length > 0;
     const showView = channelOptions.length > 0 && controls.spectrumChannel?.type === "pair";
     return (
-      <>
-        {showChannel ? (
-          <SettingsRow label="Channel">
+      <ControlRows
+        rows={dockSettingsRows(moduleId)}
+        tab={dockSettingsTab(moduleId)}
+        controls={controls}
+        onChange={(changes) => onChange({ ...controls, ...changes })}
+        slots={{
+          spectrumChannel: showChannel ? (
             <SelectField
-              label="Spectrum channel"
+              label="spectrum channel"
               value={channelValue(controls.spectrumChannel)}
               options={channelOptions}
               onChange={(value) => onChange({ ...controls, spectrumChannel: parseChannel(value) })}
             />
-          </SettingsRow>
-        ) : null}
-        {showView ? (
-          <SettingsRow label="View">
+          ) : null,
+          spectrumView: showView ? (
             <SelectField
-              label="Spectrum view"
+              label="spectrum view"
               value={controls.spectrumView}
-              options={[
-                { value: "combined", label: "Combined" },
-                { value: "lr", label: "L / R" },
-                { value: "ms", label: "M / S" },
-              ]}
+              options={SPECTRUM_VIEW_OPTIONS.map(({ key, label }) => ({ value: key, label }))}
               onChange={(spectrumView) => onChange({ ...controls, spectrumView })}
             />
-          </SettingsRow>
-        ) : null}
-        <SpectrumDisplaySettingsRows
-          showGrid={false}
-          showPeakLabels={false}
-          maxMode={controls.spectrumMaxMode}
-          speedPercent={controls.spectrumSpeedPercent}
-          octaveSmoothing={controls.spectrumOctaveSmoothing}
-          tiltDbPerOctave={controls.spectrumTiltDbPerOctave}
-          xMinFreq={controls.spectrumXMinFreq}
-          xMaxFreq={controls.spectrumXMaxFreq}
-          yMinDb={controls.spectrumYMinDb}
-          yMaxDb={controls.spectrumYMaxDb}
-          onMaxModeChange={(spectrumMaxMode) => onChange({ ...controls, spectrumMaxMode })}
-          onSpeedChange={(spectrumSpeedPercent) => onChange({ ...controls, spectrumSpeedPercent })}
-          onOctaveSmoothingChange={(spectrumOctaveSmoothing) =>
-            onChange({ ...controls, spectrumOctaveSmoothing })
-          }
-          onTiltChange={(spectrumTiltDbPerOctave) =>
-            onChange({ ...controls, spectrumTiltDbPerOctave })
-          }
-          onXRangeChange={(spectrumXMinFreq, spectrumXMaxFreq) =>
-            onChange({ ...controls, spectrumXMinFreq, spectrumXMaxFreq })
-          }
-          onYRangeChange={(spectrumYMinDb, spectrumYMaxDb) =>
-            onChange({ ...controls, spectrumYMinDb, spectrumYMaxDb })
-          }
-        />
-      </>
+          ) : null,
+        }}
+      />
     );
   }
   if (moduleId === "correlation") {

@@ -440,8 +440,21 @@ const CONTROLS = [
       }
       return { ...row.default };
     },
+    // `custom` on both tabs: the channels on offer are the device's, and the row is absent for a
+    // stereo source.
+    ui: [
+      { tab: "spectrum", label: "Channel", widget: "custom", order: 10 },
+      { tab: "spectrogram", label: "Channel", widget: "custom", order: 5 },
+    ],
   },
-  { key: "spectrumView", kind: "enum", options: SPECTRUM_VIEW_IDS, default: "combined" },
+  {
+    key: "spectrumView",
+    kind: "enum",
+    options: SPECTRUM_VIEW_IDS,
+    default: "combined",
+    // `custom`: the row exists only for a channel pair, and its label carries the curve legend.
+    ui: { tab: "spectrum", label: "View", widget: "custom", order: 20 },
+  },
   {
     /// What the filled area under the curve shows. Decay is the engine's peak envelope, which
     /// holds briefly and then falls; Hold is the maximum since the mode was selected or cleared,
@@ -466,8 +479,31 @@ const CONTROLS = [
       if (raw?.spectrumMaxHoldTrace === true) return "hold";
       return row.default;
     },
+    ui: {
+      tab: "spectrum",
+      label: "Max",
+      widget: "select",
+      ariaLabel: "spectrum max mode",
+      options: SPECTRUM_MAX_MODE_OPTIONS,
+      order: 30,
+      tooltip:
+        "What the filled area shows. Decay holds each band's peak briefly, then lets it fall. Hold keeps the highest level since it was selected — click the edge of the fill to clear it.",
+    },
   },
-  { key: "spectrumPeakLabels", kind: "boolean", default: false },
+  {
+    key: "spectrumPeakLabels",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "spectrum",
+      label: "Peak Labels",
+      widget: "switch",
+      ariaLabel: "spectrum peak labels",
+      order: 40,
+      tooltip:
+        "Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max is the time axis; this is the frequency axis.",
+    },
+  },
   {
     /// spectrumSpeedPercent was named spectrumSmoothingPercent until the frequency-smoothing
     /// control arrived and needed the "smoothing" name. Presets written before the rename still
@@ -479,6 +515,17 @@ const CONTROLS = [
     max: 100,
     default: 25,
     legacyKeys: ["spectrumSmoothingPercent"],
+    ui: {
+      tab: "spectrum",
+      label: "Speed",
+      widget: "slider",
+      ariaLabel: "spectrum speed",
+      order: 50,
+      step: 1,
+      format: (value) => `${value.toFixed(0)}%`,
+      // In the Spectrum request key -- see SettingsSlider's commitOnRelease note.
+      commitOnRelease: true,
+    },
   },
   {
     key: "spectrumTiltDbPerOctave",
@@ -486,34 +533,57 @@ const CONTROLS = [
     min: 0,
     max: 6,
     default: 3,
-    // Shared with the Spectrum tab, which renders it through SpectrumDisplaySettingsRows; the
-    // Spectrogram tab places it here so it sorts after Mode instead of above everything.
-    ui: {
-      tab: "spectrogram",
-      label: "Tilt",
-      widget: "slider",
-      ariaLabel: "spectrogram tilt",
-      order: 15,
-      step: 0.25,
-      format: (value) => `${value.toFixed(2)} dB/oct`,
-      tooltip: SPECTRUM_TILT_TOOLTIP,
-    },
+    // One control, two tabs: each places it among its own rows and names it for itself.
+    ui: [
+      {
+        tab: "spectrum",
+        label: "Tilt",
+        widget: "slider",
+        ariaLabel: "spectrum tilt",
+        order: 60,
+        step: 0.25,
+        format: (value) => `${value.toFixed(2)} dB/oct`,
+        tooltip: SPECTRUM_TILT_TOOLTIP,
+      },
+      {
+        tab: "spectrogram",
+        label: "Tilt",
+        widget: "slider",
+        ariaLabel: "spectrogram tilt",
+        order: 15,
+        step: 0.25,
+        format: (value) => `${value.toFixed(2)} dB/oct`,
+        tooltip: SPECTRUM_TILT_TOOLTIP,
+      },
+    ],
   },
   {
     key: "spectrumOctaveSmoothing",
     kind: "enum",
     options: ids(SPECTRUM_OCTAVE_SMOOTHING_OPTIONS),
     default: "off",
-    // Shared with the Spectrum tab, which renders it through SpectrumDisplaySettingsRows; the
-    // Spectrogram tab places it here and supplies its own widget.
-    ui: {
-      tab: "spectrogram",
-      label: "Smoothing",
-      widget: "custom",
-      order: 20,
-      tooltip:
-        "Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D.",
-    },
+    ui: [
+      {
+        tab: "spectrum",
+        label: "Smoothing",
+        widget: "choiceSelect",
+        ariaLabel: "spectrum octave smoothing",
+        options: SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+        order: 70,
+        tooltip:
+          "Averages the curve across frequency to show tonal balance instead of individual partials. Speed smooths over time; this smooths over frequency.",
+      },
+      {
+        tab: "spectrogram",
+        label: "Smoothing",
+        widget: "choiceSelect",
+        ariaLabel: "spectrogram octave smoothing",
+        options: SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+        order: 20,
+        tooltip:
+          "Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D.",
+      },
+    ],
   },
   {
     kind: "logRange",
@@ -524,6 +594,13 @@ const CONTROLS = [
     absMin: 20,
     absMax: 20000,
     minSpan: 1,
+    ui: {
+      tab: "spectrum",
+      label: "Frequency Range",
+      widget: "range",
+      ariaLabel: "spectrum frequency range",
+      order: 90,
+    },
   },
   {
     kind: "linearRange",
@@ -534,6 +611,13 @@ const CONTROLS = [
     absMin: -120,
     absMax: 0,
     minSpan: 12,
+    ui: {
+      tab: "spectrum",
+      label: "Level Range",
+      widget: "range",
+      ariaLabel: "spectrum level range",
+      order: 100,
+    },
     /// The min was once stored as a span below the max (`spectrumYRangeDb`) rather than as an
     /// absolute bound. Convert before the shared range repair sees it.
     readMin(raw) {
@@ -761,7 +845,19 @@ const CONTROLS = [
       order: 20,
     },
   },
-  { key: "spectrumGrid", kind: "boolean", default: false },
+  {
+    key: "spectrumGrid",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "spectrum",
+      label: "Grid",
+      widget: "switch",
+      ariaLabel: "spectrum grid",
+      tooltip: GRID_TOOLTIP,
+      order: 80,
+    },
+  },
   {
     key: "stereoMapMode",
     kind: "enum",

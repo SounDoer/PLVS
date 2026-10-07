@@ -3,11 +3,8 @@ import { useCallback, useState } from "react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
-import { getSelectedOption, spectrumKeyFromSelection } from "./panel-settings/selectionKeys.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
-import { normalizePanelControls } from "@/lib/panelControls.js";
-import { spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { isDefaultPanelControls } from "@/workspace/panelControlInstances.js";
 import { IconAction } from "@/components/ui/icon-action";
 import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
@@ -25,64 +22,15 @@ const PANEL_SETTINGS_TITLES = {
 };
 
 /**
+ * Every tab renders from panel controls, so there are settings to show exactly when there are
+ * controls and a way to change them.
  * @param {{
- *   activeTab?: string,
- *   channelCount?: number,
- *   spectrumOptions?: any[],
- *   spectrumValueKey?: string,
- *   onSpectrumViewChange?: (...args: any[]) => any,
- *   onSpectrumMaxHoldToggle?: (...args: any[]) => any,
  *   panelControls?: Partial<import("@/workspace/types.js").PanelControls>,
  *   onPanelControlsChange?: (...args: any[]) => any,
  * }} options
  */
-function hasPanelSettings({
-  activeTab,
-  channelCount = 0,
-  spectrumOptions = [],
-  spectrumValueKey = "",
-  onSpectrumViewChange,
-  onSpectrumMaxHoldToggle,
-  panelControls,
-  onPanelControlsChange,
-}) {
-  if (
-    activeTab === "levelMeter" ||
-    activeTab === "stats" ||
-    activeTab === "loudness" ||
-    activeTab === "waveform"
-  ) {
-    return panelControls != null && typeof onPanelControlsChange === "function";
-  }
-
-  if (activeTab === "spectrum" || activeTab === "spectrogram") {
-    const hasPanelControls = panelControls != null;
-    const normalizedPanelControls = normalizePanelControls(panelControls);
-    const effectiveSpectrumValueKey =
-      (hasPanelControls ? spectrumKeyFromSelection(normalizedPanelControls.spectrumChannel) : "") ||
-      spectrumValueKey;
-    const { selectedOption } = getSelectedOption(spectrumOptions, effectiveSpectrumValueKey);
-    const sel = selectedOption?.sel ?? null;
-    const showView =
-      activeTab === "spectrum" &&
-      spectrumViewApplies(sel) &&
-      typeof onSpectrumViewChange === "function";
-    const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxHoldToggle === "function";
-    const showDisplayControls =
-      activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
-    const showSpectrogramRange =
-      activeTab === "spectrogram" &&
-      hasPanelControls &&
-      typeof onPanelControlsChange === "function";
-    return showView || showChannel || showPeak || showDisplayControls || showSpectrogramRange;
-  }
-
-  return (
-    (activeTab === "vectorscope" || activeTab === "stereo-map") &&
-    panelControls != null &&
-    typeof onPanelControlsChange === "function"
-  );
+function hasPanelSettings({ panelControls, onPanelControlsChange }) {
+  return panelControls != null && typeof onPanelControlsChange === "function";
 }
 
 /** @param {{ panelId?: string, presentation?: string, panelTitle: string, onPanelControlsReset: (...args: any[]) => any, [key: string]: any }} props */

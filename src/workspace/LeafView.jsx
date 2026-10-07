@@ -379,14 +379,7 @@ export function LeafView({ node, path, style }) {
                 stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
                 onStereoMapPairChange={noop}
                 spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
-                spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
-                spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
-                onSpectrumChange={noop}
-                spectrumView={chromeData?.spectrumView ?? "combined"}
                 spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
-                onSpectrumViewChange={noop}
-                spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
-                onSpectrumMaxModeChange={noop}
                 panelControls={panelControls}
                 onPanelControlsChange={onPanelControlsChange}
                 onPanelControlsReset={onPanelControlsReset}

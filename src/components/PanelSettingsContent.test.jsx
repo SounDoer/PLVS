@@ -871,18 +871,17 @@ describe("PanelSettingsContent", () => {
   });
 
   it("does not render channel controls below multichannel for spectrum channelCount 2", () => {
-    const { container } = render(
+    render(
       <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumDisplayLabel="L/R"
-        onSpectrumChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
-    expect(container.firstChild).toBeNull();
+    expect(screen.queryByLabelText("spectrum channel")).toBeNull();
   });
 
   it("renders spectrum label for Spectrum and Spectrogram", () => {
@@ -892,9 +891,8 @@ describe("PanelSettingsContent", () => {
           activeTab={activeTab}
           channelCount={6}
           spectrumOptions={[{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }]}
-          spectrumValueKey="s-2"
-          spectrumDisplayLabel="C"
-          onSpectrumChange={vi.fn()}
+          panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 2 } }}
+          onPanelControlsChange={vi.fn()}
         />
       );
 
@@ -902,21 +900,6 @@ describe("PanelSettingsContent", () => {
       expect(screen.getByText("C")).toBeTruthy();
       unmount();
     }
-  });
-
-  it("uses snapshot display label when provided by the caller", () => {
-    render(
-      <PanelSettingsContent
-        activeTab="spectrum"
-        channelCount={6}
-        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumDisplayLabel="Historical L/R"
-        onSpectrumChange={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText("Historical L/R")).toBeTruthy();
   });
 
   it("shows the panel's own channel label, not the global display label, per instance", () => {
@@ -930,11 +913,8 @@ describe("PanelSettingsContent", () => {
           { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
           { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
         ]}
-        spectrumValueKey="p-0-1"
-        spectrumDisplayLabel="L+R"
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 2 } }}
         onPanelControlsChange={vi.fn()}
-        onSpectrumChange={vi.fn()}
       />
     );
 
@@ -1384,20 +1364,18 @@ describe("PanelSettingsContent", () => {
     ).toBe("24");
   });
 
-  it("falls back to the first spectrum option when the value key is stale", () => {
+  it("falls back to the first spectrum option when the stored channel is not offered", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrum"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="s-99"
-        spectrumDisplayLabel="Stale"
-        onSpectrumChange={vi.fn()}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 99 } }}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
-    expect(screen.getByText("L/R")).toBeTruthy();
-    expect(screen.queryByText("Stale")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "spectrum channel" }).textContent).toContain("L/R");
   });
 
   it("falls back to the first vectorscope option when the stored pair is not offered", () => {
@@ -1652,15 +1630,14 @@ describe("PanelSettingsContent", () => {
   });
 
   it("shows the view toggle for a stereo spectrum panel", () => {
-    const onSpectrumViewChange = vi.fn();
+    const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="combined"
-        onSpectrumViewChange={onSpectrumViewChange}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
       />
     );
     expect(screen.getByText("View")).toBeTruthy();
@@ -1672,7 +1649,9 @@ describe("PanelSettingsContent", () => {
       key: "ArrowDown",
     });
     fireEvent.click(screen.getByRole("option", { name: "M / S" }));
-    expect(onSpectrumViewChange).toHaveBeenCalledWith("ms");
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ spectrumView: "ms" })
+    );
   });
 
   it("shows Spectrum Grid off by default after Smoothing and persists the toggle", () => {
@@ -1703,13 +1682,12 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="ms"
         spectrumViewLegend={[
           { token: "primary", label: "M" },
           { token: "secondary", label: "S" },
         ]}
-        onSpectrumViewChange={vi.fn()}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumView: "ms" }}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
@@ -1724,9 +1702,8 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrum"
         channelCount={6}
         spectrumOptions={[{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }]}
-        spectrumValueKey="s-2"
-        spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 2 } }}
+        onPanelControlsChange={vi.fn()}
       />
     );
     expect(screen.queryByLabelText("spectrum view")).toBeNull();
@@ -1738,9 +1715,8 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="ms"
-        onSpectrumViewChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
       />
     );
     expect(screen.queryByLabelText("spectrum view")).toBeNull();
@@ -1749,17 +1725,14 @@ describe("PanelSettingsContent", () => {
   });
 
   it("shows Max as one mode on spectrum, reflecting and changing the selection", () => {
-    const onSpectrumMaxModeChange = vi.fn();
+    const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
-        spectrumMaxMode="decay"
-        onSpectrumMaxModeChange={onSpectrumMaxModeChange}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumMaxMode: "decay" }}
+        onPanelControlsChange={onPanelControlsChange}
       />
     );
 
@@ -1768,7 +1741,9 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("option", { name: "Hold" }));
 
-    expect(onSpectrumMaxModeChange).toHaveBeenCalledWith("hold");
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ spectrumMaxMode: "hold" })
+    );
   });
 
   it("shows compact spectrum display controls after Max", () => {
@@ -1777,11 +1752,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
-        spectrumMaxMode="decay"
-        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -1841,11 +1811,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
-        spectrumMaxMode="off"
-        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -1878,11 +1843,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
-        spectrumMaxMode="off"
-        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1947,11 +1907,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
-        spectrumMaxMode="off"
-        onSpectrumMaxModeChange={vi.fn()}
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           spectrumXMinFreq: 20.000001,
@@ -1975,18 +1930,18 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrum level range min").style.width).toBe("4.5ch");
   });
 
-  it("hides the Peak toggle on the spectrogram tab", () => {
+  it("has no Max row on the spectrogram tab", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumMaxMode="off"
-        onSpectrumMaxModeChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
       />
     );
-    expect(screen.queryByLabelText("spectrum max decay")).toBeNull();
+    expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrum max mode")).toBeNull();
   });
 
   it("portals the label tooltip out of the scrolling settings body", () => {
@@ -2011,9 +1966,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrogram"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
-        spectrumMaxMode="off"
-        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -2032,7 +1984,6 @@ describe("PanelSettingsContent", () => {
           activeTab={activeTab}
           channelCount={2}
           spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-          spectrumValueKey="p-0-1"
           panelControls={DEFAULT_PANEL_CONTROLS}
           onPanelControlsChange={vi.fn()}
         />
@@ -2058,7 +2009,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -2129,7 +2079,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrogram"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "surface" }}
         onPanelControlsChange={vi.fn()}
       />
@@ -2154,7 +2103,6 @@ describe("PanelSettingsContent", () => {
       activeTab: "spectrogram",
       channelCount: 6,
       spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
-      spectrumValueKey: "p-0-1",
       panelControls: DEFAULT_PANEL_CONTROLS,
       onPanelControlsChange,
     };
@@ -2186,7 +2134,6 @@ describe("PanelSettingsContent", () => {
       activeTab: "spectrogram",
       channelCount: 6,
       spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
-      spectrumValueKey: "p-0-1",
       onPanelControlsChange: vi.fn(),
     };
     const { rerender } = render(
@@ -2231,7 +2178,6 @@ describe("PanelSettingsContent", () => {
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        spectrumValueKey="p-0-1"
         panelControls={customControls}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -2264,7 +2210,6 @@ describe("PanelSettingsContent", () => {
       activeTab: "spectrogram",
       channelCount: 2,
       spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
-      spectrumValueKey: "p-0-1",
       panelControls: DEFAULT_PANEL_CONTROLS,
       onPanelControlsChange,
     };

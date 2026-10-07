@@ -30,7 +30,7 @@ describe("DockModuleSettings", () => {
   it.each([
     ["level", "Level mode"],
     ["loudness", "loudness range min"],
-    ["spectrum", "Spectrum channel"],
+    ["spectrum", "spectrum channel"],
     ["correlation", "vectorscope channel"],
     ["stats", "Edit metrics"],
     ["waveform", "waveform frequency color"],
@@ -294,8 +294,8 @@ describe("DockModuleSettings", () => {
     ];
     const onChange = renderSettings("spectrum", { spectrumOptions, channelCount: 6 });
 
-    expect(screen.getByLabelText("Spectrum view")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Spectrum channel"));
+    expect(screen.getByLabelText("spectrum view")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("spectrum channel"));
     fireEvent.click(screen.getByRole("option", { name: "C" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
@@ -318,8 +318,8 @@ describe("DockModuleSettings", () => {
         vectorscopeOptions={undefined}
       />
     );
-    expect(screen.queryByLabelText("Spectrum channel")).toBeNull();
-    expect(screen.getByLabelText("Spectrum view")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrum channel")).toBeNull();
+    expect(screen.getByLabelText("spectrum view")).toBeTruthy();
     unmount();
 
     renderSettings("spectrum", {
@@ -330,8 +330,8 @@ describe("DockModuleSettings", () => {
       spectrumOptions: [{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }],
       channelCount: 6,
     });
-    expect(screen.getByLabelText("Spectrum channel")).toBeTruthy();
-    expect(screen.queryByLabelText("Spectrum view")).toBeNull();
+    expect(screen.getByLabelText("spectrum channel")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrum view")).toBeNull();
   });
 
   it("exposes Spectrum Frequency Range and quarter-decibel tilt steps", () => {
