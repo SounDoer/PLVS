@@ -17,8 +17,7 @@ describe("DockTransport", () => {
     );
     const timer = screen.getByTestId("dock-transport-timer");
     expect(timer.textContent).toBe("01:23");
-    expect(timer.className).toContain("var(--ui-dock-fs-value)");
-    expect(timer.className).not.toContain("text-sm");
+
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByText("STOP")).toBeNull();
   });

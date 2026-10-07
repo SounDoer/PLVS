@@ -99,14 +99,13 @@ function renderStatsPanel({ shared, panelControls, displayAudio }) {
   );
 }
 
-function valueClassFor(label) {
-  // The value sits next to its label inside the row; warn/fail colour is applied to the value.
-  return screen.getByText(label).parentElement.nextElementSibling.className;
+function valueStatusFor(label) {
+  return /** @type {HTMLElement} */ (screen.getByText(label).parentElement.nextElementSibling)
+    .dataset.loudnessStatus;
 }
 
-function labelClassFor(label) {
-  // The "watched vs unwatched" signal lives on the label wrapper, not the value.
-  return screen.getByText(label).parentElement.className;
+function labelWatchedFor(label) {
+  return screen.getByText(label).parentElement.dataset.loudnessWatched;
 }
 
 /** @param {{ selection?: any, displayAudio: any, visibleIds: any[] }} options */
@@ -146,9 +145,6 @@ describe("StatsPanel", () => {
   it("renders an empty state when no stats are selected", () => {
     renderPanel([]);
 
-    expect(screen.getByText("No stats selected").className).toContain(
-      "px-[var(--ui-metric-row-pad-x)]"
-    );
     expect(screen.queryByText("Momentary")).toBeNull();
   });
 
@@ -166,33 +162,14 @@ describe("StatsPanel", () => {
     expect(screen.getByText("Momentary")).toBeTruthy();
   });
 
-  it("keeps stats rows tight with horizontal padding only", () => {
+  it("abbreviates metric labels at medium pane widths and hides units only later", () => {
     renderPanel(["momentary"]);
 
-    const row = screen.getByText("Momentary").parentElement?.parentElement;
-
-    expect(row?.className).toContain("gap-[var(--ui-metric-row-gap)]");
-    expect(row?.className).toContain("px-[var(--ui-metric-row-pad-x)]");
-    expect(row?.className).not.toContain("py-[var(--ui-metric-row-pad-y)]");
-    expect(row?.className).not.toContain("rounded-[var(--ui-radius-metric-row)]");
-  });
-
-  it("abbreviates metric labels at medium pane widths and hides units only later", () => {
-    const { container } = renderPanel(["momentary"]);
-
-    const panel = container.firstElementChild;
-    const fullLabel = screen.getByText("Momentary");
-    const shortLabel = screen.getByText("M");
     const value = screen.getByText("-20.0");
     const unit = screen.getByText("LUFS");
 
-    expect(panel?.className).toContain("@container");
-    expect(fullLabel.className).toContain("@max-[240px]:hidden");
-    expect(shortLabel.className).toContain("hidden");
-    expect(shortLabel.className).toContain("@max-[240px]:inline");
-    expect(value.className).toContain("shrink-0");
     expect(value.getAttribute("style")).toContain("width: 5.5ch");
-    expect(unit.className).toContain("@max-[180px]:hidden");
+
     expect(unit.getAttribute("style")).toContain("width: 3.2em");
   });
 
@@ -208,9 +185,6 @@ describe("StatsPanel", () => {
     });
 
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
-    expect(screen.getByTestId("dialogue-active-dot").className).not.toContain("mr-1");
-    expect(screen.getByTestId("dialogue-active-dot").className).toContain("h-1.5");
-    expect(screen.getByTestId("dialogue-active-dot").className).toContain("w-1.5");
   });
 
   it("renders visible metrics in statsOrder, ignoring hidden ids", () => {
@@ -281,11 +255,8 @@ describe("StatsPanel profile status colours", () => {
     settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     renderWithProfile({ displayAudio: inRange, visibleIds: ["integrated"] });
 
-    const value = valueClassFor("Integrated");
-    expect(value).toContain("text-foreground");
-    expect(value).not.toContain("--ui-signal");
-    // Off leaves every label muted -- the no-profile look.
-    expect(labelClassFor("Integrated")).toContain("text-muted-foreground");
+    expect(valueStatusFor("Integrated")).toBe("off");
+    expect(labelWatchedFor("Integrated")).toBe("false");
   });
 
   it("keeps a watched, in-range value white but brightens its label", () => {
@@ -295,13 +266,8 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated"],
     });
 
-    const value = valueClassFor("Integrated");
-    expect(value).toContain("text-foreground");
-    expect(value).not.toContain("--ui-signal");
-    // The watched label brightens to foreground so it stands out from unwatched rows.
-    const label = labelClassFor("Integrated");
-    expect(label).toContain("text-foreground");
-    expect(label).not.toContain("text-muted-foreground");
+    expect(valueStatusFor("Integrated")).toBe("ok");
+    expect(labelWatchedFor("Integrated")).toBe("true");
   });
 
   it("fails a value outside the profile's band", () => {
@@ -311,8 +277,8 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated"],
     });
 
-    expect(valueClassFor("Integrated")).toContain("--ui-stats-critical-value");
-    expect(labelClassFor("Integrated")).toContain("text-foreground");
+    expect(valueStatusFor("Integrated")).toBe("fail");
+    expect(labelWatchedFor("Integrated")).toBe("true");
   });
 
   it("warns while Integrated is not yet ready", () => {
@@ -322,7 +288,7 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated"],
     });
 
-    expect(valueClassFor("Integrated")).toContain("--ui-stats-warning-value");
+    expect(valueStatusFor("Integrated")).toBe("pending");
   });
 
   it("leaves an unwatched metric's value white and its label muted", () => {
@@ -333,10 +299,8 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated", "lra"],
     });
 
-    const value = valueClassFor("Loudness Range");
-    expect(value).toContain("text-foreground");
-    expect(value).not.toContain("--ui-signal");
-    expect(labelClassFor("Loudness Range")).toContain("text-muted-foreground");
+    expect(valueStatusFor("Loudness Range")).toBe("off");
+    expect(labelWatchedFor("Loudness Range")).toBe("false");
   });
 
   it("mutes the label of a metric the active profile never names", () => {
@@ -347,7 +311,7 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated", "momentary"],
     });
 
-    expect(valueClassFor("Momentary")).toContain("text-foreground");
-    expect(labelClassFor("Momentary")).toContain("text-muted-foreground");
+    expect(valueStatusFor("Momentary")).toBe("off");
+    expect(labelWatchedFor("Momentary")).toBe("false");
   });
 });

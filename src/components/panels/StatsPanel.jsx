@@ -61,13 +61,18 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, w
           )}
         />
       )}
-      <span className={labelClass}>
+      <span className={labelClass} data-loudness-watched={watched ? "true" : "false"}>
         <span className="@max-[240px]:hidden">{label}</span>
         <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>
       </span>
       {/* data-stat-value: the one thing Stats and Dock Stats must agree on, addressable so a
           test can compare the two surfaces' colouring directly. */}
-      <span data-stat-value={id} className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
+      <span
+        data-stat-value={id}
+        data-loudness-status={status ?? "off"}
+        className={valueClass}
+        style={{ width: `${valueColumnCh}ch` }}
+      >
         {value}
       </span>
       <span className={unitClass} style={{ width: `${unitColumnEm}em` }}>

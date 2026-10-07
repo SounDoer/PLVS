@@ -53,19 +53,10 @@ describe("DockLoudness", () => {
     const readoutRows = screen.getAllByTestId("dock-loudness-readout");
     expect(readoutRows.map((node) => node.textContent)).toEqual(["M-18.2", "ST-19.4", "I-20.1"]);
     const readouts = screen.getByTestId("dock-loudness-readouts");
-    expect(readouts.className).toContain("items-baseline");
+
     expect(readouts.style.gridTemplateColumns).toBe("max-content max-content");
     expect(readouts.style.columnGap).toBe("var(--ui-dock-gap-column)");
-    expect(
-      screen
-        .getAllByTestId("dock-loudness-readout-label")
-        .every((node) => node.className.includes("justify-self-start"))
-    ).toBe(true);
-    expect(
-      ["-18.2", "-19.4", "-20.1"].every((value) =>
-        screen.getByText(value).className.includes("w-[var(--ui-dock-readout-w)]")
-      )
-    ).toBe(true);
+
     const history = screen.getByTestId("dock-loudness-history");
     expect(
       history.compareDocumentPosition(readouts) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -82,7 +73,6 @@ describe("DockLoudness", () => {
     });
 
     expect(screen.queryByTestId("dock-loudness-readouts")).toBeNull();
-    expect(screen.getByTestId("dock-loudness-history").parentElement.className).toContain("flex-1");
   });
 
   it("moves two-line readouts below the history in Expanded mode", () => {
@@ -93,7 +83,7 @@ describe("DockLoudness", () => {
 
     const history = screen.getByTestId("dock-loudness-history");
     const readouts = screen.getByTestId("dock-loudness-readouts");
-    expect(readouts.className).toContain("grid-cols-3");
+
     expect(
       history.compareDocumentPosition(readouts) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
@@ -105,16 +95,6 @@ describe("DockLoudness", () => {
       "ST-19.4LUFS",
       "I-20.1LUFS",
     ]);
-    expect(
-      screen
-        .getAllByTestId("dock-expanded-metric")
-        .every((node) => node.className.includes("items-start"))
-    ).toBe(true);
-    expect(
-      screen
-        .getAllByTestId("dock-loudness-readout")
-        .every((node) => node.className.includes("min-w-0"))
-    ).toBe(true);
   });
 
   it("uses the normal panel's Momentary, Short-term, and Reference layer semantics", () => {

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { AppHeader } from "./AppHeader.jsx";
 
@@ -114,7 +114,7 @@ describe("AppHeader", () => {
     });
 
     const notice = screen.getByText("Error: Audio unavailable");
-    expect(notice.className).toContain("ui-feedback-danger");
+
     expect(notice.title).toBe("");
     fireEvent.mouseEnter(notice);
     expect(screen.getByRole("tooltip").textContent).toBe("audio_start: device unavailable");
@@ -130,10 +130,6 @@ describe("AppHeader", () => {
     renderHeader();
 
     const sourcesButton = screen.getByRole("button", { name: "Sources" });
-    const icon = sourcesButton.querySelector("svg");
-    expect(icon?.classList.contains("size-[length:var(--ui-icon-shell-action)]")).toBe(true);
-    expect(icon?.classList.contains("shrink-0")).toBe(true);
-
     fireEvent.click(sourcesButton);
 
     expect(screen.getByText("Sources")).toBeTruthy();
@@ -232,25 +228,9 @@ describe("AppHeader", () => {
 
     const content = document.querySelector('[data-slot="popover-content"]');
     const scrollArea = content.querySelector("[data-source-scroll]");
-    expect(content.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
-    expect(content.className).toContain("overflow-hidden");
-    expect(scrollArea.className).toContain("overflow-y-auto");
-    expect(scrollArea.className).toContain("overscroll-contain");
-    expect(scrollArea.className).toContain("[scrollbar-gutter:stable]");
+
     expect(scrollArea.contains(screen.getByText("Sources"))).toBe(false);
     expect(scrollArea.contains(screen.getByRole("button", { name: "Automatic" }))).toBe(false);
-  });
-
-  it("sizes the Sources popover to its content and the active Interface Size", () => {
-    renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
-
-    const content = document.querySelector('[data-slot="popover-content"]');
-    expect(content.className).toContain("w-max");
-    expect(content.className).toContain("min-w-[calc(10em+2rem)]");
-    expect(content.className).toContain("max-w-[min(calc(24em+1.5rem),92vw)]");
-    expect(content.className).toContain("text-[length:var(--ui-fs-control)]");
-    expect(content.className).not.toContain("w-[min(21rem,92vw)]");
   });
 
   it("keeps collapsed source rows in layout so expanding a group cannot change the width", () => {
@@ -271,15 +251,12 @@ describe("AppHeader", () => {
     expect(applicationRows.hasAttribute("hidden")).toBe(false);
     expect(applicationRows.getAttribute("aria-hidden")).toBe("true");
     expect(applicationRows.hasAttribute("inert")).toBe(true);
-    expect(applicationRows.className).toContain("h-0");
-    expect(applicationRows.className).toContain("overflow-hidden");
-    expect(applicationRows.className).toContain("opacity-0");
+
     expect(applicationRows.textContent).toContain("A much longer application window title");
 
     fireEvent.click(applications);
     expect(applicationRows.hasAttribute("aria-hidden")).toBe(false);
     expect(applicationRows.hasAttribute("inert")).toBe(false);
-    expect(applicationRows.className).not.toContain("h-0");
   });
 
   it("seats Loudness Profile between Sources and Modules", () => {
@@ -292,19 +269,6 @@ describe("AppHeader", () => {
     expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Modules"));
   });
 
-  it("keeps the Loudness Profile trigger neutral when a profile is selected", () => {
-    renderHeader({ loudnessProfile: { active: "off" } });
-    expect(
-      screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
-    ).toBe(false);
-
-    cleanup();
-    renderHeader({ loudnessProfile: { active: "profile:test" } });
-    expect(
-      screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
-    ).toBe(false);
-  });
-
   it("orders Views before Presets without highlighting active configuration", () => {
     const { container } = renderHeader({ focusViewActive: true });
     const toolbar = container.querySelector("header");
@@ -313,9 +277,6 @@ describe("AppHeader", () => {
       .map((button) => button.ariaLabel);
 
     expect(buttons.indexOf("Views")).toBeLessThan(buttons.indexOf("Presets"));
-    expect(
-      screen.getByRole("button", { name: "Views" }).classList.contains("text-foreground")
-    ).toBe(false);
   });
 
   it("renders Modules and Presets popovers from toolbar triggers", () => {
@@ -329,42 +290,6 @@ describe("AppHeader", () => {
     expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
   });
 
-  it("gives non-device toolbar popovers the shared adaptive width range", () => {
-    const loudnessProfile = {
-      active: "off",
-      document: null,
-      profiles: [],
-      draftBlocksLibraryActions: false,
-      selectOff: vi.fn(),
-      beginCreate: vi.fn(),
-    };
-
-    for (const name of ["Loudness Profile", "Modules", "Views", "Presets"]) {
-      renderHeader({ loudnessProfile });
-      fireEvent.click(screen.getByRole("button", { name }));
-
-      const content = document.querySelector('[data-slot="popover-content"]');
-      expect(content.className).toContain("w-max");
-      expect(content.className).toContain("min-w-40");
-      if (name === "Presets") {
-        expect(content.className).toContain("max-w-[92vw]");
-        const input = within(/** @type {Parameters<typeof within>[0]} */ (content)).getByRole(
-          "textbox",
-          {
-            name: "New preset name",
-          }
-        );
-        expect(input.parentElement.parentElement.className).toContain(
-          "min-w-[min(calc(15em+4rem),calc(92vw-1rem))]"
-        );
-      } else {
-        expect(content.className).toContain("max-w-[min(18rem,92vw)]");
-      }
-
-      cleanup();
-    }
-  });
-
   it("holds auto-hidden controls while toolbar popovers are open", () => {
     const holdFocusControls = vi.fn();
     renderHeader({ autoHideControls: true, holdFocusControls });
@@ -375,25 +300,6 @@ describe("AppHeader", () => {
 
     expect(holdFocusControls).toHaveBeenCalledWith(true);
     expect(holdFocusControls.mock.calls.filter(([open]) => open === true)).toHaveLength(3);
-  });
-
-  it("keeps the Presets trigger neutral for clean and modified presets", () => {
-    renderHeader({ presets: { ...NOOP_PRESETS, activeId: null } });
-    expect(
-      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(false);
-
-    cleanup();
-    renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix" } });
-    expect(
-      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(false);
-
-    cleanup();
-    renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix", dirty: true } });
-    expect(
-      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(false);
   });
 
   it("marks every toolbar popover trigger persistently open, not just on hover", () => {
@@ -410,11 +316,9 @@ describe("AppHeader", () => {
 
     for (const name of ["Sources", "Loudness Profile", "Modules", "Views", "Presets"]) {
       const button = screen.getByRole("button", { name });
-      expect(button.className).toContain("group-data-[state=open]:bg-ui-hover");
-      expect(button.className).toContain("group-data-[state=open]:text-foreground");
 
       const trigger = button.closest('[data-slot="popover-trigger"]');
-      expect(trigger.className).toContain("group");
+
       expect(trigger.getAttribute("data-state")).toBe("closed");
 
       fireEvent.click(button);

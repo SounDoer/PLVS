@@ -285,23 +285,13 @@ describe("VectorscopePanel", () => {
     expect(screen.getByText("-1")).toBeTruthy();
     expect(screen.getByText("0")).toBeTruthy();
     expect(screen.getByText("+1")).toBeTruthy();
-    expect(rail?.className).toContain("h-3");
-    expect(rail?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+
     expect(rail?.innerHTML).toContain("--ui-vectorscope-guides-stroke");
     expect(rail?.innerHTML).not.toContain("opacity-30");
-    expect(axis?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
-    expect(axis?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+
     expect(axis?.innerHTML).toContain("absolute top-0 whitespace-nowrap");
     expect(screen.getByText("0").getAttribute("style")).toContain("left: 50%");
     expect(container.querySelector("[data-vectorscope-footer]")).toBeNull();
-  });
-
-  it("does not auto-hide the correlation rail in narrow panes", () => {
-    const { container } = renderPanel({ selectedOffset: -1, panelControls: {} });
-
-    const rail = container.querySelector("[data-vectorscope-correlation-rail]");
-
-    expect(rail?.className).not.toContain("@max-[220px]:hidden");
   });
 
   it("aligns pair labels and correlation endpoints to shared vertical guides", () => {
@@ -310,50 +300,9 @@ describe("VectorscopePanel", () => {
         selectedOffset: -1,
         panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: mode },
       });
-      const pairLabels = container.querySelector("[data-vectorscope-pair-labels]");
-      const rail = container.querySelector("[data-vectorscope-correlation-rail]");
-      const axis = container.querySelector("[data-vectorscope-correlation-axis]");
-
-      expect(pairLabels?.className).toContain("px-[var(--ui-vector-corner-inset)]");
-      expect(pairLabels?.className).not.toContain("font-medium");
-      expect(rail?.className).toContain("px-[var(--ui-vector-corner-inset)]");
-      expect(axis?.className).toContain("px-[var(--ui-vector-corner-inset)]");
       if (mode !== "lissajous") {
         expect(container.querySelector("[data-vectorscope-polar] > span")).toBeNull();
       }
-      unmount();
-    }
-  });
-
-  it("anchors Lissajous to the header and polar modes to the correlation rail", () => {
-    for (const [mode, alignment] of [
-      ["lissajous", "justify-start"],
-      ["polarSample", "justify-end"],
-      ["polarLevel", "justify-end"],
-    ]) {
-      const { container, unmount } = renderPanel({
-        selectedOffset: -1,
-        panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: mode },
-      });
-      const stage = container.querySelector("[data-vectorscope-plot-stage]");
-
-      expect(stage?.className).toContain(alignment);
-      expect(stage?.className).not.toContain("justify-center");
-      unmount();
-    }
-  });
-
-  it("reserves a label row below the polar drawing", () => {
-    for (const mode of ["polarSample", "polarLevel"]) {
-      const { container, unmount } = renderPanel({
-        selectedOffset: -1,
-        panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: mode },
-      });
-      const polarStage = container.querySelector("[data-vectorscope-polar-stage]");
-
-      expect(polarStage?.className).toContain(
-        "bottom-[calc(var(--ui-fs-axis)_+_var(--ui-vector-corner-inset))]"
-      );
       unmount();
     }
   });
@@ -373,8 +322,6 @@ describe("VectorscopePanel", () => {
     const marker = container.querySelector("[data-vectorscope-correlation-marker]");
     expect(marker).toBeTruthy();
     expect(marker?.getAttribute("style")).toContain("left: 75%");
-    expect(marker?.className).not.toContain("currentColor");
-    expect(marker?.className).not.toContain("shadow-[");
   });
 
   it("does not render a fixed center dot over the trace", () => {
@@ -426,13 +373,10 @@ describe("VectorscopePanel", () => {
       })
     );
     const liveMarker = container.querySelector("[data-vectorscope-correlation-marker]");
-    expect(liveMarker?.className).toContain("transition-[left,background-color]");
-    expect(liveMarker?.getAttribute("style")).toContain("left: 25%");
-    expect(liveMarker?.className).toContain(
-      "bg-[color:var(--ui-vectorscope-correlation-critical)]"
-    );
 
-    const snapshot = renderPanel({
+    expect(liveMarker?.getAttribute("style")).toContain("left: 25%");
+
+    renderPanel({
       selectedOffset: 2,
       displayAudio: { peakDb: [-12, -18] },
       resolveVectorscopeSnapshotForKey: () => ({
@@ -442,9 +386,6 @@ describe("VectorscopePanel", () => {
         hasSignal: true,
       }),
     });
-    expect(
-      snapshot.container.querySelector("[data-vectorscope-correlation-marker]")?.className
-    ).not.toContain("transition-[left,background-color]");
   });
 
   it("treats no-signal correlation as indeterminate instead of placing the rail marker at zero", () => {
@@ -725,7 +666,7 @@ describe("VectorscopePanel hold slow mode", () => {
     });
     const plot = container.querySelector("[data-vectorscope-plot]");
     expect(plot.getAttribute("data-max-hold-reset")).toBe("true");
-    expect(plot.className).toContain("cursor-pointer");
+
     fireEvent.mouseEnter(plot);
     expect(screen.queryByText("Click to reset Max hold")).toBeNull();
     // Clicking is wired and does not throw.

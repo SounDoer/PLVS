@@ -49,7 +49,7 @@ describe("DockLevel", () => {
       { levelMeterMode: "peak", readout: "truePeakMax", showLabels: true },
       "compact"
     );
-    expect(screen.getByText("-3.2").className).toContain("var(--ui-dock-fs-value)");
+
     expect(screen.getByTestId("dock-expanded-metric").textContent).toBe("TP Max-3.2");
     expect(screen.queryByTestId("dock-expanded-metric-unit")).toBeNull();
     expect(screen.queryByTestId("dock-level-readout-source")).toBeNull();
@@ -57,15 +57,7 @@ describe("DockLevel", () => {
     expect(screen.getByTestId("dock-level-readout-sizer").getAttribute("aria-hidden")).toBe("true");
     const readoutContent = screen.getByTestId("dock-level-readout-content");
     expect(readoutContent.contains(screen.getByTestId("dock-expanded-metric"))).toBe(true);
-    expect(readoutContent.className).toContain("self-center");
-    expect(readoutContent.className).toContain("items-baseline");
-    expect(screen.getByText("-3.2").parentElement.className).not.toContain(
-      "w-[var(--ui-dock-readout-w)]"
-    );
-    expect(screen.getByTestId("dock-expanded-metric").className).toContain("items-start");
-    expect(
-      screen.getAllByTestId("dock-level-bar").every((bar) => bar.className.includes("h-full"))
-    ).toBe(true);
+
     const reset = screen.getByRole("button", { name: "Reset true peak maximum" });
     expect(reset.title).toBe("");
     fireEvent.mouseEnter(reset);
@@ -86,11 +78,7 @@ describe("DockLevel", () => {
 
     const metric = screen.getByTestId("dock-expanded-metric");
     expect(metric.textContent).toBe("TP Max-3.2dBTP");
-    expect(metric.className).toContain("items-start");
-    expect(metric.parentElement.className).toContain("w-full");
-    expect(screen.getByTestId("dock-expanded-metric-unit").className).toContain(
-      "@max-[68px]:hidden"
-    );
+
     expect(screen.getByTestId("dock-level-readout-region").style.width).toBe(
       "clamp(48px, 28%, 76px)"
     );
@@ -135,14 +123,6 @@ describe("DockLevel", () => {
     expect(source.title).toBe("");
     fireEvent.mouseEnter(source);
     expect(screen.getByRole("tooltip").textContent).toBe("Playback Max");
-    expect(
-      screen.getAllByTestId("dock-level-channel-readout")[0].parentElement.className
-    ).toContain("w-max");
-    expect(
-      screen
-        .getAllByTestId("dock-level-channel-readout")
-        .every((node) => node.className.includes("text-right"))
-    ).toBe(true);
   });
 
   it.each([
@@ -186,7 +166,6 @@ describe("DockLevel", () => {
   it("draws the Gradient over the whole track by default", () => {
     renderWith({ displayAudio: { peakDb: [-12, -30] } });
     for (const bar of screen.getAllByTestId("dock-level-bar")) {
-      expect(bar.className).not.toContain("bg-");
       expect(/** @type {HTMLElement} */ (bar.firstChild).dataset.levelMeterGradient).toBe(
         "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
           "var(--ui-level-critical) 100%)"

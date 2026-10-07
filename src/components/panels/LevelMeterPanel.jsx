@@ -192,6 +192,7 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
  *   yRange: { min: number, max: number },
  *   dataAttribute?: string,
  *   className: string,
+ *   loudnessStatus?: string,
  *   onReset?: (...args: any[]) => any,
  *   resetLabel?: string,
  * }} props
@@ -201,6 +202,7 @@ function AxisValueMarker({
   yRange,
   dataAttribute = "data-level-value-marker",
   className,
+  loudnessStatus,
   onReset,
   resetLabel,
 }) {
@@ -219,6 +221,7 @@ function AxisValueMarker({
   return (
     <span
       {...{ [dataAttribute]: "" }}
+      data-loudness-status={loudnessStatus}
       ref={onReset ? anchorRef : undefined}
       className={cn(
         onReset ? "pointer-events-auto cursor-pointer" : "pointer-events-none",
@@ -382,6 +385,7 @@ export function LevelMeterPanel() {
                   value={readoutValue}
                   yRange={levelMeterYRange}
                   className={loudnessMeterMarkerClass(markerStatus, profileActive)}
+                  loudnessStatus={profileActive ? (markerStatus ?? "neutral") : "off"}
                 />
               ) : null}
             </AxisRail>
@@ -471,6 +475,7 @@ export function LevelMeterPanel() {
                 yRange={levelMeterYRange}
                 dataAttribute="data-level-tp-max-marker"
                 className={loudnessMeterMarkerClass(tpMaxStatus, profileActive)}
+                loudnessStatus={profileActive ? (tpMaxStatus ?? "neutral") : "off"}
                 onReset={onResetTpMax}
                 resetLabel="Click to reset TP Max"
               />

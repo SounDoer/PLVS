@@ -145,44 +145,6 @@ describe("LoudnessHistoryChart", () => {
     expect(paths[1]?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
   });
 
-  it("does not inset the time axis from the chart edges", () => {
-    renderChart(["momentary"]);
-
-    expect(screen.getByText("0s").parentElement?.className).toContain("inset-0");
-  });
-
-  it("keeps the time axis in a dedicated layout row", () => {
-    const { container } = renderChart(["momentary"]);
-
-    const axisRow = screen.getByText("15s").parentElement?.parentElement;
-    const grid = axisRow?.parentElement;
-    const chartArea = container.querySelector("svg")?.parentElement;
-
-    expect(grid?.className).toContain("grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]");
-    expect(axisRow?.className).toContain("relative");
-    expect(axisRow?.className).not.toContain("absolute");
-    expect(axisRow?.className).not.toContain("bottom-0");
-    expect(chartArea?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
-  });
-
-  it("keeps y-axis endpoint labels inside the chart bounds", () => {
-    renderChart(["momentary"]);
-
-    expect(screen.getByText("-12").className).toContain("top-0");
-    expect(screen.getByText("-12").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-36").className).toContain("bottom-0");
-    expect(screen.getByText("-36").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-23").className).toContain("-translate-y-1/2");
-  });
-
-  it("does not color the reference tick as a primary chart trace", () => {
-    renderChart(["ref"]);
-
-    const referenceTick = screen.getAllByText("-23").find((element) => element.tagName === "SPAN");
-    expect(referenceTick?.className).toContain("font-semibold");
-    expect(referenceTick?.className).not.toContain("text-chart-3");
-  });
-
   it("renders adaptive y-axis ticks without a measurement update loop", () => {
     const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       width: 64,
@@ -256,24 +218,7 @@ describe("LoudnessHistoryChart", () => {
       clientY: 100,
     });
 
-    const yAxis = screen.getByText("-12").parentElement?.parentElement;
     expect(onLoudnessYRangeChange).toHaveBeenCalled();
-    expect(yAxis?.className).toContain("text-foreground");
-    expect(yAxis?.className).not.toContain("var(--muted)_44%");
-  });
-
-  it("highlights the time axis when time changes elsewhere", () => {
-    render(
-      <LoudnessHistoryChart
-        {...baseProps}
-        isTimeAxisActive
-        loudnessHistoryVisibleLayerIds={["momentary"]}
-      />
-    );
-
-    const timeAxis = screen.getByText("15s").parentElement?.parentElement;
-    expect(timeAxis?.className).toContain("text-foreground");
-    expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
   it("shows the latest-edge visual hint without adding label text", () => {

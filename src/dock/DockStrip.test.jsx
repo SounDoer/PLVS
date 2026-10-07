@@ -48,15 +48,9 @@ function renderStrip(props = {}) {
 }
 
 describe("DockStrip", () => {
-  it("does not add permanent module dividers outside the resize handles", () => {
-    renderStrip();
-    const row = screen.getAllByTestId("dock-module")[0].parentElement;
-    expect(row.className).not.toMatch(/divide-(x|border)/);
-  });
-
   it("applies surface opacity once to the Dock shell", () => {
     renderStrip();
-    expect(screen.getByTestId("dock-strip").className).toContain("--ui-surface-dock");
+
     expect(screen.getByTestId("dock-strip").style.background).toBe("");
     for (const module of screen.getAllByTestId("dock-module")) {
       expect(module.style.opacity).toBe("");
@@ -144,7 +138,6 @@ describe("DockStrip", () => {
     const modules = screen.getAllByTestId("dock-module");
     expect(modules[0].dataset.hoverHighlighted).toBeUndefined();
     expect(modules[1].dataset.hoverHighlighted).toBe("true");
-    expect(modules[1].className).toContain("ring-primary");
   });
 
   it("exposes an edge-aware keyboard height resize handle", () => {

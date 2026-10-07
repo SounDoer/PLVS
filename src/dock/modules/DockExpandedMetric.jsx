@@ -14,6 +14,8 @@ const UNIT_VISIBILITY_CLASSES = {
  *   labelClassName?: string,
  *   valueClassName?: string,
  *   statId?: string,
+ *   loudnessStatus?: string,
+ *   loudnessWatched?: boolean,
  * }} props
  */
 export function DockExpandedMetric({
@@ -28,6 +30,8 @@ export function DockExpandedMetric({
   // Marks the readout as a named stat so the cross-surface colour guard can find it here too;
   // omitted by callers whose value is not a catalog metric.
   statId,
+  loudnessStatus,
+  loudnessWatched,
 }) {
   const showUnit = Boolean(unit) && value !== "-";
   const unitVisibilityClass =
@@ -45,6 +49,7 @@ export function DockExpandedMetric({
       className={`@container flex min-w-0 flex-col overflow-hidden ${alignment}`}
     >
       <span
+        data-loudness-watched={loudnessWatched == null ? undefined : String(loudnessWatched)}
         className={`flex max-w-full items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${labelClassName}`}
       >
         {indicator}
@@ -53,6 +58,7 @@ export function DockExpandedMetric({
       <span className="mt-1 flex min-w-0 max-w-full items-baseline gap-[var(--ui-dock-gap-column)] overflow-hidden whitespace-nowrap leading-none">
         <span
           data-stat-value={statId}
+          data-loudness-status={loudnessStatus}
           className={`shrink-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold tabular-nums ${valueClassName}`}
         >
           {value}

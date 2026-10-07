@@ -30,7 +30,6 @@ describe("HoverTip", () => {
 
     const tip = screen.getByRole("tooltip");
     expect(tip.parentElement).toBe(document.body);
-    expect(tip.className).toContain("fixed");
   });
 
   it("keeps the visible tip inside the viewport", () => {

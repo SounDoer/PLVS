@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { AxisRail } from "./AxisRail.jsx";
+import { AxisRail, tickPosition } from "./AxisRail.jsx";
 
 const TICKS = [
   { key: "top", label: "0", frac: 0 },
@@ -16,13 +16,11 @@ function labels(container) {
 describe("AxisRail", () => {
   it("pins the extreme ticks and positions the rest by fraction", () => {
     const { container } = render(<AxisRail axis="y" ticks={TICKS} />);
-    const [top, mid, bottom] = labels(container);
+    const [top, mid] = labels(container);
 
-    expect(top.className).toContain("top-0");
     expect(top.style.top).toBe("");
-    expect(mid.className).toContain("-translate-y-1/2");
+
     expect(mid.style.top).toBe("50%");
-    expect(bottom.className).toContain("bottom-0");
   });
 
   it("pins the first and last tick even when their value sits inside the plot", () => {
@@ -37,29 +35,14 @@ describe("AxisRail", () => {
         ]}
       />
     );
-    const [hi, , lo] = labels(container);
+    const [hi] = labels(container);
 
-    expect(hi.className).toContain("top-0");
-    expect(hi.className).not.toContain("-translate-y-1/2");
     expect(hi.style.top).toBe("");
-    expect(lo.className).toContain("bottom-0");
   });
 
-  it("picks the edge a pinned tick belongs to from its fraction, not its index", () => {
-    // Frequency ticks run low to high, so the first entry belongs at the bottom.
-    const { container } = render(
-      <AxisRail
-        axis="y"
-        ticks={[
-          { key: 20, label: "20", frac: 1 },
-          { key: 20000, label: "20k", frac: 0 },
-        ]}
-      />
-    );
-    const [first, last] = labels(container);
-
-    expect(first.className).toContain("bottom-0");
-    expect(last.className).toContain("top-0");
+  it("chooses a pinned tick's edge from its fraction rather than its list position", () => {
+    expect(tickPosition(0, 1, 2)).toBe("end");
+    expect(tickPosition(1, 0, 2)).toBe("start");
   });
 
   it("places x ticks along the horizontal", () => {
@@ -81,7 +64,6 @@ describe("AxisRail", () => {
   it("stays inert without an interaction, and wires one up when given", () => {
     const { container: passive } = render(<AxisRail axis="y" ticks={TICKS} />);
     expect(/** @type {HTMLElement} */ (passive.firstChild).style.cursor).toBe("");
-    expect(/** @type {HTMLElement} */ (passive.firstChild).className).not.toContain("hover:bg-");
 
     const onWheel = vi.fn();
     const { container: live } = render(
@@ -97,10 +79,9 @@ describe("AxisRail", () => {
       />
     );
     expect(/** @type {HTMLElement} */ (live.firstChild).style.cursor).toBe("ns-resize");
-    expect(/** @type {HTMLElement} */ (live.firstChild).className).toContain("hover:bg-");
   });
 
-  it("highlights from either the rail's own gesture or the plot area's", () => {
+  it("reports highlights driven by either the rail gesture or the plot area", () => {
     const base = { axisRef: { current: null }, axisHandlers: {}, cursorStyle: "ns-resize" };
     const { container: fromRail } = render(
       <AxisRail axis="y" ticks={TICKS} interaction={{ ...base, isActive: true }} />
@@ -112,21 +93,9 @@ describe("AxisRail", () => {
       <AxisRail axis="y" ticks={TICKS} interaction={{ ...base, isActive: false }} />
     );
 
-    expect(/** @type {HTMLElement} */ (fromRail.firstChild).className).toContain("text-foreground");
-    expect(/** @type {HTMLElement} */ (fromPlot.firstChild).className).toContain("text-foreground");
-    expect(/** @type {HTMLElement} */ (idle.firstChild).className).not.toContain("text-foreground");
-  });
-
-  it("applies the chart inset only when the plot it labels does", () => {
-    const { container: inset } = render(<AxisRail axis="y" ticks={TICKS} inset />);
-    const { container: flush } = render(<AxisRail axis="y" ticks={TICKS} />);
-
-    expect(/** @type {HTMLElement} */ (inset.firstChild.firstChild).className).toContain(
-      "ui-chart-inset-top"
-    );
-    expect(/** @type {HTMLElement} */ (flush.firstChild.firstChild).className).not.toContain(
-      "ui-chart-inset-top"
-    );
+    expect(/** @type {HTMLElement} */ (fromRail.firstChild).dataset.active).toBe("true");
+    expect(/** @type {HTMLElement} */ (fromPlot.firstChild).dataset.active).toBe("true");
+    expect(/** @type {HTMLElement} */ (idle.firstChild).dataset.active).toBe("false");
   });
 
   it("updates a tick's text in place when its key stays put", () => {

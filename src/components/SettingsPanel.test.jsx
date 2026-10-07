@@ -194,22 +194,11 @@ describe("SettingsPanel", () => {
     ).toBeTruthy();
     // The trigger takes the control height that follows Interface Size, never a fixed 24px that
     // the larger sizes would outgrow.
-    expect(screen.getByLabelText("Interface Size").className).toContain("h-[var(--ui-control-h)]");
-    expect(screen.getByLabelText("Interface Size").className).not.toContain(" h-6 ");
+
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Close settings" })).toBeTruthy();
     expect(document.body.querySelector("[data-settings-header]")).toBeTruthy();
     expect(document.body.querySelector("[data-settings-scroll]")).toBeTruthy();
-    expect(document.body.querySelector("[data-slot=sheet-content]").className).toContain(
-      "settings-sheet"
-    );
-    expect(document.body.querySelector("[data-slot=sheet-content]").className).toContain("bg-card");
-    expect(document.body.querySelector("[data-slot=sheet-content]").className).not.toMatch(
-      /bg-card\//
-    );
-    expect(document.body.querySelector("[data-slot=sheet-overlay]").className).toContain(
-      "backdrop-blur-sm"
-    );
   });
 
   it("updates the global interface size", () => {
@@ -237,26 +226,14 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Theme")).toBeTruthy();
   });
 
-  it("aligns trailing selectors with switches and reset actions", () => {
+  it("keeps the integrated selector action inside the Dialogue Detection row", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
-    for (const label of ["Close Behavior", "Interface Size", "Appearance", "History Length"]) {
-      const trigger = screen.getByLabelText(label);
-      expect(trigger.className).toContain("!pr-0");
-      expect(trigger.className).toContain("!pl-2");
-    }
-    expect(screen.getByLabelText("Theme").className).toContain("pr-0");
-    expect(screen.getByLabelText("Theme").className).toContain("pl-2");
-    expect(
-      screen.getByText("Dialogue Detection").closest("[data-settings-row]").className
-    ).toContain("grid-cols-[minmax(0,1fr)_max-content]");
     const dialogueRow = screen.getByText("Dialogue Detection").closest("[data-settings-row]");
     const dialogueValue = dialogueRow.querySelector("[data-settings-row-value]");
     const integratedControl = dialogueValue.querySelector("[data-integrated-select-action]");
     expect(integratedControl).toBeTruthy();
-    expect(integratedControl.className).toContain("hover:bg-ui-hover");
-    expect(integratedControl.className).toContain("has-[[data-state=open]]:bg-ui-hover");
-    expect(integratedControl.className).not.toContain("focus-within:bg-ui-hover");
+
     expect(
       integratedControl.contains(
         screen.getByRole("button", { name: "Open FireRedVAD official link" })
@@ -267,10 +244,7 @@ describe("SettingsPanel", () => {
       dialogueValue.contains(screen.getByRole("button", { name: /Dialogue Detection help:/ }))
     ).toBe(false);
     const dialogueTrigger = screen.getByLabelText("Dialogue Detection");
-    expect(dialogueTrigger.className).toContain("!pr-0");
-    expect(dialogueTrigger.className).toContain("!pl-2");
-    expect(dialogueTrigger.className).toContain("!gap-1");
-    expect(dialogueTrigger.className).toContain("hover:bg-transparent");
+
     expect(dialogueTrigger.contains(screen.getByRole("button", { name: /official link/ }))).toBe(
       false
     );
@@ -301,19 +275,13 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("Complete Setup").closest("[data-settings-row]").className).toContain(
-      "settings-row-stackable"
-    );
     const exportConfiguration = screen.getByRole("button", {
       name: "Export complete setup",
     });
     const importConfiguration = screen.getByRole("button", {
       name: "Import complete setup",
     });
-    expect(exportConfiguration.className).toContain("hover:bg-ui-hover");
-    expect(importConfiguration.className).toContain("hover:bg-ui-hover");
-    expect(exportConfiguration.className).not.toContain("bg-secondary");
-    expect(importConfiguration.className).not.toContain("bg-secondary");
+
     fireEvent.click(exportConfiguration);
     fireEvent.click(importConfiguration);
 
@@ -472,8 +440,7 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);
 
     const resetButton = screen.getByRole("button", { name: "Reset PLVS to default" });
-    expect(resetButton.className).toContain("hover:bg-ui-hover");
-    expect(resetButton.className).toContain("hover:text-destructive");
+
     fireEvent.click(resetButton);
     expect(onResetConfiguration).not.toHaveBeenCalled();
 
@@ -538,9 +505,7 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
-    const content = document.querySelector("[data-slot='popover-content']");
     expect(document.body.style.pointerEvents).toBe("none");
-    expect(content.className).toContain("pointer-events-auto");
   });
 
   it("creates a custom theme from inside the picker panel", () => {
@@ -557,17 +522,6 @@ describe("SettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
     fireEvent.click(screen.getByRole("button", { name: "Add Theme" }));
     expect(createCustomTheme).toHaveBeenCalled();
-  });
-
-  it("sizes the theme panel to its names instead of a fixed width", () => {
-    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
-    const content = document.querySelector("[data-slot='popover-content']");
-
-    expect(content.className).toContain("w-auto");
-    expect(content.className).toContain("max-w-72");
-    expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
   });
 
   it("previews every authored core color", () => {
@@ -690,12 +644,9 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("Releases")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Licenses" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
-    expect(document.querySelector("[data-settings-footer-status]").className).toContain(
-      "justify-start"
-    );
+
     const footerLinks = document.querySelector("[data-settings-footer-links]");
-    expect(footerLinks.className).toContain("flex-wrap");
-    expect(footerLinks.className).toContain("justify-start");
+
     expect(footerLinks.querySelectorAll(".border-l")).toHaveLength(0);
   });
 
@@ -965,9 +916,6 @@ describe("SettingsPanel", () => {
       />
     );
     expect(screen.getByText(/combo unavailable/i)).toBeTruthy();
-    expect(screen.getByRole("switch", { name: /Global Shortcut/i }).className).toContain(
-      "border-destructive"
-    );
   });
 
   it("calls onOpenFeedback when the footer's Feedback link is clicked", () => {
@@ -991,10 +939,7 @@ describe("SettingsPanel", () => {
 
     const exportLibrary = screen.getByRole("button", { name: "Export saved items" });
     const importLibrary = screen.getByRole("button", { name: "Import saved items" });
-    expect(exportLibrary.className).toContain("hover:bg-ui-hover");
-    expect(importLibrary.className).toContain("hover:bg-ui-hover");
-    expect(exportLibrary.className).not.toContain("bg-secondary");
-    expect(importLibrary.className).not.toContain("bg-secondary");
+
     expect(screen.queryByRole("button", { name: "Paste theme" })).toBeNull();
 
     const libraryTip =

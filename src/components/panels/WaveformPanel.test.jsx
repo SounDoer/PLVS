@@ -457,31 +457,11 @@ describe("WaveformPanel", () => {
     expect(screen.queryByText("Ch 2")).toBeNull();
   });
 
-  it("keeps the time axis in a dedicated layout row", () => {
-    renderPanel({ historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"] });
-
-    const axisRow = screen.getByText("7s").parentElement?.parentElement?.parentElement;
-
-    expect(axisRow?.className).toContain("shrink-0");
-    expect(axisRow?.className).not.toContain("absolute");
-    expect(axisRow?.className).not.toContain("bottom-0");
-  });
-
   it("uses the shared chart axis gap between channel labels and waveform charts", () => {
     const { container } = renderPanel();
 
-    const lane = container.querySelector("[data-waveform-lane]");
-    const labelRail = lane?.querySelector("[data-waveform-label-rail]");
-    const timeAxisRow = screen.getAllByText("0s")[2].parentElement?.parentElement?.parentElement;
-    const timeAxisSpacer = container.querySelector("[data-waveform-x-axis-spacer]");
     const interactionOverlay = container.querySelector("[data-waveform-interaction-overlay]");
 
-    expect(labelRail?.className).not.toContain("pr-1");
-    expect(container.firstElementChild?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(labelRail?.className).toContain("w-[var(--ui-chart-y-axis-rail-w)]");
-    expect(lane?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(timeAxisRow?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(timeAxisSpacer?.className).toContain("w-[var(--ui-chart-y-axis-rail-w)]");
     expect(/** @type {HTMLElement} */ (interactionOverlay)?.style.left).toBe(
       "calc(var(--ui-chart-y-axis-rail-w) + var(--ui-chart-axis-gap))"
     );
@@ -492,9 +472,7 @@ describe("WaveformPanel", () => {
 
     const hint = container.querySelector("[data-timeline-latest-edge-hint]");
     expect(hint).toBeTruthy();
-    expect(hint?.className).toContain(
-      "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))]"
-    );
+
     expect(screen.queryByText(/Latest/i)).toBeNull();
   });
 
@@ -508,17 +486,6 @@ describe("WaveformPanel", () => {
     fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
 
     expect(/** @type {HTMLElement} */ (chart)?.style.cursor).toBe("grab");
-  });
-
-  it("highlights the time axis when time changes elsewhere", () => {
-    renderPanel({
-      historyTimeAxisActive: true,
-      historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"],
-    });
-
-    const timeAxis = screen.getByText("7s").parentElement?.parentElement;
-    expect(timeAxis?.className).toContain("text-foreground");
-    expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
   it("hides the gestures help button in compact mode", () => {

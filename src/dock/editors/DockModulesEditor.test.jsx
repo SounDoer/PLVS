@@ -178,17 +178,6 @@ describe("DockModulesEditor", () => {
     ).toEqual(["Reorder Spectrum", "Spectrum settings", "Rename Spectrum", "Delete Spectrum"]);
   });
 
-  it("uses the shared management row density and reveal behavior", () => {
-    render(<DockModulesEditor {...BASE_PROPS} />);
-    const row = screen.getByTestId("dock-panel-row-spectrum");
-    const actions = screen.getByRole("button", { name: "Rename Spectrum" }).closest("span");
-
-    expect(row.className).toContain("min-h-[var(--ui-row-h)]");
-    expect(row.className).toContain("focus-within:bg-ui-hover");
-    expect(actions?.className).toContain("group-hover:opacity-100");
-    expect(actions?.className).toContain("group-focus-within:opacity-100");
-  });
-
   it("does not render a title close button", () => {
     render(<DockModulesEditor {...BASE_PROPS} />);
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();

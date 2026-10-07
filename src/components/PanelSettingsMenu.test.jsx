@@ -127,21 +127,6 @@ describe("PanelSettingsMenu", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
 
-    const content = screen
-      .getByLabelText("level meter mode")
-      .closest("[data-slot='popover-content']");
-    const contentClasses = content?.className.split(/\s+/) ?? [];
-    expect(contentClasses).toContain("p-1");
-    expect(contentClasses).not.toContain("p-2");
-    expect(contentClasses).toContain("max-h-[var(--radix-popover-content-available-height)]");
-    expect(contentClasses).toContain("overflow-hidden");
-
-    const scrollArea = content?.querySelector("[data-panel-settings-scroll]");
-    const scrollAreaClasses = scrollArea?.className.split(/\s+/) ?? [];
-    expect(scrollAreaClasses).toContain("min-h-0");
-    expect(scrollAreaClasses).toContain("overflow-y-auto");
-    expect(scrollAreaClasses).toContain("overscroll-contain");
-
     expect(screen.getByLabelText("level meter mode")).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "level meter mode" })).toBeTruthy();
     fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {

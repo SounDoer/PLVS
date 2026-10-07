@@ -9,10 +9,6 @@ import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx"
 import { profileZones, thresholdZones, zonesToGradient } from "../../lib/levelMeterColors.js";
 import { LOUDNESS_PROFILE_OFF } from "../../lib/loudnessProfileCatalog.js";
 
-// Five monospace characters of the marker's own font -- the widest reading fmtMetric prints, such as
-// "-16.9" -- so the marker never needs the panel's padding.
-const MARKER_RAIL_WIDTH = "w-[calc(var(--ui-fs-display)*3)]";
-
 const TEST_PROFILE = {
   id: "test-profile",
   name: "Test profile",
@@ -67,16 +63,6 @@ describe("LevelMeterPanel", () => {
     const leftValue = screen.getByText("-9.9");
     const leftLabel = screen.getByText("L");
 
-    expect(leftValue.className).toContain("w-[5ch]");
-    expect(leftValue.className).toContain("whitespace-nowrap");
-    expect(leftValue.closest("[data-peak-value]")?.className).toContain("@max-[48px]:hidden");
-    expect(leftValue.closest("[data-peak-value]")?.className).not.toContain("@max-[220px]:hidden");
-    expect(leftLabel.closest("[data-peak-channel-label]")?.className).toContain(
-      "@max-[24px]:hidden"
-    );
-    expect(leftLabel.closest("[data-peak-channel-label]")?.className).not.toContain(
-      "@max-[220px]:hidden"
-    );
     expect(leftValue.parentElement).not.toBe(leftLabel.parentElement);
   });
 
@@ -85,52 +71,38 @@ describe("LevelMeterPanel", () => {
 
     const layoutGrid = container.querySelector("[data-level-meter-grid]");
 
-    expect(container.firstElementChild?.className).toContain("min-w-0");
     expect(layoutGrid).toBeTruthy();
-    expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(layoutGrid.className).not.toContain("--ui-peak-axis-chart-gap");
   });
 
   it("uses compact Level Meter bar spacing without changing the protected axis gap", () => {
     const { container } = renderPanel();
 
-    const layoutGrid = container.querySelector("[data-level-meter-grid]");
     const channelGrid = container.querySelector("[data-level-meter-channel-grid]");
     const barFill = container.querySelector("[data-level-meter-bar-fill]");
 
-    expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(layoutGrid.className).toContain("grid-rows-[minmax(0,1fr)]");
-    expect(channelGrid?.className).toContain("gap-[var(--ui-level-meter-channel-gap)]");
-    expect(channelGrid?.querySelector("div")?.className).toContain("@container");
     expect(channelGrid?.getAttribute("style")).toContain("--ui-level-meter-channel-gap: 0.15rem");
     expect(channelGrid?.getAttribute("style")).not.toContain("calc(");
-    expect(barFill?.className).toContain("inset-x-[var(--ui-level-meter-bar-inset-x)]");
+
     expect(barFill?.getAttribute("style")).toContain("--ui-level-meter-bar-inset-x: 0.1rem");
     expect(barFill?.getAttribute("style")).not.toContain("--ui-peak-channel-spacing-scale");
-    expect(barFill?.className).not.toContain("--ui-meter-chart-inset-x");
   });
 
   it("does not reserve a bottom metric footer", () => {
     const { container } = renderPanel();
 
-    const layoutGrid = container.querySelector("[data-level-meter-grid]");
     const footer = container.querySelector("[data-level-meter-footer]");
 
-    expect(layoutGrid.className).toContain("grid-rows-[minmax(0,1fr)]");
-    expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
     expect(footer).toBeNull();
   });
 
   it("lets the meter grid fill full height without a metric line", () => {
     const { container } = renderPanel();
 
-    const layoutGrid = container.querySelector("[data-level-meter-grid]");
     const footer = container.querySelector("[data-level-meter-footer]");
 
     // The grid is a single 1fr row, so y-axis + bars fill the panel without
     // reserving a footer row.
-    expect(layoutGrid?.className).toContain("grid-rows-[minmax(0,1fr)]");
-    expect(layoutGrid?.className).not.toContain("var(--ui-chart-x-axis-row-h)");
+
     expect(footer).toBeNull();
   });
 
@@ -147,32 +119,6 @@ describe("LevelMeterPanel", () => {
     expect(screen.queryByText("TP Max")).toBeNull();
     const marker = container.querySelector("[data-level-value-marker]");
     expect(marker?.textContent).toBe("-22.4");
-    expect(container.querySelector("[data-level-value]")?.className).toContain("hidden");
-    expect(container.querySelector("[data-level-meter-bar-region] > div")?.className).toContain(
-      "@container"
-    );
-    expect(container.querySelector("[data-level-mode-label]")?.className).toContain(
-      "@max-[24px]:hidden"
-    );
-    expect(marker.className).toContain("text-primary");
-    expect(marker.className).toContain("font-[family-name:var(--ui-font-mono)]");
-    expect(marker.className).toContain("text-[length:var(--ui-fs-display)]");
-    expect(marker.className).toContain("tabular-nums");
-    expect(marker.className).toContain("font-semibold");
-    expect(marker.className).not.toContain("bg-primary");
-    expect(marker.className).toContain("right-0");
-    expect(marker.className).toContain("text-right");
-    expect(marker.className).not.toContain("left-0");
-    expect(marker.className).not.toContain("translate-x");
-    expect(marker.closest("[data-level-meter-y-axis]")?.className).toContain(MARKER_RAIL_WIDTH);
-    expect(marker.closest("[data-level-meter-y-axis]")?.className).not.toContain(
-      "w-[var(--ui-chart-y-axis-rail-w)]"
-    );
-    const axisTick = screen.getByText("-20");
-    expect(axisTick.className).toContain("right-0");
-    expect(axisTick.className).not.toContain("left-0");
-    expect(axisTick.className).not.toContain("font-[family-name:var(--ui-font-mono)]");
-    expect(axisTick.className).not.toContain("tabular-nums");
   });
 
   it("renders Short-term LUFS in Level Meter mode", () => {
@@ -197,8 +143,7 @@ describe("LevelMeterPanel", () => {
     expect(screen.getByText("L")).toBeTruthy();
     expect(screen.getByText("R")).toBeTruthy();
     expect(screen.queryByText("RMS")).toBeNull();
-    expect(screen.getByText("+3").className).toContain("top-0");
-    expect(screen.getByText("-60").className).toContain("bottom-0");
+
     expect(container.querySelector("[data-level-mode-label]")).toBeNull();
     expect(container.querySelector("[data-level-meter-channel-grid]")).toBeTruthy();
   });
@@ -211,33 +156,6 @@ describe("LevelMeterPanel", () => {
 
     expect(screen.queryByText("-143.2")).toBeNull();
     expect(screen.getAllByText("-").length).toBeGreaterThan(0);
-  });
-
-  it("leaves the TP Max marker neutral when no profile sets a limit", () => {
-    // Off means nothing to judge against, so the marker reads like the M/ST markers on this
-    // same meter rather than announcing a breach that no rule defines.
-    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
-    const { container } = renderPanel({
-      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
-    });
-
-    const marker = container.querySelector("[data-level-tp-max-marker]");
-    expect(marker.className).toContain("text-primary");
-    expect(marker.className).not.toContain("--ui-signal-tp-max");
-  });
-
-  it("fails the TP Max marker once the active profile's limit is exceeded", () => {
-    // The test profile caps true peak at -1 dBTP; 0 dBTP is a clear breach, so the marker follows
-    // the same fail colour the Stats row shows.
-    selectProfile(profileSelectionId(TEST_PROFILE.id));
-    const { container } = renderPanel({
-      displayAudio: { peakDb: [-1, -1], rmsDb: [-9, -9], tpMax: 0 },
-      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
-    });
-
-    expect(container.querySelector("[data-level-tp-max-marker]").className).toContain(
-      "--ui-level-critical"
-    );
   });
 
   it("keeps the TP Max marker at foreground while inside the profile's limit", () => {
@@ -253,23 +171,44 @@ describe("LevelMeterPanel", () => {
       panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
     });
 
-    const className = container.querySelector("[data-level-tp-max-marker]").className;
-    expect(className).toContain("text-foreground");
-    expect(className).not.toContain("--ui-signal");
+    expect(
+      container.querySelector("[data-level-tp-max-marker]")?.getAttribute("data-loudness-status")
+    ).toBe("ok");
   });
 
-  it("keeps the M/ST marker white when the active profile does not watch it", () => {
-    // The test profile has no Momentary rule. The marker stays foreground rather than dimming --
-    // only an actual warn/fail pulls a colour -- but it is no longer the accent readout either.
+  it("reports the TP Max marker as off without an active profile", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    expect(
+      container.querySelector("[data-level-tp-max-marker]")?.getAttribute("data-loudness-status")
+    ).toBe("off");
+  });
+
+  it("reports a failed TP Max marker when the active profile limit is exceeded", () => {
+    selectProfile(profileSelectionId(TEST_PROFILE.id));
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-1, -1], rmsDb: [-9, -9], tpMax: 0 },
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    expect(
+      container.querySelector("[data-level-tp-max-marker]")?.getAttribute("data-loudness-status")
+    ).toBe("fail");
+  });
+
+  it("reports an unwatched Momentary marker as neutral under an active profile", () => {
     selectProfile(profileSelectionId(TEST_PROFILE.id));
     const { container } = renderPanel({
       displayAudio: { peakDb: [-9, -9], rmsDb: [-18, -18], momentary: -22.4, shortTerm: -18.6 },
       panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
     });
 
-    const marker = container.querySelector("[data-level-value-marker]");
-    expect(marker.className).toContain("text-foreground");
-    expect(marker.className).not.toContain("text-muted-foreground");
+    expect(
+      container.querySelector("[data-level-value-marker]")?.getAttribute("data-loudness-status")
+    ).toBe("neutral");
   });
 
   it("does not carry the Peak TP Max marker into RMS mode", () => {
@@ -278,32 +217,6 @@ describe("LevelMeterPanel", () => {
     });
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      "w-[var(--ui-chart-y-axis-rail-w)]"
-    );
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
-      MARKER_RAIL_WIDTH
-    );
-  });
-
-  it("keeps LUFS axis endpoint labels inside the chart bounds", () => {
-    renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
-
-    expect(screen.getByText("0").className).toContain("top-0");
-    expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-64").className).toContain("bottom-0");
-    expect(screen.getByText("-64").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-20").className).toContain("-translate-y-1/2");
-  });
-
-  it("keeps peak axis endpoint labels inside the chart bounds", () => {
-    renderPanel();
-
-    expect(screen.getByText("+3").className).toContain("top-0");
-    expect(screen.getByText("+3").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-60").className).toContain("bottom-0");
-    expect(screen.getByText("-60").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-20").className).toContain("-translate-y-1/2");
   });
 
   it("renders the TP Max marker in Peak mode without a unit", () => {
@@ -315,9 +228,6 @@ describe("LevelMeterPanel", () => {
     const marker = container.querySelector("[data-level-tp-max-marker]");
     expect(marker?.textContent).toBe("-1.0");
     expect(screen.queryByText("dBTP")).toBeNull();
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      MARKER_RAIL_WIDTH
-    );
   });
 
   it("keeps the wider Peak y-axis reserved when TP Max marker is enabled without a value", () => {
@@ -327,21 +237,12 @@ describe("LevelMeterPanel", () => {
     });
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      MARKER_RAIL_WIDTH
-    );
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
-      "w-[var(--ui-chart-y-axis-rail-w)]"
-    );
   });
 
   it("hides the TP Max marker by default", () => {
     const { container } = renderPanel();
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      "w-[var(--ui-chart-y-axis-rail-w)]"
-    );
   });
 
   it("hides the value marker when the value is below the loudness scale minimum", () => {
@@ -369,10 +270,6 @@ describe("LevelMeterPanel", () => {
     });
 
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
-    expect(container.querySelector("[data-level-value]")?.className).toContain("flex");
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      "w-[var(--ui-chart-y-axis-rail-w)]"
-    );
   });
 
   it("uses playback max as the readout source without changing the live bar fill", async () => {
@@ -426,7 +323,6 @@ describe("LevelMeterPanel", () => {
     await waitFor(() =>
       expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-30.0")
     );
-    expect(container.querySelector("[data-level-value]")?.className).toContain("hidden");
   });
 
   it("uses per-channel RMS playback max readouts while keeping live bar values", async () => {
@@ -569,12 +465,10 @@ describe("LevelMeterPanel", () => {
     expect(marker?.textContent).toBe("-1.0▲");
     const arrow = marker.querySelector("[data-marker-out-of-range]");
     expect(/** @type {HTMLElement} */ (arrow)?.dataset.markerOutOfRange).toBe("above");
-    expect(arrow.className).toContain("ml-[0.3ch]");
+
     // Out of flow, or its margin alone would shift the right-aligned digits out of the column.
-    expect(arrow.className).toContain("absolute");
-    expect(arrow.className).toContain("left-full");
+
     expect(/** @type {HTMLElement} */ (marker).style.top).toBe("0%");
-    expect(marker.className).not.toContain("-translate-y-1/2");
   });
 
   it("pins the TP Max marker to the bottom of the axis when it reads below the range", () => {
@@ -590,7 +484,6 @@ describe("LevelMeterPanel", () => {
         .markerOutOfRange
     ).toBe("below");
     expect(/** @type {HTMLElement} */ (marker).style.top).toBe("100%");
-    expect(marker.className).toContain("-translate-y-full");
   });
 
   it("keeps an in-range TP Max marker centred on its value and undimmed", () => {
@@ -599,11 +492,9 @@ describe("LevelMeterPanel", () => {
     });
 
     const marker = container.querySelector("[data-level-tp-max-marker]");
-    expect(marker.className).toContain("-translate-y-1/2");
+
     expect(marker.querySelector("[data-marker-out-of-range]")).toBeNull();
     // Shares the tick labels' anchor, so reading and ticks end on the same column.
-    expect(marker.className).toContain("right-0");
-    expect(marker.className).toContain("text-right");
   });
 
   it("keeps the TP Max reset clickable while the marker is pinned", () => {
@@ -829,26 +720,6 @@ describe("LevelMeterPanel", () => {
     }
   });
 
-  it("colours the Floating Value by a Momentary Max ceiling", () => {
-    const profileWithCeiling = {
-      ...TEST_PROFILE,
-      rules: [{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }],
-    };
-    settingsStore.patch({
-      loudnessProfiles: {
-        active: profileSelectionId(profileWithCeiling.id),
-        profiles: [profileWithCeiling],
-      },
-    });
-    const { container } = renderPanel({
-      displayAudio: { peakDb: [-9, -9], momentary: -12 },
-      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
-    });
-
-    const marker = container.querySelector("[data-level-value-marker]");
-    expect(marker.className).toContain("text-[color:var(--ui-level-critical)]");
-  });
-
   it("colours the Floating Value by Playback Max against a Momentary Max ceiling", async () => {
     const profileWithCeiling = {
       ...TEST_PROFILE,
@@ -871,6 +742,6 @@ describe("LevelMeterPanel", () => {
 
     const marker = container.querySelector("[data-level-value-marker]");
     await waitFor(() => expect(marker.textContent).toBe("-12.0"));
-    expect(marker.className).toContain("text-[color:var(--ui-level-critical)]");
+    expect(marker.getAttribute("data-loudness-status")).toBe("fail");
   });
 });

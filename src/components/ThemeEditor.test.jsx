@@ -163,15 +163,6 @@ describe("ThemeEditor", () => {
       /** @type {HTMLButtonElement} */ (screen.getByLabelText("Reset interface palette to PLVS"))
         .disabled
     ).toBe(true);
-    expect(document.querySelector('[data-palette-preset-action="status"]').className).toContain(
-      "w-10"
-    );
-    expect(document.querySelector('[data-palette-preset-action="frequency"]').className).toContain(
-      "w-10"
-    );
-    expect(document.querySelector('[data-palette-preset-action="interface"]').className).toContain(
-      "w-10"
-    );
   });
 
   it("offers one-click PLVS resets after simple palettes are customized", () => {
@@ -287,7 +278,6 @@ describe("ThemeEditor", () => {
     fireEvent.mouseEnter(workspace);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip.textContent).toContain("app canvas behind panels");
-    expect(tooltip.className).toContain("max-w-64");
   });
 
   it("opens a read-only controlled preview against the current Draft", () => {

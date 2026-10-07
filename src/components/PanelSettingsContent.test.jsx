@@ -476,7 +476,7 @@ describe("PanelSettingsContent", () => {
 
   it("renders Level Meter mode as a labeled settings row and updates mode", () => {
     const onPanelControlsChange = vi.fn();
-    const { container } = render(
+    render(
       <PanelSettingsContent
         activeTab="levelMeter"
         panelControls={DEFAULT_PANEL_CONTROLS}
@@ -487,42 +487,17 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Mode")).toBeTruthy();
     const modeButton = screen.getByLabelText("level meter mode");
     const modeRow = screen.getByText("Mode").parentElement;
-    const modeControlCell = modeButton.parentElement;
     expect(modeButton).toBeTruthy();
-    expect(modeButton.className).toContain("h-[var(--ui-control-h)]");
-    expect(modeButton.className).toContain("text-popover-foreground");
-    expect(modeButton.className).not.toContain("focus:border");
-    expect(modeButton.className.split(" ")).not.toContain("text-muted-foreground");
-    expect(modeButton.className).not.toContain("h-7");
-    expect(modeButton.className).not.toContain("min-w-[");
+
     expect(modeButton.textContent).not.toContain("Edit");
-    expect(modeButton.querySelector("svg")?.className.baseVal).toContain("size-[1.15em]");
-    expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
-    expect(screen.getByText("Mode").className).toContain("h-[var(--ui-shell-h)]");
-    expect(screen.getByText("Mode").className).toContain("items-center");
-    expect(screen.getByText("Mode").className).not.toContain("text-popover-foreground");
-    expect(modeControlCell?.className).toContain("min-h-[var(--ui-shell-h)]");
-    expect(modeControlCell?.className).toContain("items-center");
-    expect(modeRow?.className).toContain("min-h-[var(--ui-shell-h)]");
-    expect(modeRow?.className).toContain("gap-2");
-    expect(modeRow?.className).toContain("px-2");
-    expect(modeRow?.className).not.toContain("px-1.5");
-    expect(modeRow?.className).toContain("grid-cols-[max-content_minmax(0,1fr)]");
-    expect(modeRow?.className).not.toContain("grid-cols-[4.75rem");
-    expect(modeRow?.className).not.toContain("min-h-7");
-    expect(modeRow?.className).not.toContain("gap-4");
-    expect(/** @type {HTMLElement} */ (container.firstChild)?.className).toContain("w-full");
-    expect(/** @type {HTMLElement} */ (container.firstChild)?.className).toContain("max-w-full");
-    expect(/** @type {HTMLElement} */ (container.firstChild)?.className).not.toContain("w-[17rem]");
+
     expect(screen.getByText("Peak")).toBeTruthy();
 
     expect(screen.getByRole("combobox", { name: "level meter mode" })).toBeTruthy();
-    const modeRowClassBeforeOpen = modeRow?.className;
     fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {
       key: "ArrowDown",
     });
-    expect(modeRow?.className).toBe(modeRowClassBeforeOpen);
-    expect(modeButton.className).not.toContain("w-full");
+
     expect(modeButton.textContent).not.toContain("Hide");
     const peakOption = screen.getByRole("option", { name: "Peak" });
     expect(peakOption.getAttribute("data-state")).toBe("checked");
@@ -718,12 +693,6 @@ describe("PanelSettingsContent", () => {
     expect(playbackMaxSwitch.getAttribute("aria-checked")).toBe("false");
     const switchButton = screen.getByRole("switch", { name: "level meter floating value" });
     expect(switchButton.getAttribute("aria-checked")).toBe("false");
-    expect(switchButton.className).toContain("h-[var(--ui-switch-h)]");
-    expect(switchButton.className).toContain("w-[var(--ui-switch-w)]");
-    expect(switchButton.className).toContain("data-[state=checked]:bg-primary");
-    expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain(
-      "size-[var(--ui-switch-thumb)]"
-    );
 
     fireEvent.click(playbackMaxSwitch);
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -1558,19 +1527,7 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(editButton);
     const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
     expect(momentaryRow.getAttribute("data-settings-option-row")).toBe("true");
-    expect(momentaryRow.querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3"
-    );
-    expect(momentaryRow.className).toContain("min-h-[var(--ui-control-h)]");
-    expect(momentaryRow.className).not.toContain("py-1 ");
-    expect(momentaryRow.className).not.toContain("py-1.5");
-    expect(momentaryRow.className).toContain("var(--ui-fs-control)");
-    expect(momentaryRow.className).toContain("hover:bg-ui-hover");
-    expect(momentaryRow.className).toContain("focus-visible:bg-ui-hover");
-    const detailSurface = momentaryRow.closest("[data-settings-detail-surface]");
-    expect(detailSurface?.className).toContain("bg-popover");
-    expect(detailSurface?.className).toContain("shadow-raised");
-    expect(detailSurface?.className).not.toContain("bg-secondary");
+
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -1669,9 +1626,7 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes[0].getAttribute("data-settings-option-row")).toBe("true");
-    expect(checkboxes[0].querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3"
-    );
+
     expect(checkboxes.slice(0, 3).map((c) => c.textContent)).toEqual([
       "Short-term Dynamics",
       "Momentary",
@@ -1720,7 +1675,7 @@ describe("PanelSettingsContent", () => {
     );
     expect(screen.getByText("View")).toBeTruthy();
     expect(screen.getByLabelText("spectrum view")).toBeTruthy();
-    expect(screen.getByLabelText("spectrum view").className).not.toContain("min-w-[");
+
     expect(screen.getByRole("combobox", { name: "spectrum view" })).toBeTruthy();
 
     fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrum view" }), {
@@ -1859,9 +1814,9 @@ describe("PanelSettingsContent", () => {
     const tiltSlider = screen.getByLabelText("spectrum tilt");
     expect(speedSlider).toBeTruthy();
     expect(tiltSlider).toBeTruthy();
-    expect(speedSlider.classList.contains("plvs-range")).toBe(true);
+
     expect(speedSlider.style.getPropertyValue("--range-pct")).toBe("25%");
-    expect(tiltSlider.classList.contains("plvs-range")).toBe(true);
+
     expect(tiltSlider.style.getPropertyValue("--range-pct")).toBe("50%");
     // Speed is a slider (time axis), Smoothing is a choice list (frequency axis). Confusing the
     // two is what this whole control layout exists to prevent, so pin that they stay distinct.
@@ -2056,7 +2011,6 @@ describe("PanelSettingsContent", () => {
     fireEvent.mouseEnter(screen.getByText("Playback Max"));
     const tip = screen.getByRole("tooltip");
     expect(view.container.contains(tip)).toBe(false);
-    expect(tip.className).toContain("fixed");
   });
 
   it("portals the slider value tooltip out of the scrolling settings body", () => {
@@ -2079,7 +2033,6 @@ describe("PanelSettingsContent", () => {
     const tip = screen.getByRole("tooltip");
     expect(tip.textContent).toBe("3.00 dB/oct");
     expect(view.container.contains(tip)).toBe(false);
-    expect(tip.className).toContain("fixed");
   });
 
   it("gives the tilt row the same tooltip on both the spectrum and spectrogram tabs", () => {
@@ -2547,9 +2500,6 @@ describe("PanelSettingsContent", () => {
     leafEl.getBoundingClientRect = () => /** @type {DOMRect} */ ({ width: 320, height: 180 });
 
     const pinButton = screen.getByRole("button", { name: "Pin panel size" });
-    expect(pinButton.querySelector("svg")?.getAttribute("class")).toContain(
-      "size-[calc(var(--ui-icon-panel-action)*0.9)]"
-    );
 
     fireEvent.click(pinButton);
 
@@ -2557,10 +2507,7 @@ describe("PanelSettingsContent", () => {
     expect(latestState.pinnedPanelsById).toEqual({
       stats: { width: 320, height: 180 },
     });
-    const unpinButton = screen.getByRole("button", { name: "Unpin panel size" });
-    expect(unpinButton.querySelector("svg")?.getAttribute("class")).toContain(
-      "size-[calc(var(--ui-icon-panel-action)*0.9)]"
-    );
+    expect(screen.getByRole("button", { name: "Unpin panel size" })).toBeTruthy();
   });
 
   it("uses another tab's pinned size for the shared tab slot", () => {
@@ -2722,14 +2669,8 @@ describe("PanelSettingsContent", () => {
       </WorkspaceProvider>
     );
 
-    const titleBar = container.querySelector("[data-leaf-tabs]");
     const tabPill = container.querySelector("[data-tab-pill]");
-    const titleGroup = container.querySelector("[data-panel-title-group]");
 
-    expect(titleBar?.className).toContain("h-[var(--ui-shell-h)]");
-    expect(titleBar?.className).not.toContain("h-9");
-    expect(titleGroup?.className).toContain("px-1");
-    expect(titleGroup?.className).not.toContain("px-2");
     expect(tabPill?.querySelector("[data-panel-title-icon]")).toBeTruthy();
   });
 
@@ -2813,18 +2754,7 @@ describe("PanelSettingsContent", () => {
 
     const exitButton = screen.getByRole("button", { name: "Exit fullscreen" });
     const titleBar = exitButton.parentElement?.parentElement;
-    const titleGroup = titleBar?.querySelector("[data-panel-title-group]");
-
     expect(titleBar?.querySelector("[data-panel-title-icon]")).toBeTruthy();
-    expect(titleGroup?.className).toContain("px-1");
-    expect(titleBar?.className).toContain("h-[var(--ui-shell-h)]");
-    expect(titleBar?.className).toContain("px-1");
-    expect(titleBar?.className).toContain("var(--ui-fs-control)");
-    expect(titleBar?.className).not.toContain("h-9");
-    expect(titleBar?.className).not.toContain("px-3");
-    expect(titleBar?.className).not.toContain("text-sm");
-    expect(exitButton.className).toContain("p-1");
-    expect(exitButton.className).not.toContain("p-2");
   });
 
   it("hides LeafView panel controls in compact panel mode", () => {

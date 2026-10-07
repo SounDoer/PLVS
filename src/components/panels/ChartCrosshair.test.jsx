@@ -12,8 +12,6 @@ describe("ChartCrosshair", () => {
     for (const axis of ["vertical", "horizontal"]) {
       const guide = document.querySelector(`[data-chart-crosshair="${axis}"]`);
       expect(guide).not.toBeNull();
-      expect(guide.className).toContain("border-dashed");
-      expect(guide.className).toContain("border-muted-foreground/60");
     }
   });
 

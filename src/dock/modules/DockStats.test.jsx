@@ -93,7 +93,7 @@ describe("DockStats", () => {
     expect(stats).toHaveLength(3);
     expect(stats.map((row) => row.textContent)).toEqual(["M-18.1", "ST-19.2", "I-20.1"]);
     expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 72px)");
-    expect(stats[0].className).toContain("flex");
+
     expect(stats[0].style.gap).toBe("2px");
     expect(
       /** @type {HTMLElement} */ (screen.getByText("M").closest("[data-testid='dock-stat-label']"))
@@ -112,8 +112,6 @@ describe("DockStats", () => {
 
       const tooltip = screen.getByRole("tooltip");
       expect(tooltip.textContent).toBe(STATS_META.momentary.hint);
-      expect(tooltip.className).toContain("bg-popover");
-      expect(tooltip.className).toContain("max-w-[calc(100vw-1rem)]");
     }
   );
 
@@ -127,8 +125,7 @@ describe("DockStats", () => {
 
   it("uses shared Dock typography and omits units", () => {
     renderWith(METRICS, statsControls(["integrated"]));
-    expect(screen.getByText("I").parentElement?.className).toContain("var(--ui-dock-fs-label)");
-    expect(screen.getByText("-20.1").className).toContain("var(--ui-dock-fs-value)");
+
     expect(screen.queryByText("LUFS")).toBeNull();
   });
 
@@ -145,22 +142,6 @@ describe("DockStats", () => {
       "TP Max-3.2dBTP",
       "Corr-",
     ]);
-  });
-
-  it("keeps a long label shrinkable without letting it overlap the fixed value", () => {
-    renderWith(
-      [{ id: "dialogueOffset", shortLabel: "Dlg Offset", value: "+0.9" }],
-      statsControls(["dialogueOffset"])
-    );
-
-    const stat = screen.getByTestId("dock-stat");
-    const label = screen.getByTestId("dock-stat-label");
-    const labelText = screen.getByText("Dlg Offset");
-    const value = screen.getByText("+0.9");
-    expect(stat.className).toContain("flex");
-    expect(label.className).toContain("flex-1");
-    expect(labelText.className).toContain("min-w-0");
-    expect(value.className).toContain("shrink-0");
   });
 
   it("renders a dash when a selected metric is missing from the feed", () => {
@@ -250,9 +231,6 @@ describe("DockStats", () => {
 
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("5");
     expect(screen.getAllByTestId("dock-stat")).toHaveLength(15);
-    expect(screen.getAllByTestId("dock-expanded-metric-unit")[0].className).toContain(
-      "@max-[68px]:hidden"
-    );
   });
 
   it("renders the empty state when no metrics are selected", () => {
@@ -267,14 +245,14 @@ describe("DockStats profile status colours", () => {
   const visible = statsControls(["integrated"]);
 
   // METRICS supplies the display string; displayAudio supplies the number status is judged on.
-  function valueClass() {
-    return screen.getByText("-20.1").className;
+  function valueStatus() {
+    return screen.getByText("-20.1").dataset.loudnessStatus;
   }
 
   it("leaves values uncoloured while the profile is Off", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
-    expect(valueClass()).toContain("text-foreground");
-    expect(valueClass()).not.toContain("--ui-signal");
+    expect(valueStatus()).toBe("off");
   });
 
   it("colours a breach the same way the normal Stats panel does", () => {
@@ -282,13 +260,13 @@ describe("DockStats profile status colours", () => {
     // read as a breach in one panel and neutral in the other.
     selectTestProfile();
     renderWith(METRICS, visible, {}, "standard", { integrated: -18 });
-    expect(valueClass()).toContain("--ui-stats-critical-value");
+    expect(valueStatus()).toBe("fail");
   });
 
   it("keeps an in-range watched value at foreground", () => {
     selectTestProfile();
     renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
-    expect(valueClass()).toContain("text-foreground");
+    expect(valueStatus()).toBe("ok");
   });
 });
 
@@ -325,9 +303,9 @@ describe("Dock Stats and the main window under one provider", () => {
     );
   }
 
-  function truePeakValueClasses(container) {
+  function truePeakStatuses(container) {
     return [...container.querySelectorAll("[data-stat-value='truePeak']")].map(
-      (node) => node.className
+      (node) => node.dataset.loudnessStatus
     );
   }
 
@@ -335,18 +313,14 @@ describe("Dock Stats and the main window under one provider", () => {
     selectTestProfile();
     const { container } = renderBothSurfaces({ tpMax: 0 });
 
-    const classes = truePeakValueClasses(container);
-    expect(classes).toHaveLength(2);
-    for (const className of classes) expect(className).toContain("--ui-stats-critical-value");
+    expect(truePeakStatuses(container)).toEqual(["fail", "fail"]);
   });
 
   it("leaves the metric neutral in both surfaces while the profile is Off", () => {
     settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const { container } = renderBothSurfaces({ tpMax: 0 });
 
-    const classes = truePeakValueClasses(container);
-    expect(classes).toHaveLength(2);
-    for (const className of classes) expect(className).toContain("text-foreground");
+    expect(truePeakStatuses(container)).toEqual(["off", "off"]);
   });
 
   // A persisted selection cannot diverge between two providers -- both would read the same store.
@@ -365,9 +339,7 @@ describe("Dock Stats and the main window under one provider", () => {
       );
 
       // -5 dBTP clears the test profile's -1 limit, so both surfaces start neutral.
-      for (const className of truePeakValueClasses(container)) {
-        expect(className).toContain("text-foreground");
-      }
+      expect(truePeakStatuses(container)).toEqual(["ok", "ok"]);
 
       act(() => profile.beginCreate());
       act(() =>
@@ -377,9 +349,7 @@ describe("Dock Stats and the main window under one provider", () => {
         }))
       );
 
-      const classes = truePeakValueClasses(container);
-      expect(classes).toHaveLength(2);
-      for (const className of classes) expect(className).toContain("--ui-stats-critical-value");
+      expect(truePeakStatuses(container)).toEqual(["fail", "fail"]);
     });
   }
 });

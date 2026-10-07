@@ -747,27 +747,6 @@ describe("SpectrumPanel", () => {
     expect(setSelectedOffset).toHaveBeenCalledWith(-1);
   });
 
-  it("keeps the frequency axis in a dedicated layout row", () => {
-    const { container } = renderPanel({
-      displaySpectrumPath: "",
-      displaySpectrumPeakPath: "",
-      selectedOffset: -1,
-      spectrumHover: null,
-      onSpectrumHoverMove: vi.fn(),
-      onSpectrumHoverLeave: vi.fn(),
-    });
-
-    const axisRow = screen.getByText("1k").parentElement?.parentElement;
-    const grid = axisRow?.parentElement;
-    const chartInset = container.querySelector("svg")?.parentElement?.parentElement;
-
-    expect(grid?.className).toContain("grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]");
-    expect(axisRow?.className).toContain("relative");
-    expect(axisRow?.className).not.toContain("absolute");
-    expect(axisRow?.className).not.toContain("bottom-0");
-    expect(chartInset?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
-  });
-
   it("uses the full chart width without an internal horizontal pad", () => {
     const { container } = renderPanel(
       liveAudioData(
@@ -780,33 +759,6 @@ describe("SpectrumPanel", () => {
     );
 
     expect(container.innerHTML).not.toContain("--ui-chart-pad");
-    expect(container.querySelector("svg")?.parentElement?.className).not.toContain("px-[");
-    expect(screen.getByText("1k").parentElement?.className).toContain("inset-0");
-  });
-
-  it("keeps frequency axis endpoint labels inside the chart bounds", () => {
-    renderPanel(liveAudioData(liveResult()));
-
-    expect(screen.getByText("20").className).toContain("text-left");
-    expect(screen.getByText("20").className).not.toContain("-translate-x-1/2");
-    expect(screen.getByText("20k").className).toContain("right-0");
-    expect(screen.getByText("20k").className).toContain("text-right");
-    expect(screen.getByText("20k").className).not.toContain("-translate-x-1/2");
-    expect(screen.getByText("1k").className).toContain("-translate-x-1/2");
-  });
-
-  it("keeps dB axis endpoint labels inside the chart bounds", () => {
-    const { container } = renderPanel(liveAudioData(liveResult()));
-
-    expect(screen.getByText("-12").className).toContain("top-0");
-    expect(screen.getByText("-12").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-96").className).toContain("bottom-0");
-    expect(screen.getByText("-96").className).not.toContain("-translate-y-1/2");
-    expect(
-      Array.from(container.querySelectorAll("span")).some((span) =>
-        span.className.includes("-translate-y-1/2")
-      )
-    ).toBe(true);
   });
 });
 

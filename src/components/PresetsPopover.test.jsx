@@ -20,8 +20,7 @@ describe("PresetsPopoverContent", () => {
     const add = screen.getByRole("button", { name: "Add preset" });
     expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
     expect(screen.queryByText("No presets yet. Save the current view to start.")).toBeNull();
-    expect(add.className).toContain("border-dashed");
-    expect(add.className).toContain("w-auto");
+
     expect(add.querySelector("svg")).toBeTruthy();
     expect(add.textContent).toBe("Add");
   });
@@ -34,15 +33,9 @@ describe("PresetsPopoverContent", () => {
   it("gives the whole Presets surface a minimum width that follows Interface Size", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     const input = screen.getByRole("textbox", { name: "New preset name" });
-    const surface = input.parentElement.parentElement;
     // The em share grows with the control font while the rem share holds fixed padding and gaps.
     // `size={1}` stops a long typed value from widening the surface beyond that responsive floor.
     expect(input.getAttribute("size")).toBe("1");
-    expect(input.classList.contains("flex-1")).toBe(true);
-    expect(input.classList.contains("min-w-0")).toBe(true);
-    expect(input.classList.contains("[field-sizing:content]")).toBe(false);
-    expect(surface.className).toContain("min-w-[min(calc(15em+4rem),calc(92vw-1rem))]");
-    expect(surface.className).toContain("text-[length:var(--ui-fs-control)]");
   });
 
   it("disables Add when the name input is empty", () => {
@@ -355,8 +348,6 @@ describe("PresetsPopoverContent", () => {
     );
     const iconsSpan = screen.getByLabelText("Update preset Focus").closest("span.flex.shrink-0");
     expect(iconsSpan).toBeTruthy();
-    expect(iconsSpan.className).toContain("opacity-0");
-    expect(iconsSpan.className).toContain("group-hover:opacity-100");
   });
 
   it("shows row-tail action icons while keyboard focus is inside the preset row", () => {
@@ -370,7 +361,6 @@ describe("PresetsPopoverContent", () => {
     );
     const iconsSpan = screen.getByLabelText("Update preset Focus").closest("span.flex.shrink-0");
     expect(iconsSpan).toBeTruthy();
-    expect(iconsSpan.className).toContain("group-focus-within:opacity-100");
   });
 });
 

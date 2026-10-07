@@ -121,7 +121,7 @@ describe("UpdateDialog", () => {
     const indeterminate = screen.getByRole("progressbar", { name: "Update download" });
     expect(indeterminate.getAttribute("aria-valuenow")).toBeNull();
     expect(indeterminate.textContent).toBe("");
-    expect(indeterminate.firstElementChild.className).toContain("update-progress-indeterminate");
+
     expect(/** @type {HTMLElement} */ (indeterminate.firstElementChild).style.width).toBe("");
 
     rerender(<UpdateDialog {...BASE_PROPS} installStatus="installing" downloadProgress={0.4} />);

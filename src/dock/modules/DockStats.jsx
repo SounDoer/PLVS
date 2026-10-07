@@ -89,6 +89,8 @@ function DockStatCell({
           unit={unit}
           unitVisibility="tight"
           statId={id}
+          loudnessStatus={status ?? "off"}
+          loudnessWatched={watched}
           labelClassName={loudnessLabelClass(watched)}
           valueClassName={loudnessStatusValueClass(status)}
           indicator={
@@ -109,6 +111,7 @@ function DockStatCell({
         <>
           <span
             data-testid="dock-stat-label"
+            data-loudness-watched={watched ? "true" : "false"}
             className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessLabelClass(watched)}`}
           >
             {id === "dialogueCoverage" ? (
@@ -126,6 +129,7 @@ function DockStatCell({
           </span>
           <span
             data-stat-value={id}
+            data-loudness-status={status ?? "off"}
             className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(status)}`}
           >
             {value}

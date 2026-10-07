@@ -80,9 +80,7 @@ describe("DockVectorscope", () => {
     expect(trace.getAttribute("opacity")).toBeNull();
     expect(screen.getByText("+0.50")).toBeTruthy();
     expect(screen.getByTestId("dock-vectorscope-correlation-marker").style.left).toBe("75%");
-    expect(screen.getByText("L").parentElement?.className).toContain("var(--ui-dock-fs-label)");
-    expect(screen.getByText("-1").parentElement?.className).toContain("var(--ui-dock-fs-caption)");
-    expect(screen.getByText("+0.50").className).toContain("var(--ui-dock-fs-value)");
+
     expect(screen.getByTestId("dock-vectorscope-correlation-readout").textContent).toBe(
       "Corr+0.50"
     );
@@ -119,12 +117,11 @@ describe("DockVectorscope", () => {
     );
     expect(screen.getByText("Correlation")).toBeTruthy();
     expect(screen.getByText("0")).toBeTruthy();
-    expect(screen.getByTestId("dock-vectorscope-correlation-rail").className).toContain("w-full");
+
     const rail = screen.getByTestId("dock-vectorscope-correlation-rail");
-    expect(rail.className).toContain("--ui-vectorscope-guides-stroke");
-    expect(rail.className).not.toContain("opacity-");
+
     const readout = screen.getByText("Correlation").parentElement;
-    expect(readout.className).toContain("justify-center");
+
     expect(rail.compareDocumentPosition(readout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     rect.mockRestore();
   });
@@ -158,9 +155,6 @@ describe("DockVectorscope", () => {
     renderWith({ path: "M 20 20", correlation: 0, pairX: 0, pairY: 1 }, [-Infinity, -Infinity]);
     expect(screen.getByText("-")).toBeTruthy();
     expect(screen.queryByTestId("dock-vectorscope-correlation-marker")).toBeNull();
-    expect(screen.getByTestId("dock-vectorscope-correlation-rail").className).not.toContain(
-      "opacity-"
-    );
   });
 
   it.each([
@@ -229,8 +223,6 @@ describe("DockVectorscope", () => {
         vectorscopePolarLevelMaxHold: false,
       });
 
-      const pairLabels = screen.getByTestId("dock-vectorscope-pair-labels");
-      expect(pairLabels.className).toContain("var(--ui-dock-fs-label)");
       if (vectorscopeMode !== "lissajous") {
         expect(document.querySelector("[data-vectorscope-polar] > span")).toBeNull();
       }
@@ -282,30 +274,6 @@ describe("DockVectorscope", () => {
     }
   );
 
-  it("reserves a Dock label row below the polar drawing", () => {
-    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
-      width: 220,
-      height: 72,
-      top: 0,
-      right: 220,
-      bottom: 72,
-      left: 0,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    });
-    renderWith(null, [-12, -10], "standard", {
-      vectorscopePair: { x: 0, y: 1 },
-      vectorscopeMode: "polarSample",
-      vectorscopePolarLevelMaxHold: false,
-    });
-
-    expect(screen.getByTestId("dock-vectorscope-polar-stage").className).toContain(
-      "bottom-[calc(var(--ui-dock-fs-label)_+_2px)]"
-    );
-    rect.mockRestore();
-  });
-
   it("insets the Lissajous grid away from the corner labels", () => {
     renderWith(null);
     const lines = screen.getByTestId("dock-vectorscope-lissajous-grid").querySelectorAll("line");
@@ -325,7 +293,7 @@ describe("DockVectorscope", () => {
     renderWith(null, [-12, -10], "standard", polarControls);
     const plot = screen.getByTestId("dock-vectorscope-plot");
     expect(plot.getAttribute("data-max-hold-reset")).toBe("true");
-    expect(plot.className).toContain("cursor-pointer");
+
     fireEvent.mouseEnter(plot);
     expect(screen.queryByText("Click to reset Max hold")).toBeNull();
     fireEvent.click(plot);

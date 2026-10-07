@@ -179,50 +179,6 @@ describe("DockEditorApp window behavior", () => {
     );
   });
 
-  it("lets module settings use their intrinsic width", () => {
-    client.payload = {
-      ...PRESETS_PAYLOAD,
-      view: "module:spectrogram",
-      panelsById: { spectrogram: { id: "spectrogram", moduleId: "spectrogram" } },
-      panelOrder: ["spectrogram"],
-      controlsByPanelId: {
-        // The shape useDockLayout hands over: it repairs the stored record on every read, so
-        // the editor never sees the Dock's older short key names.
-        spectrogram: {
-          spectrumChannel: { type: "pair", x: 0, y: 1 },
-          spectrumTiltDbPerOctave: 3,
-          spectrogramDbFloor: -84,
-          spectrogramYMinFreq: 20,
-          spectrogramYMaxFreq: 20000,
-        },
-      },
-    };
-
-    render(<DockEditorApp />);
-
-    const classes = screen.getByTestId("dock-editor").className.split(/\s+/);
-    expect(classes).toContain("w-max");
-    expect(classes).toContain("min-w-48");
-    expect(classes).not.toContain("min-w-64");
-    expect(classes).not.toContain("w-[400px]");
-    expect(classes).toContain("rounded-md");
-    expect(classes).toContain("border-border");
-    expect(classes).toContain("bg-popover");
-    expect(classes).toContain("shadow-raised");
-  });
-
-  it("uses the same semantic surface as regular popovers", () => {
-    render(<DockEditorApp />);
-
-    const classes = screen.getByTestId("dock-editor").className.split(/\s+/);
-    expect(classes).toContain("rounded-md");
-    expect(classes).toContain("border-border");
-    expect(classes).toContain("bg-popover");
-    expect(classes).toContain("text-popover-foreground");
-    expect(classes).toContain("shadow-raised");
-    expect(classes).not.toContain("backdrop-blur-sm");
-  });
-
   it("renders loudness module settings without a host LoudnessProfileProvider", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,

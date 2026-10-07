@@ -59,17 +59,19 @@ export function AxisRail({
 }) {
   const isY = axis === "y";
   const interactive = Boolean(interaction);
+  const highlighted = (interaction?.isActive ?? false) || active;
   return (
     <div
       ref={interaction?.axisRef ?? railRef}
       {...(interaction?.axisHandlers ?? {})}
       style={interactive ? { cursor: interaction.cursorStyle } : undefined}
+      data-active={highlighted ? "true" : "false"}
       className={cn(
         CAPTION_TEXT,
         "relative",
         interactive && RAIL_HOVER,
         className,
-        ((interaction?.isActive ?? false) || active) && "text-foreground"
+        highlighted && "text-foreground"
       )}
       {...rest}
     >

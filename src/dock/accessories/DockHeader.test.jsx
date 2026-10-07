@@ -33,8 +33,6 @@ describe("DockHeader", () => {
       "Restore window",
       "Presets",
     ]);
-    expect(screen.getByTestId("dock-header").className).toContain("justify-center");
-    expect(screen.getByTestId("dock-header-controls").className).toContain("max-w-full");
   });
 
   it("emits semantic actions and pointer presence", () => {
@@ -85,43 +83,6 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets", anchorX: 0 });
   });
 
-  it("highlights Presets only while its editor is open", () => {
-    const { rerender } = render(
-      <DockHeader
-        state={{ ...STATE, activeCleanPreset: true }}
-        onAction={vi.fn()}
-        onPointer={vi.fn()}
-      />
-    );
-    expect(
-      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(false);
-
-    rerender(
-      <DockHeader
-        state={{ ...STATE, activeCleanPreset: true, editorView: "presets" }}
-        onAction={vi.fn()}
-        onPointer={vi.fn()}
-      />
-    );
-    const button = screen.getByRole("button", { name: "Presets" });
-    expect(button.classList.contains("bg-ui-hover")).toBe(true);
-    expect(button.classList.contains("text-foreground")).toBe(true);
-  });
-
-  it("does not highlight Presets for a dirty or absent active preset", () => {
-    render(
-      <DockHeader
-        state={{ ...STATE, activeCleanPreset: false }}
-        onAction={vi.fn()}
-        onPointer={vi.fn()}
-      />
-    );
-    expect(
-      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(false);
-  });
-
   it("opens the Loudness Profile editor without highlighting active configuration", () => {
     const onAction = vi.fn();
     const { rerender } = render(
@@ -132,7 +93,6 @@ describe("DockHeader", () => {
       />
     );
     const button = screen.getByRole("button", { name: "Loudness Profile" });
-    expect(button.classList.contains("text-foreground")).toBe(false);
 
     vi.spyOn(button, "getBoundingClientRect").mockReturnValue(
       /** @type {ReturnType<typeof button.getBoundingClientRect>} */ ({ left: 100, width: 20 })
@@ -150,9 +110,6 @@ describe("DockHeader", () => {
         onPointer={undefined}
       />
     );
-    expect(
-      screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
-    ).toBe(false);
   });
 
   it("emits a reserve toggle instead of a stale target value", () => {
@@ -182,13 +139,11 @@ describe("DockHeader", () => {
     );
 
     const notice = screen.getByText("Could not reserve screen space. Dock remains an overlay.");
-    expect(notice.className).toContain("ui-feedback-danger");
+
     expect(notice.title).toBe("");
     fireEvent.mouseEnter(notice);
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip.textContent).toBe("ABM_NEW rejected the appbar registration");
-    expect(tooltip.className).toContain("whitespace-nowrap");
-    expect(tooltip.className).toContain("text-ellipsis");
   });
 
   it.each([

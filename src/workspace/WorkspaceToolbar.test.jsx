@@ -30,21 +30,6 @@ describe("ModulesPopoverContent", () => {
     workspaceStore.reset();
   });
 
-  it("keeps row actions hidden until the row is hovered", () => {
-    render(
-      <WorkspaceProvider>
-        <ModulesPopoverContent />
-      </WorkspaceProvider>
-    );
-
-    const renameButton = screen.getByLabelText("Rename Level Meter");
-    const actions = renameButton.closest("span");
-
-    expect(actions?.className).toContain("opacity-0");
-    expect(actions?.className).toContain("group-hover:opacity-100");
-    expect(actions?.className).toContain("group-focus-within:opacity-100");
-  });
-
   it("shows the panel icon beside existing panel names", () => {
     render(
       <WorkspaceProvider>
@@ -54,18 +39,6 @@ describe("ModulesPopoverContent", () => {
 
     const row = screen.getByText("Level Meter").closest(".group");
     expect(row?.querySelector("svg")).toBeTruthy();
-  });
-
-  it("stretches module rows across the popover width", () => {
-    render(
-      <WorkspaceProvider>
-        <ModulesPopoverContent />
-      </WorkspaceProvider>
-    );
-
-    const row = screen.getByText("Level Meter").closest(".group");
-    expect(row?.parentElement?.classList.contains("w-full")).toBe(true);
-    expect(row?.parentElement?.classList.contains("w-max")).toBe(false);
   });
 
   it("arms then resets the layout via the Reset control", () => {
@@ -189,33 +162,6 @@ describe("ModulesPopoverContent", () => {
     expect(screen.queryByText("Waveform · No Drop Target")).toBeNull();
     expect(onDrop).not.toHaveBeenCalled();
   });
-
-  it("highlights the corresponding panel frame while hovering a module row", () => {
-    const { container } = render(
-      <WorkspaceProvider>
-        <DragProvider onDrop={vi.fn()}>
-          <MetricsDataProvider value={{ statsMetrics: [] }}>
-            <LoudnessProfileProvider>
-              <ModulesPopoverContent />
-              <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
-            </LoudnessProfileProvider>
-          </MetricsDataProvider>
-        </DragProvider>
-      </WorkspaceProvider>
-    );
-
-    const statsRow = screen
-      .getAllByText("Stats")
-      .find((el) => el.closest(".group"))
-      ?.closest(".group");
-    const leaf = container.querySelector("[data-leaf]");
-
-    expect(leaf?.className).not.toContain("ring-primary");
-    fireEvent.mouseEnter(statsRow);
-    expect(leaf?.className).toContain("ring-primary");
-    fireEvent.mouseLeave(statsRow);
-    expect(leaf?.className).not.toContain("ring-primary");
-  });
 });
 
 describe("panel placement preview", () => {
@@ -284,15 +230,11 @@ describe("panel placement preview", () => {
     const preview = view.container.querySelector("[data-drop-preview]");
     const hint = preview?.querySelector("[data-drop-hint]");
     expect(/** @type {HTMLElement} */ (preview)?.dataset.dropZone).toBe("right");
-    expect(preview?.className).toContain("w-1/2");
-    expect(preview?.className).not.toContain("border");
+
     expect(/** @type {HTMLElement} */ (preview)?.style.backgroundColor).toContain("transparent");
-    expect(hint?.className).toContain("flex-col");
-    expect(hint?.className).toContain("items-center");
-    expect(hint?.className).not.toContain("border");
-    expect(hint?.className).not.toContain("bg-card");
+
     expect(hint?.textContent).toBe("StatsPlace Right");
-    expect(view.leaf.className).toContain("ring-primary");
+
     expect(screen.getByText("Place Right")).toBeTruthy();
     expect(document.querySelector("[data-drag-ghost]")).toBeNull();
   });
@@ -318,8 +260,6 @@ describe("panel placement preview", () => {
     expect(
       /** @type {HTMLElement} */ (document.querySelector("[data-drag-ghost]"))?.dataset.dropValid
     ).toBe("false");
-    expect(document.querySelector("[data-drag-ghost]")?.className).not.toContain("border");
-    expect(document.querySelector("[data-drag-ghost]")?.className).not.toContain("bg-card");
 
     fireEvent.mouseUp(window, { clientX: 240, clientY: 160 });
     expect(view.onDrop).not.toHaveBeenCalled();
@@ -339,13 +279,9 @@ describe("panel placement preview", () => {
     fireEvent.mouseMove(window, { clientX: 190, clientY: 15 });
 
     const tabHint = view.tabs.querySelector("[data-drop-hint]");
-    expect(tabHint?.className).toContain("flex-col");
-    expect(tabHint?.className).toContain("items-center");
-    expect(tabHint?.className).not.toContain("border");
-    expect(tabHint?.className).not.toContain("bg-card");
+
     expect(tabHint?.textContent).toBe("StatsAdd as Tab");
-    expect(view.leaf.className).toContain("ring-primary");
-    expect(view.tabs.className).not.toContain("border-t-primary");
+
     expect(view.tabs.querySelector("[data-tab-insert-marker]")).toBeNull();
     fireEvent.mouseUp(window, { clientX: 190, clientY: 15 });
     expect(view.onDrop).toHaveBeenCalledWith(

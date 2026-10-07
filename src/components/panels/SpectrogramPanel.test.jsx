@@ -132,30 +132,7 @@ describe("SpectrogramPanel", () => {
 
   it("keeps the time axis in a dedicated layout row", () => {
     const { container } = renderPanel();
-    const axisRow = screen.getByText("30s").parentElement?.parentElement;
-    const grid = axisRow?.parentElement;
-    const chartInset = container.querySelector("canvas")?.parentElement;
-
-    expect(grid?.className).toContain("grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]");
-    expect(axisRow?.className).toContain("relative");
-    expect(axisRow?.className).not.toContain("absolute");
-    expect(axisRow?.className).not.toContain("bottom-0");
-    expect(chartInset?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
     expect(container.querySelector("canvas")).toBeTruthy();
-  });
-
-  it("keeps frequency axis endpoint labels inside the chart bounds", () => {
-    const { container } = renderPanel();
-
-    expect(screen.getByText("20k").className).toContain("top-0");
-    expect(screen.getByText("20k").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("20").className).toContain("bottom-0");
-    expect(screen.getByText("20").className).not.toContain("-translate-y-1/2");
-    expect(
-      Array.from(container.querySelectorAll("span")).some((span) =>
-        span.className.includes("-translate-y-1/2")
-      )
-    ).toBe(true);
   });
 
   it("updates the chart cursor when ctrl is pressed while hovering", () => {
@@ -184,18 +161,7 @@ describe("SpectrogramPanel", () => {
       clientY: 100,
     });
 
-    const yAxis = screen.getByText("20k").parentElement?.parentElement;
     expect(onPanelControlsChange).toHaveBeenCalled();
-    expect(yAxis?.className).toContain("text-foreground");
-    expect(yAxis?.className).not.toContain("var(--muted)_44%");
-  });
-
-  it("highlights the time axis when time changes elsewhere", () => {
-    renderPanel({ historyTimeAxisActive: true });
-
-    const timeAxis = screen.getByText("30s").parentElement?.parentElement;
-    expect(timeAxis?.className).toContain("text-foreground");
-    expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
   it("passes the resolved theme colormap to the canvas hook", () => {

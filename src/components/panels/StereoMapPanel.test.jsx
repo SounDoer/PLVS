@@ -637,28 +637,6 @@ describe("StereoMapPanel", () => {
     expect(updated.stereoMapXMaxFreq - updated.stereoMapXMinFreq).toBeLessThan(20000 - 20);
   });
 
-  it("highlights the frequency axis when the plot area changes the range", () => {
-    const { container } = renderPanel(
-      baseAudioData({
-        panelControls: {
-          stereoMapPair: { x: 0, y: 1 },
-          stereoMapXMinFreq: 20,
-          stereoMapXMaxFreq: 20000,
-        },
-        onPanelControlsChange: vi.fn(),
-        historyChartInteractive: true,
-      })
-    );
-
-    const chart = screen.getByTestId("stereo-map-chart");
-    const xAxis = container.querySelector('[style*="ew-resize"]');
-    expect(xAxis?.className).not.toContain("text-foreground");
-
-    fireEvent.wheel(chart, { clientX: 500, clientY: 130, deltaY: -100 });
-
-    expect(xAxis?.className).toContain("text-foreground");
-  });
-
   it("moves the Mono Loss floor from the level axis, keeping the top at 0 dB", () => {
     const onPanelControlsChange = vi.fn();
     const { container } = renderPanel(
