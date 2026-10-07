@@ -897,24 +897,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       }
     }
     if (hasOwn(patch, "maxHold")) validateBoolean(patch.maxHold, "$.maxHold", issues);
-    const rawGrid = patch.grid;
-    const grid =
-      rawGrid !== null && typeof rawGrid === "object" && !Array.isArray(rawGrid) ? rawGrid : {};
-    if (
-      hasOwn(patch, "grid") &&
-      (rawGrid === null || typeof rawGrid !== "object" || Array.isArray(rawGrid))
-    ) {
-      issues.push(issue("invalidType", "$.grid", "grid must be an object."));
-    } else if (hasOwn(patch, "grid")) {
-      const allowedGrid = new Set(["position", "correlation", "monoLossDb", "msRatioDb"]);
-      for (const key of Object.keys(grid)) {
-        if (!allowedGrid.has(key)) {
-          issues.push(issue("unknownControl", `$.grid.${key}`, `Unknown Grid mode: ${key}.`));
-        } else {
-          validateBoolean(grid[key], `$.grid.${key}`, issues);
-        }
-      }
-    }
+    if (hasOwn(patch, "grid")) validateBoolean(patch.grid, "$.grid", issues);
     if (
       hasOwn(patch, "speedPercent") &&
       (!Number.isInteger(patch.speedPercent) || patch.speedPercent < 0 || patch.speedPercent > 100)
@@ -1002,6 +985,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     for (const [publicKey, internalKey] of [
       ["mode", "stereoMapMode"],
       ["maxHold", "stereoMapHold"],
+      ["grid", "stereoMapGrid"],
       ["speedPercent", "stereoMapSpeedPercent"],
       ["octaveSmoothing", "stereoMapOctaveSmoothing"],
       ["energyFadePercent", "stereoMapEnergyFadePercent"],
@@ -1011,17 +995,6 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
         panelControls[internalKey] = patch[publicKey];
         changed.push(`controls.${publicKey}`);
-      }
-    }
-    for (const [publicKey, internalKey] of [
-      ["position", "stereoMapPositionGrid"],
-      ["correlation", "stereoMapCorrelationGrid"],
-      ["monoLossDb", "stereoMapMonoLossGrid"],
-      ["msRatioDb", "stereoMapMsRatioGrid"],
-    ]) {
-      if (hasOwn(grid, publicKey) && grid[publicKey] !== current[internalKey]) {
-        panelControls[internalKey] = grid[publicKey];
-        changed.push(`controls.grid.${publicKey}`);
       }
     }
     if (hasOwn(patch, "channelPair")) {
@@ -1044,10 +1017,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       "controls.channelPair.x",
       "controls.channelPair.y",
       "controls.maxHold",
-      "controls.grid.position",
-      "controls.grid.correlation",
-      "controls.grid.monoLossDb",
-      "controls.grid.msRatioDb",
+      "controls.grid",
       "controls.speedPercent",
       "controls.octaveSmoothing",
       "controls.energyFadePercent",

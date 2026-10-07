@@ -86,12 +86,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
         min: controls.stereoMapMsRatioYMinDb,
         max: controls.stereoMapMsRatioYMaxDb,
       },
-      grid: {
-        position: controls.stereoMapPositionGrid,
-        correlation: controls.stereoMapCorrelationGrid,
-        monoLossDb: controls.stereoMapMonoLossGrid,
-        msRatioDb: controls.stereoMapMsRatioGrid,
-      },
+      grid: controls.stereoMapGrid,
     };
   }
 

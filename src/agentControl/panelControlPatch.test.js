@@ -548,7 +548,7 @@ describe("planPublicPanelControlPatch", () => {
         energyFadePercent: 60,
         colorBlendPercent: 35,
         octaveSmoothing: "off",
-        grid: { msRatioDb: true },
+        grid: true,
         monoLossFloorDb: -30,
         msRatioRangeDb: { min: -36, max: 18 },
       },
@@ -572,7 +572,7 @@ describe("planPublicPanelControlPatch", () => {
         "controls.channelPair.x",
         "controls.channelPair.y",
         "controls.maxHold",
-        "controls.grid.msRatioDb",
+        "controls.grid",
         "controls.speedPercent",
         "controls.octaveSmoothing",
         "controls.energyFadePercent",
@@ -590,11 +590,24 @@ describe("planPublicPanelControlPatch", () => {
       stereoMapEnergyFadePercent: 60,
       stereoMapColorBlendPercent: 35,
       stereoMapOctaveSmoothing: "off",
-      stereoMapMsRatioGrid: true,
+      stereoMapGrid: true,
       stereoMapMonoLossYMinDb: -30,
       stereoMapMsRatioYMinDb: -36,
       stereoMapMsRatioYMaxDb: 18,
     });
+  });
+
+  it("rejects the retired per-mode Stereo Map Grid object", () => {
+    const result = planPublicPanelControlPatch(
+      "stereo-map",
+      DEFAULT_PANEL_CONTROLS,
+      { grid: { position: true } },
+      { channelCount: 2 }
+    );
+
+    expect(result.issues).toEqual([expect.objectContaining({ path: "$.grid" })]);
+    expect(result.changed).toEqual([]);
+    expect(result.panelControls).toEqual(DEFAULT_PANEL_CONTROLS);
   });
 
   it("rejects invalid Stereo Map pair and M/S ratio range atomically", () => {

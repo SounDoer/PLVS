@@ -80,12 +80,13 @@ export const STEREO_MAP_MODE_OPTIONS = [
   { id: STEREO_MAP_MODES.MS_RATIO_DB, label: "M/S Ratio" },
 ];
 
-export const STEREO_MAP_GRID_KEYS = Object.freeze({
-  [STEREO_MAP_MODES.POSITION]: "stereoMapPositionGrid",
-  [STEREO_MAP_MODES.CORRELATION]: "stereoMapCorrelationGrid",
-  [STEREO_MAP_MODES.MONO_LOSS_DB]: "stereoMapMonoLossGrid",
-  [STEREO_MAP_MODES.MS_RATIO_DB]: "stereoMapMsRatioGrid",
-});
+/// Stereo Map kept one Grid switch per mode until they were merged into `stereoMapGrid`.
+const LEGACY_STEREO_MAP_GRID_KEYS = [
+  "stereoMapPositionGrid",
+  "stereoMapCorrelationGrid",
+  "stereoMapMonoLossGrid",
+  "stereoMapMsRatioGrid",
+];
 
 export const GRID_TOOLTIP = "Show grid lines aligned with the chart axes.";
 
@@ -872,10 +873,16 @@ const CONTROLS = [
       order: -10,
     },
   },
-  ...Object.entries(STEREO_MAP_GRID_KEYS).map(([mode, key]) => ({
-    key,
+  {
+    /// One switch for every mode, as on the other panels. Presets and settings saved while each
+    /// mode had its own switch still carry those keys: the Grid is on when any of them was.
+    key: "stereoMapGrid",
     kind: "boolean",
     default: false,
+    normalize(row, raw) {
+      if (typeof raw?.[row.key] === "boolean") return raw[row.key];
+      return LEGACY_STEREO_MAP_GRID_KEYS.some((key) => raw?.[key] === true);
+    },
     ui: {
       tab: "stereo-map",
       label: "Grid",
@@ -883,9 +890,8 @@ const CONTROLS = [
       ariaLabel: "stereo map grid",
       tooltip: GRID_TOOLTIP,
       order: 80,
-      showWhen: (controls) => controls.stereoMapMode === mode,
     },
-  })),
+  },
   {
     /// Stored as `{ x, y }` like every other channel-index pair. It was `{ first, second }` until
     /// the Dock and the panel were put on one set of keys; the analysis request payload still

@@ -5,7 +5,6 @@ import {
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTROGRAM_MODE_OPTIONS,
-  STEREO_MAP_GRID_KEYS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
   panelControlRowFace,
@@ -147,10 +146,7 @@ describe("panelControls", () => {
       loudnessGrid: false,
       spectrumGrid: false,
       stereoMapMode: "position",
-      stereoMapPositionGrid: false,
-      stereoMapCorrelationGrid: false,
-      stereoMapMonoLossGrid: false,
-      stereoMapMsRatioGrid: false,
+      stereoMapGrid: false,
       stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
@@ -295,10 +291,7 @@ describe("panelControls", () => {
       loudnessGrid: false,
       spectrumGrid: false,
       stereoMapMode: "position",
-      stereoMapPositionGrid: false,
-      stereoMapCorrelationGrid: false,
-      stereoMapMonoLossGrid: false,
-      stereoMapMsRatioGrid: false,
+      stereoMapGrid: false,
       stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
@@ -832,28 +825,42 @@ describe("spectrogram 3D tuning controls", () => {
 
 describe("grid controls", () => {
   it("defaults every optional grid off and accepts independent values", () => {
-    const normalized = normalizePanelControls({
-      loudnessGrid: true,
-      spectrumGrid: true,
-      stereoMapCorrelationGrid: true,
+    expect(normalizePanelControls({})).toMatchObject({
+      loudnessGrid: false,
+      spectrumGrid: false,
+      stereoMapGrid: false,
     });
-    expect(normalized).toMatchObject({
-      loudnessGrid: true,
-      spectrumGrid: true,
-      stereoMapPositionGrid: false,
-      stereoMapCorrelationGrid: true,
-      stereoMapMonoLossGrid: false,
-      stereoMapMsRatioGrid: false,
-    });
+    expect(
+      normalizePanelControls({ loudnessGrid: true, spectrumGrid: true, stereoMapGrid: true })
+    ).toMatchObject({ loudnessGrid: true, spectrumGrid: true, stereoMapGrid: true });
   });
 
-  it("maps every Stereo Map mode to one retained grid key", () => {
-    expect(STEREO_MAP_GRID_KEYS).toEqual({
-      position: "stereoMapPositionGrid",
-      correlation: "stereoMapCorrelationGrid",
-      monoLossDb: "stereoMapMonoLossGrid",
-      msRatioDb: "stereoMapMsRatioGrid",
-    });
+  it.each([
+    "stereoMapPositionGrid",
+    "stereoMapCorrelationGrid",
+    "stereoMapMonoLossGrid",
+    "stereoMapMsRatioGrid",
+  ])("turns the Stereo Map Grid on when the retired per-mode %s was on", (legacyKey) => {
+    const normalized = normalizePanelControls({ [legacyKey]: true });
+    expect(normalized.stereoMapGrid).toBe(true);
+    expect(normalized).not.toHaveProperty(legacyKey);
+  });
+
+  it("keeps the Stereo Map Grid off when every retired per-mode switch was off", () => {
+    expect(
+      normalizePanelControls({
+        stereoMapPositionGrid: false,
+        stereoMapCorrelationGrid: false,
+        stereoMapMonoLossGrid: false,
+        stereoMapMsRatioGrid: false,
+      }).stereoMapGrid
+    ).toBe(false);
+  });
+
+  it("prefers a stored Stereo Map Grid over the retired per-mode switches", () => {
+    expect(
+      normalizePanelControls({ stereoMapGrid: false, stereoMapCorrelationGrid: true }).stereoMapGrid
+    ).toBe(false);
   });
 });
 

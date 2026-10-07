@@ -117,11 +117,6 @@ function root(properties, additions = {}) {
 }
 
 /**
- * `grid` is one switch for most modules and one per mode for Stereo Map; that branch reads it as this.
- * @typedef {{ position: boolean, correlation: boolean, monoLossDb: boolean, msRatioDb: boolean }} StereoMapGridDefaults
- */
-
-/**
  * @param {string} moduleId
  */
 export function buildPublicPanelControlSchema(moduleId, panelControls, context = {}) {
@@ -458,40 +453,9 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
           effective: true,
         }),
         channelPair: pairSchema(defaults.channelPair, context),
-        grid: field("object", "Grid", "Retained Grid visibility for every Stereo Map mode.", {
+        grid: field("boolean", "Grid", "Show major lines aligned with both Stereo Map axes.", {
           default: defaults.grid,
-          patchMode: "merge",
           effective: true,
-          properties: {
-            position: active(
-              field("boolean", "Position Grid", "Show Grid in Position mode.", {
-                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).position,
-              }),
-              controls.stereoMapMode === "position",
-              "nonPositionMode"
-            ),
-            correlation: active(
-              field("boolean", "Correlation Grid", "Show Grid in Correlation mode.", {
-                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).correlation,
-              }),
-              controls.stereoMapMode === "correlation",
-              "nonCorrelationMode"
-            ),
-            monoLossDb: active(
-              field("boolean", "Mono Loss Grid", "Show Grid in Mono Loss mode.", {
-                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).monoLossDb,
-              }),
-              controls.stereoMapMode === "monoLossDb",
-              "nonMonoLossMode"
-            ),
-            msRatioDb: active(
-              field("boolean", "M/S Ratio Grid", "Show Grid in M/S Ratio mode.", {
-                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).msRatioDb,
-              }),
-              controls.stereoMapMode === "msRatioDb",
-              "nonMsRatioMode"
-            ),
-          },
         }),
         maxHold: field("boolean", "Max Hold", "Hold maximum Stereo Map values.", {
           default: defaults.maxHold,

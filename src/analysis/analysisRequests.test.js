@@ -59,10 +59,7 @@ describe("analysisRequests", () => {
             spectrogram: { ...baselineControls.spectrogram, spectrogram3dFloor: true },
             stereo: {
               ...baselineControls.stereo,
-              stereoMapPositionGrid: true,
-              stereoMapCorrelationGrid: true,
-              stereoMapMonoLossGrid: true,
-              stereoMapMsRatioGrid: true,
+              stereoMapGrid: true,
             },
           },
         })

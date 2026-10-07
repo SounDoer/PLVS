@@ -5,7 +5,7 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { stereoMapRequestKeyFromControls } from "../../analysis/analysisRequests.js";
-import { normalizePanelControls, STEREO_MAP_GRID_KEYS } from "../../lib/panelControls.js";
+import { normalizePanelControls } from "../../lib/panelControls.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { AxisRail } from "./AxisRail.jsx";
@@ -262,7 +262,7 @@ export function StereoMapPanel() {
       })),
     [freqTicks, xMaxHz, xMinHz]
   );
-  const gridVisible = normalizedPanelControls[STEREO_MAP_GRID_KEYS[mode]];
+  const gridVisible = normalizedPanelControls.stereoMapGrid;
 
   const snapResolved = isSnapshot
     ? resolveStereoMapSnapshotForKey?.(stereoMapKey, mode, range, { withHold: holdVisible })

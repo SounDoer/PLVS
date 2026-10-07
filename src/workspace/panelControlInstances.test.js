@@ -36,7 +36,7 @@ describe("panelControlInstances", () => {
         levelMeterMode: "momentary",
         loudnessGrid: true,
         spectrumGrid: true,
-        stereoMapPositionGrid: true,
+        stereoMapGrid: true,
         spectrogram3dFloor: true,
       },
       stale: { levelMeterMode: "shortTerm" },
@@ -47,7 +47,7 @@ describe("panelControlInstances", () => {
     expect(controlsById.levelMeter).toMatchObject({
       loudnessGrid: true,
       spectrumGrid: true,
-      stereoMapPositionGrid: true,
+      stereoMapGrid: true,
       spectrogram3dFloor: true,
     });
     expect(controlsById["levelMeter-2"].levelMeterMode).toBe("peak");

@@ -151,7 +151,7 @@ describe("buildPublicPanelControlSchema", () => {
     });
   });
 
-  it("exposes optional Grid controls with Stereo Map mode-local effectiveness", () => {
+  it("exposes every optional Grid control as one effective boolean", () => {
     expect(
       buildPublicPanelControlSchema("loudness", DEFAULT_PANEL_CONTROLS).properties.grid
     ).toMatchObject({
@@ -167,16 +167,12 @@ describe("buildPublicPanelControlSchema", () => {
       effective: true,
     });
 
-    const stereoMap = buildPublicPanelControlSchema("stereo-map", DEFAULT_PANEL_CONTROLS);
-    expect(stereoMap.properties.grid).toMatchObject({
-      type: "object",
-      patchMode: "merge",
-      properties: {
-        position: { default: false, effective: true },
-        correlation: { default: false, effective: false, inactiveReason: "nonCorrelationMode" },
-        monoLossDb: { default: false, effective: false, inactiveReason: "nonMonoLossMode" },
-        msRatioDb: { default: false, effective: false, inactiveReason: "nonMsRatioMode" },
-      },
+    expect(
+      buildPublicPanelControlSchema("stereo-map", DEFAULT_PANEL_CONTROLS).properties.grid
+    ).toMatchObject({
+      type: "boolean",
+      default: false,
+      effective: true,
     });
   });
 

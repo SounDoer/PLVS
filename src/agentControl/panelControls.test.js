@@ -124,12 +124,7 @@ describe("readPublicPanelControls", () => {
       energyFadePercent: 65,
       colorBlendPercent: 35,
       octaveSmoothing: "off",
-      grid: {
-        position: false,
-        correlation: false,
-        monoLossDb: false,
-        msRatioDb: false,
-      },
+      grid: false,
       monoLossFloorDb: -30,
       msRatioRangeDb: { min: -36, max: 18 },
     });

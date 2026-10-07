@@ -1262,33 +1262,33 @@ describe("PanelSettingsContent", () => {
     expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("Frequency Range"));
   });
 
-  it.each([
-    ["position", "stereoMapPositionGrid"],
-    ["correlation", "stereoMapCorrelationGrid"],
-    ["monoLossDb", "stereoMapMonoLossGrid"],
-    ["msRatioDb", "stereoMapMsRatioGrid"],
-  ])("stores Stereo Map Grid independently for %s", (stereoMapMode, gridKey) => {
-    const onPanelControlsChange = vi.fn();
-    render(
-      <PanelSettingsContent
-        activeTab="stereo-map"
-        panelControls={{
-          ...DEFAULT_PANEL_CONTROLS,
-          stereoMapMode: /** @type {typeof DEFAULT_PANEL_CONTROLS.stereoMapMode} */ (stereoMapMode),
-        }}
-        onPanelControlsChange={onPanelControlsChange}
-      />
-    );
+  it.each(["position", "correlation", "monoLossDb", "msRatioDb"])(
+    "stores one Stereo Map Grid switch whatever the mode: %s",
+    (stereoMapMode) => {
+      const onPanelControlsChange = vi.fn();
+      render(
+        <PanelSettingsContent
+          activeTab="stereo-map"
+          panelControls={{
+            ...DEFAULT_PANEL_CONTROLS,
+            stereoMapMode: /** @type {typeof DEFAULT_PANEL_CONTROLS.stereoMapMode} */ (
+              stereoMapMode
+            ),
+          }}
+          onPanelControlsChange={onPanelControlsChange}
+        />
+      );
 
-    const grid = screen.getByRole("switch", { name: "stereo map grid" });
-    expect(grid.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(grid);
-    expect(onPanelControlsChange).toHaveBeenCalledWith({
-      ...DEFAULT_PANEL_CONTROLS,
-      stereoMapMode,
-      [gridKey]: true,
-    });
-  });
+      const grid = screen.getByRole("switch", { name: "stereo map grid" });
+      expect(grid.getAttribute("aria-checked")).toBe("false");
+      fireEvent.click(grid);
+      expect(onPanelControlsChange).toHaveBeenCalledWith({
+        ...DEFAULT_PANEL_CONTROLS,
+        stereoMapMode,
+        stereoMapGrid: true,
+      });
+    }
+  );
 
   it("shows a Level Range only for Mono Loss and M/S Ratio, with Mono Loss pinned at 0 dB", () => {
     const { rerender, container } = render(

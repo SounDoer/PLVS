@@ -34,7 +34,7 @@ describe("presetWorkspaceView", () => {
     const view = presetWorkspaceView(stale);
     expect(view.panelControlsById.spectrum.spectrumSpeedPercent).toBe(40);
     expect(view.panelControlsById.spectrum.spectrumGrid).toBe(true);
-    expect(view.panelControlsById.spectrum.stereoMapCorrelationGrid).toBe(true);
+    expect(view.panelControlsById.spectrum.stereoMapGrid).toBe(true);
     expect(view.panelControlsById.spectrum).not.toHaveProperty("removedLegacyControl");
     // The point of the whole helper: the applied Workspace is not the stored record.
     expect(JSON.stringify(view.panelControlsById)).not.toBe(

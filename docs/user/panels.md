@@ -108,8 +108,8 @@ Stereo image plotted across the frequency spectrum, so you can see where the wid
 between **Position**, **Correlation**, **Mono Loss**, and **M/S Ratio**, and hold the maximum to
 compare against what came before.
 
-Each mode has its own **Grid** choice, off by default. Switching modes restores that mode's choice;
-the guides follow the visible frequency and value axes. With Grid off, no standalone zero line is
+**Grid** is one choice for every mode, off by default; the guides follow the visible frequency and
+value axes of the mode on screen. With Grid off, no standalone zero line is
 drawn.
 
 **Energy Fade Strength** controls how strongly quiet frequency bands recede. It defaults to 75%:
