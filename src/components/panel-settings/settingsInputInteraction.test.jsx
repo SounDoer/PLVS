@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { SettingsRangeInput, SettingsNumberInput } from "./PanelSettingsContent.jsx";
+import { SettingsRangeInput, SettingsNumberInput } from "./SettingsWidgets.jsx";
 
 describe("Settings numeric drafts", () => {
   it("cancels a range edit without committing on blur", () => {

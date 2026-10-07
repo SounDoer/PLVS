@@ -2,15 +2,14 @@ import { useState } from "react";
 
 import { VECTORSCOPE_MODE_OPTIONS, normalizePanelControls } from "@/lib/panelControls.js";
 
+import { getSelectedOption, vectorscopeKeyFromPair } from "./PanelSettingsControls.jsx";
 import {
-  getSelectedOption,
   SettingsGroup,
   SettingsRow,
   SettingsSelect,
   SettingsSlider,
   SettingsSwitch,
-  vectorscopeKeyFromPair,
-} from "./PanelSettingsControls.jsx";
+} from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function VectorscopeSettings({

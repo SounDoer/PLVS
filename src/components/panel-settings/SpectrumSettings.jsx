@@ -4,17 +4,19 @@ import { SPECTRUM_OCTAVE_SMOOTHING_OPTIONS, normalizePanelControls } from "@/lib
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 
 import {
-  getSelectedOption,
   PanelControlRows,
+  SpectrumDisplaySettingsRows,
+  SpectrumViewChipLabel,
+  TimeRangeRow,
+  getSelectedOption,
+  spectrumKeyFromSelection,
+} from "./PanelSettingsControls.jsx";
+import {
   SettingsChoiceSelect,
   SettingsGroup,
   SettingsRow,
   SettingsSelect,
-  SpectrumDisplaySettingsRows,
-  spectrumKeyFromSelection,
-  SpectrumViewChipLabel,
-  TimeRangeRow,
-} from "./PanelSettingsControls.jsx";
+} from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function SpectrumSettings({

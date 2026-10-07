@@ -3,12 +3,11 @@ import { useState } from "react";
 import { normalizePanelControls } from "@/lib/panelControls.js";
 
 import {
-  getSelectedOption,
   PanelControlRows,
-  SettingsGroup,
-  SettingsSelect,
+  getSelectedOption,
   stereoMapKeyFromPair,
 } from "./PanelSettingsControls.jsx";
+import { SettingsGroup, SettingsSelect } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function StereoMapSettings({

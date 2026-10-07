@@ -8,6 +8,11 @@ import { WaveformSettings } from "./panel-settings/WaveformSettings.jsx";
 
 export {
   LoudnessSettingsRows,
+  SpectrumDisplaySettingsRows,
+  StatsMetricsSettingsRow,
+  WaveformSettingsRows,
+} from "./panel-settings/PanelSettingsControls.jsx";
+export {
   SettingsGroup,
   SettingsNumberInput,
   SettingsRangeInput,
@@ -16,10 +21,7 @@ export {
   SettingsSlider,
   SettingsSwitch,
   SettingsThresholdInputs,
-  SpectrumDisplaySettingsRows,
-  StatsMetricsSettingsRow,
-  WaveformSettingsRows,
-} from "./panel-settings/PanelSettingsControls.jsx";
+} from "./panel-settings/SettingsWidgets.jsx";
 
 /** @param {import("./panel-settings/types.js").PanelSettingsProps} props */
 export function PanelSettingsContent(props) {

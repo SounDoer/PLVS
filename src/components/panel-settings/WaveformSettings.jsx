@@ -1,6 +1,7 @@
 import { normalizePanelControls } from "@/lib/panelControls.js";
 
-import { SettingsGroup, TimeRangeRow, WaveformSettingsRows } from "./PanelSettingsControls.jsx";
+import { TimeRangeRow, WaveformSettingsRows } from "./PanelSettingsControls.jsx";
+import { SettingsGroup } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function WaveformSettings({ panelControls, onPanelControlsChange }) {
