@@ -540,6 +540,11 @@ export function SettingsChoiceSelect({ options, value, ...props }) {
   );
 }
 
+/** The closed state of a disclosure that edits a set: how many of its entries are on. */
+export function visibleSummary(count) {
+  return `${count} visible`;
+}
+
 export function MultiSelectList({ label, options, selectedIds, onToggle }) {
   return (
     <div role="group" aria-label={label}>

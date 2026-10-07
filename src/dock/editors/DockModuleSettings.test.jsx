@@ -162,7 +162,7 @@ describe("DockModuleSettings", () => {
     const settingsRows = screen.getByText("Readouts").closest("div")?.parentElement?.children;
     expect(settingsRows?.[settingsRows.length - 1]?.textContent).toContain("Readouts");
 
-    fireEvent.click(screen.getByLabelText("Show Loudness readouts"));
+    fireEvent.click(screen.getByLabelText("show loudness readouts"));
     expect(onChange).toHaveBeenCalledWith({ ...controls, showReadouts: false });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit layers" }));

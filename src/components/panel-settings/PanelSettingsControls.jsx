@@ -4,20 +4,16 @@ import { Reorder, useDragControls } from "framer-motion";
 
 import {
   GRID_TOOLTIP,
-  LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTRUM_MAX_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   SPECTRUM_TILT_TOOLTIP,
 } from "@/lib/panelControls.js";
 import { STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { ResetAction } from "@/components/ResetAction.jsx";
-import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 
 import { AxisViewportRangeInput, RangeRowLinkToggle } from "./AxisRangeRows.jsx";
-import { toggleId } from "./selectionKeys.js";
 import {
   InlineDetailTrigger,
-  MultiSelectList,
   SETTINGS_DETAIL_SURFACE_CLASS,
   SettingsChoiceSelect,
   SettingsOptionRow,
@@ -26,6 +22,7 @@ import {
   SettingsSelect,
   SettingsSlider,
   SettingsSwitch,
+  visibleSummary,
 } from "./SettingsWidgets.jsx";
 
 export function SpectrumViewChipLabel({ fallbackLabel, legend }) {
@@ -124,10 +121,6 @@ export function SortableStatsList({
   );
 }
 
-function visibleSummary(count) {
-  return `${count} visible`;
-}
-
 /**
  * @param {{
  *   visibleIds: any[],
@@ -173,89 +166,6 @@ export function StatsMetricsSettingsRow({
         ) : null}
       </div>
     </SettingsRow>
-  );
-}
-
-/// No Ref input: the reference value is owned by the active Loudness Profile, so a second
-/// editor here would be a competing writer. The `ref` layer toggle stays.
-/**
- * @param {{
- *   showGrid?: boolean,
- *   visibleLayerIds: any[],
- *   grid?: boolean,
- *   yMinDb: number,
- *   yMaxDb: number,
- *   onVisibleLayerIdsChange: (...args: any[]) => any,
- *   onGridChange?: (...args: any[]) => any,
- *   onYRangeChange: (...args: any[]) => any,
- * }} props
- */
-export function LoudnessSettingsRows({
-  showGrid = true,
-  visibleLayerIds,
-  grid,
-  yMinDb,
-  yMaxDb,
-  onVisibleLayerIdsChange,
-  onGridChange,
-  onYRangeChange,
-}) {
-  const [layersOpen, setLayersOpen] = useState(false);
-  const { referenceLufs } = useLoudnessProfile();
-  // With no active profile there is no reference line, so offering its toggle would be a control
-  // that does nothing.
-  const layerOptions =
-    referenceLufs == null
-      ? LOUDNESS_HISTORY_LAYER_OPTIONS.filter((option) => option.id !== "ref")
-      : LOUDNESS_HISTORY_LAYER_OPTIONS;
-  // Count what the list actually offers, not what the panel still remembers. The `ref` id stays
-  // in panel controls through Off so the preference survives, which means the raw length claims
-  // a layer the user cannot see or reach.
-  const visibleCount = visibleLayerIds.filter((id) =>
-    layerOptions.some((option) => option.id === id)
-  ).length;
-
-  return (
-    <>
-      <SettingsRow label="Layers">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <InlineDetailTrigger
-            ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
-            summary={visibleSummary(visibleCount)}
-            open={layersOpen}
-            onToggle={() => setLayersOpen((open) => !open)}
-          />
-          {layersOpen ? (
-            <div data-settings-detail-surface className={SETTINGS_DETAIL_SURFACE_CLASS}>
-              <MultiSelectList
-                label="Layers"
-                options={layerOptions}
-                selectedIds={visibleLayerIds}
-                onToggle={(id) => onVisibleLayerIdsChange(toggleId(visibleLayerIds, id))}
-              />
-            </div>
-          ) : null}
-        </div>
-      </SettingsRow>
-      {showGrid ? (
-        <SettingsRow label="Grid" tooltip={GRID_TOOLTIP}>
-          <SettingsSwitch
-            aria-label="loudness grid"
-            checked={grid}
-            onCheckedChange={onGridChange}
-          />
-        </SettingsRow>
-      ) : null}
-      <SettingsRow label="Loudness Range">
-        <SettingsRangeInput
-          minAriaLabel="loudness range min"
-          maxAriaLabel="loudness range max"
-          minValue={yMinDb}
-          maxValue={yMaxDb}
-          onCommit={onYRangeChange}
-        />
-      </SettingsRow>
-    </>
   );
 }
 

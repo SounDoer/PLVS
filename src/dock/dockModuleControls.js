@@ -144,6 +144,23 @@ const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze(
   )
 );
 
+/// The settings rows of the controls only the strip has, in the table's row shape so one renderer
+/// draws both. `order` places each among the panel's rows; their defaults are DOCK_ONLY_DEFAULTS.
+const DOCK_ONLY_ROWS = Object.freeze({
+  loudness: [
+    {
+      key: "showReadouts",
+      ui: {
+        tab: "loudness",
+        label: "Readouts",
+        widget: "switch",
+        ariaLabel: "show loudness readouts",
+        order: 50,
+      },
+    },
+  ],
+});
+
 /** The panel settings tab a Dock module's rows come from. */
 export function dockSettingsTab(moduleId) {
   return PANEL_MODULE_ID_BY_DOCK_MODULE_ID[moduleId];
@@ -158,8 +175,11 @@ export function dockSettingsTab(moduleId) {
 export function dockSettingsRows(moduleId) {
   const keys = DOCK_MODULE_CONTROL_KEYS[moduleId];
   if (!keys) return [];
-  return panelControlUiRows(dockSettingsTab(moduleId)).filter((row) =>
+  const shared = panelControlUiRows(dockSettingsTab(moduleId)).filter((row) =>
     keys.includes(row.key ?? row.minKey)
+  );
+  return [...shared, ...(DOCK_ONLY_ROWS[moduleId] ?? [])].sort(
+    (a, b) => (a.ui.order ?? 0) - (b.ui.order ?? 0)
   );
 }
 

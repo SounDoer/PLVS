@@ -1,9 +1,9 @@
 import { useState } from "react";
 import {
-  LoudnessSettingsRows,
   SpectrumDisplaySettingsRows,
   StatsMetricsSettingsRow,
 } from "../../components/panel-settings/PanelSettingsControls.jsx";
+import { LoudnessLayersControl } from "../../components/panel-settings/LoudnessSettings.jsx";
 import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
 import { WaveformSplitRows } from "../../components/panel-settings/WaveformSettings.jsx";
 import {
@@ -168,27 +168,22 @@ function SettingsBody({
   }
   if (moduleId === "loudness") {
     return (
-      <>
-        <LoudnessSettingsRows
-          showGrid={false}
-          visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
-          yMinDb={controls.loudnessYMinDb}
-          yMaxDb={controls.loudnessYMaxDb}
-          onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) =>
-            onChange({ ...controls, loudnessHistoryVisibleLayerIds })
-          }
-          onYRangeChange={(loudnessYMinDb, loudnessYMaxDb) =>
-            onChange({ ...controls, loudnessYMinDb, loudnessYMaxDb })
-          }
-        />
-        <SettingsRow label="Readouts">
-          <SettingsSwitch
-            aria-label="Show Loudness readouts"
-            checked={controls.showReadouts}
-            onCheckedChange={(showReadouts) => onChange({ ...controls, showReadouts })}
-          />
-        </SettingsRow>
-      </>
+      <ControlRows
+        rows={dockSettingsRows(moduleId)}
+        tab={dockSettingsTab(moduleId)}
+        controls={controls}
+        onChange={(changes) => onChange({ ...controls, ...changes })}
+        slots={{
+          loudnessHistoryVisibleLayerIds: (
+            <LoudnessLayersControl
+              visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
+              onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) =>
+                onChange({ ...controls, loudnessHistoryVisibleLayerIds })
+              }
+            />
+          ),
+        }}
+      />
     );
   }
   if (moduleId === "spectrum") {

@@ -692,6 +692,13 @@ const CONTROLS = [
     absMin: -64,
     absMax: 0,
     minSpan: 12,
+    ui: {
+      tab: "loudness",
+      label: "Loudness Range",
+      widget: "range",
+      ariaLabel: "loudness range",
+      order: 30,
+    },
   },
   levelMeterThresholdRow("peak", "levelMeterPeakWarningDb", "levelMeterPeakCriticalDb", -6, -1),
   levelMeterThresholdRow("rms", "levelMeterRmsWarningDb", "levelMeterRmsCriticalDb", -18, -9),
@@ -736,8 +743,22 @@ const CONTROLS = [
     kind: "idList",
     options: ids(LOUDNESS_HISTORY_LAYER_OPTIONS),
     default: ["momentary", "shortTerm", "ref"],
+    // `custom`: which layers are on offer depends on the active Loudness Profile.
+    ui: { tab: "loudness", label: "Layers", widget: "custom", order: 10 },
   },
-  { key: "loudnessGrid", kind: "boolean", default: false },
+  {
+    key: "loudnessGrid",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "loudness",
+      label: "Grid",
+      widget: "switch",
+      ariaLabel: "loudness grid",
+      tooltip: GRID_TOOLTIP,
+      order: 20,
+    },
+  },
   { key: "spectrumGrid", kind: "boolean", default: false },
   {
     key: "stereoMapMode",
@@ -979,11 +1000,11 @@ const CONTROLS = [
     // The Time Range row, anchored here because this is the control it edits. `customRow` for the
     // same reason as the Level Meter range above: the row owns its own label and axis-link toggle,
     // and its value comes from the live history viewport rather than from a panel control.
-    // One face per tab that has a time axis. The Loudness tab shows the same row but renders it by
-    // hand, because that tab is hand-written throughout.
+    // One face per tab that has a time axis.
     ui: [
       { tab: "spectrogram", widget: "customRow", order: 100 },
       { tab: "waveform", widget: "customRow", order: 40 },
+      { tab: "loudness", widget: "customRow", order: 40 },
     ],
   },
   {
