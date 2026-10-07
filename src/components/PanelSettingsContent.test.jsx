@@ -2573,6 +2573,43 @@ describe("PanelSettingsContent", () => {
     expect(latestState.panelControlsById.stats.statsVisibleIds).not.toContain("momentary");
   });
 
+  it("offers the Stereo Map channel pair in fullscreen, as the normal panel does", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["stereo-map"], activeTab: "stereo-map" },
+        panelsById: { "stereo-map": { id: "stereo-map", moduleId: "stereo-map" } },
+        panelOrder: ["stereo-map"],
+        panelControlsById: { "stereo-map": DEFAULT_PANEL_CONTROLS },
+      })
+    );
+    const stereoMapPairOptions = [
+      { key: "0-1", label: "L/R", x: 0, y: 1 },
+      { key: "0-2", label: "L/C", x: 0, y: 2 },
+    ];
+
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{ panelControls: DEFAULT_PANEL_CONTROLS }}
+            panelChromeData={{ channelCount: 6, stereoMapPairOptions }}
+          >
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+    expect(screen.getByRole("combobox", { name: "stereo map channel" })).toBeTruthy();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Panel settings" }).at(-1));
+    expect(screen.getByRole("combobox", { name: "stereo map channel" })).toBeTruthy();
+  });
+
   it("uses a compact title bar for normal workspace panels", () => {
     const { container } = render(
       <WorkspaceProvider>

@@ -45,6 +45,8 @@ run before anything is pushed:
   after 3.6). The props each module no longer reads were removed with that module rather than in
   Stage 4, so that a test never outlives the path it covers by a commit.
 - Stage 4.
+- Stage 5. Agent Control cannot put a panel in fullscreen, so there are no before/after screenshots
+  of the fix; it rests on the test and on a look at the running app.
 
 Move convention for Stage 1: function bodies move verbatim, checked with
 `git diff --color-moved=dimmed-zebra`.
