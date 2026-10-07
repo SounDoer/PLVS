@@ -19,11 +19,13 @@ export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[
 
 export const SHELL_HEADER_ACTIONS = "flex items-center gap-[var(--ui-header-action-gap)]";
 
-export const SHELL_FOOTER =
-  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md bg-[color:var(--ui-surface-panel)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground";
+// The header is as tall as its tallest control plus its padding. The footer holds only a line of
+// status text, so it takes the same height as a minimum to read as the header's counterpart.
+const SHELL_BAR_MIN_H = "min-h-[calc(var(--ui-shell-h)+2*var(--ui-header-pad-y))]";
 
-export const SHELL_FOOTER_OVERLAY =
-  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md bg-popover px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-raised z-30";
+export const SHELL_FOOTER = `${SHELL_BAR_MIN_H} flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md bg-[color:var(--ui-surface-panel)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground`;
+
+export const SHELL_FOOTER_OVERLAY = `${SHELL_BAR_MIN_H} absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md bg-popover px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-raised z-30`;
 
 export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3 cursor-move";
 

@@ -634,6 +634,9 @@ value off the grid.
 --ui-footer-pad-y    0.25rem   Vertical padding
 ```
 
+The footer's minimum height is the header's height (`--ui-shell-h` plus twice `--ui-header-pad-y`),
+so the two bars match although the footer holds only a line of status text.
+
 ### Panel
 
 ```
