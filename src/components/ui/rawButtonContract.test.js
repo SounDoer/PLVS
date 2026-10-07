@@ -25,7 +25,7 @@ const KNOWN_RAW_BUTTONS = {
   // One-off controls, each the only one of its kind.
   "components/ColorControl.jsx": 1, // swatch that opens the colour picker
   "components/FileAnalysisHistoryMenu.jsx": 1, // caption-sized "Clear all"
-  "components/PanelSettingsContent.jsx": 1, // disclosure value field
+  "components/panel-settings/PanelSettingsControls.jsx": 1, // disclosure value field
   "components/ThemeEditor.jsx": 1, // Dark / Light segmented choice
   "components/ThemePicker.jsx": 1, // picker trigger styled as a Settings select
   "dock/modules/DockLevel.jsx": 1, // readout that resets the true-peak maximum
