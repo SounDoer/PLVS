@@ -28,13 +28,13 @@ function renderSettings(moduleId, props = {}) {
 
 describe("DockModuleSettings", () => {
   it.each([
-    ["level", "Level mode"],
+    ["level", "level meter mode"],
     ["loudness", "loudness range min"],
     ["spectrum", "spectrum channel"],
     ["correlation", "vectorscope channel"],
     ["stats", "Edit metrics"],
     ["waveform", "waveform frequency color"],
-    ["spectrogram", "Spectrogram channel"],
+    ["spectrogram", "spectrogram channel"],
   ])("renders the %s settings family", (moduleId, label) => {
     renderSettings(moduleId);
     expect(screen.getByLabelText(label)).toBeTruthy();
@@ -68,7 +68,7 @@ describe("DockModuleSettings", () => {
 
   it("emits a complete updated controls object", () => {
     const onChange = renderSettings("level");
-    fireEvent.click(screen.getByLabelText("Level mode"));
+    fireEvent.click(screen.getByLabelText("level meter mode"));
     fireEvent.click(screen.getByRole("option", { name: "RMS" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
@@ -135,12 +135,12 @@ describe("DockModuleSettings", () => {
     const controls = { levelMeterMode: "shortTerm", readout: "live", showLabels: true };
     const onChange = renderSettings("level", { controls });
 
-    fireEvent.click(screen.getByLabelText("Level readout"));
+    fireEvent.click(screen.getByLabelText("level readout"));
     expect(screen.getByRole("option", { name: "Live" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Playback Max" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Live Peak" })).toBeNull();
 
-    fireEvent.click(screen.getByLabelText("Show Level labels"));
+    fireEvent.click(screen.getByLabelText("show level labels"));
     expect(onChange).toHaveBeenCalledWith({ ...controls, showLabels: false });
   });
 
@@ -235,9 +235,9 @@ describe("DockModuleSettings", () => {
   it("commits the dock Stereo Map speed on release, not on every change", () => {
     const onChange = renderSettings("stereoMap", { channelCount: 2 });
 
-    // The dock renders its own Stereo Map speed row rather than going through the control table,
-    // so the key-churn guard has to be wired here too -- see SettingsSlider's commitOnRelease note.
-    const speed = screen.getByLabelText("Stereo Map speed");
+    // The row comes from the control table, so the key-churn guard is the panel's -- see
+    // SettingsSlider's commitOnRelease note.
+    const speed = screen.getByLabelText("stereo map speed");
     fireEvent.change(speed, { target: { value: "80" } });
     expect(onChange).not.toHaveBeenCalled();
 
@@ -251,7 +251,7 @@ describe("DockModuleSettings", () => {
 
   it("commits the dock Stereo Map speed when the pointer gesture is cancelled", () => {
     const onChange = renderSettings("stereoMap", { channelCount: 2 });
-    const speed = screen.getByLabelText("Stereo Map speed");
+    const speed = screen.getByLabelText("stereo map speed");
 
     fireEvent.change(speed, { target: { value: "80" } });
     expect(onChange).not.toHaveBeenCalled();
@@ -266,7 +266,7 @@ describe("DockModuleSettings", () => {
 
   it("shows Dock Color Blend only for Stereo Map Position", () => {
     const onChange = renderSettings("stereoMap", { channelCount: 2 });
-    const blend = screen.getByLabelText("Stereo Map color blend");
+    const blend = screen.getByLabelText("stereo map color blend");
     expect(/** @type {HTMLInputElement} */ (blend).value).toBe("50");
     fireEvent.change(blend, { target: { value: "25" } });
     expect(onChange).toHaveBeenCalledWith({
@@ -283,8 +283,8 @@ describe("DockModuleSettings", () => {
         stereoMapMode: "correlation",
       },
     });
-    expect(screen.queryByLabelText("Stereo Map color blend")).toBeNull();
-    expect(screen.getByLabelText("Stereo Map energy fade strength")).toBeTruthy();
+    expect(screen.queryByLabelText("stereo map color blend")).toBeNull();
+    expect(screen.getByLabelText("stereo map energy fade strength")).toBeTruthy();
   });
 
   it("uses runtime Spectrum channels and only shows View for a pair", () => {
@@ -367,11 +367,11 @@ describe("DockModuleSettings", () => {
   it("uses a themed floating selector instead of a native select", () => {
     renderSettings("spectrogram");
 
-    expect(screen.getByRole("combobox", { name: "Spectrogram channel" })).toBeTruthy();
-    fireEvent.keyDown(screen.getByRole("combobox", { name: "Spectrogram channel" }), {
+    expect(screen.getByRole("combobox", { name: "spectrogram channel" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrogram channel" }), {
       key: "ArrowDown",
     });
-    expect(screen.getByRole("listbox", { name: "Spectrogram channel" })).toBeTruthy();
+    expect(screen.getByRole("listbox", { name: "spectrogram channel" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Channels 1 + 2" })).toBeTruthy();
   });
 
@@ -403,7 +403,7 @@ describe("DockModuleSettings", () => {
     ];
     const onChange = renderSettings("spectrogram", { spectrumOptions, channelCount: 6 });
 
-    fireEvent.keyDown(screen.getByRole("combobox", { name: "Spectrogram channel" }), {
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrogram channel" }), {
       key: "ArrowDown",
     });
     fireEvent.click(screen.getByRole("option", { name: "C" }));
@@ -419,7 +419,7 @@ describe("DockModuleSettings", () => {
       channelCount: 2,
     });
 
-    expect(screen.queryByLabelText("Spectrogram channel")).toBeNull();
+    expect(screen.queryByLabelText("spectrogram channel")).toBeNull();
     expect(screen.getByLabelText("spectrogram frequency range min")).toBeTruthy();
     expect(screen.queryByLabelText("spectrogram level range min")).toBeNull();
   });

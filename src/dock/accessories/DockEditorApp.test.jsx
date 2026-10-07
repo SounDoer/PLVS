@@ -62,7 +62,7 @@ describe("DockEditorApp window behavior", () => {
       },
     };
     render(<DockEditorApp />);
-    const trigger = screen.getByRole("combobox", { name: "Level mode" });
+    const trigger = screen.getByRole("combobox", { name: "level meter mode" });
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
     const option = screen.getByRole("option", { name: "Momentary" });
     fireEvent.pointerDown(option);

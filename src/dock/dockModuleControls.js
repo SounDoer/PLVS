@@ -4,6 +4,7 @@ import {
   normalizePanelControlValue,
   normalizePanelControls,
   panelControlUiRows,
+  SPECTROGRAM_DB_FLOOR_TOOLTIP,
 } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
@@ -147,6 +148,20 @@ const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze(
 /// The settings rows of the controls only the strip has, in the table's row shape so one renderer
 /// draws both. `order` places each among the panel's rows; their defaults are DOCK_ONLY_DEFAULTS.
 const DOCK_ONLY_ROWS = Object.freeze({
+  level: [
+    // `custom`: which readouts exist depends on the meter mode.
+    { key: "readout", ui: { tab: "levelMeter", label: "Readout", widget: "custom", order: 10 } },
+    {
+      key: "showLabels",
+      ui: {
+        tab: "levelMeter",
+        label: "Labels",
+        widget: "switch",
+        ariaLabel: "show level labels",
+        order: 85,
+      },
+    },
+  ],
   loudness: [
     {
       key: "showReadouts",
@@ -159,6 +174,12 @@ const DOCK_ONLY_ROWS = Object.freeze({
       },
     },
   ],
+});
+
+/// Where a row must read differently on the strip. The Spectrogram has no 3D mode here, so the
+/// panel's "applies in both 2D and 3D" would describe something the Dock does not have.
+const DOCK_ROW_UI_OVERRIDES = Object.freeze({
+  spectrogram: { spectrogramDbFloor: { tooltip: SPECTROGRAM_DB_FLOOR_TOOLTIP } },
 });
 
 /** The panel settings tab a Dock module's rows come from. */
@@ -175,9 +196,13 @@ export function dockSettingsTab(moduleId) {
 export function dockSettingsRows(moduleId) {
   const keys = DOCK_MODULE_CONTROL_KEYS[moduleId];
   if (!keys) return [];
-  const shared = panelControlUiRows(dockSettingsTab(moduleId)).filter((row) =>
-    keys.includes(row.key ?? row.minKey)
-  );
+  const overrides = DOCK_ROW_UI_OVERRIDES[moduleId] ?? {};
+  const shared = panelControlUiRows(dockSettingsTab(moduleId))
+    .filter((row) => keys.includes(row.key ?? row.minKey))
+    .map((row) => {
+      const override = overrides[row.key ?? row.minKey];
+      return override ? { ...row, ui: { ...row.ui, ...override } } : row;
+    });
   return [...shared, ...(DOCK_ONLY_ROWS[moduleId] ?? [])].sort(
     (a, b) => (a.ui.order ?? 0) - (b.ui.order ?? 0)
   );
