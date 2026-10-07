@@ -41,9 +41,10 @@ describe("landing page downloads", () => {
     expect(html).toContain("https://github.com/SounDoer/PLVS/releases");
   });
 
-  test("offers the macOS first-launch command with a copy action", () => {
-    expect(html).toContain("xattr -cr /Applications/PLVS.app");
-    expect(html).toContain("copyMacCommand");
+  test("describes normal Gatekeeper verification for notarized macOS builds", () => {
+    expect(html).toContain("Developer ID signed and Apple-notarized");
+    expect(html).toContain("normal Gatekeeper verification");
+    expect(html).not.toContain("xattr -cr /Applications/PLVS.app");
   });
 });
 

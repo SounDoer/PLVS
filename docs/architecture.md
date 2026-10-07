@@ -427,4 +427,4 @@ Dock deliberately lacks:
 | Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11) |
 | macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                  |
 
-Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User guidance on unsigned-install friction (Gatekeeper / SmartScreen) is in `docs/user/getting-started.md`.
+Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User installation guidance, including Windows SmartScreen and macOS Gatekeeper verification, is in `docs/user/getting-started.md`.

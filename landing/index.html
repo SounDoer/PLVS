@@ -557,49 +557,6 @@
         align-items: flex-start;
       }
 
-      .cmd-block {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        width: 100%;
-        margin-top: 8px;
-        padding: 8px 10px;
-        border: 1px solid rgba(242, 242, 242, 0.1);
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.24);
-      }
-
-      .cmd-text {
-        min-width: 0;
-        overflow-wrap: anywhere;
-        color: rgba(242, 242, 242, 0.74);
-        font-family: var(--font-mono);
-        font-size: 12px;
-        line-height: 1.4;
-      }
-
-      .cmd-copy {
-        flex: 0 0 auto;
-        min-height: 28px;
-        padding: 0 10px;
-        border: 1px solid rgba(242, 242, 242, 0.14);
-        border-radius: 999px;
-        background: transparent;
-        color: rgba(242, 242, 242, 0.62);
-        cursor: pointer;
-        font-family: var(--font-mono);
-        font-size: 11px;
-        transition:
-          border-color 150ms ease,
-          color 150ms ease;
-      }
-
-      .cmd-copy:hover {
-        border-color: rgba(242, 242, 242, 0.32);
-        color: #f4f7f4;
-      }
-
       .platform-specs {
         margin-top: 0;
         border-top: 1px solid rgba(242, 242, 242, 0.08);
@@ -1183,13 +1140,9 @@
         <div class="platform-actions">
           <a class="btn ${isMac ? "btn-primary" : "btn-secondary"}" href="${macUrl}">${macLabel}</a>
         </div>
-        <div class="install-warning">
-          If macOS blocks the first launch, remove the quarantine attribute:
-          <div class="cmd-block">
-            <span class="cmd-text">xattr -cr /Applications/PLVS.app</span>
-            <button class="cmd-copy" type="button" onclick="copyMacCommand(this)">copy</button>
-          </div>
-        </div>
+        <p class="install-warning">
+          Developer ID signed and Apple-notarized for normal Gatekeeper verification.
+        </p>
         <div class="platform-specs">
           <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">DMG, aarch64</span></div>
           <div class="spec-row"><span class="spec-key">Minimum macOS</span><span class="spec-val">14.2+</span></div>
@@ -1200,15 +1153,6 @@
         document.getElementById("platform-grid").innerHTML = isMac
           ? macCard + winCard
           : winCard + macCard;
-      }
-
-      function copyMacCommand(button) {
-        navigator.clipboard.writeText("xattr -cr /Applications/PLVS.app").then(() => {
-          button.textContent = "copied";
-          window.setTimeout(() => {
-            button.textContent = "copy";
-          }, 1500);
-        });
       }
 
       loadRelease();
