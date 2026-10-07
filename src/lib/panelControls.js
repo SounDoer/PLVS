@@ -374,12 +374,22 @@ const CONTROLS = [
     key: "vectorscopePair",
     kind: "pair",
     default: { x: 0, y: 1 },
+    // `custom` for the same reason as stereoMapPair below: the options are the device's.
+    ui: { tab: "vectorscope", label: "Channel Pair", widget: "custom", order: 20 },
   },
   {
     key: "vectorscopeMode",
     kind: "enum",
     options: ids(VECTORSCOPE_MODE_OPTIONS),
     default: "lissajous",
+    ui: {
+      tab: "vectorscope",
+      label: "Mode",
+      widget: "select",
+      ariaLabel: "vectorscope mode",
+      options: VECTORSCOPE_MODE_OPTIONS,
+      order: 10,
+    },
   },
   {
     key: "vectorscopePolarSamplePersistenceMs",
@@ -387,6 +397,18 @@ const CONTROLS = [
     min: 0,
     max: 1000,
     default: 400,
+    ui: {
+      tab: "vectorscope",
+      label: "Persistence",
+      widget: "slider",
+      ariaLabel: "vectorscope polar sample persistence",
+      order: 30,
+      step: 50,
+      format: (value) => `${value.toFixed(0)} ms`,
+      tooltip:
+        "Controls how long Polar Sample points remain visible. 0 ms shows only the newest samples.",
+      showWhen: (controls) => controls.vectorscopeMode === "polarSample",
+    },
   },
   {
     /// vectorscopePolarLevelMaxHold was vectorscopePolarLevelPeakHold: this hold never decays
@@ -398,6 +420,14 @@ const CONTROLS = [
     kind: "boolean",
     default: false,
     legacyKeys: ["vectorscopePolarLevelPeakHold"],
+    ui: {
+      tab: "vectorscope",
+      label: "Max Hold",
+      widget: "switch",
+      ariaLabel: "vectorscope polar level max hold",
+      order: 40,
+      showWhen: (controls) => controls.vectorscopeMode === "polarLevel",
+    },
   },
   {
     key: "spectrumChannel",

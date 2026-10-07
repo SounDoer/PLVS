@@ -374,9 +374,6 @@ export function LeafView({ node, path, style }) {
                 panelTitle={activeTab ? resolvePanelDisplayName(state, activeTab) : undefined}
                 channelCount={chromeData?.channelCount ?? 0}
                 vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
-                vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
-                vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
-                onVectorscopeChange={noop}
                 stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
                 stereoMapPairValueKey={chromeData?.stereoMapPairValueKey ?? ""}
                 stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}

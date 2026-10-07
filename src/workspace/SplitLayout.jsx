@@ -422,9 +422,6 @@ function FullscreenOverlay() {
               panelTitle={resolvePanelDisplayName(state, fullscreenId)}
               channelCount={chromeData?.channelCount ?? 0}
               vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
-              vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
-              vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
-              onVectorscopeChange={noop}
               spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
               spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
               spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}

@@ -3,6 +3,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   normalizePanelControlValue,
   normalizePanelControls,
+  panelControlUiRows,
 } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
@@ -136,6 +137,31 @@ const LEGACY_DOCK_KEYS = Object.freeze({
     waveformCentroid: ["centroid"],
   },
 });
+
+const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze(
+  Object.fromEntries(
+    Object.entries(DOCK_MODULE_ID_BY_PANEL_MODULE_ID).map(([panel, dock]) => [dock, panel])
+  )
+);
+
+/** The panel settings tab a Dock module's rows come from. */
+export function dockSettingsTab(moduleId) {
+  return PANEL_MODULE_ID_BY_DOCK_MODULE_ID[moduleId];
+}
+
+/**
+ * The settings rows one Dock module shows: the panel's rows for the controls this module carries,
+ * in the panel's order. The Dock reads the same table as the panel settings, so a control's label,
+ * bounds, step and commit rule are stated once; what differs here is only which controls there are.
+ * @param {string} moduleId
+ */
+export function dockSettingsRows(moduleId) {
+  const keys = DOCK_MODULE_CONTROL_KEYS[moduleId];
+  if (!keys) return [];
+  return panelControlUiRows(dockSettingsTab(moduleId)).filter((row) =>
+    keys.includes(row.key ?? row.minKey)
+  );
+}
 
 /// Controls the strip has and the panels do not, so they have no row to read.
 const DOCK_ONLY_DEFAULTS = Object.freeze({

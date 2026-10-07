@@ -942,8 +942,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("L+R")).toBeNull();
   });
 
-  it("calls vectorscope change with selected pair", () => {
-    const onVectorscopeChange = vi.fn();
+  it("commits the selected vectorscope pair", () => {
+    const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="vectorscope"
@@ -952,9 +952,8 @@ describe("PanelSettingsContent", () => {
           { key: "0-1", label: "L/R", x: 0, y: 1 },
           { key: "0-2", label: "L/C", x: 0, y: 2 },
         ]}
-        vectorscopeValueKey="0-1"
-        vectorscopeDisplayLabel="L/R"
-        onVectorscopeChange={onVectorscopeChange}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
       />
     );
 
@@ -963,7 +962,9 @@ describe("PanelSettingsContent", () => {
     });
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
 
-    expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vectorscopePair: { x: 0, y: 2 } })
+    );
   });
 
   it("updates vectorscope mode and only shows Max hold for Polar Level", () => {
@@ -972,9 +973,6 @@ describe("PanelSettingsContent", () => {
       activeTab: "vectorscope",
       channelCount: 2,
       vectorscopeOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
-      vectorscopeValueKey: "0-1",
-      vectorscopeDisplayLabel: "L/R",
-      onVectorscopeChange: vi.fn(),
       panelControls: DEFAULT_PANEL_CONTROLS,
       onPanelControlsChange,
     };
@@ -1008,9 +1006,6 @@ describe("PanelSettingsContent", () => {
       activeTab: "vectorscope",
       channelCount: 2,
       vectorscopeOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
-      vectorscopeValueKey: "0-1",
-      vectorscopeDisplayLabel: "L/R",
-      onVectorscopeChange: vi.fn(),
       onPanelControlsChange,
     };
     const { rerender } = render(
@@ -1047,9 +1042,6 @@ describe("PanelSettingsContent", () => {
         activeTab="vectorscope"
         channelCount={2}
         vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        vectorscopeValueKey="0-1"
-        vectorscopeDisplayLabel="L/R"
-        onVectorscopeChange={vi.fn()}
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarLevel" }}
         onPanelControlsChange={vi.fn()}
       />
@@ -1070,9 +1062,8 @@ describe("PanelSettingsContent", () => {
           { key: "0-2", label: "L/C", x: 0, y: 2, group: "Common" },
           { key: "0-3", label: "L/LFE", x: 0, y: 3, group: "All pairs" },
         ]}
-        vectorscopeValueKey="0-1"
-        vectorscopeDisplayLabel="L/R"
-        onVectorscopeChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
@@ -1092,9 +1083,8 @@ describe("PanelSettingsContent", () => {
         activeTab="vectorscope"
         channelCount={2}
         vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        vectorscopeValueKey="0-1"
-        vectorscopeDisplayLabel="L/R"
-        onVectorscopeChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
@@ -1410,7 +1400,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("Stale")).toBeNull();
   });
 
-  it("falls back to the first vectorscope option when the value key is stale", () => {
+  it("falls back to the first vectorscope option when the stored pair is not offered", () => {
     render(
       <PanelSettingsContent
         activeTab="vectorscope"
@@ -1419,14 +1409,14 @@ describe("PanelSettingsContent", () => {
           { key: "0-1", label: "L/R", x: 0, y: 1 },
           { key: "0-2", label: "L/C", x: 0, y: 2 },
         ]}
-        vectorscopeValueKey="9-10"
-        vectorscopeDisplayLabel="Stale"
-        onVectorscopeChange={vi.fn()}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopePair: { x: 9, y: 10 } }}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
-    expect(screen.getByText("L/R")).toBeTruthy();
-    expect(screen.queryByText("Stale")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "vectorscope channel" }).textContent).toContain(
+      "L/R"
+    );
   });
 
   it("renders Stats metrics as an inline labeled detail and toggles stat ids", () => {

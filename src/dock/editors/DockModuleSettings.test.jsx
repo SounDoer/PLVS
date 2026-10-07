@@ -31,7 +31,7 @@ describe("DockModuleSettings", () => {
     ["level", "Level mode"],
     ["loudness", "loudness range min"],
     ["spectrum", "Spectrum channel"],
-    ["correlation", "Vectorscope channel pair"],
+    ["correlation", "vectorscope channel"],
     ["stats", "Edit metrics"],
     ["waveform", "waveform frequency color"],
     ["spectrogram", "Spectrogram channel"],
@@ -180,7 +180,7 @@ describe("DockModuleSettings", () => {
     ];
     const onChange = renderSettings("correlation", { vectorscopeOptions });
 
-    fireEvent.click(screen.getByLabelText("Vectorscope channel pair"));
+    fireEvent.click(screen.getByLabelText("vectorscope channel"));
     fireEvent.click(screen.getByRole("option", { name: "Ls/Rs" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
@@ -195,9 +195,9 @@ describe("DockModuleSettings", () => {
     const modeRow = screen.getByText("Mode").closest("div.grid");
     const pairRow = screen.getByText("Channel Pair").closest("div.grid");
     expect(modeRow.compareDocumentPosition(pairRow) & 4).toBeTruthy();
-    expect(screen.queryByLabelText("Vectorscope max hold")).toBeNull();
+    expect(screen.queryByLabelText("vectorscope polar level max hold")).toBeNull();
 
-    fireEvent.click(screen.getByLabelText("Vectorscope mode"));
+    fireEvent.click(screen.getByLabelText("vectorscope mode"));
     fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
     expect(onChange).toHaveBeenCalledWith({ ...controls, vectorscopeMode: "polarLevel" });
   });
@@ -208,7 +208,7 @@ describe("DockModuleSettings", () => {
       vectorscopeMode: "polarSample",
     };
     const onChange = renderSettings("correlation", { controls });
-    const persistence = screen.getByLabelText("Vectorscope polar sample persistence");
+    const persistence = screen.getByLabelText("vectorscope polar sample persistence");
 
     expect(/** @type {HTMLInputElement} */ (persistence).value).toBe("400");
     fireEvent.change(persistence, { target: { value: "650" } });
@@ -225,7 +225,7 @@ describe("DockModuleSettings", () => {
     };
     const onChange = renderSettings("correlation", { controls });
 
-    fireEvent.click(screen.getByLabelText("Vectorscope max hold"));
+    fireEvent.click(screen.getByLabelText("vectorscope polar level max hold"));
     expect(onChange).toHaveBeenCalledWith({
       ...controls,
       vectorscopePolarLevelMaxHold: true,

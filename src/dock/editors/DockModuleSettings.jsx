@@ -5,6 +5,7 @@ import {
   StatsMetricsSettingsRow,
   WaveformSettingsRows,
 } from "../../components/panel-settings/PanelSettingsControls.jsx";
+import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
 import {
   SettingsGroup,
   SettingsRangeInput,
@@ -17,7 +18,11 @@ import {
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
-import { isDefaultDockModuleControls } from "../dockModuleControls.js";
+import {
+  dockSettingsRows,
+  dockSettingsTab,
+  isDefaultDockModuleControls,
+} from "../dockModuleControls.js";
 import {
   LEVEL_METER_MODE_OPTIONS,
   normalizePanelControlRange,
@@ -25,7 +30,6 @@ import {
   SPECTROGRAM_DB_FLOOR_TOOLTIP,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   SPECTRUM_TILT_TOOLTIP,
-  VECTORSCOPE_MODE_OPTIONS,
 } from "../../lib/panelControls.js";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 
@@ -261,57 +265,26 @@ function SettingsBody({
         : [{ value: "0-1", label: "L/R" }];
     const pairValue = `${controls.vectorscopePair?.x ?? 0}-${controls.vectorscopePair?.y ?? 1}`;
     return (
-      <>
-        <SettingsRow label="Mode">
-          <SelectField
-            label="Vectorscope mode"
-            value={controls.vectorscopeMode}
-            options={VECTORSCOPE_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
-            onChange={(vectorscopeMode) => onChange({ ...controls, vectorscopeMode })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Channel Pair">
-          <SelectField
-            label="Vectorscope channel pair"
-            value={pairValue}
-            options={pairOptions}
-            onChange={(value) => {
-              const selected = vectorscopeOptions?.find((option) => option.key === value);
-              if (selected)
-                onChange({ ...controls, vectorscopePair: { x: selected.x, y: selected.y } });
-            }}
-          />
-        </SettingsRow>
-        {controls.vectorscopeMode === "polarSample" ? (
-          <SettingsRow
-            label="Persistence"
-            tooltip="Controls how long Polar Sample points remain visible. 0 ms shows only the newest samples."
-          >
-            <SettingsSlider
-              ariaLabel="Vectorscope polar sample persistence"
-              min={0}
-              max={1000}
-              step={50}
-              value={controls.vectorscopePolarSamplePersistenceMs}
-              formatValue={(/** @type {number} */ value) => `${value.toFixed(0)} ms`}
-              onCommit={(vectorscopePolarSamplePersistenceMs) =>
-                onChange({ ...controls, vectorscopePolarSamplePersistenceMs })
-              }
+      <ControlRows
+        rows={dockSettingsRows(moduleId)}
+        tab={dockSettingsTab(moduleId)}
+        controls={controls}
+        onChange={(changes) => onChange({ ...controls, ...changes })}
+        slots={{
+          vectorscopePair: (
+            <SelectField
+              label="vectorscope channel"
+              value={pairValue}
+              options={pairOptions}
+              onChange={(value) => {
+                const selected = vectorscopeOptions?.find((option) => option.key === value);
+                if (selected)
+                  onChange({ ...controls, vectorscopePair: { x: selected.x, y: selected.y } });
+              }}
             />
-          </SettingsRow>
-        ) : null}
-        {controls.vectorscopeMode === "polarLevel" ? (
-          <SettingsRow label="Max Hold">
-            <SettingsSwitch
-              aria-label="Vectorscope max hold"
-              checked={controls.vectorscopePolarLevelMaxHold}
-              onCheckedChange={(vectorscopePolarLevelMaxHold) =>
-                onChange({ ...controls, vectorscopePolarLevelMaxHold })
-              }
-            />
-          </SettingsRow>
-        ) : null}
-      </>
+          ),
+        }}
+      />
     );
   }
   if (moduleId === "stats") {
