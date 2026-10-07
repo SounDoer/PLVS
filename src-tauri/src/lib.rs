@@ -119,16 +119,18 @@ fn ui_visual_fixture(args: &[String]) -> Result<Option<String>, String> {
   if args.iter().any(|arg| arg == UI_VISUAL_FIXTURE_ARG) && requested.is_none() {
     return Err("The UI visual fixture argument requires a fixture name.".to_string());
   }
-  let Some(name) = requested else {
-    return Ok(None);
-  };
   #[cfg(not(debug_assertions))]
-  return Err("UI visual fixtures are unavailable in packaged builds.".to_string());
-  #[cfg(debug_assertions)]
-  match name {
-    "review-sequence" => Ok(Some(name.to_string())),
-    _ => Err(format!("Unknown UI visual fixture: {name}")),
+  if requested.is_some() {
+    return Err("UI visual fixtures are unavailable in packaged builds.".to_string());
   }
+  #[cfg(debug_assertions)]
+  if let Some(name) = requested {
+    return match name {
+      "review-sequence" => Ok(Some(name.to_string())),
+      _ => Err(format!("Unknown UI visual fixture: {name}")),
+    };
+  }
+  Ok(None)
 }
 
 /// The pre-paint snapshot the webview reads synchronously, as an initialization script.
