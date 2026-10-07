@@ -159,10 +159,11 @@ export function DockEditorApp() {
         "inline-block max-h-screen overflow-hidden",
         POPOVER_SURFACE_CLASS,
         payload.view?.startsWith("module:") && "p-1",
-        // Presets owns a responsive minimum width that follows Interface Size; the other library
-        // menus grow to fit their rows up to the shared 18rem cap.
+        // Presets owns a minimum width that follows Interface Size; the other library menus grow
+        // to fit their rows up to the shared 18rem cap. No cap here is viewport-relative: this
+        // window is resized to what is measured, so a `vw` cap would feed back into itself.
         payload.view === "presets"
-          ? "w-max min-w-40 max-w-[92vw]"
+          ? "w-max min-w-40 max-w-[400px]"
           : payload.view === "loudness-profile" || payload.view === "modules"
             ? "w-max min-w-40 max-w-[18rem]"
             : "w-max min-w-48 max-w-[400px]"

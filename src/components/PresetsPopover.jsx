@@ -94,7 +94,7 @@ export function PresetsPopoverContent({
   };
 
   return (
-    <div className="min-w-[min(calc(15em+4rem),calc(92vw-1rem))] text-[length:var(--ui-fs-control)]">
+    <div className="min-w-[calc(15em+4rem)] text-[length:var(--ui-fs-control)]">
       {showTitle ? (
         <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Presets</p>
       ) : null}
@@ -108,8 +108,7 @@ export function PresetsPopoverContent({
             if (e.key === "Enter") handleSave();
           }}
           placeholder={newPresetPlaceholder}
-          // `size={1}` + `flex-1`: fill the responsive Presets surface without typed text growing
-          // it, and `min-w-0` still permits shrinking at the viewport cap.
+          // `size={1}` + `flex-1`: fill the Presets surface without typed text growing it.
           size={1}
           className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] placeholder:text-muted-foreground"
         />
