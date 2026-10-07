@@ -42,6 +42,17 @@ describe("theme color contract", () => {
     expect(css.match(/:focus-visible\s*\{[^}]*outline:(?!\s*none)/g)).toHaveLength(1);
   });
 
+  it("mirrors a button's hover treatment on focus only during keyboard navigation", () => {
+    // A button that only got focus back from a closed popover must not look hovered.
+    const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+    const focusedButtonSelectors = css.match(/^.*button:not\(:disabled\).*:focus-visible.*$/gm);
+
+    expect(focusedButtonSelectors).toHaveLength(2);
+    for (const selector of focusedButtonSelectors) {
+      expect(selector.startsWith('html[data-keyboard-nav="true"] ')).toBe(true);
+    }
+  });
+
   it("leaves no per-component focus ring to fight the global rule", () => {
     const offenders = Object.entries(appSources())
       .filter(([, source]) => /focus(?:-visible)?:(?:ring|outline|border-ring)/.test(source))

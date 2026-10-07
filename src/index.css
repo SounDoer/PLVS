@@ -197,15 +197,16 @@ html[data-keyboard-nav="true"] :focus-visible {
   opacity: 0.5;
   cursor: not-allowed;
 }
-/* Mirror each button's existing hover treatment for keyboard focus and press. */
-button:not(:disabled):is(:focus-visible, :active, [data-state="open"])[class~="hover:bg-ui-hover"] {
+/* Mirror each button's existing hover treatment for keyboard focus and press. Focus counts only
+   during keyboard navigation, the same state the ring above follows: `:focus-visible` alone also
+   matches a button that merely got focus back -- from a popover closed with Escape, or closed by
+   Agent Control with no input at all -- and left it looking hovered. */
+button:not(:disabled):is(:active, [data-state="open"])[class~="hover:bg-ui-hover"],
+html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover:bg-ui-hover"] {
   background-color: var(--ui-neutral-hover);
 }
-button:not(:disabled):is(
-    :focus-visible,
-    :active,
-    [data-state="open"]
-  )[class~="hover:text-foreground"] {
+button:not(:disabled):is(:active, [data-state="open"])[class~="hover:text-foreground"],
+html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover:text-foreground"] {
   color: var(--foreground);
 }
 [data-slot="switch"]:not(:disabled):is(:hover, :focus-visible, :active) [data-slot="switch-thumb"] {

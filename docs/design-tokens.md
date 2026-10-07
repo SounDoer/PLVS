@@ -44,6 +44,12 @@ shortcuts, so that heuristic showed a ring to pointer users who had only pressed
 `index.css` paints a 2px `--ring` outline on the focused element while that attribute is set.
 Shortcuts, modifiers and pointer use never raise it.
 
+The hover fill and text colour that buttons show on keyboard focus follow the same attribute. A
+button that only received focus back — its popover was closed with Escape by a pointer user, or
+closed by Agent Control with no input — stays at rest. `:focus-visible` on its own matches both
+cases, and whether it does depends on whether the window has had system focus, which made the
+state differ between otherwise identical screenshots.
+
 Components must not add a `focus-visible:ring-*` or `focus-visible:outline-*` of their own; a
 contract test in `src/components/ui/themeColorContract.test.js` fails if one appears. A control
 does not need a focus style at all: the global ring covers every focusable element, including ones
