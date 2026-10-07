@@ -6,23 +6,6 @@ import { StereoMapSettings } from "./panel-settings/StereoMapSettings.jsx";
 import { VectorscopeSettings } from "./panel-settings/VectorscopeSettings.jsx";
 import { WaveformSettings } from "./panel-settings/WaveformSettings.jsx";
 
-export {
-  LoudnessSettingsRows,
-  SpectrumDisplaySettingsRows,
-  StatsMetricsSettingsRow,
-  WaveformSettingsRows,
-} from "./panel-settings/PanelSettingsControls.jsx";
-export {
-  SettingsGroup,
-  SettingsNumberInput,
-  SettingsRangeInput,
-  SettingsRow,
-  SettingsSelect,
-  SettingsSlider,
-  SettingsSwitch,
-  SettingsThresholdInputs,
-} from "./panel-settings/SettingsWidgets.jsx";
-
 /** @param {import("./panel-settings/types.js").PanelSettingsProps} props */
 export function PanelSettingsContent(props) {
   switch (props.activeTab) {

@@ -1,17 +1,19 @@
 import { useState } from "react";
 import {
   LoudnessSettingsRows,
-  SettingsRangeInput,
+  SpectrumDisplaySettingsRows,
+  StatsMetricsSettingsRow,
+  WaveformSettingsRows,
+} from "../../components/panel-settings/PanelSettingsControls.jsx";
+import {
   SettingsGroup,
+  SettingsRangeInput,
   SettingsRow,
   SettingsSelect,
   SettingsSlider,
   SettingsSwitch,
   SettingsThresholdInputs,
-  SpectrumDisplaySettingsRows,
-  StatsMetricsSettingsRow,
-  WaveformSettingsRows,
-} from "../../components/PanelSettingsContent.jsx";
+} from "../../components/panel-settings/SettingsWidgets.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
