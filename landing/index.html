@@ -503,12 +503,33 @@
         display: block;
         width: 100%;
         height: auto;
-        aspect-ratio: 16 / 10;
+        aspect-ratio: 1590 / 890;
         object-fit: contain;
         object-position: top;
       }
 
       .workspace-gallery figcaption {
+        margin-top: 16px;
+        font-size: var(--text-body);
+        line-height: 1.6;
+        font-weight: 500;
+      }
+
+      .workspace-dock {
+        margin: 32px 0 0;
+      }
+
+      .workspace-dock-visual {
+        overflow: hidden;
+      }
+
+      .workspace-dock img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .workspace-dock figcaption {
         margin-top: 16px;
         font-size: var(--text-body);
         line-height: 1.6;
@@ -706,6 +727,14 @@
 
         .workspace-gallery img {
           aspect-ratio: auto;
+        }
+
+        .workspace-dock img {
+          height: 96px;
+          width: auto;
+          max-width: none;
+          position: relative;
+          left: 0;
         }
       }
 
@@ -1004,35 +1033,47 @@
             <div class="workspace-gallery">
               <figure>
                 <img
-                  src="assets/landing-hero.webp"
-                  alt="Default PLVS layout with level, loudness, waveform, spectrum, and stereo panels."
-                  width="1600"
-                  height="1000"
+                  src="assets/landing-workspace-overview-compact.webp"
+                  alt="Compact PLVS workspace with a stereo level meter, Spectrum, Stereo Map, Stats, and Vectorscope."
+                  width="1590"
+                  height="890"
                   loading="lazy"
                 />
-                <figcaption>The full picture.</figcaption>
+                <figcaption>Balance at a glance.</figcaption>
               </figure>
               <figure>
                 <img
-                  src="assets/landing-live.webp"
-                  alt="PLVS layout with a large multichannel level meter alongside spectrum and loudness."
-                  width="2560"
-                  height="1351"
+                  src="assets/landing-workspace-loudness-compact.webp"
+                  alt="Compact PLVS workspace with large Loudness and Waveform history panels beside Stats and a stereo Level Meter."
+                  width="1590"
+                  height="890"
                   loading="lazy"
                 />
-                <figcaption>Room for every channel.</figcaption>
+                <figcaption>Stay with the long take.</figcaption>
               </figure>
               <figure>
                 <img
-                  src="assets/landing-workspace.webp"
-                  alt="Custom PLVS workspace layout with compact metering panels."
-                  width="2560"
-                  height="1351"
+                  src="assets/landing-workspace-frequency-compact.webp"
+                  alt="Compact PLVS workspace with a wide Spectrum above Spectrogram and Stereo Map panels."
+                  width="1590"
+                  height="890"
                   loading="lazy"
                 />
-                <figcaption>More space for the spectrum.</figcaption>
+                <figcaption>Make room for frequency detail.</figcaption>
               </figure>
             </div>
+            <figure class="workspace-dock">
+              <div class="workspace-dock-visual">
+                <img
+                  src="assets/landing-dock.webp"
+                  alt="Expanded PLVS Dock strip with live transport, stereo levels, loudness, spectrum, Stereo Map, and Stats."
+                  width="2560"
+                  height="160"
+                  loading="lazy"
+                />
+              </div>
+              <figcaption>Dock your meters at the edge of the screen.</figcaption>
+            </figure>
           </article>
         </section>
       </main>

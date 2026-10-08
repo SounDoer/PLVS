@@ -26,6 +26,11 @@ documented in the adjacent provenance JSON; they must not replace or reshape the
 - `landing/assets/raw/landing-history-*-hud*.png` and `landing-history-hud-pair.json`: focused LIVE
   Loudness and Spectrogram originals in wide and narrow layouts, with hover HUDs pinned to the same
   historical moment.
+- `landing/assets/raw/landing-workspace-*-compact.png` and `landing-workspace-compact-group.json`:
+  three task-focused LIVE workspace layouts with Compact Panels enabled and application chrome
+  excluded by the Agent Control workspace target.
+- `landing/assets/raw/landing-dock.png` and `.json`: the expanded LIVE Dock strip captured from the
+  complete main WebView in Dock form, without native window chrome or another application's UI.
 - Matching lossless WebP files under `landing/assets/`: the website exports. Verify decoded pixels
   against each PNG before publication.
 

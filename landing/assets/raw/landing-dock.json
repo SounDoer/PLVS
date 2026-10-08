@@ -1,0 +1,31 @@
+{
+  "source": "live",
+  "input": "CABLE Output (VB-Audio Virtual Cable)",
+  "audio": "assets/marketing/audio/discovery-hero.wav",
+  "audioSha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988",
+  "theme": "plvs-dark",
+  "appVersion": "0.19.0",
+  "dock": {
+    "edge": "top",
+    "height": 128,
+    "heightMode": "expanded",
+    "reserveSpace": false,
+    "panels": ["transport", "levelMeter", "loudness", "spectrum", "stereo-map", "stats"]
+  },
+  "capture": {
+    "agentControlTarget": "main",
+    "revision": 9,
+    "uiGeneration": 0,
+    "atLiveEdge": true,
+    "channelCount": 2,
+    "sampleRateHz": 48000,
+    "nativeWindowChromeIncluded": false,
+    "otherApplicationPixelsIncluded": false
+  },
+  "artifact": {
+    "file": "landing-dock.png",
+    "width": 2560,
+    "height": 160,
+    "sha256": "4b28e7df071e5259070637d08a088c3af562dc5b95a11ff32af9a672d3ea498c"
+  }
+}
