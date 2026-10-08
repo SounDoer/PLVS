@@ -75,13 +75,13 @@ export function SourceTransportCluster({
     <div
       style={{ fontSize: "var(--ui-fs-status)" }}
       className={cn(
-        "relative inline-flex h-[var(--ui-shell-h)] max-w-full shrink-0 items-center overflow-hidden rounded-full p-1",
+        "relative inline-flex h-[var(--ui-control-h)] max-w-full shrink-0 items-center overflow-hidden rounded-full",
         TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live,
         chrome.shell
       )}
     >
       {sourceLocked ? (
-        <span className="flex h-full shrink-0 items-center rounded-full px-2 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
+        <span className="flex h-full shrink-0 items-center rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
           {state.sourceLabel}
         </span>
       ) : (
@@ -91,7 +91,7 @@ export function SourceTransportCluster({
               ref={triggerRef}
               type="button"
               aria-label={`Source: ${state.sourceLabel}`}
-              className="flex h-full shrink-0 items-center gap-1 rounded-full px-2 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] hover:bg-ui-hover"
+              className="flex h-full shrink-0 items-center gap-1 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] hover:bg-ui-hover"
             >
               {state.sourceLabel}
               <ChevronDown className="size-[1em]" />
