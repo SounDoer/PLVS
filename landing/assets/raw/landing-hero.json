@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "image": "../landing-hero.webp",
+  "rawImage": "landing-hero.png",
+  "width": 1600,
+  "height": 1000,
+  "sha256": "aef239840275f56b913efdb5cc09dad38575fd5f193f71772ee3c7f06e825920",
+  "rawSha256": "783ace78f2ff31debb9bd0292b1ef286d5b9c973e8322bc54b321aeb97db0a58",
+  "appVersion": "0.18.2",
+  "capture": {
+    "mode": "LIVE",
+    "layout": "Default",
+    "panelSettings": "Default",
+    "loudnessProfile": {
+      "name": "Default",
+      "referenceLufs": -23,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "severity": "warn",
+          "value": -16
+        },
+        {
+          "metricId": "integrated",
+          "op": "<",
+          "severity": "warn",
+          "value": -30
+        },
+        {
+          "metricId": "shortTermMax",
+          "op": ">",
+          "severity": "warn",
+          "value": -12
+        },
+        {
+          "metricId": "momentaryMax",
+          "op": ">",
+          "severity": "warn",
+          "value": -9
+        },
+        {
+          "metricId": "lra",
+          "op": ">",
+          "severity": "warn",
+          "value": 18
+        },
+        {
+          "metricId": "lra",
+          "op": "<",
+          "severity": "warn",
+          "value": 6
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "severity": "fail",
+          "value": -1
+        }
+      ]
+    },
+    "playbackSeconds": 78,
+    "frame": {
+      "generation": 2,
+      "sequence": 3999
+    }
+  },
+  "audio": {
+    "version": 1,
+    "source": {
+      "title": "Discovery",
+      "artist": "Scott Buckley",
+      "page": "https://www.scottbuckley.com.au/library/discovery/",
+      "download": "https://www.scottbuckley.com.au/library/wp-content/uploads/2020/01/sb_discovery.mp3",
+      "sha256": "e4629422bd18a927950167dabfbe7c77c061595329da367f2407a8b4021fb832",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "'Discovery' by Scott Buckley — released under CC BY 4.0. www.scottbuckley.com.au"
+    },
+    "excerpt": {
+      "startSeconds": 80,
+      "endSeconds": 170,
+      "durationSeconds": 90,
+      "linearGain": 1.07,
+      "modifications": "Excerpt and constant gain only; no compression, EQ, time stretching, or synthetic additions.",
+      "fileName": "Discovery - 80-170s.wav",
+      "sampleRateHz": 48000,
+      "channels": 2,
+      "bits": 24,
+      "peakDbfs": -0.43749573267017383,
+      "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988"
+    },
+    "capture": {
+      "mode": "LIVE",
+      "layout": "Unmodified first-run default",
+      "panelSettings": "Unmodified defaults",
+      "device": "CABLE Output (VB-Audio Virtual Cable)",
+      "playback": "VLC to CABLE Input; no system output changes",
+      "candidatesSecondsAfterPlayerLaunch": [62, 66, 70, 74, 78, 82],
+      "determinism": "Audio bytes and layout are fixed. LIVE scheduling and render frames can vary; inspect candidates before publishing."
+    }
+  },
+  "preparationCommand": "node scripts/marketing/prepare-live-hero-audio.mjs",
+  "captureScript": "scripts/marketing/capture-live-hero.mjs"
+}
