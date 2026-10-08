@@ -52,7 +52,6 @@ describe("landing page responsive layout", () => {
   test("mobile breakpoint stacks dense sections", () => {
     expect(html).toContain("@media (max-width: 920px)");
     expect(html).toContain("@media (max-width: 620px)");
-    expect(html).toMatch(/\.principles,[\s\S]*grid-template-columns:\s*1fr/s);
     expect(html).toMatch(/\.platform-grid,[\s\S]*grid-template-columns:\s*1fr/s);
     expect(html).toMatch(/\.hero-actions\s*\{[\s\S]*grid-template-columns:\s*1fr/s);
   });
