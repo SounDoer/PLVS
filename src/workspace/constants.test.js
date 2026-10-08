@@ -124,20 +124,30 @@ describe("first-run workspace", () => {
 
   it("gives only the first-run panels the tuned controls", () => {
     const controls = DEFAULT_WORKSPACE_STATE.panelControlsById;
-    expect(controls.levelMeter.levelMeterTpMaxMarker).toBe(true);
-    expect(controls.loudness.loudnessHistoryVisibleLayerIds).toEqual([
-      "momentary",
-      "shortTerm",
-      "ref",
-    ]);
+    expect(controls.levelMeter).toMatchObject({
+      levelMeterTpMaxMarker: true,
+      levelMeterYMaxDb: 0,
+    });
+    expect(controls.loudness).toMatchObject({
+      loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+      loudnessYMinDb: -48,
+      loudnessYMaxDb: -6,
+    });
     expect(controls.stats.statsVisibleIds).toEqual(STATS_CANONICAL_ORDER);
-    expect(controls.spectrum).toMatchObject({ spectrumView: "lr", spectrumMaxMode: "decay" });
+    expect(controls.vectorscope).toMatchObject({
+      vectorscopeMode: "polarLevel",
+      vectorscopePolarLevelMaxHold: true,
+    });
+    expect(controls.spectrum).toMatchObject({
+      spectrumView: "ms",
+      spectrumMaxMode: "decay",
+      spectrumYMinDb: -84,
+    });
     expect(controls.waveform).toMatchObject({
       waveformFrequencyColor: true,
       waveformCentroid: true,
     });
     const untouched = normalizePanelControls(DEFAULT_PANEL_CONTROLS);
-    expect(controls.vectorscope).toEqual(untouched);
     expect(controls.spectrogram).toEqual(untouched);
     expect(controls["stereo-map"]).toEqual(untouched);
     // A panel added later starts from these, not from the first-run values.

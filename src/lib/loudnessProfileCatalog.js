@@ -80,11 +80,11 @@ export function createStarterProfile(makeId = defaultMakeId) {
     name: "Default",
     referenceLufs: -23,
     rules: [
-      ...band("integrated", -23, 4, 5),
-      rule("shortTermMax", ">", -16, "warn"),
-      rule("momentaryMax", ">", -12, "warn"),
-      rule("lra", ">", 20, "warn"),
-      rule("lra", "<", 5, "warn"),
+      ...band("integrated", -23, 7, 7, "warn"),
+      rule("shortTermMax", ">", -12, "warn"),
+      rule("momentaryMax", ">", -9, "warn"),
+      rule("lra", ">", 18, "warn"),
+      rule("lra", "<", 6, "warn"),
       rule("truePeak", ">", -1),
     ],
   };

@@ -80,9 +80,11 @@ export const DEFAULT_PANEL_ORDER = [...DEFAULT_MODULE_IDS];
 /// Controls the first-run panels carry on top of the panel defaults. Only these instances get them:
 /// DEFAULT_PANEL_CONTROLS is unchanged, so a panel the user adds later starts from the defaults.
 const FIRST_RUN_PANEL_CONTROLS = {
-  levelMeter: { levelMeterTpMaxMarker: true },
+  levelMeter: { levelMeterTpMaxMarker: true, levelMeterYMaxDb: 0 },
+  loudness: { loudnessYMinDb: -48, loudnessYMaxDb: -6 },
   stats: { statsVisibleIds: [...STATS_CANONICAL_ORDER] },
-  spectrum: { spectrumView: "lr", spectrumMaxMode: "decay" },
+  vectorscope: { vectorscopeMode: "polarLevel", vectorscopePolarLevelMaxHold: true },
+  spectrum: { spectrumView: "ms", spectrumMaxMode: "decay", spectrumYMinDb: -84 },
   waveform: { waveformFrequencyColor: true, waveformCentroid: true },
 };
 

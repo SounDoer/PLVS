@@ -76,10 +76,13 @@ describe("Portable Preset V1", () => {
     const controlsOf = (moduleId) =>
       portable.workspace.panels.find((panel) => panel.moduleId === moduleId).controls;
 
-    // The first-run Level Meter differs only in its TP Max marker, so the thresholds that older
-    // builds do not know about are not written.
-    expect(controlsOf("levelMeter")).toEqual({ tpMaxMarker: true });
-    expect(controlsOf("loudness")).toEqual({});
+    // The first-run Level Meter differs only in its TP Max marker and level range, so the
+    // thresholds that older builds do not know about are not written.
+    expect(controlsOf("levelMeter")).toEqual({
+      tpMaxMarker: true,
+      levelRangeDbfs: { min: -60, max: 0 },
+    });
+    expect(controlsOf("loudness")).toEqual({ loudnessRangeLufs: { min: -48, max: -6 } });
     expect(portable.dock.panels.map(({ controls }) => controls)).toEqual([
       { peakThresholdsDbfs: { warning: -8, critical: -1 } },
       {},

@@ -400,11 +400,14 @@ export function normalizeDockControlsByModuleId(raw) {
 
 /// Controls the first-run Dock panels carry on top of the Dock defaults, by Dock control module id.
 /// Only the first-run strip and Reset Layout use them; a panel added later starts from the defaults.
+/// Where a control exists on both sides, the value matches the first-run workspace panel
+/// (`FIRST_RUN_PANEL_CONTROLS`), so entering Dock shows the same reading.
 const FIRST_RUN_DOCK_CONTROLS = Object.freeze({
-  loudness: { showReadouts: false },
+  loudness: { showReadouts: false, loudnessYMinDb: -48, loudnessYMaxDb: -6 },
   stats: { statsVisibleIds: [...STATS_CANONICAL_ORDER] },
-  spectrum: { spectrumMaxMode: "decay" },
-  waveform: { waveformFrequencyColor: true },
+  correlation: { vectorscopeMode: "polarLevel", vectorscopePolarLevelMaxHold: true },
+  spectrum: { spectrumView: "ms", spectrumMaxMode: "decay", spectrumYMinDb: -84 },
+  waveform: { waveformFrequencyColor: true, waveformCentroid: true },
 });
 
 export function firstRunDockControlsByModuleId() {

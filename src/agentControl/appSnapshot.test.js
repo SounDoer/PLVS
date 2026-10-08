@@ -227,7 +227,7 @@ describe("agent-control app snapshots", () => {
         floatingValue: false,
         tpMaxMarker: true,
         barColors: "gradient",
-        levelRangeDbfs: { min: -60, max: 3 },
+        levelRangeDbfs: { min: -60, max: 0 },
         loudnessRangeLufs: { min: -64, max: 0 },
         peakThresholdsDbfs: { warning: -6, critical: -1 },
         rmsThresholdsDbfs: { warning: -18, critical: -9 },

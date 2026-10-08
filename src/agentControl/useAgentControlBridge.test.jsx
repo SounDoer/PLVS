@@ -4139,7 +4139,7 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
     const initialState = view.store.state;
 
-    const noOp = await send(request("panel.reset", { panelId: "vectorscope" }, "reset-no-op"));
+    const noOp = await send(request("panel.reset", { panelId: "stereo-map" }, "reset-no-op"));
     const dryRun = await send(
       request("panel.reset", { panelId: "spectrogram", dryRun: true }, "reset-dry")
     );
