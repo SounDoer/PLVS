@@ -23,6 +23,9 @@ documented in the adjacent provenance JSON; they must not replace or reshape the
   Spectrum, Spectrogram and Stereo Map originals captured at the same elapsed time.
 - `landing/assets/raw/landing-stats.png` and `.json`: the LIVE Stats panel with the default profile's
   warning and failure colors recorded in its provenance.
+- `landing/assets/raw/landing-history-*-hud*.png` and `landing-history-hud-pair.json`: focused LIVE
+  Loudness and Spectrogram originals in wide and narrow layouts, with hover HUDs pinned to the same
+  historical moment.
 - Matching lossless WebP files under `landing/assets/`: the website exports. Verify decoded pixels
   against each PNG before publication.
 

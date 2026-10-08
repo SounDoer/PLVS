@@ -470,8 +470,10 @@
         display: block;
         width: 100%;
         height: auto;
-        aspect-ratio: 1590 / 890;
-        object-fit: contain;
+      }
+
+      .history-detail picture {
+        display: block;
       }
 
       .history-detail figcaption {
@@ -960,24 +962,36 @@
             </div>
             <div class="history-gallery">
               <figure class="history-detail">
-                <img
-                  src="assets/landing-history-moment.webp"
-                  alt="Loudness history selected 22 seconds back, showing momentary -13.6 LUFS and short-term -14.2 LUFS."
-                  width="534"
-                  height="219"
-                  loading="lazy"
-                />
-                <figcaption>Pick a moment.</figcaption>
+                <picture>
+                  <source
+                    media="(max-width: 620px)"
+                    srcset="assets/landing-history-loudness-hud.webp"
+                  />
+                  <img
+                    src="assets/landing-history-loudness-hud-wide.webp"
+                    alt="Loudness history selected 22 seconds back, with a hover HUD showing momentary and short-term loudness."
+                    width="1590"
+                    height="443"
+                    loading="lazy"
+                  />
+                </picture>
+                <figcaption>Read the moment.</figcaption>
               </figure>
               <figure class="history-detail">
-                <img
-                  src="assets/landing-history-snapshot.webp"
-                  alt="PLVS meters frozen at that same moment, with matching loudness readouts, spectrum, Stereo Map, and Stats."
-                  width="1590"
-                  height="890"
-                  loading="lazy"
-                />
-                <figcaption>See every meter at that moment.</figcaption>
+                <picture>
+                  <source
+                    media="(max-width: 620px)"
+                    srcset="assets/landing-history-spectrogram-hud.webp"
+                  />
+                  <img
+                    src="assets/landing-history-spectrogram-hud-wide.webp"
+                    alt="Spectrogram history selected at the same 22-second point, with a hover HUD showing frequency, level, and pitch."
+                    width="1590"
+                    height="443"
+                    loading="lazy"
+                  />
+                </picture>
+                <figcaption>Locate it in the signal.</figcaption>
               </figure>
             </div>
           </article>
