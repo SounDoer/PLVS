@@ -45,6 +45,20 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()).toEqual({});
   });
 
+  it("versions each changed semantic draft transaction without treating it as persistence", () => {
+    const { result } = setup(vi.fn());
+
+    act(() => result.current.beginCreate("S"));
+    expect(result.current.draftGeneration).toBe(0);
+
+    act(() => result.current.updateCore("workspace", "#111111"));
+    expect(result.current.draftGeneration).toBe(1);
+
+    act(() => result.current.updateCore("workspace", "#111111"));
+    expect(result.current.draftGeneration).toBe(1);
+    expect(listCustomThemeDocuments()).toEqual({});
+  });
+
   it("edits palette anchors and applies owned preset snapshots", () => {
     const publish = vi.fn();
     const { result } = setup(publish);
@@ -119,12 +133,15 @@ describe("useThemeEditor", () => {
 
     act(() => result.current.updateCore("workspace", "#111111"));
     act(() => result.current.updateCore("workspace", "#222222"));
+    expect(result.current.draftGeneration).toBe(2);
     expect(result.current.canUndo).toBe(true);
     act(() => result.current.undo());
+    expect(result.current.draftGeneration).toBe(3);
     expect(result.current.draft.core.workspace).toBe(original);
     expect(result.current.dirty).toBe(false);
     expect(result.current.canRedo).toBe(true);
     act(() => result.current.redo());
+    expect(result.current.draftGeneration).toBe(4);
     expect(result.current.draft.core.workspace).toBe("#222222");
     expect(listCustomThemeDocuments()).toEqual({});
   });

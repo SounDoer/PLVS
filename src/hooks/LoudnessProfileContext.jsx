@@ -13,9 +13,11 @@ import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import {
   LOUDNESS_PROFILE_OFF,
+  createEmptyRule,
   createProfileDraft,
   parseSelection,
   resolveActiveDocument,
+  withReferenceLufs,
 } from "../lib/loudnessProfileCatalog.js";
 import {
   planLoudnessProfileCreate,
@@ -54,11 +56,18 @@ import {
  *   profiles: LoudnessProfileDocument[],
  *   referenceLufs: number | null,
  *   draft: Record<string, any> | null,
+ *   draftGeneration: number,
  *   draftBlocksLibraryActions: boolean,
  *   discardOpen: boolean,
  *   beginCreate: (...args: any[]) => any,
  *   beginEdit: (...args: any[]) => any,
  *   editDraft: (...args: any[]) => any,
+ *   setDraftName: (...args: any[]) => any,
+ *   setDraftReference: (...args: any[]) => any,
+ *   addDraftRule: (...args: any[]) => any,
+ *   updateDraftRule: (...args: any[]) => any,
+ *   removeDraftRule: (...args: any[]) => any,
+ *   reorderDraftRules: (...args: any[]) => any,
  *   cancelDraft: (...args: any[]) => any,
  *   requestDismiss: (...args: any[]) => any,
  *   keepEditing: (...args: any[]) => any,
@@ -180,6 +189,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   /// unwind: cancel is throwing an object away.
   const [draft, setDraft] = useState(null);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [draftGeneration, setDraftGeneration] = useState(0);
 
   /// The ref mirrors the draft synchronously, the way `useThemeEditor` keeps a `draftRef`, and for
   /// the same reason: save has to read the draft as it is, not as it was last rendered. Two calls
@@ -189,10 +199,17 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   /// The alternative, reading the draft inside a `setDraft` updater, is not available: StrictMode
   /// re-invokes updaters, so a `commit` (and its `crypto.randomUUID()`) in there inserts twice.
   const draftRef = useRef(null);
+  const draftBaselineRef = useRef(null);
+  const draftGenerationRef = useRef(0);
 
   const putDraft = useCallback((next) => {
     draftRef.current = next;
     setDraft(next);
+  }, []);
+
+  const resetDraftGeneration = useCallback(() => {
+    draftGenerationRef.current = 0;
+    setDraftGeneration(0);
   }, []);
 
   /// An open draft blocks every library action that would take it with it -- open, not dirty.
@@ -226,14 +243,17 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
 
   const beginCreate = useCallback(() => {
     if (draftBlocks()) return;
+    const document = createProfileDraft();
+    draftBaselineRef.current = structuredClone(document);
+    resetDraftGeneration();
     putDraft({
       editingId: null,
-      document: createProfileDraft(),
+      document,
       dirty: false,
       authoring: { mode: "create", sourceId: null, draftId: createDraftId() },
     });
     setDiscardOpen(false);
-  }, [draftBlocks, putDraft]);
+  }, [draftBlocks, putDraft, resetDraftGeneration]);
 
   const beginEdit = useCallback(
     (id) => {
@@ -244,6 +264,8 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       // Off should not silently start judging against the edited rules. Capture the selection now
       // so Save can restore it. Create carries no `resumeSelection`: it selects what it made,
       // which is what the user just asked to create.
+      draftBaselineRef.current = structuredClone(found);
+      resetDraftGeneration();
       putDraft({
         editingId: id,
         resumeSelection: state.active,
@@ -254,19 +276,88 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       });
       setDiscardOpen(false);
     },
-    [draftBlocks, putDraft, state.profiles, state.active]
+    [draftBlocks, putDraft, resetDraftGeneration, state.profiles, state.active]
   );
 
-  const editDraft = useCallback(
+  const applyDraftDocument = useCallback(
     (mutate) => {
       const prev = draftRef.current;
       if (!prev) return;
-      putDraft({ ...prev, document: mutate(prev.document), dirty: true });
+      const document = mutate(prev.document);
+      if (JSON.stringify(document) === JSON.stringify(prev.document)) return;
+      draftGenerationRef.current += 1;
+      setDraftGeneration(draftGenerationRef.current);
+      putDraft({
+        ...prev,
+        document,
+        dirty: JSON.stringify(document) !== JSON.stringify(draftBaselineRef.current),
+      });
     },
     [putDraft]
   );
 
+  const editDraft = applyDraftDocument;
+
+  const setDraftName = useCallback(
+    (name) => applyDraftDocument((document) => ({ ...document, name })),
+    [applyDraftDocument]
+  );
+
+  const setDraftReference = useCallback(
+    (value) => applyDraftDocument((document) => withReferenceLufs(document, value)),
+    [applyDraftDocument]
+  );
+
+  const addDraftRule = useCallback(
+    (rule = createEmptyRule("integrated")) =>
+      applyDraftDocument((document) => ({
+        ...document,
+        rules: [...(document.rules ?? []), rule],
+      })),
+    [applyDraftDocument]
+  );
+
+  const updateDraftRule = useCallback(
+    (index, patch) =>
+      applyDraftDocument((document) => ({
+        ...document,
+        rules: (document.rules ?? []).map((rule, ruleIndex) => {
+          if (ruleIndex !== index) return rule;
+          const next = { ...rule, ...patch };
+          if (
+            patch.metricId !== undefined &&
+            patch.metricId !== rule.metricId &&
+            !Object.hasOwn(patch, "value")
+          ) {
+            delete next.value;
+          }
+          return next;
+        }),
+      })),
+    [applyDraftDocument]
+  );
+
+  const removeDraftRule = useCallback(
+    (index) =>
+      applyDraftDocument((document) => ({
+        ...document,
+        rules: (document.rules ?? []).filter((_, ruleIndex) => ruleIndex !== index),
+      })),
+    [applyDraftDocument]
+  );
+
+  const reorderDraftRules = useCallback(
+    (order) =>
+      applyDraftDocument((document) => {
+        const rules = document.rules ?? [];
+        const next = order.map((index) => rules[index]).filter(Boolean);
+        return next.length === rules.length ? { ...document, rules: next } : document;
+      }),
+    [applyDraftDocument]
+  );
+
   const cancelDraft = useCallback(() => {
+    draftBaselineRef.current = null;
     putDraft(null);
     setDiscardOpen(false);
   }, [putDraft]);
@@ -491,6 +582,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       profiles: state.profiles,
       referenceLufs: document?.referenceLufs ?? null,
       draft,
+      draftGeneration,
       discardOpen,
       // The provider already refuses these; the popover renders them disabled because a button
       // that silently does nothing is worse than one that looks disabled.
@@ -498,6 +590,12 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       beginCreate,
       beginEdit,
       editDraft,
+      setDraftName,
+      setDraftReference,
+      addDraftRule,
+      updateDraftRule,
+      removeDraftRule,
+      reorderDraftRules,
       cancelDraft,
       requestDismiss,
       keepEditing,
@@ -530,10 +628,17 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       state,
       document,
       draft,
+      draftGeneration,
       discardOpen,
       beginCreate,
       beginEdit,
       editDraft,
+      setDraftName,
+      setDraftReference,
+      addDraftRule,
+      updateDraftRule,
+      removeDraftRule,
+      reorderDraftRules,
       cancelDraft,
       requestDismiss,
       keepEditing,

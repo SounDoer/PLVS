@@ -455,6 +455,12 @@ export function AppSettingsOverlays({
         <LoudnessProfileEditor
           draft={loudnessProfile.draft}
           onEdit={loudnessProfile.editDraft}
+          onName={loudnessProfile.setDraftName}
+          onReference={loudnessProfile.setDraftReference}
+          onAddRule={loudnessProfile.addDraftRule}
+          onUpdateRule={loudnessProfile.updateDraftRule}
+          onRemoveRule={loudnessProfile.removeDraftRule}
+          onReorderRules={loudnessProfile.reorderDraftRules}
           onSave={loudnessProfile.saveDraft}
           onCancel={loudnessProfile.cancelDraft}
           onDismiss={loudnessProfile.requestDismiss}

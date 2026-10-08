@@ -26,6 +26,7 @@ export function useThemeEditor(opts) {
   const [authoring, setAuthoring] = useState(null);
   const [page, setPageState] = useState(/** @type {"core"|"palettes"|"advanced"} */ ("core"));
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [draftGeneration, setDraftGeneration] = useState(0);
   const draftRef = useRef(/** @type {object|null} */ (null));
   const dirtyRef = useRef(false);
   const wasNewRef = useRef(false);
@@ -109,6 +110,7 @@ export function useThemeEditor(opts) {
       resetHistory(d);
       setDirtyBoth(false);
       setStale(false);
+      setDraftGeneration(0);
       setAuthoring({ ...origin, draftId: d.id });
       setPageState("core");
       setDiscardOpen(false);
@@ -133,6 +135,7 @@ export function useThemeEditor(opts) {
       resetHistory(d);
       setDirtyBoth(false);
       setStale(false);
+      setDraftGeneration(0);
       setAuthoring({ ...origin, draftId: d.id });
       setPageState("core");
       setDiscardOpen(false);
@@ -147,6 +150,7 @@ export function useThemeEditor(opts) {
       const d = draftRef.current;
       if (!d) return;
       const next = mutate(d);
+      if (JSON.stringify(next) === JSON.stringify(d)) return;
       const history = historyRef.current;
       const now = Date.now();
       if (history.lastKey !== actionKey || now - history.lastAt > 500) {
@@ -156,6 +160,7 @@ export function useThemeEditor(opts) {
       history.lastKey = actionKey;
       history.lastAt = now;
       setDraftBoth(next);
+      setDraftGeneration((current) => current + 1);
       syncDirty(next);
       scheduleDraftPublication(next);
       setHistoryAvailability({ undo: history.past.length > 0, redo: false });
@@ -294,6 +299,7 @@ export function useThemeEditor(opts) {
       history.lastKey = null;
       cancelScheduledPublication();
       setDraftBoth(next);
+      setDraftGeneration((generation) => generation + 1);
       syncDirty(next);
       applyDraft(next);
       setHistoryAvailability({
@@ -350,6 +356,7 @@ export function useThemeEditor(opts) {
     draft,
     dirty,
     stale,
+    draftGeneration,
     authoring,
     page,
     setPage,

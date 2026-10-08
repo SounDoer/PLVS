@@ -197,6 +197,66 @@ describe("public flat-library API", () => {
     });
   });
 
+  it("owns semantic name edits and versions only changed draft transactions", () => {
+    seed([]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+
+    act(() => result.current.beginCreate());
+    expect(result.current.draftGeneration).toBe(0);
+
+    act(() => result.current.setDraftName("Broadcast"));
+    expect(result.current.draft.document.name).toBe("Broadcast");
+    expect(result.current.draft.dirty).toBe(true);
+    expect(result.current.draftGeneration).toBe(1);
+
+    act(() => result.current.setDraftName("Broadcast"));
+    expect(result.current.draftGeneration).toBe(1);
+    expect(settingsStore.read().loudnessProfiles.profiles).toEqual([]);
+  });
+
+  it("owns reference and ordered rule edits with the same visible metric-change semantics", () => {
+    seed([]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+
+    act(() => result.current.setDraftReference(-23));
+    act(() =>
+      result.current.addDraftRule({
+        metricId: "integrated",
+        op: ">",
+        value: -22,
+        severity: "fail",
+      })
+    );
+    act(() =>
+      result.current.addDraftRule({
+        metricId: "truePeak",
+        op: ">",
+        value: -1,
+        severity: "warn",
+      })
+    );
+    act(() => result.current.updateDraftRule(0, { metricId: "shortTerm" }));
+    act(() => result.current.reorderDraftRules([1, 0]));
+
+    expect(result.current.draft.document).toEqual({
+      id: "draft",
+      name: "Untitled",
+      referenceLufs: -23,
+      rules: [
+        { metricId: "truePeak", op: ">", value: -1, severity: "warn" },
+        { metricId: "shortTerm", op: ">", severity: "fail" },
+      ],
+    });
+    expect(result.current.draftGeneration).toBe(5);
+
+    act(() => result.current.removeDraftRule(1));
+    expect(result.current.draft.document.rules).toEqual([
+      { metricId: "truePeak", op: ">", value: -1, severity: "warn" },
+    ]);
+    expect(result.current.draftGeneration).toBe(6);
+  });
+
   it("edits any seeded profile while preserving the selection it started under", () => {
     const starter = profile("starter", "Starter", -23);
     const other = profile("other", "Other", -18);

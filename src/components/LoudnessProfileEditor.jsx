@@ -283,6 +283,12 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
 export function LoudnessProfileEditor({
   draft,
   onEdit,
+  onName = null,
+  onReference = null,
+  onAddRule = null,
+  onUpdateRule = null,
+  onRemoveRule = null,
+  onReorderRules = null,
   onSave,
   onCancel,
   onDismiss = null,
@@ -333,7 +339,8 @@ export function LoudnessProfileEditor({
       setRenaming(false);
       return;
     }
-    onEdit((d) => ({ ...d, name: nameDraft }));
+    if (onName) onName(nameDraft);
+    else onEdit((d) => ({ ...d, name: nameDraft }));
     setRenaming(false);
   }
 
@@ -352,6 +359,10 @@ export function LoudnessProfileEditor({
    * @param {number} index
    */
   function patchRule(index, patch) {
+    if (onUpdateRule) {
+      onUpdateRule(index, patch);
+      return;
+    }
     onEdit((d) => ({
       ...d,
       rules: (d.rules ?? []).map((rule, i) => {
@@ -365,6 +376,10 @@ export function LoudnessProfileEditor({
   }
 
   function addRule() {
+    if (onAddRule) {
+      onAddRule(createEmptyRule(DEFAULT_RULE_METRIC));
+      return;
+    }
     onEdit((d) => ({
       ...d,
       rules: [...(d.rules ?? []), createEmptyRule(DEFAULT_RULE_METRIC)],
@@ -375,6 +390,10 @@ export function LoudnessProfileEditor({
    * @param {number} index
    */
   function removeRule(index) {
+    if (onRemoveRule) {
+      onRemoveRule(index);
+      return;
+    }
     onEdit((d) => ({ ...d, rules: (d.rules ?? []).filter((_, i) => i !== index) }));
   }
 
@@ -382,6 +401,10 @@ export function LoudnessProfileEditor({
   /// array order -- so the ids `usePointerReorder` tracks are just the rules array's own positions
   /// ("0", "1", ...), not a stable identity carried across renders the way a real id would be.
   function reorderRules(nextIds) {
+    if (onReorderRules) {
+      onReorderRules(nextIds.map(Number));
+      return;
+    }
     onEdit((d) => {
       const current = d.rules ?? [];
       const next = nextIds.map((id) => current[Number(id)]).filter(Boolean);
@@ -511,7 +534,10 @@ export function LoudnessProfileEditor({
               ariaLabel="Loudness Profile reference"
               metricId="integrated"
               value={ruleDocument.referenceLufs ?? null}
-              onCommit={(/** @type {number} */ next) => onEdit((d) => withReferenceLufs(d, next))}
+              onCommit={(/** @type {number} */ next) => {
+                if (onReference) onReference(next);
+                else onEdit((d) => withReferenceLufs(d, next));
+              }}
             />
             <span className={cn(UNIT_COL_CLASS, "text-[color:var(--ui-text-annotation)]")}>
               LUFS
