@@ -100,8 +100,8 @@ function renderStatsPanel({ shared, panelControls, displayAudio }) {
 }
 
 function valueStatusFor(label) {
-  return /** @type {HTMLElement} */ (screen.getByText(label).parentElement.nextElementSibling)
-    .dataset.loudnessStatus;
+  const row = /** @type {HTMLElement} */ (screen.getByText(label).closest("div"));
+  return /** @type {HTMLElement} */ (row.querySelector("[data-stat-value]")).dataset.loudnessStatus;
 }
 
 function labelWatchedFor(label) {

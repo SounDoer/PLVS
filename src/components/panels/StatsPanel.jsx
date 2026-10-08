@@ -17,7 +17,7 @@ import {
 } from "../../lib/loudnessProfileStatusClasses.js";
 
 const METRIC_ROW_LAYOUT =
-  "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] px-[var(--ui-metric-row-pad-x)]";
+  "flex min-h-[var(--ui-metric-row-min-h)] items-baseline gap-[var(--ui-metric-row-gap)] px-[var(--ui-metric-row-pad-x)]";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
@@ -56,7 +56,7 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, w
           data-testid="dialogue-active-dot"
           data-active={active ? "true" : "false"}
           className={cn(
-            "inline-block h-1.5 w-1.5 shrink-0 rounded-full border",
+            "inline-block h-1.5 w-1.5 shrink-0 self-center rounded-full border",
             active ? "border-foreground bg-foreground" : "border-muted-foreground bg-transparent"
           )}
         />
@@ -65,18 +65,20 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, w
         <span className="@max-[240px]:hidden">{label}</span>
         <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>
       </span>
-      {/* data-stat-value: the one thing Stats and Dock Stats must agree on, addressable so a
-          test can compare the two surfaces' colouring directly. */}
-      <span
-        data-stat-value={id}
-        data-loudness-status={status ?? "off"}
-        className={valueClass}
-        style={{ width: `${valueColumnCh}ch` }}
-      >
-        {value}
-      </span>
-      <span className={unitClass} style={{ width: `${unitColumnEm}em` }}>
-        {unit}
+      <span className="flex shrink-0 items-baseline gap-[var(--ui-metric-row-gap)]">
+        {/* data-stat-value: the one thing Stats and Dock Stats must agree on, addressable so a
+            test can compare the two surfaces' colouring directly. */}
+        <span
+          data-stat-value={id}
+          data-loudness-status={status ?? "off"}
+          className={valueClass}
+          style={{ width: `${valueColumnCh}ch` }}
+        >
+          {value}
+        </span>
+        <span className={unitClass} style={{ width: `${unitColumnEm}em` }}>
+          {unit}
+        </span>
       </span>
     </>
   );
