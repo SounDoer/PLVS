@@ -11,9 +11,9 @@ mod windows_backend {
   use std::time::SystemTime;
   use std::time::{Duration, Instant};
 
-  use windows62::core::{Interface, PCWSTR};
-  use windows62::Win32::Foundation::RECT;
-  use windows62::Win32::Graphics::Direct3D11::{
+  use windows::core::{Interface, PCWSTR};
+  use windows::Win32::Foundation::RECT;
+  use windows::Win32::Graphics::Direct3D11::{
     ID3D11Texture2D, ID3D11VideoContext, ID3D11VideoDevice, D3D11_BIND_RENDER_TARGET,
     D3D11_CPU_ACCESS_READ, D3D11_MAPPED_SUBRESOURCE, D3D11_MAP_READ, D3D11_TEX2D_VPIV,
     D3D11_TEX2D_VPOV, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT, D3D11_USAGE_STAGING,
@@ -24,10 +24,10 @@ mod windows_backend {
     D3D11_VIDEO_PROCESSOR_STREAM, D3D11_VIDEO_USAGE_PLAYBACK_NORMAL,
     D3D11_VPIV_DIMENSION_TEXTURE2D, D3D11_VPOV_DIMENSION_TEXTURE2D,
   };
-  use windows62::Win32::Graphics::Dxgi::Common::{
+  use windows::Win32::Graphics::Dxgi::Common::{
     DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_RATIONAL, DXGI_SAMPLE_DESC,
   };
-  use windows62::Win32::Media::MediaFoundation::{
+  use windows::Win32::Media::MediaFoundation::{
     IMFAttributes, IMFByteStream, IMFMediaBuffer, IMFSample, IMFSinkWriter, MFAudioFormat_AAC,
     MFAudioFormat_PCM, MFCreateAttributes, MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample,
     MFCreateSinkWriterFromURL, MFMediaType_Audio, MFMediaType_Video, MFStartup,
@@ -98,7 +98,7 @@ mod windows_backend {
       height: u32,
       fps: u32,
       audio_enabled: bool,
-    ) -> Result<Self, windows62::core::Error> {
+    ) -> Result<Self, windows::core::Error> {
       unsafe { MFStartup(MF_VERSION, MFSTARTUP_FULL)? };
       let wide_path = output_path
         .as_os_str()
@@ -193,7 +193,7 @@ mod windows_backend {
       })
     }
 
-    fn write_audio_packet(&self, packet: &AudioPacket) -> Result<(), windows62::core::Error> {
+    fn write_audio_packet(&self, packet: &AudioPacket) -> Result<(), windows::core::Error> {
       let Some(stream) = self.audio_stream else {
         return Ok(());
       };
@@ -222,7 +222,7 @@ mod windows_backend {
       Ok(())
     }
 
-    fn write_frame(&self, bytes: &[u8], frame_index: u64) -> Result<(), windows62::core::Error> {
+    fn write_frame(&self, bytes: &[u8], frame_index: u64) -> Result<(), windows::core::Error> {
       let buffer: IMFMediaBuffer = unsafe { MFCreateMemoryBuffer(bytes.len() as u32)? };
       let mut destination = ptr::null_mut();
       unsafe {
@@ -242,7 +242,7 @@ mod windows_backend {
       Ok(())
     }
 
-    fn finish(self) -> Result<(), windows62::core::Error> {
+    fn finish(self) -> Result<(), windows::core::Error> {
       unsafe { self.writer.Finalize() }
     }
   }
@@ -282,7 +282,7 @@ mod windows_backend {
     output_width: u32,
     output_height: u32,
     bottom_up: &mut Vec<u8>,
-  ) -> Result<(), windows62::core::Error> {
+  ) -> Result<(), windows::core::Error> {
     let device = frame.device();
     let context = frame.device_context();
     let video_device: ID3D11VideoDevice = device.cast()?;
@@ -912,7 +912,7 @@ mod windows_backend {
   fn write_audio_packets(
     encoder: &MediaFoundationEncoder,
     packets: Vec<AudioPacket>,
-  ) -> Result<(), windows62::core::Error> {
+  ) -> Result<(), windows::core::Error> {
     for packet in &packets {
       encoder.write_audio_packet(packet)?;
     }
@@ -926,7 +926,7 @@ mod windows_backend {
     encoder: &MediaFoundationEncoder,
     reason: SilenceReason,
     max_frame: u64,
-  ) -> Result<(), windows62::core::Error> {
+  ) -> Result<(), windows::core::Error> {
     while let Some(frame) = deferred.take().or_else(|| receiver.try_recv()) {
       let relative_ns = frame
         .timestamp_ns

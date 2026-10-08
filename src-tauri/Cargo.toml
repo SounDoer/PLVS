@@ -46,7 +46,7 @@ crash-test = []
 [build-dependencies]
 cc = "1.2.61"
 serde_json = "1.0"
-tauri-build = { version = "2.6.1", features = [] }
+tauri-build = { version = "2.7.1", features = [] }
 
 [dependencies]
 # float_roundtrip: the default fast float parser can move the last digit, which changes
@@ -54,7 +54,7 @@ tauri-build = { version = "2.6.1", features = [] }
 serde_json = { version = "1.0", features = ["float_roundtrip"] }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.1", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri = { version = "2.12.1", features = ["tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-store = "2.4.3"
 tauri-plugin-log = "2"
 cpal = "0.18.1"
@@ -87,17 +87,13 @@ tauri-plugin-clipboard-manager = "2.3.3"
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
-window-vibrancy = "0.6"
+window-vibrancy = "0.8"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
-webview2-com = "0.38.2"
+webview2-com = "0.39.1"
 windows-capture = "2.0.1"
-windows = { version = "0.61.3", features = [
-  "Win32_System_Com",
-  "Win32_UI_Shell",
-] }
-windows62 = { package = "windows", version = "0.62.2", features = [
+windows = { version = "0.62.2", features = [
   "Win32_Foundation",
   "Win32_Graphics_Direct3D11",
   "Win32_Graphics_Dxgi_Common",
@@ -107,6 +103,7 @@ windows62 = { package = "windows", version = "0.62.2", features = [
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Threading",
   "Win32_System_Variant",
+  "Win32_UI_Shell",
 ] }
 windows-core = "0.62.2"
 winreg = "0.56"
