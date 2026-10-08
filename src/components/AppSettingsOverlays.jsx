@@ -19,6 +19,7 @@ import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
+import { isParticipantInstance } from "../lib/runtimeRole.js";
 
 /**
  * @param {{
@@ -232,7 +233,7 @@ export function AppSettingsOverlays({
       if (updateDevelopmentFixtureIdRef.current === fixtureId) closeUpdateDialog();
     },
     matches: (fixtureId) => updateDialogOpen && updateDevelopmentFixtureIdRef.current === fixtureId,
-    canEstablish: () => installStatus === "idle",
+    canEstablish: () => installStatus === "idle" && !isParticipantInstance(),
     canReset: () => installStatus === "idle",
     surface: { kind: "update", target: { phase: "idle" } },
   });

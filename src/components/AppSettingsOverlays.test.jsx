@@ -24,10 +24,14 @@ const mocks = vi.hoisted(() => ({
   pickSharedPackFile: vi.fn(),
   writeProfileFile: vi.fn(),
   fixtureAdapters: new Map(),
+  participantInstance: false,
 }));
 
 vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
   useDevelopmentEventFixtureAdapter: (name, adapter) => mocks.fixtureAdapters.set(name, adapter),
+}));
+vi.mock("../lib/runtimeRole.js", () => ({
+  isParticipantInstance: () => mocks.participantInstance,
 }));
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => mocks.isTauri() }));
@@ -330,6 +334,7 @@ describe("AppSettingsOverlays", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.fixtureAdapters.clear();
+    mocks.participantInstance = false;
     // `clearAllMocks` drops recorded calls but keeps implementations, so the desktop-mode test
     // below would otherwise leave `isTauri` true for whatever runs after it. Restore the defaults
     // here rather than in that test's own teardown, so test order never matters.
@@ -440,6 +445,13 @@ describe("AppSettingsOverlays", () => {
     expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
     expect(install).not.toHaveBeenCalled();
     expect(resetInstall).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses the update development fixture in a participant workbench", () => {
+    mocks.participantInstance = true;
+    renderOverlays();
+
+    expect(mocks.fixtureAdapters.get("update.available").canEstablish()).toBe(false);
   });
 
   it("closes the changelog dialog without installing when canceled", () => {

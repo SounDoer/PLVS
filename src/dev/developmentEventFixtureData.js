@@ -18,9 +18,9 @@ export const DEVELOPMENT_UPDATE = Object.freeze({
 });
 
 export const DEVELOPMENT_LIBRARY_CONFLICT = Object.freeze({
-  kind: "preset",
+  kind: "theme",
   document: Object.freeze({
-    id: "development-event-fixture-preset",
-    name: "Broadcast Dialogue",
+    id: "custom-development-event-fixture-theme",
+    name: "Development Fixture Theme",
   }),
 });
