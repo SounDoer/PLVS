@@ -10,9 +10,9 @@ use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
 use tauri::AppHandle;
-use windows62::core::{implement, IUnknown, Interface, Ref};
-use windows62::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0, WAIT_TIMEOUT};
-use windows62::Win32::Media::Audio::{
+use windows::core::{implement, IUnknown, Interface, Ref};
+use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0, WAIT_TIMEOUT};
+use windows::Win32::Media::Audio::{
   ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation,
   IActivateAudioInterfaceCompletionHandler, IActivateAudioInterfaceCompletionHandler_Impl,
   IAudioCaptureClient, IAudioClient, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
@@ -23,12 +23,12 @@ use windows62::Win32::Media::Audio::{
   PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE, VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
   WAVEFORMATEX, WAVEFORMATEXTENSIBLE, WAVEFORMATEXTENSIBLE_0,
 };
-use windows62::Win32::System::Com::StructuredStorage::{
+use windows::Win32::System::Com::StructuredStorage::{
   PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0,
 };
-use windows62::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT_MULTITHREADED};
-use windows62::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
-use windows62::Win32::System::Variant::VT_BLOB;
+use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT_MULTITHREADED};
+use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
+use windows::Win32::System::Variant::VT_BLOB;
 
 use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions};
 use super::cpal_backend::{
@@ -45,8 +45,8 @@ const DEFAULT_CHANNELS: u16 = 2;
 const BITS_PER_SAMPLE: u16 = 32;
 const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
 const WAVE_FORMAT_EXTENSIBLE: u16 = 0xfffe;
-const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT: windows62::core::GUID =
-  windows62::core::GUID::from_u128(0x00000003_0000_0010_8000_00aa00389b71);
+const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT: windows::core::GUID =
+  windows::core::GUID::from_u128(0x00000003_0000_0010_8000_00aa00389b71);
 const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Result of one process-loopback probe run.
@@ -62,13 +62,13 @@ pub struct ProcessLoopbackProbeResult {
 }
 
 #[implement(IActivateAudioInterfaceCompletionHandler)]
-struct CompletionHandler(mpsc::Sender<windows62::core::Result<IUnknown>>);
+struct CompletionHandler(mpsc::Sender<windows::core::Result<IUnknown>>);
 
 impl IActivateAudioInterfaceCompletionHandler_Impl for CompletionHandler_Impl {
   fn ActivateCompleted(
     &self,
     operation: Ref<'_, IActivateAudioInterfaceAsyncOperation>,
-  ) -> windows62::core::Result<()> {
+  ) -> windows::core::Result<()> {
     let result = operation.ok().and_then(retrieve_activation_result);
     let _ = self.0.send(result);
     Ok(())
@@ -77,14 +77,14 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for CompletionHandler_Impl {
 
 fn retrieve_activation_result(
   operation: &IActivateAudioInterfaceAsyncOperation,
-) -> windows62::core::Result<IUnknown> {
-  let mut activation_result = windows62::core::HRESULT::default();
+) -> windows::core::Result<IUnknown> {
+  let mut activation_result = windows::core::HRESULT::default();
   let mut interface = None;
   unsafe {
     operation.GetActivateResult(&mut activation_result, &mut interface)?;
   }
   activation_result.ok()?;
-  interface.ok_or_else(|| windows62::core::Error::from(activation_result))
+  interface.ok_or_else(|| windows::core::Error::from(activation_result))
 }
 
 struct ComApartment;
@@ -104,7 +104,7 @@ impl Drop for ComApartment {
   }
 }
 
-struct EventHandle(windows62::Win32::Foundation::HANDLE);
+struct EventHandle(windows::Win32::Foundation::HANDLE);
 
 impl EventHandle {
   fn create() -> Result<Self, String> {
@@ -581,10 +581,10 @@ pub fn capture_process_to_summary_with_format(
 #[cfg(test)]
 mod tests {
   use super::{capture_format, ActivationPayload, CaptureFormat};
-  use windows62::Win32::Media::Audio::{
+  use windows::Win32::Media::Audio::{
     AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK, PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
   };
-  use windows62::Win32::System::Variant::VT_BLOB;
+  use windows::Win32::System::Variant::VT_BLOB;
 
   #[test]
   fn activation_blob_targets_the_requested_process_tree() {

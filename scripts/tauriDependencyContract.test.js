@@ -16,13 +16,13 @@ const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"),
 
 describe("Tauri dependency contracts", () => {
   it("keeps the direct window-vibrancy dependency aligned with Tauri", () => {
-    expect(cargoToml).toMatch(/window-vibrancy\s*=\s*"0\.6"/);
+    expect(cargoToml).toMatch(/window-vibrancy\s*=\s*"0\.8"/);
 
     const versions = Array.from(
       cargoLock.matchAll(/\[\[package\]\]\r?\nname = "window-vibrancy"\r?\nversion = "([^"]+)"/g),
       (match) => match[1]
     );
-    expect(versions).toEqual(["0.6.0"]);
+    expect(versions).toEqual(["0.8.1"]);
   });
 
   it("keeps the Agent Control forwarder isolated from the application crate", () => {
