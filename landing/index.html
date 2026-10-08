@@ -482,8 +482,22 @@
       }
 
       .download-header {
-        display: block;
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 12px;
         margin-bottom: 28px;
+      }
+
+      .download-version {
+        color: var(--muted);
+        font-size: var(--text-small);
+      }
+
+      .download-version:hover {
+        color: var(--ink);
+        text-decoration: underline;
+        text-underline-offset: 3px;
       }
 
       .download-header h2 {
@@ -497,7 +511,7 @@
       .platform-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 32px;
         align-items: stretch;
       }
 
@@ -505,23 +519,15 @@
         display: flex;
         flex-direction: column;
         min-height: 0;
-        padding: 20px 24px 18px;
+        padding: 24px;
         border: 1px solid var(--dark-line);
         border-radius: var(--radius);
-        background: rgba(255, 255, 255, 0.045);
-      }
-
-      .platform-card.active {
-        border-color: rgba(217, 119, 0, 0.42);
-        background: rgba(217, 119, 0, 0.075);
       }
 
       .platform-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 18px;
-        margin-bottom: 18px;
+        display: grid;
+        gap: 8px;
+        margin-bottom: 20px;
       }
 
       .platform-name {
@@ -534,17 +540,14 @@
 
       .platform-os-tag {
         color: rgba(242, 242, 242, 0.48);
-        font-family: var(--font-mono);
         font-size: var(--text-small);
         line-height: 1.4;
-        text-align: right;
       }
 
       .platform-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 14px;
+        gap: 16px;
       }
 
       .download-section .btn-primary {
@@ -572,50 +575,6 @@
         color: #f4f7f4;
       }
 
-      .install-warning {
-        margin: 0 0 14px;
-        padding: 12px 0 0;
-        border-top: 1px solid rgba(242, 242, 242, 0.08);
-        color: rgba(242, 242, 242, 0.58);
-        font-size: var(--text-small);
-        line-height: 1.55;
-      }
-
-      .platform-card.windows-card .install-warning {
-        display: flex;
-        align-items: flex-start;
-      }
-
-      .platform-specs {
-        margin-top: 0;
-        border-top: 1px solid rgba(242, 242, 242, 0.08);
-      }
-
-      .spec-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 18px;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(242, 242, 242, 0.08);
-      }
-
-      .spec-row:last-child {
-        border-bottom: 0;
-        padding-bottom: 0;
-      }
-
-      .spec-key {
-        color: rgba(242, 242, 242, 0.42);
-        font-size: var(--text-small);
-      }
-
-      .spec-val {
-        color: rgba(242, 242, 242, 0.72);
-        font-family: var(--font-mono);
-        font-size: var(--text-small);
-        text-align: right;
-      }
-
       .footer {
         display: flex;
         align-items: center;
@@ -635,11 +594,6 @@
 
       .footer a:hover {
         color: #f4f7f4;
-      }
-
-      .release-note {
-        margin-right: auto;
-        color: rgba(242, 242, 242, 0.38);
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -707,10 +661,6 @@
         .workspace-gallery img {
           aspect-ratio: auto;
         }
-
-        .download-header {
-          display: block;
-        }
       }
 
       @media (max-width: 620px) {
@@ -768,15 +718,6 @@
           font-size: var(--text-body);
         }
 
-        .platform-card {
-          min-height: 0;
-          padding: 20px;
-        }
-
-        .install-warning {
-          min-height: 0;
-        }
-
         .platform-actions {
           display: grid;
           grid-template-columns: 1fr;
@@ -790,24 +731,13 @@
           align-items: flex-start;
           flex-direction: column;
         }
-
-        .release-note {
-          margin-right: 0;
-        }
       }
       .subscribe h2 {
-        margin: 0 0 8px;
+        margin: 0;
         font-size: var(--text-body);
         font-weight: 600;
         line-height: 1.25;
         letter-spacing: -0.025em;
-      }
-
-      .subscribe-copy p {
-        margin: 0;
-        color: var(--muted);
-        font-size: var(--text-body);
-        line-height: 1.6;
       }
 
       .subscribe-form input,
@@ -817,17 +747,30 @@
 
       .subscribe {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: max-content minmax(0, 400px);
+        justify-content: center;
         align-items: start;
-        gap: 32px;
+        gap: 24px;
         margin-top: 36px;
         padding: 0 0 24px;
         border-bottom: 1px solid var(--line);
       }
+
+      .subscribe-copy {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+      }
+
       @media (max-width: 620px) {
         .subscribe {
-          grid-template-columns: 1fr;
-          gap: 20px;
+          grid-template-columns: minmax(0, 400px);
+          gap: 16px;
+        }
+
+        .subscribe-copy {
+          min-height: 0;
+          justify-content: center;
         }
       }
       .subscribe-form {
@@ -868,19 +811,6 @@
       .subscribe-status:empty {
         margin: 0;
       }
-
-      .subscribe-privacy {
-        margin: 0.55rem 0 0;
-        color: var(--muted);
-        font-size: var(--text-small);
-        line-height: 1.6;
-      }
-
-      .subscribe-privacy a {
-        color: var(--ink);
-        text-decoration: underline;
-        text-underline-offset: 3px;
-      }
     </style>
   </head>
   <body>
@@ -892,9 +822,6 @@
         <div class="nav-links">
           <a href="docs/">Docs</a>
           <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
-            >Releases</a
-          >
           <a class="nav-download" href="#download">Download</a>
         </div>
       </nav>
@@ -1067,6 +994,14 @@
         <div class="download-inner">
           <div class="download-header">
             <h2>Download PLVS</h2>
+            <a
+              class="download-version"
+              id="download-version"
+              href="https://github.com/SounDoer/PLVS/releases"
+              target="_blank"
+              rel="noopener"
+              >Latest release</a
+            >
           </div>
 
           <div class="platform-grid" id="platform-grid">
@@ -1075,8 +1010,7 @@
 
           <section class="subscribe" id="subscribe" aria-label="Newsletter subscription">
             <div class="subscribe-copy">
-              <h2>Keep up with PLVS</h2>
-              <p>New releases, straight to your inbox.</p>
+              <h2>Keep up with PLVS.</h2>
             </div>
             <div class="subscribe-fields">
               <form class="subscribe-form" id="subscribe-form">
@@ -1098,10 +1032,6 @@
                 </div>
                 <button type="submit">Subscribe</button>
               </form>
-              <p class="subscribe-privacy">
-                We use your email only for PLVS release news. See the
-                <a href="privacy/">Privacy Policy</a>.
-              </p>
               <p class="subscribe-status" id="subscribe-status" role="status"></p>
             </div>
           </section>
@@ -1135,14 +1065,7 @@
             })();
           </script>
           <footer class="footer">
-            <span class="release-note">Release links fall back to GitHub.</span>
             <div class="footer-links">
-              <!-- COMMUNITY_NAV_START --><a href="community/">Community</a
-              ><!-- COMMUNITY_NAV_END -->
-              <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
-              <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
-                >Releases</a
-              >
               <a
                 href="https://github.com/SounDoer/PLVS/blob/main/THIRD-PARTY-NOTICES.md"
                 target="_blank"
@@ -1150,7 +1073,6 @@
                 >Licenses</a
               >
               <a href="privacy/">Privacy</a>
-              <span id="footer-version">Latest release</span>
             </div>
           </footer>
         </div>
@@ -1195,7 +1117,12 @@
           /* use fallback */
         }
 
-        document.getElementById("footer-version").textContent = version;
+        const versionLink = document.getElementById("download-version");
+        versionLink.textContent = version;
+        versionLink.href =
+          version === FALLBACK
+            ? RELEASES_URL
+            : `${RELEASES_URL}/tag/${encodeURIComponent(version)}`;
         renderHeroActions(urls);
         renderPlatformCards(urls);
       }
@@ -1220,44 +1147,30 @@
         const winInstallUrl = urls.winInstall || RELEASES_URL;
         const winPortableUrl = urls.winPortable || RELEASES_URL;
         const macUrl = urls.mac || RELEASES_URL;
-        const winInstallLabel = urls.winInstall ? "Download Installer" : "View Releases";
-        const winPortableLabel = urls.winPortable ? "Portable version" : "All releases";
+        const winInstallLabel = urls.winInstall ? "Download for Windows" : "View Releases";
+        const winPortableLabel = urls.winPortable ? "Portable ZIP" : "All releases";
         const macLabel = urls.mac ? "Download for macOS" : "View Releases";
 
         const winCard = `
-      <div class="platform-card windows-card${!isMac ? " active" : ""}">
+      <div class="platform-card windows-card">
         <div class="platform-header">
           <span class="platform-name">Windows</span>
-          <span class="platform-os-tag">10 / 11, x64</span>
+          <span class="platform-os-tag">Windows 10 / 11 · x64</span>
         </div>
         <div class="platform-actions">
           <a class="btn ${!isMac ? "btn-primary" : "btn-secondary"}" href="${winInstallUrl}">${winInstallLabel}</a>
           <a class="portable-link" href="${winPortableUrl}">${winPortableLabel}</a>
         </div>
-        <p class="install-warning">If SmartScreen appears, choose More info, then Run anyway.</p>
-        <div class="platform-specs">
-          <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">NSIS .exe</span></div>
-          <div class="spec-row"><span class="spec-key">Portable</span><span class="spec-val">.zip archive</span></div>
-          <div class="spec-row"><span class="spec-key">System audio</span><span class="spec-val">WASAPI loopback</span></div>
-        </div>
       </div>`;
 
         const macCard = `
-      <div class="platform-card${isMac ? " active" : ""}">
+      <div class="platform-card">
         <div class="platform-header">
           <span class="platform-name">macOS</span>
-          <span class="platform-os-tag">Apple Silicon</span>
+          <span class="platform-os-tag">macOS 14.2+ · Apple Silicon</span>
         </div>
         <div class="platform-actions">
           <a class="btn ${isMac ? "btn-primary" : "btn-secondary"}" href="${macUrl}">${macLabel}</a>
-        </div>
-        <p class="install-warning">
-          Developer ID signed and Apple-notarized for normal Gatekeeper verification.
-        </p>
-        <div class="platform-specs">
-          <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">DMG, aarch64</span></div>
-          <div class="spec-row"><span class="spec-key">Minimum macOS</span><span class="spec-val">14.2+</span></div>
-          <div class="spec-row"><span class="spec-key">System audio</span><span class="spec-val">Native tap</span></div>
         </div>
       </div>`;
 

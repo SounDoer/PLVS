@@ -9,7 +9,7 @@ const releaseScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)
 async function renderRelease(payload, { ok = true } = {}) {
   const dom = new JSDOM(
     `
-    <div id="footer-version"></div>
+    <a id="download-version"></a>
     <div id="hero-actions"></div>
     <div id="platform-grid"></div>
   `,
@@ -35,6 +35,10 @@ describe("landing release links", () => {
     ];
 
     const document = await renderRelease({ tag_name: "v0.16.0", assets });
+    expect(document.querySelector("#download-version").textContent).toBe("v0.16.0");
+    expect(document.querySelector("#download-version").href).toBe(
+      "https://github.com/SounDoer/PLVS/releases/tag/v0.16.0"
+    );
     const windowsCard = document.querySelector(".windows-card");
     expect(windowsCard.querySelector(".btn").href).toBe("https://downloads/setup.exe");
     expect(windowsCard.querySelector(".portable-link").href).toBe("https://downloads/portable.zip");
@@ -54,6 +58,10 @@ describe("landing release links", () => {
     );
 
     const failedDocument = await renderRelease({}, { ok: false });
+    expect(failedDocument.querySelector("#download-version").textContent).toBe("Latest release");
+    expect(failedDocument.querySelector("#download-version").href).toBe(
+      "https://github.com/SounDoer/PLVS/releases"
+    );
     expect(failedDocument.querySelector(".windows-card .btn").href).toBe(
       "https://github.com/SounDoer/PLVS/releases"
     );

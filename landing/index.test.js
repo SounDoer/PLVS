@@ -21,10 +21,6 @@ describe("landing page navigation", () => {
   test("links to the docs subpage from the nav", () => {
     expect(html).toContain('href="docs/"');
   });
-
-  test("links to the generated Community Catalogue", () => {
-    expect(html).toContain('href="community/"');
-  });
 });
 
 describe("landing page assets", () => {
@@ -39,12 +35,6 @@ describe("landing page downloads", () => {
   test("download links fall back to GitHub Releases instead of inert anchors", () => {
     expect(html).not.toContain("|| '#'");
     expect(html).toContain("https://github.com/SounDoer/PLVS/releases");
-  });
-
-  test("describes normal Gatekeeper verification for notarized macOS builds", () => {
-    expect(html).toContain("Developer ID signed and Apple-notarized");
-    expect(html).toContain("normal Gatekeeper verification");
-    expect(html).not.toContain("xattr -cr /Applications/PLVS.app");
   });
 });
 
@@ -66,9 +56,7 @@ describe("landing page subscribe form", () => {
     expect(html).toContain("subscribe-honeypot");
   });
 
-  test("links to the Privacy Policy beside the form and in the footer", () => {
-    expect(html.match(/href="privacy\/"/g)).toHaveLength(2);
-    expect(html).toMatch(/subscribe-privacy[\s\S]*Privacy Policy/);
+  test("links to the Privacy Policy in the footer", () => {
     expect(html).toMatch(/footer-links[\s\S]*href="privacy\/">Privacy/);
   });
 });
