@@ -133,6 +133,9 @@ vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
 vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
   useUiNavigation: () => ({ inspectUi: () => ({}) }),
 }));
+vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
+  useDevelopmentEventFixtures: () => ({ enabled: false }),
+}));
 
 import { AgentControlBridge } from "./AgentControlBridge.jsx";
 
@@ -166,6 +169,7 @@ describe("AgentControlBridge", () => {
     });
     expect(typeof passed.executeTransport).toBe("function");
     expect(typeof passed.uiNavigation.inspectUi).toBe("function");
+    expect(passed.developmentFixtures).toEqual({ enabled: false });
     expect(passed.device).toMatchObject({ runtimeUnavailable: false, snapshot: null });
     expect(passed.analysisContext).toMatchObject({
       channelCount: 2,
