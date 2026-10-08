@@ -59,6 +59,31 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()).toEqual({});
   });
 
+  it("commits one planned document as one inspectable owner transaction and Undo entry", () => {
+    const { result } = setup(vi.fn());
+    act(() => result.current.beginCreate("Before"));
+    const next = {
+      ...structuredClone(result.current.draft),
+      name: "After",
+      core: { ...result.current.draft.core, workspace: "#111111" },
+    };
+
+    act(() => expect(result.current.commitDraftDocument(next)).toBe(true));
+    expect(result.current.inspectDraft()).toMatchObject({
+      document: { name: "After", core: { workspace: "#111111" } },
+      draftGeneration: 1,
+      dirty: true,
+      stale: false,
+      canUndo: true,
+      canRedo: false,
+    });
+
+    act(() => result.current.undo());
+    expect(result.current.draft.name).toBe("Before");
+    expect(result.current.draftGeneration).toBe(2);
+    expect(result.current.canUndo).toBe(false);
+  });
+
   it("edits palette anchors and applies owned preset snapshots", () => {
     const publish = vi.fn();
     const { result } = setup(publish);

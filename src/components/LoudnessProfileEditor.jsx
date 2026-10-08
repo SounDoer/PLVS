@@ -295,6 +295,7 @@ export function LoudnessProfileEditor({
   discardOpen: controlledDiscardOpen = undefined,
   onDiscardOpenChange = undefined,
   onConfirmDiscard = undefined,
+  editorDraftDecision = null,
   pos,
   onMove,
 }) {
@@ -595,6 +596,7 @@ export function LoudnessProfileEditor({
         cancelLabel="Keep Editing"
         confirmLabel="Discard Changes"
         onConfirm={onConfirmDiscard ?? onCancel}
+        editorDraftDecision={editorDraftDecision}
       />
     </>
   );

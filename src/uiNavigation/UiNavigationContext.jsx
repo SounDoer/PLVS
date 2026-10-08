@@ -485,13 +485,20 @@ export function useUiNavigationEnvironment(environment) {
 
 export function useUiSurface({
   active = true,
+  lifetimeKey = undefined,
   onClose = undefined,
   onCancel = undefined,
   ...descriptor
 }) {
   const registry = useContext(UiSurfaceRegistryContext);
   const surfaceIdRef = useRef(null);
-  if (surfaceIdRef.current === null) surfaceIdRef.current = createUiSurfaceId();
+  const lifetimeKeyRef = useRef(lifetimeKey);
+  if (surfaceIdRef.current === null) {
+    surfaceIdRef.current = createUiSurfaceId();
+  } else if (active && lifetimeKeyRef.current !== lifetimeKey) {
+    surfaceIdRef.current = createUiSurfaceId();
+  }
+  if (active) lifetimeKeyRef.current = lifetimeKey;
   const surfaceId = surfaceIdRef.current;
   const descriptorKey = JSON.stringify(descriptor);
   const actionsRef = useRef({ close: onClose, cancel: onCancel });

@@ -114,6 +114,30 @@ describe("UiNavigationProvider", () => {
     });
   });
 
+  it("allocates a new exact surface identity when an editor lifetime key changes", () => {
+    const { result, rerender } = renderHook(
+      ({ active, lifetimeKey }) =>
+        useUiSurface({
+          active,
+          lifetimeKey,
+          kind: "themeEditor",
+          origin: "navigable",
+          blocking: true,
+          dismissible: true,
+          supportedActions: ["cancel"],
+          target: {},
+        }),
+      { wrapper, initialProps: { active: true, lifetimeKey: "draft-one" } }
+    );
+    const first = result.current;
+
+    rerender({ active: false, lifetimeKey: null });
+    rerender({ active: true, lifetimeKey: "draft-two" });
+
+    expect(result.current).toMatch(/^ui-/);
+    expect(result.current).not.toBe(first);
+  });
+
   it("keeps a previously captured inspection function on the current surface state", () => {
     const { result, rerender } = renderHook(
       ({ active }) => {

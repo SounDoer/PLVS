@@ -20,6 +20,7 @@ import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigatio
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
 import { isParticipantInstance } from "../lib/runtimeRole.js";
+import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 
 /**
  * @param {{
@@ -123,8 +124,9 @@ export function AppSettingsOverlays({
       if (page) editor.setPage(page);
     },
   });
-  useUiSurface({
+  const themeEditorSurfaceId = useUiSurface({
     active: editor.isEditing,
+    lifetimeKey: themeAuthoring?.draftId,
     kind: "themeEditor",
     origin: "navigable",
     blocking: true,
@@ -141,6 +143,12 @@ export function AppSettingsOverlays({
         }
       : {},
     onCancel: editor.requestDismiss,
+  });
+  useEditorDraftSurface({
+    active: editor.isEditing,
+    kind: "theme",
+    surfaceId: themeEditorSurfaceId,
+    controller: editor,
   });
 
   const profileAuthoring = loudnessProfile?.draft?.authoring;
@@ -168,8 +176,9 @@ export function AppSettingsOverlays({
       }
     },
   });
-  useUiSurface({
+  const profileEditorSurfaceId = useUiSurface({
     active: loudnessProfile?.draft != null,
+    lifetimeKey: profileAuthoring?.draftId,
     kind: "loudnessProfileEditor",
     origin: "navigable",
     blocking: true,
@@ -185,6 +194,12 @@ export function AppSettingsOverlays({
         }
       : {},
     onCancel: loudnessProfile?.requestDismiss,
+  });
+  useEditorDraftSurface({
+    active: loudnessProfile?.draft != null,
+    kind: "loudnessProfile",
+    surfaceId: profileEditorSurfaceId,
+    controller: loudnessProfile,
   });
 
   useEffect(() => {
@@ -441,6 +456,10 @@ export function AppSettingsOverlays({
           discardOpen={editor.discardOpen}
           onDiscardOpenChange={(open) => (open ? editor.requestDismiss() : editor.keepEditing())}
           onConfirmDiscard={editor.confirmDiscard}
+          editorDraftDecision={{
+            editorKind: "theme",
+            editorSurfaceId: themeEditorSurfaceId,
+          }}
           page={editor.page}
           onPageChange={editor.setPage}
           onDelete={undefined}
@@ -469,6 +488,10 @@ export function AppSettingsOverlays({
             open ? loudnessProfile.requestDismiss() : loudnessProfile.keepEditing()
           }
           onConfirmDiscard={loudnessProfile.confirmDiscard}
+          editorDraftDecision={{
+            editorKind: "loudnessProfile",
+            editorSurfaceId: profileEditorSurfaceId,
+          }}
           pos={loudnessProfilePos}
           onMove={setLoudnessProfilePos}
         />

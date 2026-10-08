@@ -68,6 +68,8 @@ import {
  *   updateDraftRule: (...args: any[]) => any,
  *   removeDraftRule: (...args: any[]) => any,
  *   reorderDraftRules: (...args: any[]) => any,
+ *   inspectDraft: (...args: any[]) => any,
+ *   commitDraftDocument: (...args: any[]) => any,
  *   cancelDraft: (...args: any[]) => any,
  *   requestDismiss: (...args: any[]) => any,
  *   keepEditing: (...args: any[]) => any,
@@ -282,9 +284,9 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   const applyDraftDocument = useCallback(
     (mutate) => {
       const prev = draftRef.current;
-      if (!prev) return;
+      if (!prev) return false;
       const document = mutate(prev.document);
-      if (JSON.stringify(document) === JSON.stringify(prev.document)) return;
+      if (JSON.stringify(document) === JSON.stringify(prev.document)) return false;
       draftGenerationRef.current += 1;
       setDraftGeneration(draftGenerationRef.current);
       putDraft({
@@ -292,9 +294,28 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
         document,
         dirty: JSON.stringify(document) !== JSON.stringify(draftBaselineRef.current),
       });
+      return true;
     },
     [putDraft]
   );
+
+  const commitDraftDocument = useCallback(
+    (document) => applyDraftDocument(() => structuredClone(document)),
+    [applyDraftDocument]
+  );
+
+  const inspectDraft = useCallback(() => {
+    const current = draftRef.current;
+    if (!current) return null;
+    return {
+      document: structuredClone(current.document),
+      draftGeneration: draftGenerationRef.current,
+      dirty: current.dirty,
+      stale: current.stale === true,
+      canUndo: false,
+      canRedo: false,
+    };
+  }, []);
 
   const editDraft = applyDraftDocument;
 
@@ -596,6 +617,8 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       updateDraftRule,
       removeDraftRule,
       reorderDraftRules,
+      inspectDraft,
+      commitDraftDocument,
       cancelDraft,
       requestDismiss,
       keepEditing,
@@ -639,6 +662,8 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       updateDraftRule,
       removeDraftRule,
       reorderDraftRules,
+      inspectDraft,
+      commitDraftDocument,
       cancelDraft,
       requestDismiss,
       keepEditing,

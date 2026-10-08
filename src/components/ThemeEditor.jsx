@@ -101,6 +101,7 @@ const CORE_COLORS = [
  *   discardOpen?: boolean,
  *   onDiscardOpenChange?: (...args: any[]) => any,
  *   onConfirmDiscard?: (...args: any[]) => any,
+ *   editorDraftDecision?: {editorKind: string, editorSurfaceId: string}|null,
  *   page?: "core"|"palettes"|"advanced",
  *   onPageChange?: (...args: any[]) => any,
  *   onDelete?: (...args: any[]) => any,
@@ -133,6 +134,7 @@ export function ThemeEditor({
   discardOpen: controlledDiscardOpen,
   onDiscardOpenChange,
   onConfirmDiscard,
+  editorDraftDecision = null,
   page: controlledPage,
   onPageChange,
   onDelete,
@@ -443,6 +445,7 @@ export function ThemeEditor({
         cancelLabel="Keep Editing"
         confirmLabel="Discard Changes"
         onConfirm={onConfirmDiscard ?? onCancel}
+        editorDraftDecision={editorDraftDecision}
       />
       {previewOpen ? (
         <ThemePreview

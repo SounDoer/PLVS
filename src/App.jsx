@@ -19,6 +19,7 @@ import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessPro
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
 import { SceneGuardProvider } from "./hooks/SceneGuardContext.jsx";
 import { UiNavigationProvider } from "./uiNavigation/UiNavigationContext.jsx";
+import { EditorDraftProvider } from "./agentControl/EditorDraftContext.jsx";
 import { DevelopmentEventFixturesProvider } from "./dev/DevelopmentEventFixturesContext.jsx";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
@@ -92,59 +93,62 @@ export default function App() {
         {/* Outside LoudnessProfileProvider and SettingsProvider: the profile draft and the theme
             editor both register themselves as blocking editors. */}
         <BlockingEditorsProvider>
-          {/* Reads BlockingEditors. */}
-          <UiNavigationProvider>
-            {/* Reads BlockingEditors and UiNavigation; enabled only by the development identity. */}
-            <DevelopmentEventFixturesProvider
-              enabled={window.__PLVS_INITIAL_STATE__?.developmentEventFixtures === true}
-            >
-              {/* Outside DockProvider: the strip's Stats and the main window's read one profile. */}
-              <LoudnessProfileProvider>
-                {/* Reads BlockingEditors and UiNavigation (the theme editor registers with both). */}
-                <SettingsProvider>
-                  {/* Reads BlockingEditors and MeterRuntime (source mode). */}
-                  <SceneGuardProvider>
-                    {/* Reads Settings (the values exit restores) and SceneGuard. */}
-                    <DockProvider>
-                      {/* Reads Settings and Dock: its window effects stand down while docked. */}
-                      <WindowChromeProvider>
-                        {/* Reads Workspace, Settings, Dock, LoudnessProfile and SceneGuard: everything
+          {/* Owns exact editor surface bindings; editor providers register farther inside. */}
+          <EditorDraftProvider>
+            {/* Reads BlockingEditors. */}
+            <UiNavigationProvider>
+              {/* Reads BlockingEditors and UiNavigation; enabled only by the development identity. */}
+              <DevelopmentEventFixturesProvider
+                enabled={window.__PLVS_INITIAL_STATE__?.developmentEventFixtures === true}
+              >
+                {/* Outside DockProvider: the strip's Stats and the main window's read one profile. */}
+                <LoudnessProfileProvider>
+                  {/* Reads BlockingEditors and UiNavigation (the theme editor registers with both). */}
+                  <SettingsProvider>
+                    {/* Reads BlockingEditors and MeterRuntime (source mode). */}
+                    <SceneGuardProvider>
+                      {/* Reads Settings (the values exit restores) and SceneGuard. */}
+                      <DockProvider>
+                        {/* Reads Settings and Dock: its window effects stand down while docked. */}
+                        <WindowChromeProvider>
+                          {/* Reads Workspace, Settings, Dock, LoudnessProfile and SceneGuard: everything
                           a preset captures or replaces. */}
-                        <PresetsProvider>
-                          {/* Reads MeterRuntime. */}
-                          <SourceProvider>
-                            {/* Reads MeterRuntime, Workspace, Settings and LoudnessProfile; assigns
+                          <PresetsProvider>
+                            {/* Reads MeterRuntime. */}
+                            <SourceProvider>
+                              {/* Reads MeterRuntime, Workspace, Settings and LoudnessProfile; assigns
                               the clear ref Settings owns. */}
-                            <SourceActionsProvider>
-                              {/* Reads Settings, Dock, WindowChrome, Presets, Source and
+                              <SourceActionsProvider>
+                                {/* Reads Settings, Dock, WindowChrome, Presets, Source and
                                 SourceActions. */}
-                              <AppLifecycleProvider>
-                                {/* Reads MeterRuntime and SourceActions. Its value changes per meter frame. */}
-                                <DisplaySnapshotProvider>
-                                  {/* Reads DisplaySnapshot, Workspace, Dock, Settings and
+                                <AppLifecycleProvider>
+                                  {/* Reads MeterRuntime and SourceActions. Its value changes per meter frame. */}
+                                  <DisplaySnapshotProvider>
+                                    {/* Reads DisplaySnapshot, Workspace, Dock, Settings and
                                     SourceActions. */}
-                                  <AnalysisSessionProvider>
-                                    {/* Reads Dock, Presets, LoudnessProfile, SourceActions,
+                                    <AnalysisSessionProvider>
+                                      {/* Reads Dock, Presets, LoudnessProfile, SourceActions,
                                       DisplaySnapshot and AnalysisSession. */}
-                                    <DockAccessoriesProvider>
-                                      {/* Reads nothing. Shared by the bridge and the shell. */}
-                                      <AgentControlStateProvider>
-                                        <AppContent />
-                                      </AgentControlStateProvider>
-                                    </DockAccessoriesProvider>
-                                  </AnalysisSessionProvider>
-                                </DisplaySnapshotProvider>
-                              </AppLifecycleProvider>
-                            </SourceActionsProvider>
-                          </SourceProvider>
-                        </PresetsProvider>
-                      </WindowChromeProvider>
-                    </DockProvider>
-                  </SceneGuardProvider>
-                </SettingsProvider>
-              </LoudnessProfileProvider>
-            </DevelopmentEventFixturesProvider>
-          </UiNavigationProvider>
+                                      <DockAccessoriesProvider>
+                                        {/* Reads nothing. Shared by the bridge and the shell. */}
+                                        <AgentControlStateProvider>
+                                          <AppContent />
+                                        </AgentControlStateProvider>
+                                      </DockAccessoriesProvider>
+                                    </AnalysisSessionProvider>
+                                  </DisplaySnapshotProvider>
+                                </AppLifecycleProvider>
+                              </SourceActionsProvider>
+                            </SourceProvider>
+                          </PresetsProvider>
+                        </WindowChromeProvider>
+                      </DockProvider>
+                    </SceneGuardProvider>
+                  </SettingsProvider>
+                </LoudnessProfileProvider>
+              </DevelopmentEventFixturesProvider>
+            </UiNavigationProvider>
+          </EditorDraftProvider>
         </BlockingEditorsProvider>
       </MeterRuntimeProvider>
     </WorkspaceProvider>

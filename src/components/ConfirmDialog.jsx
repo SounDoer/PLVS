@@ -7,7 +7,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LAYER_ABOVE_EDITOR } from "@/components/ui/layers.js";
+import { useRef } from "react";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import { useEditorDraftDecision } from "../agentControl/EditorDraftContext.jsx";
 
 /**
  * Modal confirmation for one destructive action.
@@ -26,6 +28,7 @@ import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
  * @param {string} props.confirmLabel   text of the destructive button
  * @param {string} [props.cancelLabel]  text of the dismissing button
  * @param {() => void} props.onConfirm  runs after the dialog closes itself
+ * @param {{editorKind: string, editorSurfaceId: string}|null} [props.editorDraftDecision]
  */
 export function ConfirmDialog({
   open,
@@ -35,17 +38,43 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel = "Cancel",
   onConfirm,
+  editorDraftDecision = null,
 }) {
+  const previousOpenRef = useRef(false);
+  const decisionLifetimeRef = useRef(0);
+  if (open && !previousOpenRef.current) decisionLifetimeRef.current += 1;
+  previousOpenRef.current = open;
   const cancel = () => onOpenChange(false);
-  useUiSurface({
+  const confirm = () => {
+    onOpenChange(false);
+    onConfirm();
+  };
+  const decisionSurfaceId = useUiSurface({
     active: open,
+    lifetimeKey: editorDraftDecision
+      ? `${editorDraftDecision.editorSurfaceId}:${decisionLifetimeRef.current}`
+      : undefined,
     kind: "confirmation",
     origin: "nested",
     blocking: true,
     dismissible: true,
     supportedActions: ["cancel"],
-    target: { phase: "decision" },
+    target: editorDraftDecision
+      ? {
+          phase: "decision",
+          purpose: "discardDraft",
+          editorKind: editorDraftDecision.editorKind,
+          editorSurfaceId: editorDraftDecision.editorSurfaceId,
+        }
+      : { phase: "decision" },
     onCancel: cancel,
+  });
+  useEditorDraftDecision({
+    active: open && editorDraftDecision != null,
+    decisionSurfaceId,
+    editorKind: editorDraftDecision?.editorKind,
+    editorSurfaceId: editorDraftDecision?.editorSurfaceId,
+    onDiscard: confirm,
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,13 +85,7 @@ export function ConfirmDialog({
           <Button variant="ghost" onClick={cancel}>
             {cancelLabel}
           </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onOpenChange(false);
-              onConfirm();
-            }}
-          >
+          <Button variant="destructive" onClick={confirm}>
             {confirmLabel}
           </Button>
         </DialogFooter>

@@ -214,6 +214,27 @@ describe("public flat-library API", () => {
     expect(settingsStore.read().loudnessProfiles.profiles).toEqual([]);
   });
 
+  it("commits and synchronously inspects one planned Profile document transaction", () => {
+    seed([]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    const next = {
+      ...structuredClone(result.current.draft.document),
+      name: "Agent draft",
+      referenceLufs: -23,
+    };
+
+    act(() => expect(result.current.commitDraftDocument(next)).toBe(true));
+    expect(result.current.inspectDraft()).toMatchObject({
+      document: { name: "Agent draft", referenceLufs: -23 },
+      draftGeneration: 1,
+      dirty: true,
+      stale: false,
+      canUndo: false,
+      canRedo: false,
+    });
+  });
+
   it("owns reference and ordered rule edits with the same visible metric-change semantics", () => {
     seed([]);
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });

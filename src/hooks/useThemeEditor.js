@@ -28,7 +28,9 @@ export function useThemeEditor(opts) {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [draftGeneration, setDraftGeneration] = useState(0);
   const draftRef = useRef(/** @type {object|null} */ (null));
+  const draftGenerationRef = useRef(0);
   const dirtyRef = useRef(false);
+  const staleRef = useRef(false);
   const wasNewRef = useRef(false);
   const restoreThemeRef = useRef(activeTheme);
   const baselineRef = useRef(/** @type {object|null} */ (null));
@@ -90,6 +92,21 @@ export function useThemeEditor(opts) {
     setDirty(next);
   }, []);
 
+  const setStaleBoth = useCallback((next) => {
+    staleRef.current = next;
+    setStale(next);
+  }, []);
+
+  const resetDraftGeneration = useCallback(() => {
+    draftGenerationRef.current = 0;
+    setDraftGeneration(0);
+  }, []);
+
+  const advanceDraftGeneration = useCallback(() => {
+    draftGenerationRef.current += 1;
+    setDraftGeneration(draftGenerationRef.current);
+  }, []);
+
   const syncDirty = useCallback(
     (next) => {
       setDirtyBoth(JSON.stringify(next) !== JSON.stringify(baselineRef.current));
@@ -109,14 +126,14 @@ export function useThemeEditor(opts) {
       setDraftBoth(d);
       resetHistory(d);
       setDirtyBoth(false);
-      setStale(false);
-      setDraftGeneration(0);
+      setStaleBoth(false);
+      resetDraftGeneration();
       setAuthoring({ ...origin, draftId: d.id });
       setPageState("core");
       setDiscardOpen(false);
       applyDraft(d);
     },
-    [applyDraft, resetHistory, setDirtyBoth, setDraftBoth]
+    [applyDraft, resetDraftGeneration, resetHistory, setDirtyBoth, setDraftBoth, setStaleBoth]
   );
 
   const beginCreate = useCallback(
@@ -134,23 +151,32 @@ export function useThemeEditor(opts) {
       setDraftBoth(d);
       resetHistory(d);
       setDirtyBoth(false);
-      setStale(false);
-      setDraftGeneration(0);
+      setStaleBoth(false);
+      resetDraftGeneration();
       setAuthoring({ ...origin, draftId: d.id });
       setPageState("core");
       setDiscardOpen(false);
       applyDraft(d);
     },
-    [activeTheme, applyDraft, makeId, resetHistory, setDirtyBoth, setDraftBoth]
+    [
+      activeTheme,
+      applyDraft,
+      makeId,
+      resetDraftGeneration,
+      resetHistory,
+      setDirtyBoth,
+      setDraftBoth,
+      setStaleBoth,
+    ]
   );
 
   // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
   const edit = useCallback(
     (mutate, actionKey) => {
       const d = draftRef.current;
-      if (!d) return;
+      if (!d) return false;
       const next = mutate(d);
-      if (JSON.stringify(next) === JSON.stringify(d)) return;
+      if (JSON.stringify(next) === JSON.stringify(d)) return false;
       const history = historyRef.current;
       const now = Date.now();
       if (history.lastKey !== actionKey || now - history.lastAt > 500) {
@@ -160,13 +186,31 @@ export function useThemeEditor(opts) {
       history.lastKey = actionKey;
       history.lastAt = now;
       setDraftBoth(next);
-      setDraftGeneration((current) => current + 1);
+      advanceDraftGeneration();
       syncDirty(next);
       scheduleDraftPublication(next);
       setHistoryAvailability({ undo: history.past.length > 0, redo: false });
+      return true;
     },
-    [scheduleDraftPublication, setDraftBoth, syncDirty]
+    [advanceDraftGeneration, scheduleDraftPublication, setDraftBoth, syncDirty]
   );
+
+  const commitDraftDocument = useCallback(
+    (document) => edit(() => structuredClone(document), "agent-control"),
+    [edit]
+  );
+
+  const inspectDraft = useCallback(() => {
+    if (!draftRef.current) return null;
+    return {
+      document: structuredClone(draftRef.current),
+      draftGeneration: draftGenerationRef.current,
+      dirty: dirtyRef.current,
+      stale: staleRef.current,
+      canUndo: historyRef.current.past.length > 0,
+      canRedo: historyRef.current.future.length > 0,
+    };
+  }, []);
 
   const setName = useCallback(
     (name) => {
@@ -299,7 +343,7 @@ export function useThemeEditor(opts) {
       history.lastKey = null;
       cancelScheduledPublication();
       setDraftBoth(next);
-      setDraftGeneration((generation) => generation + 1);
+      advanceDraftGeneration();
       syncDirty(next);
       applyDraft(next);
       setHistoryAvailability({
@@ -307,16 +351,19 @@ export function useThemeEditor(opts) {
         redo: history.future.length > 0,
       });
     },
-    [applyDraft, cancelScheduledPublication, setDraftBoth, syncDirty]
+    [advanceDraftGeneration, applyDraft, cancelScheduledPublication, setDraftBoth, syncDirty]
   );
 
   const undo = useCallback(() => moveHistory("past", "future"), [moveHistory]);
   const redo = useCallback(() => moveHistory("future", "past"), [moveHistory]);
 
-  const syncSource = useCallback((source) => {
-    if (!draftRef.current || wasNewRef.current) return;
-    setStale(JSON.stringify(source) !== JSON.stringify(baselineRef.current));
-  }, []);
+  const syncSource = useCallback(
+    (source) => {
+      if (!draftRef.current || wasNewRef.current) return;
+      setStaleBoth(JSON.stringify(source) !== JSON.stringify(baselineRef.current));
+    },
+    [setStaleBoth]
+  );
 
   const save = useCallback(() => {
     cancelScheduledPublication();
@@ -324,23 +371,32 @@ export function useThemeEditor(opts) {
     if (d && onSave?.(d, { isNew: wasNewRef.current, stale }) === false) return;
     setDraftBoth(null);
     setDirtyBoth(false);
-    setStale(false);
+    setStaleBoth(false);
     setAuthoring(null);
     setDiscardOpen(false);
     if (d) notify();
     onFinish();
-  }, [cancelScheduledPublication, notify, onSave, onFinish, setDirtyBoth, setDraftBoth, stale]);
+  }, [
+    cancelScheduledPublication,
+    notify,
+    onSave,
+    onFinish,
+    setDirtyBoth,
+    setDraftBoth,
+    setStaleBoth,
+    stale,
+  ]);
 
   const cancel = useCallback(() => {
     cancelScheduledPublication();
     publish(restoreThemeRef.current);
     setDraftBoth(null);
     setDirtyBoth(false);
-    setStale(false);
+    setStaleBoth(false);
     setAuthoring(null);
     setDiscardOpen(false);
     onFinish();
-  }, [cancelScheduledPublication, publish, onFinish, setDirtyBoth, setDraftBoth]);
+  }, [cancelScheduledPublication, publish, onFinish, setDirtyBoth, setDraftBoth, setStaleBoth]);
 
   const requestDismiss = useCallback(() => {
     if (!draftRef.current) return;
@@ -384,6 +440,8 @@ export function useThemeEditor(opts) {
     requestDismiss,
     keepEditing,
     confirmDiscard,
+    inspectDraft,
+    commitDraftDocument,
     isEditingNow: () => draftRef.current != null,
   };
 }

@@ -1,7 +1,15 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import {
+  EditorDraftProvider,
+  useEditorDraftRegistry,
+  useEditorDraftSurface,
+} from "../agentControl/EditorDraftContext.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 
 function setup(overrides = {}) {
   const onConfirm = vi.fn();
@@ -62,5 +70,67 @@ describe("ConfirmDialog", () => {
   it("renders nothing while closed", () => {
     setup({ open: false });
     expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+});
+
+describe("ConfirmDialog editor draft decision", () => {
+  it("projects and registers only an explicitly linked discard decision", async () => {
+    const onConfirm = vi.fn();
+    /** @type {any} */
+    let registry;
+    /** @type {any} */
+    let navigation;
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      registry = useEditorDraftRegistry();
+      navigation = useUiNavigation();
+      useEditorDraftSurface({
+        active: true,
+        kind: "theme",
+        surfaceId: "editor-surface",
+        controller: {
+          inspectDraft: () => ({ draftGeneration: 5, dirty: true, document: { name: "Draft" } }),
+        },
+      });
+      return (
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Discard?"
+          description="Discard the draft."
+          confirmLabel="Discard"
+          onConfirm={onConfirm}
+          editorDraftDecision={{ editorKind: "theme", editorSurfaceId: "editor-surface" }}
+        />
+      );
+    }
+
+    render(
+      <BlockingEditorsProvider>
+        <EditorDraftProvider>
+          <UiNavigationProvider>
+            <Harness />
+          </UiNavigationProvider>
+        </EditorDraftProvider>
+      </BlockingEditorsProvider>
+    );
+    const decision = navigation.inspectUi().surfaces.find(({ kind }) => kind === "confirmation");
+    expect(decision).toMatchObject({
+      target: {
+        phase: "decision",
+        purpose: "discardDraft",
+        editorKind: "theme",
+        editorSurfaceId: "editor-surface",
+      },
+    });
+
+    await act(async () => {
+      registry.discard("theme", "editor-surface", decision.surfaceId, 5);
+      await Promise.resolve();
+    });
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(navigation.inspectUi().surfaces).toEqual([]);
   });
 });

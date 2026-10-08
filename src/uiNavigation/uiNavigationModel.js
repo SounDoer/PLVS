@@ -113,6 +113,9 @@ const PUBLIC_TARGET_FIELDS = Object.freeze([
   "page",
   "phase",
   "presentation",
+  "purpose",
+  "editorKind",
+  "editorSurfaceId",
 ]);
 
 function projectTarget(target) {
