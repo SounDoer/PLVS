@@ -9,21 +9,41 @@
       content="Free and open-source real-time audio metering for Windows and macOS."
     />
     <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/InterVariable-4.1.woff2") format("woff2");
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/JetBrainsMono-Regular-2.304.woff2") format("woff2");
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+      }
+
       :root {
+        --text-hero: 44px;
+        --text-section: 32px;
+        --text-body: 18px;
+        --text-small: 16px;
         --page: #070707;
         --ink: #f2f2f2;
         --muted: #898989;
         --soft: #5e5e5e;
         --line: rgba(242, 242, 242, 0.11);
-        --panel: #151515;
+        --panel: #1c1c1c;
         --panel-muted: #232323;
-        --accent: #fb923c;
+        --accent: #d97700;
         --accent-ink: #070707;
-        --dark: #0d0f0f;
+        --dark: #1c1c1c;
         --dark-line: rgba(255, 255, 255, 0.12);
         --radius: 14px;
-        --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+        --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
       }
 
       *,
@@ -41,6 +61,8 @@
         background: var(--page);
         color: var(--ink);
         font-family: var(--font-sans);
+        font-size: var(--text-body);
+        line-height: 1.6;
         -webkit-font-smoothing: antialiased;
         text-rendering: geometricPrecision;
       }
@@ -48,6 +70,11 @@
       a {
         color: inherit;
         text-decoration: none;
+      }
+
+      button,
+      input {
+        font: inherit;
       }
 
       button,
@@ -59,9 +86,9 @@
         min-height: 100dvh;
         overflow: hidden;
         background:
-          linear-gradient(180deg, rgba(251, 146, 60, 0.08), rgba(251, 146, 60, 0) 480px),
-          radial-gradient(circle at 70% -20%, rgba(251, 146, 60, 0.16), transparent 38%),
-          radial-gradient(circle at 8% 8%, rgba(56, 189, 248, 0.08), transparent 28%), var(--page);
+          linear-gradient(180deg, rgba(217, 119, 0, 0.08), rgba(217, 119, 0, 0) 480px),
+          radial-gradient(circle at 70% -20%, rgba(217, 119, 0, 0.16), transparent 38%),
+          radial-gradient(circle at 8% 8%, rgba(0, 138, 217, 0.08), transparent 28%), var(--page);
       }
 
       .nav,
@@ -83,8 +110,8 @@
         display: inline-flex;
         align-items: center;
         gap: 11px;
-        font-size: 15px;
-        font-weight: 650;
+        font-size: var(--text-small);
+        font-weight: 600;
         letter-spacing: 0.01em;
       }
 
@@ -99,8 +126,8 @@
         align-items: center;
         gap: 28px;
         color: rgba(242, 242, 242, 0.62);
-        font-size: 13px;
-        font-weight: 560;
+        font-size: var(--text-small);
+        font-weight: 500;
       }
 
       .nav-links a {
@@ -116,37 +143,42 @@
       }
 
       .hero {
-        padding: 64px 0 0;
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+        align-items: center;
+        gap: 40px;
+        padding: 64px 0 24px;
       }
 
       .hero-copy {
-        max-width: 1080px;
+        min-width: 0;
       }
 
       .eyebrow {
         margin: 0 0 22px;
-        color: rgba(251, 146, 60, 0.82);
-        font-size: 14px;
-        font-weight: 560;
+        color: rgba(217, 119, 0, 0.82);
+        font-size: var(--text-small);
+        font-weight: 500;
         letter-spacing: 0.01em;
       }
 
       .hero-title {
-        max-width: 1040px;
+        max-width: 480px;
         margin: 0;
-        font-size: clamp(46px, 4.6vw, 72px);
-        line-height: 1.02;
-        letter-spacing: -0.035em;
-        font-weight: 720;
+        font-size: var(--text-hero);
+        text-wrap: balance;
+        line-height: 1.15;
+        letter-spacing: -0.025em;
+        font-weight: 600;
       }
 
       .hero-subtitle {
-        max-width: 820px;
+        max-width: 440px;
         margin: 28px 0 0;
         color: rgba(242, 242, 242, 0.62);
-        font-size: clamp(19px, 2vw, 25px);
-        line-height: 1.36;
-        letter-spacing: -0.018em;
+        font-size: var(--text-body);
+        line-height: 1.6;
+        letter-spacing: 0;
       }
 
       .hero-actions {
@@ -165,8 +197,8 @@
         padding: 0 20px;
         border: 1px solid transparent;
         border-radius: 999px;
-        font-size: 14px;
-        font-weight: 660;
+        font-size: var(--text-small);
+        font-weight: 500;
         line-height: 1;
         white-space: nowrap;
         transition:
@@ -186,7 +218,7 @@
       }
 
       .btn-primary:hover {
-        background: #ffad68;
+        background: #ed921f;
       }
 
       .btn-secondary {
@@ -196,16 +228,16 @@
       }
 
       .btn-secondary:hover {
-        border-color: rgba(251, 146, 60, 0.42);
-        background: rgba(251, 146, 60, 0.08);
+        border-color: rgba(217, 119, 0, 0.42);
+        background: rgba(217, 119, 0, 0.08);
       }
 
       .hero-note {
         flex-basis: 100%;
         margin: 0;
         color: rgba(242, 242, 242, 0.48);
-        font-size: 13px;
-        font-weight: 520;
+        font-size: var(--text-small);
+        font-weight: 500;
       }
 
       .shot {
@@ -230,7 +262,7 @@
       .shot::before {
         inset: 0;
         background:
-          linear-gradient(90deg, rgba(251, 146, 60, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(217, 119, 0, 0.1) 1px, transparent 1px),
           linear-gradient(0deg, rgba(242, 242, 242, 0.05) 1px, transparent 1px);
         background-size: 56px 56px;
         mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 82%);
@@ -241,7 +273,7 @@
         border: 1px solid rgba(242, 242, 242, 0.1);
         border-radius: 7px;
         background:
-          linear-gradient(90deg, rgba(251, 146, 60, 0.34) 0 12%, transparent 12%),
+          linear-gradient(90deg, rgba(217, 119, 0, 0.34) 0 12%, transparent 12%),
           linear-gradient(180deg, rgba(242, 242, 242, 0.08) 0 1px, transparent 1px);
         background-size:
           100% 100%,
@@ -266,8 +298,9 @@
       }
 
       .hero-shot {
-        width: min(100%, 1520px);
-        margin: 42px auto 0;
+        width: 100%;
+        min-width: 0;
+        margin: 0;
         aspect-ratio: 1600 / 1000;
         border-radius: 10px;
       }
@@ -296,19 +329,19 @@
 
       .principle h2 {
         margin: 0;
-        font-size: 20px;
-        line-height: 1.2;
+        font-size: var(--text-body);
+        line-height: 1.4;
         letter-spacing: -0.02em;
-        font-weight: 680;
+        font-weight: 600;
       }
 
       .principle p {
         max-width: 340px;
         margin: 12px 0 0;
         color: rgba(242, 242, 242, 0.58);
-        font-size: 16px;
-        line-height: 1.48;
-        letter-spacing: -0.01em;
+        font-size: var(--text-body);
+        line-height: 1.6;
+        letter-spacing: 0;
       }
 
       .features {
@@ -341,19 +374,19 @@
       .feature h2 {
         max-width: 520px;
         margin: 0;
-        font-size: clamp(32px, 3.7vw, 54px);
-        line-height: 1.05;
-        letter-spacing: -0.035em;
-        font-weight: 700;
+        font-size: var(--text-section);
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+        font-weight: 600;
       }
 
       .feature p {
         max-width: 470px;
         margin: 22px 0 0;
         color: rgba(242, 242, 242, 0.58);
-        font-size: 18px;
-        line-height: 1.5;
-        letter-spacing: -0.015em;
+        font-size: var(--text-body);
+        line-height: 1.6;
+        letter-spacing: 0;
       }
 
       .feature-points {
@@ -371,9 +404,9 @@
         padding: 12px 0 12px 18px;
         border-bottom: 1px solid rgba(242, 242, 242, 0.08);
         color: rgba(242, 242, 242, 0.58);
-        font-size: 18px;
-        line-height: 1.5;
-        letter-spacing: -0.015em;
+        font-size: var(--text-body);
+        line-height: 1.6;
+        letter-spacing: 0;
       }
 
       .feature-points li::before {
@@ -426,18 +459,19 @@
 
       .file-note h2 {
         margin: 0;
-        font-size: clamp(28px, 2.45vw, 38px);
-        line-height: 1.08;
-        letter-spacing: -0.035em;
+        font-size: var(--text-section);
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+        font-weight: 600;
       }
 
       .file-note p {
         max-width: 560px;
         margin: 0;
         color: rgba(242, 242, 242, 0.58);
-        font-size: 17px;
-        line-height: 1.5;
-        letter-spacing: -0.01em;
+        font-size: var(--text-body);
+        line-height: 1.6;
+        letter-spacing: 0;
       }
 
       .download-section {
@@ -459,10 +493,10 @@
 
       .download-header h2 {
         margin: 0;
-        font-size: clamp(36px, 4.2vw, 64px);
-        line-height: 1.02;
-        letter-spacing: -0.04em;
-        font-weight: 720;
+        font-size: var(--text-section);
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+        font-weight: 600;
       }
 
       .platform-grid {
@@ -483,8 +517,8 @@
       }
 
       .platform-card.active {
-        border-color: rgba(251, 146, 60, 0.42);
-        background: rgba(251, 146, 60, 0.075);
+        border-color: rgba(217, 119, 0, 0.42);
+        background: rgba(217, 119, 0, 0.075);
       }
 
       .platform-header {
@@ -497,16 +531,16 @@
 
       .platform-name {
         display: block;
-        font-size: 22px;
-        line-height: 1.1;
+        font-size: var(--text-body);
+        line-height: 1.4;
         letter-spacing: -0.02em;
-        font-weight: 680;
+        font-weight: 600;
       }
 
       .platform-os-tag {
         color: rgba(242, 242, 242, 0.48);
         font-family: var(--font-mono);
-        font-size: 12px;
+        font-size: var(--text-small);
         line-height: 1.4;
         text-align: right;
       }
@@ -534,8 +568,8 @@
         align-items: center;
         min-height: 44px;
         color: rgba(242, 242, 242, 0.64);
-        font-size: 14px;
-        font-weight: 560;
+        font-size: var(--text-small);
+        font-weight: 500;
         transition: color 150ms ease;
       }
 
@@ -548,7 +582,7 @@
         padding: 12px 0 0;
         border-top: 1px solid rgba(242, 242, 242, 0.08);
         color: rgba(242, 242, 242, 0.58);
-        font-size: 13px;
+        font-size: var(--text-small);
         line-height: 1.55;
       }
 
@@ -577,13 +611,13 @@
 
       .spec-key {
         color: rgba(242, 242, 242, 0.42);
-        font-size: 13px;
+        font-size: var(--text-small);
       }
 
       .spec-val {
         color: rgba(242, 242, 242, 0.72);
         font-family: var(--font-mono);
-        font-size: 12px;
+        font-size: var(--text-small);
         text-align: right;
       }
 
@@ -594,11 +628,12 @@
         gap: 24px;
         padding: 22px 0 0;
         color: rgba(242, 242, 242, 0.48);
-        font-size: 13px;
+        font-size: var(--text-small);
       }
 
       .footer-links {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 20px;
       }
@@ -640,11 +675,14 @@
         }
 
         .hero {
-          padding-top: 58px;
+          grid-template-columns: 1fr;
+          gap: 32px;
+          padding-top: 48px;
         }
 
         .hero-title {
           max-width: 900px;
+          font-weight: 600;
         }
 
         .principles,
@@ -698,6 +736,11 @@
       }
 
       @media (max-width: 620px) {
+        :root {
+          --text-hero: 36px;
+          --text-section: 28px;
+        }
+
         .nav-links a:not(.nav-download) {
           display: none;
         }
@@ -707,13 +750,14 @@
         }
 
         .hero-title {
-          font-size: clamp(43px, 14.2vw, 56px);
+          font-size: var(--text-hero);
+          font-weight: 600;
         }
 
         .hero-subtitle {
           max-width: 360px;
           margin-top: 22px;
-          font-size: 19px;
+          font-size: var(--text-body);
         }
 
         .hero-actions {
@@ -732,18 +776,19 @@
         }
 
         .hero-shot {
-          margin-top: 48px;
-          aspect-ratio: 2560 / 1351;
+          margin-top: 0;
+          aspect-ratio: 1600 / 1000;
           border-radius: 10px;
         }
 
         .feature h2 {
-          font-size: 38px;
+          font-size: var(--text-section);
+          font-weight: 600;
         }
 
         .feature p,
         .file-note p {
-          font-size: 16px;
+          font-size: var(--text-body);
         }
 
         .platform-card {
@@ -773,6 +818,23 @@
           margin-right: 0;
         }
       }
+      .subscribe h2 {
+        margin: 0 0 16px;
+        font-size: var(--text-section);
+        font-weight: 600;
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+      }
+
+      .subscribe > p {
+        line-height: 1.6;
+      }
+
+      .subscribe-form input,
+      .subscribe-form button {
+        font-size: var(--text-small);
+      }
+
       .subscribe {
         max-width: 32rem;
         margin: 0 auto;
@@ -783,12 +845,13 @@
       }
       .subscribe-form input[type="email"] {
         flex: 1;
+        min-width: 0;
         padding: 0.7rem 0.9rem;
         border-radius: var(--radius);
         border: 1px solid var(--line);
         background: var(--panel);
         color: var(--ink);
-        font: inherit;
+        font-size: var(--text-small);
       }
       .subscribe-form button {
         padding: 0.7rem 1.1rem;
@@ -796,7 +859,7 @@
         border: none;
         background: var(--accent);
         color: var(--accent-ink);
-        font: inherit;
+        font-size: var(--text-small);
         cursor: pointer;
       }
       .subscribe-honeypot {
@@ -815,8 +878,8 @@
       .subscribe-privacy {
         margin: 0.55rem 0 0;
         color: var(--muted);
-        font-size: 12px;
-        line-height: 1.5;
+        font-size: var(--text-small);
+        line-height: 1.6;
       }
 
       .subscribe-privacy a {
@@ -833,7 +896,6 @@
           <img class="brand-mark" src="assets/app-icon.svg" alt="" aria-hidden="true" />
         </a>
         <div class="nav-links">
-          <!-- COMMUNITY_NAV_START --><a href="community/">Community</a><!-- COMMUNITY_NAV_END -->
           <a href="docs/">Docs</a>
           <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
           <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
