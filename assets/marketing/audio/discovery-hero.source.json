@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "source": {
+    "title": "Discovery",
+    "artist": "Scott Buckley",
+    "page": "https://www.scottbuckley.com.au/library/discovery/",
+    "download": "https://www.scottbuckley.com.au/library/wp-content/uploads/2020/01/sb_discovery.mp3",
+    "sha256": "e4629422bd18a927950167dabfbe7c77c061595329da367f2407a8b4021fb832",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "attribution": "'Discovery' by Scott Buckley — released under CC BY 4.0. www.scottbuckley.com.au"
+  },
+  "excerpt": {
+    "startSeconds": 80,
+    "endSeconds": 170,
+    "durationSeconds": 90,
+    "linearGain": 1.07,
+    "modifications": "Excerpt and constant gain only; no compression, EQ, time stretching, or synthetic additions.",
+    "fileName": "discovery-hero.wav",
+    "sampleRateHz": 48000,
+    "channels": 2,
+    "bits": 24,
+    "peakDbfs": -0.43749573267017383,
+    "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988"
+  }
+}

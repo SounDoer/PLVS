@@ -1,0 +1,10 @@
+'Discovery' by Scott Buckley — released under CC BY 4.0.
+Artist: https://www.scottbuckley.com.au/
+Source: https://www.scottbuckley.com.au/library/discovery/
+License: https://creativecommons.org/licenses/by/4.0/
+
+discovery-hero.wav is an excerpt from 80 to 170 seconds, resampled to 48 kHz,
+encoded as stereo 24-bit PCM, with a constant linear gain of 1.07.
+No compression, EQ, time stretching, or synthetic additions were applied.
+Keep this credit with any redistributed audio or presentation using it.
+The audio is licensed separately from the repository's software.

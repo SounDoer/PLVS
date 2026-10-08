@@ -9,3 +9,5 @@
 *.icns binary
 *.woff binary
 *.woff2 binary
+*.wav binary
+*.webp binary

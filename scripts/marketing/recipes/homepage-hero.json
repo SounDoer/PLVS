@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "homepage-hero",
+  "audio": {
+    "path": "assets/marketing/audio/discovery-hero.wav",
+    "provenancePath": "assets/marketing/audio/discovery-hero.source.json",
+    "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988"
+  },
+  "environment": {
+    "platform": "win32",
+    "width": 1600,
+    "height": 1000,
+    "windowDpi": 120,
+    "textScalePercent": 100
+  },
+  "scene": {
+    "layout": "current-first-run-default",
+    "panelControls": "current-first-run-default",
+    "loudnessProfile": "current-starter-default",
+    "themeId": "plvs-dark",
+    "interfaceSize": "default"
+  },
+  "capture": {
+    "source": "live",
+    "inputLabel": "CABLE Output (VB-Audio Virtual Cable)",
+    "renderEndpointName": "CABLE Input",
+    "historySeconds": 60,
+    "candidateSeconds": [62, 66, 70, 74, 78, 82],
+    "requiredStatuses": { "integrated": "warn", "shortTermMax": "warn", "truePeak": "fail" }
+  },
+  "publication": {
+    "webp": "landing/assets/landing-hero.webp",
+    "png": "landing/assets/raw/landing-hero.png",
+    "metadata": "landing/assets/raw/landing-hero.json"
+  }
+}

@@ -1,5 +1,7 @@
 {
   "version": 1,
+  "workflowRecipe": "scripts/marketing/recipes/homepage-hero.json",
+  "audioMaster": "assets/marketing/audio/discovery-hero.wav",
   "image": "../landing-hero.webp",
   "rawImage": "landing-hero.png",
   "width": 1600,

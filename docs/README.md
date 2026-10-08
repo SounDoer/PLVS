@@ -22,6 +22,9 @@ alone makes them wrong, so they are updated in the same commit as the change.
 
 Keep this group small. Every file added here is one more thing that can go stale.
 
+[Marketing screenshots](marketing-screenshots.md) documents the maintained audio fixture,
+LIVE capture recipe, visual review and publication workflow.
+
 ## 2. User guide — [user/](user/)
 
 How to use PLVS, written for people using the app, one file per chapter with
