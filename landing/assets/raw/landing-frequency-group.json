@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-08",
+  "captureMode": "live",
+  "captureSecond": 70,
+  "audio": {
+    "path": "assets/marketing/audio/discovery-hero.wav",
+    "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988",
+    "sampleRate": 48000,
+    "channels": 2
+  },
+  "sourceRun": "artifacts/marketing/spectrum-group-1791456281484/capture-report.json",
+  "images": [
+    {
+      "panelId": "spectrum",
+      "sourceCandidate": "stereo-spectrum-70s.png",
+      "path": "landing/assets/raw/landing-frequency-spectrum.png",
+      "sha256": "6f75da6e330df54157d111a77304b8f0572c7c10fbd2a8f3026209862ab082a5",
+      "width": 1205,
+      "height": 219
+    },
+    {
+      "panelId": "spectrogram",
+      "sourceCandidate": "stereo-spectrogram-70s.png",
+      "path": "landing/assets/raw/landing-frequency-spectrogram.png",
+      "sha256": "d2fea784ac96460a1550ad931042c8eb05b5d42a5df707fa3488e7fc3e4313d4",
+      "width": 1205,
+      "height": 220
+    },
+    {
+      "panelId": "stereo-map",
+      "sourceCandidate": "stereo-stereo-map-70s.png",
+      "path": "landing/assets/raw/landing-frequency-stereo-map.png",
+      "sha256": "7d1be6f4ef927316a51305358231f54e38b7233ae255f21039ffb2025d6958a6",
+      "width": 1205,
+      "height": 220
+    }
+  ],
+  "export": {
+    "format": "lossless WebP",
+    "files": [
+      "landing/assets/landing-frequency-spectrum.webp",
+      "landing/assets/landing-frequency-spectrogram.webp",
+      "landing/assets/landing-frequency-stereo-map.webp"
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-08",
+  "captureMode": "live",
+  "audio": {
+    "path": "assets/marketing/audio/discovery-hero.wav",
+    "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988",
+    "sampleRate": 48000,
+    "sourceChannels": 2
+  },
+  "topology": {
+    "channelCount": 12,
+    "channelLayout": "7.1.4",
+    "channelLabels": ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"]
+  },
+  "images": [
+    {
+      "path": "landing/assets/raw/landing-channel-level-7-1-4.png",
+      "sha256": "c593924f9e9857da6064b73ff52e027e0cd743c4563713cb16f2e952f9a752c2",
+      "width": 587,
+      "height": 300,
+      "panelId": "levelMeter",
+      "sourceRun": "artifacts/marketing/channel-group-1791455952961/capture-report.json",
+      "sourceCandidate": "multichannel-levelMeter-70s.png"
+    },
+    {
+      "path": "landing/assets/raw/landing-channel-waveform-7-1-4.png",
+      "sha256": "8ba40ac11dc0fc7f61080e15f7e43c154933897af056580d5550dda74e83aa6b",
+      "width": 587,
+      "height": 291,
+      "panelId": "waveform",
+      "sourceRun": "artifacts/marketing/channel-group-1791455952961/capture-report.json",
+      "sourceCandidate": "multichannel-waveform-70s.png"
+    }
+  ],
+  "multichannelRouting": {
+    "derivedWavSha256": "c52c686df4f784ae6c078cec248159a2f1802c64a21daae42347cb59ab50584a",
+    "channels": {
+      "FL": "FL",
+      "FR": "FR",
+      "FC": "0.707*FL+0.707*FR",
+      "LFE": "0.45*FL+0.45*FR",
+      "BL": "0.82*FL",
+      "BR": "0.82*FR",
+      "SL": "0.67*FL",
+      "SR": "0.67*FR",
+      "TFL": "0.56*FL",
+      "TFR": "0.56*FR",
+      "TBL": "0.44*FL",
+      "TBR": "0.44*FR"
+    }
+  },
+  "export": {
+    "format": "lossless WebP",
+    "files": [
+      "landing/assets/landing-channel-level-7-1-4.webp",
+      "landing/assets/landing-channel-waveform-7-1-4.webp"
+    ]
+  }
+}

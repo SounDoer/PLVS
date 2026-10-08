@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-08",
+  "captureMode": "live",
+  "captureSecond": 70,
+  "captureTarget": {
+    "kind": "panel",
+    "panelId": "stats"
+  },
+  "audio": {
+    "path": "assets/marketing/audio/discovery-hero.wav",
+    "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988",
+    "sampleRate": 48000,
+    "channels": 2
+  },
+  "sourceRun": "artifacts/marketing/stats-group-1791456735292/capture-report.json",
+  "sourceCandidate": "stereo-stats-70s.png",
+  "image": {
+    "path": "landing/assets/raw/landing-stats.png",
+    "sha256": "daa1435f03a89df8179769e6be438fad339d0604bd099cfed5833dec5c31868f",
+    "width": 270,
+    "height": 434
+  },
+  "defaultProfileState": {
+    "overall": "fail",
+    "integrated": "warn",
+    "lra": "ok",
+    "momentaryMax": "ok",
+    "shortTermMax": "warn",
+    "truePeak": "fail"
+  },
+  "visibleValues": {
+    "integratedLufs": -15.9,
+    "shortTermMaxLufs": -10.9,
+    "truePeakMaxDbtp": -0.9
+  },
+  "export": {
+    "format": "lossless WebP",
+    "path": "landing/assets/landing-stats.webp"
+  }
+}

@@ -1,8 +1,9 @@
 # Marketing screenshots
 
-The homepage and README share `landing/assets/landing-hero.webp`. Keep screenshots grounded in
-the real Windows desktop app, its current first-run layout and panel controls, and LIVE audio.
-Never use FILE mode or reshape the workspace for a marketing image.
+The homepage and README share `landing/assets/landing-hero.webp`. Keep the hero grounded in the
+real Windows desktop app, its current first-run layout and panel controls, and LIVE audio. Never use
+FILE mode. Feature-panel screenshots may use a deliberate workspace layout when the composition is
+documented in the adjacent provenance JSON; they must not replace or reshape the published hero.
 
 ## Files maintained in Git
 
@@ -15,6 +16,15 @@ Never use FILE mode or reshape the workspace for a marketing image.
 - `scripts/marketing/capture-live-hero.mjs`: capture and validation.
 - `scripts/marketing/select-hero.mjs`: explicit selection, lossless export and optional publication.
 - `landing/assets/raw/landing-hero.png` and `.json`: the published original and its provenance.
+- `landing/assets/raw/landing-channel-*.png` and `landing-channel-group.json`: the LIVE 7.1.4
+  Level Meter and Waveform originals, including the deterministic routing from the approved stereo
+  master.
+- `landing/assets/raw/landing-frequency-*.png` and `landing-frequency-group.json`: the LIVE stereo
+  Spectrum, Spectrogram and Stereo Map originals captured at the same elapsed time.
+- `landing/assets/raw/landing-stats.png` and `.json`: the LIVE Stats panel with the default profile's
+  warning and failure colors recorded in its provenance.
+- Matching lossless WebP files under `landing/assets/`: the website exports. Verify decoded pixels
+  against each PNG before publication.
 
 Temporary profiles, screenshots, comparisons and reports stay under ignored `artifacts/marketing/`.
 The recipe follows the defaults in application code; it does not preserve an obsolete layout.
