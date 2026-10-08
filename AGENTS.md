@@ -131,6 +131,14 @@ After capture-layer work, remind the user to run `npm run soak:capture` (4 hours
 `fix(cli): ...`.** Nothing lints this, but `.agents/skills/plvs-release` reads the types to pick the SemVer
 bump and group the CHANGELOG, so an unprefixed commit silently drops out of the release notes.
 
+**Checks run in two tiers.** CI runs on push, not on commit, so the full gate is owed once per push:
+
+- Before each commit: `npm test`, plus the checks for the side you touched — `format:check`, `lint`
+  and `typecheck` for frontend changes, `rust:check` for Rust changes. `npm test` is never skipped,
+  even for Rust-only, config-only or docs-only commits: Vitest suites under `scripts/` guard
+  `src-tauri` config, installer files and the documentation structure.
+- Before each push or merge: the full `npm run check`.
+
 The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `npm run version:check` verifies this.
 
 **Worktrees and branches.** Big features get an isolated worktree, one per feature, under an agent-specific prefix: `.claude/worktrees/<feature-name>` for Claude Code, `.codex/worktrees/<feature-name>` for Codex, `.cursor/worktrees/<feature-name>` for Cursor. Don't reuse one fixed worktree across features — that just relocates the same cleanup problem instead of avoiding it. When a feature merges or is dropped, clean up right away: `git worktree remove` plus deleting the branch (`-d` once merged, `-D` for unmerged only after confirming with the user), and `git push origin --delete` for any merged remote branch. Skip `archive/`-prefixed branches by default. Branches parked for a dependency reason (e.g. Dependabot's `deps/*`) — confirm the reason still holds before deleting.
@@ -153,7 +161,8 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 **Always**
 
-- Run `npm run check` before merging.
+- Run `npm test` plus the touched side's checks before each commit, and `npm run check` before
+  each push or merge. See Git workflow.
 - Register every new editor with draft / preview / save / cancel semantics as a blocking editor
   (`useBlockingEditor`), and cover it with tests that the scene operations are refused and that
   nothing was mutated before the refusal. See Known pitfalls.
