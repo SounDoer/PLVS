@@ -27,13 +27,15 @@ const DEFAULT_MODULE_IDS = [...ALL_MODULE_IDS, "stereo-map"];
 //   H[ leaf(levelMeter)
 //    | V[ H[ leaf(loudness) | leaf(waveform) ] | leaf(spectrogram) | leaf(spectrum) | leaf(stereo-map) ]
 //    | V[ leaf(stats) | leaf(vectorscope) ] ]
+// The fractions give whole pixels at that size: Level Meter 200 and the right column 210 of the
+// 1264 px left after two dividers, Stats 460 of the 708 px left after one.
 // ---------------------------------------------------------------------------
 
 /** @type {TreeNode} */
 export const DEFAULT_TREE = {
   type: "split",
   direction: "h",
-  sizes: [0.132, null, 0.18],
+  sizes: [0.157, null, 0.165],
   children: [
     { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
     {
@@ -58,7 +60,7 @@ export const DEFAULT_TREE = {
     {
       type: "split",
       direction: "v",
-      sizes: [0.623, null],
+      sizes: [0.653, null],
       children: [
         { type: "leaf", tabs: ["stats"], activeTab: "stats" },
         { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },

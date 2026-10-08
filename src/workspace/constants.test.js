@@ -93,7 +93,7 @@ describe("first-run workspace", () => {
     expect(DEFAULT_WORKSPACE_STATE.tree).toEqual({
       type: "split",
       direction: "h",
-      sizes: [0.132, null, 0.18],
+      sizes: [0.157, null, 0.165],
       children: [
         leaf("levelMeter"),
         {
@@ -115,7 +115,7 @@ describe("first-run workspace", () => {
         {
           type: "split",
           direction: "v",
-          sizes: [0.623, null],
+          sizes: [0.653, null],
           children: [leaf("stats"), leaf("vectorscope")],
         },
       ],
