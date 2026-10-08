@@ -263,6 +263,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentViewContext?: any,
  *   agentVisual?: any,
  *   agentUi?: any,
+ *   agentEditorDraft?: any,
  *   agentDevelopmentFixtures?: any,
  *   applyAgentView?: (...args: any[]) => any,
  *   agentTransport?: any,
@@ -328,6 +329,7 @@ function Harness({
     closeSurface: async () => ({}),
     cancelSurface: async () => ({}),
   },
+  agentEditorDraft = null,
   agentDevelopmentFixtures = null,
   applyAgentView,
   agentTransport = transport,
@@ -538,6 +540,7 @@ function Harness({
     },
     visual: agentVisual,
     uiNavigation: agentUi,
+    editorDraft: agentEditorDraft,
     developmentFixtures: agentDevelopmentFixtures,
     transport: transportState,
     transportContext: { docked: false, historyAvailable: true, historyMaxOffsetSec: 90 },
@@ -817,6 +820,157 @@ describe("useAgentControlBridge", () => {
     view.unmount();
     expect(adapter.unlisten).toHaveBeenCalledTimes(1);
     expect(adapter.notReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("describes and inspects only the exact mounted editor draft without exposing its internal id", async () => {
+    const inspect = vi.fn(() => ({
+      document: { id: "internal", name: "Draft", referenceLufs: -23, rules: [] },
+      draftGeneration: 4,
+      dirty: true,
+      stale: false,
+      canUndo: false,
+      canRedo: false,
+    }));
+    mount({
+      agentEditorDraft: { inspect },
+      agentUi: {
+        inspectUi: () => ({
+          uiGeneration: 8,
+          surfaces: [
+            {
+              surfaceId: `ui-${"a".repeat(16)}`,
+              kind: "loudnessProfileEditor",
+              target: { intent: "create", draftId: "draft-public" },
+            },
+          ],
+        }),
+      },
+    });
+    await waitUntilReady();
+
+    const described = await send(
+      request("editorDraft.describe", { kind: "loudness-profile" }, "draft-describe")
+    );
+    expect(described.result).toMatchObject({
+      revision: 0,
+      kind: "loudnessProfile",
+      history: { undo: false, redo: false },
+      operations: expect.arrayContaining(["setName", "addRule", "reorderRules"]),
+    });
+
+    const inspected = await send(
+      request(
+        "editorDraft.inspect",
+        { kind: "loudness-profile", surfaceId: `ui-${"a".repeat(16)}` },
+        "draft-inspect"
+      )
+    );
+    expect(inspect).toHaveBeenCalledWith("loudnessProfile", `ui-${"a".repeat(16)}`);
+    expect(inspected.result).toMatchObject({
+      revision: 0,
+      uiGeneration: 8,
+      draftGeneration: 4,
+      kind: "loudnessProfile",
+      surfaceId: `ui-${"a".repeat(16)}`,
+      dirty: true,
+      stale: false,
+      document: { name: "Draft", referenceLufs: -23, rules: [] },
+      target: { intent: "create", draftId: "draft-public" },
+    });
+    expect(inspected.result.document).not.toHaveProperty("id");
+  });
+
+  it("checks all three tokens before one atomic Theme patch and leaves revision unchanged", async () => {
+    const surfaceId = `ui-${"a".repeat(16)}`;
+    let uiGeneration = 5;
+    let snapshot = {
+      document: {
+        ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+        id: "custom-draft",
+        name: "Before",
+      },
+      draftGeneration: 2,
+      dirty: false,
+      stale: false,
+      canUndo: false,
+      canRedo: false,
+    };
+    const commit = vi.fn((kind, exactSurfaceId, document) => {
+      expect([kind, exactSurfaceId]).toEqual(["theme", surfaceId]);
+      snapshot = {
+        ...snapshot,
+        document,
+        draftGeneration: 3,
+        dirty: true,
+        canUndo: true,
+      };
+      uiGeneration = 6;
+      return true;
+    });
+    mount({
+      agentEditorDraft: {
+        inspect: () => structuredClone(snapshot),
+        commit,
+      },
+      agentUi: {
+        inspectUi: () => ({
+          uiGeneration,
+          topSurfaceId: surfaceId,
+          surfaces: [
+            {
+              surfaceId,
+              kind: "themeEditor",
+              dirty: snapshot.dirty,
+              stale: snapshot.stale,
+              target: { draftId: "draft-public" },
+            },
+          ],
+        }),
+      },
+    });
+    await waitUntilReady();
+
+    const stale = await send(
+      request(
+        "editorDraft.patch",
+        {
+          kind: "theme",
+          surfaceId,
+          patch: { operations: [{ op: "setName", name: "After" }] },
+          expectedRevision: 0,
+          expectedUiGeneration: 5,
+          expectedDraftGeneration: 1,
+        },
+        "draft-stale"
+      )
+    );
+    expect(stale.error.data.reason).toBe("draftGenerationConflict");
+    expect(commit).not.toHaveBeenCalled();
+
+    const changed = await send(
+      request(
+        "editorDraft.patch",
+        {
+          kind: "theme",
+          surfaceId,
+          patch: { operations: [{ op: "setName", name: "After" }] },
+          expectedRevision: 0,
+          expectedUiGeneration: 5,
+          expectedDraftGeneration: 2,
+        },
+        "draft-patch"
+      )
+    );
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(changed.result).toMatchObject({
+      changed: true,
+      action: "editorDraft.patch",
+      revision: 0,
+      uiGeneration: 6,
+      draftGeneration: 3,
+      dirty: true,
+      document: { name: "After" },
+    });
   });
 
   it("routes every advertised manifest method through a concrete bridge path", async () => {

@@ -250,6 +250,122 @@ describe("UI visual walkthrough runner", () => {
     ]);
   });
 
+  it("authors, captures, and discards a dirty editor through exact Agent Control surfaces", async () => {
+    const editorSurfaceId = "ui-aaaaaaaaaaaaaaaa";
+    const decisionSurfaceId = "ui-bbbbbbbbbbbbbbbb";
+    let uiGeneration = 0;
+    let draftGeneration = 0;
+    let phase = "closed";
+    const calls = [];
+    const invoke = vi.fn(async (args) => {
+      calls.push(args);
+      const command = args.join(" ");
+      if (command.startsWith("capabilities")) {
+        return {
+          methods: [
+            "app.capabilities",
+            "app.inspect",
+            "ui.inspect",
+            "ui.show.themeEditor",
+            "ui.cancel",
+            "editorDraft.inspect",
+            "editorDraft.patch",
+            "editorDraft.discard",
+            "visual.screenshot",
+          ],
+        };
+      }
+      if (command.startsWith("inspect")) {
+        return {
+          revision: 4,
+          appearance: { mode: "system", selectedThemeId: null },
+          loudnessProfile: { activeId: "off" },
+        };
+      }
+      if (command.startsWith("ui show theme-editor")) {
+        phase = "editor";
+        uiGeneration = 1;
+        return {
+          revision: 4,
+          uiGeneration,
+          surface: { surfaceId: editorSurfaceId, kind: "themeEditor", target: {} },
+        };
+      }
+      if (command.startsWith("editor-draft inspect")) {
+        return { revision: 4, uiGeneration, draftGeneration, dirty: false };
+      }
+      if (command.startsWith("editor-draft patch")) {
+        draftGeneration = 1;
+        uiGeneration = 2;
+        return { revision: 4, uiGeneration, draftGeneration, changed: true, dirty: true };
+      }
+      if (command.startsWith("visual screenshot")) {
+        return { revision: 4, uiGeneration, artifact: { bytes: 8, sha256: "hash" } };
+      }
+      if (command.startsWith("ui cancel")) {
+        phase = "decision";
+        uiGeneration = 3;
+        return { revision: 4, uiGeneration };
+      }
+      if (command.startsWith("editor-draft discard")) {
+        phase = "closed";
+        uiGeneration = 4;
+        return { revision: 4, uiGeneration, discarded: true };
+      }
+      if (command.startsWith("ui inspect")) {
+        const editor = {
+          surfaceId: editorSurfaceId,
+          kind: "themeEditor",
+          dirty: draftGeneration > 0,
+          target: {},
+        };
+        const decision = {
+          surfaceId: decisionSurfaceId,
+          kind: "confirmation",
+          origin: "nested",
+          target: { purpose: "discardDraft", editorSurfaceId },
+        };
+        return {
+          revision: 4,
+          uiGeneration,
+          topSurfaceId:
+            phase === "decision" ? decisionSurfaceId : phase === "editor" ? editorSurfaceId : null,
+          activeBlockingEditors: phase === "closed" ? [] : ["theme"],
+          surfaces: phase === "closed" ? [] : phase === "decision" ? [editor, decision] : [editor],
+        };
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    const materialize = vi.fn(async () => "C:/private/theme-draft.json");
+
+    const result = await runUiVisualWalkthrough({
+      manifest: {
+        version: 1,
+        workbench: { instanceId: "instance-a" },
+        scenarios: [
+          {
+            id: "theme-draft",
+            durable: [],
+            ui: { kind: "themeEditor", mode: "customize", themeId: "plvs-dark" },
+            draft: { operations: [{ op: "setName", name: "Screenshot Draft" }] },
+            screenshot: { target: "main", output: "theme-draft.png" },
+            touches: [],
+          },
+        ],
+      },
+      outDir: "C:/safe-output",
+      invoke,
+      materialize,
+    });
+
+    expect(materialize).toHaveBeenCalledWith("theme-draft-draft", {
+      operations: [{ op: "setName", name: "Screenshot Draft" }],
+    });
+    expect(calls.some((args) => args.slice(0, 2).join(" ") === "editor-draft patch")).toBe(true);
+    expect(calls.some((args) => args.slice(0, 2).join(" ") === "editor-draft discard")).toBe(true);
+    expect(result.restoration.verified).toBe(true);
+  });
+
   it("analyzes deterministic audio and restores the original transport", async () => {
     const outDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-"));
     let revision = 4;

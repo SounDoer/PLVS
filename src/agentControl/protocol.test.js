@@ -60,6 +60,80 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  describe("editor draft requests", () => {
+    it.each(["theme", "loudness-profile"])(
+      "normalizes describe and exact inspect for %s",
+      (kind) => {
+        expect(normalizeAgentControlRequest(request("editorDraft.describe", { kind }))).toEqual({
+          ok: true,
+          request: { id: "req-1", method: "editorDraft.describe", params: { kind } },
+        });
+        expect(
+          normalizeAgentControlRequest(
+            request("editorDraft.inspect", { kind, surfaceId: `ui-${"a".repeat(16)}` })
+          )
+        ).toEqual({
+          ok: true,
+          request: {
+            id: "req-1",
+            method: "editorDraft.inspect",
+            params: { kind, surfaceId: `ui-${"a".repeat(16)}` },
+          },
+        });
+      }
+    );
+
+    it.each([
+      ["editorDraft.describe", { kind: "profile" }, "kind"],
+      ["editorDraft.describe", { kind: "theme", state: {} }, "state"],
+      ["editorDraft.inspect", { kind: "theme", surfaceId: "old" }, "surfaceId"],
+    ])("rejects invalid %s params", (method, params, path) => {
+      expect(normalizeAgentControlRequest(request(method, params))).toMatchObject({
+        ok: false,
+        error: { reason: "invalidParams", path: `$.params.${path}` },
+      });
+    });
+
+    it.each([
+      ["editorDraft.patch", { patch: { operations: [{ op: "setName", name: "After" }] } }],
+      ["editorDraft.undo", {}],
+      ["editorDraft.redo", {}],
+      ["editorDraft.discard", { decisionSurfaceId: `ui-${"b".repeat(16)}` }],
+    ])("normalizes exact mutation tokens for %s", (method, actionParams) => {
+      const params = {
+        kind: "theme",
+        surfaceId: `ui-${"a".repeat(16)}`,
+        expectedRevision: 2,
+        expectedUiGeneration: 3,
+        expectedDraftGeneration: 4,
+        ...actionParams,
+      };
+      expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+        ok: true,
+        request: { id: "req-1", method, params },
+      });
+    });
+
+    it.each(["expectedRevision", "expectedUiGeneration", "expectedDraftGeneration"])(
+      "requires %s before an editor draft mutation",
+      (missing) => {
+        const params = {
+          kind: "theme",
+          surfaceId: `ui-${"a".repeat(16)}`,
+          patch: { operations: [{ op: "setName", name: "After" }] },
+          expectedRevision: 2,
+          expectedUiGeneration: 3,
+          expectedDraftGeneration: 4,
+        };
+        delete params[missing];
+        expect(normalizeAgentControlRequest(request("editorDraft.patch", params))).toMatchObject({
+          ok: false,
+          error: { path: `$.params.${missing}` },
+        });
+      }
+    );
+  });
+
   describe("UI navigation requests", () => {
     it.each([
       ["ui.show.settings", { section: "appearance" }],

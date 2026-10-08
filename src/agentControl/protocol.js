@@ -105,6 +105,24 @@ function validateExpectedUiGeneration(params) {
   return null;
 }
 
+function validateExpectedDraftGeneration(params) {
+  if (params.expectedDraftGeneration === undefined) {
+    return error(
+      "draftGenerationRequired",
+      "$.params.expectedDraftGeneration",
+      "expectedDraftGeneration is required for every editor draft mutation.",
+      -32602
+    );
+  }
+  if (!Number.isSafeInteger(params.expectedDraftGeneration) || params.expectedDraftGeneration < 0) {
+    return invalidParams(
+      "$.params.expectedDraftGeneration",
+      "expectedDraftGeneration must be a non-negative safe integer."
+    );
+  }
+  return null;
+}
+
 export function normalizeAgentControlRequest(input) {
   if (!isPlainJsonObject(input)) {
     return error("invalidRequest", "$", "Request must be a plain JSON object.", -32600);
@@ -128,6 +146,95 @@ export function normalizeAgentControlRequest(input) {
   }
   if (!isPlainJsonObject(input.params)) {
     return invalidParams("$.params", "Request params must be a plain JSON object.");
+  }
+
+  if (input.method === "editorDraft.describe" || input.method === "editorDraft.inspect") {
+    const allowed =
+      input.method === "editorDraft.describe" ? new Set(["kind"]) : new Set(["kind", "surfaceId"]);
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!["theme", "loudness-profile"].includes(input.params.kind)) {
+      return invalidParams("$.params.kind", "kind must be theme or loudness-profile.");
+    }
+    if (
+      input.method === "editorDraft.inspect" &&
+      !/^ui-[a-z0-9-]{16,60}$/.test(input.params.surfaceId ?? "")
+    ) {
+      return invalidParams("$.params.surfaceId", "surfaceId must be an exact UI surface ID.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          kind: input.params.kind,
+          ...(input.method === "editorDraft.inspect" ? { surfaceId: input.params.surfaceId } : {}),
+        },
+      },
+    };
+  }
+
+  if (
+    ["editorDraft.patch", "editorDraft.undo", "editorDraft.redo", "editorDraft.discard"].includes(
+      input.method
+    )
+  ) {
+    const actionField =
+      input.method === "editorDraft.patch"
+        ? "patch"
+        : input.method === "editorDraft.discard"
+          ? "decisionSurfaceId"
+          : null;
+    const allowed = new Set([
+      "kind",
+      "surfaceId",
+      "expectedRevision",
+      "expectedUiGeneration",
+      "expectedDraftGeneration",
+      ...(actionField ? [actionField] : []),
+    ]);
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!["theme", "loudness-profile"].includes(input.params.kind)) {
+      return invalidParams("$.params.kind", "kind must be theme or loudness-profile.");
+    }
+    if (!/^ui-[a-z0-9-]{16,60}$/.test(input.params.surfaceId ?? "")) {
+      return invalidParams("$.params.surfaceId", "surfaceId must be an exact UI surface ID.");
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const uiGenerationError = validateExpectedUiGeneration(input.params);
+    if (uiGenerationError) return uiGenerationError;
+    const draftGenerationError = validateExpectedDraftGeneration(input.params);
+    if (draftGenerationError) return draftGenerationError;
+    if (input.method === "editorDraft.patch" && !isPlainJsonObject(input.params.patch)) {
+      return invalidParams("$.params.patch", "patch must be a plain JSON object.");
+    }
+    if (
+      input.method === "editorDraft.discard" &&
+      !/^ui-[a-z0-9-]{16,60}$/.test(input.params.decisionSurfaceId ?? "")
+    ) {
+      return invalidParams(
+        "$.params.decisionSurfaceId",
+        "decisionSurfaceId must be an exact UI surface ID."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          kind: input.params.kind,
+          surfaceId: input.params.surfaceId,
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+          expectedDraftGeneration: input.params.expectedDraftGeneration,
+          ...(actionField ? { [actionField]: input.params[actionField] } : {}),
+        },
+      },
+    };
   }
 
   if (input.method === "ui.inspect") {

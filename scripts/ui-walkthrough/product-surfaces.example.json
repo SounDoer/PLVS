@@ -40,6 +40,12 @@
         "themeId": "plvs-dark",
         "page": "core"
       },
+      "draft": {
+        "operations": [
+          { "op": "setName", "name": "Walkthrough Theme Draft" },
+          { "op": "setCoreColor", "key": "interfaceAccent", "color": "#22d3ee" }
+        ]
+      },
       "screenshot": { "target": "main", "output": "theme-customize.png" },
       "touches": []
     },
@@ -47,6 +53,16 @@
       "id": "profile-create",
       "durable": [],
       "ui": { "kind": "loudnessProfileEditor", "mode": "create" },
+      "draft": {
+        "operations": [
+          { "op": "setName", "name": "Walkthrough Profile Draft" },
+          { "op": "setReferenceLufs", "value": -23 },
+          {
+            "op": "addRule",
+            "rule": { "metricId": "integrated", "op": ">", "value": -22, "severity": "fail" }
+          }
+        ]
+      },
       "screenshot": { "target": "main", "output": "profile-create.png" },
       "touches": []
     },

@@ -13,7 +13,7 @@ import {
   LoudnessProfileDocumentError,
   validateLoudnessProfileDocument,
 } from "../lib/loudnessProfileLibrary.js";
-import { STATS_META, statDecimals } from "../lib/statsCatalog.js";
+import { STATS_META, roundToStatPrecision, statDecimals } from "../lib/statsCatalog.js";
 
 const THEME_OPERATIONS = Object.freeze([
   "setName",
@@ -59,6 +59,75 @@ function visibleOverrideRoles() {
   return THEME_ROLE_REGISTRY.filter(
     (role) => role.advanced && role.advanced.editorVisible !== false
   );
+}
+
+const operationSchema = (op, fields) => ({
+  required: ["op", ...Object.keys(fields)],
+  properties: { op: { const: op }, ...fields },
+  additionalProperties: false,
+});
+
+function themeOperationSchemas() {
+  const overrideRoleIds = visibleOverrideRoles().map(({ id }) => id);
+  return {
+    setName: operationSchema("setName", { name: { type: "string" } }),
+    setColorScheme: operationSchema("setColorScheme", {
+      colorScheme: { enum: ["dark", "light"] },
+    }),
+    setCoreColor: operationSchema("setCoreColor", {
+      key: { enum: CORE_COLOR_KEYS },
+      color: { type: "cssColor" },
+    }),
+    resetCore: operationSchema("resetCore", {}),
+    setPaletteColor: operationSchema("setPaletteColor", {
+      palette: { enum: ["status", "frequency", "interface"] },
+      key: { enum: [...STATUS_COLOR_KEYS, ...FREQUENCY_COLOR_KEYS, ...INTERFACE_COLOR_KEYS] },
+      color: { type: "cssColor" },
+    }),
+    setIntensityStops: operationSchema("setIntensityStops", {
+      stops: { type: "array", items: { position: "number", color: "cssColor" } },
+    }),
+    applyPalettePreset: operationSchema("applyPalettePreset", {
+      palette: { enum: PALETTE_KINDS },
+      presetId: { type: "string" },
+    }),
+    setOverrideColor: operationSchema("setOverrideColor", {
+      roleId: { enum: overrideRoleIds },
+      color: { type: "cssColor" },
+    }),
+    setOverrideReference: operationSchema("setOverrideReference", {
+      roleId: { enum: overrideRoleIds },
+      sourceRoleId: { type: "string" },
+    }),
+    clearOverride: operationSchema("clearOverride", { roleId: { enum: overrideRoleIds } }),
+    clearOverrides: operationSchema("clearOverrides", {
+      roleIds: { type: "array", items: { enum: overrideRoleIds } },
+    }),
+  };
+}
+
+function profileOperationSchemas() {
+  const rule = {
+    metricId: { enum: RULEABLE_METRIC_IDS },
+    op: { enum: [">", "<"] },
+    value: { type: "number", optional: true },
+    severity: { enum: ["warn", "fail"] },
+  };
+  return {
+    setName: operationSchema("setName", { name: { type: "string" } }),
+    setReferenceLufs: operationSchema("setReferenceLufs", {
+      value: { type: ["number", "null"], minimum: -70, maximum: 0 },
+    }),
+    addRule: operationSchema("addRule", { rule: { properties: rule } }),
+    updateRule: operationSchema("updateRule", {
+      index: { type: "integer", minimum: 0 },
+      patch: { properties: rule, allOptional: true },
+    }),
+    removeRule: operationSchema("removeRule", { index: { type: "integer", minimum: 0 } }),
+    reorderRules: operationSchema("reorderRules", {
+      order: { type: "array", items: { type: "integer", minimum: 0 } },
+    }),
+  };
 }
 
 function conflictingTarget(claimed, target) {
@@ -144,6 +213,8 @@ export function describeEditorDraft(kind) {
       kind,
       history: { undo: true, redo: true },
       operations: THEME_OPERATIONS,
+      operationSchemas: themeOperationSchemas(),
+      maximumOperations: MAX_PATCH_OPERATIONS,
       coreKeys: CORE_COLOR_KEYS,
       palettes: PALETTE_KINDS.map((palette) => ({
         id: palette,
@@ -162,6 +233,8 @@ export function describeEditorDraft(kind) {
       kind,
       history: { undo: false, redo: false },
       operations: PROFILE_OPERATIONS,
+      operationSchemas: profileOperationSchemas(),
+      maximumOperations: MAX_PATCH_OPERATIONS,
       referenceLufs: { minimum: -70, maximum: 0, nullable: true },
       operators: [">", "<"],
       severities: ["warn", "fail"],
@@ -321,7 +394,18 @@ function applyProfileOperation(document, operation, index, issues) {
       return { ...document, referenceLufs: operation.value };
     case "addRule":
       unknownFields(operation, new Set(["op", "rule"]), path, issues);
-      return { ...document, rules: [...document.rules, structuredClone(operation.rule)] };
+      return {
+        ...document,
+        rules: [
+          ...document.rules,
+          Object.hasOwn(operation.rule ?? {}, "value") && Number.isFinite(operation.rule.value)
+            ? {
+                ...structuredClone(operation.rule),
+                value: roundToStatPrecision(operation.rule.metricId, operation.rule.value),
+              }
+            : structuredClone(operation.rule),
+        ],
+      };
     case "updateRule": {
       unknownFields(operation, new Set(["op", "index", "patch"]), path, issues);
       if (!Number.isInteger(operation.index) || !document.rules[operation.index]) {
@@ -350,6 +434,8 @@ function applyProfileOperation(document, operation, index, issues) {
         }
         if (Object.hasOwn(operation.patch, "value") && operation.patch.value === null) {
           delete next.value;
+        } else if (Number.isFinite(next.value)) {
+          next.value = roundToStatPrecision(next.metricId, next.value);
         }
         return next;
       });

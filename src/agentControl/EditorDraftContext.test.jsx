@@ -125,4 +125,32 @@ describe("EditorDraftProvider", () => {
     act(() => result.current.discard("theme", "editor-surface", "decision-surface", 3));
     expect(discarded).toBe(1);
   });
+
+  it("routes history only through actions owned by the exact mounted editor", () => {
+    let undos = 0;
+    const { result } = renderHook(
+      () => {
+        const registry = useEditorDraftRegistry();
+        useEditorDraftSurface({
+          active: true,
+          kind: "theme",
+          surfaceId: "history-surface",
+          controller: {
+            inspectDraft: () => ({ draftGeneration: 1, canUndo: true, canRedo: false }),
+            undo: () => {
+              undos += 1;
+            },
+          },
+        });
+        return registry;
+      },
+      { wrapper }
+    );
+
+    act(() => result.current.history("theme", "history-surface", "undo"));
+    expect(undos).toBe(1);
+    expect(() => result.current.history("theme", "history-surface", "redo")).toThrowError(
+      expect.objectContaining({ code: "draftActionUnavailable" })
+    );
+  });
 });

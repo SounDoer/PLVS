@@ -60,6 +60,13 @@ and request correlation, then routes the request to the main WebView. Workspace 
 one-shot replacement and persistence completion remain owned by the React frontend; the broker does
 not duplicate business state and does not broadcast requests to accessory WebViews.
 
+Transient editor authoring uses a separate mounted-draft registry in the React workbench. Each
+adapter is bound to the UI Navigation surface ID for one Theme/Profile editor lifetime and exposes
+only owner-provided snapshot, atomic document transaction, history, and linked-discard functions.
+Its `draftGeneration` is local to that lifetime; it never advances or substitutes for the durable
+Agent Control revision. Closing or replacing the editor unregisters the adapter, so an old command
+cannot resolve to a later draft.
+
 ### Multi-workbench runtime
 
 Each metering workbench is one Tauri process with its own Rust audio engine, React runtime, native

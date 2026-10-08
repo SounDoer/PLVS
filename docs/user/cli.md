@@ -223,9 +223,27 @@ plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation
 transient window, blocking editors, mounted surfaces, and process-local `uiGeneration`. `show` only
 opens, locates, or focuses and is idempotent for an exact target. `close` and `cancel` invoke only
 the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
-the CLI cannot confirm it. Event-driven decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for two-token
-concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection, safety,
-and errors.
+only the exact linked `editor-draft discard` command can confirm that decision. Event-driven
+decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for
+two-token concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection,
+safety, and errors.
+
+Editor Draft Control operates on the in-memory document of an already open Theme or Loudness
+Profile editor:
+
+```powershell
+plvs-cli editor-draft describe <theme|loudness-profile> --json
+plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json
+plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft undo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-surface-id <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+Patch uses closed editor-specific operations and never Saves. `revision` protects durable state,
+`uiGeneration` protects the surface stack, and `draftGeneration` protects the exact authoring
+document. See [Editor Draft Control](../agent-control/editor-drafts.md) for atomicity, stale drafts,
+Theme-only history, and the Cancel/discard workflow.
 
 Visual Capture saves the actual rendered pixels of the running app. Screenshots and recording are
 available on Windows and macOS:

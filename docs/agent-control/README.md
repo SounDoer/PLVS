@@ -35,6 +35,7 @@ Three places divide the work, and nothing is said in two of them:
 | Revision Wait            | [`wait.md`](wait.md)                           |
 | Visual Capture           | [`visual.md`](visual.md)                       |
 | UI Navigation            | [`ui.md`](ui.md)                               |
+| Editor Draft Control     | [`editor-drafts.md`](editor-drafts.md)         |
 | Library Transfer         | [`libraries.md`](libraries.md)                 |
 | Configuration Transfer   | [`config.md`](config.md)                       |
 

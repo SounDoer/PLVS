@@ -108,6 +108,12 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `visual.recording.inspect` | `visual recording inspect` | runningApp / query | none | no | none |
 | `visual.recording.wait` | `visual recording wait` | runningApp / wait | none | no | optional |
 | `visual.recording.stop` | `visual recording stop` | runningApp / action | none | no | optional |
+| `editorDraft.describe` | `editor-draft describe` | runningApp / query | none | no | none |
+| `editorDraft.inspect` | `editor-draft inspect` | runningApp / query | none | no | none |
+| `editorDraft.patch` | `editor-draft patch` | runningApp / mutation | required | no | none |
+| `editorDraft.undo` | `editor-draft undo` | runningApp / mutation | required | no | none |
+| `editorDraft.redo` | `editor-draft redo` | runningApp / mutation | required | no | none |
+| `editorDraft.discard` | `editor-draft discard` | runningApp / mutation | required | no | none |
 | `instances.list` | `instances` | offline / query | none | no | none |
 | `doctor` | `doctor` | offline / query | none | no | optional |
 | `schema.list` | `schema list` | offline / query | none | no | none |
@@ -2811,6 +2817,179 @@ plvs-cli visual recording stop <recording-id> [--out <file>] --json
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
 | `--out` | local only | no | string |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.describe`
+
+Describe the closed semantic operations supported by an editor draft kind.
+
+- CLI path: `editor-draft describe`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.describe`
+
+```text
+plvs-cli editor-draft describe <theme|loudness-profile> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.inspect`
+
+Inspect the exact currently mounted editor draft and concurrency tokens.
+
+- CLI path: `editor-draft inspect`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.inspect`
+
+```text
+plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.patch`
+
+Apply one closed atomic semantic transaction to the exact mounted draft.
+
+- CLI path: `editor-draft patch`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.patch`
+- Schema references: `editorDraft.patch`, `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
+
+```text
+plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes | string |
+| `file` | `patch` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.undo`
+
+Undo one Theme draft history entry on the exact mounted editor.
+
+- CLI path: `editor-draft undo`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.undo`
+- Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
+
+```text
+plvs-cli editor-draft undo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme" |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.redo`
+
+Redo one Theme draft history entry on the exact mounted editor.
+
+- CLI path: `editor-draft redo`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.redo`
+- Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
+
+```text
+plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme" |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.discard`
+
+Confirm the exact linked discard decision opened through UI Cancel.
+
+- CLI path: `editor-draft discard`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.discard`
+- Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
+
+```text
+plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-surface-id <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--decision-surface-id` | `decisionSurfaceId` | yes | string |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
 | `--json` | local only | yes | boolean |
 
 ## `instances.list`

@@ -30,6 +30,15 @@ describe("semantic editor draft control", () => {
       references: ["core.primaryData", "core.secondaryData"],
     });
     expect(description.overrideRoles.some(({ id }) => id === "data.primary")).toBe(false);
+    expect(description.operationSchemas.setCoreColor).toEqual({
+      required: ["op", "key", "color"],
+      properties: {
+        op: { const: "setCoreColor" },
+        key: { enum: description.coreKeys },
+        color: { type: "cssColor" },
+      },
+      additionalProperties: false,
+    });
   });
 
   it("plans one atomic Theme transaction from closed semantic operations", () => {
@@ -108,6 +117,23 @@ describe("semantic editor draft control", () => {
         ],
       },
     });
+  });
+
+  it("uses the visible metric precision for supplied Profile thresholds", () => {
+    const planned = planEditorDraftPatch(
+      "loudnessProfile",
+      { id: "draft", name: "Before", referenceLufs: null, rules: [] },
+      {
+        operations: [
+          {
+            op: "addRule",
+            rule: { metricId: "integrated", op: ">", value: -22.149, severity: "warn" },
+          },
+        ],
+      }
+    );
+
+    expect(planned.document.rules[0].value).toBe(-22.1);
   });
 
   it("rejects unknown operations without returning a partially changed document", () => {

@@ -128,8 +128,23 @@ describe("agent-control app snapshots", () => {
         "dock.panel.describe",
         "dock.panel.update",
         "dock.panel.reset",
+        "editorDraft.describe",
+        "editorDraft.inspect",
+        "editorDraft.patch",
+        "editorDraft.undo",
+        "editorDraft.redo",
+        "editorDraft.discard",
       ],
       features: {
+        editorDraft: {
+          kinds: ["theme", "loudness-profile"],
+          describe: true,
+          inspect: true,
+          patch: true,
+          undo: true,
+          redo: true,
+          discard: true,
+        },
         uiNavigation: {
           inspect: true,
           close: true,

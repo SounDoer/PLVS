@@ -202,6 +202,40 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         revision: shown.revision,
         uiGeneration: shown.uiGeneration,
       };
+      let draftState = null;
+      let draftKind = null;
+      if (scenario.draft) {
+        if (!materialize)
+          throw new Error("Draft walkthrough steps require a private input writer.");
+        draftKind = scenario.ui.kind === "themeEditor" ? "theme" : "loudness-profile";
+        const inspectedDraft = await run([
+          "editor-draft",
+          "inspect",
+          draftKind,
+          surface.surfaceId,
+          "--json",
+        ]);
+        const inputPath = await materialize(`${scenario.id}-draft`, scenario.draft);
+        draftState = await run([
+          "editor-draft",
+          "patch",
+          draftKind,
+          surface.surfaceId,
+          inputPath,
+          "--expected-revision",
+          String(inspectedDraft.revision),
+          "--expected-ui-generation",
+          String(inspectedDraft.uiGeneration),
+          "--expected-draft-generation",
+          String(inspectedDraft.draftGeneration),
+          "--json",
+        ]);
+        if (!draftState.changed || !draftState.dirty) {
+          throw new Error(`Scenario ${scenario.id} did not establish a dirty editor draft.`);
+        }
+        latestApp = { ...latestApp, revision: draftState.revision };
+        latestUi = await run(["ui", "inspect", "--json"]);
+      }
 
       const screenshotPath = join(outDir, scenario.screenshot.output);
       const screenshotArgs = ["visual", "screenshot", "--target", scenario.screenshot.target];
@@ -209,9 +243,9 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         screenshotArgs.push("--panel-id", scenario.screenshot.panelId);
       screenshotArgs.push(
         "--expected-revision",
-        String(shown.revision),
+        String(latestApp.revision),
         "--expected-ui-generation",
-        String(shown.uiGeneration),
+        String(latestUi.uiGeneration),
         "--out",
         screenshotPath,
         "--json"
@@ -223,36 +257,75 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         metadata: captured.artifact,
       });
       if (surface) {
-        const dismiss = ["settings", "panelSettings"].includes(scenario.ui.kind)
-          ? "close"
-          : scenario.ui.kind === "eventFixture"
-            ? scenario.ui.action
-            : "cancel";
-        const dismissed =
-          dismiss === "reset"
-            ? await run([
-                "dev",
-                "fixture",
-                "reset",
-                fixtureId,
-                "--expected-revision",
-                String(captured.revision),
-                "--expected-ui-generation",
-                String(captured.uiGeneration),
-                "--json",
-              ])
-            : await run([
-                "ui",
-                dismiss,
-                surface.surfaceId,
-                "--expected-revision",
-                String(captured.revision),
-                "--expected-ui-generation",
-                String(captured.uiGeneration),
-                "--json",
-              ]);
-        latestApp = { ...latestApp, revision: dismissed.revision };
-        latestUi = await run(["ui", "inspect", "--json"]);
+        if (draftState) {
+          await run([
+            "ui",
+            "cancel",
+            surface.surfaceId,
+            "--expected-revision",
+            String(captured.revision),
+            "--expected-ui-generation",
+            String(captured.uiGeneration),
+            "--json",
+          ]);
+          const decisionUi = await run(["ui", "inspect", "--json"]);
+          const decision = decisionUi.surfaces.find(
+            (candidate) =>
+              candidate.target?.purpose === "discardDraft" &&
+              candidate.target?.editorSurfaceId === surface.surfaceId
+          );
+          if (!decision || decisionUi.topSurfaceId !== decision.surfaceId) {
+            throw new Error(`Scenario ${scenario.id} did not open its linked discard decision.`);
+          }
+          const discarded = await run([
+            "editor-draft",
+            "discard",
+            draftKind,
+            surface.surfaceId,
+            "--decision-surface-id",
+            decision.surfaceId,
+            "--expected-revision",
+            String(captured.revision),
+            "--expected-ui-generation",
+            String(decisionUi.uiGeneration),
+            "--expected-draft-generation",
+            String(draftState.draftGeneration),
+            "--json",
+          ]);
+          latestApp = { ...latestApp, revision: discarded.revision };
+          latestUi = await run(["ui", "inspect", "--json"]);
+        } else {
+          const dismiss = ["settings", "panelSettings"].includes(scenario.ui.kind)
+            ? "close"
+            : scenario.ui.kind === "eventFixture"
+              ? scenario.ui.action
+              : "cancel";
+          const dismissed =
+            dismiss === "reset"
+              ? await run([
+                  "dev",
+                  "fixture",
+                  "reset",
+                  fixtureId,
+                  "--expected-revision",
+                  String(captured.revision),
+                  "--expected-ui-generation",
+                  String(captured.uiGeneration),
+                  "--json",
+                ])
+              : await run([
+                  "ui",
+                  dismiss,
+                  surface.surfaceId,
+                  "--expected-revision",
+                  String(captured.revision),
+                  "--expected-ui-generation",
+                  String(captured.uiGeneration),
+                  "--json",
+                ]);
+          latestApp = { ...latestApp, revision: dismissed.revision };
+          latestUi = await run(["ui", "inspect", "--json"]);
+        }
         if (latestUi.surfaces.some(({ surfaceId }) => surfaceId === surface.surfaceId)) {
           throw new Error(`Scenario ${scenario.id} did not dismiss its exact surface.`);
         }
@@ -379,6 +452,13 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
     finalUi.surfaces.length !== initialUi.surfaces.length
   )
     throw new Error("Final transient UI does not match the initial walkthrough state.");
+  if (
+    manifest.scenarios.some((scenario) => scenario.draft) &&
+    (!sameJson(finalApp.appearance, initialApp.appearance) ||
+      !sameJson(finalApp.loudnessProfile, initialApp.loudnessProfile))
+  ) {
+    throw new Error("Discarded editor drafts changed durable Theme/Profile selection state.");
+  }
   if (initialTransport) {
     const finalTransport = await run(["transport", "inspect", "--json"]);
     if (

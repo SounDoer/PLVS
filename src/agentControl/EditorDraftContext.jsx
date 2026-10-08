@@ -79,6 +79,23 @@ export function EditorDraftProvider({ children }) {
     [resolve]
   );
 
+  const history = useCallback(
+    (kind, surfaceId, action) => {
+      const controller = resolve(kind, surfaceId);
+      const snapshot = controller.inspectDraft?.();
+      const available = action === "undo" ? snapshot?.canUndo === true : snapshot?.canRedo === true;
+      if (!available || typeof controller[action] !== "function") {
+        throw new EditorDraftRegistryError("draftActionUnavailable", {
+          action,
+          kind,
+          surfaceId,
+        });
+      }
+      return controller[action]();
+    },
+    [resolve]
+  );
+
   const discard = useCallback(
     (kind, surfaceId, decisionSurfaceId, expectedDraftGeneration) => {
       const decision = decisionsRef.current.get(decisionSurfaceId);
@@ -108,8 +125,8 @@ export function EditorDraftProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ registerEditorDraft, registerDraftDecision, inspect, commit, discard }),
-    [commit, discard, inspect, registerDraftDecision, registerEditorDraft]
+    () => ({ registerEditorDraft, registerDraftDecision, inspect, commit, history, discard }),
+    [commit, discard, history, inspect, registerDraftDecision, registerEditorDraft]
   );
   return <EditorDraftContext.Provider value={value}>{children}</EditorDraftContext.Provider>;
 }

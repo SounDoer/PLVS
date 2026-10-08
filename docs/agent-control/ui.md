@@ -94,15 +94,18 @@ inspect and treat absence of the surface they opened as already clean.
 
 `ui cancel <surface-id>` invokes the exact surface's current Cancel or Escape intent. Clean editors
 close normally. Dirty editors open their real discard confirmation and keep the draft until the
-user chooses what to do; Agent Control cannot confirm discard. Feedback Cancel closes the unsent
-draft without reading diagnostics or sending a request.
+user chooses what to do. The only command that can confirm one is the narrow `editor-draft discard`
+operation: it requires the exact linked editor and decision surface IDs plus current revision, UI
+generation, and draft generation. Feedback Cancel closes the unsent draft without reading
+diagnostics or sending a request.
 
 Real update, crash-report, close-confirmation, library-conflict, transfer, and nested discard/reset
 decisions appear in `ui inspect` only after their actual owner mounts them. They have
 `origin: event` or `origin: nested`, redact payloads and authored values, and advertise only a safe
 Close/Cancel action when the visible UI permits it. Busy phases advertise no dismissal. There is no
 public command to synthesize these surfaces and no generic Save, Send, Confirm, Install, Import,
-Export, Apply, or Retry operation.
+Export, Apply, or Retry operation. See [Editor Draft Control](editor-drafts.md) for the one linked
+discard exception.
 
 ## Errors
 

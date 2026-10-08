@@ -1,6 +1,6 @@
 import { isAbsolute, normalize, sep } from "node:path";
 
-const SCENARIO_FIELDS = new Set(["id", "durable", "ui", "screenshot", "touches"]);
+const SCENARIO_FIELDS = new Set(["id", "durable", "draft", "ui", "screenshot", "touches"]);
 const UI_TARGETS = Object.freeze({
   workspace: { method: null, fields: new Set(["kind"]) },
   eventFixture: {
@@ -140,6 +140,19 @@ export function validateWalkthroughManifest(manifest) {
     ) {
       issues.push(`${path}.ui event fixture target is invalid.`);
     }
+    if (scenario.draft !== undefined) {
+      if (
+        !["themeEditor", "loudnessProfileEditor"].includes(scenario.ui?.kind) ||
+        !plain(scenario.draft) ||
+        unknownFields(scenario.draft, new Set(["operations"])).length > 0 ||
+        !Array.isArray(scenario.draft.operations) ||
+        scenario.draft.operations.length === 0 ||
+        scenario.draft.operations.length > 64 ||
+        scenario.draft.operations.some((operation) => !plain(operation))
+      ) {
+        issues.push(`${path}.draft must be a bounded semantic editor operation batch.`);
+      }
+    }
 
     if (!plain(scenario.screenshot) || !SCREENSHOT_TARGETS.has(scenario.screenshot.target))
       issues.push(`${path}.screenshot.target is invalid.`);
@@ -201,6 +214,11 @@ export function requiredWalkthroughMethods(manifest) {
   for (const scenario of manifest.scenarios) {
     const showMethod = UI_TARGETS[scenario.ui.kind].method;
     if (showMethod) methods.add(showMethod);
+    if (scenario.draft) {
+      for (const method of ["editorDraft.inspect", "editorDraft.patch", "editorDraft.discard"]) {
+        methods.add(method);
+      }
+    }
     if (scenario.ui.kind === "eventFixture") {
       if (scenario.ui.action !== "reset") methods.add(`ui.${scenario.ui.action}`);
     } else if (scenario.ui.kind !== "workspace") {

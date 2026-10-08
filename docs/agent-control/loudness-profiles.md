@@ -7,6 +7,10 @@ These mutations author persisted documents directly. UI Navigation's
 `ui show loudness-profile-editor` instead opens a real create/edit draft without saving it. Exact
 Cancel follows the editor's normal dirty discard confirmation. See [UI Navigation](ui.md).
 
+While that editor is open, [Editor Draft Control](editor-drafts.md) can inspect and apply closed
+semantic name, Reference, and rule operations to its transient preview without saving it. Profile
+history remains unavailable because the visible editor has no Undo/Redo history.
+
 ## Commands
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).

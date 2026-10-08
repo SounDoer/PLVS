@@ -9,6 +9,9 @@ instead, use UI Navigation's `ui show theme-editor` modes. Create, customize, an
 only an unsaved draft until the user chooses Save; exact Cancel preserves the editor's normal dirty
 discard confirmation. See [UI Navigation](ui.md).
 
+While that editor is open, [Editor Draft Control](editor-drafts.md) can inspect and apply closed
+semantic changes to its transient document and existing Undo/Redo history without saving it.
+
 ## Commands
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).

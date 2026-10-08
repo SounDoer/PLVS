@@ -74,6 +74,19 @@ export function buildAgentControlCapabilities(runtime, revision) {
     appVersion: String(runtime.appVersion),
     protocolVersion: 1,
     features: {
+      ...(hasMethod("editorDraft.describe")
+        ? {
+            editorDraft: {
+              kinds: ["theme", "loudness-profile"],
+              describe: true,
+              inspect: hasMethod("editorDraft.inspect"),
+              patch: hasMethod("editorDraft.patch"),
+              undo: hasMethod("editorDraft.undo"),
+              redo: hasMethod("editorDraft.redo"),
+              discard: hasMethod("editorDraft.discard"),
+            },
+          }
+        : {}),
       ...(hasMethod("ui.inspect")
         ? {
             uiNavigation: {

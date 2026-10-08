@@ -80,6 +80,21 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  EditorDraftRead {
+    method: String,
+    kind: String,
+    surface_id: Option<String>,
+  },
+  EditorDraftMutation {
+    method: String,
+    kind: String,
+    surface_id: String,
+    input: Option<String>,
+    decision_surface_id: Option<String>,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+    expected_draft_generation: u64,
+  },
   DevFixtureEstablish {
     name: String,
     expected_revision: u64,
@@ -347,6 +362,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
+    [command, rest @ ..] if command == "editor-draft" => return parse_editor_draft_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "view" => return parse_view_args(rest),
     [command, rest @ ..] if command == "module" => return parse_module_args(rest),
@@ -367,7 +383,144 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|ui|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|ui|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+}
+
+fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("editor-draft".to_string()));
+  }
+  let read = match args {
+    [action, kind, json] if action == "describe" && json == "--json" => {
+      Some((action.as_str(), kind.clone(), None))
+    }
+    [action, kind, surface_id, json] if action == "inspect" && json == "--json" => {
+      Some((action.as_str(), kind.clone(), Some(surface_id.clone())))
+    }
+    _ => None,
+  };
+  if let Some((action, kind, surface_id)) = read {
+    if !matches!(kind.as_str(), "theme" | "loudness-profile") {
+      return Err("Editor draft kind must be theme or loudness-profile.".to_string());
+    }
+    if surface_id
+      .as_ref()
+      .is_some_and(|value| !valid_editor_surface_id(value))
+    {
+      return Err("Editor draft surface ID is invalid.".to_string());
+    }
+    return Ok(ControlCommand::EditorDraftRead {
+      method: format!("editorDraft.{action}"),
+      kind,
+      surface_id,
+    });
+  }
+
+  let action = args
+    .first()
+    .filter(|action| matches!(action.as_str(), "patch" | "undo" | "redo" | "discard"))
+    .ok_or_else(|| "Editor draft command is invalid.".to_string())?;
+  let mut positionals = Vec::new();
+  let mut decision_surface_id = None;
+  let mut expected_revision = None;
+  let mut expected_ui_generation = None;
+  let mut expected_draft_generation = None;
+  let mut json = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--decision-surface-id" if decision_surface_id.is_none() => {
+        decision_surface_id = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --decision-surface-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      "--expected-ui-generation" if expected_ui_generation.is_none() => {
+        expected_ui_generation = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-ui-generation",
+        )?);
+        index += 2;
+      }
+      "--expected-draft-generation" if expected_draft_generation.is_none() => {
+        expected_draft_generation = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-draft-generation",
+        )?);
+        index += 2;
+      }
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      value if value.starts_with("--") => {
+        return Err(format!("Unknown or duplicate option: {value}"))
+      }
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  if !json {
+    return Err("Editor draft mutations require --json.".to_string());
+  }
+  let expected_revision = expected_revision
+    .ok_or_else(|| "Editor draft mutations require --expected-revision.".to_string())?;
+  let expected_ui_generation = expected_ui_generation
+    .ok_or_else(|| "Editor draft mutations require --expected-ui-generation.".to_string())?;
+  let expected_draft_generation = expected_draft_generation
+    .ok_or_else(|| "Editor draft mutations require --expected-draft-generation.".to_string())?;
+  let expected_positionals = if action == "patch" { 3 } else { 2 };
+  if positionals.len() != expected_positionals {
+    return Err("Editor draft mutation positionals are invalid.".to_string());
+  }
+  let kind = positionals.remove(0);
+  if !matches!(kind.as_str(), "theme" | "loudness-profile") {
+    return Err("Editor draft kind must be theme or loudness-profile.".to_string());
+  }
+  if matches!(action.as_str(), "undo" | "redo") && kind != "theme" {
+    return Err("Editor draft history is available only for theme.".to_string());
+  }
+  let surface_id = positionals.remove(0);
+  if !valid_editor_surface_id(&surface_id)
+    || decision_surface_id
+      .as_ref()
+      .is_some_and(|value| !valid_editor_surface_id(value))
+  {
+    return Err("Editor draft surface ID is invalid.".to_string());
+  }
+  if (action == "discard") != decision_surface_id.is_some() {
+    return Err("Only discard requires --decision-surface-id.".to_string());
+  }
+  Ok(ControlCommand::EditorDraftMutation {
+    method: format!("editorDraft.{action}"),
+    kind,
+    surface_id,
+    input: (action == "patch").then(|| positionals.remove(0)),
+    decision_surface_id,
+    expected_revision,
+    expected_ui_generation,
+    expected_draft_generation,
+  })
+}
+
+fn valid_editor_surface_id(value: &str) -> bool {
+  value.starts_with("ui-")
+    && (19..=63).contains(&value.len())
+    && value.chars().skip(3).all(|character| {
+      character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
+    })
 }
 
 fn parse_development_fixture_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -3088,6 +3241,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiShowFeedback { .. } => "ui.show.feedback".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
+    ControlCommand::EditorDraftRead { method, .. }
+    | ControlCommand::EditorDraftMutation { method, .. } => method.clone(),
     ControlCommand::DevFixtureEstablish { .. } => "dev.fixture.establish".to_string(),
     ControlCommand::DevFixtureReset { .. } => "dev.fixture.reset".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
@@ -3189,6 +3344,55 @@ fn request_for_command<R: Read>(
     | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect
     | ControlCommand::VisualDescribe => serde_json::json!({}),
+    ControlCommand::EditorDraftRead {
+      kind,
+      surface_id: Some(surface_id),
+      ..
+    } => serde_json::json!({ "kind": kind, "surfaceId": surface_id }),
+    ControlCommand::EditorDraftRead {
+      kind,
+      surface_id: None,
+      ..
+    } => serde_json::json!({ "kind": kind }),
+    ControlCommand::EditorDraftMutation {
+      kind,
+      surface_id,
+      input,
+      decision_surface_id,
+      expected_revision,
+      expected_ui_generation,
+      expected_draft_generation,
+      ..
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        ("kind".to_string(), Value::String(kind.clone())),
+        ("surfaceId".to_string(), Value::String(surface_id.clone())),
+        (
+          "expectedRevision".to_string(),
+          Value::from(*expected_revision),
+        ),
+        (
+          "expectedUiGeneration".to_string(),
+          Value::from(*expected_ui_generation),
+        ),
+        (
+          "expectedDraftGeneration".to_string(),
+          Value::from(*expected_draft_generation),
+        ),
+      ]);
+      if let Some(input) = input {
+        let patch = read_json_document(input, stdin, "editor draft patch")
+          .map_err(ControlFailure::invalid_arguments)?;
+        params.insert("patch".to_string(), patch);
+      }
+      if let Some(decision_surface_id) = decision_surface_id {
+        params.insert(
+          "decisionSurfaceId".to_string(),
+          Value::String(decision_surface_id.clone()),
+        );
+      }
+      Value::Object(params)
+    }
     ControlCommand::UiShowSettings {
       section,
       expected_revision,
@@ -4362,6 +4566,113 @@ mod tests {
   }
 
   #[test]
+  fn parses_and_builds_editor_draft_read_commands() {
+    let describe =
+      parse_control_args(&args(&["editor-draft", "describe", "theme", "--json"])).unwrap();
+    assert_eq!(
+      describe,
+      ControlCommand::EditorDraftRead {
+        method: "editorDraft.describe".to_string(),
+        kind: "theme".to_string(),
+        surface_id: None,
+      }
+    );
+    assert_eq!(
+      request_for_command(&describe, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "kind": "theme" })
+    );
+
+    let surface_id = format!("ui-{}", "a".repeat(16));
+    let inspect = parse_control_args(&args(&[
+      "editor-draft",
+      "inspect",
+      "loudness-profile",
+      &surface_id,
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&inspect, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "kind": "loudness-profile", "surfaceId": surface_id })
+    );
+    assert!(parse_control_args(&args(&[
+      "editor-draft",
+      "inspect",
+      "profile",
+      "ui-short",
+      "--json",
+    ]))
+    .is_err());
+  }
+
+  #[test]
+  fn parses_and_builds_editor_draft_mutations() {
+    let surface_id = format!("ui-{}", "a".repeat(16));
+    let patch = parse_control_args(&args(&[
+      "editor-draft",
+      "patch",
+      "theme",
+      &surface_id,
+      "-",
+      "--expected-revision",
+      "2",
+      "--expected-ui-generation",
+      "3",
+      "--expected-draft-generation",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    let mut stdin = Cursor::new(br#"{"operations":[{"op":"setName","name":"After"}]}"#);
+    assert_eq!(
+      request_for_command(&patch, &mut stdin).unwrap().params,
+      serde_json::json!({
+        "kind": "theme",
+        "surfaceId": surface_id,
+        "patch": { "operations": [{ "op": "setName", "name": "After" }] },
+        "expectedRevision": 2,
+        "expectedUiGeneration": 3,
+        "expectedDraftGeneration": 4,
+      })
+    );
+
+    let decision_surface_id = format!("ui-{}", "b".repeat(16));
+    let discard = parse_control_args(&args(&[
+      "editor-draft",
+      "discard",
+      "loudness-profile",
+      &surface_id,
+      "--decision-surface-id",
+      &decision_surface_id,
+      "--expected-revision",
+      "2",
+      "--expected-ui-generation",
+      "3",
+      "--expected-draft-generation",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&discard, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "kind": "loudness-profile",
+        "surfaceId": surface_id,
+        "decisionSurfaceId": decision_surface_id,
+        "expectedRevision": 2,
+        "expectedUiGeneration": 3,
+        "expectedDraftGeneration": 4,
+      })
+    );
+  }
+
+  #[test]
   fn parses_and_builds_ui_navigation_commands() {
     assert_eq!(
       parse_control_args(&args(&["ui", "inspect", "--json"])),
@@ -4743,6 +5054,7 @@ mod tests {
       "recording-id" => format!("rec-{}", "a".repeat(32)),
       "section" => "appearance".to_string(),
       "surface-id" => format!("ui-{}", "a".repeat(16)),
+      "theme|loudness-profile" => "theme".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
       "main|workspace" | "main|workspace|panel|dock-header|dock-editor" => "main".to_string(),

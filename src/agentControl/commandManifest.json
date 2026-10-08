@@ -5999,6 +5999,364 @@
       }
     },
     {
+      "id": "editorDraft.describe",
+      "family": "editor-draft",
+      "path": ["editor-draft", "describe"],
+      "usage": "plvs-cli editor-draft describe <theme|loudness-profile> --json",
+      "summary": "Describe the closed semantic operations supported by an editor draft kind.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "editorDraft.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "kind",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["theme", "loudness-profile"]
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": { "type": "boolean" }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["theme", "loudness-profile"]
+          }
+        }
+      }
+    },
+    {
+      "id": "editorDraft.inspect",
+      "family": "editor-draft",
+      "path": ["editor-draft", "inspect"],
+      "usage": "plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json",
+      "summary": "Inspect the exact currently mounted editor draft and concurrency tokens.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "editorDraft.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "kind",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["theme", "loudness-profile"]
+          }
+        },
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": { "type": "boolean" }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "surfaceId"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["theme", "loudness-profile"]
+          },
+          "surfaceId": { "type": "string" }
+        }
+      }
+    },
+    {
+      "id": "editorDraft.patch",
+      "family": "editor-draft",
+      "path": ["editor-draft", "patch"],
+      "usage": "plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
+      "summary": "Apply one closed atomic semantic transaction to the exact mounted draft.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "editorDraft.patch",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "kind",
+          "required": true,
+          "value": { "type": "string", "enum": ["theme", "loudness-profile"] }
+        },
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        { "name": "file", "mapsTo": "patch", "required": true, "value": { "type": "string" } }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": { "schemaRef": "agentControl.revision" }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "schemaRef": "agentControl.uiGeneration" }
+        },
+        {
+          "name": "--expected-draft-generation",
+          "mapsTo": "expectedDraftGeneration",
+          "required": true,
+          "value": { "schemaRef": "editorDraft.generation" }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "surfaceId",
+          "patch",
+          "expectedRevision",
+          "expectedUiGeneration",
+          "expectedDraftGeneration"
+        ],
+        "properties": {
+          "kind": { "type": "string", "enum": ["theme", "loudness-profile"] },
+          "surfaceId": { "type": "string" },
+          "patch": { "schemaRef": "editorDraft.patch" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "expectedUiGeneration": { "schemaRef": "agentControl.uiGeneration" },
+          "expectedDraftGeneration": { "schemaRef": "editorDraft.generation" }
+        }
+      }
+    },
+    {
+      "id": "editorDraft.undo",
+      "family": "editor-draft",
+      "path": ["editor-draft", "undo"],
+      "usage": "plvs-cli editor-draft undo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
+      "summary": "Undo one Theme draft history entry on the exact mounted editor.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "editorDraft.undo",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        { "name": "kind", "required": true, "value": { "type": "string", "enum": ["theme"] } },
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": { "schemaRef": "agentControl.revision" }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "schemaRef": "agentControl.uiGeneration" }
+        },
+        {
+          "name": "--expected-draft-generation",
+          "mapsTo": "expectedDraftGeneration",
+          "required": true,
+          "value": { "schemaRef": "editorDraft.generation" }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "surfaceId",
+          "expectedRevision",
+          "expectedUiGeneration",
+          "expectedDraftGeneration"
+        ],
+        "properties": {
+          "kind": { "type": "string", "enum": ["theme"] },
+          "surfaceId": { "type": "string" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "expectedUiGeneration": { "schemaRef": "agentControl.uiGeneration" },
+          "expectedDraftGeneration": { "schemaRef": "editorDraft.generation" }
+        }
+      }
+    },
+    {
+      "id": "editorDraft.redo",
+      "family": "editor-draft",
+      "path": ["editor-draft", "redo"],
+      "usage": "plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
+      "summary": "Redo one Theme draft history entry on the exact mounted editor.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "editorDraft.redo",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        { "name": "kind", "required": true, "value": { "type": "string", "enum": ["theme"] } },
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": { "schemaRef": "agentControl.revision" }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "schemaRef": "agentControl.uiGeneration" }
+        },
+        {
+          "name": "--expected-draft-generation",
+          "mapsTo": "expectedDraftGeneration",
+          "required": true,
+          "value": { "schemaRef": "editorDraft.generation" }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "surfaceId",
+          "expectedRevision",
+          "expectedUiGeneration",
+          "expectedDraftGeneration"
+        ],
+        "properties": {
+          "kind": { "type": "string", "enum": ["theme"] },
+          "surfaceId": { "type": "string" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "expectedUiGeneration": { "schemaRef": "agentControl.uiGeneration" },
+          "expectedDraftGeneration": { "schemaRef": "editorDraft.generation" }
+        }
+      }
+    },
+    {
+      "id": "editorDraft.discard",
+      "family": "editor-draft",
+      "path": ["editor-draft", "discard"],
+      "usage": "plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-surface-id <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
+      "summary": "Confirm the exact linked discard decision opened through UI Cancel.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "editorDraft.discard",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "kind",
+          "required": true,
+          "value": { "type": "string", "enum": ["theme", "loudness-profile"] }
+        },
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        }
+      ],
+      "options": [
+        {
+          "name": "--decision-surface-id",
+          "mapsTo": "decisionSurfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": { "schemaRef": "agentControl.revision" }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "schemaRef": "agentControl.uiGeneration" }
+        },
+        {
+          "name": "--expected-draft-generation",
+          "mapsTo": "expectedDraftGeneration",
+          "required": true,
+          "value": { "schemaRef": "editorDraft.generation" }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "surfaceId",
+          "decisionSurfaceId",
+          "expectedRevision",
+          "expectedUiGeneration",
+          "expectedDraftGeneration"
+        ],
+        "properties": {
+          "kind": { "type": "string", "enum": ["theme", "loudness-profile"] },
+          "surfaceId": { "type": "string" },
+          "decisionSurfaceId": { "type": "string" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "expectedUiGeneration": { "schemaRef": "agentControl.uiGeneration" },
+          "expectedDraftGeneration": { "schemaRef": "editorDraft.generation" }
+        }
+      }
+    },
+    {
       "id": "instances.list",
       "family": "instances",
       "path": ["instances"],

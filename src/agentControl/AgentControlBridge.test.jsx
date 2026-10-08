@@ -136,6 +136,9 @@ vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
 vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
   useDevelopmentEventFixtures: () => ({ enabled: false }),
 }));
+vi.mock("./EditorDraftContext.jsx", () => ({
+  useEditorDraftRegistry: () => ({ inspect: () => null }),
+}));
 
 import { AgentControlBridge } from "./AgentControlBridge.jsx";
 
@@ -147,6 +150,7 @@ describe("AgentControlBridge", () => {
     const passed = useAgentControlBridge.mock.calls.at(-1)[0];
     expect(passed.enabled).toBe(true);
     expect(passed.runtime).toEqual({ available: true, platform: "x" });
+    expect(typeof passed.editorDraft.inspect).toBe("function");
     expect(passed.visual.platformCapabilities).toEqual({ platform: "x" });
     expect(passed.visual.getRuntime()).toEqual({ windowForm: "normal" });
     await expect(passed.visual.settle({ kind: "panel" }, {})).resolves.toBe("surface");

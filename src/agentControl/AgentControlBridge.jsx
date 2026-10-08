@@ -31,6 +31,7 @@ import { settleDockAccessory } from "./settleDockAccessory.js";
 import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
 import { isParticipantInstance } from "../lib/runtimeRole.js";
 import { useDevelopmentEventFixtures } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { useEditorDraftRegistry } from "./EditorDraftContext.jsx";
 import {
   captureVisualScreenshot,
   inspectVisualRecording,
@@ -47,6 +48,7 @@ import {
 export function AgentControlBridge() {
   const { runtime, enabled, platformCapabilities, setRecordingState } = useAgentControlState();
   const { visualRuntimeRef } = useDockAccessories();
+  const editorDraft = useEditorDraftRegistry();
   const {
     docked,
     dockEdge,
@@ -566,6 +568,7 @@ export function AgentControlBridge() {
     },
     executeTransport: executeAgentControlTransport,
     uiNavigation,
+    editorDraft,
     developmentFixtures,
     device: agentControlDevice,
     presets,
