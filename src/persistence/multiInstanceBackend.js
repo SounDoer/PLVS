@@ -114,10 +114,12 @@ export function createMultiInstanceBackend() {
   let activeRefresh = null;
   let unreportedFailure = null;
   let pendingConflict = null;
+  let pendingConflictDevelopmentFixtureId = null;
   const conflictSubscribers = new Set();
 
-  function publishConflict(conflict) {
+  function publishConflict(conflict, developmentFixtureId = null) {
     pendingConflict = conflict;
+    pendingConflictDevelopmentFixtureId = developmentFixtureId;
     for (const listener of conflictSubscribers) listener(clone(conflict));
   }
 
@@ -373,6 +375,7 @@ export function createMultiInstanceBackend() {
     applyRemoteCollection(conflict.kind, hydrated);
     if (action === "reload") {
       pendingConflict = null;
+      pendingConflictDevelopmentFixtureId = null;
       for (const listener of conflictSubscribers) listener(null);
       return null;
     }
@@ -410,6 +413,7 @@ export function createMultiInstanceBackend() {
     if (domain) await invoke("persistence_save_domain", { domain, value: cache.get(key) });
     notify(key, { origin: "conflict-resolution" });
     pendingConflict = null;
+    pendingConflictDevelopmentFixtureId = null;
     for (const listener of conflictSubscribers) listener(null);
     return clone(document);
   }
@@ -472,6 +476,30 @@ export function createMultiInstanceBackend() {
      */
     reportLibraryConflict(kind, document) {
       publishConflict({ kind, id: document?.id ?? null, document: clone(document) });
+    },
+    establishDevelopmentLibraryConflict(fixtureId, conflict) {
+      if (pendingConflict) {
+        throw Object.assign(new Error("A library conflict is already pending."), {
+          reason: "fixtureConflict",
+        });
+      }
+      publishConflict(
+        {
+          kind: conflict.kind,
+          id: conflict.document?.id ?? null,
+          document: clone(conflict.document),
+        },
+        fixtureId
+      );
+    },
+    matchesDevelopmentLibraryConflict(fixtureId) {
+      return pendingConflict !== null && pendingConflictDevelopmentFixtureId === fixtureId;
+    },
+    resetDevelopmentLibraryConflict(fixtureId) {
+      if (pendingConflictDevelopmentFixtureId !== fixtureId) return;
+      pendingConflict = null;
+      pendingConflictDevelopmentFixtureId = null;
+      for (const listener of conflictSubscribers) listener(null);
     },
     resolveLibraryConflict: resolveConflict,
     refresh,

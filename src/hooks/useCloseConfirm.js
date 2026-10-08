@@ -16,6 +16,7 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
   const closeBlockedRef = useRef(closeBlocked);
   const closingRef = useRef(false);
   const pendingActionRef = useRef(null);
+  const developmentFixtureIdRef = useRef(null);
   useLayoutEffect(() => {
     closeBlockedRef.current = closeBlocked;
   }, [closeBlocked]);
@@ -24,6 +25,7 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
     async (/** @type {string} */ action, dontAskAgain = false) => {
       if (closeBlockedRef.current || closingRef.current) return false;
 
+      developmentFixtureIdRef.current = null;
       const pending = { action, dontAskAgain };
       pendingActionRef.current = pending;
       closingRef.current = true;
@@ -79,6 +81,7 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
           await requestCloseAction("quit");
           return;
         }
+        developmentFixtureIdRef.current = null;
         setCloseError(null);
         setDialogOpen(true);
       })
@@ -104,9 +107,29 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
 
   function handleCancel() {
     pendingActionRef.current = null;
+    developmentFixtureIdRef.current = null;
     setCloseError(null);
     setDialogOpen(false);
   }
+
+  const developmentFixture = {
+    establish(fixtureId) {
+      developmentFixtureIdRef.current = fixtureId;
+      pendingActionRef.current = null;
+      setCloseError(null);
+      setDialogOpen(true);
+    },
+    matches(fixtureId) {
+      return dialogOpen && developmentFixtureIdRef.current === fixtureId;
+    },
+    reset(fixtureId) {
+      if (developmentFixtureIdRef.current !== fixtureId) return;
+      developmentFixtureIdRef.current = null;
+      pendingActionRef.current = null;
+      setCloseError(null);
+      setDialogOpen(false);
+    },
+  };
 
   return {
     dialogOpen,
@@ -116,5 +139,6 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
     handleRetry,
     handleCancel,
     requestCloseAction,
+    developmentFixture,
   };
 }

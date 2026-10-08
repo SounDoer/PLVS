@@ -123,21 +123,18 @@ the original source lifecycle and every declared setting, and writes `report.jso
 absolute `--plvs-test-app-data-root` for each compared code state when identical default window
 bounds and settings are required.
 
-Some screenshot states cannot be manufactured by the public CLI. For the checked development-only
-sequence (Theme Preview, close confirmation, update dialog, crash report, and a populated Presets
-popover), cold-start the debug app with:
+Some screenshot states cannot be manufactured by the public CLI. Copy
+`scripts/ui-walkthrough/development-fixtures.example.json`, insert the running development
+workbench's instance ID, and run `ui:walkthrough` as above. The runner uses its development-identity
+CLI's private event fixtures to establish Update, Crash Report, Close Confirmation, and Library
+Conflict through their production owners. It then returns to the public `ui inspect`,
+`visual screenshot`, and exact `ui cancel` / `ui close` contracts for review and dismissal. Library
+Conflict has no product dismissal action, so the runner uses the exact fixture reset token.
 
-```powershell
-npm run desktop -- -- -- --plvs-ui-visual-fixture review-sequence
-```
-
-Copy `scripts/ui-walkthrough/development-fixtures.example.json`, insert that run's instance ID, and
-run `ui:walkthrough` as above. This combined manifest captures both the exceptional sequence and
-all ordinary product surfaces from that one cold-started process. The exceptional scenes are the
-production components inside the real Tauri window, fed deterministic non-persistent data. The
-sequence advances only through the surfaces' registered Cancel, Close, or Escape-equivalent
-callbacks; the runner never invokes Save, Send, Confirm, Update, Restart, Apply, or Delete. The
-startup argument is accepted only by debug builds.
+These fixture commands are absent from public capabilities, help, completion, schema, and packaged
+CLIs. They never invoke Save, Send, Confirm, Update, Restart, Apply, Delete, or mutate arbitrary
+React state. If a screenshot or token check fails after establishment, the runner leaves the scene
+open for diagnosis instead of silently cleaning it up.
 
 Repeat the same cold-start workflow for the second code state, writing to `after`, then compare the
 two complete image sets exactly:

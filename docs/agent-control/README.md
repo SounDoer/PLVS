@@ -17,26 +17,26 @@ Three places divide the work, and nothing is said in two of them:
 
 ## Families
 
-| Family                         | Page                                           |
-| ------------------------------ | ---------------------------------------------- |
-| Module discovery               | [`modules.md`](modules.md)                     |
-| Panel Control                  | [`panels.md`](panels.md)                       |
-| Axis Control                   | [`axes.md`](axes.md)                           |
-| Presets                        | [`presets.md`](presets.md)                     |
-| Theme Control                  | [`themes.md`](themes.md)                       |
-| Loudness Profile Control       | [`loudness-profiles.md`](loudness-profiles.md) |
-| Settings Control               | [`settings.md`](settings.md)                   |
-| View Control                   | [`view.md`](view.md)                           |
-| Dock Control                   | [`dock.md`](dock.md)                           |
-| Device Control                 | [`devices.md`](devices.md)                     |
-| Transport Control              | [`transport.md`](transport.md)                 |
-| Measurement Control            | [`measurements.md`](measurements.md)           |
-| Measurement Wait               | [`measurement-wait.md`](measurement-wait.md)   |
-| Revision Wait                  | [`wait.md`](wait.md)                           |
-| Visual Capture                 | [`visual.md`](visual.md)                       |
-| UI Navigation                  | [`ui.md`](ui.md)                               |
-| Library Transfer               | [`libraries.md`](libraries.md)                 |
-| Configuration Transfer         | [`config.md`](config.md)                       |
+| Family                   | Page                                           |
+| ------------------------ | ---------------------------------------------- |
+| Module discovery         | [`modules.md`](modules.md)                     |
+| Panel Control            | [`panels.md`](panels.md)                       |
+| Axis Control             | [`axes.md`](axes.md)                           |
+| Presets                  | [`presets.md`](presets.md)                     |
+| Theme Control            | [`themes.md`](themes.md)                       |
+| Loudness Profile Control | [`loudness-profiles.md`](loudness-profiles.md) |
+| Settings Control         | [`settings.md`](settings.md)                   |
+| View Control             | [`view.md`](view.md)                           |
+| Dock Control             | [`dock.md`](dock.md)                           |
+| Device Control           | [`devices.md`](devices.md)                     |
+| Transport Control        | [`transport.md`](transport.md)                 |
+| Measurement Control      | [`measurements.md`](measurements.md)           |
+| Measurement Wait         | [`measurement-wait.md`](measurement-wait.md)   |
+| Revision Wait            | [`wait.md`](wait.md)                           |
+| Visual Capture           | [`visual.md`](visual.md)                       |
+| UI Navigation            | [`ui.md`](ui.md)                               |
+| Library Transfer         | [`libraries.md`](libraries.md)                 |
+| Configuration Transfer   | [`config.md`](config.md)                       |
 
 ## Keeping this contract in step with the app
 
@@ -75,6 +75,21 @@ Deciding that a control stays out of Agent Control is a normal outcome; record i
 the question unanswered.
 
 ## Application-wide methods
+
+### Development event fixtures
+
+Development-identity builds have a private `dev.fixture.establish` / `dev.fixture.reset` wire path
+for deterministic review of event-only interfaces. Rust accepts the corresponding hidden CLI
+grammar only when built with `dev-identity`; the methods are intentionally absent from the public
+manifest, capability list, generated reference, help, completion, and packaged CLI parser.
+
+The frontend protocol accepts a closed fixture name plus exact global revision and UI generation.
+Each adapter delegates establishment and reset to the production state owner, carries an opaque
+fixture ID separately from component props, and waits for the ordinary UI Navigation surface to
+settle. Existing blocking editors, real event surfaces, non-matching resets, stale tokens, or unsafe
+busy states are refusals. A failed post-establishment wait reports the committed fixture ID and
+leaves the scene intact. Result actions such as Save, Send, Confirm, Update, Reload, Copy, and Delete
+remain ordinary user actions and are never fixture operations.
 
 ### `app.capabilities`
 

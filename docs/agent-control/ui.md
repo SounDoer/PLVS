@@ -165,15 +165,15 @@ workspace, removes the temporary session, and verifies that the original source 
 restored.
 
 Settings, normal or Dock Panel Settings, clean Theme/Profile drafts, blank Feedback, and ordinary
-Workspace/Dock captures belong on this path. A closed debug-only startup fixture provides the
-checked Theme Preview, close confirmation, update dialog, crash report, and populated Presets
-screenshots without adding public `ui show` commands or synthetic product events. It renders the
-production components in the real Tauri window, carries no persistent mutations, and advances only
-through their registered safe-dismiss callbacks. See `CONTRIBUTING.md` for the cold-start and exact
-pixel-comparison workflow.
+Workspace/Dock captures belong on this path. Event-only Update, Crash Report, Close Confirmation,
+and Library Conflict screenshots use the development-identity event-fixture protocol described in
+the implementation contract. A fixture establishes only the legal production scene; inspection,
+capture, and dismissible recovery still use this public UI Navigation contract. Library Conflict is
+non-dismissible and therefore uses an exact private reset token.
 
-Other development-only fixtures remain appropriate for fatal variants, close timing, stale library
-conflicts, dirty discard and validation states, color pickers, native file/permission dialogs,
-clipboard/drag/shortcut input, tooltips/hover/focus, hotplug/capture failures, and
-renderer/performance probes. The isolated community-preview renderer may continue to use Playwright
-because it renders a browser preview application, not the running PLVS workbench.
+The fixture protocol is deliberately not a public `ui show` family and is absent from public
+capabilities, help, completion, schema, and packaged CLIs. See `CONTRIBUTING.md` for the real desktop
+and exact pixel-comparison workflow. Other exceptional states need a new closed, owner-backed
+fixture and contract tests; they must not introduce selectors, arbitrary input, or React/store
+mutation. The isolated community-preview renderer may continue to use Playwright because it renders
+a browser preview application, not the running PLVS workbench.

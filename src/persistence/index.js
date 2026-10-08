@@ -121,6 +121,18 @@ export function reportLibraryConflict(kind, document) {
   backend.reportLibraryConflict?.(kind, document);
 }
 
+export function establishDevelopmentLibraryConflict(fixtureId, conflict) {
+  backend.establishDevelopmentLibraryConflict?.(fixtureId, conflict);
+}
+
+export function matchesDevelopmentLibraryConflict(fixtureId) {
+  return backend.matchesDevelopmentLibraryConflict?.(fixtureId) === true;
+}
+
+export function resetDevelopmentLibraryConflict(fixtureId) {
+  backend.resetDevelopmentLibraryConflict?.(fixtureId);
+}
+
 /** Force every coalesced domain update into the selected backend, then wait for durable settling. */
 export async function flushPersistence() {
   settingsStore.flush();

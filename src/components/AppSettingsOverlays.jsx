@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
@@ -17,6 +17,8 @@ import { LAYER_PRIORITY } from "./ui/layers.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
 
 /**
  * @param {{
@@ -27,7 +29,7 @@ import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigatio
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
  *   crashReportSetting: ReturnType<typeof import("../hooks/useCrashReportSetting.js").useCrashReportSetting>,
- *   crashReporting: ReturnType<typeof import("../hooks/useCrashReporting.js").useCrashReporting>,
+ *   crashReporting: Pick<ReturnType<typeof import("../hooks/useCrashReporting.js").useCrashReporting>, "pendingReport" | "dismissPending">,
  *   packTransfer?: ReturnType<typeof import("../transfer/usePackTransfer.js").usePackTransfer>,
  *   onAgentControlEnabledChange?: (...args: any[]) => any,
  * }} props
@@ -48,6 +50,7 @@ export function AppSettingsOverlays({
   const [feedbackDirty, setFeedbackDirty] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState(null);
+  const updateDevelopmentFixtureIdRef = useRef(null);
   // Held here, beside the theme editor's position, because both panels are floating overlays this
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
@@ -202,20 +205,37 @@ export function AppSettingsOverlays({
     return () => window.removeEventListener("paste", onPaste);
   }, [beginThemePaste]);
 
-  function openUpdateDialog() {
+  function openUpdateDialogFromInfo(info, developmentFixtureId = null) {
     resetInstall();
+    updateDevelopmentFixtureIdRef.current = developmentFixtureId;
     setSelectedUpdate({
-      releaseNotes: sliceChangelogSince(updateInfo?.releaseNotes, appVersion),
-      update: updateInfo?.update,
+      releaseNotes: sliceChangelogSince(info?.releaseNotes, appVersion),
+      update: info?.update,
     });
     setUpdateDialogOpen(true);
   }
 
+  function openUpdateDialog() {
+    openUpdateDialogFromInfo(updateInfo);
+  }
+
   function closeUpdateDialog() {
     resetInstall();
+    updateDevelopmentFixtureIdRef.current = null;
     setUpdateDialogOpen(false);
     setSelectedUpdate(null);
   }
+
+  useDevelopmentEventFixtureAdapter("update.available", {
+    establish: (fixtureId) => openUpdateDialogFromInfo(DEVELOPMENT_UPDATE, fixtureId),
+    reset: (fixtureId) => {
+      if (updateDevelopmentFixtureIdRef.current === fixtureId) closeUpdateDialog();
+    },
+    matches: (fixtureId) => updateDialogOpen && updateDevelopmentFixtureIdRef.current === fixtureId,
+    canEstablish: () => installStatus === "idle",
+    canReset: () => installStatus === "idle",
+    surface: { kind: "update", target: { phase: "idle" } },
+  });
 
   function openFeedback() {
     settings.setSettingsOpen(false);

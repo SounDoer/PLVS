@@ -30,6 +30,7 @@ import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
 import { settleDockAccessory } from "./settleDockAccessory.js";
 import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
 import { isParticipantInstance } from "../lib/runtimeRole.js";
+import { useDevelopmentEventFixtures } from "../dev/DevelopmentEventFixturesContext.jsx";
 import {
   captureVisualScreenshot,
   inspectVisualRecording,
@@ -153,6 +154,7 @@ export function AgentControlBridge() {
 
   const presets = usePresetLibrary();
   const uiNavigation = useUiNavigation();
+  const developmentFixtures = useDevelopmentEventFixtures();
   const meterRuntime = useMeterRuntime();
   const {
     analyzingFileId,
@@ -564,6 +566,7 @@ export function AgentControlBridge() {
     },
     executeTransport: executeAgentControlTransport,
     uiNavigation,
+    developmentFixtures,
     device: agentControlDevice,
     presets,
     loudnessProfile,

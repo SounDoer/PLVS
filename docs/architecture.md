@@ -87,6 +87,13 @@ commit phase to close peers; timeout or refusal aborts. A debug-only absolute ap
 allows real multi-process desktop tests to keep persistence, restore metadata, artifacts and logs
 inside a disposable root; packaged builds reject it.
 
+Development-identity builds also enable a closed Agent Control event-fixture layer for deterministic
+screenshots of interfaces normally opened by updater, crash, close, or persistence-conflict events.
+The layer is not part of the public CLI: it asks the same React owner that handles the real event to
+establish or exactly reset a tagged scene, while UI Navigation remains the authority for blocking,
+surface identity, inspection, and safe dismissal. Fixture provenance stays outside component props
+and is never persisted.
+
 Visual Capture keeps the same semantic boundary: React chooses the capture target, waits for a stable
 paint and supplies CSS geometry; Rust owns the private artifacts, concurrency and lifecycle. Windows
 screenshots use WebView2 and macOS screenshots use the WKWebView snapshot; both capture only the PLVS

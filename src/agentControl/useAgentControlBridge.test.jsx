@@ -263,6 +263,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentViewContext?: any,
  *   agentVisual?: any,
  *   agentUi?: any,
+ *   agentDevelopmentFixtures?: any,
  *   applyAgentView?: (...args: any[]) => any,
  *   agentTransport?: any,
  *   agentDock?: any,
@@ -327,6 +328,7 @@ function Harness({
     closeSurface: async () => ({}),
     cancelSurface: async () => ({}),
   },
+  agentDevelopmentFixtures = null,
   applyAgentView,
   agentTransport = transport,
   agentDock = dock,
@@ -536,6 +538,7 @@ function Harness({
     },
     visual: agentVisual,
     uiNavigation: agentUi,
+    developmentFixtures: agentDevelopmentFixtures,
     transport: transportState,
     transportContext: { docked: false, historyAvailable: true, historyMaxOffsetSec: 90 },
     executeTransport,
@@ -1869,6 +1872,74 @@ describe("useAgentControlBridge", () => {
       expectedRevision: 0,
       expectedUiGeneration: 2,
     });
+  });
+
+  it("routes private development fixtures only when the development controller is enabled", async () => {
+    const establish = vi.fn(async ({ name }) => ({
+      changed: true,
+      committed: true,
+      name,
+      fixtureId: `fixture-${"a".repeat(16)}`,
+      revision: 0,
+      uiGeneration: 1,
+      surface: { surfaceId: `ui-${"b".repeat(16)}`, kind: "closeConfirmation" },
+    }));
+    mount({
+      agentDevelopmentFixtures: { enabled: true, establish, reset: vi.fn() },
+    });
+    await waitUntilReady();
+
+    const stale = await send(
+      request(
+        "dev.fixture.establish",
+        {
+          name: "close-confirmation.requested",
+          expectedRevision: 1,
+          expectedUiGeneration: 0,
+        },
+        "fixture-stale"
+      )
+    );
+    expect(stale.error.data).toMatchObject({
+      reason: "revisionConflict",
+      details: { expectedRevision: 1, currentRevision: 0 },
+    });
+    expect(establish).not.toHaveBeenCalled();
+
+    const response = await send(
+      request(
+        "dev.fixture.establish",
+        {
+          name: "close-confirmation.requested",
+          expectedRevision: 0,
+          expectedUiGeneration: 0,
+        },
+        "fixture-establish"
+      )
+    );
+    expect(response.result).toMatchObject({
+      name: "close-confirmation.requested",
+      fixtureId: `fixture-${"a".repeat(16)}`,
+      surface: { kind: "closeConfirmation" },
+    });
+    expect(establish).toHaveBeenCalledOnce();
+
+    cleanup();
+    adapter.ready.mockClear();
+    mount({ agentDevelopmentFixtures: { enabled: false, establish, reset: vi.fn() } });
+    await waitUntilReady();
+    const unavailable = await send(
+      request(
+        "dev.fixture.establish",
+        {
+          name: "close-confirmation.requested",
+          expectedRevision: 0,
+          expectedUiGeneration: 0,
+        },
+        "fixture-unavailable"
+      )
+    );
+    expect(unavailable.error.data.reason).toBe("methodNotFound");
   });
 
   it("lists and describes Modules before a Panel instance exists", async () => {

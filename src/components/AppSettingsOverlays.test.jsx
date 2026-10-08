@@ -23,6 +23,11 @@ const mocks = vi.hoisted(() => ({
   savePackFile: vi.fn(),
   pickSharedPackFile: vi.fn(),
   writeProfileFile: vi.fn(),
+  fixtureAdapters: new Map(),
+}));
+
+vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
+  useDevelopmentEventFixtureAdapter: (name, adapter) => mocks.fixtureAdapters.set(name, adapter),
 }));
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => mocks.isTauri() }));
@@ -324,6 +329,7 @@ describe("AppSettingsOverlays", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.fixtureAdapters.clear();
     // `clearAllMocks` drops recorded calls but keeps implementations, so the desktop-mode test
     // below would otherwise leave `isTauri` true for whatever runs after it. Restore the defaults
     // here rather than in that test's own teardown, so test order never matters.
@@ -414,6 +420,26 @@ describe("AppSettingsOverlays", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
     expect(install).toHaveBeenCalledWith(update);
+  });
+
+  it("establishes and resets only the exact update development fixture without installing", () => {
+    const install = vi.fn();
+    const resetInstall = vi.fn();
+    renderOverlays(makeSettings(), { install, resetInstall });
+    let fixture = mocks.fixtureAdapters.get("update.available");
+
+    act(() => fixture.establish("fixture-aaaaaaaaaaaaaaaa"));
+    fixture = mocks.fixtureAdapters.get("update.available");
+    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
+    expect(screen.getByText(/Development fixture/)).toBeTruthy();
+    expect(fixture.matches("fixture-aaaaaaaaaaaaaaaa")).toBe(true);
+
+    act(() => fixture.reset("fixture-bbbbbbbbbbbbbbbb"));
+    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
+    act(() => fixture.reset("fixture-aaaaaaaaaaaaaaaa"));
+    expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
+    expect(install).not.toHaveBeenCalled();
+    expect(resetInstall).toHaveBeenCalledTimes(2);
   });
 
   it("closes the changelog dialog without installing when canceled", () => {

@@ -120,6 +120,7 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   let primaryFailure = null;
   let createdSessionId = null;
   let fixturePath = null;
+  let activeEventFixtureId = null;
   try {
     if (manifest.fixture?.audio) {
       fixturePath = join(outDir, `${manifest.fixture.audio.id}.wav`);
@@ -150,21 +151,48 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         await applyPatch(step, `${scenario.id}-setup-${index}`);
       }
       const showArgs = uiShowArguments(scenario.ui);
-      const shown = showArgs
-        ? await run([...showArgs, ...actionTokens(latestUi)])
-        : { ...latestUi, revision: latestApp.revision };
+      let fixtureId = null;
+      let shown;
+      if (scenario.ui.kind === "eventFixture") {
+        const established = await run([
+          "dev",
+          "fixture",
+          "establish",
+          scenario.ui.name,
+          ...actionTokens({ ...latestUi, revision: latestApp.revision }),
+        ]);
+        fixtureId = established.fixtureId;
+        activeEventFixtureId = fixtureId;
+        latestApp = { ...latestApp, revision: established.revision };
+        const inspected = await run(["ui", "inspect", "--json"]);
+        const surface = inspected.surfaces?.find(
+          (candidate) =>
+            candidate.kind === scenario.ui.surfaceKind &&
+            candidate.target?.phase === scenario.ui.phase
+        );
+        shown = {
+          revision: established.revision,
+          uiGeneration: inspected.uiGeneration,
+          ui: inspected,
+          surface,
+        };
+      } else {
+        shown = showArgs
+          ? await run([...showArgs, ...actionTokens(latestUi)])
+          : { ...latestUi, revision: latestApp.revision };
+      }
       const surface =
-        shown.surface ??
-        (scenario.ui.kind === "fixture" ? (latestUi.surfaces?.at(-1) ?? null) : null);
+        shown.surface ?? (scenario.ui.kind === "eventFixture" ? null : latestUi.surfaces?.at(-1));
       if (showArgs && (!surface?.surfaceId || surface.kind !== scenario.ui.kind)) {
         throw new Error(`Scenario ${scenario.id} opened the wrong UI surface.`);
       }
       if (
-        scenario.ui.kind === "fixture" &&
+        scenario.ui.kind === "eventFixture" &&
         (!surface ||
           surface.kind !== scenario.ui.surfaceKind ||
           surface.target?.phase !== scenario.ui.phase ||
-          !surface.supportedActions?.includes(scenario.ui.action))
+          (scenario.ui.action !== "reset" &&
+            !surface.supportedActions?.includes(scenario.ui.action)))
       ) {
         throw new Error(`Scenario ${scenario.id} found the wrong development fixture surface.`);
       }
@@ -195,31 +223,45 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         metadata: captured.artifact,
       });
       if (surface) {
-        const dismiss =
-          scenario.ui.kind === "fixture"
+        const dismiss = ["settings", "panelSettings"].includes(scenario.ui.kind)
+          ? "close"
+          : scenario.ui.kind === "eventFixture"
             ? scenario.ui.action
-            : ["settings", "panelSettings"].includes(scenario.ui.kind)
-              ? "close"
-              : "cancel";
-        const dismissed = await run([
-          "ui",
-          dismiss,
-          surface.surfaceId,
-          "--expected-revision",
-          String(captured.revision),
-          "--expected-ui-generation",
-          String(captured.uiGeneration),
-          "--json",
-        ]);
+            : "cancel";
+        const dismissed =
+          dismiss === "reset"
+            ? await run([
+                "dev",
+                "fixture",
+                "reset",
+                fixtureId,
+                "--expected-revision",
+                String(captured.revision),
+                "--expected-ui-generation",
+                String(captured.uiGeneration),
+                "--json",
+              ])
+            : await run([
+                "ui",
+                dismiss,
+                surface.surfaceId,
+                "--expected-revision",
+                String(captured.revision),
+                "--expected-ui-generation",
+                String(captured.uiGeneration),
+                "--json",
+              ]);
         latestApp = { ...latestApp, revision: dismissed.revision };
         latestUi = await run(["ui", "inspect", "--json"]);
         if (latestUi.surfaces.some(({ surfaceId }) => surfaceId === surface.surfaceId)) {
           throw new Error(`Scenario ${scenario.id} did not dismiss its exact surface.`);
         }
+        activeEventFixtureId = null;
       }
       report.scenarios.push({
         id: scenario.id,
         surfaceId: surface?.surfaceId ?? null,
+        ...(fixtureId ? { fixtureId } : {}),
         restored: false,
       });
     }
@@ -228,12 +270,14 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
     report.failure = {
       reason: error.reason ?? error.code ?? "walkthroughFailed",
       message: String(error.message).slice(0, 500),
-      preservationRequired: [
-        "revisionConflict",
-        "uiGenerationConflict",
-        "uiSurfaceNotFound",
-        "stateCommitted",
-      ].includes(error.reason ?? error.code),
+      preservationRequired:
+        [
+          "revisionConflict",
+          "uiGenerationConflict",
+          "uiSurfaceNotFound",
+          "stateCommitted",
+        ].includes(error.reason ?? error.code) || activeEventFixtureId !== null,
+      ...(activeEventFixtureId ? { fixtureId: activeEventFixtureId } : {}),
     };
   }
   if (!report.failure?.preservationRequired) {
@@ -332,7 +376,7 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   const finalUi = await run(["ui", "inspect", "--json"]);
   if (
     finalUi.activeBlockingEditors.length > 0 ||
-    finalUi.surfaces.length !== (manifest.fixture?.uiSequence ? 0 : initialUi.surfaces.length)
+    finalUi.surfaces.length !== initialUi.surfaces.length
   )
     throw new Error("Final transient UI does not match the initial walkthrough state.");
   if (initialTransport) {

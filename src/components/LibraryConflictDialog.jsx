@@ -8,7 +8,15 @@ import {
 } from "./ui/dialog.jsx";
 import { Button } from "./ui/button.jsx";
 import { LAYER_CONFLICT } from "./ui/layers.js";
-import { resolveLibraryConflict, subscribeLibraryConflicts } from "../persistence/index.js";
+import {
+  establishDevelopmentLibraryConflict,
+  matchesDevelopmentLibraryConflict,
+  resetDevelopmentLibraryConflict,
+  resolveLibraryConflict,
+  subscribeLibraryConflicts,
+} from "../persistence/index.js";
+import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { DEVELOPMENT_LIBRARY_CONFLICT } from "../dev/developmentEventFixtureData.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const LABELS = {
@@ -23,6 +31,14 @@ export function LibraryConflictDialog() {
   const [error, setError] = useState(null);
 
   useEffect(() => subscribeLibraryConflicts(setConflict), []);
+  useDevelopmentEventFixtureAdapter("library-conflict.pending", {
+    establish: (fixtureId) =>
+      establishDevelopmentLibraryConflict(fixtureId, DEVELOPMENT_LIBRARY_CONFLICT),
+    reset: resetDevelopmentLibraryConflict,
+    matches: matchesDevelopmentLibraryConflict,
+    canReset: () => !busy,
+    surface: { kind: "libraryConflict", target: { phase: "decision" } },
+  });
 
   /**
    * @param {string} action

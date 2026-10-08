@@ -21,6 +21,10 @@ import {
   isTransportAction,
   normalizeAgentControlRequest,
 } from "./protocol.js";
+import {
+  isDevelopmentFixtureMethod,
+  normalizeDevelopmentFixtureRequest,
+} from "./developmentFixtureProtocol.js";
 import { buildDeviceInspection, buildDeviceList, planDeviceSelection } from "./deviceControl.js";
 import {
   buildAxisInspection,
@@ -623,6 +627,7 @@ function transportMutationMatches(method, params, execution, snapshot) {
  *   viewContext?: Partial<AgentControlViewContext>,
  *   visual?: Partial<AgentControlVisual>,
  *   uiNavigation?: ReturnType<typeof import("../uiNavigation/UiNavigationContext.jsx").useUiNavigation>,
+ *   developmentFixtures?: ReturnType<typeof import("../dev/DevelopmentEventFixturesContext.jsx").useDevelopmentEventFixtures>,
  *   flush?: (...args: any[]) => any,
  *   exportConfiguration?: (...args: any[]) => any,
  *   importConfiguration?: (...args: any[]) => any,
@@ -658,6 +663,7 @@ export function useAgentControlBridge({
   viewContext = {},
   visual = null,
   uiNavigation = null,
+  developmentFixtures = null,
   flush = flushPersistence,
   exportConfiguration = exportProfile,
   importConfiguration = importProfile,
@@ -1057,7 +1063,11 @@ export function useAgentControlBridge({
     };
 
     processRef.current = async (rawRequest) => {
-      const normalized = normalizeAgentControlRequest(rawRequest);
+      const developmentFixtureRequest =
+        developmentFixtures?.enabled && isDevelopmentFixtureMethod(rawRequest?.method);
+      const normalized = developmentFixtureRequest
+        ? normalizeDevelopmentFixtureRequest(rawRequest)
+        : normalizeAgentControlRequest(rawRequest);
       const requestId =
         normalized.ok && normalized.request.id
           ? normalized.request.id
@@ -1080,6 +1090,40 @@ export function useAgentControlBridge({
             };
       if (revisionBatch) revisionBatchRef.current = revisionBatch;
       try {
+        if (isDevelopmentFixtureMethod(request.method)) {
+          try {
+            if (request.params.expectedRevision !== controlRevisionRef.current) {
+              throw Object.assign(new Error("The Agent Control revision changed."), {
+                reason: "revisionConflict",
+                details: {
+                  expectedRevision: request.params.expectedRevision,
+                  currentRevision: controlRevisionRef.current,
+                },
+              });
+            }
+            const result =
+              request.method === "dev.fixture.establish"
+                ? await developmentFixtures.establish(request.params)
+                : await developmentFixtures.reset(request.params);
+            return {
+              requestId,
+              result: { ...result, revision: controlRevisionRef.current },
+            };
+          } catch (error) {
+            if (typeof error?.reason !== "string") throw error;
+            throw semanticFailure(
+              error.reason,
+              error.reason === "uiGenerationConflict"
+                ? "$.params.expectedUiGeneration"
+                : error.reason === "revisionConflict"
+                  ? "$.params.expectedRevision"
+                  : "$.params",
+              error.message,
+              error.reason === "revisionConflict" ? -32004 : -32042,
+              error.details
+            );
+          }
+        }
         if (request.method === "app.capabilities") {
           const visualControl = latestVisualRef.current;
           const capabilityRuntime = visualControl
@@ -4049,6 +4093,7 @@ export function useAgentControlBridge({
     viewContext,
     visual,
     uiNavigation,
+    developmentFixtures,
     applySettings,
     executeTransport,
     device,

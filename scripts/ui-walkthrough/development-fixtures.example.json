@@ -2,7 +2,6 @@
   "version": 1,
   "workbench": { "instanceId": "REPLACE-WITH-INSTANCE-ID" },
   "fixture": {
-    "uiSequence": "review-sequence",
     "audio": {
       "id": "ui-review-stereo",
       "durationSeconds": 6,
@@ -12,34 +11,11 @@
   },
   "scenarios": [
     {
-      "id": "theme-preview",
-      "durable": [],
-      "ui": {
-        "kind": "fixture",
-        "surfaceKind": "confirmation",
-        "phase": "themePreviewFixture",
-        "action": "cancel"
-      },
-      "screenshot": { "target": "main", "output": "theme-preview.png" },
-      "touches": []
-    },
-    {
-      "id": "close-confirmation",
-      "durable": [],
-      "ui": {
-        "kind": "fixture",
-        "surfaceKind": "closeConfirmation",
-        "phase": "decision",
-        "action": "cancel"
-      },
-      "screenshot": { "target": "main", "output": "close-confirmation.png" },
-      "touches": []
-    },
-    {
       "id": "update-dialog",
       "durable": [],
       "ui": {
-        "kind": "fixture",
+        "kind": "eventFixture",
+        "name": "update.available",
         "surfaceKind": "update",
         "phase": "idle",
         "action": "cancel"
@@ -48,10 +24,24 @@
       "touches": []
     },
     {
+      "id": "close-confirmation",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "close-confirmation.requested",
+        "surfaceKind": "closeConfirmation",
+        "phase": "decision",
+        "action": "cancel"
+      },
+      "screenshot": { "target": "main", "output": "close-confirmation.png" },
+      "touches": []
+    },
+    {
       "id": "crash-report",
       "durable": [],
       "ui": {
-        "kind": "fixture",
+        "kind": "eventFixture",
+        "name": "crash-report.pending",
         "surfaceKind": "crashReport",
         "phase": "decision",
         "action": "close"
@@ -60,15 +50,16 @@
       "touches": []
     },
     {
-      "id": "presets-populated",
+      "id": "library-conflict",
       "durable": [],
       "ui": {
-        "kind": "fixture",
-        "surfaceKind": "confirmation",
-        "phase": "presetsFixture",
-        "action": "cancel"
+        "kind": "eventFixture",
+        "name": "library-conflict.pending",
+        "surfaceKind": "libraryConflict",
+        "phase": "decision",
+        "action": "reset"
       },
-      "screenshot": { "target": "main", "output": "presets-populated.png" },
+      "screenshot": { "target": "main", "output": "library-conflict.png" },
       "touches": []
     },
     {

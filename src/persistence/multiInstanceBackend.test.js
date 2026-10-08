@@ -174,6 +174,45 @@ describe("multiInstanceBackend", () => {
     expect(invoke).not.toHaveBeenCalledWith("persistence_library_update", expect.anything());
   });
 
+  it("keeps development conflict provenance private and resets only the exact fixture", async () => {
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const observed = [];
+    backend.subscribeLibraryConflicts((value) => observed.push(value));
+
+    backend.establishDevelopmentLibraryConflict("fixture-aaaaaaaaaaaaaaaa", {
+      kind: "preset",
+      document: { id: "fixture-preset", name: "Fixture Preset" },
+    });
+
+    expect(observed.at(-1)).toEqual({
+      kind: "preset",
+      id: "fixture-preset",
+      document: { id: "fixture-preset", name: "Fixture Preset" },
+    });
+    expect(observed.at(-1)).not.toHaveProperty("fixtureId");
+    expect(backend.matchesDevelopmentLibraryConflict("fixture-aaaaaaaaaaaaaaaa")).toBe(true);
+    backend.resetDevelopmentLibraryConflict("fixture-bbbbbbbbbbbbbbbb");
+    expect(observed.at(-1)).not.toBeNull();
+    backend.resetDevelopmentLibraryConflict("fixture-aaaaaaaaaaaaaaaa");
+    expect(observed.at(-1)).toBeNull();
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("does not replace a real library conflict with a development fixture", async () => {
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const document = { id: "one", name: "Real Draft" };
+    backend.reportLibraryConflict("preset", document);
+
+    expect(() =>
+      backend.establishDevelopmentLibraryConflict("fixture-aaaaaaaaaaaaaaaa", {
+        kind: "preset",
+        document: { id: "fixture-preset", name: "Fixture Preset" },
+      })
+    ).toThrow(expect.objectContaining({ reason: "fixtureConflict" }));
+  });
+
   it("reloads or saves a conflicting item as a fresh copy without force-overwriting", async () => {
     const conflict = { reason: "conflict", message: "changed by another instance" };
     invoke.mockRejectedValueOnce(conflict);

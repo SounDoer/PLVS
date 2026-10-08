@@ -23,6 +23,18 @@ pub fn is_command(command: &str) -> bool {
   crate::cli_manifest::command_families("runningApp").contains(&command)
 }
 
+fn is_private_command_for_build(
+  command: &str,
+  development_identity: bool,
+  test_build: bool,
+) -> bool {
+  (development_identity || test_build) && command == "dev"
+}
+
+pub fn is_private_command(command: &str) -> bool {
+  is_private_command_for_build(command, cfg!(feature = "dev-identity"), cfg!(test))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlCommand {
   Help,
@@ -65,6 +77,16 @@ pub enum ControlCommand {
   },
   UiCancel {
     surface_id: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  DevFixtureEstablish {
+    name: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  DevFixtureReset {
+    fixture_id: String,
     expected_revision: u64,
     expected_ui_generation: u64,
   },
@@ -304,6 +326,9 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     return parse_text_control_args(args);
   }
   match args {
+    [command, rest @ ..] if is_private_command(command) => {
+      return parse_development_fixture_args(rest)
+    }
     [flag] if is_help(flag) => return Ok(ControlCommand::Help),
     [command, rest @ ..]
       if is_command(command) && rest.iter().any(|argument| is_help(argument)) =>
@@ -343,6 +368,82 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [] => {}
   }
   Err("Usage: plvs-cli <capabilities|inspect|ui|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+}
+
+fn parse_development_fixture_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Development fixture command is invalid.";
+  let (operation, value, rest) = match args {
+    [fixture, operation, value, rest @ ..]
+      if fixture == "fixture" && matches!(operation.as_str(), "establish" | "reset") =>
+    {
+      (operation.as_str(), value.clone(), rest)
+    }
+    _ => return Err(USAGE.to_string()),
+  };
+  let mut expected_revision = None;
+  let mut expected_ui_generation = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < rest.len() {
+    match rest[index].as_str() {
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          rest.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      "--expected-ui-generation" if expected_ui_generation.is_none() => {
+        expected_ui_generation = Some(parse_ui_safe_integer(
+          rest.get(index + 1),
+          "--expected-ui-generation",
+        )?);
+        index += 2;
+      }
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      _ => return Err(USAGE.to_string()),
+    }
+  }
+  if !json {
+    return Err("Development fixture actions require --json.".to_string());
+  }
+  let expected_revision = expected_revision
+    .ok_or_else(|| "Development fixture actions require --expected-revision.".to_string())?;
+  let expected_ui_generation = expected_ui_generation
+    .ok_or_else(|| "Development fixture actions require --expected-ui-generation.".to_string())?;
+  if operation == "establish" {
+    if !matches!(
+      value.as_str(),
+      "update.available"
+        | "crash-report.pending"
+        | "close-confirmation.requested"
+        | "library-conflict.pending"
+    ) {
+      return Err("Unknown development event fixture.".to_string());
+    }
+    return Ok(ControlCommand::DevFixtureEstablish {
+      name: value,
+      expected_revision,
+      expected_ui_generation,
+    });
+  }
+  let fixture_suffix = value.strip_prefix("fixture-");
+  if !fixture_suffix.is_some_and(|suffix| {
+    (16..=60).contains(&suffix.len())
+      && suffix
+        .bytes()
+        .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+  }) {
+    return Err("The development fixture ID is invalid.".to_string());
+  }
+  Ok(ControlCommand::DevFixtureReset {
+    fixture_id: value,
+    expected_revision,
+    expected_ui_generation,
+  })
 }
 
 fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, String> {
@@ -2915,6 +3016,7 @@ impl ControlFailure {
         | "invalidProfile"
         | "invalidPermutation"
         | "fileSessionNotFound"
+        | "fixtureNotFound"
         | "dockPanelNotFound"
         | "monitorNotFound",
       ) => 3,
@@ -2942,7 +3044,10 @@ impl ControlFailure {
         | "confirmationRequired"
         | "channelConfigurationChanged"
         | "deviceInventoryChanged"
-        | "deviceUnavailable",
+        | "deviceUnavailable"
+        | "fixtureUnavailable"
+        | "fixtureConflict"
+        | "fixtureResetUnsafe",
       ) => 4,
       (_, "timeout" | "cancelled" | "uiNotSettled") => 5,
       _ => 1,
@@ -2983,6 +3088,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiShowFeedback { .. } => "ui.show.feedback".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
+    ControlCommand::DevFixtureEstablish { .. } => "dev.fixture.establish".to_string(),
+    ControlCommand::DevFixtureReset { .. } => "dev.fixture.reset".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
@@ -3166,6 +3273,24 @@ fn request_for_command<R: Read>(
       expected_ui_generation,
     } => serde_json::json!({
       "surfaceId": surface_id,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::DevFixtureEstablish {
+      name,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "name": name,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::DevFixtureReset {
+      fixture_id,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "fixtureId": fixture_id,
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
@@ -4433,6 +4558,63 @@ mod tests {
         "expectedUiGeneration": 7,
       })
     );
+  }
+
+  #[test]
+  fn parses_hidden_development_fixture_commands_without_publishing_a_help_family() {
+    assert!(!is_private_command_for_build("dev", false, false));
+    assert!(is_private_command_for_build("dev", true, false));
+    assert!(is_private_command_for_build("dev", false, true));
+    let establish = parse_control_args(&args(&[
+      "dev",
+      "fixture",
+      "establish",
+      "close-confirmation.requested",
+      "--expected-revision",
+      "7",
+      "--expected-ui-generation",
+      "3",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      establish,
+      ControlCommand::DevFixtureEstablish {
+        name: "close-confirmation.requested".to_string(),
+        expected_revision: 7,
+        expected_ui_generation: 3,
+      }
+    );
+    let request = request_for_command(&establish, &mut "".as_bytes()).unwrap();
+    assert_eq!(request.method, "dev.fixture.establish");
+    assert_eq!(
+      request.params,
+      serde_json::json!({
+        "name": "close-confirmation.requested",
+        "expectedRevision": 7,
+        "expectedUiGeneration": 3,
+      })
+    );
+
+    let reset = parse_control_args(&args(&[
+      "dev",
+      "fixture",
+      "reset",
+      "fixture-aaaaaaaaaaaaaaaa",
+      "--expected-revision",
+      "7",
+      "--expected-ui-generation",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&reset, &mut "".as_bytes())
+        .unwrap()
+        .method,
+      "dev.fixture.reset"
+    );
+    assert!(!help_text().contains("dev fixture"));
   }
 
   #[test]
@@ -6125,6 +6307,7 @@ mod tests {
       ("fileSessionNotFound", None, 3),
       ("dockPanelNotFound", None, 3),
       ("monitorNotFound", None, 3),
+      ("fixtureNotFound", None, 3),
       ("revisionConflict", None, 4),
       ("uiGenerationConflict", None, 4),
       ("uiTargetNotVisible", None, 4),
@@ -6148,6 +6331,9 @@ mod tests {
       ("channelConfigurationChanged", None, 4),
       ("deviceInventoryChanged", None, 4),
       ("deviceUnavailable", None, 4),
+      ("fixtureUnavailable", None, 4),
+      ("fixtureConflict", None, 4),
+      ("fixtureResetUnsafe", None, 4),
       ("timeout", None, 5),
       ("cancelled", None, 5),
       ("uiNotSettled", None, 5),

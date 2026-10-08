@@ -19,7 +19,7 @@ const GLOBAL_NAME = "__PLVS_INITIAL_STATE__";
 
 /// Reader module -> the top-level keys it takes out of the snapshot.
 const READERS = {
-  "App.jsx": ["uiVisualFixture"],
+  "App.jsx": ["developmentEventFixtures"],
   "persistence/pluginStoreBackend.js": [
     "plvs:settings",
     "plvs:workspace",

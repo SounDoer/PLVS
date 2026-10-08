@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { logFrontendError, readPendingCrashReport } = vi.hoisted(() => ({
@@ -30,6 +30,21 @@ beforeEach(() => {
 });
 
 describe("useCrashReporting ordinary error logging", () => {
+  it("establishes and resets only its exact development fixture without discarding it", async () => {
+    const report = { id: "development-crash-report" };
+    const { result } = renderHook(() => useCrashReporting({ promptEnabled: false }));
+    expect(readPendingCrashReport).not.toHaveBeenCalled();
+
+    act(() => result.current.developmentFixture.establish("fixture-aaaaaaaaaaaaaaaa", report));
+    expect(result.current.pendingReport).toEqual(report);
+    expect(result.current.developmentFixture.matches("fixture-aaaaaaaaaaaaaaaa")).toBe(true);
+
+    act(() => result.current.developmentFixture.reset("fixture-bbbbbbbbbbbbbbbb"));
+    expect(result.current.pendingReport).toEqual(report);
+    act(() => result.current.developmentFixture.reset("fixture-aaaaaaaaaaaaaaaa"));
+    expect(result.current.pendingReport).toBeNull();
+  });
+
   it("logs window errors without creating a crash report", async () => {
     const view = render(<Harness />);
     window.dispatchEvent(

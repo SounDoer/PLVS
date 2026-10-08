@@ -2,7 +2,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const controls = vi.hoisted(() => ({ resolveLibraryConflict: vi.fn(), publish: null }));
+const controls = vi.hoisted(() => ({
+  resolveLibraryConflict: vi.fn(),
+  publish: null,
+  establishDevelopmentLibraryConflict: vi.fn(),
+  matchesDevelopmentLibraryConflict: vi.fn(() => false),
+  resetDevelopmentLibraryConflict: vi.fn(),
+}));
 vi.mock("../persistence/index.js", () => ({
   subscribeLibraryConflicts: (listener) => {
     controls.publish = listener;
@@ -10,6 +16,9 @@ vi.mock("../persistence/index.js", () => ({
     return () => {};
   },
   resolveLibraryConflict: controls.resolveLibraryConflict,
+  establishDevelopmentLibraryConflict: controls.establishDevelopmentLibraryConflict,
+  matchesDevelopmentLibraryConflict: controls.matchesDevelopmentLibraryConflict,
+  resetDevelopmentLibraryConflict: controls.resetDevelopmentLibraryConflict,
 }));
 
 import { LibraryConflictDialog } from "./LibraryConflictDialog.jsx";

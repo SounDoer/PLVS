@@ -98,7 +98,11 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, ..] if command == "completion" => {
       Err("Usage: plvs-cli completion <powershell|bash|zsh>".to_string())
     }
-    [command, ..] if cli_control::is_command(command) => parse_control_invocation(args),
+    [command, ..]
+      if cli_control::is_command(command) || cli_control::is_private_command(command) =>
+    {
+      parse_control_invocation(args)
+    }
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => {
       Err("Usage: plvs-cli help [doctor|schema|completion|<control-command>]".to_string())
@@ -133,7 +137,7 @@ fn parse_control_invocation(args: &[String]) -> Result<CliCommand, String> {
   let command_name = cleaned
     .first()
     .ok_or_else(|| "--instance requires a control command.".to_string())?;
-  if !cli_control::is_command(command_name) {
+  if !cli_control::is_command(command_name) && !cli_control::is_private_command(command_name) {
     return Err("--instance is only supported by commands that contact PLVS.".to_string());
   }
   cli_control::parse_control_args(&cleaned).map(|command| CliCommand::Control {

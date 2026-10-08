@@ -74,6 +74,23 @@ describe("useCloseConfirm", () => {
     expect(result.current.dialogOpen).toBe(true);
   });
 
+  it("opens and resets only the exact development fixture without running a close action", () => {
+    const onHideWindow = vi.fn();
+    const { result } = renderHook(() => useCloseConfirm({ onHideWindow }));
+
+    act(() => result.current.developmentFixture.establish("fixture-aaaaaaaaaaaaaaaa"));
+    expect(result.current.dialogOpen).toBe(true);
+    expect(result.current.developmentFixture.matches("fixture-aaaaaaaaaaaaaaaa")).toBe(true);
+    expect(mockFlushPersistence).not.toHaveBeenCalled();
+    expect(onHideWindow).not.toHaveBeenCalled();
+    expect(mockExit).not.toHaveBeenCalled();
+
+    act(() => result.current.developmentFixture.reset("fixture-bbbbbbbbbbbbbbbb"));
+    expect(result.current.dialogOpen).toBe(true);
+    act(() => result.current.developmentFixture.reset("fixture-aaaaaaaaaaaaaaaa"));
+    expect(result.current.dialogOpen).toBe(false);
+  });
+
   it("hides window without dialog when saved preference is 'tray'", async () => {
     localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "tray" }));
     const onHideWindow = vi.fn().mockResolvedValue(undefined);

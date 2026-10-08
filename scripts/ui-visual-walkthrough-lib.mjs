@@ -3,9 +3,9 @@ import { isAbsolute, normalize, sep } from "node:path";
 const SCENARIO_FIELDS = new Set(["id", "durable", "ui", "screenshot", "touches"]);
 const UI_TARGETS = Object.freeze({
   workspace: { method: null, fields: new Set(["kind"]) },
-  fixture: {
+  eventFixture: {
     method: null,
-    fields: new Set(["kind", "surfaceKind", "phase", "action"]),
+    fields: new Set(["kind", "name", "surfaceKind", "phase", "action"]),
   },
   settings: { method: "ui.show.settings", fields: new Set(["kind", "section"]) },
   panelSettings: { method: "ui.show.panelSettings", fields: new Set(["kind", "panelId"]) },
@@ -32,6 +32,20 @@ const DURABLE_FIELDS = Object.freeze({
   ]),
 });
 const SCREENSHOT_TARGETS = new Set(["main", "workspace", "panel", "dock-header", "dock-editor"]);
+const EVENT_FIXTURES = Object.freeze({
+  "update.available": { surfaceKind: "update", phase: "idle", action: "cancel" },
+  "crash-report.pending": { surfaceKind: "crashReport", phase: "decision", action: "close" },
+  "close-confirmation.requested": {
+    surfaceKind: "closeConfirmation",
+    phase: "decision",
+    action: "cancel",
+  },
+  "library-conflict.pending": {
+    surfaceKind: "libraryConflict",
+    phase: "decision",
+    action: "reset",
+  },
+});
 
 function plain(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -59,7 +73,7 @@ export function validateWalkthroughManifest(manifest) {
   if (manifest?.fixture !== undefined) {
     if (
       !plain(manifest.fixture) ||
-      unknownFields(manifest.fixture, new Set(["audio", "uiSequence"])).length > 0
+      unknownFields(manifest.fixture, new Set(["audio"])).length > 0
     ) {
       issues.push("$.fixture contains an unknown field.");
     }
@@ -80,12 +94,6 @@ export function validateWalkthroughManifest(manifest) {
         manifest.fixture.audio.channels !== 2)
     ) {
       issues.push("$.fixture.audio must describe a bounded stereo WAV fixture.");
-    }
-    if (
-      manifest.fixture.uiSequence !== undefined &&
-      manifest.fixture.uiSequence !== "review-sequence"
-    ) {
-      issues.push("$.fixture.uiSequence is invalid.");
     }
   }
   if (!Array.isArray(manifest?.scenarios) || manifest.scenarios.length === 0)
@@ -124,13 +132,13 @@ export function validateWalkthroughManifest(manifest) {
     )
       issues.push(`${path}.ui.mode is invalid.`);
     if (
-      scenario.ui?.kind === "fixture" &&
-      (manifest.fixture?.uiSequence !== "review-sequence" ||
-        typeof scenario.ui.surfaceKind !== "string" ||
-        typeof scenario.ui.phase !== "string" ||
-        !["close", "cancel"].includes(scenario.ui.action))
+      scenario.ui?.kind === "eventFixture" &&
+      (!EVENT_FIXTURES[scenario.ui.name] ||
+        scenario.ui.surfaceKind !== EVENT_FIXTURES[scenario.ui.name]?.surfaceKind ||
+        scenario.ui.phase !== EVENT_FIXTURES[scenario.ui.name]?.phase ||
+        scenario.ui.action !== EVENT_FIXTURES[scenario.ui.name]?.action)
     ) {
-      issues.push(`${path}.ui fixture target is invalid.`);
+      issues.push(`${path}.ui event fixture target is invalid.`);
     }
 
     if (!plain(scenario.screenshot) || !SCREENSHOT_TARGETS.has(scenario.screenshot.target))
@@ -193,8 +201,8 @@ export function requiredWalkthroughMethods(manifest) {
   for (const scenario of manifest.scenarios) {
     const showMethod = UI_TARGETS[scenario.ui.kind].method;
     if (showMethod) methods.add(showMethod);
-    if (scenario.ui.kind === "fixture") {
-      methods.add(`ui.${scenario.ui.action}`);
+    if (scenario.ui.kind === "eventFixture") {
+      if (scenario.ui.action !== "reset") methods.add(`ui.${scenario.ui.action}`);
     } else if (scenario.ui.kind !== "workspace") {
       methods.add(
         ["settings", "panelSettings"].includes(scenario.ui.kind) ? "ui.close" : "ui.cancel"
@@ -213,21 +221,14 @@ export function assertWalkthroughStart(manifest, capabilities, ui) {
     (method) => !capabilities.methods?.includes(method)
   );
   if (missing.length > 0) throw new Error(`Missing Agent Control methods: ${missing.join(", ")}.`);
-  if (!manifest.fixture?.uiSequence && ui.activeBlockingEditors?.length > 0)
+  if (ui.activeBlockingEditors?.length > 0)
     throw new Error(`A blocking editor is already open: ${ui.activeBlockingEditors.join(", ")}.`);
-  const event = !manifest.fixture?.uiSequence
-    ? ui.surfaces?.find((surface) => surface.origin === "event")
-    : null;
+  const event = ui.surfaces?.find((surface) => surface.origin === "event");
   if (event) throw new Error(`A real event decision is already open: ${event.kind}.`);
-  const nested = !manifest.fixture?.uiSequence
-    ? ui.surfaces?.find((surface) => surface.origin === "nested")
-    : null;
+  const nested = ui.surfaces?.find((surface) => surface.origin === "nested");
   if (nested) throw new Error(`A nested decision is already open: ${nested.kind}.`);
-  if (!manifest.fixture?.uiSequence && ui.surfaces?.length > 0)
+  if (ui.surfaces?.length > 0)
     throw new Error(`A UI surface is already open: ${ui.surfaces[0].kind}.`);
-  if (manifest.fixture?.uiSequence && ui.surfaces?.length !== 1) {
-    throw new Error("The development UI fixture sequence did not open its first surface.");
-  }
 }
 
 export function buildRestorationLedger(manifest, snapshots) {
@@ -253,7 +254,7 @@ export function buildRestorationLedger(manifest, snapshots) {
 }
 
 export function uiShowArguments(ui) {
-  if (["workspace", "fixture"].includes(ui.kind)) return null;
+  if (["workspace", "eventFixture"].includes(ui.kind)) return null;
   if (ui.kind === "settings") return ["ui", "show", "settings", "--section", ui.section];
   if (ui.kind === "panelSettings")
     return ["ui", "show", "panel-settings", "--panel-id", ui.panelId];

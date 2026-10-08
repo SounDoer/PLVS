@@ -33,6 +33,7 @@ function forwardOrdinaryError(kind, reason) {
 /** @param {{ promptEnabled?: boolean }} [options] */
 export function useCrashReporting({ promptEnabled = true } = {}) {
   const [pendingReport, setPendingReport] = useState(null);
+  const [developmentFixtureId, setDevelopmentFixtureId] = useState(null);
 
   useEffect(() => {
     if (!promptEnabled || !isTauri()) {
@@ -41,7 +42,10 @@ export function useCrashReporting({ promptEnabled = true } = {}) {
     let cancelled = false;
     Promise.resolve(readPendingCrashReport())
       .then((report) => {
-        if (!cancelled) setPendingReport(report ?? null);
+        if (!cancelled) {
+          setDevelopmentFixtureId(null);
+          setPendingReport(report ?? null);
+        }
       })
       .catch((error) => {
         console.error("Unable to read saved crash report", error);
@@ -66,6 +70,27 @@ export function useCrashReporting({ promptEnabled = true } = {}) {
     };
   }, []);
 
-  const dismissPending = useCallback(() => setPendingReport(null), []);
-  return { pendingReport: promptEnabled ? pendingReport : null, dismissPending };
+  const dismissPending = useCallback(() => {
+    setDevelopmentFixtureId(null);
+    setPendingReport(null);
+  }, []);
+  const developmentFixture = {
+    establish(fixtureId, report) {
+      setDevelopmentFixtureId(fixtureId);
+      setPendingReport(report);
+    },
+    matches(fixtureId) {
+      return pendingReport !== null && developmentFixtureId === fixtureId;
+    },
+    reset(fixtureId) {
+      if (developmentFixtureId !== fixtureId) return;
+      setDevelopmentFixtureId(null);
+      setPendingReport(null);
+    },
+  };
+  return {
+    pendingReport: promptEnabled || developmentFixtureId ? pendingReport : null,
+    dismissPending,
+    developmentFixture,
+  };
 }

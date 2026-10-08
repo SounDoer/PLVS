@@ -7,6 +7,8 @@ import { useSource } from "../runtime/SourceContext.jsx";
 import { useSourceActions } from "../runtime/SourceActionsContext.jsx";
 import { useRuntimeCoordination } from "../runtime/coordination.js";
 import { useUiNavigationEnvironment } from "../uiNavigation/UiNavigationContext.jsx";
+import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { DEVELOPMENT_CRASH_REPORT } from "../dev/developmentEventFixtureData.js";
 import { hideAppWindow, toggleAppWindow } from "../lib/windowVisibility.js";
 import { isTauri } from "../ipc/env.js";
 import { useSceneGuard } from "./SceneGuardContext.jsx";
@@ -79,6 +81,13 @@ export function AppLifecycleProvider({ children }) {
   // before presenting the report instead of silently waiting for the user to exit Dock manually.
   const crashReportSetting = useCrashReportSetting();
   const crashReporting = useCrashReporting({ promptEnabled: crashReportSetting.enabled });
+  useDevelopmentEventFixtureAdapter("crash-report.pending", {
+    establish: (fixtureId) =>
+      crashReporting.developmentFixture.establish(fixtureId, DEVELOPMENT_CRASH_REPORT),
+    reset: crashReporting.developmentFixture.reset,
+    matches: crashReporting.developmentFixture.matches,
+    surface: { kind: "crashReport", target: { phase: "decision" } },
+  });
   const [windowVisible, setWindowVisible] = useState(true);
   useUiNavigationEnvironment({
     windowForm: docked ? "dock" : "normal",
@@ -131,6 +140,7 @@ export function AppLifecycleProvider({ children }) {
     useApplyUpdate();
   const updateBusy = installStatus === "installing" || installStatus === "restarting";
 
+  const closeConfirm = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
   const {
     dialogOpen: closeDialogOpen,
     closeError,
@@ -139,7 +149,13 @@ export function AppLifecycleProvider({ children }) {
     handleRetry: handleCloseRetry,
     handleCancel: handleCloseCancel,
     requestCloseAction,
-  } = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
+  } = closeConfirm;
+  useDevelopmentEventFixtureAdapter("close-confirmation.requested", {
+    establish: closeConfirm.developmentFixture.establish,
+    reset: closeConfirm.developmentFixture.reset,
+    matches: closeConfirm.developmentFixture.matches,
+    surface: { kind: "closeConfirmation", target: { phase: "decision" } },
+  });
 
   const onToggleWindow = useCallback(async () => {
     if (!isTauri()) return;
