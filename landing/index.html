@@ -472,10 +472,6 @@
         height: auto;
       }
 
-      .history-detail picture {
-        display: block;
-      }
-
       .history-detail figcaption {
         margin-top: 16px;
         font-size: var(--text-body);
@@ -534,6 +530,13 @@
         font-size: var(--text-body);
         line-height: 1.6;
         font-weight: 500;
+      }
+
+      .live-detail figcaption,
+      .history-detail figcaption,
+      .workspace-gallery figcaption,
+      .workspace-dock figcaption {
+        color: var(--muted);
       }
 
       .download-section {
@@ -991,35 +994,23 @@
             </div>
             <div class="history-gallery">
               <figure class="history-detail">
-                <picture>
-                  <source
-                    media="(max-width: 620px)"
-                    srcset="assets/landing-history-loudness-hud.webp"
-                  />
-                  <img
-                    src="assets/landing-history-loudness-hud-wide.webp"
-                    alt="Loudness history selected 22 seconds back, with a hover HUD showing momentary and short-term loudness."
-                    width="1590"
-                    height="443"
-                    loading="lazy"
-                  />
-                </picture>
+                <img
+                  src="assets/landing-history-loudness-hud-wide.webp"
+                  alt="Loudness history selected 22 seconds back, with a hover HUD showing momentary and short-term loudness."
+                  width="1590"
+                  height="443"
+                  loading="lazy"
+                />
                 <figcaption>Read the moment.</figcaption>
               </figure>
               <figure class="history-detail">
-                <picture>
-                  <source
-                    media="(max-width: 620px)"
-                    srcset="assets/landing-history-spectrogram-hud.webp"
-                  />
-                  <img
-                    src="assets/landing-history-spectrogram-hud-wide.webp"
-                    alt="Spectrogram history selected at the same 22-second point, with a hover HUD showing frequency, level, and pitch."
-                    width="1590"
-                    height="443"
-                    loading="lazy"
-                  />
-                </picture>
+                <img
+                  src="assets/landing-history-spectrogram-hud-wide.webp"
+                  alt="Spectrogram history selected at the same 22-second point, with a hover HUD showing frequency, level, and pitch."
+                  width="1590"
+                  height="443"
+                  loading="lazy"
+                />
                 <figcaption>Locate it in the signal.</figcaption>
               </figure>
             </div>
