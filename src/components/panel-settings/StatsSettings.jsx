@@ -2,9 +2,8 @@ import { useState } from "react";
 import { GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
-import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "@/lib/panelControls.js";
-import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
-import { ResetAction } from "@/components/ResetAction.jsx";
+import { normalizePanelControls } from "@/lib/panelControls.js";
+import { STATS_OPTIONS } from "@/lib/statsCatalog.js";
 
 import { PanelControlRows } from "./PanelControlRows.jsx";
 import { toggleId } from "./selectionKeys.js";
@@ -53,8 +52,6 @@ export function SortableStatsList({
   selectedIds,
   onToggle,
   onReorder,
-  onReset,
-  showReset = true,
 }) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
   return (
@@ -77,15 +74,6 @@ export function SortableStatsList({
           />
         ))}
       </Reorder.Group>
-      <div className="mt-0 flex justify-end pt-0">
-        <ResetAction
-          label="Reset stats"
-          isDefault={!showReset}
-          onReset={onReset}
-          confirmLabel="Confirm reset stats"
-          cancelLabel="Cancel reset stats"
-        />
-      </div>
     </div>
   );
 }
@@ -96,18 +84,9 @@ export function SortableStatsList({
  *   orderedIds: any[],
  *   onToggle: (...args: any[]) => any,
  *   onReorder: (...args: any[]) => any,
- *   onReset?: (...args: any[]) => any,
- *   showReset?: boolean,
  * }} props
  */
-export function StatsMetricsSettingsRow({
-  visibleIds,
-  orderedIds,
-  onToggle,
-  onReorder,
-  onReset,
-  showReset = true,
-}) {
+export function StatsMetricsSettingsRow({ visibleIds, orderedIds, onToggle, onReorder }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -128,8 +107,6 @@ export function StatsMetricsSettingsRow({
               selectedIds={visibleIds}
               onToggle={onToggle}
               onReorder={onReorder}
-              onReset={onReset}
-              showReset={showReset}
             />
           </div>
         ) : null}
@@ -168,15 +145,6 @@ export function StatsSettings({ panelControls, onPanelControlsChange }) {
                   normalizePanelControls({
                     ...normalizedPanelControls,
                     statsOrder: nextOrder,
-                  })
-                );
-              }}
-              onReset={() => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    statsOrder: [...STATS_CANONICAL_ORDER],
-                    statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
                   })
                 );
               }}

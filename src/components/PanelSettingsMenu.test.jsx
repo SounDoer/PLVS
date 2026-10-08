@@ -193,6 +193,24 @@ describe("PanelSettingsMenu", () => {
     ).toBe(true);
   });
 
+  it("keeps a single reset action when Stats metrics are expanded", () => {
+    render(
+      <PanelSettingsMenu
+        activeTab="stats"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, statsVisibleIds: ["psr"] }}
+        onPanelControlsChange={vi.fn()}
+        onPanelControlsReset={vi.fn()}
+        panelTitle={undefined}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
+
+    expect(screen.getAllByRole("button", { name: "Reset Stats settings" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Reset stats" })).toBeNull();
+  });
+
   it("renders spectrogram settings trigger when only range controls are available", () => {
     render(
       <PanelSettingsMenu

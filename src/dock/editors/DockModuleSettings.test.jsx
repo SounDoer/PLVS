@@ -385,10 +385,7 @@ describe("DockModuleSettings", () => {
     expect(screen.getByText("4 visible")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     expect(screen.getAllByRole("checkbox")).toHaveLength(15);
-    expect(
-      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Reset stats" }))
-        .disabled
-    ).toBe(true);
+    expect(screen.queryByRole("button", { name: "Reset stats" })).toBeNull();
     fireEvent.click(screen.getByRole("checkbox", { name: "Integrated Dynamics" }));
     expect(onChange).toHaveBeenCalledWith({
       ...controls,

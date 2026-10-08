@@ -1587,33 +1587,6 @@ describe("PanelSettingsContent", () => {
     ]);
   });
 
-  it("resets order and visibility to defaults after confirm", () => {
-    const onPanelControlsChange = vi.fn();
-    render(
-      <PanelSettingsContent
-        activeTab="stats"
-        panelControls={{
-          ...DEFAULT_PANEL_CONTROLS,
-          statsOrder: ["psr", "momentary", "integrated"],
-          statsVisibleIds: ["psr"],
-        }}
-        onPanelControlsChange={onPanelControlsChange}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reset stats" }));
-    expect(onPanelControlsChange).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByLabelText("Confirm reset stats"));
-    expect(onPanelControlsChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        statsOrder: STATS_CANONICAL_ORDER,
-        statsVisibleIds: DEFAULT_PANEL_CONTROLS.statsVisibleIds,
-      })
-    );
-  });
-
   it("shows the view toggle for a stereo spectrum panel", () => {
     const onPanelControlsChange = vi.fn();
     render(

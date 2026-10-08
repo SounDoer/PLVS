@@ -188,7 +188,6 @@ function dockSlots({
           orderedIds={controls.statsOrder}
           onToggle={(id) => patch({ statsVisibleIds: toggleId(controls.statsVisibleIds, id) })}
           onReorder={(statsOrder) => patch({ statsOrder })}
-          showReset={false}
         />
       ),
     };
