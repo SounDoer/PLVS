@@ -20,6 +20,8 @@ import { UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
  *   spectralWaveformActive: boolean,
  *   timeMaxWindowSec: number,
  *   timeMaxOffsetSec: number,
+ *   historyAvailable: boolean,
+ *   historyMaxOffsetSec: number,
  * }} AgentControlAnalysisContext
  */
 

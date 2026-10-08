@@ -457,6 +457,10 @@ function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
  */
 function transportMutationMatches(method, params, execution, snapshot) {
   const sessionId = execution?.sessionId ?? params.sessionId;
+  if (method === "transport.snapshot.select") {
+    return snapshot.snapshot.active && snapshot.snapshot.offsetSec === params.offsetSec;
+  }
+  if (method === "transport.snapshot.clear") return !snapshot.snapshot.active;
   if (method === "transport.source.live") {
     return snapshot.source === "live" && snapshot.files.analyzingId === null;
   }
@@ -524,6 +528,8 @@ function transportMutationMatches(method, params, execution, snapshot) {
  * @typedef {{
  *   docked: boolean,
  *   deviceTransitioning: boolean,
+ *   historyAvailable: boolean,
+ *   historyMaxOffsetSec: number,
  * }} AgentControlTransportContext
  *
  * @typedef {{
@@ -2312,6 +2318,7 @@ export function useAgentControlBridge({
               analysisInProgress: -32082,
               dockActive: -32083,
               fileAnalysisNotActive: -32084,
+              historyUnavailable: -32086,
             };
             throw semanticFailure(
               planned.refusal.code,

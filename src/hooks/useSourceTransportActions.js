@@ -8,6 +8,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   running: boolean,
  *   selectedOffset: number,
  *   setSelectedOffset: (...args: any[]) => any,
+ *   clearSnapshot?: (...args: any[]) => any,
  *   setHistoryOffsetSec: (...args: any[]) => any,
  *   setHistoryWindowSec: (...args: any[]) => any,
  *   startLive: (...args: any[]) => any,
@@ -30,6 +31,7 @@ export function useSourceTransportActions({
   running,
   selectedOffset,
   setSelectedOffset,
+  clearSnapshot = () => setSelectedOffset(-1),
   setHistoryOffsetSec,
   setHistoryWindowSec,
   startLive,
@@ -117,7 +119,7 @@ export function useSourceTransportActions({
 
   const runLiveStartAction = useCallback(() => {
     if (selectedOffset >= 0) {
-      setSelectedOffset(-1);
+      clearSnapshot();
       return;
     }
     if (running) {
@@ -125,12 +127,12 @@ export function useSourceTransportActions({
       return;
     }
     startLive();
-  }, [running, selectedOffset, setSelectedOffset, startLive, stopLive]);
+  }, [clearSnapshot, running, selectedOffset, startLive, stopLive]);
 
   const onSourceTransportAction = useCallback(
     async (/** @type {string} */ actionKind) => {
       if (actionKind === "returnToLive") {
-        setSelectedOffset(-1);
+        clearSnapshot();
         return;
       }
       if (actionKind === "startLive" || actionKind === "stopLive") {
@@ -138,7 +140,7 @@ export function useSourceTransportActions({
         return;
       }
       if (actionKind === "returnToFileResult") {
-        setSelectedOffset(-1);
+        clearSnapshot();
         return;
       }
       if (actionKind === "chooseFile") {
@@ -166,7 +168,7 @@ export function useSourceTransportActions({
       openFile,
       reanalyzeActiveFile,
       runLiveStartAction,
-      setSelectedOffset,
+      clearSnapshot,
       stopFileAnalysis,
     ]
   );

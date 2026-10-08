@@ -105,6 +105,17 @@ export function useMeterDisplay() {
     [clock.elapsedMsRef, setAudio]
   );
 
+  const selectSnapshot = useCallback(
+    (offsetSec) => {
+      setSelectedOffset(offsetSec);
+    },
+    [setSelectedOffset]
+  );
+
+  const clearSnapshot = useCallback(() => {
+    setSelectedOffset(-1);
+  }, [setSelectedOffset]);
+
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
   }, [selectedOffset]);
@@ -156,6 +167,8 @@ export function useMeterDisplay() {
     latestAudioRef,
     selectedOffset,
     setSelectedOffset,
+    selectSnapshot,
+    clearSnapshot,
     selectedSnapshotTimeMs,
     selectedOffsetRef,
     frameRef,

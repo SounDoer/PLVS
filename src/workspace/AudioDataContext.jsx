@@ -34,6 +34,7 @@ import { createContext, useContext } from "react";
  * @typedef {{
  *   selectedOffset: any,
  *   setSelectedOffset: any,
+ *   selectSnapshot: any,
  *   sourceMode: any,
  *   historyMaxWindowSec: any,
  *   historyWindowSec: number,

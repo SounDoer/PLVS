@@ -18,6 +18,15 @@ implicitly start capture/analysis. `live start` selects LIVE and starts capture.
 measurement data. `live clear` clears LIVE measurement/history and restarts its timeline when
 capture remains active.
 
+`snapshot select` freezes every meter at one retained history position. Its `offsetSec` is the
+non-negative distance back from the newest retained sample, using the same direction and unit as a
+time axis `offsetSec`. The request is rejected when no history exists or when the offset is outside
+the current retained range; it is never clamped to the oldest sample. No history is the state
+refusal `historyUnavailable`; an excessive offset is the invalid-input issue `outOfRange`.
+`snapshot clear` leaves the snapshot and returns to the current LIVE edge or FILE result. Both
+commands use the same React display operations as clicking a history chart and the GUI's Return
+button.
+
 FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and starts a new
 session; reanalyze retains the session identity; stop retains partial results; select chooses an
 existing result; remove deletes one session; and clear deletes the complete FILE session ledger.
@@ -96,6 +105,10 @@ Already completed FILE results do not retroactively change with Settings or Pane
 changes. Commands that alter relevant configuration report `fileReanalysisRequired`; only an
 explicit reanalyze starts new work.
 
+FILE uses the same retained snapshot selection as LIVE. This reflects the existing FILE history
+scrub and Return to File Result behavior; it does not add playback or seek semantics. Selection is
+available while the active FILE result has retained history.
+
 ## FILE reports
 
 `transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]` returns the same versioned `fileAnalysis`
@@ -128,9 +141,9 @@ have, is `notEvaluated`. Adding optional fields such as this block does not chan
 
 Transport changes use the application's single process-local revision. It increments on source
 changes, LIVE lifecycle transitions, FILE ledger/selection changes, and FILE lifecycle
-completion/error, but not for audio frames, progress percentages, elapsed clock ticks, or history
-viewport movement. An accepted async file run increments when it starts and again when it reaches a
-terminal state.
+completion/error, and snapshot selection changes from either the GUI or Agent Control, but not for
+audio frames, progress percentages, elapsed clock ticks, or history viewport movement. An accepted
+async file run increments when it starts and again when it reaches a terminal state.
 
 Every Transport mutation and action requires `--expected-revision`. `wait --after-revision
 <n> --timeout-ms <n>` can sleep until an analysis completes or another observable state change
@@ -144,8 +157,10 @@ sessions that would be deleted. Actions do not support dry-run. State-mutation n
 
 ## Inspection and results
 
-`transport.inspect` returns top-level `revision`, selected source, LIVE lifecycle/device summary,
-and ordered public FILE session summaries with active/analyzing IDs.
+`transport.inspect` returns top-level `revision`, selected source, snapshot state as
+`snapshot { active, offsetSec }`, LIVE lifecycle/device summary, and ordered public FILE session
+summaries with active/analyzing IDs. `offsetSec` is null while no snapshot is active. The same
+Transport object is embedded in `app.inspect`.
 
 State mutations return `dryRun`, boolean `changed`, `revision`, `effects`, `warnings`, any
 affected/evicted session summaries, and the complete predicted or resulting snapshot under

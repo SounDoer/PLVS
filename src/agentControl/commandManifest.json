@@ -4263,6 +4263,129 @@
       }
     },
     {
+      "id": "transport.snapshot.select",
+      "family": "transport",
+      "path": ["transport", "snapshot", "select"],
+      "usage": "plvs-cli transport snapshot select --offset-sec <n> --json --expected-revision <n> [--dry-run]",
+      "summary": "Select a retained history snapshot.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.snapshot.select",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--offset-sec",
+          "mapsTo": "offsetSec",
+          "required": true,
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "unit": "s"
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["offsetSec", "expectedRevision"],
+        "properties": {
+          "offsetSec": {
+            "type": "number",
+            "minimum": 0,
+            "unit": "s"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.snapshot.clear",
+      "family": "transport",
+      "path": ["transport", "snapshot", "clear"],
+      "usage": "plvs-cli transport snapshot clear --json --expected-revision <n> [--dry-run]",
+      "summary": "Return from a retained history snapshot.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.snapshot.clear",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
       "id": "transport.source.live",
       "family": "transport",
       "path": ["transport", "source", "live"],

@@ -151,7 +151,8 @@ export default function App() {
 
 function AppContent() {
   const meterRuntime = useMeterRuntime();
-  const { notice, selectedOffset, setSelectedOffset, showClock } = useMeterDisplayState();
+  const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
+    useMeterDisplayState();
   const { state: workspaceState } = useWorkspaceStore();
   const { visibility: dockAccessoryVisibility, hoveredDockPanelId } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
@@ -450,6 +451,7 @@ function AppContent() {
   const historyData = {
     selectedOffset,
     setSelectedOffset,
+    selectSnapshot,
     // The Time Range settings row edits the viewport these describe. It reads the effective values
     // rather than the stored window, because those are what the axis labels are built from.
     sourceMode,

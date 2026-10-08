@@ -86,6 +86,28 @@ describe("useHistoryInteraction", () => {
     expect(setHistoryWindowSec).toHaveBeenCalled();
   });
 
+  it("routes a chart selection through the shared snapshot business action", () => {
+    const selectSnapshot = vi.fn();
+    const { result, props } = renderHistoryInteraction({ selectSnapshot });
+    const currentTarget = {
+      getBoundingClientRect: () => ({ left: 0, width: 100 }),
+      setPointerCapture: vi.fn(),
+    };
+
+    act(() => {
+      result.current.onHistoryPointerDown({
+        button: 0,
+        ctrlKey: false,
+        clientX: 75,
+        pointerId: 1,
+        currentTarget,
+      });
+    });
+
+    expect(selectSnapshot).toHaveBeenCalledWith(25);
+    expect(props.setSelectedOffset).not.toHaveBeenCalled();
+  });
+
   it("briefly marks the time axis active when the chart wheel changes time", () => {
     const { result } = renderHistoryInteraction();
 

@@ -177,6 +177,7 @@ export function usePanelHistoryData(moduleId, axisViewportData = null) {
     effectiveOffsetSamples: viewport.effectiveOffsetSamples,
     effectiveOffsetSec: viewport.effectiveOffsetSec,
     setSelectedOffset: historyData?.setSelectedOffset,
+    selectSnapshot: historyData?.selectSnapshot,
     setHistoryOffsetSec,
     setHistoryWindowSec,
     setHistoryHudUntilTs,

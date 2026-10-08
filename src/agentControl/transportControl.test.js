@@ -37,8 +37,10 @@ const runtime = {
 
 const context = {
   requestedDeviceId: "default",
-  atLiveEdge: true,
+  selectedOffset: -1,
   docked: false,
+  historyAvailable: true,
+  historyMaxOffsetSec: 10,
 };
 
 describe("Transport Control", () => {
@@ -46,6 +48,7 @@ describe("Transport Control", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     expect(snapshot).toEqual({
       source: "file",
+      snapshot: { active: false, offsetSec: null },
       live: {
         state: "stopped",
         requestedDeviceId: "default",
@@ -87,6 +90,69 @@ describe("Transport Control", () => {
     expect(transportLifecycleSignature(progressed)).toBe(transportLifecycleSignature(snapshot));
     progressed.files.sessions[0].state = "error";
     expect(transportLifecycleSignature(progressed)).not.toBe(transportLifecycleSignature(snapshot));
+    const selected = structuredClone(snapshot);
+    selected.snapshot = { active: true, offsetSec: 2.5 };
+    expect(transportLifecycleSignature(selected)).not.toBe(transportLifecycleSignature(snapshot));
+  });
+
+  it("strictly plans retained snapshot selection and clearing", () => {
+    const snapshot = buildTransportSnapshot(runtime, context);
+    expect(
+      planTransportMutation(snapshot, "transport.snapshot.select", { offsetSec: 2.5 }, context)
+    ).toMatchObject({ changed: ["transport.snapshot"], issues: [], refusal: null });
+    expect(
+      projectTransportMutation(snapshot, "transport.snapshot.select", { offsetSec: 2.5 })
+    ).toMatchObject({
+      snapshot: { active: true, offsetSec: 2.5 },
+      live: { atLiveEdge: false },
+    });
+
+    const selected = buildTransportSnapshot(runtime, { ...context, selectedOffset: 2.5 });
+    expect(
+      planTransportMutation(selected, "transport.snapshot.select", { offsetSec: 2.5 }, context)
+        .changed
+    ).toEqual([]);
+    expect(
+      planTransportMutation(selected, "transport.snapshot.clear", {}, context).changed
+    ).toEqual(["transport.snapshot"]);
+    expect(projectTransportMutation(selected, "transport.snapshot.clear")).toMatchObject({
+      snapshot: { active: false, offsetSec: null },
+      live: { atLiveEdge: true },
+    });
+  });
+
+  it("rejects unavailable, out-of-range, and Dock snapshot selection without clamping", () => {
+    const snapshot = buildTransportSnapshot(runtime, context);
+    expect(
+      planTransportMutation(
+        snapshot,
+        "transport.snapshot.select",
+        { offsetSec: 0 },
+        {
+          ...context,
+          historyAvailable: false,
+        }
+      ).refusal
+    ).toEqual({ code: "historyUnavailable" });
+    expect(
+      planTransportMutation(snapshot, "transport.snapshot.select", { offsetSec: 10.001 }, context)
+        .issues
+    ).toEqual([expect.objectContaining({ code: "outOfRange", path: "$.offsetSec" })]);
+    expect(
+      planTransportMutation(snapshot, "transport.snapshot.select", { offsetSec: 10 }, context)
+        .issues
+    ).toEqual([]);
+    expect(
+      planTransportMutation(
+        snapshot,
+        "transport.snapshot.select",
+        { offsetSec: 1 },
+        {
+          ...context,
+          docked: true,
+        }
+      ).refusal
+    ).toEqual({ code: "dockActive" });
   });
 
   it("plans explicit source and LIVE actions with confirmation and no-op semantics", () => {

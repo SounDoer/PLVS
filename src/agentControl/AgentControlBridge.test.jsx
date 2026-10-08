@@ -59,7 +59,11 @@ vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
     activeFileId: null,
     analyzingFileId: null,
   }),
-  useMeterDisplayState: () => ({ selectedOffset: -1 }),
+  useMeterDisplayState: () => ({
+    selectedOffset: -1,
+    selectSnapshot: () => {},
+    clearSnapshot: () => {},
+  }),
 }));
 vi.mock("../runtime/SourceContext.jsx", () => ({
   useSource: () => ({
@@ -154,7 +158,12 @@ describe("AgentControlBridge", () => {
     expect(passed.viewContext).toMatchObject({ docked: false, view: { surfaceOpacity: 100 } });
     expect(typeof passed.viewContext.applyView).toBe("function");
     expect(passed.transport).toMatchObject({ source: "live" });
-    expect(passed.transportContext).toEqual({ docked: false, deviceTransitioning: false });
+    expect(passed.transportContext).toEqual({
+      docked: false,
+      deviceTransitioning: false,
+      historyAvailable: true,
+      historyMaxOffsetSec: 90,
+    });
     expect(typeof passed.executeTransport).toBe("function");
     expect(typeof passed.uiNavigation.inspectUi).toBe("function");
     expect(passed.device).toMatchObject({ runtimeUnavailable: false, snapshot: null });

@@ -742,6 +742,8 @@ describe("normalizeAgentControlRequest", () => {
     ["transport.source.live", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
     ["transport.source.file", { expectedRevision: 1, dryRun: true }],
     ["transport.live.clear", { expectedRevision: 1, dryRun: true }],
+    ["transport.snapshot.select", { offsetSec: 12.5, expectedRevision: 1, dryRun: true }],
+    ["transport.snapshot.clear", { expectedRevision: 1, dryRun: true }],
     ["transport.file.select", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
     ["transport.file.remove", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
     ["transport.file.clear", { expectedRevision: 1, dryRun: true }],
@@ -750,6 +752,17 @@ describe("normalizeAgentControlRequest", () => {
       ok: true,
       request: { id: "req-1", method, params },
     });
+  });
+
+  it.each([
+    [{ expectedRevision: 1 }, "$.params.offsetSec"],
+    [{ offsetSec: -0.1, expectedRevision: 1 }, "$.params.offsetSec"],
+    [{ offsetSec: Number.NaN, expectedRevision: 1 }, "$.params.offsetSec"],
+    [{ offsetSec: Number.POSITIVE_INFINITY, expectedRevision: 1 }, "$.params.offsetSec"],
+  ])("rejects invalid snapshot selection params %j", (params, path) => {
+    expect(
+      normalizeAgentControlRequest(request("transport.snapshot.select", params))
+    ).toMatchObject({ ok: false, error: { reason: "invalidParams", path, code: -32602 } });
   });
 
   it.each([

@@ -21,6 +21,8 @@ const MeterRuntimeAssemblyContext = createContext(null);
  *   clearNotice: ReturnType<typeof useMeterDisplay>["clearNotice"],
  *   selectedOffset: number,
  *   setSelectedOffset: ReturnType<typeof useMeterDisplay>["setSelectedOffset"],
+ *   selectSnapshot: ReturnType<typeof useMeterDisplay>["selectSnapshot"],
+ *   clearSnapshot: ReturnType<typeof useMeterDisplay>["clearSnapshot"],
  *   selectedSnapshotTimeMs: number | null,
  *   showClock: boolean,
  * }} MeterDisplayState
@@ -338,6 +340,8 @@ export function MeterRuntimeProvider({ children }) {
       clearNotice: display.clearNotice,
       selectedOffset: display.selectedOffset,
       setSelectedOffset: display.setSelectedOffset,
+      selectSnapshot: display.selectSnapshot,
+      clearSnapshot: display.clearSnapshot,
       selectedSnapshotTimeMs: display.selectedSnapshotTimeMs,
       showClock: display.showClock,
     }),
@@ -347,6 +351,8 @@ export function MeterRuntimeProvider({ children }) {
       display.clearNotice,
       display.selectedOffset,
       display.setSelectedOffset,
+      display.selectSnapshot,
+      display.clearSnapshot,
       display.selectedSnapshotTimeMs,
       display.showClock,
     ]

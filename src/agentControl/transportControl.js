@@ -37,15 +37,23 @@ function serializeFileSession(session) {
 }
 
 export function buildTransportSnapshot(runtime, context = {}) {
+  const snapshotOffsetSec =
+    Number.isFinite(context.selectedOffset) && context.selectedOffset >= 0
+      ? context.selectedOffset
+      : null;
   return {
     source: runtime.sourceMode === "file" ? "file" : "live",
+    snapshot: {
+      active: snapshotOffsetSec !== null,
+      offsetSec: snapshotOffsetSec,
+    },
     live: {
       state: runtime.liveLifecycle ?? (runtime.running ? "running" : "stopped"),
       requestedDeviceId:
         context.requestedDeviceId === undefined ? "default" : context.requestedDeviceId,
       resolvedDeviceId: runtime.liveResolvedDeviceId ?? null,
       startedAt: runtime.liveStartedAt ?? null,
-      atLiveEdge: context.atLiveEdge !== false,
+      atLiveEdge: snapshotOffsetSec === null,
       error: compactError(runtime.liveLastError),
     },
     files: {
@@ -67,6 +75,7 @@ export function transportLifecycleSignature(snapshot) {
       startedAt: snapshot.live.startedAt,
       error: snapshot.live.error,
     },
+    snapshot: snapshot.snapshot,
     files: {
       activeId: snapshot.files.activeId,
       analyzingId: snapshot.files.analyzingId,
@@ -85,7 +94,13 @@ export function transportLifecycleSignature(snapshot) {
  */
 export function projectTransportMutation(snapshot, method, params = {}) {
   const projected = cloneJson(snapshot);
-  if (method === "transport.source.live") {
+  if (method === "transport.snapshot.select") {
+    projected.snapshot = { active: true, offsetSec: params.offsetSec };
+    projected.live.atLiveEdge = false;
+  } else if (method === "transport.snapshot.clear") {
+    projected.snapshot = { active: false, offsetSec: null };
+    projected.live.atLiveEdge = true;
+  } else if (method === "transport.source.live") {
     projected.source = "live";
     const analyzingId = projected.files.analyzingId;
     projected.files.analyzingId = null;
@@ -169,6 +184,32 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     method === "transport.file.select";
   if (entersFile && context.docked === true) {
     return result({ refusal: { code: "dockActive" } });
+  }
+
+  if (method === "transport.snapshot.select") {
+    if (context.docked === true) return result({ refusal: { code: "dockActive" } });
+    if (context.historyAvailable !== true) {
+      return result({ refusal: { code: "historyUnavailable" } });
+    }
+    if (params.offsetSec > context.historyMaxOffsetSec) {
+      return result({
+        issues: [
+          issue(
+            "outOfRange",
+            "$.offsetSec",
+            "offsetSec is outside the currently retained history."
+          ),
+        ],
+      });
+    }
+    if (snapshot.snapshot.active && snapshot.snapshot.offsetSec === params.offsetSec) {
+      return result();
+    }
+    return result({ changed: ["transport.snapshot"] });
+  }
+  if (method === "transport.snapshot.clear") {
+    if (!snapshot.snapshot.active) return result();
+    return result({ changed: ["transport.snapshot"] });
   }
 
   if (method === "transport.source.live") {

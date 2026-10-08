@@ -47,16 +47,33 @@ describe("useSourceTransportActions", () => {
   });
 
   it("returns from history snapshot to live before toggling capture", () => {
-    const { result, props } = renderActions({ selectedOffset: 12 });
+    const clearSnapshot = vi.fn();
+    const { result, props } = renderActions({ selectedOffset: 12, clearSnapshot });
 
     act(() => {
       result.current.onStartClick();
     });
 
-    expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
+    expect(clearSnapshot).toHaveBeenCalledOnce();
+    expect(props.setSelectedOffset).not.toHaveBeenCalled();
     expect(props.startLive).not.toHaveBeenCalled();
     expect(props.stopLive).not.toHaveBeenCalled();
   });
+
+  it.each(["returnToLive", "returnToFileResult"])(
+    "routes %s through the shared snapshot business action",
+    async (actionKind) => {
+      const clearSnapshot = vi.fn();
+      const { result, props } = renderActions({ clearSnapshot });
+
+      await act(async () => {
+        await result.current.onSourceTransportAction(actionKind);
+      });
+
+      expect(clearSnapshot).toHaveBeenCalledOnce();
+      expect(props.setSelectedOffset).not.toHaveBeenCalled();
+    }
+  );
 
   it("chooses a file and starts analysis with current settings", async () => {
     mocks.pickMediaFile.mockResolvedValue("C:/audio/test.wav");

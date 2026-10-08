@@ -1471,7 +1471,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     return parse_transport_report_args(&args[2..]);
   }
 
-  let (method, target_key, target, consumed) = match args {
+  let (method, mut target_key, mut target, consumed) = match args {
     [scope, value, ..] if scope == "source" && matches!(value.as_str(), "live" | "file") => (
       format!("transport.source.{value}"),
       None,
@@ -1482,6 +1482,11 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
       if scope == "live" && matches!(action.as_str(), "start" | "stop" | "clear") =>
     {
       (format!("transport.live.{action}"), None, None, 2)
+    }
+    [scope, action, ..]
+      if scope == "snapshot" && matches!(action.as_str(), "select" | "clear") =>
+    {
+      (format!("transport.snapshot.{action}"), None, None, 2)
     }
     [scope, action, value, ..]
       if scope == "file"
@@ -1502,7 +1507,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     _ => {
       return Err(
-        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|file analyze|file reanalyze|file stop|file select|file remove|file clear|file report> ... --json"
+        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|snapshot select|snapshot clear|file analyze|file reanalyze|file stop|file select|file remove|file clear|file report> ... --json"
           .to_string(),
       )
     }
@@ -1525,6 +1530,20 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
       }
       "--dry-run" => {
         return Err(format!("The {method} action does not accept --dry-run."));
+      }
+      "--offset-sec" if method == "transport.snapshot.select" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --offset-sec.".to_string())?;
+        let parsed = raw.parse::<f64>().map_err(|_| {
+          "The --offset-sec value must be a finite non-negative number.".to_string()
+        })?;
+        if !parsed.is_finite() || parsed < 0.0 {
+          return Err("The --offset-sec value must be a finite non-negative number.".to_string());
+        }
+        target_key = Some("offsetSec".to_string());
+        target = Some(raw.clone());
+        index += 2;
       }
       "--allow-stop-file-analysis" => {
         if !matches!(
@@ -1563,6 +1582,9 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     return Err(format!(
       "The {method} command requires --expected-revision."
     ));
+  }
+  if method == "transport.snapshot.select" && target.is_none() {
+    return Err("The transport.snapshot.select command requires --offset-sec.".to_string());
   }
   Ok(ControlCommand::TransportMutation {
     method,
@@ -2916,6 +2938,7 @@ impl ControlFailure {
         | "fileModeActive"
         | "fileAnalysisNotActive"
         | "fileAnalysisNotComplete"
+        | "historyUnavailable"
         | "confirmationRequired"
         | "channelConfigurationChanged"
         | "deviceInventoryChanged"
@@ -3391,6 +3414,12 @@ fn request_for_command<R: Read>(
             ))
           })?;
           Value::String(canonical.to_string_lossy().into_owned())
+        } else if method == "transport.snapshot.select" {
+          Value::from(value.parse::<f64>().map_err(|_| {
+            ControlFailure::invalid_arguments(
+              "The --offset-sec value must be a finite non-negative number.",
+            )
+          })?)
         } else {
           Value::String(value.clone())
         };
@@ -5434,6 +5463,35 @@ mod tests {
     assert_eq!(request.method, "transport.file.select");
     assert_eq!(request.params["sessionId"], "session-1");
 
+    let snapshot = parse_control_args(&args(&[
+      "transport",
+      "snapshot",
+      "select",
+      "--offset-sec",
+      "12.5",
+      "--dry-run",
+      "--json",
+      "--expected-revision",
+      "4",
+    ]))
+    .unwrap();
+    let request = request_for_command(&snapshot, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "transport.snapshot.select");
+    assert_eq!(request.params["offsetSec"], 12.5);
+    assert_eq!(request.params["dryRun"], true);
+
+    let clear = parse_control_args(&args(&[
+      "transport",
+      "snapshot",
+      "clear",
+      "--json",
+      "--expected-revision",
+      "4",
+    ]))
+    .unwrap();
+    let request = request_for_command(&clear, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "transport.snapshot.clear");
+
     for invalid in [
       args(&["transport", "inspect"]),
       args(&["transport", "live", "start", "--json", "extra"]),
@@ -5447,6 +5505,24 @@ mod tests {
         "--json",
       ]),
       args(&["transport", "file", "analyze", "--json"]),
+      args(&[
+        "transport",
+        "snapshot",
+        "select",
+        "--json",
+        "--expected-revision",
+        "0",
+      ]),
+      args(&[
+        "transport",
+        "snapshot",
+        "select",
+        "--offset-sec",
+        "-0.1",
+        "--json",
+        "--expected-revision",
+        "0",
+      ]),
       args(&[
         "transport",
         "source",
@@ -6067,6 +6143,7 @@ mod tests {
       ("fileModeActive", None, 4),
       ("fileAnalysisNotActive", None, 4),
       ("fileAnalysisNotComplete", None, 4),
+      ("historyUnavailable", None, 4),
       ("confirmationRequired", None, 4),
       ("channelConfigurationChanged", None, 4),
       ("deviceInventoryChanged", None, 4),

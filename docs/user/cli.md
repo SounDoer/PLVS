@@ -484,8 +484,11 @@ latest revision, and final state:
 }
 ```
 
-Transport source live/file, live clear, and file select/remove/clear are state mutations. They
-require `--expected-revision` and support `--dry-run`.
+Transport source live/file, live clear, snapshot select/clear, and file select/remove/clear are
+state mutations. They require `--expected-revision` and support `--dry-run`. Snapshot selection
+uses `--offset-sec <seconds>` as the distance back from the newest retained sample. It fails when
+the requested point is outside retained history instead of silently clamping; clearing returns to
+the LIVE edge or current FILE result.
 
 ### Waiting for change
 

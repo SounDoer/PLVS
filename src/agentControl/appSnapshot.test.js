@@ -106,6 +106,8 @@ describe("agent-control app snapshots", () => {
         "device.select",
         "app.wait",
         "transport.inspect",
+        "transport.snapshot.select",
+        "transport.snapshot.clear",
         "transport.source.live",
         "transport.source.file",
         "transport.live.start",

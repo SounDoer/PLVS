@@ -50,7 +50,7 @@ export function SourceActionsProvider({ children }) {
     clearFiles,
     stopFileAnalysis,
   } = useMeterRuntime();
-  const { selectedOffset, setSelectedOffset, raiseNotice } = useMeterDisplayState();
+  const { selectedOffset, setSelectedOffset, clearSnapshot, raiseNotice } = useMeterDisplayState();
   const settings = useAppSettings();
   const { onClearRef, dialogueVadEngine } = settings;
   const loudnessProfile = useLoudnessProfile();
@@ -79,6 +79,7 @@ export function SourceActionsProvider({ children }) {
     running,
     selectedOffset,
     setSelectedOffset,
+    clearSnapshot,
     setHistoryOffsetSec,
     setHistoryWindowSec,
     startLive,

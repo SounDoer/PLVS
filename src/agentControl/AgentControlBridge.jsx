@@ -167,7 +167,8 @@ export function AgentControlBridge() {
     removeFile,
     clearFiles,
   } = meterRuntime;
-  const { selectedOffset } = useMeterDisplayState();
+  const { selectedOffset, selectSnapshot, clearSnapshot } = useMeterDisplayState();
+  const { histSourceList } = useDisplaySnapshot();
   const {
     snapshot: audioDeviceSnapshot,
     captureDeviceId,
@@ -209,7 +210,7 @@ export function AgentControlBridge() {
     () =>
       buildTransportSnapshot(meterRuntime, {
         requestedDeviceId: captureDeviceId,
-        atLiveEdge: selectedOffset < 0,
+        selectedOffset,
         docked,
       }),
     [captureDeviceId, docked, meterRuntime, selectedOffset]
@@ -238,6 +239,14 @@ export function AgentControlBridge() {
       }
       if (method === "transport.live.clear") {
         await clearLiveForControl();
+        return {};
+      }
+      if (method === "transport.snapshot.select") {
+        selectSnapshot(params.offsetSec);
+        return {};
+      }
+      if (method === "transport.snapshot.clear") {
+        clearSnapshot();
         return {};
       }
       if (method === "transport.file.analyze") {
@@ -281,11 +290,13 @@ export function AgentControlBridge() {
       beginFileAnalysisForControl,
       clearFiles,
       clearLiveForControl,
+      clearSnapshot,
       currentFileAnalysisSettings,
       meterRuntime.liveLifecycle,
       reanalyzeFileForControl,
       removeFile,
       selectFile,
+      selectSnapshot,
       startLiveForControl,
       stopFileAnalysis,
       stopLiveForControl,
@@ -311,7 +322,6 @@ export function AgentControlBridge() {
     fileDurationMs,
   } = useAnalysisSession();
   const { channelLabelOverride, channelRoles } = channelLabelRuntime;
-  const { histSourceList } = useDisplaySnapshot();
   const { activeBlockingEditors } = useSceneGuard();
   const { historyRetentionSec, channelLabelOverrides } = settings;
   const { sourceMode, running, fileSessions } = meterRuntime;
@@ -454,6 +464,11 @@ export function AgentControlBridge() {
         spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
         timeMaxWindowSec: Math.max(60, availableDurationSec),
         timeMaxOffsetSec: Math.max(0, availableDurationSec - 5),
+        historyAvailable: Number.isFinite(firstTimestampMs) && Number.isFinite(latestTimestampMs),
+        historyMaxOffsetSec:
+          Number.isFinite(firstTimestampMs) && Number.isFinite(latestTimestampMs)
+            ? Math.max(0, (latestTimestampMs - firstTimestampMs) / 1000)
+            : 0,
       };
     },
     // The history ring mutates in place; its version intentionally invalidates this snapshot.
@@ -541,7 +556,12 @@ export function AgentControlBridge() {
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
     transport: agentControlTransport,
-    transportContext: { docked, deviceTransitioning: meterRuntime.liveDeviceTransition !== null },
+    transportContext: {
+      docked,
+      deviceTransitioning: meterRuntime.liveDeviceTransition !== null,
+      historyAvailable: agentControlAnalysisContext.historyAvailable,
+      historyMaxOffsetSec: agentControlAnalysisContext.historyMaxOffsetSec,
+    },
     executeTransport: executeAgentControlTransport,
     uiNavigation,
     device: agentControlDevice,

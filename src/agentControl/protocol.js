@@ -1160,6 +1160,8 @@ export function normalizeAgentControlRequest(input) {
     "transport.live.start",
     "transport.live.stop",
     "transport.live.clear",
+    "transport.snapshot.select",
+    "transport.snapshot.clear",
     "transport.file.analyze",
     "transport.file.reanalyze",
     "transport.file.stop",
@@ -1170,6 +1172,7 @@ export function normalizeAgentControlRequest(input) {
   if (transportCommands.has(input.method)) {
     const isAction = isTransportAction(input.method);
     const needsPath = input.method === "transport.file.analyze";
+    const needsOffset = input.method === "transport.snapshot.select";
     const needsSession = [
       "transport.file.reanalyze",
       "transport.file.stop",
@@ -1182,6 +1185,7 @@ export function normalizeAgentControlRequest(input) {
     const allowed = new Set([
       ...(needsPath ? ["path"] : []),
       ...(needsSession ? ["sessionId"] : []),
+      ...(needsOffset ? ["offsetSec"] : []),
       ...(allowsStopFileAnalysis ? ["allowStopFileAnalysis"] : []),
       "expectedRevision",
       ...(!isAction ? ["dryRun"] : []),
@@ -1195,6 +1199,9 @@ export function normalizeAgentControlRequest(input) {
       (typeof input.params[targetKey] !== "string" || input.params[targetKey].trim() === "")
     ) {
       return invalidParams(`$.params.${targetKey}`, `${targetKey} must be a non-empty string.`);
+    }
+    if (needsOffset && (!Number.isFinite(input.params.offsetSec) || input.params.offsetSec < 0)) {
+      return invalidParams("$.params.offsetSec", "offsetSec must be a finite non-negative number.");
     }
     if (
       input.params.expectedRevision !== undefined &&
@@ -1230,6 +1237,7 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           ...(targetKey ? { [targetKey]: input.params[targetKey] } : {}),
+          ...(needsOffset ? { offsetSec: input.params.offsetSec } : {}),
           ...(input.params.expectedRevision !== undefined
             ? { expectedRevision: input.params.expectedRevision }
             : {}),

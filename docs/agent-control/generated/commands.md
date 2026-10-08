@@ -80,6 +80,8 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `device.select` | `device select` | runningApp / mutation | required | yes | none |
 | `app.wait` | `wait` | runningApp / wait | none | no | none |
 | `transport.inspect` | `transport inspect` | runningApp / query | none | no | none |
+| `transport.snapshot.select` | `transport snapshot select` | runningApp / mutation | required | yes | none |
+| `transport.snapshot.clear` | `transport snapshot clear` | runningApp / mutation | required | yes | none |
 | `transport.source.live` | `transport source live` | runningApp / mutation | required | yes | none |
 | `transport.source.file` | `transport source file` | runningApp / mutation | required | yes | none |
 | `transport.live.start` | `transport live start` | runningApp / action | required | no | none |
@@ -2052,6 +2054,59 @@ None.
 | --- | --- | --- | --- |
 | `--json` | local only | no | boolean |
 | `--format` | local only | no | string; one of "text" |
+
+## `transport.snapshot.select`
+
+Select a retained history snapshot.
+
+- CLI path: `transport snapshot select`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `transport.snapshot.select`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport snapshot select --offset-sec <n> --json --expected-revision <n> [--dry-run]
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--offset-sec` | `offsetSec` | yes | number; 0 to inf |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| `--dry-run` | `dryRun` | no | boolean |
+
+## `transport.snapshot.clear`
+
+Return from a retained history snapshot.
+
+- CLI path: `transport snapshot clear`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `transport.snapshot.clear`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport snapshot clear --json --expected-revision <n> [--dry-run]
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| `--dry-run` | `dryRun` | no | boolean |
 
 ## `transport.source.live`
 

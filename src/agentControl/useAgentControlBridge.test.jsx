@@ -84,6 +84,7 @@ const settingsContext = {
 
 const transport = {
   source: "live",
+  snapshot: { active: false, offsetSec: null },
   live: {
     state: "stopped",
     requestedDeviceId: "default",
@@ -180,6 +181,8 @@ const MUTATION_METHODS = new Set([
   "transport.live.start",
   "transport.live.stop",
   "transport.live.clear",
+  "transport.snapshot.select",
+  "transport.snapshot.clear",
   "transport.file.analyze",
   "transport.file.reanalyze",
   "transport.file.stop",
@@ -462,6 +465,18 @@ function Harness({
           source: "live",
           live: { ...current.live, state: "running", resolvedDeviceId: "device-1" },
         }));
+      } else if (method === "transport.snapshot.select") {
+        setTransportState((current) => ({
+          ...current,
+          snapshot: { active: true, offsetSec: params.offsetSec },
+          live: { ...current.live, atLiveEdge: false },
+        }));
+      } else if (method === "transport.snapshot.clear") {
+        setTransportState((current) => ({
+          ...current,
+          snapshot: { active: false, offsetSec: null },
+          live: { ...current.live, atLiveEdge: true },
+        }));
       } else if (method === "transport.file.analyze" || method === "transport.file.reanalyze") {
         const sessionId = method === "transport.file.analyze" ? "file-new" : params.sessionId;
         setTransportState((current) => {
@@ -522,7 +537,7 @@ function Harness({
     visual: agentVisual,
     uiNavigation: agentUi,
     transport: transportState,
-    transportContext: { docked: false },
+    transportContext: { docked: false, historyAvailable: true, historyMaxOffsetSec: 90 },
     executeTransport,
     device: {
       snapshot: deviceState,
@@ -2628,6 +2643,62 @@ describe("useAgentControlBridge", () => {
       revision: 0,
       changed: true,
       state: { transport: { source: "file" } },
+    });
+    expect(executeTransport).not.toHaveBeenCalled();
+  });
+
+  it("selects and clears a retained snapshot through Transport", async () => {
+    mount();
+    await waitUntilReady();
+
+    const selected = await send(
+      request(
+        "transport.snapshot.select",
+        { offsetSec: 12.5, expectedRevision: 0 },
+        "snapshot-select"
+      )
+    );
+    expect(selected.result).toMatchObject({
+      changed: true,
+      revision: 1,
+      state: {
+        transport: {
+          snapshot: { active: true, offsetSec: 12.5 },
+          live: { atLiveEdge: false },
+        },
+      },
+    });
+
+    const inspected = await send(request("transport.inspect", {}, "snapshot-inspect"));
+    expect(inspected.result).toMatchObject({
+      revision: 1,
+      snapshot: { active: true, offsetSec: 12.5 },
+    });
+
+    const cleared = await send(
+      request("transport.snapshot.clear", { expectedRevision: 1 }, "snapshot-clear")
+    );
+    expect(cleared.result).toMatchObject({
+      changed: true,
+      revision: 2,
+      state: { transport: { snapshot: { active: false, offsetSec: null } } },
+    });
+  });
+
+  it("rejects a snapshot beyond retained history without executing", async () => {
+    const executeTransport = vi.fn(async () => {});
+    mount({ executeAgentTransport: executeTransport });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.snapshot.select", { offsetSec: 90.001 }, "snapshot-out-of-range")
+    );
+    expect(response.error).toMatchObject({
+      code: -32602,
+      data: {
+        reason: "invalidTransport",
+        details: { issues: [expect.objectContaining({ code: "outOfRange" })] },
+      },
     });
     expect(executeTransport).not.toHaveBeenCalled();
   });
