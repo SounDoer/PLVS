@@ -144,13 +144,29 @@
       .hero {
         display: grid;
         grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
-        align-items: center;
+        align-items: start;
         gap: 40px;
         padding: 24px 0;
       }
 
       .hero-copy {
         min-width: 0;
+      }
+
+      @media (min-width: 1200px) {
+        .hero-copy {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 28px;
+          align-self: stretch;
+        }
+
+        .hero-copy .eyebrow,
+        .hero-copy .hero-subtitle,
+        .hero-copy .hero-actions {
+          margin: 0;
+        }
       }
 
       .eyebrow {
@@ -816,7 +832,7 @@
   <body>
     <div class="site-shell">
       <nav class="nav" aria-label="Primary">
-        <a class="brand" href="#">
+        <a class="brand" href="#" aria-label="PLVS home">
           <img class="brand-mark" src="assets/app-icon.svg" alt="" aria-hidden="true" />
         </a>
         <div class="nav-links">
