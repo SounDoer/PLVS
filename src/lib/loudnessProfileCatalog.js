@@ -77,9 +77,16 @@ const defaultMakeId = () => crypto.randomUUID();
 export function createStarterProfile(makeId = defaultMakeId) {
   return {
     id: makeId(),
-    name: "I −23 ±0.5 · TP ≤ −1",
+    name: "Default",
     referenceLufs: -23,
-    rules: [...band("integrated", -23, 0.5, 0.5), rule("truePeak", ">", -1)],
+    rules: [
+      ...band("integrated", -23, 4, 5),
+      rule("shortTermMax", ">", -16, "warn"),
+      rule("momentaryMax", ">", -12, "warn"),
+      rule("lra", ">", 20, "warn"),
+      rule("lra", "<", 5, "warn"),
+      rule("truePeak", ">", -1),
+    ],
   };
 }
 

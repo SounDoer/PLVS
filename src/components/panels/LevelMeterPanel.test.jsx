@@ -652,7 +652,8 @@ describe("LevelMeterPanel", () => {
     ).toBe(zonesToGradient(thresholdZones(-18, -9), -60, 3, "to top"));
   });
 
-  it("shows the Momentary trace colour under the starter Profile, which has no Momentary rule", () => {
+  it("shows the Momentary trace colour when no Profile judges Momentary", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [] } });
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });

@@ -15,6 +15,7 @@ const PROFILE_APP: &str = "PLVS";
 const PROFILE_KIND: &str = "configuration-profile";
 const PROFILE_VERSION: i64 = 1;
 const DEFAULT_CLEAR_SHORTCUT: &str = "CmdOrCtrl+K";
+const STARTER_ITEMS_SEEDED_KEY: &str = "starterItemsSeeded";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ProfileImportOptions {
@@ -673,16 +674,31 @@ pub fn import_profile(app: AppHandle, profile: Value) -> Result<(), String> {
   Ok(())
 }
 
+/// Reset is the one operation that makes the installation a first run again, so it also forgets
+/// that the starter items were seeded; importing a profile does not. Cleared last: a failed reset
+/// must not leave an untouched library that seeds the preset a second time.
+fn reset_session(session: &crate::persistence::WorkspacePersistenceSession) -> Result<(), String> {
+  apply_profile_to_session(
+    session,
+    json!({ "app": PROFILE_APP, "kind": PROFILE_KIND, "version": PROFILE_VERSION }),
+  )?;
+  let library = session.library();
+  if let Some(seeded) = library
+    .read_global_preference(STARTER_ITEMS_SEEDED_KEY)
+    .map_err(|error| error.to_string())?
+  {
+    library
+      .delete_global_preference(STARTER_ITEMS_SEEDED_KEY, seeded.revision)
+      .map_err(|error| error.to_string())?;
+  }
+  Ok(())
+}
+
 #[tauri::command]
 pub fn reset_profile(app: AppHandle) -> Result<(), String> {
   let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
   if runtime.is_installed() {
-    return runtime.with_session_raw(|session| {
-      apply_profile_to_session(
-        session,
-        json!({ "app": PROFILE_APP, "kind": PROFILE_KIND, "version": PROFILE_VERSION }),
-      )
-    });
+    return runtime.with_session_raw(reset_session);
   }
   let store = app
     .store(STORE_FILE)
@@ -776,6 +792,50 @@ mod tests {
     assert_eq!(exported["captureDeviceId"], "out:2");
     assert_eq!(exported["clearShortcut"], "CmdOrCtrl+L");
     assert_eq!(exported["clearGlobal"], true);
+
+    drop(session);
+    let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn only_reset_forgets_that_the_starter_items_were_seeded() {
+    let root = std::env::temp_dir().join(format!("plvs-reset-seed-marker-{}", std::process::id()));
+    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+    let profiles = |session: &crate::persistence::WorkspacePersistenceSession| {
+      session.hydrate().unwrap().settings["loudnessProfiles"]
+        .get("profiles")
+        .cloned()
+    };
+    // Untouched: `profiles` is left out, which asks the frontend to seed the starter.
+    assert_eq!(profiles(&session), None);
+    session
+      .library()
+      .set_global_preferences(
+        &std::collections::BTreeMap::from([(STARTER_ITEMS_SEEDED_KEY.to_string(), 0)]),
+        &std::collections::BTreeMap::from([(STARTER_ITEMS_SEEDED_KEY.to_string(), json!(true))]),
+      )
+      .unwrap();
+    let seeded = |session: &crate::persistence::WorkspacePersistenceSession| {
+      session
+        .hydrate()
+        .unwrap()
+        .global_preferences
+        .get(STARTER_ITEMS_SEEDED_KEY)
+        .cloned()
+    };
+
+    apply_profile_to_session(
+      &session,
+      json!({ "app": PROFILE_APP, "kind": PROFILE_KIND, "version": PROFILE_VERSION }),
+    )
+    .unwrap();
+    assert_eq!(seeded(&session), Some(json!(true)));
+    // Settled: the emptied profile library stays empty instead of asking for the starter again.
+    assert_eq!(profiles(&session), Some(json!([])));
+
+    reset_session(&session).unwrap();
+    assert_eq!(seeded(&session), None);
+    assert_eq!(profiles(&session), None);
 
     drop(session);
     let _ = std::fs::remove_dir_all(root);

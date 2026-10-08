@@ -8,7 +8,8 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
-import { presetsStore } from "../persistence/index.js";
+import { presetsStore, workspaceStore } from "../persistence/index.js";
+import { starterItemsSeeded, markStarterItemsSeeded } from "../persistence/starterItemsSeed.js";
 import { SCENE_OPERATIONS, SceneOperationUnavailableError } from "../lib/sceneOperations.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
@@ -27,6 +28,19 @@ function normalizePresets(raw) {
   const activeId = list.some((preset) => preset.id === rawActiveId) ? rawActiveId : null;
   const dirty = activeId !== null && raw.dirty === true;
   return { list, activeId, dirty };
+}
+
+/// First run: no workspace has been stored, the library holds no preset, and the installation has
+/// not settled this before. The first-run scene is then saved as the "Default" preset, so a new
+/// user has a named way back to it. An existing user always has a stored workspace; a new
+/// workspace opened later is covered by the settled marker, so deleting the preset is final until
+/// Reset PLVS to Default.
+function isFirstRun() {
+  return (
+    !starterItemsSeeded() &&
+    !workspaceStore.read().tree &&
+    normalizePresets(presetsStore.read()).list.length === 0
+  );
 }
 
 async function readWindowBounds() {
@@ -251,6 +265,21 @@ export function usePresets({
     },
     [write]
   );
+
+  // Decided during the first render: the workspace provider stores its state right after mount,
+  // which would make every later read look like an existing installation.
+  const [seedDefaultPreset] = useState(isFirstRun);
+  const defaultPresetSeededRef = useRef(false);
+  useEffect(() => {
+    if (defaultPresetSeededRef.current) return;
+    defaultPresetSeededRef.current = true;
+    if (seedDefaultPreset) {
+      captureSnapshot().then((snapshot) => saveSnapshot("Default", snapshot));
+    }
+    // Settled either way: an installation that already existed must not be seeded later from a
+    // new workspace. Losing the write to another window settling it at the same moment is fine.
+    markStarterItemsSeeded().catch(() => {});
+  }, [seedDefaultPreset, captureSnapshot, saveSnapshot]);
 
   const save = useCallback(
     async (name) => {

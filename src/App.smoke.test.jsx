@@ -368,11 +368,11 @@ describe("App smoke", () => {
 
     expect(footer().getByText("Source")).toBeTruthy();
     expect(footer().getByText("Not connected")).toBeTruthy();
-    // No preset is active, so the footer omits the Preset item rather than showing a dash.
-    expect(footer().queryByText("Preset")).toBeNull();
-    // The starter profile is active on first run, so the footer names it.
+    // First run saves the scene as the Default preset and selects the starter profile, which is
+    // also named Default, so the footer names both.
+    await waitFor(() => expect(footer().getByText("Preset")).toBeTruthy());
     expect(footer().getByText("Loudness")).toBeTruthy();
-    expect(footer().getByText("I −23 ±0.5 · TP ≤ −1")).toBeTruthy();
+    expect(footer().getAllByText("Default")).toHaveLength(2);
   });
 
   it("uses a custom light theme's color scheme for native window surfaces", async () => {

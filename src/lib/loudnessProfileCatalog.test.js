@@ -20,11 +20,15 @@ describe("createStarterProfile", () => {
   it("creates the starter profile with an injected id", () => {
     expect(createStarterProfile(() => "starter-id")).toEqual({
       id: "starter-id",
-      name: "I −23 ±0.5 · TP ≤ −1",
+      name: "Default",
       referenceLufs: -23,
       rules: [
-        { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
-        { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+        { metricId: "integrated", op: ">", value: -18, severity: "fail" },
+        { metricId: "integrated", op: "<", value: -27, severity: "fail" },
+        { metricId: "shortTermMax", op: ">", value: -16, severity: "warn" },
+        { metricId: "momentaryMax", op: ">", value: -12, severity: "warn" },
+        { metricId: "lra", op: ">", value: 20, severity: "warn" },
+        { metricId: "lra", op: "<", value: 5, severity: "warn" },
         { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
       ],
     });

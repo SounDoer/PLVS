@@ -664,11 +664,11 @@ describe("Loudness Profile editor wiring", () => {
 
   it("opens the panel on the draft the popover started", () => {
     renderWired();
-    fireEvent.click(screen.getByLabelText("Edit I −23 ±0.5 · TP ≤ −1 rules"));
+    fireEvent.click(screen.getByLabelText("Edit Default rules"));
 
     const editor = screen.getByRole("dialog", { name: "Loudness Profile editor" });
     expect(editor).toBeTruthy();
-    expect(within(editor).getByText("I −23 ±0.5 · TP ≤ −1")).toBeTruthy();
+    expect(within(editor).getByText("Default")).toBeTruthy();
   });
 
   it("repaints what Stats reads as the panel is edited", () => {

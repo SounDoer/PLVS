@@ -34,6 +34,7 @@ const READERS = {
   "ipc/capturePrefs.js": ["captureDeviceId", "multiInstancePersistence"],
   "lib/clearShortcutPrefs.js": ["globalPreferences", "multiInstancePersistence"],
   "lib/runtimeRole.js": ["isCoordinator"],
+  "persistence/starterItemsSeed.js": ["globalPreferences", "multiInstancePersistence"],
   "persistence/index.js": ["multiInstancePersistence"],
   "persistence/multiInstanceBackend.js": [
     "plvs:settings",

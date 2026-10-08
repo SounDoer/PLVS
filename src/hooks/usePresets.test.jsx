@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
-import { presetsStore } from "../persistence/index.js";
+import { presetsStore, workspaceStore } from "../persistence/index.js";
 
 const mocks = vi.hoisted(() => ({
   applyWindowBounds: vi.fn(),
@@ -40,6 +40,7 @@ vi.mock("../ipc/events.js", () => ({
 
 import { useState } from "react";
 import { usePresets } from "./usePresets.js";
+import { invoke } from "@tauri-apps/api/core";
 import {
   BlockingEditorsProvider,
   useBlockingEditor,
@@ -59,6 +60,16 @@ const TEST_PROFILE = {
     { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
   ],
 };
+
+/// An installation that has run before. Without a stored workspace the hook treats the mount as a
+/// first run and saves the "Default" preset, which the tests below do not want in their lists.
+function storeExistingWorkspace() {
+  workspaceStore.patch({
+    tree: DEFAULT_WORKSPACE_STATE.tree,
+    panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
+    panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
+  });
+}
 
 function wrapper({ children }) {
   return (
@@ -104,6 +115,7 @@ function leaf(tabs, activeTab = tabs[0]) {
 describe("usePresets", () => {
   beforeEach(() => {
     localStorage.clear();
+    storeExistingWorkspace();
     vi.spyOn(Date, "now").mockReturnValue(123);
     mocks.applyWindowBounds.mockReset().mockResolvedValue(undefined);
     mocks.currentWindowBounds.mockReset().mockResolvedValue({
@@ -949,6 +961,7 @@ describe("usePresets", () => {
 describe("usePresets Loudness Profile snapshot", () => {
   beforeEach(() => {
     localStorage.clear();
+    storeExistingWorkspace();
     settingsStore.reset();
     settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [] } });
   });
@@ -1036,6 +1049,7 @@ describe("usePresets Loudness Profile snapshot", () => {
 describe("usePresets under an active blocking editor", () => {
   beforeEach(() => {
     localStorage.clear();
+    storeExistingWorkspace();
     // Preset ids are minted from Date.now(), so two saves in the same millisecond would collide
     // and a delete would take both.
     let now = 1000;
@@ -1219,5 +1233,60 @@ describe("usePresets under an active blocking editor", () => {
 
     expect(view.spies.applyDockPreset).toHaveBeenCalled();
     expect(view.result.current.presets.activeId).toBe(savedId);
+  });
+});
+
+describe("usePresets first-run Default preset", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(invoke).mockReset().mockResolvedValue({ starterItemsSeeded: 1 });
+    mocks.isTauri.mockReset().mockReturnValue(false);
+    mocks.onWindowBoundsChanged.mockReset().mockResolvedValue(() => {});
+  });
+
+  afterEach(() => {
+    delete window.__PLVS_INITIAL_STATE__;
+  });
+
+  const names = () => (presetsStore.read().list ?? []).map((preset) => preset.name);
+
+  it("seeds the preset on a first run and records that it did", async () => {
+    window.__PLVS_INITIAL_STATE__ = { multiInstancePersistence: {} };
+    renderPresetHook();
+    await act(async () => {});
+
+    expect(names()).toEqual(["Default"]);
+    // The profile provider and the presets hook settle the same marker; one write covers both.
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith("persistence_save_global_preferences", {
+      values: { starterItemsSeeded: true },
+      expectedRevisions: { starterItemsSeeded: 0 },
+    });
+    expect(window.__PLVS_INITIAL_STATE__.globalPreferences.starterItemsSeeded).toBe(true);
+  });
+
+  it("does not bring the preset back in a new workspace once it was seeded", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      globalPreferences: { starterItemsSeeded: true },
+      multiInstancePersistence: { globalPreferenceRevisions: { starterItemsSeeded: 1 } },
+    };
+    renderPresetHook();
+    await act(async () => {});
+
+    expect(names()).toEqual([]);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("settles an existing installation without seeding it", async () => {
+    storeExistingWorkspace();
+    window.__PLVS_INITIAL_STATE__ = { multiInstancePersistence: {} };
+    renderPresetHook();
+    await act(async () => {});
+
+    expect(names()).toEqual([]);
+    expect(invoke).toHaveBeenCalledWith("persistence_save_global_preferences", {
+      values: { starterItemsSeeded: true },
+      expectedRevisions: { starterItemsSeeded: 0 },
+    });
   });
 });

@@ -241,12 +241,13 @@ pub fn persistence_save_global_preferences(
   values: BTreeMap<String, Value>,
   expected_revisions: BTreeMap<String, i64>,
 ) -> Result<BTreeMap<String, i64>, PersistenceCommandError> {
-  const ALLOWED: [&str; 5] = [
+  const ALLOWED: [&str; 6] = [
     "clearShortcut",
     "clearGlobal",
     "agentControlEnabled",
     "askToSendCrashReports",
     "openAtLogin",
+    "starterItemsSeeded",
   ];
   if values.keys().any(|key| !ALLOWED.contains(&key.as_str())) {
     return Err(PersistenceCommandError {

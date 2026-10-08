@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { presetsStore, reportLibraryConflict, settingsStore } from "../persistence/index.js";
+import { markStarterItemsSeeded } from "../persistence/starterItemsSeed.js";
 import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import {
@@ -143,6 +144,9 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     } else {
       syncState();
     }
+    // Settled whether or not the starter was seeded, so deleting it is final until Reset PLVS to
+    // Default; see `starterItemsSeed.js`.
+    if (seedColdStart) markStarterItemsSeeded().catch(() => {});
     return unsubscribe;
   }, [seedColdStart]);
 

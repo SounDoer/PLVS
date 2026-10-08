@@ -209,6 +209,7 @@ describe("DockLevel", () => {
   });
 
   it("shows the Short-term trace colour when no Profile judges Short-term", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [] } });
     renderWith(
       { displayAudio: { shortTerm: -20 } },
       {

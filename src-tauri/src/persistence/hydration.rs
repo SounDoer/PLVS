@@ -41,6 +41,7 @@ pub fn hydrate_workspace(
     "agentControlEnabled",
     "askToSendCrashReports",
     "openAtLogin",
+    "starterItemsSeeded",
   ] {
     if let Some(preference) = repository
       .read_global_preference(key)
@@ -71,8 +72,12 @@ pub fn hydrate_workspace(
     .unwrap_or_default();
   // An empty library with no recorded selection has never been touched by the frontend (first
   // run, or after Reset to Default). Leaving `profiles` out is its signal to seed the starter
-  // profile; an emptied library always carries `active`, so it stays empty.
-  if !profile_items.is_empty() || loudness_profiles.contains_key("active") {
+  // profile; an emptied library always carries `active`, so it stays empty. `active` is per
+  // workspace, though, so a new workspace beside an emptied library would seed again: the
+  // installation-wide marker, which only Reset clears, is what keeps it empty there.
+  let starter_items_seeded =
+    global_preferences.get("starterItemsSeeded") == Some(&Value::Bool(true));
+  if !profile_items.is_empty() || loudness_profiles.contains_key("active") || starter_items_seeded {
     loudness_profiles.insert(
       "profiles".to_string(),
       Value::Array(
