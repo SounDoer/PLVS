@@ -64,6 +64,21 @@ export const LICENSE_ASSETS = [
     sha256: "dba0c37b0f424384e8647e1c9175f12a90fc6be237f1a7b86431886034af52ca",
   },
   {
+    source: "licenses/license-texts/Inter-OFL-1.1.txt",
+    destination: "licenses/license-texts/Inter-OFL-1.1.txt",
+    markers: ["Copyright (c) 2016 The Inter Project Authors", "SIL OPEN FONT LICENSE Version 1.1"],
+    sha256: "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+  },
+  {
+    source: "licenses/license-texts/JetBrains-Mono-OFL-1.1.txt",
+    destination: "licenses/license-texts/JetBrains-Mono-OFL-1.1.txt",
+    markers: [
+      "Copyright 2020 The JetBrains Mono Project Authors",
+      "SIL OPEN FONT LICENSE Version 1.1",
+    ],
+    sha256: "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
+  },
+  {
     source: "licenses/license-texts/LGPL-2.1-only.txt",
     destination: "licenses/license-texts/LGPL-2.1-only.txt",
     markers: ["GNU LESSER GENERAL PUBLIC LICENSE", "Version 2.1, February 1999"],

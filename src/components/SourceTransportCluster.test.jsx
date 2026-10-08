@@ -30,6 +30,13 @@ describe("SourceTransportCluster", () => {
     expect(source).not.toContain("text-xs");
   });
 
+  it("centres only the uppercase indicator labels by their cap box", () => {
+    const css = readFileSync(join(currentDir, "../index.css"), "utf8");
+    expect(source.match(/transport-cap-label/g)).toHaveLength(3);
+    expect(css).toContain(".transport-cap-label");
+    expect(css).toContain("text-box: trim-both cap alphabetic");
+  });
+
   it("uses semantic borders instead of hard-coded white tints", () => {
     expect(source).toContain("border-border");
     expect(source).not.toContain("border-white/");

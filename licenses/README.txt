@@ -14,5 +14,8 @@ license-texts/
   commit 31ba1a50e5397e00a304dbadc76531740e89ee48:
   https://github.com/spdx/license-list-data/tree/31ba1a50e5397e00a304dbadc76531740e89ee48/text
 
+  Inter-OFL-1.1.txt and JetBrains-Mono-OFL-1.1.txt are the complete, unmodified upstream font
+  license files. They include each font project's copyright notice in addition to SIL OFL 1.1.
+
 These files are the shared release payload used by Windows NSIS, Windows Portable ZIP, macOS
 PLVS.app/DMG, and the macOS updater archive. See THIRD-PARTY-NOTICES.txt first.

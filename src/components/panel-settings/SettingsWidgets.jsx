@@ -336,7 +336,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
   const widthCh = Math.min(8, Math.max(4.5, draft.length + 1.5));
 
   return (
-    <div className="flex min-w-0 items-center gap-1">
+    <div className="flex min-w-0 items-baseline gap-1">
       <input
         aria-label={ariaLabel}
         type="text"

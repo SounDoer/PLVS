@@ -82,7 +82,7 @@ export function SourceTransportCluster({
     >
       {sourceLocked ? (
         <span className="flex h-full shrink-0 items-center rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
-          {state.sourceLabel}
+          <span className="transport-cap-label">{state.sourceLabel}</span>
         </span>
       ) : (
         <Popover open={open} onOpenChange={setOpen}>
@@ -93,7 +93,7 @@ export function SourceTransportCluster({
               aria-label={`Source: ${state.sourceLabel}`}
               className="flex h-full shrink-0 items-center gap-1 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] hover:bg-ui-hover"
             >
-              {state.sourceLabel}
+              <span className="transport-cap-label">{state.sourceLabel}</span>
               <ChevronDown className="size-[1em]" />
             </button>
           </PopoverTrigger>
@@ -147,7 +147,7 @@ export function SourceTransportCluster({
         )}
       >
         <ActionIcon className="size-[1em]" />
-        {state.actionLabel}
+        <span className="transport-cap-label">{state.actionLabel}</span>
       </button>
     </div>
   );

@@ -513,11 +513,15 @@ the instrument tokens above.
 Two font families:
 
 ```css
---ui-font-sans: "Inter", system-ui, sans-serif; /* set by applyLayoutToDocument */
---ui-font-mono: "JetBrains Mono", ui-monospace, monospace; /* set statically in index.css */
+--ui-font-sans: "Inter", system-ui, sans-serif; /* Inter 4.1 is bundled */
+--ui-font-mono: "JetBrains Mono", ui-monospace, monospace; /* JetBrains Mono 2.304 is bundled */
 ```
 
 **Rule:** All live-changing numeric displays use `--ui-font-mono` + `tabular-nums`. Static UI text uses `--ui-font-sans`.
+
+The application ships upright Inter weights 400–700 as one variable WOFF2 and JetBrains Mono
+Regular/SemiBold as two static WOFF2 files. The system families are safety fallbacks only; local
+font installation does not determine normal rendering.
 
 ### Normal-mode Text Roles and Sizes
 

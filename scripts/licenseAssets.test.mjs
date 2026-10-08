@@ -25,7 +25,8 @@ describe("release license assets", () => {
       "utf8"
     );
     expect(stagedNotice).toContain("FFmpeg 7.1 sidecars");
-    expect(LICENSE_ASSETS).toHaveLength(14);
+    expect(stagedNotice).toContain("Bundled fonts");
+    expect(LICENSE_ASSETS).toHaveLength(16);
   });
 
   it("rejects a staged asset whose required identification was removed", async () => {

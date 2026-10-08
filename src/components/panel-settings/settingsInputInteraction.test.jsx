@@ -31,6 +31,19 @@ describe("Settings numeric drafts", () => {
     expect(/** @type {HTMLInputElement} */ (input).value).toBe("5");
     expect(commit).not.toHaveBeenCalled();
   });
+  it("baseline-aligns a number with its unit suffix", () => {
+    render(
+      <SettingsNumberInput
+        ariaLabel="frequency"
+        value={200}
+        min={20}
+        max={20000}
+        suffix="Hz"
+        onCommit={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("frequency").parentElement?.className).toContain("items-baseline");
+  });
   it("restores an empty range bound instead of changing it to zero", () => {
     const commit = vi.fn();
     render(

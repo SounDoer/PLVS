@@ -7,6 +7,25 @@ in `licenses/license-texts/`.
 This notice describes software and model artifacts included in PLVS release packages. It is an
 engineering inventory, not legal advice.
 
+## Bundled fonts
+
+PLVS embeds the following upright webfonts so interface typography is consistent across supported
+platforms. The files are loaded only from the application bundle; PLVS does not request fonts from
+a CDN or use a user's locally installed copy.
+
+- **Inter 4.1** — `InterVariable-4.1.woff2`, weights 400–700. Copyright (c) 2016 The Inter Project
+  Authors. Upstream release: <https://github.com/rsms/inter/releases/tag/v4.1>. SHA-256:
+  `693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3`.
+- **JetBrains Mono 2.304** — `JetBrainsMono-Regular-2.304.woff2` and
+  `JetBrainsMono-SemiBold-2.304.woff2`. Copyright 2020 The JetBrains Mono Project Authors. Upstream
+  release: <https://github.com/JetBrains/JetBrainsMono/releases/tag/v2.304>. SHA-256:
+  `a9cb1cd82332b23a47e3a1239d25d13c86d16c4220695e34b243effa999f45f2` (Regular) and
+  `918edad542a1da608fd2ba8daebaff9ac802309103fe760eed465b8b4e47faf1` (SemiBold).
+
+Both families are distributed under the SIL Open Font License 1.1. Their complete upstream license
+files are in `licenses/license-texts/Inter-OFL-1.1.txt` and
+`licenses/license-texts/JetBrains-Mono-OFL-1.1.txt`.
+
 ## FFmpeg 7.1 sidecars
 
 PLVS distributes `ffmpeg` and `ffprobe` from **FFmpeg 7.1** (upstream tag `n7.1`) as separate

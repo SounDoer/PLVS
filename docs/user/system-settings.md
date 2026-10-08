@@ -71,7 +71,9 @@ available in normal windows. Older Windows versions keep their default outline b
 
 **Interface Size** scales the whole interface. **Appearance** follows the system theme by default or
 uses a fixed theme. Light and Dark ship built in, and the theme editor lets you build and save your
-own themes. A custom theme keeps its Dark or Light appearance beside its name; **Core** holds the
+own themes. PLVS bundles Inter for interface text and JetBrains Mono for changing numeric readouts,
+so their layout does not depend on fonts installed on the computer. A custom theme keeps its Dark
+or Light appearance beside its name; **Core** holds the
 main identity colors, **Palettes** controls shared data scales, and **Advanced** contains optional
 per-interface and per-module overrides. Advanced roles stay on **Auto** unless you customize them,
 and can be searched or reset to Auto a section at a time. Advanced exposes color customization,
