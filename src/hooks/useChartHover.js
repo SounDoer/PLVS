@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+const NO_HOVER = { move: null, refreshKey: undefined, hover: null };
+
 export function useChartHover(computeFn, refreshKey) {
   const computeRef = useRef(computeFn);
+  const refreshKeyRef = useRef(refreshKey);
   const rafRef = useRef(0);
   const pendingMoveRef = useRef(null);
-  const lastMoveRef = useRef(null);
   useLayoutEffect(() => {
     computeRef.current = computeFn;
-  }, [computeFn]);
-  const [hover, setHover] = useState(null);
+    refreshKeyRef.current = refreshKey;
+  }, [computeFn, refreshKey]);
+  const [probe, setProbe] = useState(NO_HOVER);
+
+  // Refreshed while rendering, not from an effect. Live panels change the key on every frame, and
+  // an effect would answer each one with a state update of its own: a second commit per frame,
+  // and, once frames arrive faster than those commits can be rendered apart, React's "Maximum
+  // update depth exceeded". A state update during render restarts this render instead.
+  if (probe.move && !Object.is(probe.refreshKey, refreshKey)) {
+    setProbe({
+      move: probe.move,
+      refreshKey,
+      hover: refreshKey == null ? probe.hover : computeFn(probe.move.xFrac, probe.move.yFrac),
+    });
+  }
 
   useEffect(
     () => () => {
@@ -33,28 +48,23 @@ export function useChartHover(computeFn, refreshKey) {
         const pendingMove = pendingMoveRef.current;
         pendingMoveRef.current = null;
         if (!pendingMove) return;
-        lastMoveRef.current = pendingMove;
-        setHover(computeRef.current(pendingMove.xFrac, pendingMove.yFrac));
+        setProbe({
+          move: pendingMove,
+          refreshKey: refreshKeyRef.current,
+          hover: computeRef.current(pendingMove.xFrac, pendingMove.yFrac),
+        });
       });
     },
     []
   );
 
-  useEffect(() => {
-    if (refreshKey == null) return;
-    const lastMove = lastMoveRef.current;
-    if (!lastMove) return;
-    setHover(computeRef.current(lastMove.xFrac, lastMove.yFrac));
-  }, [refreshKey]);
-
   const onLeave = useCallback(() => {
     pendingMoveRef.current = null;
-    lastMoveRef.current = null;
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
     }
-    setHover(null);
+    setProbe(NO_HOVER);
   }, []);
-  return { hover, onMove, onLeave };
+  return { hover: probe.hover, onMove, onLeave };
 }

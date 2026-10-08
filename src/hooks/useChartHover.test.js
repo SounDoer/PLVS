@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { Activity, createElement } from "react";
+import { Activity, Profiler, createElement } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useChartHover } from "./useChartHover.js";
@@ -106,6 +106,27 @@ describe("useChartHover", () => {
     rerender({ refreshKey: 2 });
 
     expect(result.current.hover).toEqual({ x: 0.5, y: 0.25, value: 2 });
+  });
+
+  it("refreshes hover in the commit that changed the refresh key", () => {
+    // Live panels change the key on every frame. A refresh that needs a commit of its own is a
+    // state update from a passive effect per frame, which React reports as "Maximum update depth
+    // exceeded" once frames arrive faster than those commits can be rendered apart.
+    const onRender = vi.fn();
+    const wrapper = ({ children }) => createElement(Profiler, { id: "hover", onRender }, children);
+    const computeFn = vi.fn((x, y) => ({ x, y, value: computeFn.mock.calls.length }));
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => useChartHover(computeFn, refreshKey),
+      { initialProps: { refreshKey: 1 }, wrapper }
+    );
+    act(() => result.current.onMove(60, 70, rect));
+    act(() => flushRaf());
+    onRender.mockClear();
+
+    rerender({ refreshKey: 2 });
+
+    expect(result.current.hover).toEqual({ x: 0.5, y: 0.25, value: 2 });
+    expect(onRender).toHaveBeenCalledTimes(1);
   });
 
   it("does not refresh after hover leaves", () => {
