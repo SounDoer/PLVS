@@ -7,10 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-08
+
+### Added
+
+- Agent Control can inspect and navigate temporary UI surfaces, including Settings, Panel Settings,
+  Theme and Loudness Profile editors, and Feedback. Navigation uses a separate UI generation token
+  and cannot save, send, confirm, or silently discard a draft.
+- Themes can customise the keyboard-only focus ring, reset Core colours together, and restore the
+  Interface and Status palettes to their PLVS defaults.
+
 ### Changed
 
+- New installations start with an active **Default** Preset and a general-purpose **Default**
+  Loudness Profile. The starter layout, panel ranges, Stereo Map mode, and Dock strip are retuned;
+  deleted starter items stay deleted unless PLVS is reset to default.
+- The built-in Dark and Light themes now share PLVS's semantic data and feedback colours while
+  keeping independently tuned neutral surfaces. Theme palette editing and reset actions make their
+  current state and consequences clearer.
+- Settings, panel controls, dropdowns, dialogs, and Dock editors now use a common control system,
+  scale consistently with Interface Size, and reserve focus outlines for keyboard navigation.
+- Stereo Map now has one **Grid** setting shared by every mode. Existing settings and Presets enable
+  it when any previous per-mode Grid setting was enabled.
+- PLVS bundles Inter for interface text and JetBrains Mono for changing numeric readouts, keeping
+  typography stable across installations.
 - macOS release and private upgrade-candidate packages are now Developer ID signed, Apple-notarized,
   stapled, and verified with Gatekeeper before publication.
+
+### Fixed
+
+- Bounded macOS screen recordings finish reliably instead of racing capture shutdown.
+- Tray clicks consistently show, hide, or open the PLVS menu, including the macOS menu commands.
+- Narrow panel headers, Preset editing, Stats typography, Spectrum fills, transfer actions, and
+  channel-layout controls retain their intended sizing, layering, and interaction feedback.
+- Resetting Stats settings no longer applies the reset twice.
+
+### Breaking Changes
+
+- Agent Control's Stereo Map `grid` value is now one boolean instead of an object keyed by mode;
+  patches that still send the former object are rejected. Stored settings and Presets migrate
+  automatically.
 
 ## [0.18.2] - 2026-10-04
 
