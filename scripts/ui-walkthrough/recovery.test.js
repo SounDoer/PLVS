@@ -136,4 +136,44 @@ describe("UI walkthrough interrupted recovery", () => {
     expect(state.current).toBe(72);
     expect(summary.phase).toBe("complete");
   });
+
+  it("treats an ID-less surface intent as not established only when no replacement is visible", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "plvs-recovery-intent-test-"));
+    const path = join(directory, "run.json");
+    const store = await createRunJournalStore(path, {
+      manifest,
+      manifestPath: "C:/repo/scenario.json",
+      initial: { revision: 4, uiGeneration: 0 },
+    });
+    await store.transitionRun("preparing");
+    await store.transitionRun("running");
+    await store.update((draft) => {
+      draft.scenarios[0].resources.push({
+        type: "surface",
+        kind: "settings",
+        dismiss: "close",
+        surfaceId: null,
+        fixtureId: null,
+        status: "intent",
+      });
+    });
+    await store.transitionRun("needsRecovery");
+    const invoke = vi.fn(async (args) => {
+      const command = args.join(" ");
+      if (command.startsWith("capabilities")) return {};
+      if (command.startsWith("ui inspect")) {
+        return { revision: 4, uiGeneration: 0, surfaces: [], activeBlockingEditors: [] };
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    const summary = await recoverUiVisualWalkthrough({
+      journalStore: await openRunJournalStore(path),
+      invoke,
+      materialize: vi.fn(),
+    });
+
+    expect(summary.phase).toBe("complete");
+    expect(summary.outstanding).toEqual([]);
+  });
 });

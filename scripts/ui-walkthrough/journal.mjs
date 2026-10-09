@@ -29,6 +29,18 @@ function clone(value) {
   return structuredClone(value);
 }
 
+async function replaceFile(temporaryPath, path) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rename(temporaryPath, path);
+      return;
+    } catch (error) {
+      if (!["EPERM", "EACCES"].includes(error.code) || attempt >= 7) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 10 * 2 ** attempt));
+    }
+  }
+}
+
 function transition(document, transitions, nextPhase, label) {
   const allowed = transitions[document.phase];
   if (!allowed?.has(nextPhase)) {
@@ -150,7 +162,7 @@ export async function writeRunJournal(path, journal) {
       mode: 0o600,
     });
     await chmod(temporaryPath, 0o600).catch(() => {});
-    await rename(temporaryPath, path);
+    await replaceFile(temporaryPath, path);
   } finally {
     await rm(temporaryPath, { force: true }).catch(() => {});
   }

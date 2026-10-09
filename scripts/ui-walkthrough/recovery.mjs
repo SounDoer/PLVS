@@ -144,7 +144,27 @@ export async function recoverUiVisualWalkthrough({ journalStore, invoke, materia
       if (!["draft", "surface", "eventFixture"].includes(resource.type)) continue;
       if (["restored", "alreadyRestored"].includes(resource.status)) continue;
       if (!resource.surfaceId) {
-        divergences.push(`${resource.type}:${resource.kind}:missing-id`);
+        const ui = await run(["ui", "inspect", "--json"]);
+        const possibleReplacement = ui.surfaces.some((surface) =>
+          resource.type === "eventFixture"
+            ? surface.origin === "event"
+            : surface.kind === resource.kind
+        );
+        if (possibleReplacement) {
+          divergences.push(`${resource.type}:${resource.kind}:missing-id`);
+        } else {
+          await journalStore.update((draft) => {
+            const target = draft.scenarios
+              .find(({ id }) => id === scenario.id)
+              .resources.find(
+                (candidate) =>
+                  candidate.type === resource.type &&
+                  candidate.kind === resource.kind &&
+                  candidate.surfaceId === null
+              );
+            target.status = "alreadyRestored";
+          });
+        }
         continue;
       }
       let app = await run(["inspect", "--json"]);
