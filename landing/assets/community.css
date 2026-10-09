@@ -273,7 +273,7 @@ figcaption {
 }
 .theme-more {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-section, var(--space-7));
   margin-top: var(--space-6);
   padding-top: var(--space-5);
@@ -318,7 +318,7 @@ figcaption {
 .theme-facts dd:last-child {
   overflow-wrap: anywhere;
 }
-.theme-more .release {
+.release-history .release {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3) var(--space-5);
   padding: 0 0 var(--space-5);
@@ -326,24 +326,24 @@ figcaption {
   border-radius: 0;
   border-bottom: 1px solid var(--color-divider);
 }
-.theme-more .release:last-child {
+.release-history .release:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
-.theme-more .release > div:first-child {
+.release-history .release > div:first-child {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
   padding-top: var(--space-2);
 }
-.theme-more .release > div:first-child p {
+.release-history .release > div:first-child p {
   margin: 0;
 }
-.theme-more .release > .withdrawn {
+.release-history .release > .withdrawn {
   grid-column: 1;
 }
-.theme-more .release > .markdown {
+.release-history .release > .markdown {
   grid-column: 1 / -1;
   grid-row: 2;
 }
@@ -442,4 +442,54 @@ body:has(.preview-dialog[open]) {
 }
 #profile-details {
   scroll-margin-top: var(--space-6);
+}
+
+.preset-settings,
+.preset-profile {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-divider);
+}
+.preset-panel {
+  padding: var(--space-3) 0;
+}
+.preset-panel summary {
+  cursor: pointer;
+  font-size: var(--text-body);
+  font-weight: var(--weight-heading);
+}
+.preset-panel summary span {
+  margin-left: var(--space-3);
+  color: var(--color-muted);
+  font-size: var(--text-small);
+  font-weight: 400;
+}
+.preset-panel dl,
+.preset-profile dl {
+  max-width: 760px;
+}
+.preset-panel dl > div,
+.preset-profile dl > div {
+  border: 0;
+  padding: var(--space-2) 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: var(--space-4);
+}
+.preset-panel dd,
+.preset-profile dd {
+  overflow-wrap: anywhere;
+}
+
+.theme-facts,
+.theme-checksum {
+  max-width: 760px;
+}
+.theme-facts dl div {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+.release-history {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-divider);
 }

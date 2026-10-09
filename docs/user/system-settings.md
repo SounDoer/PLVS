@@ -254,8 +254,12 @@ release history remain available on the detail page.
 Preset pages show the workspace preview alongside the description, tags, download action and
 import instructions. Select the preview to enlarge it in place; a single preview needs no
 thumbnail strip. **Details** lists workspace panels, module names and Dock status, plus file
-information. Bundled items appear only when present. Older published releases use text download
-links in **Release History**, as on Theme pages.
+information and saved display settings. Loudness Profile shows its included name or **Off**;
+applying a Preset with **Off** turns off the active Profile. Expand each row under **Panel Settings**
+to inspect saved controls and axes for that panel. Omitted controls use PLVS defaults. Bundled
+Loudness Profiles show their complete rules below the panel settings. Older published releases use text download
+links in **Release History**, as on Theme pages. On every resource detail page, release history
+appears last, after all resource information and settings.
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
 **Download** remains visible.
 

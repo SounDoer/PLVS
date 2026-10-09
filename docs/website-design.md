@@ -57,8 +57,9 @@ focus, empty states, and navigation behavior against real generated pages before
 
 ## Resource details
 
-Theme, Preset and Loudness Profile pages share the two-column preview/summary layout and lower two-column
-Details/Release History section. Themes and Presets use an image gallery; Profiles use a data-generated rule
+Theme, Preset and Loudness Profile pages share the two-column preview/summary layout with full-width sections below.
+Release History is the last content section, after Details, Panel Settings and any included
+Loudness Profile, immediately before the footer. Themes and Presets use an image gallery; Profiles use a data-generated rule
 summary, never screenshots. Both catalogue and detail summaries show the first three rules in
 artifact order, with an accurate remaining-rule count; detail overflow links to full Details.
 Details groups all conditions by metric in label/value rows without a Rules subheading. Preset Details show readable module names, panel counts and Dock On/Off; omit Dock panel counts when disabled. Single-image galleries omit visible thumbnails and navigation arrows. Profile reference
@@ -71,3 +72,13 @@ use inline text download links in the history, and withdrawn releases have no do
 Catalogue preview areas share a 16:10 aspect ratio across all resource families. Text bodies
 remain content-sized and cards in a row stretch to equal height. Profile summaries and full
 Details use the artifact's strict comparison symbols (`>` and `<`) rather than Above/Below.
+
+Preset detail data is derived from the current downloadable pack. Display presentation settings
+and explicit Loudness Profile Off/name in Details. List each workspace and enabled Dock panel
+separately in expandable Panel Settings rows; retain instance order and custom titles. Show saved
+controls and axes with readable names and units, and explain that omitted controls use defaults.
+Bundled Loudness Profiles show their complete rules using the shared Profile renderer. Catalogue
+examples used during design review are not an approval of final launch content.
+
+Panel Settings uses spacing rather than per-panel or per-setting divider lines. Do not expose
+workspace ordinals; number only duplicate display names, and label Dock panels by their location.

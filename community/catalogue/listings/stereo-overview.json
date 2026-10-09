@@ -6,7 +6,7 @@
   "classification": "official",
   "title": "Stereo Overview",
   "summary": "A balanced six-panel workspace for everyday stereo monitoring.",
-  "descriptionMarkdown": "A general-purpose layout that keeps level and loudness trends, spectrum, stereo position, key statistics, and vectorscope visible together. It uses the first stereo channel pair, keeps the Dock off, and leaves Loudness Profile selection to the user.",
+  "descriptionMarkdown": "A general-purpose layout that keeps level and loudness trends, spectrum, stereo position, key statistics, and vectorscope visible together. It uses the first stereo channel pair, keeps the Dock off, and sets Loudness Profile to Off when applied.",
   "tags": ["Stereo", "Workspace", "Monitoring"],
   "author": {
     "name": "PLVS",
