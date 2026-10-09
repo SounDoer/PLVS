@@ -2,6 +2,7 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { marked } from "marked";
+import { escapeHtml, siteNavigation, resourceCard } from "./site-components.mjs";
 import { readCommunitySource } from "./community-catalogue-source.mjs";
 
 const FAMILIES = {
@@ -10,14 +11,7 @@ const FAMILIES = {
   themes: { label: "Themes", singular: "Theme" },
 };
 
-const escapeHtml = (value) =>
-  String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-
-function page(title, description, body) {
+function page(title, description, body, { browse = false } = {}) {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -25,14 +19,17 @@ function page(title, description, body) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
-    <link rel="stylesheet" href="/assets/community.css" />
-    <script type="module" src="/assets/community.js"></script>
+    ${browse ? `<link rel="stylesheet" href="/assets/site-tokens.css" /><link rel="stylesheet" href="/assets/site-components.css" /><link rel="stylesheet" href="/assets/sharesets.css" /><script type="module" src="/assets/sharesets.js"></script>` : `<link rel="stylesheet" href="/assets/community.css" /><script type="module" src="/assets/community.js"></script>`}
   </head>
   <body>
-    <nav class="nav" aria-label="Primary">
+    ${
+      browse
+        ? siteNavigation()
+        : `<nav class="nav" aria-label="Primary">
       <a class="brand" href="/" aria-label="PLVS home"><img class="brand-mark" src="/assets/app-icon.svg" alt="" aria-hidden="true" /></a>
       <div class="nav-links"><a href="/community/" aria-current="page">Sharesets</a><a href="/docs/">Docs</a><a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a><a class="nav-download" href="/#download">Download</a></div>
-    </nav>
+    </nav>`
+    }
     ${body}
     <footer><span>PLVS Sharesets</span><a href="/">Back to PLVS</a></footer>
   </body>
@@ -41,12 +38,12 @@ function page(title, description, body) {
 }
 
 function typeNav(active = null) {
-  return `<nav class="family-nav" aria-label="Sharesets categories">
-    <a href="/community/"${active === null ? ' aria-current="page"' : ""}>All</a>
+  return `<nav class="categories family-nav" aria-label="Sharesets categories">
+    <a class="category" data-category="" href="/community/"${active === null ? ' aria-current="page"' : ""}>All</a>
     ${Object.entries(FAMILIES)
       .map(
         ([type, family]) =>
-          `<a href="/community/${type}/"${active === type ? ' aria-current="page"' : ""}>${family.label}</a>`
+          `<a class="category" data-category="${type}" href="/community/${type}/"${active === type ? ' aria-current="page"' : ""}>${family.label}</a>`
       )
       .join("\n    ")}
   </nav>`;
@@ -56,10 +53,11 @@ function latestPublished(listing) {
   return [...listing.releases].reverse().find(({ status }) => status === "published") ?? null;
 }
 
-function card(listing) {
+function card(listing, activeType) {
   const release = latestPublished(listing);
   const facets = release?.metadata.facets ?? {};
-  const preview = release?.previews[0];
+  const preview =
+    release?.previews.find((item) => item.id === "product-workspace-file") ?? release?.previews[0];
   const previewUrl = preview
     ? `/community/files/${listing.id}/v${release.number}/${preview.id}.png`
     : null;
@@ -69,74 +67,52 @@ function card(listing) {
   const attributes = {
     search: searchText,
     type: listing.type,
+    tags: JSON.stringify(listing.tags),
     module: (facets.moduleIds ?? []).join("|"),
     metric: (facets.metricIds ?? []).join("|"),
     scheme: facets.themeScheme ?? "",
     feature: (facets.optionalCapabilities ?? []).join("|"),
     dependency: (facets.dependencyIds ?? []).join("|"),
   };
-  return `<article class="card" ${Object.entries(attributes)
-    .map(([key, value]) => `data-${key}="${escapeHtml(value)}"`)
-    .join(" ")}>
-    <a class="card-media" href="/community/${listing.type}/${listing.slug}/" aria-label="View ${escapeHtml(listing.title)}">
-      ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />` : `<span>${FAMILIES[listing.type].singular}</span>`}
-    </a>
-    <div class="card-body">
-      <div class="meta"><span>${FAMILIES[listing.type].singular}</span><span>${escapeHtml(listing.classification)}</span></div>
-      <h2><a href="/community/${listing.type}/${listing.slug}/">${escapeHtml(listing.title)}</a></h2>
-      <p>${escapeHtml(listing.summary)}</p>
-      <div class="tags">${listing.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
-    </div>
-  </article>`;
+  return resourceCard({
+    attributes,
+    href: `/community/${listing.type}/${listing.slug}/`,
+    title: listing.title,
+    family: FAMILIES[listing.type].singular,
+    author: listing.author?.name ?? "PLVS curators",
+    summary: listing.summary,
+    tags: listing.tags,
+    image: previewUrl,
+    hidden: Boolean(activeType && listing.type !== activeType),
+  });
 }
 
-function facetValues(listings, key) {
-  return [
-    ...new Set(
-      listings.flatMap((listing) => {
-        const value = latestPublished(listing)?.metadata.facets?.[key];
-        return Array.isArray(value) ? value : value ? [value] : [];
-      })
-    ),
-  ].sort((left, right) => left.localeCompare(right, "en-US"));
-}
-
-function selectFilter(name, label, values) {
-  return `<label><span>${label}</span><select data-catalogue-filter="${name}"><option value="">All</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}</select></label>`;
-}
-
-function browseControls(listings, activeType) {
-  return `<form class="browse-controls" data-catalogue-controls>
-    <label class="search"><span>Search</span><input type="search" data-catalogue-search placeholder="Search Sharesets" /></label>
-    ${activeType === null ? selectFilter("type", "Type", Object.keys(FAMILIES)) : ""}
-    ${selectFilter("module", "Module", facetValues(listings, "moduleIds"))}
-    ${selectFilter("metric", "Metric", facetValues(listings, "metricIds"))}
-    ${selectFilter("scheme", "Theme Scheme", facetValues(listings, "themeScheme"))}
-    ${selectFilter("feature", "Feature", facetValues(listings, "optionalCapabilities"))}
-    ${selectFilter("dependency", "Dependency", facetValues(listings, "dependencyIds"))}
-    <button type="reset">Clear</button>
+function browseControls(listings) {
+  const tags = [...new Set(listings.flatMap((listing) => listing.tags))].sort((a, b) =>
+    a.localeCompare(b, "en-US")
+  );
+  return `<form data-catalogue-controls role="search" aria-label="Search resources" hidden>
+    <div class="browse-toolbar"><label class="field search-field"><span>Search</span><input type="search" data-catalogue-search placeholder="Search Sharesets" /></label>
+    <button class="button secondary" type="button" data-filters-toggle aria-expanded="false" aria-controls="catalogue-filters">Filters</button><button class="button secondary" type="reset">Clear All</button></div>
+    <div class="filters-panel" id="catalogue-filters" hidden><label class="field"><span>Tag</span><select data-tag-filter><option value="">All Tags</option>${tags.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}</select></label></div>
   </form>`;
 }
 
 function browsePage(listings, activeType = null) {
   const visible = activeType ? listings.filter(({ type }) => type === activeType) : listings;
   const title = activeType ? FAMILIES[activeType].label : "Sharesets";
-  const intro = activeType
-    ? `Browse curated ${FAMILIES[activeType].label.toLowerCase()} for PLVS.`
-    : "Loudness Profiles, Presets, and Themes for PLVS";
+  const intro = "Loudness Profiles, Presets, and Themes for PLVS";
   return page(
     `${title} — PLVS`,
     intro,
-    `<main class="catalogue">
-      <header class="hero"><h1>${title}</h1><p>${intro}</p></header>
+    `<main class="catalogue" data-active-category="${activeType ?? ""}">
+      <header class="hero"><h1>Sharesets</h1><p>${intro}</p></header>
       ${typeNav(activeType)}
-      ${browseControls(visible, activeType)}
-      ${
-        visible.length > 0
-          ? `<section class="card-grid" data-catalogue-grid aria-label="${escapeHtml(title)}">${visible.map(card).join("\n")}</section><section class="empty" data-catalogue-empty hidden aria-live="polite"><h2>No matching Items</h2><p>Try clearing one or more filters.</p></section>`
-          : `<section class="empty"><h2>Nothing published yet</h2><p>The catalogue structure is ready. Curated releases will appear here after validation.</p></section>`
-      }
-    </main>`
+      ${listings.length ? browseControls(listings) : ""}
+      <div class="result-line"><p class="helper" data-result-count aria-live="polite">${visible.length} resource${visible.length === 1 ? "" : "s"}</p><button type="button" class="remove-filter" data-remove-tag hidden></button></div>
+      ${listings.length ? `<section class="card-grid" data-catalogue-grid aria-label="Resources">${listings.map((listing) => card(listing, activeType)).join("\n")}</section><section class="empty" data-catalogue-empty${visible.length ? " hidden" : ""}><h2>No Matching Resources</h2><p>Try another search or clear all filters.</p><button class="button secondary" type="button" data-clear-empty hidden>Clear All</button></section>` : `<section class="empty"><h2>Nothing published yet</h2><p>Resources will appear here when they are published.</p></section>`}
+    </main>`,
+    { browse: true }
   );
 }
 

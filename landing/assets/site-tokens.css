@@ -1,0 +1,47 @@
+@font-face {
+  font-family: Inter;
+  src: url("/assets/fonts/InterVariable-4.1.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+:root {
+  --font-body: Inter, system-ui, sans-serif;
+  --text-page: 36px;
+  --text-section: 24px;
+  --text-lead: 18px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --leading-body: 1.6;
+  --weight-heading: 600;
+  --color-page: #070707;
+  --color-surface: #151515;
+  --color-text: #f2f2f2;
+  --color-muted: #b3b3b3;
+  --color-action: #d97700;
+  --color-action-hover: #ed880e;
+  --color-action-pressed: #c76c00;
+  --color-link: #fb923c;
+  --color-focus: #fb923c;
+  --color-divider: #333;
+  --color-control-border: #666;
+  --color-control-hover: #999;
+  --color-selected-surface: #2a1b0c;
+  --color-error: #fca5a5;
+  --color-success: #86efac;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-control: 8px;
+  --radius-panel: 16px;
+  --control-height: 44px;
+  --page-width: 1180px;
+}
+@media (max-width: 640px) {
+  :root {
+    --text-page: 32px;
+  }
+}

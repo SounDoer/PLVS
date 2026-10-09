@@ -167,6 +167,11 @@ describe("Community static site generator", () => {
     expect(root).toContain("Broadcast Safe");
     expect(root).toContain("/community/loudness/broadcast-safe/");
     expect(root).toContain("data-catalogue-search");
+    expect(root).toContain("/assets/site-tokens.css");
+    expect(root).toContain('class="resource-card card"');
+    expect(root).toContain('data-tags="[&quot;Broadcast&quot;]"');
+    expect(root).not.toContain('data-catalogue-filter="type"');
+    expect(detail).not.toContain("/assets/site-tokens.css");
     expect(root).toContain('data-metric="truePeak"');
     expect(detail).toContain("Designed for <strong>broadcast delivery</strong>.");
     expect(detail).toContain("Example Author");

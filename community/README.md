@@ -1,5 +1,8 @@
 # Community content source
 
+Website presentation rules and the shared source are documented in
+[`docs/website-design.md`](../docs/website-design.md).
+
 This directory is the initial local checkout of the static Community Catalogue content input. It
 is deliberately outside `landing/`: website code reads it only through the versioned manifest and
 an explicit content-directory argument, so this tree can move to a separate repository later.

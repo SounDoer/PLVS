@@ -233,7 +233,9 @@ as PLVS-exported Theme pack files.
 ## Sharesets
 
 The [Sharesets](https://plvs.soundoer.com/community/) offers curated Themes, Presets, and
-Loudness Profiles. Browse a category or search, then open an Item for its previews, contents,
+Loudness Profiles. Choose a category, search by name or description, and optionally narrow the
+results by Tag under **Filters**. The selected tag remains visible when Filters is closed.
+**Clear All** resets the category, search, and tag. Open an Item for its previews, contents,
 compatibility details, author, and release history. The initial collection is authored by PLVS;
 public submissions are not open. Theme pages show up to four selected previews. Select a thumbnail to switch images, or select the
 large image to enlarge it in place. Use the arrow controls to browse and Close, Escape, or the
