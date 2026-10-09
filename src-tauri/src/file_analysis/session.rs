@@ -28,11 +28,12 @@ use crate::ipc::types::{
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// Config read once at worker start. Mid-analysis chip changes do not retune the current run.
-struct WorkerConfig {
-  requests: AnalysisRequests,
-  channel_selection: Option<ChannelSelection>,
-  dialogue_gating: bool,
-  dialogue_vad_engine: VadEngineKind,
+pub(crate) struct WorkerConfig {
+  pub(crate) requests: AnalysisRequests,
+  pub(crate) channel_selection: Option<ChannelSelection>,
+  pub(crate) dialogue_gating: bool,
+  pub(crate) dialogue_vad_engine: VadEngineKind,
+  pub(crate) deterministic_spectral_time: bool,
 }
 
 #[cfg(test)]
@@ -42,6 +43,7 @@ fn default_file_worker_config() -> WorkerConfig {
     channel_selection: None,
     dialogue_gating: false,
     dialogue_vad_engine: VadEngineKind::default(),
+    deterministic_spectral_time: false,
   }
 }
 
@@ -170,6 +172,7 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
     channel_selection,
     dialogue_gating,
     dialogue_vad_engine,
+    deterministic_spectral_time: false,
   }
 }
 
@@ -302,6 +305,7 @@ pub fn analyze_file_track_with_dialogue_and_layout(
     channel_selection,
     dialogue_gating: true,
     dialogue_vad_engine: vad_engine,
+    deterministic_spectral_time: false,
   };
   let outcome = analyze_file_core(
     path,
@@ -322,7 +326,7 @@ pub fn analyze_file_track_with_dialogue_and_layout(
 
 /// Decode `path` via the ffmpeg sidecar and feed PCM to the metering pipeline. Returns `Ok(None)`
 /// when cancelled before completion, `Ok(Some((decoded_frames, summary)))` at end of stream.
-fn analyze_file_core(
+pub(crate) fn analyze_file_core(
   path: &str,
   probe: Option<&FileAnalysisProbeResult>,
   config: &WorkerConfig,
@@ -375,7 +379,11 @@ fn analyze_file_core(
     }
   });
 
-  let mut pipeline = MeterPipeline::new_for_file(sample_rate, channels);
+  let mut pipeline = if config.deterministic_spectral_time {
+    MeterPipeline::new_for_deterministic_file_fixture(sample_rate, channels)
+  } else {
+    MeterPipeline::new_for_file(sample_rate, channels)
+  };
   let mut last_progress_emit_frames = 0_u64;
   let mut pcm_chunker = FilePcmHistoryChunker::new(sample_rate, channels);
   let mut carry: Vec<u8> = Vec::new();

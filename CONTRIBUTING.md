@@ -65,6 +65,29 @@ connection to a running PLVS workbench and cannot Save, Import, select, or other
 Theme Library. Treat all output as review material; promoting one result into Community content is
 a separate explicit curation step.
 
+Product previews use a committed 15-second Fixture measured from
+`assets/marketing/audio/discovery-hero.wav` by the production file-analysis pipeline. Theme Lab
+reads that Fixture; it does not decode audio, so adding variants does not make screenshot capture
+slower. The selected window is 63–78 seconds, ending at the same 78-second frame used by the
+website hero recipe. Loudness and waveform keep every 100 ms measurement, while Spectrogram rows
+are sampled every 500 ms and the analyzer's frequency bins use a fixed 1-in-4 stride to keep the
+committed payload bounded. Every retained value is still a production measurement.
+
+The Fixture is maintainer-owned input, not part of a Theme manifest. Regenerate it only after an
+intentional source-audio or analysis change, then review the resulting product screenshots:
+
+```powershell
+npm run ffmpeg:fetch
+npm run community:fixture -- --write
+npm run community:fixture
+```
+
+The first Fixture command runs the real Rust analyzer and writes the versioned JSON; the second
+repeats the analysis and fails if the committed JSON differs. The generator pins the reference WAV
+SHA-256 plus explicit Spectrum, Vectorscope, and Stereo Map requests, so replacing the audio or
+changing those controls requires a deliberate new Fixture version. Never hand-edit
+`src/transfer/fixtures/communityPreviewV3.json`.
+
 `community:source:check` validates the detachable Catalogue content manifest. The directory argument
 is optional while content lives at `community/catalogue`; external Catalogue checkouts pass their
 own root without changing website code.

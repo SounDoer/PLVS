@@ -162,6 +162,10 @@ pub struct MeterPipeline {
   last_loudness_layout: (String, bool),
   /// Present only for pipelines created for offline file analysis.
   file_timeline: Option<PipelineFileTimeline>,
+  /// Maintainer fixture generation advances spectral ballistics from media time so the same PCM
+  /// produces byte-identical visual data independent of decode speed. Ordinary file analysis keeps
+  /// its established wall-clock display behaviour.
+  file_spectral_media_time: bool,
   #[cfg(test)]
   shared_spectral_last_dsp_time_sec: HashMap<String, f64>,
   #[cfg(test)]
@@ -218,6 +222,7 @@ impl MeterPipeline {
       last_dialogue_vad_engine: VadEngineKind::default(),
       last_loudness_layout: loudness_layout_meta(channels, None),
       file_timeline: None,
+      file_spectral_media_time: false,
       #[cfg(test)]
       shared_spectral_last_dsp_time_sec: HashMap::new(),
       #[cfg(test)]
@@ -279,12 +284,24 @@ impl MeterPipeline {
     pipeline
   }
 
-  // File mode overrides only the emitted/stored timestamps with media time. The DSP's internal
-  // `now_sec` (used for Spectrum temporal smoothing and peak-hold decay) intentionally stays
-  // wall-clock: in file mode it advances slower than media time, so those visual decays look
-  // under-decayed/"frozen". That is acceptable because the authoritative metrics (integrated
-  // loudness, LRA, true/sample peak) are sample-driven and unaffected by decode speed. Do not
-  // retime `now_sec` to media time in this slice.
+  pub(crate) fn new_for_deterministic_file_fixture(sample_rate: u32, channels: u16) -> Self {
+    let mut pipeline = Self::new_for_file(sample_rate, channels);
+    pipeline.file_spectral_media_time = true;
+    pipeline
+  }
+
+  fn spectral_now_sec(&self) -> f64 {
+    if self.file_spectral_media_time {
+      self.timestamp_ms() as f64 / 1000.0
+    } else {
+      self.t0.elapsed().as_secs_f64()
+    }
+  }
+
+  // Ordinary file mode overrides only emitted/stored timestamps with media time. Its spectral DSP
+  // clock intentionally stays wall-clock to preserve the established desktop display behaviour.
+  // The maintainer-only Fixture constructor opts into media-time spectral ballistics because a
+  // committed visual Fixture must not vary with machine or decode speed.
   fn timestamp_ms(&self) -> u64 {
     self
       .file_timeline
@@ -325,7 +342,7 @@ impl MeterPipeline {
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
   ) -> Option<AudioFramePayload> {
-    let now_sec = self.t0.elapsed().as_secs_f64();
+    let now_sec = self.spectral_now_sec();
     #[cfg(test)]
     let now_sec = self
       .dsp_time_override
@@ -659,7 +676,7 @@ impl MeterPipeline {
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
   ) -> Option<AudioFramePayload> {
-    let now_sec = self.t0.elapsed().as_secs_f64();
+    let now_sec = self.spectral_now_sec();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_summary
       .map(|(x, y, _, _)| (x, y))

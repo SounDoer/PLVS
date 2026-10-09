@@ -6,68 +6,15 @@ function keyed(value) {
   return new Proxy(Object.create(null), { get: () => value });
 }
 
-/**
- * @param {number} fraction
- */
-function interpolateValue(left, right, fraction) {
-  if (Array.isArray(left) && Array.isArray(right)) {
-    return left.map((value, index) => value + (right[index] - value) * fraction);
-  }
-  return left + (right - left) * fraction;
-}
-
-function expandTimeline(rows, clock, select) {
-  const expanded = [];
-  let upper = 1;
-  for (let atMs = clock.startMs; atMs <= clock.durationMs; atMs += clock.frameIntervalMs) {
-    while (upper < rows.length - 1 && rows[upper].atMs < atMs) upper += 1;
-    const left = rows[Math.max(0, upper - 1)];
-    const right = rows[upper] ?? left;
-    const span = right.atMs - left.atMs;
-    const fraction = span > 0 ? (atMs - left.atMs) / span : 0;
-    expanded.push(select(left, right, fraction, atMs));
-  }
-  return expanded;
-}
-
 function spectrumResult(fixture) {
-  const { bandCentersHz, smoothDb } = fixture.visuals.spectrum;
-  return {
-    bandCentersHz,
-    smoothDb,
-    peakDb: smoothDb.map((value) => value + 4),
-    smoothDbB: smoothDb.map((value, index) => value - 3 + (index % 2)),
-    peakDbB: smoothDb.map((value) => value + 1),
-  };
+  return fixture.visuals.spectrum;
 }
 
-// Polar modes consume raw pair history, unlike the SVG path used by Lissajous. Derive a fixed
-// stereo sample window from the versioned oscillators; never depend on a live audio intake.
 function vectorscopeHistory(fixture) {
-  const { sampleRateHz, oscillators } = fixture.audio;
-  const { durationMs, frameIntervalMs } = fixture.clock;
-  const rows = [];
-  for (let ageMs = 500; ageMs >= 0; ageMs -= frameIntervalMs) {
-    const timestampMs = durationMs - ageMs;
-    const pairs = new Float32Array(1024 * 2);
-    for (let index = 0; index < 1024; index += 1) {
-      const time = timestampMs / 1000 + index / sampleRateHz;
-      for (let channel = 0; channel < 2; channel += 1) {
-        pairs[index * 2 + channel] = oscillators.reduce(
-          (sum, oscillator) =>
-            sum +
-            oscillator.amplitude *
-              Math.sin(
-                2 *
-                  Math.PI *
-                  (oscillator.frequencyHz * time + oscillator.phaseTurns * (channel + 1))
-              ),
-          0
-        );
-      }
-    }
-    rows.push({ timestampMs, pairs });
-  }
+  const rows = fixture.visuals.vectorscope.history.map(({ atMs, pairs }) => ({
+    timestampMs: atMs,
+    pairs: Float32Array.from(pairs),
+  }));
   return {
     length: rows.length,
     version: 1,
@@ -80,15 +27,12 @@ export function buildCommunityPreviewFixtureValues(fixture) {
   const frame = fixture.measurementFrame;
   const spectrum = spectrumResult(fixture);
   const vectorscope = vectorscopeHistory(fixture);
-  const spectrogramRows = expandTimeline(
-    fixture.visuals.spectrogram,
-    fixture.clock,
-    (left, right, fraction, atMs) => ({
-      bands: spectrum.bandCentersHz.map((fCenter) => ({ fCenter })),
-      dbList: interpolateValue(left.db, right.db, fraction),
-      timestampMs: atMs,
-    })
-  );
+  const bands = spectrum.bandCentersHz.map((fCenter) => ({ fCenter }));
+  const spectrogramRows = fixture.visuals.spectrogram.map(({ atMs, db }) => ({
+    bands,
+    dbList: db,
+    timestampMs: atMs,
+  }));
   const spectrogramView = {
     length: spectrogramRows.length,
     version: 1,
@@ -101,60 +45,39 @@ export function buildCommunityPreviewFixtureValues(fixture) {
     momentary: frame.loudness.momentaryLufs,
     shortTerm: frame.loudness.shortTermLufs,
     integrated: frame.loudness.integratedLufs,
-    mMax: -15.5,
-    stMax: -17.5,
+    mMax: frame.mMaxLufs,
+    stMax: frame.stMaxLufs,
     lra: frame.loudness.rangeLu,
     tpMax: frame.loudness.truePeakDbtp,
-    correlation: 0.78,
-    sideToMidDb: -8.2,
+    correlation: frame.correlation,
+    sideToMidDb: frame.sideToMidDb,
     loudnessLayoutKnown: true,
     spectrumResultsByKey: keyed(spectrum),
     vectorscopeResultsByKey: keyed({
       path: fixture.visuals.vectorscope.path,
       correlation: fixture.visuals.vectorscope.correlation,
-      pairX: 0,
-      pairY: 1,
+      sideToMidDb: fixture.visuals.vectorscope.sideToMidDb,
+      pairX: fixture.visuals.vectorscope.pairX,
+      pairY: fixture.visuals.vectorscope.pairY,
     }),
     stereoMapResultsByKey: keyed(fixture.visuals.stereoMap),
   };
-  const loudnessRows = expandTimeline(
-    fixture.loudnessHistory,
-    fixture.clock,
-    (left, right, fraction, atMs) => ({
-      atMs,
-      momentaryLufs: interpolateValue(left.momentaryLufs, right.momentaryLufs, fraction),
-      shortTermLufs: interpolateValue(left.shortTermLufs, right.shortTermLufs, fraction),
-    })
-  );
-  const waveformRows = expandTimeline(
-    fixture.visuals.waveform,
-    fixture.clock,
-    (left, right, fraction, atMs) => ({
-      atMs,
-      min: interpolateValue(left.min, right.min, fraction),
-      max: interpolateValue(left.max, right.max, fraction),
-      dominantHz: interpolateValue(left.dominantHz, right.dominantHz, fraction),
-    })
-  );
-  const histSourceList = loudnessRows.map((row, index) => {
-    const waveform = waveformRows[index];
-    return {
-      timestampMs: row.atMs,
-      m: row.momentaryLufs,
-      st: row.shortTermLufs,
-      min: waveform.min,
-      max: waveform.max,
-      waveformMin: waveform.min,
-      waveformMax: waveform.max,
-    };
-  });
-  const visualWaveformHist = waveformRows.map((row) => ({
+  const histSourceList = fixture.loudnessHistory.map((row) => ({
+    timestampMs: row.atMs,
+    m: row.momentaryLufs,
+    st: row.shortTermLufs,
+    min: row.waveformMin,
+    max: row.waveformMax,
+    waveformMin: row.waveformMin,
+    waveformMax: row.waveformMax,
+  }));
+  const visualWaveformHist = fixture.visuals.waveform.map((row) => ({
     timestampMs: row.atMs,
     waveformMin: row.min,
     waveformMax: row.max,
-    dominantFrequencyHz: [row.dominantHz, row.dominantHz * 1.25],
-    spectralCentroidHz: [row.dominantHz * 2, row.dominantHz * 2.25],
-    tonality: [0.8, 0.72],
+    dominantFrequencyHz: row.dominantFrequencyHz,
+    spectralCentroidHz: row.spectralCentroidHz,
+    tonality: row.tonality,
   }));
   const totalSamples = histSourceList.length;
   return {

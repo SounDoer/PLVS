@@ -10,6 +10,7 @@ import { themeToPortable } from "../theme/portableTheme.js";
 import { selectSpectrogramCanvasTheme } from "../theme/themeCanvasSelectors.js";
 import { validatePublishablePack } from "../transfer/communityPack.js";
 import { buildCommunityPreviewPlan } from "../transfer/communityPreview.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V3 } from "../transfer/fixtures/communityPreviewV3.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { CommunityPreviewApp } from "./CommunityPreviewApp.jsx";
@@ -74,7 +75,11 @@ describe("Community preview browser harness", () => {
 
     expect(screen.getByText("Stats")).toBeTruthy();
     expect(screen.getByText("Integrated")).toBeTruthy();
-    expect(screen.getByText("-19.0")).toBeTruthy();
+    expect(
+      screen.getByText(
+        COMMUNITY_PREVIEW_FIXTURE_V3.measurementFrame.loudness.integratedLufs.toFixed(1)
+      )
+    ).toBeTruthy();
     expect(screen.getByText("True Peak Max")).toBeTruthy();
   });
 
@@ -103,7 +108,11 @@ describe("Community preview browser harness", () => {
 
     expect(screen.getByTestId("dock-strip")).toBeTruthy();
     expect(screen.getByTestId("dock-module")).toBeTruthy();
-    expect(screen.getByLabelText("Integrated -19.0")).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        `Integrated ${COMMUNITY_PREVIEW_FIXTURE_V3.measurementFrame.loudness.integratedLufs.toFixed(1)}`
+      )
+    ).toBeTruthy();
   });
 
   it("renders the complete production Workspace with valid Stereo Map fixture data", async () => {

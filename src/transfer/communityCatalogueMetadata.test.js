@@ -48,9 +48,9 @@ describe("Community Catalogue metadata", () => {
         contractVersion: 1,
         renderer: { name: "plvs-community-preview", version: 1 },
         fixture: {
-          id: "plvs-community-stereo-v2",
-          version: 2,
-          sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+          id: "plvs-community-discovery-v3",
+          version: 3,
+          sha256: "sha256:ce346e7a2b73cae060e5079af320915aa30b0cf70f5511a9f894198faab4ee66",
         },
       },
     });
@@ -110,9 +110,9 @@ describe("Community Catalogue metadata", () => {
     expect(metadata.preview).toMatchObject({
       renderer: { name: "plvs-theme-gallery", version: 1 },
       fixture: {
-        id: "plvs-community-stereo-v2",
-        version: 2,
-        sha256: "sha256:dffe060b96531de3764592451706058c93ca6a88af80303196c2e2a17d58ead1",
+        id: "plvs-community-discovery-v3",
+        version: 3,
+        sha256: "sha256:ce346e7a2b73cae060e5079af320915aa30b0cf70f5511a9f894198faab4ee66",
       },
     });
     expect(metadata.preview.assets).toHaveLength(10);
