@@ -52,7 +52,11 @@ if manifest['cli']['relativePath']['linux'] != 'usr/bin/plvs-cli':
 PY
 id plvs-package-test >/dev/null 2>&1 || useradd -m -s /bin/bash plvs-package-test
 chown plvs-package-test:plvs-package-test "$output"
-runuser -u plvs-package-test -- env -u PLVS_FFMPEG_DIR -u LD_LIBRARY_PATH \
+# The host runner's XDG/Pulse/DBus paths do not exist in the disposable system. Start a real
+# test-user environment before creating its display/session bus, not just before launching PLVS.
+runuser -u plvs-package-test -- env -i \
+  HOME=/home/plvs-package-test USER=plvs-package-test LOGNAME=plvs-package-test \
+  PATH=/usr/bin:/bin LANG=C.UTF-8 \
   xvfb-run -a dbus-run-session -- python3 "$scripts/verify-linux-desktop.py" "$output"
 data=/home/plvs-package-test/.local/share/com.soundoer.plvs.preview
 test -d "$data"

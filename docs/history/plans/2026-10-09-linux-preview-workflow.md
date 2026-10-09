@@ -62,3 +62,16 @@ database code or weakening the assertions.
 
 The corrected package passed another complete fresh Ubuntu bootstrap/install/runtime/remove run;
 evidence is in `/home/plvs/linux-preview-manifest-clean-evidence`. No sandbox bypass was used.
+
+## Cloud test-user environment
+
+Run `37906489048` passed the full gate, file-analysis tests, package build and corrected installed
+identity check. Its private PulseAudio test server then rejected an inherited XDG configuration
+path under `/home/runner`, which does not exist after pivoting into the fresh userspace. No Draft
+was created. The unprivileged test session now starts with an empty environment and explicit test
+user HOME/USER/LOGNAME, system PATH and UTF-8 locale before Xvfb/DBus are launched. This also keeps
+host decoder overrides and sandbox-disable variables out of the test without relaxing the checks.
+
+A full fresh-root run with deliberately invalid host XDG config/data/cache/runtime, PulseAudio and
+DBus variables passed installation, audio/decoder checks, sandboxed GUI startup and removal. The
+evidence is in `/home/plvs/linux-preview-environment-clean-evidence`.
