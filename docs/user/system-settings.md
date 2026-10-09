@@ -251,6 +251,11 @@ metric, with labels on the left and conditions and Warn or Fail outcomes on the 
 Comparisons use `>` (greater than) and `<` (less than). Values
 come directly from the downloadable Profile. Tags, import instructions, file information and
 release history remain available on the detail page.
+Preset pages show the workspace preview alongside the description, tags, download action and
+import instructions. Select the preview to enlarge it in place; a single preview needs no
+thumbnail strip. **Details** lists workspace panels, module names and Dock status, plus file
+information. Bundled items appear only when present. Older published releases use text download
+links in **Release History**, as on Theme pages.
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
 **Download** remains visible.
 

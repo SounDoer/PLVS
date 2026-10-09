@@ -57,11 +57,11 @@ focus, empty states, and navigation behavior against real generated pages before
 
 ## Resource details
 
-Theme and Loudness Profile pages share the two-column preview/summary layout and lower two-column
-Details/Release History section. Themes use an image gallery; Profiles use a data-generated rule
+Theme, Preset and Loudness Profile pages share the two-column preview/summary layout and lower two-column
+Details/Release History section. Themes and Presets use an image gallery; Profiles use a data-generated rule
 summary, never screenshots. Both catalogue and detail summaries show the first three rules in
 artifact order, with an accurate remaining-rule count; detail overflow links to full Details.
-Details groups all conditions by metric in label/value rows without a Rules subheading. Preset layout migration is pending review. Profile reference
+Details groups all conditions by metric in label/value rows without a Rules subheading. Preset Details show readable module names, panel counts and Dock On/Off; omit Dock panel counts when disabled. Single-image galleries omit visible thumbnails and navigation arrows. Profile reference
 values and rules are read from the validated release artifact during generation; metric labels
 and units come from the application's Stats catalogue. Listing prose must not become a second
 manually maintained source of rule values. Omit empty dependency sections and duplicate metric
