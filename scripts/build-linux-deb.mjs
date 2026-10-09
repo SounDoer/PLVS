@@ -27,8 +27,8 @@ try {
       "build",
       "--bundles",
       "deb",
-      // Reset the base resource map before Preview replaces it. Recursive map merging otherwise
-      // sends both stable and Preview manifests to the same installed plvs-agent.json path.
+      // Delete the stable manifest key explicitly. Tauri combines CLI patches before applying
+      // them to the base, so clearing the whole map before adding Preview resources is ineffective.
       "--config",
       "src-tauri/tauri.clear-resources.conf.json",
       "--config",
