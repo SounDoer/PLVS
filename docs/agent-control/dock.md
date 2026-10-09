@@ -39,9 +39,8 @@ internal legacy `modules`/control records are not writable public state.
 
 ## Enter and exit
 
-Dock is supported on Windows and Linux and unavailable on macOS. Unsupported mutation fails with
-`controlUnavailable`; describe and inspect still explain the condition. Reserve-space control is
-available only on Windows. Supplying it elsewhere is an error rather than silently coercing it.
+Dock is supported on Windows and macOS. Reserve-space control is available only on Windows.
+Supplying it elsewhere is an error rather than silently coercing it.
 
 `dock enter` uses saved values for omitted options. Submitted edge is exactly `top` or `bottom`.
 Height is an integer from 56 through 160 CSS pixels; Agent Control rejects values outside this range

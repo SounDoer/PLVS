@@ -6,7 +6,6 @@ import { syncSurfaceOpacityWindowShadow } from "./useSurfaceOpacityWindowShadow.
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
 import { useMeterDisplayState, useMeterRuntime } from "../runtime/MeterRuntimeContext.jsx";
-import { supportsDockMode } from "../lib/platform.js";
 import { errorDetails } from "../lib/errorDetails.js";
 import {
   SCENE_OPERATIONS,
@@ -60,9 +59,6 @@ export function PresetsProvider({ children }) {
   const applyDockPreset = useCallback(
     async (presetDock, normalWindow = {}) => {
       clearNotice();
-      // Dock is temporarily unavailable on macOS. Keep the preset and Dock
-      // implementation intact, but apply the preset's non-Dock state only.
-      if (presetDock.enabled && !supportsDockMode()) return false;
       if (presetDock.enabled) {
         dockLayout.setPanels(presetDock);
         const requiresDockTransition =
@@ -172,10 +168,8 @@ export function PresetsProvider({ children }) {
     dock: presetDockState,
     applyDockPreset,
     applySurfaceOpacity: syncSurfaceOpacityWindowShadow,
-    // A platform without dock support is not a refusal: applyDockPreset drops the dock and applies
-    // the rest of the preset.
     dockPresetUnavailableReason: (presetDock) =>
-      presetDock.enabled && supportsDockMode()
+      presetDock.enabled
         ? sceneOperationUnavailableReason(SCENE_OPERATIONS.dockEnter, { sourceMode })
         : null,
     onApplyError: onPresetApplyError,

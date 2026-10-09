@@ -11,7 +11,7 @@ import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
-import { isWindows, supportsDockMode } from "../lib/platform.js";
+import { isWindows } from "../lib/platform.js";
 import { updateDiagnosticDock } from "../lib/feedbackDiagnostics.js";
 
 function supportsDockReserveSpace() {
@@ -24,7 +24,7 @@ function normalizeDockState(raw) {
   const edge = raw?.edge === "bottom" ? "bottom" : "top";
   const monitor = typeof raw?.monitor === "string" ? raw.monitor : null;
   return {
-    enabled: supportsDockMode() && raw?.enabled === true,
+    enabled: raw?.enabled === true,
     edge,
     monitor,
     reserveSpace: supportsDockReserveSpace() && raw?.reserveSpace !== false,
@@ -89,7 +89,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   }, []);
 
   useEffect(() => {
-    if (!isTauri() || !supportsDockMode()) return;
+    if (!isTauri()) return;
     let cancelled = false;
     let retryTimer = null;
     const reconcile = () => {
@@ -125,7 +125,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       // Before the platform checks so the refusal does not depend on where it runs, and before
       // enqueueTransition so a blocked entry never joins the transition chain.
       assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter);
-      if (!isTauri() || !supportsDockMode()) return Promise.resolve();
+      if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
         const current = dockRef.current;
         const hasReserveOverride = typeof reserveSpaceOverride === "boolean";

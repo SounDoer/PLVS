@@ -30,6 +30,25 @@ const dock = {
 };
 
 describe("Dock Control", () => {
+  it("allows macOS overlay entry and refuses explicit screen reservation", () => {
+    const current = { ...dock, enabled: false, reserveSpace: false };
+    const context = { platform: "macos", sourceMode: "live" };
+    const entered = planDockFormMutation(current, "dock.enter", { edge: "bottom" }, context);
+    expect(entered.refusal).toBeNull();
+    expect(entered.issues).toEqual([]);
+    expect(entered.dock).toMatchObject({ enabled: true, edge: "bottom", reserveSpace: false });
+    expect(buildDockDescription(current, context).reserveSpace).toMatchObject({
+      writable: false,
+      reason: "platformUnsupported",
+    });
+    const refused = planDockFormMutation(current, "dock.enter", { reserveSpace: true }, context);
+    expect(refused.issues).toEqual([
+      expect.objectContaining({ code: "controlUnavailable", path: "$.reserveSpace" }),
+    ]);
+    expect(refused.dock).toBe(current);
+    expect(refused.effects).toEqual([]);
+  });
+
   it("serializes the form and ordered public panels", () => {
     expect(buildDockSnapshot(dock)).toEqual({
       supported: true,

@@ -12,7 +12,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
-import { isMacOS, supportsDockMode } from "@/lib/platform.js";
+import { isMacOS } from "@/lib/platform.js";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
@@ -129,7 +129,7 @@ export function FocusViewPopoverContent({
           onCheckedChange={setGlassEnabled}
         />
       ) : null}
-      {showDock && supportsDockMode() ? (
+      {showDock ? (
         <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1">
           <Label
             htmlFor="focus-view-dock"

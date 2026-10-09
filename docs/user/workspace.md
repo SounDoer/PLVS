@@ -62,19 +62,21 @@ while that mode is enabled. Normal windows retain their native shadow in either 
 
 ## Dock
 
-On Windows, Dock parks a slim, always-on-top meter strip against the top or bottom edge of the
-screen, so the meters stay visible while you work in another app. Hovering the strip shows a header
-for switching the Loudness Profile and editing which modules the strip shows. The strip can also
-reserve its screen space so maximised windows do not cover it. Hover a Stats readout or an icon-only
-Dock action for the same themed explanation shown in the normal workspace.
+On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge
+of the screen, so the meters stay visible while you work in another app. Hovering the strip shows a header
+for switching the Loudness Profile and editing which modules the strip shows. On Windows, the strip
+can also reserve its screen space so maximised windows do not cover it. On macOS, it overlays other
+windows within the monitor work area, leaving room for the menu bar and system Dock. Hover a Stats
+readout or an icon-only Dock action for the same themed explanation shown in the normal workspace.
 
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer.
 
-When several PLVS workbenches use Dock, only one can reserve a particular monitor edge. A second
-Dock on that same edge remains visible as an overlay and does not disturb the existing reservation.
+On Windows, when several PLVS workbenches use Dock, only one can reserve a particular monitor edge.
+A second Dock on that same edge remains visible as an overlay and does not disturb the existing
+reservation.
 Top and bottom edges are independent.
 
 ## Persistence

@@ -551,10 +551,10 @@ describe("App smoke", () => {
     expect(screen.queryByTestId("dock-strip")).toBeNull();
   });
 
-  it("keeps macOS in normal mode and ignores Dock while applying the rest of a preset", async () => {
+  it("enters Dock on macOS when applying a Dock preset", async () => {
     vi.mocked(isTauri).mockReturnValue(true);
     vi.spyOn(window.navigator, "platform", "get").mockReturnValue("MacIntel");
-    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: false, edge: "top" } };
     presetsStore.patch({
       list: [
         {
@@ -575,7 +575,7 @@ describe("App smoke", () => {
     const viewsButton = await screen.findByRole("button", { name: "Views" });
     expect(screen.queryByTestId("dock-strip")).toBeNull();
     fireEvent.click(viewsButton);
-    expect(screen.queryByRole("combobox", { name: "Dock position" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Dock position" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Presets" }));
     fireEvent.click(screen.getByRole("button", { name: "Apply preset Mac Mix" }));
@@ -583,8 +583,8 @@ describe("App smoke", () => {
     await waitFor(() =>
       expect(presetsStore.read()).toMatchObject({ activeId: "mac-dock-preset", dirty: false })
     );
-    expect(enterDock).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("dock-strip")).toBeNull();
+    expect(enterDock).toHaveBeenCalled();
+    expect(screen.getByTestId("dock-strip")).toBeTruthy();
   });
 
   it("applies monitor from a dock preset", async () => {

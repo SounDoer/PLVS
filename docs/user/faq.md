@@ -26,7 +26,8 @@ No. They are a monitoring estimate; see
 
 ## Is Dock available on macOS?
 
-No. Dock mode is Windows-only.
+Yes. macOS supports an always-on-top Dock strip at the top or bottom of the screen.
+Reserving screen space is available only on Windows.
 
 ## Is there a Linux build?
 

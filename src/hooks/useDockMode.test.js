@@ -218,17 +218,18 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(true);
   });
 
-  it("ignores injected Dock state and Dock entry requests on macOS", async () => {
+  it("restores and moves the overlay Dock on macOS without reserving screen space", async () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", reserveSpace: true },
     };
     const { result } = renderHook(() => useDockMode());
 
-    expect(result.current.dockEnabled).toBe(false);
+    expect(result.current.dockEnabled).toBe(true);
     expect(result.current.reserveSpace).toBe(false);
-    await act(() => result.current.enterDockMode("bottom"));
-    expect(mocks.enterDock).not.toHaveBeenCalled();
+    await act(() => result.current.enterDockMode("bottom", true));
+    expect(mocks.enterDock).toHaveBeenCalledWith("bottom", false, undefined, undefined);
+    expect(result.current.dockEdge).toBe("bottom");
     await act(() => result.current.setReserveSpace(true));
     expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
     expect(result.current.reserveSpace).toBe(false);

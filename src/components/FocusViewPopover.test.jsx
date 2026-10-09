@@ -174,9 +174,9 @@ describe("FocusViewPopoverContent", () => {
       expect(screen.queryByText(/^dock$/i)).toBeNull();
     });
 
-    it("is hidden on macOS even when the caller enables it", () => {
+    it("offers Dock on macOS", () => {
       render(<FocusViewPopoverContent showDock />);
-      expect(screen.queryByRole("combobox", { name: "Dock position" })).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Dock position" })).toBeTruthy();
     });
   });
 });
