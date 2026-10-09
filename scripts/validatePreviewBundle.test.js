@@ -21,6 +21,26 @@ afterEach(() => {
 });
 
 describe("Preview bundle validation", () => {
+  it("accepts only the exact non-empty Linux deb for a Linux Preview", () => {
+    const directory = temporaryDirectory();
+    const names = previewAssetNames("0.19.0", sha, "linux");
+    expect(names).toEqual({ deb: "PLVS-Preview_0.19.0-preview.0123456_amd64.deb" });
+    expect(() => validatePreviewBundle("0.19.0", sha, directory, "linux")).toThrow(
+      "asset set mismatch"
+    );
+    writeFileSync(join(directory, names.deb), "");
+    expect(() => validatePreviewBundle("0.19.0", sha, directory, "linux")).toThrow("is empty");
+    writeFileSync(join(directory, names.deb), "deb");
+    expect(validatePreviewBundle("0.19.0", sha, directory, "linux")).toEqual(names);
+    expect(() => validatePreviewBundle("0.19.0", sha, directory, "windows")).toThrow(
+      "asset set mismatch"
+    );
+    writeFileSync(join(directory, "unexpected.exe"), "package");
+    expect(() => validatePreviewBundle("0.19.0", sha, directory, "linux")).toThrow(
+      "asset set mismatch"
+    );
+    expect(() => previewAssetNames("0.19.0", sha, "macos")).toThrow("Unsupported Preview platform");
+  });
   it("accepts exactly the non-empty installer and Portable ZIP for the commit", () => {
     const directory = temporaryDirectory();
     for (const name of Object.values(previewAssetNames("0.16.0", sha))) {
