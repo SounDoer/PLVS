@@ -2,7 +2,13 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { marked } from "marked";
-import { escapeHtml, siteNavigation, resourceCard } from "./site-components.mjs";
+import {
+  escapeHtml,
+  siteNavigation,
+  resourceCard,
+  profilePreview,
+  profileDetails,
+} from "./site-components.mjs";
 import { readCommunitySource } from "./community-catalogue-source.mjs";
 
 const FAMILIES = {
@@ -78,6 +84,7 @@ function card(listing, activeType) {
     summary: listing.summary,
     tags: listing.tags,
     image: previewUrl,
+    profile: listing.profile,
     hidden: Boolean(activeType && listing.type !== activeType),
   });
 }
@@ -138,7 +145,9 @@ function renderDependencies(metadata) {
   return `<ul class="dependency-list">${metadata.dependencies.map((dependency) => `<li><strong>${escapeHtml(dependency.name)}</strong><span>${escapeHtml(dependency.kind)} · ${escapeHtml(dependency.id)}</span></li>`).join("")}</ul>`;
 }
 
-function detailPage(listing) {
+function detailPage(listing, profile = null) {
+  const isProfile = listing.type === "loudness";
+  const compactDetail = listing.type === "themes" || isProfile;
   const current = latestPublished(listing);
   const metadata = current?.metadata;
   const previews = current?.previews ?? [];
@@ -159,7 +168,7 @@ function detailPage(listing) {
     .reverse()
     .map((release) => {
       const download = `/community/files/${listing.id}/v${release.number}/${basename(release.artifact)}`;
-      const isTheme = listing.type === "themes";
+      const isTheme = compactDetail;
       const isCurrent = release.number === current?.number;
       const currentLabel =
         isTheme && isCurrent && listing.releases.length > 1
@@ -182,7 +191,7 @@ function detailPage(listing) {
       </article>`;
     })
     .join("\n");
-  if (listing.type === "themes") {
+  if (compactDetail) {
     const preferred = [
       "product-workspace-file",
       "semantic-overview",
@@ -194,7 +203,7 @@ function detailPage(listing) {
         preferred.includes(preview.id) ? preferred.indexOf(preview.id) : preferred.length;
       return rank(a) - rank(b);
     });
-    const gallery = ranked.slice(0, 4);
+    const gallery = isProfile ? [] : ranked.slice(0, 4);
     const previewUrl = (preview) =>
       `/community/files/${listing.id}/v${current.number}/${preview.id}.png`;
     const previewLabel = (preview) =>
@@ -205,27 +214,29 @@ function detailPage(listing) {
     return page(
       `${listing.title} — PLVS Sharesets`,
       listing.summary,
-      `<main class="detail theme-detail">
-        <p class="breadcrumb"><a href="/community/">Sharesets</a> / <a href="/community/themes/">Themes</a></p>
+      `<main class="detail theme-detail${isProfile ? " profile-detail" : ""}">
+        <p class="breadcrumb"><a href="/community/">Sharesets</a> / <a href="/community/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
         <div class="theme-layout">
           ${
-            gallery.length
-              ? `<div class="theme-gallery" data-preview-gallery>
+            isProfile && profile
+              ? profilePreview(profile, true)
+              : gallery.length
+                ? `<div class="theme-gallery" data-preview-gallery>
             <figure><a data-preview-full href="${previewUrl(gallery[0])}" aria-label="Enlarge preview"><img class="theme-main-preview" data-preview-main src="${previewUrl(gallery[0])}" alt="${escapeHtml(previewLabel(gallery[0]))}" /></a><figcaption data-preview-caption>${escapeHtml(previewLabel(gallery[0]))}</figcaption></figure>
-            <div class="theme-thumbnails" aria-label="Theme previews">${gallery.map((preview, index) => `<a href="${previewUrl(preview)}" data-preview-choice data-preview-label="${escapeHtml(previewLabel(preview))}" aria-label="View ${escapeHtml(previewLabel(preview))}"${index === 0 ? ' aria-current="true"' : ""}><img src="${previewUrl(preview)}" alt="" loading="lazy" /></a>`).join("")}</div>
+            <div class="theme-thumbnails" aria-label="${isProfile ? "Profile" : "Theme"} previews">${gallery.map((preview, index) => `<a href="${previewUrl(preview)}" data-preview-choice data-preview-label="${escapeHtml(previewLabel(preview))}" aria-label="View ${escapeHtml(previewLabel(preview))}"${index === 0 ? ' aria-current="true"' : ""}><img src="${previewUrl(preview)}" alt="" loading="lazy" /></a>`).join("")}</div>
           </div>`
-              : ""
+                : ""
           }
-          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p><p class="lede">${escapeHtml(listing.summary)}</p>${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace("Download .plvstheme", "Download")}
-            ${current ? `<div class="theme-how"><h2>How to Use</h2><p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
+          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${isProfile && current ? `<div class="actions"><a class="button" href="${currentDownload}" download>Download</a></div>` : primaryAction.replace("Download .plvstheme", "Download")}
+            ${current ? `<div class="theme-how"><h2>How to Use</h2>${isProfile ? `<p>Download the file, then choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Review and confirm the import, then select the Profile in PLVS. Importing does not apply it automatically.</p>` : `<p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p>`}</div>` : `<p class="withdrawn">No current release is available.</p>`}
             ${metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>
         </div>
         <div class="theme-more">
-          <section><h2>Details</h2>${metadata ? `<div class="theme-facts"><dl>${renderSummary(metadata.content.summary)}<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div></dl></div><details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>` : `<p class="muted">No current release is available.</p>`}</section>
+          <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isProfile ? "" : renderSummary(metadata.content.summary)}<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div></dl></div><details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>` : `<p class="muted">No current release is available.</p>`}</section>
           <section><h2>Release History</h2><div class="release-list">${releases}</div></section>
         </div>
-        ${gallery.length ? `<dialog class="preview-dialog" aria-label="Theme preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous aria-label="Previous image">←</button><span data-preview-position aria-live="polite"></span><button class="button secondary" type="button" data-preview-next aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
+        ${gallery.length ? `<dialog class="preview-dialog" aria-label="${isProfile ? "Profile" : "Theme"} preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous aria-label="Previous image">←</button><span data-preview-position aria-live="polite"></span><button class="button secondary" type="button" data-preview-next aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
       </main>`
     );
   }
@@ -285,6 +296,13 @@ export async function buildCommunitySite({
   const source = await readCommunitySource(contentDirectory ?? resolve("community", "catalogue"));
   const output = resolve(outputDirectory ?? resolve("artifacts", "community-site"));
   const listings = source.listings.map(({ document }) => document);
+  for (const listing of listings) {
+    const current = latestPublished(listing);
+    listing.profile =
+      listing.type === "loudness" && current
+        ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8")).items[0]
+        : null;
+  }
   const visibleListings = listings.filter(latestPublished);
   await mkdir(output, { recursive: true });
   await writePage(join(output, "index.html"), browsePage(visibleListings));
@@ -292,7 +310,10 @@ export async function buildCommunitySite({
     await writePage(join(output, type, "index.html"), browsePage(visibleListings, type));
   }
   for (const listing of listings) {
-    await writePage(join(output, listing.type, listing.slug, "index.html"), detailPage(listing));
+    await writePage(
+      join(output, listing.type, listing.slug, "index.html"),
+      detailPage(listing, listing.profile)
+    );
     await copyReleaseFiles(source, output, listing);
   }
   await gateCommunityNavigation(

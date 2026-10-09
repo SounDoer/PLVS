@@ -54,3 +54,20 @@ Review foundations, then component states, then combinations, then real pages. L
 boards live in ignored artifacts and are not deployment inputs. Once a decision is applied,
 record its durable rule here and use the shared source. Confirm desktop/mobile layout, keyboard
 focus, empty states, and navigation behavior against real generated pages before expanding scope.
+
+## Resource details
+
+Theme and Loudness Profile pages share the two-column preview/summary layout and lower two-column
+Details/Release History section. Themes use an image gallery; Profiles use a data-generated rule
+summary, never screenshots. Both catalogue and detail summaries show the first three rules in
+artifact order, with an accurate remaining-rule count; detail overflow links to full Details.
+Details groups all conditions by metric in label/value rows without a Rules subheading. Preset layout migration is pending review. Profile reference
+values and rules are read from the validated release artifact during generation; metric labels
+and units come from the application's Stats catalogue. Listing prose must not become a second
+manually maintained source of rule values. Omit empty dependency sections and duplicate metric
+compatibility listings. Current releases download from the top action; older published releases
+use inline text download links in the history, and withdrawn releases have no download link.
+
+Catalogue preview areas share a 16:10 aspect ratio across all resource families. Text bodies
+remain content-sized and cards in a row stretch to equal height. Profile summaries and full
+Details use the artifact's strict comparison symbols (`>` and `<`) rather than Above/Below.

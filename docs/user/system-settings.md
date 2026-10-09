@@ -244,6 +244,13 @@ background to dismiss it. Usage instructions, details, and release history are s
 When a Theme has multiple releases, **Current** appears beside the current release number.
 Use the download action near the title for that release. Older published releases have
 **Download v…** text links alongside their version information.
+Loudness Profiles use generated rule summaries instead of screenshots, on both catalogue cards
+and detail pages. Each summary shows the reference loudness and the first three rules, with a
+remaining-rule count when needed. The lower **Details** section shows every rule, grouped by
+metric, with labels on the left and conditions and Warn or Fail outcomes on the right.
+Comparisons use `>` (greater than) and `<` (less than). Values
+come directly from the downloadable Profile. Tags, import instructions, file information and
+release history remain available on the detail page.
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
 **Download** remains visible.
 

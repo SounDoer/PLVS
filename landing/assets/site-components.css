@@ -164,9 +164,16 @@ select {
 .resource-card:hover {
   border-color: var(--color-control-hover);
 }
-.resource-card img {
+.resource-card > img,
+.resource-card > .profile-preview,
+.resource-card > .resource-placeholder {
   width: 100%;
-  aspect-ratio: 16/10;
+  aspect-ratio: 16 / 10;
+  border-bottom: 1px solid var(--color-divider);
+  flex: none;
+  box-sizing: border-box;
+}
+.resource-card > img {
   object-fit: contain;
   background: var(--color-page);
 }
@@ -299,4 +306,83 @@ footer a {
   footer {
     width: calc(100% - 40px);
   }
+}
+
+.profile-preview {
+  padding: var(--space-5);
+  background: var(--color-page);
+  color: var(--color-text);
+}
+.profile-reference {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+.profile-reference > span,
+.profile-preview-rules dt,
+.profile-preview-note {
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+.profile-reference strong {
+  font-size: var(--text-section);
+  font-weight: var(--weight-heading);
+  line-height: var(--leading-heading);
+}
+.profile-preview-rules {
+  margin: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.profile-preview-rules > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: var(--space-3);
+}
+.profile-preview-rules dd {
+  margin: 0;
+  font-size: var(--text-small);
+}
+.profile-preview-rules dd span {
+  display: block;
+}
+.profile-preview-note {
+  margin: var(--space-4) 0 0;
+}
+.profile-preview-detail {
+  padding: var(--space-6);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+  align-self: start;
+}
+.profile-preview-detail .profile-reference strong {
+  font-size: var(--text-page);
+}
+.profile-preview-detail .profile-preview-rules dt,
+.profile-preview-detail .profile-preview-rules dd {
+  font-size: var(--text-body);
+}
+@media (max-width: 560px) {
+  .profile-preview-detail {
+    padding: var(--space-5);
+  }
+}
+
+.resource-card > .profile-preview {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+.resource-card .profile-reference {
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.resource-card .profile-preview-rules {
+  gap: var(--space-2);
+}
+.resource-card .profile-preview-note {
+  margin-top: var(--space-2);
 }

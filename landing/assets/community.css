@@ -433,3 +433,13 @@ body:has(.preview-dialog[open]) {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+.profile-rule-details dd span {
+  display: block;
+}
+.profile-rule-details dd span + span {
+  margin-top: var(--space-2);
+}
+#profile-details {
+  scroll-margin-top: var(--space-6);
+}

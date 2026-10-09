@@ -176,12 +176,17 @@ describe("Community static site generator", () => {
     expect(root).toContain('data-metric="truePeak"');
     expect(detail).toContain("Designed for <strong>broadcast delivery</strong>.");
     expect(detail).toContain("Example Author");
-    expect(detail).toContain("Download Release 1");
-    expect(detail).toContain("Compatibility");
-    expect(detail).toContain("No bundled dependencies");
-    expect(detail).toContain("<strong>Saved Items</strong>");
-    expect(detail).toContain("<strong>Import…</strong>");
-    expect(detail).toContain("/community/files/broadcast/v1/profile-summary.png");
+    expect(detail.match(/ download>/g)).toHaveLength(1);
+    expect(detail).toContain("−23 LUFS");
+    expect(detail).toContain("&gt; −1 dBTP → Fail");
+    expect(detail).not.toContain("<h2>Compatibility</h2>");
+    expect(detail).not.toContain("No bundled dependencies");
+    expect(detail).toContain("Settings → Saved Items → Import…");
+    expect(detail).not.toContain("/community/files/broadcast/v1/profile-summary.png");
+    expect(detail).not.toContain("data-preview-gallery");
+    expect(detail).not.toContain("<h3>Rules</h3>");
+    expect(root).toContain('aria-label="Profile rule summary"');
+    expect(root).not.toContain("/community/files/broadcast/v1/profile-summary.png");
     expect(detail.toLowerCase()).not.toContain("license");
     expect(readFileSync(join(output, "files", "broadcast", "v1", "profile-summary.png"))).toEqual(
       PNG
@@ -204,7 +209,8 @@ describe("Community static site generator", () => {
     const browse = readFileSync(join(output, "index.html"), "utf8");
     const detail = readFileSync(join(output, "loudness", "broadcast-safe", "index.html"), "utf8");
     expect(browse).toContain("Broadcast Safe");
-    expect(detail).toContain("Download Release 2");
+    expect(detail.match(/ download>/g)).toHaveLength(1);
+    expect(detail).toContain('class="release-current">Current</span>');
     expect(detail).toContain("Withdrawn: Unsafe guidance.");
     expect(detail).not.toContain('href="/community/files/broadcast/v1/broadcast-v1.plvsloudness"');
     expect(detail).toContain('href="/community/files/broadcast/v2/broadcast-v2.plvsloudness"');
