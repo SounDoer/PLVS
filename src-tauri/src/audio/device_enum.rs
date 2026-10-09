@@ -1,11 +1,18 @@
-//! Device enumeration, labelling, and id resolution for cpal/WASAPI.
+//! Device enumeration, labelling, and id resolution for cpal capture backends.
 //! Kept separate from the capture I/O loop in `cpal_backend`.
 
 use std::collections::HashSet;
 
+#[cfg(target_os = "linux")]
+pub(crate) use super::linux_devices::{
+  collect_inputs, collect_outputs, pick_input_by_index, pick_output_by_index,
+  resolve_default_output,
+};
 use crate::audio::device::DeviceInfo;
 use crate::audio::device_id;
-use cpal::traits::{DeviceTrait, HostTrait};
+use cpal::traits::DeviceTrait;
+#[cfg(not(target_os = "linux"))]
+use cpal::traits::HostTrait;
 
 pub(crate) fn is_name_heuristic_loopback(name: &str) -> bool {
   let n = name.to_lowercase();
@@ -27,6 +34,7 @@ pub(crate) fn is_loopback_capture(device_id: &str) -> bool {
 
 /// Short name from cpal / WASAPI (`DeviceDesc` on Windows). Used for **stable device ids**
 /// (`lb-*` / `cap-*`) so ids do not change when we only enrich the UI label.
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn device_id_key(device: &cpal::Device) -> Result<String, String> {
   Ok(
     device
@@ -58,6 +66,15 @@ pub(crate) fn device_list_label(device: &cpal::Device) -> Result<String, String>
   Ok(format!("{detail} — {primary}"))
 }
 
+#[cfg(target_os = "linux")]
+pub(crate) fn device_id_key(device: &cpal::Device) -> Result<String, String> {
+  device
+    .id()
+    .map(|id| id.to_string())
+    .map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn collect_outputs(
 ) -> Result<Vec<(usize, cpal::Device, cpal::SupportedStreamConfig)>, String> {
   let host = cpal::default_host();
@@ -79,6 +96,7 @@ pub(crate) fn collect_outputs(
   Ok(rows)
 }
 
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn collect_inputs(
 ) -> Result<Vec<(usize, cpal::Device, cpal::SupportedStreamConfig)>, String> {
   let host = cpal::default_host();
@@ -96,6 +114,7 @@ pub(crate) fn collect_inputs(
   Ok(rows)
 }
 
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn pick_output_by_index(
   target: usize,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
@@ -116,6 +135,7 @@ pub(crate) fn pick_output_by_index(
   Err(format!("Output device index not found: {target}"))
 }
 
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn pick_input_by_index(
   target: usize,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
@@ -177,6 +197,7 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
   Ok(())
 }
 
+#[cfg(not(target_os = "linux"))]
 pub(crate) fn resolve_default_output() -> Result<(cpal::Device, cpal::SupportedStreamConfig), String>
 {
   let host = cpal::default_host();
@@ -395,13 +416,11 @@ pub fn resolve_device_selector(selector: &str) -> Result<String, String> {
 /// Stable id of the device that `"default"` currently resolves to, when present
 /// in the enumerated list.
 pub fn default_device_list_id() -> Option<String> {
-  let (device, _) = resolve_default_output().ok()?;
-  let label = device_list_label(&device).ok()?;
-  let devices = build_device_list().ok()?;
-  devices
-    .into_iter()
-    .find(|device| device.is_system_output_monitor && device.label == label)
-    .map(|device| device.id)
+  let (device, config) = resolve_default_output().ok()?;
+  let key = device_id_key(&device).ok()?;
+  loopback_list_id_for_row(&key, config.channels(), config.sample_rate())
+    .ok()
+    .flatten()
 }
 
 /// Enumerate devices for headless CLI listing (same list capture substring matching uses).
@@ -419,7 +438,11 @@ pub fn capture_backend_name() -> &'static str {
   {
     "coreaudio"
   }
-  #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+  #[cfg(target_os = "linux")]
+  {
+    "pulseaudio"
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   {
     "cpal"
   }

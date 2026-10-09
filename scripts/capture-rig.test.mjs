@@ -196,6 +196,9 @@ describe("capture harness invocation", () => {
     expect(captureRig.harnessPath("root", "darwin")).toBe(
       join("root", "src-tauri", "target", "harness", "plvs")
     );
+    expect(captureRig.harnessPath("root", "linux")).toBe(
+      join("root", "src-tauri", "target", "harness", "plvs")
+    );
   });
 
   it("declares the harness profile in the workspace root manifest", () => {
