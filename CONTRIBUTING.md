@@ -43,6 +43,28 @@ the Chromium revision pinned by Playwright to generate the exact contract-owned 
 edits Catalogue records or deploys content. Run `npx playwright install chromium` once after
 installing dependencies on a machine that generates previews.
 
+### Theme Lab
+
+Theme Lab is the disposable Theme-authoring path for comparing Core and Palette ideas without
+saving them to the Theme Library or adding them to the Community Catalogue. Copy
+`scripts/theme-lab.example.json`, choose built-in `plvs-dark` or `plvs-light` as the base, and give
+each variant only the Core or Palette values that differ from that base. Status, Frequency,
+Intensity, and Interface palettes accept the same literal values or preset IDs as the Theme Editor.
+
+```powershell
+npm run theme:lab -- --manifest path/to/experiments.json
+npm run theme:lab -- --manifest path/to/experiments.json --out-dir artifacts/theme-lab/review-1
+```
+
+The command reuses the Community Theme preview renderer and one isolated browser runtime to capture
+the real Theme Preview overview plus every publication-owned product scene for every variant. It
+writes complete validated portable `theme.json` documents, per-scene PNGs, labelled comparison
+sheets, and `report.json` beneath a new output directory. The default output is timestamped under
+`artifacts/theme-lab/`; an explicit output directory must not already exist. Theme Lab has no
+connection to a running PLVS workbench and cannot Save, Import, select, or otherwise mutate the
+Theme Library. Treat all output as review material; promoting one result into Community content is
+a separate explicit curation step.
+
 `community:source:check` validates the detachable Catalogue content manifest. The directory argument
 is optional while content lives at `community/catalogue`; external Catalogue checkouts pass their
 own root without changing website code.

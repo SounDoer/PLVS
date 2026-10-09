@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "base": "plvs-dark",
+  "variants": [
+    {
+      "id": "warm-orange",
+      "name": "Warm Orange",
+      "core": {
+        "workspace": "#11100f",
+        "surface": "#1b1916",
+        "interfaceAccent": "#e58a34",
+        "primaryData": "#ff8a3d"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#32c787",
+          "warning": "#f4b942",
+          "critical": "#ef5350"
+        },
+        "frequency": {
+          "low": "#ef4444",
+          "mid": "#f59e0b",
+          "high": "#60a5fa"
+        },
+        "intensity": {
+          "stops": [
+            { "position": 0, "color": "#100b08" },
+            { "position": 0.5, "color": "#b54717" },
+            { "position": 1, "color": "#fff1c2" }
+          ]
+        },
+        "interface": {
+          "success": "#32c787",
+          "warning": "#f4b942",
+          "danger": "#ef5350"
+        }
+      }
+    },
+    {
+      "id": "cool-blue",
+      "name": "Cool Blue",
+      "core": {
+        "interfaceAccent": "#3b82f6",
+        "primaryData": "#38bdf8",
+        "secondaryData": "#a78bfa"
+      },
+      "palettes": {
+        "frequency": { "presetId": "frequency-plvs" },
+        "intensity": { "presetId": "intensity-inferno" }
+      }
+    }
+  ]
+}

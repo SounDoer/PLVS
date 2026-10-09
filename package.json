@@ -15,6 +15,7 @@
     "theme:gallery": "node scripts/theme-gallery.mjs",
     "theme:gallery:semantic": "node scripts/theme-gallery.mjs --semantic-only",
     "theme:gallery:product": "node scripts/theme-gallery.mjs --product-only",
+    "theme:lab": "node scripts/theme-lab.mjs",
     "ui:walkthrough": "node scripts/ui-visual-walkthrough.mjs",
     "ui:compare": "node scripts/ui-visual-compare.mjs",
     "community:validate": "node scripts/validate-community-artifact.mjs",
