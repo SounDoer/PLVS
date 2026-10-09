@@ -7,13 +7,13 @@ import { describe, expect, it } from "vitest";
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(currentDir, "index.html"), "utf8");
 const deployment = readFileSync(
-  join(currentDir, "..", "..", ".github", "workflows", "deploy-landing.yml"),
+  join(currentDir, "..", "..", ".github", "workflows", "publish-site.yml"),
   "utf8"
 );
 
 describe("Privacy Policy", () => {
   it("ships at /privacy/ with the recursively deployed landing site", () => {
-    expect(deployment).toContain("cp -r landing _site");
+    expect(deployment).toContain("cp -r site-source/landing _site");
     expect(deployment).toContain("path: _site/");
     expect(html).toContain("<title>PLVS Privacy Policy</title>");
   });

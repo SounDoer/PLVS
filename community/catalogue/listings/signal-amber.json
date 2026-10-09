@@ -15,7 +15,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-09-25",
+      "publishedAt": "2026-10-09",
       "status": "published",
       "notesMarkdown": "Initial official release.",
       "artifact": "artifacts/signal-amber-v1.plvstheme",

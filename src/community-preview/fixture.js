@@ -41,9 +41,45 @@ function spectrumResult(fixture) {
   };
 }
 
+// Polar modes consume raw pair history, unlike the SVG path used by Lissajous. Derive a fixed
+// stereo sample window from the versioned oscillators; never depend on a live audio intake.
+function vectorscopeHistory(fixture) {
+  const { sampleRateHz, oscillators } = fixture.audio;
+  const { durationMs, frameIntervalMs } = fixture.clock;
+  const rows = [];
+  for (let ageMs = 500; ageMs >= 0; ageMs -= frameIntervalMs) {
+    const timestampMs = durationMs - ageMs;
+    const pairs = new Float32Array(1024 * 2);
+    for (let index = 0; index < 1024; index += 1) {
+      const time = timestampMs / 1000 + index / sampleRateHz;
+      for (let channel = 0; channel < 2; channel += 1) {
+        pairs[index * 2 + channel] = oscillators.reduce(
+          (sum, oscillator) =>
+            sum +
+            oscillator.amplitude *
+              Math.sin(
+                2 *
+                  Math.PI *
+                  (oscillator.frequencyHz * time + oscillator.phaseTurns * (channel + 1))
+              ),
+          0
+        );
+      }
+    }
+    rows.push({ timestampMs, pairs });
+  }
+  return {
+    length: rows.length,
+    version: 1,
+    rowAt: (index) => rows[index],
+    timestampAt: (index) => rows[index]?.timestampMs ?? Number.NaN,
+  };
+}
+
 export function buildCommunityPreviewFixtureValues(fixture) {
   const frame = fixture.measurementFrame;
   const spectrum = spectrumResult(fixture);
+  const vectorscope = vectorscopeHistory(fixture);
   const spectrogramRows = expandTimeline(
     fixture.visuals.spectrogram,
     fixture.clock,
@@ -174,7 +210,7 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       resolveSpectrumSnapshotForKey: () => null,
       resolveVectorscopeSnapshotForKey: () => null,
       resolveStereoMapSnapshotForKey: () => null,
-      getVectorscopeHistoryForKey: () => null,
+      getVectorscopeHistoryForKey: () => vectorscope,
       getStereoMapHistoryForKey: () => null,
       captureCurrentSnapshot: noop,
       visualWaveformHist,

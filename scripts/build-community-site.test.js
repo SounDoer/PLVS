@@ -98,10 +98,38 @@ function writeAssembledSite(directory) {
 }
 
 describe("Community static site generator", () => {
+  it.each([false, true])(
+    "gates Community links in the actual homepage and docs templates (published: %s)",
+    async (published) => {
+      const source = temporaryDirectory("plvs-community-real-nav-source-");
+      const site = temporaryDirectory("plvs-community-real-nav-site-");
+      const output = temporaryDirectory("plvs-community-real-nav-output-");
+      if (published) writeFixtureSource(source);
+      else
+        writeFileSync(
+          join(source, "manifest.json"),
+          JSON.stringify({ schemaVersion: 1, listings: [] })
+        );
+      mkdirSync(join(site, "docs"));
+      writeFileSync(join(site, "index.html"), readFileSync("landing/index.html"));
+      writeFileSync(join(site, "docs", "index.html"), readFileSync("landing/docs/template.html"));
+      await buildCommunitySite({
+        contentDirectory: source,
+        outputDirectory: output,
+        siteDirectory: site,
+      });
+      const home = readFileSync(join(site, "index.html"), "utf8");
+      const docs = readFileSync(join(site, "docs", "index.html"), "utf8");
+      expect(home.includes('href="community/"')).toBe(published);
+      expect(docs.includes('href="../community/"')).toBe(published);
+      if (published) expect(home).toMatch(/footer-links[\s\S]*href="community\/"/);
+    }
+  );
+
   it("is part of release-bound landing site assembly", () => {
-    const workflow = readFileSync(join(".github", "workflows", "deploy-landing.yml"), "utf8");
+    const workflow = readFileSync(join(".github", "workflows", "publish-site.yml"), "utf8");
     expect(workflow).toContain(
-      "node scripts/build-community-site.mjs community/catalogue _site/community _site"
+      "node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community _site"
     );
   });
 
@@ -145,7 +173,8 @@ describe("Community static site generator", () => {
     expect(detail).toContain("Download Release 1");
     expect(detail).toContain("Compatibility");
     expect(detail).toContain("No bundled dependencies");
-    expect(detail).toContain("Import Shared Item…");
+    expect(detail).toContain("<strong>Saved Items</strong>");
+    expect(detail).toContain("<strong>Import…</strong>");
     expect(detail).toContain("/community/files/broadcast/v1/profile-summary.png");
     expect(detail.toLowerCase()).not.toContain("license");
     expect(readFileSync(join(output, "files", "broadcast", "v1", "profile-summary.png"))).toEqual(

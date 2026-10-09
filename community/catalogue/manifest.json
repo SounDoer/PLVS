@@ -1,4 +1,8 @@
 {
   "schemaVersion": 1,
-  "listings": []
+  "listings": [
+    "listings/i-23-tp-1.json",
+    "listings/signal-amber.json",
+    "listings/stereo-overview.json"
+  ]
 }

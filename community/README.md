@@ -4,10 +4,10 @@ This directory is the initial local checkout of the static Community Catalogue c
 is deliberately outside `landing/`: website code reads it only through the versioned manifest and
 an explicit content-directory argument, so this tree can move to a separate repository later.
 
-`catalogue/manifest.json` is allowed to stay empty while the Catalogue generator and UI are built.
-It is empty now on purpose: the initial official Listings under `catalogue/listings/` are staged for
-a launch after the default Theme redesign. Their previews predate that redesign and must be regenerated
-with the pinned preview renderer before the Listings are added back to the manifest.
+`catalogue/manifest.json` contains the initial official Signal Amber Theme, Stereo Overview Preset,
+and parameter-named Loudness Profile. Their previews are generated from the current production
+components with the pinned renderer. An empty manifest remains valid for fixtures and bootstrap;
+it must never replace a Catalogue with published history.
 Real content is added only through an explicit maintainer-curated publication workflow. The current
 project does not accept or advertise public submissions.
 
@@ -42,5 +42,8 @@ The normal landing workflow publishes the Catalogue with an app Release. A separ
 Community workflow can publish a chosen content ref sooner, but it rebuilds the rest of the site
 from the latest stable Release tag. Its content checkout is isolated from the site checkout so the
 path can later point at a dedicated repository without changing the validator or builder commands.
-The deployed Catalogue records its exact content commit in `community/publication.json`; the next
-manual deployment reads that marker and refuses any candidate that rewrites its published history.
+Both entry points call the same `publish-site.yml` workflow. The deployed Catalogue records its
+exact content commit in `community/publication.json`; every deployment reads that marker and refuses
+any candidate that rewrites its published history. See CONTRIBUTING.md for first-publication
+bootstrap and recovery. Content-only additions must be brought back into the next app release's
+content tree before that release can replace the website.

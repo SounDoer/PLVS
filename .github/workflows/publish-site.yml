@@ -1,0 +1,97 @@
+name: Publish Validated Site
+
+on:
+  workflow_call:
+    inputs:
+      site_ref:
+        description: Website ref; empty selects the latest stable Release
+        type: string
+        default: ""
+      content_ref:
+        description: Content ref; empty uses the exact website commit
+        type: string
+        default: ""
+      bootstrap_community:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    # Hold one shared lock from baseline discovery through deployment.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve website ref
+        id: website
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SITE_REF: ${{ inputs.site_ref }}
+        run: |
+          if [ -z "$SITE_REF" ]; then
+            SITE_REF=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          fi
+          echo "ref=$SITE_REF" >> "$GITHUB_OUTPUT"
+      - name: Check out website code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.website.outputs.ref }}
+          path: site-source
+      - name: Resolve exact content ref
+        id: content
+        env:
+          CONTENT_REF: ${{ inputs.content_ref }}
+        run: |
+          if [ -z "$CONTENT_REF" ]; then CONTENT_REF=$(git -C site-source rev-parse HEAD); fi
+          echo "ref=$CONTENT_REF" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: site-source/.nvmrc
+          cache: npm
+          cache-dependency-path: site-source/package-lock.json
+      - name: Resolve the published content baseline
+        id: baseline
+        env:
+          ALLOW_COMMUNITY_BOOTSTRAP: ${{ inputs.bootstrap_community }}
+        run: node site-source/scripts/community-publication.mjs resolve site-source/landing/CNAME
+      - name: Check out published Community content
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.baseline.outputs.ref }}
+          path: published-content-source
+          sparse-checkout: community/catalogue
+      - name: Check out candidate Community content
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.content.outputs.ref }}
+          path: content-source
+          sparse-checkout: community/catalogue
+      - name: Install the website toolchain
+        working-directory: site-source
+        run: npm ci
+      - name: Validate immutable Community history
+        run: node site-source/scripts/community-catalogue-update.mjs published-content-source/community/catalogue content-source/community/catalogue
+      - name: Assemble the website and record its content identity
+        run: |
+          cp -r site-source/landing _site
+          find _site -type f -name '*.test.*' -delete
+          (cd site-source && node scripts/build-user-docs.mjs ../_site/docs/index.html)
+          node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community _site
+          candidate_sha=$(git -C content-source rev-parse HEAD)
+          node site-source/scripts/community-publication.mjs write _site/community/publication.json "$candidate_sha"
+          rm _site/docs/template.html
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site/
+      - id: deployment
+        uses: actions/deploy-pages@v5

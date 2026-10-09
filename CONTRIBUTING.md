@@ -64,14 +64,33 @@ review is useful; for example, `npx vite preview --outDir path/to/review/site`.
 
 The baseline must be the exact content commit currently named by the deployed
 `/community/publication.json`, not an arbitrary old checkout. For the first publication, use the
-stable PLVS Release tag that supplies the empty Catalogue. Keep both checkouts unchanged while
-curating so the byte comparison remains meaningful.
+empty Catalogue at v0.19.0's immutable commit
+`a953766217e6ebeceac264ba86e10f4b69eeabcd`. Keep both checkouts unchanged while curating so the byte
+comparison remains meaningful.
 
 To publish after review, commit the candidate content, wait for the normal merge gate, then dispatch
 `.github/workflows/deploy-community.yml` with that exact commit SHA as `content_ref`. The workflow
 repeats source and immutable-history validation against the deployed marker before GitHub Pages is
 changed. The first public Catalogue instead ships through the normal PLVS Release workflow so the
 navigation and initial content appear together.
+
+Both deployment entry points call `publish-site.yml`, which holds the shared Pages lock from live
+baseline discovery through deployment, validates the complete immutable history, and writes the
+candidate's exact content commit into the same Pages artifact as the website. A desktop release
+whose content is older than an independent Community update is rejected: synchronize those content
+changes into the release tree, then retry. Never bypass validation by deleting the marker.
+
+The first Community launch needs one explicit initialization. After the app Release is published,
+dispatch `deploy-landing.yml` with that released tag as `ref` and `bootstrap_community=true`.
+Automatic release-triggered deployment uses the safe default (`false`) and stops if no marker exists.
+Bootstrap checks that the legacy live Catalogue is empty and uses the pinned empty commit above;
+it does not permit a populated markerless site. All later runs leave bootstrap off. An unreadable,
+malformed, foreign-repository, or missing marker stops publication. Recover a lost marker from the
+last successful Pages artifact and its exact content commit before trying again. Older website
+tags without the publication helper cannot be deployed through this workflow.
+
+Before first publication, confirm the Listing release dates and regenerate any previews affected by
+subsequent UI changes. Once published, those dates and preview bytes become immutable.
 
 To withdraw a bad Release, leave its artifact, previews, paths, notes, and date untouched; change
 only `status` to `withdrawn` and add `withdrawalReason`, then run the dry run and `--write` review

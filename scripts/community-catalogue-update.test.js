@@ -93,6 +93,24 @@ function writeSource(
 }
 
 describe("Community Catalogue update policy", () => {
+  it("blocks an old desktop catalogue after a content-only release, then accepts synchronized history", async () => {
+    const original = temporaryDirectory();
+    const contentOnly = temporaryDirectory();
+    const nextDesktop = temporaryDirectory();
+    writeSource(original);
+    writeSource(contentOnly, { releases: [release(1), release(2)] });
+    await expect(validateCommunitySourceUpdate(original, contentOnly)).resolves.toMatchObject({
+      valid: true,
+    });
+    await expect(validateCommunitySourceUpdate(contentOnly, original)).rejects.toMatchObject({
+      issues: expect.arrayContaining([expect.objectContaining({ code: "releaseRemoved" })]),
+    });
+    writeSource(nextDesktop, { releases: [release(1), release(2)] });
+    await expect(validateCommunitySourceUpdate(contentOnly, nextDesktop)).resolves.toMatchObject({
+      valid: true,
+    });
+  });
+
   it("allows Listing copy edits and an appended published Release", async () => {
     const previous = temporaryDirectory();
     const candidate = temporaryDirectory();

@@ -230,6 +230,27 @@ recognized by its content: if an identical Theme, including its name, is already
 the review says so and nothing is added. Single `.plvstheme` files use the same **Import** action
 as PLVS-exported Theme pack files.
 
+## Community
+
+The [Community Catalogue](https://plvs.soundoer.com/community/) offers curated Themes, Presets, and
+Loudness Profiles. Browse a category or search, then open an Item for its previews, contents,
+compatibility details, author, and release history. The initial collection is authored by PLVS;
+public submissions are not open.
+
+Download a `.plvstheme`, `.plvspreset`, or `.plvsloudness` file, then open **Settings → Saved Items →
+Import…**. Review what will be added and confirm. Importing adds to the
+Library; applying the Item is a separate action. You can also use **Copy Theme** on a Theme page and
+paste into PLVS outside a text field to open the same review. An identical Item already in your
+Library is recognized instead of being added again.
+
+Community previews use fixed example measurements, not your audio. The parameter-named Loudness
+Profile is an editable monitoring rule set, not a certified delivery standard. Review its rules
+against your own requirements before using it.
+
+Items do not update automatically. A withdrawn release loses its download actions; its history and
+withdrawal reason remain visible. If every release is withdrawn, the Item leaves browsing and search
+while its detail page remains available.
+
 ## Crash reports and feedback
 
 If the terminal that launched PLVS disconnects its output, PLVS continues running and keeps

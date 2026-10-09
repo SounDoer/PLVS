@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Community launches with the PLVS-authored Signal Amber Theme, Stereo Overview Preset, and editable
+  `I −23 ±0.5 · TP ≤ −1` Loudness Profile, with previews regenerated for the current interface.
+
+### Fixed
+
+- Website releases and independent Community updates now share publication-history validation,
+  preventing an older app release's Catalogue from replacing newer published content.
+
 ## [0.19.1] - 2026-10-10
 
 ### Added
