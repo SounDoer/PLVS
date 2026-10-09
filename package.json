@@ -67,6 +67,7 @@
     "smoke:capture": "node scripts/smoke-capture.mjs",
     "smoke:capture:linux": "node scripts/smoke-capture-linux.mjs",
     "desktop:linux": "node scripts/run-linux-desktop.mjs",
+    "desktop:preview-deb": "node scripts/build-linux-deb.mjs",
     "smoke:capture:multi": "node scripts/multi-instance-capture.mjs --instances 2 --seconds 15",
     "spike:capture:process": "node scripts/spike-process-capture.mjs",
     "soak:capture": "node scripts/soak-capture.mjs",

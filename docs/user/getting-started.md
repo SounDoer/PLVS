@@ -28,6 +28,29 @@ Developer ID and notarized by Apple, so Gatekeeper can verify them normally. If 
 that an official download is damaged or cannot be verified, delete it and download the DMG again
 from the PLVS GitHub Releases page instead of bypassing the warning.
 
+## Experimental Linux Preview
+
+Locally built Linux Preview packages target Ubuntu 24.04 x86_64. They are test builds, not part of
+the official downloads above. Install a supplied `.deb` with APT so it resolves the required
+libraries and the Ubuntu FFmpeg package:
+
+```sh
+sudo apt install ./plvs-preview.deb
+```
+
+Use the actual filename of the supplied package. Launch **PLVS Preview** from the application menu,
+or run `plvs`. `plvs-cli doctor --json` checks the installed application and decoders. Audio capture
+requires a running PulseAudio server or PipeWire's PulseAudio compatibility service.
+
+Preview keeps its own settings and does not automatically update. Install a newer Preview `.deb`
+with APT to replace it; remove it with `sudo apt remove plvs-preview`. Removing the package preserves
+your user settings and the system FFmpeg package. The initial Preview shares executable names with
+the future stable Linux package, so the two packages cannot be installed together.
+
+Native desktop and hardware acceptance is still pending. Per-application capture, live Agent
+Control, screenshots, and recording are not yet supported on Linux. See
+[Signal Source](signal-source.md) for the experimental capture scope.
+
 ## First launch
 
 A new installation opens with a starter workspace and a starter Loudness Profile, both named
@@ -40,5 +63,5 @@ deleted; only **Reset PLVS to Default** brings them back. PLVS never starts capt
 own: pick a signal source (see [Signal Source](signal-source.md)) and press
 Start when you're ready to monitor.
 
-PLVS checks for updates automatically and asks before installing one. The confirmation dialog
+Official PLVS builds check for updates automatically and ask before installing one. The confirmation dialog
 shows a progress bar while that download runs.

@@ -16,11 +16,11 @@ function manifestFor(config) {
     identifier: config.identifier,
     version,
     cli: {
-      // The same manifest format is consumed on every platform even though Preview is
-      // currently Windows-only, so keep both paths truthful for future expansion.
+      // Paths are relative to the platform's installation root (the filesystem root for deb).
       relativePath: {
         windows: "plvs-cli.exe",
         macos: "Contents/MacOS/plvs-cli",
+        linux: "usr/bin/plvs-cli",
       },
       doctor: ["doctor", "--json"],
     },

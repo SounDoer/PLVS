@@ -511,8 +511,14 @@ from physical inputs. Both are opened as input streams; sink devices themselves 
 as capture devices. Stable IDs use native source identifiers rather than display labels. Automatic
 resolves the default sink's monitor and reports an error if it is absent, without falling back to
 a microphone. Capture requests float PCM at the source's native rate and channel count and reuses
-the existing pooled callback delivery and meter pipeline. Linux installers, per-application
-capture, and native desktop acceptance testing remain outstanding.
+the existing pooled callback delivery and meter pipeline. Per-application capture and native
+desktop acceptance testing remain outstanding.
+
+The experimental Ubuntu 24.04 x86_64 Preview deb installs the application and CLI in `/usr/bin`
+and declares distribution-managed FFmpeg/FFprobe as package dependencies. The existing adjacent
+binary locator therefore works without a development environment override. It uses the separate
+Preview identity and has no automatic updater. See
+[ADR 0024](adr/0024-linux-deb-uses-distribution-decoders.md) for the package layout and decoder policy.
 
 Linux capture requests 20 ms server fragments. PulseAudio's unspecified default fragments can
 exceed the shared 100 ms PCM pool capacity, causing whole callbacks to be rejected; the backend

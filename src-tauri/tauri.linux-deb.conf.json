@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["deb"],
+    "createUpdaterArtifacts": false,
+    "externalBin": ["binaries/plvs-cli"],
+    "category": "Music",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libc6 (>= 2.39)",
+          "libstdc++6",
+          "libgcc-s1",
+          "libasound2t64",
+          "libgtk-3-0t64",
+          "libwebkit2gtk-4.1-0",
+          "libayatana-appindicator3-1",
+          "librsvg2-common",
+          "ca-certificates",
+          "ffmpeg (>= 7:6.1)"
+        ],
+        "conflicts": ["plvs"],
+        "section": "sound"
+      }
+    }
+  }
+}

@@ -3,10 +3,12 @@
 PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. Commands are
 organized directly by the product resource or operation they address:
 
-Experimental Linux development builds support `doctor` and `instances`, using the same identity
+Experimental Linux development and Ubuntu Preview builds support `doctor` and `instances`, using the same identity
 directory as the GUI under `$XDG_DATA_HOME` or `~/.local/share`. Live Agent Control commands and
 visual capture are not yet available on Linux. Linux development file analysis uses system
-FFmpeg/FFprobe selected by the development launcher; Linux release packages are not yet available.
+FFmpeg/FFprobe selected by the development launcher. The Ubuntu Preview deb installs them through
+APT and resolves `/usr/bin/ffmpeg` and `/usr/bin/ffprobe` without an environment override.
+Official Linux release packages are not yet available.
 
 ```text
 plvs-cli doctor
@@ -646,7 +648,8 @@ npm run desktop:verify-windows-installer
 
 Desktop build commands use `scripts/build-plvs-cli.mjs` to build the matching identity and stage a
 target-triple-named Tauri external binary. Tauri installs it beside the host under the stable public
-name `plvs-cli.exe` on Windows or `Contents/MacOS/plvs-cli` on macOS. The installer and DMG smoke
+name `plvs-cli.exe` on Windows, `Contents/MacOS/plvs-cli` on macOS, or `/usr/bin/plvs-cli` in the
+experimental Ubuntu deb. The installer and package smoke
 checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
 directory.
 

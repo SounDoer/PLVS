@@ -6,7 +6,8 @@
   "cli": {
     "relativePath": {
       "windows": "plvs-cli.exe",
-      "macos": "Contents/MacOS/plvs-cli"
+      "macos": "Contents/MacOS/plvs-cli",
+      "linux": "usr/bin/plvs-cli"
     },
     "doctor": [
       "doctor",

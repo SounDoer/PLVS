@@ -1,6 +1,6 @@
 # FFmpeg Sidecar Build
 
-File mode decodes audio through a bundled, trimmed **FFmpeg** pair (`ffmpeg` + `ffprobe`) run as
+On Windows and macOS, file mode decodes audio through a bundled, trimmed **FFmpeg** pair (`ffmpeg` + `ffprobe`) run as
 Tauri sidecars (`externalBin` in `tauri.conf.json`). This replaces Symphonia and gives full codec
 coverage (AC-3, E-AC-3, DTS, Opus, HE-AAC, AAC-LC, PCM, …) for audio tracks inside video containers.
 
@@ -23,9 +23,11 @@ npm run ffmpeg:fetch
 ```
 
 Windows (`x86_64-pc-windows-msvc`) and macOS (`aarch64-apple-darwin`) binaries are published.
-PLVS does not ship a Linux app, so no Linux sidecar exists; `externalBin` is declared only in
+Linux has no published decoder sidecars. Its experimental Ubuntu deb instead declares the Ubuntu
+`ffmpeg` package as a dependency; see [ADR 0024](adr/0024-linux-deb-uses-distribution-decoders.md).
+The development launcher also supports system decoders. Bundled decoder `externalBin` entries live in
 `tauri.windows.conf.json` / `tauri.macos.conf.json` (not the base config), so Linux builds — including
-the ubuntu CI fmt/clippy/test job — do not require a binary. When you bump the FFmpeg version, upload
+the Ubuntu CI fmt/clippy/test job — do not require a decoder binary. When you bump the FFmpeg version, upload
 the new binaries to a new `ffmpeg-sidecar-<version>` release and update `TAG` + the SHA-256 values in
 the fetch script.
 

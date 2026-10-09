@@ -122,6 +122,7 @@ describe("Tauri security configuration", () => {
         relativePath: {
           windows: "plvs-cli.exe",
           macos: "Contents/MacOS/plvs-cli",
+          linux: "usr/bin/plvs-cli",
         },
         doctor: ["doctor", "--json"],
       },

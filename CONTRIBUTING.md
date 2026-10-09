@@ -355,3 +355,34 @@ rate, channel count, and dropped chunks, removes its sink afterward, and does no
 default output. Missing tools, unsupported module loading, or stale harness binaries are rig
 errors (exit 2); metric disagreement is exit 1. Passing in WSLg verifies the protocol path only;
 native Linux desktop, device-switching, multichannel, and long-running soak checks are still needed.
+
+## Experimental Ubuntu Preview package
+
+On Ubuntu 24.04 x86_64, run `npm run desktop:preview-deb`. It builds the optimized application and
+CLI with `preview-identity`, packages embedded frontend assets, and writes a `.deb` under
+`src-tauri/target/release/bundle/deb/`. It does not publish anything. The Preview updater is disabled;
+do not add the capture-harness or development identity features to the package.
+
+The builder clears the inherited resource map before loading the complete Preview resource map.
+Without that reset, recursive config merging maps both the stable and Preview manifests to
+`plvs-agent.json`, making the installed identity depend on copy order. Keep the config order intact.
+
+The deb declares system FFmpeg/FFprobe and runtime libraries as APT dependencies. It does not use
+`ffmpeg:fetch` or bundle files over Ubuntu's `/usr/bin/ffmpeg`. See
+[ADR 0024](docs/adr/0024-linux-deb-uses-distribution-decoders.md). Build on the stated baseline;
+building on a newer distribution can silently raise the required glibc version.
+
+`scripts/verify-linux-deb.sh <package.deb> <output-directory>` installs, checks, and removes the
+package. It requires root **inside a disposable Ubuntu 24.04 system** with the marker file
+`/etc/plvs-disposable-package-rig`; never run it against a personal desktop. Provision the test
+tools `python3`, `xvfb`, `xauth`, `dbus-x11`, `pulseaudio`, and `desktop-file-utils` there first.
+The script refuses an existing PLVS installation. It checks the installed dependency paths and
+Preview identity, decodes seven representative codecs, starts the installed GUI as an unprivileged
+user under Xvfb with a private PulseAudio null sink, and checks CLI instance discovery. Its logs,
+package inventory, checksum, and JSON diagnostics go to the output directory. Uninstallation must
+remove PLVS binaries and desktop integration while preserving Ubuntu's decoder executables.
+
+This package smoke does not validate the GUI file-picker interaction, physical devices, accelerated
+rendering, or native Wayland/X11 desktop integration. Run the real Rust file-analysis tests against
+the distribution decoders separately (`PLVS_FFMPEG_DIR=/usr/bin cargo test --manifest-path
+src-tauri/Cargo.toml file_analysis -- --test-threads=1`) and retain the native desktop/soak milestones.
