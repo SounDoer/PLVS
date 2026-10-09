@@ -1,4 +1,4 @@
-//! Cross-platform [`AudioCapture`] entry: WASAPI loopback + cpal on Windows/Linux; Core Audio tap + cpal on macOS.
+//! Cross-platform capture: WASAPI on Windows, PulseAudio on Linux, Core Audio taps on macOS.
 
 use tauri::AppHandle;
 

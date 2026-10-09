@@ -157,15 +157,13 @@ export function resolveRenderEndpointId(friendlyName = VB_CABLE_RENDER_NAME) {
     .map((s) => s.trim())
     .filter(Boolean);
   if (ids.length === 0) {
-    throw new RigError(
-      `No audio render endpoint named "${friendlyName}". Is VB-Cable installed?`,
-    );
+    throw new RigError(`No audio render endpoint named "${friendlyName}". Is VB-Cable installed?`);
   }
   if (!ENDPOINT_ID_SHAPE.test(ids[0])) {
     throw new RigError(
       `Endpoint id for "${friendlyName}" has an unexpected shape: ${ids[0]}\n` +
         `Expected {0.0.0.00000000}.{<guid>}. VLC accepts a malformed id silently and\n` +
-        `plays nowhere, so this is caught here rather than read as a capture defect.`,
+        `plays nowhere, so this is caught here rather than read as a capture defect.`
     );
   }
   return ids[0];
@@ -184,8 +182,8 @@ export function locateVlc() {
 export const BUILD_HARNESS =
   "cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness";
 
-export function harnessPath(root = ROOT) {
-  return join(root, "src-tauri", "target", "harness", "plvs.exe");
+export function harnessPath(root = ROOT, platform = process.platform) {
+  return join(root, "src-tauri", "target", "harness", platform === "win32" ? "plvs.exe" : "plvs");
 }
 
 /** What a harness rebuild consumes. `target/` is deliberately absent: it holds the
@@ -222,7 +220,7 @@ export function verifyHarnessBuild(harness, run = runCli) {
   const detail = probe.stderr.trim();
   throw new RigError(
     `The harness binary was not built with the capture harness feature.` +
-      `${detail ? `\nReported: ${detail}` : ""}\nRebuild first:\n  ${BUILD_HARNESS}`,
+      `${detail ? `\nReported: ${detail}` : ""}\nRebuild first:\n  ${BUILD_HARNESS}`
   );
 }
 
@@ -312,7 +310,7 @@ export function locateHarness() {
       listed.push(`  ... and ${stale.length - listed.length} more`);
     }
     throw new RigError(
-      `Capture harness is older than its sources, so this run would not exercise them:\n${listed.join("\n")}\nRebuild first:\n  ${BUILD_HARNESS}`,
+      `Capture harness is older than its sources, so this run would not exercise them:\n${listed.join("\n")}\nRebuild first:\n  ${BUILD_HARNESS}`
     );
   }
   return harness;
@@ -370,7 +368,7 @@ export async function startPlayer(endpointId, wavPath, { wait = false } = {}) {
       `--mmdevice-audio-device=${endpointId}`,
       wavPath,
     ],
-    { detached: false, stdio: "ignore", windowsHide: true },
+    { detached: false, stdio: "ignore", windowsHide: true }
   );
   return child;
 }
