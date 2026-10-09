@@ -85,14 +85,6 @@ pub struct FrontendCrashInput {
   pub component_stack: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackDiagnostics {
-  pub schema_version: u32,
-  pub app: CrashApp,
-  pub logs: Vec<String>,
-}
-
 pub fn prompt_enabled_from_settings(settings: &Value) -> bool {
   settings
     .get("askToSendCrashReports")
@@ -255,22 +247,100 @@ impl CrashReporterState {
       .enrich_pending(&self.log_dir, &self.log_file_name, line_limit)
   }
 
-  pub fn feedback_diagnostics(&self, line_limit: usize) -> io::Result<FeedbackDiagnostics> {
-    let logs = extract_session_log_tail(
-      &self.log_dir,
-      &self.log_file_name,
-      &self.session_id,
-      line_limit,
-    )?
-    .into_iter()
-    .map(|line| redact_home_paths(&line, &self.store.home, self.store.case_insensitive_home))
-    .collect();
-    Ok(FeedbackDiagnostics {
-      schema_version: CRASH_REPORT_SCHEMA_VERSION,
-      app: self.app.clone(),
-      logs,
+  pub fn feedback_diagnostics(&self) -> Value {
+    let logs = feedback_log_tail(&self.log_dir, &self.log_file_name, &self.session_id);
+    serde_json::json!({
+      "schemaVersion":crate::feedback_diagnostics::SCHEMA_VERSION,
+      "app":self.app, "capturedAt":crate::feedback_diagnostics::now(),
+      "sessionId":self.session_id,
+      "build":{"identity":env!("PLVS_APP_ID"), "debug":cfg!(debug_assertions),
+        "revision":option_env!("PLVS_BUILD_REVISION")},
+      "logs":logs,
     })
   }
+}
+
+fn feedback_log_tail(directory: &Path, name: &str, session: &str) -> Value {
+  use crate::feedback_diagnostics::sanitize_log;
+  use serde_json::json;
+  let mut result = json!({"status":"empty", "lines":[], "dropped":0, "shortened":0,
+    "sessionId":session});
+  let entries = match fs::read_dir(directory) {
+    Ok(entries) => entries,
+    Err(_) => {
+      result["status"] = json!("readFailed");
+      return result;
+    }
+  };
+  let active = format!("{name}.log");
+  let prefix = format!("{name}_");
+  let mut paths = Vec::new();
+  for entry in entries {
+    let Ok(entry) = entry else {
+      result["status"] = json!("readFailed");
+      return result;
+    };
+    let file = entry.file_name().to_string_lossy().into_owned();
+    if file == active
+      || (file.starts_with(&prefix) && (file.ends_with(".log") || file.ends_with(".log.bak")))
+    {
+      paths.push((file, entry.path()));
+    }
+  }
+  if paths.is_empty() {
+    result["status"] = json!("fileMissing");
+    return result;
+  }
+  paths.sort_by(|a, b| (a.0 == active).cmp(&(b.0 == active)).then(a.0.cmp(&b.0)));
+  let marker = session_start_marker(session);
+  let mut found = false;
+  let mut lines = VecDeque::new();
+  let mut dropped = 0;
+  let mut shortened = 0;
+  'files: for (_, path) in paths {
+    let contents = match fs::read_to_string(path) {
+      Ok(contents) => contents,
+      Err(_) => {
+        result["status"] = json!("readFailed");
+        break;
+      }
+    };
+    for line in contents.lines() {
+      if line.contains(&marker) {
+        found = true;
+        lines.clear();
+        continue;
+      }
+      if line.contains(SESSION_START_PREFIX) && found {
+        break 'files;
+      }
+      // Operations have their own bounded timeline; don't duplicate them in plain logs.
+      if found && !line.contains("PLVS_OPERATION ") {
+        if lines.len() == 500 {
+          lines.pop_front();
+          dropped += 1;
+        }
+        let safe = sanitize_log(line);
+        if safe.chars().count() > 2048 {
+          shortened += 1;
+        }
+        lines.push_back(safe.chars().take(2048).collect::<String>());
+      }
+    }
+  }
+  if result["status"] != "readFailed" {
+    result["status"] = json!(if !found {
+      "sessionMissing"
+    } else if lines.is_empty() {
+      "empty"
+    } else {
+      "ok"
+    });
+  }
+  result["lines"] = json!(lines);
+  result["dropped"] = json!(dropped);
+  result["shortened"] = json!(shortened);
+  result
 }
 
 pub fn install_panic_hook(reporter: Arc<CrashReporterState>) {
@@ -919,6 +989,50 @@ mod tests {
     assert_eq!(lines.len(), 200);
     assert_eq!(lines.first().unwrap(), "line 31");
     assert_eq!(lines.last().unwrap(), "line 230");
+  }
+
+  #[test]
+  fn feedback_distinguishes_empty_missing_and_wrong_session_logs() {
+    let directory = TestDirectory::new();
+    assert_eq!(
+      feedback_log_tail(&directory.0, "PLVS", "a")["status"],
+      "fileMissing"
+    );
+    fs::write(directory.0.join("PLVS.log"), "unrelated log").unwrap();
+    assert_eq!(
+      feedback_log_tail(&directory.0, "PLVS", "a")["status"],
+      "sessionMissing"
+    );
+    fs::write(directory.0.join("PLVS.log"), session_start_marker("a")).unwrap();
+    assert_eq!(
+      feedback_log_tail(&directory.0, "PLVS", "a")["status"],
+      "empty"
+    );
+    fs::write(directory.0.join("PLVS.log"), [0xff]).unwrap();
+    assert_eq!(
+      feedback_log_tail(&directory.0, "PLVS", "a")["status"],
+      "readFailed"
+    );
+  }
+
+  #[test]
+  fn feedback_log_tail_bounds_lines_and_isolates_the_target_session() {
+    let directory = TestDirectory::new();
+    let mut content = format!("{}\n", session_start_marker("a"));
+    for index in 0..510 {
+      content.push_str(&format!("line {index}\n"));
+    }
+    content.push_str(&format!(
+      "{}\nother session secret",
+      session_start_marker("b")
+    ));
+    fs::write(directory.0.join("PLVS.log"), content).unwrap();
+    let result = feedback_log_tail(&directory.0, "PLVS", "a");
+    assert_eq!(result["status"], "ok");
+    assert_eq!(result["dropped"], 10);
+    assert_eq!(result["lines"].as_array().unwrap().len(), 500);
+    assert_eq!(result["lines"][0], "line 10");
+    assert_eq!(result["lines"][499], "line 509");
   }
 
   #[test]

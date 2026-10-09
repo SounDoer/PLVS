@@ -477,106 +477,117 @@ pub fn apply_dock_form<R: tauri::Runtime>(
 pub fn enter_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   flag: tauri::State<'_, DockedFlag>,
-  normal_shadow: tauri::State<'_, crate::window_chrome::NormalWindowShadow>,
   edge: DockEdge,
   reserve_space: Option<bool>,
   monitor: Option<String>,
   height: Option<u32>,
+  origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<DockStateRecord, String> {
-  let previous = read_dock_state(window.app_handle());
-  let was_docked = flag.0.load(Ordering::Relaxed);
-  let previous_shadow = !was_docked && normal_shadow.load();
-  let previous_form = capture_window_form(&window, previous_shadow)?;
-  let requested_reserve_space = reserve_space_with_support(
-    reserve_space.unwrap_or_else(|| {
-      previous
-        .as_ref()
-        .map(|state| state.reserve_space)
-        .unwrap_or_else(default_reserve_space)
-    }),
-    cfg!(target_os = "windows"),
-  );
-  let height = clamp_dock_height(height.unwrap_or_else(|| {
-    previous
-      .as_ref()
-      .map(|state| state.height)
-      .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
-  }));
-  let transition = (|| -> Result<(Option<String>, bool), String> {
-    #[cfg(target_os = "windows")]
-    crate::appbar::set_reserved(&window, false, edge, height)?;
-    // Persist the latest normal-form geometry, then raise the suppression flag
-    // BEFORE moving the window so the flush thread can't record strip bounds.
-    if !was_docked {
-      save_window_bounds(&window);
-    }
-    flag.0.store(true, Ordering::Relaxed);
-    let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, previous_shadow)?;
-    let reserve_space = requested_reserve_space;
-    #[cfg(target_os = "windows")]
-    let mut reserve_space = reserve_space;
-    #[cfg(target_os = "windows")]
-    if reserve_space {
-      let monitor_key = monitor.as_deref().unwrap_or("primary");
-      let root = window
-        .app_handle()
-        .state::<crate::persistence::commands::PersistenceRuntime>()
-        .identity_root()?;
-      if window
-        .app_handle()
-        .state::<DockReservationLease>()
-        .acquire(&root, monitor_key, edge)?
-      {
-        if let Err(error) = crate::appbar::set_reserved(&window, true, edge, height) {
+  let normal_shadow = window.state::<crate::window_chrome::NormalWindowShadow>();
+  crate::feedback_diagnostics::observe(
+    &window,
+    "dock.enter",
+    origin,
+    serde_json::json!({"edge":edge,"reserveSpace":reserve_space,"height":height,"monitorSpecified":monitor.is_some()}),
+    true,
+    false,
+    || {
+      let previous = read_dock_state(window.app_handle());
+      let was_docked = flag.0.load(Ordering::Relaxed);
+      let previous_shadow = !was_docked && normal_shadow.load();
+      let previous_form = capture_window_form(&window, previous_shadow)?;
+      let requested_reserve_space = reserve_space_with_support(
+        reserve_space.unwrap_or_else(|| {
+          previous
+            .as_ref()
+            .map(|state| state.reserve_space)
+            .unwrap_or_else(default_reserve_space)
+        }),
+        cfg!(target_os = "windows"),
+      );
+      let height = clamp_dock_height(height.unwrap_or_else(|| {
+        previous
+          .as_ref()
+          .map(|state| state.height)
+          .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
+      }));
+      let transition = (|| -> Result<(Option<String>, bool), String> {
+        #[cfg(target_os = "windows")]
+        crate::appbar::set_reserved(&window, false, edge, height)?;
+        // Persist the latest normal-form geometry, then raise the suppression flag
+        // BEFORE moving the window so the flush thread can't record strip bounds.
+        if !was_docked {
+          save_window_bounds(&window);
+        }
+        flag.0.store(true, Ordering::Relaxed);
+        let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, previous_shadow)?;
+        let reserve_space = requested_reserve_space;
+        #[cfg(target_os = "windows")]
+        let mut reserve_space = reserve_space;
+        #[cfg(target_os = "windows")]
+        if reserve_space {
+          let monitor_key = monitor.as_deref().unwrap_or("primary");
+          let root = window
+            .app_handle()
+            .state::<crate::persistence::commands::PersistenceRuntime>()
+            .identity_root()?;
+          if window
+            .app_handle()
+            .state::<DockReservationLease>()
+            .acquire(&root, monitor_key, edge)?
+          {
+            if let Err(error) = crate::appbar::set_reserved(&window, true, edge, height) {
+              window
+                .app_handle()
+                .state::<DockReservationLease>()
+                .release();
+              return Err(error);
+            }
+          } else {
+            window
+              .app_handle()
+              .state::<DockReservationLease>()
+              .release();
+            reserve_space = false;
+          }
+        } else {
           window
             .app_handle()
             .state::<DockReservationLease>()
             .release();
+        }
+        Ok((monitor, reserve_space))
+      })();
+      let (monitor, reserve_space) = match transition {
+        Ok(result) => result,
+        Err(error) => {
+          flag.0.store(was_docked, Ordering::Relaxed);
+          restore_window_form(&window, previous_form);
+          #[cfg(target_os = "windows")]
+          if was_docked {
+            if let Some(previous) = previous.as_ref() {
+              let _ = crate::appbar::set_reserved(
+                &window,
+                previous.reserve_space,
+                previous.edge,
+                previous.height,
+              );
+            }
+          }
           return Err(error);
         }
-      } else {
-        window
-          .app_handle()
-          .state::<DockReservationLease>()
-          .release();
-        reserve_space = false;
-      }
-    } else {
-      window
-        .app_handle()
-        .state::<DockReservationLease>()
-        .release();
-    }
-    Ok((monitor, reserve_space))
-  })();
-  let (monitor, reserve_space) = match transition {
-    Ok(result) => result,
-    Err(error) => {
-      flag.0.store(was_docked, Ordering::Relaxed);
-      restore_window_form(&window, previous_form);
-      #[cfg(target_os = "windows")]
-      if was_docked {
-        if let Some(previous) = previous.as_ref() {
-          let _ = crate::appbar::set_reserved(
-            &window,
-            previous.reserve_space,
-            previous.edge,
-            previous.height,
-          );
-        }
-      }
-      return Err(error);
-    }
-  };
-  let next = DockStateRecord {
-    enabled: true,
-    edge,
-    monitor,
-    reserve_space,
-    height,
-  };
-  write_dock_state(window.app_handle(), &next);
-  Ok(next)
+      };
+      let next = DockStateRecord {
+        enabled: true,
+        edge,
+        monitor,
+        reserve_space,
+        height,
+      };
+      write_dock_state(window.app_handle(), &next);
+      Ok(next)
+    },
+  )
 }
 
 #[tauri::command]
@@ -587,88 +598,99 @@ pub fn exit_dock<R: tauri::Runtime>(
   decorations: bool,
   always_on_top: bool,
   bounds: Option<WindowBounds>,
+  origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
-  crate::dock_accessories::hide_all(window.app_handle());
-  #[cfg(target_os = "windows")]
-  let unreserve_result = crate::appbar::set_reserved(
+  crate::feedback_diagnostics::observe(
     &window,
+    "dock.exit",
+    origin,
+    serde_json::json!({"decorations":decorations,"alwaysOnTop":always_on_top}),
+    true,
     false,
-    DockEdge::Bottom,
-    read_dock_state(window.app_handle())
-      .map(|state| clamp_dock_height(state.height))
-      .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
-  );
-  window
-    .app_handle()
-    .state::<DockReservationLease>()
-    .release();
-  #[cfg(target_os = "windows")]
-  unreserve_result?;
-  window
-    .set_resizable(true)
-    .map_err(|e| format!("resizable: {e}"))?;
-  window
-    .set_decorations(decorations)
-    .map_err(|e| format!("decorations: {e}"))?;
-  #[cfg(target_os = "windows")]
-  crate::window_chrome::set_native_border(&window, decorations);
-  // Restore the current normal-window shadow before geometry. On macOS zero
-  // surface opacity deliberately has no native shadow; other normal forms keep
-  // it even when borderless.
-  let _ = window.set_shadow(normal_shadow.load());
-  window
-    .set_always_on_top(always_on_top)
-    .map_err(|e| format!("always on top: {e}"))?;
-  let saved: Option<WindowBounds> =
-    bounds.or_else(|| read_persisted_window_bounds(window.app_handle()));
-  let monitors: Vec<MonitorRect> = window
-    .available_monitors()
-    .unwrap_or_default()
-    .iter()
-    .map(|m| MonitorRect {
-      x: m.position().x,
-      y: m.position().y,
-      width: m.size().width,
-      height: m.size().height,
-    })
-    .collect();
-  let fit = primary_fit_target(&window, &monitors);
-  // Size, position, size: on Windows a move onto a monitor with another DPI rescales the size set
-  // before it; on macOS a content-size change keeps the bottom-left corner, so the size must
-  // already be final when the top-left is placed.
-  if let Some(b) = saved {
-    let clamped = clamp_to_visible(b, &monitors, fit);
-    let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-    let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
-    let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-    if b.is_maximized {
-      let _ = window.maximize();
-    }
-  } else if !monitors.is_empty() {
-    // No saved normal bounds (e.g. first run docked): don't leave the window strip-sized; place the
-    // default window by the first-run rule.
-    let fallback = default_window_bounds(fit);
-    let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
-    let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
-    let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
-  }
-  let app = window.app_handle();
-  let prev = read_dock_state(app);
-  write_dock_state(
-    app,
-    &DockStateRecord {
-      enabled: false,
-      edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
-      monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
-      reserve_space: prev.as_ref().map(|s| s.reserve_space).unwrap_or(true),
-      height: prev
-        .as_ref()
-        .map(|s| clamp_dock_height(s.height))
-        .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+    || {
+      crate::dock_accessories::hide_all(window.app_handle());
+      #[cfg(target_os = "windows")]
+      let unreserve_result = crate::appbar::set_reserved(
+        &window,
+        false,
+        DockEdge::Bottom,
+        read_dock_state(window.app_handle())
+          .map(|state| clamp_dock_height(state.height))
+          .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+      );
+      window
+        .app_handle()
+        .state::<DockReservationLease>()
+        .release();
+      #[cfg(target_os = "windows")]
+      unreserve_result?;
+      window
+        .set_resizable(true)
+        .map_err(|e| format!("resizable: {e}"))?;
+      window
+        .set_decorations(decorations)
+        .map_err(|e| format!("decorations: {e}"))?;
+      #[cfg(target_os = "windows")]
+      crate::window_chrome::set_native_border(&window, decorations);
+      // Restore the current normal-window shadow before geometry. On macOS zero
+      // surface opacity deliberately has no native shadow; other normal forms keep
+      // it even when borderless.
+      let _ = window.set_shadow(normal_shadow.load());
+      window
+        .set_always_on_top(always_on_top)
+        .map_err(|e| format!("always on top: {e}"))?;
+      let saved: Option<WindowBounds> =
+        bounds.or_else(|| read_persisted_window_bounds(window.app_handle()));
+      let monitors: Vec<MonitorRect> = window
+        .available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| MonitorRect {
+          x: m.position().x,
+          y: m.position().y,
+          width: m.size().width,
+          height: m.size().height,
+        })
+        .collect();
+      let fit = primary_fit_target(&window, &monitors);
+      // Size, position, size: on Windows a move onto a monitor with another DPI rescales the size set
+      // before it; on macOS a content-size change keeps the bottom-left corner, so the size must
+      // already be final when the top-left is placed.
+      if let Some(b) = saved {
+        let clamped = clamp_to_visible(b, &monitors, fit);
+        let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
+        let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
+        let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
+        if b.is_maximized {
+          let _ = window.maximize();
+        }
+      } else if !monitors.is_empty() {
+        // No saved normal bounds (e.g. first run docked): don't leave the window strip-sized; place the
+        // default window by the first-run rule.
+        let fallback = default_window_bounds(fit);
+        let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
+        let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
+        let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
+      }
+      let app = window.app_handle();
+      let prev = read_dock_state(app);
+      write_dock_state(
+        app,
+        &DockStateRecord {
+          enabled: false,
+          edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
+          monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
+          reserve_space: prev.as_ref().map(|s| s.reserve_space).unwrap_or(true),
+          height: prev
+            .as_ref()
+            .map(|s| clamp_dock_height(s.height))
+            .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+        },
+      );
+      flag.0.store(false, Ordering::Relaxed);
+      Ok(())
     },
-  );
-  flag.0.store(false, Ordering::Relaxed);
-  Ok(())
+  )
 }
 
 #[tauri::command]
@@ -696,69 +718,80 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
   flag: tauri::State<'_, DockedFlag>,
   enabled: bool,
   edge: DockEdge,
+  origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
-  if !flag.0.load(Ordering::Relaxed) {
-    return Err("window is not docked".into());
-  }
+  crate::feedback_diagnostics::observe(
+    &window,
+    "dock.reserve",
+    origin,
+    serde_json::json!({"enabled":enabled,"edge":edge}),
+    true,
+    false,
+    || {
+      if !flag.0.load(Ordering::Relaxed) {
+        return Err("window is not docked".into());
+      }
 
-  #[cfg(target_os = "windows")]
-  {
-    let previous = read_dock_state(window.app_handle());
-    let height = read_dock_state(window.app_handle())
-      .map(|state| clamp_dock_height(state.height))
-      .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT);
-    if enabled {
-      let root = window
-        .app_handle()
-        .state::<crate::persistence::commands::PersistenceRuntime>()
-        .identity_root()?;
-      let monitor = previous
-        .as_ref()
-        .and_then(|state| state.monitor.as_deref())
-        .unwrap_or("primary");
-      if !window
-        .app_handle()
-        .state::<DockReservationLease>()
-        .acquire(&root, monitor, edge)?
+      #[cfg(target_os = "windows")]
       {
-        return Err("Another PLVS instance already reserves this screen edge.".into());
+        let previous = read_dock_state(window.app_handle());
+        let height = read_dock_state(window.app_handle())
+          .map(|state| clamp_dock_height(state.height))
+          .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT);
+        if enabled {
+          let root = window
+            .app_handle()
+            .state::<crate::persistence::commands::PersistenceRuntime>()
+            .identity_root()?;
+          let monitor = previous
+            .as_ref()
+            .and_then(|state| state.monitor.as_deref())
+            .unwrap_or("primary");
+          if !window
+            .app_handle()
+            .state::<DockReservationLease>()
+            .acquire(&root, monitor, edge)?
+          {
+            return Err("Another PLVS instance already reserves this screen edge.".into());
+          }
+        }
+        if let Err(error) = crate::appbar::set_reserved(&window, enabled, edge, height) {
+          if enabled {
+            window
+              .app_handle()
+              .state::<DockReservationLease>()
+              .release();
+          }
+          return Err(error);
+        }
+        if !enabled {
+          window
+            .app_handle()
+            .state::<DockReservationLease>()
+            .release();
+        }
       }
-    }
-    if let Err(error) = crate::appbar::set_reserved(&window, enabled, edge, height) {
+      #[cfg(not(target_os = "windows"))]
       if enabled {
-        window
-          .app_handle()
-          .state::<DockReservationLease>()
-          .release();
+        return Err("reserve screen space is only available on Windows".into());
       }
-      return Err(error);
-    }
-    if !enabled {
-      window
-        .app_handle()
-        .state::<DockReservationLease>()
-        .release();
-    }
-  }
-  #[cfg(not(target_os = "windows"))]
-  if enabled {
-    return Err("reserve screen space is only available on Windows".into());
-  }
 
-  let previous = read_dock_state(window.app_handle());
-  write_dock_state(
-    window.app_handle(),
-    &DockStateRecord {
-      enabled: true,
-      edge,
-      monitor: previous.and_then(|state| state.monitor),
-      reserve_space: enabled,
-      height: read_dock_state(window.app_handle())
-        .map(|state| clamp_dock_height(state.height))
-        .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+      let previous = read_dock_state(window.app_handle());
+      write_dock_state(
+        window.app_handle(),
+        &DockStateRecord {
+          enabled: true,
+          edge,
+          monitor: previous.and_then(|state| state.monitor),
+          reserve_space: enabled,
+          height: read_dock_state(window.app_handle())
+            .map(|state| clamp_dock_height(state.height))
+            .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+        },
+      );
+      Ok(())
     },
-  );
-  Ok(())
+  )
 }
 
 /// Temporarily hide or restore the complete Dock form without changing the
@@ -769,57 +802,68 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   flag: tauri::State<'_, DockedFlag>,
   suspended: bool,
+  origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<DockStateRecord, String> {
-  if !flag.0.load(Ordering::Relaxed) {
-    return Err("window is not docked".into());
-  }
-  let mut state = read_dock_state(window.app_handle())
-    .filter(|state| state.enabled)
-    .ok_or_else(|| "dock state unavailable".to_string())?;
-
-  if suspended {
-    crate::dock_accessories::hide_all(window.app_handle());
-    #[cfg(target_os = "windows")]
-    if state.reserve_space {
-      crate::appbar::set_reserved(&window, false, state.edge, state.height)?;
-    }
-    window
-      .hide()
-      .map_err(|e| format!("suspend dock hide: {e}"))?;
-    window
-      .set_skip_taskbar(true)
-      .map_err(|e| format!("suspend dock taskbar: {e}"))?;
-    return Ok(state);
-  }
-
-  // Resuming a suspended Dock: the guard above already rejected a window that
-  // is not docked, so the form to roll back to is the strip.
-  state.monitor = apply_dock_form(
+  crate::feedback_diagnostics::observe(
     &window,
-    state.edge,
-    state.monitor.as_deref(),
-    state.height,
+    "dock.visibility",
+    origin,
+    serde_json::json!({"suspended":suspended}),
+    true,
     false,
-  )?;
-  #[cfg(target_os = "windows")]
-  if state.reserve_space
-    && crate::appbar::set_reserved(&window, true, state.edge, state.height).is_err()
-  {
-    // Resume as a usable overlay Dock. The UI receives this resolved record,
-    // so Reserve never claims to be active when Shell rejected registration.
-    state.reserve_space = false;
-    write_dock_state(window.app_handle(), &state);
-  }
-  window
-    .set_skip_taskbar(false)
-    .map_err(|e| format!("resume dock taskbar: {e}"))?;
-  window
-    .show()
-    .map_err(|e| format!("resume dock show: {e}"))?;
-  window
-    .set_focus()
-    .map_err(|e| format!("resume dock focus: {e}"))?;
-  Ok(state)
+    || {
+      if !flag.0.load(Ordering::Relaxed) {
+        return Err("window is not docked".into());
+      }
+      let mut state = read_dock_state(window.app_handle())
+        .filter(|state| state.enabled)
+        .ok_or_else(|| "dock state unavailable".to_string())?;
+
+      if suspended {
+        crate::dock_accessories::hide_all(window.app_handle());
+        #[cfg(target_os = "windows")]
+        if state.reserve_space {
+          crate::appbar::set_reserved(&window, false, state.edge, state.height)?;
+        }
+        window
+          .hide()
+          .map_err(|e| format!("suspend dock hide: {e}"))?;
+        window
+          .set_skip_taskbar(true)
+          .map_err(|e| format!("suspend dock taskbar: {e}"))?;
+        return Ok(state);
+      }
+
+      // Resuming a suspended Dock: the guard above already rejected a window that
+      // is not docked, so the form to roll back to is the strip.
+      state.monitor = apply_dock_form(
+        &window,
+        state.edge,
+        state.monitor.as_deref(),
+        state.height,
+        false,
+      )?;
+      #[cfg(target_os = "windows")]
+      if state.reserve_space
+        && crate::appbar::set_reserved(&window, true, state.edge, state.height).is_err()
+      {
+        // Resume as a usable overlay Dock. The UI receives this resolved record,
+        // so Reserve never claims to be active when Shell rejected registration.
+        state.reserve_space = false;
+        write_dock_state(window.app_handle(), &state);
+      }
+      window
+        .set_skip_taskbar(false)
+        .map_err(|e| format!("resume dock taskbar: {e}"))?;
+      window
+        .show()
+        .map_err(|e| format!("resume dock show: {e}"))?;
+      window
+        .set_focus()
+        .map_err(|e| format!("resume dock focus: {e}"))?;
+      Ok(state)
+    },
+  )
 }
 
 #[tauri::command]
@@ -828,56 +872,68 @@ pub fn set_dock_height<R: tauri::Runtime>(
   flag: tauri::State<'_, DockedFlag>,
   height: u32,
   persist: bool,
+  origin: Option<crate::feedback_diagnostics::Origin>,
+  cancelled: Option<bool>,
 ) -> Result<u32, String> {
-  if !flag.0.load(Ordering::Relaxed) {
-    return Err("window is not docked".into());
-  }
-  let height = clamp_dock_height(height);
-  let previous = read_dock_state(window.app_handle()).unwrap_or(DockStateRecord {
-    enabled: true,
-    edge: DockEdge::Bottom,
-    monitor: None,
-    reserve_space: true,
-    height: DOCK_DEFAULT_LOGICAL_HEIGHT,
-  });
-  let (work_area, scale, resolved_monitor) =
-    work_area_and_scale(&window, previous.monitor.as_deref())?;
-
-  #[cfg(target_os = "windows")]
-  if previous.reserve_space {
-    if persist {
-      crate::appbar::set_reserved(&window, true, previous.edge, height)?;
-    } else {
-      crate::appbar::preview_reserved_height(&window, previous.edge, height)?;
-    }
-  } else {
-    crate::appbar::position_overlay(&window, previous.edge, work_area, scale, height)?;
-  }
-  #[cfg(not(target_os = "windows"))]
-  {
-    let physical_height = (height as f64 * scale).round() as u32;
-    let rect = dock_strip_rect(work_area, previous.edge, physical_height);
-    window
-      .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
-      .map_err(|e| format!("size: {e}"))?;
-    window
-      .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
-      .map_err(|e| format!("position: {e}"))?;
-  }
-
-  if persist {
-    write_dock_state(
-      window.app_handle(),
-      &DockStateRecord {
+  crate::feedback_diagnostics::observe(
+    &window,
+    "dock.resize",
+    origin,
+    serde_json::json!({"height":height}),
+    persist,
+    cancelled.unwrap_or(false),
+    || {
+      if !flag.0.load(Ordering::Relaxed) {
+        return Err("window is not docked".into());
+      }
+      let height = clamp_dock_height(height);
+      let previous = read_dock_state(window.app_handle()).unwrap_or(DockStateRecord {
         enabled: true,
-        edge: previous.edge,
-        monitor: resolved_monitor.or(previous.monitor),
-        reserve_space: previous.reserve_space,
-        height,
-      },
-    );
-  }
-  Ok(height)
+        edge: DockEdge::Bottom,
+        monitor: None,
+        reserve_space: true,
+        height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+      });
+      let (work_area, scale, resolved_monitor) =
+        work_area_and_scale(&window, previous.monitor.as_deref())?;
+
+      #[cfg(target_os = "windows")]
+      if previous.reserve_space {
+        if persist {
+          crate::appbar::set_reserved(&window, true, previous.edge, height)?;
+        } else {
+          crate::appbar::preview_reserved_height(&window, previous.edge, height)?;
+        }
+      } else {
+        crate::appbar::position_overlay(&window, previous.edge, work_area, scale, height)?;
+      }
+      #[cfg(not(target_os = "windows"))]
+      {
+        let physical_height = (height as f64 * scale).round() as u32;
+        let rect = dock_strip_rect(work_area, previous.edge, physical_height);
+        window
+          .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
+          .map_err(|e| format!("size: {e}"))?;
+        window
+          .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
+          .map_err(|e| format!("position: {e}"))?;
+      }
+
+      if persist {
+        write_dock_state(
+          window.app_handle(),
+          &DockStateRecord {
+            enabled: true,
+            edge: previous.edge,
+            monitor: resolved_monitor.or(previous.monitor),
+            reserve_space: previous.reserve_space,
+            height,
+          },
+        );
+      }
+      Ok(height)
+    },
+  )
 }
 
 #[cfg(test)]

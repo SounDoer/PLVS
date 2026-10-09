@@ -112,16 +112,16 @@ export function applyWindowBounds(bounds) {
  * @param {boolean} reserveSpace
  * @param {number} height
  */
-export function enterDock(edge, reserveSpace, monitor, height) {
-  return invoke("enter_dock", { edge, reserveSpace, monitor, height });
+export function enterDock(edge, reserveSpace, monitor, height, origin = "ui") {
+  return invoke("enter_dock", { edge, reserveSpace, monitor, height, origin });
 }
 
 /**
  * Exit dock mode. `decorations` / `alwaysOnTop` restore the user's normal-form
  * window attributes (dock overrides them at runtime without persisting).
  */
-export function exitDock({ decorations, alwaysOnTop, bounds }) {
-  return invoke("exit_dock", { decorations, alwaysOnTop, bounds: bounds ?? null });
+export function exitDock({ decorations, alwaysOnTop, bounds, origin = "ui" }) {
+  return invoke("exit_dock", { decorations, alwaysOnTop, bounds: bounds ?? null, origin });
 }
 
 /** Read native Dock state plus whether the boot restore has settled. */
@@ -130,13 +130,13 @@ export function getDockState() {
 }
 
 /** Windows-only: register or remove the dock strip as a Win32 AppBar. */
-export function setDockReserveSpace({ enabled, edge }) {
-  return invoke("set_dock_reserve_space", { enabled, edge });
+export function setDockReserveSpace({ enabled, edge, origin = "ui" }) {
+  return invoke("set_dock_reserve_space", { enabled, edge, origin });
 }
 
 /** Resize the dock strip in logical pixels. Preview updates are not persisted. */
-export function setDockHeight({ height, persist = true }) {
-  return invoke("set_dock_height", { height, persist });
+export function setDockHeight({ height, persist = true, cancelled = false, origin = "ui" }) {
+  return invoke("set_dock_height", { height, persist, cancelled, origin });
 }
 
 /** Temporarily hide/show the complete Dock form without changing dockState.enabled. */
@@ -144,8 +144,8 @@ export function setDockHeight({ height, persist = true }) {
  * Temporarily hide/show the complete Dock form without changing dockState.enabled.
  * @param {boolean} suspended
  */
-export function setDockSuspended(suspended) {
-  return invoke("set_dock_suspended", { suspended });
+export function setDockSuspended(suspended, origin = "lifecycle") {
+  return invoke("set_dock_suspended", { suspended, origin });
 }
 
 /**
@@ -359,6 +359,6 @@ export function setCrashPromptEnabled(enabled) {
   return invoke("set_crash_prompt_enabled", { enabled });
 }
 
-export function readFeedbackDiagnostics() {
-  return invoke("read_feedback_diagnostics");
+export function readFeedbackDiagnostics(frontend = null) {
+  return invoke("read_feedback_diagnostics", { frontend });
 }

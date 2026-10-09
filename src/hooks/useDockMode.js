@@ -12,6 +12,7 @@ import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
 import { isWindows, supportsDockMode } from "../lib/platform.js";
+import { updateDiagnosticDock } from "../lib/feedbackDiagnostics.js";
 
 function supportsDockReserveSpace() {
   return isWindows();
@@ -60,6 +61,15 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   const heightTransitionTailRef = useRef(Promise.resolve());
   const heightRequestRef = useRef(0);
 
+  useEffect(() => {
+    updateDiagnosticDock({
+      enabled: dock.enabled,
+      suspended: dockSuspended,
+      height: dock.height,
+      previewHeight: dockPreviewHeight,
+    });
+  }, [dock.enabled, dock.height, dockSuspended, dockPreviewHeight]);
+
   const commitDock = useCallback((update) => {
     const next = typeof update === "function" ? update(dockRef.current) : update;
     dockRef.current = next;
@@ -105,7 +115,13 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   }, [commitDock]);
 
   const enterDockMode = useCallback(
-    (/** @type {string} */ edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
+    (
+      /** @type {string} */ edge,
+      reserveSpaceOverride,
+      monitorOverride,
+      heightOverride,
+      origin = undefined
+    ) => {
       // Before the platform checks so the refusal does not depend on where it runs, and before
       // enqueueTransition so a blocked entry never joins the transition chain.
       assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter);
@@ -121,7 +137,8 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           edge,
           normalizedReserveOverride,
           monitorOverride,
-          hasHeightOverride ? clampDockHeight(heightOverride) : undefined
+          hasHeightOverride ? clampDockHeight(heightOverride) : undefined,
+          ...(origin ? [origin] : [])
         );
         const monitor =
           typeof resolved?.monitor === "string"
@@ -157,11 +174,11 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   );
 
   const exitDockMode = useCallback(
-    ({ decorations, alwaysOnTop, bounds }) => {
+    ({ decorations, alwaysOnTop, bounds, origin = undefined }) => {
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
         const wasEnabled = dockRef.current.enabled;
-        await exitDock({ decorations, alwaysOnTop, bounds });
+        await exitDock({ decorations, alwaysOnTop, bounds, ...(origin ? { origin } : {}) });
         commitDock((latest) => ({ ...latest, enabled: false }));
         setDockSuspendedState(false);
         if (wasEnabled) presetsStore.patch({ dirty: true });
@@ -171,7 +188,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   );
 
   const applyReserveSpace = useCallback(
-    async (/** @type {boolean} */ enabled, edgeOverride) => {
+    async (/** @type {boolean} */ enabled, edgeOverride, origin = undefined) => {
       const current = dockRef.current;
       const edge =
         edgeOverride === "top" || edgeOverride === "bottom" ? edgeOverride : current.edge;
@@ -181,7 +198,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
         }
         return;
       }
-      await setDockReserveSpace({ enabled, edge });
+      await setDockReserveSpace({ enabled, edge, ...(origin ? { origin } : {}) });
       commitDock((latest) => ({ ...latest, edge, reserveSpace: enabled }));
       if (current.reserveSpace !== enabled || current.edge !== edge) {
         presetsStore.patch({ dirty: true });
@@ -191,9 +208,9 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   );
 
   const setReserveSpace = useCallback(
-    (enabled, edgeOverride) => {
+    (enabled, edgeOverride, origin = undefined) => {
       if (!isTauri()) return Promise.resolve();
-      return enqueueTransition(() => applyReserveSpace(enabled, edgeOverride));
+      return enqueueTransition(() => applyReserveSpace(enabled, edgeOverride, origin));
     },
     [applyReserveSpace, enqueueTransition]
   );
@@ -204,7 +221,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   }, [applyReserveSpace, enqueueTransition]);
 
   const resizeDockHeight = useCallback(
-    (height, { persist = true } = {}) => {
+    (height, { persist = true, cancelled = false, origin = undefined } = {}) => {
       if (!isTauri() || !dockRef.current.enabled) return;
       const previousHeight = dockRef.current.height;
       const nextHeight = clampDockHeight(height);
@@ -212,7 +229,12 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       setDockPreviewHeight(nextHeight);
       const operation = heightTransitionTailRef.current.then(async () => {
         try {
-          const resolved = await setDockHeight({ height: nextHeight, persist });
+          const resolved = await setDockHeight({
+            height: nextHeight,
+            persist,
+            ...(cancelled ? { cancelled } : {}),
+            ...(origin ? { origin } : {}),
+          });
           if (persist && request === heightRequestRef.current) {
             commitDock((latest) => ({ ...latest, height: clampDockHeight(resolved) }));
             setDockPreviewHeight(null);

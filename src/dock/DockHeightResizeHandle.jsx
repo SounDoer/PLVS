@@ -16,9 +16,15 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
   const frameRef = useRef(null);
   const currentHeight = clampDockHeight(height);
 
-  const commit = (/** @type {number} */ nextHeight, /** @type {boolean} */ persist) => {
+  const commit = (
+    /** @type {number} */ nextHeight,
+    /** @type {boolean} */ persist,
+    cancelled = false
+  ) => {
     if (disabled || !onHeightChange) return;
-    void Promise.resolve(onHeightChange(clampDockHeight(nextHeight), { persist })).catch(() => {});
+    void Promise.resolve(
+      onHeightChange(clampDockHeight(nextHeight), { persist, ...(cancelled ? { cancelled } : {}) })
+    ).catch(() => {});
   };
 
   function finishDrag() {
@@ -27,7 +33,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
     if (handleRef.current) delete handleRef.current.dataset.dragging;
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
-    if (drag) commit(drag.latestHeight, true);
+    if (drag) commit(drag.latestHeight, true, true);
   }
 
   return (

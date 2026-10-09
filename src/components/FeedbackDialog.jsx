@@ -8,6 +8,7 @@ import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { LinkButton } from "@/components/ui/link-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
+import { frontendDiagnostics } from "../lib/feedbackDiagnostics.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_POS = { x: 120, y: 120 };
@@ -21,6 +22,15 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
   const [attachDiagnostics, setAttachDiagnostics] = useState(false);
+  const [diagnosticsPreview, setDiagnosticsPreview] = useState(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [status, setStatus] = useState(
     /** @type {"idle"|"preparing"|"sending"|"sent"|"error"|"diagnostics-error"} */ ("idle")
   );
@@ -37,17 +47,37 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
   const busy = status === "preparing" || status === "sending";
   const canSubmit = content.trim().length > 0 && !emailInvalid && !busy;
 
+  async function prepareDiagnostics(refresh = false) {
+    if (diagnosticsPreview && !refresh) return diagnosticsPreview;
+    const result = await readFeedbackDiagnostics(frontendDiagnostics());
+    if (mountedRef.current) setDiagnosticsPreview(result);
+    return result;
+  }
+
+  async function previewDiagnostics(refresh = false) {
+    setStatus("preparing");
+    try {
+      await prepareDiagnostics(refresh);
+      if (!mountedRef.current) return;
+      setShowDiagnostics(true);
+      setStatus("idle");
+    } catch {
+      if (mountedRef.current) setStatus("diagnostics-error");
+    }
+  }
+
   async function handleSubmit() {
     let diagnostics;
     if (attachDiagnostics) {
       setStatus("preparing");
       try {
-        diagnostics = await readFeedbackDiagnostics();
+        diagnostics = await prepareDiagnostics();
       } catch {
         setStatus("diagnostics-error");
         return;
       }
     }
+    if (!mountedRef.current) return;
     setStatus("sending");
     const trimmedEmail = email.trim();
     const ok = await submitFeedback({
@@ -69,16 +99,16 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
       role="dialog"
       aria-label="Send feedback"
       className={`${FLOATING_WINDOW_CLASS} w-80 gap-2`}
-      style={{ left: pos.x, top: pos.y }}
+      style={{ left: pos.x, top: pos.y, maxHeight: `calc(100vh - ${pos.y + 12}px)` }}
     >
       <div
         {...dragHandlers}
-        className="flex cursor-move items-center justify-between border-b border-border px-3 py-2"
+        className="flex shrink-0 cursor-move items-center justify-between border-b border-border px-3 py-2"
       >
         <span className="text-[length:var(--ui-fs-panel-title)] font-semibold">Send Feedback</span>
       </div>
 
-      <div className="flex flex-col gap-2 px-3 py-2">
+      <div className="flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-2">
         <textarea
           aria-label="Feedback content"
           value={content}
@@ -100,17 +130,57 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
           <Checkbox
             aria-label="attach diagnostics"
             checked={attachDiagnostics}
-            onChange={(event) => setAttachDiagnostics(event.target.checked)}
+            onChange={(event) => {
+              setAttachDiagnostics(event.target.checked);
+              setDiagnosticsPreview(null);
+              setShowDiagnostics(false);
+              setStatus("idle");
+            }}
             disabled={busy}
           />
           <span>
             <span className="font-medium">Attach Diagnostics</span>
             <span className="mt-0 block text-[length:var(--ui-fs-axis)] text-muted-foreground">
-              Includes the PLVS version, system details, and the last 200 log lines. Audio is never
-              attached.
+              Includes app and window state, recent Dock operations, and up to 500 log lines. Audio
+              and screenshots are never attached.
             </span>
           </span>
         </label>
+        {attachDiagnostics && (
+          <>
+            <LinkButton
+              className="self-start text-[length:var(--ui-fs-axis)]"
+              disabled={busy}
+              onClick={() =>
+                showDiagnostics ? setShowDiagnostics(false) : void previewDiagnostics()
+              }
+            >
+              {showDiagnostics ? "Hide Diagnostics" : "View Diagnostics"}
+            </LinkButton>
+            {showDiagnostics && diagnosticsPreview && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                  This snapshot will be attached when you send. Missing sections and shortened
+                  records are marked in the file.
+                </span>
+                <pre
+                  aria-label="diagnostics preview"
+                  className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border p-2 text-[length:var(--ui-fs-axis)]"
+                >
+                  {JSON.stringify(diagnosticsPreview, null, 2)}
+                </pre>
+                <LinkButton
+                  disabled={busy}
+                  onClick={() => {
+                    void previewDiagnostics(true);
+                  }}
+                >
+                  Refresh Diagnostics
+                </LinkButton>
+              </div>
+            )}
+          </>
+        )}
         <LinkButton
           className="self-start text-[length:var(--ui-fs-axis)] underline-offset-4 hover:underline"
           onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
@@ -139,7 +209,7 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
         <Button variant="ghost" onClick={onClose}>
           Cancel
         </Button>

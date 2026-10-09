@@ -268,9 +268,20 @@
           Feedback is sent only when you select <strong>Send</strong>. The request contains the text
           you wrote and, if supplied, your reply email. Diagnostics are off by default. If you select
           <strong>Attach Diagnostics</strong>, the request also contains the PLVS version, operating
-          system, processor architecture, and the last 200 PLVS log lines. Home-directory paths are
-          redacted before diagnostic logs leave the device. Log lines can still contain device
-          labels, application events, and other paths, so review this choice before sending.
+          system, processor architecture, build identity, collection time, window and Dock state,
+          screen geometry and scaling, recent Dock operations, and up to 500 PLVS log lines.
+          Structured snapshots exclude custom names, file paths, audio and screenshots. Diagnostic
+          log text is redacted from detected absolute paths onwards; free-form messages can still
+          contain device labels. Use <strong>View Diagnostics</strong> to inspect the attachment.
+          The reviewed snapshot is sent unless you refresh it or turn diagnostics off.
+        </p>
+        <p>
+          Dock operation summaries are kept locally per workspace, up to 100 records and 64 KiB,
+          including the current and previous recorded run with random session identifiers.
+          New records replace old ones; ongoing drags are summarized rather than recorded per
+          mouse movement. Display geometry is checked periodically and only changes are retained.
+          Attachments have a size limit and identify missing sections or omitted records.
+          These records are not sent automatically.
         </p>
         <p>
           The receiving service adds the request origin and user-agent header to the email for

@@ -70,7 +70,7 @@ describe("FeedbackDialog", () => {
     expect(
       /** @type {HTMLInputElement} */ (screen.getByLabelText("attach diagnostics")).checked
     ).toBe(false);
-    expect(screen.getByText(/version, system details, and the last 200 log lines/i)).toBeTruthy();
+    expect(screen.getByText(/recent Dock operations, and up to 500 log lines/i)).toBeTruthy();
     expect(
       /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Send" })).disabled
     ).toBe(true);
@@ -202,5 +202,72 @@ describe("FeedbackDialog", () => {
     expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Feedback content")).value).toBe(
       "Great app!"
     );
+  });
+
+  it("previews locally and sends exactly the reviewed partial snapshot", async () => {
+    const diagnostics = {
+      schemaVersion: 2,
+      native: { status: "timeout" },
+      logs: { status: "empty", lines: [] },
+    };
+    readFeedbackDiagnostics.mockResolvedValueOnce(diagnostics);
+    vi.mocked(submitFeedback).mockResolvedValue(false);
+    render(<FeedbackDialog onClose={vi.fn()} />);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "Dock vanished" },
+    });
+    fireEvent.click(screen.getByLabelText("attach diagnostics"));
+    fireEvent.click(screen.getByRole("button", { name: "View Diagnostics" }));
+    expect((await screen.findByLabelText("diagnostics preview")).textContent).toContain(
+      '"timeout"'
+    );
+    expect(submitFeedback).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(submitFeedback).toHaveBeenCalledWith({
+        content: "Dock vanished",
+        email: undefined,
+        diagnostics,
+      })
+    );
+    expect(readFeedbackDiagnostics).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not attach a previously previewed snapshot after opting out", async () => {
+    readFeedbackDiagnostics.mockResolvedValueOnce({ schemaVersion: 2 });
+    vi.mocked(submitFeedback).mockResolvedValue(false);
+    render(<FeedbackDialog onClose={vi.fn()} />);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "Dock vanished" },
+    });
+    fireEvent.click(screen.getByLabelText("attach diagnostics"));
+    fireEvent.click(screen.getByRole("button", { name: "View Diagnostics" }));
+    await screen.findByLabelText("diagnostics preview");
+    fireEvent.click(screen.getByLabelText("attach diagnostics"));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(submitFeedback).toHaveBeenCalledWith({ content: "Dock vanished", email: undefined })
+    );
+  });
+
+  it("does not send after the feedback editor unmounts during collection", async () => {
+    /** @type {(value: any) => void} */
+    let resolve;
+    readFeedbackDiagnostics.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    const view = render(<FeedbackDialog onClose={vi.fn()} />);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "Dock vanished" },
+    });
+    fireEvent.click(screen.getByLabelText("attach diagnostics"));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    view.unmount();
+    resolve({ schemaVersion: 2 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(submitFeedback).not.toHaveBeenCalled();
   });
 });

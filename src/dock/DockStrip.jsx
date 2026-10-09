@@ -78,6 +78,7 @@ export function DockStrip({
             <div
               key={panel.id}
               data-testid="dock-module"
+              data-module-id={dockModuleId}
               data-panel-id={panel.id}
               data-hover-highlighted={hoveredPanelId === panel.id ? "true" : undefined}
               className={cn(

@@ -503,6 +503,38 @@ Dock deliberately lacks:
 
 ---
 
+## Feedback diagnostics
+
+Feedback diagnostics schema v2 is independent of the schema-v1 crash report. Native collection
+lives in `src-tauri/src/feedback_diagnostics.rs`; the frontend supplies only the allowlisted
+viewport and Dock mirror from `src/lib/feedbackDiagnostics.js`. Native window getters are wrapped
+individually with collection status, and one native collector per process has a 1.5-second export
+deadline. A timeout does not claim the window is hidden or prevent the rest of the export.
+
+The common native Dock command boundary records requested changes, actual before/after geometry,
+origin, timestamps, duration and handled errors. Preview height commands update an in-memory
+aggregate. The first request, first error and final result are persisted, not every mouse move;
+completed operations also enter the rotating application log. Cancellation retains the existing
+behavior of committing the last preview height, but has its own diagnostic outcome. A separate
+non-audio watcher samples monitor geometry every two seconds and records changes, including work
+area changes caused by PLVS itself; these are observations, not attributed external causes.
+
+Each workspace owns one atomically replaced journal under the app-data `diagnostics/` directory,
+bounded to 100 records and 64 KiB. On restart, the most recent recorded session is retained and
+unfinished operations are marked interrupted. Random session identifiers separate previous and
+current evidence; monitor names and user configuration are not copied. The exporter omits the
+structured operation lines from the ordinary log tail to avoid duplicating the timeline.
+
+The ordinary log tail reports file/session absence separately from empty or unreadable logs, caps
+at 500 lines and shortens individual lines to 2048 Unicode characters. Absolute path-bearing
+tails are redacted. The entire compact JSON export is limited to 120 KiB, below the receiving
+service's 128 KiB cap, including UTF-8 and JSON escaping. Trimming removes ordinary logs first,
+then older successful operations before failures, and reports the omitted counts. The feedback
+dialog sends the exact locally previewed snapshot unless refreshed; opting out discards it.
+
+Deploy the receiver's v1/v2 validation before distributing a client that emits v2. Existing crash
+reports and older clients retain their v1 contracts. The receiver lives in `soundoer-newsletter`.
+
 ## 8. Platform notes
 
 | Platform | System audio path                                                  | Minimum version                                                                  |

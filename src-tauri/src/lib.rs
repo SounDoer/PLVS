@@ -20,6 +20,7 @@ mod dock_accessories;
 pub mod doctor;
 mod dsp;
 mod engine;
+mod feedback_diagnostics;
 mod file_analysis;
 mod glass_effect;
 #[cfg(feature = "capture-harness")]
@@ -400,6 +401,13 @@ pub fn run() {
         "{}",
         crash_report::session_start_marker(reporter.session_id())
       );
+      app.manage(feedback_diagnostics::DiagnosticsState::new(
+        app_data_dir.join("diagnostics"),
+        app
+          .state::<runtime_identity::RuntimeIdentity>()
+          .workspace_id(),
+        reporter.session_id(),
+      ));
       crash_report::install_panic_hook(reporter.clone());
       app.manage(reporter);
 
@@ -650,6 +658,8 @@ pub fn run() {
         .state::<dock::DockBootReady>()
         .0
         .store(true, std::sync::atomic::Ordering::Release);
+
+      feedback_diagnostics::watch_environment(window.clone());
 
       // Persist geometry on move/resize, debounced via a dirty flag + short flush thread.
       use std::sync::atomic::{AtomicBool, Ordering};

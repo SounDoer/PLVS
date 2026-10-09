@@ -240,6 +240,20 @@ and workspace identifiers so the matching per-process log can be diagnosed. See 
 deletion-request details. Feedback and crash-report prompts also link to that policy before any
 diagnostics are sent.
 
+**Attach Diagnostics** includes a timestamped app and window-state snapshot, recent Dock operations,
+and up to 500 log lines from the current run. The operation timeline can include the previous
+recorded run, so recovering the window or restarting PLVS does not necessarily erase the evidence.
+It records Dock entry/exit, height changes, screen-space reservation, hiding/restoring the strip,
+and detected changes to screen geometry or scaling. A drag is summarized as one operation rather
+than a stream of mouse movements. Window coordinates and native sizes are physical pixels; the
+frontend snapshot separately reports its viewport and WebView scale.
+
+Choose **View Diagnostics** to inspect the exact attachment before sending. **Refresh Diagnostics**
+collects a new snapshot. Missing, failed or timed-out sections are marked explicitly; a partial
+snapshot can still be sent. Size limits may shorten the log and timeline, with counts recorded in
+the attachment. Diagnostics do not include audio, screenshots, complete settings, or custom names
+in the structured snapshot. Free-form log messages can still include device labels.
+
 ## Agent Control
 
 **Agent Control** lets `plvs-cli` inspect and change the running app; see

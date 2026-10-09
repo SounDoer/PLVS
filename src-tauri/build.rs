@@ -39,6 +39,7 @@ fn emit_app_identity() {
 
 fn main() {
   emit_app_identity();
+  emit_build_revision();
 
   const COMMAND_MANIFEST: &str = "../src/agentControl/commandManifest.json";
   println!("cargo:rerun-if-changed={COMMAND_MANIFEST}");
@@ -75,4 +76,36 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=CoreVideo");
   }
   tauri_build::build()
+}
+
+fn emit_build_revision() {
+  use std::process::Command;
+  let git = |args: &[&str]| {
+    Command::new("git")
+      .args(args)
+      .output()
+      .ok()
+      .filter(|output| output.status.success())
+      .and_then(|output| String::from_utf8(output.stdout).ok())
+      .map(|text| text.trim().to_owned())
+  };
+  for reference in [Some("HEAD".to_owned()), git(&["symbolic-ref", "HEAD"])]
+    .into_iter()
+    .flatten()
+  {
+    if let Some(path) = git(&["rev-parse", "--git-path", &reference]) {
+      println!("cargo:rerun-if-changed={path}");
+    }
+  }
+  // Source edits also change the dirty marker in development/locally built packages.
+  println!("cargo:rerun-if-changed=src");
+  println!("cargo:rerun-if-changed=../src");
+  if let Some(revision) = git(&["rev-parse", "HEAD"]) {
+    let dirty = git(&["status", "--porcelain", "--untracked-files=no"])
+      .is_some_and(|status| !status.is_empty());
+    println!(
+      "cargo:rustc-env=PLVS_BUILD_REVISION={revision}{}",
+      if dirty { "-dirty" } else { "" }
+    );
+  }
 }

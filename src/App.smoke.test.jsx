@@ -628,7 +628,7 @@ describe("App smoke", () => {
     });
 
     await waitFor(() =>
-      expect(enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2", undefined)
+      expect(enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2", undefined, "preset")
     );
     expect(setDockReserveSpace).not.toHaveBeenCalled();
     await waitFor(() =>
@@ -713,6 +713,7 @@ describe("App smoke", () => {
 
     await waitFor(() =>
       expect(exitDock).toHaveBeenCalledWith({
+        origin: "preset",
         decorations: true,
         alwaysOnTop: false,
         bounds,

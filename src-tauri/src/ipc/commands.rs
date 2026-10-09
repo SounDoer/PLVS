@@ -11,7 +11,7 @@ use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
 use crate::crash_report::{
   normalize_frontend_crash, normalize_frontend_log, CrashKind, CrashReport, CrashReporterState,
-  FeedbackDiagnostics, FrontendCrashInput,
+  FrontendCrashInput,
 };
 use crate::dsp::speech::VadEngineKind;
 use crate::ipc::types::{
@@ -69,12 +69,58 @@ pub fn set_crash_prompt_enabled(enabled: bool, reporter: State<'_, Arc<CrashRepo
 }
 
 #[tauri::command]
-pub fn read_feedback_diagnostics(
+pub async fn read_feedback_diagnostics(
+  app: tauri::AppHandle,
+  frontend: Option<crate::feedback_diagnostics::FrontendSnapshot>,
   reporter: State<'_, Arc<CrashReporterState>>,
-) -> Result<FeedbackDiagnostics, String> {
-  reporter
-    .feedback_diagnostics(200)
-    .map_err(|error| format!("Unable to read diagnostics: {error}"))
+) -> Result<serde_json::Value, String> {
+  use crate::feedback_diagnostics::{bound_export, native_snapshot, DiagnosticsState};
+  use tauri::Manager;
+  let reporter = reporter.inner().clone();
+  let mut report = tauri::async_runtime::spawn_blocking(move || reporter.feedback_diagnostics())
+    .await
+    .map_err(|_| "Unable to collect diagnostics".to_string())?;
+  report["frontend"] = frontend
+    .map(|value| value.validated())
+    .unwrap_or_else(|| serde_json::json!({"status":"unavailable"}));
+  let diagnostics = app.state::<DiagnosticsState>();
+  report["operations"] = diagnostics.export();
+  report["uptimeMs"] = serde_json::json!(diagnostics.uptime_ms());
+  if diagnostics
+    .collecting_native
+    .swap(true, std::sync::atomic::Ordering::AcqRel)
+  {
+    report["native"] = serde_json::json!({"status":"busy"});
+    return Ok(bound_export(report));
+  }
+  let native_app = app.clone();
+  let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+  // At most one native collector per process, even after timeout and repeated exports.
+  if std::thread::Builder::new()
+    .name("diagnostic-snapshot".into())
+    .spawn(move || {
+      let _ = sender.send(native_snapshot(&native_app));
+      native_app
+        .state::<DiagnosticsState>()
+        .collecting_native
+        .store(false, std::sync::atomic::Ordering::Release);
+    })
+    .is_err()
+  {
+    diagnostics
+      .collecting_native
+      .store(false, std::sync::atomic::Ordering::Release);
+    report["native"] = serde_json::json!({"status":"readFailed"});
+    return Ok(bound_export(report));
+  }
+  report["native"] = tauri::async_runtime::spawn_blocking(move || {
+    receiver
+      .recv_timeout(std::time::Duration::from_millis(1500))
+      .unwrap_or_else(|_| serde_json::json!({"status":"timeout"}))
+  })
+  .await
+  .unwrap_or_else(|_| serde_json::json!({"status":"readFailed"}));
+  Ok(bound_export(report))
 }
 
 #[tauri::command]

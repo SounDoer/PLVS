@@ -73,7 +73,7 @@ describe("crash-report command seam", () => {
     expect(invoke).toHaveBeenNthCalledWith(5, "set_crash_prompt_enabled", {
       enabled: false,
     });
-    expect(invoke).toHaveBeenNthCalledWith(6, "read_feedback_diagnostics");
+    expect(invoke).toHaveBeenNthCalledWith(6, "read_feedback_diagnostics", { frontend: null });
   });
 });
 
@@ -259,12 +259,20 @@ describe("dock command seam", () => {
   });
   it("passes logical height and persistence intent to Rust", async () => {
     await setDockHeight({ height: 108, persist: false });
-    expect(invoke).toHaveBeenCalledWith("set_dock_height", { height: 108, persist: false });
+    expect(invoke).toHaveBeenCalledWith("set_dock_height", {
+      height: 108,
+      persist: false,
+      cancelled: false,
+      origin: "ui",
+    });
   });
 
   it("passes temporary Dock suspension without changing persisted state", async () => {
     await setDockSuspended(true);
-    expect(invoke).toHaveBeenCalledWith("set_dock_suspended", { suspended: true });
+    expect(invoke).toHaveBeenCalledWith("set_dock_suspended", {
+      suspended: true,
+      origin: "lifecycle",
+    });
   });
 
   it("passes the logical editor trigger anchor to Rust", async () => {

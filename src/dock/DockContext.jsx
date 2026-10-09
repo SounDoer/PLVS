@@ -15,10 +15,10 @@ import { useDockHistoryViewport } from "./useDockHistoryViewport.js";
  *   layout: ReturnType<typeof useDockLayout>,
  *   historyViewport: ReturnType<typeof useDockHistoryViewport>,
  *   exitDockRestoringAttributes: (options?: {
- *     reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any,
+ *     reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any, origin?: string,
  *   }) => Promise<{ ok: boolean, error: any }>,
  *   onDockChange: (edgeOrNull: string | null) => Promise<void>,
- *   onDockHeightChange: (height: number, options?: { persist?: boolean }) => Promise<void>,
+ *   onDockHeightChange: (height: number, options?: { persist?: boolean, cancelled?: boolean, origin?: string }) => Promise<void>,
  *   executeDockForControl: (method: string, projected: any) => Promise<any>,
  * }} DockOwner
  */
@@ -76,11 +76,12 @@ export function DockProvider({ children }) {
   // this; a fast toggle spam could interleave enter/exit IPC calls).
   const exitDockRestoringAttributes = useCallback(
     async (
-      /** @type {{ reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any }} */ {
+      /** @type {{ reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any, origin?: string }} */ {
         reportError = true,
         bounds,
         decorations,
         alwaysOnTop,
+        origin,
       } = {}
     ) => {
       clearNotice();
@@ -89,6 +90,7 @@ export function DockProvider({ children }) {
           decorations: decorations ?? !(focusView.autoHideControls || focusView.borderless),
           alwaysOnTop: alwaysOnTop ?? pinned === true,
           bounds,
+          ...(origin ? { origin } : {}),
         });
         return { ok: true, error: null };
       } catch (error) {
@@ -140,13 +142,17 @@ export function DockProvider({ children }) {
           projected.edge,
           projected.reserveSpace,
           projected.monitor,
-          projected.height
+          projected.height,
+          "agentControl"
         );
         setSelectedOffset(-1);
         return effective;
       }
       if (method === "dock.exit") {
-        const result = await exitDockRestoringAttributes({ reportError: false });
+        const result = await exitDockRestoringAttributes({
+          reportError: false,
+          origin: "agentControl",
+        });
         if (!result.ok) throw result.error;
         return;
       }

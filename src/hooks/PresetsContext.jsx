@@ -72,20 +72,22 @@ export function PresetsProvider({ children }) {
             presetDock.edge,
             presetDock.reserveSpace,
             presetDock.monitor,
-            presetDock.height
+            presetDock.height,
+            "preset"
           );
         } else {
           if (presetDock.reserveSpace !== reserveSpace) {
-            await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
+            await setReserveSpace(presetDock.reserveSpace, presetDock.edge, "preset");
           }
           if (Number.isFinite(presetDock.height) && presetDock.height !== dockHeight) {
-            await resizeDockHeight(presetDock.height, { persist: true });
+            await resizeDockHeight(presetDock.height, { persist: true, origin: "preset" });
           }
         }
         setSelectedOffset(-1);
       } else if (dockEnabled) {
         const result = await exitDockRestoringAttributes({
           reportError: false,
+          origin: "preset",
           bounds: normalWindow.bounds,
           decorations: normalWindow.focusView
             ? !(normalWindow.focusView.autoHideControls || normalWindow.focusView.borderless)
