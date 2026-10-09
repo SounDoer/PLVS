@@ -28,9 +28,9 @@ describe("Ubuntu Preview package contract", () => {
     expect(builder).not.toContain("dev-identity");
   });
 
-  it("clears inherited resources before applying the Preview manifest mapping", () => {
+  it("deletes the stable manifest key when Tauri combines the configuration patches", () => {
     const reset = JSON.parse(read("src-tauri/tauri.clear-resources.conf.json"));
-    expect(reset.bundle.resources).toBeNull();
+    expect(reset.bundle.resources).toEqual({ "plvs-agent.json": null });
     expect(builder.indexOf("tauri.clear-resources.conf.json")).toBeLessThan(
       builder.indexOf("tauri.preview.conf.json")
     );
@@ -38,6 +38,18 @@ describe("Ubuntu Preview package contract", () => {
     expect(new Set(installedPaths).size).toBe(installedPaths.length);
     expect(preview.bundle.resources["plvs-preview-agent.json"]).toBe("plvs-agent.json");
     expect(preview.bundle.resources["plvs-agent.json"]).toBeUndefined();
+    // The deletion must survive combining all CLI patches, before they reach the base config.
+    const combinedResources = { ...reset.bundle.resources, ...preview.bundle.resources };
+    expect(combinedResources["plvs-agent.json"]).toBeNull();
+    const base = JSON.parse(read("src-tauri/tauri.conf.json"));
+    const resolvedResources = Object.fromEntries(
+      Object.entries({ ...base.bundle.resources, ...combinedResources }).filter(
+        ([, destination]) => destination !== null
+      )
+    );
+    expect(
+      Object.values(resolvedResources).filter((path) => path === "plvs-agent.json")
+    ).toHaveLength(1);
   });
 
   it("provides the installed Linux CLI path in both generated discovery manifests", () => {
