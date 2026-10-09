@@ -82,6 +82,46 @@ describe("useCustomThemeSettings", () => {
     window.matchMedia = mockMatchMedia(true);
   });
 
+  it("saves an exact draft through the existing owner and reports clean saves without durable changes", () => {
+    const { result } = renderCustomThemeSettings(() => "custom-save");
+    act(() => result.current.createCustomTheme());
+    act(() => result.current.editor.setName("Saved through CLI"));
+    let saved = { savedId: "", changed: false };
+    act(() => {
+      saved = result.current.editor.saveForControl();
+    });
+    expect(saved).toMatchObject({
+      savedId: "custom-save",
+      changed: true,
+      document: { name: "Saved through CLI" },
+    });
+    expect(result.current.editor.isEditing).toBe(false);
+    expect(themesStore.read().themes["custom-save"].name).toBe("Saved through CLI");
+    act(() => result.current.editCustomTheme("custom-save"));
+    act(() => {
+      saved = result.current.editor.saveForControl();
+    });
+    expect(saved.changed).toBe(false);
+    expect(result.current.editor.isEditing).toBe(false);
+  });
+
+  it("refuses a source changed in the same tick before the stale effect runs and preserves the draft", () => {
+    const { result } = renderCustomThemeSettings(() => "custom-save");
+    act(() => result.current.createCustomTheme());
+    act(() => result.current.editor.saveForControl());
+    act(() => result.current.editCustomTheme("custom-save"));
+    act(() => result.current.editor.setName("Local edit"));
+    const before = structuredClone(result.current.editor.draft);
+    act(() => {
+      upsertCustomTheme({ ...before, name: "External edit" });
+      expect(() => result.current.editor.saveForControl()).toThrowError(
+        expect.objectContaining({ code: "draftStale" })
+      );
+    });
+    expect(result.current.editor.draft).toEqual(before);
+    expect(themesStore.read().themes["custom-save"].name).toBe("External edit");
+  });
+
   it("creates custom themes named Custom by default", () => {
     const { result } = renderCustomThemeSettings();
 

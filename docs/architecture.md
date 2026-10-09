@@ -62,7 +62,9 @@ not duplicate business state and does not broadcast requests to accessory WebVie
 
 Transient editor authoring uses a separate mounted-draft registry in the React workbench. Each
 adapter is bound to the UI Navigation surface ID for one Theme/Profile editor lifetime and exposes
-only owner-provided snapshot, atomic document transaction, history, and linked-discard functions.
+only owner-provided snapshot, atomic document transaction, history, linked-discard, and explicit Save
+functions. Save rechecks the source, uses the normal owner commit, and awaits observed library/editor
+state plus durable persistence; other draft actions remain transient.
 Its `draftGeneration` is local to that lifetime; it never advances or substitutes for the durable
 Agent Control revision. Closing or replacing the editor unregisters the adapter, so an old command
 cannot resolve to a later draft.

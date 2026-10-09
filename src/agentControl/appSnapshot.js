@@ -84,6 +84,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
               undo: hasMethod("editorDraft.undo"),
               redo: hasMethod("editorDraft.redo"),
               discard: hasMethod("editorDraft.discard"),
+              save: hasMethod("editorDraft.save"),
             },
           }
         : {}),

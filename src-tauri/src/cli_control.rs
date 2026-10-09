@@ -418,7 +418,12 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
 
   let action = args
     .first()
-    .filter(|action| matches!(action.as_str(), "patch" | "undo" | "redo" | "discard"))
+    .filter(|action| {
+      matches!(
+        action.as_str(),
+        "patch" | "undo" | "redo" | "discard" | "save"
+      )
+    })
     .ok_or_else(|| "Editor draft command is invalid.".to_string())?;
   let mut positionals = Vec::new();
   let mut decision_surface_id = None;
@@ -4607,6 +4612,44 @@ mod tests {
       "--json",
     ]))
     .is_err());
+  }
+
+  #[test]
+  fn editor_draft_save_requires_exact_tokens_and_rejects_force_or_dry_run() {
+    let surface = format!("ui-{}", "a".repeat(16));
+    for kind in ["theme", "loudness-profile"] {
+      let valid = args(&[
+        "editor-draft",
+        "save",
+        kind,
+        &surface,
+        "--expected-revision",
+        "2",
+        "--expected-ui-generation",
+        "3",
+        "--expected-draft-generation",
+        "4",
+        "--json",
+      ]);
+      let command = parse_control_args(&valid).unwrap();
+      let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+      assert_eq!(request.method, "editorDraft.save");
+      assert_eq!(
+        request.params,
+        serde_json::json!({"kind": kind, "surfaceId": surface,
+        "expectedRevision": 2, "expectedUiGeneration": 3, "expectedDraftGeneration": 4})
+      );
+      for index in [4, 6, 8] {
+        let mut missing = valid.clone();
+        missing.drain(index..index + 2);
+        assert!(parse_control_args(&missing).is_err());
+      }
+      for flag in ["--dry-run", "--force", "--decision-surface-id"] {
+        let mut invalid = valid.clone();
+        invalid.push(flag.to_string());
+        assert!(parse_control_args(&invalid).is_err());
+      }
+    }
   }
 
   #[test]

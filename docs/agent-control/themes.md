@@ -6,11 +6,12 @@ Pack sharing remains the separate [Library Transfer](libraries.md) contract.
 
 Theme Control mutations author persisted documents directly. To navigate the real transient editor
 instead, use UI Navigation's `ui show theme-editor` modes. Create, customize, and duplicate produce
-only an unsaved draft until the user chooses Save; exact Cancel preserves the editor's normal dirty
+only an unsaved draft until the user chooses Save or `editor-draft save` commits that exact session; exact Cancel preserves the editor's normal dirty
 discard confirmation. See [UI Navigation](ui.md).
 
 While that editor is open, [Editor Draft Control](editor-drafts.md) can inspect and apply closed
-semantic changes to its transient document and existing Undo/Redo history without saving it.
+semantic changes to its transient document and existing Undo/Redo history without saving it. Explicit `editor-draft save` completes that editor session through its
+normal save owner and waits for persistence.
 
 ## Commands
 

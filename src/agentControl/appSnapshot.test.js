@@ -133,6 +133,7 @@ describe("agent-control app snapshots", () => {
         "editorDraft.patch",
         "editorDraft.undo",
         "editorDraft.redo",
+        "editorDraft.save",
         "editorDraft.discard",
       ],
       features: {
@@ -144,6 +145,7 @@ describe("agent-control app snapshots", () => {
           undo: true,
           redo: true,
           discard: true,
+          save: true,
         },
         uiNavigation: {
           inspect: true,

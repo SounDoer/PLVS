@@ -113,6 +113,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `editorDraft.patch` | `editor-draft patch` | runningApp / mutation | required | no | none |
 | `editorDraft.undo` | `editor-draft undo` | runningApp / mutation | required | no | none |
 | `editorDraft.redo` | `editor-draft redo` | runningApp / mutation | required | no | none |
+| `editorDraft.save` | `editor-draft save` | runningApp / action | required | no | none |
 | `editorDraft.discard` | `editor-draft discard` | runningApp / mutation | required | no | none |
 | `instances.list` | `instances` | offline / query | none | no | none |
 | `doctor` | `doctor` | offline / query | none | no | optional |
@@ -2950,6 +2951,36 @@ plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
 | `kind` | local only | yes | string; one of "theme" |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
+| `--json` | local only | yes | boolean |
+
+## `editorDraft.save`
+
+Save the exact mounted editor draft through its owner and await durable persistence.
+
+- CLI path: `editor-draft save`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `editorDraft.save`
+- Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
+
+```text
+plvs-cli editor-draft save <theme|loudness-profile> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
 | `surface-id` | `surfaceId` | yes | string |
 
 ### Options

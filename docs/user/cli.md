@@ -240,6 +240,17 @@ plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected
 plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-surface-id <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 ```
 
+To save the exact reviewed draft, use:
+
+```powershell
+plvs-cli editor-draft save <theme|loudness-profile> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+```
+
+Save uses the editor's existing validation and save behavior, waits for persistence and editor
+closure, and returns `savedId` plus the saved document. It rejects stale sources and all stale
+tokens without discarding the draft, and accepts no dry-run or force option. After a persistence or
+settlement error, inspect the saved resource and UI before any retry.
+
 Patch uses closed editor-specific operations and never Saves. `revision` protects durable state,
 `uiGeneration` protects the surface stack, and `draftGeneration` protects the exact authoring
 document. See [Editor Draft Control](../agent-control/editor-drafts.md) for atomicity, stale drafts,

@@ -8,7 +8,8 @@ These mutations author persisted documents directly. UI Navigation's
 Cancel follows the editor's normal dirty discard confirmation. See [UI Navigation](ui.md).
 
 While that editor is open, [Editor Draft Control](editor-drafts.md) can inspect and apply closed
-semantic name, Reference, and rule operations to its transient preview without saving it. Profile
+semantic name, Reference, and rule operations to its transient preview without saving it. Explicit
+`editor-draft save` commits and closes the exact session through its normal owner. Profile
 history remains unavailable because the visible editor has no Undo/Redo history.
 
 ## Commands

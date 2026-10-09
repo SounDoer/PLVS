@@ -9,7 +9,7 @@ const noop = () => {};
 /**
  * @param {{
  *   activeTheme: object,
- *   onSave: (theme: object, options: {isNew: boolean, stale?: boolean}) => boolean|void,
+ *   onSave: (theme: object, options: {isNew: boolean, stale?: boolean, forControl?: boolean, baseline?: object}) => any,
  *   publish?: (theme: object) => void,
  *   makeId?: () => string,
  *   onChange?: (...args: any[]) => void,
@@ -365,27 +365,45 @@ export function useThemeEditor(opts) {
     [setStaleBoth]
   );
 
-  const save = useCallback(() => {
-    cancelScheduledPublication();
-    const d = draftRef.current;
-    if (d && onSave?.(d, { isNew: wasNewRef.current, stale }) === false) return;
-    setDraftBoth(null);
-    setDirtyBoth(false);
-    setStaleBoth(false);
-    setAuthoring(null);
-    setDiscardOpen(false);
-    if (d) notify();
-    onFinish();
-  }, [
-    cancelScheduledPublication,
-    notify,
-    onSave,
-    onFinish,
-    setDirtyBoth,
-    setDraftBoth,
-    setStaleBoth,
-    stale,
-  ]);
+  const finishSave = useCallback(
+    (forControl = false) => {
+      const d = draftRef.current;
+      if (forControl && (!d || !normalizeThemeDocumentShape(d))) {
+        throw Object.assign(new Error("The Theme draft cannot be saved."), {
+          code: "draftActionUnavailable",
+        });
+      }
+      if (forControl && staleRef.current) {
+        throw Object.assign(new Error("The Theme source changed."), { code: "draftStale" });
+      }
+      const outcome =
+        d &&
+        onSave?.(d, {
+          isNew: wasNewRef.current,
+          stale: staleRef.current,
+          ...(forControl ? { forControl: true, baseline: baselineRef.current } : {}),
+        });
+      if (outcome === false) {
+        if (forControl)
+          throw Object.assign(new Error("The Theme draft cannot be saved."), {
+            code: "draftActionUnavailable",
+          });
+        return;
+      }
+      cancelScheduledPublication();
+      setDraftBoth(null);
+      setDirtyBoth(false);
+      setStaleBoth(false);
+      setAuthoring(null);
+      setDiscardOpen(false);
+      if (d) notify();
+      onFinish();
+      return outcome;
+    },
+    [cancelScheduledPublication, notify, onSave, onFinish, setDirtyBoth, setDraftBoth, setStaleBoth]
+  );
+  const save = useCallback(() => finishSave(), [finishSave]);
+  const saveForControl = useCallback(() => finishSave(true), [finishSave]);
 
   const cancel = useCallback(() => {
     cancelScheduledPublication();
@@ -436,6 +454,7 @@ export function useThemeEditor(opts) {
     redo,
     syncSource,
     save,
+    saveForControl,
     cancel,
     requestDismiss,
     keepEditing,

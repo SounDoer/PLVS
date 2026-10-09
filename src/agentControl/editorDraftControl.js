@@ -211,6 +211,7 @@ export function describeEditorDraft(kind) {
   if (kind === "theme") {
     return {
       kind,
+      save: true,
       history: { undo: true, redo: true },
       operations: THEME_OPERATIONS,
       operationSchemas: themeOperationSchemas(),
@@ -231,6 +232,7 @@ export function describeEditorDraft(kind) {
   if (kind === "loudnessProfile") {
     return {
       kind,
+      save: true,
       history: { undo: false, redo: false },
       operations: PROFILE_OPERATIONS,
       operationSchemas: profileOperationSchemas(),

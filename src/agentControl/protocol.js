@@ -176,9 +176,13 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (
-    ["editorDraft.patch", "editorDraft.undo", "editorDraft.redo", "editorDraft.discard"].includes(
-      input.method
-    )
+    [
+      "editorDraft.patch",
+      "editorDraft.undo",
+      "editorDraft.redo",
+      "editorDraft.discard",
+      "editorDraft.save",
+    ].includes(input.method)
   ) {
     const actionField =
       input.method === "editorDraft.patch"

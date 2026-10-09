@@ -75,6 +75,7 @@ import {
  *   keepEditing: (...args: any[]) => any,
  *   confirmDiscard: (...args: any[]) => any,
  *   saveDraft: (...args: any[]) => any,
+ *   saveForControl: (...args: any[]) => any,
  *   select: (...args: any[]) => any,
  *   selectOff: (...args: any[]) => any,
  *   removeProfile: (...args: any[]) => any,
@@ -497,30 +498,72 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     [commitPlan, planReorder]
   );
 
-  const saveDraft = useCallback(() => {
-    const current = draftRef.current;
-    if (!current) return;
-    if (current.stale && current.editingId) {
-      reportLibraryConflict("loudnessProfile", current.document);
+  const finishSaveDraft = useCallback(
+    (forControl = false) => {
+      const current = draftRef.current;
+      if (!current) {
+        if (forControl)
+          throw Object.assign(new Error("The Profile draft is no longer open."), {
+            code: "editorDraftNotFound",
+          });
+        return;
+      }
+      if (
+        forControl &&
+        current.editingId &&
+        (current.stale ||
+          JSON.stringify(
+            stateRef.current.profiles.find(({ id }) => id === current.editingId) ?? null
+          ) !== JSON.stringify(current.baseDocument))
+      ) {
+        throw Object.assign(new Error("The Profile source changed."), { code: "draftStale" });
+      }
+      if (current.stale && current.editingId) {
+        reportLibraryConflict("loudnessProfile", current.document);
+        putDraft(null);
+        return;
+      }
+      const normalized = normalizeRuleDocument(current.document);
+      if (!normalized) {
+        if (forControl)
+          throw Object.assign(new Error("The Profile draft cannot be saved."), {
+            code: "draftActionUnavailable",
+          });
+        return;
+      }
+      const { id: _id, ...document } = normalized;
+      const planned = current.editingId
+        ? planUpdate(current.editingId, document)
+        : planCreate(document, { makeId: () => crypto.randomUUID() });
+      if (current.editingId && current.resumeSelection !== stateRef.current.active) {
+        planned.loudnessProfiles = {
+          ...planned.loudnessProfiles,
+          active: current.resumeSelection,
+        };
+        planned.changed = [...planned.changed, "loudnessProfiles.active"];
+      }
+      if (planned.issues?.length > 0) {
+        if (forControl)
+          throw Object.assign(new Error("The Profile draft cannot be saved."), {
+            code: "draftActionUnavailable",
+            details: { issues: planned.issues },
+          });
+        return;
+      }
+      commitPlan(planned);
       putDraft(null);
-      return;
-    }
-    const normalized = normalizeRuleDocument(current.document);
-    if (!normalized) return;
-    const { id: _id, ...document } = normalized;
-    const planned = current.editingId
-      ? planUpdate(current.editingId, document)
-      : planCreate(document, { makeId: () => crypto.randomUUID() });
-    if (current.editingId && current.resumeSelection !== stateRef.current.active) {
-      planned.loudnessProfiles = {
-        ...planned.loudnessProfiles,
-        active: current.resumeSelection,
+      const saved = planned.profile;
+      return {
+        savedId: saved.id,
+        document: saved,
+        changed: planned.changed.length > 0,
+        state: planned.loudnessProfiles,
       };
-      planned.changed = [...planned.changed, "loudnessProfiles.active"];
-    }
-    commitPlan(planned);
-    putDraft(null);
-  }, [commitPlan, planCreate, planUpdate, putDraft]);
+    },
+    [commitPlan, planCreate, planUpdate, putDraft]
+  );
+  const saveDraft = useCallback(() => finishSaveDraft(), [finishSaveDraft]);
+  const saveForControl = useCallback(() => finishSaveDraft(true), [finishSaveDraft]);
 
   // The draft outranks the selection: while one exists, Stats colours, the reference line, the
   // footer and the TP Max marker all follow what the user is typing.
@@ -624,6 +667,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       keepEditing,
       confirmDiscard,
       saveDraft,
+      saveForControl,
       select,
       selectOff,
       removeProfile,
@@ -669,6 +713,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       keepEditing,
       confirmDiscard,
       saveDraft,
+      saveForControl,
       select,
       selectOff,
       removeProfile,

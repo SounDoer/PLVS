@@ -124,9 +124,33 @@ export function EditorDraftProvider({ children }) {
     [resolve]
   );
 
+  const save = useCallback(
+    (kind, surfaceId, expectedDraftGeneration) => {
+      const controller = resolve(kind, surfaceId);
+      const snapshot = controller.inspectDraft?.();
+      if (!snapshot) throw new EditorDraftRegistryError("editorDraftNotFound", { kind, surfaceId });
+      if (snapshot.draftGeneration !== expectedDraftGeneration) {
+        throw new EditorDraftRegistryError("draftGenerationConflict", {
+          expectedDraftGeneration,
+          currentDraftGeneration: snapshot.draftGeneration,
+        });
+      }
+      if (snapshot.stale) throw new EditorDraftRegistryError("draftStale", { kind, surfaceId });
+      if (typeof controller.saveForControl !== "function") {
+        throw new EditorDraftRegistryError("draftActionUnavailable", {
+          action: "save",
+          kind,
+          surfaceId,
+        });
+      }
+      return controller.saveForControl();
+    },
+    [resolve]
+  );
+
   const value = useMemo(
-    () => ({ registerEditorDraft, registerDraftDecision, inspect, commit, history, discard }),
-    [commit, discard, history, inspect, registerDraftDecision, registerEditorDraft]
+    () => ({ registerEditorDraft, registerDraftDecision, inspect, commit, history, discard, save }),
+    [commit, discard, history, inspect, registerDraftDecision, registerEditorDraft, save]
   );
   return <EditorDraftContext.Provider value={value}>{children}</EditorDraftContext.Provider>;
 }

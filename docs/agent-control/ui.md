@@ -80,7 +80,7 @@ decision surfaces likewise remain authoritative and can block navigation.
 
 For authoring, identity includes the mode and source Theme/Profile ID; Theme identity also includes
 the requested page. Create/customize/duplicate may create a transient draft and preview, but no
-library item exists and no persistence occurs until the user visibly chooses Save. A different
+library item exists and no persistence occurs until the user chooses Save or the exact editor is committed by `editor-draft save`. A different
 authoring identity fails with `editorActive` and leaves the current draft untouched. Editors and
 Feedback block scene replacement immediately when open, before they become dirty.
 

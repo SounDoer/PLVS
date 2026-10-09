@@ -1,9 +1,9 @@
 # Editor Draft Control
 
 Editor Draft Control safely inspects and changes the in-memory document owned by a currently open
-Theme Editor or Loudness Profile Editor. It is an authoring-session API, not persisted Theme/Profile
-library authoring: Patch, Undo, Redo, and Discard never Save a document, change the selected library
-item, dirty a Preset, or write persistence.
+Theme Editor or Loudness Profile Editor. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
+item, dirty a Preset, or write persistence. Explicit Save commits the exact draft through its existing
+editor owner, including the GUI's selection and Preset effects.
 
 Use `editor-draft describe <theme|loudness-profile>` to discover the closed operation vocabulary.
 The Theme description is derived from the Core keys, palette presets, and editor-visible Theme Role
@@ -28,7 +28,7 @@ surface identity; a retained ID can never address the replacement editor.
 
 Every mutation requires exact expected values for all three tokens. They are checked before no-op
 detection, so replaying a request whose response was lost conflicts instead of inserting a rule or
-undoing twice. A stale source draft remains inspectable and dismissible, but Patch, Undo, and Redo
+undoing twice. A stale source draft remains inspectable and dismissible, but Save, Patch, Undo, and Redo
 return `draftStale`.
 
 ## Atomic semantic patches
@@ -63,3 +63,30 @@ Stable family errors include `editorDraftNotFound`, `editorDraftKindMismatch`,
 `draftDecisionNotFound`, `draftNotDirty`, and `draftNotSettled`, in addition to shared revision/UI
 conflicts. `draftNotSettled` means the owner may already have accepted the change; inspect the exact
 editor and reconcile, and never retry with old tokens.
+
+## Save the reviewed draft
+
+`editor-draft save <theme|loudness-profile> <surface-id>` requires `--json` and all three expected
+tokens. It is an action and accepts neither `--dry-run` nor a force/conflict-resolution option.
+The exact editor must be topmost; a nested confirmation or other surface blocks Save.
+
+The owner rechecks its current source before committing, validates the complete document, then
+uses the same create/update, selection, preview, and editor-close behavior as the visible Save
+button. Stale or deleted sources return `draftStale` without closing the draft or synthesizing a
+library-conflict decision. An invalid or unavailable Save returns `draftActionUnavailable`.
+Theme create/customize/duplicate saves a custom Theme; editing retains its existing ID. Profile
+create selects the new Profile; Profile edit restores the selection captured when editing began.
+
+Success returns `action: "editorDraft.save"`, `status: "completed"`, `changed`, `revision`,
+`uiGeneration`, `kind`, the original `surfaceId`, `savedId`, and the saved `document` without its ID.
+Success means the library change was observed, the original editor and its blocking registration
+closed, and changed durable state was flushed. `changed` describes durable changes: saving an
+unchanged existing document still closes the editor but does not flush or advance revision.
+There is no new draft generation after Save because that draft lifetime has ended.
+
+A committed Save whose UI/library settlement times out uses `commitNotObserved`, including
+`stateCommitted`, `savedId`, `revision`, and whether the rescue flush persisted the write.
+A flush failure is `persistenceFailed` with `stateCommitted: true`, `savedId`, and committed revision.
+Inspect the saved resource and UI after either error; never blindly repeat Save. A lost-response
+replay cannot save a replacement editor using the old surface ID or tokens. This command does not
+provide a generic Save/Confirm operation for other UI surfaces.

@@ -6283,6 +6283,100 @@
       }
     },
     {
+      "id": "editorDraft.save",
+      "family": "editor-draft",
+      "path": ["editor-draft", "save"],
+      "usage": "plvs-cli editor-draft save <theme|loudness-profile> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
+      "summary": "Save the exact mounted editor draft through its owner and await durable persistence.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "editorDraft.save",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "kind",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["theme", "loudness-profile"]
+          }
+        },
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": {
+            "schemaRef": "agentControl.revision"
+          }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": {
+            "schemaRef": "agentControl.uiGeneration"
+          }
+        },
+        {
+          "name": "--expected-draft-generation",
+          "mapsTo": "expectedDraftGeneration",
+          "required": true,
+          "value": {
+            "schemaRef": "editorDraft.generation"
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "surfaceId",
+          "expectedRevision",
+          "expectedUiGeneration",
+          "expectedDraftGeneration"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["theme", "loudness-profile"]
+          },
+          "surfaceId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "expectedUiGeneration": {
+            "schemaRef": "agentControl.uiGeneration"
+          },
+          "expectedDraftGeneration": {
+            "schemaRef": "editorDraft.generation"
+          }
+        }
+      }
+    },
+    {
       "id": "editorDraft.discard",
       "family": "editor-draft",
       "path": ["editor-draft", "discard"],

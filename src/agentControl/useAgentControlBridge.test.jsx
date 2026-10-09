@@ -972,6 +972,284 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it.each(["theme", "loudness-profile"])(
+    "saves %s through the real owner, flushes, and closes the exact draft",
+    async (kind) => {
+      const surfaceId = `ui-${"a".repeat(16)}`;
+      let view;
+      const owner = () => (kind === "theme" ? view.theme.editor : view.profile);
+      const isOpen = () =>
+        kind === "theme" ? view.theme.editor.isEditing : view.profile.draft != null;
+      const flush = vi.fn(async () => {});
+      const options = {
+        flush,
+        agentEditorDraft: {
+          inspect: () => owner().inspectDraft(),
+          save: () => owner().saveForControl(),
+        },
+        agentUi: {
+          inspectUi: () => ({
+            uiGeneration: isOpen() ? 3 : 4,
+            topSurfaceId: isOpen() ? surfaceId : null,
+            surfaces: isOpen() ? [{ surfaceId }] : [],
+            activeBlockingEditors: isOpen() ? [kind === "theme" ? "theme" : "loudnessProfile"] : [],
+          }),
+        },
+      };
+      view = kind === "theme" ? mountWithThemes(options) : mountWithProfiles(options);
+      await waitUntilReady();
+      act(() => {
+        if ("theme" in view) view.theme.createCustomTheme();
+        else view.profile.beginCreate();
+      });
+      act(() => {
+        if (kind === "theme") owner().setName("Saved Draft");
+        else owner().setDraftName("Saved Draft");
+      });
+      const baseline = await send(request("app.inspect", {}, "save-baseline"));
+      const params = {
+        kind,
+        surfaceId,
+        expectedRevision: baseline.result.revision,
+        expectedUiGeneration: 3,
+        expectedDraftGeneration: owner().inspectDraft().draftGeneration,
+      };
+      const result = await send(request("editorDraft.save", params, "save-draft"));
+      expect(result.error).toBeUndefined();
+      expect(result.result).toMatchObject({
+        action: "editorDraft.save",
+        status: "completed",
+        changed: true,
+        revision: baseline.result.revision + 1,
+        uiGeneration: 4,
+        document: { name: "Saved Draft" },
+      });
+      expect(flush).toHaveBeenCalledTimes(1);
+      expect(isOpen()).toBe(false);
+      const replay = await send(request("editorDraft.save", params, "save-replay"));
+      expect(replay.error.data.reason).toBe("revisionConflict");
+      expect(flush).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it.each([
+    [{ expectedRevision: 9 }, {}, "revisionConflict"],
+    [{ expectedUiGeneration: 9 }, {}, "uiGenerationConflict"],
+    [{ expectedDraftGeneration: 9 }, {}, "draftGenerationConflict"],
+    [{}, { stale: true }, "draftStale"],
+  ])("refuses stale Save tokens or sources before mutation", async (overrides, draft, reason) => {
+    const surfaceId = `ui-${"a".repeat(16)}`;
+    const save = vi.fn();
+    const flush = vi.fn();
+    mount({
+      flush,
+      agentEditorDraft: { inspect: () => ({ draftGeneration: 2, ...draft }), save },
+      agentUi: {
+        inspectUi: () => ({ uiGeneration: 3, topSurfaceId: surfaceId, surfaces: [{ surfaceId }] }),
+      },
+    });
+    await waitUntilReady();
+    const result = await send(
+      request(
+        "editorDraft.save",
+        {
+          kind: "theme",
+          surfaceId,
+          expectedRevision: 0,
+          expectedUiGeneration: 3,
+          expectedDraftGeneration: 2,
+          ...overrides,
+        },
+        "refused-save"
+      )
+    );
+    expect(result.error.data.reason).toBe(reason);
+    expect(save).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("reports the saved resource and committed revision when persistence fails", async () => {
+    const surfaceId = `ui-${"a".repeat(16)}`;
+    let view;
+    const flush = vi.fn(async () => {
+      throw new Error("disk unavailable");
+    });
+    view = mountWithThemes({
+      flush,
+      agentEditorDraft: {
+        inspect: () => view.theme.editor.inspectDraft(),
+        save: () => view.theme.editor.saveForControl(),
+      },
+      agentUi: {
+        inspectUi: () => ({
+          uiGeneration: 3,
+          topSurfaceId: surfaceId,
+          surfaces: view.theme.editor.isEditing ? [{ surfaceId }] : [],
+        }),
+      },
+    });
+    await waitUntilReady();
+    act(() => view.theme.createCustomTheme());
+    const response = await send(
+      request(
+        "editorDraft.save",
+        {
+          kind: "theme",
+          surfaceId,
+          expectedRevision: 0,
+          expectedUiGeneration: 3,
+          expectedDraftGeneration: 0,
+        },
+        "save-disk-error"
+      )
+    );
+    expect(response.error.data).toMatchObject({
+      reason: "persistenceFailed",
+      details: {
+        stateCommitted: true,
+        savedId: "custom-editor",
+        revision: 1,
+      },
+    });
+    expect(view.theme.editor.isEditing).toBe(false);
+    expect(themesStore.read().themes["custom-editor"]).toBeDefined();
+  });
+
+  it("refuses Save underneath a nested decision without invoking its owner", async () => {
+    const surfaceId = `ui-${"a".repeat(16)}`;
+    const save = vi.fn();
+    const flush = vi.fn();
+    mount({
+      flush,
+      agentEditorDraft: { inspect: () => ({ draftGeneration: 0 }), save },
+      agentUi: {
+        inspectUi: () => ({
+          uiGeneration: 3,
+          topSurfaceId: `ui-${"b".repeat(16)}`,
+          surfaces: [{ surfaceId }],
+        }),
+      },
+    });
+    await waitUntilReady();
+    const response = await send(
+      request(
+        "editorDraft.save",
+        {
+          kind: "theme",
+          surfaceId,
+          expectedRevision: 0,
+          expectedUiGeneration: 3,
+          expectedDraftGeneration: 0,
+        },
+        "save-nested"
+      )
+    );
+    expect(response.error.data.reason).toBe("uiConflict");
+    expect(save).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("closes an unchanged saved draft without a persistence write or revision increment", async () => {
+    const surfaceId = `ui-${"a".repeat(16)}`;
+    let view;
+    const flush = vi.fn();
+    view = mountWithThemes({
+      flush,
+      agentEditorDraft: {
+        inspect: () => view.theme.editor.inspectDraft(),
+        save: () => view.theme.editor.saveForControl(),
+      },
+      agentUi: {
+        inspectUi: () => ({
+          uiGeneration: 3,
+          topSurfaceId: surfaceId,
+          surfaces: view.theme.editor.isEditing ? [{ surfaceId }] : [],
+        }),
+      },
+    });
+    await waitUntilReady();
+    act(() => view.theme.createCustomTheme());
+    act(() => view.theme.editor.save());
+    act(() => view.theme.editCustomTheme("custom-editor"));
+    const baseline = await send(request("app.inspect", {}, "clean-save-baseline"));
+    const response = await send(
+      request(
+        "editorDraft.save",
+        {
+          kind: "theme",
+          surfaceId,
+          expectedRevision: baseline.result.revision,
+          expectedUiGeneration: 3,
+          expectedDraftGeneration: 0,
+        },
+        "clean-save"
+      )
+    );
+    expect(response.result).toMatchObject({
+      status: "completed",
+      changed: false,
+      revision: baseline.result.revision,
+    });
+    expect(flush).not.toHaveBeenCalled();
+    expect(view.theme.editor.isEditing).toBe(false);
+  });
+
+  it("rescues persistence and identifies the saved resource when editor closure is not observed", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const surfaceId = `ui-${"a".repeat(16)}`;
+      let view;
+      const flush = vi.fn(async () => {});
+      view = mountWithThemes({
+        flush,
+        agentEditorDraft: {
+          inspect: () => view.theme.editor.inspectDraft(),
+          save: () => view.theme.editor.saveForControl(),
+        },
+        agentUi: {
+          inspectUi: () => ({
+            uiGeneration: 3,
+            topSurfaceId: surfaceId,
+            surfaces: [{ surfaceId }],
+          }),
+        },
+      });
+      await waitUntilReady();
+      act(() => view.theme.createCustomTheme());
+      await act(async () => {
+        adapter.handler(
+          request(
+            "editorDraft.save",
+            {
+              kind: "theme",
+              surfaceId,
+              expectedRevision: 0,
+              expectedUiGeneration: 3,
+              expectedDraftGeneration: 0,
+            },
+            "save-not-observed"
+          )
+        );
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+      const response = adapter.responses.find(({ requestId }) => requestId === "save-not-observed");
+      expect(response.error.data).toMatchObject({
+        reason: "commitNotObserved",
+        details: {
+          stateCommitted: true,
+          persisted: true,
+          savedId: "custom-editor",
+          revision: 1,
+        },
+      });
+      expect(flush).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("routes every advertised manifest method through a concrete bridge path", async () => {
     const visual = visualControl({
       platformCapabilities: {

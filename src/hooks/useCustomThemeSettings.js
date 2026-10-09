@@ -148,7 +148,14 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
   );
 
   const saveEditorTheme = useCallback(
-    (draft, { isNew, stale }) => {
+    (draft, { isNew, stale, forControl = false, baseline = null }) => {
+      if (
+        forControl &&
+        !isNew &&
+        JSON.stringify(listCustomThemeDocuments()[draft.id] ?? null) !== JSON.stringify(baseline)
+      ) {
+        throw Object.assign(new Error("The Theme source changed."), { code: "draftStale" });
+      }
       if (stale && !isNew) {
         reportLibraryConflict("theme", draft);
         return true;
@@ -157,7 +164,14 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
       const planned = isNew ? planCreate(document, { makeId: () => id }) : planUpdate(id, document);
       if (planned.issues.length > 0) return false;
       commitPlan(planned);
-      return true;
+      return forControl
+        ? {
+            savedId: id,
+            changed: planned.changed.length > 0,
+            state: planned.state,
+            document: planned.state.themes.find((theme) => theme.id === id),
+          }
+        : true;
     },
     [commitPlan, planCreate, planUpdate]
   );

@@ -62,6 +62,36 @@ describe("normalizeAgentControlRequest", () => {
 
   describe("editor draft requests", () => {
     it.each(["theme", "loudness-profile"])(
+      "validates exact Save tokens for %s and rejects implicit actions",
+      (kind) => {
+        const params = {
+          kind,
+          surfaceId: `ui-${"a".repeat(16)}`,
+          expectedRevision: 1,
+          expectedUiGeneration: 2,
+          expectedDraftGeneration: 3,
+        };
+        expect(normalizeAgentControlRequest(request("editorDraft.save", params)).ok).toBe(true);
+        for (const key of ["expectedRevision", "expectedUiGeneration", "expectedDraftGeneration"]) {
+          const incomplete = { ...params };
+          delete incomplete[key];
+          expect(normalizeAgentControlRequest(request("editorDraft.save", incomplete)).ok).toBe(
+            false
+          );
+        }
+        for (const extra of [
+          { dryRun: true },
+          { force: true },
+          { decisionSurfaceId: params.surfaceId },
+        ]) {
+          expect(
+            normalizeAgentControlRequest(request("editorDraft.save", { ...params, ...extra })).ok
+          ).toBe(false);
+        }
+      }
+    );
+
+    it.each(["theme", "loudness-profile"])(
       "normalizes describe and exact inspect for %s",
       (kind) => {
         expect(normalizeAgentControlRequest(request("editorDraft.describe", { kind }))).toEqual({

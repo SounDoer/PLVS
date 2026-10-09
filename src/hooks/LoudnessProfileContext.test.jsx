@@ -761,3 +761,50 @@ describe("import visibility", () => {
     expect(hook.result.current.active).toBe(profileSelectionId("a"));
   });
 });
+
+describe("Agent Control draft Save", () => {
+  it("creates once, selects the result, and preserves Off when saving an existing profile", () => {
+    seed([]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.setDraftName("Created"));
+    let saved = { savedId: "", changed: false };
+    act(() => {
+      saved = result.current.saveForControl();
+    });
+    expect(saved.changed).toBe(true);
+    expect(result.current.active).toBe(profileSelectionId(saved.savedId));
+    expect(result.current.draft).toBeNull();
+    act(() => result.current.selectOff());
+    act(() => result.current.beginEdit(saved.savedId));
+    act(() => {
+      saved = result.current.saveForControl();
+    });
+    expect(saved.changed).toBe(false);
+    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(result.current.profiles).toHaveLength(1);
+    expect(() => result.current.saveForControl()).toThrowError(
+      expect.objectContaining({ code: "editorDraftNotFound" })
+    );
+  });
+
+  it.each(["changed", "deleted"])(
+    "preserves a %s source draft instead of opening conflict UI",
+    (mode) => {
+      seed([profile("original", "Original")]);
+      const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+      act(() => result.current.beginEdit("original"));
+      act(() => result.current.setDraftName("Local"));
+      act(() => {
+        seed(mode === "deleted" ? [] : [profile("original", "External")]);
+        settingsStore.notifyLocal();
+      });
+      const before = structuredClone(result.current.draft);
+      expect(() => result.current.saveForControl()).toThrowError(
+        expect.objectContaining({ code: "draftStale" })
+      );
+      expect(result.current.draft).toEqual(before);
+      expect(result.current.draft.document.name).toBe("Local");
+    }
+  );
+});

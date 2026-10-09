@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { StrictMode, useRef } from "react";
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   EditorDraftProvider,
   useEditorDraftRegistry,
@@ -153,4 +153,40 @@ describe("EditorDraftProvider", () => {
       expect.objectContaining({ code: "draftActionUnavailable" })
     );
   });
+});
+
+it("saves only the exact registered generation and rejects a closed, replaced, or wrong-kind editor", () => {
+  const saveForControl = vi.fn(() => ({ savedId: "saved" }));
+  const { result, rerender } = renderHook(
+    ({ active }) => {
+      const registry = useEditorDraftRegistry();
+      useEditorDraftSurface({
+        active,
+        kind: "theme",
+        surfaceId: "editor-one",
+        controller: {
+          inspectDraft: () => ({ draftGeneration: 7, stale: false }),
+          saveForControl,
+        },
+      });
+      return registry;
+    },
+    { wrapper, initialProps: { active: true } }
+  );
+  expect(() => result.current.save("loudnessProfile", "editor-one", 7)).toThrowError(
+    expect.objectContaining({ code: "editorDraftKindMismatch" })
+  );
+  expect(() => result.current.save("theme", "editor-one", 6)).toThrowError(
+    expect.objectContaining({ code: "draftGenerationConflict" })
+  );
+  expect(() => result.current.save("theme", "replacement", 7)).toThrowError(
+    expect.objectContaining({ code: "editorDraftNotFound" })
+  );
+  expect(saveForControl).not.toHaveBeenCalled();
+  expect(result.current.save("theme", "editor-one", 7)).toEqual({ savedId: "saved" });
+  rerender({ active: false });
+  expect(() => result.current.save("theme", "editor-one", 7)).toThrowError(
+    expect.objectContaining({ code: "editorDraftNotFound" })
+  );
+  expect(saveForControl).toHaveBeenCalledTimes(1);
 });

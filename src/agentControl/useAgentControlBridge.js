@@ -1272,6 +1272,7 @@ export function useAgentControlBridge({
             "editorDraft.undo",
             "editorDraft.redo",
             "editorDraft.discard",
+            "editorDraft.save",
           ].includes(request.method)
         ) {
           const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : "theme";
@@ -1340,6 +1341,81 @@ export function useAgentControlBridge({
                 "The editor source changed while this draft was open.",
                 -32043
               );
+            }
+
+            if (request.method === "editorDraft.save") {
+              const saved = editorDraft.save(
+                kind,
+                request.params.surfaceId,
+                request.params.expectedDraftGeneration
+              );
+              const expectedSignature =
+                kind === "theme"
+                  ? themeStateSignature(saved.state)
+                  : loudnessProfileStateSignature(saved.state.profiles, saved.state.active);
+              const deadline = Date.now() + SETTLEMENT_TIMEOUT_MS;
+              let uiAfter;
+              while (true) {
+                uiAfter = uiNavigation.inspectUi();
+                const observedSignature =
+                  kind === "theme"
+                    ? previousThemeStateSignatureRef.current
+                    : previousLoudnessLibrarySignatureRef.current;
+                if (
+                  observedSignature === expectedSignature &&
+                  !uiAfter.surfaces.some(
+                    ({ surfaceId }) => surfaceId === request.params.surfaceId
+                  ) &&
+                  !uiAfter.activeBlockingEditors?.includes(kind)
+                )
+                  break;
+                if (Date.now() >= deadline) {
+                  throw semanticFailure(
+                    saved.changed ? COMMIT_NOT_OBSERVED : "draftNotSettled",
+                    "$",
+                    "The editor Save was accepted but its final state was not observed. Inspect before retrying.",
+                    -32031,
+                    {
+                      stateCommitted: saved.changed,
+                      savedId: saved.savedId,
+                      revision: controlRevisionRef.current,
+                    }
+                  );
+                }
+                await new Promise((resolve) => setTimeout(resolve, 16));
+              }
+              if (saved.changed) {
+                try {
+                  await flush();
+                } catch (error) {
+                  throw semanticFailure(
+                    "persistenceFailed",
+                    "$",
+                    `Draft saved in memory but persistence failed: ${error?.message || String(error)}`,
+                    -32030,
+                    {
+                      stateCommitted: true,
+                      savedId: saved.savedId,
+                      revision: controlRevisionRef.current,
+                    }
+                  );
+                }
+              }
+              const { id: _savedId, ...document } = saved.document;
+              return {
+                requestId,
+                result: {
+                  action: request.method,
+                  status: "completed",
+                  changed: saved.changed,
+                  revision: controlRevisionRef.current,
+                  uiGeneration: uiAfter.uiGeneration,
+                  kind,
+                  surfaceId: request.params.surfaceId,
+                  savedId: saved.savedId,
+                  document,
+                },
+              };
             }
 
             let changed = true;
