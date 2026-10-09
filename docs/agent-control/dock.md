@@ -21,6 +21,9 @@ prepare the strip while the normal window is visible, but never enters or exits 
 `dock.describe` returns platform support, current option availability, the dynamic monitor choices,
 height constraints, the canonical module catalog, per-module width constraints, and the input
 schema for layout apply. It does not expose legacy persisted module IDs or React component details.
+Monitor inventory is read again for every describe, enter (including dry-run), and Preset apply
+request. A failed read returns `commandFailed` before mutation and is retried on the next request;
+a previous inventory is never used as a fallback. Monitor changes alone do not advance revision.
 
 `dock.inspect` remains available even when Dock is unsupported and returns:
 

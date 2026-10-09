@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { availableMonitors, currentMonitor, primaryMonitor } from "@tauri-apps/api/window";
+import { useCallback, useMemo } from "react";
+import { readMonitorInventory } from "./monitorInventory.js";
 import { useDock } from "../dock/DockContext.jsx";
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
 import { usePresetLibrary } from "../hooks/PresetsContext.jsx";
@@ -21,9 +21,7 @@ import { standardLayoutIdForCount } from "../math/channelLayoutTable.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
 import { buildTransportSnapshot } from "./transportControl.js";
-import { isTauri } from "../ipc/env.js";
 import { supportsDockMode } from "../lib/platform.js";
-import { readAgentControlRuntime } from "./appSnapshot.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { useAgentControlState } from "./AgentControlStateContext.jsx";
 import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
@@ -61,59 +59,6 @@ export function AgentControlBridge() {
     executeDockForControl,
   } = useDock();
 
-  const [agentControlMonitors, setAgentControlMonitors] = useState([]);
-  const [agentControlFallbackMonitor, setAgentControlFallbackMonitor] = useState(null);
-  const [agentControlMonitorRects, setAgentControlMonitorRects] = useState([]);
-  const [agentControlMonitorInventoryReady, setAgentControlMonitorInventoryReady] = useState(false);
-  useEffect(() => {
-    // Dock Control is the only consumer, and it exists only in a development-identity build, so a
-    // release has no reason to query the monitor list at boot.
-    if (!isTauri() || readAgentControlRuntime().available !== true) return;
-    let cancelled = false;
-    void Promise.resolve()
-      .then(async () => {
-        const [monitors, current, primary] = await Promise.all([
-          availableMonitors(),
-          currentMonitor(),
-          primaryMonitor(),
-        ]);
-        if (cancelled) return;
-        setAgentControlMonitors(
-          monitors.flatMap((monitor) =>
-            typeof monitor.name === "string" ? [{ id: monitor.name, name: monitor.name }] : []
-          )
-        );
-        setAgentControlFallbackMonitor(
-          typeof current?.name === "string"
-            ? current.name
-            : typeof primary?.name === "string"
-              ? primary.name
-              : null
-        );
-        setAgentControlMonitorRects(
-          monitors.flatMap((monitor) =>
-            Number.isFinite(monitor.position?.x) &&
-            Number.isFinite(monitor.position?.y) &&
-            Number.isFinite(monitor.size?.width) &&
-            Number.isFinite(monitor.size?.height)
-              ? [
-                  {
-                    x: monitor.position.x,
-                    y: monitor.position.y,
-                    width: monitor.size.width,
-                    height: monitor.size.height,
-                  },
-                ]
-              : []
-          )
-        );
-        setAgentControlMonitorInventoryReady(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const agentControlDock = useMemo(
     () => ({
       supported: supportsDockMode(),
@@ -584,10 +529,7 @@ export function AgentControlBridge() {
       sourceMode,
       activeEditors: activeBlockingEditors,
       transitioning: dockTransitioning,
-      monitors: agentControlMonitors,
-      fallbackMonitor: agentControlFallbackMonitor,
-      monitorRects: agentControlMonitorRects,
-      monitorInventoryReady: agentControlMonitorInventoryReady,
+      readMonitorInventory,
     },
     executeDock: executeDockForControl,
   });

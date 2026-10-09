@@ -93,8 +93,8 @@ ledger. Their explicit destructive names need no additional force flag. Missing 
 
 The current GUI retains at most five FILE sessions and may evict the oldest completed, stopped, or
 error entry that is neither active nor analyzing when a new entry exceeds that limit. Agent Control
-keeps this behavior but never hides it: analyze returns `evictedSessions` summaries and dry-run
-previews them.
+keeps this behavior but never hides it: analyze returns `evictedSessions` summaries after acceptance. Analyze is an action and does not
+support dry-run; `file remove` and `file clear` can preview the sessions they would delete.
 
 Entering FILE by source, analyze, or select is refused while Dock is active; Agent Control never exits
 Dock implicitly. Leaving an active FILE analysis for LIVE requires `--allow-stop-file-analysis` and

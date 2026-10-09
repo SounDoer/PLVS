@@ -158,8 +158,7 @@ describe("AgentControlBridge", () => {
     expect(passed.dockContext).toMatchObject({
       platform: "x",
       transitioning: false,
-      monitors: [],
-      monitorInventoryReady: false,
+      readMonitorInventory: expect.any(Function),
     });
     expect(typeof passed.executeDock).toBe("function");
     expect(passed.viewContext).toMatchObject({ docked: false, view: { surfaceOpacity: 100 } });

@@ -6,6 +6,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
+import { assertWalkthroughStart } from "./ui-visual-walkthrough-lib.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED_METHODS = [
@@ -20,7 +21,7 @@ const REQUIRED_METHODS = [
 ];
 
 export function parseJsonEnvelope(label, output) {
-  const line = output.replace(/^﻿/, "").trim().split(/\r?\n/).pop();
+  const line = output.replace(/^﻿/, "").trim();
   let envelope;
   try {
     envelope = JSON.parse(line);
@@ -76,20 +77,47 @@ export function verifyUiSurface(result, { kind, target }) {
   return surface;
 }
 
-function parseArgs(args) {
+export function parseArgs(args) {
   let outDir;
-  for (let index = 0; index < args.length; index += 1) {
-    if (args[index] !== "--out-dir" || !args[index + 1]) {
-      throw new Error("Usage: npm run smoke:agent-control -- [--out-dir <directory>]");
+  let instanceId;
+  const seen = new Set();
+  for (let index = 0; index < args.length; index += 2) {
+    const flag = args[index];
+    const value = args[index + 1];
+    if (
+      !["--out-dir", "--instance"].includes(flag) ||
+      !value ||
+      value.startsWith("--") ||
+      seen.has(flag)
+    ) {
+      throw new Error(
+        "Usage: npm run smoke:agent-control -- [--instance <id>] [--out-dir <directory>]"
+      );
     }
-    outDir = args[(index += 1)];
+    seen.add(flag);
+    if (flag === "--out-dir") outDir = value;
+    else instanceId = value;
   }
   const stamp = new Date()
     .toISOString()
     .replaceAll(":", "-")
     .replace(/\.\d{3}Z$/, "Z");
   const fallback = join(root, "artifacts", "agent-control-smoke", `${stamp}-${process.platform}`);
-  return { outDir: resolve(root, outDir ?? fallback) };
+  return { outDir: resolve(root, outDir ?? fallback), instanceId };
+}
+
+export function selectSmokeInstance(instances, selector) {
+  if (!Array.isArray(instances)) throw new Error("instances returned no instance list.");
+  if (selector) {
+    if (!instances.some((instance) => instance.instanceId === selector))
+      throw new Error(`Smoke instance was not found: ${selector}.`);
+    return selector;
+  }
+  if (instances.length !== 1)
+    throw new Error(
+      "Smoke requires one running development instance or an explicit --instance / PLVS_INSTANCE_ID."
+    );
+  return instances[0].instanceId;
 }
 
 function createRunner(executable) {
@@ -116,9 +144,20 @@ function createRunner(executable) {
   };
 }
 
-export async function runAgentControlSmoke({ executable, outDir }) {
+export async function runAgentControlSmoke({
+  executable,
+  outDir,
+  instanceId,
+  invoke = createRunner(executable),
+}) {
   await mkdir(outDir, { recursive: true });
-  const run = createRunner(executable);
+  const discovered = invoke("instances", ["instances", "--json"]);
+  const selectedInstance = selectSmokeInstance(
+    discovered.result.instances,
+    instanceId ?? process.env.PLVS_INSTANCE_ID
+  );
+  const run = (label, args, options) =>
+    invoke(label, [...args, "--instance", selectedInstance], options);
   let activeRecordingId = null;
   let activeUiSurface = null;
   try {
@@ -136,6 +175,9 @@ export async function runAgentControlSmoke({ executable, outDir }) {
       throw new Error("inspect returned an invalid global revision.");
     }
     const uiInspected = run("ui inspect", ["ui", "inspect", "--json"]);
+    assertWalkthroughStart({ scenarios: [] }, capabilities.result, uiInspected.result);
+    if (uiInspected.result.window?.form !== "normal" || uiInspected.result.window?.visible !== true)
+      throw new Error("Smoke requires a visible normal window; restore it before running.");
     const shown = run("ui show settings", [
       "ui",
       "show",
@@ -143,12 +185,17 @@ export async function runAgentControlSmoke({ executable, outDir }) {
       "--section",
       "appearance",
       "--expected-revision",
-      String(revision),
+      String(uiInspected.result.revision),
       "--expected-ui-generation",
       String(uiInspected.result.uiGeneration),
       "--json",
     ]);
-    activeUiSurface = verifyUiSurface(shown.result, {
+    if (shown.result.changed !== true)
+      throw new Error(
+        "Smoke did not create a new Settings surface; leaving the existing surface untouched."
+      );
+    activeUiSurface = shown.result.surface;
+    verifyUiSurface(shown.result, {
       kind: "settings",
       target: { section: "appearance" },
     });
@@ -199,7 +246,7 @@ export async function runAgentControlSmoke({ executable, outDir }) {
       "--max-duration-seconds",
       "3",
       "--expected-revision",
-      String(revision),
+      String(finalUi.result.revision),
       "--json",
     ]);
     activeRecordingId = started.result.recording?.recordingId;
@@ -240,6 +287,7 @@ export async function runAgentControlSmoke({ executable, outDir }) {
       createdAt: new Date().toISOString(),
       platform: process.platform,
       revision,
+      instanceId: selectedInstance,
       runtime: capabilities.result.runtime,
       artifacts: {
         screenshot: {
@@ -291,9 +339,9 @@ export async function runAgentControlSmoke({ executable, outDir }) {
 }
 
 async function main() {
-  const { outDir } = parseArgs(process.argv.slice(2));
+  const { outDir, instanceId } = parseArgs(process.argv.slice(2));
   const { executable } = buildPlvsCli({ identity: "development" });
-  const { report, reportPath } = await runAgentControlSmoke({ executable, outDir });
+  const { report, reportPath } = await runAgentControlSmoke({ executable, outDir, instanceId });
   console.log(`OK Agent Control smoke passed on ${report.platform}.`);
   console.log(`Screenshot: ${report.artifacts.screenshot.path}`);
   console.log(`Recording : ${report.artifacts.recording.path}`);

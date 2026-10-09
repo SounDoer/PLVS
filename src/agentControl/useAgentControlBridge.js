@@ -593,6 +593,7 @@ function transportMutationMatches(method, params, execution, snapshot) {
  *   fallbackMonitor: any,
  *   monitorRects: any[],
  *   monitorInventoryReady: boolean,
+ *   readMonitorInventory?: () => Promise<Partial<AgentControlDockContext>>,
  *   channelCount: any,
  *   channelLabels: string[],
  *   dialogueDetectionActive: boolean,
@@ -1062,7 +1063,6 @@ export function useAgentControlBridge({
   useEffect(() => {
     // Dock panels share the Workspace panel mapping, which offers and keeps the Loudness reference
     // layer only when this is set; the bare Dock context never carried it.
-    const dockRequestContext = { ...dockContext, hasLoudnessReference };
     const ownedVisualCaptures = visualCapturesRef.current;
     const buildCurrentMeasurement = (liveOverride) => {
       const currentMeasurement = latestMeasurementContextRef.current;
@@ -1132,6 +1132,25 @@ export function useAgentControlBridge({
             };
       if (revisionBatch) revisionBatchRef.current = revisionBatch;
       try {
+        let dockRequestContext = { ...dockContext, hasLoudnessReference };
+        if (
+          ["dock.describe", "dock.enter", "preset.apply"].includes(request.method) &&
+          dockContext.readMonitorInventory
+        ) {
+          try {
+            dockRequestContext = {
+              ...dockRequestContext,
+              ...(await dockContext.readMonitorInventory()),
+            };
+          } catch (error) {
+            throw semanticFailure(
+              "commandFailed",
+              "$",
+              `Monitor inventory could not be read: ${error?.message || String(error)}`,
+              -32603
+            );
+          }
+        }
         if (isDevelopmentFixtureMethod(request.method)) {
           try {
             if (request.params.expectedRevision !== controlRevisionRef.current) {
@@ -3361,10 +3380,10 @@ export function useAgentControlBridge({
             glassSupported: viewContext.platform === "macos",
             channelCount: analysisContext.channelCount,
             channelLabels: analysisContext.channelLabels,
-            monitors: dockContext.monitors,
-            fallbackMonitor: dockContext.fallbackMonitor,
-            monitorInventoryReady: dockContext.monitorInventoryReady,
-            monitorRects: dockContext.monitorRects,
+            monitors: dockRequestContext.monitors,
+            fallbackMonitor: dockRequestContext.fallbackMonitor,
+            monitorInventoryReady: dockRequestContext.monitorInventoryReady,
+            monitorRects: dockRequestContext.monitorRects,
           });
           if (resources.issues.length > 0) {
             throw semanticFailure(

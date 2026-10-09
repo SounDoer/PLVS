@@ -2690,6 +2690,52 @@ describe("useAgentControlBridge", () => {
     expect(applied.result.state.dock.panels[0].controls.layers).toContain("reference");
   });
 
+  it("refreshes monitor discovery and rejects removed monitors without committing", async () => {
+    let monitors = [{ id: "old", name: "Old" }];
+    const readMonitorInventory = vi.fn(async () => ({ monitors, monitorInventoryReady: true }));
+    const executeDock = vi.fn();
+    const flush = vi.fn();
+    mount({ agentDockContext: { readMonitorInventory }, executeAgentDock: executeDock, flush });
+    await waitUntilReady();
+    expect((await send(request("dock.describe", {}, "monitor-before"))).result.monitors).toEqual(
+      monitors
+    );
+    monitors = [{ id: "new", name: "New" }];
+    expect((await send(request("dock.describe", {}, "monitor-after"))).result.monitors).toEqual(
+      monitors
+    );
+    const missing = await send(request("dock.enter", { monitor: "old" }, "removed-monitor"));
+    expect(missing.error.data.reason).toBe("monitorNotFound");
+    const preview = await send(
+      request("dock.enter", { monitor: "new", dryRun: true }, "new-monitor")
+    );
+    expect(preview.result.state.dock.monitor).toBe("new");
+    expect(preview.result.revision).toBe(0);
+    expect(readMonitorInventory).toHaveBeenCalledTimes(4);
+    expect(executeDock).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("fails a monitor read before mutation and retries it on the next request", async () => {
+    const readMonitorInventory = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("display service unavailable"))
+      .mockResolvedValue({ monitors: [{ id: "new", name: "New" }], monitorInventoryReady: true });
+    const executeDock = vi.fn();
+    const flush = vi.fn();
+    mount({ agentDockContext: { readMonitorInventory }, executeAgentDock: executeDock, flush });
+    await waitUntilReady();
+    const failed = await send(request("dock.enter", { monitor: "new" }, "inventory-failure"));
+    expect(failed.error.data.reason).toBe("commandFailed");
+    expect(executeDock).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
+    const retried = await send(
+      request("dock.enter", { monitor: "new", dryRun: true }, "inventory-retry")
+    );
+    expect(retried.result.state.dock.monitor).toBe("new");
+    expect(retried.result.revision).toBe(0);
+  });
+
   it("preserves the monitorNotFound reason from Dock validation", async () => {
     mount({
       agentDockContext: {
@@ -3848,9 +3894,13 @@ describe("useAgentControlBridge", () => {
       capturePresetSnapshot: vi.fn(async () => ({ tree: target.tree, windowPinned: true })),
       presets: { list: [target], activeId: null, dirty: false },
       agentDockContext: {
-        monitors: [{ id: "monitor-1", name: "Display 1" }],
-        fallbackMonitor: "monitor-1",
-        monitorInventoryReady: true,
+        monitors: [{ id: "stale", name: "Disconnected" }],
+        fallbackMonitor: "stale",
+        readMonitorInventory: async () => ({
+          monitors: [{ id: "monitor-1", name: "Display 1" }],
+          fallbackMonitor: "monitor-1",
+          monitorInventoryReady: true,
+        }),
       },
     });
     await waitUntilReady();

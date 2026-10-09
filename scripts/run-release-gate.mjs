@@ -10,6 +10,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { captureSmokeChangesSinceLastTag } from "./audio-code-changed.mjs";
+import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -46,6 +47,20 @@ if (paths.length === 0) {
     console.log(`  ${p}`);
   }
   run("Capture smoke", npm, ["run", "smoke:capture"]);
+}
+
+const agentControlChanges = agentControlSmokeChangesSinceLastTag({ cwd: root });
+if (agentControlChanges.paths.length > 0) {
+  console.log(
+    `Agent Control desktop dependencies changed since ${agentControlChanges.tag ?? "the initial commit"}:`
+  );
+  for (const path of agentControlChanges.paths) console.log(`  ${path}`);
+  console.log(
+    "Start the current source with npm run desktop in a visible normal window. Set PLVS_INSTANCE_ID when several development workbenches are running."
+  );
+  run("Agent Control desktop smoke", npm, ["run", "smoke:agent-control"]);
+} else {
+  console.log("Agent Control desktop smoke skipped: no desktop dependency changed.");
 }
 
 console.log("\nOK Local release preflight passed.");

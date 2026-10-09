@@ -98,7 +98,15 @@ npm run smoke:agent-control
 
 Use `npm run cli:build` to build only the CLI package without starting the GUI.
 
-`desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the development GUI must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed release. The public release CLI uses the same flat commands but talks to the installed app through the release identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` assumes the development GUI is running, verifies capabilities, inspect, a screenshot and a 3-second silent recording, and writes the files and a verification report to `artifacts/agent-control-smoke/`.
+`desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the development GUI must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed release. The public release CLI uses the same flat commands but talks to the installed app through the release identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` requires the current development GUI in a visible normal window with no open surfaces or blocking editors. It verifies capabilities, inspect, Settings navigation, a screenshot and a 3-second silent recording, and writes artifacts plus the selected instance ID to `artifacts/agent-control-smoke/`. Use `npm run smoke:agent-control -- --instance <id>` or `PLVS_INSTANCE_ID` with multiple workbenches. Without either, it discovers and pins the sole instance for the whole run, including cleanup.
+
+`release:preflight` requires this real-desktop smoke whenever frontend, native, shared-contract,
+build dependency or smoke tooling paths changed since the last official release tag. A missing
+GUI, ambiguous instance, unsafe initial UI, discovery failure or smoke failure blocks the gate;
+there is no skip flag. Restart the development GUI from the current source before preflight.
+Ordinary hosted CI runs the protocol and orchestration tests; it does not certify native GUI
+capture or replace this local desktop gate. Windows and macOS native capture still need validation
+on their respective desktop hosts.
 
 ### UI visual walkthroughs
 

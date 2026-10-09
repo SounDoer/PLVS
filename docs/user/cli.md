@@ -547,8 +547,9 @@ exported document, and `result.pack`, `result.configuration`, or `result.report`
 `result.out` in the envelope, so stdout does not carry a duplicate. The document and
 `out` fields never appear together. With `--report-format markdown`, `transport file report`
 moves `result.markdown` instead, and the file receives the Markdown text verbatim rather than
-pretty-printed JSON. No other command accepts `--out`; capture its clean JSON stdout
-programmatically.
+pretty-printed JSON. Visual screenshots and recording wait/stop also accept `--out`, writing
+binary PNG/MP4 artifacts with metadata in the JSON response; see [Visual Capture](../agent-control/visual.md).
+For commands without `--out`, capture their clean JSON stdout programmatically.
 
 If an exported document cannot be written, the CLI prints one line on stderr and exits `1` while
 stdout still carries the full `ok: true` envelope, including `result.pack`,
@@ -632,3 +633,19 @@ target-triple-named Tauri external binary. Tauri installs it beside the host und
 name `plvs-cli.exe` on Windows or `Contents/MacOS/plvs-cli` on macOS. The installer and DMG smoke
 checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
 directory.
+
+### Desktop regression checks
+
+`npm run smoke:agent-control -- --instance <instance-id>` checks the current development GUI,
+including Settings navigation, a PNG screenshot and a short silent MP4 recording. Without an
+explicit selector it uses `PLVS_INSTANCE_ID`, or discovers and pins the sole development instance.
+It refuses multiple unselected instances, existing UI surfaces or blocking editors, and hidden or
+non-normal windows before navigation. It closes only the Settings surface it created.
+
+The local `release:preflight` requires this smoke when desktop dependencies changed since the last
+official release tag. Start the current source with `npm run desktop` before running preflight;
+failures block the gate. Reports are saved under `artifacts/agent-control-smoke/`.
+
+Dock monitor discovery and entry, and Preset application, read the current monitor inventory on
+each request, including dry-run. Hot-plugging a monitor does not require restarting PLVS. A failed
+inventory read refuses the request without mutation; the next request retries the read.
