@@ -235,7 +235,9 @@ as PLVS-exported Theme pack files.
 The [Sharesets](https://plvs.soundoer.com/community/) offers curated Themes, Presets, and
 Loudness Profiles. Browse a category or search, then open an Item for its previews, contents,
 compatibility details, author, and release history. The initial collection is authored by PLVS;
-public submissions are not open.
+public submissions are not open. Theme pages show up to four selected previews. Select a thumbnail to switch images, or select the
+large image to enlarge it in place. Use the arrow controls to browse and Close, Escape, or the
+background to dismiss it. Usage instructions, details, and release history are shown on the page.
 
 Download a `.plvstheme`, `.plvspreset`, or `.plvsloudness` file, then open **Settings → Saved Items →
 Import…**. Review what will be added and confirm. Importing adds to the

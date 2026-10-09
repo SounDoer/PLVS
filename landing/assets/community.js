@@ -66,3 +66,70 @@ function enhanceCopyAction() {
 }
 
 if (typeof document !== "undefined") enhanceCopyAction();
+
+function enhancePreviewGallery() {
+  const gallery = document.querySelector("[data-preview-gallery]");
+  if (!gallery) return;
+  const choices = [...gallery.querySelectorAll("[data-preview-choice]")];
+  const dialog = document.querySelector("[data-preview-dialog]");
+  const full = gallery.querySelector("[data-preview-full]");
+  let selected = 0;
+  const select = (index) => {
+    selected = (index + choices.length) % choices.length;
+    const choice = choices[selected];
+    const main = gallery.querySelector("[data-preview-main]");
+    main.src = choice.href;
+    main.alt = choice.dataset.previewLabel;
+    full.href = choice.href;
+    gallery.querySelector("[data-preview-caption]").textContent = choice.dataset.previewLabel;
+    for (const item of choices) item.removeAttribute("aria-current");
+    choice.setAttribute("aria-current", "true");
+    if (dialog) {
+      const enlarged = dialog.querySelector("[data-preview-enlarged]");
+      enlarged.src = choice.href;
+      enlarged.alt = choice.dataset.previewLabel;
+      dialog.querySelector("[data-preview-enlarged-caption]").textContent =
+        choice.dataset.previewLabel;
+      dialog.querySelector("[data-preview-position]").textContent =
+        `${selected + 1} / ${choices.length}`;
+    }
+  };
+  choices.forEach((choice, index) => {
+    choice.addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      select(index);
+    });
+  });
+  if (!dialog) return;
+  full.addEventListener("click", (event) => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    select(selected);
+    dialog.showModal();
+  });
+  dialog.querySelector("[data-preview-close]").addEventListener("click", () => dialog.close());
+  dialog
+    .querySelector("[data-preview-previous]")
+    .addEventListener("click", () => select(selected - 1));
+  dialog.querySelector("[data-preview-next]").addEventListener("click", () => select(selected + 1));
+  dialog.addEventListener("click", (event) => {
+    if (event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    )
+      dialog.close();
+  });
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      select(selected + (event.key === "ArrowLeft" ? -1 : 1));
+    }
+  });
+}
+
+if (typeof document !== "undefined") enhancePreviewGallery();

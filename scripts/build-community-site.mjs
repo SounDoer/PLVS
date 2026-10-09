@@ -195,6 +195,53 @@ function detailPage(listing) {
       </article>`;
     })
     .join("\n");
+  if (listing.type === "themes") {
+    const preferred = [
+      "product-workspace-file",
+      "semantic-overview",
+      "product-spectrum-file",
+      "product-spectrogram-heatmap",
+    ];
+    const ranked = [...previews].sort((a, b) => {
+      const rank = (preview) =>
+        preferred.includes(preview.id) ? preferred.indexOf(preview.id) : preferred.length;
+      return rank(a) - rank(b);
+    });
+    const gallery = ranked.slice(0, 4);
+    const previewUrl = (preview) =>
+      `/community/files/${listing.id}/v${current.number}/${preview.id}.png`;
+    const previewLabel = (preview) =>
+      preview.id
+        .replace(/^product-/, "")
+        .replace(/-file$/, "")
+        .replaceAll("-", " ");
+    return page(
+      `${listing.title} — PLVS Sharesets`,
+      listing.summary,
+      `<main class="detail theme-detail">
+        <p class="breadcrumb"><a href="/community/">Sharesets</a> / <a href="/community/themes/">Themes</a></p>
+        <div class="theme-layout">
+          ${
+            gallery.length
+              ? `<div class="theme-gallery" data-preview-gallery>
+            <figure><a data-preview-full href="${previewUrl(gallery[0])}" aria-label="Enlarge preview"><img class="theme-main-preview" data-preview-main src="${previewUrl(gallery[0])}" alt="${escapeHtml(previewLabel(gallery[0]))}" /></a><figcaption data-preview-caption>${escapeHtml(previewLabel(gallery[0]))}</figcaption></figure>
+            <div class="theme-thumbnails" aria-label="Theme previews">${gallery.map((preview, index) => `<a href="${previewUrl(preview)}" data-preview-choice data-preview-label="${escapeHtml(previewLabel(preview))}" aria-label="View ${escapeHtml(previewLabel(preview))}"${index === 0 ? ' aria-current="true"' : ""}><img src="${previewUrl(preview)}" alt="" loading="lazy" /></a>`).join("")}</div>
+          </div>`
+              : ""
+          }
+          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p><p class="lede">${escapeHtml(listing.summary)}</p>${primaryAction.replace("Download .plvstheme", "Download")}
+            ${current ? `<div class="theme-how"><h2>How to Use</h2><p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
+            ${metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
+          </header>
+        </div>
+        <div class="theme-more">
+          <section><h2>Details</h2>${metadata ? `<div class="theme-facts"><dl>${renderSummary(metadata.content.summary)}<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div></dl><div><h3>Compatibility</h3>${renderCompatibility(metadata)}</div></div><details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>` : `<p class="muted">No current release is available.</p>`}</section>
+          <section><h2>Release History</h2><div class="release-list">${releases}</div></section>
+        </div>
+        ${gallery.length ? `<dialog class="preview-dialog" aria-label="Theme preview" data-preview-dialog><div class="preview-toolbar"><button type="button" data-preview-previous aria-label="Previous image">←</button><span data-preview-position aria-live="polite"></span><button type="button" data-preview-next aria-label="Next image">→</button><button type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
+      </main>`
+    );
+  }
   return page(
     `${listing.title} — PLVS Sharesets`,
     listing.summary,
