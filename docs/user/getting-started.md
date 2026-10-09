@@ -30,20 +30,22 @@ from the PLVS GitHub Releases page instead of bypassing the warning.
 
 ## Experimental Linux Preview
 
-Locally built Linux Preview packages target Ubuntu 24.04 x86_64. They are test builds, not part of
-the official downloads above. Install a supplied `.deb` with APT so it resolves the required
+Linux Preview packages target Ubuntu 24.04 x86_64. Published test builds are marked as GitHub
+**Pre-releases**, with the source commit recorded in their notes; they are separate from official
+stable releases. Install a supplied `.deb` with APT so it resolves the required
 libraries and the Ubuntu FFmpeg package:
 
 ```sh
-sudo apt install ./plvs-preview.deb
+sudo apt install --reinstall ./plvs-preview.deb
 ```
 
 Use the actual filename of the supplied package. Launch **PLVS Preview** from the application menu,
 or run `plvs`. `plvs-cli doctor --json` checks the installed application and decoders. Audio capture
 requires a running PulseAudio server or PipeWire's PulseAudio compatibility service.
 
-Preview keeps its own settings and does not automatically update. Install a newer Preview `.deb`
-with APT to replace it; remove it with `sudo apt remove plvs-preview`. Removing the package preserves
+Preview keeps its own settings and does not automatically update. Use `--reinstall` when switching
+Preview commits: their packages can share the same base version. Remove Preview with
+`sudo apt remove plvs-preview`. Removing the package preserves
 your user settings and the system FFmpeg package. The initial Preview shares executable names with
 the future stable Linux package, so the two packages cannot be installed together.
 

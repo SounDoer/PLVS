@@ -386,3 +386,15 @@ This package smoke does not validate the GUI file-picker interaction, physical d
 rendering, or native Wayland/X11 desktop integration. Run the real Rust file-analysis tests against
 the distribution decoders separately (`PLVS_FFMPEG_DIR=/usr/bin cargo test --manifest-path
 src-tauri/Cargo.toml file_analysis -- --test-threads=1`) and retain the native desktop/soak milestones.
+
+For an automated fresh-system check, install `debootstrap` on the Ubuntu build host and run
+`sudo bash scripts/verify-linux-deb-clean.sh <package.deb> <output-directory>`. It bootstraps a
+temporary Ubuntu userspace, runs the package verifier in private mount/PID namespaces, preserves
+the logs, and removes the temporary root. It never installs the package on the build host.
+
+The manually dispatched `preview-build.yml` accepts `platform=linux` or `platform=windows`
+(default). Supply an explicit full commit SHA and unique request ID. It runs the full repository
+gate, builds only the selected platform, runs real file-analysis and package tests, and promotes
+the exact tested artifacts through a Draft Pre-release. Linux publishes one commit-labelled deb;
+Windows publishes its installer and Portable ZIP. Official versions, updater metadata, and website
+deployment are separate. Follow `.agents/skills/plvs-preview-build/SKILL.md` for dispatch and verification.

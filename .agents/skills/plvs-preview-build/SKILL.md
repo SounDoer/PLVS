@@ -1,14 +1,17 @@
 ---
 name: "plvs-preview-build"
-description: "Builds and publishes a tested, immutable Windows PLVS Preview installer and Portable ZIP for an exact commit. Use when someone needs an installable test build; do not use for official versioned releases."
+description: "Builds and publishes a tested, immutable Windows or Ubuntu PLVS Preview for an exact commit. Use when someone needs an installable test build; do not use for official versioned releases."
 ---
 
 # PLVS Preview Build
 
-Publish an unofficial Windows Preview for an exact pushed commit. Preview is a third application
+Publish an unofficial Windows or Ubuntu Preview for an exact pushed commit. Preview is a third application
 identity (`PLVS Preview`, `com.soundoer.plvs.preview`), isolated from stable PLVS and the local
 development app. It has separate settings, installation and Agent Control discovery, and its
-updater is compiled out.
+updater is compiled out. Select `platform=windows` for the installer and Portable ZIP, or
+`platform=linux` for the Ubuntu 24.04 x86_64 deb. The Linux deb has separate settings but cannot
+coexist with a future stable Linux deb because they share executable paths. Linux live Agent
+Control is not yet available; only diagnostics and instance discovery are supported.
 
 Use `plvs-release` instead when the user intends to ship an official version.
 
@@ -17,8 +20,10 @@ Use `plvs-release` instead when the user intends to ship an official version.
 - Build the full 40-character commit SHA the user chose, never an inferred branch tip.
 - Do not dispatch while relevant changes are uncommitted or the SHA is absent from the remote branch.
 - A published Preview uses a unique `preview-<short-sha>-<run-id>` tag. Never reuse or move it.
-- The workflow runs `npm run check`, file-analysis smoke, and Preview installer smoke before publishing.
-- The tested Installer and Portable ZIP are assembled in a Draft Pre-release, verified, then
+- The workflow runs `npm run check`, real file-analysis tests, and selected-platform package smoke before publishing.
+- Linux package smoke installs, launches and removes the exact deb in a fresh Ubuntu userspace;
+  it is not native desktop/hardware or four-hour soak acceptance.
+- The tested platform packages are assembled in a Draft Pre-release, verified, then
   published once. The published result must report `immutable: true` and have a valid attestation.
 - Preview releases are temporary; the workflow retains the ten newest ones, deleting older Preview
   releases only after a newer Preview published successfully.
@@ -40,7 +45,9 @@ $remoteSha = ($remoteLine -split "`t")[0]
 if ($remoteSha -ne $sha) { throw "Push the exact Preview commit before dispatching" }
 
 $requestId = [guid]::NewGuid().ToString("N").Substring(0, 12)
-gh workflow run preview-build.yml --ref $branch -f commit_sha=$sha -f request_id=$requestId
+# Set this from the requested target platform; Windows remains the workflow default.
+$platform = "linux" # or "windows"
+gh workflow run preview-build.yml --ref $branch -f commit_sha=$sha -f request_id=$requestId -f platform=$platform
 ```
 
 Do not silently commit or push unrelated work merely to satisfy these checks. If the tree is dirty or
@@ -88,12 +95,18 @@ if ($immutable -ne "true") { throw "$tag is not immutable" }
 gh release verify $tag
 ```
 
-Require exactly these two non-empty assets, using the package version and first seven SHA characters:
+Require exactly the selected platform's non-empty assets, using the package version and first seven SHA characters:
 
-| Artifact | Filename |
-| --- | --- |
-| Installer | `PLVS-Preview_<version>-preview.<short-sha>_x64-setup.exe` |
-| Portable ZIP | `PLVS-Preview-v<version>-preview.<short-sha>-x64-portable.zip` |
+| Artifact                | Filename                                                       |
+| ----------------------- | -------------------------------------------------------------- |
+| Installer               | `PLVS-Preview_<version>-preview.<short-sha>_x64-setup.exe`     |
+| Portable ZIP            | `PLVS-Preview-v<version>-preview.<short-sha>-x64-portable.zip` |
+| Ubuntu deb (Linux only) | `PLVS-Preview_<version>-preview.<short-sha>_amd64.deb`         |
+
+Windows requires the installer and Portable ZIP; Linux requires only the deb. Reject mixed or
+incomplete sets with `scripts/validate-preview-bundle.mjs <version> <sha> <directory> <platform>`.
+For Linux, explain APT installation, the required PulseAudio/pipewire-pulse service, and the pending
+native hardware/desktop/soak acceptance. Do not describe a passing package smoke as full Linux support.
 
 The Portable ZIP contains `plvs.exe`, `plvs-cli.exe`, `ffmpeg.exe`, and `ffprobe.exe`; testers must
 keep the extracted files together. Return the immutable Release URL, full commit SHA, filenames, and
@@ -105,5 +118,5 @@ the fact that repository, file-analysis, and installer gates passed.
 - If a run leaves a mutable Draft: report it. It may be deleted with its workflow-created tag before
   retrying, but deletion is not required because the next run receives a unique tag.
 - After publication: never replace assets or move/reuse the tag. Fix the code and create a new Preview.
-- `preview-build.yml` is Windows-only and does not update the official version, CHANGELOG, stable
+- `preview-build.yml` selects one target platform and does not update the official version, CHANGELOG, stable
   updater metadata, or website.

@@ -1,12 +1,18 @@
-# Installable Windows Preview builds for testing. Every published build uses a unique immutable
+# Installable Windows or Ubuntu Preview builds. Every published build uses a unique immutable
 # tag and an identity isolated from stable PLVS and the local development app.
 
 name: Preview Build
-run-name: Preview ${{ github.ref_name }} @ ${{ inputs.commit_sha }} (${{ inputs.request_id }})
+run-name: Preview ${{ inputs.platform }} ${{ github.ref_name }} @ ${{ inputs.commit_sha }} (${{ inputs.request_id }})
 
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: Platform to build and test
+        required: true
+        type: choice
+        default: windows
+        options: [windows, linux]
       commit_sha:
         description: Full 40-character commit SHA to build
         required: true
@@ -26,6 +32,10 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-24.04
+    env:
+      PREVIEW_SHA: ${{ inputs.commit_sha }}
+      REQUEST_ID: ${{ inputs.request_id }}
+      PREVIEW_PLATFORM: ${{ inputs.platform }}
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       short_sha: ${{ steps.metadata.outputs.short_sha }}
@@ -34,14 +44,15 @@ jobs:
       - name: Validate dispatch inputs
         shell: bash
         run: |
-          if [[ ! "${{ inputs.commit_sha }}" =~ ^[0-9a-f]{40}$ ]]; then
+          if [[ ! "$PREVIEW_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "commit_sha must be a full lowercase commit SHA" >&2
             exit 1
           fi
-          if [[ ! "${{ inputs.request_id }}" =~ ^[A-Za-z0-9_-]{6,32}$ ]]; then
+          if [[ ! "$REQUEST_ID" =~ ^[A-Za-z0-9_-]{6,32}$ ]]; then
             echo "request_id must be 6-32 letters, digits, underscores, or hyphens" >&2
             exit 1
           fi
+          [[ "$PREVIEW_PLATFORM" == windows || "$PREVIEW_PLATFORM" == linux ]]
 
       - name: Checkout the exact commit
         uses: actions/checkout@v7
@@ -54,7 +65,7 @@ jobs:
         shell: bash
         run: |
           actual_sha=$(git rev-parse HEAD)
-          if [[ "$actual_sha" != "${{ inputs.commit_sha }}" ]]; then
+          if [[ "$actual_sha" != "$PREVIEW_SHA" ]]; then
             echo "Checkout does not match commit_sha" >&2
             exit 1
           fi
@@ -92,6 +103,7 @@ jobs:
         run: npm run check
 
   build-windows-preview:
+    if: inputs.platform == 'windows'
     needs: validate
     runs-on: windows-latest
     permissions:
@@ -166,8 +178,73 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-linux-preview:
+    if: inputs.platform == 'linux'
+    needs: validate
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_BUILD_JOBS: "2"
+      VERSION: ${{ needs.validate.outputs.version }}
+      SHORT_SHA: ${{ needs.validate.outputs.short_sha }}
+      PREVIEW_SHA: ${{ inputs.commit_sha }}
+    steps:
+      - name: Checkout the exact tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+      - name: Install build and clean-system test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf ffmpeg debootstrap
+      - name: Install dependencies
+        run: npm ci
+      - name: Smoke test real file analysis with distribution decoders
+        env:
+          PLVS_FFMPEG_DIR: /usr/bin
+        run: cargo test --manifest-path src-tauri/Cargo.toml file_analysis -- --test-threads=1
+      - name: Build isolated Ubuntu Preview
+        run: npm run desktop:preview-deb
+      - name: Verify the exact package in a fresh Ubuntu system
+        shell: bash
+        run: |
+          packages=(src-tauri/target/release/bundle/deb/*.deb)
+          [[ ${#packages[@]} == 1 && -f "${packages[0]}" ]]
+          sudo bash scripts/verify-linux-deb-clean.sh "${packages[0]}" "$PWD/linux-package-evidence"
+          mkdir deb-inspection
+          dpkg-deb -x "${packages[0]}" deb-inspection
+          node scripts/verify-license-assets.mjs "deb-inspection/usr/lib/PLVS Preview"
+          mkdir preview-assets
+          cp "${packages[0]}" "preview-assets/PLVS-Preview_${VERSION}-preview.${SHORT_SHA}_amd64.deb"
+          node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets linux
+      - name: Upload package verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-package-evidence
+          path: linux-package-evidence/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload the tested Preview candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-candidate-linux
+          path: preview-assets/
+          if-no-files-found: error
+          retention-days: 7
+
   prepare-draft:
-    needs: [validate, build-windows-preview]
+    if: ${{ !cancelled() && needs.validate.result == 'success' && (needs.build-windows-preview.result == 'success' || needs.build-linux-preview.result == 'success') }}
+    needs: [validate, build-windows-preview, build-linux-preview]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -177,6 +254,8 @@ jobs:
       SOURCE_REF: ${{ github.ref_name }}
       TAG: ${{ needs.validate.outputs.tag }}
       VERSION: ${{ needs.validate.outputs.version }}
+      PREVIEW_PLATFORM: ${{ inputs.platform }}
+      REQUEST_ID: ${{ inputs.request_id }}
     steps:
       - name: Checkout the exact commit
         uses: actions/checkout@v7
@@ -187,25 +266,39 @@ jobs:
       - name: Download the tested candidate
         uses: actions/download-artifact@v8
         with:
-          name: preview-candidate-windows
+          name: preview-candidate-${{ inputs.platform }}
           path: preview-assets
 
       - name: Validate the complete Preview bundle
-        run: node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets
+        run: node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets "$PREVIEW_PLATFORM"
 
       - name: Write Preview notes
         shell: bash
         run: |
           cat > preview-notes.md <<EOF
-          Unofficial **PLVS Preview** build for testing. It installs independently from stable PLVS,
-          keeps separate settings and Agent Control discovery, and has automatic updates disabled.
+          Unofficial **PLVS Preview** build for testing, with separate settings and automatic updates disabled.
 
           - Source ref: \`${SOURCE_REF}\`
           - Commit: \`${PREVIEW_SHA}\`
-          - Request: \`${{ inputs.request_id }}\`
+          - Platform: \`${PREVIEW_PLATFORM}\`
+          - Request: \`${REQUEST_ID}\`
 
           Preview builds are temporary. The workflow retains only the ten newest Preview releases.
           EOF
+          if [[ "$PREVIEW_PLATFORM" == linux ]]; then
+            cat >> preview-notes.md <<'EOF'
+
+          Targets Ubuntu 24.04 x86_64. Download the deb and install it with `sudo apt install --reinstall ./<filename>.deb`.
+          Use `--reinstall` when switching commits: Preview builds can share the same base package version.
+          APT installs FFmpeg and runtime dependencies. Launch PLVS Preview from the menu, or run `plvs`.
+          Diagnose with `plvs-cli doctor --json`; remove with `sudo apt remove plvs-preview`.
+          This initial Preview conflicts with the future stable Linux deb because they share executable names.
+          Native desktop/hardware and four-hour soak acceptance remain pending. Per-application capture,
+          live Agent Control, screenshots and recording are not supported on Linux yet.
+          EOF
+          else
+            echo 'Windows Preview installs independently from stable PLVS. Keep all Portable ZIP files together.' >> preview-notes.md
+          fi
 
       - name: Create the complete Draft Pre-release
         run: |
@@ -242,6 +335,7 @@ jobs:
           [[ "$empty_assets" == "0" ]]
 
   publish-preview:
+    if: ${{ !cancelled() && needs.validate.result == 'success' && needs.prepare-draft.result == 'success' }}
     needs: [validate, prepare-draft]
     runs-on: ubuntu-latest
     permissions:
@@ -250,6 +344,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PREVIEW_SHA: ${{ inputs.commit_sha }}
       TAG: ${{ needs.validate.outputs.tag }}
+      PREVIEW_PLATFORM: ${{ inputs.platform }}
     steps:
       - name: Revalidate the Draft
         shell: bash
@@ -269,8 +364,10 @@ jobs:
           fi
           asset_count=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
             --jq '.assets | length')
-          if [[ "$asset_count" != "2" ]]; then
-            echo "${TAG} does not contain exactly two tested assets" >&2
+          expected_count=2
+          if [[ "$PREVIEW_PLATFORM" == linux ]]; then expected_count=1; fi
+          if [[ "$asset_count" != "$expected_count" ]]; then
+            echo "${TAG} does not contain the complete tested platform asset set" >&2
             exit 1
           fi
 
