@@ -43,3 +43,22 @@ sets the disposable system root to 0755 before unprivileged execution. A second 
 passed installed Preview/decoder/certificate checks, GUI startup, seven codecs, and removal with
 user-data checksums preserved. Its temporary root was removed and evidence retained at
 `/home/plvs/linux-preview-workflow-evidence-final` in the WSL development distribution.
+
+## First cloud run
+
+Run `37900774377` passed the full repository gate, real file-analysis tests and deb build, but
+installation verification rejected the packaged discovery identity before any Draft was created.
+Tauri combines CLI configuration patches before applying them to the base: resetting the entire
+resource map to null and then adding Preview resources therefore leaves the base stable manifest
+mapping intact. Two sources then race to the same installed destination. The reset now deletes the
+specific stable manifest key; that null survives patch composition. The contract test covers the
+combined map, and acceptance still requires a newly built package and successful cloud publication.
+
+After the fix, rebuilding the Linux application and three separate bundling/extraction passes all
+confirmed the Preview identifier and CLI path. A local full-gate retry encountered the existing
+PID-named multiprocess test directory residue; both Library multiprocess tests passed with a fresh
+temporary directory. The full gate is rerun with that isolated temporary root, without changing
+database code or weakening the assertions.
+
+The corrected package passed another complete fresh Ubuntu bootstrap/install/runtime/remove run;
+evidence is in `/home/plvs/linux-preview-manifest-clean-evidence`. No sandbox bypass was used.
