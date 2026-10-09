@@ -161,11 +161,21 @@ semantic UI target per scenario, contained screenshot outputs, optional bounded 
 patches, and an exact declaration of every durable field touched. The runner refuses a pre-existing
 surface, blocking editor, event decision, missing capability, undeclared field, arbitrary command,
 shell string, selector, generic confirmation, or output path escape. It writes temporary mutation
-documents in a private directory, dismisses only the surface it opened, restores in reverse order,
-and records success or bounded failure evidence in `report.json`. The checked product manifest also
+documents in a private directory, dismisses only the surface it opened, restores and verifies each
+scenario before preparing the next, and records success or bounded failure evidence in `run.json`
+and `report.json`. The checked product manifest also
 analyzes a deterministic stereo WAV through Transport Control, captures the populated File-analysis
 workspace, removes the temporary session, and verifies that the original source lifecycle was
 restored.
+
+The repository tool also supports `--plan`, `--status <run.json>`, and `--recover <run.json>`.
+Planning validates capabilities without mutation. Status reads the bounded private journal without
+connecting to PLVS. Recovery targets only its recorded workbench and reconciles fields by exact
+before/applied values and transient resources by opaque identity. It may rebase cleanup across an
+unrelated global revision only after the touched fields are inspected again. Divergent fields,
+replacement resources, uncertain drafts, changed Manifests, and instance mismatches are preserved;
+there is no force recovery. These are developer-tool modes, not public `plvs-cli` transaction or
+rollback commands, and they do not appear in public capabilities or generated CLI documentation.
 
 Settings, normal or Dock Panel Settings, clean Theme/Profile drafts, blank Feedback, and ordinary
 Workspace/Dock captures belong on this path. Event-only Update, Crash Report, Close Confirmation,

@@ -4,14 +4,23 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import process from "node:process";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
 import { createStereoFixtureWav } from "./theme-gallery-lib.mjs";
 import {
+  createRunJournalStore,
+  manifestSha256,
+  openRunJournalStore,
+  readRunJournal,
+} from "./ui-walkthrough/journal.mjs";
+import { recoverUiVisualWalkthrough, summarizeRunJournal } from "./ui-walkthrough/recovery.mjs";
+import {
   assertWalkthroughStart,
   buildScenarioRestorationLedger,
+  classifyRestorationField,
+  requiredWalkthroughMethods,
   uiShowArguments,
   validateWalkthroughManifest,
 } from "./ui-visual-walkthrough-lib.mjs";
@@ -71,7 +80,13 @@ async function waitForFileAnalysis(run, fixturePath, timeoutMs = 120_000) {
   throw new Error("Timed out waiting for the deterministic fixture analysis.");
 }
 
-export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materialize }) {
+export async function runUiVisualWalkthrough({
+  manifest,
+  outDir,
+  invoke,
+  materialize,
+  journalFactory,
+}) {
   const issues = validateWalkthroughManifest(manifest);
   if (issues.length > 0) throw new Error(`Invalid walkthrough manifest:\n${issues.join("\n")}`);
   const instanceId = manifest.workbench.instanceId;
@@ -80,6 +95,18 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   const initialApp = await run(["inspect", "--json"]);
   const initialUi = await run(["ui", "inspect", "--json"]);
   assertWalkthroughStart(manifest, capabilities, initialUi);
+  const journal = journalFactory
+    ? await journalFactory({
+        manifest,
+        initial: {
+          revision: initialApp.revision,
+          uiGeneration: initialUi.uiGeneration,
+          applicationIdentity: capabilities.applicationIdentity,
+          protocolVersion: capabilities.protocolVersion,
+        },
+      })
+    : null;
+  await journal?.transitionRun("preparing");
   const initialTransport = manifest.fixture?.audio
     ? await run(["transport", "inspect", "--json"])
     : null;
@@ -117,6 +144,31 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
     latestApp = await run(["inspect", "--json"]);
     latestUi = await run(["ui", "inspect", "--json"]);
   };
+  const restoreOwnedEntries = async (entries, label) => {
+    const statuses = new Map();
+    for (const [index, entry] of entries.entries()) {
+      const inspected = await run([entry.family, "inspect", "--json"]);
+      const state = inspected[entry.family] ?? inspected;
+      const patch = {};
+      for (const field of entry.fields) {
+        const status = classifyRestorationField(field, state[field.key]);
+        statuses.set(`${entry.family}.${field.key}`, status);
+        if (status === "owned") patch[field.key] = field.before;
+        if (status === "diverged") {
+          const error = new Error(
+            `Restoration preserved externally changed field ${entry.family}.${field.key}.`
+          );
+          error.reason = "recoveryDiverged";
+          throw error;
+        }
+      }
+      if (Object.keys(patch).length > 0) {
+        await applyPatch({ family: entry.family, patch }, `${label}-${index}`);
+        for (const key of Object.keys(patch)) statuses.set(`${entry.family}.${key}`, "restored");
+      }
+    }
+    return statuses;
+  };
 
   let primaryFailure = null;
   let createdSessionId = null;
@@ -126,6 +178,20 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   try {
     if (manifest.fixture?.audio) {
       fixturePath = join(outDir, `${manifest.fixture.audio.id}.wav`);
+      await journal?.update((draft) => {
+        draft.suite.resources.push({
+          type: "transportFile",
+          path: fixturePath,
+          sessionId: null,
+          before: {
+            source: initialTransport.source,
+            liveState: initialTransport.live?.state ?? null,
+            activeId: initialTransport.files?.activeId ?? null,
+          },
+          applied: null,
+          status: "intent",
+        });
+      });
       const contents = createStereoFixtureWav(manifest.fixture.audio);
       await writeFile(fixturePath, contents);
       await run([
@@ -139,6 +205,18 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
       ]);
       const session = await waitForFileAnalysis(run, fixturePath);
       createdSessionId = session.id;
+      const preparedTransport = await run(["transport", "inspect", "--json"]);
+      await journal?.update((draft) => {
+        Object.assign(draft.suite.resources.at(-1), {
+          sessionId: session.id,
+          applied: {
+            source: preparedTransport.source,
+            liveState: preparedTransport.live?.state ?? null,
+            activeId: preparedTransport.files?.activeId ?? null,
+          },
+          status: "owned",
+        });
+      });
       latestApp = await run(["inspect", "--json"]);
       latestUi = await run(["ui", "inspect", "--json"]);
       report.fixture = {
@@ -148,18 +226,60 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         sessionId: session.id,
       };
     }
+    await journal?.transitionRun("running");
     for (const scenario of manifest.scenarios) {
+      await journal?.transitionScenario(scenario.id, "preparing");
       const scenarioFamilies = {};
       for (const family of new Set(scenario.durable.map((step) => step.family))) {
         scenarioFamilies[family] = await run([family, "inspect", "--json"]);
       }
       pendingRestoration = buildScenarioRestorationLedger(scenario, scenarioFamilies);
+      await journal?.update((draft) => {
+        const scenarioJournal = draft.scenarios.find(({ id }) => id === scenario.id);
+        scenarioJournal.resources.push(
+          ...pendingRestoration.flatMap((entry) =>
+            entry.fields.map((field) => ({
+              type: "field",
+              family: entry.family,
+              key: field.key,
+              before: field.before,
+              applied: field.applied,
+              status: "intent",
+            }))
+          )
+        );
+      });
       for (const [index, step] of scenario.durable.entries()) {
         await applyPatch(step, `${scenario.id}-setup-${index}`);
       }
+      await journal?.update((draft) => {
+        const resources = draft.scenarios.find(({ id }) => id === scenario.id).resources;
+        for (const resource of resources.filter(({ type }) => type === "field")) {
+          resource.status = "owned";
+        }
+      });
+      await journal?.transitionScenario(scenario.id, "running");
       const showArgs = uiShowArguments(scenario.ui);
       let fixtureId = null;
       let shown;
+      if (scenario.ui.kind !== "workspace") {
+        await journal?.update((draft) => {
+          draft.scenarios
+            .find(({ id }) => id === scenario.id)
+            .resources.push({
+              type: scenario.ui.kind === "eventFixture" ? "eventFixture" : "surface",
+              kind: scenario.ui.kind,
+              dismiss: ["settings", "panelSettings"].includes(scenario.ui.kind)
+                ? "close"
+                : scenario.ui.kind === "eventFixture"
+                  ? scenario.ui.action
+                  : "cancel",
+              surfaceId: null,
+              fixtureId: null,
+              status: "intent",
+            });
+        });
+      }
       if (scenario.ui.kind === "eventFixture") {
         const established = await run([
           "dev",
@@ -209,6 +329,21 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         revision: shown.revision,
         uiGeneration: shown.uiGeneration,
       };
+      if (surface) {
+        await journal?.update((draft) => {
+          const resource = draft.scenarios
+            .find(({ id }) => id === scenario.id)
+            .resources.find(
+              ({ type, status }) =>
+                ["surface", "eventFixture"].includes(type) && status === "intent"
+            );
+          Object.assign(resource, {
+            surfaceId: surface.surfaceId,
+            fixtureId,
+            status: "owned",
+          });
+        });
+      }
       let draftState = null;
       let draftKind = null;
       if (scenario.draft) {
@@ -222,6 +357,18 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
           surface.surfaceId,
           "--json",
         ]);
+        await journal?.update((draft) => {
+          draft.scenarios
+            .find(({ id }) => id === scenario.id)
+            .resources.push({
+              type: "draft",
+              kind: draftKind,
+              surfaceId: surface.surfaceId,
+              draftGeneration: inspectedDraft.draftGeneration,
+              decisionSurfaceId: null,
+              status: "intent",
+            });
+        });
         const inputPath = await materialize(`${scenario.id}-draft`, scenario.draft);
         draftState = await run([
           "editor-draft",
@@ -240,6 +387,13 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         if (!draftState.changed || !draftState.dirty) {
           throw new Error(`Scenario ${scenario.id} did not establish a dirty editor draft.`);
         }
+        await journal?.update((draft) => {
+          const resource = draft.scenarios
+            .find(({ id }) => id === scenario.id)
+            .resources.find(({ type }) => type === "draft");
+          resource.draftGeneration = draftState.draftGeneration;
+          resource.status = "owned";
+        });
         latestApp = { ...latestApp, revision: draftState.revision };
         latestUi = await run(["ui", "inspect", "--json"]);
       }
@@ -263,6 +417,13 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         path: screenshotPath,
         metadata: captured.artifact,
       });
+      await journal?.update((draft) => {
+        draft.scenarios.find(({ id }) => id === scenario.id).artifact = {
+          path: screenshotPath,
+          metadata: captured.artifact,
+        };
+      });
+      await journal?.transitionScenario(scenario.id, "cleaning");
       if (surface) {
         if (draftState) {
           await run([
@@ -284,6 +445,12 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
           if (!decision || decisionUi.topSurfaceId !== decision.surfaceId) {
             throw new Error(`Scenario ${scenario.id} did not open its linked discard decision.`);
           }
+          await journal?.update((draft) => {
+            const resource = draft.scenarios
+              .find(({ id }) => id === scenario.id)
+              .resources.find(({ type }) => type === "draft");
+            resource.decisionSurfaceId = decision.surfaceId;
+          });
           const discarded = await run([
             "editor-draft",
             "discard",
@@ -301,6 +468,14 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
           ]);
           latestApp = { ...latestApp, revision: discarded.revision };
           latestUi = await run(["ui", "inspect", "--json"]);
+          await journal?.update((draft) => {
+            const resources = draft.scenarios.find(({ id }) => id === scenario.id).resources;
+            for (const resource of resources.filter(({ type }) =>
+              ["draft", "surface"].includes(type)
+            )) {
+              resource.status = "restored";
+            }
+          });
         } else {
           const dismiss = ["settings", "panelSettings"].includes(scenario.ui.kind)
             ? "close"
@@ -332,6 +507,12 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
                 ]);
           latestApp = { ...latestApp, revision: dismissed.revision };
           latestUi = await run(["ui", "inspect", "--json"]);
+          await journal?.update((draft) => {
+            const resource = draft.scenarios
+              .find(({ id }) => id === scenario.id)
+              .resources.find(({ type }) => ["surface", "eventFixture"].includes(type));
+            resource.status = "restored";
+          });
         }
         if (latestUi.surfaces.some(({ surfaceId }) => surfaceId === surface.surfaceId)) {
           throw new Error(`Scenario ${scenario.id} did not dismiss its exact surface.`);
@@ -345,9 +526,14 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         restored: false,
       });
       report.restoration.attempted ||= pendingRestoration.length > 0;
-      for (const [index, entry] of pendingRestoration.entries()) {
-        await applyPatch(entry, `${scenario.id}-restore-${index}`);
-      }
+      const fieldStatuses = await restoreOwnedEntries(pendingRestoration, `${scenario.id}-restore`);
+      await journal?.update((draft) => {
+        const resources = draft.scenarios.find(({ id }) => id === scenario.id).resources;
+        for (const resource of resources.filter(({ type }) => type === "field")) {
+          resource.status = fieldStatuses.get(`${resource.family}.${resource.key}`);
+        }
+      });
+      await journal?.transitionScenario(scenario.id, "verifying");
       for (const entry of pendingRestoration) {
         const final = await run([entry.family, "inspect", "--json"]);
         const finalState = final[entry.family] ?? final;
@@ -359,6 +545,7 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
       }
       report.scenarios.at(-1).restored = true;
       pendingRestoration = [];
+      await journal?.transitionScenario(scenario.id, "complete");
     }
   } catch (error) {
     primaryFailure = error;
@@ -371,15 +558,36 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
           "uiGenerationConflict",
           "uiSurfaceNotFound",
           "stateCommitted",
+          "recoveryDiverged",
         ].includes(error.reason ?? error.code) || activeEventFixtureId !== null,
       ...(activeEventFixtureId ? { fixtureId: activeEventFixtureId } : {}),
     };
+    await journal?.update((draft) => {
+      draft.failure = report.failure;
+    });
+    if (journal) await journal.transitionRun("needsRecovery");
+  }
+  if (primaryFailure && journal) {
+    report.restoration.attempted = true;
+    try {
+      const recovery = await recoverUiVisualWalkthrough({
+        journalStore: journal,
+        invoke,
+        materialize,
+      });
+      report.restoration.verified = recovery.phase === "complete";
+    } catch (recoveryError) {
+      report.restoration.error = String(recoveryError.message).slice(0, 500);
+      report.failure.preservationRequired = true;
+    }
+    primaryFailure.report = report;
+    throw primaryFailure;
   }
   if (!report.failure?.preservationRequired) {
     report.restoration.attempted = true;
     try {
-      for (const [index, entry] of pendingRestoration.entries())
-        await applyPatch(entry, `failed-scenario-restore-${index}`);
+      await journal?.transitionRun("cleaning");
+      await restoreOwnedEntries(pendingRestoration, "failed-scenario-restore");
       pendingRestoration = [];
       if (initialTransport) {
         latestApp = await run(["inspect", "--json"]);
@@ -444,6 +652,10 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
             "--json",
           ]);
         }
+        await journal?.update((draft) => {
+          const resource = draft.suite.resources.find(({ type }) => type === "transportFile");
+          if (resource) resource.status = "restored";
+        });
       }
     } catch (error) {
       report.restoration.error = String(error.message).slice(0, 500);
@@ -459,6 +671,7 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
 
   const finalApp = await run(["inspect", "--json"]);
   const finalUi = await run(["ui", "inspect", "--json"]);
+  await journal?.transitionRun("verifying");
   if (
     finalUi.activeBlockingEditors.length > 0 ||
     finalUi.surfaces.length !== initialUi.surfaces.length
@@ -486,6 +699,7 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   }
   report.final = { revision: finalApp.revision, uiGeneration: finalUi.uiGeneration };
   report.restoration.verified = true;
+  await journal?.transitionRun("complete");
   return report;
 }
 
@@ -512,27 +726,39 @@ function parseEnvelope(args, output) {
 async function main(args) {
   let manifestPath;
   let outDir;
+  let plan = false;
+  let statusPath;
+  let recoverPath;
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--manifest" && args[index + 1]) manifestPath = args[(index += 1)];
     else if (args[index] === "--out-dir" && args[index + 1]) outDir = args[(index += 1)];
+    else if (args[index] === "--plan") plan = true;
+    else if (args[index] === "--status" && args[index + 1]) statusPath = args[(index += 1)];
+    else if (args[index] === "--recover" && args[index + 1]) recoverPath = args[(index += 1)];
     else
       throw new Error(
-        "Usage: node scripts/ui-visual-walkthrough.mjs --manifest <file> --out-dir <directory>"
+        "Usage: node scripts/ui-visual-walkthrough.mjs --manifest <file> --out-dir <directory> [--plan] | --status <run.json> | --recover <run.json>"
       );
   }
-  if (!manifestPath || !outDir) throw new Error("Both --manifest and --out-dir are required.");
-  const resolvedOut = resolve(repositoryRoot, outDir);
-  await mkdir(resolvedOut, { recursive: true });
-  const privateDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-"));
-  try {
-    const manifest = JSON.parse(await readFile(resolve(repositoryRoot, manifestPath), "utf8"));
-    for (const scenario of manifest.scenarios ?? []) {
-      if (typeof scenario.screenshot?.output === "string") {
-        await mkdir(dirname(join(resolvedOut, scenario.screenshot.output)), { recursive: true });
-      }
+  if (statusPath && recoverPath) throw new Error("Choose either --status or --recover.");
+  const containedPath = (value) => {
+    const path = resolve(repositoryRoot, value);
+    const relation = relative(repositoryRoot, path);
+    if (relation === ".." || relation.startsWith(`..${sep}`)) {
+      throw new Error("The journal must be contained in the repository.");
     }
+    return path;
+  };
+  if (statusPath) {
+    if (manifestPath || outDir || plan) throw new Error("--status does not accept run options.");
+    console.log(
+      JSON.stringify(summarizeRunJournal(await readRunJournal(containedPath(statusPath))))
+    );
+    return;
+  }
+  const createInvoke = () => {
     const { executable } = buildPlvsCli({ identity: "development" });
-    const invoke = async (commandArgs) => {
+    return async (commandArgs) => {
       const child = spawnSync(executable, commandArgs, {
         cwd: repositoryRoot,
         encoding: "utf8",
@@ -542,6 +768,77 @@ async function main(args) {
       if (child.error) throw child.error;
       return parseEnvelope(commandArgs, child.stdout);
     };
+  };
+  if (recoverPath) {
+    if (manifestPath || outDir || plan) throw new Error("--recover does not accept run options.");
+    const resolvedJournal = containedPath(recoverPath);
+    const recoveryJournal = await readRunJournal(resolvedJournal);
+    const recordedManifestPath = containedPath(recoveryJournal.manifest.path);
+    const recordedManifest = JSON.parse(await readFile(recordedManifestPath, "utf8"));
+    if (manifestSha256(recordedManifest) !== recoveryJournal.manifest.sha256) {
+      throw new Error("Recovery refused because the recorded manifest changed.");
+    }
+    const privateDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-recover-"));
+    try {
+      const materialize = async (label, document) => {
+        const path = join(privateDir, `${label}.json`);
+        await writeFile(path, `${JSON.stringify(document)}\n`, { encoding: "utf8", mode: 0o600 });
+        return path;
+      };
+      const summary = await recoverUiVisualWalkthrough({
+        journalStore: await openRunJournalStore(resolvedJournal),
+        invoke: createInvoke(),
+        materialize,
+      });
+      await writeFile(
+        join(dirname(resolvedJournal), "report.json"),
+        `${JSON.stringify({ schemaVersion: 1, recovery: summary }, null, 2)}\n`
+      );
+      console.log(JSON.stringify(summary));
+      return;
+    } finally {
+      await rm(privateDir, { recursive: true, force: true });
+    }
+  }
+  if (!manifestPath || !outDir) throw new Error("Both --manifest and --out-dir are required.");
+  const resolvedOut = resolve(repositoryRoot, outDir);
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, manifestPath), "utf8"));
+  if (plan) {
+    const issues = validateWalkthroughManifest(manifest);
+    if (issues.length > 0) throw new Error(`Invalid walkthrough manifest:\n${issues.join("\n")}`);
+    const invoke = createInvoke();
+    const instanceId = manifest.workbench.instanceId;
+    const run = (commandArgs) => invoke(withInstance(commandArgs, instanceId));
+    const capabilities = await run(["capabilities", "--json"]);
+    const app = await run(["inspect", "--json"]);
+    const ui = await run(["ui", "inspect", "--json"]);
+    assertWalkthroughStart(manifest, capabilities, ui);
+    console.log(
+      JSON.stringify({
+        schemaVersion: 1,
+        mode: "plan",
+        workbench: { instanceId },
+        initial: { revision: app.revision, uiGeneration: ui.uiGeneration },
+        requiredMethods: requiredWalkthroughMethods(manifest),
+        scenarios: manifest.scenarios.map(({ id, touches, ui: target, screenshot }) => ({
+          id,
+          touches,
+          target,
+          screenshot,
+        })),
+      })
+    );
+    return;
+  }
+  await mkdir(resolvedOut, { recursive: true });
+  const privateDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-"));
+  try {
+    for (const scenario of manifest.scenarios ?? []) {
+      if (typeof scenario.screenshot?.output === "string") {
+        await mkdir(dirname(join(resolvedOut, scenario.screenshot.output)), { recursive: true });
+      }
+    }
+    const invoke = createInvoke();
     const materialize = async (label, document) => {
       const path = join(privateDir, `${label}.json`);
       await writeFile(path, `${JSON.stringify(document)}\n`, { encoding: "utf8", mode: 0o600 });
@@ -553,6 +850,12 @@ async function main(args) {
         outDir: resolvedOut,
         invoke,
         materialize,
+        journalFactory: ({ manifest: runManifest, initial }) =>
+          createRunJournalStore(join(resolvedOut, "run.json"), {
+            manifest: runManifest,
+            manifestPath: resolve(repositoryRoot, manifestPath),
+            initial,
+          }),
       });
       await writeFile(join(resolvedOut, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
       console.log(JSON.stringify(report));

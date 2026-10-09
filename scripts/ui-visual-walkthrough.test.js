@@ -3,9 +3,12 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
+import { createRunJournalStore, readRunJournal } from "./ui-walkthrough/journal.mjs";
 
 describe("UI visual walkthrough runner", () => {
   it("restores one scenario before preparing the next scenario", async () => {
+    const outDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-journal-"));
+    const journalPath = join(outDir, "run.json");
     let revision = 4;
     const view = { pinned: false, surfaceOpacity: 72 };
     const calls = [];
@@ -66,9 +69,15 @@ describe("UI visual walkthrough runner", () => {
           },
         ],
       },
-      outDir: "C:/safe-output",
+      outDir,
       invoke,
       materialize,
+      journalFactory: ({ manifest: runManifest, initial }) =>
+        createRunJournalStore(journalPath, {
+          manifest: runManifest,
+          manifestPath: "C:/repo/scenario.json",
+          initial,
+        }),
     });
 
     const updateInputs = calls
@@ -84,6 +93,34 @@ describe("UI visual walkthrough runner", () => {
     expect(result.scenarios).toEqual([
       expect.objectContaining({ id: "opacity", restored: true }),
       expect.objectContaining({ id: "pin", restored: true }),
+    ]);
+    const journal = await readRunJournal(journalPath);
+    expect(journal.phase).toBe("complete");
+    expect(journal.scenarios).toEqual([
+      expect.objectContaining({
+        id: "opacity",
+        phase: "complete",
+        resources: [
+          expect.objectContaining({
+            type: "field",
+            before: 72,
+            applied: 100,
+            status: "restored",
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        id: "pin",
+        phase: "complete",
+        resources: [
+          expect.objectContaining({
+            type: "field",
+            before: false,
+            applied: true,
+            status: "restored",
+          }),
+        ],
+      }),
     ]);
   });
 

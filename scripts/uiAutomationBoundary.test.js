@@ -29,6 +29,17 @@ describe("real PLVS visual automation boundary", () => {
     }
   });
 
+  it("keeps walkthrough recovery semantic and non-forcing", async () => {
+    const sources = await Promise.all(
+      ["ui-visual-walkthrough.mjs", join("ui-walkthrough", "recovery.mjs")].map((name) =>
+        readFile(join(scripts, name), "utf8")
+      )
+    );
+    expect(sources.join("\n")).not.toMatch(
+      /--force|querySelector|click\(|dispatchEvent|document\.|window\.__/
+    );
+  });
+
   it("keeps the ordinary product-surface example on the semantic walkthrough contract", async () => {
     const manifest = JSON.parse(
       await readFile(join(scripts, "ui-walkthrough", "product-surfaces.example.json"), "utf8")

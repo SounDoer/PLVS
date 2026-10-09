@@ -116,10 +116,36 @@ For ordinary product surfaces, start PLVS Development, obtain the workbench ID w
 npm run ui:walkthrough -- --manifest <manifest.json> --out-dir artifacts/ui-review/before
 ```
 
+Use `--plan` first when reviewing a new Manifest. It validates the closed scenario language,
+checks the selected workbench and capabilities, and prints the semantic targets and declared
+durable fields without changing PLVS:
+
+```powershell
+npm run ui:walkthrough -- --manifest <manifest.json> --out-dir artifacts/ui-review/before --plan
+```
+
 The manifest generates and analyzes a deterministic stereo WAV so the File workspace and metering
 Panels contain data. The runner opens only semantic product surfaces, takes real window screenshots,
 uses Close or Cancel on the exact surface it opened, removes the temporary analysis session, restores
-the original source lifecycle and every declared setting, and writes `report.json`. Use a fresh
+the original source lifecycle and every declared setting, and writes `run.json` plus `report.json`.
+Each scenario restores and verifies its own Settings/View fields before the next scenario starts.
+`run.json` is a private write-ahead recovery journal; do not edit it or commit it.
+
+If the runner is interrupted, inspect the journal without connecting to PLVS, then recover only the
+exact instance and resources recorded by that run:
+
+```powershell
+npm run ui:walkthrough -- --status artifacts/ui-review/before/run.json
+npm run ui:walkthrough -- --recover artifacts/ui-review/before/run.json
+```
+
+Recovery restores a field only when its current value still equals the value applied by the run,
+and removes UI, fixture, draft, or Transport resources only by their recorded opaque IDs. A field
+changed by a person or another process is preserved and reported; there is deliberately no force
+mode. A changed Manifest, replacement workbench instance, uncertain draft generation, or missing
+resource ID is also preserved for manual reconciliation.
+
+Use a fresh
 absolute `--plvs-test-app-data-root` for each compared code state when identical default window
 bounds and settings are required.
 
