@@ -137,29 +137,32 @@ export function FocusViewPopoverContent({
           >
             Dock
           </Label>
-          <Select
-            value={dockEdge ?? "off"}
-            onValueChange={(value) => onDockChange(value === "off" ? null : value)}
-            disabled={dockDisabled}
-          >
-            <SelectTrigger
-              id="focus-view-dock"
-              aria-label="Dock position"
-              variant="inline"
-              className="min-w-[4.75rem]"
+          {/* Keep the switch-row spacing; the full-height select uses its vertical padding. */}
+          <div className="flex h-[var(--ui-switch-h)] items-center">
+            <Select
+              value={dockEdge ?? "off"}
+              onValueChange={(value) => onDockChange(value === "off" ? null : value)}
+              disabled={dockDisabled}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              variant="inline"
-              className="[&_[data-slot=select-item]]:pr-8"
-            >
-              <SelectItem value="off">Off</SelectItem>
-              <SelectItem value="top">Top</SelectItem>
-              <SelectItem value="bottom">Bottom</SelectItem>
-            </SelectContent>
-          </Select>
+              <SelectTrigger
+                id="focus-view-dock"
+                aria-label="Dock position"
+                variant="inline"
+                className="min-w-[4.75rem]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                variant="inline"
+                className="[&_[data-slot=select-item]]:pr-8"
+              >
+                <SelectItem value="off">Off</SelectItem>
+                <SelectItem value="top">Top</SelectItem>
+                <SelectItem value="bottom">Bottom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ) : null}
     </div>

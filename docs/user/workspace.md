@@ -48,7 +48,8 @@ click. Useful for inspecting a peak you only heard go by.
 ## Views
 
 The Views menu pares the window down for monitoring: **Always on Top**, **Compact Panels**,
-**Hide Chrome**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. Surface Opacity changes
+**Hide Chrome**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. The **Dock** selector
+below these controls offers **Off**, **Top**, and **Bottom** on Windows and macOS. Surface Opacity changes
 the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
 controls, and borders remain opaque for legibility.
 
