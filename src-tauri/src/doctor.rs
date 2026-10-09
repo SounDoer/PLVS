@@ -226,7 +226,14 @@ fn resolve_data_dir_inner() -> Option<PathBuf> {
   })
 }
 
-#[cfg(all(not(windows), not(target_os = "macos")))]
+#[cfg(target_os = "linux")]
+fn resolve_config_dir_inner() -> Option<PathBuf> {
+  // The GUI persists through Tauri's app_data_dir(), not app_config_dir().
+  // CLI discovery and profile operations must address that same identity root.
+  resolve_data_dir_inner()
+}
+
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 fn resolve_config_dir_inner() -> Option<PathBuf> {
   env::var_os("XDG_CONFIG_HOME")
     .map(PathBuf::from)
@@ -234,7 +241,23 @@ fn resolve_config_dir_inner() -> Option<PathBuf> {
     .map(|base| base.join(APP_ID))
 }
 
-#[cfg(all(not(windows), not(target_os = "macos")))]
+#[cfg(target_os = "linux")]
+fn linux_identity_root(data_home: Option<PathBuf>, home: Option<PathBuf>) -> Option<PathBuf> {
+  data_home
+    .filter(|path| path.is_absolute())
+    .or_else(|| home.map(|path| path.join(".local").join("share")))
+    .map(|base| base.join(APP_ID))
+}
+
+#[cfg(target_os = "linux")]
+fn resolve_data_dir_inner() -> Option<PathBuf> {
+  linux_identity_root(
+    env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+    env::var_os("HOME").map(PathBuf::from),
+  )
+}
+
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 fn resolve_data_dir_inner() -> Option<PathBuf> {
   env::var_os("XDG_DATA_HOME")
     .map(PathBuf::from)
@@ -498,6 +521,25 @@ fn check_cli_host_layout() -> DoctorCheck {
 mod tests {
   use super::*;
   use std::time::{SystemTime, UNIX_EPOCH};
+
+  #[cfg(target_os = "linux")]
+  #[test]
+  fn linux_cli_uses_the_same_xdg_data_root_as_the_gui() {
+    assert_eq!(
+      linux_identity_root(
+        Some(PathBuf::from("/custom/data")),
+        Some(PathBuf::from("/home/test"))
+      ),
+      Some(PathBuf::from("/custom/data").join(APP_ID))
+    );
+    for data_home in [None, Some(PathBuf::new()), Some(PathBuf::from("relative"))] {
+      assert_eq!(
+        linux_identity_root(data_home, Some(PathBuf::from("/home/test"))),
+        Some(PathBuf::from("/home/test/.local/share").join(APP_ID))
+      );
+    }
+    assert_eq!(linux_identity_root(None, None), None);
+  }
 
   fn check(status: DoctorStatus) -> DoctorCheck {
     DoctorCheck {

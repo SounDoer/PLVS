@@ -65,6 +65,8 @@
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
     "smoke:agent-control": "node scripts/smoke-agent-control.mjs",
     "smoke:capture": "node scripts/smoke-capture.mjs",
+    "smoke:capture:linux": "node scripts/smoke-capture-linux.mjs",
+    "desktop:linux": "node scripts/run-linux-desktop.mjs",
     "smoke:capture:multi": "node scripts/multi-instance-capture.mjs --instances 2 --seconds 15",
     "spike:capture:process": "node scripts/spike-process-capture.mjs",
     "soak:capture": "node scripts/soak-capture.mjs",

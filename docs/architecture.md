@@ -505,6 +505,19 @@ Dock deliberately lacks:
 
 ## 8. Platform notes
 
+Experimental Linux builds select cpal's PulseAudio host explicitly, including PipeWire through
+`pipewire-pulse`. Linux source discovery uses server monitor metadata to separate output monitors
+from physical inputs. Both are opened as input streams; sink devices themselves are never treated
+as capture devices. Stable IDs use native source identifiers rather than display labels. Automatic
+resolves the default sink's monitor and reports an error if it is absent, without falling back to
+a microphone. Capture requests float PCM at the source's native rate and channel count and reuses
+the existing pooled callback delivery and meter pipeline. Linux installers, per-application
+capture, and native desktop acceptance testing remain outstanding.
+
+Linux capture requests 20 ms server fragments. PulseAudio's unspecified default fragments can
+exceed the shared 100 ms PCM pool capacity, causing whole callbacks to be rejected; the backend
+must negotiate the delivery size rather than grow buffers on the callback thread.
+
 | Platform | System audio path                                                  | Minimum version                                                                  |
 | -------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
 | Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11) |

@@ -333,3 +333,25 @@ Use **English only** for commit messages, PR titles/descriptions, and any text t
 ## Line endings and encoding
 
 The repository uses **LF** (see [`.editorconfig`](.editorconfig) and [`.gitattributes`](.gitattributes)). If Git on Windows still reports CRLF, run `git add --renormalize .` once to normalise.
+
+## Experimental Linux capture verification
+
+Use `npm run desktop:linux` to launch the development GUI with its development identity. This
+entry point requires system FFmpeg/FFprobe in `/usr/bin` (or an absolute `PLVS_FFMPEG_DIR` override)
+and stages only the CLI as a sidecar. It does not produce a redistributable Linux package. In WSL,
+keep a separate Linux dependency/build directory; do not share Windows `node_modules` or `target`.
+
+On a Linux development desktop with PulseAudio or `pipewire-pulse`, install `pactl`, `paplay`,
+and FFmpeg/FFprobe, then build the current capture harness and run:
+
+```sh
+cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness,dev-identity
+PLVS_FFMPEG_DIR=/usr/bin npm run smoke:capture:linux
+```
+
+The Linux smoke creates a temporary null sink, plays the asymmetric stereo fixture into it, and
+compares live monitor capture with file analysis using the existing tolerances. It checks sample
+rate, channel count, and dropped chunks, removes its sink afterward, and does not change the
+default output. Missing tools, unsupported module loading, or stale harness binaries are rig
+errors (exit 2); metric disagreement is exit 1. Passing in WSLg verifies the protocol path only;
+native Linux desktop, device-switching, multichannel, and long-running soak checks are still needed.

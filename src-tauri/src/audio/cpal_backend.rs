@@ -952,6 +952,11 @@ where
   let stream_config = StreamConfig {
     channels,
     sample_rate: supported.sample_rate(),
+    // PulseAudio's default fragments can exceed the fixed 100 ms PCM pool buffers.
+    // Negotiate 20 ms fragments before capture instead of allocating in the callback.
+    #[cfg(target_os = "linux")]
+    buffer_size: cpal::BufferSize::Fixed((supported.sample_rate() / 50).max(1)),
+    #[cfg(not(target_os = "linux"))]
     buffer_size: cpal::BufferSize::Default,
   };
 

@@ -3,6 +3,11 @@
 PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. Commands are
 organized directly by the product resource or operation they address:
 
+Experimental Linux development builds support `doctor` and `instances`, using the same identity
+directory as the GUI under `$XDG_DATA_HOME` or `~/.local/share`. Live Agent Control commands and
+visual capture are not yet available on Linux. Linux development file analysis uses system
+FFmpeg/FFprobe selected by the development launcher; Linux release packages are not yet available.
+
 ```text
 plvs-cli doctor
 plvs-cli instances --json

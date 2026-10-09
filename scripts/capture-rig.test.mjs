@@ -103,11 +103,14 @@ describe("compareMetrics", () => {
     // `Math.abs(got - undefined)` is NaN and `NaN > tolerance` is false, so an
     // unguarded expected value would pass unconditionally and forever. If analyze
     // ever renames a field, this check must go red rather than green.
-    const result = compareMetrics({}, {
-      integratedLufs: -22.03,
-      samplePeakMaxLDb: -20.0,
-      samplePeakMaxRDb: -26.0,
-    });
+    const result = compareMetrics(
+      {},
+      {
+        integratedLufs: -22.03,
+        samplePeakMaxLDb: -20.0,
+        samplePeakMaxRDb: -26.0,
+      }
+    );
     expect(result.ok).toBe(false);
     expect(result.failures).toHaveLength(3);
     expect(result.failures[0].reason).toBe("no ground truth for this field");
@@ -148,7 +151,7 @@ describe("capture harness invocation", () => {
     }));
 
     expect(() => captureRig.verifyHarnessBuild("plvs.exe", run)).toThrow(
-      /--features capture-harness/,
+      /--features capture-harness/
     );
   });
 
@@ -157,8 +160,11 @@ describe("capture harness invocation", () => {
     // without dev-identity landing there silently turns it into a production-profile GUI.
     expect(captureRig.BUILD_HARNESS).toContain("--profile harness");
     expect(captureRig.BUILD_HARNESS).not.toContain("--release");
-    expect(captureRig.harnessPath("root")).toBe(
-      join("root", "src-tauri", "target", "harness", "plvs.exe"),
+    expect(captureRig.harnessPath("root", "win32")).toBe(
+      join("root", "src-tauri", "target", "harness", "plvs.exe")
+    );
+    expect(captureRig.harnessPath("root", "linux")).toBe(
+      join("root", "src-tauri", "target", "harness", "plvs")
     );
   });
 
@@ -181,9 +187,7 @@ describe("soak capture completion", () => {
 
   it("rejects a missing final report", () => {
     expect(captureRig.assertSoakCaptureCompleted).toBeTypeOf("function");
-    expect(() => captureRig.assertSoakCaptureCompleted(0, null)).toThrow(
-      /without a final report/,
-    );
+    expect(() => captureRig.assertSoakCaptureCompleted(0, null)).toThrow(/without a final report/);
   });
 
   it("rejects an error final report", () => {
@@ -192,7 +196,7 @@ describe("soak capture completion", () => {
       captureRig.assertSoakCaptureCompleted(0, {
         status: "error",
         error: { message: "device lost" },
-      }),
+      })
     ).toThrow(/device lost/);
   });
 });
