@@ -103,3 +103,125 @@ Keep current decisions separate from superseded experiments. Promote only reusab
 maintained tools into the repository; retain footage, one-off patch scripts and production history
 with the production archive. New work should be able to reproduce the accepted state without
 replaying the conversation.
+
+## Repository Tools
+
+Run the tools below from the repository root after `npm ci`. Production media and configuration
+stay in the external production directory; neither tool starts PLVS or occupies the screen.
+They do not change application behavior and do not replace capture smoke tests.
+
+### Check an Encoded Video
+
+```powershell
+node scripts/marketing/check-video.mjs "C:/production/film-v10.mp4" --out "C:/production/review-v10" --config "C:/production/review.json"
+```
+
+The output directory must not exist; its parent must exist. FFmpeg and ffprobe must be on PATH,
+or supplied with `--ffmpeg PATH` and `--ffprobe PATH`. No Python environment is required. A review
+configuration is optional; without one, the tool requires an audio track and samples three frames.
+Example configuration (times are seconds):
+
+```json
+{
+  "width": 1920,
+  "height": 1080,
+  "fps": 60,
+  "duration": 74.688,
+  "durationTolerance": 0.1,
+  "requireAudio": true,
+  "samples": [1.3, 24.7, 50, 69, 71.5],
+  "transitions": [48.92, 50.85, 66.23],
+  "transitionOffsets": [-0.1, 0, 0.1]
+}
+```
+
+The tool checks expected properties, decodes all video/audio streams with error detection, and
+produces original-size PNGs plus labeled contact sheets (12 images per sheet). It accepts at most
+200 samples; out-of-range requests fail rather than silently disappearing. `samples: []` disables
+ordinary samples, and `requireAudio: false` permits silent footage. Frame-rate comparison uses
+the first non-cover video stream's average rate; it does not prove constant frame cadence.
+
+`report.json` records the media metadata, checks, requested sample times, errors and outstanding
+manual review. Exit code 0 means automated checks passed, not that typography or pacing was
+approved. Exit code 1 means failure; an existing output directory is never reused. A failed run
+retains its report and any completed images. FFmpeg operations have a 30-minute timeout each.
+
+Use `--reference-audio "C:/production/film-v9.mp4"` to compare the first audio tracks exactly.
+The tool hashes decoded signed 32-bit PCM and compares sample rate, channel count and channel
+layout without trimming or resampling. This suits revisions expected to retain identical audio.
+Lossy re-encoding, codec padding or comparison with a WAV master can produce a mismatch even
+when they sound alike; this is not a perceptual audio comparison or a proof of picture/audio sync.
+
+### Plan, Copy and Verify an Archive
+
+```powershell
+node scripts/marketing/archive-production.mjs plan "C:/production-config/archive.json" --out "C:/production-config/archive-plan.json"
+node scripts/marketing/archive-production.mjs apply "C:/production-config/archive-plan.json"
+node scripts/marketing/archive-production.mjs verify "C:/archives/PLVS-promo-v10"
+```
+
+The first command only inventories and hashes files, writing a new plan. Inspect that plan before
+running `apply`. Example configuration for a Remotion project:
+
+```json
+{
+  "source": "C:/production/plvs-promo",
+  "destination": "C:/archives/PLVS-promo-v10",
+  "rules": [
+    { "path": "video/node_modules", "action": "omit" },
+    { "path": "video/out", "action": "keep", "to": "history/outputs" },
+    { "path": "recorder-duplicates", "action": "keep", "to": "history/raw", "deduplicate": true }
+  ]
+}
+```
+
+Source/destination paths are relative to the configuration file unless absolute. Rule paths and
+`to` paths are source-relative, use forward slashes, and match an exact file or directory subtree;
+there are no globs. Omit rules skip the entire matching tree without hashing it. Every rule must
+match an existing entry, so remove example rules that do not apply. Rules cannot overlap. Unknown
+files are preserved at their existing relative paths and marked `unclassified-preserved` in the
+plan. Empty directories are not materialized. Normal `video/src`, `video/public`, configuration and
+lockfile paths consequently remain usable together inside the archive's `files/` directory.
+
+Deduplication is opt-in for extra recording pools, never implicit for project assets. It compares
+SHA-256 contents within deduplication-enabled rules and maps duplicates to their retained file.
+Do not enable it on assets referenced by path: it removes duplicate paths, not just duplicate
+storage. Same-named files with different contents are kept separately; remapping collisions,
+including case-only or file/directory collisions, fail before copying. Symlinks/junctions are
+refused unless explicitly omitted; source and destination must be separate, non-nested trees.
+
+The plan must be saved outside both trees. `apply` requires a new destination with an existing
+parent. It regenerates the plan before copying, uses exclusive file creation, checks copied bytes
+and source contents, and inventories the source again afterward. Changed inputs, edited plans or
+copy errors fail the operation. An interrupted archive is retained with a non-complete
+`archive-report.json`; do not treat it as a backup or reuse its directory for another attempt.
+Use a fresh destination and regenerate the plan after resolving the failure.
+
+A completed archive contains:
+
+- `files/`: preserved content, with mappings recorded in `archive-plan.json`.
+- `SHA256SUMS.json`: checksums and sizes for retained payload files.
+- `archive-report.json`: completion status and copied source paths.
+- `README.md`: archive structure and verification command.
+
+`verify` checks payload hashes and reports missing, modified or additional payload files. It refuses
+incomplete archives; exit code 0 means verification passed, and 1 means failure. Archive metadata
+is not covered by the payload manifest; checksums detect accidental changes, not malicious
+replacement of both files and manifest. Stop other writers during planning and copying: the
+before/after checks detect changes but are not an atomic filesystem snapshot.
+
+Neither command deletes, moves or cleans the source. After verifying the archive, independently
+install dependencies and render a representative section before considering manual cleanup.
+Recursive moves can stop partway when a file is locked; do not use a move as a substitute for
+copy-and-verify. Historical snapshots require their media and lockfile as well as source files.
+
+### Tests
+
+```powershell
+npx vitest run scripts/marketing/check-video.test.mjs scripts/marketing/archive-production.test.mjs
+```
+
+Archive tests use temporary files and cover collisions, stale plans, interrupted copies, links,
+source changes and damaged payloads. Media integration tests generate tiny temporary clips and
+run when both FFmpeg and ffprobe are on PATH; otherwise they are explicitly skipped. Configuration
+tests always run. No production footage or generated media fixtures are committed.
