@@ -69,6 +69,19 @@ describe("useDockMode", () => {
     delete window.__PLVS_INITIAL_STATE__;
   });
 
+  it("starts macOS in overlay mode and preserves it when Accessibility permission is refused", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    mocks.setDockReserveSpace.mockRejectedValueOnce(new Error("Enable PLVS in Accessibility"));
+    const { result } = renderHook(() => useDockMode());
+    expect(result.current.reserveSpace).toBe(false);
+    await act(async () => {
+      await expect(result.current.setReserveSpace(true)).rejects.toThrow("Accessibility");
+    });
+    expect(result.current.reserveSpace).toBe(false);
+    expect(mocks.patchPresets).not.toHaveBeenCalled();
+  });
+
   it("toggles reserve-space through IPC using the current edge", async () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", reserveSpace: false },
@@ -218,7 +231,7 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(true);
   });
 
-  it("restores and moves the overlay Dock on macOS without reserving screen space", async () => {
+  it("restores macOS reservation and forwards explicit changes to the native permission guard", async () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", reserveSpace: true },
@@ -226,13 +239,13 @@ describe("useDockMode", () => {
     const { result } = renderHook(() => useDockMode());
 
     expect(result.current.dockEnabled).toBe(true);
-    expect(result.current.reserveSpace).toBe(false);
+    expect(result.current.reserveSpace).toBe(true);
     await act(() => result.current.enterDockMode("bottom", true));
-    expect(mocks.enterDock).toHaveBeenCalledWith("bottom", false, undefined, undefined);
+    expect(mocks.enterDock).toHaveBeenCalledWith("bottom", true, undefined, undefined);
     expect(result.current.dockEdge).toBe("bottom");
     await act(() => result.current.setReserveSpace(true));
-    expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
-    expect(result.current.reserveSpace).toBe(false);
+    expect(mocks.setDockReserveSpace).toHaveBeenCalledWith({ enabled: true, edge: "bottom" });
+    expect(result.current.reserveSpace).toBe(true);
   });
 
   it("reconciles a failed native boot restore instead of trusting stale injected state", async () => {

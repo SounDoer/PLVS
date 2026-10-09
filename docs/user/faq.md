@@ -27,7 +27,9 @@ No. They are a monitoring estimate; see
 ## Is Dock available on macOS?
 
 Yes. macOS supports an always-on-top Dock strip at the top or bottom of the screen.
-Reserving screen space is available only on Windows.
+**Reserve Screen Space** on macOS uses Accessibility permission to move or shrink the active
+application's window away from the strip. Applications with restrictive minimum sizes and native
+full-screen Spaces may not support avoidance. See [Dock](workspace.md#dock).
 
 ## Is there a Linux build?
 

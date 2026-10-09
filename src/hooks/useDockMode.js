@@ -11,11 +11,11 @@ import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
-import { isWindows } from "../lib/platform.js";
+import { isWindows, isMacOS } from "../lib/platform.js";
 import { updateDiagnosticDock } from "../lib/feedbackDiagnostics.js";
 
 function supportsDockReserveSpace() {
-  return isWindows();
+  return isWindows() || isMacOS();
 }
 
 function normalizeDockState(raw) {
@@ -27,7 +27,9 @@ function normalizeDockState(raw) {
     enabled: raw?.enabled === true,
     edge,
     monitor,
-    reserveSpace: supportsDockReserveSpace() && raw?.reserveSpace !== false,
+    reserveSpace:
+      supportsDockReserveSpace() &&
+      (isMacOS() ? raw?.reserveSpace === true : raw?.reserveSpace !== false),
     height: clampDockHeight(raw?.height),
   };
 }
@@ -92,6 +94,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     if (!isTauri()) return;
     let cancelled = false;
     let retryTimer = null;
+    let reconciled = false;
     const reconcile = () => {
       getDockState()
         .then((snapshot) => {
@@ -102,8 +105,13 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           }
           if (!snapshot.state || typeof snapshot.state !== "object") return;
           const normalized = normalizeDockState(snapshot.state);
+          if (reconciled && dockRef.current.reserveSpace !== normalized.reserveSpace) {
+            presetsStore.patch({ dirty: true });
+          }
           commitDock(normalized);
+          reconciled = true;
           if (!normalized.enabled) setDockSuspendedState(false);
+          if (isMacOS()) retryTimer = window.setTimeout(reconcile, 1000);
         })
         .catch(() => {});
     };

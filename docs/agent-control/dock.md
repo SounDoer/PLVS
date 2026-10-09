@@ -39,8 +39,19 @@ internal legacy `modules`/control records are not writable public state.
 
 ## Enter and exit
 
-Dock is supported on Windows and macOS. Reserve-space control is available only on Windows.
-Supplying it elsewhere is an error rather than silently coercing it.
+Dock and reserve-space control are supported on Windows and macOS. On macOS, reservation is
+opt-in AX window avoidance and requires Accessibility permission under the running PLVS identity.
+It adjusts settled foreground standard windows, skips full-screen/minimized/unsupported windows,
+and respects application minimum sizes. It does not register a system work area. Dry runs validate
+the requested configuration but neither prompt for permission nor predict a host window's fit.
+Execution without permission fails with `applicationFailed` and leaves the previous Dock form intact;
+the native error explains where to grant permission. Automatic boot restoration never prompts and
+falls back to an overlay if permission is unavailable. On other platforms, supplying reserve-space
+control is an error rather than silently coercing it.
+
+On macOS, only one workbench can own avoidance on a display, even on opposite edges. A competing
+entry resolves to an overlay and reports the ordinary reservation fallback warning. Windows retains
+independent top and bottom edge ownership.
 
 `dock enter` uses saved values for omitted options. Submitted edge is exactly `top` or `bottom`.
 Height is an integer from 56 through 160 CSS pixels; Agent Control rejects values outside this range

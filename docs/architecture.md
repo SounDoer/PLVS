@@ -477,6 +477,14 @@ right-aligned single-column editor. On Windows only `main` registers as an AppBa
 screen space enabled only the meter strip is reserved, and header/editor always overlay the adjacent
 work area, so hovering never reflows maximized windows.
 
+On macOS, `macos_dock.rs` and `native/macos/dock_reservation_bridge.m` provide opt-in AX avoidance
+of the foreground application's settled standard window. AppKit snapshots stay on main; AX calls
+and atomic recovery journals use a serial queue. A display-wide lease prevents competing
+workbenches from owning the same reservation. Suspend/exit restores only unchanged window geometry;
+startup recovers journals whose lease is free. Permission loss or display removal falls back to an
+overlay and reconciles the frontend. This service does not change `NSScreen.visibleFrame` or support
+native full-screen Spaces; see [ADR 0023](adr/0023-macos-dock-accessibility-avoidance.md).
+
 Rust's `dock.rs` / `dock_accessories.rs` own physical-pixel geometry and window lifecycle. The main
 React root owns the runtime, workspace, presets and Dock persistence; the two accessory roots receive
 only serialisable snapshots and send actions/pointer events back through semantic Tauri events,

@@ -16,7 +16,7 @@ import { cn } from "../../lib/utils.js";
 
 /** @param {{ state: any, onAction: (...args: any[]) => any, onPointer: (...args: any[]) => any }} props */
 export function DockHeader({ state, onAction, onPointer }) {
-  const isWindows = /Win/i.test(navigator.platform || navigator.userAgent || "");
+  const supportsReservation = /Win|Mac/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;
   const toolTipProps = /** @type {const} */ ({ tipSide: "left", tipAlign: "center" });
   const toggleEditor = (/** @type {string} */ view, event) => {
@@ -92,7 +92,7 @@ export function DockHeader({ state, onAction, onPointer }) {
           className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
           onClick={(event) => toggleEditor("modules", event)}
         />
-        {isWindows ? (
+        {supportsReservation ? (
           <IconButton
             icon={
               state.reserveSpace ? (

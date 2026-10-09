@@ -533,8 +533,8 @@ export function buildDockDescription(dock, context = {}) {
   return {
     supported: dock.supported === true,
     reserveSpace: {
-      writable: dock.supported === true && context.platform === "windows",
-      reason: context.platform === "windows" ? null : "platformUnsupported",
+      writable: dock.supported === true && ["windows", "macos"].includes(context.platform),
+      reason: ["windows", "macos"].includes(context.platform) ? null : "platformUnsupported",
     },
     height: { type: "integer", min: DOCK_MIN_HEIGHT, max: DOCK_MAX_HEIGHT, unit: "cssPx" },
     edges: ["top", "bottom"],
@@ -620,7 +620,7 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
       issues: [],
       refusal: { code: "transitionInProgress" },
     };
-  if (params.reserveSpace !== undefined && context.platform !== "windows")
+  if (params.reserveSpace !== undefined && !["windows", "macos"].includes(context.platform))
     return {
       dock,
       changed: [],
@@ -628,7 +628,11 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
       effects: [],
       refusal: null,
       issues: [
-        issue("controlUnavailable", "$.reserveSpace", "reserveSpace is available only on Windows."),
+        issue(
+          "controlUnavailable",
+          "$.reserveSpace",
+          "reserveSpace is available only on Windows and macOS."
+        ),
       ],
     };
   if (
@@ -685,7 +689,8 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
 /**
  * Reconcile the native Dock form with the requested projection.
  *
- * Windows permits only one work-area reservation for a monitor edge. Native Dock entry therefore
+ * Windows permits one reservation per monitor edge; macOS permits one avoidance owner per display.
+ * Native Dock entry therefore
  * resolves a losing contender to an overlay instead of failing the whole transition. Agent Control
  * must observe that effective state and report the downgrade rather than waiting for the impossible
  * requested state until `commitNotObserved`.

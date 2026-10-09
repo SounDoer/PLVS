@@ -3452,7 +3452,8 @@ export function useAgentControlBridge({
           const resources = planPresetApplyResources(target, {
             loudnessProfiles,
             dockSupported: dock.supported === true,
-            reserveSpaceSupported: dock.supported === true && dockContext.platform === "windows",
+            reserveSpaceSupported:
+              dock.supported === true && ["windows", "macos"].includes(dockContext.platform),
             glassSupported: viewContext.platform === "macos",
             channelCount: analysisContext.channelCount,
             channelLabels: analysisContext.channelLabels,

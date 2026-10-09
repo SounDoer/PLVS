@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext } from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useDockMode } from "../hooks/useDockMode.js";
 import { useSceneGuard } from "../hooks/SceneGuardContext.jsx";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
@@ -35,6 +36,28 @@ export function DockProvider({ children }) {
   const { assertSceneOperationAllowed } = useSceneGuard();
   const { focusView, windowPinned: pinned, historyRetentionSec } = useAppSettings();
   const { clearNotice, raiseNotice, setSelectedOffset } = useMeterDisplayState();
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    let unlisten;
+    void listen("dock-reservation-lost", () => {
+      raiseNotice(
+        "error",
+        "Screen-space avoidance stopped. Dock remains an overlay.",
+        "Check Accessibility permission and the Dock display, then enable Reserve Screen Space again."
+      );
+    })
+      .then((dispose) => {
+        if (cancelled) dispose();
+        else unlisten = dispose;
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [raiseNotice]);
 
   // Dock hooks run first: `docked` suspends the always-on-top and focus-view
   // window overrides below (Rust owns strip chrome + topmost while docked),
