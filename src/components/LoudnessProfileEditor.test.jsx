@@ -360,6 +360,33 @@ describe("LoudnessProfileEditor", () => {
     expect(/** @type {HTMLInputElement} */ (input).selectionEnd).toBe("Untitled".length);
   });
 
+  it("adopts an owner-committed name while the fresh-draft input remains focused", () => {
+    const draft = {
+      editingId: null,
+      document: threeRuleDocument({ name: "Untitled", rules: [] }),
+      dirty: false,
+    };
+    const onName = vi.fn();
+    const props = editorProps({ draft, onName });
+    const { rerender } = render(<LoudnessProfileEditor {...props} />);
+    const input = screen.getByLabelText("Loudness Profile name");
+
+    rerender(
+      <LoudnessProfileEditor
+        {...props}
+        draft={{
+          ...draft,
+          document: { ...draft.document, name: "Agent Draft" },
+          dirty: true,
+        }}
+      />
+    );
+
+    expect(/** @type {HTMLInputElement} */ (input).value).toBe("Agent Draft");
+    fireEvent.blur(input);
+    expect(onName).toHaveBeenLastCalledWith("Agent Draft");
+  });
+
   it("commits the name on blur and never rewrites the document id", () => {
     const props = renderEditor({
       draft: {

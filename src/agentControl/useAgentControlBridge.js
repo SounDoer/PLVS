@@ -154,8 +154,8 @@ async function settleEditorDraftObservation({
       const surface = ui.surfaces.find((candidate) => candidate.surfaceId === surfaceId);
       if (
         surface &&
-        surface.dirty === (snapshot.dirty === true) &&
-        surface.stale === (snapshot.stale === true)
+        (surface.dirty === true) === (snapshot.dirty === true) &&
+        (surface.stale === true) === (snapshot.stale === true)
       ) {
         return { ui, snapshot };
       }

@@ -921,7 +921,6 @@ describe("useAgentControlBridge", () => {
               surfaceId,
               kind: "themeEditor",
               dirty: snapshot.dirty,
-              stale: snapshot.stale,
               target: { draftId: "draft-public" },
             },
           ],

@@ -322,6 +322,13 @@ export function LoudnessProfileEditor({
     setRenaming(draft.editingId === null);
   }, [draft.editingId]);
 
+  // Semantic editor-draft commits update the owner while this fresh-draft input can still be
+  // focused. Keep the input aligned with that authoritative document so a later blur cannot write
+  // its pre-command value back over the accepted transaction.
+  useEffect(() => {
+    setNameDraft(incomingNameRef.current);
+  }, [draft.document.name]);
+
   useEffect(() => {
     if (renaming) {
       nameInputRef.current?.focus();
