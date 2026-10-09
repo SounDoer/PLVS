@@ -237,7 +237,8 @@ Loudness Profiles. Choose a category, search by name or description, and optiona
 results by Tag under **Filters**. The selected tag remains visible when Filters is closed.
 **Clear All** resets the category, search, and tag. Open an Item for its previews, contents,
 compatibility details, author, and release history. The initial collection is authored by PLVS;
-public submissions are not open. Theme pages show up to four selected previews. Select a thumbnail to switch images, or select the
+public submissions are not open. Theme pages display the same descriptive tags as their listing
+cards beneath the summary, and show up to four selected previews. Select a thumbnail to switch images, or select the
 large image to enlarge it in place. Use the arrow controls to browse and Close, Escape, or the
 background to dismiss it. Usage instructions, details, and release history are shown on the page.
 When a Theme has multiple releases, **Current** appears beside the current release number.

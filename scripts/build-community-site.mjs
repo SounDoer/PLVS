@@ -216,7 +216,7 @@ function detailPage(listing) {
           </div>`
               : ""
           }
-          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p><p class="lede">${escapeHtml(listing.summary)}</p>${primaryAction.replace("Download .plvstheme", "Download")}
+          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p><p class="lede">${escapeHtml(listing.summary)}</p>${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace("Download .plvstheme", "Download")}
             ${current ? `<div class="theme-how"><h2>How to Use</h2><p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
             ${metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>

@@ -427,3 +427,9 @@ body:has(.preview-dialog[open]) {
 .release-download {
   font-size: var(--text-small);
 }
+
+.theme-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
