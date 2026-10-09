@@ -5,6 +5,88 @@ import { join } from "node:path";
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
 
 describe("UI visual walkthrough runner", () => {
+  it("restores one scenario before preparing the next scenario", async () => {
+    let revision = 4;
+    const view = { pinned: false, surfaceOpacity: 72 };
+    const calls = [];
+    const patches = new Map();
+    const invoke = vi.fn(async (args) => {
+      calls.push(args);
+      const command = args.join(" ");
+      if (command.startsWith("capabilities")) {
+        return {
+          methods: [
+            "app.capabilities",
+            "app.inspect",
+            "ui.inspect",
+            "visual.screenshot",
+            "view.inspect",
+            "view.update",
+          ],
+        };
+      }
+      if (command.startsWith("inspect")) return { revision };
+      if (command.startsWith("ui inspect")) {
+        return { revision, uiGeneration: 0, activeBlockingEditors: [], surfaces: [] };
+      }
+      if (command.startsWith("view inspect")) return { revision, view: { ...view } };
+      if (command.startsWith("view update")) {
+        Object.assign(view, patches.get(args[2]));
+        revision += 1;
+        return { revision };
+      }
+      if (command.startsWith("visual screenshot")) {
+        return { revision, uiGeneration: 0, artifact: { bytes: 8, sha256: "hash" } };
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    const materialize = vi.fn(async (label, patch) => {
+      patches.set(label, patch);
+      return label;
+    });
+
+    const result = await runUiVisualWalkthrough({
+      manifest: {
+        version: 1,
+        workbench: { instanceId: "instance-a" },
+        scenarios: [
+          {
+            id: "opacity",
+            durable: [{ family: "view", patch: { surfaceOpacity: 100 } }],
+            ui: { kind: "workspace" },
+            screenshot: { target: "main", output: "opacity.png" },
+            touches: ["view.surfaceOpacity"],
+          },
+          {
+            id: "pin",
+            durable: [{ family: "view", patch: { pinned: true } }],
+            ui: { kind: "workspace" },
+            screenshot: { target: "main", output: "pin.png" },
+            touches: ["view.pinned"],
+          },
+        ],
+      },
+      outDir: "C:/safe-output",
+      invoke,
+      materialize,
+    });
+
+    const updateInputs = calls
+      .filter((args) => args.slice(0, 2).join(" ") === "view update")
+      .map((args) => args[2]);
+    expect(updateInputs).toEqual([
+      "opacity-setup-0",
+      "opacity-restore-0",
+      "pin-setup-0",
+      "pin-restore-0",
+    ]);
+    expect(view).toEqual({ pinned: false, surfaceOpacity: 72 });
+    expect(result.scenarios).toEqual([
+      expect.objectContaining({ id: "opacity", restored: true }),
+      expect.objectContaining({ id: "pin", restored: true }),
+    ]);
+  });
+
   it("establishes a private event fixture, inspects it publicly, and cancels the exact surface", async () => {
     let uiGeneration = 0;
     let surface = null;

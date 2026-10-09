@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   assertWalkthroughStart,
   buildRestorationLedger,
+  buildScenarioRestorationLedger,
+  classifyRestorationField,
   validateWalkthroughManifest,
 } from "./ui-visual-walkthrough-lib.mjs";
 
@@ -40,6 +42,40 @@ describe("UI visual walkthrough manifest", () => {
         verify: { surfaceOpacity: 72 },
       },
     ]);
+  });
+
+  it("builds an independent first-before and final-applied ledger for each scenario", () => {
+    const scenario = {
+      id: "appearance",
+      durable: [
+        { family: "view", patch: { surfaceOpacity: 90, pinned: true } },
+        { family: "view", patch: { surfaceOpacity: 100 } },
+      ],
+    };
+
+    expect(
+      buildScenarioRestorationLedger(scenario, {
+        view: { surfaceOpacity: 72, pinned: false },
+      })
+    ).toEqual([
+      {
+        family: "view",
+        patch: { pinned: false, surfaceOpacity: 72 },
+        verify: { pinned: false, surfaceOpacity: 72 },
+        fields: [
+          { key: "pinned", before: false, applied: true },
+          { key: "surfaceOpacity", before: 72, applied: 100 },
+        ],
+      },
+    ]);
+  });
+
+  it.each([
+    [72, "alreadyRestored"],
+    [100, "owned"],
+    [85, "diverged"],
+  ])("classifies restoration ownership for current value %s", (current, expected) => {
+    expect(classifyRestorationField({ before: 72, applied: 100 }, current)).toBe(expected);
   });
 
   it.each([

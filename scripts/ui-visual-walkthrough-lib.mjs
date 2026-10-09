@@ -271,6 +271,55 @@ export function buildRestorationLedger(manifest, snapshots) {
   return entries;
 }
 
+function equalJsonValue(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+export function classifyRestorationField(field, current) {
+  if (equalJsonValue(current, field.before)) return "alreadyRestored";
+  if (equalJsonValue(current, field.applied)) return "owned";
+  return "diverged";
+}
+
+export function buildScenarioRestorationLedger(scenario, snapshots) {
+  const families = new Map();
+  for (const [stepIndex, step] of scenario.durable.entries()) {
+    let family = families.get(step.family);
+    if (!family) {
+      family = { family: step.family, lastStep: stepIndex, fields: new Map() };
+      families.set(step.family, family);
+    }
+    family.lastStep = stepIndex;
+    const snapshot = snapshots[step.family];
+    const state = snapshot?.[step.family] ?? snapshot;
+    for (const [key, applied] of Object.entries(step.patch)) {
+      const existing = family.fields.get(key);
+      family.fields.set(key, {
+        key,
+        before: existing?.before ?? structuredClone(state?.[key]),
+        applied: structuredClone(applied),
+      });
+    }
+  }
+
+  return [...families.values()]
+    .sort((left, right) => right.lastStep - left.lastStep)
+    .map(({ family, fields }) => {
+      const orderedFields = [...fields.values()].sort((left, right) =>
+        left.key.localeCompare(right.key)
+      );
+      const patch = Object.fromEntries(
+        orderedFields.map((field) => [field.key, structuredClone(field.before)])
+      );
+      return {
+        family,
+        patch,
+        verify: structuredClone(patch),
+        fields: orderedFields,
+      };
+    });
+}
+
 export function uiShowArguments(ui) {
   if (["workspace", "eventFixture"].includes(ui.kind)) return null;
   if (ui.kind === "settings") return ["ui", "show", "settings", "--section", ui.section];

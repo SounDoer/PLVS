@@ -11,7 +11,7 @@ import { buildPlvsCli } from "./build-plvs-cli.mjs";
 import { createStereoFixtureWav } from "./theme-gallery-lib.mjs";
 import {
   assertWalkthroughStart,
-  buildRestorationLedger,
+  buildScenarioRestorationLedger,
   uiShowArguments,
   validateWalkthroughManifest,
 } from "./ui-visual-walkthrough-lib.mjs";
@@ -84,12 +84,6 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
     ? await run(["transport", "inspect", "--json"])
     : null;
 
-  const families = new Set(
-    manifest.scenarios.flatMap((scenario) => scenario.durable.map((step) => step.family))
-  );
-  const initialFamilies = {};
-  for (const family of families) initialFamilies[family] = await run([family, "inspect", "--json"]);
-  const restoration = buildRestorationLedger(manifest, initialFamilies);
   const report = {
     schemaVersion: 1,
     workbench: { instanceId },
@@ -97,7 +91,14 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
     artifacts: [],
     initial: { revision: initialApp.revision, uiGeneration: initialUi.uiGeneration },
     final: null,
-    restoration: { attempted: false, verified: false, fields: restoration.length },
+    restoration: {
+      attempted: false,
+      verified: false,
+      fields: manifest.scenarios.reduce(
+        (total, scenario) => total + new Set(scenario.touches).size,
+        0
+      ),
+    },
     fixture: null,
   };
   let latestApp = initialApp;
@@ -121,6 +122,7 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   let createdSessionId = null;
   let fixturePath = null;
   let activeEventFixtureId = null;
+  let pendingRestoration = [];
   try {
     if (manifest.fixture?.audio) {
       fixturePath = join(outDir, `${manifest.fixture.audio.id}.wav`);
@@ -147,6 +149,11 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
       };
     }
     for (const scenario of manifest.scenarios) {
+      const scenarioFamilies = {};
+      for (const family of new Set(scenario.durable.map((step) => step.family))) {
+        scenarioFamilies[family] = await run([family, "inspect", "--json"]);
+      }
+      pendingRestoration = buildScenarioRestorationLedger(scenario, scenarioFamilies);
       for (const [index, step] of scenario.durable.entries()) {
         await applyPatch(step, `${scenario.id}-setup-${index}`);
       }
@@ -337,6 +344,21 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
         ...(fixtureId ? { fixtureId } : {}),
         restored: false,
       });
+      report.restoration.attempted ||= pendingRestoration.length > 0;
+      for (const [index, entry] of pendingRestoration.entries()) {
+        await applyPatch(entry, `${scenario.id}-restore-${index}`);
+      }
+      for (const entry of pendingRestoration) {
+        const final = await run([entry.family, "inspect", "--json"]);
+        const finalState = final[entry.family] ?? final;
+        for (const [key, value] of Object.entries(entry.verify)) {
+          if (!sameJson(finalState[key], value)) {
+            throw new Error(`Restoration verification failed for ${entry.family}.${key}.`);
+          }
+        }
+      }
+      report.scenarios.at(-1).restored = true;
+      pendingRestoration = [];
     }
   } catch (error) {
     primaryFailure = error;
@@ -356,8 +378,9 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   if (!report.failure?.preservationRequired) {
     report.restoration.attempted = true;
     try {
-      for (const [index, entry] of restoration.entries())
-        await applyPatch(entry, `restore-${index}`);
+      for (const [index, entry] of pendingRestoration.entries())
+        await applyPatch(entry, `failed-scenario-restore-${index}`);
+      pendingRestoration = [];
       if (initialTransport) {
         latestApp = await run(["inspect", "--json"]);
         if (!createdSessionId && fixturePath) {
@@ -434,17 +457,6 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
     throw primaryFailure;
   }
 
-  for (const [family, initial] of Object.entries(initialFamilies)) {
-    const final = await run([family, "inspect", "--json"]);
-    const finalState = final[family] ?? final;
-    for (const entry of restoration.filter((candidate) => candidate.family === family)) {
-      for (const [key, value] of Object.entries(entry.verify)) {
-        if (!sameJson(finalState[key], value))
-          throw new Error(`Restoration verification failed for ${family}.${key}.`);
-      }
-    }
-    void initial;
-  }
   const finalApp = await run(["inspect", "--json"]);
   const finalUi = await run(["ui", "inspect", "--json"]);
   if (
@@ -474,7 +486,6 @@ export async function runUiVisualWalkthrough({ manifest, outDir, invoke, materia
   }
   report.final = { revision: finalApp.revision, uiGeneration: finalUi.uiGeneration };
   report.restoration.verified = true;
-  for (const scenario of report.scenarios) scenario.restored = true;
   return report;
 }
 
