@@ -198,6 +198,25 @@ describe("Immutable Release promotion", () => {
 });
 
 describe("Immutable Windows Preview Build", () => {
+  it("gates Linux publication on a tested Ubuntu package and complete platform asset set", () => {
+    expect(previewBuildWorkflow).toContain("options: [windows, linux]");
+    expect(previewBuildWorkflow).toContain("if: inputs.platform == 'linux'");
+    expect(previewBuildWorkflow).toContain("if: inputs.platform == 'windows'");
+    expect(previewBuildWorkflow).toContain("npm run desktop:preview-deb");
+    expect(previewBuildWorkflow).toContain("file_analysis -- --test-threads=1");
+    expect(previewBuildWorkflow).toContain("sudo bash scripts/verify-linux-deb-clean.sh");
+    expect(previewBuildWorkflow).toContain(
+      "needs: [validate, build-windows-preview, build-linux-preview]"
+    );
+    expect(previewBuildWorkflow).toContain("needs.build-linux-preview.result == 'success'");
+    expect(previewBuildWorkflow).toContain("!cancelled() && needs.validate.result == 'success'");
+    expect(previewBuildWorkflow).toContain("needs.prepare-draft.result == 'success'");
+    expect(previewBuildWorkflow).toContain("preview-candidate-${{ inputs.platform }}");
+    expect(previewBuildWorkflow).toContain('preview-assets "$PREVIEW_PLATFORM"');
+    expect(previewBuildWorkflow).toContain(
+      'if [[ "$PREVIEW_PLATFORM" == linux ]]; then expected_count=1; fi'
+    );
+  });
   it("publishes the GUI host and CLI forwarder together in one ZIP", () => {
     for (const name of ["plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe"]) {
       expect(previewBuildWorkflow).toContain(
