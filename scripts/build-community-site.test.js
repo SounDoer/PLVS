@@ -122,7 +122,7 @@ describe("Community static site generator", () => {
       const docs = readFileSync(join(site, "docs", "index.html"), "utf8");
       expect(home.includes('href="community/"')).toBe(published);
       expect(docs.includes('href="../community/"')).toBe(published);
-      if (published) expect(home).toMatch(/footer-links[\s\S]*href="community\/"/);
+      expect(home.match(/<footer[\s\S]*?<\/footer>/)?.[0]).not.toContain('href="community/"');
     }
   );
 

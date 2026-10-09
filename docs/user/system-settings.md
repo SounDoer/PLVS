@@ -230,9 +230,9 @@ recognized by its content: if an identical Theme, including its name, is already
 the review says so and nothing is added. Single `.plvstheme` files use the same **Import** action
 as PLVS-exported Theme pack files.
 
-## Community
+## Sharesets
 
-The [Community Catalogue](https://plvs.soundoer.com/community/) offers curated Themes, Presets, and
+The [Sharesets](https://plvs.soundoer.com/community/) offers curated Themes, Presets, and
 Loudness Profiles. Browse a category or search, then open an Item for its previews, contents,
 compatibility details, author, and release history. The initial collection is authored by PLVS;
 public submissions are not open.
@@ -243,7 +243,7 @@ Library; applying the Item is a separate action. You can also use **Copy Theme**
 paste into PLVS outside a text field to open the same review. An identical Item already in your
 Library is recognized instead of being added again.
 
-Community previews use fixed example measurements, not your audio. The parameter-named Loudness
+Sharesets previews use fixed example measurements, not your audio. The parameter-named Loudness
 Profile is an editable monitoring rule set, not a certified delivery standard. Review its rules
 against your own requirements before using it.
 

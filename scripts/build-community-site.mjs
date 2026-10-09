@@ -29,19 +29,19 @@ function page(title, description, body) {
     <script type="module" src="/assets/community.js"></script>
   </head>
   <body>
-    <nav class="nav" aria-label="Main navigation">
-      <a class="brand" href="/"><img src="/assets/app-icon.svg" alt="" />PLVS</a>
-      <div class="nav-links"><a href="/community/" aria-current="page">Community</a><a href="/docs/">Docs</a><a href="https://github.com/SounDoer/PLVS">GitHub</a></div>
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="/" aria-label="PLVS home"><img class="brand-mark" src="/assets/app-icon.svg" alt="" aria-hidden="true" /></a>
+      <div class="nav-links"><a href="/community/" aria-current="page">Sharesets</a><a href="/docs/">Docs</a><a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a><a class="nav-download" href="/#download">Download</a></div>
     </nav>
     ${body}
-    <footer><span>PLVS Community</span><a href="/">Back to PLVS</a></footer>
+    <footer><span>PLVS Sharesets</span><a href="/">Back to PLVS</a></footer>
   </body>
 </html>
 `;
 }
 
 function typeNav(active = null) {
-  return `<nav class="family-nav" aria-label="Community categories">
+  return `<nav class="family-nav" aria-label="Sharesets categories">
     <a href="/community/"${active === null ? ' aria-current="page"' : ""}>All</a>
     ${Object.entries(FAMILIES)
       .map(
@@ -107,7 +107,7 @@ function selectFilter(name, label, values) {
 
 function browseControls(listings, activeType) {
   return `<form class="browse-controls" data-catalogue-controls>
-    <label class="search"><span>Search</span><input type="search" data-catalogue-search placeholder="Search Community" /></label>
+    <label class="search"><span>Search</span><input type="search" data-catalogue-search placeholder="Search Sharesets" /></label>
     ${activeType === null ? selectFilter("type", "Type", Object.keys(FAMILIES)) : ""}
     ${selectFilter("module", "Module", facetValues(listings, "moduleIds"))}
     ${selectFilter("metric", "Metric", facetValues(listings, "metricIds"))}
@@ -120,15 +120,15 @@ function browseControls(listings, activeType) {
 
 function browsePage(listings, activeType = null) {
   const visible = activeType ? listings.filter(({ type }) => type === activeType) : listings;
-  const title = activeType ? FAMILIES[activeType].label : "Community Catalogue";
+  const title = activeType ? FAMILIES[activeType].label : "Sharesets";
   const intro = activeType
     ? `Browse curated ${FAMILIES[activeType].label.toLowerCase()} for PLVS.`
-    : "Curated Loudness Profiles, Presets, and Themes for PLVS.";
+    : "Loudness Profiles, Presets, and Themes for PLVS";
   return page(
     `${title} — PLVS`,
     intro,
     `<main class="catalogue">
-      <header class="hero"><p class="eyebrow">PLVS Community</p><h1>${title}</h1><p>${intro}</p></header>
+      <header class="hero"><h1>${title}</h1><p>${intro}</p></header>
       ${typeNav(activeType)}
       ${browseControls(visible, activeType)}
       ${
@@ -196,10 +196,10 @@ function detailPage(listing) {
     })
     .join("\n");
   return page(
-    `${listing.title} — PLVS Community`,
+    `${listing.title} — PLVS Sharesets`,
     listing.summary,
     `<main class="detail">
-      <p class="breadcrumb"><a href="/community/">Community</a> / <a href="/community/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
+      <p class="breadcrumb"><a href="/community/">Sharesets</a> / <a href="/community/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
       <header class="detail-hero"><div><p class="eyebrow">${FAMILIES[listing.type].singular} · ${escapeHtml(listing.classification)}</p><h1>${escapeHtml(listing.title)}</h1><p class="lede">${escapeHtml(listing.summary)}</p><p class="byline">By ${author}</p>${primaryAction}</div>${previews[0] ? `<img src="/community/files/${listing.id}/v${current.number}/${previews[0].id}.png" alt="Preview of ${escapeHtml(listing.title)}" />` : ""}</header>
       <section class="detail-grid"><article class="prose"><h2>About</h2><div class="markdown">${marked.parse(listing.descriptionMarkdown)}</div></article>${metadata ? `<aside><h2>Content</h2><dl>${renderSummary(metadata.content.summary)}</dl><dl><div><dt>File size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div><div><dt>SHA-256</dt><dd class="hash">${escapeHtml(metadata.artifact.sha256)}</dd></div></dl></aside>` : ""}</section>
       ${metadata ? `<section class="detail-grid"><article><h2>Compatibility</h2>${renderCompatibility(metadata)}</article><article><h2>Dependencies</h2>${renderDependencies(metadata)}</article></section>` : ""}

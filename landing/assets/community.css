@@ -1,7 +1,14 @@
+@font-face {
+  font-family: "Inter";
+  src: url("/assets/fonts/InterVariable-4.1.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
 :root {
   --page: #070707;
   --ink: #f2f2f2;
-  --muted: #989898;
+  --muted: #b3b3b3;
   --line: rgba(242, 242, 242, 0.12);
   --panel: #151515;
   --accent: #fb923c;
@@ -31,32 +38,60 @@ footer {
   min-height: 76px;
   border-bottom: 1px solid var(--line);
 }
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 700;
+.nav {
+  width: min(100% - 48px, 1180px);
+  gap: 24px;
+  border-bottom: 0;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
-.brand img {
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.brand-mark {
   width: 29px;
   height: 29px;
+  display: block;
 }
 .nav-links {
   display: flex;
-  gap: 24px;
-  color: var(--muted);
-  font-size: 14px;
+  align-items: center;
+  gap: 28px;
+  color: rgba(242, 242, 242, 0.62);
+  font-size: 16px;
+  font-weight: 500;
 }
-.nav a:hover,
+.nav-links a {
+  transition: color 160ms ease;
+}
+.nav-download {
+  color: var(--ink);
+}
 footer a:hover,
 .breadcrumb a:hover {
   color: var(--accent);
+}
+.nav-links a:hover {
+  color: #d97700;
 }
 .catalogue,
 .detail {
   width: min(100% - 40px, 1180px);
   margin: auto;
-  padding: 70px 0 100px;
+  padding: 24px 0 100px;
 }
 .hero {
   max-width: 760px;
@@ -69,15 +104,16 @@ footer a:hover,
   letter-spacing: 0.08em;
 }
 h1 {
-  margin: 12px 0 18px;
-  font-size: clamp(42px, 7vw, 72px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  margin: 0 0 16px;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 .hero > p:last-child,
 .lede {
   color: var(--muted);
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1.55;
 }
 .family-nav {
@@ -92,7 +128,7 @@ h1 {
   border-radius: 999px;
   padding: 9px 14px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 .family-nav a[aria-current="page"] {
   border-color: rgba(251, 146, 60, 0.55);
@@ -101,29 +137,44 @@ h1 {
 }
 .browse-controls {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(5, minmax(120px, 1fr)) auto;
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   margin: 0 0 24px;
 }
 .browse-controls label {
   display: grid;
   gap: 6px;
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+.browse-controls .search {
+  grid-column: 1 / -1;
 }
 .browse-controls input,
 .browse-controls select,
 .browse-controls button {
   width: 100%;
-  min-height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #444;
+  border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  font: inherit;
+  font: 400 16px / 1.4 var(--font);
+}
+.browse-controls input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.browse-controls :is(input, select, button):focus-visible,
+.family-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.browse-controls :is(input, select, button):hover {
+  border-color: #777;
 }
 .browse-controls input,
 .browse-controls select {
@@ -354,6 +405,20 @@ footer {
   color: var(--muted);
   font-size: 13px;
 }
+@media (max-width: 920px) {
+  .nav {
+    width: min(100% - 28px, 1180px);
+    min-height: 68px;
+  }
+  .nav-links {
+    gap: 16px;
+  }
+}
+@media (max-width: 620px) {
+  .nav-links a:not(.nav-download) {
+    display: none;
+  }
+}
 @media (max-width: 820px) {
   .browse-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -373,12 +438,9 @@ footer {
   }
 }
 @media (max-width: 560px) {
-  .nav-links a:last-child {
-    display: none;
-  }
   .catalogue,
   .detail {
-    padding-top: 46px;
+    padding-top: 20px;
   }
   .card-grid,
   .preview-grid {
