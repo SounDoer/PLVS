@@ -25,6 +25,9 @@ Keep this group small. Every file added here is one more thing that can go stale
 [Marketing screenshots](marketing-screenshots.md) documents the maintained audio fixture,
 LIVE capture recipe, visual review and publication workflow.
 
+[Video production](promo-video.md) documents the reusable capture, alignment, editing, validation
+and archival workflow, independent of any video's creative direction.
+
 ## 2. User guide — [user/](user/)
 
 How to use PLVS, written for people using the app, one file per chapter with
