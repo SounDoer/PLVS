@@ -70,6 +70,8 @@ Dock action for the same themed explanation shown in the normal workspace.
 
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
+Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
+and the new height is saved when you release the pointer.
 
 When several PLVS workbenches use Dock, only one can reserve a particular monitor edge. A second
 Dock on that same edge remains visible as an overlay and does not disturb the existing reservation.

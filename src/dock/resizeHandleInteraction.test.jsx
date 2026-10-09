@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DockPanelResizeHandle } from "./DockPanelResizeHandle.jsx";
 import { DockHeightResizeHandle } from "./DockHeightResizeHandle.jsx";
 
@@ -9,6 +9,45 @@ function pointer(element, type, values = {}) {
   Object.defineProperty(event, "pointerId", { value: 1 });
   fireEvent(element, event);
 }
+
+describe("Dock height drag coordinates", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([0, -1200])(
+    "tracks the screen pointer when the bottom window moves (offset %s)",
+    (offset) => {
+      let frame;
+      vi.stubGlobal("requestAnimationFrame", (callback) => {
+        frame = callback;
+        return 1;
+      });
+      vi.stubGlobal("cancelAnimationFrame", vi.fn());
+      const commit = vi.fn();
+      const view = render(
+        <DockHeightResizeHandle edge="bottom" height={100} onHeightChange={commit} />
+      );
+      const handle = view.getByRole("separator");
+      const flushFrame = () => act(() => frame());
+
+      pointer(handle, "pointerdown", { screenY: offset + 900, clientY: 2 });
+      pointer(handle, "pointermove", { screenY: offset + 880, clientY: -18 });
+      flushFrame();
+      expect(commit).toHaveBeenLastCalledWith(120, { persist: false });
+
+      // Native resize moves the top of a bottom Dock up by 20 px. The pointer
+      // stays in place, but clientY is now 2 again; this must not undo the resize.
+      view.rerender(<DockHeightResizeHandle edge="bottom" height={120} onHeightChange={commit} />);
+      pointer(handle, "pointermove", { screenY: offset + 880, clientY: 2 });
+      expect(commit).toHaveBeenCalledTimes(1);
+
+      pointer(handle, "pointermove", { screenY: offset + 870, clientY: -8 });
+      flushFrame();
+      expect(commit).toHaveBeenLastCalledWith(130, { persist: false });
+      pointer(handle, "pointerup", { screenY: offset + 870, clientY: 2 });
+      expect(commit).toHaveBeenLastCalledWith(130, { persist: true });
+    }
+  );
+});
 
 describe.each(["width", "height"])("Dock %s resize feedback", (kind) => {
   function setup(disabled = false) {

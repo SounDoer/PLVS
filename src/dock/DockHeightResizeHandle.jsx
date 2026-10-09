@@ -54,7 +54,9 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
         event.currentTarget.setPointerCapture?.(event.pointerId);
         dragRef.current = {
           pointerId: event.pointerId,
-          startY: event.clientY,
+          // A bottom Dock moves its window origin as it grows. Window-relative
+          // coordinates feed that movement back into the next height request.
+          startY: event.screenY,
           startHeight: currentHeight,
           latestHeight: currentHeight,
         };
@@ -66,7 +68,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
           edge,
           startHeight: drag.startHeight,
           startY: drag.startY,
-          currentY: event.clientY,
+          currentY: event.screenY,
         });
         if (nextHeight === drag.latestHeight) return;
         drag.latestHeight = nextHeight;
