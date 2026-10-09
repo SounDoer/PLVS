@@ -240,6 +240,11 @@ compatibility details, author, and release history. The initial collection is au
 public submissions are not open. Theme pages show up to four selected previews. Select a thumbnail to switch images, or select the
 large image to enlarge it in place. Use the arrow controls to browse and Close, Escape, or the
 background to dismiss it. Usage instructions, details, and release history are shown on the page.
+When a Theme has multiple releases, **Current** appears beside the current release number.
+Use the download action near the title for that release. Older published releases have
+**Download v…** text links alongside their version information.
+On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
+**Download** remains visible.
 
 Download a `.plvstheme`, `.plvspreset`, or `.plvsloudness` file, then open **Settings → Saved Items →
 Import…**. Review what will be added and confirm. Importing adds to the

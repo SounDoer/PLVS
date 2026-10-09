@@ -19,19 +19,14 @@ function page(title, description, body, { browse = false } = {}) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
-    ${browse ? `<link rel="stylesheet" href="/assets/site-tokens.css" /><link rel="stylesheet" href="/assets/site-components.css" /><link rel="stylesheet" href="/assets/sharesets.css" /><script type="module" src="/assets/sharesets.js"></script>` : `<link rel="stylesheet" href="/assets/community.css" /><script type="module" src="/assets/community.js"></script>`}
+    <link rel="stylesheet" href="/assets/site-tokens.css" />
+    <link rel="stylesheet" href="/assets/site-components.css" />
+    ${browse ? `<link rel="stylesheet" href="/assets/sharesets.css" /><script type="module" src="/assets/sharesets.js"></script>` : `<link rel="stylesheet" href="/assets/community.css" /><script type="module" src="/assets/community.js"></script>`}
   </head>
   <body>
-    ${
-      browse
-        ? siteNavigation()
-        : `<nav class="nav" aria-label="Primary">
-      <a class="brand" href="/" aria-label="PLVS home"><img class="brand-mark" src="/assets/app-icon.svg" alt="" aria-hidden="true" /></a>
-      <div class="nav-links"><a href="/community/" aria-current="page">Sharesets</a><a href="/docs/">Docs</a><a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a><a class="nav-download" href="/#download">Download</a></div>
-    </nav>`
-    }
+    ${siteNavigation()}
     ${body}
-    <footer><span>PLVS Sharesets</span><a href="/">Back to PLVS</a></footer>
+    <footer><a href="/">Back to PLVS</a></footer>
   </body>
 </html>
 `;
@@ -164,10 +159,26 @@ function detailPage(listing) {
     .reverse()
     .map((release) => {
       const download = `/community/files/${listing.id}/v${release.number}/${basename(release.artifact)}`;
+      const isTheme = listing.type === "themes";
+      const isCurrent = release.number === current?.number;
+      const currentLabel =
+        isTheme && isCurrent && listing.releases.length > 1
+          ? `<span class="release-current">Current</span>`
+          : "";
+      const historicalLink =
+        isTheme && release.status === "published" && !isCurrent
+          ? `<a class="release-download" href="${download}" download>Download v${release.number}</a>`
+          : "";
+      const releaseAction =
+        release.status !== "published"
+          ? `<p class="withdrawn">Withdrawn: ${escapeHtml(release.withdrawalReason)}</p>`
+          : isTheme
+            ? ""
+            : `<a class="button secondary" href="${download}" download>Download</a>`;
       return `<article class="release">
-        <div><h3>Release ${release.number}</h3><p>${escapeHtml(release.publishedAt)} · ${escapeHtml(release.status)}</p></div>
+        <div><h3>Release ${release.number}</h3>${currentLabel}<p>${escapeHtml(release.publishedAt)} · ${escapeHtml(release.status)}</p>${historicalLink}</div>
         <div class="markdown">${marked.parse(release.notesMarkdown)}</div>
-        ${release.status === "published" ? `<a class="button secondary" href="${download}" download>Download</a>` : `<p class="withdrawn">Withdrawn: ${escapeHtml(release.withdrawalReason)}</p>`}
+        ${releaseAction}
       </article>`;
     })
     .join("\n");
@@ -211,10 +222,10 @@ function detailPage(listing) {
           </header>
         </div>
         <div class="theme-more">
-          <section><h2>Details</h2>${metadata ? `<div class="theme-facts"><dl>${renderSummary(metadata.content.summary)}<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div></dl><div><h3>Compatibility</h3>${renderCompatibility(metadata)}</div></div><details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>` : `<p class="muted">No current release is available.</p>`}</section>
+          <section><h2>Details</h2>${metadata ? `<div class="theme-facts"><dl>${renderSummary(metadata.content.summary)}<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div></dl></div><details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>` : `<p class="muted">No current release is available.</p>`}</section>
           <section><h2>Release History</h2><div class="release-list">${releases}</div></section>
         </div>
-        ${gallery.length ? `<dialog class="preview-dialog" aria-label="Theme preview" data-preview-dialog><div class="preview-toolbar"><button type="button" data-preview-previous aria-label="Previous image">←</button><span data-preview-position aria-live="polite"></span><button type="button" data-preview-next aria-label="Next image">→</button><button type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
+        ${gallery.length ? `<dialog class="preview-dialog" aria-label="Theme preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous aria-label="Previous image">←</button><span data-preview-position aria-live="polite"></span><button class="button secondary" type="button" data-preview-next aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
       </main>`
     );
   }

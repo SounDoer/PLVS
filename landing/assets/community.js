@@ -1,3 +1,5 @@
+import { enhanceSiteNavigation } from "./site-navigation.js";
+
 function values(value) {
   return value ? value.split("|") : [];
 }
@@ -133,3 +135,6 @@ function enhancePreviewGallery() {
 }
 
 if (typeof document !== "undefined") enhancePreviewGallery();
+
+if (typeof document !== "undefined")
+  enhanceSiteNavigation(document.querySelector("[data-site-navigation]"));

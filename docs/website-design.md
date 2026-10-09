@@ -12,9 +12,10 @@ runtime Theme tokens described in `design-tokens.md`.
 - `scripts/site-components.mjs` renders shared navigation and resource-card markup.
 - `landing/assets/sharesets.css` and `sharesets.js` compose those pieces for catalogue browsing.
 
-The Sharesets root and category listing pages currently consume this shared source. The homepage,
-documentation template and resource detail pages retain their previous styles pending separate
-review. Do not change those pages implicitly while extending the shared components.
+The Sharesets root, category listing pages and all three resource detail families consume this
+shared source. Detail layouts remain in `community.css`; gallery and copy interactions remain in
+`community.js`. The homepage and documentation template retain their previous styles pending
+separate review. Do not change those pages implicitly while extending the shared components.
 
 ## Agreed foundation
 
