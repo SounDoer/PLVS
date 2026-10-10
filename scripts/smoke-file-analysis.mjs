@@ -3,8 +3,8 @@
  * Runs the Rust file-analysis tests with real FFmpeg sidecars present.
  *
  * `cargo test` normally skips the end-to-end file-analysis tests when the
- * sidecar binaries are absent. Release builds should prove the real decode path
- * once, so this script stages platform sidecars under their runtime names and
+ * sidecar binaries are absent. The release and Preview workflows should prove the real decode
+ * path once, so this script stages platform sidecars under their runtime names and
  * points PLVS_FFMPEG_DIR at that directory.
  */
 import { mkdtemp, cp, chmod, rm } from "node:fs/promises";

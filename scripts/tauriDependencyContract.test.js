@@ -30,13 +30,13 @@ describe("Tauri dependency contracts", () => {
     expect(cargoToml).toContain('exclude = ["vendor/voice_activity_detector"]');
     expect(cliCargoToml).not.toMatch(/^\[dependencies\]$/m);
     expect(cliCargoToml).not.toMatch(/app_lib|tauri|cpal|voice_activity_detector/);
-    expect(desktopControl).toContain('buildPlvsCli({ identity: "development" })');
+    expect(desktopControl).toContain('buildPlvsCli({ identity: "dev" })');
   });
 
   it("keeps manual crash injection out of every shipping desktop command", () => {
     expect(cargoToml).toMatch(/^crash-test\s*=\s*\[\]$/m);
     const shippingCommands = Object.entries(packageJson.scripts)
-      .filter(([name]) => name.startsWith("desktop:") || name === "desktop")
+      .filter(([name]) => name.startsWith("desktop:"))
       .map(([, command]) => command);
     expect(shippingCommands.length).toBeGreaterThan(0);
     for (const command of shippingCommands) {

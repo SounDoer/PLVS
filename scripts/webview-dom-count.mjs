@@ -9,7 +9,7 @@
  *
  * Prerequisites are the profiler's (see `docs/history/notes/perf/README.md`):
  *
- *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop
+ *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop:dev
  *   node scripts/webview-dom-count.mjs --seconds 5
  *
  * **Frames have to be moving.** A still window mutates nothing, which reads exactly like a panel

@@ -13,7 +13,7 @@ fn forwarded_arguments(user_arguments: impl IntoIterator<Item = OsString>) -> Ve
   std::iter::once(OsString::from("--cli"))
     // The host owns the CLI implementation and discovery identity. Pass the forwarder's
     // independently compiled identity first so a stale adjacent host cannot route a development
-    // command to an installed release app (or the reverse).
+    // command to an installed stable app (or the reverse).
     .chain(std::iter::once(OsString::from(env!("PLVS_APP_ID"))))
     .chain(user_arguments)
     .collect()

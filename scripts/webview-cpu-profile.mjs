@@ -9,7 +9,7 @@
  * The app must already be running with the debugging port open, and it must be receiving audio:
  * a profile of an idle app measures nothing. Start it with
  *
- *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop
+ *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop:dev
  *
  * then, with sound actually playing into the capture device and the panels you care about open:
  *
@@ -135,7 +135,7 @@ export async function recordProfile({ port, seconds, out, top, dist }, log = con
   const listing = await fetch(`http://127.0.0.1:${port}/json`).catch((error) => {
     throw new Error(
       `no debugging port on ${port} (${error.message}). Start the app with ` +
-        `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=${port} npm run desktop`
+        `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=${port} npm run desktop:dev`
     );
   });
   const target = pickTarget(await listing.json());

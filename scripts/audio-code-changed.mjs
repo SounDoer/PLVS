@@ -20,7 +20,7 @@ export const CAPTURE_SMOKE_PATHS = [
   "scripts/capture-rig.mjs",
   "scripts/smoke-capture.mjs",
 ];
-export const OFFICIAL_RELEASE_TAG_GLOB = "v[0-9]*.[0-9]*.[0-9]*";
+export const STABLE_RELEASE_TAG_GLOB = "v[0-9]*.[0-9]*.[0-9]*";
 
 export function filterCaptureSmokePaths(paths) {
   return paths.filter((path) =>
@@ -43,7 +43,7 @@ function git(args) {
 export function lastTag() {
   // Preview builds create immutable `preview-*` tags on ordinary development commits. Those tags
   // are delivery records, not release baselines, and must never shorten the capture comparison.
-  return git(["describe", "--tags", "--match", OFFICIAL_RELEASE_TAG_GLOB, "--abbrev=0"]);
+  return git(["describe", "--tags", "--match", STABLE_RELEASE_TAG_GLOB, "--abbrev=0"]);
 }
 
 export function captureSmokeChangesSinceLastTag() {

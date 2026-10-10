@@ -751,7 +751,7 @@ fn serialize_cli_failure(code: &str, message: &str, exit_code: u8) -> (String, u
 
 fn host_identity_mismatch_message(expected_identifier: &str) -> &'static str {
   if expected_identifier.ends_with(".dev") {
-    "The development CLI found a PLVS host built for another app identity. Start PLVS Dev with `npm run desktop` and retry."
+    "The dev CLI found a PLVS host built for another app identity. Start PLVS Dev with `npm run desktop:dev` and retry."
   } else {
     "The PLVS CLI and its adjacent application binary were built for different app identities. Reinstall the matching PLVS build and retry."
   }
@@ -871,7 +871,7 @@ fn help_text(topic: HelpTopic) -> String {
       "PLVS CLI - completion\n\nUsage:\n  plvs-cli completion <powershell|bash|zsh>\n\nPrints a shell completion script generated from the installed command catalog.\nLoad the output from your shell profile or write it to the shell's completion directory.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
     }
     HelpTopic::Instances => {
-      "PLVS CLI - instances\n\nUsage:\n  plvs-cli instances <--json|--format text>\n\nLists live PLVS workbenches for this Development, Preview, or Release identity without requiring Agent Control.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
+      "PLVS CLI - instances\n\nUsage:\n  plvs-cli instances <--json|--format text>\n\nLists live PLVS workbenches for this Dev, Preview, or Stable identity without requiring Agent Control.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {

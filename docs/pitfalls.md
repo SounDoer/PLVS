@@ -91,8 +91,8 @@ mtimes with Rust source and Cargo manifests. Exit 2 means the rig is unusable, n
 failed.
 
 The harness used to build into `src-tauri/target/release/plvs.exe` without `dev-identity`. During the
-v0.15.4 preflight it silently replaced the dev-identity GUI from `npm run desktop:build`; launching that
-file opened the production profile alongside the installed PLVS, with no single-instance guard. Do not
+v0.15.4 preflight it silently replaced the dev-identity GUI from `npm run desktop:dev-optimized`; launching that
+file opened the stable identity's settings alongside the installed PLVS, with no single-instance guard. Do not
 move the harness back into the `release` profile.
 
 When instructed, rebuild explicitly and rerun:

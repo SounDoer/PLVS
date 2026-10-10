@@ -40,9 +40,9 @@ When defaults or threshold rules change, review the new result rather than resto
 
 ## Prepare the machine
 
-Install dependencies and build the current development app with `npm run desktop`. The scripts use
+Install dependencies and build the current dev app with `npm run desktop:dev`. The scripts use
 `src-tauri/target/dev-identity/debug/plvs.exe` and its matching CLI. Windows, VB-Cable and VLC are required.
-After the development build finishes, close that development session to free port 1420. The capture
+After the dev app build finishes, close that dev app session to free port 1420. The capture
 script starts its own frontend server with hot reload disabled and a separate WebView data folder.
 Use Windows display scaling **125%** and text scaling **100%**; the default 1280 × 800 logical
 window produces a 1600 × 1000 screenshot. The script checks dimensions and the actual window DPI.

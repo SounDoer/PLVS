@@ -56,7 +56,7 @@ if (agentControlChanges.paths.length > 0) {
   );
   for (const path of agentControlChanges.paths) console.log(`  ${path}`);
   console.log(
-    "Start the current source with npm run desktop in a visible normal window. Set PLVS_INSTANCE_ID when several development workbenches are running."
+    "Start the current source with npm run desktop:dev in a visible normal window. Set PLVS_INSTANCE_ID when several development workbenches are running."
   );
   run("Agent Control desktop smoke", npm, ["run", "smoke:agent-control"]);
 } else {

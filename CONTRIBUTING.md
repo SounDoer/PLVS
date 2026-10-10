@@ -83,12 +83,25 @@ redeploy an older tree as though the newer history never existed.
 Desktop (Tauri):
 
 ```bash
-npm run desktop
+npm run desktop:dev
 ```
 
-`npm run desktop` and `npm run desktop:build` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The development build therefore has its own `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` and its own webview data, and never overwrites the settings, window position or dock state of an installed release. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. Development-identity debug builds go to `src-tauri/target/dev-identity`, apart from the directory `cargo test` writes to, so `npm run check` can run while the development app is open ([ADR 0024](docs/adr/0024-development-identity-target-directory.md)).
+`npm run desktop:dev` and `npm run desktop:dev-optimized` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The dev app therefore has its own `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` and its own webview data, and never overwrites the settings, window position or dock state of an installed stable PLVS. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. Dev-identity debug builds go to `src-tauri/target/dev-identity`, apart from the directory `cargo test` writes to, so `npm run check` can run while the dev app is open ([ADR 0024](docs/adr/0024-development-identity-target-directory.md)).
 
-To let an agent inspect or adjust the Workspace of the running development build, open a second terminal:
+The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.soundoer.plvs.dev`) and `preview` (`com.soundoer.plvs.preview`). "Release" names only the Cargo profile and the act of publishing a version, never an identity. ADRs written before this naming keep the earlier names:
+
+| Earlier name | Current name |
+| --- | --- |
+| `npm run desktop` | `npm run desktop:dev` |
+| `desktop:build` | `desktop:dev-optimized` |
+| `desktop:release-nsis`, `desktop:release-dmg` | `desktop:stable-nsis`, `desktop:stable-dmg` |
+| `desktop:verify-windows-installer`, `desktop:verify-macos-dmg` | `desktop:verify-stable-nsis`, `desktop:verify-stable-dmg` |
+| `desktop:verify-windows-preview-installer` | `desktop:verify-preview-nsis` |
+| `--identity development`, `--identity release` | `--identity dev`, `--identity stable` |
+| `DEVELOPMENT_TARGET_DIRECTORY` | `DEV_IDENTITY_TARGET_DIRECTORY` |
+| "release identity", "production identity", "development app" | stable identity, stable identity, dev app |
+
+To let an agent inspect or adjust the Workspace of the running dev app, open a second terminal:
 
 ```bash
 npm run desktop:control -- inspect --json
@@ -96,27 +109,27 @@ npm run desktop:control -- workspace apply layout.json --json
 npm run smoke:agent-control
 ```
 
-Use `npm run cli:build` to build only the CLI package without starting the GUI.
+Use `npm run cli:build` to build only the CLI package without starting the GUI. With no arguments it builds the stable-identity debug CLI; `desktop:control` is what builds the dev CLI.
 
-`desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the development GUI must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed release. The public release CLI uses the same flat commands but talks to the installed app through the release identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` requires the current development GUI in a visible normal window with no open surfaces or blocking editors. It verifies capabilities, inspect, Settings navigation, a screenshot and a 3-second silent recording, and writes artifacts plus the selected instance ID to `artifacts/agent-control-smoke/`. Use `npm run smoke:agent-control -- --instance <id>` or `PLVS_INSTANCE_ID` with multiple workbenches. Without either, it discovers and pins the sole instance for the whole run, including cleanup.
+`desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the dev app must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed stable PLVS. The stable CLI uses the same flat commands but talks to the installed app through the stable identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` requires the current dev app in a visible normal window with no open surfaces or blocking editors. It verifies capabilities, inspect, Settings navigation, a screenshot and a 3-second silent recording, and writes artifacts plus the selected instance ID to `artifacts/agent-control-smoke/`. Use `npm run smoke:agent-control -- --instance <id>` or `PLVS_INSTANCE_ID` with multiple workbenches. Without either, it discovers and pins the sole instance for the whole run, including cleanup.
 
 `release:preflight` requires this real-desktop smoke whenever frontend, native, shared-contract,
-build dependency or smoke tooling paths changed since the last official release tag. A missing
+build dependency or smoke tooling paths changed since the last stable release tag. A missing
 GUI, ambiguous instance, unsafe initial UI, discovery failure or smoke failure blocks the gate;
-there is no skip flag. Restart the development GUI from the current source before preflight.
+there is no skip flag. Restart the dev app from the current source before preflight.
 Ordinary hosted CI runs the protocol and orchestration tests; it does not certify native GUI
 capture or replace this local desktop gate. Windows and macOS native capture still need validation
 on their respective desktop hosts.
 
 ### UI visual walkthroughs
 
-Visual review uses the running development app's Agent Control navigation and screenshot commands;
-it does not use browser selectors, Playwright, or CDP. Stop every PLVS Development process before
+Visual review uses the running dev app's Agent Control navigation and screenshot commands;
+it does not use browser selectors, Playwright, or CDP. Stop every PLVS Dev process before
 capturing a code state, then cold-start that exact checkout once. Do not edit or switch the checkout
 until the run finishes: Vite hot reload can produce a false crash report and invalidates the image
 set.
 
-For ordinary product surfaces, start PLVS Development, obtain the workbench ID with
+For ordinary product surfaces, start PLVS Dev, obtain the workbench ID with
 `npm run desktop:control -- instances --json`, copy
 `scripts/ui-walkthrough/product-surfaces.example.json`, and replace its placeholder ID. Then run:
 
@@ -158,8 +171,8 @@ absolute `--plvs-test-app-data-root` for each compared code state when identical
 bounds and settings are required.
 
 Some screenshot states cannot be manufactured by the public CLI. Copy
-`scripts/ui-walkthrough/development-fixtures.example.json`, insert the running development
-workbench's instance ID, and run `ui:walkthrough` as above. The runner uses its development-identity
+`scripts/ui-walkthrough/development-fixtures.example.json`, insert the running dev app's
+workbench instance ID, and run `ui:walkthrough` as above. The runner uses its dev-identity
 CLI's private event fixtures to establish Update, Crash Report, Close Confirmation, and Library
 Conflict through their production owners. It then returns to the public `ui inspect`,
 `visual screenshot`, and exact `ui cancel` / `ui close` contracts for review and dismissal. Library
@@ -187,10 +200,10 @@ Windows Preview build (matching CI `preview-build.yml`):
 
 ```bash
 npm run desktop:preview-nsis
-npm run desktop:verify-windows-preview-installer
+npm run desktop:verify-preview-nsis
 ```
 
-Official macOS Release and private upgrade-candidate workflows import Developer ID credentials into
+The stable macOS release and private upgrade-candidate workflows import Developer ID credentials into
 an ephemeral runner keychain, let Tauri sign and notarize the app, then separately notarize and
 staple the final DMG before smoke testing it. They require these repository Actions secrets:
 
@@ -203,24 +216,24 @@ The Tauri updater signing secrets remain separate. Never commit Apple certificat
 files. A local signed build can use the installed Keychain identity plus Tauri's documented
 `APPLE_SIGNING_IDENTITY`, `APPLE_API_ISSUER`, `APPLE_API_KEY`, and `APPLE_API_KEY_PATH` variables.
 
-Windows release build (matching CI `release.yml`: NSIS installer + Portable ZIP):
+Windows stable build (matching CI `release.yml`: NSIS installer + Portable ZIP):
 
 ```bash
 npm run build
-npm run desktop:release-nsis
+npm run desktop:stable-nsis
 ```
 
 Raw outputs: the installer under `src-tauri/target/release/bundle/nsis/`, plus
 `src-tauri/target/release/plvs.exe` and `plvs-cli.exe`. The tag release workflow packages the latter
 two under their original names as `PLVS-v<version>-x64-portable.zip`; like the installer, the
 portable build needs WebView2 installed on the machine. `scripts/build-plvs-cli.mjs` is the single
-build entry point for CLI debug/release, development/Preview/release identity and Tauri staging; the Tauri
+build entry point for CLI debug/release, dev/preview/stable identity and Tauri staging; the Tauri
 input files carry the target triple, while the public names in the installation and Portable do not.
 
-macOS release build (DMG):
+macOS stable build (DMG):
 
 ```bash
-npm run desktop:release-dmg
+npm run desktop:stable-dmg
 ```
 
 Rust (inside `src-tauri`):
@@ -259,7 +272,7 @@ Capture a baseline before changing built-in colours or renderer composition:
 
 ```bash
 npm run theme:gallery:semantic -- --out-dir artifacts/theme-gallery/before-semantic
-npm run desktop
+npm run desktop:dev
 # In a second terminal, with a stopped, empty Live workbench containing all eight modules:
 npm run theme:gallery:product -- --out-dir artifacts/theme-gallery/before-product
 ```
@@ -319,12 +332,12 @@ Use **English only** for commit messages, PR titles/descriptions, and any text t
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).
-- **Release builds**: after the release commit's `ci.yml` push run succeeds, dispatch
+- **Publishing a release**: after the release commit's `ci.yml` push run succeeds, dispatch
   [`.github/workflows/release.yml`](.github/workflows/release.yml) with its version and full commit
   SHA. The workflow builds each platform once, smoke-tests those exact files, assembles a draft
   release, and publishes it only after the complete asset set is verified. Enable immutable
   releases in the repository settings and confirm that dispatch input before starting; tag pushes
-  do not start release builds.
+  do not start the release workflow.
 
 ## Dependency updates
 

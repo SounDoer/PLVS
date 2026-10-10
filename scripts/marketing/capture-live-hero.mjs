@@ -110,7 +110,7 @@ async function checkNativeBuild() {
       if (item.isDirectory()) await visit(path);
       else if (item.name.endsWith(".rs") && (await stat(path)).mtimeMs > built)
         throw new Error(
-          "Native sources are newer than plvs.exe. Build the current development app with npm run desktop first."
+          "Native sources are newer than plvs.exe. Build the current dev app with npm run desktop:dev first."
         );
     }
   }
@@ -123,7 +123,7 @@ async function checkNativeBuild() {
     "tauri.dev.conf.json",
   ]) {
     if ((await stat(join(ROOT, "src-tauri", name))).mtimeMs > built)
-      throw new Error(`${name} changed after the native build. Run npm run desktop first.`);
+      throw new Error(`${name} changed after the native build. Run npm run desktop:dev first.`);
   }
   await stat(cli);
 }
@@ -254,7 +254,7 @@ try {
     capabilities.runtime?.identifier !== "com.soundoer.plvs.dev" ||
     capabilities.appVersion !== packageVersion
   )
-    throw new Error("Development app identity/version does not match this checkout.");
+    throw new Error("Dev app identity/version does not match this checkout.");
   for (const method of [
     "ui.inspect",
     "visual.screenshot",

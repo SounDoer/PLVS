@@ -62,7 +62,7 @@ macOS builds are Developer ID signed and Apple-notarized for normal Gatekeeper v
 git clone https://github.com/SounDoer/PLVS.git
 cd PLVS
 npm install
-npm run desktop        # start the development app
+npm run desktop:dev    # start the dev app
 npm run check          # the full gate before sending a change
 ```
 

@@ -1,6 +1,6 @@
 ---
 name: "plvs-release"
-description: "Guides PLVS official releases: version selection, CHANGELOG and public-doc updates, preflight gates, exact-SHA immutable Draft publication, and recovery. Use when preparing, publishing, or troubleshooting an official PLVS release."
+description: "Guides PLVS stable releases: version selection, CHANGELOG and public-doc updates, preflight gates, exact-SHA immutable Draft publication, and recovery. Use when preparing, publishing, or troubleshooting a stable PLVS release."
 ---
 
 # PLVS Release Skill
@@ -57,7 +57,7 @@ Until then, ignore this section.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Step 1: Analyze Commits                                        │
-│  - Get commits since the last official vX.Y.Z tag               │
+│  - Get commits since the last stable vX.Y.Z tag                 │
 │  - Recommend version bump type                                  │
 │  - Generate CHANGELOG draft                                     │
 └─────────────────────────────────────────────────────────────────┘
@@ -559,7 +559,7 @@ The `validate` job refuses the run unless:
 The normal CI is the enforced source gate; `release.yml` does not repeat its
 frontend and Rust suites. The Release workflow is instead responsible for the
 platform builds and package-level smoke checks. This removes the former second
-full Release build while preserving the exact-SHA gate.
+full build in the Release workflow while preserving the exact-SHA gate.
 
 ### Smoke Gates
 
@@ -569,8 +569,8 @@ cannot cover:
 | Gate                                       | Platform        | Checks                                                                                                                                             |
 | ------------------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run smoke:file-analysis`              | Windows + macOS | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests                                                              |
-| `npm run desktop:verify-windows-installer` | Windows         | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
-| `npm run desktop:verify-macos-dmg`         | macOS           | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
+| `npm run desktop:verify-stable-nsis`       | Windows         | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
+| `npm run desktop:verify-stable-dmg`        | macOS           | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
 
 ### Build Matrix
 
@@ -653,13 +653,13 @@ For local testing:
 
 ```bash
 # Windows NSIS installer
-npm run desktop:release-nsis
+npm run desktop:stable-nsis
 
 # macOS DMG
-npm run desktop:release-dmg
+npm run desktop:stable-dmg
 
-# Full build (all bundles)
-npm run desktop:build
+# Optimized dev-identity build, for performance checks (not a shippable package)
+npm run desktop:dev-optimized
 ```
 
 ---
@@ -748,7 +748,7 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 `ffmpeg-sidecar-<ffmpeg-version>` release, and the `desktop:*` build scripts run it automatically.
 
 - **Normal releases need no action** — the Windows and macOS build jobs fetch the sidecars themselves
-  (`npm run ffmpeg:fetch` is wired into `desktop:release-nsis` / `desktop:release-dmg`).
+  (`npm run ffmpeg:fetch` is wired into `desktop:stable-nsis` / `desktop:stable-dmg`).
 - **When bumping the FFmpeg version**, before releasing you must:
   1. Rebuild the trimmed binaries — Windows locally, macOS via the `build-ffmpeg-sidecar-macos.yml`
      workflow (`gh workflow run build-ffmpeg-sidecar-macos.yml`).
@@ -798,7 +798,7 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 | `npm test`                                             | Run tests                               |
 | `npm run build`                                        | Build frontend                          |
 | `npm run check`                                        | Full check (lint + test + build + rust) |
-| `npm run desktop:release-nsis`                         | Build Windows installer                 |
-| `npm run desktop:release-dmg`                          | Build macOS DMG                         |
-| `npm run desktop:verify-windows-installer`             | Smoke-test Windows installer            |
-| `npm run desktop:verify-macos-dmg`                     | Smoke-test macOS DMG                    |
+| `npm run desktop:stable-nsis`                          | Build Windows installer                 |
+| `npm run desktop:stable-dmg`                           | Build macOS DMG                         |
+| `npm run desktop:verify-stable-nsis`                   | Smoke-test Windows installer            |
+| `npm run desktop:verify-stable-dmg`                    | Smoke-test macOS DMG                    |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEVELOPMENT_TARGET_DIRECTORY,
+  DEV_IDENTITY_TARGET_DIRECTORY,
   cliArtifactPaths,
   parseRustHostTriple,
 } from "./build-plvs-cli.mjs";
@@ -25,11 +25,11 @@ describe("PLVS CLI build staging", () => {
     );
   });
 
-  it("keeps development-identity builds apart from the directory cargo test writes to", () => {
+  it("keeps dev-identity builds apart from the directory cargo test writes to", () => {
     // Nested under target/ so Git and the Tauri dev watcher keep ignoring it.
-    expect(DEVELOPMENT_TARGET_DIRECTORY).toMatch(/src-tauri[\\/]target[\\/]dev-identity$/);
+    expect(DEV_IDENTITY_TARGET_DIRECTORY).toMatch(/src-tauri[\\/]target[\\/]dev-identity$/);
     const paths = cliArtifactPaths({
-      targetDirectory: DEVELOPMENT_TARGET_DIRECTORY,
+      targetDirectory: DEV_IDENTITY_TARGET_DIRECTORY,
       profile: "debug",
       targetTriple: "x86_64-pc-windows-msvc",
     });

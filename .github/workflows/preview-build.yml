@@ -1,5 +1,5 @@
 # Installable Windows Preview builds for testing. Every published build uses a unique immutable
-# tag and an identity isolated from stable PLVS and the local development app.
+# tag and an identity isolated from stable PLVS and the local dev app.
 
 name: Preview Build
 run-name: Preview ${{ github.ref_name }} @ ${{ inputs.commit_sha }} (${{ inputs.request_id }})
@@ -123,7 +123,7 @@ jobs:
         run: npm run desktop:preview-nsis
 
       - name: Smoke test the Preview installer
-        run: npm run desktop:verify-windows-preview-installer
+        run: npm run desktop:verify-preview-nsis
 
       - name: Stage and validate the tested packages
         shell: pwsh

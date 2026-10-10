@@ -606,7 +606,7 @@ pub struct FrontendResponse {
 }
 
 fn main_broker(window_label: &str, state: &AgentControlState) -> Result<Broker, String> {
-  // The Settings toggle owns endpoint access in both installed and development builds.
+  // The Settings toggle owns endpoint access in both installed and dev-identity builds.
   // Frontend commands still belong exclusively to the main window.
   if window_label != "main" {
     return Err("Only the main PLVS window can handle agent-control requests.".to_string());

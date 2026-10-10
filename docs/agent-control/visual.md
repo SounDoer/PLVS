@@ -125,15 +125,15 @@ metadata are therefore the same as on Windows.
 
 ## Artifacts and errors
 
-PLVS stages completed artifacts under its identity-specific app-data directory. Development and
-release apps therefore do not share artifacts. Files are published atomically with 24-hour
+PLVS stages completed artifacts under its identity-specific app-data directory. Dev and
+stable apps therefore do not share artifacts. Files are published atomically with 24-hour
 retention, then removed; cleanup also evicts the oldest completed files until staged usage is at most
 4 GiB. Active recording temporary files are not evicted. Copying with `--out` does not extend
 retention.
 
 ## Desktop smoke
 
-With the development GUI already running and Agent Control enabled, run:
+With the dev app already running and Agent Control enabled, run:
 
 ```text
 npm run smoke:agent-control

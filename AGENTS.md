@@ -26,14 +26,14 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 
 | Command                                | Purpose                                                                           |
 | -------------------------------------- | --------------------------------------------------------------------------------- |
-| `npm run desktop`                      | Run the real app (Tauri). Audio capture only works here.                          |
-| `npm run desktop:control -- <command>` | Build and run the dev-identity CLI against a running development app.             |
+| `npm run desktop:dev`                  | Run the dev app (Tauri). Audio capture only works here.                           |
+| `npm run desktop:control -- <command>` | Build and run the dev CLI against a running dev app.                              |
 | `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                         |
 | `npm run check`                        | The merge gate: version + format + lint + typecheck + test + build + Rust checks. |
 | `npm run typecheck`                    | `tsc` over `src/` (checkJs, JSDoc types). Zero errors, no baseline.               |
 | `npm test`                             | Vitest, single run.                                                               |
 | `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
-| `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the development GUI running. |
+| `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the dev app running.         |
 | `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                    |
 | `npm run docs:site`                    | Render `docs/user/` into `landing/docs/index.html` to preview the website docs.   |
 
@@ -42,9 +42,9 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 Agent Control is the supported way for agents and automation to inspect or change the state visible
 in a running PLVS window. Windows uses a current-user named pipe; macOS uses a private Unix socket.
 
-- Start the development GUI with `npm run desktop`, then use a second terminal for commands such as
+- Start the dev app with `npm run desktop:dev`, then use a second terminal for commands such as
   `npm run desktop:control -- inspect --json`. The wrapper builds `plvs-cli` with `dev-identity` and
-  targets only the development app; it neither starts the GUI nor controls an installed release.
+  targets only the dev app; it neither starts the GUI nor controls an installed stable PLVS.
 - Discover the live surface with `capabilities`, then `inspect` and retain its global revision.
   Mutations require `--expected-revision`; after a conflict, inspect and reconcile instead of
   retrying blindly. Use `--dry-run` where the command supports it.

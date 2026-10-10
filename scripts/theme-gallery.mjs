@@ -463,7 +463,7 @@ export async function runThemeGallery(options) {
   if (options.semantic)
     result.semantic = await generateSemanticGallery({ manifest, outDir: options.outDir });
   if (options.product) {
-    const { executable } = buildPlvsCli({ identity: "development" });
+    const { executable } = buildPlvsCli({ identity: "dev" });
     result.product = await runProductGallery({ manifest, outDir: options.outDir, executable });
   }
   const reportPath = join(options.outDir, "report.json");
@@ -484,7 +484,7 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   main().catch((error) => {
     console.error(`Theme Gallery failed: ${error.message}`);
     console.error(
-      "For Product Gallery, start the development app with `npm run desktop` and enable Agent Control."
+      "For Product Gallery, start the dev app with `npm run desktop:dev` and enable Agent Control."
     );
     process.exitCode = 1;
   });

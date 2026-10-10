@@ -143,10 +143,10 @@ jobs:
         run: npm run build
 
       - name: Build Tauri bundle (NSIS + release binaries for portable)
-        run: npm run desktop:release-nsis
+        run: npm run desktop:stable-nsis
 
       - name: Smoke test Windows installer
-        run: npm run desktop:verify-windows-installer
+        run: npm run desktop:verify-stable-nsis
 
       - name: Stage tested Windows release candidate
         shell: pwsh
@@ -229,13 +229,13 @@ jobs:
         run: npm run smoke:file-analysis
 
       - name: Build Tauri bundle (DMG)
-        run: npm run desktop:release-dmg
+        run: npm run desktop:stable-dmg
 
       - name: Notarize and staple final macOS DMG
         run: bash scripts/notarize-macos-dmg.sh
 
       - name: Smoke test macOS DMG
-        run: npm run desktop:verify-macos-dmg
+        run: npm run desktop:verify-stable-dmg
 
       - name: Stage tested macOS release candidate
         run: |

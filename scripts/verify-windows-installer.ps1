@@ -1,6 +1,6 @@
 param(
   [ValidateSet("release", "preview")]
-  [string]$Identity = "release"
+  [string]$Identity = "stable"
 )
 
 $ErrorActionPreference = "Stop"

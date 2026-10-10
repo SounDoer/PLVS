@@ -179,7 +179,7 @@ rollback commands, and they do not appear in public capabilities or generated CL
 
 Settings, normal or Dock Panel Settings, clean Theme/Profile drafts, blank Feedback, and ordinary
 Workspace/Dock captures belong on this path. Event-only Update, Crash Report, Close Confirmation,
-and Library Conflict screenshots use the development-identity event-fixture protocol described in
+and Library Conflict screenshots use the dev-identity event-fixture protocol described in
 the implementation contract. A fixture establishes only the legal production scene; inspection,
 capture, and dismissible recovery still use this public UI Navigation contract. Library Conflict is
 non-dismissible and therefore uses an exact private reset token.

@@ -115,7 +115,7 @@ export function selectSmokeInstance(instances, selector) {
   }
   if (instances.length !== 1)
     throw new Error(
-      "Smoke requires one running development instance or an explicit --instance / PLVS_INSTANCE_ID."
+      "Smoke requires one running dev app instance or an explicit --instance / PLVS_INSTANCE_ID."
     );
   return instances[0].instanceId;
 }
@@ -340,7 +340,7 @@ export async function runAgentControlSmoke({
 
 async function main() {
   const { outDir, instanceId } = parseArgs(process.argv.slice(2));
-  const { executable } = buildPlvsCli({ identity: "development" });
+  const { executable } = buildPlvsCli({ identity: "dev" });
   const { report, reportPath } = await runAgentControlSmoke({ executable, outDir, instanceId });
   console.log(`OK Agent Control smoke passed on ${report.platform}.`);
   console.log(`Screenshot: ${report.artifacts.screenshot.path}`);
@@ -352,7 +352,7 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   main().catch((error) => {
     console.error(`Agent Control smoke failed: ${error.message}`);
     console.error(
-      "Start the development app with `npm run desktop`, keep Agent Control enabled, and retry."
+      "Start the dev app with `npm run desktop:dev`, keep Agent Control enabled, and retry."
     );
     process.exitCode = 1;
   });

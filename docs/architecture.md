@@ -85,8 +85,8 @@ An identity-scoped file lock elects one coordinator generation. The coordinator 
 global shortcut, Open at Login registration and updater. Every process publishes a heartbeat
 descriptor containing its random instance ID, Workspace ID, Source-derived label, capture state,
 visibility and focus sequence. Agent Control uses a unique authenticated pipe/socket for each
-instance; the identity-wide compatibility endpoint follows the coordinator. Development, Preview
-and Release application identifiers therefore produce separate data, lock, registry and endpoint
+instance; the identity-wide compatibility endpoint follows the coordinator. Dev, Preview
+and Stable application identifiers therefore produce separate data, lock, registry and endpoint
 namespaces.
 
 Commands that affect the complete process set use disk-backed, instance-targeted mailboxes. Update,
@@ -96,7 +96,7 @@ commit phase to close peers; timeout or refusal aborts. A debug-only absolute ap
 allows real multi-process desktop tests to keep persistence, restore metadata, artifacts and logs
 inside a disposable root; packaged builds reject it.
 
-Development-identity builds also enable a closed Agent Control event-fixture layer for deterministic
+Dev-identity builds also enable a closed Agent Control event-fixture layer for deterministic
 screenshots of interfaces normally opened by updater, crash, close, or persistence-conflict events.
 The layer is not part of the public CLI: it asks the same React owner that handles the real event to
 establish or exactly reset a tagged scene, while UI Navigation remains the authority for blocking,

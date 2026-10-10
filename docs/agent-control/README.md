@@ -79,7 +79,7 @@ the question unanswered.
 
 ### Development event fixtures
 
-Development-identity builds have a private `dev.fixture.establish` / `dev.fixture.reset` wire path
+Dev-identity builds have a private `dev.fixture.establish` / `dev.fixture.reset` wire path
 for deterministic review of event-only interfaces. Rust accepts the corresponding hidden CLI
 grammar only when built with `dev-identity`; the methods are intentionally absent from the public
 manifest, capability list, generated reference, help, completion, and packaged CLI parser.

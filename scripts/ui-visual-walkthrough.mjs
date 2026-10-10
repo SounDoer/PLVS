@@ -757,7 +757,7 @@ async function main(args) {
     return;
   }
   const createInvoke = () => {
-    const { executable } = buildPlvsCli({ identity: "development" });
+    const { executable } = buildPlvsCli({ identity: "dev" });
     return async (commandArgs) => {
       const child = spawnSync(executable, commandArgs, {
         cwd: repositoryRoot,

@@ -170,7 +170,7 @@ export function locateVlc() {
 }
 
 /** The harness has its own Cargo profile so it never overwrites target/release/plvs.exe,
- *  which `desktop:build` leaves as the dev-identity GUI. */
+ *  which `desktop:dev-optimized` leaves as the dev-identity GUI. */
 export const BUILD_HARNESS =
   "cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness";
 

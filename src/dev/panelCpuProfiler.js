@@ -74,8 +74,8 @@ export const panelCpuProfiler = Object.freeze({
 // already imported by the instrumented renderers, so exposing this stable controller does not
 // install a timer, observer, or React subscription of its own.
 //
-// Attached in release builds too, and on purpose. Renderer profiling runs against a release build
-// -- a development one is unminified and carries React's development runtime, which is not the
+// Attached in optimized builds too, and on purpose. Renderer profiling runs against an optimized
+// build -- a development one is unminified and carries React's development runtime, which is not the
 // thing anyone needs measured -- so a DEV-only gate would keep the instrument out of the only
 // place it can answer anything. Counting is off until something turns it on.
 if (typeof window !== "undefined") {

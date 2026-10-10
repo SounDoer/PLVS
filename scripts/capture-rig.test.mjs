@@ -153,8 +153,8 @@ describe("capture harness invocation", () => {
   });
 
   it("builds into its own profile so it never replaces target/release/plvs.exe", () => {
-    // target/release/plvs.exe is the dev-identity GUI from `desktop:build`. A harness build
-    // without dev-identity landing there silently turns it into a production-profile GUI.
+    // target/release/plvs.exe is the dev-identity GUI from `desktop:dev-optimized`. A harness build
+    // without dev-identity landing there silently turns it into a GUI on the stable identity's settings.
     expect(captureRig.BUILD_HARNESS).toContain("--profile harness");
     expect(captureRig.BUILD_HARNESS).not.toContain("--release");
     expect(captureRig.harnessPath("root")).toBe(

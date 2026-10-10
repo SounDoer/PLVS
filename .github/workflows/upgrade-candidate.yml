@@ -1,4 +1,4 @@
-# Production-identity, production-signed packages for private upgrade testing only.
+# Stable-identity, production-signed packages for private upgrade testing only.
 # No job receives contents:write, and this workflow never creates a tag or GitHub Release.
 name: Upgrade Candidate
 run-name: Private upgrade candidate ${{ inputs.version }} @ ${{ inputs.commit_sha }}
@@ -86,11 +86,11 @@ jobs:
         run: |
           npm ci
           node scripts/bump-version.mjs $env:VERSION
-      - name: Build and verify production package
+      - name: Build and verify stable package
         run: |
           npm run smoke:file-analysis
-          npm run desktop:release-nsis
-          npm run desktop:verify-windows-installer
+          npm run desktop:stable-nsis
+          npm run desktop:verify-stable-nsis
       - name: Stage Windows updater candidate
         shell: pwsh
         run: |
@@ -143,12 +143,12 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: bash scripts/prepare-macos-signing.sh
-      - name: Build and verify production package
+      - name: Build and verify stable package
         run: |
           npm run smoke:file-analysis
-          npm run desktop:release-dmg
+          npm run desktop:stable-dmg
           bash scripts/notarize-macos-dmg.sh
-          npm run desktop:verify-macos-dmg
+          npm run desktop:verify-stable-dmg
       - name: Stage macOS updater candidate
         run: |
           out="upgrade-candidate/macos"

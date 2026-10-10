@@ -8,11 +8,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = join(root, "src-tauri", "plvs-cli", "Cargo.toml");
 
-// Development-identity builds get their own target directory (ADR 0024). `plvs-cli` forwards to
-// the `plvs` beside it, and `cargo test` writes a release-identity `plvs` into the default
-// directory, so sharing it breaks the development CLI and, on Windows, cannot replace a running
-// development app at all. Nested under `target/` it stays ignored by Git and the Tauri watcher.
-export const DEVELOPMENT_TARGET_DIRECTORY = join(root, "src-tauri", "target", "dev-identity");
+// Dev-identity builds get their own target directory (ADR 0024). `plvs-cli` forwards to
+// the `plvs` beside it, and `cargo test` writes a stable-identity `plvs` into the default
+// directory, so sharing it breaks the dev CLI and, on Windows, cannot replace a running
+// dev app at all. Nested under `target/` it stays ignored by Git and the Tauri watcher.
+export const DEV_IDENTITY_TARGET_DIRECTORY = join(root, "src-tauri", "target", "dev-identity");
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -47,28 +47,28 @@ export function cliArtifactPaths({ targetDirectory, profile, targetTriple, cross
 
 export function buildPlvsCli({
   profile = "debug",
-  identity = "release",
+  identity = "stable",
   stage = false,
   target,
 } = {}) {
   if (!new Set(["debug", "release"]).has(profile)) {
     throw new Error(`Unsupported CLI profile: ${profile}`);
   }
-  if (!new Set(["release", "development", "preview"]).has(identity)) {
+  if (!new Set(["stable", "dev", "preview"]).has(identity)) {
     throw new Error(`Unsupported CLI identity: ${identity}`);
   }
 
   const buildArgs = ["build", "--quiet", "--manifest-path", manifestPath];
   if (profile === "release") buildArgs.push("--release");
-  if (identity === "development") {
-    buildArgs.push("--features", "dev-identity", "--target-dir", DEVELOPMENT_TARGET_DIRECTORY);
+  if (identity === "dev") {
+    buildArgs.push("--features", "dev-identity", "--target-dir", DEV_IDENTITY_TARGET_DIRECTORY);
   }
   if (identity === "preview") buildArgs.push("--features", "preview-identity");
   if (target) buildArgs.push("--target", target);
   run("cargo", buildArgs);
 
-  let targetDirectory = DEVELOPMENT_TARGET_DIRECTORY;
-  if (identity !== "development") {
+  let targetDirectory = DEV_IDENTITY_TARGET_DIRECTORY;
+  if (identity !== "dev") {
     const metadata = run(
       "cargo",
       [

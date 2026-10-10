@@ -33,21 +33,21 @@ const macosDmgNotarization = readFileSync(join(cwd(), "scripts", "notarize-macos
 const bumpVersionScript = readFileSync(join(cwd(), "scripts", "bump-version.mjs"), "utf8");
 
 describe("CLI packaging", () => {
-  it("stages the development identity for local desktop commands", () => {
-    expect(packageJson.scripts.desktop).toContain(
-      "build-plvs-cli.mjs --profile debug --identity development --stage"
+  it("stages the dev identity for local desktop commands", () => {
+    expect(packageJson.scripts["desktop:dev"]).toContain(
+      "build-plvs-cli.mjs --profile debug --identity dev --stage"
     );
-    expect(packageJson.scripts["desktop:build"]).toContain(
-      "build-plvs-cli.mjs --profile release --identity development --stage"
+    expect(packageJson.scripts["desktop:dev-optimized"]).toContain(
+      "build-plvs-cli.mjs --profile release --identity dev --stage"
     );
-    expect(packageJson.scripts.desktop).toContain("tauri.cli-sidecar.conf.json");
-    expect(packageJson.scripts["desktop:build"]).toContain("tauri.cli-sidecar.conf.json");
+    expect(packageJson.scripts["desktop:dev"]).toContain("tauri.cli-sidecar.conf.json");
+    expect(packageJson.scripts["desktop:dev-optimized"]).toContain("tauri.cli-sidecar.conf.json");
   });
 
-  it("stages the matching release CLI before every official desktop bundle", () => {
-    for (const script of ["desktop:release-nsis", "desktop:release-dmg"]) {
+  it("stages the matching stable CLI before every stable desktop bundle", () => {
+    for (const script of ["desktop:stable-nsis", "desktop:stable-dmg"]) {
       expect(packageJson.scripts[script]).toContain(
-        "build-plvs-cli.mjs --profile release --identity release --stage"
+        "build-plvs-cli.mjs --profile release --identity stable --stage"
       );
       expect(packageJson.scripts[script]).toContain("tauri.cli-sidecar.conf.json");
     }
@@ -87,7 +87,7 @@ describe("Windows Portable Release", () => {
 });
 
 describe("Bundled license materials", () => {
-  it("uses the shared license destinations in release and Preview Tauri bundles", () => {
+  it("uses the shared license destinations in stable and Preview Tauri bundles", () => {
     for (const [source, destination] of Object.entries(TAURI_LICENSE_RESOURCES)) {
       expect(tauriConfig.bundle.resources[source]).toBe(destination);
       expect(previewTauriConfig.bundle.resources[source]).toBe(destination);
@@ -126,11 +126,11 @@ describe("macOS Developer ID distribution", () => {
     for (const workflow of [releaseWorkflow, upgradeCandidateWorkflow]) {
       expect(workflow).toContain("bash scripts/prepare-macos-signing.sh");
       expect(workflow).toContain("bash scripts/notarize-macos-dmg.sh");
-      expect(workflow.indexOf("npm run desktop:release-dmg")).toBeLessThan(
+      expect(workflow.indexOf("npm run desktop:stable-dmg")).toBeLessThan(
         workflow.indexOf("bash scripts/notarize-macos-dmg.sh")
       );
       expect(workflow.indexOf("bash scripts/notarize-macos-dmg.sh")).toBeLessThan(
-        workflow.indexOf("npm run desktop:verify-macos-dmg")
+        workflow.indexOf("npm run desktop:verify-stable-dmg")
       );
     }
     expect(macosDmgNotarization).toContain("xcrun notarytool submit");
@@ -168,8 +168,8 @@ describe("Immutable Release promotion", () => {
   });
 
   it("builds each platform once and promotes those tested artifacts", () => {
-    expect(releaseWorkflow.match(/npm run desktop:release-nsis/g)).toHaveLength(1);
-    expect(releaseWorkflow.match(/npm run desktop:release-dmg/g)).toHaveLength(1);
+    expect(releaseWorkflow.match(/npm run desktop:stable-nsis/g)).toHaveLength(1);
+    expect(releaseWorkflow.match(/npm run desktop:stable-dmg/g)).toHaveLength(1);
     expect(releaseWorkflow).toContain("release-candidate-windows");
     expect(releaseWorkflow).toContain("release-candidate-macos");
     expect(releaseWorkflow).toContain("node scripts/validate-release-bundle.mjs");
@@ -218,7 +218,7 @@ describe("Immutable Windows Preview Build", () => {
     expect(previewBuildWorkflow).toContain("ref: ${{ inputs.commit_sha }}");
     expect(previewBuildWorkflow).toContain("npm run check");
     expect(previewBuildWorkflow).toContain("npm run smoke:file-analysis");
-    expect(previewBuildWorkflow).toContain("npm run desktop:verify-windows-preview-installer");
+    expect(previewBuildWorkflow).toContain("npm run desktop:verify-preview-nsis");
     expect(previewBuildWorkflow).toContain("preview-${short_sha}-${GITHUB_RUN_ID}");
     expect(previewBuildSkill).toContain("--commit $sha --event workflow_dispatch");
   });
@@ -271,9 +271,9 @@ describe("Immutable Windows Preview Build", () => {
 });
 
 describe("private upgrade candidate", () => {
-  it("builds signed production-identity packages for both platforms", () => {
-    expect(upgradeCandidateWorkflow).toContain("npm run desktop:release-nsis");
-    expect(upgradeCandidateWorkflow).toContain("npm run desktop:release-dmg");
+  it("builds signed stable-identity packages for both platforms", () => {
+    expect(upgradeCandidateWorkflow).toContain("npm run desktop:stable-nsis");
+    expect(upgradeCandidateWorkflow).toContain("npm run desktop:stable-dmg");
     expect(upgradeCandidateWorkflow).toContain("TAURI_SIGNING_PRIVATE_KEY");
     expect(upgradeCandidateWorkflow).toContain("updater-windows.json");
     expect(upgradeCandidateWorkflow).toContain("updater-macos.json");

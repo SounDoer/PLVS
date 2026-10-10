@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as captureChanges from "./audio-code-changed.mjs";
 
 describe("filterCaptureSmokePaths", () => {
-  it("keeps Preview tags out of the official release baseline", () => {
-    expect(captureChanges.OFFICIAL_RELEASE_TAG_GLOB).toBe("v[0-9]*.[0-9]*.[0-9]*");
+  it("keeps Preview tags out of the stable release baseline", () => {
+    expect(captureChanges.STABLE_RELEASE_TAG_GLOB).toBe("v[0-9]*.[0-9]*.[0-9]*");
   });
 
   it("selects capture sources and the smoke harness path", () => {

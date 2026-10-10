@@ -15,8 +15,8 @@ app version): <https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1>
 
 `scripts/fetch-ffmpeg-sidecar.mjs` downloads them into `src-tauri/binaries/` and verifies each
 against a pinned SHA-256. It is idempotent — a file already present with the right hash is skipped —
-so it runs automatically before the desktop build/dev/release scripts (`npm run desktop`,
-`desktop:build`, `desktop:release-nsis`) and can also be run on its own:
+so it runs automatically before the desktop build scripts (`npm run desktop:dev`,
+`desktop:dev-optimized`, `desktop:stable-nsis`) and can also be run on its own:
 
 ```bash
 npm run ffmpeg:fetch

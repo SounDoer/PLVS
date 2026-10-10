@@ -24,7 +24,7 @@ describe("useInstanceIdentity", () => {
     setTitle.mockReset().mockResolvedValue(undefined);
     isVisible.mockReset().mockResolvedValue(true);
     isFocused.mockReset().mockResolvedValue(true);
-    window.__PLVS_INITIAL_STATE__ = { agentControl: { appName: "PLVS Development" } };
+    window.__PLVS_INITIAL_STATE__ = { agentControl: { appName: "PLVS Dev" } };
     setCoordinatorRole(false);
   });
 
@@ -47,7 +47,7 @@ describe("useInstanceIdentity", () => {
         visible: true,
       }),
     });
-    expect(setTitle).toHaveBeenCalledWith("PLVS Development — Spotify");
+    expect(setTitle).toHaveBeenCalledWith("PLVS Dev — Spotify");
     expect(ownsCoordinatorResources()).toBe(false);
 
     rerender({ sourceLabel: "VLC", running: true });

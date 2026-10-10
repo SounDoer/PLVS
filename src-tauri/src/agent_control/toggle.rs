@@ -18,8 +18,8 @@ const UNSUPPORTED_MESSAGE: &str = "Agent Control is unavailable on this platform
 const AGENT_CONTROL_MESSAGE: &str =
   "Lets AI agents and scripts on this machine control PLVS through plvs-cli.";
 
-/// Development builds keep the behaviour they have today — Agent Control on, no setup step.
-/// Release builds start off, including on upgrade from a version that had no such setting.
+/// Dev-identity builds keep the behaviour they have today — Agent Control on, no setup step.
+/// Stable and Preview builds start off, including on upgrade from a version that had no such setting.
 pub fn default_enabled() -> bool {
   cfg!(feature = "dev-identity")
 }

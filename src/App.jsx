@@ -96,7 +96,7 @@ export default function App() {
           <EditorDraftProvider>
             {/* Reads BlockingEditors. */}
             <UiNavigationProvider>
-              {/* Reads BlockingEditors and UiNavigation; enabled only by the development identity. */}
+              {/* Reads BlockingEditors and UiNavigation; enabled only by the dev identity. */}
               <DevelopmentEventFixturesProvider
                 enabled={window.__PLVS_INITIAL_STATE__?.developmentEventFixtures === true}
               >

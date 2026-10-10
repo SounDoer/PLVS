@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { OFFICIAL_RELEASE_TAG_GLOB } from "./audio-code-changed.mjs";
+import { STABLE_RELEASE_TAG_GLOB } from "./audio-code-changed.mjs";
 
 // Domain owners and renderers are part of the real desktop control path too.
 export const AGENT_CONTROL_SMOKE_PATHS = [
@@ -21,9 +21,9 @@ export function agentControlSmokeChangesSinceLastTag({ cwd = process.cwd() } = {
     execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   // An invalid repository or a failed comparison must never silently waive the gate.
   git(["rev-parse", "--verify", "HEAD"]);
-  const tags = git(["tag", "--merged", "HEAD", "--list", OFFICIAL_RELEASE_TAG_GLOB]);
+  const tags = git(["tag", "--merged", "HEAD", "--list", STABLE_RELEASE_TAG_GLOB]);
   const tag = tags
-    ? git(["describe", "--tags", "--match", OFFICIAL_RELEASE_TAG_GLOB, "--abbrev=0"])
+    ? git(["describe", "--tags", "--match", STABLE_RELEASE_TAG_GLOB, "--abbrev=0"])
     : null;
   const committed = git(
     tag

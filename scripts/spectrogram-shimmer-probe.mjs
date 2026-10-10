@@ -8,7 +8,7 @@
  * The app must already be running with the debugging port open, on real signal, with the window
  * filled:
  *
- *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop
+ *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop:dev
  *   node scripts/spectrogram-shimmer-probe.mjs --seconds 60 --label "surface gl"
  *
  * Three things about the method are load-bearing and were each learned the expensive way. They are
@@ -249,7 +249,7 @@ export async function runProbe(options, log = console.log) {
   const listing = await fetch(`http://127.0.0.1:${options.port}/json`).catch((error) => {
     throw new Error(
       `no debugging port on ${options.port} (${error.message}). Start the app with ` +
-        `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=${options.port} npm run desktop`
+        `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=${options.port} npm run desktop:dev`
     );
   });
   const target = pickTarget(await listing.json());

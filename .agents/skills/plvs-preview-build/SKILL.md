@@ -1,16 +1,16 @@
 ---
 name: "plvs-preview-build"
-description: "Builds and publishes a tested, immutable Windows PLVS Preview installer and Portable ZIP for an exact commit. Use when someone needs an installable test build; do not use for official versioned releases."
+description: "Builds and publishes a tested, immutable Windows PLVS Preview installer and Portable ZIP for an exact commit. Use when someone needs an installable test build; do not use for stable versioned releases."
 ---
 
 # PLVS Preview Build
 
 Publish an unofficial Windows Preview for an exact pushed commit. Preview is a third application
 identity (`PLVS Preview`, `com.soundoer.plvs.preview`), isolated from stable PLVS and the local
-development app. It has separate settings, installation and Agent Control discovery, and its
+dev app. It has separate settings, installation and Agent Control discovery, and its
 updater is compiled out.
 
-Use `plvs-release` instead when the user intends to ship an official version.
+Use `plvs-release` instead when the user intends to ship a stable version.
 
 ## Invariants
 
@@ -105,5 +105,5 @@ the fact that repository, file-analysis, and installer gates passed.
 - If a run leaves a mutable Draft: report it. It may be deleted with its workflow-created tag before
   retrying, but deletion is not required because the next run receives a unique tag.
 - After publication: never replace assets or move/reuse the tag. Fix the code and create a new Preview.
-- `preview-build.yml` is Windows-only and does not update the official version, CHANGELOG, stable
+- `preview-build.yml` is Windows-only and does not update the stable version, CHANGELOG, stable
   updater metadata, or website.

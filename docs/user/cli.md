@@ -15,7 +15,7 @@ plvs-cli device ...
 ```
 
 `doctor`, `instances`, and `schema list/get` work when PLVS is closed or Agent Control is disabled.
-`instances` lists the live workbenches belonging to the same Development, Preview, or Release
+`instances` lists the live workbenches belonging to the same Dev, Preview, or Stable
 identity, including their Source-derived display names and runtime status. Every
 running-app command controls or inspects the same state visible in an already-running PLVS window.
 Without a selector, a running-app command keeps the existing behavior when exactly one workbench is
@@ -597,7 +597,7 @@ Use two terminals:
 
 ```powershell
 # Terminal A
-npm run desktop
+npm run desktop:dev
 
 # Terminal B
 npm run desktop:control -- inspect --json
@@ -611,8 +611,8 @@ npm run desktop:control -- workspace apply layout.json --json --expected-revisio
 ```
 
 `desktop:control` quietly rebuilds only the independent `src-tauri/plvs-cli` workspace package,
-selects the development app identity, and forwards the supplied flat CLI command. It controls only
-an already-running development app. Development builds have their own Cargo target directory,
+selects the dev identity, and forwards the supplied flat CLI command. It controls only
+an already-running dev app. Dev-identity debug builds have their own Cargo target directory,
 `src-tauri/target/dev-identity`. If the thin CLI companion still finds a host binary built for
 another identity beside it, it fails with `cliHostIdentityMismatch` before parsing or executing the
 requested command.
@@ -636,8 +636,8 @@ explicit channel layout instead of detecting it by channel count. Supported ids 
 For installed Windows validation:
 
 ```powershell
-npm run desktop:release-nsis
-npm run desktop:verify-windows-installer
+npm run desktop:stable-nsis
+npm run desktop:verify-stable-nsis
 ```
 
 Desktop build commands use `scripts/build-plvs-cli.mjs` to build the matching identity and stage a
@@ -648,14 +648,14 @@ directory.
 
 ### Desktop regression checks
 
-`npm run smoke:agent-control -- --instance <instance-id>` checks the current development GUI,
+`npm run smoke:agent-control -- --instance <instance-id>` checks the current dev app,
 including Settings navigation, a PNG screenshot and a short silent MP4 recording. Without an
-explicit selector it uses `PLVS_INSTANCE_ID`, or discovers and pins the sole development instance.
+explicit selector it uses `PLVS_INSTANCE_ID`, or discovers and pins the sole dev app instance.
 It refuses multiple unselected instances, existing UI surfaces or blocking editors, and hidden or
 non-normal windows before navigation. It closes only the Settings surface it created.
 
 The local `release:preflight` requires this smoke when desktop dependencies changed since the last
-official release tag. Start the current source with `npm run desktop` before running preflight;
+stable release tag. Start the current source with `npm run desktop:dev` before running preflight;
 failures block the gate. Reports are saved under `artifacts/agent-control-smoke/`.
 
 Dock monitor discovery and entry, and Preset application, read the current monitor inventory on
