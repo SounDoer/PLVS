@@ -35,10 +35,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
-
-      - name: Coverage report
+      # One run: the coverage command executes the whole suite and fails on any failing test.
+      - name: Test (with coverage)
         run: npm run test:coverage
 
       - name: Upload coverage report
