@@ -112,6 +112,7 @@ simpler thing?". ADRs are never edited; a changed decision gets a new ADR that s
 Documentation, comments, commit messages and PRs are in English. String literals that must match localized OS/UI text are the exception.
 Line endings are LF (`.editorconfig`, `.gitattributes`). Formatting and lint are enforced by `npm run check` — no need to memorize the rules.
 UI-visible labels across PLVS default to Title Case unless there's a specific reason not to, e.g. `Max Hold`, `Channel Pair`; `aria-label`s stay lowercase — a separate, non-user-facing convention.
+The three app identities are `stable`, `dev` and `preview`. "Release" names the Cargo profile and the act of publishing a version, never an identity. The dev identity's programs are the dev app and the dev CLI. `scripts/documentationStructure.test.js` rejects the earlier spellings; ADRs keep them, and `CONTRIBUTING.md` maps old to new.
 
 ## Testing
 

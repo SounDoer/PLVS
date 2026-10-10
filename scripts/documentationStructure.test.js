@@ -120,8 +120,7 @@ describe("public documents state what the code ships", () => {
 
   it("states the macOS minimum version the bundle declares", () => {
     // Prose ("macOS 14.2", "**macOS** 14.2") and the landing page's spec row.
-    const macosVersion =
-      /macOS(?:\*\*)?(?: |<\/span><span class="spec-val">)(\d+\.\d+(?:\.\d+)?)/g;
+    const macosVersion = /macOS(?:\*\*)?(?: |<\/span><span class="spec-val">)(\d+\.\d+(?:\.\d+)?)/g;
     const { minimumSystemVersion } = JSON.parse(read("src-tauri", "tauri.conf.json")).bundle.macOS;
     const stated = PUBLIC_DOCUMENTS.flatMap((path) =>
       [...read(path).matchAll(macosVersion)].map(([, version]) => ({
@@ -132,6 +131,30 @@ describe("public documents state what the code ships", () => {
 
     expect(new Set(stated.map(({ path }) => path))).toContain("landing/index.html");
     expect(stated.filter(({ version }) => version !== minimumSystemVersion)).toEqual([]);
+  });
+
+  it("names the app identities stable, dev and preview", () => {
+    // Vocabulary, not sentences: each of these spellings once named an identity alongside the
+    // current one. ADRs keep them, in their file names too, and CONTRIBUTING.md lists them in its
+    // table of earlier names.
+    const earlierSpellings =
+      /\b(?:release|production|official)[- ]identity\b|\bdevelopment[- ](?:app|GUI|CLI|identity)\b|\binstalled release\b|--identity (?:development|release)\b/gi;
+    const withoutEarlierNames = (markdown) =>
+      markdown.replace(/^\| Earlier name \|.*\n(?:\|.*\n)*/m, "").replace(/adr\/[\w.-]+/g, "");
+    const documents = [
+      ...collectMarkdown("docs", ["docs/history", "docs/adr"]),
+      ...collectMarkdown(".agents/skills", []),
+      "AGENTS.md",
+      "CONTRIBUTING.md",
+      "README.md",
+    ];
+    const found = documents.flatMap((path) =>
+      [...withoutEarlierNames(read(path)).matchAll(earlierSpellings)].map(
+        ([spelling]) => `${path} → ${spelling}`
+      )
+    );
+
+    expect(found).toEqual([]);
   });
 
   it("names release packages the way the release publishes them", () => {
