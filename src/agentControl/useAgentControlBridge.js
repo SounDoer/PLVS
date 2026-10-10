@@ -5,13 +5,12 @@ import {
   listenForAgentControlRequests,
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
-import { flushPersistence, settingsStore } from "../persistence/index.js";
+import { flushPersistence } from "../persistence/index.js";
 import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
 import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
 import { describeActiveLoudnessProfile } from "../lib/activeLoudnessProfile.js";
 import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
 import { renderFileAnalysisReportMarkdown } from "../lib/fileAnalysisReportMarkdown.js";
-import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
@@ -69,7 +68,6 @@ import { PackValidationError } from "../transfer/packShape.js";
 import { describeEditorDraft, planEditorDraftPatch } from "./editorDraftControl.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { listThemeSummaries } from "../theme/themeLibrary.js";
-import { normalizeThemeDocumentShape } from "../theme/themeSchema.js";
 import {
   planPresetApply,
   planPresetApplyResources,
@@ -102,35 +100,32 @@ import {
   serializeWorkspaceLayout,
   WorkspaceLayoutError,
 } from "./workspaceLayout.js";
+import {
+  semanticFailure,
+  visualSemanticFailure,
+  SETTLEMENT_TIMEOUT_MS,
+  QUEUED_REQUEST_TIMEOUT_MS,
+  COMMIT_NOT_OBSERVED,
+  isCommitNotObserved,
+  persistUnobservedCommit,
+  WAIT_CANCELLED,
+} from "./bridge/failures.js";
+import {
+  measuredAudioState,
+  workspaceMatches,
+  panelControlsMatch,
+  axisStateMatches,
+  controllableWorkspaceMatches,
+  presetStateSignature,
+  themeStateSignature,
+  loudnessProfileStateSignature,
+  activeLoudnessProfileId,
+  workspaceMatchesPresetView,
+  settingsStateSignature,
+  ordinarySettingsStateSignature,
+  requestedDeviceSignature,
+} from "./bridge/signatures.js";
 
-/**
- * @param {string} reason
- * @param {string} path
- * @param {string} message
- * @param {number} code
- */
-function semanticFailure(reason, path, message, code, details) {
-  return { reason, path, message, code, ...(details ? { details } : {}) };
-}
-
-const VISUAL_ERROR_REASONS = new Set([
-  "visualUnavailable",
-  "screenCapturePermissionRequired",
-  "targetUnavailable",
-  "panelNotFound",
-  "panelNotVisible",
-  "revisionConflict",
-  "uiGenerationConflict",
-  "renderNotSettled",
-  "captureBusy",
-  "captureFailed",
-  "artifactWriteFailed",
-  "recordingNotFound",
-  "audioUnavailable",
-  "recordingFailed",
-  "artifactExpired",
-  "waitLimitReached",
-]);
 const EDITOR_DRAFT_SETTLEMENT_TIMEOUT_MS = 500;
 
 async function settleEditorDraftObservation({
@@ -171,63 +166,12 @@ async function settleEditorDraftObservation({
   );
 }
 
-function visualSemanticFailure(error) {
-  const reason = VISUAL_ERROR_REASONS.has(error?.reason) ? error.reason : "captureFailed";
-  const messages = {
-    visualUnavailable: "Visual capture is unavailable on this platform.",
-    screenCapturePermissionRequired: "Screen Recording permission is required.",
-    targetUnavailable: "The requested visual target is unavailable.",
-    panelNotFound: "The requested Panel does not exist.",
-    panelNotVisible: "The requested Panel is not currently rendered.",
-    revisionConflict: "The Agent Control revision changed before capture.",
-    uiGenerationConflict: "The visible UI changed before capture.",
-    renderNotSettled: "The visual target did not settle before the capture deadline.",
-    captureBusy: "A screenshot is already in progress.",
-    captureFailed: "The rendered PLVS surface could not be captured.",
-    artifactWriteFailed: "The screenshot artifact could not be written.",
-    recordingNotFound: "The recording ID is unknown.",
-    audioUnavailable: "The requested recording audio source is unavailable.",
-    recordingFailed: "The visual recording failed.",
-    artifactExpired: "The recording artifact has expired or disappeared.",
-    waitLimitReached: "The visual recording wait limit is full.",
-  };
-  return semanticFailure(reason, "$", messages[reason], -32080, error?.details);
-}
-
 function publicRecording(recording) {
   const { audioSource, ...publicValue } = recording ?? {};
   return {
     ...publicValue,
     audio: recording?.audio ?? { source: audioSource === "measuredSource" ? audioSource : "none" },
   };
-}
-
-function measuredAudioState(runtime, transport) {
-  if (runtime?.sourceMode === "file") return "sourceModeFile";
-  if (transport?.live?.state !== "running") return "liveStopped";
-  return "active";
-}
-
-function workspaceMatches(workspace, view) {
-  return (
-    workspace.tree === view.tree &&
-    workspace.panelsById === view.panelsById &&
-    workspace.panelOrder === view.panelOrder
-  );
-}
-
-function panelControlsMatch(workspace, view, panelId) {
-  return (
-    JSON.stringify(workspace.panelControlsById?.[panelId]) ===
-    JSON.stringify(view.panelControlsById?.[panelId])
-  );
-}
-
-function axisStateMatches(workspace, view) {
-  return (
-    JSON.stringify(workspace.axisViewports) === JSON.stringify(view.axisViewports) &&
-    JSON.stringify(workspace.panelControlsById) === JSON.stringify(view.panelControlsById)
-  );
 }
 
 function panelResultPreset(presets, changed) {
@@ -243,38 +187,6 @@ function viewResultPreset(presets, changed) {
     activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
     dirty: presets?.dirty === true || changed.length > 0,
   };
-}
-
-function controllableWorkspaceMatches(left, right) {
-  return (
-    left.tree === right.tree &&
-    left.panelsById === right.panelsById &&
-    left.panelOrder === right.panelOrder &&
-    left.panelControlsById === right.panelControlsById &&
-    left.pinnedPanelsById === right.pinnedPanelsById &&
-    left.axisViewports === right.axisViewports
-  );
-}
-
-function presetStateSignature(presets) {
-  return JSON.stringify({
-    list: Array.isArray(presets?.list) ? presets.list : [],
-    activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
-    dirty: presets?.dirty === true,
-  });
-}
-
-function themeStateSignature(state) {
-  return JSON.stringify({
-    appearance: {
-      mode: state?.appearance?.mode,
-      selectedThemeId:
-        state?.appearance?.mode === "fixed" ? (state.appearance.selectedThemeId ?? null) : null,
-    },
-    themes: (Array.isArray(state?.themes) ? state.themes : [])
-      .map((theme) => normalizeThemeDocumentShape(theme))
-      .filter(Boolean),
-  });
 }
 
 function compactThemeState(state) {
@@ -319,31 +231,6 @@ function themePlanResult(method, planned) {
   return { theme: planned.theme };
 }
 
-function loudnessProfileStateSignature(profiles, activeSelection) {
-  const normalizedProfiles = (Array.isArray(profiles) ? profiles : [])
-    .map((profile) => normalizeRuleDocument(profile))
-    .filter(Boolean);
-  return JSON.stringify({
-    activeId: activeLoudnessProfileId(normalizedProfiles, activeSelection),
-    profiles: normalizedProfiles,
-  });
-}
-
-/// The live Loudness Profile selection, as `loudnessProfile.list` reports it. Off is null, and so
-/// is a selection pointing at a profile the library no longer holds.
-///
-/// Read from `plvs:settings` rather than a prop: the bridge is handed the profile *library*
-/// (`loudnessProfiles`) and never the selection, and `LoudnessProfileContext` writes every
-/// selection change straight through to that store. It is also where the loudness adapter reads
-/// the library from, so both halves of this result come from one source.
-function activeLoudnessProfileId(
-  profiles,
-  selection = settingsStore.read().loudnessProfiles?.active
-) {
-  const { id } = parseSelection(selection);
-  return id !== null && profiles.some((profile) => profile.id === id) ? id : null;
-}
-
 function compactLoudnessProfileState(state, previewDocument = null) {
   const profiles = state.profiles.map(({ id, name }) => ({ id, name }));
   if (previewDocument) profiles.push({ id: null, name: previewDocument.name });
@@ -351,48 +238,6 @@ function compactLoudnessProfileState(state, previewDocument = null) {
     profiles,
     activeId: previewDocument ? null : activeLoudnessProfileId(state.profiles, state.active),
   };
-}
-
-/// Compares the live Workspace against the view a Preset becomes once applied.
-///
-/// Never compare against the stored Preset itself: applying migrates its controls, so a Preset
-/// saved before a control was added or removed can never equal the Workspace it produces, and a
-/// settlement waiting on that equality would never fire.
-function workspaceMatchesPresetView(workspace, view) {
-  return [
-    "tree",
-    "panelsById",
-    "panelOrder",
-    "panelControlsById",
-    "pinnedPanelsById",
-    "axisViewports",
-  ].every((key) => JSON.stringify(workspace[key]) === JSON.stringify(view[key]));
-}
-
-function settingsStateForSignature(settings) {
-  if (!settings) return null;
-  return {
-    ...settings,
-    channelLabels: {
-      mode: settings.channelLabels?.mode,
-      ...(settings.channelLabels?.mode === "custom" ? { roles: settings.channelLabels.roles } : {}),
-    },
-  };
-}
-
-function settingsStateSignature(settings) {
-  return JSON.stringify(settingsStateForSignature(settings));
-}
-
-function ordinarySettingsStateSignature(settings) {
-  const normalized = settingsStateForSignature(settings);
-  if (normalized === null) return "null";
-  const { openAtLogin: _openAtLogin, clearShortcut: _clearShortcut, ...ordinary } = normalized;
-  return JSON.stringify(ordinary);
-}
-
-function requestedDeviceSignature(device) {
-  return device?.snapshot?.requestedId === undefined ? "default" : device.snapshot.requestedId;
 }
 
 function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
@@ -406,56 +251,6 @@ function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
           : device.live?.state === "running",
     }
   );
-}
-
-/// A settlement waits only for React to render a change that has already been applied, so anything
-/// near a second means the predicate will never match. Kept well under the broker's own budget so
-/// the caller gets this specific failure instead of a transport timeout.
-const SETTLEMENT_TIMEOUT_MS = 5000;
-
-/// Bounds a whole queued command, execution included.
-///
-/// Settlement is bounded above, but the business function a mutation awaits before it is not, and a
-/// promise there that never settles blocks the serialized queue just the same. Kept below the
-/// broker's `DEFAULT_RESPONSE_TIMEOUT` (10 s) so the caller gets this stated failure rather than a
-/// transport timeout. The abandoned command may still finish later, and the failure says so.
-const QUEUED_REQUEST_TIMEOUT_MS = 8000;
-
-/// Bounds a settlement wait.
-///
-/// Without this a predicate that can never match hangs the request forever - and because commands
-/// share one serialized queue, every later command hangs behind it and the whole control channel is
-/// dead until the app restarts. A timeout turns that into one failed command with a stated cause.
-const COMMIT_NOT_OBSERVED = "commitNotObserved";
-
-function isCommitNotObserved(error) {
-  return error?.reason === COMMIT_NOT_OBSERVED;
-}
-
-/// Persists the write a settlement timeout is reporting on, and says in the failure whether that
-/// worked.
-///
-/// Every mutation handler writes its state first and calls `flush()` only after the settlement, so
-/// a timeout used to skip persistence entirely: the change was live in memory, absent from
-/// `plvs-settings.json`, and the failure still said `stateCommitted: true`. Three hand-made themes
-/// were lost that way. The failure stays `commitNotObserved` -- that React never observed the
-/// commit is the more informative fact, and calling it `persistenceFailed` would bury it -- so
-/// `persisted` is what tells the two outcomes apart.
-async function persistUnobservedCommit(error, flush) {
-  try {
-    await flush();
-  } catch (persistenceError) {
-    return {
-      ...error,
-      message: `${error.message} Persisting it then failed: ${persistenceError?.message || String(persistenceError)}.`,
-      details: { ...error.details, persisted: false },
-    };
-  }
-  return {
-    ...error,
-    message: `${error.message} The change was persisted.`,
-    details: { ...error.details, persisted: true },
-  };
 }
 
 /**
@@ -487,8 +282,6 @@ function awaitSettlement(committed, clear, subject) {
     );
   });
 }
-
-const WAIT_CANCELLED = Symbol("waitCancelled");
 
 function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
   const sequence = live?.record?.sequence;
