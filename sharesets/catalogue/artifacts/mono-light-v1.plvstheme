@@ -1,0 +1,175 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 4,
+      "name": "Mono Light",
+      "colorScheme": "light",
+      "core": {
+        "workspace": "#d7d7d4",
+        "surface": "#f7f7f3",
+        "text": "#151515",
+        "interfaceAccent": "#373736",
+        "primaryData": "#171717",
+        "secondaryData": "#686866"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#92928e",
+          "warning": "#555553",
+          "critical": "#171717"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#fafaf6"
+            },
+            {
+              "position": 0.14,
+              "color": "#e7e7e2"
+            },
+            {
+              "position": 0.3,
+              "color": "#c9c9c4"
+            },
+            {
+              "position": 0.48,
+              "color": "#9c9c98"
+            },
+            {
+              "position": 0.66,
+              "color": "#6c6c69"
+            },
+            {
+              "position": 0.84,
+              "color": "#393938"
+            },
+            {
+              "position": 1,
+              "color": "#101010"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#969692",
+          "mid": "#5b5b59",
+          "high": "#1a1a1a"
+        },
+        "interface": {
+          "success": "#737370",
+          "warning": "#484847",
+          "danger": "#181818"
+        }
+      },
+      "overrides": {
+        "interface.content.onAccent": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onDanger": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onSuccess": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onWarning": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#181818"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#70706d"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#464645"
+        },
+        "interface.surface.muted": {
+          "kind": "color",
+          "value": "#c5c5c0"
+        },
+        "interface.text.secondary": {
+          "kind": "color",
+          "value": "#5f5f5c"
+        },
+        "level.critical": {
+          "kind": "color",
+          "value": "#151515"
+        },
+        "level.safe": {
+          "kind": "color",
+          "value": "#9a9a96"
+        },
+        "level.warning": {
+          "kind": "color",
+          "value": "#565654"
+        },
+        "loudness.momentarySnapshot": {
+          "kind": "color",
+          "value": "#777774"
+        },
+        "loudness.shortTermSnapshot": {
+          "kind": "color",
+          "value": "#898985"
+        },
+        "spectrum.primarySnapshot": {
+          "kind": "color",
+          "value": "#777774"
+        },
+        "spectrum.secondarySnapshot": {
+          "kind": "color",
+          "value": "#898985"
+        },
+        "stats.criticalValue": {
+          "kind": "color",
+          "value": "#111111"
+        },
+        "stats.warningValue": {
+          "kind": "color",
+          "value": "#464645"
+        },
+        "stereoMap.primarySnapshot": {
+          "kind": "color",
+          "value": "#777774"
+        },
+        "stereoMap.secondarySnapshot": {
+          "kind": "color",
+          "value": "#898985"
+        },
+        "vectorscope.snapshot": {
+          "kind": "color",
+          "value": "#80807c"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#1a1a1a"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#969692"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#5b5b59"
+        },
+        "waveform.snapshot": {
+          "kind": "color",
+          "value": "#80807c"
+        }
+      },
+      "id": "sharesets-mono-light"
+    }
+  ],
+  "dependencies": []
+}

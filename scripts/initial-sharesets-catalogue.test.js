@@ -14,6 +14,8 @@ const INITIAL_LISTINGS = [
   "listings/phosphor-field.json",
   "listings/graphite-monitor.json",
   "listings/paper-console.json",
+  "listings/mono-dark.json",
+  "listings/mono-light.json",
   "listings/stereo-overview.json",
 ];
 
@@ -39,6 +41,8 @@ describe("initial Sharesets Catalogue", () => {
       "control-room-amber",
       "graphite-monitor",
       "i-23-tp-1",
+      "mono-dark",
+      "mono-light",
       "night-circuit",
       "paper-console",
       "phosphor-field",
