@@ -532,6 +532,11 @@ service's 128 KiB cap, including UTF-8 and JSON escaping. Trimming removes ordin
 then older successful operations before failures, and reports the omitted counts. The feedback
 dialog sends the exact locally previewed snapshot unless refreshed; opting out discards it.
 
+Console logging uses a best-effort dispatch in `runtime_logging.rs`: write and flush errors are
+discarded without logging another error. A launcher can close both inherited output pipes while
+the GUI remains alive; fern's built-in stdout fallback would panic when stderr also fails.
+The independent rotating file target continues receiving records after a console failure.
+
 Deploy the receiver's v1/v2 validation before distributing a client that emits v2. Existing crash
 reports and older clients retain their v1 contracts. The receiver lives in `soundoer-newsletter`.
 

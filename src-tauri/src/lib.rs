@@ -30,6 +30,7 @@ pub mod persistence;
 mod profile;
 pub mod runtime_diagnostics;
 pub mod runtime_identity;
+mod runtime_logging;
 mod sidecar;
 mod state;
 mod taskbar_theme;
@@ -191,10 +192,7 @@ pub fn run() {
         .max_file_size(2_000_000)
         .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
         .clear_targets()
-        .targets([
-          tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-          log_target,
-        ])
+        .targets([runtime_logging::console_target(), log_target])
         .build(),
     )
     .manage(AppState::default())

@@ -232,6 +232,9 @@ as PLVS-exported Theme pack files.
 
 ## Crash reports and feedback
 
+If the terminal that launched PLVS disconnects its output, PLVS continues running and keeps
+writing its local log files.
+
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
 one after a crash. Feedback diagnostics are attached only when you choose to include them. Audio
 samples are never attached. In a multi-workbench run, local crash records include random instance
