@@ -1,0 +1,87 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "community-control-room-amber",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 4,
+      "name": "Control Room Amber",
+      "colorScheme": "dark",
+      "core": {
+        "workspace": "#10110f",
+        "surface": "#292824",
+        "text": "#e8e2d6",
+        "interfaceAccent": "#87571f",
+        "primaryData": "#f1d7a3",
+        "secondaryData": "#a7b39a"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#7ea26e",
+          "warning": "#d0a24b",
+          "critical": "#dc705e"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#0b0a08"
+            },
+            {
+              "position": 0.12,
+              "color": "#25140d"
+            },
+            {
+              "position": 0.28,
+              "color": "#5b2f1c"
+            },
+            {
+              "position": 0.48,
+              "color": "#9d5830"
+            },
+            {
+              "position": 0.68,
+              "color": "#d09245"
+            },
+            {
+              "position": 0.84,
+              "color": "#edc978"
+            },
+            {
+              "position": 1,
+              "color": "#fff1bd"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#b85b48",
+          "mid": "#d6a24d",
+          "high": "#a7b39a"
+        },
+        "interface": {
+          "success": "#46674b",
+          "warning": "#805a25",
+          "danger": "#813a33"
+        }
+      },
+      "overrides": {
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#dc705e"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#7ea26e"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#d0a24b"
+        }
+      }
+    }
+  ],
+  "dependencies": []
+}

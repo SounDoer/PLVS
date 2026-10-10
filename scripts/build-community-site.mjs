@@ -19,6 +19,39 @@ const FAMILIES = {
   themes: { label: "Themes", singular: "Theme" },
 };
 
+const THEME_GALLERY_ORDER = [
+  "product-workspace-file",
+  "product-stats-file",
+  "product-spectrum-file",
+  "product-spectrogram-heatmap",
+  "semantic-overview",
+];
+
+const THEME_PREVIEW_LABELS = {
+  "product-workspace-file": "Workspace",
+  "product-stats-file": "Stats",
+  "product-spectrum-file": "Spectrum",
+  "product-spectrogram-heatmap": "Spectrogram",
+  "semantic-overview": "Theme Colors",
+};
+
+export function detailGallery(type, previews) {
+  if (type === "loudness") return [];
+  if (type !== "themes") return previews.slice(0, 5);
+  const byId = new Map(previews.map((preview) => [preview.id, preview]));
+  return THEME_GALLERY_ORDER.flatMap((id) => (byId.has(id) ? [byId.get(id)] : []));
+}
+
+export function previewLabel(preview) {
+  return (
+    THEME_PREVIEW_LABELS[preview.id] ??
+    preview.id
+      .replace(/^product-/, "")
+      .replace(/-file$/, "")
+      .replaceAll("-", " ")
+  );
+}
+
 function page(title, description, body, { browse = false } = {}) {
   return `<!doctype html>
 <html lang="en">
@@ -208,25 +241,9 @@ function detailPage(listing, profile = null) {
     })
     .join("\n");
   if (compactDetail) {
-    const preferred = [
-      "product-workspace-file",
-      "semantic-overview",
-      "product-spectrum-file",
-      "product-spectrogram-heatmap",
-    ];
-    const ranked = [...previews].sort((a, b) => {
-      const rank = (preview) =>
-        preferred.includes(preview.id) ? preferred.indexOf(preview.id) : preferred.length;
-      return rank(a) - rank(b);
-    });
-    const gallery = isProfile ? [] : ranked.slice(0, 4);
+    const gallery = detailGallery(listing.type, previews);
     const previewUrl = (preview) =>
       `/community/files/${listing.id}/v${current.number}/${preview.id}.png`;
-    const previewLabel = (preview) =>
-      preview.id
-        .replace(/^product-/, "")
-        .replace(/-file$/, "")
-        .replaceAll("-", " ");
     return page(
       `${listing.title} — PLVS Sharesets`,
       listing.summary,

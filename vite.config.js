@@ -63,6 +63,9 @@ export default defineConfig({
       "**/.cursor/**",
       // Marketing tooling has its own suite: `npm run test:marketing`.
       "scripts/marketing/**",
+      // Generated preview sites can contain JavaScript named `*.test.js`; they are output, not
+      // part of PLVS's test suite.
+      "**/artifacts/**",
     ],
     coverage: {
       provider: "v8",

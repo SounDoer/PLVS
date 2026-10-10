@@ -65,6 +65,12 @@ connection to a running PLVS workbench and cannot Save, Import, select, or other
 Theme Library. Treat all output as review material; promoting one result into Community content is
 a separate explicit curation step.
 
+Theme product scenes use the same first-run workspace and Panel Settings that PLVS saves as the
+Default Preset, with the generated Default Loudness Profile active. The preview constructs both
+from the production defaults with a deterministic Profile ID; it never reads a maintainer's local
+Library. This keeps the Loudness reference, Stats verdict colours, and Level Meter TP Max verdict
+visible while making repeated exports reproducible.
+
 Product previews use a committed 15-second Fixture measured from
 `assets/marketing/audio/discovery-hero.wav` by the production file-analysis pipeline. Theme Lab
 reads that Fixture; it does not decode audio, so adding variants does not make screenshot capture
@@ -85,8 +91,11 @@ npm run community:fixture
 The first Fixture command runs the real Rust analyzer and writes the versioned JSON; the second
 repeats the analysis and fails if the committed JSON differs. The generator pins the reference WAV
 SHA-256 plus explicit Spectrum, Vectorscope, and Stereo Map requests, so replacing the audio or
-changing those controls requires a deliberate new Fixture version. Never hand-edit
-`src/transfer/fixtures/communityPreviewV3.json`.
+changing those controls requires a deliberate Fixture regeneration. Never hand-edit the current
+`src/transfer/fixtures/communityPreviewV4.json`. The generator derives its analysis requests from
+the production `DEFAULT_WORKSPACE_STATE`, records those requests in the Fixture, and stores every
+result under its real request key. A Default Preset change therefore makes the committed Fixture
+stale instead of silently substituting data measured with different controls.
 
 `community:source:check` validates the detachable Catalogue content manifest. The directory argument
 is optional while content lives at `community/catalogue`; external Catalogue checkouts pass their

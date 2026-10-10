@@ -269,9 +269,10 @@ Library; applying the Item is a separate action. You can also use **Copy Theme**
 paste into PLVS outside a text field to open the same review. An identical Item already in your
 Library is recognized instead of being added again.
 
-Sharesets previews use fixed example measurements, not your audio. The parameter-named Loudness
-Profile is an editable monitoring rule set, not a certified delivery standard. Review its rules
-against your own requirements before using it.
+Sharesets previews use fixed example measurements, not your audio. Theme product previews show the
+same first-run workspace and Panel Settings saved as the Default Preset, with the editable Default
+Loudness Profile active. Example verdict colours do not certify a delivery standard; review a
+downloaded Profile's rules against your own requirements before using it.
 
 Items do not update automatically. A withdrawn release loses its download actions; its history and
 withdrawal reason remain visible. If every release is withdrawn, the Item leaves browsing and search

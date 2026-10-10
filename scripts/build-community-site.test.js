@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildPack } from "../src/transfer/packShape.js";
-import { buildCommunitySite } from "./build-community-site.mjs";
+import { buildCommunitySite, detailGallery, previewLabel } from "./build-community-site.mjs";
 
 const temporaryDirectories = [];
 const PNG = Buffer.from(
@@ -98,6 +98,37 @@ function writeAssembledSite(directory) {
 }
 
 describe("Community static site generator", () => {
+  it("uses the fixed five-image Theme gallery order and a plain-language palette label", () => {
+    const previews = [
+      "semantic-overview",
+      "product-level-meter-file",
+      "product-loudness-file",
+      "product-stats-file",
+      "product-vectorscope-file",
+      "product-spectrum-file",
+      "product-spectrogram-heatmap",
+      "product-waveform-file",
+      "product-stereo-map-file",
+      "product-workspace-file",
+    ].map((id) => ({ id }));
+
+    const gallery = detailGallery("themes", previews);
+    expect(gallery.map(({ id }) => id)).toEqual([
+      "product-workspace-file",
+      "product-stats-file",
+      "product-spectrum-file",
+      "product-spectrogram-heatmap",
+      "semantic-overview",
+    ]);
+    expect(gallery.map(previewLabel)).toEqual([
+      "Workspace",
+      "Stats",
+      "Spectrum",
+      "Spectrogram",
+      "Theme Colors",
+    ]);
+  });
+
   it.each([false, true])(
     "gates Community links in the actual homepage and docs templates (published: %s)",
     async (published) => {

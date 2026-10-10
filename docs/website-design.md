@@ -62,6 +62,16 @@ Release History is the last content section, after Details, Panel Settings and a
 Loudness Profile, immediately before the footer. Themes and Presets use an image gallery; Profiles use a data-generated rule
 summary, never screenshots. Both catalogue and detail summaries show the first three rules in
 artifact order, with an accurate remaining-rule count; detail overflow links to full Details.
+Theme product screenshots use the production first-run workspace and Panel Settings saved as the
+Default Preset, with the generated Default Loudness Profile active. The renderer constructs this
+fixture from production defaults rather than reading a maintainer's Library, so exports are
+reproducible and stay aligned with the application. The audio Fixture generator derives its
+analysis requests from that same default workspace and stores keyed results; no second set of
+Spectrum, Spectrogram, Vectorscope or Stereo Map analysis settings is maintained for screenshots.
+The Theme detail gallery exposes five fixed views in this order: Workspace, Stats, Spectrum,
+Spectrogram and Theme Colors. Theme Colors is the user-facing label for the generated semantic
+overview. The remaining generated panel images stay sealed with the Release for validation but do
+not appear in the gallery. The catalogue card uses Workspace as its cover.
 Details groups all conditions by metric in label/value rows without a Rules subheading. Preset Details show readable module names, panel counts and Dock On/Off; omit Dock panel counts when disabled. Single-image galleries omit visible thumbnails and navigation arrows. Profile reference
 values and rules are read from the validated release artifact during generation; metric labels
 and units come from the application's Stats catalogue. Listing prose must not become a second

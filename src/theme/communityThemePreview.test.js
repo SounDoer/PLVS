@@ -28,8 +28,8 @@ describe("community Theme preview contract", () => {
       generatorSource: "plvs",
       acceptsPublisherMedia: false,
       interactivePreview: false,
-      fixture: expect.objectContaining({ id: "plvs-community-discovery-v3", version: 3 }),
-      fixtureHash: "sha256:ce346e7a2b73cae060e5079af320915aa30b0cf70f5511a9f894198faab4ee66",
+      fixture: expect.objectContaining({ id: "plvs-community-discovery-v4", version: 4 }),
+      fixtureHash: "sha256:bc857f9555e9dd39ae76e5e2864baa23b7c5bf802b015498b33ca98a1fb5d724",
       theme: {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",

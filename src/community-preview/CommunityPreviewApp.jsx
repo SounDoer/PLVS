@@ -3,6 +3,7 @@ import { LoudnessProfileEditor } from "../components/LoudnessProfileEditor.jsx";
 import { ThemePreview } from "../components/theme-editor/ThemePreview.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
 import { LoudnessProfilePreviewProvider } from "../hooks/LoudnessProfileContext.jsx";
+import { createStarterProfile } from "../lib/loudnessProfileCatalog.js";
 import { portableToStoredTheme } from "../theme/portableTheme.js";
 import { portableToStoredPreset } from "../transfer/portablePreset.js";
 import {
@@ -168,7 +169,11 @@ function ThemeProductExample({ plan, sceneId }) {
     item: { document: null },
     dependencies: [],
   };
-  return <WorkspaceExample plan={syntheticPlan} state={state} profile={null} />;
+  const profile = useMemo(
+    () => createStarterProfile(() => "community-preview-default-profile"),
+    []
+  );
+  return <WorkspaceExample plan={syntheticPlan} state={state} profile={profile} />;
 }
 
 export function CommunityPreviewApp({ plan, asset }) {

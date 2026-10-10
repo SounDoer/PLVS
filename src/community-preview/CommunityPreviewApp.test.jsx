@@ -10,7 +10,7 @@ import { themeToPortable } from "../theme/portableTheme.js";
 import { selectSpectrogramCanvasTheme } from "../theme/themeCanvasSelectors.js";
 import { validatePublishablePack } from "../transfer/communityPack.js";
 import { buildCommunityPreviewPlan } from "../transfer/communityPreview.js";
-import { COMMUNITY_PREVIEW_FIXTURE_V3 } from "../transfer/fixtures/communityPreviewV3.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V4 } from "../transfer/fixtures/communityPreviewV4.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { CommunityPreviewApp } from "./CommunityPreviewApp.jsx";
@@ -77,7 +77,7 @@ describe("Community preview browser harness", () => {
     expect(screen.getByText("Integrated")).toBeTruthy();
     expect(
       screen.getByText(
-        COMMUNITY_PREVIEW_FIXTURE_V3.measurementFrame.loudness.integratedLufs.toFixed(1)
+        COMMUNITY_PREVIEW_FIXTURE_V4.measurementFrame.loudness.integratedLufs.toFixed(1)
       )
     ).toBeTruthy();
     expect(screen.getByText("True Peak Max")).toBeTruthy();
@@ -110,7 +110,7 @@ describe("Community preview browser harness", () => {
     expect(screen.getByTestId("dock-module")).toBeTruthy();
     expect(
       screen.getByLabelText(
-        `Integrated ${COMMUNITY_PREVIEW_FIXTURE_V3.measurementFrame.loudness.integratedLufs.toFixed(1)}`
+        `Integrated ${COMMUNITY_PREVIEW_FIXTURE_V4.measurementFrame.loudness.integratedLufs.toFixed(1)}`
       )
     ).toBeTruthy();
   });
@@ -157,6 +157,47 @@ describe("Community preview browser harness", () => {
     );
     render(<CommunityPreviewApp plan={plan} asset={spectrogramAsset} />);
     expect(screen.getByText("Spectrogram")).toBeTruthy();
+  });
+
+  it("renders Theme product scenes with the first-run Default Profile", async () => {
+    const plan = await buildCommunityThemePreviewPlan({
+      theme: themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]),
+    });
+    const statsAsset = plan.assets.find(({ id }) => id === "product-stats-file");
+    const loudnessAsset = plan.assets.find(({ id }) => id === "product-loudness-file");
+    const levelMeterAsset = plan.assets.find(({ id }) => id === "product-level-meter-file");
+    const spectrumAsset = plan.assets.find(({ id }) => id === "product-spectrum-file");
+
+    const stats = render(<CommunityPreviewApp plan={plan} asset={statsAsset} />);
+    expect(
+      stats.container
+        .querySelector('[data-stat-value="integrated"]')
+        ?.getAttribute("data-loudness-status")
+    ).toBe("warn");
+    expect(
+      stats.container
+        .querySelector('[data-stat-value="truePeak"]')
+        ?.getAttribute("data-loudness-status")
+    ).toBe("fail");
+    stats.unmount();
+
+    const loudness = render(<CommunityPreviewApp plan={plan} asset={loudnessAsset} />);
+    expect(
+      loudness.container.querySelector('[data-testid="loudness-reference-line"]')
+    ).toBeTruthy();
+    loudness.unmount();
+
+    const levelMeter = render(<CommunityPreviewApp plan={plan} asset={levelMeterAsset} />);
+    expect(
+      levelMeter.container
+        .querySelector("[data-level-tp-max-marker]")
+        ?.getAttribute("data-loudness-status")
+    ).toBe("fail");
+    levelMeter.unmount();
+
+    const spectrum = render(<CommunityPreviewApp plan={plan} asset={spectrumAsset} />);
+    expect(spectrum.container.querySelector('[data-spectrum-live="primary"]')).toBeTruthy();
+    expect(spectrum.container.querySelector('[data-spectrum-live="secondary"]')).toBeTruthy();
   });
 
   it("renders product scenes with the previewed Theme's panel surface and Canvas colours", async () => {

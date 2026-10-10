@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::Serialize;
@@ -7,16 +8,12 @@ use crate::dsp::speech::VadEngineKind;
 use crate::file_analysis::probe::probe_file;
 use crate::file_analysis::session::{analyze_file_core, WorkerConfig};
 use crate::ipc::types::{
-  AnalysisRequests, AudioFramePayload, SpectrumAnalysisChannel, SpectrumAnalysisRequest,
-  StereoMapAnalysisPair, StereoMapAnalysisRequest, VectorscopeAnalysisRequest, VisualHistEntry,
+  AnalysisRequests, AudioFramePayload, SpectrumFrameResult, VisualHistEntry,
 };
 
 const SOURCE_SHA256: &str = "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988";
 const WINDOW_START_MS: u64 = 63_000;
 const WINDOW_END_MS: u64 = 78_000;
-const SPECTRUM_KEY: &str = "spectrum:pair:0:1:combined:sp50:sm12";
-const VECTORSCOPE_KEY: &str = "vectorscope:pair:0:1";
-const STEREO_MAP_KEY: &str = "stereoMap:pair:0:1:sp50:sm12";
 const FREQUENCY_BIN_STRIDE: usize = 4;
 
 #[derive(Serialize)]
@@ -24,6 +21,7 @@ const FREQUENCY_BIN_STRIDE: usize = 4;
 pub struct CommunityPreviewFixture {
   id: &'static str,
   version: u32,
+  analysis_requests: AnalysisRequests,
   source: FixtureSource,
   clock: FixtureClock,
   audio: FixtureAudio,
@@ -100,17 +98,17 @@ struct LoudnessRow {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct FixtureVisuals {
-  spectrum: FixtureSpectrum,
-  vectorscope: FixtureVectorscope,
-  stereo_map: FixtureStereoMap,
+  band_centers_hz: Vec<f64>,
+  spectrum_results_by_key: BTreeMap<String, FixtureSpectrumCurves>,
+  vectorscope_results_by_key: BTreeMap<String, FixtureVectorscope>,
+  stereo_map_results_by_key: BTreeMap<String, FixtureStereoMap>,
   waveform: Vec<FixtureWaveformRow>,
-  spectrogram: Vec<FixtureSpectrogramRow>,
+  spectrogram_by_key: BTreeMap<String, Vec<FixtureSpectrogramRow>>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct FixtureSpectrum {
-  band_centers_hz: Vec<f64>,
+struct FixtureSpectrumCurves {
   smooth_db: Vec<f32>,
   peak_db: Vec<f32>,
   smooth_db_b: Vec<f32>,
@@ -162,33 +160,6 @@ struct FixtureSpectrogramRow {
   db: Vec<f32>,
 }
 
-fn requests() -> AnalysisRequests {
-  AnalysisRequests {
-    spectrum: vec![SpectrumAnalysisRequest {
-      key: SPECTRUM_KEY.to_string(),
-      channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
-      view: "combined".to_string(),
-      speed_percent: 50.0,
-      octave_smoothing: "1/12".to_string(),
-    }],
-    vectorscope: vec![VectorscopeAnalysisRequest {
-      key: VECTORSCOPE_KEY.to_string(),
-      x: 0,
-      y: 1,
-    }],
-    stereo_map: vec![StereoMapAnalysisRequest {
-      key: STEREO_MAP_KEY.to_string(),
-      pair: StereoMapAnalysisPair {
-        first: 0,
-        second: 1,
-      },
-      speed_percent: 50.0,
-      octave_smoothing: "1/12".to_string(),
-    }],
-    spectral_waveform: true,
-  }
-}
-
 fn sha256(path: &Path) -> Result<String, String> {
   let bytes = std::fs::read(path)
     .map_err(|error| format!("Unable to read preview audio {}: {error}", path.display()))?;
@@ -236,8 +207,21 @@ fn select_frequency_values<T: Copy>(values: &[T], indices: &[usize]) -> Vec<T> {
     .collect()
 }
 
+fn fixture_spectrum_curves(
+  spectrum: &SpectrumFrameResult,
+  frequency_indices: &[usize],
+) -> FixtureSpectrumCurves {
+  FixtureSpectrumCurves {
+    smooth_db: select_frequency_values(&spectrum.smooth_db, frequency_indices),
+    peak_db: select_frequency_values(&spectrum.peak_db, frequency_indices),
+    smooth_db_b: select_frequency_values(&spectrum.smooth_db_b, frequency_indices),
+    peak_db_b: select_frequency_values(&spectrum.peak_db_b, frequency_indices),
+  }
+}
+
 pub fn generate_community_preview_fixture(
   audio_path: &Path,
+  analysis_requests: AnalysisRequests,
 ) -> Result<CommunityPreviewFixture, String> {
   let actual_hash = sha256(audio_path)?;
   if actual_hash != SOURCE_SHA256 {
@@ -257,7 +241,7 @@ pub fn generate_community_preview_fixture(
     .sample_rate_hz
     .ok_or_else(|| "Community preview audio has no sample rate".to_string())?;
   let config = WorkerConfig {
-    requests: requests(),
+    requests: analysis_requests.clone(),
     channel_selection: None,
     dialogue_gating: false,
     dialogue_vad_engine: VadEngineKind::default(),
@@ -293,19 +277,26 @@ pub fn generate_community_preview_fixture(
       (!frame.band_grid_centers_hz.is_empty()).then(|| frame.band_grid_centers_hz.clone())
     })
     .ok_or_else(|| "Community preview analysis produced no frequency grid".to_string())?;
-  let spectrum = frame
-    .spectrum_results_by_key
-    .get(SPECTRUM_KEY)
-    .ok_or_else(|| "Community preview analysis produced no Spectrum result".to_string())?;
-  let vectorscope = frame
-    .vectorscope_results_by_key
-    .get(VECTORSCOPE_KEY)
-    .ok_or_else(|| "Community preview analysis produced no Vectorscope result".to_string())?;
-  let stereo_map = frame
-    .stereo_map_results_by_key
-    .get(STEREO_MAP_KEY)
-    .ok_or_else(|| "Community preview analysis produced no Stereo Map result".to_string())?;
   let frequency_indices = frequency_indices(band_centers_hz.len());
+  let spectrum_results_by_key = analysis_requests
+    .spectrum
+    .iter()
+    .map(|request| {
+      let result = frame
+        .spectrum_results_by_key
+        .get(&request.key)
+        .ok_or_else(|| {
+          format!(
+            "Community preview analysis produced no Spectrum result for {}",
+            request.key
+          )
+        })?;
+      Ok((
+        request.key.clone(),
+        fixture_spectrum_curves(result, &frequency_indices),
+      ))
+    })
+    .collect::<Result<BTreeMap<_, _>, String>>()?;
   let loudness_history = frames
     .iter()
     .flat_map(|frame| frame.loudness_hist_batch.iter())
@@ -332,36 +323,94 @@ pub fn generate_community_preview_fixture(
       tonality: row.tonality.clone(),
     })
     .collect();
-  let spectrogram = visual_rows
+  let spectrogram_by_key = analysis_requests
+    .spectrum
     .iter()
-    .filter(|row| relative_time(row.timestamp_ms).is_multiple_of(500))
-    .filter_map(|row| {
-      row
-        .spectrum_by_key
-        .get(SPECTRUM_KEY)
-        .map(|entry| FixtureSpectrogramRow {
-          at_ms: relative_time(row.timestamp_ms),
-          db: select_frequency_values(&entry.smooth_db, &frequency_indices),
+    .map(|request| {
+      let rows = visual_rows
+        .iter()
+        .filter(|row| relative_time(row.timestamp_ms).is_multiple_of(500))
+        .filter_map(|row| {
+          row
+            .spectrum_by_key
+            .get(&request.key)
+            .map(|entry| FixtureSpectrogramRow {
+              at_ms: relative_time(row.timestamp_ms),
+              db: select_frequency_values(&entry.smooth_db, &frequency_indices),
+            })
         })
+        .collect();
+      (request.key.clone(), rows)
     })
     .collect();
-  let vectorscope_history = visual_rows
+  let vectorscope_results_by_key = analysis_requests
+    .vectorscope
     .iter()
-    .filter(|row| row.timestamp_ms + 500 >= WINDOW_END_MS)
-    .filter_map(|row| {
-      row
-        .vectorscope_by_key
-        .get(VECTORSCOPE_KEY)
-        .map(|entry| FixtureVectorscopeRow {
-          at_ms: relative_time(row.timestamp_ms),
-          pairs: entry.pairs.clone(),
+    .map(|request| {
+      let result = frame
+        .vectorscope_results_by_key
+        .get(&request.key)
+        .ok_or_else(|| {
+          format!(
+            "Community preview analysis produced no Vectorscope result for {}",
+            request.key
+          )
+        })?;
+      let history = visual_rows
+        .iter()
+        .filter(|row| row.timestamp_ms + 500 >= WINDOW_END_MS)
+        .filter_map(|row| {
+          row
+            .vectorscope_by_key
+            .get(&request.key)
+            .map(|entry| FixtureVectorscopeRow {
+              at_ms: relative_time(row.timestamp_ms),
+              pairs: entry.pairs.clone(),
+            })
         })
+        .collect();
+      Ok((
+        request.key.clone(),
+        FixtureVectorscope {
+          path: result.path.clone(),
+          correlation: finite(result.correlation, "Vectorscope correlation")?,
+          side_to_mid_db: finite(result.side_to_mid_db, "Vectorscope side-to-mid ratio")?,
+          pair_x: result.pair_x,
+          pair_y: result.pair_y,
+          history,
+        },
+      ))
     })
-    .collect();
+    .collect::<Result<BTreeMap<_, _>, String>>()?;
+  let stereo_map_results_by_key = analysis_requests
+    .stereo_map
+    .iter()
+    .map(|request| {
+      let result = frame
+        .stereo_map_results_by_key
+        .get(&request.key)
+        .ok_or_else(|| {
+          format!(
+            "Community preview analysis produced no Stereo Map result for {}",
+            request.key
+          )
+        })?;
+      Ok((
+        request.key.clone(),
+        FixtureStereoMap {
+          band_centers_hz: select_frequency_values(&band_centers_hz, &frequency_indices),
+          pl: select_frequency_values(&result.pl, &frequency_indices),
+          pr: select_frequency_values(&result.pr, &frequency_indices),
+          c: select_frequency_values(&result.c, &frequency_indices),
+        },
+      ))
+    })
+    .collect::<Result<BTreeMap<_, _>, String>>()?;
   let duration_ms = WINDOW_END_MS - WINDOW_START_MS;
   Ok(CommunityPreviewFixture {
-    id: "plvs-community-discovery-v3",
-    version: 3,
+    id: "plvs-community-discovery-v4",
+    version: 4,
+    analysis_requests,
     source: FixtureSource {
       file_name: "discovery-hero.wav",
       sha256: SOURCE_SHA256,
@@ -403,29 +452,12 @@ pub fn generate_community_preview_fixture(
     },
     loudness_history,
     visuals: FixtureVisuals {
-      spectrum: FixtureSpectrum {
-        band_centers_hz: select_frequency_values(&band_centers_hz, &frequency_indices),
-        smooth_db: select_frequency_values(&spectrum.smooth_db, &frequency_indices),
-        peak_db: select_frequency_values(&spectrum.peak_db, &frequency_indices),
-        smooth_db_b: select_frequency_values(&spectrum.smooth_db_b, &frequency_indices),
-        peak_db_b: select_frequency_values(&spectrum.peak_db_b, &frequency_indices),
-      },
-      vectorscope: FixtureVectorscope {
-        path: vectorscope.path.clone(),
-        correlation: finite(vectorscope.correlation, "Vectorscope correlation")?,
-        side_to_mid_db: finite(vectorscope.side_to_mid_db, "Vectorscope side-to-mid ratio")?,
-        pair_x: vectorscope.pair_x,
-        pair_y: vectorscope.pair_y,
-        history: vectorscope_history,
-      },
-      stereo_map: FixtureStereoMap {
-        band_centers_hz: select_frequency_values(&band_centers_hz, &frequency_indices),
-        pl: select_frequency_values(&stereo_map.pl, &frequency_indices),
-        pr: select_frequency_values(&stereo_map.pr, &frequency_indices),
-        c: select_frequency_values(&stereo_map.c, &frequency_indices),
-      },
+      band_centers_hz: select_frequency_values(&band_centers_hz, &frequency_indices),
+      spectrum_results_by_key,
+      vectorscope_results_by_key,
+      stereo_map_results_by_key,
       waveform,
-      spectrogram,
+      spectrogram_by_key,
     },
   })
 }
@@ -434,14 +466,22 @@ pub fn generate_community_preview_fixture(
 mod tests {
   use super::*;
   use crate::engine::MeterPipeline;
+  use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
-  #[test]
-  fn preview_requests_are_explicit_and_stable() {
-    let requests = requests();
-    assert_eq!(requests.spectrum[0].key, SPECTRUM_KEY);
-    assert_eq!(requests.vectorscope[0].key, VECTORSCOPE_KEY);
-    assert_eq!(requests.stereo_map[0].key, STEREO_MAP_KEY);
-    assert!(requests.spectral_waveform);
+  const TEST_SPECTRUM_KEY: &str = "spectrum:pair:0:1:combined:sp25:smoff";
+
+  fn test_requests() -> AnalysisRequests {
+    AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: TEST_SPECTRUM_KEY.to_string(),
+        channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+        view: "combined".to_string(),
+        speed_percent: 25.0,
+        octave_smoothing: "off".to_string(),
+      }],
+      spectral_waveform: true,
+      ..AnalysisRequests::default()
+    }
   }
 
   #[test]
@@ -466,13 +506,13 @@ mod tests {
       for (index, chunk) in pcm.chunks(9_600).enumerate() {
         if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
           chunk,
-          &requests(),
+          &test_requests(),
           None,
           false,
           VadEngineKind::default(),
           (index as u64 + 1) * 100,
         ) {
-          if let Some(result) = frame.spectrum_results_by_key.get(SPECTRUM_KEY) {
+          if let Some(result) = frame.spectrum_results_by_key.get(TEST_SPECTRUM_KEY) {
             last.clone_from(&result.smooth_db);
           }
         }

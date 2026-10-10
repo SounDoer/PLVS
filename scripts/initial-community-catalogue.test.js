@@ -5,6 +5,7 @@ import { hashPortableTheme, themeToPortable } from "../src/theme/portableTheme.j
 import { readCommunitySource } from "./community-catalogue-source.mjs";
 
 const INITIAL_LISTINGS = [
+  "listings/control-room-amber.json",
   "listings/i-23-tp-1.json",
   "listings/signal-amber.json",
   "listings/stereo-overview.json",
@@ -12,22 +13,25 @@ const INITIAL_LISTINGS = [
 
 const readLaunchSource = () => readCommunitySource("community/catalogue");
 
-describe("initial official Community Catalogue", () => {
-  it("includes the reviewed launch set in the publication manifest", () => {
+describe("initial Community Catalogue", () => {
+  it("includes every checked-in candidate in the publication manifest", () => {
     const manifest = JSON.parse(readFileSync("community/catalogue/manifest.json", "utf8"));
     expect(manifest.listings).toEqual(INITIAL_LISTINGS);
   });
 
-  it("ships exactly one PLVS-authored official Listing per supported family", async () => {
+  it("keeps the checked-in Listings PLVS-authored and structurally complete", async () => {
     const source = await readLaunchSource();
     const listings = source.listings.map(({ document }) => document);
 
     expect(listings.map(({ id }) => id).sort()).toEqual([
+      "control-room-amber",
       "i-23-tp-1",
       "signal-amber",
       "stereo-overview",
     ]);
-    expect(listings.map(({ type }) => type).sort()).toEqual(["loudness", "presets", "themes"]);
+    expect(new Set(listings.map(({ type }) => type))).toEqual(
+      new Set(["loudness", "presets", "themes"])
+    );
     expect(listings.every(({ classification }) => classification === "official")).toBe(true);
     expect(listings.every(({ author }) => author?.name === "PLVS")).toBe(true);
     expect(listings.every(({ releases }) => releases.length === 1)).toBe(true);
@@ -50,14 +54,21 @@ describe("initial official Community Catalogue", () => {
     });
   });
 
-  it("publishes a distinct custom Theme and a dependency-free stereo Workspace", async () => {
+  it("keeps Control Room Amber distinct from the built-ins", async () => {
     const source = await readLaunchSource();
-    const theme = source.listings.find(({ document }) => document.type === "themes").document;
-    const preset = source.listings.find(({ document }) => document.type === "presets").document;
+    const theme = source.listings.find(
+      ({ document }) => document.id === "control-room-amber"
+    ).document;
     const builtinHash = await hashPortableTheme(themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]));
 
-    expect(theme.title).toBe("Signal Amber");
+    expect(theme.title).toBe("Control Room Amber");
     expect(theme.releases[0].metadata.content.contentHash).not.toBe(builtinHash);
+  });
+
+  it("keeps the current stereo Workspace fixture dependency-free", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(({ document }) => document.type === "presets").document;
+
     expect(preset.title).toBe("Stereo Overview");
     expect(preset.releases[0].metadata.facets).toMatchObject({
       moduleIds: ["levelMeter", "loudness", "spectrum", "stats", "stereo-map", "vectorscope"],

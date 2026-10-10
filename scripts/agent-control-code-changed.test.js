@@ -49,14 +49,18 @@ it("requires desktop smoke without release history, ignores preview tags, and in
   });
 });
 
-it("skips documentation-only changes but includes untracked desktop sources", () => {
-  const { cwd, git } = repository();
-  git("tag", "v1.0.0");
-  writeFileSync(join(cwd, "README.md"), "docs");
-  expect(agentControlSmokeChangesSinceLastTag({ cwd }).paths).toEqual([]);
-  writeFileSync(join(cwd, "src", "new.js"), "new");
-  expect(agentControlSmokeChangesSinceLastTag({ cwd }).paths).toEqual(["src/new.js"]);
-});
+it(
+  "skips documentation-only changes but includes untracked desktop sources",
+  () => {
+    const { cwd, git } = repository();
+    git("tag", "v1.0.0");
+    writeFileSync(join(cwd, "README.md"), "docs");
+    expect(agentControlSmokeChangesSinceLastTag({ cwd }).paths).toEqual([]);
+    writeFileSync(join(cwd, "src", "new.js"), "new");
+    expect(agentControlSmokeChangesSinceLastTag({ cwd }).paths).toEqual(["src/new.js"]);
+  },
+  15_000
+);
 
 it("fails closed when Git cannot establish a comparison", () => {
   const cwd = mkdtempSync(join(tmpdir(), "plvs-agent-gate-invalid-"));

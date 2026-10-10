@@ -6,10 +6,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { format, resolveConfig } from "prettier";
+import { buildDefaultCommunityPreviewAnalysisRequests } from "../src/community-preview/defaultAnalysisRequests.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const audioPath = join(root, "assets", "marketing", "audio", "discovery-hero.wav");
-const fixturePath = join(root, "src", "transfer", "fixtures", "communityPreviewV3.json");
+const fixturePath = join(root, "src", "transfer", "fixtures", "communityPreviewV4.json");
 const binDir = join(root, "src-tauri", "binaries");
 const write = process.argv.slice(2).includes("--write");
 const unknown = process.argv.slice(2).filter((argument) => argument !== "--write");
@@ -55,6 +56,9 @@ try {
     await cp(join(binDir, assets.source[key]), destination, { force: true });
     if (process.platform !== "win32") await chmod(destination, 0o755);
   }
+  const analysisRequests = buildDefaultCommunityPreviewAnalysisRequests();
+  const requestsPath = join(staged, "analysis-requests.json");
+  await writeFile(requestsPath, JSON.stringify(analysisRequests), "utf8");
   const result = spawnSync(
     "cargo",
     [
@@ -66,6 +70,7 @@ try {
       "community_preview_fixture",
       "--",
       audioPath,
+      requestsPath,
     ],
     {
       cwd: root,

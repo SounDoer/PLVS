@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { buildPack } from "./packShape.js";
 import { buildCommunityPreviewPlan } from "./communityPreview.js";
-import { COMMUNITY_PREVIEW_FIXTURE_V3 } from "./fixtures/communityPreviewV3.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V4 } from "./fixtures/communityPreviewV4.js";
 
 const PROFILE = {
   id: "broadcast",
@@ -27,8 +27,8 @@ describe("Community preview input contract", () => {
         animations: false,
         clock: "fixture",
       },
-      fixture: COMMUNITY_PREVIEW_FIXTURE_V3,
-      fixtureHash: "sha256:ce346e7a2b73cae060e5079af320915aa30b0cf70f5511a9f894198faab4ee66",
+      fixture: COMMUNITY_PREVIEW_FIXTURE_V4,
+      fixtureHash: "sha256:bc857f9555e9dd39ae76e5e2864baa23b7c5bf802b015498b33ca98a1fb5d724",
       item: {
         type: "loudness",
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),

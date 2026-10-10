@@ -1,5 +1,5 @@
 import { assessPortableThemeCommunityPublication, hashPortableTheme } from "./portableTheme.js";
-import { COMMUNITY_PREVIEW_FIXTURE_V3 } from "../transfer/fixtures/communityPreviewV3.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V4 } from "../transfer/fixtures/communityPreviewV4.js";
 import { hashCommunityPreviewFixture } from "../transfer/communityPreview.js";
 
 export const COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION = 1;
@@ -113,14 +113,14 @@ export function validateCommunityThemePreviewRequest(raw) {
 export async function buildCommunityThemePreviewPlan(raw) {
   const { theme: assessment } = validateCommunityThemePreviewRequest(raw);
   const contentHash = await hashPortableTheme(assessment.document);
-  const fixtureHash = await hashCommunityPreviewFixture(COMMUNITY_PREVIEW_FIXTURE_V3);
+  const fixtureHash = await hashCommunityPreviewFixture(COMMUNITY_PREVIEW_FIXTURE_V4);
   return {
     contractVersion: COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION,
     generator: "plvs-theme-gallery",
     generatorSource: "plvs",
     acceptsPublisherMedia: false,
     interactivePreview: false,
-    fixture: structuredClone(COMMUNITY_PREVIEW_FIXTURE_V3),
+    fixture: structuredClone(COMMUNITY_PREVIEW_FIXTURE_V4),
     fixtureHash,
     theme: {
       contentHash,

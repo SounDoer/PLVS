@@ -2,19 +2,7 @@ import { buildStatsMetrics } from "../lib/statsCatalog.js";
 
 const noop = () => {};
 
-function keyed(value) {
-  return new Proxy(Object.create(null), { get: () => value });
-}
-
-function spectrumResult(fixture) {
-  return fixture.visuals.spectrum;
-}
-
-function vectorscopeHistory(fixture) {
-  const rows = fixture.visuals.vectorscope.history.map(({ atMs, pairs }) => ({
-    timestampMs: atMs,
-    pairs: Float32Array.from(pairs),
-  }));
+function indexedView(rows) {
   return {
     length: rows.length,
     version: 1,
@@ -23,22 +11,48 @@ function vectorscopeHistory(fixture) {
   };
 }
 
+function vectorscopeHistory(rows) {
+  return indexedView(
+    rows.map(({ atMs, pairs }) => ({
+      timestampMs: atMs,
+      pairs: Float32Array.from(pairs),
+    }))
+  );
+}
+
 export function buildCommunityPreviewFixtureValues(fixture) {
   const frame = fixture.measurementFrame;
-  const spectrum = spectrumResult(fixture);
-  const vectorscope = vectorscopeHistory(fixture);
-  const bands = spectrum.bandCentersHz.map((fCenter) => ({ fCenter }));
-  const spectrogramRows = fixture.visuals.spectrogram.map(({ atMs, db }) => ({
-    bands,
-    dbList: db,
-    timestampMs: atMs,
-  }));
-  const spectrogramView = {
-    length: spectrogramRows.length,
-    version: 1,
-    rowAt: (index) => spectrogramRows[index],
-    timestampAt: (index) => spectrogramRows[index]?.timestampMs ?? Number.NaN,
-  };
+  const bands = fixture.visuals.bandCentersHz.map((fCenter) => ({ fCenter }));
+  const spectrumResultsByKey = Object.fromEntries(
+    Object.entries(fixture.visuals.spectrumResultsByKey).map(([key, result]) => [
+      key,
+      { bandCentersHz: fixture.visuals.bandCentersHz, ...result },
+    ])
+  );
+  const vectorscopeResultsByKey = {};
+  const vectorscopeHistoryByKey = {};
+  for (const [key, result] of Object.entries(fixture.visuals.vectorscopeResultsByKey)) {
+    vectorscopeResultsByKey[key] = {
+      path: result.path,
+      correlation: result.correlation,
+      sideToMidDb: result.sideToMidDb,
+      pairX: result.pairX,
+      pairY: result.pairY,
+    };
+    vectorscopeHistoryByKey[key] = vectorscopeHistory(result.history);
+  }
+  const spectrogramByKey = Object.fromEntries(
+    Object.entries(fixture.visuals.spectrogramByKey).map(([key, rows]) => [
+      key,
+      indexedView(
+        rows.map(({ atMs, db }) => ({
+          bands,
+          dbList: db,
+          timestampMs: atMs,
+        }))
+      ),
+    ])
+  );
   const displayAudio = {
     peakDb: frame.peaksDbfs,
     rmsDb: frame.rmsDbfs,
@@ -52,15 +66,9 @@ export function buildCommunityPreviewFixtureValues(fixture) {
     correlation: frame.correlation,
     sideToMidDb: frame.sideToMidDb,
     loudnessLayoutKnown: true,
-    spectrumResultsByKey: keyed(spectrum),
-    vectorscopeResultsByKey: keyed({
-      path: fixture.visuals.vectorscope.path,
-      correlation: fixture.visuals.vectorscope.correlation,
-      sideToMidDb: fixture.visuals.vectorscope.sideToMidDb,
-      pairX: fixture.visuals.vectorscope.pairX,
-      pairY: fixture.visuals.vectorscope.pairY,
-    }),
-    stereoMapResultsByKey: keyed(fixture.visuals.stereoMap),
+    spectrumResultsByKey,
+    vectorscopeResultsByKey,
+    stereoMapResultsByKey: fixture.visuals.stereoMapResultsByKey,
   };
   const histSourceList = fixture.loudnessHistory.map((row) => ({
     timestampMs: row.atMs,
@@ -88,8 +96,8 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       hasTpMaxValue: true,
       onResetTpMax: noop,
       correlation: displayAudio.correlation,
-      vectorscopePairX: 0,
-      vectorscopePairY: 1,
+      vectorscopePairX: fixture.analysisRequests.vectorscope[0]?.x ?? 0,
+      vectorscopePairY: fixture.analysisRequests.vectorscope[0]?.y ?? 1,
       spectrumChannelOptions: fixture.audio.channelLabels.map((label, value) => ({ label, value })),
       vsGridDiagInset: 18,
       vsGridDiagFar: 82,
@@ -128,12 +136,12 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       sourceMode: "file",
       frequencyMarkerRef: { current: null },
       frequencyMarkerIndex: -1,
-      getSpectrogramSnapsForKey: () => spectrogramView,
+      getSpectrogramSnapsForKey: (key) => spectrogramByKey[key] ?? indexedView([]),
       snapshotSpectrumByKey: {},
       resolveSpectrumSnapshotForKey: () => null,
       resolveVectorscopeSnapshotForKey: () => null,
       resolveStereoMapSnapshotForKey: () => null,
-      getVectorscopeHistoryForKey: () => vectorscope,
+      getVectorscopeHistoryForKey: (key) => vectorscopeHistoryByKey[key] ?? indexedView([]),
       getStereoMapHistoryForKey: () => null,
       captureCurrentSnapshot: noop,
       visualWaveformHist,

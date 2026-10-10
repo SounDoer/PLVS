@@ -29,7 +29,8 @@ red — but Stats still judges it.
 ## Managing profiles
 
 Select, create, rename, reorder, and delete profiles from the Loudness Profile menu. A new
-installation starts with one example profile named after its parameters; edit or delete it freely.
+installation starts with the editable Default profile described in
+[Getting Started](getting-started.md); edit or delete it freely.
 In Dock mode, the Dock header can switch the active profile.
 
 Profiles can be exported and imported from [System Settings](system-settings.md).
