@@ -35,8 +35,8 @@ await mkdir(dirname(output), { recursive: true });
 await mkdir(output); // Exclusive: never reuse an old app profile or overwrite a capture run.
 const appData = join(output, "app-data");
 const env = { ...process.env, PLVS_TEST_IDENTITY_ROOT: join(appData, "multi-instance") };
-const appPath = join(ROOT, "src-tauri/target/debug/plvs.exe");
-const cli = join(ROOT, "src-tauri/target/debug/plvs-cli.exe");
+const appPath = join(ROOT, "src-tauri/target/dev-identity/debug/plvs.exe");
+const cli = join(ROOT, "src-tauri/target/dev-identity/debug/plvs-cli.exe");
 const controller = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => controller.abort());
 let app, player, server, instanceId;

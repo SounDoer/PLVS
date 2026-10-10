@@ -75,7 +75,7 @@
     "tauri": "tauri",
     "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
     "cli:build": "node scripts/build-plvs-cli.mjs",
-    "desktop": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile debug --identity development --stage && tauri dev --config src-tauri/tauri.dev.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features dev-identity",
+    "desktop": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile debug --identity development --stage && node scripts/run-tauri-dev.mjs --config src-tauri/tauri.dev.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features dev-identity",
     "desktop:control": "node scripts/run-desktop-control.mjs",
     "desktop:build": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity development --stage && tauri build --config src-tauri/tauri.no-updater.conf.json --config src-tauri/tauri.dev.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features dev-identity",
     "desktop:preview-nsis": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity preview --stage && tauri build --bundles nsis --config src-tauri/tauri.preview.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features preview-identity",

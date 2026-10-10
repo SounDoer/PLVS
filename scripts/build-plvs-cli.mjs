@@ -8,6 +8,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = join(root, "src-tauri", "plvs-cli", "Cargo.toml");
 
+// Development-identity builds get their own target directory (ADR 0024). `plvs-cli` forwards to
+// the `plvs` beside it, and `cargo test` writes a release-identity `plvs` into the default
+// directory, so sharing it breaks the development CLI and, on Windows, cannot replace a running
+// development app at all. Nested under `target/` it stays ignored by Git and the Tauri watcher.
+export const DEVELOPMENT_TARGET_DIRECTORY = join(root, "src-tauri", "target", "dev-identity");
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
@@ -54,21 +60,33 @@ export function buildPlvsCli({
 
   const buildArgs = ["build", "--quiet", "--manifest-path", manifestPath];
   if (profile === "release") buildArgs.push("--release");
-  if (identity === "development") buildArgs.push("--features", "dev-identity");
+  if (identity === "development") {
+    buildArgs.push("--features", "dev-identity", "--target-dir", DEVELOPMENT_TARGET_DIRECTORY);
+  }
   if (identity === "preview") buildArgs.push("--features", "preview-identity");
   if (target) buildArgs.push("--target", target);
   run("cargo", buildArgs);
 
-  const metadata = run(
-    "cargo",
-    ["metadata", "--quiet", "--manifest-path", manifestPath, "--no-deps", "--format-version", "1"],
-    { capture: true }
-  );
-  let targetDirectory;
-  try {
-    targetDirectory = JSON.parse(metadata.stdout).target_directory;
-  } catch (error) {
-    throw new Error(`Unable to read Cargo metadata: ${error.message}`);
+  let targetDirectory = DEVELOPMENT_TARGET_DIRECTORY;
+  if (identity !== "development") {
+    const metadata = run(
+      "cargo",
+      [
+        "metadata",
+        "--quiet",
+        "--manifest-path",
+        manifestPath,
+        "--no-deps",
+        "--format-version",
+        "1",
+      ],
+      { capture: true }
+    );
+    try {
+      targetDirectory = JSON.parse(metadata.stdout).target_directory;
+    } catch (error) {
+      throw new Error(`Unable to read Cargo metadata: ${error.message}`);
+    }
   }
 
   const targetTriple =

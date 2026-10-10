@@ -612,9 +612,10 @@ npm run desktop:control -- workspace apply layout.json --json --expected-revisio
 
 `desktop:control` quietly rebuilds only the independent `src-tauri/plvs-cli` workspace package,
 selects the development app identity, and forwards the supplied flat CLI command. It controls only
-an already-running development app. If its thin CLI companion finds a stale release-identity host
-binary in the shared Cargo target directory, it fails with
-`cliHostIdentityMismatch` before parsing or executing the requested command.
+an already-running development app. Development builds have their own Cargo target directory,
+`src-tauri/target/dev-identity`. If the thin CLI companion still finds a host binary built for
+another identity beside it, it fails with `cliHostIdentityMismatch` before parsing or executing the
+requested command.
 
 `npm run` prints its own banner, so use `--silent` or call the wrapper directly when stdout must be
 parseable JSON:

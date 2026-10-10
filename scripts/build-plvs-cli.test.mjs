@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { cliArtifactPaths, parseRustHostTriple } from "./build-plvs-cli.mjs";
+import {
+  DEVELOPMENT_TARGET_DIRECTORY,
+  cliArtifactPaths,
+  parseRustHostTriple,
+} from "./build-plvs-cli.mjs";
 
 describe("PLVS CLI build staging", () => {
   it("parses the host triple reported by rustc", () => {
@@ -19,6 +23,17 @@ describe("PLVS CLI build staging", () => {
     expect(paths.staged).toMatch(
       /src-tauri[\\/]binaries[\\/]plvs-cli-x86_64-pc-windows-msvc\.exe$/
     );
+  });
+
+  it("keeps development-identity builds apart from the directory cargo test writes to", () => {
+    // Nested under target/ so Git and the Tauri dev watcher keep ignoring it.
+    expect(DEVELOPMENT_TARGET_DIRECTORY).toMatch(/src-tauri[\\/]target[\\/]dev-identity$/);
+    const paths = cliArtifactPaths({
+      targetDirectory: DEVELOPMENT_TARGET_DIRECTORY,
+      profile: "debug",
+      targetTriple: "x86_64-pc-windows-msvc",
+    });
+    expect(paths.executable).toMatch(/target[\\/]dev-identity[\\/]debug[\\/]plvs-cli\.exe$/);
   });
 
   it("uses the target-specific directory for a cross-compiled macOS artifact", () => {
