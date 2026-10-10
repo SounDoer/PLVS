@@ -1,8 +1,9 @@
 import { validatePortableTheme } from "./portableTheme.js";
 
 /**
- * One centrally owned app-release mapping per portable semantic contract. Semantics 4 has not
- * shipped yet, so its minimum version deliberately remains unresolved until release preparation.
+ * One centrally owned app-release mapping per portable semantic contract. Each minimum is the
+ * first release that shipped the contract. A contract still in development may stay null;
+ * `scripts/check-release-state.mjs` refuses to release the current one until it is filled in.
  */
 export const COMMUNITY_THEME_COMPATIBILITY = Object.freeze({
   "1:3": Object.freeze({
@@ -10,7 +11,7 @@ export const COMMUNITY_THEME_COMPATIBILITY = Object.freeze({
     maximumAppVersion: null,
   }),
   "1:4": Object.freeze({
-    minimumAppVersion: null,
+    minimumAppVersion: "0.19.0",
     maximumAppVersion: null,
   }),
 });
@@ -29,6 +30,8 @@ function validVersion(value) {
 /** Build the exact Dark/Light and compatibility copy consumed by a community Theme page. */
 /**
  * Build the exact Dark/Light and compatibility copy consumed by a community Theme page.
+ * @param {any} raw
+ * @param {{ compatibility?: Record<string, { minimumAppVersion: string | null, maximumAppVersion: string | null }> }} [options]
  */
 export function buildCommunityThemePresentation(
   raw,

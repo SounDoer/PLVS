@@ -17,18 +17,32 @@ describe("community Theme page presentation", () => {
   it.each([
     ["plvs-dark", "dark", "Dark Theme"],
     ["plvs-light", "light", "Light Theme"],
-  ])("keeps the unreleased current semantics pending for %s", (themeId, colorScheme, label) => {
+  ])("resolves the shipped current semantics for %s", (themeId, colorScheme, label) => {
     expect(buildCommunityThemePresentation(portable(themeId))).toMatchObject({
       appearance: { colorScheme, label },
       compatibility: {
-        status: "pending-release",
-        minimumAppVersion: null,
+        status: "resolved",
+        minimumAppVersion: "0.19.0",
         maximumAppVersion: null,
-        label: null,
+        label: "Requires PLVS 0.19.0 or later",
         formatVersion: 1,
         semanticsVersion: 4,
         technicalLabel: "Theme Format 1 · Semantics 4",
       },
+    });
+  });
+
+  it("keeps semantics pending while their shipping release is unknown", () => {
+    expect(
+      buildCommunityThemePresentation(portable("plvs-dark"), {
+        compatibility: { "1:4": { minimumAppVersion: null, maximumAppVersion: null } },
+      }).compatibility
+    ).toMatchObject({
+      status: "pending-release",
+      minimumAppVersion: null,
+      maximumAppVersion: null,
+      label: null,
+      technicalLabel: "Theme Format 1 · Semantics 4",
     });
   });
 

@@ -3,6 +3,7 @@ import { BUILTIN_THEMES_V2 } from "./builtinThemesV2.js";
 import {
   PORTABLE_THEME_FORMAT_VERSION,
   PORTABLE_THEME_KIND,
+  PORTABLE_THEME_SEMANTICS_VERSION,
   PortableThemeError,
   assessPortableThemeCommunityPublication,
   hashPortableTheme,
@@ -11,6 +12,7 @@ import {
   themeToPortable,
   validatePortableTheme,
 } from "./portableTheme.js";
+import { THEME_SEMANTICS_VERSION } from "./themeSchema.js";
 
 function storedTheme(overrides = {}) {
   return {
@@ -22,6 +24,11 @@ function storedTheme(overrides = {}) {
 }
 
 describe("portable Theme contract", () => {
+  it("shares one semantics generation with the stored Theme contract", () => {
+    // The release gate reads only the portable number to demand a minimum app version.
+    expect(PORTABLE_THEME_SEMANTICS_VERSION).toBe(THEME_SEMANTICS_VERSION);
+  });
+
   it("imports retired selection colors without weakening unknown-role validation", () => {
     const raw = themeToPortable(storedTheme());
     raw.overrides["interface.surface.selected"] = { kind: "color", value: "#123456" };

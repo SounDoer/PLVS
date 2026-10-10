@@ -354,7 +354,7 @@ Run comprehensive checks before pushing:
 
 | #   | Check                       | Command                                 | Failure Action                                                                                                              |
 | --- | --------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Release state               | `node scripts/check-release-state.mjs`  | Fix version / CHANGELOG / git / tag state                                                                                   |
+| 1   | Release state               | `node scripts/check-release-state.mjs`  | Fix version / CHANGELOG / Theme compatibility / git / tag state                                                             |
 | 2   | Full repository gate        | `npm run check`                         | Fix format / lint / test / build / Rust errors                                                                              |
 | 3   | Capture smoke (conditional) | Runs inside `npm run release:preflight` | Only when `src-tauri/src/audio`/`dsp`/`engine` changed since the last tag. Needs VB-Cable + VLC. See "Capture Smoke" below. |
 
@@ -371,7 +371,31 @@ This command runs the fast release-state checks first, then runs the full
 repository gate. Use it as the single local pre-dispatch command.
 
 `node scripts/check-release-state.mjs` is still available when you only need the
-fast version / CHANGELOG / git / tag check.
+fast version / CHANGELOG / Theme compatibility / git / tag check.
+
+### Theme Compatibility
+
+Portable Theme files carry a contract, `formatVersion:semanticsVersion` (for
+example `1:4`). `COMMUNITY_THEME_COMPATIBILITY` in
+`src/theme/communityThemePresentation.js` records, per contract, the first PLVS
+version able to read it; Community Theme pages print it as "Requires PLVS x.y.z
+or later". During development a new contract may sit in that table with
+`minimumAppVersion: null`, because nobody knows yet which version will ship it.
+
+The release-state check fails when the contract the app currently writes has no
+valid `minimumAppVersion`, or has one newer than the version being released.
+When it fails:
+
+1. If this release is the first to ship the contract, set its
+   `minimumAppVersion` to the version being released. Add the entry if the key is
+   missing.
+2. If an earlier release already shipped it and the entry was missed, set the
+   earliest version that contains it. Find the commit that raised
+   `PORTABLE_THEME_SEMANTICS_VERSION` and run `git tag --contains <commit>`.
+3. Commit the change (`fix(theme): ...`) and re-run `npm run release:preflight`.
+
+The check only proves that a plausible version is on record, not that it is the
+right one. Never fill in a guess to get past it.
 
 ### Capture Smoke
 
@@ -405,6 +429,9 @@ Checking versions...
 
 Checking CHANGELOG...
   OK CHANGELOG has [0.2.0] section
+
+Checking theme compatibility...
+  OK Theme contract "1:4" requires PLVS 0.1.0 or later
 
 Checking git status...
   OK Working tree clean
@@ -566,11 +593,11 @@ full build in the Release workflow while preserving the exact-SHA gate.
 The build jobs also run package-oriented smoke checks that `npm run check`
 cannot cover:
 
-| Gate                                       | Platform        | Checks                                                                                                                                             |
-| ------------------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run smoke:file-analysis`              | Windows + macOS | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests                                                              |
-| `npm run desktop:verify-stable-nsis`       | Windows         | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
-| `npm run desktop:verify-stable-dmg`        | macOS           | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
+| Gate                                 | Platform        | Checks                                                                                                                                             |
+| ------------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run smoke:file-analysis`        | Windows + macOS | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests                                                              |
+| `npm run desktop:verify-stable-nsis` | Windows         | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
+| `npm run desktop:verify-stable-dmg`  | macOS           | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
 
 ### Build Matrix
 

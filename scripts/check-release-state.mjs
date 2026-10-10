@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Fast release-state checklist: verifies the current version is internally
- * consistent, documented, cleanly committed, and available for a new Release workflow run.
+ * consistent, documented, registered for Theme compatibility, cleanly committed, and available
+ * for a new Release workflow run.
  *
  * This intentionally does not run the full test suite. Use
  * `npm run release:preflight` for the complete local pre-dispatch gate.
@@ -10,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
+import { checkThemeCompatibilityRegistered } from "./theme-compatibility-registered.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 let ok = true;
@@ -59,6 +61,10 @@ if (idx === -1) {
     pass(`CHANGELOG has [${version}] section`);
   }
 }
+
+console.log("\nChecking theme compatibility...");
+const themeCompatibility = checkThemeCompatibilityRegistered({ appVersion: version });
+(themeCompatibility.ok ? pass : fail)(themeCompatibility.message);
 
 console.log("\nChecking git status...");
 try {
