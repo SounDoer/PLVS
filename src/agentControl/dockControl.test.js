@@ -30,6 +30,22 @@ const dock = {
 };
 
 describe("Dock Control", () => {
+  it("allows macOS overlay entry and explicit opt-in reservation", () => {
+    const current = { ...dock, enabled: false, reserveSpace: false };
+    const context = { platform: "macos", sourceMode: "live" };
+    const entered = planDockFormMutation(current, "dock.enter", { edge: "bottom" }, context);
+    expect(entered.refusal).toBeNull();
+    expect(entered.issues).toEqual([]);
+    expect(entered.dock).toMatchObject({ enabled: true, edge: "bottom", reserveSpace: false });
+    expect(buildDockDescription(current, context).reserveSpace).toMatchObject({
+      writable: true,
+      reason: null,
+    });
+    const reserved = planDockFormMutation(current, "dock.enter", { reserveSpace: true }, context);
+    expect(reserved.issues).toEqual([]);
+    expect(reserved.dock.reserveSpace).toBe(true);
+  });
+
   it("serializes the form and ordered public panels", () => {
     expect(buildDockSnapshot(dock)).toEqual({
       supported: true,

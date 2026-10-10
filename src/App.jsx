@@ -42,7 +42,6 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
-import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { isTauri } from "./ipc/env.js";
 import { resetTruePeakMax } from "./ipc/commands.js";
@@ -556,7 +555,7 @@ function AppContent() {
     setSurfaceOpacity,
     glassEnabled,
     setGlassEnabled,
-    showDock: isTauri() && supportsDockMode(),
+    showDock: isTauri(),
     dockEdge: docked ? dockEdge : null,
     onDockChange,
     dockDisabled: sourceMode === "file",

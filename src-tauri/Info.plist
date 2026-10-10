@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>PLVS adjusts the active application window to leave room for Dock when you enable Reserve Screen Space.</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>PLVS records only its own metering window when you start an Agent Control visual recording.</string>
 	<key>NSMicrophoneUsageDescription</key>

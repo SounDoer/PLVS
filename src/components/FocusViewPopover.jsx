@@ -12,7 +12,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
-import { isMacOS, supportsDockMode } from "@/lib/platform.js";
+import { isMacOS } from "@/lib/platform.js";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
@@ -129,7 +129,7 @@ export function FocusViewPopoverContent({
           onCheckedChange={setGlassEnabled}
         />
       ) : null}
-      {showDock && supportsDockMode() ? (
+      {showDock ? (
         <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1">
           <Label
             htmlFor="focus-view-dock"
@@ -137,29 +137,32 @@ export function FocusViewPopoverContent({
           >
             Dock
           </Label>
-          <Select
-            value={dockEdge ?? "off"}
-            onValueChange={(value) => onDockChange(value === "off" ? null : value)}
-            disabled={dockDisabled}
-          >
-            <SelectTrigger
-              id="focus-view-dock"
-              aria-label="Dock position"
-              variant="inline"
-              className="min-w-[4.75rem]"
+          {/* Keep the switch-row spacing; the full-height select uses its vertical padding. */}
+          <div className="flex h-[var(--ui-switch-h)] items-center">
+            <Select
+              value={dockEdge ?? "off"}
+              onValueChange={(value) => onDockChange(value === "off" ? null : value)}
+              disabled={dockDisabled}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              variant="inline"
-              className="[&_[data-slot=select-item]]:pr-8"
-            >
-              <SelectItem value="off">Off</SelectItem>
-              <SelectItem value="top">Top</SelectItem>
-              <SelectItem value="bottom">Bottom</SelectItem>
-            </SelectContent>
-          </Select>
+              <SelectTrigger
+                id="focus-view-dock"
+                aria-label="Dock position"
+                variant="inline"
+                className="min-w-[4.75rem]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                variant="inline"
+                className="[&_[data-slot=select-item]]:pr-8"
+              >
+                <SelectItem value="off">Off</SelectItem>
+                <SelectItem value="top">Top</SelectItem>
+                <SelectItem value="bottom">Bottom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ) : null}
     </div>

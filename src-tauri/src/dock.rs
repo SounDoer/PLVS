@@ -3,10 +3,10 @@ use std::sync::{
   Arc,
 };
 
-#[cfg(any(target_os = "windows", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
-#[cfg(any(target_os = "windows", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 use std::{
   fs::{File, OpenOptions},
   path::Path,
@@ -69,14 +69,13 @@ fn reserve_space_with_support(reserve_space: bool, supported: bool) -> bool {
 }
 
 impl DockStateRecord {
-  fn with_platform_support(mut self, dock_supported: bool, reserve_space_supported: bool) -> Self {
-    self.enabled = dock_supported && self.enabled;
-    self.reserve_space = reserve_space_with_support(self.reserve_space, reserve_space_supported);
+  fn with_reserve_space_support(mut self, supported: bool) -> Self {
+    self.reserve_space = reserve_space_with_support(self.reserve_space, supported);
     self
   }
 
   pub(crate) fn normalize_for_platform(self) -> Self {
-    self.with_platform_support(!cfg!(target_os = "macos"), cfg!(target_os = "windows"))
+    self.with_reserve_space_support(cfg!(any(target_os = "windows", target_os = "macos")))
   }
 }
 
@@ -202,7 +201,7 @@ pub struct DockedFlag(pub Arc<AtomicBool>);
 /// until this becomes true.
 pub struct DockBootReady(pub Arc<AtomicBool>);
 
-#[cfg(any(target_os = "windows", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 #[derive(Debug)]
 struct HeldDockReservation {
   key: String,
@@ -213,11 +212,11 @@ struct HeldDockReservation {
 /// The lock handle is released by the OS after a crash, so another live workbench can recover it.
 #[derive(Debug, Default)]
 pub struct DockReservationLease(
-  #[cfg(any(target_os = "windows", test))] Mutex<Option<HeldDockReservation>>,
+  #[cfg(any(target_os = "windows", target_os = "macos", test))] Mutex<Option<HeldDockReservation>>,
 );
 
 impl DockReservationLease {
-  #[cfg(any(target_os = "windows", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", test))]
   pub fn acquire(
     &self,
     identity_root: &Path,
@@ -232,7 +231,7 @@ impl DockReservationLease {
     let directory = identity_root.join("runtime").join("dock-reservations");
     std::fs::create_dir_all(&directory)
       .map_err(|error| format!("Unable to create Dock reservation directory: {error}"))?;
-    let path = directory.join(format!("{:016x}.lock", stable_key_hash(key.as_bytes())));
+    let path = reservation_path(identity_root, monitor, edge);
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -253,7 +252,7 @@ impl DockReservationLease {
   }
 
   pub fn release(&self) {
-    #[cfg(any(target_os = "windows", test))]
+    #[cfg(any(target_os = "windows", target_os = "macos", test))]
     {
       let mut held = self.0.lock().expect("dock reservation lease poisoned");
       if let Some(lease) = held.take() {
@@ -264,7 +263,7 @@ impl DockReservationLease {
 }
 
 impl DockEdge {
-  #[cfg(any(target_os = "windows", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", test))]
   fn as_key(self) -> &'static str {
     match self {
       Self::Top => "top",
@@ -273,7 +272,20 @@ impl DockEdge {
   }
 }
 
-#[cfg(any(target_os = "windows", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
+pub(crate) fn reservation_path(
+  identity_root: &Path,
+  monitor: &str,
+  edge: DockEdge,
+) -> std::path::PathBuf {
+  let key = format!("{monitor}:{}", edge.as_key());
+  identity_root
+    .join("runtime")
+    .join("dock-reservations")
+    .join(format!("{:016x}.lock", stable_key_hash(key.as_bytes())))
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 fn stable_key_hash(bytes: &[u8]) -> u64 {
   bytes.iter().fold(0xcbf29ce484222325_u64, |hash, byte| {
     (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
@@ -503,7 +515,7 @@ pub fn enter_dock<R: tauri::Runtime>(
             .map(|state| state.reserve_space)
             .unwrap_or_else(default_reserve_space)
         }),
-        cfg!(target_os = "windows"),
+        cfg!(any(target_os = "windows", target_os = "macos")),
       );
       let height = clamp_dock_height(height.unwrap_or_else(|| {
         previous
@@ -522,7 +534,7 @@ pub fn enter_dock<R: tauri::Runtime>(
         flag.0.store(true, Ordering::Relaxed);
         let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, previous_shadow)?;
         let reserve_space = requested_reserve_space;
-        #[cfg(target_os = "windows")]
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
         let mut reserve_space = reserve_space;
         #[cfg(target_os = "windows")]
         if reserve_space {
@@ -555,6 +567,17 @@ pub fn enter_dock<R: tauri::Runtime>(
             .app_handle()
             .state::<DockReservationLease>()
             .release();
+        }
+        #[cfg(target_os = "macos")]
+        {
+          reserve_space = crate::macos_dock::configure(
+            &window,
+            reserve_space,
+            edge,
+            monitor.as_deref(),
+            height,
+            true,
+          )?;
         }
         Ok((monitor, reserve_space))
       })();
@@ -609,6 +632,8 @@ pub fn exit_dock<R: tauri::Runtime>(
     false,
     || {
       crate::dock_accessories::hide_all(window.app_handle());
+      #[cfg(target_os = "macos")]
+      crate::macos_dock::stop()?;
       #[cfg(target_os = "windows")]
       let unreserve_result = crate::appbar::set_reserved(
         &window,
@@ -771,7 +796,25 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
             .release();
         }
       }
-      #[cfg(not(target_os = "windows"))]
+      #[cfg(target_os = "macos")]
+      {
+        let previous = read_dock_state(window.app_handle());
+        let reserved = crate::macos_dock::configure(
+          &window,
+          enabled,
+          edge,
+          previous.as_ref().and_then(|state| state.monitor.as_deref()),
+          previous
+            .as_ref()
+            .map(|state| state.height)
+            .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+          true,
+        )?;
+        if enabled && !reserved {
+          return Err("Another PLVS instance already reserves this display.".into());
+        }
+      }
+      #[cfg(not(any(target_os = "windows", target_os = "macos")))]
       if enabled {
         return Err("reserve screen space is only available on Windows".into());
       }
@@ -821,6 +864,8 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
 
       if suspended {
         crate::dock_accessories::hide_all(window.app_handle());
+        #[cfg(target_os = "macos")]
+        crate::macos_dock::stop()?;
         #[cfg(target_os = "windows")]
         if state.reserve_space {
           crate::appbar::set_reserved(&window, false, state.edge, state.height)?;
@@ -850,6 +895,19 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         // Resume as a usable overlay Dock. The UI receives this resolved record,
         // so Reserve never claims to be active when Shell rejected registration.
         state.reserve_space = false;
+        write_dock_state(window.app_handle(), &state);
+      }
+      #[cfg(target_os = "macos")]
+      if state.reserve_space {
+        state.reserve_space = crate::macos_dock::configure(
+          &window,
+          true,
+          state.edge,
+          state.monitor.as_deref(),
+          state.height,
+          false,
+        )
+        .unwrap_or(false);
         write_dock_state(window.app_handle(), &state);
       }
       window
@@ -919,6 +977,17 @@ pub fn set_dock_height<R: tauri::Runtime>(
           .map_err(|e| format!("position: {e}"))?;
       }
 
+      #[cfg(target_os = "macos")]
+      if persist && previous.reserve_space {
+        crate::macos_dock::configure(
+          &window,
+          true,
+          previous.edge,
+          resolved_monitor.as_deref().or(previous.monitor.as_deref()),
+          height,
+          false,
+        )?;
+      }
       if persist {
         write_dock_state(
           window.app_handle(),
@@ -1054,11 +1123,11 @@ mod tests {
       height: DOCK_DEFAULT_LOGICAL_HEIGHT,
     };
 
-    assert!(!state.with_platform_support(true, false).reserve_space);
+    assert!(!state.with_reserve_space_support(false).reserve_space);
   }
 
   #[test]
-  fn dock_state_disables_dock_on_unsupported_platforms() {
+  fn dock_state_preserves_overlay_dock_without_reserve_space_support() {
     let state = DockStateRecord {
       enabled: true,
       edge: DockEdge::Bottom,
@@ -1067,7 +1136,7 @@ mod tests {
       height: DOCK_DEFAULT_LOGICAL_HEIGHT,
     };
 
-    assert!(!state.with_platform_support(false, false).enabled);
+    assert!(state.with_reserve_space_support(false).enabled);
   }
 
   #[test]

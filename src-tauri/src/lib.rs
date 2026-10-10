@@ -26,6 +26,8 @@ mod glass_effect;
 #[cfg(feature = "capture-harness")]
 pub mod harness_main;
 mod ipc;
+#[cfg(target_os = "macos")]
+mod macos_dock;
 pub mod persistence;
 mod profile;
 pub mod runtime_diagnostics;
@@ -579,6 +581,26 @@ pub fn run() {
       }
       let _ = window.show();
 
+      #[cfg(target_os = "macos")]
+      {
+        macos_dock::recover(app.handle());
+        if let Some(mut state) =
+          dock::read_dock_state(app.handle()).filter(|state| state.enabled && state.reserve_space)
+        {
+          state.reserve_space = macos_dock::configure(
+            &window,
+            true,
+            state.edge,
+            state.monitor.as_deref(),
+            state.height,
+            false,
+          )
+          .unwrap_or(false);
+          dock::write_dock_state(app.handle(), &state);
+        }
+        macos_dock::watch(app.handle().clone());
+      }
+
       if is_coordinator && restore_launch.is_none() {
         if let Err(error) = coordinator::spawn_missing_restored_workspaces(
           &prepared.root,
@@ -719,6 +741,15 @@ pub fn run() {
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
     .run(|app, event| {
+      #[cfg(target_os = "macos")]
+      if matches!(
+        event,
+        tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
+      ) {
+        if let Err(error) = macos_dock::stop() {
+          log::warn!("Dock exit recovery deferred: {error}");
+        }
+      }
       #[cfg(not(target_os = "macos"))]
       let _ = (app, event);
       #[cfg(target_os = "macos")]

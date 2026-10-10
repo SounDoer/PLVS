@@ -48,7 +48,8 @@ click. Useful for inspecting a peak you only heard go by.
 ## Views
 
 The Views menu pares the window down for monitoring: **Always on Top**, **Compact Panels**,
-**Hide Chrome**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. Surface Opacity changes
+**Hide Chrome**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. The **Dock** selector
+below these controls offers **Off**, **Top**, and **Bottom** on Windows and macOS. Surface Opacity changes
 the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
 controls, and borders remain opaque for legibility.
 
@@ -62,20 +63,37 @@ while that mode is enabled. Normal windows retain their native shadow in either 
 
 ## Dock
 
-On Windows, Dock parks a slim, always-on-top meter strip against the top or bottom edge of the
-screen, so the meters stay visible while you work in another app. Hovering the strip shows a header
-for switching the Loudness Profile and editing which modules the strip shows. The strip can also
-reserve its screen space so maximised windows do not cover it. Hover a Stats readout or an icon-only
-Dock action for the same themed explanation shown in the normal workspace.
+On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge
+of the screen, so the meters stay visible while you work in another app. Hovering the strip shows a header
+for switching the Loudness Profile and editing which modules the strip shows. On Windows, the strip
+can also reserve its screen space so maximised windows do not cover it. On macOS, it starts as an
+overlay within the monitor work area, leaving room for the menu bar and system Dock. Enable
+**Reserve Screen Space** in the Dock header to automatically move or shrink the active application's
+window away from the strip. Grant PLVS **Accessibility** access in System Settings → Privacy &
+Security, then enable the action again. Without permission, Dock remains an overlay.
+
+macOS avoidance waits for the window to settle after dragging or resizing. It affects standard,
+resizable foreground windows primarily on the Dock's display; full-screen, minimized and unsupported
+windows are skipped. An application's minimum window size may prevent avoidance. This feature does
+not change the system work area or make the strip appear over native full-screen Spaces.
+Turning reservation off, hiding Dock or quitting PLVS restores windows that remain where PLVS placed
+them. Later user moves are preserved. After an abnormal exit, the next launch attempts guarded
+recovery when Accessibility permission is available; unresolved windows retain local recovery data.
+
+Hover a Stats
+readout or an icon-only Dock action for the same themed explanation shown in the normal workspace.
 
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer.
 
-When several PLVS workbenches use Dock, only one can reserve a particular monitor edge. A second
-Dock on that same edge remains visible as an overlay and does not disturb the existing reservation.
-Top and bottom edges are independent.
+When several PLVS workbenches use Dock, only one can reserve a particular monitor edge on Windows,
+or a particular monitor on macOS.
+A second Dock on that same edge remains visible as an overlay and does not disturb the existing
+reservation.
+Top and bottom edges are independent on Windows. macOS allows one avoidance owner per display,
+so two workbenches cannot resize and restore the same application window in competing orders.
 
 ## Persistence
 

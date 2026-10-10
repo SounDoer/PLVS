@@ -122,6 +122,20 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
   });
 
+  it("offers the opt-in reserve action on macOS", () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    const onAction = vi.fn();
+    render(
+      <DockHeader
+        state={{ ...STATE, reserveSpace: false }}
+        onAction={onAction}
+        onPointer={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reserve screen space" }));
+    expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
+  });
+
   it("renders errors like the normal header and exposes technical details as a tooltip", () => {
     render(
       <DockHeader

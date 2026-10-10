@@ -21,7 +21,6 @@ import { standardLayoutIdForCount } from "../math/channelLayoutTable.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
 import { buildTransportSnapshot } from "./transportControl.js";
-import { supportsDockMode } from "../lib/platform.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { useAgentControlState } from "./AgentControlStateContext.jsx";
 import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
@@ -61,7 +60,7 @@ export function AgentControlBridge() {
 
   const agentControlDock = useMemo(
     () => ({
-      supported: supportsDockMode(),
+      supported: true,
       enabled: docked,
       edge: dockEdge,
       monitor: dockMonitor,
