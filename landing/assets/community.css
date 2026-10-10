@@ -242,6 +242,7 @@ figcaption {
   height: auto;
   aspect-ratio: 16 / 10;
   object-fit: contain;
+  border-radius: var(--radius-control);
   background: var(--color-page);
 }
 .theme-gallery figcaption {
@@ -257,7 +258,7 @@ figcaption {
   flex: 0 0 80px;
   padding: var(--space-1);
   border: 1px solid var(--color-control-border);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-preview);
 }
 .theme-thumbnails a[aria-current] {
   border-color: var(--color-link);
@@ -267,6 +268,7 @@ figcaption {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: contain;
+  border-radius: 0;
 }
 .theme-summary .actions {
   gap: var(--space-2);

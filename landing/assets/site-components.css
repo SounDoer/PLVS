@@ -155,7 +155,7 @@ select {
   flex-direction: column;
   min-width: 0;
   border: 1px solid var(--color-divider);
-  border-radius: var(--radius-panel);
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   overflow: hidden;
   text-decoration: none;
@@ -178,14 +178,22 @@ select {
   background: var(--color-page);
 }
 .card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   padding: var(--space-5);
 }
 .card-body h3 {
   margin: var(--space-3) 0;
   font-size: var(--text-lead);
 }
-.card-body p {
+.card-body > p {
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--color-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 .card-meta {
   display: flex;

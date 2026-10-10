@@ -28,9 +28,10 @@ Use near-black page backgrounds, dark surfaces, near-white primary text, and leg
 secondary text. Filled actions use homepage amber with dark text; links and keyboard focus use
 brighter amber. Components consume named tokens rather than repeating raw colors.
 
-Use the 4, 8, 12, 16, 24, 32 and 48px spacing scale, 8px control corners, 16px panel corners and a
-44px minimum control height. The content width caps at 1180px with 24px outer gutters, reducing
-to 20px on mobile. Essential information must not depend on hover or color alone.
+Use the 4, 8, 12, 16, 24, 32 and 48px spacing scale, 4px preview-thumbnail corners, 8px control and
+resource-card corners, 16px panel corners and a 44px minimum control height. The content width caps
+at 1180px with 24px outer gutters, reducing to 20px on mobile. Essential information must not depend
+on hover or color alone.
 
 ## Browsing pattern
 
@@ -41,6 +42,7 @@ category, query and tag together. Browser Back restores the category; current se
 remain in memory while changing categories, but are not persisted across a reload.
 
 Cards contain one navigable link, real listing copy, author attribution and noninteractive tags.
+Summaries are clamped to three lines, and tags stay aligned to the bottom of equal-height cards.
 Theme cards prefer the existing workspace preview where available; no catalogue artifacts are
 rewritten for presentation. Empty results have a clear recovery action. Without JavaScript,
 category URLs and resource links remain usable; search controls are revealed only on enhancement.
