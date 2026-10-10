@@ -5,9 +5,9 @@
   "type": "themes",
   "classification": "official",
   "title": "Studio Daylight",
-  "summary": "A clean light studio theme with cool blue metering, muted natural tones, and balanced contrast for bright workspaces.",
-  "descriptionMarkdown": "Studio Daylight is designed for editing, mastering, and monitoring in bright rooms. Soft neutral surfaces reduce glare, while cool blue primary data, muted green secondary data, and restrained status colors keep complex views easy to read. Its clean modern character stays calm across a full workspace without losing the distinctions needed for focused audio work.",
-  "tags": ["Light", "Studio", "Modern", "Blue"],
+  "summary": "A bright studio theme pairing Mediterranean blue with sun-warmed terracotta, gold, and soft ivory surfaces.",
+  "descriptionMarkdown": "Studio Daylight brings a Mediterranean-inspired palette to editing, mastering, and monitoring in bright rooms. Soft ivory surfaces reduce glare while clear blue primary data, terracotta secondary traces, and sun-warmed gold accents carry one visual language across every panel. Its cool and warm tones stay distinct in dense views, giving the workspace a calm daylight character without sacrificing measurement clarity.",
+  "tags": ["Light", "Studio", "Mediterranean", "Blue"],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
