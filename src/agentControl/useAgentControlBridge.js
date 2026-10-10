@@ -521,11 +521,6 @@ export function useAgentControlBridge({
   );
   const themeControl = theme?.control ?? null;
   const themeSignature = themeStateSignature(themeState);
-  const latestThemeRef = useRef({ state: themeState, control: themeControl });
-  const latestMeasurementContextRef = useRef(measurementContext);
-  const latestMeasurementProfileRef = useRef({ active: loudnessActive, profile: loudnessProfile });
-  const latestViewRef = useRef(viewContext);
-  const latestVisualRef = useRef(visual);
   const visualCapturesRef = useRef(new Map());
   const visualCaptureActiveRef = useRef(false);
   const visualRecordingsRef = useRef(new Map());
@@ -553,22 +548,61 @@ export function useAgentControlBridge({
   const settingsSettlementRef = useRef(null);
   const viewSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
-  const latestTransportRef = useRef(transport);
   const transportSettlementRef = useRef(null);
-  const latestDeviceRef = useRef(device);
   const previousRequestedDeviceRef = useRef(requestedDeviceSignature(device));
   const deviceSettlementRef = useRef(null);
   const previousDockSignatureRef = useRef(dockStateSignature(dock));
-  const latestDockRef = useRef(dock);
   const dockSettlementRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
+  /// Everything the bridge was handed, as of the latest commit. A command reads it twice over: once
+  /// when it starts, for the state it plans against, and again after an `await`, for the state
+  /// React has rendered since.
+  const inputs = {
+    enabled,
+    runtime,
+    workspace,
+    replaceWorkspace,
+    setPanelControlsForPanel,
+    waitForWorkspacePersistenceEnqueue,
+    presets,
+    settings,
+    settingsContext,
+    applySettings,
+    transport,
+    transportContext,
+    executeTransport,
+    device,
+    dock,
+    dockContext,
+    executeDock,
+    loudnessProfiles,
+    loudnessProfile,
+    loudnessActive,
+    loudnessSignature,
+    themeState,
+    themeControl,
+    themeSignature,
+    hasLoudnessReference,
+    analysisContext,
+    measurementContext,
+    viewContext,
+    visual,
+    uiNavigation,
+    editorDraft,
+    developmentFixtures,
+    flush,
+    exportConfiguration,
+    importConfiguration,
+    normalizeConfiguration,
+    relaunchAfterConfigurationChange,
+  };
+  const inputsRef = useRef(inputs);
+  // Declared before the watchers: the Device watcher reads the Transport of the same commit.
   useEffect(() => {
-    latestMeasurementContextRef.current = measurementContext;
-    latestMeasurementProfileRef.current = { active: loudnessActive, profile: loudnessProfile };
-    latestVisualRef.current = visual;
-  }, [loudnessActive, loudnessProfile, measurementContext, visual]);
+    inputsRef.current = inputs;
+  });
 
   // Created once per hook instance; state is used only for its lazy initializer.
   const [{ clock, waiters }] = useState(() => {
@@ -580,7 +614,6 @@ export function useAgentControlBridge({
   });
 
   useEffect(() => {
-    latestViewRef.current = viewContext;
     const signature = viewStateSignature(viewContext.view);
     if (signature !== previousViewSignatureRef.current) {
       previousViewSignatureRef.current = signature;
@@ -660,7 +693,6 @@ export function useAgentControlBridge({
   }, [clock, observeLoudnessProfileSettlement, presets, resolveLibrarySettlement]);
 
   useEffect(() => {
-    latestThemeRef.current = { state: themeState, control: themeControl };
     if (themeSignature !== previousThemeStateSignatureRef.current) {
       previousThemeStateSignatureRef.current = themeSignature;
       clock.bump();
@@ -724,8 +756,7 @@ export function useAgentControlBridge({
   }, [clock, settings, settingsContext.autostartReady, settingsContext.clearShortcutReady]);
 
   useEffect(() => {
-    latestTransportRef.current = transport;
-    const visualControl = latestVisualRef.current;
+    const visualControl = inputsRef.current.visual;
     const runtime = visualControl?.getRuntime?.() ?? {};
     const audioState = measuredAudioState(runtime, transport);
     for (const [recordingId, metadata] of visualRecordingsRef.current) {
@@ -748,13 +779,12 @@ export function useAgentControlBridge({
   }, [clock, transport]);
 
   useEffect(() => {
-    latestDeviceRef.current = device;
-    const visualControl = latestVisualRef.current;
+    const visualControl = inputsRef.current.visual;
     const runtime = visualControl?.getRuntime?.() ?? {};
     const audioState =
       device?.live?.transition != null
         ? "liveRestart"
-        : measuredAudioState(runtime, latestTransportRef.current);
+        : measuredAudioState(runtime, inputsRef.current.transport);
     for (const [recordingId, metadata] of visualRecordingsRef.current) {
       if (metadata.audio !== "measuredSource") continue;
       void visualControl
@@ -775,7 +805,6 @@ export function useAgentControlBridge({
   }, [clock, device]);
 
   useEffect(() => {
-    latestDockRef.current = dock;
     const signature = dockStateSignature(dock);
     if (signature !== previousDockSignatureRef.current) {
       previousDockSignatureRef.current = signature;
@@ -793,8 +822,11 @@ export function useAgentControlBridge({
     // layer only when this is set; the bare Dock context never carried it.
     const ownedVisualCaptures = visualCapturesRef.current;
     const buildCurrentMeasurement = (liveOverride) => {
-      const currentMeasurement = latestMeasurementContextRef.current;
-      const currentProfile = latestMeasurementProfileRef.current;
+      const currentMeasurement = inputsRef.current.measurementContext;
+      const currentProfile = {
+        active: inputsRef.current.loudnessActive,
+        profile: inputsRef.current.loudnessProfile,
+      };
       const live = liveOverride ??
         currentMeasurement.getLiveMeasurement?.() ?? {
           generation: 0,
@@ -909,7 +941,7 @@ export function useAgentControlBridge({
           }
         }
         if (request.method === "app.capabilities") {
-          const visualControl = latestVisualRef.current;
+          const visualControl = inputsRef.current.visual;
           const capabilityRuntime = visualControl
             ? {
                 ...runtime,
@@ -1320,7 +1352,7 @@ export function useAgentControlBridge({
           }
         }
         if (request.method === "visual.describe") {
-          const visualControl = latestVisualRef.current;
+          const visualControl = inputsRef.current.visual;
           if (!visualControl?.platformCapabilities) {
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
@@ -1334,7 +1366,7 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "visual.screenshot") {
-          const visualControl = latestVisualRef.current;
+          const visualControl = inputsRef.current.visual;
           if (visualControl?.platformCapabilities?.screenshot?.available !== true) {
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
@@ -1362,7 +1394,7 @@ export function useAgentControlBridge({
               viewport: settled.viewport,
               devicePixelRatio: settled.devicePixelRatio,
             });
-            const live = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+            const live = inputsRef.current.measurementContext.getLiveMeasurement?.() ?? {
               generation: 0,
               record: null,
             };
@@ -1389,7 +1421,7 @@ export function useAgentControlBridge({
           }
         }
         if (request.method === "visual.recording.start") {
-          const visualControl = latestVisualRef.current;
+          const visualControl = inputsRef.current.visual;
           if (visualControl?.platformCapabilities?.recording?.available !== true) {
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
@@ -1414,7 +1446,7 @@ export function useAgentControlBridge({
           if (!(runtime.availableAudioSources ?? []).includes(audio)) {
             throw visualSemanticFailure({ reason: "audioUnavailable" });
           }
-          const audioState = measuredAudioState(runtime, latestTransportRef.current);
+          const audioState = measuredAudioState(runtime, inputsRef.current.transport);
           const controller = new AbortController();
           ownedVisualCaptures.set(requestId, controller);
           try {
@@ -1497,7 +1529,7 @@ export function useAgentControlBridge({
           request.method === "visual.recording.wait" ||
           request.method === "visual.recording.stop"
         ) {
-          const visualControl = latestVisualRef.current;
+          const visualControl = inputsRef.current.visual;
           if (visualControl?.platformCapabilities?.recording?.available !== true) {
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
@@ -1589,7 +1621,7 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "measurement.wait") {
-          const currentMeasurement = latestMeasurementContextRef.current;
+          const currentMeasurement = inputsRef.current.measurementContext;
           const initialLive = currentMeasurement.getLiveMeasurement?.() ?? {
             generation: 0,
             record: null,
@@ -1645,7 +1677,7 @@ export function useAgentControlBridge({
               finish({ outcome: "sample", matchedImmediately: false, live });
             };
             waiter.timer = setTimeout(() => {
-              const live = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+              const live = inputsRef.current.measurementContext.getLiveMeasurement?.() ?? {
                 generation: 0,
                 record: null,
               };
@@ -1668,7 +1700,7 @@ export function useAgentControlBridge({
                 afterSequence: request.params.afterSequence ?? null,
                 currentGeneration: result.live.generation,
                 currentSequence: result.live.record?.sequence ?? null,
-                liveState: latestMeasurementContextRef.current.liveState,
+                liveState: inputsRef.current.measurementContext.liveState,
               }
             );
           }
@@ -1682,7 +1714,7 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "measurement.waitUntil") {
-          const currentMeasurement = latestMeasurementContextRef.current;
+          const currentMeasurement = inputsRef.current.measurementContext;
           const predicate = request.params.predicate;
           const holdMs = predicate.holdMs ?? 0;
           const initialLive = currentMeasurement.getLiveMeasurement?.() ?? {
@@ -1750,7 +1782,7 @@ export function useAgentControlBridge({
                 if (waiter.holdTimer !== null) return;
                 waiter.holdTimer = setTimeout(() => {
                   try {
-                    const latest = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+                    const latest = inputsRef.current.measurementContext.getLiveMeasurement?.() ?? {
                       generation: 0,
                       record: null,
                     };
@@ -1769,7 +1801,7 @@ export function useAgentControlBridge({
               }
             };
             waiter.timer = setTimeout(() => {
-              const live = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+              const live = inputsRef.current.measurementContext.getLiveMeasurement?.() ?? {
                 generation: 0,
                 record: null,
               };
@@ -1791,7 +1823,7 @@ export function useAgentControlBridge({
                 predicate,
                 currentGeneration: result.live.generation,
                 currentSequence: result.live.record?.sequence ?? null,
-                liveState: latestMeasurementContextRef.current.liveState,
+                liveState: inputsRef.current.measurementContext.liveState,
               }
             );
           }
@@ -1867,7 +1899,7 @@ export function useAgentControlBridge({
               revision: clock.current(),
               workspace,
               presets,
-              appearance: latestThemeRef.current.state.appearance,
+              appearance: inputsRef.current.themeState.appearance,
               loudnessProfile: {
                 activeId: activeLoudnessProfileId(loudnessProfiles, loudnessActive),
               },
@@ -1875,7 +1907,7 @@ export function useAgentControlBridge({
               transport,
               device: device ? deviceInspection(device) : null,
               dock: buildDockSnapshot(dock, dockRequestContext),
-              view: buildPublicView(latestViewRef.current.view),
+              view: buildPublicView(inputsRef.current.viewContext.view),
               hasLoudnessReference,
               analysisContext,
             }),
@@ -1883,7 +1915,7 @@ export function useAgentControlBridge({
         }
 
         if (DEVICE_CONTROL_METHODS.includes(request.method)) {
-          const currentDevice = latestDeviceRef.current;
+          const currentDevice = inputsRef.current.device;
           if (!currentDevice?.snapshot) {
             throw semanticFailure(
               "deviceControlUnavailable",
@@ -2025,10 +2057,10 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const finalDevice = latestDeviceRef.current;
+          const finalDevice = inputsRef.current.device;
           planned = planOrThrow(finalDevice);
           planned = await previewOrThrow(finalDevice, planned);
-          const commitDevice = latestDeviceRef.current;
+          const commitDevice = inputsRef.current.device;
           planned = planOrThrow(commitDevice);
           if (request.params.expectedRevision !== clock.current()) {
             throw semanticFailure(
@@ -2110,7 +2142,7 @@ export function useAgentControlBridge({
           }
 
           const restartError = restartSettlement ? await restartSettlement : null;
-          const resultingDevice = latestDeviceRef.current;
+          const resultingDevice = inputsRef.current.device;
           const inspection = deviceInspection(resultingDevice);
           if (persistenceError) {
             throw semanticFailure(
@@ -2160,7 +2192,7 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "view.describe" || request.method === "view.inspect") {
-          const context = latestViewRef.current;
+          const context = inputsRef.current.viewContext;
           const inspection =
             request.method === "view.describe"
               ? buildViewDescription(context.view, context)
@@ -2202,7 +2234,10 @@ export function useAgentControlBridge({
               { sessionId: session.id, state: session.state }
             );
           }
-          const currentProfile = latestMeasurementProfileRef.current;
+          const currentProfile = {
+            active: inputsRef.current.loudnessActive,
+            profile: inputsRef.current.loudnessProfile,
+          };
           // The public snapshot names the probe `probe`; the GUI builder reads `metadata`.
           const report = buildFileAnalysisReport(
             { ...session, metadata: session.probe },
@@ -2358,7 +2393,7 @@ export function useAgentControlBridge({
               planned = reconcileDockExecution(planned, effectiveDock);
               result.warnings = planned.warnings;
               result.state.dock = buildDockSnapshot(planned.dock, dockRequestContext);
-              if (matches(latestDockRef.current)) {
+              if (matches(inputsRef.current.dock)) {
                 const settlement = dockSettlementRef.current;
                 dockSettlementRef.current = null;
                 settlement?.resolve(clock.current());
@@ -2376,7 +2411,7 @@ export function useAgentControlBridge({
             // The backstop already states what went wrong and that state was committed; relabelling
             // it as a failed native operation would hide the real cause.
             if (isCommitNotObserved(error)) throw error;
-            const observableDock = latestDockRef.current;
+            const observableDock = inputsRef.current.dock;
             const partial = dockStateSignature(observableDock) !== dockStateSignature(dock);
             throw semanticFailure(
               "applicationFailed",
@@ -2392,7 +2427,7 @@ export function useAgentControlBridge({
               }
             );
           }
-          result.state.dock = buildDockSnapshot(latestDockRef.current, dockRequestContext);
+          result.state.dock = buildDockSnapshot(inputsRef.current.dock, dockRequestContext);
           result.state.preset = panelResultPreset(presets, planned.changed);
           try {
             await flush();
@@ -2433,7 +2468,7 @@ export function useAgentControlBridge({
             );
           }
           const planned = planTransportMutation(
-            latestTransportRef.current,
+            inputsRef.current.transport,
             request.method,
             request.params,
             transportContext
@@ -2499,9 +2534,9 @@ export function useAgentControlBridge({
               : {}),
             state: {
               transport: action
-                ? latestTransportRef.current
+                ? inputsRef.current.transport
                 : projectTransportMutation(
-                    latestTransportRef.current,
+                    inputsRef.current.transport,
                     request.method,
                     request.params
                   ),
@@ -2537,7 +2572,7 @@ export function useAgentControlBridge({
           } else {
             const matches = (candidate) =>
               transportMutationMatches(request.method, request.params, execution, candidate);
-            if (matches(latestTransportRef.current)) {
+            if (matches(inputsRef.current.transport)) {
               result.revision = clock.current();
             } else {
               result.revision = await awaitSettlement(
@@ -2551,7 +2586,7 @@ export function useAgentControlBridge({
               );
             }
           }
-          result.state.transport = latestTransportRef.current;
+          result.state.transport = inputsRef.current.transport;
           Object.assign(result, execution?.result ?? {});
           if (Array.isArray(execution?.affectedSessions)) {
             result.affectedSessions = execution.affectedSessions;
@@ -2686,7 +2721,7 @@ export function useAgentControlBridge({
               { expectedRevision: request.params.expectedRevision, currentRevision }
             );
           }
-          const context = latestViewRef.current;
+          const context = inputsRef.current.viewContext;
           const plan = (candidate) =>
             request.method === "view.reset"
               ? planViewReset(candidate.view, candidate)
@@ -2728,7 +2763,7 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const commitContext = latestViewRef.current;
+          const commitContext = inputsRef.current.viewContext;
           planned = plan(commitContext);
           if (planned.issues.length > 0 || planned.refusal) {
             throw semanticFailure(
@@ -2786,7 +2821,7 @@ export function useAgentControlBridge({
             },
             "The View change"
           );
-          const resultingContext = latestViewRef.current;
+          const resultingContext = inputsRef.current.viewContext;
           const resultingInspection = buildViewInspection(resultingContext.view, resultingContext);
           result.runtime = resultingInspection.runtime;
           result.availability = resultingInspection.availability;
@@ -3409,7 +3444,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "theme.inspect" || request.method === "theme.list") {
-          const currentTheme = latestThemeRef.current.state;
+          const currentTheme = inputsRef.current.themeState;
           return {
             requestId,
             result: {
@@ -3423,7 +3458,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "theme.describe") {
-          const currentTheme = latestThemeRef.current.state;
+          const currentTheme = inputsRef.current.themeState;
           const builtin = BUILTIN_THEMES_V2[request.params.themeId];
           const index = currentTheme.themes.findIndex(({ id }) => id === request.params.themeId);
           const document = builtin ?? (index >= 0 ? currentTheme.themes[index] : null);
@@ -3468,7 +3503,7 @@ export function useAgentControlBridge({
               { expectedRevision: request.params.expectedRevision, currentRevision }
             );
           }
-          const control = latestThemeRef.current.control;
+          const control = inputsRef.current.themeControl;
           if (!control) {
             throw semanticFailure(
               "controlUnavailable",
@@ -3551,7 +3586,7 @@ export function useAgentControlBridge({
             },
             "The Theme change"
           );
-          result.state = compactThemeState(latestThemeRef.current.state);
+          result.state = compactThemeState(inputsRef.current.themeState);
           try {
             await flush();
           } catch (error) {
@@ -4341,7 +4376,7 @@ export function useAgentControlBridge({
       waiterEntries.clear();
       for (const controller of ownedVisualCaptures.values()) controller.abort();
       ownedVisualCaptures.clear();
-      const visualControl = latestVisualRef.current;
+      const visualControl = inputsRef.current.visual;
       for (const [recordingId, metadata] of visualRecordings) {
         metadata.unsubscribe?.();
         metadata.unsubscribe = null;
