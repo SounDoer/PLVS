@@ -402,13 +402,13 @@ describe("parseClipboardTheme", () => {
     const portable = themeToPortable({
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
       id: "custom-web",
-      name: "From Community",
+      name: "From Sharesets",
     });
 
     expect(parseClipboardTheme(portable)).toMatchObject({
       kind: "theme-pack",
       version: THEME_PACK_VERSION,
-      items: [{ id: "custom-shared-theme", name: "From Community", formatVersion: 2 }],
+      items: [{ id: "custom-shared-theme", name: "From Sharesets", formatVersion: 2 }],
     });
   });
 

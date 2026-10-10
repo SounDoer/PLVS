@@ -37,11 +37,11 @@ import { usePackTransfer } from "./usePackTransfer.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
 
-function clipboardTheme(name = "Community Theme") {
+function clipboardTheme(name = "Sharesets Theme") {
   return serializePortableTheme(
     themeToPortable({
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
-      id: "custom-community",
+      id: "custom-sharesets",
       name,
     })
   );
@@ -467,13 +467,13 @@ describe("usePackTransfer Theme paste", () => {
     expect(result.current.review).toMatchObject({
       type: "themes",
       origin: "clipboard",
-      itemPlan: [{ name: "Community Theme", disposition: "added" }],
+      itemPlan: [{ name: "Sharesets Theme", disposition: "added" }],
     });
     expect(themesStore.read()).toEqual({});
 
     act(() => result.current.confirmImport());
     expect(Object.values(themesStore.read().themes).map(({ name }) => name)).toEqual([
-      "Community Theme",
+      "Sharesets Theme",
     ]);
     expect(result.current.status).toBe("Theme added to your library.");
   });

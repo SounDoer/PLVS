@@ -3,7 +3,7 @@ import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
 import { listPalettePresets } from "../src/theme/palettePresets.js";
 import { analyzeThemeVisuals, themeColorDistance } from "../src/theme/themeVisualAnalysis.js";
-import { COMMUNITY_THEME_PREVIEW_ASSETS } from "../src/theme/communityThemePreview.js";
+import { SHARESETS_THEME_PREVIEW_ASSETS } from "../src/theme/sharesetsThemePreview.js";
 import {
   buildSemanticGallerySvg,
   buildSemanticMetrics,
@@ -43,7 +43,7 @@ describe("Theme Gallery", () => {
         "stereo-map",
       ].sort()
     );
-    const publicationSceneIds = COMMUNITY_THEME_PREVIEW_ASSETS.filter(
+    const publicationSceneIds = SHARESETS_THEME_PREVIEW_ASSETS.filter(
       ({ kind }) => kind === "product"
     ).map(({ sceneId }) => sceneId);
     expect(publicationSceneIds).toEqual([
@@ -67,7 +67,7 @@ describe("Theme Gallery", () => {
       ({ id }) => id !== "vectorscope-file"
     );
     expect(validateGalleryManifest(incomplete)).toContain(
-      "Community preview asset product-vectorscope-file references missing scene vectorscope-file."
+      "Sharesets preview asset product-vectorscope-file references missing scene vectorscope-file."
     );
   });
 

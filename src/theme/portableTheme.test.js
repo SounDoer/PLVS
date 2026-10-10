@@ -5,7 +5,7 @@ import {
   PORTABLE_THEME_KIND,
   PORTABLE_THEME_SEMANTICS_VERSION,
   PortableThemeError,
-  assessPortableThemeCommunityPublication,
+  assessPortableThemeSharesetsPublication,
   hashPortableTheme,
   portableToStoredTheme,
   serializePortableTheme,
@@ -164,11 +164,11 @@ describe("portable Theme contract", () => {
     );
   });
 
-  it("keeps visual review non-blocking in the shared community assessment", () => {
+  it("keeps visual review non-blocking in the shared sharesets assessment", () => {
     const accessible = themeToPortable(storedTheme());
-    expect(assessPortableThemeCommunityPublication(accessible)).toMatchObject({
+    expect(assessPortableThemeSharesetsPublication(accessible)).toMatchObject({
       document: accessible,
-      communityPublication: { eligible: true, blockers: [] },
+      sharesetsPublication: { eligible: true, blockers: [] },
     });
 
     const lowContrast = structuredClone(accessible);
@@ -176,8 +176,8 @@ describe("portable Theme contract", () => {
       kind: "color",
       value: "#151515",
     };
-    expect(assessPortableThemeCommunityPublication(lowContrast)).toMatchObject({
-      communityPublication: {
+    expect(assessPortableThemeSharesetsPublication(lowContrast)).toMatchObject({
+      sharesetsPublication: {
         eligible: true,
         blockers: [],
         scope: "visualReviewOnly",
@@ -190,6 +190,6 @@ describe("portable Theme contract", () => {
       ]),
     });
 
-    expect(() => assessPortableThemeCommunityPublication({})).toThrow(PortableThemeError);
+    expect(() => assessPortableThemeSharesetsPublication({})).toThrow(PortableThemeError);
   });
 });

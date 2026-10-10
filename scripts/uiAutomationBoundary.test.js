@@ -10,7 +10,7 @@ describe("real PLVS visual automation boundary", () => {
   it("keeps browser automation out of product walkthroughs", async () => {
     const fixtureScripts = new Set([
       "desktop-perf-rig.mjs",
-      "generate-community-previews.mjs",
+      "generate-sharesets-previews.mjs",
       "measure-surface-arm.mjs",
       "spectrogram-shimmer-probe.mjs",
       "webview-cpu-profile.mjs",

@@ -309,7 +309,7 @@ export function analyzeResolvedThemeVisuals(resolved) {
 
   return {
     warnings,
-    communityPublication: {
+    sharesetsPublication: {
       eligible: true,
       blockers: [],
       scope: "visualReviewOnly",

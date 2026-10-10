@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
-import { COMMUNITY_THEME_PREVIEW_ASSETS } from "../src/theme/communityThemePreview.js";
+import { SHARESETS_THEME_PREVIEW_ASSETS } from "../src/theme/sharesetsThemePreview.js";
 import {
   themeColorDistance,
   themeContrastRatio,
@@ -86,10 +86,10 @@ export function validateGalleryManifest(manifest) {
       if (!Array.isArray(scene.covers) || scene.covers.length === 0)
         issues.push(`$.product.scenes[${index}].covers is required.`);
     }
-    for (const asset of COMMUNITY_THEME_PREVIEW_ASSETS) {
+    for (const asset of SHARESETS_THEME_PREVIEW_ASSETS) {
       if (asset.kind === "product" && !ids.has(asset.sceneId)) {
         issues.push(
-          `Community preview asset ${asset.id} references missing scene ${asset.sceneId}.`
+          `Sharesets preview asset ${asset.id} references missing scene ${asset.sceneId}.`
         );
       }
     }

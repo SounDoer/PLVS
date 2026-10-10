@@ -6,7 +6,7 @@ import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 import { buildPublicPresetSnapshot } from "../agentControl/presetSnapshot.js";
 import {
   PortablePresetError,
-  assessPortablePresetCommunityPublication,
+  assessPortablePresetSharesetsPublication,
   hashPortablePreset,
   portableToStoredPreset,
   presetToPortable,
@@ -448,16 +448,16 @@ describe("Portable Preset V1", () => {
     expect(() => portableToStoredPreset(portable, "bad id")).toThrow(PortablePresetError);
   });
 
-  it("derives Community compatibility facets and a stable content hash", async () => {
+  it("derives Sharesets compatibility facets and a stable content hash", async () => {
     const portable = presetToPortable(storedPreset());
-    const assessment = assessPortablePresetCommunityPublication(portable);
+    const assessment = assessPortablePresetSharesetsPublication(portable);
     expect(assessment).toMatchObject({
       compatibility: {
         moduleIds: expect.arrayContaining(["levelMeter", "spectrum"]),
         dependencyIds: [],
         optionalCapabilities: ["glass"],
       },
-      communityPublication: { eligible: true, blockers: [] },
+      sharesetsPublication: { eligible: true, blockers: [] },
     });
     expect(await hashPortablePreset(portable)).toMatch(/^sha256:[0-9a-f]{64}$/);
   });

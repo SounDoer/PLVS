@@ -5,10 +5,10 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Released tag to deploy the website and Community content from
+        description: Released tag to deploy the website and Sharesets content from
         required: true
         default: main
-      bootstrap_community:
+      bootstrap_sharesets:
         description: First publication only; verify the legacy empty Catalogue before creating its marker
         type: boolean
         default: false
@@ -23,4 +23,4 @@ jobs:
     uses: ./.github/workflows/publish-site.yml
     with:
       site_ref: ${{ inputs.ref }}
-      bootstrap_community: ${{ inputs.bootstrap_community }}
+      bootstrap_sharesets: ${{ inputs.bootstrap_sharesets }}

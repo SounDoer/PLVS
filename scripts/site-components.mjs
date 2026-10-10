@@ -9,7 +9,7 @@ export const escapeHtml = (value) =>
 
 export function siteNavigation(active = "sharesets") {
   const links = [
-    ["sharesets", "/community/", "Sharesets"],
+    ["sharesets", "/sharesets/", "Sharesets"],
     ["docs", "/docs/", "Docs"],
     ["github", "https://github.com/SounDoer/PLVS", "GitHub"],
   ];

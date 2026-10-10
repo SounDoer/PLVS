@@ -7,11 +7,11 @@ import { pathToFileURL } from "node:url";
 import process from "node:process";
 import sharp from "sharp";
 import { analyzeThemeVisuals } from "../src/theme/themeVisualAnalysis.js";
-import { buildCommunityThemePreviewPlan } from "../src/theme/communityThemePreview.js";
+import { buildSharesetsThemePreviewPlan } from "../src/theme/sharesetsThemePreview.js";
 import {
-  createCommunityPreviewBrowserRuntime,
-  prepareCommunityPreviewOutput,
-} from "./generate-community-previews.mjs";
+  createSharesetsPreviewBrowserRuntime,
+  prepareSharesetsPreviewOutput,
+} from "./generate-sharesets-previews.mjs";
 import { buildThemeLabVariants } from "./theme-lab-lib.mjs";
 
 function parseArgs(args) {
@@ -111,13 +111,13 @@ async function renameCompletedOutput(staging, output) {
 export async function runThemeLab({
   manifestPath,
   outputDirectory,
-  createRuntime = createCommunityPreviewBrowserRuntime,
+  createRuntime = createSharesetsPreviewBrowserRuntime,
 }) {
   const manifestText = await readFile(manifestPath, "utf8");
   const manifest = JSON.parse(manifestText);
   const variants = await buildThemeLabVariants(manifest, manifestPath);
   await mkdir(resolve(outputDirectory, ".."), { recursive: true });
-  const { output, staging } = await prepareCommunityPreviewOutput(manifestPath, outputDirectory);
+  const { output, staging } = await prepareSharesetsPreviewOutput(manifestPath, outputDirectory);
   let runtime;
   try {
     runtime = await createRuntime();
@@ -125,7 +125,7 @@ export async function runThemeLab({
       version: 1,
       manifest: basename(manifestPath),
       manifestSha256: createHash("sha256").update(manifestText).digest("hex"),
-      renderer: "community-theme-preview",
+      renderer: "sharesets-theme-preview",
       variants: [],
       comparisons: [],
     };
@@ -137,7 +137,7 @@ export async function runThemeLab({
         join(directory, "theme.json"),
         `${JSON.stringify(variant.portable, null, 2)}\n`
       );
-      const plan = await buildCommunityThemePreviewPlan({ theme: variant.portable });
+      const plan = await buildSharesetsThemePreviewPlan({ theme: variant.portable });
       const assets = [];
       for (const asset of plan.assets) {
         const imagePath = join(directory, `${asset.id}.png`);

@@ -764,7 +764,7 @@ export function serializePortablePreset(raw) {
   return JSON.stringify(sortJson(validatePortablePreset(raw)));
 }
 
-export function assessPortablePresetCommunityPublication(raw, { dependencyIds = [] } = {}) {
+export function assessPortablePresetSharesetsPublication(raw, { dependencyIds = [] } = {}) {
   const available = new Set(dependencyIds);
   const { canonical } = compilePortablePreset(raw, {
     resolveDependencyId: (id) => (available.has(id) ? id : null),
@@ -783,7 +783,7 @@ export function assessPortablePresetCommunityPublication(raw, { dependencyIds = 
         ...(canonical.presentation.glassEnabled ? ["glass"] : []),
       ],
     },
-    communityPublication: { eligible: true, blockers: [] },
+    sharesetsPublication: { eligible: true, blockers: [] },
   };
 }
 

@@ -1,0 +1,100 @@
+import { describe, expect, it } from "vitest";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { buildPack } from "./packShape.js";
+import { validatePublishablePack } from "./sharesetsPack.js";
+
+const PROFILE = {
+  id: "broadcast",
+  name: "Broadcast",
+  referenceLufs: -23,
+  rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
+};
+
+describe("Sharesets Pack publication validation", () => {
+  it("returns one canonical Loudness Profile and derived compatibility facts", () => {
+    const result = validatePublishablePack(buildPack("loudness", [PROFILE]), "loudness");
+    expect(result).toMatchObject({
+      type: "loudness",
+      primaryItem: PROFILE,
+      portableItem: { kind: "plvs-loudness-profile", name: "Broadcast" },
+      assessment: {
+        compatibility: { metricIds: ["truePeak"] },
+        sharesetsPublication: { eligible: true, blockers: [] },
+      },
+    });
+  });
+
+  it("accepts a publishable portable Theme through the same boundary", () => {
+    const theme = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-sharesets",
+      name: "Sharesets",
+    };
+    expect(validatePublishablePack(buildPack("themes", [theme]), "themes")).toMatchObject({
+      type: "themes",
+      portableItem: { kind: "plvs-theme", name: "Sharesets" },
+    });
+  });
+
+  it("rejects Pack V1 and a multi-item desktop pack", () => {
+    expect(() =>
+      validatePublishablePack(
+        { app: "PLVS", kind: "loudness-pack", version: 1, items: [PROFILE] },
+        "loudness"
+      )
+    ).toThrowError(
+      expect.objectContaining({
+        issues: [expect.objectContaining({ code: "unsupportedPackVersion", path: "$.version" })],
+      })
+    );
+    expect(() =>
+      validatePublishablePack(
+        buildPack("loudness", [PROFILE, { ...PROFILE, id: "other" }]),
+        "loudness"
+      )
+    ).toThrowError(
+      expect.objectContaining({
+        issues: [expect.objectContaining({ code: "invalidPrimaryItemCount", path: "$.items" })],
+      })
+    );
+  });
+
+  it("publishes a strict Portable Preset and its referenced dependency", () => {
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "profile:broadcast",
+    };
+    const pack = buildPack("presets", [preset], { loudnessProfiles: [PROFILE] });
+    expect(validatePublishablePack(pack, "presets")).toMatchObject({
+      type: "presets",
+      portableItem: { kind: "plvs-preset", name: "Mix" },
+      assessment: {
+        compatibility: { dependencyIds: ["broadcast"] },
+        sharesetsPublication: { eligible: true, blockers: [] },
+      },
+    });
+  });
+
+  it("rejects unused Sharesets dependencies", () => {
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const pack = buildPack("presets", [preset]);
+    pack.dependencies = [
+      { kind: "loudness-profile", items: [buildPack("loudness", [PROFILE]).items[0]] },
+    ];
+    expect(() => validatePublishablePack(pack, "presets")).toThrowError(
+      expect.objectContaining({
+        issues: [expect.objectContaining({ code: "unusedDependency" })],
+      })
+    );
+  });
+});

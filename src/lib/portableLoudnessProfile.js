@@ -203,18 +203,18 @@ export function portableToStoredLoudnessProfile(raw, id) {
   };
 }
 
-/** Strict Community-intake result shared by the future catalogue validator and CI. */
+/** Strict Sharesets-intake result shared by the future catalogue validator and CI. */
 /**
- * Strict Community-intake result shared by the future catalogue validator and CI.
+ * Strict Sharesets-intake result shared by the future catalogue validator and CI.
  */
-export function assessPortableLoudnessProfileCommunityPublication(raw) {
+export function assessPortableLoudnessProfileSharesetsPublication(raw) {
   const document = validatePortableLoudnessProfile(raw);
   return {
     document,
     compatibility: {
       metricIds: [...new Set(document.rules.map(({ metricId }) => metricId))].sort(),
     },
-    communityPublication: { eligible: true, blockers: [] },
+    sharesetsPublication: { eligible: true, blockers: [] },
   };
 }
 

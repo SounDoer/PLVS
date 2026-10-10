@@ -97,7 +97,7 @@ function portableThemeIdentity(theme) {
   }
 }
 
-/// Plans a standalone portable Theme (clipboard, community download). It carries no ID, so its
+/// Plans a standalone portable Theme (clipboard, sharesets download). It carries no ID, so its
 /// identity is its content: equal content anywhere in the library is skipped, anything else is
 /// added under a freshly minted local ID rather than colliding with a placeholder.
 function planContentMerge(existing, incoming, makeId) {

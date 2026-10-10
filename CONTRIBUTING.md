@@ -18,26 +18,26 @@ npm run lint
 npm run typecheck        # tsc over src/ (checkJs); types live in JSDoc, there is no baseline
 npm test
 npm run build
-npm run community:validate -- path/to/item.plvspreset
-npm run community:metadata -- path/to/item.plvspreset
-npx playwright install chromium # once per clone/worktree when generating Community previews
-npm run community:preview -- path/to/item.plvspreset path/to/new-preview-directory
-npm run community:source:check -- path/to/catalogue
-npm run community:curate -- path/to/published path/to/candidate path/to/new-review-output
-npm run community:curate -- --write path/to/published path/to/candidate path/to/new-review-output
+npm run sharesets:validate -- path/to/item.plvspreset
+npm run sharesets:metadata -- path/to/item.plvspreset
+npx playwright install chromium # once per clone/worktree when generating Sharesets previews
+npm run sharesets:preview -- path/to/item.plvspreset path/to/new-preview-directory
+npm run sharesets:source:check -- path/to/catalogue
+npm run sharesets:curate -- path/to/published path/to/candidate path/to/new-review-output
+npm run sharesets:curate -- --write path/to/published path/to/candidate path/to/new-review-output
 ```
 
-`community:validate` is the repository/CI intake boundary for one immutable Community artifact. It
+`sharesets:validate` is the repository/CI intake boundary for one immutable Sharesets artifact. It
 accepts `.plvsloudness`, `.plvspreset`, or `.plvstheme`, requires canonical Pack V2 bytes and one
 primary Item, and prints a JSON report containing the exact byte length, SHA-256, versions, and
 derived compatibility facts.
 
-`community:metadata` runs the same validation boundary and emits only Pack-derived static Catalogue
+`sharesets:metadata` runs the same validation boundary and emits only Pack-derived static Catalogue
 input: content identity and summary, dependency hashes, compatibility facets, and the versioned
 preview plan. Author, description, tags, licence, and release notes are submission metadata and are
 therefore never invented from the artifact.
 
-`community:preview` validates one canonical artifact, builds the isolated browser harness, and uses
+`sharesets:preview` validates one canonical artifact, builds the isolated browser harness, and uses
 the Chromium revision pinned by Playwright to generate the exact contract-owned PNG set plus
 `preview-result.json`. The output path is explicit and must not already exist; the command never
 edits Catalogue records or deploys content. Run `npx playwright install chromium` once after
@@ -46,7 +46,7 @@ installing dependencies on a machine that generates previews.
 ### Theme Lab
 
 Theme Lab is the disposable Theme-authoring path for comparing Core, Palette, and Advanced override
-ideas without saving them to the Theme Library or adding them to the Community Catalogue. Copy
+ideas without saving them to the Theme Library or adding them to the Sharesets Catalogue. Copy
 `scripts/theme-lab.example.json`, choose built-in `plvs-dark` or `plvs-light` as the base, and give
 each variant only the values that differ from that base. Status, Frequency, Intensity, and Interface
 palettes accept the same literal values or preset IDs as the Theme Editor.
@@ -58,13 +58,13 @@ npm run theme:lab -- --manifest path/to/experiments.json
 npm run theme:lab -- --manifest path/to/experiments.json --out-dir artifacts/theme-lab/review-1
 ```
 
-The command reuses the Community Theme preview renderer and one isolated browser runtime to capture
+The command reuses the Sharesets Theme preview renderer and one isolated browser runtime to capture
 the real Theme Preview overview plus every publication-owned product scene for every variant. It
 writes complete validated portable `theme.json` documents, per-scene PNGs, labelled comparison
 sheets, and `report.json` beneath a new output directory. The default output is timestamped under
 `artifacts/theme-lab/`; an explicit output directory must not already exist. Theme Lab has no
 connection to a running PLVS workbench and cannot Save, Import, select, or otherwise mutate the
-Theme Library. Treat all output as review material; promoting one result into Community content is
+Theme Library. Treat all output as review material; promoting one result into Sharesets content is
 a separate explicit curation step.
 
 Theme product scenes use the same first-run workspace and Panel Settings that PLVS saves as the
@@ -88,26 +88,26 @@ intentional source-audio or analysis change, then review the resulting product s
 
 ```powershell
 npm run ffmpeg:fetch
-npm run community:fixture -- --write
-npm run community:fixture
+npm run sharesets:fixture -- --write
+npm run sharesets:fixture
 ```
 
 The first Fixture command runs the real Rust analyzer and writes the versioned JSON; the second
 repeats the analysis and fails if the committed JSON differs. The generator pins the reference WAV
 SHA-256 plus explicit Spectrum, Vectorscope, and Stereo Map requests, so replacing the audio or
 changing those controls requires a deliberate Fixture regeneration. Never hand-edit the current
-`src/transfer/fixtures/communityPreviewV5.json`. The generator derives its analysis requests from
+`src/transfer/fixtures/sharesetsPreviewV5.json`. The generator derives its analysis requests from
 the production `DEFAULT_WORKSPACE_STATE`, records those requests in the Fixture, and stores every
 result under its real request key. A Default Preset change therefore makes the committed Fixture
 stale instead of silently substituting data measured with different controls.
 
-`community:source:check` validates the detachable Catalogue content manifest. The directory argument
-is optional while content lives at `community/catalogue`; external Catalogue checkouts pass their
+`sharesets:source:check` validates the detachable Catalogue content manifest. The directory argument
+is optional while content lives at `sharesets/catalogue`; external Catalogue checkouts pass their
 own root without changing website code.
 
-### Curating Community content
+### Curating Sharesets content
 
-`community:curate` is the maintainer path from a candidate content tree to a local review. The first
+`sharesets:curate` is the maintainer path from a candidate content tree to a local review. The first
 form above is always a dry run: it validates the candidate records and new canonical artifacts,
 compares all existing Release records and bytes with the published baseline, and prints a concise
 JSON summary of additions, one-way withdrawals, and Listing copy edits. It writes nothing.
@@ -121,13 +121,13 @@ does not commit or deploy. Serve the review directory's `site/` as a static webs
 review is useful; for example, `npx vite preview --outDir path/to/review/site`.
 
 The baseline must be the exact content commit currently named by the deployed
-`/community/publication.json`, not an arbitrary old checkout. For the first publication, use the
+`/sharesets/publication.json`, not an arbitrary old checkout. For the first publication, use the
 empty Catalogue at v0.19.0's immutable commit
 `a953766217e6ebeceac264ba86e10f4b69eeabcd`. Keep both checkouts unchanged while curating so the byte
 comparison remains meaningful.
 
 To publish after review, commit the candidate content, wait for the normal merge gate, then dispatch
-`.github/workflows/deploy-community.yml` with that exact commit SHA as `content_ref`. The workflow
+`.github/workflows/deploy-sharesets.yml` with that exact commit SHA as `content_ref`. The workflow
 repeats source and immutable-history validation against the deployed marker before GitHub Pages is
 changed. The first public Catalogue instead ships through the normal PLVS Release workflow so the
 navigation and initial content appear together.
@@ -135,11 +135,11 @@ navigation and initial content appear together.
 Both deployment entry points call `publish-site.yml`, which holds the shared Pages lock from live
 baseline discovery through deployment, validates the complete immutable history, and writes the
 candidate's exact content commit into the same Pages artifact as the website. A desktop release
-whose content is older than an independent Community update is rejected: synchronize those content
+whose content is older than an independent Sharesets update is rejected: synchronize those content
 changes into the release tree, then retry. Never bypass validation by deleting the marker.
 
-The first Community launch needs one explicit initialization. After the app Release is published,
-dispatch `deploy-landing.yml` with that released tag as `ref` and `bootstrap_community=true`.
+The first Sharesets launch needs one explicit initialization. After the app Release is published,
+dispatch `deploy-landing.yml` with that released tag as `ref` and `bootstrap_sharesets=true`.
 Automatic release-triggered deployment uses the safe default (`false`) and stops if no marker exists.
 Bootstrap checks that the legacy live Catalogue is empty and uses the pinned empty commit above;
 it does not permit a populated markerless site. All later runs leave bootstrap off. An unreadable,

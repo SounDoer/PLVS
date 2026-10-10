@@ -3,7 +3,7 @@ import {
   MAX_PORTABLE_LOUDNESS_PROFILE_NAME_LENGTH,
   MAX_PORTABLE_LOUDNESS_PROFILE_RULES,
   PortableLoudnessProfileError,
-  assessPortableLoudnessProfileCommunityPublication,
+  assessPortableLoudnessProfileSharesetsPublication,
   hashPortableLoudnessProfile,
   loudnessProfileToPortable,
   portableToStoredLoudnessProfile,
@@ -103,9 +103,9 @@ describe("portable Loudness Profile", () => {
         { metricId: "truePeak", op: ">", value: -0.5, severity: "warn" },
       ],
     });
-    expect(assessPortableLoudnessProfileCommunityPublication(document)).toMatchObject({
+    expect(assessPortableLoudnessProfileSharesetsPublication(document)).toMatchObject({
       compatibility: { metricIds: ["integrated", "truePeak"] },
-      communityPublication: { eligible: true, blockers: [] },
+      sharesetsPublication: { eligible: true, blockers: [] },
     });
     expect(serializePortableLoudnessProfile(document)).toBe(
       JSON.stringify(validatePortableLoudnessProfile(document))

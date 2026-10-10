@@ -11,7 +11,7 @@ on:
         description: Content ref; empty uses the exact website commit
         type: string
         default: ""
-      bootstrap_community:
+      bootstrap_sharesets:
         type: boolean
         default: false
 
@@ -61,33 +61,33 @@ jobs:
       - name: Resolve the published content baseline
         id: baseline
         env:
-          ALLOW_COMMUNITY_BOOTSTRAP: ${{ inputs.bootstrap_community }}
-        run: node site-source/scripts/community-publication.mjs resolve site-source/landing/CNAME
-      - name: Check out published Community content
+          ALLOW_SHARESETS_BOOTSTRAP: ${{ inputs.bootstrap_sharesets }}
+        run: node site-source/scripts/sharesets-publication.mjs resolve site-source/landing/CNAME
+      - name: Check out published Sharesets content
         uses: actions/checkout@v7
         with:
           ref: ${{ steps.baseline.outputs.ref }}
           path: published-content-source
-          sparse-checkout: community/catalogue
-      - name: Check out candidate Community content
+          sparse-checkout: sharesets/catalogue
+      - name: Check out candidate Sharesets content
         uses: actions/checkout@v7
         with:
           ref: ${{ steps.content.outputs.ref }}
           path: content-source
-          sparse-checkout: community/catalogue
+          sparse-checkout: sharesets/catalogue
       - name: Install the website toolchain
         working-directory: site-source
         run: npm ci
-      - name: Validate immutable Community history
-        run: node site-source/scripts/community-catalogue-update.mjs published-content-source/community/catalogue content-source/community/catalogue
+      - name: Validate immutable Sharesets history
+        run: node site-source/scripts/sharesets-catalogue-update.mjs published-content-source/sharesets/catalogue content-source/sharesets/catalogue
       - name: Assemble the website and record its content identity
         run: |
           cp -r site-source/landing _site
           find _site -type f -name '*.test.*' -delete
           (cd site-source && node scripts/build-user-docs.mjs ../_site/docs/index.html)
-          node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community _site
+          node site-source/scripts/build-sharesets-site.mjs content-source/sharesets/catalogue _site/sharesets _site
           candidate_sha=$(git -C content-source rev-parse HEAD)
-          node site-source/scripts/community-publication.mjs write _site/community/publication.json "$candidate_sha"
+          node site-source/scripts/sharesets-publication.mjs write _site/sharesets/publication.json "$candidate_sha"
           rm _site/docs/template.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

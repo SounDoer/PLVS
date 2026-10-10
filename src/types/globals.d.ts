@@ -12,10 +12,10 @@ declare global {
      * read defensively at each call site, so it stays loosely typed here.
      */
     __PLVS_INITIAL_STATE__?: Record<string, any>;
-    /** Render entry points the community preview page exposes to the site build that drives it. */
+    /** Render entry points the Sharesets preview page exposes to the site build that drives it. */
     /** Per-panel CPU counters for profiling sessions (`src/dev/panelCpuProfiler.js`). */
     __PLVS_PANEL_CPU__?: Record<string, any>;
-    __PLVS_COMMUNITY_PREVIEW__?: Readonly<Record<string, (...args: any[]) => any>>;
+    __PLVS_SHARESETS_PREVIEW__?: Readonly<Record<string, (...args: any[]) => any>>;
   }
 }
 

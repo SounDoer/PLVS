@@ -27,7 +27,7 @@ audio**.
 - **Session history and snapshots**, plus **File Mode** for analysing local audio files
 - **Dock mode**, compact views, and custom themes
 - **Multiple workbenches** for metering several Sources side by side, sharing one Library
-- **[Community Catalogue](https://plvs.soundoer.com/community/)** with curated Themes, Presets, and Loudness Profiles
+- **[Sharesets Catalogue](https://plvs.soundoer.com/sharesets/)** with curated Themes, Presets, and Loudness Profiles
 - **`plvs-cli`** for diagnosing the installation and controlling the running app
 - **Private**: audio stays on your device, with no telemetry by default
 

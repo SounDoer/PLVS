@@ -1,0 +1,20 @@
+name: Deploy Sharesets Content
+
+on:
+  workflow_dispatch:
+    inputs:
+      content_ref:
+        description: Content commit to publish against the latest stable website
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/publish-site.yml
+    with:
+      content_ref: ${{ inputs.content_ref }}

@@ -232,7 +232,7 @@ as PLVS-exported Theme pack files.
 
 ## Sharesets
 
-The [Sharesets](https://plvs.soundoer.com/community/) offers curated Themes, Presets, and
+The [Sharesets](https://plvs.soundoer.com/sharesets/) offers curated Themes, Presets, and
 Loudness Profiles. Choose a category, search by name or description, and optionally narrow the
 results by Tag under **Filters**. The selected tag remains visible when Filters is closed.
 **Clear All** resets the category, search, and tag. Open an Item for its previews, contents,

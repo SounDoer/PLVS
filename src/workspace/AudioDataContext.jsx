@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
  * Dock / Region / Slot layers while keeping each panel's dependencies explicit.
  */
 // The four shapes below are what App builds. The providers take a partial one because the Dock, the
-// community preview and the tests each mount only the panels they need and supply only what those
+// sharesets preview and the tests each mount only the panels they need and supply only what those
 // read; a consumer is typed as if it had the whole thing, which is how every panel is written.
 
 /**

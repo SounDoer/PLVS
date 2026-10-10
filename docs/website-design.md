@@ -13,8 +13,8 @@ runtime Theme tokens described in `design-tokens.md`.
 - `landing/assets/sharesets.css` and `sharesets.js` compose those pieces for catalogue browsing.
 
 The Sharesets root, category listing pages and all three resource detail families consume this
-shared source. Detail layouts remain in `community.css`; gallery and copy interactions remain in
-`community.js`. The homepage and documentation template retain their previous styles pending
+shared source. Detail layouts remain in `sharesets-detail.css`; gallery and copy interactions remain
+in `sharesets-detail.js`. The homepage and documentation template retain their previous styles pending
 separate review. Do not change those pages implicitly while extending the shared components.
 
 ## Agreed foundation

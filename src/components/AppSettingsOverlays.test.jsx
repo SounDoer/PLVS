@@ -603,7 +603,7 @@ describe("AppSettingsOverlays", () => {
     const text = serializePortableTheme(
       themeToPortable({
         ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
-        id: "custom-community",
+        id: "custom-sharesets",
         name: "Pasted Theme",
       })
     );

@@ -233,21 +233,21 @@ export function validatePortableTheme(raw) {
 }
 
 /**
- * Strict community-intake result for one portable Theme. Invalid documents throw
+ * Strict sharesets-intake result for one portable Theme. Invalid documents throw
  * PortableThemeError; valid documents retain all visual findings for review, but visual quality
- * never changes communityPublication eligibility.
+ * never changes sharesetsPublication eligibility.
  */
 /**
- * Strict community-intake result for one portable Theme. Invalid documents throw
+ * Strict sharesets-intake result for one portable Theme. Invalid documents throw
  * PortableThemeError; valid documents retain all visual findings for review, but visual quality
- * never changes communityPublication eligibility.
+ * never changes sharesetsPublication eligibility.
  */
-export function assessPortableThemeCommunityPublication(raw) {
+export function assessPortableThemeSharesetsPublication(raw) {
   const document = validatePortableTheme(raw);
   const authoring = validateThemeDocument(asAuthoringDocument(document));
   return {
     document,
-    ...analyzeThemeVisuals({ id: "custom-community-assessment", ...authoring }),
+    ...analyzeThemeVisuals({ id: "custom-sharesets-assessment", ...authoring }),
   };
 }
 

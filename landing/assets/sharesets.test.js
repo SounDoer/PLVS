@@ -9,8 +9,8 @@ afterEach(() => {
 describe("Sharesets browsing", () => {
   it("combines category, search and exact tags, exposes hidden filters, and clears back to all", () => {
     document.body.innerHTML = `<main class="catalogue" data-active-category="">
-      <a data-category="" href="/community/">All</a>
-      <a data-category="themes" href="/community/themes/">Themes</a>
+      <a data-category="" href="/sharesets/">All</a>
+      <a data-category="themes" href="/sharesets/themes/">Themes</a>
       <form data-catalogue-controls hidden><input data-catalogue-search />
       <button type="button" data-filters-toggle aria-expanded="false"></button>
       <div class="filters-panel" hidden><select data-tag-filter><option value=""></option><option>Dark|Amber</option><option>Stereo</option></select></div></form>
@@ -20,7 +20,7 @@ describe("Sharesets browsing", () => {
       <div data-catalogue-empty hidden><button data-clear-empty hidden></button></div>
     </main>`;
     // Use the jsdom origin while retaining production route semantics.
-    window.history.replaceState(null, "", "/community/");
+    window.history.replaceState(null, "", "/sharesets/");
     const root = document.querySelector("main");
     enhanceSharesets(root);
     const count = () => root.querySelector("[data-result-count]").textContent;
@@ -30,7 +30,7 @@ describe("Sharesets browsing", () => {
     const toggle = root.querySelector("[data-filters-toggle]");
     expect(form.hidden).toBe(false);
     root.querySelector('[data-category="themes"]').click();
-    expect(window.location.pathname).toBe("/community/themes/");
+    expect(window.location.pathname).toBe("/sharesets/themes/");
     search.value = " AMBER ";
     search.dispatchEvent(new Event("input"));
     tag.value = "Dark|Amber";
@@ -50,9 +50,9 @@ describe("Sharesets browsing", () => {
     form.reset();
     expect(count()).toBe("2 resources");
     expect(search.value).toBe("");
-    expect(window.location.pathname).toBe("/community/");
+    expect(window.location.pathname).toBe("/sharesets/");
     expect(document.activeElement).toBe(search);
-    window.history.replaceState(null, "", "/community/themes/");
+    window.history.replaceState(null, "", "/sharesets/themes/");
     window.dispatchEvent(new PopStateEvent("popstate"));
     expect(count()).toBe("1 resource");
     expect(root.querySelector('[data-category="themes"]').getAttribute("aria-current")).toBe(

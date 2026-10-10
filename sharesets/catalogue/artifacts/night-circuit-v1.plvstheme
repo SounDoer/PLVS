@@ -1,0 +1,70 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "sharesets-night-circuit",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 4,
+      "name": "Night Circuit",
+      "colorScheme": "dark",
+      "core": {
+        "workspace": "#070610",
+        "surface": "#171426",
+        "text": "#f1edff",
+        "interfaceAccent": "#a78bfa",
+        "primaryData": "#2ee8f0",
+        "secondaryData": "#f05bd8"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#2ee8f0",
+          "warning": "#9b6cff",
+          "critical": "#ff4fc3"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#03010a"
+            },
+            {
+              "position": 0.2,
+              "color": "#231052"
+            },
+            {
+              "position": 0.42,
+              "color": "#62329a"
+            },
+            {
+              "position": 0.62,
+              "color": "#bd3eb2"
+            },
+            {
+              "position": 0.82,
+              "color": "#2dc9dc"
+            },
+            {
+              "position": 1,
+              "color": "#e9ffff"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#ff4fc3",
+          "mid": "#9b6cff",
+          "high": "#32e6f2"
+        },
+        "interface": {
+          "success": "#21bfa2",
+          "warning": "#e2aa39",
+          "danger": "#ed4d78"
+        }
+      },
+      "overrides": {}
+    }
+  ],
+  "dependencies": []
+}

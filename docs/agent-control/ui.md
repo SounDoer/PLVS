@@ -188,5 +188,5 @@ The fixture protocol is deliberately not a public `ui show` family and is absent
 capabilities, help, completion, schema, and packaged CLIs. See `CONTRIBUTING.md` for the real desktop
 and exact pixel-comparison workflow. Other exceptional states need a new closed, owner-backed
 fixture and contract tests; they must not introduce selectors, arbitrary input, or React/store
-mutation. The isolated community-preview renderer may continue to use Playwright because it renders
+mutation. The isolated sharesets-preview renderer may continue to use Playwright because it renders
 a browser preview application, not the running PLVS workbench.

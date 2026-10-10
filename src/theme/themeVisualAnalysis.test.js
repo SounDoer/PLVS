@@ -51,7 +51,7 @@ describe("Theme visual analysis", () => {
       ])
     );
     expect(new Set(report.warnings.map((item) => item.id)).size).toBe(report.warnings.length);
-    expect(report.communityPublication).toEqual({
+    expect(report.sharesetsPublication).toEqual({
       eligible: true,
       scope: "visualReviewOnly",
       blockers: [],
@@ -63,7 +63,7 @@ describe("Theme visual analysis", () => {
     (id) => {
       const report = analyzeThemeVisuals(BUILTIN_THEMES_V2[id]);
       expect(Array.isArray(report.warnings)).toBe(true);
-      expect(report.communityPublication).toEqual({
+      expect(report.sharesetsPublication).toEqual({
         eligible: true,
         blockers: [],
         scope: "visualReviewOnly",
@@ -86,7 +86,7 @@ describe("Theme visual analysis", () => {
         metric: expect.objectContaining({ target: 4.5 }),
       })
     );
-    expect(report.communityPublication).toEqual({
+    expect(report.sharesetsPublication).toEqual({
       eligible: true,
       blockers: [],
       scope: "visualReviewOnly",
@@ -108,7 +108,7 @@ describe("Theme visual analysis", () => {
     );
   });
 
-  it("allows heuristic visual warnings through the community publication policy", () => {
+  it("allows heuristic visual warnings through the sharesets publication policy", () => {
     const closeStatusColors = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
     closeStatusColors.palettes.status.safe = closeStatusColors.palettes.status.warning;
 
@@ -121,7 +121,7 @@ describe("Theme visual analysis", () => {
         standard: null,
       })
     );
-    expect(report.communityPublication).toEqual({
+    expect(report.sharesetsPublication).toEqual({
       eligible: true,
       blockers: [],
       scope: "visualReviewOnly",
