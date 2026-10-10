@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
@@ -90,6 +90,24 @@ function escapeXml(value) {
     .replaceAll('"', "&quot;");
 }
 
+async function renameCompletedOutput(staging, output) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rename(staging, output);
+      return;
+    } catch (error) {
+      const retryable = process.platform === "win32" && ["EBUSY", "EPERM"].includes(error?.code);
+      if (!retryable) throw error;
+      if (attempt >= 9) {
+        await cp(staging, output, { recursive: true, errorOnExist: true, force: false });
+        await rm(staging, { recursive: true, force: true });
+        return;
+      }
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100 * (attempt + 1)));
+    }
+  }
+}
+
 export async function runThemeLab({
   manifestPath,
   outputDirectory,
@@ -155,7 +173,7 @@ export async function runThemeLab({
     await writeFile(join(staging, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
     await runtime.close();
     runtime = null;
-    await rename(staging, output);
+    await renameCompletedOutput(staging, output);
     return { outputDirectory: output, report };
   } catch (error) {
     await runtime?.close();

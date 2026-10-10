@@ -9,6 +9,7 @@ const INITIAL_LISTINGS = [
   "listings/plvs-light.json",
   "listings/control-room-amber.json",
   "listings/studio-daylight.json",
+  "listings/night-circuit.json",
   "listings/i-23-tp-1.json",
   "listings/signal-amber.json",
   "listings/stereo-overview.json",
@@ -35,6 +36,7 @@ describe("initial Community Catalogue", () => {
     expect(listings.map(({ id }) => id).sort()).toEqual([
       "control-room-amber",
       "i-23-tp-1",
+      "night-circuit",
       "plvs-dark",
       "plvs-light",
       "signal-amber",
