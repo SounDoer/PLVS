@@ -10,6 +10,19 @@ const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64"
 );
+const THEME_PREVIEW_IDS = [
+  "semantic-overview",
+  "product-workspace-file",
+  "product-workspace-snapshot",
+  "product-level-meter-file",
+  "product-loudness-file",
+  "product-stats-file",
+  "product-vectorscope-file",
+  "product-spectrum-file",
+  "product-spectrogram-heatmap",
+  "product-waveform-file",
+  "product-stereo-map-file",
+];
 
 function temporaryDirectory(label) {
   const directory = mkdtempSync(join(tmpdir(), label));
@@ -95,6 +108,35 @@ function writeAssembledSite(directory) {
     '<nav>Before<!-- COMMUNITY_NAV_START --><a href="community/">Community</a><!-- COMMUNITY_NAV_END -->After</nav>';
   writeFileSync(join(directory, "index.html"), html);
   writeFileSync(join(directory, "docs", "index.html"), html.replace("community/", "../community/"));
+}
+
+function writeBuiltinThemeSource(directory) {
+  mkdirSync(join(directory, "previews", "plvs-dark"), { recursive: true });
+  const previews = THEME_PREVIEW_IDS.map((id) => ({
+    id,
+    path: `previews/plvs-dark/${id}.png`,
+  }));
+  writeFileSync(
+    join(directory, "manifest.json"),
+    JSON.stringify({ schemaVersion: 1, listings: ["plvs-dark.json"] })
+  );
+  writeFileSync(
+    join(directory, "plvs-dark.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: "plvs-dark",
+      slug: "plvs-dark",
+      type: "themes",
+      classification: "official",
+      title: "PLVS Dark",
+      summary: "The built-in dark Theme for PLVS.",
+      descriptionMarkdown: "A neutral reference Theme included with PLVS.",
+      tags: ["Dark", "Built-in", "Neutral", "Balanced"],
+      author: { name: "PLVS", url: "https://github.com/SounDoer/PLVS" },
+      included: { sourceId: "plvs-dark", previews },
+    })
+  );
+  for (const preview of previews) writeFileSync(join(directory, preview.path), PNG);
 }
 
 describe("Community static site generator", () => {
@@ -228,6 +270,32 @@ describe("Community static site generator", () => {
     ).toContain('"kind": "loudness-pack"');
     expect(readFileSync(join(site, "index.html"), "utf8")).toContain("Community");
     expect(readFileSync(join(site, "docs", "index.html"), "utf8")).toContain("Community");
+  });
+
+  it("presents built-in Themes as included content without download or import controls", async () => {
+    const source = temporaryDirectory("plvs-community-builtin-source-");
+    const output = temporaryDirectory("plvs-community-builtin-output-");
+    writeBuiltinThemeSource(source);
+
+    await expect(
+      buildCommunitySite({ contentDirectory: source, outputDirectory: output })
+    ).resolves.toMatchObject({ listingCount: 1, visibleListingCount: 1 });
+    const browse = readFileSync(join(output, "index.html"), "utf8");
+    const detail = readFileSync(join(output, "themes", "plvs-dark", "index.html"), "utf8");
+    expect(browse).toContain("PLVS Dark");
+    expect(browse).toContain("/community/files/plvs-dark/included/product-workspace-file.png");
+    expect(detail).toContain("Included with PLVS");
+    expect(detail).toContain("Availability");
+    expect(detail).not.toContain("Copy Theme");
+    expect(detail).not.toContain("data-copy-artifact");
+    expect(detail).not.toContain(" download>");
+    expect(detail).not.toContain("How to Use");
+    expect(detail).not.toContain("Release History");
+    expect(detail).not.toContain("File Checksum");
+    expect(detail).not.toContain("File Size");
+    expect(
+      readFileSync(join(output, "files", "plvs-dark", "included", "semantic-overview.png"))
+    ).toEqual(PNG);
   });
 
   it("keeps a partially withdrawn Listing visible and links only its published Release", async () => {

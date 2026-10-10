@@ -89,14 +89,20 @@ function latestPublished(listing) {
   return [...listing.releases].reverse().find(({ status }) => status === "published") ?? null;
 }
 
+function currentContent(listing) {
+  return listing.included ?? latestPublished(listing);
+}
+
+function contentFilesPath(listing, content) {
+  return `/community/files/${listing.id}/${listing.included ? "included" : `v${content.number}`}`;
+}
+
 function card(listing, activeType) {
-  const release = latestPublished(listing);
+  const release = currentContent(listing);
   const facets = release?.metadata.facets ?? {};
   const preview =
     release?.previews.find((item) => item.id === "product-workspace-file") ?? release?.previews[0];
-  const previewUrl = preview
-    ? `/community/files/${listing.id}/v${release.number}/${preview.id}.png`
-    : null;
+  const previewUrl = preview ? `${contentFilesPath(listing, release)}/${preview.id}.png` : null;
   const searchText = [listing.title, listing.summary, listing.descriptionMarkdown, ...listing.tags]
     .join(" ")
     .toLocaleLowerCase("en-US");
@@ -197,7 +203,8 @@ function detailPage(listing, profile = null) {
   const isProfile = listing.type === "loudness";
   const isPreset = listing.type === "presets";
   const compactDetail = listing.type === "themes" || isProfile || isPreset;
-  const current = latestPublished(listing);
+  const isIncluded = Boolean(listing.included);
+  const current = currentContent(listing);
   const metadata = current?.metadata;
   const previews = current?.previews ?? [];
   const author = listing.author
@@ -205,14 +212,17 @@ function detailPage(listing, profile = null) {
       ? `<a href="${escapeHtml(listing.author.url)}" rel="author noopener">${escapeHtml(listing.author.name)}</a>`
       : escapeHtml(listing.author.name)
     : "PLVS curators";
-  const currentDownload = current
-    ? `/community/files/${listing.id}/v${current.number}/${basename(current.artifact)}`
-    : null;
-  const primaryAction = current
-    ? listing.type === "themes"
-      ? `<div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}">Copy Theme</button><a class="button secondary" href="${currentDownload}" download>Download .plvstheme</a><span class="copy-status" data-copy-status aria-live="polite"></span></div>`
-      : `<a class="button" href="${currentDownload}" download>Download Release ${current.number}</a>`
-    : "";
+  const currentDownload =
+    current && !isIncluded
+      ? `/community/files/${listing.id}/v${current.number}/${basename(current.artifact)}`
+      : null;
+  const primaryAction = isIncluded
+    ? `<div class="actions"><span class="included-label">Included with PLVS</span></div>`
+    : current
+      ? listing.type === "themes"
+        ? `<div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}">Copy Theme</button><a class="button secondary" href="${currentDownload}" download>Download .plvstheme</a><span class="copy-status" data-copy-status aria-live="polite"></span></div>`
+        : `<a class="button" href="${currentDownload}" download>Download Release ${current.number}</a>`
+      : "";
   const releases = [...listing.releases]
     .reverse()
     .map((release) => {
@@ -242,8 +252,7 @@ function detailPage(listing, profile = null) {
     .join("\n");
   if (compactDetail) {
     const gallery = detailGallery(listing.type, previews);
-    const previewUrl = (preview) =>
-      `/community/files/${listing.id}/v${current.number}/${preview.id}.png`;
+    const previewUrl = (preview) => `${contentFilesPath(listing, current)}/${preview.id}.png`;
     return page(
       `${listing.title} — PLVS Sharesets`,
       listing.summary,
@@ -261,15 +270,15 @@ function detailPage(listing, profile = null) {
                 : ""
           }
           <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile || isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${(isProfile || isPreset) && current ? `<div class="actions"><a class="button" href="${currentDownload}" download>Download</a></div>` : primaryAction.replace("Download .plvstheme", "Download")}
-            ${current ? `<div class="theme-how"><h2>How to Use</h2>${isProfile || isPreset ? `<p>Download the file, then choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Review and confirm the import, then ${isPreset ? "apply the Preset from your Library" : "select the Profile in PLVS"}. Importing does not apply it automatically.</p>` : `<p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p>`}</div>` : `<p class="withdrawn">No current release is available.</p>`}
+            ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2>${isProfile || isPreset ? `<p>Download the file, then choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Review and confirm the import, then ${isPreset ? "apply the Preset from your Library" : "select the Profile in PLVS"}. Importing does not apply it automatically.</p>` : `<p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p>`}</div>` : `<p class="withdrawn">No current release is available.</p>`}
             ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>
         </div>
         <div class="theme-more">
-          <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isProfile ? "" : isPreset ? renderPresetDetails(metadata) : renderSummary(metadata.content.summary)}${isPreset && listing.presetPack ? presetExtraDetails(listing.presetPack) : ""}<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div></dl></div><details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>` : `<p class="muted">No current release is available.</p>`}</section>
+          <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isIncluded ? "<div><dt>Availability</dt><dd>Included with PLVS</dd></div>" : ""}${isProfile ? "" : isPreset ? renderPresetDetails(metadata) : renderSummary(metadata.content.summary)}${isPreset && listing.presetPack ? presetExtraDetails(listing.presetPack) : ""}${isIncluded ? "" : `<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div>`}</dl></div>${isIncluded ? "" : `<details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>`}` : `<p class="muted">No current release is available.</p>`}</section>
         </div>
         ${isPreset && listing.presetPack ? presetPanels(listing.presetPack) : ""}
-        <section class="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>
+        ${isIncluded ? "" : `<section class="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>`}
         ${gallery.length ? `<dialog class="preview-dialog" aria-label="${FAMILIES[listing.type].singular} preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous${gallery.length === 1 ? " hidden" : ""} aria-label="Previous image">←</button><span data-preview-position${gallery.length === 1 ? " hidden" : ""} aria-live="polite"></span><button class="button secondary" type="button" data-preview-next${gallery.length === 1 ? " hidden" : ""} aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
       </main>`
     );
@@ -320,6 +329,13 @@ async function copyReleaseFiles(source, output, listing) {
       await copyFile(join(source.root, preview.path), join(target, `${preview.id}.png`));
     }
   }
+  if (listing.included) {
+    const target = join(output, "files", listing.id, "included");
+    await mkdir(target, { recursive: true });
+    for (const preview of listing.included.previews) {
+      await copyFile(join(source.root, preview.path), join(target, `${preview.id}.png`));
+    }
+  }
 }
 
 export async function buildCommunitySite({
@@ -341,7 +357,7 @@ export async function buildCommunitySite({
         ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8")).items[0]
         : null;
   }
-  const visibleListings = listings.filter(latestPublished);
+  const visibleListings = listings.filter(currentContent);
   await mkdir(output, { recursive: true });
   await writePage(join(output, "index.html"), browsePage(visibleListings));
   for (const type of Object.keys(FAMILIES)) {

@@ -7,6 +7,8 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 import sharp from "sharp";
+import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
+import { themeToPortable } from "../src/theme/portableTheme.js";
 import { build } from "vite";
 import {
   buildCommunityPreviewPlan,
@@ -57,6 +59,15 @@ export async function buildPreviewPlanForArtifact(path) {
         })
       : await buildCommunityPreviewPlan(rawPack, validation.type);
   return { artifactPath, type: validation.type, plan };
+}
+
+export async function buildPreviewPlanForBuiltinTheme(themeId) {
+  const theme = BUILTIN_THEMES_V2[themeId];
+  if (!theme) throw new Error(`Unknown built-in Theme: ${themeId}.`);
+  return {
+    type: "themes",
+    plan: await buildCommunityThemePreviewPlan({ theme: themeToPortable(theme) }),
+  };
 }
 
 export async function prepareCommunityPreviewOutput(artifactPath, outputDirectory) {
@@ -206,14 +217,22 @@ function contentIdentity(plan) {
 
 export async function generateCommunityPreviews({
   artifactPath,
+  builtinThemeId,
   outputDirectory,
   createRuntime = createCommunityPreviewBrowserRuntime,
 }) {
-  const source = resolve(artifactPath);
+  if (Boolean(artifactPath) === Boolean(builtinThemeId)) {
+    throw new Error("Choose exactly one preview source: an artifact or a built-in Theme.");
+  }
+  const source = artifactPath
+    ? resolve(artifactPath)
+    : resolve("src", "theme", "builtinThemesV2.js");
   const { output, staging } = await prepareCommunityPreviewOutput(source, outputDirectory);
   let runtime;
   try {
-    const { plan, type } = await buildPreviewPlanForArtifact(source);
+    const { plan, type } = builtinThemeId
+      ? await buildPreviewPlanForBuiltinTheme(builtinThemeId)
+      : await buildPreviewPlanForArtifact(source);
     runtime = await createRuntime();
     const assets = [];
     for (const asset of plan.assets) {
@@ -259,11 +278,12 @@ export async function generateCommunityPreviews({
 async function main(args) {
   if (args.length !== 2) {
     throw new Error(
-      "Usage: npm run community:preview -- <artifact.plvsloudness|plvspreset|plvstheme> <new-output-directory>"
+      "Usage: npm run community:preview -- <artifact.plvsloudness|plvspreset|plvstheme|builtin:theme-id> <new-output-directory>"
     );
   }
+  const builtinThemeId = args[0].startsWith("builtin:") ? args[0].slice("builtin:".length) : null;
   const result = await generateCommunityPreviews({
-    artifactPath: args[0],
+    ...(builtinThemeId ? { builtinThemeId } : { artifactPath: args[0] }),
     outputDirectory: args[1],
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

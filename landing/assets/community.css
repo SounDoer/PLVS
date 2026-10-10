@@ -54,6 +54,17 @@
 .actions .button {
   margin: 0;
 }
+.included-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 650;
+}
 .copy-status {
   flex-basis: 100%;
   min-height: 1.6em;

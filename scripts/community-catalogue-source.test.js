@@ -21,6 +21,19 @@ const PROFILE = {
   referenceLufs: -23,
   rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
 };
+const THEME_PREVIEW_IDS = [
+  "semantic-overview",
+  "product-workspace-file",
+  "product-workspace-snapshot",
+  "product-level-meter-file",
+  "product-loudness-file",
+  "product-stats-file",
+  "product-vectorscope-file",
+  "product-spectrum-file",
+  "product-spectrogram-heatmap",
+  "product-waveform-file",
+  "product-stereo-map-file",
+];
 
 function artifact() {
   return `${JSON.stringify(buildPack("loudness", [PROFILE]), null, 2)}\n`;
@@ -127,6 +140,83 @@ describe("Community Catalogue source boundary", () => {
           }),
         },
       ],
+    });
+  });
+
+  it("resolves content included with PLVS directly from the built-in Theme registry", async () => {
+    const directory = temporarySource();
+    const previews = THEME_PREVIEW_IDS.map((id) => ({
+      id,
+      path: `previews/plvs-dark/${id}.png`,
+    }));
+    writeFileSync(
+      join(directory, "manifest.json"),
+      JSON.stringify({ schemaVersion: 1, listings: ["plvs-dark.json"] })
+    );
+    writeFileSync(
+      join(directory, "plvs-dark.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "plvs-dark",
+        slug: "plvs-dark",
+        type: "themes",
+        classification: "official",
+        title: "PLVS Dark",
+        summary: "The built-in dark Theme.",
+        descriptionMarkdown: "Included with PLVS.",
+        tags: ["Dark", "Built-in"],
+        author: { name: "PLVS", url: "https://github.com/SounDoer/PLVS" },
+        included: { sourceId: "plvs-dark", previews },
+      })
+    );
+    writePreviews(directory, previews);
+
+    await expect(readCommunitySource(directory)).resolves.toMatchObject({
+      listings: [
+        {
+          document: {
+            included: {
+              sourceId: "plvs-dark",
+              metadata: {
+                content: {
+                  type: "themes",
+                  itemId: "plvs-dark",
+                  summary: { colorScheme: "dark" },
+                },
+              },
+            },
+            releases: [],
+          },
+        },
+      ],
+    });
+  });
+
+  it("rejects an included source that is not built into PLVS", async () => {
+    const directory = temporarySource();
+    writeFileSync(
+      join(directory, "manifest.json"),
+      JSON.stringify({ schemaVersion: 1, listings: ["unknown.json"] })
+    );
+    writeFileSync(
+      join(directory, "unknown.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "unknown",
+        slug: "unknown",
+        type: "themes",
+        classification: "official",
+        title: "Unknown",
+        summary: "An unknown built-in Theme.",
+        descriptionMarkdown: "Fixture.",
+        tags: [],
+        author: null,
+        included: { sourceId: "unknown", previews: [] },
+      })
+    );
+
+    await expect(readCommunitySource(directory)).rejects.toMatchObject({
+      issues: [expect.objectContaining({ code: "unknownIncludedSource" })],
     });
   });
 

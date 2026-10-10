@@ -5,6 +5,7 @@ import { hashPortableTheme, themeToPortable } from "../src/theme/portableTheme.j
 import { readCommunitySource } from "./community-catalogue-source.mjs";
 
 const INITIAL_LISTINGS = [
+  "listings/plvs-dark.json",
   "listings/control-room-amber.json",
   "listings/studio-daylight.json",
   "listings/i-23-tp-1.json",
@@ -27,6 +28,7 @@ describe("initial Community Catalogue", () => {
     expect(listings.map(({ id }) => id).sort()).toEqual([
       "control-room-amber",
       "i-23-tp-1",
+      "plvs-dark",
       "signal-amber",
       "stereo-overview",
       "studio-daylight",
@@ -36,7 +38,20 @@ describe("initial Community Catalogue", () => {
     );
     expect(listings.every(({ classification }) => classification === "official")).toBe(true);
     expect(listings.every(({ author }) => author?.name === "PLVS")).toBe(true);
-    expect(listings.every(({ releases }) => releases.length === 1)).toBe(true);
+    expect(
+      listings.every(({ included, releases }) => Boolean(included) !== (releases.length === 1))
+    ).toBe(true);
+  });
+
+  it("keeps PLVS Dark linked to the current built-in Theme", async () => {
+    const source = await readLaunchSource();
+    const theme = source.listings.find(({ document }) => document.id === "plvs-dark").document;
+    const builtinHash = await hashPortableTheme(themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]));
+
+    expect(theme.title).toBe("PLVS Dark");
+    expect(theme.included.sourceId).toBe("plvs-dark");
+    expect(theme.included.metadata.content.contentHash).toBe(builtinHash);
+    expect(theme.releases).toEqual([]);
   });
 
   it("keeps the parameter-named Loudness Profile explicit and non-certifying", async () => {

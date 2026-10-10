@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve, sep } from "node:path";
+import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { deriveCommunityCatalogueMetadata } from "../src/transfer/communityContract.js";
+import { buildPack } from "../src/transfer/packShape.js";
 import { validateCommunityListingRecord } from "./community-catalogue-record.mjs";
 
 export const COMMUNITY_SOURCE_SCHEMA_VERSION = 1;
@@ -152,10 +154,10 @@ function isPng(bytes) {
   return bytes.toString("ascii", bytes.length - 8, bytes.length - 4) === "IEND";
 }
 
-async function sealPreviews(root, release, metadata, listingIndex, releaseIndex) {
+async function sealPreviews(root, owner, metadata, ownerPath) {
   const expectedIds = metadata.preview.assets.map(({ id }) => id);
-  const receivedIds = release.previews.map(({ id }) => id);
-  const releasePath = `$.listings[${listingIndex}].releases[${releaseIndex}].previews`;
+  const receivedIds = owner.previews.map(({ id }) => id);
+  const previewsPath = `${ownerPath}.previews`;
   if (
     expectedIds.length !== receivedIds.length ||
     expectedIds.some((id) => !receivedIds.includes(id))
@@ -163,19 +165,19 @@ async function sealPreviews(root, release, metadata, listingIndex, releaseIndex)
     throw new CommunitySourceError([
       issue(
         "previewSetMismatch",
-        releasePath,
-        "Release previews must exactly match the current PLVS preview contract.",
+        previewsPath,
+        "Previews must exactly match the current PLVS preview contract.",
         { expectedIds, receivedIds }
       ),
     ]);
   }
 
-  const previewsById = new Map(release.previews.map((preview) => [preview.id, preview]));
+  const previewsById = new Map(owner.previews.map((preview) => [preview.id, preview]));
   const sealed = [];
   for (const id of expectedIds) {
     const preview = previewsById.get(id);
-    const previewIndex = release.previews.indexOf(preview);
-    const errorPath = `${releasePath}[${previewIndex}].path`;
+    const previewIndex = owner.previews.indexOf(preview);
+    const errorPath = `${previewsPath}[${previewIndex}].path`;
     const filePath = resolve(root, preview.path);
     if (!inside(root, filePath)) {
       throw new CommunitySourceError([
@@ -263,10 +265,42 @@ async function resolveReleases(root, listing, listingIndex) {
       ...metadata,
       artifact: { ...metadata.artifact, fileName: basename(sourcePath) },
     };
-    const previews = await sealPreviews(root, release, metadata, listingIndex, releaseIndex);
+    const previews = await sealPreviews(
+      root,
+      release,
+      metadata,
+      `$.listings[${listingIndex}].releases[${releaseIndex}]`
+    );
     releases.push({ ...release, previews, metadata });
   }
   return releases;
+}
+
+async function resolveIncluded(root, listing, listingIndex) {
+  if (!listing.included) return null;
+  const sourcePath = `$.listings[${listingIndex}].included.sourceId`;
+  if (listing.type !== "themes" || !BUILTIN_THEMES_V2[listing.included.sourceId]) {
+    throw new CommunitySourceError([
+      issue(
+        "unknownIncludedSource",
+        sourcePath,
+        "The included source does not identify content built into this PLVS version.",
+        { type: listing.type, sourceId: listing.included.sourceId }
+      ),
+    ]);
+  }
+  const pack = buildPack("themes", [BUILTIN_THEMES_V2[listing.included.sourceId]]);
+  const text = `${JSON.stringify(pack, null, 2)}\n`;
+  const metadata = await deriveCommunityCatalogueMetadata(text, {
+    fileName: `${listing.included.sourceId}.plvstheme`,
+  });
+  const previews = await sealPreviews(
+    root,
+    listing.included,
+    metadata,
+    `$.listings[${listingIndex}].included`
+  );
+  return { ...listing.included, previews, metadata };
 }
 
 export async function readCommunitySourceRecords(contentDirectory) {
@@ -337,6 +371,23 @@ export async function readCommunitySourceRecords(contentDirectory) {
           identities.preview.set(previewKey, relativePath);
         }
       }
+      if (document.included) {
+        for (const [previewIndex, preview] of document.included.previews.entries()) {
+          const previewKey = preview.path.toLocaleLowerCase("en-US");
+          const previewFirst = identities.preview.get(previewKey);
+          if (previewFirst != null) {
+            throw new CommunitySourceError([
+              issue(
+                "duplicatePreviewPath",
+                `$.listings[${index}].included.previews[${previewIndex}].path`,
+                `Each generated preview must have a distinct path: ${preview.path}.`,
+                { sourcePath: relativePath, firstSourcePath: previewFirst }
+              ),
+            ]);
+          }
+          identities.preview.set(previewKey, relativePath);
+        }
+      }
       listings.push({ sourcePath: relativePath, document });
     } catch (error) {
       if (error instanceof CommunitySourceError) throw error;
@@ -358,7 +409,8 @@ export async function readCommunitySource(contentDirectory) {
   const listings = [];
   for (const [index, listing] of source.listings.entries()) {
     const releases = await resolveReleases(source.root, listing.document, index);
-    listings.push({ ...listing, document: { ...listing.document, releases } });
+    const included = await resolveIncluded(source.root, listing.document, index);
+    listings.push({ ...listing, document: { ...listing.document, included, releases } });
   }
   return { ...source, listings };
 }

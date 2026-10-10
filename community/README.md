@@ -7,10 +7,9 @@ This directory is the initial local checkout of the static Community Catalogue c
 is deliberately outside `landing/`: website code reads it only through the versioned manifest and
 an explicit content-directory argument, so this tree can move to a separate repository later.
 
-`catalogue/manifest.json` contains the initial official Signal Amber Theme, Stereo Overview Preset,
-and parameter-named Loudness Profile. Their previews are generated from the current production
-components with the pinned renderer. An empty manifest remains valid for fixtures and bootstrap;
-it must never replace a Catalogue with published history.
+`catalogue/manifest.json` contains the curated Sharesets catalogue. Previews are generated from the
+current production components with the pinned renderer. An empty manifest remains valid for
+fixtures and bootstrap; it must never replace a Catalogue with published history.
 Real content is added only through an explicit maintainer-curated publication workflow. The current
 project does not accept or advertise public submissions.
 
@@ -32,7 +31,13 @@ slugs, and artifact paths must be unique; the file must be canonical UTF-8 Pack 
 actual Item family matches the Listing. Machine-owned hashes, compatibility facts, facets, and
 preview requirements are derived from those bytes rather than copied into Listing JSON.
 
-Every Release must reference exactly the preview IDs required by that derived contract. The source
+An official Listing may instead declare an `included` source that identifies content built into
+PLVS. The validator resolves that ID through the production registry and derives the same metadata
+and preview contract from the current built-in document. Included content has no downloadable
+Release artifact; its detail page shows `Included with PLVS` and omits import instructions, file
+metadata, and Release History.
+
+Every Release or included source must reference exactly the preview IDs required by that derived contract. The source
 validator rejects missing or additional slots, checks the PNG structure, and seals each image's
 exact byte length and SHA-256 hash. Preview generation remains a PLVS-owned curator/CI operation;
 the Listing format has no publisher-selected cover image or screenshot field.

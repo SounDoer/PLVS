@@ -22,9 +22,11 @@ const LISTING_FIELDS = new Set([
   "descriptionMarkdown",
   "tags",
   "author",
+  "included",
   "releases",
 ]);
 const AUTHOR_FIELDS = new Set(["name", "url"]);
+const INCLUDED_FIELDS = new Set(["sourceId", "previews"]);
 const RELEASE_FIELDS = new Set([
   "number",
   "publishedAt",
@@ -214,6 +216,30 @@ function validatePreviews(raw, releasePath, issues) {
   });
 }
 
+function validateIncluded(raw, issues) {
+  const path = "$.included";
+  if (!isPlainObject(raw)) {
+    issues.push(issue("invalidIncludedSource", path, "included must be an object."));
+    return null;
+  }
+  unknownFields(raw, INCLUDED_FIELDS, path, issues);
+  const sourceId = normalizedText(
+    raw.sourceId,
+    { path: `${path}.sourceId`, label: "Included source ID", max: 128 },
+    issues
+  );
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(sourceId)) {
+    issues.push(
+      issue(
+        "invalidIncludedSourceId",
+        `${path}.sourceId`,
+        "Included source IDs use lowercase letters, numbers, and hyphens."
+      )
+    );
+  }
+  return { sourceId, previews: validatePreviews(raw.previews, path, issues) };
+}
+
 function validateRelease(raw, index, type, issues) {
   const path = `$.releases[${index}]`;
   if (!isPlainObject(raw)) {
@@ -336,7 +362,25 @@ export function validateCommunityListingRecord(raw) {
   );
   const tags = validateTags(raw.tags, issues);
   const author = validateAuthor(raw.author, issues);
-  if (!Array.isArray(raw.releases) || raw.releases.length === 0) {
+  const included = raw.included == null ? null : validateIncluded(raw.included, issues);
+  if (included && raw.classification !== "official") {
+    issues.push(
+      issue(
+        "includedSourceMustBeOfficial",
+        "$.classification",
+        "Only an official Listing may describe content included with PLVS."
+      )
+    );
+  }
+  if (included && raw.releases != null) {
+    issues.push(
+      issue(
+        "includedSourceHasReleases",
+        "$.releases",
+        "Content included with PLVS does not have downloadable Releases."
+      )
+    );
+  } else if (!included && (!Array.isArray(raw.releases) || raw.releases.length === 0)) {
     issues.push(issue("invalidReleases", "$.releases", "A Listing needs at least one Release."));
   }
   const releases = (Array.isArray(raw.releases) ? raw.releases : [])
@@ -377,6 +421,7 @@ export function validateCommunityListingRecord(raw) {
     descriptionMarkdown,
     tags,
     author,
+    included,
     releases,
   };
 }

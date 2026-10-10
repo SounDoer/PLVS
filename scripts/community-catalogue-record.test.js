@@ -51,6 +51,36 @@ describe("Community Listing and Release records", () => {
     });
   });
 
+  it("accepts official content included with PLVS without inventing a downloadable Release", () => {
+    const raw = listing({
+      type: "themes",
+      classification: "official",
+      included: {
+        sourceId: "plvs-dark",
+        previews: [{ id: "semantic-overview", path: "previews/plvs-dark/semantic-overview.png" }],
+      },
+    });
+    delete raw.releases;
+
+    expect(validateCommunityListingRecord(raw)).toMatchObject({
+      included: { sourceId: "plvs-dark" },
+      releases: [],
+    });
+  });
+
+  it("rejects releases and community classification on content included with PLVS", () => {
+    expect(() =>
+      validateCommunityListingRecord(listing({ included: { sourceId: "plvs-dark", previews: [] } }))
+    ).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "includedSourceMustBeOfficial" }),
+          expect.objectContaining({ code: "includedSourceHasReleases" }),
+        ]),
+      })
+    );
+  });
+
   it("rejects raw HTML and non-HTTPS Markdown links", () => {
     expect(() =>
       validateCommunityListingRecord(

@@ -58,7 +58,7 @@ focus, empty states, and navigation behavior against real generated pages before
 ## Resource details
 
 Theme, Preset and Loudness Profile pages share the two-column preview/summary layout with full-width sections below.
-Release History is the last content section, after Details, Panel Settings and any included
+Downloadable content places Release History last, after Details, Panel Settings and any included
 Loudness Profile, immediately before the footer. Themes and Presets use an image gallery; Profiles use a data-generated rule
 summary, never screenshots. Both catalogue and detail summaries show the first three rules in
 artifact order, with an accurate remaining-rule count; detail overflow links to full Details.
@@ -79,6 +79,9 @@ and units come from the application's Stats catalogue. Listing prose must not be
 manually maintained source of rule values. Omit empty dependency sections and duplicate metric
 compatibility listings. Current releases download from the top action; older published releases
 use inline text download links in the history, and withdrawn releases have no download link.
+Content built into PLVS replaces download actions with `Included with PLVS`. Its settings and
+preview contract come directly from the production built-in registry; it has no import guidance,
+file size, checksum, or Release History.
 
 Catalogue preview areas share a 16:10 aspect ratio across all resource families. Text bodies
 remain content-sized and cards in a row stretch to equal height. Profile summaries and full

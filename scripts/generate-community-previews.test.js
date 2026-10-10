@@ -101,6 +101,25 @@ describe("Community preview command", () => {
     );
   });
 
+  it("renders a built-in Theme directly from the product source", async () => {
+    const root = temporaryRoot();
+    const result = await generateCommunityPreviews({
+      builtinThemeId: "plvs-dark",
+      outputDirectory: join(root, "rendered"),
+      createRuntime: async () => imageRuntime(),
+    });
+
+    expect(result.type).toBe("themes");
+    expect(result.report.assets).toHaveLength(11);
+    await expect(
+      generateCommunityPreviews({
+        builtinThemeId: "not-built-in",
+        outputDirectory: join(root, "unknown"),
+        createRuntime: async () => imageRuntime(),
+      })
+    ).rejects.toThrow("Unknown built-in Theme");
+  });
+
   it("refuses an existing output directory before rendering", async () => {
     const root = temporaryRoot();
     const source = artifact(root, "loudness");
