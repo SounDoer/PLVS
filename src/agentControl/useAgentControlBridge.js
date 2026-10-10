@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   announceAgentControlFrontendNotReady,
   announceAgentControlFrontendReady,
@@ -79,11 +79,7 @@ import {
   buildSettingsSchema,
   planSettingsUpdate,
 } from "./settingsControl.js";
-import {
-  planTransportMutation,
-  projectTransportMutation,
-  transportLifecycleSignature,
-} from "./transportControl.js";
+import { planTransportMutation, projectTransportMutation } from "./transportControl.js";
 import {
   buildDockDescription,
   buildDockPanelDescription,
@@ -102,6 +98,8 @@ import {
 } from "./workspaceLayout.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
+import { createDomainRunner } from "./bridge/domains.js";
+import { awaitSettlement, createSettlementRegistry } from "./bridge/settlement.js";
 import {
   semanticFailure,
   visualSemanticFailure,
@@ -117,15 +115,12 @@ import {
   workspaceMatches,
   panelControlsMatch,
   axisStateMatches,
-  controllableWorkspaceMatches,
   presetStateSignature,
   themeStateSignature,
   loudnessProfileStateSignature,
   activeLoudnessProfileId,
   workspaceMatchesPresetView,
   settingsStateSignature,
-  ordinarySettingsStateSignature,
-  requestedDeviceSignature,
 } from "./bridge/signatures.js";
 
 const EDITOR_DRAFT_SETTLEMENT_TIMEOUT_MS = 500;
@@ -253,36 +248,6 @@ function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
           : device.live?.state === "running",
     }
   );
-}
-
-/**
- * @param {string} subject
- */
-function awaitSettlement(committed, clear, subject) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      clear();
-      reject(
-        semanticFailure(
-          COMMIT_NOT_OBSERVED,
-          "$",
-          `${subject} was applied but the commit was not observed within ${SETTLEMENT_TIMEOUT_MS} ms.`,
-          -32031,
-          { stateCommitted: true }
-        )
-      );
-    }, SETTLEMENT_TIMEOUT_MS);
-    committed.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
 }
 
 function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
@@ -521,38 +486,8 @@ export function useAgentControlBridge({
   );
   const themeControl = theme?.control ?? null;
   const themeSignature = themeStateSignature(themeState);
-  const visualCapturesRef = useRef(new Map());
-  const visualCaptureActiveRef = useRef(false);
-  const visualRecordingsRef = useRef(new Map());
   const aliveRef = useRef(false);
-  const previousWorkspaceRef = useRef(workspace);
-  const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
-  const previousThemeStateSignatureRef = useRef(themeSignature);
   const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles, loudnessActive);
-  const previousLoudnessLibrarySignatureRef = useRef(loudnessSignature);
-  const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
-  const previousViewSignatureRef = useRef(viewStateSignature(viewContext.view));
-  const openAtLoginTrackingRef = useRef({
-    ready: settingsContext.autostartReady === true,
-    value: settings?.openAtLogin,
-  });
-  const clearShortcutTrackingRef = useRef({
-    ready: settingsContext.clearShortcutReady === true,
-    signature: JSON.stringify(settings?.clearShortcut ?? null),
-  });
-  const settlementRef = useRef(null);
-  const presetSettlementRef = useRef(null);
-  const librarySettlementRef = useRef(null);
-  const loudnessProfileSettlementRef = useRef(null);
-  const themeSettlementRef = useRef(null);
-  const settingsSettlementRef = useRef(null);
-  const viewSettlementRef = useRef(null);
-  const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
-  const transportSettlementRef = useRef(null);
-  const previousRequestedDeviceRef = useRef(requestedDeviceSignature(device));
-  const deviceSettlementRef = useRef(null);
-  const previousDockSignatureRef = useRef(dockStateSignature(dock));
-  const dockSettlementRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
@@ -605,222 +540,41 @@ export function useAgentControlBridge({
   });
 
   // Created once per hook instance; state is used only for its lazy initializer.
-  const [{ clock, waiters }] = useState(() => {
+  const [{ clock, waiters, settlement, visualBook, observeCommit }] = useState(() => {
     const waitRegistry = createWaiters();
+    const revisionClock = createRevisionClock({
+      onWake: (revision) => waitRegistry.wakeRevision(revision),
+    });
+    const settlementRegistry = createSettlementRegistry(revisionClock);
+    const visualBookkeeping = {
+      captures: new Map(),
+      recordings: new Map(),
+      captureActive: { current: false },
+    };
     return {
       waiters: waitRegistry,
-      clock: createRevisionClock({ onWake: (revision) => waitRegistry.wakeRevision(revision) }),
+      clock: revisionClock,
+      settlement: settlementRegistry,
+      visualBook: visualBookkeeping,
+      observeCommit: createDomainRunner({
+        clock: revisionClock,
+        settlement: settlementRegistry,
+        recordings: visualBookkeeping.recordings,
+        initialInputs: inputs,
+      }),
     };
   });
 
+  // One effect for every domain, after the inputs refresh above. The runner compares each domain's
+  // own dependencies, so this deliberately has no dependency array.
   useEffect(() => {
-    const signature = viewStateSignature(viewContext.view);
-    if (signature !== previousViewSignatureRef.current) {
-      previousViewSignatureRef.current = signature;
-      clock.bump();
-      clock.scheduleWake();
-    }
-    const settlement = viewSettlementRef.current;
-    if (settlement && settlement.signature === signature) {
-      viewSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, viewContext]);
-
-  /// Resolved by the watcher for a library the `*.import` in flight actually wrote -- which is
-  /// `planLibraryImport`'s `writes`, not the family the request named. A Preset pack can write the
-  /// Loudness library alone, and waiting on the Preset watcher there times out on a commit that
-  /// succeeded. `commit` writes both stores synchronously, so when it writes two libraries both
-  /// watchers fire in the same React commit and the first to arrive is the right answer.
-  ///
-  /// Import does not bump the revision itself. Every library it can write is watched -- the two
-  /// `librarySignature` effects below and the Preset effect -- and each watcher bumps when the
-  /// write reaches React. Doing both moved the revision by two for a single import (measured, not
-  /// reasoned about: `clock.bump`'s same-turn guard has already reset by the time the
-  /// re-render lands). Nothing about that is visible -- no error, an ordinary-looking number --
-  /// except that every later `--expected-revision` starts conflicting.
-  const resolveLibrarySettlement = useCallback(
-    (family) => {
-      const settlement = librarySettlementRef.current;
-      if (!settlement || !settlement.families.includes(family)) return;
-      librarySettlementRef.current = null;
-      settlement.resolve(clock.current());
-    },
-    [clock]
-  );
-
-  const observeLoudnessProfileSettlement = useCallback(
-    (store, signature) => {
-      const settlement = loudnessProfileSettlementRef.current;
-      if (!settlement || settlement.expected[store] !== signature) return;
-      settlement.observed.add(store);
-      if (Object.keys(settlement.expected).every((key) => settlement.observed.has(key))) {
-        loudnessProfileSettlementRef.current = null;
-        settlement.resolve(clock.current());
-      }
-    },
-    [clock]
-  );
-
-  useEffect(() => {
-    if (!controllableWorkspaceMatches(previousWorkspaceRef.current, workspace)) {
-      previousWorkspaceRef.current = workspace;
-      clock.bumpWorkspace();
-    } else {
-      previousWorkspaceRef.current = workspace;
-    }
-    const settlement = settlementRef.current;
-    if (settlement && settlement.matches(workspace)) {
-      settlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, workspace]);
-
-  useEffect(() => {
-    const signature = presetStateSignature(presets);
-    if (signature !== previousPresetsSignatureRef.current) {
-      previousPresetsSignatureRef.current = signature;
-      clock.bump();
-      clock.scheduleWake();
-      resolveLibrarySettlement("preset");
-    }
-    const settlement = presetSettlementRef.current;
-    if (settlement && signature === settlement.signature) {
-      presetSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-    observeLoudnessProfileSettlement("presets", signature);
-  }, [clock, observeLoudnessProfileSettlement, presets, resolveLibrarySettlement]);
-
-  useEffect(() => {
-    if (themeSignature !== previousThemeStateSignatureRef.current) {
-      previousThemeStateSignatureRef.current = themeSignature;
-      clock.bump();
-      clock.scheduleWake();
-      resolveLibrarySettlement("theme");
-    }
-    const settlement = themeSettlementRef.current;
-    if (settlement && settlement.signature === themeSignature) {
-      themeSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, resolveLibrarySettlement, themeControl, themeSignature, themeState]);
-
-  useEffect(() => {
-    if (loudnessSignature !== previousLoudnessLibrarySignatureRef.current) {
-      previousLoudnessLibrarySignatureRef.current = loudnessSignature;
-      clock.bump();
-      clock.scheduleWake();
-      resolveLibrarySettlement("loudnessProfile");
-    }
-    observeLoudnessProfileSettlement("loudnessProfile", loudnessSignature);
-  }, [clock, loudnessSignature, observeLoudnessProfileSettlement, resolveLibrarySettlement]);
-
-  useEffect(() => {
-    const signature = settingsStateSignature(settings);
-    const ordinarySignature = ordinarySettingsStateSignature(settings);
-    let changed = false;
-    if (ordinarySignature !== previousOrdinarySettingsSignatureRef.current) {
-      previousOrdinarySettingsSignatureRef.current = ordinarySignature;
-      changed = true;
-    }
-
-    const openAtLogin = openAtLoginTrackingRef.current;
-    if (settingsContext.autostartReady === true) {
-      if (openAtLogin.ready && openAtLogin.value !== settings?.openAtLogin) changed = true;
-      openAtLogin.ready = true;
-      openAtLogin.value = settings?.openAtLogin;
-    } else {
-      openAtLogin.ready = false;
-    }
-
-    const clearShortcut = clearShortcutTrackingRef.current;
-    const clearShortcutSignature = JSON.stringify(settings?.clearShortcut ?? null);
-    if (settingsContext.clearShortcutReady === true) {
-      if (clearShortcut.ready && clearShortcut.signature !== clearShortcutSignature) changed = true;
-      clearShortcut.ready = true;
-      clearShortcut.signature = clearShortcutSignature;
-    } else {
-      clearShortcut.ready = false;
-    }
-
-    if (changed) {
-      clock.bump();
-      clock.scheduleWake();
-    }
-    const settlement = settingsSettlementRef.current;
-    if (settlement && signature === settlement.signature) {
-      settingsSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, settings, settingsContext.autostartReady, settingsContext.clearShortcutReady]);
-
-  useEffect(() => {
-    const visualControl = inputsRef.current.visual;
-    const runtime = visualControl?.getRuntime?.() ?? {};
-    const audioState = measuredAudioState(runtime, transport);
-    for (const [recordingId, metadata] of visualRecordingsRef.current) {
-      if (metadata.audio !== "measuredSource") continue;
-      void visualControl
-        ?.updateRecordingAudioState?.({ recordingId, state: audioState })
-        .catch(() => undefined);
-    }
-    const signature = transportLifecycleSignature(transport);
-    if (signature !== previousTransportSignatureRef.current) {
-      previousTransportSignatureRef.current = signature;
-      clock.bump();
-      clock.scheduleWake();
-    }
-    const settlement = transportSettlementRef.current;
-    if (settlement && settlement.matches(transport)) {
-      transportSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, transport]);
-
-  useEffect(() => {
-    const visualControl = inputsRef.current.visual;
-    const runtime = visualControl?.getRuntime?.() ?? {};
-    const audioState =
-      device?.live?.transition != null
-        ? "liveRestart"
-        : measuredAudioState(runtime, inputsRef.current.transport);
-    for (const [recordingId, metadata] of visualRecordingsRef.current) {
-      if (metadata.audio !== "measuredSource") continue;
-      void visualControl
-        ?.updateRecordingAudioState?.({ recordingId, state: audioState })
-        .catch(() => undefined);
-    }
-    const requestedId = requestedDeviceSignature(device);
-    if (requestedId !== previousRequestedDeviceRef.current) {
-      previousRequestedDeviceRef.current = requestedId;
-      clock.bump();
-      clock.scheduleWake();
-    }
-    const settlement = deviceSettlementRef.current;
-    if (settlement && requestedId === settlement.requestedId) {
-      deviceSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, device]);
-
-  useEffect(() => {
-    const signature = dockStateSignature(dock);
-    if (signature !== previousDockSignatureRef.current) {
-      previousDockSignatureRef.current = signature;
-      clock.bumpWorkspace();
-    }
-    const settlement = dockSettlementRef.current;
-    if (settlement && settlement.matches(dock)) {
-      dockSettlementRef.current = null;
-      settlement.resolve(clock.current());
-    }
-  }, [clock, dock]);
+    observeCommit(inputs);
+  });
 
   useEffect(() => {
     // Dock panels share the Workspace panel mapping, which offers and keeps the Loudness reference
     // layer only when this is set; the bare Dock context never carried it.
-    const ownedVisualCaptures = visualCapturesRef.current;
+    const ownedVisualCaptures = visualBook.captures;
     const buildCurrentMeasurement = (liveOverride) => {
       const currentMeasurement = inputsRef.current.measurementContext;
       const currentProfile = {
@@ -1114,8 +868,8 @@ export function useAgentControlBridge({
                 uiAfter = uiNavigation.inspectUi();
                 const observedSignature =
                   kind === "theme"
-                    ? previousThemeStateSignatureRef.current
-                    : previousLoudnessLibrarySignatureRef.current;
+                    ? inputsRef.current.themeSignature
+                    : inputsRef.current.loudnessSignature;
                 if (
                   observedSignature === expectedSignature &&
                   !uiAfter.surfaces.some(
@@ -1374,11 +1128,11 @@ export function useAgentControlBridge({
           if (!availableTargets.includes(request.params.target.kind)) {
             throw visualSemanticFailure({ reason: "targetUnavailable" });
           }
-          if (visualCaptureActiveRef.current) {
+          if (visualBook.captureActive.current) {
             throw visualSemanticFailure({ reason: "captureBusy" });
           }
           const controller = new AbortController();
-          visualCaptureActiveRef.current = true;
+          visualBook.captureActive.current = true;
           ownedVisualCaptures.set(requestId, controller);
           try {
             const settled = await visualControl.settle(request.params.target, {
@@ -1417,7 +1171,7 @@ export function useAgentControlBridge({
             throw visualSemanticFailure(error);
           } finally {
             ownedVisualCaptures.delete(requestId);
-            visualCaptureActiveRef.current = false;
+            visualBook.captureActive.current = false;
           }
         }
         if (request.method === "visual.recording.start") {
@@ -1474,7 +1228,7 @@ export function useAgentControlBridge({
               unsubscribe: null,
               audio,
             };
-            visualRecordingsRef.current.set(recording.recordingId, metadata);
+            visualBook.recordings.set(recording.recordingId, metadata);
             metadata.unsubscribe = visualControl.subscribe?.(
               request.params.target,
               (geometry) => {
@@ -1490,7 +1244,7 @@ export function useAgentControlBridge({
             );
             visualControl.setRecordingState?.(recording.state);
             void (async () => {
-              while (visualRecordingsRef.current.has(recording.recordingId)) {
+              while (visualBook.recordings.has(recording.recordingId)) {
                 await new Promise((resolve) => setTimeout(resolve, 250));
                 try {
                   const latest = await visualControl.inspectRecording(recording.recordingId);
@@ -1534,7 +1288,7 @@ export function useAgentControlBridge({
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
           const recordingId = request.params.recordingId;
-          const metadata = visualRecordingsRef.current.get(recordingId);
+          const metadata = visualBook.recordings.get(recordingId);
           const decorate = (recording) => {
             const terminal = recording.state === "completed" || recording.state === "failed";
             if (terminal) {
@@ -2087,18 +1841,12 @@ export function useAgentControlBridge({
           result.warnings = planned.warnings;
           result.plan = planned.plan;
 
-          const committed = new Promise((resolve, reject) => {
-            deviceSettlementRef.current = {
-              requestedId: request.params.deviceId,
-              resolve,
-              reject,
-            };
-          });
+          const committed = settlement.arm("device", { requestedId: request.params.deviceId });
           let restart = null;
           try {
             restart = planned.plan.restartLive ? commitDevice.beginRestart() : null;
           } catch (error) {
-            deviceSettlementRef.current = null;
+            settlement.clear("device");
             throw semanticFailure(
               error?.code === "transitionInProgress" ? "transitionInProgress" : "commandFailed",
               "$.params",
@@ -2122,21 +1870,17 @@ export function useAgentControlBridge({
 
           let committedRevision = clock.current();
           if (persistenceError?.stateCommitted === true) {
-            committedRevision = await awaitSettlement(
+            committedRevision = await settlement.observed(
+              "device",
               committed,
-              () => {
-                deviceSettlementRef.current = null;
-              },
               "The Device selection"
             );
           } else if (persistenceError) {
-            deviceSettlementRef.current = null;
+            settlement.clear("device");
           } else {
-            committedRevision = await awaitSettlement(
+            committedRevision = await settlement.observed(
+              "device",
               committed,
-              () => {
-                deviceSettlementRef.current = null;
-              },
               "The Device selection"
             );
           }
@@ -2384,9 +2128,7 @@ export function useAgentControlBridge({
               : request.method === "dock.exit"
                 ? (candidate) => candidate.enabled === false
                 : (candidate) => dockStateSignature(candidate) === plannedSignature;
-          const committed = new Promise((resolve, reject) => {
-            dockSettlementRef.current = { matches, resolve, reject };
-          });
+          const committed = settlement.arm("dock", { matches });
           try {
             const effectiveDock = await executeDock(request.method, planned.dock);
             if (request.method === "dock.enter") {
@@ -2394,20 +2136,12 @@ export function useAgentControlBridge({
               result.warnings = planned.warnings;
               result.state.dock = buildDockSnapshot(planned.dock, dockRequestContext);
               if (matches(inputsRef.current.dock)) {
-                const settlement = dockSettlementRef.current;
-                dockSettlementRef.current = null;
-                settlement?.resolve(clock.current());
+                settlement.resolve("dock");
               }
             }
-            result.revision = await awaitSettlement(
-              committed,
-              () => {
-                dockSettlementRef.current = null;
-              },
-              "The Dock change"
-            );
+            result.revision = await settlement.observed("dock", committed, "The Dock change");
           } catch (error) {
-            dockSettlementRef.current = null;
+            settlement.clear("dock");
             // The backstop already states what went wrong and that state was committed; relabelling
             // it as a failed native operation would hide the real cause.
             if (isCommitNotObserved(error)) throw error;
@@ -2575,13 +2309,9 @@ export function useAgentControlBridge({
             if (matches(inputsRef.current.transport)) {
               result.revision = clock.current();
             } else {
-              result.revision = await awaitSettlement(
-                new Promise((resolve, reject) => {
-                  transportSettlementRef.current = { matches, resolve, reject };
-                }),
-                () => {
-                  transportSettlementRef.current = null;
-                },
+              result.revision = await settlement.observed(
+                "transport",
+                settlement.arm("transport", { matches }),
                 "The Transport change"
               );
             }
@@ -2661,12 +2391,8 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const committed = new Promise((resolve, reject) => {
-            settingsSettlementRef.current = {
-              signature: settingsStateSignature(planned.settings),
-              resolve,
-              reject,
-            };
+          const committed = settlement.arm("settings", {
+            signature: settingsStateSignature(planned.settings),
           });
           try {
             await applySettings(planned.settings, {
@@ -2674,7 +2400,7 @@ export function useAgentControlBridge({
               effects: planned.effects,
             });
           } catch (error) {
-            settingsSettlementRef.current = null;
+            settlement.clear("settings");
             throw semanticFailure(
               "applicationFailed",
               "$",
@@ -2689,13 +2415,7 @@ export function useAgentControlBridge({
               }
             );
           }
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              settingsSettlementRef.current = null;
-            },
-            "The Settings change"
-          );
+          result.revision = await settlement.observed("settings", committed, "The Settings change");
           try {
             await flush();
           } catch (error) {
@@ -2786,20 +2506,14 @@ export function useAgentControlBridge({
               }
             );
           }
-          const committed = new Promise((resolve, reject) => {
-            viewSettlementRef.current = {
-              signature: viewStateSignature(planned.view),
-              resolve,
-              reject,
-            };
-          });
+          const committed = settlement.arm("view", { signature: viewStateSignature(planned.view) });
           try {
             await commitContext.applyView(planned.view, {
               changed: planned.changed,
               effects: planned.effects,
             });
           } catch (error) {
-            viewSettlementRef.current = null;
+            settlement.clear("view");
             throw semanticFailure(
               "applicationFailed",
               "$",
@@ -2814,13 +2528,7 @@ export function useAgentControlBridge({
               }
             );
           }
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              viewSettlementRef.current = null;
-            },
-            "The View change"
-          );
+          result.revision = await settlement.observed("view", committed, "The View change");
           const resultingContext = inputsRef.current.viewContext;
           const resultingInspection = buildViewInspection(resultingContext.view, resultingContext);
           result.runtime = resultingInspection.runtime;
@@ -2982,14 +2690,7 @@ export function useAgentControlBridge({
             ) {
               expected.presets = presetStateSignature(commitPlan.presets);
             }
-            const committed = new Promise((resolve, reject) => {
-              loudnessProfileSettlementRef.current = {
-                expected,
-                observed: new Set(),
-                resolve,
-                reject,
-              };
-            });
+            const committed = settlement.arm("loudnessProfile", { expected, observed: new Set() });
             return committed;
           };
 
@@ -3011,11 +2712,9 @@ export function useAgentControlBridge({
           }
           result.plan = profilePlan();
           result.state = compactLoudnessProfileState(planned.loudnessProfiles);
-          result.revision = await awaitSettlement(
+          result.revision = await settlement.observed(
+            "loudnessProfile",
             committed,
-            () => {
-              loudnessProfileSettlementRef.current = null;
-            },
             "The Loudness Profile change"
           );
           try {
@@ -3134,17 +2833,13 @@ export function useAgentControlBridge({
             }
             planned = planPresetSave(state, planned.preset.name, snapshot, saved.id);
           }
-          const committed = new Promise((resolve, reject) => {
-            presetSettlementRef.current = {
-              signature: presetStateSignature(planned.presets),
-              resolve,
-              reject,
-            };
+          const committed = settlement.arm("presets", {
+            signature: presetStateSignature(planned.presets),
           });
           if (request.method === "preset.update") {
             const updated = presets.updateSnapshot(request.params.presetId, snapshot);
             if (!updated) {
-              presetSettlementRef.current = null;
+              settlement.clear("presets");
               throw semanticFailure(
                 "presetNotFound",
                 "$.params.presetId",
@@ -3155,13 +2850,7 @@ export function useAgentControlBridge({
           }
           result.state.preset = planned.preset;
           result.state.presets = planned.presetState;
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              presetSettlementRef.current = null;
-            },
-            "The Preset change"
-          );
+          result.revision = await settlement.observed("presets", committed, "The Preset change");
           try {
             await flush();
           } catch (error) {
@@ -3258,13 +2947,7 @@ export function useAgentControlBridge({
 
           const presetStateChanged = planned.changed.some((path) => path.startsWith("presets."));
           const presetCommitted = presetStateChanged
-            ? new Promise((resolve, reject) => {
-                presetSettlementRef.current = {
-                  signature: presetStateSignature(planned.presets),
-                  resolve,
-                  reject,
-                };
-              })
+            ? settlement.arm("presets", { signature: presetStateSignature(planned.presets) })
             : null;
           let workspaceCommitted = null;
           // What applying this Preset actually installs. Both the settlement below and the
@@ -3274,13 +2957,9 @@ export function useAgentControlBridge({
           let targetView = null;
           if (planned.changed.includes("workspace")) {
             targetView = presetWorkspaceView(resources.preset);
-            workspaceCommitted = new Promise((resolve, reject) => {
-              settlementRef.current = {
-                matches: (currentWorkspace) =>
-                  workspaceMatchesPresetView(currentWorkspace, targetView),
-                resolve,
-                reject,
-              };
+            workspaceCommitted = settlement.arm("workspace", {
+              matches: (currentWorkspace) =>
+                workspaceMatchesPresetView(currentWorkspace, targetView),
             });
           }
           try {
@@ -3294,8 +2973,8 @@ export function useAgentControlBridge({
               throw new Error("Preset target disappeared before activation.");
             }
           } catch (error) {
-            settlementRef.current = null;
-            presetSettlementRef.current = null;
+            settlement.clear("workspace");
+            settlement.clear("presets");
             if (isSceneOperationRefused(error)) throw error;
             throw semanticFailure(
               "applicationFailed",
@@ -3317,8 +2996,8 @@ export function useAgentControlBridge({
               ...(workspaceCommitted ? [workspaceCommitted] : []),
             ]),
             () => {
-              presetSettlementRef.current = null;
-              settlementRef.current = null;
+              settlement.clear("presets");
+              settlement.clear("workspace");
             },
             "The Preset application"
           );
@@ -3408,12 +3087,8 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const committed = new Promise((resolve, reject) => {
-            presetSettlementRef.current = {
-              signature: presetStateSignature(planned.presets),
-              resolve,
-              reject,
-            };
+          const committed = settlement.arm("presets", {
+            signature: presetStateSignature(planned.presets),
           });
           if (request.method === "preset.rename") {
             presets.rename(request.params.presetId, planned.preset.name);
@@ -3422,13 +3097,7 @@ export function useAgentControlBridge({
           } else {
             presets.reorder(planned.presetIds);
           }
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              presetSettlementRef.current = null;
-            },
-            "The Preset order"
-          );
+          result.revision = await settlement.observed("presets", committed, "The Preset order");
           try {
             await flush();
           } catch (error) {
@@ -3571,21 +3240,11 @@ export function useAgentControlBridge({
           };
           if (dryRun || planned.changed.length === 0) return { requestId, result };
 
-          const committed = new Promise((resolve, reject) => {
-            themeSettlementRef.current = {
-              signature: themeStateSignature(planned.state),
-              resolve,
-              reject,
-            };
+          const committed = settlement.arm("theme", {
+            signature: themeStateSignature(planned.state),
           });
           control.commit(planned);
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              themeSettlementRef.current = null;
-            },
-            "The Theme change"
-          );
+          result.revision = await settlement.observed("theme", committed, "The Theme change");
           result.state = compactThemeState(inputsRef.current.themeState);
           try {
             await flush();
@@ -3725,18 +3384,10 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const committed = new Promise((resolve, reject) => {
-            librarySettlementRef.current = { families: planned.writes, resolve, reject };
-          });
+          const committed = settlement.arm("library", { families: planned.writes });
           planned.commit();
           result.state = { [stateKey]: buildLibraryList(family) };
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              librarySettlementRef.current = null;
-            },
-            "The library import"
-          );
+          result.revision = await settlement.observed("library", committed, "The library import");
           try {
             await flush();
           } catch (error) {
@@ -3918,22 +3569,12 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const committed = new Promise((resolve, reject) => {
-            settlementRef.current = {
-              view: planned.workspace,
-              matches: (currentWorkspace) => axisStateMatches(currentWorkspace, planned.workspace),
-              resolve,
-              reject,
-            };
+          const committed = settlement.arm("workspace", {
+            view: planned.workspace,
+            matches: (currentWorkspace) => axisStateMatches(currentWorkspace, planned.workspace),
           });
           replaceWorkspace(planned.workspace);
-          result.revision = await awaitSettlement(
-            committed,
-            () => {
-              settlementRef.current = null;
-            },
-            "The axis change"
-          );
+          result.revision = await settlement.observed("workspace", committed, "The axis change");
           await waitForWorkspacePersistenceEnqueue(planned.workspace);
           try {
             await flush();
@@ -4088,21 +3729,15 @@ export function useAgentControlBridge({
             return { requestId, result };
           }
 
-          const committed = new Promise((resolve, reject) => {
-            settlementRef.current = {
-              view: nextWorkspace,
-              matches: (currentWorkspace) =>
-                panelControlsMatch(currentWorkspace, nextWorkspace, panelId),
-              resolve,
-              reject,
-            };
+          const committed = settlement.arm("workspace", {
+            view: nextWorkspace,
+            matches: (currentWorkspace) =>
+              panelControlsMatch(currentWorkspace, nextWorkspace, panelId),
           });
           setPanelControlsForPanel(panelId, planned.panelControls);
-          result.revision = await awaitSettlement(
+          result.revision = await settlement.observed(
+            "workspace",
             committed,
-            () => {
-              settlementRef.current = null;
-            },
             "The panel controls change"
           );
           await waitForWorkspacePersistenceEnqueue(nextWorkspace);
@@ -4146,20 +3781,14 @@ export function useAgentControlBridge({
         };
         if (request.params.dryRun === true || layoutIsUnchanged) return { requestId, result };
 
-        const committed = new Promise((resolve, reject) => {
-          settlementRef.current = {
-            view: compiled.view,
-            matches: (currentWorkspace) => workspaceMatches(currentWorkspace, compiled.view),
-            resolve,
-            reject,
-          };
+        const committed = settlement.arm("workspace", {
+          view: compiled.view,
+          matches: (currentWorkspace) => workspaceMatches(currentWorkspace, compiled.view),
         });
         replaceWorkspace(compiled.view);
-        const committedRevision = await awaitSettlement(
+        const committedRevision = await settlement.observed(
+          "workspace",
           committed,
-          () => {
-            settlementRef.current = null;
-          },
           "The Workspace layout"
         );
         await waitForWorkspacePersistenceEnqueue(compiled.view);
@@ -4203,6 +3832,8 @@ export function useAgentControlBridge({
       }
     };
   }, [
+    settlement,
+    visualBook,
     clock,
     waiters,
     flush,
@@ -4242,8 +3873,8 @@ export function useAgentControlBridge({
   useEffect(() => {
     if (!enabled) return undefined;
     const waiterEntries = waiters.entries;
-    const ownedVisualCaptures = visualCapturesRef.current;
-    const visualRecordings = visualRecordingsRef.current;
+    const ownedVisualCaptures = visualBook.captures;
+    const visualRecordings = visualBook.recordings;
     aliveRef.current = true;
     // Per-run, unlike `aliveRef`: a remount sets that shared ref back to true, so an install left
     // over from the previous run cannot use it to tell that its own run was torn down. Believing
@@ -4340,33 +3971,7 @@ export function useAgentControlBridge({
     return () => {
       cancelled = true;
       aliveRef.current = false;
-      const settlement = settlementRef.current;
-      settlementRef.current = null;
-      settlement?.reject(new Error("Agent-control bridge unmounted."));
-      const presetSettlement = presetSettlementRef.current;
-      presetSettlementRef.current = null;
-      presetSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const librarySettlement = librarySettlementRef.current;
-      librarySettlementRef.current = null;
-      librarySettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const loudnessProfileSettlement = loudnessProfileSettlementRef.current;
-      loudnessProfileSettlementRef.current = null;
-      loudnessProfileSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const themeSettlement = themeSettlementRef.current;
-      themeSettlementRef.current = null;
-      themeSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const settingsSettlement = settingsSettlementRef.current;
-      settingsSettlementRef.current = null;
-      settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const viewSettlement = viewSettlementRef.current;
-      viewSettlementRef.current = null;
-      viewSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const transportSettlement = transportSettlementRef.current;
-      transportSettlementRef.current = null;
-      transportSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      const dockSettlement = dockSettlementRef.current;
-      dockSettlementRef.current = null;
-      dockSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      settlement.rejectAll(new Error("Agent-control bridge unmounted."));
       for (const waiter of waiterEntries.values()) {
         clearTimeout(waiter.timer);
         clearTimeout(waiter.holdTimer);
@@ -4389,5 +3994,5 @@ export function useAgentControlBridge({
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();
     };
-  }, [clock, waiters, enabled]);
+  }, [settlement, visualBook, clock, waiters, enabled]);
 }
