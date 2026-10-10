@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-10-10
+
+### Added
+
+- Dock is available on macOS as an always-on-top strip at the top or bottom of the screen, placed
+  within the monitor work area.
+- **Reserve Screen Space** on macOS moves or shrinks the active application's window away from the
+  Dock strip. It requires Accessibility access; without it, Dock remains an overlay.
+- Feedback has **View Diagnostics** and **Refresh Diagnostics** to inspect the exact attachment
+  before sending. Diagnostics now include a window-state snapshot and a Dock operation timeline
+  that can span the previous run.
+- Agent Control can inspect, patch, undo, redo, save, and discard the draft of an open Theme or
+  Loudness Profile editor through `plvs-cli editor-draft`.
+- Agent Control can select and clear a history snapshot by its offset from the newest retained
+  sample.
+
+### Fixed
+
+- Dragging the Dock strip's height follows the pointer correctly on scaled displays.
+- Dock rows in the Views menu align with adjacent controls.
+- PLVS keeps running and logging when the terminal that launched it disconnects its output.
+- Resting the pointer on a live chart no longer triggers an extra update per frame.
+- Agent Control Dock and Preset commands read the current monitor list on every request, so
+  hot-plugged monitors work without a restart.
+
 ## [0.19.0] - 2026-10-08
 
 ### Added
