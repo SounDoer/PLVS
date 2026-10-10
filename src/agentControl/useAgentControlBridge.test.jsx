@@ -685,14 +685,30 @@ function mount(options = {}) {
   };
 }
 
+// `waitFor` only rechecks a condition that is not a DOM mutation on its 50ms interval, which cost
+// about 78ms per request here and made this file the longest in the suite. Stepping one macrotask
+// at a time follows the bridge instead. Each step is its own `act`, because holding one `act`
+// open across the wait defers the renders that many commands need before they can respond.
+async function adapterSettles(check, what) {
+  const deadline = performance.now() + 1000;
+  while (!check()) {
+    if (performance.now() > deadline) throw new Error(`Timed out waiting for ${what}`);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
+
 async function waitUntilReady() {
-  await waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+  await adapterSettles(() => adapter.ready.mock.calls.length >= 1, "frontend ready");
+  expect(adapter.ready).toHaveBeenCalledTimes(1);
 }
 
 async function send(raw) {
   act(() => adapter.handler(raw));
-  await waitFor(() =>
-    expect(adapter.responses.some((response) => response.requestId === raw.id)).toBe(true)
+  await adapterSettles(
+    () => adapter.responses.some((response) => response.requestId === raw.id),
+    `response ${raw.id}`
   );
   return adapter.responses.find((response) => response.requestId === raw.id);
 }
