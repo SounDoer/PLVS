@@ -135,7 +135,7 @@ function browseControls(listings) {
     a.localeCompare(b, "en-US")
   );
   return `<form data-catalogue-controls role="search" aria-label="Search resources" hidden>
-    <div class="browse-toolbar"><label class="field search-field"><span>Search</span><input type="search" data-catalogue-search placeholder="Search Sharesets" /></label>
+    <div class="browse-toolbar"><div class="field search-field"><input type="search" data-catalogue-search aria-label="Search Sharesets" placeholder="Search Sharesets" /></div>
     <button class="button secondary" type="button" data-filters-toggle aria-expanded="false" aria-controls="catalogue-filters">Filters</button><button class="button secondary" type="reset">Clear All</button></div>
     <div class="filters-panel" id="catalogue-filters" hidden><label class="field"><span>Tag</span><select data-tag-filter><option value="">All Tags</option>${tags.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}</select></label></div>
   </form>`;

@@ -241,6 +241,8 @@ describe("Community static site generator", () => {
     expect(root).toContain("Broadcast Safe");
     expect(root).toContain("/community/loudness/broadcast-safe/");
     expect(root).toContain("data-catalogue-search");
+    expect(root).toContain('aria-label="Search Sharesets"');
+    expect(root).not.toContain("<span>Search</span>");
     expect(root).toContain("/assets/site-tokens.css");
     expect(root).toContain('class="resource-card card"');
     expect(root).toContain('data-tags="[&quot;Broadcast&quot;]"');
