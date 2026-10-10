@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   announceAgentControlFrontendNotReady,
   announceAgentControlFrontendReady,
@@ -100,6 +100,8 @@ import {
   serializeWorkspaceLayout,
   WorkspaceLayoutError,
 } from "./workspaceLayout.js";
+import { createRevisionClock } from "./bridge/revisionClock.js";
+import { createWaiters } from "./bridge/waiters.js";
 import {
   semanticFailure,
   visualSemanticFailure,
@@ -528,8 +530,6 @@ export function useAgentControlBridge({
   const visualCaptureActiveRef = useRef(false);
   const visualRecordingsRef = useRef(new Map());
   const aliveRef = useRef(false);
-  const controlRevisionRef = useRef(0);
-  const controlRevisionBumpedThisTurnRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
   const previousThemeStateSignatureRef = useRef(themeSignature);
@@ -561,10 +561,6 @@ export function useAgentControlBridge({
   const previousDockSignatureRef = useRef(dockStateSignature(dock));
   const latestDockRef = useRef(dock);
   const dockSettlementRef = useRef(null);
-  const waitersRef = useRef(new Map());
-  const waitWakeScheduledRef = useRef(false);
-  const workspaceRevisionBumpedThisTurnRef = useRef(false);
-  const revisionBatchRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
@@ -574,71 +570,29 @@ export function useAgentControlBridge({
     latestVisualRef.current = visual;
   }, [loudnessActive, loudnessProfile, measurementContext, visual]);
 
-  const publishWaitWake = useCallback(() => {
-    if (waitWakeScheduledRef.current) return;
-    waitWakeScheduledRef.current = true;
-    queueMicrotask(() => {
-      waitWakeScheduledRef.current = false;
-      for (const [id, waiter] of waitersRef.current) {
-        if (waiter.kind !== "revision") continue;
-        if (controlRevisionRef.current === waiter.afterRevision) continue;
-        clearTimeout(waiter.timer);
-        waitersRef.current.delete(id);
-        waiter.resolve({
-          outcome: "changed",
-          matchedImmediately: false,
-          revision: controlRevisionRef.current,
-        });
-      }
-    });
-  }, []);
-  const scheduleWaitWake = useCallback(() => {
-    const batch = revisionBatchRef.current;
-    if (batch) {
-      batch.wakePending = true;
-      return;
-    }
-    publishWaitWake();
-  }, [publishWaitWake]);
-  const bumpControlRevision = useCallback(() => {
-    const batch = revisionBatchRef.current;
-    if (batch) {
-      if (batch.bumped) return;
-      batch.bumped = true;
-      controlRevisionRef.current += 1;
-      return;
-    }
-    if (controlRevisionBumpedThisTurnRef.current) return;
-    controlRevisionBumpedThisTurnRef.current = true;
-    controlRevisionRef.current += 1;
-    queueMicrotask(() => {
-      controlRevisionBumpedThisTurnRef.current = false;
-    });
-  }, []);
-  const bumpWorkspaceRevision = useCallback(() => {
-    if (workspaceRevisionBumpedThisTurnRef.current) return;
-    workspaceRevisionBumpedThisTurnRef.current = true;
-    bumpControlRevision();
-    queueMicrotask(() => {
-      workspaceRevisionBumpedThisTurnRef.current = false;
-    });
-    scheduleWaitWake();
-  }, [bumpControlRevision, scheduleWaitWake]);
+  // Created once per hook instance; state is used only for its lazy initializer.
+  const [{ clock, waiters }] = useState(() => {
+    const waitRegistry = createWaiters();
+    return {
+      waiters: waitRegistry,
+      clock: createRevisionClock({ onWake: (revision) => waitRegistry.wakeRevision(revision) }),
+    };
+  });
 
   useEffect(() => {
     latestViewRef.current = viewContext;
     const signature = viewStateSignature(viewContext.view);
     if (signature !== previousViewSignatureRef.current) {
       previousViewSignatureRef.current = signature;
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
     }
     const settlement = viewSettlementRef.current;
     if (settlement && settlement.signature === signature) {
       viewSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [bumpControlRevision, scheduleWaitWake, viewContext]);
+  }, [clock, viewContext]);
 
   /// Resolved by the watcher for a library the `*.import` in flight actually wrote -- which is
   /// `planLibraryImport`'s `writes`, not the family the request named. A Preset pack can write the
@@ -649,99 +603,86 @@ export function useAgentControlBridge({
   /// Import does not bump the revision itself. Every library it can write is watched -- the two
   /// `librarySignature` effects below and the Preset effect -- and each watcher bumps when the
   /// write reaches React. Doing both moved the revision by two for a single import (measured, not
-  /// reasoned about: `bumpControlRevision`'s same-turn guard has already reset by the time the
+  /// reasoned about: `clock.bump`'s same-turn guard has already reset by the time the
   /// re-render lands). Nothing about that is visible -- no error, an ordinary-looking number --
   /// except that every later `--expected-revision` starts conflicting.
-  const resolveLibrarySettlement = useCallback((family) => {
-    const settlement = librarySettlementRef.current;
-    if (!settlement || !settlement.families.includes(family)) return;
-    librarySettlementRef.current = null;
-    settlement.resolve(controlRevisionRef.current);
-  }, []);
+  const resolveLibrarySettlement = useCallback(
+    (family) => {
+      const settlement = librarySettlementRef.current;
+      if (!settlement || !settlement.families.includes(family)) return;
+      librarySettlementRef.current = null;
+      settlement.resolve(clock.current());
+    },
+    [clock]
+  );
 
-  const observeLoudnessProfileSettlement = useCallback((store, signature) => {
-    const settlement = loudnessProfileSettlementRef.current;
-    if (!settlement || settlement.expected[store] !== signature) return;
-    settlement.observed.add(store);
-    if (Object.keys(settlement.expected).every((key) => settlement.observed.has(key))) {
-      loudnessProfileSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
-    }
-  }, []);
+  const observeLoudnessProfileSettlement = useCallback(
+    (store, signature) => {
+      const settlement = loudnessProfileSettlementRef.current;
+      if (!settlement || settlement.expected[store] !== signature) return;
+      settlement.observed.add(store);
+      if (Object.keys(settlement.expected).every((key) => settlement.observed.has(key))) {
+        loudnessProfileSettlementRef.current = null;
+        settlement.resolve(clock.current());
+      }
+    },
+    [clock]
+  );
 
   useEffect(() => {
     if (!controllableWorkspaceMatches(previousWorkspaceRef.current, workspace)) {
       previousWorkspaceRef.current = workspace;
-      bumpWorkspaceRevision();
+      clock.bumpWorkspace();
     } else {
       previousWorkspaceRef.current = workspace;
     }
     const settlement = settlementRef.current;
     if (settlement && settlement.matches(workspace)) {
       settlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [bumpWorkspaceRevision, workspace]);
+  }, [clock, workspace]);
 
   useEffect(() => {
     const signature = presetStateSignature(presets);
     if (signature !== previousPresetsSignatureRef.current) {
       previousPresetsSignatureRef.current = signature;
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
       resolveLibrarySettlement("preset");
     }
     const settlement = presetSettlementRef.current;
     if (settlement && signature === settlement.signature) {
       presetSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
     observeLoudnessProfileSettlement("presets", signature);
-  }, [
-    bumpControlRevision,
-    observeLoudnessProfileSettlement,
-    presets,
-    resolveLibrarySettlement,
-    scheduleWaitWake,
-  ]);
+  }, [clock, observeLoudnessProfileSettlement, presets, resolveLibrarySettlement]);
 
   useEffect(() => {
     latestThemeRef.current = { state: themeState, control: themeControl };
     if (themeSignature !== previousThemeStateSignatureRef.current) {
       previousThemeStateSignatureRef.current = themeSignature;
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
       resolveLibrarySettlement("theme");
     }
     const settlement = themeSettlementRef.current;
     if (settlement && settlement.signature === themeSignature) {
       themeSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [
-    bumpControlRevision,
-    resolveLibrarySettlement,
-    scheduleWaitWake,
-    themeControl,
-    themeSignature,
-    themeState,
-  ]);
+  }, [clock, resolveLibrarySettlement, themeControl, themeSignature, themeState]);
 
   useEffect(() => {
     if (loudnessSignature !== previousLoudnessLibrarySignatureRef.current) {
       previousLoudnessLibrarySignatureRef.current = loudnessSignature;
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
       resolveLibrarySettlement("loudnessProfile");
     }
     observeLoudnessProfileSettlement("loudnessProfile", loudnessSignature);
-  }, [
-    bumpControlRevision,
-    loudnessSignature,
-    observeLoudnessProfileSettlement,
-    resolveLibrarySettlement,
-    scheduleWaitWake,
-  ]);
+  }, [clock, loudnessSignature, observeLoudnessProfileSettlement, resolveLibrarySettlement]);
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);
@@ -772,21 +713,15 @@ export function useAgentControlBridge({
     }
 
     if (changed) {
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
     }
     const settlement = settingsSettlementRef.current;
     if (settlement && signature === settlement.signature) {
       settingsSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [
-    bumpControlRevision,
-    scheduleWaitWake,
-    settings,
-    settingsContext.autostartReady,
-    settingsContext.clearShortcutReady,
-  ]);
+  }, [clock, settings, settingsContext.autostartReady, settingsContext.clearShortcutReady]);
 
   useEffect(() => {
     latestTransportRef.current = transport;
@@ -802,15 +737,15 @@ export function useAgentControlBridge({
     const signature = transportLifecycleSignature(transport);
     if (signature !== previousTransportSignatureRef.current) {
       previousTransportSignatureRef.current = signature;
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
     }
     const settlement = transportSettlementRef.current;
     if (settlement && settlement.matches(transport)) {
       transportSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [bumpControlRevision, scheduleWaitWake, transport]);
+  }, [clock, transport]);
 
   useEffect(() => {
     latestDeviceRef.current = device;
@@ -829,29 +764,29 @@ export function useAgentControlBridge({
     const requestedId = requestedDeviceSignature(device);
     if (requestedId !== previousRequestedDeviceRef.current) {
       previousRequestedDeviceRef.current = requestedId;
-      bumpControlRevision();
-      scheduleWaitWake();
+      clock.bump();
+      clock.scheduleWake();
     }
     const settlement = deviceSettlementRef.current;
     if (settlement && requestedId === settlement.requestedId) {
       deviceSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [bumpControlRevision, device, scheduleWaitWake]);
+  }, [clock, device]);
 
   useEffect(() => {
     latestDockRef.current = dock;
     const signature = dockStateSignature(dock);
     if (signature !== previousDockSignatureRef.current) {
       previousDockSignatureRef.current = signature;
-      bumpWorkspaceRevision();
+      clock.bumpWorkspace();
     }
     const settlement = dockSettlementRef.current;
     if (settlement && settlement.matches(dock)) {
       dockSettlementRef.current = null;
-      settlement.resolve(controlRevisionRef.current);
+      settlement.resolve(clock.current());
     }
-  }, [bumpWorkspaceRevision, dock]);
+  }, [clock, dock]);
 
   useEffect(() => {
     // Dock panels share the Workspace panel mapping, which offers and keeps the Loudness reference
@@ -873,7 +808,7 @@ export function useAgentControlBridge({
         draft: currentProfile.profile?.draft,
       });
       return buildMeasurementInspection({
-        revision: controlRevisionRef.current,
+        revision: clock.current(),
         observedAtMs: Date.now(),
         liveState: currentMeasurement.liveState,
         sessionGeneration: live.generation,
@@ -918,12 +853,7 @@ export function useAgentControlBridge({
       const revisionBatch =
         request.method.startsWith("visual.") || request.params.expectedRevision === undefined
           ? null
-          : {
-              startRevision: controlRevisionRef.current,
-              bumped: false,
-              wakePending: false,
-            };
-      if (revisionBatch) revisionBatchRef.current = revisionBatch;
+          : clock.beginBatch();
       try {
         let dockRequestContext = { ...dockContext, hasLoudnessReference };
         if (
@@ -946,12 +876,12 @@ export function useAgentControlBridge({
         }
         if (isDevelopmentFixtureMethod(request.method)) {
           try {
-            if (request.params.expectedRevision !== controlRevisionRef.current) {
+            if (request.params.expectedRevision !== clock.current()) {
               throw Object.assign(new Error("The Agent Control revision changed."), {
                 reason: "revisionConflict",
                 details: {
                   expectedRevision: request.params.expectedRevision,
-                  currentRevision: controlRevisionRef.current,
+                  currentRevision: clock.current(),
                 },
               });
             }
@@ -961,7 +891,7 @@ export function useAgentControlBridge({
                 : await developmentFixtures.reset(request.params);
             return {
               requestId,
-              result: { ...result, revision: controlRevisionRef.current },
+              result: { ...result, revision: clock.current() },
             };
           } catch (error) {
             if (typeof error?.reason !== "string") throw error;
@@ -991,7 +921,7 @@ export function useAgentControlBridge({
             : runtime;
           return {
             requestId,
-            result: buildAgentControlCapabilities(capabilityRuntime, controlRevisionRef.current),
+            result: buildAgentControlCapabilities(capabilityRuntime, clock.current()),
           };
         }
         if (request.method === "editorDraft.describe") {
@@ -999,7 +929,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               ...describeEditorDraft(kind),
             },
           };
@@ -1032,7 +962,7 @@ export function useAgentControlBridge({
             return {
               requestId,
               result: {
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 uiGeneration: ui.uiGeneration,
                 draftGeneration: snapshot.draftGeneration,
                 kind,
@@ -1069,7 +999,7 @@ export function useAgentControlBridge({
           ].includes(request.method)
         ) {
           const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : "theme";
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -1171,7 +1101,7 @@ export function useAgentControlBridge({
                     {
                       stateCommitted: saved.changed,
                       savedId: saved.savedId,
-                      revision: controlRevisionRef.current,
+                      revision: clock.current(),
                     }
                   );
                 }
@@ -1189,7 +1119,7 @@ export function useAgentControlBridge({
                     {
                       stateCommitted: true,
                       savedId: saved.savedId,
-                      revision: controlRevisionRef.current,
+                      revision: clock.current(),
                     }
                   );
                 }
@@ -1201,7 +1131,7 @@ export function useAgentControlBridge({
                   action: request.method,
                   status: "completed",
                   changed: saved.changed,
-                  revision: controlRevisionRef.current,
+                  revision: clock.current(),
                   uiGeneration: uiAfter.uiGeneration,
                   kind,
                   surfaceId: request.params.surfaceId,
@@ -1252,7 +1182,7 @@ export function useAgentControlBridge({
                 result: {
                   changed: true,
                   action: request.method,
-                  revision: controlRevisionRef.current,
+                  revision: clock.current(),
                   uiGeneration: uiAfter.uiGeneration,
                   kind,
                   surfaceId: request.params.surfaceId,
@@ -1276,7 +1206,7 @@ export function useAgentControlBridge({
               result: {
                 changed,
                 action: request.method,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 uiGeneration: uiAfter.uiGeneration,
                 draftGeneration: after.draftGeneration,
                 kind,
@@ -1313,7 +1243,7 @@ export function useAgentControlBridge({
           }
           return {
             requestId,
-            result: { revision: controlRevisionRef.current, ...uiNavigation.inspectUi() },
+            result: { revision: clock.current(), ...uiNavigation.inspectUi() },
           };
         }
         if (
@@ -1327,7 +1257,7 @@ export function useAgentControlBridge({
             "ui.cancel",
           ].includes(request.method)
         ) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -1367,7 +1297,7 @@ export function useAgentControlBridge({
                 ...actionResult,
                 changed: actionResult?.changed !== false,
                 action: actionResult?.action ?? request.method,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 uiGeneration: ui.uiGeneration,
                 ui,
               },
@@ -1383,7 +1313,7 @@ export function useAgentControlBridge({
               error.reason === "revisionConflict" ? -32004 : -32042,
               {
                 ...error.details,
-                currentRevision: controlRevisionRef.current,
+                currentRevision: clock.current(),
                 currentUiGeneration: uiNavigation.inspectUi().uiGeneration,
               }
             );
@@ -1397,7 +1327,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: buildVisualDescription({
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               platform: visualControl.platformCapabilities,
               runtime: visualControl.getRuntime(),
             }),
@@ -1421,7 +1351,7 @@ export function useAgentControlBridge({
           try {
             const settled = await visualControl.settle(request.params.target, {
               expectedRevision: request.params.expectedRevision,
-              getRevision: () => controlRevisionRef.current,
+              getRevision: () => clock.current(),
               expectedUiGeneration: request.params.expectedUiGeneration,
               getUiGeneration: () => uiNavigation?.inspectUi?.().uiGeneration ?? 0,
               signal: controller.signal,
@@ -1490,7 +1420,7 @@ export function useAgentControlBridge({
           try {
             const settled = await visualControl.settle(request.params.target, {
               expectedRevision: request.params.expectedRevision,
-              getRevision: () => controlRevisionRef.current,
+              getRevision: () => clock.current(),
               signal: controller.signal,
             });
             const recording = await visualControl.startRecording({
@@ -1589,8 +1519,8 @@ export function useAgentControlBridge({
               ...(Number.isSafeInteger(metadata?.startedRevision)
                 ? { startedRevision: metadata.startedRevision }
                 : {}),
-              currentRevision: controlRevisionRef.current,
-              ...(terminal ? { endedRevision: controlRevisionRef.current } : {}),
+              currentRevision: clock.current(),
+              ...(terminal ? { endedRevision: clock.current() } : {}),
             };
           };
           try {
@@ -1598,7 +1528,7 @@ export function useAgentControlBridge({
               return {
                 requestId,
                 result: {
-                  revision: controlRevisionRef.current,
+                  revision: clock.current(),
                   recording: decorate(await visualControl.inspectRecording(recordingId)),
                 },
               };
@@ -1616,7 +1546,7 @@ export function useAgentControlBridge({
                   requestId,
                   result: {
                     ...(request.method === "visual.recording.wait" ? { outcome: "terminal" } : {}),
-                    revision: controlRevisionRef.current,
+                    revision: clock.current(),
                     recording: decorate(recording),
                   },
                 };
@@ -1635,7 +1565,7 @@ export function useAgentControlBridge({
                   requestId,
                   result: {
                     ...(request.method === "visual.recording.wait" ? { outcome: "timeout" } : {}),
-                    revision: controlRevisionRef.current,
+                    revision: clock.current(),
                     recording: decorate(recording),
                   },
                 };
@@ -1649,7 +1579,7 @@ export function useAgentControlBridge({
         if (request.method === "measurement.describe") {
           return {
             requestId,
-            result: buildMeasurementDescription(controlRevisionRef.current),
+            result: buildMeasurementDescription(clock.current()),
           };
         }
         if (request.method === "measurement.inspect") {
@@ -1680,7 +1610,7 @@ export function useAgentControlBridge({
               },
             };
           }
-          if (waitersRef.current.size >= 4) {
+          if (waiters.entries.size >= 4) {
             throw semanticFailure(
               "waitLimitReached",
               "$",
@@ -1699,7 +1629,7 @@ export function useAgentControlBridge({
             const finish = (value) => {
               clearTimeout(waiter.timer);
               waiter.unsubscribe();
-              waitersRef.current.delete(requestId);
+              waiters.entries.delete(requestId);
               resolve(value);
             };
             const observe = (live) => {
@@ -1721,7 +1651,7 @@ export function useAgentControlBridge({
               };
               finish({ outcome: "timeout", live });
             }, request.params.timeoutMs);
-            waitersRef.current.set(requestId, waiter);
+            waiters.entries.set(requestId, waiter);
             waiter.unsubscribe =
               currentMeasurement.subscribeLiveMeasurement?.(observe) ?? (() => {});
             observe(currentMeasurement.getLiveMeasurement?.() ?? { generation: 0, record: null });
@@ -1771,7 +1701,7 @@ export function useAgentControlBridge({
               },
             };
           }
-          if (waitersRef.current.size >= 4) {
+          if (waiters.entries.size >= 4) {
             throw semanticFailure(
               "waitLimitReached",
               "$",
@@ -1796,14 +1726,14 @@ export function useAgentControlBridge({
               clearTimeout(waiter.timer);
               clearHold();
               waiter.unsubscribe();
-              waitersRef.current.delete(requestId);
+              waiters.entries.delete(requestId);
               resolve(value);
             };
             const fail = (error) => {
               clearTimeout(waiter.timer);
               clearHold();
               waiter.unsubscribe();
-              waitersRef.current.delete(requestId);
+              waiters.entries.delete(requestId);
               reject(error);
             };
             const observe = (live) => {
@@ -1845,7 +1775,7 @@ export function useAgentControlBridge({
               };
               finish({ timeout: true, live });
             }, request.params.timeoutMs);
-            waitersRef.current.set(requestId, waiter);
+            waiters.entries.set(requestId, waiter);
             waiter.unsubscribe =
               currentMeasurement.subscribeLiveMeasurement?.(observe) ?? (() => {});
             observe(currentMeasurement.getLiveMeasurement?.() ?? { generation: 0, record: null });
@@ -1876,21 +1806,21 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "app.wait") {
-          const activeBatch = revisionBatchRef.current;
+          const activeBatch = clock.activeBatch();
           const awaitingActiveBatch =
             activeBatch?.bumped === true &&
             request.params.afterRevision === activeBatch.startRevision;
-          if (controlRevisionRef.current !== request.params.afterRevision && !awaitingActiveBatch) {
+          if (clock.current() !== request.params.afterRevision && !awaitingActiveBatch) {
             return {
               requestId,
               result: {
                 outcome: "changed",
                 matchedImmediately: true,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
               },
             };
           }
-          if (waitersRef.current.size >= 4) {
+          if (waiters.entries.size >= 4) {
             throw semanticFailure(
               "waitLimitReached",
               "$",
@@ -1900,13 +1830,13 @@ export function useAgentControlBridge({
           }
           const result = await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-              waitersRef.current.delete(requestId);
+              waiters.entries.delete(requestId);
               resolve({
                 outcome: "timeout",
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
               });
             }, request.params.timeoutMs);
-            waitersRef.current.set(requestId, {
+            waiters.entries.set(requestId, {
               kind: "revision",
               afterRevision: request.params.afterRevision,
               timer,
@@ -1934,7 +1864,7 @@ export function useAgentControlBridge({
             requestId,
             result: buildAgentControlSnapshot({
               runtime,
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               workspace,
               presets,
               appearance: latestThemeRef.current.state.appearance,
@@ -1966,7 +1896,7 @@ export function useAgentControlBridge({
             return {
               requestId,
               result: {
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 ...buildDeviceList(currentDevice.snapshot),
               },
             };
@@ -1975,13 +1905,13 @@ export function useAgentControlBridge({
             return {
               requestId,
               result: {
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 ...deviceInspection(currentDevice),
               },
             };
           }
 
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -2100,7 +2030,7 @@ export function useAgentControlBridge({
           planned = await previewOrThrow(finalDevice, planned);
           const commitDevice = latestDeviceRef.current;
           planned = planOrThrow(commitDevice);
-          if (request.params.expectedRevision !== controlRevisionRef.current) {
+          if (request.params.expectedRevision !== clock.current()) {
             throw semanticFailure(
               "revisionConflict",
               "$.params.expectedRevision",
@@ -2108,7 +2038,7 @@ export function useAgentControlBridge({
               -32004,
               {
                 expectedRevision: request.params.expectedRevision,
-                currentRevision: controlRevisionRef.current,
+                currentRevision: clock.current(),
               }
             );
           }
@@ -2158,7 +2088,7 @@ export function useAgentControlBridge({
             persistenceError = error;
           }
 
-          let committedRevision = controlRevisionRef.current;
+          let committedRevision = clock.current();
           if (persistenceError?.stateCommitted === true) {
             committedRevision = await awaitSettlement(
               committed,
@@ -2221,7 +2151,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               ...inspection,
               ...(request.method === "settings.describe"
                 ? { schema: buildSettingsSchema(settings, settingsContext) }
@@ -2238,7 +2168,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               preset: viewResultPreset(presets, []),
               ...inspection,
             },
@@ -2247,7 +2177,7 @@ export function useAgentControlBridge({
         if (request.method === "transport.inspect") {
           return {
             requestId,
-            result: { revision: controlRevisionRef.current, ...transport },
+            result: { revision: clock.current(), ...transport },
           };
         }
         if (request.method === "transport.file.report") {
@@ -2288,7 +2218,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               sessionId: session.id,
               ...(request.params.reportFormat === "markdown"
                 ? { markdown: renderFileAnalysisReportMarkdown(report) }
@@ -2301,7 +2231,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               preset: panelResultPreset(presets, []),
               ...(request.method === "dock.describe"
                 ? buildDockDescription(dock, dockRequestContext)
@@ -2324,10 +2254,10 @@ export function useAgentControlBridge({
               unavailable ? -32091 : -32090
             );
           }
-          return { requestId, result: { revision: controlRevisionRef.current, ...description } };
+          return { requestId, result: { revision: clock.current(), ...description } };
         }
         if (request.method.startsWith("dock.")) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -2431,7 +2361,7 @@ export function useAgentControlBridge({
               if (matches(latestDockRef.current)) {
                 const settlement = dockSettlementRef.current;
                 dockSettlementRef.current = null;
-                settlement?.resolve(controlRevisionRef.current);
+                settlement?.resolve(clock.current());
               }
             }
             result.revision = await awaitSettlement(
@@ -2457,7 +2387,7 @@ export function useAgentControlBridge({
                 stage: error?.stage ?? "execution",
                 partial,
                 changed: planned.changed,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 dock: buildDockSnapshot(observableDock, dockRequestContext),
               }
             );
@@ -2486,7 +2416,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method.startsWith("transport.")) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -2594,21 +2524,21 @@ export function useAgentControlBridge({
                 partial: true,
                 stage: error?.stage ?? "execution",
                 changed: planned.changed,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 ...(error?.sessionId ? { sessionId: error.sessionId } : {}),
               }
             );
           }
 
           if (request.method === "transport.live.clear") {
-            bumpControlRevision();
-            scheduleWaitWake();
-            result.revision = controlRevisionRef.current;
+            clock.bump();
+            clock.scheduleWake();
+            result.revision = clock.current();
           } else {
             const matches = (candidate) =>
               transportMutationMatches(request.method, request.params, execution, candidate);
             if (matches(latestTransportRef.current)) {
-              result.revision = controlRevisionRef.current;
+              result.revision = clock.current();
             } else {
               result.revision = await awaitSettlement(
                 new Promise((resolve, reject) => {
@@ -2633,7 +2563,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "settings.update") {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -2720,7 +2650,7 @@ export function useAgentControlBridge({
                 rollback: error?.rollback ?? "completed",
                 changed: error?.changed ?? [],
                 effects: error?.effects ?? [],
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
               }
             );
           }
@@ -2746,7 +2676,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "view.update" || request.method === "view.reset") {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -2809,7 +2739,7 @@ export function useAgentControlBridge({
               planned.refusal ?? { issues: planned.issues }
             );
           }
-          if (request.params.expectedRevision !== controlRevisionRef.current) {
+          if (request.params.expectedRevision !== clock.current()) {
             throw semanticFailure(
               "revisionConflict",
               "$.params.expectedRevision",
@@ -2817,7 +2747,7 @@ export function useAgentControlBridge({
               -32004,
               {
                 expectedRevision: request.params.expectedRevision,
-                currentRevision: controlRevisionRef.current,
+                currentRevision: clock.current(),
               }
             );
           }
@@ -2845,7 +2775,7 @@ export function useAgentControlBridge({
                 rollback: error?.rollback ?? "completed",
                 changed: error?.changed ?? [],
                 effects: error?.effects ?? planned.effects,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
               }
             );
           }
@@ -2892,7 +2822,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               profile,
               active: activeLoudnessProfileId(loudnessProfiles, loudnessActive) === profile.id,
               index,
@@ -2908,7 +2838,7 @@ export function useAgentControlBridge({
           request.method === "loudnessProfile.delete" ||
           request.method === "loudnessProfile.reorder"
         ) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -3071,7 +3001,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               presets: (presets?.list ?? []).map(({ id, name }) => ({ id, name })),
               activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
               dirty: presets?.dirty === true,
@@ -3080,7 +3010,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "preset.describe") {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           const preset = (presets?.list ?? []).find(({ id }) => id === request.params.presetId);
           if (!preset) {
             throw semanticFailure(
@@ -3101,7 +3031,7 @@ export function useAgentControlBridge({
 
         if (request.method === "preset.save" || request.method === "preset.update") {
           const assertRevisions = () => {
-            if (request.params.expectedRevision !== controlRevisionRef.current) {
+            if (request.params.expectedRevision !== clock.current()) {
               throw semanticFailure(
                 "revisionConflict",
                 "$.params.expectedRevision",
@@ -3109,7 +3039,7 @@ export function useAgentControlBridge({
                 -32004,
                 {
                   expectedRevision: request.params.expectedRevision,
-                  currentRevision: controlRevisionRef.current,
+                  currentRevision: clock.current(),
                 }
               );
             }
@@ -3155,7 +3085,7 @@ export function useAgentControlBridge({
               preset: planned.preset,
               presets: planned.presetState,
             },
-            revision: controlRevisionRef.current,
+            revision: clock.current(),
             warnings: planned.warnings,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
@@ -3213,7 +3143,7 @@ export function useAgentControlBridge({
 
         if (request.method === "preset.apply") {
           const assertRevisions = () => {
-            if (request.params.expectedRevision !== controlRevisionRef.current) {
+            if (request.params.expectedRevision !== clock.current()) {
               throw semanticFailure(
                 "revisionConflict",
                 "$.params.expectedRevision",
@@ -3221,7 +3151,7 @@ export function useAgentControlBridge({
                 -32004,
                 {
                   expectedRevision: request.params.expectedRevision,
-                  currentRevision: controlRevisionRef.current,
+                  currentRevision: clock.current(),
                 }
               );
             }
@@ -3284,7 +3214,7 @@ export function useAgentControlBridge({
               preset: planned.preset,
               presets: planned.presetState,
             },
-            revision: controlRevisionRef.current,
+            revision: clock.current(),
             warnings: planned.warnings,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
@@ -3341,7 +3271,7 @@ export function useAgentControlBridge({
                 stage: typeof error?.stage === "string" ? error.stage : "scene",
                 partial: planned.applyScene,
                 changed: planned.changed,
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 presetState: { activeId: null, dirty: false },
               }
             );
@@ -3357,7 +3287,7 @@ export function useAgentControlBridge({
             },
             "The Preset application"
           );
-          result.revision = controlRevisionRef.current;
+          result.revision = clock.current();
           if (workspaceCommitted) {
             await awaitSettlement(
               waitForWorkspacePersistenceEnqueue(targetView),
@@ -3384,7 +3314,7 @@ export function useAgentControlBridge({
           request.method === "preset.delete" ||
           request.method === "preset.reorder"
         ) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -3483,7 +3413,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               appearance: currentTheme.appearance,
               ...(request.method === "theme.list"
                 ? { themes: listThemeSummaries(currentTheme) }
@@ -3508,7 +3438,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               theme: structuredClone(document),
               kind: builtin ? "builtin" : "custom",
               active: currentTheme.appearance.resolvedThemeId === document.id,
@@ -3528,7 +3458,7 @@ export function useAgentControlBridge({
           "theme.reorder",
         ]);
         if (themeMutations.has(request.method)) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -3650,7 +3580,7 @@ export function useAgentControlBridge({
             return {
               requestId,
               result: {
-                revision: controlRevisionRef.current,
+                revision: clock.current(),
                 [stateKey]: entries,
                 ...(family === "loudnessProfile"
                   ? { activeId: activeLoudnessProfileId(entries) }
@@ -3711,14 +3641,14 @@ export function useAgentControlBridge({
             }
             return {
               requestId,
-              result: { revision: controlRevisionRef.current, pack: planned.pack },
+              result: { revision: clock.current(), pack: planned.pack },
             };
           }
 
           // Import is deliberately not a scene operation: the merge only appends, moves no
           // selection and dirties no Preset, so it cannot destroy an open editor's draft. The
           // GUI's own Import buttons are not disabled by editor state either.
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -3791,14 +3721,14 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               configuration,
             },
           };
         }
 
         if (request.method === "config.import") {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
               "revisionConflict",
@@ -3864,7 +3794,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               ...(request.method === "axis.describe"
                 ? { schema: buildAxisSchema(analysisContext) }
                 : {}),
@@ -3879,7 +3809,7 @@ export function useAgentControlBridge({
           request.method === "axis.panel.update" ||
           request.method === "axis.panel.reset"
         ) {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -3988,7 +3918,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               modules: buildModuleList(),
             },
           };
@@ -4008,7 +3938,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               schemaBasis: "defaultControls",
               context: buildModuleDescriptionContext(analysisContext, hasLoudnessReference),
               module,
@@ -4031,7 +3961,7 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: {
-              revision: controlRevisionRef.current,
+              revision: clock.current(),
               panel: buildAgentControlPanelSnapshot({
                 workspace,
                 panelId,
@@ -4048,7 +3978,7 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "panel.update" || request.method === "panel.reset") {
-          const currentRevision = controlRevisionRef.current;
+          const currentRevision = clock.current();
           if (
             request.params.expectedRevision !== undefined &&
             request.params.expectedRevision !== currentRevision
@@ -4155,7 +4085,7 @@ export function useAgentControlBridge({
           return { requestId, result };
         }
 
-        const currentRevision = controlRevisionRef.current;
+        const currentRevision = clock.current();
         if (
           request.params.expectedRevision !== undefined &&
           request.params.expectedRevision !== currentRevision
@@ -4234,19 +4164,17 @@ export function useAgentControlBridge({
               : error;
         return { requestId, error: agentControlRpcError(semantic) };
       } finally {
-        if (revisionBatch && revisionBatchRef.current === revisionBatch) {
-          revisionBatchRef.current = null;
-          if (revisionBatch.wakePending) publishWaitWake();
-        }
+        clock.endBatch(revisionBatch);
       }
     };
   }, [
+    clock,
+    waiters,
     flush,
     exportConfiguration,
     importConfiguration,
     normalizeConfiguration,
     relaunchAfterConfigurationChange,
-    bumpControlRevision,
     hasLoudnessReference,
     loudnessActive,
     loudnessProfile,
@@ -4265,10 +4193,8 @@ export function useAgentControlBridge({
     dockContext,
     executeDock,
     presets,
-    publishWaitWake,
     replaceWorkspace,
     runtime,
-    scheduleWaitWake,
     settings,
     settingsContext,
     transport,
@@ -4280,7 +4206,7 @@ export function useAgentControlBridge({
 
   useEffect(() => {
     if (!enabled) return undefined;
-    const waiters = waitersRef.current;
+    const waiterEntries = waiters.entries;
     const ownedVisualCaptures = visualCapturesRef.current;
     const visualRecordings = visualRecordingsRef.current;
     aliveRef.current = true;
@@ -4298,9 +4224,7 @@ export function useAgentControlBridge({
           // The abandoned command has not reached its own cleanup, so its revision batch would stay
           // installed and swallow every later revision bump. Its cleanup checks identity, so a late
           // finish cannot clear a batch that belongs to a later command.
-          const batch = revisionBatchRef.current;
-          revisionBatchRef.current = null;
-          if (batch?.wakePending) publishWaitWake();
+          clock.abandonBatch();
           resolve({
             requestId: typeof request?.id === "string" ? request.id : "",
             error: agentControlRpcError(
@@ -4324,12 +4248,12 @@ export function useAgentControlBridge({
       const stop = await listenForAgentControlRequests((request) => {
         if (request?.type === "cancel" && typeof request.requestId === "string") {
           ownedVisualCaptures.get(request.requestId)?.abort();
-          const waiter = waiters.get(request.requestId);
+          const waiter = waiterEntries.get(request.requestId);
           if (waiter) {
             clearTimeout(waiter.timer);
             clearTimeout(waiter.holdTimer);
             waiter.unsubscribe?.();
-            waiters.delete(request.requestId);
+            waiterEntries.delete(request.requestId);
             waiter.resolve(WAIT_CANCELLED);
           }
           return;
@@ -4408,13 +4332,13 @@ export function useAgentControlBridge({
       const dockSettlement = dockSettlementRef.current;
       dockSettlementRef.current = null;
       dockSettlement?.reject(new Error("Agent-control bridge unmounted."));
-      for (const waiter of waiters.values()) {
+      for (const waiter of waiterEntries.values()) {
         clearTimeout(waiter.timer);
         clearTimeout(waiter.holdTimer);
         waiter.unsubscribe?.();
         waiter.reject(new Error("Agent-control bridge unmounted."));
       }
-      waiters.clear();
+      waiterEntries.clear();
       for (const controller of ownedVisualCaptures.values()) controller.abort();
       ownedVisualCaptures.clear();
       const visualControl = latestVisualRef.current;
@@ -4430,5 +4354,5 @@ export function useAgentControlBridge({
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();
     };
-  }, [enabled, publishWaitWake]);
+  }, [clock, waiters, enabled]);
 }
