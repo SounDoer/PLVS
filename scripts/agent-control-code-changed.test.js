@@ -2,8 +2,13 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
+
+// Each case builds a real repository and runs the gate against real Git, about thirty process
+// launches in the longest one. That takes 2s on an idle machine and was measured at 14s with the
+// CPU saturated, so the 5s default measures the machine rather than this code.
+vi.setConfig({ testTimeout: 30_000 });
 
 const directories = [];
 afterEach(() => {
