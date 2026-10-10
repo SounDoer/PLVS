@@ -37,6 +37,11 @@ export default defineConfig({
     // of assertions. A file that needs the DOM and forgets the docblock fails loudly.
     environment: "node",
     globals: true,
+    // Vitest sizes its pool from logical cores, which oversubscribes a hybrid CPU: on a
+    // 24-thread machine, halving the pool left wall time unchanged and cut per-test time, which
+    // is the headroom that keeps tests under the 5s timeout when other programs are busy. CI
+    // runners are small and have not shown these timeouts, so they keep the default.
+    maxWorkers: process.env.CI ? undefined : "50%",
     // Silences jsdom's "getContext not implemented" stderr spam from canvas-backed components.
     setupFiles: ["./vitest.setup.js"],
     // Nested git worktrees live under one prefix per agent -- see AGENTS.md -- with their own
