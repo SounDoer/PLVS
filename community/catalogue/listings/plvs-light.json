@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "plvs-light",
+  "slug": "plvs-light",
+  "type": "themes",
+  "classification": "official",
+  "title": "PLVS Light",
+  "summary": "The built-in light theme for PLVS, with soft neutral surfaces, clear dark text, and the original orange-and-blue metering palette.",
+  "descriptionMarkdown": "PLVS Light is the built-in light theme for bright rooms and daytime work. Soft neutral surfaces keep the workspace comfortable, while clear dark text and the original orange-and-blue data palette preserve strong distinctions across every meter. It carries the same restrained visual language as PLVS Dark into a calm, dependable light workspace.",
+  "tags": ["Light", "Built-in", "Neutral", "Balanced"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "included": {
+    "sourceId": "plvs-light",
+    "previews": [
+      {
+        "id": "semantic-overview",
+        "path": "previews/plvs-light/semantic-overview.png"
+      },
+      {
+        "id": "product-workspace-file",
+        "path": "previews/plvs-light/product-workspace-file.png"
+      },
+      {
+        "id": "product-workspace-snapshot",
+        "path": "previews/plvs-light/product-workspace-snapshot.png"
+      },
+      {
+        "id": "product-level-meter-file",
+        "path": "previews/plvs-light/product-level-meter-file.png"
+      },
+      {
+        "id": "product-loudness-file",
+        "path": "previews/plvs-light/product-loudness-file.png"
+      },
+      {
+        "id": "product-stats-file",
+        "path": "previews/plvs-light/product-stats-file.png"
+      },
+      {
+        "id": "product-vectorscope-file",
+        "path": "previews/plvs-light/product-vectorscope-file.png"
+      },
+      {
+        "id": "product-spectrum-file",
+        "path": "previews/plvs-light/product-spectrum-file.png"
+      },
+      {
+        "id": "product-spectrogram-heatmap",
+        "path": "previews/plvs-light/product-spectrogram-heatmap.png"
+      },
+      {
+        "id": "product-waveform-file",
+        "path": "previews/plvs-light/product-waveform-file.png"
+      },
+      {
+        "id": "product-stereo-map-file",
+        "path": "previews/plvs-light/product-stereo-map-file.png"
+      }
+    ]
+  }
+}

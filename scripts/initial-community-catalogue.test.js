@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { hashPortableTheme, themeToPortable } from "../src/theme/portableTheme.js";
 import { readCommunitySource } from "./community-catalogue-source.mjs";
 
 const INITIAL_LISTINGS = [
   "listings/plvs-dark.json",
+  "listings/plvs-light.json",
   "listings/control-room-amber.json",
   "listings/studio-daylight.json",
   "listings/i-23-tp-1.json",
@@ -13,7 +14,13 @@ const INITIAL_LISTINGS = [
   "listings/stereo-overview.json",
 ];
 
-const readLaunchSource = () => readCommunitySource("community/catalogue");
+let launchSource;
+
+beforeAll(async () => {
+  launchSource = await readCommunitySource("community/catalogue");
+});
+
+const readLaunchSource = () => launchSource;
 
 describe("initial Community Catalogue", () => {
   it("includes every checked-in candidate in the publication manifest", () => {
@@ -29,6 +36,7 @@ describe("initial Community Catalogue", () => {
       "control-room-amber",
       "i-23-tp-1",
       "plvs-dark",
+      "plvs-light",
       "signal-amber",
       "stereo-overview",
       "studio-daylight",
@@ -50,6 +58,17 @@ describe("initial Community Catalogue", () => {
 
     expect(theme.title).toBe("PLVS Dark");
     expect(theme.included.sourceId).toBe("plvs-dark");
+    expect(theme.included.metadata.content.contentHash).toBe(builtinHash);
+    expect(theme.releases).toEqual([]);
+  });
+
+  it("keeps PLVS Light linked to the current built-in Theme", async () => {
+    const source = await readLaunchSource();
+    const theme = source.listings.find(({ document }) => document.id === "plvs-light").document;
+    const builtinHash = await hashPortableTheme(themeToPortable(BUILTIN_THEMES_V2["plvs-light"]));
+
+    expect(theme.title).toBe("PLVS Light");
+    expect(theme.included.sourceId).toBe("plvs-light");
     expect(theme.included.metadata.content.contentHash).toBe(builtinHash);
     expect(theme.releases).toEqual([]);
   });
