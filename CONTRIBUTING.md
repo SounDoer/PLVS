@@ -45,11 +45,13 @@ installing dependencies on a machine that generates previews.
 
 ### Theme Lab
 
-Theme Lab is the disposable Theme-authoring path for comparing Core and Palette ideas without
-saving them to the Theme Library or adding them to the Community Catalogue. Copy
+Theme Lab is the disposable Theme-authoring path for comparing Core, Palette, and Advanced override
+ideas without saving them to the Theme Library or adding them to the Community Catalogue. Copy
 `scripts/theme-lab.example.json`, choose built-in `plvs-dark` or `plvs-light` as the base, and give
-each variant only the Core or Palette values that differ from that base. Status, Frequency,
-Intensity, and Interface palettes accept the same literal values or preset IDs as the Theme Editor.
+each variant only the values that differ from that base. Status, Frequency, Intensity, and Interface
+palettes accept the same literal values or preset IDs as the Theme Editor.
+The optional `overrides` object maps an Advanced color role ID to a literal color and is applied
+through the same editor draft contract.
 
 ```powershell
 npm run theme:lab -- --manifest path/to/experiments.json

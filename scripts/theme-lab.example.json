@@ -34,6 +34,9 @@
           "warning": "#f4b942",
           "danger": "#ef5350"
         }
+      },
+      "overrides": {
+        "interface.feedback.warning": "#b97816"
       }
     },
     {

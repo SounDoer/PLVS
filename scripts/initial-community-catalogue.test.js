@@ -6,6 +6,7 @@ import { readCommunitySource } from "./community-catalogue-source.mjs";
 
 const INITIAL_LISTINGS = [
   "listings/control-room-amber.json",
+  "listings/studio-daylight.json",
   "listings/i-23-tp-1.json",
   "listings/signal-amber.json",
   "listings/stereo-overview.json",
@@ -28,6 +29,7 @@ describe("initial Community Catalogue", () => {
       "i-23-tp-1",
       "signal-amber",
       "stereo-overview",
+      "studio-daylight",
     ]);
     expect(new Set(listings.map(({ type }) => type))).toEqual(
       new Set(["loudness", "presets", "themes"])
@@ -62,6 +64,17 @@ describe("initial Community Catalogue", () => {
     const builtinHash = await hashPortableTheme(themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]));
 
     expect(theme.title).toBe("Control Room Amber");
+    expect(theme.releases[0].metadata.content.contentHash).not.toBe(builtinHash);
+  });
+
+  it("keeps Studio Daylight distinct from the built-ins", async () => {
+    const source = await readLaunchSource();
+    const theme = source.listings.find(
+      ({ document }) => document.id === "studio-daylight"
+    ).document;
+    const builtinHash = await hashPortableTheme(themeToPortable(BUILTIN_THEMES_V2["plvs-light"]));
+
+    expect(theme.title).toBe("Studio Daylight");
     expect(theme.releases[0].metadata.content.contentHash).not.toBe(builtinHash);
   });
 

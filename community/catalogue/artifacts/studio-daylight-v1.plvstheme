@@ -1,0 +1,115 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "community-studio-daylight",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 4,
+      "name": "Studio Daylight",
+      "colorScheme": "light",
+      "core": {
+        "workspace": "#dfe4e6",
+        "surface": "#f8f6f1",
+        "text": "#172126",
+        "interfaceAccent": "#78a9bd",
+        "primaryData": "#245f7c",
+        "secondaryData": "#556f65"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#3f7555",
+          "warning": "#8b5915",
+          "critical": "#b84c45"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#12202a"
+            },
+            {
+              "position": 0.16,
+              "color": "#183546"
+            },
+            {
+              "position": 0.34,
+              "color": "#285d70"
+            },
+            {
+              "position": 0.54,
+              "color": "#498991"
+            },
+            {
+              "position": 0.72,
+              "color": "#83b3a7"
+            },
+            {
+              "position": 0.88,
+              "color": "#ccd8b2"
+            },
+            {
+              "position": 1,
+              "color": "#f8edbf"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#b65a4a",
+          "mid": "#a27b2d",
+          "high": "#3f7891"
+        },
+        "interface": {
+          "success": "#86ad92",
+          "warning": "#d0a45c",
+          "danger": "#d58a84"
+        }
+      },
+      "overrides": {
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#b84c45"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#3f7555"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#8b5915"
+        },
+        "interface.surface.control": {
+          "kind": "color",
+          "value": "#e5e4e0"
+        },
+        "level.critical": {
+          "kind": "color",
+          "value": "#bd746d"
+        },
+        "level.safe": {
+          "kind": "color",
+          "value": "#71958b"
+        },
+        "level.warning": {
+          "kind": "color",
+          "value": "#ad965b"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#5b8092"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#806b66"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#89927e"
+        }
+      }
+    }
+  ],
+  "dependencies": []
+}

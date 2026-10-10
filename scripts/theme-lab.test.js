@@ -33,6 +33,7 @@ function manifest() {
             ],
           },
         },
+        overrides: { "interface.feedback.warning": "#9a6400" },
       },
       {
         id: "cool-blue",
@@ -76,6 +77,10 @@ describe("Theme Lab", () => {
     expect(variants[0].document.core.text).toBeDefined();
     expect(variants[0].document.palettes.status.safe).toBe("#32c787");
     expect(variants[0].document.palettes.intensity.stops).toHaveLength(2);
+    expect(variants[0].document.overrides["interface.feedback.warning"]).toEqual({
+      kind: "color",
+      value: "#9a6400",
+    });
     expect(variants[1].document.core.interfaceAccent).toBe("#3b82f6");
     expect(variants[1].document.palettes.frequency.presetId).toBe("frequency-plvs");
     expect(validatePortableTheme(variants[0].portable)).toEqual(variants[0].portable);

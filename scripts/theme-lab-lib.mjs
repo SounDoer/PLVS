@@ -9,7 +9,7 @@ import {
 } from "../src/theme/portableTheme.js";
 
 const TOP_LEVEL_FIELDS = new Set(["version", "base", "variants"]);
-const VARIANT_FIELDS = new Set(["id", "name", "colorScheme", "core", "palettes"]);
+const VARIANT_FIELDS = new Set(["id", "name", "colorScheme", "core", "palettes", "overrides"]);
 const PALETTE_FIELDS = new Set(["status", "intensity", "frequency", "interface"]);
 const SIMPLE_PALETTE_KEYS = Object.freeze({
   status: new Set(["safe", "warning", "critical"]),
@@ -84,6 +84,17 @@ function addPaletteOperations(palettes, operations, path, issues) {
   }
 }
 
+function addOverrideOperations(overrides, operations, path, issues) {
+  if (overrides === undefined) return;
+  if (!plain(overrides)) {
+    issues.push(`${path} must be an object.`);
+    return;
+  }
+  for (const [roleId, color] of Object.entries(overrides)) {
+    operations.push({ op: "setOverrideColor", roleId, color });
+  }
+}
+
 function variantOperations(variant, index) {
   const path = `$.variants[${index}]`;
   const issues = [];
@@ -112,6 +123,7 @@ function variantOperations(variant, index) {
     }
   }
   addPaletteOperations(variant.palettes, operations, `${path}.palettes`, issues);
+  addOverrideOperations(variant.overrides, operations, `${path}.overrides`, issues);
   return { operations, issues };
 }
 
