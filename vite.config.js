@@ -52,7 +52,14 @@ export default defineConfig({
     // listed even where no worktree exists today: a missing one only shows up once a worktree
     // happens to be open. Spread the defaults — setting exclude replaces them, and dropping
     // **/node_modules/** would be far worse than the problem being fixed.
-    exclude: [...configDefaults.exclude, "**/.claude/**", "**/.codex/**", "**/.cursor/**"],
+    exclude: [
+      ...configDefaults.exclude,
+      "**/.claude/**",
+      "**/.codex/**",
+      "**/.cursor/**",
+      // Marketing tooling has its own suite: `npm run test:marketing`.
+      "scripts/marketing/**",
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

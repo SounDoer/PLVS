@@ -218,8 +218,11 @@ copy-and-verify. Historical snapshots require their media and lockfile as well a
 ### Tests
 
 ```powershell
-npx vitest run scripts/marketing/check-video.test.mjs scripts/marketing/archive-production.test.mjs
+npm run test:marketing
 ```
+
+The marketing suites are excluded from `npm test` and `npm run check`; run this command after
+changing anything under `scripts/marketing/`.
 
 Archive tests use temporary files and cover collisions, stale plans, interrupted copies, links,
 source changes and damaged payloads. Media integration tests generate tiny temporary clips and
