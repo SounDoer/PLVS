@@ -101,6 +101,37 @@ The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.s
 | `DEVELOPMENT_TARGET_DIRECTORY` | `DEV_IDENTITY_TARGET_DIRECTORY` |
 | "release identity", "production identity", "development app" | stable identity, stable identity, dev app |
 
+#### Identities and build profiles
+
+Two independent choices describe every build. The identity decides which app it is; the Cargo profile decides how it is compiled.
+
+| Identity | Window title | Identifier | Used for |
+| --- | --- | --- | --- |
+| `stable` | PLVS | `com.soundoer.plvs` | What users install |
+| `dev` | PLVS Dev | `com.soundoer.plvs.dev` | Local development |
+| `preview` | PLVS Preview | `com.soundoer.plvs.preview` | Installable test packages; no updater |
+
+Each identity has its own settings, webview data and Agent Control discovery, so all three can be installed side by side.
+
+| Cargo profile | Trade-off | Used for |
+| --- | --- | --- |
+| `debug` | Fast to compile, slow to run | Daily development and tests |
+| `release` | Slow to compile, fast to run | Packages and performance work |
+| `harness` | `release` plus the capture test commands | `smoke:capture` and `soak:capture` only |
+
+| Command | Identity | Profile | Output under `src-tauri/target/` |
+| --- | --- | --- | --- |
+| `npm run desktop:dev` | `dev` | `debug` | `dev-identity/debug/` |
+| `npm run desktop:dev-optimized` | `dev` | `release` | `release/` |
+| `npm run desktop:preview-nsis` | `preview` | `release` | `release/` |
+| `npm run desktop:stable-nsis`, `desktop:stable-dmg` | `stable` | `release` | `release/` |
+| `npm run rust:test` (part of `npm run check`) | `stable` | `debug` | `debug/` |
+| Capture harness build | `stable` | `harness` | `harness/` |
+
+`release/plvs` is whichever of the three `release`-profile commands ran last. The dev `debug` build has its own directory because `cargo test` and a running dev app would otherwise fight over `debug/plvs`; see [ADR 0024](docs/adr/0024-development-identity-target-directory.md). `plvs-cli` forwards to the `plvs` beside it, so the two are always built as a pair with the same identity.
+
+`src-tauri/target/` is ignored by Git and can be deleted at any time. Everything in it is rebuilt on demand; the first dev build afterwards takes a few minutes.
+
 To let an agent inspect or adjust the Workspace of the running dev app, open a second terminal:
 
 ```bash
