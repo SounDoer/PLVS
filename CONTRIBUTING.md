@@ -73,13 +73,15 @@ from the production defaults with a deterministic Profile ID; it never reads a m
 Library. This keeps the Loudness reference, Stats verdict colours, and Level Meter TP Max verdict
 visible while making repeated exports reproducible.
 
-Product previews use a committed 15-second Fixture measured from
+Product previews use a committed 60-second Fixture measured from
 `assets/marketing/audio/discovery-hero.wav` by the production file-analysis pipeline. Theme Lab
 reads that Fixture; it does not decode audio, so adding variants does not make screenshot capture
-slower. The selected window is 63–78 seconds, ending at the same 78-second frame used by the
-website hero recipe. Loudness and waveform keep every 100 ms measurement, while Spectrogram rows
-are sampled every 500 ms and the analyzer's frequency bins use a fixed 1-in-4 stride to keep the
-committed payload bounded. Every retained value is still a production measurement.
+slower. The selected window is 18–78 seconds, ending at the same 78-second frame used by the
+website hero recipe. Screenshots present those deterministic measurements through the normal Live
+history direction, and the Snapshot workspace freezes the measured final frame. Loudness,
+waveform, and Spectrogram keep every 100 ms measurement, while the analyzer's frequency bins use a
+fixed 1-in-4 stride to keep the committed payload bounded. Every retained value is still a
+production measurement.
 
 The Fixture is maintainer-owned input, not part of a Theme manifest. Regenerate it only after an
 intentional source-audio or analysis change, then review the resulting product screenshots:
@@ -94,7 +96,7 @@ The first Fixture command runs the real Rust analyzer and writes the versioned J
 repeats the analysis and fails if the committed JSON differs. The generator pins the reference WAV
 SHA-256 plus explicit Spectrum, Vectorscope, and Stereo Map requests, so replacing the audio or
 changing those controls requires a deliberate Fixture regeneration. Never hand-edit the current
-`src/transfer/fixtures/communityPreviewV4.json`. The generator derives its analysis requests from
+`src/transfer/fixtures/communityPreviewV5.json`. The generator derives its analysis requests from
 the production `DEFAULT_WORKSPACE_STATE`, records those requests in the Fixture, and stores every
 result under its real request key. A Default Preset change therefore makes the committed Fixture
 stale instead of silently substituting data measured with different controls.

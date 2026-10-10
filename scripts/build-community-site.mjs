@@ -21,7 +21,7 @@ const FAMILIES = {
 
 const THEME_GALLERY_ORDER = [
   "product-workspace-file",
-  "product-stats-file",
+  "product-workspace-snapshot",
   "product-spectrum-file",
   "product-spectrogram-heatmap",
   "semantic-overview",
@@ -29,7 +29,7 @@ const THEME_GALLERY_ORDER = [
 
 const THEME_PREVIEW_LABELS = {
   "product-workspace-file": "Workspace",
-  "product-stats-file": "Stats",
+  "product-workspace-snapshot": "Snapshot",
   "product-spectrum-file": "Spectrum",
   "product-spectrogram-heatmap": "Spectrogram",
   "semantic-overview": "Theme Colors",

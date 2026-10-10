@@ -155,6 +155,7 @@ export function VectorscopePolarPlot({
   rows = [],
   snapshotPairs = null,
   snapshotMaxHold = null,
+  initialMaxHold = null,
   firstLabel,
   secondLabel,
   showLabels = true,
@@ -197,7 +198,7 @@ export function VectorscopePolarPlot({
     if (stateIdentityRef.current !== stateIdentity) {
       stateIdentityRef.current = stateIdentity;
       envelopeRef.current = null;
-      maxHoldRef.current = null;
+      maxHoldRef.current = initialMaxHold?.length ? Float64Array.from(initialMaxHold) : null;
       lastTimestampRef.current = null;
     }
 
@@ -258,6 +259,7 @@ export function VectorscopePolarPlot({
     colors,
     effectiveRows,
     enabled,
+    initialMaxHold,
     maxHoldEnabled,
     maxHoldResetKey,
     mode,

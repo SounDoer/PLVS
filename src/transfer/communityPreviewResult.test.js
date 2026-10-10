@@ -41,7 +41,7 @@ describe("Community preview result", () => {
       validateCommunityPreviewResult(plan, { ...result, assets: [...result.assets].reverse() })
     ).toMatchObject({
       resultVersion: 1,
-      renderer: { name: "plvs-community-preview", version: 1 },
+      renderer: { name: "plvs-community-preview", version: 2 },
       contentHash: plan.item.contentHash,
       fixtureHash: plan.fixtureHash,
     });

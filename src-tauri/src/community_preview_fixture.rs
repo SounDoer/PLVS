@@ -12,7 +12,7 @@ use crate::ipc::types::{
 };
 
 const SOURCE_SHA256: &str = "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988";
-const WINDOW_START_MS: u64 = 63_000;
+const WINDOW_START_MS: u64 = 18_000;
 const WINDOW_END_MS: u64 = 78_000;
 const FREQUENCY_BIN_STRIDE: usize = 4;
 
@@ -329,7 +329,6 @@ pub fn generate_community_preview_fixture(
     .map(|request| {
       let rows = visual_rows
         .iter()
-        .filter(|row| relative_time(row.timestamp_ms).is_multiple_of(500))
         .filter_map(|row| {
           row
             .spectrum_by_key
@@ -358,7 +357,6 @@ pub fn generate_community_preview_fixture(
         })?;
       let history = visual_rows
         .iter()
-        .filter(|row| row.timestamp_ms + 500 >= WINDOW_END_MS)
         .filter_map(|row| {
           row
             .vectorscope_by_key
@@ -408,8 +406,8 @@ pub fn generate_community_preview_fixture(
     .collect::<Result<BTreeMap<_, _>, String>>()?;
   let duration_ms = WINDOW_END_MS - WINDOW_START_MS;
   Ok(CommunityPreviewFixture {
-    id: "plvs-community-discovery-v4",
-    version: 4,
+    id: "plvs-community-discovery-v5",
+    version: 5,
     analysis_requests,
     source: FixtureSource {
       file_name: "discovery-hero.wav",
@@ -485,9 +483,9 @@ mod tests {
   }
 
   #[test]
-  fn selected_window_is_fifteen_seconds_ending_at_the_hero_frame() {
-    assert_eq!(WINDOW_START_MS, 63_000);
-    assert_eq!(WINDOW_END_MS - WINDOW_START_MS, 15_000);
+  fn selected_window_is_sixty_seconds_ending_at_the_hero_frame() {
+    assert_eq!(WINDOW_START_MS, 18_000);
+    assert_eq!(WINDOW_END_MS - WINDOW_START_MS, 60_000);
   }
 
   #[test]

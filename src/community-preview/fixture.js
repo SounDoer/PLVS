@@ -1,4 +1,5 @@
 import { buildStatsMetrics } from "../lib/statsCatalog.js";
+import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 
 const noop = () => {};
 
@@ -20,7 +21,7 @@ function vectorscopeHistory(rows) {
   );
 }
 
-export function buildCommunityPreviewFixtureValues(fixture) {
+export function buildCommunityPreviewFixtureValues(fixture, { snapshot = false } = {}) {
   const frame = fixture.measurementFrame;
   const bands = fixture.visuals.bandCentersHz.map((fCenter) => ({ fCenter }));
   const spectrumResultsByKey = Object.fromEntries(
@@ -32,14 +33,18 @@ export function buildCommunityPreviewFixtureValues(fixture) {
   const vectorscopeResultsByKey = {};
   const vectorscopeHistoryByKey = {};
   for (const [key, result] of Object.entries(fixture.visuals.vectorscopeResultsByKey)) {
+    const history = vectorscopeHistory(result.history);
     vectorscopeResultsByKey[key] = {
       path: result.path,
       correlation: result.correlation,
       sideToMidDb: result.sideToMidDb,
       pairX: result.pairX,
       pairY: result.pairY,
+      // The real live panel accumulates this outline frame by frame. A frozen preview mounts only
+      // once at the final frame, so seed that same runtime state from the measured history.
+      initialMaxHold: result.maxHold?.length ? Float64Array.from(result.maxHold) : null,
     };
-    vectorscopeHistoryByKey[key] = vectorscopeHistory(result.history);
+    vectorscopeHistoryByKey[key] = history;
   }
   const spectrogramByKey = Object.fromEntries(
     Object.entries(fixture.visuals.spectrogramByKey).map(([key, rows]) => [
@@ -88,6 +93,44 @@ export function buildCommunityPreviewFixtureValues(fixture) {
     tonality: row.tonality,
   }));
   const totalSamples = histSourceList.length;
+  const resolveSpectrumSnapshotForKey = (key) => {
+    const result = spectrumResultsByKey[key];
+    if (!result) return { missing: true, data: null, maxHold: null };
+    return {
+      missing: false,
+      data: {
+        bands,
+        dbList: result.smoothDb,
+        dbListB: result.smoothDbB,
+      },
+      maxHold: null,
+    };
+  };
+  const resolveVectorscopeSnapshotForKey = (key, { withMaxHold = false } = {}) => {
+    const result = vectorscopeResultsByKey[key];
+    const history = vectorscopeHistoryByKey[key];
+    const lastIndex = (history?.length ?? 0) - 1;
+    const pairs = lastIndex >= 0 ? history.rowAt(lastIndex)?.pairs : null;
+    if (!result || !pairs?.length) {
+      return { missing: true, path: "", pairs: null, correlation: -Infinity, maxHold: null };
+    }
+    return {
+      missing: false,
+      ...result,
+      pairs,
+      hasSignal: pairs.some(
+        (sample) => Number.isFinite(sample) && Math.abs(sample) > 10 ** (-90 / 20)
+      ),
+      maxHold: withMaxHold && result.initialMaxHold ? result.initialMaxHold : null,
+    };
+  };
+  const resolveStereoMapSnapshotForKey = (key, mode, range) => {
+    const row = fixture.visuals.stereoMapResultsByKey[key];
+    const derived = row ? deriveStereoMapRow(mode, row, range) : null;
+    return derived
+      ? { missing: false, mode, bandCentersHz: row.bandCentersHz, derived, hold: null }
+      : { missing: true, mode, bandCentersHz: null, derived: null, hold: null };
+  };
   return {
     frameData: {
       displayAudio,
@@ -109,8 +152,8 @@ export function buildCommunityPreviewFixtureValues(fixture) {
     historyData: {
       hasHistoryData: true,
       historyChartInteractive: false,
-      running: false,
-      selectedOffset: -1,
+      running: true,
+      selectedOffset: snapshot ? 0 : -1,
       setSelectedOffset: noop,
       holdHistoryHud: noop,
       showHistoryHud: noop,
@@ -133,14 +176,14 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       referenceLufs: null,
       momentaryRules: [],
       shortTermRules: [],
-      sourceMode: "file",
+      sourceMode: "live",
       frequencyMarkerRef: { current: null },
       frequencyMarkerIndex: -1,
       getSpectrogramSnapsForKey: (key) => spectrogramByKey[key] ?? indexedView([]),
-      snapshotSpectrumByKey: {},
-      resolveSpectrumSnapshotForKey: () => null,
-      resolveVectorscopeSnapshotForKey: () => null,
-      resolveStereoMapSnapshotForKey: () => null,
+      snapshotSpectrumByKey: snapshot ? spectrogramByKey : {},
+      resolveSpectrumSnapshotForKey,
+      resolveVectorscopeSnapshotForKey,
+      resolveStereoMapSnapshotForKey,
       getVectorscopeHistoryForKey: (key) => vectorscopeHistoryByKey[key] ?? indexedView([]),
       getStereoMapHistoryForKey: () => null,
       captureCurrentSnapshot: noop,

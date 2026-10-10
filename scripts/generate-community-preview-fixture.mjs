@@ -7,13 +7,41 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { format, resolveConfig } from "prettier";
 import { buildDefaultCommunityPreviewAnalysisRequests } from "../src/community-preview/defaultAnalysisRequests.js";
+import {
+  buildPolarLevelMaxHoldTable,
+  polarLevelMaxHoldAt,
+} from "../src/math/vectorscopePolarMath.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const audioPath = join(root, "assets", "marketing", "audio", "discovery-hero.wav");
-const fixturePath = join(root, "src", "transfer", "fixtures", "communityPreviewV4.json");
+const fixturePath = join(root, "src", "transfer", "fixtures", "communityPreviewV5.json");
 const binDir = join(root, "src-tauri", "binaries");
 const write = process.argv.slice(2).includes("--write");
 const unknown = process.argv.slice(2).filter((argument) => argument !== "--write");
+
+function indexedView(rows) {
+  return {
+    length: rows.length,
+    rowAt: (index) => ({ pairs: rows[index]?.pairs ?? [] }),
+    timestampAt: (index) => rows[index]?.atMs ?? Number.NaN,
+  };
+}
+
+function finalizeVectorscopeState(fixture) {
+  const durationMs = fixture.clock.durationMs;
+  for (const result of Object.values(fixture.visuals.vectorscopeResultsByKey)) {
+    const history = indexedView(result.history);
+    const lastIndex = history.length - 1;
+    result.maxHold = Array.from(
+      polarLevelMaxHoldAt(buildPolarLevelMaxHoldTable(history), lastIndex) ?? []
+    );
+    // Polar Sample/Level only need the recent window to draw the final fan. Max Hold above is the
+    // cumulative state since Clear, computed before trimming so the fixture stays compact without
+    // changing the production meaning of the outline.
+    result.history = result.history.filter(({ atMs }) => atMs + 500 >= durationMs);
+  }
+  return fixture;
+}
 
 if (unknown.length > 0) {
   console.error(`Unknown option: ${unknown[0]}`);
@@ -84,7 +112,8 @@ try {
     process.exitCode = result.status ?? 1;
   } else {
     const prettierConfig = (await resolveConfig(fixturePath)) ?? {};
-    const generated = await format(result.stdout, { ...prettierConfig, parser: "json" });
+    const fixture = finalizeVectorscopeState(JSON.parse(result.stdout));
+    const generated = await format(JSON.stringify(fixture), { ...prettierConfig, parser: "json" });
     if (write) {
       await writeFile(fixturePath, generated, "utf8");
       console.log(`Wrote ${fixturePath}`);

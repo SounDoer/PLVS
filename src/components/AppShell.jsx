@@ -30,14 +30,14 @@ import { LinkButton } from "@/components/ui/link-button";
  *   frameData: Partial<import("../workspace/AudioDataContext.jsx").FrameData>,
  *   historyData: Partial<import("../workspace/AudioDataContext.jsx").HistoryData>,
  *   metricsData: Partial<import("../workspace/AudioDataContext.jsx").MetricsData>,
- *   runtimeEnginesProps: Parameters<typeof MeterRuntimeEngines>[0],
- *   fileDropProps: Parameters<typeof FileDropOverlay>[0],
+ *   runtimeEnginesProps: Parameters<typeof MeterRuntimeEngines>[0] | null,
+ *   fileDropProps: Parameters<typeof FileDropOverlay>[0] | null,
  *   focusView: import("../lib/focusView.js").FocusView,
  *   focusControlsVisible: boolean,
  *   shellHandlers: Record<"hideFocusControlsNow" | "hideFocusControlsLater" | "showFocusControls" | "handleWindowDrag" | "releaseFocusControlsHold", (...args: any[]) => any>,
  *   headerProps: Parameters<typeof AppHeader>[0],
  *   showFileAnalysisResult: boolean,
- *   fileSummaryProps: Parameters<typeof FileAnalysisSummary>[0],
+ *   fileSummaryProps: Parameters<typeof FileAnalysisSummary>[0] | null,
  *   panelChromeData: Partial<import("../workspace/AudioDataContext.jsx").PanelChromeData>,
  *   footer: { sourceLabel: string, audioDrop: any, loudnessProfileName: string | null, activePresetName: string | null, hasUpdate: boolean, layoutUnknown?: boolean, onOpenSettings?: (...args: any[]) => any },
  *   docked?: boolean,
@@ -84,12 +84,12 @@ export function AppShell({
       metricsData={metricsData}
       panelChromeData={panelChromeData}
     >
-      <MeterRuntimeEngines {...runtimeEnginesProps} />
+      {runtimeEnginesProps ? <MeterRuntimeEngines {...runtimeEnginesProps} /> : null}
       {docked ? (
         <DockStrip {...dockProps} recordingState={recordingState} />
       ) : (
         <>
-          <FileDropOverlay {...fileDropProps} />
+          {fileDropProps ? <FileDropOverlay {...fileDropProps} /> : null}
           <div
             data-visual-capture-surface="main"
             data-visual-capture-ready="true"
@@ -123,7 +123,7 @@ export function AppShell({
                       autoHideControls ? shellHandlers.hideFocusControlsLater : undefined
                     }
                   >
-                    <FileAnalysisSummary {...fileSummaryProps} />
+                    {fileSummaryProps ? <FileAnalysisSummary {...fileSummaryProps} /> : null}
                   </div>
                 ) : null}
 

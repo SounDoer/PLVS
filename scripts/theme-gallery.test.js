@@ -48,6 +48,7 @@ describe("Theme Gallery", () => {
     ).map(({ sceneId }) => sceneId);
     expect(publicationSceneIds).toEqual([
       "workspace-file",
+      "workspace-snapshot",
       "level-meter-file",
       "loudness-file",
       "stats-file",

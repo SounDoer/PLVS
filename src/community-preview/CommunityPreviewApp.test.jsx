@@ -10,7 +10,7 @@ import { themeToPortable } from "../theme/portableTheme.js";
 import { selectSpectrogramCanvasTheme } from "../theme/themeCanvasSelectors.js";
 import { validatePublishablePack } from "../transfer/communityPack.js";
 import { buildCommunityPreviewPlan } from "../transfer/communityPreview.js";
-import { COMMUNITY_PREVIEW_FIXTURE_V4 } from "../transfer/fixtures/communityPreviewV4.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/communityPreviewV5.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { CommunityPreviewApp } from "./CommunityPreviewApp.jsx";
@@ -77,7 +77,7 @@ describe("Community preview browser harness", () => {
     expect(screen.getByText("Integrated")).toBeTruthy();
     expect(
       screen.getByText(
-        COMMUNITY_PREVIEW_FIXTURE_V4.measurementFrame.loudness.integratedLufs.toFixed(1)
+        COMMUNITY_PREVIEW_FIXTURE_V5.measurementFrame.loudness.integratedLufs.toFixed(1)
       )
     ).toBeTruthy();
     expect(screen.getByText("True Peak Max")).toBeTruthy();
@@ -110,7 +110,7 @@ describe("Community preview browser harness", () => {
     expect(screen.getByTestId("dock-module")).toBeTruthy();
     expect(
       screen.getByLabelText(
-        `Integrated ${COMMUNITY_PREVIEW_FIXTURE_V4.measurementFrame.loudness.integratedLufs.toFixed(1)}`
+        `Integrated ${COMMUNITY_PREVIEW_FIXTURE_V5.measurementFrame.loudness.integratedLufs.toFixed(1)}`
       )
     ).toBeTruthy();
   });
@@ -198,6 +198,27 @@ describe("Community preview browser harness", () => {
     const spectrum = render(<CommunityPreviewApp plan={plan} asset={spectrumAsset} />);
     expect(spectrum.container.querySelector('[data-spectrum-live="primary"]')).toBeTruthy();
     expect(spectrum.container.querySelector('[data-spectrum-live="secondary"]')).toBeTruthy();
+  });
+
+  it("renders workspace Theme scenes inside the real Header and Footer shell", async () => {
+    const plan = await buildCommunityThemePreviewPlan({
+      theme: themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]),
+    });
+    const workspaceAsset = plan.assets.find(({ id }) => id === "product-workspace-file");
+    const snapshotAsset = plan.assets.find(({ id }) => id === "product-workspace-snapshot");
+
+    const workspace = render(<CommunityPreviewApp plan={plan} asset={workspaceAsset} />);
+    expect(screen.getByRole("button", { name: "Source: Live" })).toBeTruthy();
+    expect(screen.getByText("00:01:00")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "STOP" })).toBeTruthy();
+    expect(screen.getByText("Source")).toBeTruthy();
+    expect(screen.getByText("Preview Audio")).toBeTruthy();
+    expect(screen.getAllByText("Loudness")).toHaveLength(2);
+    expect(screen.getAllByText("Default")).toHaveLength(2);
+    workspace.unmount();
+
+    render(<CommunityPreviewApp plan={plan} asset={snapshotAsset} />);
+    expect(screen.getByRole("button", { name: "LIVE" })).toBeTruthy();
   });
 
   it("renders product scenes with the previewed Theme's panel surface and Canvas colours", async () => {

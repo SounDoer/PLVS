@@ -452,6 +452,26 @@ describe("VectorscopePolarPlot", () => {
     expect(heldPath.some(({ command }) => command === "closePath")).toBe(false);
   });
 
+  it("seeds the live Max hold from accumulated history for a frozen render", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
+    render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
+        initialMaxHold={new Float64Array(64).fill(0.7)}
+        firstLabel="L"
+        secondLabel="R"
+        maxHoldEnabled
+      />
+    );
+
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    const heldPath = ctx.strokedPaths.at(-1);
+    expect(heldPath[0].command).toBe("moveTo");
+    expect(heldPath.some(({ command }) => command === "closePath")).toBe(false);
+  });
+
   it("omits the snapshot Max hold outline when none is supplied", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));

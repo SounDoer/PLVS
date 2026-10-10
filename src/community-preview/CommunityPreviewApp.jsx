@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 import { LoudnessProfileEditor } from "../components/LoudnessProfileEditor.jsx";
+import { AppShell } from "../components/AppShell.jsx";
 import { ThemePreview } from "../components/theme-editor/ThemePreview.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
 import { LoudnessProfilePreviewProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { createStarterProfile } from "../lib/loudnessProfileCatalog.js";
+import { deriveSourceTransportState } from "../lib/sourceTransportState.js";
+import { DEFAULT_FOCUS_VIEW } from "../lib/focusView.js";
 import { portableToStoredTheme } from "../theme/portableTheme.js";
 import { portableToStoredPreset } from "../transfer/portablePreset.js";
 import {
@@ -20,8 +23,11 @@ import { buildCommunityPreviewFixtureValues } from "./fixture.js";
 
 const noop = () => {};
 
-function FixedProviders({ fixture, profile, children }) {
-  const values = useMemo(() => buildCommunityPreviewFixtureValues(fixture), [fixture]);
+function FixedProviders({ fixture, profile, snapshot = false, children }) {
+  const values = useMemo(
+    () => buildCommunityPreviewFixtureValues(fixture, { snapshot }),
+    [fixture, snapshot]
+  );
   const historyData = useMemo(
     () => ({ ...values.historyData, referenceLufs: profile?.referenceLufs ?? null }),
     [values.historyData, profile]
@@ -85,13 +91,166 @@ function compilePreset(plan) {
   });
 }
 
-/** @param {{ plan: any, state?: any, profile?: any }} props */
-function WorkspaceExample({ plan, state: stateOverride, profile: profileOverride }) {
+function previewLibrary(profile) {
+  return /** @type {import("../hooks/LoudnessProfileContext.jsx").LoudnessProfileApi} */ (
+    /** @type {Partial<import("../hooks/LoudnessProfileContext.jsx").LoudnessProfileApi>} */ ({
+      active: "preview",
+      document: profile,
+      profiles: profile ? [profile] : [],
+      referenceLufs: profile?.referenceLufs ?? null,
+      draft: null,
+      draftBlocksLibraryActions: false,
+      beginCreate: noop,
+      beginEdit: noop,
+      removeProfile: noop,
+      select: noop,
+      selectOff: noop,
+      reorderProfiles: noop,
+    })
+  );
+}
+
+const PREVIEW_PRESETS = {
+  list: [{ id: "community-preview-default-preset", name: "Default" }],
+  activeId: "community-preview-default-preset",
+  dirty: false,
+  blocked: false,
+  save: noop,
+  apply: noop,
+  update: noop,
+  rename: noop,
+  remove: noop,
+  reorder: noop,
+};
+
+function FullWorkspaceExample({ fixture, profile, snapshot, state }) {
+  const values = useMemo(
+    () => buildCommunityPreviewFixtureValues(fixture, { snapshot }),
+    [fixture, snapshot]
+  );
+  const historyData = useMemo(
+    () => ({ ...values.historyData, referenceLufs: profile?.referenceLufs ?? null }),
+    [values.historyData, profile]
+  );
+  const sourceTransportState = useMemo(
+    () =>
+      deriveSourceTransportState({
+        sourceMode: "live",
+        running: true,
+        elapsedMs: fixture.clock.durationMs,
+        selectedOffset: snapshot ? 0 : -1,
+        selectedSnapshotTimeMs: snapshot ? fixture.clock.durationMs : undefined,
+      }),
+    [fixture.clock.durationMs, snapshot]
+  );
+  const loudnessProfile = useMemo(() => previewLibrary(profile), [profile]);
+  const shellHandlers = useMemo(
+    () => ({
+      hideFocusControlsNow: noop,
+      hideFocusControlsLater: noop,
+      showFocusControls: noop,
+      handleWindowDrag: noop,
+      releaseFocusControlsHold: noop,
+    }),
+    []
+  );
+  const headerProps = {
+    autoHideControls: false,
+    onPointerEnter: noop,
+    onPointerLeave: noop,
+    onPointerDown: noop,
+    onPointerUp: noop,
+    onPointerCancel: noop,
+    sourceTransportState,
+    notice: null,
+    sourceMode: "live",
+    onSourceModeChange: noop,
+    onSourceTransportAction: noop,
+    onClear: noop,
+    clearDisabled: false,
+    isTauriApp: true,
+    onOpenFile: noop,
+    audioDevices: [{ id: "community-preview-audio", label: "Preview Audio" }],
+    audioOutputs: [{ id: "community-preview-audio", label: "Preview Audio" }],
+    audioInputs: [],
+    captureApplications: [],
+    onRefreshSources: noop,
+    safeAudioDeviceId: "community-preview-audio",
+    setCaptureDeviceId: noop,
+    holdFocusControls: noop,
+    focusView: DEFAULT_FOCUS_VIEW,
+    pinned: false,
+    setPinned: noop,
+    setAutoHideControls: noop,
+    setCompactPanels: noop,
+    setBorderless: noop,
+    surfaceOpacity: 100,
+    setSurfaceOpacity: noop,
+    glassEnabled: false,
+    setGlassEnabled: noop,
+    showDock: true,
+    dockEdge: null,
+    onDockChange: noop,
+    dockDisabled: false,
+    presets: PREVIEW_PRESETS,
+    loudnessProfile,
+    loudnessProfileStats: null,
+    onExportLibraryItem: noop,
+    setSettingsOpen: noop,
+  };
+
+  return (
+    <LoudnessProfilePreviewProvider document={profile}>
+      <WorkspacePreviewProvider state={state}>
+        <AppShell
+          frameData={values.frameData}
+          historyData={historyData}
+          metricsData={values.metricsData}
+          runtimeEnginesProps={null}
+          fileDropProps={null}
+          focusView={DEFAULT_FOCUS_VIEW}
+          focusControlsVisible
+          shellHandlers={shellHandlers}
+          headerProps={headerProps}
+          showFileAnalysisResult={false}
+          fileSummaryProps={null}
+          panelChromeData={{ compactPanels: false }}
+          footer={{
+            sourceLabel: "Preview Audio",
+            audioDrop: null,
+            loudnessProfileName: profile?.name ?? null,
+            activePresetName: "Default",
+            hasUpdate: false,
+          }}
+        />
+      </WorkspacePreviewProvider>
+    </LoudnessProfilePreviewProvider>
+  );
+}
+
+/** @param {{ plan: any, state?: any, profile?: any, snapshot?: boolean, fullShell?: boolean }} props */
+function WorkspaceExample({
+  plan,
+  state: stateOverride,
+  profile: profileOverride,
+  snapshot = false,
+  fullShell = false,
+}) {
   const preset = useMemo(() => (stateOverride ? null : compilePreset(plan)), [plan, stateOverride]);
   const state = stateOverride ?? preset;
   const profile = profileOverride === undefined ? profileForPreset(plan) : profileOverride;
+  if (fullShell) {
+    return (
+      <FullWorkspaceExample
+        fixture={plan.fixture}
+        profile={profile}
+        snapshot={snapshot}
+        state={state}
+      />
+    );
+  }
   return (
-    <FixedProviders fixture={plan.fixture} profile={profile}>
+    <FixedProviders fixture={plan.fixture} profile={profile} snapshot={snapshot}>
       <WorkspacePreviewProvider state={state}>
         <DragProvider onDrop={noop}>
           <div className="flex h-screen w-screen bg-background text-foreground">
@@ -108,20 +267,18 @@ function DockExample({ plan }) {
   const profile = profileForPreset(plan);
   const dock = preset.dock;
   const panels = dock.panelOrder.map((id) => dock.panelsById[id]);
+  const sourceTransportState = deriveSourceTransportState({
+    sourceMode: "live",
+    running: true,
+    elapsedMs: plan.fixture.clock.durationMs,
+  });
   return (
     <FixedProviders fixture={plan.fixture} profile={profile}>
       <DockStrip
         panels={panels}
         controls={{
           controlsByPanelId: dock.controlsByPanelId,
-          sourceTransportState: {
-            chromeState: "ready",
-            sourceLabel: "FILE",
-            statusLabel: "00:15",
-            actionLabel: "START",
-            actionKind: "start",
-            primaryActionDisabled: true,
-          },
+          sourceTransportState,
         }}
         edge={dock.edge}
         height={dock.height}
@@ -162,8 +319,8 @@ function ThemeProductExample({ plan, sceneId }) {
     sceneId === "spectrogram-heatmap" ? "spectrogram" : sceneId.replace(/-file$/, "");
   const normalizedModuleId =
     moduleId === "level-meter" ? "levelMeter" : moduleId === "stereo-map" ? "stereo-map" : moduleId;
-  const state =
-    sceneId === "workspace-file" ? DEFAULT_WORKSPACE_STATE : singlePanelState(normalizedModuleId);
+  const isWorkspace = sceneId === "workspace-file" || sceneId === "workspace-snapshot";
+  const state = isWorkspace ? DEFAULT_WORKSPACE_STATE : singlePanelState(normalizedModuleId);
   const syntheticPlan = {
     fixture: plan.fixture,
     item: { document: null },
@@ -173,7 +330,15 @@ function ThemeProductExample({ plan, sceneId }) {
     () => createStarterProfile(() => "community-preview-default-profile"),
     []
   );
-  return <WorkspaceExample plan={syntheticPlan} state={state} profile={profile} />;
+  return (
+    <WorkspaceExample
+      plan={syntheticPlan}
+      state={state}
+      profile={profile}
+      snapshot={sceneId === "workspace-snapshot"}
+      fullShell={isWorkspace}
+    />
+  );
 }
 
 export function CommunityPreviewApp({ plan, asset }) {

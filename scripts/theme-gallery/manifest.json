@@ -42,6 +42,12 @@
         "covers": ["shell", "file", "all-modules"]
       },
       {
+        "id": "workspace-snapshot",
+        "state": "file",
+        "target": "workspace",
+        "covers": ["shell", "snapshot", "all-modules"]
+      },
+      {
         "id": "level-meter-file",
         "state": "file",
         "target": "panel",

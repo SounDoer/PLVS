@@ -79,7 +79,7 @@ describe("Community preview command", () => {
   it.each([
     ["loudness", 2],
     ["presets", 1],
-    ["themes", 10],
+    ["themes", 11],
   ])("generates the exact sealed %s asset set", async (type, assetCount) => {
     const root = temporaryRoot();
     const source = artifact(root, type);

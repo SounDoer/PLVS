@@ -110,19 +110,20 @@ describe("Community static site generator", () => {
       "product-waveform-file",
       "product-stereo-map-file",
       "product-workspace-file",
+      "product-workspace-snapshot",
     ].map((id) => ({ id }));
 
     const gallery = detailGallery("themes", previews);
     expect(gallery.map(({ id }) => id)).toEqual([
       "product-workspace-file",
-      "product-stats-file",
+      "product-workspace-snapshot",
       "product-spectrum-file",
       "product-spectrogram-heatmap",
       "semantic-overview",
     ]);
     expect(gallery.map(previewLabel)).toEqual([
       "Workspace",
-      "Stats",
+      "Snapshot",
       "Spectrum",
       "Spectrogram",
       "Theme Colors",

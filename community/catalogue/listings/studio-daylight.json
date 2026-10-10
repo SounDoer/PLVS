@@ -29,6 +29,10 @@
           "path": "previews/studio-daylight/v1/product-workspace-file.png"
         },
         {
+          "id": "product-workspace-snapshot",
+          "path": "previews/studio-daylight/v1/product-workspace-snapshot.png"
+        },
+        {
           "id": "product-level-meter-file",
           "path": "previews/studio-daylight/v1/product-level-meter-file.png"
         },

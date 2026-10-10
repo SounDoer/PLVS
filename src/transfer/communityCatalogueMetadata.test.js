@@ -45,12 +45,12 @@ describe("Community Catalogue metadata", () => {
         themeScheme: null,
       },
       preview: {
-        contractVersion: 1,
-        renderer: { name: "plvs-community-preview", version: 1 },
+        contractVersion: 2,
+        renderer: { name: "plvs-community-preview", version: 2 },
         fixture: {
-          id: "plvs-community-discovery-v4",
-          version: 4,
-          sha256: "sha256:bc857f9555e9dd39ae76e5e2864baa23b7c5bf802b015498b33ca98a1fb5d724",
+          id: "plvs-community-discovery-v5",
+          version: 5,
+          sha256: "sha256:acf4cba3aade577abc0b739566b637e31bd6494ef697583e81e62ccbab245362",
         },
       },
     });
@@ -108,14 +108,14 @@ describe("Community Catalogue metadata", () => {
 
     expect(metadata.facets.themeScheme).toBe("dark");
     expect(metadata.preview).toMatchObject({
-      renderer: { name: "plvs-theme-gallery", version: 1 },
+      renderer: { name: "plvs-theme-gallery", version: 2 },
       fixture: {
-        id: "plvs-community-discovery-v4",
-        version: 4,
-        sha256: "sha256:bc857f9555e9dd39ae76e5e2864baa23b7c5bf802b015498b33ca98a1fb5d724",
+        id: "plvs-community-discovery-v5",
+        version: 5,
+        sha256: "sha256:acf4cba3aade577abc0b739566b637e31bd6494ef697583e81e62ccbab245362",
       },
     });
-    expect(metadata.preview.assets).toHaveLength(10);
+    expect(metadata.preview.assets).toHaveLength(11);
     expect(metadata.preview.assets.every(({ viewport }) => viewport.deviceScaleFactor === 1)).toBe(
       true
     );

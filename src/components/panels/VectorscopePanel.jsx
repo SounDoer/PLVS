@@ -408,6 +408,7 @@ export function VectorscopePanel() {
                   rows={polarRows}
                   snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
                   snapshotMaxHold={isSnapshot ? snapResolved?.maxHold : null}
+                  initialMaxHold={!isSnapshot ? liveVectorscopeResult?.initialMaxHold : null}
                   firstLabel={axisXLabel}
                   secondLabel={axisYLabel}
                   showLabels={false}

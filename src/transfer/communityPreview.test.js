@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { buildPack } from "./packShape.js";
 import { buildCommunityPreviewPlan } from "./communityPreview.js";
-import { COMMUNITY_PREVIEW_FIXTURE_V4 } from "./fixtures/communityPreviewV4.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V5 } from "./fixtures/communityPreviewV5.js";
 
 const PROFILE = {
   id: "broadcast",
@@ -16,10 +16,10 @@ describe("Community preview input contract", () => {
     const plan = await buildCommunityPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
 
     expect(plan).toMatchObject({
-      contractVersion: 1,
+      contractVersion: 2,
       renderer: {
         name: "plvs-community-preview",
-        version: 1,
+        version: 2,
         locale: "en-US",
         persistence: false,
         network: false,
@@ -27,8 +27,8 @@ describe("Community preview input contract", () => {
         animations: false,
         clock: "fixture",
       },
-      fixture: COMMUNITY_PREVIEW_FIXTURE_V4,
-      fixtureHash: "sha256:bc857f9555e9dd39ae76e5e2864baa23b7c5bf802b015498b33ca98a1fb5d724",
+      fixture: COMMUNITY_PREVIEW_FIXTURE_V5,
+      fixtureHash: "sha256:acf4cba3aade577abc0b739566b637e31bd6494ef697583e81e62ccbab245362",
       item: {
         type: "loudness",
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),

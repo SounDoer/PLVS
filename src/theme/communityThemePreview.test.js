@@ -23,13 +23,13 @@ describe("community Theme preview contract", () => {
     const plan = await buildCommunityThemePreviewPlan({ theme: portableTheme() });
 
     expect(plan).toMatchObject({
-      contractVersion: 1,
+      contractVersion: 2,
       generator: "plvs-theme-gallery",
       generatorSource: "plvs",
       acceptsPublisherMedia: false,
       interactivePreview: false,
-      fixture: expect.objectContaining({ id: "plvs-community-discovery-v4", version: 4 }),
-      fixtureHash: "sha256:bc857f9555e9dd39ae76e5e2864baa23b7c5bf802b015498b33ca98a1fb5d724",
+      fixture: expect.objectContaining({ id: "plvs-community-discovery-v5", version: 5 }),
+      fixtureHash: "sha256:acf4cba3aade577abc0b739566b637e31bd6494ef697583e81e62ccbab245362",
       theme: {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",
@@ -50,12 +50,22 @@ describe("community Theme preview contract", () => {
       crop: "dialog",
       source: {
         generator: "plvs-theme-gallery",
-        contractVersion: 1,
+        contractVersion: 2,
         themeContentHash: plan.theme.contentHash,
         fixtureHash: plan.fixtureHash,
       },
     });
-    expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(9);
+    expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(10);
+    expect(plan.assets.find(({ id }) => id === "product-workspace-file")?.viewport).toEqual({
+      widthCssPx: 1280,
+      heightCssPx: 800,
+      deviceScaleFactor: 1,
+    });
+    expect(plan.assets.find(({ id }) => id === "product-workspace-snapshot")?.viewport).toEqual({
+      widthCssPx: 1280,
+      heightCssPx: 800,
+      deviceScaleFactor: 1,
+    });
     expect(
       /** @type {Array<Record<string, any>>} */ (plan.assets).filter(
         ({ crop }) => crop !== undefined
@@ -112,7 +122,7 @@ describe("community Theme preview contract", () => {
     ).toThrowError(
       expect.objectContaining({
         issues: expect.arrayContaining([
-          expect.objectContaining({ code: "unexpectedAsset", path: "$[10].id" }),
+          expect.objectContaining({ code: "unexpectedAsset", path: "$[11].id" }),
         ]),
       })
     );
