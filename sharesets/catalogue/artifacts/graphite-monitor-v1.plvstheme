@@ -1,0 +1,183 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 4,
+      "name": "Graphite Monitor",
+      "colorScheme": "dark",
+      "core": {
+        "workspace": "#090a0b",
+        "surface": "#202225",
+        "text": "#efeee9",
+        "interfaceAccent": "#a51f2d",
+        "primaryData": "#f0ede5",
+        "secondaryData": "#d54b53"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#73a58a",
+          "warning": "#d1a24b",
+          "critical": "#d94b53"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#050506"
+            },
+            {
+              "position": 0.14,
+              "color": "#19191b"
+            },
+            {
+              "position": 0.3,
+              "color": "#343336"
+            },
+            {
+              "position": 0.48,
+              "color": "#5a5557"
+            },
+            {
+              "position": 0.66,
+              "color": "#8d6b6d"
+            },
+            {
+              "position": 0.84,
+              "color": "#c66b70"
+            },
+            {
+              "position": 1,
+              "color": "#f2b0ad"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#d94b53",
+          "mid": "#b9b5ad",
+          "high": "#efeee9"
+        },
+        "interface": {
+          "success": "#456b55",
+          "warning": "#7d5c27",
+          "danger": "#902d35"
+        }
+      },
+      "overrides": {
+        "interface.content.onAccent": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onSuccess": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onWarning": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#dc5960"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#73a58a"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#d1a24b"
+        },
+        "level.critical": {
+          "kind": "color",
+          "value": "#d94b53"
+        },
+        "level.safe": {
+          "kind": "color",
+          "value": "#7c9182"
+        },
+        "level.warning": {
+          "kind": "color",
+          "value": "#c0aaa2"
+        },
+        "loudness.momentary": {
+          "kind": "color",
+          "value": "#efeee9"
+        },
+        "loudness.momentarySnapshot": {
+          "kind": "color",
+          "value": "#8e8b86"
+        },
+        "loudness.shortTerm": {
+          "kind": "color",
+          "value": "#d54b53"
+        },
+        "loudness.shortTermSnapshot": {
+          "kind": "color",
+          "value": "#d28a8e"
+        },
+        "spectrum.primary": {
+          "kind": "color",
+          "value": "#efeee9"
+        },
+        "spectrum.primarySnapshot": {
+          "kind": "color",
+          "value": "#8e8b86"
+        },
+        "spectrum.secondary": {
+          "kind": "color",
+          "value": "#d54b53"
+        },
+        "spectrum.secondarySnapshot": {
+          "kind": "color",
+          "value": "#d28a8e"
+        },
+        "stats.criticalValue": {
+          "kind": "color",
+          "value": "#ee646b"
+        },
+        "stereoMap.primary": {
+          "kind": "color",
+          "value": "#efeee9"
+        },
+        "stereoMap.primarySnapshot": {
+          "kind": "color",
+          "value": "#8e8b86"
+        },
+        "stereoMap.secondary": {
+          "kind": "color",
+          "value": "#d54b53"
+        },
+        "stereoMap.secondarySnapshot": {
+          "kind": "color",
+          "value": "#d28a8e"
+        },
+        "vectorscope.snapshot": {
+          "kind": "color",
+          "value": "#8e8b86"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#e7e4dc"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#d54b53"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#9f9b95"
+        },
+        "waveform.snapshot": {
+          "kind": "color",
+          "value": "#8e8b86"
+        }
+      },
+      "id": "sharesets-graphite-monitor"
+    }
+  ],
+  "dependencies": []
+}

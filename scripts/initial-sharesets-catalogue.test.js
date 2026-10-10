@@ -12,6 +12,8 @@ const INITIAL_LISTINGS = [
   "listings/night-circuit.json",
   "listings/i-23-tp-1.json",
   "listings/phosphor-field.json",
+  "listings/graphite-monitor.json",
+  "listings/paper-console.json",
   "listings/stereo-overview.json",
 ];
 
@@ -35,8 +37,10 @@ describe("initial Sharesets Catalogue", () => {
 
     expect(listings.map(({ id }) => id).sort()).toEqual([
       "control-room-amber",
+      "graphite-monitor",
       "i-23-tp-1",
       "night-circuit",
+      "paper-console",
       "phosphor-field",
       "plvs-dark",
       "plvs-light",
