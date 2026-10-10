@@ -42,6 +42,10 @@ export default defineConfig({
     // is the headroom that keeps tests under the 5s timeout when other programs are busy. CI
     // runners are small and have not shown these timeouts, so they keep the default.
     maxWorkers: process.env.CI ? undefined : "50%",
+    // The timeout exists to catch a hung test, not to measure speed. With every core saturated,
+    // file-heavy suites that take 0.2s idle were measured at 4.5s, so the 5s default failed tests
+    // on machine load alone.
+    testTimeout: 15_000,
     // Silences jsdom's "getContext not implemented" stderr spam from canvas-backed components.
     setupFiles: ["./vitest.setup.js"],
     // Nested git worktrees live under one prefix per agent -- see AGENTS.md -- with their own
