@@ -11,7 +11,7 @@ const INITIAL_LISTINGS = [
   "listings/studio-daylight.json",
   "listings/night-circuit.json",
   "listings/i-23-tp-1.json",
-  "listings/signal-amber.json",
+  "listings/phosphor-field.json",
   "listings/stereo-overview.json",
 ];
 
@@ -37,9 +37,9 @@ describe("initial Community Catalogue", () => {
       "control-room-amber",
       "i-23-tp-1",
       "night-circuit",
+      "phosphor-field",
       "plvs-dark",
       "plvs-light",
-      "signal-amber",
       "stereo-overview",
       "studio-daylight",
     ]);

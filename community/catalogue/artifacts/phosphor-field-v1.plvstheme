@@ -1,0 +1,123 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "community-phosphor-field",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 4,
+      "name": "Phosphor Field",
+      "colorScheme": "dark",
+      "core": {
+        "workspace": "#07100c",
+        "surface": "#132019",
+        "text": "#ddf2d2",
+        "interfaceAccent": "#2f7550",
+        "primaryData": "#b8ef70",
+        "secondaryData": "#55d6a5"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#4fc38e",
+          "warning": "#d6b84a",
+          "critical": "#df7059"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#030805"
+            },
+            {
+              "position": 0.14,
+              "color": "#0c1c12"
+            },
+            {
+              "position": 0.3,
+              "color": "#163b24"
+            },
+            {
+              "position": 0.48,
+              "color": "#28643a"
+            },
+            {
+              "position": 0.66,
+              "color": "#4f9750"
+            },
+            {
+              "position": 0.84,
+              "color": "#91cf67"
+            },
+            {
+              "position": 1,
+              "color": "#e1f79c"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#df7659",
+          "mid": "#a9d85f",
+          "high": "#55d6a5"
+        },
+        "interface": {
+          "success": "#247052",
+          "warning": "#a8842b",
+          "danger": "#873d34"
+        }
+      },
+      "overrides": {
+        "interface.content.onAccent": {
+          "kind": "color",
+          "value": "#efffe8"
+        },
+        "interface.content.onWarning": {
+          "kind": "color",
+          "value": "#071009"
+        },
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#e17a62"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#57ca94"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#d6b84a"
+        },
+        "level.critical": {
+          "kind": "color",
+          "value": "#df7059"
+        },
+        "level.safe": {
+          "kind": "color",
+          "value": "#4fc38e"
+        },
+        "level.warning": {
+          "kind": "color",
+          "value": "#b8d75d"
+        },
+        "stats.criticalValue": {
+          "kind": "color",
+          "value": "#ed816a"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#cff18a"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#88aa5a"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#55d6a5"
+        }
+      }
+    }
+  ],
+  "dependencies": []
+}
