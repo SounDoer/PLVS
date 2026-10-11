@@ -1,3 +1,4 @@
+import { dockHandlers } from "./dock.js";
 import { deviceHandlers } from "./device.js";
 import { transportHandlers } from "./transport.js";
 import { workspaceLayoutHandlers } from "./workspaceLayout.js";
@@ -22,4 +23,5 @@ export const METHOD_TABLE = Object.freeze({
   ...workspaceLayoutHandlers,
   ...transportHandlers,
   ...deviceHandlers,
+  ...dockHandlers,
 });
