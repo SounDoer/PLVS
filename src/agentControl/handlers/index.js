@@ -1,3 +1,4 @@
+import { loudnessProfileHandlers } from "./loudnessProfile.js";
 import { themeHandlers } from "./theme.js";
 import { dockHandlers } from "./dock.js";
 import { deviceHandlers } from "./device.js";
@@ -26,4 +27,5 @@ export const METHOD_TABLE = Object.freeze({
   ...deviceHandlers,
   ...dockHandlers,
   ...themeHandlers,
+  ...loudnessProfileHandlers,
 });
