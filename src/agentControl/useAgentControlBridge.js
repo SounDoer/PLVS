@@ -14,17 +14,16 @@ import {
   isDevelopmentFixtureMethod,
   normalizeDevelopmentFixtureRequest,
 } from "./developmentFixtureProtocol.js";
-import { buildVisualDescription } from "./visualControl.js";
 import { describeEditorDraft, planEditorDraftPatch } from "./editorDraftControl.js";
 import { WorkspaceLayoutError } from "./workspaceLayout.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
+import { createVisualBookkeeping } from "./bridge/visualBookkeeping.js";
 import { METHOD_TABLE } from "./handlers/index.js";
 import { createDomainRunner } from "./bridge/domains.js";
 import { createSettlementRegistry } from "./bridge/settlement.js";
 import {
   semanticFailure,
-  visualSemanticFailure,
   SETTLEMENT_TIMEOUT_MS,
   QUEUED_REQUEST_TIMEOUT_MS,
   COMMIT_NOT_OBSERVED,
@@ -32,11 +31,7 @@ import {
   persistUnobservedCommit,
   WAIT_CANCELLED,
 } from "./bridge/failures.js";
-import {
-  measuredAudioState,
-  themeStateSignature,
-  loudnessProfileStateSignature,
-} from "./bridge/signatures.js";
+import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/signatures.js";
 
 const EDITOR_DRAFT_SETTLEMENT_TIMEOUT_MS = 500;
 
@@ -76,14 +71,6 @@ async function settleEditorDraftObservation({
     -32043,
     { surfaceId, stateCommitted: true }
   );
-}
-
-function publicRecording(recording) {
-  const { audioSource, ...publicValue } = recording ?? {};
-  return {
-    ...publicValue,
-    audio: recording?.audio ?? { source: audioSource === "measuredSource" ? audioSource : "none" },
-  };
 }
 
 /**
@@ -332,11 +319,7 @@ export function useAgentControlBridge({
       onWake: (revision) => waitRegistry.wakeRevision(revision),
     });
     const settlementRegistry = createSettlementRegistry(revisionClock);
-    const visualBookkeeping = {
-      captures: new Map(),
-      recordings: new Map(),
-      captureActive: { current: false },
-    };
+    const visualBookkeeping = createVisualBookkeeping();
     return {
       waiters: waitRegistry,
       clock: revisionClock,
@@ -360,7 +343,6 @@ export function useAgentControlBridge({
   useEffect(() => {
     // Dock panels share the Workspace panel mapping, which offers and keeps the Loudness reference
     // layer only when this is set; the bare Dock context never carried it.
-    const ownedVisualCaptures = visualBook.captures;
 
     processRef.current = async (rawRequest) => {
       const snap = inputsRef.current;
@@ -760,263 +742,6 @@ export function useAgentControlBridge({
               -32043,
               error.details
             );
-          }
-        }
-        if (request.method === "visual.describe") {
-          const visualControl = inputsRef.current.visual;
-          if (!visualControl?.platformCapabilities) {
-            throw visualSemanticFailure({ reason: "visualUnavailable" });
-          }
-          return {
-            requestId,
-            result: buildVisualDescription({
-              revision: clock.current(),
-              platform: visualControl.platformCapabilities,
-              runtime: visualControl.getRuntime(),
-            }),
-          };
-        }
-        if (request.method === "visual.screenshot") {
-          const visualControl = inputsRef.current.visual;
-          if (visualControl?.platformCapabilities?.screenshot?.available !== true) {
-            throw visualSemanticFailure({ reason: "visualUnavailable" });
-          }
-          const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
-          if (!availableTargets.includes(request.params.target.kind)) {
-            throw visualSemanticFailure({ reason: "targetUnavailable" });
-          }
-          if (visualBook.captureActive.current) {
-            throw visualSemanticFailure({ reason: "captureBusy" });
-          }
-          const controller = new AbortController();
-          visualBook.captureActive.current = true;
-          ownedVisualCaptures.set(requestId, controller);
-          try {
-            const settled = await visualControl.settle(request.params.target, {
-              expectedRevision: request.params.expectedRevision,
-              getRevision: () => clock.current(),
-              expectedUiGeneration: request.params.expectedUiGeneration,
-              getUiGeneration: () => uiNavigation?.inspectUi?.().uiGeneration ?? 0,
-              signal: controller.signal,
-            });
-            const artifact = await visualControl.captureScreenshot({
-              windowLabel: settled.windowLabel,
-              rect: settled.rect,
-              viewport: settled.viewport,
-              devicePixelRatio: settled.devicePixelRatio,
-            });
-            const live = inputsRef.current.measurementContext.getLiveMeasurement?.() ?? {
-              generation: 0,
-              record: null,
-            };
-            return {
-              requestId,
-              result: {
-                revision: settled.revision,
-                uiGeneration: settled.uiGeneration,
-                measurement: {
-                  generation: Number.isSafeInteger(live.generation) ? live.generation : 0,
-                  sequence: Number.isSafeInteger(live.record?.sequence)
-                    ? live.record.sequence
-                    : null,
-                },
-                artifact,
-                target: request.params.target,
-              },
-            };
-          } catch (error) {
-            throw visualSemanticFailure(error);
-          } finally {
-            ownedVisualCaptures.delete(requestId);
-            visualBook.captureActive.current = false;
-          }
-        }
-        if (request.method === "visual.recording.start") {
-          const visualControl = inputsRef.current.visual;
-          if (visualControl?.platformCapabilities?.recording?.available !== true) {
-            throw visualSemanticFailure({ reason: "visualUnavailable" });
-          }
-          const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
-          if (!availableTargets.includes(request.params.target.kind)) {
-            throw visualSemanticFailure({ reason: "targetUnavailable" });
-          }
-          const runtime = visualControl.getRuntime?.() ?? {};
-          if (
-            !(visualControl.platformCapabilities.recording.cursorModes ?? []).includes(
-              request.params.cursor
-            )
-          ) {
-            throw visualSemanticFailure({ reason: "visualUnavailable" });
-          }
-          const preferredAudio = runtime.sourceMode === "file" ? "none" : "measuredSource";
-          const audio =
-            request.params.audio ??
-            ((runtime.availableAudioSources ?? []).includes(preferredAudio)
-              ? preferredAudio
-              : "none");
-          if (!(runtime.availableAudioSources ?? []).includes(audio)) {
-            throw visualSemanticFailure({ reason: "audioUnavailable" });
-          }
-          const audioState = measuredAudioState(runtime, inputsRef.current.transport);
-          const controller = new AbortController();
-          ownedVisualCaptures.set(requestId, controller);
-          try {
-            const settled = await visualControl.settle(request.params.target, {
-              expectedRevision: request.params.expectedRevision,
-              getRevision: () => clock.current(),
-              signal: controller.signal,
-            });
-            const recording = await visualControl.startRecording({
-              windowLabel: settled.windowLabel,
-              rect: settled.rect,
-              viewport: settled.viewport,
-              devicePixelRatio: settled.devicePixelRatio,
-              fps: request.params.fps,
-              maxDurationSeconds: request.params.maxDurationSeconds,
-              audio,
-              cursor: request.params.cursor,
-              sourceMode: runtime.sourceMode === "file" ? "file" : "live",
-              audioState,
-            });
-            const metadata = {
-              target: request.params.target,
-              startedRevision: settled.revision,
-              startedAt: new Date().toISOString(),
-              unsubscribe: null,
-              audio,
-            };
-            visualBook.recordings.set(recording.recordingId, metadata);
-            metadata.unsubscribe = visualControl.subscribe?.(
-              request.params.target,
-              (geometry) => {
-                void visualControl
-                  .updateRecordingGeometry({
-                    recordingId: recording.recordingId,
-                    rect: geometry.rect,
-                    viewport: geometry.viewport,
-                  })
-                  .catch(() => undefined);
-              },
-              { signal: controller.signal }
-            );
-            visualControl.setRecordingState?.(recording.state);
-            void (async () => {
-              while (visualBook.recordings.has(recording.recordingId)) {
-                await new Promise((resolve) => setTimeout(resolve, 250));
-                try {
-                  const latest = await visualControl.inspectRecording(recording.recordingId);
-                  if (latest.state === "completed" || latest.state === "failed") {
-                    metadata.unsubscribe?.();
-                    metadata.unsubscribe = null;
-                    visualControl.setRecordingState?.(null);
-                    return;
-                  }
-                  visualControl.setRecordingState?.(latest.state);
-                } catch {
-                  return;
-                }
-              }
-            })();
-            return {
-              requestId,
-              result: {
-                revision: settled.revision,
-                recording: {
-                  ...publicRecording(recording),
-                  target: request.params.target,
-                  startedAt: metadata.startedAt,
-                  startedRevision: settled.revision,
-                },
-              },
-            };
-          } catch (error) {
-            throw visualSemanticFailure(error);
-          } finally {
-            ownedVisualCaptures.delete(requestId);
-          }
-        }
-        if (
-          request.method === "visual.recording.inspect" ||
-          request.method === "visual.recording.wait" ||
-          request.method === "visual.recording.stop"
-        ) {
-          const visualControl = inputsRef.current.visual;
-          if (visualControl?.platformCapabilities?.recording?.available !== true) {
-            throw visualSemanticFailure({ reason: "visualUnavailable" });
-          }
-          const recordingId = request.params.recordingId;
-          const metadata = visualBook.recordings.get(recordingId);
-          const decorate = (recording) => {
-            const terminal = recording.state === "completed" || recording.state === "failed";
-            if (terminal) {
-              metadata?.unsubscribe?.();
-              if (metadata) metadata.unsubscribe = null;
-              visualControl.setRecordingState?.(null);
-            } else {
-              visualControl.setRecordingState?.(recording.state);
-            }
-            return {
-              ...publicRecording(recording),
-              ...(metadata?.target ? { target: metadata.target } : {}),
-              ...(metadata?.startedAt ? { startedAt: metadata.startedAt } : {}),
-              ...(Number.isSafeInteger(metadata?.startedRevision)
-                ? { startedRevision: metadata.startedRevision }
-                : {}),
-              currentRevision: clock.current(),
-              ...(terminal ? { endedRevision: clock.current() } : {}),
-            };
-          };
-          try {
-            if (request.method === "visual.recording.inspect") {
-              return {
-                requestId,
-                result: {
-                  revision: clock.current(),
-                  recording: decorate(await visualControl.inspectRecording(recordingId)),
-                },
-              };
-            }
-            if (request.method === "visual.recording.stop") {
-              await visualControl.stopRecording(recordingId);
-            }
-            const timeoutMs =
-              request.method === "visual.recording.wait" ? request.params.timeoutMs : 9000;
-            const deadline = Date.now() + timeoutMs;
-            while (true) {
-              const recording = await visualControl.inspectRecording(recordingId);
-              if (recording.state === "completed" || recording.state === "failed") {
-                return {
-                  requestId,
-                  result: {
-                    ...(request.method === "visual.recording.wait" ? { outcome: "terminal" } : {}),
-                    revision: clock.current(),
-                    recording: decorate(recording),
-                  },
-                };
-              }
-              if (Date.now() >= deadline) {
-                if (request.method === "visual.recording.stop") {
-                  throw {
-                    reason: "recordingFailed",
-                    details: {
-                      finalizationTimedOut: true,
-                      recording: decorate(recording),
-                    },
-                  };
-                }
-                return {
-                  requestId,
-                  result: {
-                    ...(request.method === "visual.recording.wait" ? { outcome: "timeout" } : {}),
-                    revision: clock.current(),
-                    recording: decorate(recording),
-                  },
-                };
-              }
-              await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-          } catch (error) {
-            throw visualSemanticFailure(error);
           }
         }
       } catch (error) {
