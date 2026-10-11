@@ -60,6 +60,20 @@ function signature(value) {
   return JSON.stringify(value);
 }
 
+/// For comparing a document with its own copy read back from Rust, where `serde_json` returns
+/// every object with its keys sorted. `signature` would call that copy a change.
+function keyOrderInsensitiveSignature(value) {
+  return JSON.stringify(value, (_key, item) =>
+    item && typeof item === "object" && !Array.isArray(item)
+      ? Object.fromEntries(
+          Object.keys(item)
+            .sort()
+            .map((key) => [key, item[key]])
+        )
+      : item
+  );
+}
+
 function indexDocuments(documents) {
   return new Map(documents.map((document) => [document.id, document]));
 }
@@ -307,7 +321,8 @@ export function createMultiInstanceBackend() {
     if (remoteRevision < currentRevision) return;
     if (
       remoteRevision === currentRevision &&
-      signature(remoteDocuments) === signature(persistedDocuments.get(kind) || [])
+      keyOrderInsensitiveSignature(remoteDocuments) ===
+        keyOrderInsensitiveSignature(persistedDocuments.get(kind) || [])
     ) {
       return;
     }

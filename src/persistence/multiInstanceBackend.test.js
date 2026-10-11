@@ -327,6 +327,50 @@ describe("multiInstanceBackend", () => {
     unsubscribe();
   });
 
+  it("does not report its own write as a peer change when Rust returns it with sorted keys", async () => {
+    // `serde_json` hands every object back with its keys in alphabetical order. The same document
+    // in another key order is not a change, and announcing it as one re-renders the library and
+    // advances the Agent Control revision a second time for a single save.
+    const saved = { id: "three", name: "Three", tree: { type: "leaf" }, panelsById: {} };
+    const echoed = { id: "three", name: "Three", panelsById: {}, tree: { type: "leaf" } };
+    invoke.mockImplementation(async (command) => {
+      if (command === "persistence_library_create") {
+        return { item: { revision: 1 }, collectionRevision: 8 };
+      }
+      if (command === "persistence_hydrate") {
+        return {
+          presets: {
+            list: [{ id: "one", name: "One" }, { id: "two", name: "Two" }, echoed],
+          },
+          themes: { themes: {}, order: [] },
+          settings: { loudnessProfiles: { profiles: [{ id: "broadcast", name: "Broadcast" }] } },
+          globalPreferences: { askToSendCrashReports: true },
+          globalPreferenceRevisions: { askToSendCrashReports: 5 },
+          libraryItemRevisions: {
+            preset: { one: 3, two: 4, three: 1 },
+            theme: {},
+            loudnessProfile: { broadcast: 2 },
+          },
+          libraryCollectionRevisions: { preset: 8, theme: 0, loudnessProfile: 2 },
+        };
+      }
+      return undefined;
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const current = backend.get("plvs:presets");
+    backend.set("plvs:presets", { ...current, list: [...current.list, saved] });
+    await backend.flush();
+    const changed = vi.fn();
+    const unsubscribe = backend.subscribe("plvs:presets", changed);
+
+    await backend.refresh();
+
+    expect(changed).not.toHaveBeenCalled();
+    expect(JSON.stringify(backend.get("plvs:presets").list.at(-1))).toBe(JSON.stringify(saved));
+    unsubscribe();
+  });
+
   it("reconciles authoritative Library contents even when the revision is already known", async () => {
     invoke.mockResolvedValueOnce({
       presets: {
