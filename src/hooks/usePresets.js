@@ -21,7 +21,10 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function normalizePresets(raw) {
+/// The Presets state as the app renders it, which is not the stored record verbatim: Presets
+/// built from modules this build does not know are hidden, an `activeId` naming none of the rest
+/// is no selection, and `dirty` means nothing without one.
+export function normalizePresets(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return EMPTY_PRESETS;
   const list = (Array.isArray(raw.list) ? raw.list : []).filter(hasKnownModulesOnly);
   const rawActiveId = typeof raw.activeId === "string" ? raw.activeId : null;

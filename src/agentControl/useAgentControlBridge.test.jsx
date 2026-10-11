@@ -7,6 +7,7 @@ import { act, cleanup, render, renderHook, waitFor } from "@testing-library/reac
 import { StrictMode, useEffect, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { normalizePresets } from "../hooks/usePresets.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 import { listCustomThemes } from "../theme/customThemesRepo.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
@@ -393,7 +394,9 @@ function Harness({
   });
   const controlledPresets = {
     ...presetState,
-    ...(presetLibraryFromStore ? subscribedPresets : {}),
+    // Normalized as `usePresets` normalizes it: what the bridge is handed in the app is the
+    // rendered Presets state, never the stored record.
+    ...(presetLibraryFromStore ? normalizePresets(subscribedPresets) : {}),
     rename: (id, name) =>
       setPresetState((current) => ({
         ...current,
@@ -6073,6 +6076,30 @@ describe("useAgentControlBridge", () => {
         index: 0,
       });
     });
+
+    it("selects a Profile when the stored Preset record is dirty but no Preset is active", async () => {
+      // Editing a panel with no active Preset leaves `dirty: true` in the store, which the app
+      // renders as not dirty. The selection plan reads the store; the settlement must wait for
+      // what the app renders, or it waits for a Preset state that can never appear.
+      seedProfiles();
+      presetsStore.patch({ list: [], activeId: null, dirty: true });
+      const flush = vi.fn(async () => {});
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "loudnessProfile.select",
+          { profileId: "prof-a", expectedRevision: 0 },
+          "profile-select-stale-dirty"
+        )
+      );
+
+      expect(response.error).toBeUndefined();
+      expect(response.result).toMatchObject({ changed: true, revision: 1 });
+      expect(settingsStore.read().loudnessProfiles.active).toBe("profile:prof-a");
+      expect(flush).toHaveBeenCalledTimes(1);
+    }, 8000);
 
     it("executes select/create/update/rename/reorder/delete with one revision and flush each", async () => {
       seedProfiles();
