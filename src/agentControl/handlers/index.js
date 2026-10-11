@@ -1,3 +1,4 @@
+import { workspaceLayoutHandlers } from "./workspaceLayout.js";
 import { panelHandlers } from "./panel.js";
 import { axisHandlers } from "./axis.js";
 import { viewHandlers } from "./view.js";
@@ -16,4 +17,5 @@ export const METHOD_TABLE = Object.freeze({
   ...viewHandlers,
   ...axisHandlers,
   ...panelHandlers,
+  ...workspaceLayoutHandlers,
 });

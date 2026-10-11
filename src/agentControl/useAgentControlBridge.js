@@ -58,11 +58,7 @@ import {
   planDockPanelReset,
   reconcileDockExecution,
 } from "./dockControl.js";
-import {
-  compileWorkspaceLayout,
-  serializeWorkspaceLayout,
-  WorkspaceLayoutError,
-} from "./workspaceLayout.js";
+import { WorkspaceLayoutError } from "./workspaceLayout.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
 import { METHOD_TABLE } from "./handlers/index.js";
@@ -81,7 +77,6 @@ import {
 } from "./bridge/failures.js";
 import {
   measuredAudioState,
-  workspaceMatches,
   presetStateSignature,
   themeStateSignature,
   loudnessProfileStateSignature,
@@ -3084,58 +3079,6 @@ export function useAgentControlBridge({
             afterResponse: relaunchAfterConfigurationChange,
           };
         }
-
-        const currentRevision = clock.current();
-        if (
-          request.params.expectedRevision !== undefined &&
-          request.params.expectedRevision !== currentRevision
-        ) {
-          throw semanticFailure(
-            "revisionConflict",
-            "$.params.expectedRevision",
-            `Workspace changed after revision ${request.params.expectedRevision}.`,
-            -32004
-          );
-        }
-
-        const compiled = compileWorkspaceLayout(request.params.layout, workspace);
-        const layoutIsUnchanged =
-          Object.keys(compiled.createdPanels).length === 0 &&
-          JSON.stringify(compiled.layout) === JSON.stringify(serializeWorkspaceLayout(workspace));
-        const result = {
-          revision: currentRevision,
-          dryRun: request.params.dryRun === true,
-          changed: !layoutIsUnchanged,
-          state: { workspace: { layout: compiled.layout } },
-          createdPanels: compiled.createdPanels,
-        };
-        if (request.params.dryRun === true || layoutIsUnchanged) return { requestId, result };
-
-        const committed = settlement.arm("workspace", {
-          view: compiled.view,
-          matches: (currentWorkspace) => workspaceMatches(currentWorkspace, compiled.view),
-        });
-        replaceWorkspace(compiled.view);
-        const committedRevision = await settlement.observed(
-          "workspace",
-          committed,
-          "The Workspace layout"
-        );
-        await waitForWorkspacePersistenceEnqueue(compiled.view);
-        try {
-          await flush();
-        } catch (error) {
-          throw semanticFailure(
-            "persistenceFailed",
-            "$",
-            `Workspace committed but persistence failed: ${error?.message || String(error)}`,
-            -32030,
-            { stateCommitted: true, revision: committedRevision }
-          );
-        }
-
-        result.revision = committedRevision;
-        return { requestId, result };
       } catch (error) {
         // One place rather than nine: `isCommitNotObserved` is true only for the settlement
         // timeout, so every pre-commit failure -- validation, `revisionConflict`, `editorActive`,
