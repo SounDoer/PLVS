@@ -1,3 +1,4 @@
+import { transportHandlers } from "./transport.js";
 import { workspaceLayoutHandlers } from "./workspaceLayout.js";
 import { panelHandlers } from "./panel.js";
 import { axisHandlers } from "./axis.js";
@@ -18,4 +19,5 @@ export const METHOD_TABLE = Object.freeze({
   ...axisHandlers,
   ...panelHandlers,
   ...workspaceLayoutHandlers,
+  ...transportHandlers,
 });
