@@ -1,3 +1,4 @@
+import { presetHandlers } from "./preset.js";
 import { loudnessProfileHandlers } from "./loudnessProfile.js";
 import { themeHandlers } from "./theme.js";
 import { dockHandlers } from "./dock.js";
@@ -28,4 +29,5 @@ export const METHOD_TABLE = Object.freeze({
   ...dockHandlers,
   ...themeHandlers,
   ...loudnessProfileHandlers,
+  ...presetHandlers,
 });
