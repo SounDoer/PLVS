@@ -1,3 +1,4 @@
+import { editorDraftHandlers } from "./editorDraft.js";
 import { visualHandlers } from "./visual.js";
 import { uiHandlers } from "./ui.js";
 import { measurementHandlers } from "./measurement.js";
@@ -40,4 +41,5 @@ export const METHOD_TABLE = Object.freeze({
   ...measurementHandlers,
   ...uiHandlers,
   ...visualHandlers,
+  ...editorDraftHandlers,
 });
