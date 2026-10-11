@@ -1,3 +1,4 @@
+import { libraryTransferHandlers } from "./libraryTransfer.js";
 import { presetHandlers } from "./preset.js";
 import { loudnessProfileHandlers } from "./loudnessProfile.js";
 import { themeHandlers } from "./theme.js";
@@ -30,4 +31,5 @@ export const METHOD_TABLE = Object.freeze({
   ...themeHandlers,
   ...loudnessProfileHandlers,
   ...presetHandlers,
+  ...libraryTransferHandlers,
 });
