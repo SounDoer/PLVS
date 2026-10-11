@@ -7,7 +7,7 @@ import {
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
 import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
-import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
+import { normalizeImportedProfile } from "../persistence/profileShape.js";
 import { describeActiveLoudnessProfile } from "../lib/activeLoudnessProfile.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
@@ -1384,79 +1384,6 @@ export function useAgentControlBridge({
               predicate,
               measurement: result.measurement,
             },
-          };
-        }
-
-        if (request.method === "config.export") {
-          const configuration = await exportConfiguration();
-          return {
-            requestId,
-            result: {
-              revision: clock.current(),
-              configuration,
-            },
-          };
-        }
-
-        if (request.method === "config.import") {
-          const currentRevision = clock.current();
-          if (request.params.expectedRevision !== currentRevision) {
-            throw semanticFailure(
-              "revisionConflict",
-              "$.params.expectedRevision",
-              `App state changed after revision ${request.params.expectedRevision}.`,
-              -32004,
-              { expectedRevision: request.params.expectedRevision, currentRevision }
-            );
-          }
-          presets.assertSceneOperationAllowed(request.method);
-
-          let configuration;
-          try {
-            configuration = normalizeConfiguration(request.params.configuration);
-          } catch (error) {
-            if (!(error instanceof ProfileValidationError)) throw error;
-            throw semanticFailure(
-              "invalidConfiguration",
-              "$.params.configuration",
-              error.message,
-              -32602
-            );
-          }
-
-          if (request.params.dryRun === true) {
-            return {
-              requestId,
-              result: {
-                dryRun: true,
-                revision: currentRevision,
-                changed: true,
-                relaunch: false,
-                configuration,
-              },
-            };
-          }
-
-          try {
-            await importConfiguration(configuration);
-          } catch (error) {
-            throw semanticFailure(
-              "persistenceFailed",
-              "$",
-              `Configuration import failed: ${error?.message || String(error)}`,
-              -32030
-            );
-          }
-          return {
-            requestId,
-            result: {
-              dryRun: false,
-              revision: currentRevision,
-              changed: true,
-              relaunch: true,
-            },
-            awaitDelivery: true,
-            afterResponse: relaunchAfterConfigurationChange,
           };
         }
       } catch (error) {

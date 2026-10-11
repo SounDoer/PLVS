@@ -1,3 +1,4 @@
+import { configHandlers } from "./config.js";
 import { libraryTransferHandlers } from "./libraryTransfer.js";
 import { presetHandlers } from "./preset.js";
 import { loudnessProfileHandlers } from "./loudnessProfile.js";
@@ -32,4 +33,5 @@ export const METHOD_TABLE = Object.freeze({
   ...loudnessProfileHandlers,
   ...presetHandlers,
   ...libraryTransferHandlers,
+  ...configHandlers,
 });
