@@ -1,3 +1,4 @@
+import { viewHandlers } from "./view.js";
 import { settingsHandlers } from "./settings.js";
 import { moduleHandlers } from "./module.js";
 import { appHandlers } from "./app.js";
@@ -10,4 +11,5 @@ export const METHOD_TABLE = Object.freeze({
   ...appHandlers,
   ...moduleHandlers,
   ...settingsHandlers,
+  ...viewHandlers,
 });
