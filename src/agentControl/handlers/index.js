@@ -1,3 +1,4 @@
+import { developmentFixtureHandlers } from "./developmentFixture.js";
 import { editorDraftHandlers } from "./editorDraft.js";
 import { visualHandlers } from "./visual.js";
 import { uiHandlers } from "./ui.js";
@@ -42,4 +43,5 @@ export const METHOD_TABLE = Object.freeze({
   ...uiHandlers,
   ...visualHandlers,
   ...editorDraftHandlers,
+  ...developmentFixtureHandlers,
 });

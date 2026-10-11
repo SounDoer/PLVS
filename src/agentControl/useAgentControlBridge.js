@@ -359,40 +359,6 @@ export function useAgentControlBridge({
             flush: snap.flush,
           });
         }
-        if (isDevelopmentFixtureMethod(request.method)) {
-          try {
-            if (request.params.expectedRevision !== clock.current()) {
-              throw Object.assign(new Error("The Agent Control revision changed."), {
-                reason: "revisionConflict",
-                details: {
-                  expectedRevision: request.params.expectedRevision,
-                  currentRevision: clock.current(),
-                },
-              });
-            }
-            const result =
-              request.method === "dev.fixture.establish"
-                ? await developmentFixtures.establish(request.params)
-                : await developmentFixtures.reset(request.params);
-            return {
-              requestId,
-              result: { ...result, revision: clock.current() },
-            };
-          } catch (error) {
-            if (typeof error?.reason !== "string") throw error;
-            throw semanticFailure(
-              error.reason,
-              error.reason === "uiGenerationConflict"
-                ? "$.params.expectedUiGeneration"
-                : error.reason === "revisionConflict"
-                  ? "$.params.expectedRevision"
-                  : "$.params",
-              error.message,
-              error.reason === "revisionConflict" ? -32004 : -32042,
-              error.details
-            );
-          }
-        }
       } catch (error) {
         // One place rather than nine: `isCommitNotObserved` is true only for the settlement
         // timeout, so every pre-commit failure -- validation, `revisionConflict`, `editorActive`,
