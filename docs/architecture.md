@@ -343,6 +343,16 @@ Advanced overrides survive; automatic roles adopt the current relationships. Por
 retain format 1 and now emit semantics 4. See
 [ADR 0021](adr/0021-align-automatic-theme-role-semantics.md).
 
+Semantics 5 models a selected Snapshot as a History data state with shared History Primary and
+Secondary roles plus one uniform, lightness-only Palette History treatment for Status, Frequency,
+and Intensity. Core Data carries the clear state distinction; palette consumers preserve authored
+hues, and Level Meter Gradient and Level Zones share the same Level Status history rather than a
+meter-specific family. Semantics 5 remained unreleased while this final derived-role boundary was
+corrected, so existing local semantics 5 documents are intentionally recompiled without an
+additional migration. See
+[ADR 0025](adr/0025-model-snapshot-as-history-data-state.md) and
+[ADR 0026](adr/0026-prioritize-core-data-and-unify-palette-history.md).
+
 Theme colour roles resolve to opaque colours. Chart fill opacity is fixed product composition,
 shared by panels, Dock, and Theme Preview through `src/lib/chartFill.js` (ADR 0019). The
 separate View setting `surfaceOpacity` publishes

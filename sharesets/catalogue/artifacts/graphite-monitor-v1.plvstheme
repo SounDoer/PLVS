@@ -4,9 +4,10 @@
   "version": 2,
   "items": [
     {
+      "id": "sharesets-graphite-monitor",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Graphite Monitor",
       "colorScheme": "dark",
       "core": {
@@ -91,10 +92,6 @@
           "kind": "color",
           "value": "#d1a24b"
         },
-        "level.critical": {
-          "kind": "color",
-          "value": "#d94b53"
-        },
         "level.safe": {
           "kind": "color",
           "value": "#7c9182"
@@ -175,8 +172,7 @@
           "kind": "color",
           "value": "#8e8b86"
         }
-      },
-      "id": "sharesets-graphite-monitor"
+      }
     }
   ],
   "dependencies": []

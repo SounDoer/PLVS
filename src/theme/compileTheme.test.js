@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { compileTheme, ThemeCompilerError } from "./compileTheme.js";
+import { hexToOklch } from "./colorTransform.js";
 import { applyPalettePreset } from "./palettePresets.js";
 import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 
@@ -278,7 +279,7 @@ describe("compileTheme", () => {
     expect(roles["loudness.shortTermSnapshot"]).toBe(roles["data.history.secondary"]);
   });
 
-  it("keeps monochrome History distinct and transforms ordered palettes automatically", () => {
+  it("keeps monochrome ink unchanged and tones palettes without turning their hues", () => {
     const theme = authoringTheme({
       core: {
         ...authoringTheme().core,
@@ -292,12 +293,35 @@ describe("compileTheme", () => {
 
     expect(roles["data.history.primary"]).not.toBe(roles["data.primary"]);
     expect(roles["data.history.primary"]).toMatch(/^#([0-9a-f]{2})\1\1$/i);
+    expect(roles["spectrogram.inkHistory"]).toBe(roles["spectrogram.ink"]);
+    expect(roles["spectrogram.surfaceInkHistory"]).toBe(roles["spectrogram.surfaceInk"]);
     expect(roles["history.intensity"].map((stop) => stop.position)).toEqual(
       roles["palette.intensity.stops"].map((stop) => stop.position)
     );
     expect(roles["history.intensity"].map((stop) => stop.color)).not.toEqual(
       roles["palette.intensity.stops"].map((stop) => stop.color)
     );
+    for (const family of ["status", "frequency"]) {
+      for (const key of family === "status"
+        ? ["safe", "warning", "critical"]
+        : ["low", "mid", "high"]) {
+        const live = hexToOklch(roles[`palette.${family}.${key}`]);
+        const history = hexToOklch(roles[`history.${family}.${key}`]);
+        const hueDistance = Math.abs(((history.H - live.H + 180) % 360) - 180);
+        expect(hueDistance).toBeLessThan(2);
+      }
+    }
+  });
+
+  it("keeps the meter Gradient on the same palette History as Level Zones", () => {
+    const { roles, css } = compileTheme(authoringTheme());
+
+    expect(roles["level.safeHistory"]).not.toBe(roles["level.safe"]);
+    expect(roles["level.warningHistory"]).not.toBe(roles["level.warning"]);
+    expect(roles["level.criticalHistory"]).not.toBe(roles["level.critical"]);
+    expect(css["--ui-meter-gradient-bottom-history"]).toBeUndefined();
+    expect(css["--ui-meter-gradient-mid-history"]).toBeUndefined();
+    expect(css["--ui-meter-gradient-top-history"]).toBeUndefined();
   });
 
   it("uses larger automatic surface steps for Dark than for Light", () => {

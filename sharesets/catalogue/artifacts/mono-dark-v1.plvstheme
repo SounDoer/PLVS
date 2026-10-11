@@ -4,9 +4,10 @@
   "version": 2,
   "items": [
     {
+      "id": "sharesets-mono-dark",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Mono Dark",
       "colorScheme": "dark",
       "core": {
@@ -167,8 +168,7 @@
           "kind": "color",
           "value": "#6f6f6c"
         }
-      },
-      "id": "sharesets-mono-dark"
+      }
     }
   ],
   "dependencies": []

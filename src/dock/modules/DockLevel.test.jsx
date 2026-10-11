@@ -167,8 +167,8 @@ describe("DockLevel", () => {
     renderWith({ displayAudio: { peakDb: [-12, -30] } });
     for (const bar of screen.getAllByTestId("dock-level-bar")) {
       expect(/** @type {HTMLElement} */ (bar.firstChild).dataset.levelMeterGradient).toBe(
-        "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
-          "var(--ui-level-critical) 100%)"
+        "linear-gradient(to right, var(--ui-meter-gradient-bottom) 0%, " +
+          "var(--ui-meter-gradient-mid) 60%, var(--ui-meter-gradient-top) 100%)"
       );
     }
   });
@@ -203,7 +203,8 @@ describe("DockLevel", () => {
     renderWith({ displayAudio: { peakDb: [0, 0] } });
     const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
     expect(/** @type {HTMLElement} */ (fill).dataset.levelMeterGradient).toBe(
-      "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, var(--ui-level-critical) 100%)"
+      "linear-gradient(to right, var(--ui-meter-gradient-bottom) 0%, " +
+        "var(--ui-meter-gradient-mid) 60%, var(--ui-meter-gradient-top) 100%)"
     );
     expect(/** @type {HTMLElement} */ (fill).style.backgroundColor).toBe("");
   });

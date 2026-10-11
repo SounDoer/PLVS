@@ -709,8 +709,8 @@ describe("LevelMeterPanel", () => {
       },
     });
     const gradient =
-      "linear-gradient(to top, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
-      "var(--ui-level-critical) 100%)";
+      "linear-gradient(to top, var(--ui-meter-gradient-bottom) 0%, " +
+      "var(--ui-meter-gradient-mid) 60%, var(--ui-meter-gradient-top) 100%)";
     for (const levelMeterMode of ["peak", "momentary"]) {
       const { container, unmount } = renderPanel({ panelControls: { levelMeterMode } });
       expect(

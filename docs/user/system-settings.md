@@ -140,11 +140,12 @@ Workspace, and the raised, control, and muted surfaces step away from the panel.
 Feedback messages, solid chips, and buttons use the Interface Palette colours directly. Loudness
 Momentary follows Primary Data and Short-term follows Secondary Data; selected Snapshot traces use
 the shared History Primary and History Secondary colours. The Live indicator follows Status
-Critical, while the Snapshot indicator follows History Primary. Automatic History trace colours
-use available perceptual lightness headroom rather than assuming that every Dark Theme moves
-lighter and every Light Theme moves darker. Status, Intensity, Frequency, and monochrome data ink
-receive ordering-preserving History treatment automatically. Per-module Advanced overrides remain
-available for an intentional trace exception; the built-in Light and Dark themes use none.
+Critical, while the Snapshot indicator follows History Primary. Core Primary and Secondary Data
+carry the clear History colour change. Status, Frequency, and Intensity palettes share one subtle
+automatic treatment that changes only lightness toward the panel; it does not rotate palette hues
+or create a separate Level Meter colour family. Both Level Meter Gradient and Level Zones therefore
+continue to follow the Level Meter's Status colours in Snapshot. Per-module Advanced overrides
+remain available for an intentional trace exception; the built-in Light and Dark themes use none.
 Measurement colors therefore keep the same meanings and visual identity in both appearances.
 
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft

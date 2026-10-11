@@ -7,7 +7,7 @@
       "id": "sharesets-control-room-amber",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Control Room Amber",
       "colorScheme": "dark",
       "core": {

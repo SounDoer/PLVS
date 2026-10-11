@@ -32,9 +32,11 @@ a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles
 readout to reset the maximum. Scale labels close to a marker fade out so the reading stays legible.
 
 **Bar Colors** chooses what the colours mean. **Gradient** (the default) is appearance only: one
-green-to-red ramp over the visible bar, in every mode, that zooms with the scale and ignores the
-Loudness Profile. **Level Zones** colour by level, with a hard change at each threshold, so a level
-keeps its colour at any zoom. In Peak and RMS, **Warning / Critical** sets the zones (defaults: Peak
+Theme-defined ramp over the visible bar, in every mode, that zooms with the scale and ignores the
+Loudness Profile. Live uses the Theme's Status ramp; a selected Snapshot uses the same Status
+colours with the Theme's subtle Palette History tone. **Level Zones** use that
+same palette treatment and colour by level, with a hard change at each threshold, so a level keeps
+its colour at any zoom. In Peak and RMS, **Warning / Critical** sets the zones (defaults: Peak
 −6 / −1 dBFS, RMS −18 / −9 dBFS); they are a reading aid for headroom, not a compliance check,
 because the Peak bars show sample peak while delivery limits are judged on true peak by the True
 Peak Max marker and Stats. In Momentary and Short-term the zones come from the active Loudness

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LEVEL_METER_COLORS,
+  LEVEL_METER_GRADIENT_COLORS,
   levelMeterBackground,
   levelMeterMarkerStatus,
   profileZones,
@@ -9,7 +10,8 @@ import {
 } from "./levelMeterColors.js";
 
 const { safe, warning, critical } = LEVEL_METER_COLORS;
-const GRADIENT_UP = `linear-gradient(to top, ${safe} 0%, ${warning} 60%, ${critical} 100%)`;
+const { bottom, mid, top } = LEVEL_METER_GRADIENT_COLORS;
+const GRADIENT_UP = `linear-gradient(to top, ${bottom} 0%, ${mid} 60%, ${top} 100%)`;
 
 function profile(rules) {
   return { id: "p", name: "P", referenceLufs: null, rules };
@@ -143,7 +145,7 @@ describe("levelMeterBackground", () => {
         viewMax: 3,
         direction: "to right",
       })
-    ).toBe(`linear-gradient(to right, ${safe} 0%, ${warning} 60%, ${critical} 100%)`);
+    ).toBe(`linear-gradient(to right, ${bottom} 0%, ${mid} 60%, ${top} 100%)`);
   });
 
   it("uses each mode's thresholds under Level Zones", () => {

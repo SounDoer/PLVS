@@ -7,7 +7,7 @@
       "id": "sharesets-night-circuit",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Night Circuit",
       "colorScheme": "dark",
       "core": {

@@ -4,9 +4,10 @@
   "version": 2,
   "items": [
     {
+      "id": "sharesets-paper-console",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Paper Console",
       "colorScheme": "light",
       "core": {
@@ -103,18 +104,6 @@
           "kind": "color",
           "value": "#67685c"
         },
-        "level.critical": {
-          "kind": "color",
-          "value": "#b64e3f"
-        },
-        "level.safe": {
-          "kind": "color",
-          "value": "#668653"
-        },
-        "level.warning": {
-          "kind": "color",
-          "value": "#b88932"
-        },
         "loudness.momentarySnapshot": {
           "kind": "color",
           "value": "#858577"
@@ -167,8 +156,7 @@
           "kind": "color",
           "value": "#858577"
         }
-      },
-      "id": "sharesets-paper-console"
+      }
     }
   ],
   "dependencies": []

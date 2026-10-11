@@ -37,34 +37,38 @@ function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
 }
 
-function historyTrace(hex, surface) {
+// History is a temporal colourway of the same signal. Core Data traces carry the immediate Live /
+// Snapshot distinction. Palette colours keep their authored hue and chroma and move only slightly
+// toward the panel's lightness, preserving Status, Frequency, and Intensity meaning as one rule.
+// Light surfaces need a smaller step: equal OKLCH changes look stronger against paper.
+const HISTORY_TRACE = {
+  dark: { surfaceMix: 0.22, chromaRetention: 0.82, hueShift: 32 },
+  light: { surfaceMix: 0.18, chromaRetention: 0.84, hueShift: 32 },
+};
+
+const HISTORY_PALETTE = {
+  dark: { surfaceMix: 0.1 },
+  light: { surfaceMix: 0.07 },
+};
+
+function historyTrace(hex, surface, colorScheme) {
   const source = hexToOklch(hex);
   const panel = hexToOklch(surface);
-  const lighter = Math.min(1, source.L + 0.11);
-  const darker = Math.max(0, source.L - 0.11);
-  const lighterStep = lighter - source.L;
-  const darkerStep = source.L - darker;
-  const L =
-    lighterStep < 0.08
-      ? darker
-      : darkerStep < 0.08
-        ? lighter
-        : Math.abs(lighter - panel.L) >= Math.abs(darker - panel.L)
-          ? lighter
-          : darker;
+  const treatment = HISTORY_TRACE[colorScheme];
   return oklchToHex({
-    L,
-    C: Math.max(0, source.C - 0.006),
-    H: source.C < 0.02 ? source.H : source.H + 32,
+    L: source.L * (1 - treatment.surfaceMix) + panel.L * treatment.surfaceMix,
+    C: source.C * treatment.chromaRetention,
+    H: source.C < 0.02 ? source.H : source.H + treatment.hueShift,
   });
 }
 
-function historyPaletteColor(hex, surface) {
+function historyPaletteColor(hex, surface, colorScheme) {
   const source = hexToOklch(hex);
   const panel = hexToOklch(surface);
+  const treatment = HISTORY_PALETTE[colorScheme];
   return oklchToHex({
-    L: source.L * 0.84 + panel.L * 0.16,
-    C: source.C * 0.84,
+    L: source.L * (1 - treatment.surfaceMix) + panel.L * treatment.surfaceMix,
+    C: source.C,
     H: source.H,
   });
 }
@@ -131,15 +135,20 @@ export const THEME_RECIPES = Object.freeze({
     )
   ),
   semantic: recipe([[SOLID]], SOLID, ([color]) => color),
-  history: recipe([[SOLID, SOLID]], SOLID, ([source, surface]) => historyTrace(source, surface)),
-  "history-palette-color": recipe([[SOLID, SOLID]], SOLID, ([source, surface]) =>
-    historyPaletteColor(source, surface)
+  history: recipe([[SOLID, SOLID]], SOLID, ([source, surface], context) =>
+    historyTrace(source, surface, context.colorScheme)
+  ),
+  "history-palette-color": recipe([[SOLID, SOLID]], SOLID, ([source, surface], context) =>
+    historyPaletteColor(source, surface, context.colorScheme)
   ),
   "history-color-scale": recipe(
     [[THEME_VALUE_KINDS.COLOR_SCALE, SOLID]],
     THEME_VALUE_KINDS.COLOR_SCALE,
-    ([stops, surface]) =>
-      stops.map((stop) => ({ ...stop, color: historyPaletteColor(stop.color, surface) }))
+    ([stops, surface], context) =>
+      stops.map((stop) => ({
+        ...stop,
+        color: historyPaletteColor(stop.color, surface, context.colorScheme),
+      }))
   ),
   selection: recipe([[SOLID, SOLID]], SOLID, ([source], context) =>
     transformHex(source, SELECTION[context.colorScheme])

@@ -7,7 +7,7 @@
       "id": "sharesets-phosphor-field",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Phosphor Field",
       "colorScheme": "dark",
       "core": {
@@ -87,14 +87,6 @@
         "interface.feedback.warning": {
           "kind": "color",
           "value": "#d6b84a"
-        },
-        "level.critical": {
-          "kind": "color",
-          "value": "#df7059"
-        },
-        "level.safe": {
-          "kind": "color",
-          "value": "#4fc38e"
         },
         "level.warning": {
           "kind": "color",

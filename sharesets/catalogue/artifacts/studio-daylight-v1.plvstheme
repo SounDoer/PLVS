@@ -7,7 +7,7 @@
       "id": "sharesets-studio-daylight",
       "kind": "plvs-theme",
       "formatVersion": 1,
-      "semanticsVersion": 4,
+      "semanticsVersion": 5,
       "name": "Studio Daylight",
       "colorScheme": "light",
       "core": {

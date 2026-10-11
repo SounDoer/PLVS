@@ -361,17 +361,18 @@ the authored inputs are in `src/theme/builtinThemesV2.js`.
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 
-### Component: Meter (Theme Preview swatch)
+### Component: Meter gradient
 
-Paints the three-stop gradient in the Theme Preview swatch only. The Level Meter's bars use
-`--ui-level-safe`/`warning`/`critical` instead, anchored to levels rather than to a fixed gradient --
-see `src/lib/levelMeterColors.js`.
+Paints the Level Meter's appearance-only Gradient option and its Theme Preview swatch. Gradient and
+Level Zones both follow the module's Safe, Warning, and Critical colours. A selected Snapshot
+remaps the Gradient tokens to the same lightly toned Palette History values that Level Zones use;
+there is no meter-specific History family and no additional Theme Editor control.
 
-| Token                        | Role                                            |
-| ---------------------------- | ----------------------------------------------- |
-| `--ui-meter-gradient-top`    | Clip zone; same role as `--ui-level-critical`   |
-| `--ui-meter-gradient-mid`    | Warning zone; same role as `--ui-level-warning` |
-| `--ui-meter-gradient-bottom` | Safe zone; same role as `--ui-level-safe`       |
+| Token                        | Role                              |
+| ---------------------------- | --------------------------------- |
+| `--ui-meter-gradient-top`    | Active decorative Critical stop   |
+| `--ui-meter-gradient-mid`    | Active decorative Warning stop    |
+| `--ui-meter-gradient-bottom` | Active decorative Safe stop       |
 
 ### Component: Instrument Traces
 
@@ -385,11 +386,10 @@ widths. The widths render in screen space rather than being visually compressed 
 scaling. Neither layer adds opacity or a dashed-line convention merely to distinguish the pair.
 
 History colours are the data-state colours used only while a retained Snapshot is selected. Shared
-History Primary and History Secondary roles feed trace modules; Status, Intensity, Frequency, and
-monochrome data ink receive family-specific automatic treatment that preserves their semantic
-ordering. The trace recipe chooses its lightness direction from available headroom rather than from
-the Theme's Dark/Light scheme alone. Selection remains a separate recipe and is not recoloured by
-History treatment.
+History Primary and History Secondary roles give Core Data traces their clear state identity.
+Status, Frequency, and Intensity use one common Palette History recipe that preserves hue and
+chroma and moves only lightness slightly toward the panel. Interface-derived monochrome ink stays
+unchanged. Selection remains a separate recipe and is not recoloured by History treatment.
 
 Waveform lanes use a **stroke + fill** pattern: 1px strokes on both the max (top) and min (bottom)
 envelope edges, plus a global semi-transparent fill opacity. The waveform publishes a Snapshot
@@ -485,7 +485,8 @@ directly. Transport Snapshot reuses the shared History Primary family.
 
 | Binding family                                                   | Role                                                  |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `--ui-level-{safe,warning,critical}`                             | Level Meter Gradient, Level Zones and profile markers |
+| `--ui-level-{safe,warning,critical}`                             | Level Meter Level Zones and profile markers           |
+| `--ui-meter-gradient-{bottom,mid,top}`                           | Level Meter appearance-only Gradient                   |
 | `--ui-stats-{warning,critical}-value`                            | Stats and Dock Stats profile values                   |
 | `--ui-vectorscope-correlation-*`                                 | Vectorscope and Dock Vectorscope correlation marker   |
 | Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes                         |

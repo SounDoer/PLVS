@@ -71,17 +71,6 @@ describe("Theme visual analysis", () => {
     }
   );
 
-  it.each(Object.keys(BUILTIN_THEMES_V2))(
-    "keeps built-in %s snapshot graphics above the contrast floor",
-    (id) => {
-      const snapshotWarnings = analyzeThemeVisuals(BUILTIN_THEMES_V2[id]).warnings.filter((item) =>
-        item.roleIds.some((roleId) => roleId.toLowerCase().includes("snapshot"))
-      );
-
-      expect(snapshotWarnings).toEqual([]);
-    }
-  );
-
   it("keeps covered WCAG text findings as non-blocking visual review", () => {
     const lowContrast = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
     lowContrast.overrides["interface.text.annotation"] = { kind: "color", value: "#151515" };

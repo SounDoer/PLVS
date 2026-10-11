@@ -605,12 +605,22 @@ function moduleRoles() {
       { canvas: ["spectrogram.surfaceInk"] },
       ["core.text", ...primaryRefs]
     ),
-    historyModuleColor("spectrogram.inkHistory", "spectrogram.ink", {
-      canvas: ["spectrogram.inkHistory"],
-    }),
-    historyModuleColor("spectrogram.surfaceInkHistory", "spectrogram.surfaceInk", {
-      canvas: ["spectrogram.surfaceInkHistory"],
-    }),
+    historyModuleColor(
+      "spectrogram.inkHistory",
+      "spectrogram.ink",
+      {
+        canvas: ["spectrogram.inkHistory"],
+      },
+      "identity"
+    ),
+    historyModuleColor(
+      "spectrogram.surfaceInkHistory",
+      "spectrogram.surfaceInk",
+      {
+        canvas: ["spectrogram.surfaceInkHistory"],
+      },
+      "identity"
+    ),
     moduleColor(
       "spectrogram.grid",
       "Spectrogram",
@@ -963,12 +973,12 @@ function moduleRoles() {
   ];
 }
 
-function historyModuleColor(id, dependency, bindings) {
+function historyModuleColor(id, dependency, bindings, recipe = "history-palette-color") {
   return role(id, {
     kind: "color",
     family: id.split(".")[0],
-    recipe: "history-palette-color",
-    dependencies: [dependency, "core.surface"],
+    recipe,
+    dependencies: recipe === "identity" ? [dependency] : [dependency, "core.surface"],
     bindings,
   });
 }

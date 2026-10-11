@@ -20,6 +20,12 @@ export const LEVEL_METER_COLORS = Object.freeze({
   critical: "var(--ui-level-critical)",
 });
 
+export const LEVEL_METER_GRADIENT_COLORS = Object.freeze({
+  bottom: "var(--ui-meter-gradient-bottom)",
+  mid: "var(--ui-meter-gradient-mid)",
+  top: "var(--ui-meter-gradient-top)",
+});
+
 /// Gradient's pure warning, measured from the top of the bar, not a level; the original, round
 /// value. The Theme Preview swatch (`.meter-gradient` in src/index.css) uses the same stop.
 const GRADIENT_WARNING_FROM_TOP_PERCENT = 40;
@@ -49,10 +55,10 @@ const STATUS_RANK = Object.freeze({ ok: 1, pending: 1, warn: 2, fail: 3 });
  * @param {string} direction
  */
 function gradient(direction) {
-  const { safe, warning, critical } = LEVEL_METER_COLORS;
-  return `linear-gradient(${direction}, ${safe} 0%, ${warning} ${
+  const { bottom, mid, top } = LEVEL_METER_GRADIENT_COLORS;
+  return `linear-gradient(${direction}, ${bottom} 0%, ${mid} ${
     100 - GRADIENT_WARNING_FROM_TOP_PERCENT
-  }%, ${critical} 100%)`;
+  }%, ${top} 100%)`;
 }
 
 /**

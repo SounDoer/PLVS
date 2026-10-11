@@ -84,6 +84,11 @@ describe("Theme Role Registry", () => {
       advanced: { section: "Waveform", label: "History" },
     });
     expect(getThemeRole("spectrogram.intensityHistory").advanced).toBeUndefined();
+    expect(getThemeRole("history.status.safe").recipe).toBe("history-palette-color");
+    expect(getThemeRole("history.frequency.low").recipe).toBe("history-palette-color");
+    expect(getThemeRole("level.gradientBottomHistory")).toBeNull();
+    expect(getThemeRole("level.gradientMidHistory")).toBeNull();
+    expect(getThemeRole("level.gradientTopHistory")).toBeNull();
   });
 
   it("freezes the public registry deeply", () => {

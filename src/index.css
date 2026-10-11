@@ -372,6 +372,9 @@ html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover
   --ui-level-safe: var(--ui-level-safe-history);
   --ui-level-warning: var(--ui-level-warning-history);
   --ui-level-critical: var(--ui-level-critical-history);
+  --ui-meter-gradient-bottom: var(--ui-level-safe-history);
+  --ui-meter-gradient-mid: var(--ui-level-warning-history);
+  --ui-meter-gradient-top: var(--ui-level-critical-history);
   --ui-stats-warning-value: var(--ui-stats-warning-value-history);
   --ui-stats-critical-value: var(--ui-stats-critical-value-history);
   --ui-vectorscope-correlation-safe: var(--ui-vectorscope-correlation-safe-history);
