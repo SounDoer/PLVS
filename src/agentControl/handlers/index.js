@@ -1,3 +1,4 @@
+import { axisHandlers } from "./axis.js";
 import { viewHandlers } from "./view.js";
 import { settingsHandlers } from "./settings.js";
 import { moduleHandlers } from "./module.js";
@@ -12,4 +13,5 @@ export const METHOD_TABLE = Object.freeze({
   ...moduleHandlers,
   ...settingsHandlers,
   ...viewHandlers,
+  ...axisHandlers,
 });
