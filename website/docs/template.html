@@ -133,6 +133,12 @@
         color: var(--ink);
       }
 
+      .docs-sidebar a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+        color: var(--ink);
+      }
+
       .docs-sidebar a.active {
         color: var(--ink);
         background: rgba(251, 146, 60, 0.1);
@@ -271,16 +277,28 @@
 
         .docs-sidebar {
           position: static;
+          flex: 0 1 auto;
           flex-direction: row;
           flex-wrap: nowrap;
           overflow-x: auto;
+          overscroll-behavior-x: contain;
+          scroll-snap-type: x proximity;
+          scrollbar-width: none;
           width: 100%;
+          min-width: 0;
+          max-width: 100%;
           padding-bottom: 12px;
           border-bottom: 1px solid var(--line);
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .docs-sidebar::-webkit-scrollbar {
+          display: none;
         }
 
         .docs-sidebar a {
           flex: 0 0 auto;
+          scroll-snap-align: start;
           white-space: nowrap;
         }
 

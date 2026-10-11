@@ -61,4 +61,12 @@ describe("user guide site build", () => {
     expect(page).toMatch(/\.nav-links a:not\(\.nav-download\)\s*\{[\s\S]*display:\s*none/);
     expect(page).not.toContain("USER_DOCS_");
   });
+
+  it("keeps mobile chapter navigation contained without a system scrollbar", () => {
+    expect(page).toMatch(
+      /@media \(max-width: 880px\)[\s\S]*?\.docs-sidebar\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?overscroll-behavior-x:\s*contain;[\s\S]*?scrollbar-width:\s*none;[\s\S]*?max-width:\s*100%;/
+    );
+    expect(page).toMatch(/\.docs-sidebar::\-webkit-scrollbar\s*\{\s*display:\s*none;/);
+    expect(page).toMatch(/\.docs-sidebar a:focus-visible\s*\{[\s\S]*?outline:/);
+  });
 });
