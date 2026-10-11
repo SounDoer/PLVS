@@ -8,26 +8,15 @@ import {
 import { flushPersistence } from "../persistence/index.js";
 import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
 import { normalizeImportedProfile } from "../persistence/profileShape.js";
-import { isSceneOperationRefused } from "../lib/sceneOperations.js";
-import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
-import {
-  isDevelopmentFixtureMethod,
-  normalizeDevelopmentFixtureRequest,
-} from "./developmentFixtureProtocol.js";
-import { WorkspaceLayoutError } from "./workspaceLayout.js";
+import { agentControlRpcError } from "./protocol.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
 import { createVisualBookkeeping } from "./bridge/visualBookkeeping.js";
 import { METHOD_TABLE } from "./handlers/index.js";
 import { createDomainRunner } from "./bridge/domains.js";
 import { createSettlementRegistry } from "./bridge/settlement.js";
-import {
-  semanticFailure,
-  QUEUED_REQUEST_TIMEOUT_MS,
-  isCommitNotObserved,
-  persistUnobservedCommit,
-  WAIT_CANCELLED,
-} from "./bridge/failures.js";
+import { createLatestInputs, createRequestProcessor, isDirectLane } from "./bridge/pipeline.js";
+import { semanticFailure, QUEUED_REQUEST_TIMEOUT_MS, WAIT_CANCELLED } from "./bridge/failures.js";
 import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/signatures.js";
 
 /**
@@ -218,7 +207,6 @@ export function useAgentControlBridge({
   const themeSignature = themeStateSignature(themeState);
   const aliveRef = useRef(false);
   const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles, loudnessActive);
-  const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
   /// Everything the bridge was handed, as of the latest commit. A command reads it twice over: once
@@ -263,165 +251,48 @@ export function useAgentControlBridge({
     normalizeConfiguration,
     relaunchAfterConfigurationChange,
   };
-  const inputsRef = useRef(inputs);
-  // Declared before the watchers: the Device watcher reads the Transport of the same commit.
-  useEffect(() => {
-    inputsRef.current = inputs;
-  });
 
-  // Created once per hook instance; state is used only for its lazy initializer.
-  const [{ clock, waiters, settlement, visualBook, observeCommit }] = useState(() => {
-    const waitRegistry = createWaiters();
-    const revisionClock = createRevisionClock({
-      onWake: (revision) => waitRegistry.wakeRevision(revision),
-    });
-    const settlementRegistry = createSettlementRegistry(revisionClock);
-    const visualBookkeeping = createVisualBookkeeping();
-    return {
-      waiters: waitRegistry,
-      clock: revisionClock,
-      settlement: settlementRegistry,
-      visualBook: visualBookkeeping,
-      observeCommit: createDomainRunner({
+  // The bridge core. Created once per hook instance; state is used only for its lazy initializer.
+  const [{ latestInputs, clock, waiters, settlement, visualBook, observeCommit, processRequest }] =
+    useState(() => {
+      const inputsHolder = createLatestInputs(inputs);
+      const waitRegistry = createWaiters();
+      const revisionClock = createRevisionClock({
+        onWake: (revision) => waitRegistry.wakeRevision(revision),
+      });
+      const settlementRegistry = createSettlementRegistry(revisionClock);
+      const visualBookkeeping = createVisualBookkeeping();
+      return {
+        latestInputs: inputsHolder,
+        waiters: waitRegistry,
         clock: revisionClock,
         settlement: settlementRegistry,
-        recordings: visualBookkeeping.recordings,
-        initialInputs: inputs,
-      }),
-    };
-  });
+        visualBook: visualBookkeeping,
+        processRequest: createRequestProcessor({
+          latestInputs: inputsHolder.get,
+          clock: revisionClock,
+          settlement: settlementRegistry,
+          waiters: waitRegistry,
+          visual: visualBookkeeping,
+          table: METHOD_TABLE,
+        }),
+        observeCommit: createDomainRunner({
+          clock: revisionClock,
+          settlement: settlementRegistry,
+          recordings: visualBookkeeping.recordings,
+          initialInputs: inputs,
+        }),
+      };
+    });
 
-  // One effect for every domain, after the inputs refresh above. The runner compares each domain's
-  // own dependencies, so this deliberately has no dependency array.
+  // After every commit: refresh what commands read as the latest inputs, then let each domain's
+  // watcher look at the commit. The refresh comes first because the Device watcher reads the
+  // Transport of the same commit. The runner compares each domain's own dependencies, so this
+  // deliberately has no dependency array.
   useEffect(() => {
+    latestInputs.set(inputs);
     observeCommit(inputs);
   });
-
-  useEffect(() => {
-    // Dock panels share the Workspace panel mapping, which offers and keeps the Loudness reference
-    // layer only when this is set; the bare Dock context never carried it.
-
-    processRef.current = async (rawRequest) => {
-      const snap = inputsRef.current;
-      const developmentFixtureRequest =
-        developmentFixtures?.enabled && isDevelopmentFixtureMethod(rawRequest?.method);
-      const normalized = developmentFixtureRequest
-        ? normalizeDevelopmentFixtureRequest(rawRequest)
-        : normalizeAgentControlRequest(rawRequest);
-      const requestId =
-        normalized.ok && normalized.request.id
-          ? normalized.request.id
-          : typeof rawRequest?.id === "string"
-            ? rawRequest.id
-            : "";
-
-      if (!normalized.ok) {
-        return { requestId, error: agentControlRpcError(normalized.error) };
-      }
-
-      const { request } = normalized;
-      const revisionBatch =
-        request.method.startsWith("visual.") || request.params.expectedRevision === undefined
-          ? null
-          : clock.beginBatch();
-      try {
-        let dockRequestContext = { ...dockContext, hasLoudnessReference };
-        if (
-          ["dock.describe", "dock.enter", "preset.apply"].includes(request.method) &&
-          dockContext.readMonitorInventory
-        ) {
-          try {
-            dockRequestContext = {
-              ...dockRequestContext,
-              ...(await dockContext.readMonitorInventory()),
-            };
-          } catch (error) {
-            throw semanticFailure(
-              "commandFailed",
-              "$",
-              `Monitor inventory could not be read: ${error?.message || String(error)}`,
-              -32603
-            );
-          }
-        }
-        const entry = METHOD_TABLE[request.method];
-        if (entry) {
-          return await entry.run({
-            request,
-            requestId,
-            snap,
-            live: () => inputsRef.current,
-            clock,
-            settlement,
-            waiters,
-            visual: visualBook,
-            dockRequestContext,
-            flush: snap.flush,
-          });
-        }
-      } catch (error) {
-        // One place rather than nine: `isCommitNotObserved` is true only for the settlement
-        // timeout, so every pre-commit failure -- validation, `revisionConflict`, `editorActive`,
-        // a refused scene operation -- still reaches here without touching the disk.
-        if (isCommitNotObserved(error)) {
-          return {
-            requestId,
-            error: agentControlRpcError(await persistUnobservedCommit(error, flush)),
-          };
-        }
-        const semantic =
-          error instanceof WorkspaceLayoutError
-            ? semanticFailure(error.reason, error.path, error.message, -32602)
-            : isSceneOperationRefused(error)
-              ? semanticFailure(error.code, "$", error.message, -32040, {
-                  operation: error.operation,
-                  ...(Array.isArray(error.editors) ? { editors: error.editors } : {}),
-                  ...(typeof error.reason === "string" ? { reason: error.reason } : {}),
-                })
-              : error;
-        return { requestId, error: agentControlRpcError(semantic) };
-      } finally {
-        clock.endBatch(revisionBatch);
-      }
-    };
-  }, [
-    settlement,
-    visualBook,
-    clock,
-    waiters,
-    flush,
-    exportConfiguration,
-    importConfiguration,
-    normalizeConfiguration,
-    relaunchAfterConfigurationChange,
-    hasLoudnessReference,
-    loudnessActive,
-    loudnessProfile,
-    loudnessProfiles,
-    analysisContext,
-    measurementContext,
-    viewContext,
-    visual,
-    uiNavigation,
-    editorDraft,
-    developmentFixtures,
-    applySettings,
-    executeTransport,
-    device,
-    dock,
-    dockContext,
-    executeDock,
-    presets,
-    replaceWorkspace,
-    runtime,
-    settings,
-    settingsContext,
-    transport,
-    transportContext,
-    setPanelControlsForPanel,
-    waitForWorkspacePersistenceEnqueue,
-    workspace,
-  ]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -458,9 +329,7 @@ export function useAgentControlBridge({
           });
         }, QUEUED_REQUEST_TIMEOUT_MS);
       });
-      return Promise.race([processRef.current(request), backstop]).finally(() =>
-        clearTimeout(timer)
-      );
+      return Promise.race([processRequest(request), backstop]).finally(() => clearTimeout(timer));
     };
 
     const install = async () => {
@@ -486,15 +355,8 @@ export function useAgentControlBridge({
               if (afterResponse && aliveRef.current) await afterResponse();
             })
             .catch(() => undefined);
-        if (
-          request?.method === "app.wait" ||
-          request?.method === "measurement.wait" ||
-          request?.method === "measurement.waitUntil" ||
-          request?.method === "measurement.describe" ||
-          request?.method === "measurement.inspect" ||
-          request?.method?.startsWith("visual.")
-        ) {
-          void respond(processRef.current(request));
+        if (isDirectLane(METHOD_TABLE, request?.method)) {
+          void respond(processRequest(request));
           return;
         }
         queueRef.current = queueRef.current.then(() => processWithBackstop(request));
@@ -534,7 +396,7 @@ export function useAgentControlBridge({
       waiterEntries.clear();
       for (const controller of ownedVisualCaptures.values()) controller.abort();
       ownedVisualCaptures.clear();
-      const visualControl = inputsRef.current.visual;
+      const visualControl = latestInputs.get().visual;
       for (const [recordingId, metadata] of visualRecordings) {
         metadata.unsubscribe?.();
         metadata.unsubscribe = null;
@@ -547,5 +409,5 @@ export function useAgentControlBridge({
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();
     };
-  }, [settlement, visualBook, clock, waiters, enabled]);
+  }, [latestInputs, processRequest, settlement, visualBook, clock, waiters, enabled]);
 }

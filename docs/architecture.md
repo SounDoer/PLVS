@@ -148,6 +148,16 @@ hands to the panels, and assembles the props for the shell. It owns no domain st
 is mounted as `AgentControlBridge` (`src/agentControl/`), which reads every area from its owner
 and takes nothing from `AppContent`.
 
+The bridge hook it calls, `useAgentControlBridge`, only wires three parts together. The core in
+`bridge/` knows no particular command: it owns the serialized request queue and its timeouts, the
+public revision and the rule that one command advances it once, long waits, and settlement — a
+mutation is settled when React has rendered the committed state, not when the business function
+returns. The domain table (`bridge/domains.js`) lists each observed area of app state; one loop
+runs every entry after each commit to advance the revision and resolve settlements, and the
+settlement slots are created from the same table. The method table (`handlers/`) maps each wire
+method to a handler, which receives the state React had rendered when the request started and a
+getter for the state rendered since.
+
 ### Panel settings and the control table
 
 `src/lib/panelControls.js` holds one row per persisted panel control: its default, the rule that

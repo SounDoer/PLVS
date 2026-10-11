@@ -44,18 +44,25 @@ Three places divide the work, and nothing is said in two of them:
 Panel Control is three hand-written lists of the same fields -- the schema, the read mapping and the
 patch planner -- layered on one flat control record. Nothing in the app makes them agree, and a
 control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no Agent Control
-change to look finished. Six guards make that omission fail instead:
+change to look finished. Seven guards make that omission fail instead:
 
-| Guard                                              | Fails when                                                                                                        |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `src/agentControl/panelControlCoverage.test.js`    | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal.                  |
-| `src/agentControl/panelControlContract.test.js`    | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
-| `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own.                        |
-| `src/agentControl/viewControl.test.js`             | View schema, strict planning, platform availability, reset, or Dock warning behavior changes.                     |
-| `src/agentControl/libraryTransferContract.test.js` | A library has a pack format but no command family, or the reverse.                                                |
-| `src/agentControl/publicSurfaceDocs.test.js`       | `generated/` no longer matches the schema builders.                                                               |
+| Guard                                              | Fails when                                                                                                                                                              |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/agentControl/panelControlCoverage.test.js`    | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal.                                                                        |
+| `src/agentControl/panelControlContract.test.js`    | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree.                                                       |
+| `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own.                                                                              |
+| `src/agentControl/viewControl.test.js`             | View schema, strict planning, platform availability, reset, or Dock warning behavior changes.                                                                           |
+| `src/agentControl/libraryTransferContract.test.js` | A library has a pack format but no command family, or the reverse.                                                                                                      |
+| `src/agentControl/publicSurfaceDocs.test.js`       | `generated/` no longer matches the schema builders.                                                                                                                     |
+| `src/agentControl/handlers/coverage.test.js`       | A wire method in the command manifest has no handler, a handler serves a method the manifest does not list, or a handler waits on a settlement slot no domain provides. |
 
-The last fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
+`publicSurfaceDocs` fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
+
+A new wire method is registered in the family's file under `src/agentControl/handlers/`, with
+`lane: "direct"` if it must answer outside the serialized queue. A newly observed area of app state
+is a new entry in `src/agentControl/bridge/domains.js`: the entry is what gives the area its
+revision watcher, its settlement slot and its place in the unmount cleanup, so none of the three can
+be added without the others.
 
 Settings has no coverage guard of its own. There is no single definition of "every setting" to check
 `PUBLIC_FIELDS` against -- the settings persistence domain also holds Preset-captured scene state,
