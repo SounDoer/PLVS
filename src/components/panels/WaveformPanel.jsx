@@ -120,10 +120,12 @@ export function drawWaveformCanvas(
   // Stroke width is product-owned geometry and remains a CSS token.
   const strokeWidth = readCssNumber(root, "--ui-waveform-stroke-width", 1) || 1;
   const spectralPalette = {
-    low: parseCssRgb(themeColors.frequencyLow),
-    mid: parseCssRgb(themeColors.frequencyMid),
-    high: parseCssRgb(themeColors.frequencyHigh),
-    neutral: parseCssRgb(themeColors.frequencyNeutral),
+    low: parseCssRgb(selected ? themeColors.frequencyLowHistory : themeColors.frequencyLow),
+    mid: parseCssRgb(selected ? themeColors.frequencyMidHistory : themeColors.frequencyMid),
+    high: parseCssRgb(selected ? themeColors.frequencyHighHistory : themeColors.frequencyHigh),
+    neutral: parseCssRgb(
+      selected ? themeColors.frequencyNeutralHistory : themeColors.frequencyNeutral
+    ),
   };
   const centroidColor = themeColors.centroid;
 

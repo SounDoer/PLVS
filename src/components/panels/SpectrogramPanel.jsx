@@ -289,9 +289,18 @@ export function SpectrogramPanel() {
     selectedOffset >= 0
       ? (snapshotSpectrumByKey?.[spectrogramKey] ?? EMPTY_SPECTRUM_VIEW)
       : (snapRef.current ?? EMPTY_SPECTRUM_VIEW);
+  const activeSpectrogramTheme =
+    selectedOffset >= 0 && sourceMode !== "file"
+      ? {
+          ...spectrogramTheme,
+          intensityStops: spectrogramTheme.intensityStopsHistory,
+          ink: spectrogramTheme.inkHistory,
+          surfaceInk: spectrogramTheme.surfaceInkHistory,
+        }
+      : spectrogramTheme;
   const colormapLut = useMemo(
-    () => buildSpectrogramLut(spectrogramTheme.intensityStops),
-    [spectrogramTheme.intensityStops]
+    () => buildSpectrogramLut(activeSpectrogramTheme.intensityStops),
+    [activeSpectrogramTheme.intensityStops]
   );
   const sampleMs = resolveSpectrogramSampleMs(spectrogramSnaps, VISUAL_HIST_SAMPLE_SEC * 1000);
   // The 3D waterfall quantises its decimation stride by this period, so it needs the cadence to hold
@@ -365,7 +374,7 @@ export function SpectrogramPanel() {
     colorize: normalizedPanelControls.spectrogram3dColorize,
     floor: normalizedPanelControls.spectrogram3dFloor,
     mode: spectrogramMode,
-    themeColors: spectrogramTheme,
+    themeColors: activeSpectrogramTheme,
     sourceVersion: spectrogramSnaps.version,
     canvasSizeRevision,
     enabled: is3d && panelVisible !== false,

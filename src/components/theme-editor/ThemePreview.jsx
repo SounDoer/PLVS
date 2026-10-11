@@ -129,7 +129,8 @@ function Trace({ color, secondColor, gridColor, fillTop = 0, fillBottom = fillTo
   );
 }
 
-function ModulesScene({ intensityGradient, gridColors, resolved }) {
+function ModulesScene({ intensityGradient, gridColors, resolved, history }) {
+  const waveformRole = history ? "waveform.snapshot" : "waveform.trace";
   return (
     <div className="grid grid-cols-2 gap-3">
       <PreviewCard title="Level Meter">
@@ -185,8 +186,8 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
       </PreviewCard>
       <PreviewCard title="Waveform">
         <svg viewBox="0 0 160 48" className="h-12 w-full" aria-hidden="true">
-          {["waveform.trace", "waveform.snapshot"].map((role, index) => (
-            <g key={role} transform={`translate(0 ${index * 24})`}>
+          {[waveformRole].map((role) => (
+            <g key={role} transform="translate(0 12)">
               <path
                 d="M0 12L20 9L40 2L60 7L80 4L100 8L120 1L140 7L160 12L140 17L120 23L100 16L80 20L60 17L40 22L20 15Z"
                 fill={resolved.roles[role]}
@@ -200,8 +201,10 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
       </PreviewCard>
       <PreviewCard title="Stereo Map">
         <Trace
-          color={resolved.roles["stereoMap.primary"]}
-          secondColor={resolved.roles["stereoMap.secondary"]}
+          color={resolved.roles[history ? "stereoMap.primarySnapshot" : "stereoMap.primary"]}
+          secondColor={
+            resolved.roles[history ? "stereoMap.secondarySnapshot" : "stereoMap.secondary"]
+          }
           gridColor={gridColors.stereoMap}
           fillTop={STEREO_MAP_FILL_OPACITY}
         />
@@ -213,10 +216,13 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
 /** @param {{ draft: import("../../theme/themeSchema.js").ThemeDocument, onClose: (...args: any[]) => any, onJump?: (...args: any[]) => any }} props */
 export function ThemePreview({ draft, onClose, onJump }) {
   const [page, setPage] = useState("overview");
+  const [dataState, setDataState] = useState("live");
   const resolved = useMemo(() => compileTheme(draft), [draft]);
   const visualWarnings = useMemo(() => analyzeThemeVisuals(draft).warnings, [draft]);
   const style = useMemo(() => ({ ...resolved.css, colorScheme: resolved.colorScheme }), [resolved]);
-  const intensityGradient = `linear-gradient(to right, ${resolved.roles["palette.intensity.stops"]
+  const history = dataState === "snapshot";
+  const intensityRole = history ? "history.intensity" : "palette.intensity.stops";
+  const intensityGradient = `linear-gradient(to right, ${resolved.roles[intensityRole]
     .map((stop) => `${stop.color} ${stop.position * 100}%`)
     .join(", ")})`;
   const gridColors = {
@@ -240,6 +246,21 @@ export function ThemePreview({ draft, onClose, onJump }) {
               Controlled scenes from the current unsaved Draft
             </DialogPrimitive.Description>
           </div>
+          <div role="tablist" aria-label="Preview data state" className="flex">
+            {[
+              ["live", "Live"],
+              ["snapshot", "Snapshot"],
+            ].map(([id, label]) => (
+              <TabButton
+                key={id}
+                selected={dataState === id}
+                onClick={() => setDataState(id)}
+                className="px-2 py-1"
+              >
+                {label}
+              </TabButton>
+            ))}
+          </div>
           <Button variant="ghost" size="icon" aria-label="Close theme preview" onClick={onClose}>
             <X />
           </Button>
@@ -259,7 +280,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
             </TabButton>
           ))}
         </div>
-        <div className="overflow-y-auto p-4">
+        <div data-history={history ? "" : undefined} className="overflow-y-auto p-4">
           {page === "overview" ? (
             <OverviewScene />
           ) : page === "modules" ? (
@@ -267,6 +288,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
               intensityGradient={intensityGradient}
               gridColors={gridColors}
               resolved={resolved}
+              history={history}
             />
           ) : (
             <ThemeVisualReview warnings={visualWarnings} onJump={onJump} />

@@ -21,6 +21,9 @@ const TEST_CHANNEL_COLORS = {
   good: "#0000ff",
   warning: "#00ff00",
   critical: "#ff0000",
+  goodHistory: "#000088",
+  warningHistory: "#008800",
+  criticalHistory: "#880000",
 };
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { applyThemeToDocument } from "../../uiPreferences.js";

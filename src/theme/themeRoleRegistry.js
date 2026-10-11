@@ -310,7 +310,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     dependencies: ["palette.status.critical"],
     bindings: { css: ["--ui-activity-live"] },
     advanced: colorOverride(
-      "Transport",
+      "Live & Snapshot",
       "Live Indicator",
       "Live capture, recording, and stop activity in transport controls."
     ),
@@ -319,10 +319,10 @@ const RAW_THEME_ROLE_REGISTRY = [
     kind: "color",
     family: "activity",
     recipe: "identity",
-    dependencies: ["data.snapshot.primary"],
+    dependencies: ["data.history.primary"],
     bindings: { css: ["--ui-activity-snapshot"] },
     advanced: colorOverride(
-      "Transport",
+      "Live & Snapshot",
       "Snapshot Indicator",
       "Snapshot capture activity in transport controls. Panel snapshot traces use module roles."
     ),
@@ -340,17 +340,29 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "identity",
     dependencies: ["core.secondaryData"],
   }),
-  role("data.snapshot.primary", {
+  role("data.history.primary", {
     kind: "color",
     family: "data",
-    recipe: "snapshot",
+    recipe: "history",
     dependencies: ["data.primary", "core.surface"],
+    advanced: dataOverride(
+      "Live & Snapshot",
+      "History Primary",
+      "Shared primary data color while a retained snapshot is selected.",
+      ["core.primaryData", "core.secondaryData"]
+    ),
   }),
-  role("data.snapshot.secondary", {
+  role("data.history.secondary", {
     kind: "color",
     family: "data",
-    recipe: "snapshot",
+    recipe: "history",
     dependencies: ["data.secondary", "core.surface"],
+    advanced: dataOverride(
+      "Live & Snapshot",
+      "History Secondary",
+      "Shared secondary data color while a retained snapshot is selected.",
+      ["core.primaryData", "core.secondaryData"]
+    ),
   }),
   role("data.selection", {
     kind: "color",
@@ -390,11 +402,60 @@ const RAW_THEME_ROLE_REGISTRY = [
     dependencies: ["palette.status.critical"],
   }),
 
+  role("history.status.safe", {
+    kind: "color",
+    family: "history",
+    recipe: "history-palette-color",
+    dependencies: ["palette.status.safe", "core.surface"],
+  }),
+  role("history.status.warning", {
+    kind: "color",
+    family: "history",
+    recipe: "history-palette-color",
+    dependencies: ["palette.status.warning", "core.surface"],
+  }),
+  role("history.status.critical", {
+    kind: "color",
+    family: "history",
+    recipe: "history-palette-color",
+    dependencies: ["palette.status.critical", "core.surface"],
+  }),
+  role("history.frequency.low", {
+    kind: "color",
+    family: "history",
+    recipe: "history-palette-color",
+    dependencies: ["palette.frequency.low", "core.surface"],
+  }),
+  role("history.frequency.mid", {
+    kind: "color",
+    family: "history",
+    recipe: "history-palette-color",
+    dependencies: ["palette.frequency.mid", "core.surface"],
+  }),
+  role("history.frequency.high", {
+    kind: "color",
+    family: "history",
+    recipe: "history-palette-color",
+    dependencies: ["palette.frequency.high", "core.surface"],
+  }),
+  role("history.intensity", {
+    kind: "palette",
+    family: "history",
+    recipe: "history-color-scale",
+    dependencies: ["palette.intensity.stops", "core.surface"],
+  }),
+
   ...moduleRoles(),
 ];
 
 function moduleRoles() {
   const primaryRefs = ["core.primaryData", "core.secondaryData"];
+  const historyPrimaryRefs = [
+    "data.history.primary",
+    "data.history.secondary",
+    "core.primaryData",
+    "core.secondaryData",
+  ];
   return [
     moduleColor(
       "loudness.momentary",
@@ -409,6 +470,15 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
+      "loudness.momentarySnapshot",
+      "Loudness",
+      "Momentary History",
+      "data.history.primary",
+      "identity",
+      { css: ["--ui-loudness-momentary-snap"] },
+      historyPrimaryRefs
+    ),
+    moduleColor(
       "loudness.shortTerm",
       "Loudness",
       "Short-term",
@@ -421,22 +491,13 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
-      "loudness.momentarySnapshot",
-      "Loudness",
-      "Momentary Snapshot",
-      "data.snapshot.primary",
-      "identity",
-      { css: ["--ui-loudness-momentary-snap"] },
-      primaryRefs
-    ),
-    moduleColor(
       "loudness.shortTermSnapshot",
       "Loudness",
-      "Short-term Snapshot",
-      "data.snapshot.secondary",
+      "Short-term History",
+      "data.history.secondary",
       "identity",
       { css: ["--ui-loudness-shortterm-snap"] },
-      primaryRefs
+      historyPrimaryRefs
     ),
     moduleColor(
       "loudness.reference",
@@ -476,6 +537,15 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
+      "spectrum.primarySnapshot",
+      "Spectrum",
+      "Primary History",
+      "data.history.primary",
+      "identity",
+      { css: ["--ui-spectrum-primary-snap"] },
+      historyPrimaryRefs
+    ),
+    moduleColor(
       "spectrum.secondary",
       "Spectrum",
       "Secondary Trace",
@@ -485,22 +555,13 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
-      "spectrum.primarySnapshot",
-      "Spectrum",
-      "Primary Snapshot",
-      "data.snapshot.primary",
-      "identity",
-      { css: ["--ui-spectrum-primary-snap"] },
-      primaryRefs
-    ),
-    moduleColor(
       "spectrum.secondarySnapshot",
       "Spectrum",
-      "Secondary Snapshot",
-      "data.snapshot.secondary",
+      "Secondary History",
+      "data.history.secondary",
       "identity",
       { css: ["--ui-spectrum-secondary-snap"] },
-      primaryRefs
+      historyPrimaryRefs
     ),
     moduleColor(
       "spectrum.grid",
@@ -518,6 +579,13 @@ function moduleRoles() {
       recipe: "identity",
       dependencies: ["palette.intensity.stops"],
       bindings: { canvas: ["spectrogram.intensity"] },
+    }),
+    role("spectrogram.intensityHistory", {
+      kind: "palette",
+      family: "spectrogram",
+      recipe: "identity",
+      dependencies: ["history.intensity"],
+      bindings: { canvas: ["spectrogram.intensityHistory"] },
     }),
     moduleColor(
       "spectrogram.ink",
@@ -537,6 +605,12 @@ function moduleRoles() {
       { canvas: ["spectrogram.surfaceInk"] },
       ["core.text", ...primaryRefs]
     ),
+    historyModuleColor("spectrogram.inkHistory", "spectrogram.ink", {
+      canvas: ["spectrogram.inkHistory"],
+    }),
+    historyModuleColor("spectrogram.surfaceInkHistory", "spectrogram.surfaceInk", {
+      canvas: ["spectrogram.surfaceInkHistory"],
+    }),
     moduleColor(
       "spectrogram.grid",
       "Spectrogram",
@@ -578,11 +652,11 @@ function moduleRoles() {
     moduleColor(
       "vectorscope.snapshot",
       "Vectorscope",
-      "Snapshot",
-      "data.snapshot.primary",
+      "History",
+      "data.history.primary",
       "identity",
       { css: ["--ui-vectorscope-trace-snap"], canvas: ["vectorscope.snapshot"] },
-      primaryRefs
+      historyPrimaryRefs
     ),
     moduleColor(
       "vectorscope.guides",
@@ -620,6 +694,17 @@ function moduleRoles() {
       { css: ["--ui-vectorscope-correlation-critical"] },
       ["palette.status.critical"]
     ),
+    historyModuleColor("vectorscope.correlationSafeHistory", "vectorscope.correlationSafe", {
+      css: ["--ui-vectorscope-correlation-safe-history"],
+    }),
+    historyModuleColor("vectorscope.correlationWarningHistory", "vectorscope.correlationWarning", {
+      css: ["--ui-vectorscope-correlation-warning-history"],
+    }),
+    historyModuleColor(
+      "vectorscope.correlationCriticalHistory",
+      "vectorscope.correlationCritical",
+      { css: ["--ui-vectorscope-correlation-critical-history"] }
+    ),
 
     moduleColor(
       "stereoMap.primary",
@@ -631,6 +716,15 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
+      "stereoMap.primarySnapshot",
+      "Stereo Map",
+      "Primary History",
+      "data.history.primary",
+      "identity",
+      { css: ["--ui-stereo-map-primary-snap"], canvas: ["stereoMap.primarySnapshot"] },
+      historyPrimaryRefs
+    ),
+    moduleColor(
       "stereoMap.secondary",
       "Stereo Map",
       "Secondary Side",
@@ -640,22 +734,13 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
-      "stereoMap.primarySnapshot",
-      "Stereo Map",
-      "Primary Snapshot",
-      "data.snapshot.primary",
-      "identity",
-      { css: ["--ui-stereo-map-primary-snap"], canvas: ["stereoMap.primarySnapshot"] },
-      primaryRefs
-    ),
-    moduleColor(
       "stereoMap.secondarySnapshot",
       "Stereo Map",
-      "Secondary Snapshot",
-      "data.snapshot.secondary",
+      "Secondary History",
+      "data.history.secondary",
       "identity",
       { css: ["--ui-stereo-map-secondary-snap"], canvas: ["stereoMap.secondarySnapshot"] },
-      primaryRefs
+      historyPrimaryRefs
     ),
     moduleColor(
       "stereoMap.grid",
@@ -694,6 +779,15 @@ function moduleRoles() {
       { canvas: ["stereoMap.criticalRange"] },
       ["palette.status.critical"]
     ),
+    historyModuleColor("stereoMap.safeRangeHistory", "stereoMap.safeRange", {
+      canvas: ["stereoMap.safeRangeHistory"],
+    }),
+    historyModuleColor("stereoMap.warningRangeHistory", "stereoMap.warningRange", {
+      canvas: ["stereoMap.warningRangeHistory"],
+    }),
+    historyModuleColor("stereoMap.criticalRangeHistory", "stereoMap.criticalRange", {
+      canvas: ["stereoMap.criticalRangeHistory"],
+    }),
 
     moduleColor(
       "waveform.trace",
@@ -707,11 +801,11 @@ function moduleRoles() {
     moduleColor(
       "waveform.snapshot",
       "Waveform",
-      "Snapshot",
-      "data.snapshot.primary",
+      "History",
+      "data.history.primary",
       "identity",
       { css: ["--ui-waveform-trace-snap"], canvas: ["waveform.snapshot"] },
-      primaryRefs
+      historyPrimaryRefs
     ),
     moduleColor(
       "waveform.frequencyLow",
@@ -769,6 +863,18 @@ function moduleRoles() {
       { canvas: ["waveform.selection"] },
       primaryRefs
     ),
+    historyModuleColor("waveform.frequencyLowHistory", "waveform.frequencyLow", {
+      canvas: ["waveform.frequencyLowHistory"],
+    }),
+    historyModuleColor("waveform.frequencyMidHistory", "waveform.frequencyMid", {
+      canvas: ["waveform.frequencyMidHistory"],
+    }),
+    historyModuleColor("waveform.frequencyHighHistory", "waveform.frequencyHigh", {
+      canvas: ["waveform.frequencyHighHistory"],
+    }),
+    historyModuleColor("waveform.frequencyNeutralHistory", "waveform.frequencyNeutral", {
+      canvas: ["waveform.frequencyNeutralHistory"],
+    }),
 
     moduleColor(
       "waveform.warningRange",
@@ -788,6 +894,12 @@ function moduleRoles() {
       { css: ["--ui-waveform-critical-range"] },
       ["palette.status.critical"]
     ),
+    historyModuleColor("waveform.warningRangeHistory", "waveform.warningRange", {
+      css: ["--ui-waveform-warning-range-history"],
+    }),
+    historyModuleColor("waveform.criticalRangeHistory", "waveform.criticalRange", {
+      css: ["--ui-waveform-critical-range-history"],
+    }),
     moduleColor(
       "level.safe",
       "Level Meter",
@@ -815,6 +927,15 @@ function moduleRoles() {
       { css: ["--ui-level-critical", "--ui-meter-gradient-top"] },
       ["palette.status.critical"]
     ),
+    historyModuleColor("level.safeHistory", "level.safe", {
+      css: ["--ui-level-safe-history"],
+    }),
+    historyModuleColor("level.warningHistory", "level.warning", {
+      css: ["--ui-level-warning-history"],
+    }),
+    historyModuleColor("level.criticalHistory", "level.critical", {
+      css: ["--ui-level-critical-history"],
+    }),
     moduleColor(
       "stats.warningValue",
       "Stats",
@@ -833,7 +954,23 @@ function moduleRoles() {
       { css: ["--ui-stats-critical-value"] },
       ["palette.status.critical"]
     ),
+    historyModuleColor("stats.warningValueHistory", "stats.warningValue", {
+      css: ["--ui-stats-warning-value-history"],
+    }),
+    historyModuleColor("stats.criticalValueHistory", "stats.criticalValue", {
+      css: ["--ui-stats-critical-value-history"],
+    }),
   ];
+}
+
+function historyModuleColor(id, dependency, bindings) {
+  return role(id, {
+    kind: "color",
+    family: id.split(".")[0],
+    recipe: "history-palette-color",
+    dependencies: [dependency, "core.surface"],
+    bindings,
+  });
 }
 
 /**
@@ -845,13 +982,24 @@ function moduleRoles() {
  * @param {string[]} references
  */
 function moduleColor(id, section, label, dependency, recipe, bindings, references, extra = []) {
+  const advancedRole = dataOverride(
+    section,
+    label,
+    `Color used for ${label.toLowerCase()}.`,
+    references
+  );
+  if (dependency.startsWith("data.history.")) {
+    advancedRole.editorReferences = references.filter(
+      (reference) => reference.startsWith("data.history.") && reference !== dependency
+    );
+  }
   return role(id, {
     kind: "color",
     family: id.split(".")[0],
     recipe,
     dependencies: [dependency, ...extra],
     bindings,
-    advanced: dataOverride(section, label, `Color used for ${label.toLowerCase()}.`, references),
+    advanced: advancedRole,
   });
 }
 
@@ -929,6 +1077,12 @@ function validateAdvanced(entry, byId, errors) {
     else if (source.valueKind !== entry.valueKind) {
       errors.push(`Incompatible reference for ${entry.id}: ${reference}.`);
     }
+  }
+  if (
+    entry.advanced.editorReferences &&
+    entry.advanced.editorReferences.some((reference) => !references.includes(reference))
+  ) {
+    errors.push(`Editor references must be allowed references for ${entry.id}.`);
   }
 }
 

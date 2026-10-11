@@ -384,9 +384,12 @@ For Loudness history, `Momentary` and `Short-term` are equally important paired 
 widths. The widths render in screen space rather than being visually compressed by SVG viewBox
 scaling. Neither layer adds opacity or a dashed-line convention merely to distinguish the pair.
 
-Snapshot colors are state colors for selected historical data. Within a theme, loudness,
-vectorscope, and spectrum snap tokens should belong to one snapshot family. Do not treat snapshot
-colors as new data categories, hover colors, or warning colors.
+History colours are the data-state colours used only while a retained Snapshot is selected. Shared
+History Primary and History Secondary roles feed trace modules; Status, Intensity, Frequency, and
+monochrome data ink receive family-specific automatic treatment that preserves their semantic
+ordering. The trace recipe chooses its lightness direction from available headroom rather than from
+the Theme's Dark/Light scheme alone. Selection remains a separate recipe and is not recoloured by
+History treatment.
 
 Waveform lanes use a **stroke + fill** pattern: 1px strokes on both the max (top) and min (bottom)
 envelope edges, plus a global semi-transparent fill opacity. The waveform publishes a Snapshot
@@ -470,7 +473,7 @@ they never imply that one Theme supports both schemes. A paired design is publis
 Theme artefacts and therefore has two identities. The primary compatibility copy is generated from
 one central Format/Semantics-to-release mapping: `Requires PLVS <minimum> or later`, or a closed
 `Works with PLVS <minimum>-<maximum>` range if later compatibility evidence requires one. Expanded
-technical details show `Theme Format 1 · Semantics 4`. Public-page generation fails while the first
+technical details show `Theme Format 1 · Semantics 5`. Public-page generation fails while the first
 shipping release remains unassigned, preventing a guessed minimum version from reaching users.
 
 ### Component: Status, feedback, and activity
@@ -478,7 +481,7 @@ shipping release remains unassigned, preventing a guessed minimum version from r
 The Status Palette is measurement-only except for the transport Live indicator, which deliberately
 reuses Status Critical. Each instrument consumes Status through module-local resolved roles, so a
 local override cannot recolor another module. Interface feedback inherits the Interface Palette
-directly. Transport Snapshot reuses the Primary Snapshot state family.
+directly. Transport Snapshot reuses the shared History Primary family.
 
 | Binding family                                                   | Role                                                  |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
@@ -491,7 +494,7 @@ directly. Transport Snapshot reuses the Primary Snapshot state family.
 | `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity        |
 
 Feedback and activity colours are foregrounds on the panel. Feedback publishes the Interface
-Palette value unchanged; Live publishes Status Critical; Snapshot publishes Primary Snapshot.
+Palette value unchanged; Live publishes Status Critical; Snapshot publishes History Primary.
 Visual Review reports insufficient contrast without altering those authored relationships
 (ADR 0021).
 

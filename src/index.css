@@ -360,6 +360,27 @@ html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover
   animation: update-progress-slide 1.2s ease-in-out infinite;
 }
 
+/* History is a data state of one surface, not a global Theme mode. Keep these aliases on the
+   main workspace wrapper so a live Dock can continue to use the live roles. */
+[data-history] {
+  --ui-loudness-momentary: var(--ui-loudness-momentary-snap);
+  --ui-loudness-shortterm: var(--ui-loudness-shortterm-snap);
+  --ui-spectrum-primary: var(--ui-spectrum-primary-snap);
+  --ui-spectrum-secondary: var(--ui-spectrum-secondary-snap);
+  --ui-vectorscope-trace: var(--ui-vectorscope-trace-snap);
+  --ui-waveform-trace: var(--ui-waveform-trace-snap);
+  --ui-level-safe: var(--ui-level-safe-history);
+  --ui-level-warning: var(--ui-level-warning-history);
+  --ui-level-critical: var(--ui-level-critical-history);
+  --ui-stats-warning-value: var(--ui-stats-warning-value-history);
+  --ui-stats-critical-value: var(--ui-stats-critical-value-history);
+  --ui-vectorscope-correlation-safe: var(--ui-vectorscope-correlation-safe-history);
+  --ui-vectorscope-correlation-warning: var(--ui-vectorscope-correlation-warning-history);
+  --ui-vectorscope-correlation-critical: var(--ui-vectorscope-correlation-critical-history);
+  --ui-waveform-warning-range: var(--ui-waveform-warning-range-history);
+  --ui-waveform-critical-range: var(--ui-waveform-critical-range-history);
+}
+
 /* Motion rule -- see design-tokens.md. State feedback never animates; what is left is spatial
    change (a drawer sliding in, a menu appearing, a chevron turning) and the update progress bar. A
    system "reduce motion" preference switches all of it off here, in one place, so a component

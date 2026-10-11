@@ -255,7 +255,7 @@ export function buildSemanticGallerySvg(themeId, manifest) {
   const data = [
     ["Primary", "core.primaryData"],
     ["Secondary", "core.secondaryData"],
-    ["Snapshot", "data.snapshot.primary"],
+    ["History", "data.history.primary"],
     ["Selection", "data.selection"],
     ["Safe", "palette.status.safe"],
     ["Warning", "palette.status.warning"],

@@ -93,6 +93,9 @@ export function AppShell({
           <div
             data-visual-capture-surface="main"
             data-visual-capture-ready="true"
+            data-history={
+              historyData.selectedOffset >= 0 && historyData.sourceMode !== "file" ? "" : undefined
+            }
             className={SHELL_PAGE}
           >
             <DragProvider onDrop={onDrop}>

@@ -1,9 +1,8 @@
 import { validatePortableTheme } from "./portableTheme.js";
 
 /**
- * One centrally owned app-release mapping per portable semantic contract. Each minimum is the
- * first release that shipped the contract. A contract still in development may stay null;
- * `scripts/check-release-state.mjs` refuses to release the current one until it is filled in.
+ * One centrally owned app-release mapping per portable semantic contract. Semantics 5 has not
+ * shipped yet, so its minimum version deliberately remains unresolved until release preparation.
  */
 export const SHARESETS_THEME_COMPATIBILITY = Object.freeze({
   "1:3": Object.freeze({
@@ -12,6 +11,10 @@ export const SHARESETS_THEME_COMPATIBILITY = Object.freeze({
   }),
   "1:4": Object.freeze({
     minimumAppVersion: "0.19.0",
+    maximumAppVersion: null,
+  }),
+  "1:5": Object.freeze({
+    minimumAppVersion: null,
     maximumAppVersion: null,
   }),
 });

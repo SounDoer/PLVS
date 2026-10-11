@@ -70,6 +70,22 @@ describe("Theme Role Registry", () => {
     });
   });
 
+  it("models History as shared data roles with flat module exceptions", () => {
+    expect(getThemeRole("data.history.primary")).toMatchObject({
+      dependencies: ["data.primary", "core.surface"],
+      advanced: { section: "Live & Snapshot", label: "History Primary" },
+    });
+    expect(getThemeRole("data.history.secondary")).toMatchObject({
+      dependencies: ["data.secondary", "core.surface"],
+      advanced: { section: "Live & Snapshot", label: "History Secondary" },
+    });
+    expect(getThemeRole("waveform.snapshot")).toMatchObject({
+      dependencies: ["data.history.primary"],
+      advanced: { section: "Waveform", label: "History" },
+    });
+    expect(getThemeRole("spectrogram.intensityHistory").advanced).toBeUndefined();
+  });
+
   it("freezes the public registry deeply", () => {
     expect(Object.isFrozen(THEME_ROLE_REGISTRY)).toBe(true);
     expect(Object.isFrozen(getThemeRole("waveform.centroid").advanced)).toBe(true);

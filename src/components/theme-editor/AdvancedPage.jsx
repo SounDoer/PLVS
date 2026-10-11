@@ -15,6 +15,8 @@ const REFERENCE_LABELS = {
   "core.text": "Follow Text",
   "core.primaryData": "Follow Primary Data",
   "core.secondaryData": "Follow Secondary Data",
+  "data.history.primary": "Follow History Primary",
+  "data.history.secondary": "Follow History Secondary",
   "palette.status.safe": "Follow Status Safe",
   "palette.status.warning": "Follow Status Warning",
   "palette.status.critical": "Follow Status Critical",
@@ -25,7 +27,7 @@ const REFERENCE_LABELS = {
 
 const SECTION_ORDER = [
   "Interface",
-  "Transport",
+  "Live & Snapshot",
   ...Object.values(MODULE_CATALOG).map((module) => module.title),
 ];
 
@@ -59,6 +61,12 @@ function selectedMode(override) {
   if (!override) return "auto";
   if (override.kind === "reference") return `reference:${override.source}`;
   return "custom";
+}
+
+function automaticModeLabel(role) {
+  if (role.dependencies[0] === "data.history.primary") return "Follow History Primary";
+  if (role.dependencies[0] === "data.history.secondary") return "Follow History Secondary";
+  return "Auto";
 }
 
 function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
@@ -104,8 +112,8 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" variant="field">
-            <SelectItem value="auto">Auto</SelectItem>
-            {role.advanced.references.map((reference) => (
+            <SelectItem value="auto">{automaticModeLabel(role)}</SelectItem>
+            {(role.advanced.editorReferences ?? role.advanced.references).map((reference) => (
               <SelectItem key={reference} value={`reference:${reference}`}>
                 {REFERENCE_LABELS[reference] ?? `Follow ${reference}`}
               </SelectItem>
@@ -134,7 +142,27 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
 
 function SectionRoles({ section, roles, roleProps }) {
   if (section !== "Interface") {
-    return roles.map((role) => <AdvancedRole key={role.id} role={role} {...roleProps(role)} />);
+    const displayedRoles =
+      section === "Live & Snapshot"
+        ? [...roles].sort(
+            (first, second) =>
+              [
+                "data.history.primary",
+                "data.history.secondary",
+                "activity.live",
+                "activity.snapshot",
+              ].indexOf(first.id) -
+              [
+                "data.history.primary",
+                "data.history.secondary",
+                "activity.live",
+                "activity.snapshot",
+              ].indexOf(second.id)
+          )
+        : roles;
+    return displayedRoles.map((role) => (
+      <AdvancedRole key={role.id} role={role} {...roleProps(role)} />
+    ));
   }
 
   return INTERFACE_GROUPS.map((group) => {

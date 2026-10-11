@@ -8,7 +8,7 @@ export const THEME_VALUE_KINDS = Object.freeze({
   COLOR_SCALE: "colorScale",
 });
 
-const SNAP = {
+const SELECTION = {
   dark: { dL: 0.12, dC: -0.006, dH: 36 },
   light: { dL: 0.12, dC: -0.006, dH: 36 },
 };
@@ -35,6 +35,38 @@ function channelsHex(channels) {
  */
 function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
+}
+
+function historyTrace(hex, surface) {
+  const source = hexToOklch(hex);
+  const panel = hexToOklch(surface);
+  const lighter = Math.min(1, source.L + 0.11);
+  const darker = Math.max(0, source.L - 0.11);
+  const lighterStep = lighter - source.L;
+  const darkerStep = source.L - darker;
+  const L =
+    lighterStep < 0.08
+      ? darker
+      : darkerStep < 0.08
+        ? lighter
+        : Math.abs(lighter - panel.L) >= Math.abs(darker - panel.L)
+          ? lighter
+          : darker;
+  return oklchToHex({
+    L,
+    C: Math.max(0, source.C - 0.006),
+    H: source.C < 0.02 ? source.H : source.H + 32,
+  });
+}
+
+function historyPaletteColor(hex, surface) {
+  const source = hexToOklch(hex);
+  const panel = hexToOklch(surface);
+  return oklchToHex({
+    L: source.L * 0.84 + panel.L * 0.16,
+    C: source.C * 0.84,
+    H: source.H,
+  });
 }
 
 /**
@@ -99,11 +131,18 @@ export const THEME_RECIPES = Object.freeze({
     )
   ),
   semantic: recipe([[SOLID]], SOLID, ([color]) => color),
-  snapshot: recipe([[SOLID, SOLID]], SOLID, ([source], context) =>
-    transformHex(source, SNAP[context.colorScheme])
+  history: recipe([[SOLID, SOLID]], SOLID, ([source, surface]) => historyTrace(source, surface)),
+  "history-palette-color": recipe([[SOLID, SOLID]], SOLID, ([source, surface]) =>
+    historyPaletteColor(source, surface)
+  ),
+  "history-color-scale": recipe(
+    [[THEME_VALUE_KINDS.COLOR_SCALE, SOLID]],
+    THEME_VALUE_KINDS.COLOR_SCALE,
+    ([stops, surface]) =>
+      stops.map((stop) => ({ ...stop, color: historyPaletteColor(stop.color, surface) }))
   ),
   selection: recipe([[SOLID, SOLID]], SOLID, ([source], context) =>
-    transformHex(source, SNAP[context.colorScheme])
+    transformHex(source, SELECTION[context.colorScheme])
   ),
   grid: recipe([[SOLID]], SOLID, ([surface], context) =>
     mixHex(surface, context.colorScheme === "dark" ? "#ffffff" : "#000000", 0.08)

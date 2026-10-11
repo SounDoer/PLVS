@@ -2,6 +2,7 @@ import { resolveV1Theme } from "../legacy/resolveV1Theme.js";
 import { normalizeThemeDocumentShape } from "../themeSchema.js";
 import { migrateThemeSemantics2 } from "./migrateThemeSemantics2.js";
 import { migrateThemeSemantics3 } from "./migrateThemeSemantics3.js";
+import { migrateThemeSemantics4 } from "./migrateThemeSemantics4.js";
 
 const RETIRED_GRID_ROLES = new Set(["data.gridSubtle", "spectrogram.gridSubtle", "waveform.grid"]);
 const RETIRED_SELECTION_ROLES = new Set([
@@ -267,6 +268,19 @@ export function migrateThemeDocument(raw) {
   raw = stripRetiredSelectionOverrides(raw);
   const current = normalizeThemeDocumentShape(raw);
   if (current) return { theme: current, notes: [] };
+  const semantics4 = migrateThemeSemantics4(raw);
+  if (semantics4) {
+    return {
+      theme: semantics4,
+      notes: [
+        {
+          code: "adopt-history-data-roles",
+          message:
+            "Added shared History data roles and automatic History palette treatment while preserving explicit module overrides.",
+        },
+      ],
+    };
+  }
   const semantics3 = migrateThemeSemantics3(raw);
   if (semantics3) {
     return {

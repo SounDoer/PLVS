@@ -194,6 +194,9 @@ describe("Sharesets static site generator", () => {
       });
       const home = readFileSync(join(site, "index.html"), "utf8");
       const docs = readFileSync(join(site, "docs", "index.html"), "utf8");
+      expect(readFileSync(join(site, "assets", "sharesets-detail.css"), "utf8")).toBe(
+        readFileSync(join("landing", "assets", "sharesets-detail.css"), "utf8")
+      );
       expect(home.includes('href="sharesets/"')).toBe(published);
       expect(docs.includes('href="../sharesets/"')).toBe(published);
       expect(home.match(/<footer[\s\S]*?<\/footer>/)?.[0]).not.toContain('href="sharesets/"');

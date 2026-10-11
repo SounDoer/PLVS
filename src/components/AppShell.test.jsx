@@ -48,6 +48,30 @@ const baseProps = standIn({
 });
 
 describe("AppShell footer", () => {
+  it("marks only the main workspace as History while a snapshot is selected", () => {
+    const { rerender } = render(
+      <AppShell {...baseProps} historyData={{ selectedOffset: 2 }} footer={baseFooter} />
+    );
+    expect(
+      document.querySelector('[data-visual-capture-surface="main"]')?.hasAttribute("data-history")
+    ).toBe(true);
+
+    rerender(<AppShell {...baseProps} historyData={{ selectedOffset: -1 }} footer={baseFooter} />);
+    expect(
+      document.querySelector('[data-visual-capture-surface="main"]')?.hasAttribute("data-history")
+    ).toBe(false);
+
+    rerender(
+      <AppShell
+        {...baseProps}
+        historyData={{ selectedOffset: 2, sourceMode: "file" }}
+        footer={baseFooter}
+      />
+    );
+    expect(
+      document.querySelector('[data-visual-capture-surface="main"]')?.hasAttribute("data-history")
+    ).toBe(false);
+  });
   it("prompts for a layout only when one is unknown and channels are present", () => {
     const onOpenSettings = vi.fn();
     const { rerender } = render(

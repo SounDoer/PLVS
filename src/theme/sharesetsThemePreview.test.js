@@ -34,7 +34,7 @@ describe("sharesets Theme preview contract", () => {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",
         formatVersion: 1,
-        semanticsVersion: 4,
+        semanticsVersion: 5,
         document: expect.objectContaining({ kind: "plvs-theme", name: "Sharesets Preview" }),
       },
       sharesetsPublication: { eligible: true, blockers: [] },

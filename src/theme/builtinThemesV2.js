@@ -13,7 +13,7 @@ export function isThemeId(id) {
 function makeBuiltin({ id, name, colorScheme, core, statusPresetId, frequencyPresetId }) {
   return {
     formatVersion: 2,
-    semanticsVersion: 4,
+    semanticsVersion: 5,
     id,
     name,
     colorScheme,

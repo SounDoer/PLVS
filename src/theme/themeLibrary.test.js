@@ -48,7 +48,7 @@ describe("Theme Control authoring validation", () => {
     });
     expect(document).toMatchObject({
       formatVersion: 2,
-      semanticsVersion: 4,
+      semanticsVersion: 5,
       name: "Studio",
       colorScheme: "dark",
     });

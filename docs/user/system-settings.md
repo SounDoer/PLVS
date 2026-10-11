@@ -96,8 +96,10 @@ active, but appear dimmed and cannot be armed until there is something to restor
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas
 has separate controls.
-Advanced opens with every role group collapsed. The **Transport** group controls the Live and
-Snapshot indicators in transport controls; panel snapshot traces remain under their module groups.
+Advanced opens with every role group collapsed. **Live & Snapshot** contains the shared History
+Primary and History Secondary data colours plus the two transport indicators. A module's History
+exception remains flat in that module's group, directly after its corresponding Live role; Auto is
+shown as **Follow History Primary** or **Follow History Secondary** there.
 
 **Advanced → Interface → Border Color** sets one opaque colour for ordinary interface separators
 and control outlines, including input fields. It does not change chart Grid or Guides colours;
@@ -136,13 +138,18 @@ Data, Interface and Status semantic colours, Frequency palette, and Intensity sc
 shell colours are tuned independently; in both, panels are the lighter surface on a darker
 Workspace, and the raised, control, and muted surfaces step away from the panel.
 Feedback messages, solid chips, and buttons use the Interface Palette colours directly. Loudness
-Momentary follows Primary Data and Short-term follows Secondary Data; their snapshot traces use the
-matching Primary and Secondary Snapshot colours. The Live indicator follows Status Critical, while
-the Snapshot indicator follows the same Primary Snapshot colour used by panels.
+Momentary follows Primary Data and Short-term follows Secondary Data; selected Snapshot traces use
+the shared History Primary and History Secondary colours. The Live indicator follows Status
+Critical, while the Snapshot indicator follows History Primary. Automatic History trace colours
+use available perceptual lightness headroom rather than assuming that every Dark Theme moves
+lighter and every Light Theme moves darker. Status, Intensity, Frequency, and monochrome data ink
+receive ordering-preserving History treatment automatically. Per-module Advanced overrides remain
+available for an intentional trace exception; the built-in Light and Dark themes use none.
 Measurement colors therefore keep the same meanings and visual identity in both appearances.
 
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft
-without changing Workspace data or layout. The module scenes include representative optional Grid
+without changing Workspace data or layout. Use its **Live / Snapshot** switch to compare the two
+data states; the switch is not saved in the Theme. The module scenes include representative optional Grid
 lines and always-visible Vectorscope guides so their resolved colours can be reviewed. Its
 Spectrum, Stereo Map, and classic Waveform examples show their fixed fill opacity, and the
 overview includes ordinary, selected, and disabled controls. These are illustrative scenes; use the

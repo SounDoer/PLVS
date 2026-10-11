@@ -464,9 +464,12 @@ function resolveColors(themeColors, paletteKey) {
   const secondary =
     parseColor(paletteKey === "snap" ? themeColors.secondarySnapshot : themeColors.secondary) ||
     FALLBACK_COLOR;
-  const warn = parseColor(themeColors.warning) || FALLBACK_COLOR;
-  const bad = parseColor(themeColors.critical) || FALLBACK_COLOR;
-  const good = parseColor(themeColors.good) || FALLBACK_COLOR;
+  const history = paletteKey === "snap";
+  const warn =
+    parseColor(history ? themeColors.warningHistory : themeColors.warning) || FALLBACK_COLOR;
+  const bad =
+    parseColor(history ? themeColors.criticalHistory : themeColors.critical) || FALLBACK_COLOR;
+  const good = parseColor(history ? themeColors.goodHistory : themeColors.good) || FALLBACK_COLOR;
   const grid = parseColor(themeColors.grid) || FALLBACK_COLOR;
   return {
     primary,

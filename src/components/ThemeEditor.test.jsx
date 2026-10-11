@@ -226,7 +226,7 @@ describe("ThemeEditor", () => {
     }
     const sectionNames = [
       "Interface",
-      "Transport",
+      "Live & Snapshot",
       "Level Meter",
       "Loudness",
       "Stats",
@@ -240,6 +240,35 @@ describe("ThemeEditor", () => {
     for (let index = 1; index < sections.length; index += 1) {
       expect(sections[index - 1].compareDocumentPosition(sections[index]) & 4).toBeTruthy();
     }
+
+    fireEvent.click(screen.getByRole("button", { name: "Live & Snapshot" }));
+    const sharedPrimary = screen.getByText("History Primary");
+    const sharedSecondary = screen.getByText("History Secondary");
+    const liveIndicator = screen.getByText("Live Indicator");
+    expect(sharedPrimary.compareDocumentPosition(sharedSecondary) & 4).toBeTruthy();
+    expect(sharedSecondary.compareDocumentPosition(liveIndicator) & 4).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Waveform" }));
+    const trace = screen.getByText("Trace");
+    const history = screen.getByText("History");
+    expect(trace.compareDocumentPosition(history) & 4).toBeTruthy();
+    expect(screen.getByLabelText("History mode").textContent).toContain("Follow History Primary");
+
+    fireEvent.click(screen.getByRole("button", { name: "Loudness" }));
+    fireEvent.click(screen.getByLabelText("Momentary History mode"));
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Follow History Primary",
+      "Follow History Secondary",
+      "Custom",
+    ]);
+    fireEvent.click(screen.getByRole("option", { name: "Follow History Secondary" }));
+
+    fireEvent.click(screen.getByLabelText("Short-term History mode"));
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Follow History Secondary",
+      "Follow History Primary",
+      "Custom",
+    ]);
   });
 
   it("searches Advanced roles without replacing the saved expansion state", () => {

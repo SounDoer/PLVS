@@ -129,7 +129,7 @@ describe("migrateV1Theme", () => {
 
     const migrated = migrateThemeDocument(semantics1);
     expect(migrated?.theme).toMatchObject({
-      semanticsVersion: 4,
+      semanticsVersion: 5,
       overrides: { "vectorscope.guides": { kind: "color", value: "#123456" } },
     });
     expect(migrated?.theme.overrides).not.toHaveProperty("vectorscope.grid");
@@ -138,7 +138,7 @@ describe("migrateV1Theme", () => {
     expect(migrated?.notes).toEqual([expect.objectContaining({ code: "clarify-grid-semantics" })]);
   });
 
-  it("moves Semantics 3 Auto roles to Semantics 4 while preserving explicit overrides", () => {
+  it("moves Semantics 3 Auto roles to the current semantics while preserving explicit overrides", () => {
     const current = migrateV1Theme(legacy());
     const semantics3 = {
       ...current,
@@ -151,11 +151,39 @@ describe("migrateV1Theme", () => {
 
     const migrated = migrateThemeDocument(semantics3);
     expect(migrated?.theme).toMatchObject({
-      semanticsVersion: 4,
+      semanticsVersion: 5,
       overrides: { "activity.live": { kind: "color", value: "#123456" } },
     });
     expect(migrated?.notes).toEqual([
       expect.objectContaining({ code: "redesign-automatic-theme-roles" }),
+    ]);
+  });
+
+  it("moves Semantics 4 to shared History roles without discarding module exceptions", () => {
+    const current = migrateV1Theme(legacy());
+    const semantics4 = {
+      ...current,
+      semanticsVersion: 4,
+      overrides: {
+        ...current.overrides,
+        "waveform.snapshot": { kind: "color", value: "#123456" },
+        "level.safe": { kind: "color", value: current.palettes.status.safe },
+        "level.warning": { kind: "color", value: "#654321" },
+      },
+    };
+
+    const migrated = migrateThemeDocument(semantics4);
+    expect(migrated?.theme).toMatchObject({
+      semanticsVersion: 5,
+      overrides: { "waveform.snapshot": { kind: "color", value: "#123456" } },
+    });
+    expect(migrated?.theme.overrides).not.toHaveProperty("level.safe");
+    expect(migrated?.theme.overrides["level.warning"]).toEqual({
+      kind: "color",
+      value: "#654321",
+    });
+    expect(migrated?.notes).toEqual([
+      expect.objectContaining({ code: "adopt-history-data-roles" }),
     ]);
   });
 
@@ -179,7 +207,7 @@ describe("migrateV1Theme", () => {
 
     expect(migrateV2Theme(old)).toMatchObject({
       formatVersion: 2,
-      semanticsVersion: 4,
+      semanticsVersion: 5,
       palettes: {
         status: { safe: current.palettes.status.safe },
         interface: {

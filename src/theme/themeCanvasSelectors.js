@@ -10,6 +10,10 @@ export function selectWaveformCanvasColors(resolved) {
     frequencyMid: resolved.canvas["waveform.frequencyMid"],
     frequencyHigh: resolved.canvas["waveform.frequencyHigh"],
     frequencyNeutral: resolved.canvas["waveform.frequencyNeutral"],
+    frequencyLowHistory: resolved.canvas["waveform.frequencyLowHistory"],
+    frequencyMidHistory: resolved.canvas["waveform.frequencyMidHistory"],
+    frequencyHighHistory: resolved.canvas["waveform.frequencyHighHistory"],
+    frequencyNeutralHistory: resolved.canvas["waveform.frequencyNeutralHistory"],
     centroid: resolved.canvas["waveform.centroid"],
   };
 }
@@ -24,14 +28,20 @@ export function selectStereoMapCanvasColors(resolved) {
     good: resolved.canvas["stereoMap.safeRange"],
     warning: resolved.canvas["stereoMap.warningRange"],
     critical: resolved.canvas["stereoMap.criticalRange"],
+    goodHistory: resolved.canvas["stereoMap.safeRangeHistory"],
+    warningHistory: resolved.canvas["stereoMap.warningRangeHistory"],
+    criticalHistory: resolved.canvas["stereoMap.criticalRangeHistory"],
   };
 }
 
 export function selectSpectrogramCanvasTheme(resolved) {
   return {
     intensityStops: resolved.roles["palette.intensity.stops"],
+    intensityStopsHistory: resolved.canvas["spectrogram.intensityHistory"],
     ink: resolved.canvas["spectrogram.ink"],
+    inkHistory: resolved.canvas["spectrogram.inkHistory"],
     surfaceInk: resolved.canvas["spectrogram.surfaceInk"],
+    surfaceInkHistory: resolved.canvas["spectrogram.surfaceInkHistory"],
     grid: resolved.canvas["spectrogram.grid"],
     axisLabel: resolved.canvas["spectrogram.axisLabel"],
     selection: resolved.canvas["spectrogram.selection"],

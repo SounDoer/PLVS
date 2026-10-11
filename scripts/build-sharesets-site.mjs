@@ -35,6 +35,16 @@ const THEME_PREVIEW_LABELS = {
   "semantic-overview": "Theme Colors",
 };
 
+const SHARESETS_SITE_ASSETS = [
+  "sharesets.css",
+  "sharesets.js",
+  "sharesets-detail.css",
+  "sharesets-detail.js",
+  "site-components.css",
+  "site-navigation.js",
+  "site-tokens.css",
+];
+
 export function detailGallery(type, previews) {
   if (type === "loudness") return [];
   if (type !== "themes") return previews.slice(0, 5);
@@ -320,6 +330,17 @@ async function gateSharesetsNavigation(siteDirectory, visible) {
   }
 }
 
+async function syncSharesetsSiteAssets(siteDirectory) {
+  if (!siteDirectory) return;
+  const target = join(siteDirectory, "assets");
+  await mkdir(target, { recursive: true });
+  await Promise.all(
+    SHARESETS_SITE_ASSETS.map((name) =>
+      copyFile(join("landing", "assets", name), join(target, name))
+    )
+  );
+}
+
 async function copyReleaseFiles(source, output, listing) {
   for (const release of listing.releases) {
     const target = join(output, "files", listing.id, `v${release.number}`);
@@ -370,10 +391,9 @@ export async function buildSharesetsSite({
     );
     await copyReleaseFiles(source, output, listing);
   }
-  await gateSharesetsNavigation(
-    siteDirectory ? resolve(siteDirectory) : null,
-    visibleListings.length > 0
-  );
+  const assembledSite = siteDirectory ? resolve(siteDirectory) : null;
+  await syncSharesetsSiteAssets(assembledSite);
+  await gateSharesetsNavigation(assembledSite, visibleListings.length > 0);
   return {
     outputDirectory: output,
     listingCount: listings.length,

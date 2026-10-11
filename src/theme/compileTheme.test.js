@@ -7,7 +7,7 @@ import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 function authoringTheme(overrides = {}) {
   return {
     formatVersion: 2,
-    semanticsVersion: 4,
+    semanticsVersion: 5,
     id: "test-theme",
     name: "Test Theme",
     colorScheme: "dark",
@@ -257,7 +257,7 @@ describe("compileTheme", () => {
       expect(roles[`interface.feedback.${key}`]).toBe(roles[`interface.${key}`]);
     }
     expect(roles["activity.live"]).toBe(roles["palette.status.critical"]);
-    expect(roles["activity.snapshot"]).toBe(roles["data.snapshot.primary"]);
+    expect(roles["activity.snapshot"]).toBe(roles["data.history.primary"]);
 
     const light = compileTheme({
       ...theme,
@@ -274,8 +274,30 @@ describe("compileTheme", () => {
 
     expect(roles["loudness.momentary"]).toBe(roles["data.primary"]);
     expect(roles["loudness.shortTerm"]).toBe(roles["data.secondary"]);
-    expect(roles["loudness.momentarySnapshot"]).toBe(roles["data.snapshot.primary"]);
-    expect(roles["loudness.shortTermSnapshot"]).toBe(roles["data.snapshot.secondary"]);
+    expect(roles["loudness.momentarySnapshot"]).toBe(roles["data.history.primary"]);
+    expect(roles["loudness.shortTermSnapshot"]).toBe(roles["data.history.secondary"]);
+  });
+
+  it("keeps monochrome History distinct and transforms ordered palettes automatically", () => {
+    const theme = authoringTheme({
+      core: {
+        ...authoringTheme().core,
+        workspace: "#000000",
+        surface: "#050505",
+        primaryData: "#ffffff",
+        secondaryData: "#777777",
+      },
+    });
+    const { roles } = compileTheme(theme);
+
+    expect(roles["data.history.primary"]).not.toBe(roles["data.primary"]);
+    expect(roles["data.history.primary"]).toMatch(/^#([0-9a-f]{2})\1\1$/i);
+    expect(roles["history.intensity"].map((stop) => stop.position)).toEqual(
+      roles["palette.intensity.stops"].map((stop) => stop.position)
+    );
+    expect(roles["history.intensity"].map((stop) => stop.color)).not.toEqual(
+      roles["palette.intensity.stops"].map((stop) => stop.color)
+    );
   });
 
   it("uses larger automatic surface steps for Dark than for Light", () => {

@@ -26,8 +26,8 @@ describe("sharesets Theme page presentation", () => {
         maximumAppVersion: null,
         label: "Requires PLVS 0.19.0 or later",
         formatVersion: 1,
-        semanticsVersion: 4,
-        technicalLabel: "Theme Format 1 · Semantics 4",
+        semanticsVersion: 5,
+        technicalLabel: "Theme Format 1 · Semantics 5",
       },
     });
   });
@@ -49,21 +49,21 @@ describe("sharesets Theme page presentation", () => {
   it("renders the user-facing minimum from the central release mapping", () => {
     const presentation = requireResolvedSharesetsThemePresentation(portable("plvs-dark"), {
       compatibility: {
-        "1:4": { minimumAppVersion: "0.19.0", maximumAppVersion: null },
+        "1:5": { minimumAppVersion: "0.19.0", maximumAppVersion: null },
       },
     });
 
     expect(presentation.compatibility).toMatchObject({
       status: "resolved",
       label: "Requires PLVS 0.19.0 or later",
-      technicalLabel: "Theme Format 1 · Semantics 4",
+      technicalLabel: "Theme Format 1 · Semantics 5",
     });
   });
 
   it("can close the range later without changing the Theme document", () => {
     const presentation = requireResolvedSharesetsThemePresentation(portable("plvs-light"), {
       compatibility: {
-        "1:4": { minimumAppVersion: "0.19.0", maximumAppVersion: "0.24.3" },
+        "1:5": { minimumAppVersion: "0.19.0", maximumAppVersion: "0.24.3" },
       },
     });
     expect(presentation.compatibility.label).toBe("Works with PLVS 0.19.0-0.24.3");
@@ -72,7 +72,7 @@ describe("sharesets Theme page presentation", () => {
   it("blocks public-page generation until the shipping release is known", () => {
     expect(() =>
       requireResolvedSharesetsThemePresentation(portable("plvs-dark"), {
-        compatibility: { "1:4": { minimumAppVersion: null, maximumAppVersion: null } },
+        compatibility: { "1:5": { minimumAppVersion: null, maximumAppVersion: null } },
       })
     ).toThrowError(expect.objectContaining({ code: "minimumAppVersionPending" }));
   });
