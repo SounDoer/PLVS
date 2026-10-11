@@ -98,6 +98,8 @@ import {
 } from "./workspaceLayout.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
+import { METHOD_TABLE } from "./handlers/index.js";
+import { panelResultPreset, viewResultPreset } from "./handlers/shared.js";
 import { createDomainRunner } from "./bridge/domains.js";
 import { awaitSettlement, createSettlementRegistry } from "./bridge/settlement.js";
 import {
@@ -168,21 +170,6 @@ function publicRecording(recording) {
   return {
     ...publicValue,
     audio: recording?.audio ?? { source: audioSource === "measuredSource" ? audioSource : "none" },
-  };
-}
-
-function panelResultPreset(presets, changed) {
-  const activeId = typeof presets?.activeId === "string" ? presets.activeId : null;
-  return {
-    activeId,
-    dirty: presets?.dirty === true || (activeId !== null && changed.length > 0),
-  };
-}
-
-function viewResultPreset(presets, changed) {
-  return {
-    activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
-    dirty: presets?.dirty === true || changed.length > 0,
   };
 }
 
@@ -619,6 +606,7 @@ export function useAgentControlBridge({
     };
 
     processRef.current = async (rawRequest) => {
+      const snap = inputsRef.current;
       const developmentFixtureRequest =
         developmentFixtures?.enabled && isDevelopmentFixtureMethod(rawRequest?.method);
       const normalized = developmentFixtureRequest
@@ -659,6 +647,21 @@ export function useAgentControlBridge({
               -32603
             );
           }
+        }
+        const entry = METHOD_TABLE[request.method];
+        if (entry) {
+          return await entry.run({
+            request,
+            requestId,
+            snap,
+            live: () => inputsRef.current,
+            clock,
+            settlement,
+            waiters,
+            visual: visualBook,
+            dockRequestContext,
+            flush: snap.flush,
+          });
         }
         if (isDevelopmentFixtureMethod(request.method)) {
           try {
