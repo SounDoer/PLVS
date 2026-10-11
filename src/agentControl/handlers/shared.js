@@ -1,4 +1,5 @@
 import { semanticFailure } from "../bridge/failures.js";
+import { buildDeviceInspection } from "../deviceControl.js";
 
 /**
  * The revision check every mutation starts with.
@@ -37,4 +38,17 @@ export function viewResultPreset(presets, changed) {
     activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
     dirty: presets?.dirty === true || changed.length > 0,
   };
+}
+
+export function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
+  return buildDeviceInspection(
+    { ...device.snapshot, requestedId },
+    {
+      ...device.live,
+      usingRequestedSelection:
+        requestedId === device.snapshot.requestedId
+          ? device.live?.usingRequestedSelection
+          : device.live?.state === "running",
+    }
+  );
 }

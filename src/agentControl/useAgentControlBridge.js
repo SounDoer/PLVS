@@ -24,7 +24,7 @@ import {
   isDevelopmentFixtureMethod,
   normalizeDevelopmentFixtureRequest,
 } from "./developmentFixtureProtocol.js";
-import { buildDeviceInspection, buildDeviceList, planDeviceSelection } from "./deviceControl.js";
+import { buildDeviceList, planDeviceSelection } from "./deviceControl.js";
 import {
   buildAxisInspection,
   buildAxisSchema,
@@ -33,11 +33,7 @@ import {
   planSharedAxisReset,
   planSharedAxisUpdate,
 } from "./axisControl.js";
-import {
-  buildAgentControlCapabilities,
-  buildAgentControlPanelSnapshot,
-  buildAgentControlSnapshot,
-} from "./appSnapshot.js";
+import { buildAgentControlPanelSnapshot } from "./appSnapshot.js";
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import {
@@ -50,7 +46,6 @@ import { buildMeasurementDescription, buildMeasurementInspection } from "./measu
 import { measurementPredicateMatches } from "./measurementPredicates.js";
 import { buildVisualDescription } from "./visualControl.js";
 import {
-  buildPublicView,
   buildViewDescription,
   buildViewInspection,
   planViewReset,
@@ -99,7 +94,7 @@ import {
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
 import { METHOD_TABLE } from "./handlers/index.js";
-import { panelResultPreset, viewResultPreset } from "./handlers/shared.js";
+import { deviceInspection, panelResultPreset, viewResultPreset } from "./handlers/shared.js";
 import { createDomainRunner } from "./bridge/domains.js";
 import { awaitSettlement, createSettlementRegistry } from "./bridge/settlement.js";
 import {
@@ -222,19 +217,6 @@ function compactLoudnessProfileState(state, previewDocument = null) {
     profiles,
     activeId: previewDocument ? null : activeLoudnessProfileId(state.profiles, state.active),
   };
-}
-
-function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
-  return buildDeviceInspection(
-    { ...device.snapshot, requestedId },
-    {
-      ...device.live,
-      usingRequestedSelection:
-        requestedId === device.snapshot.requestedId
-          ? device.live?.usingRequestedSelection
-          : device.live?.state === "running",
-    }
-  );
 }
 
 function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
@@ -696,22 +678,6 @@ export function useAgentControlBridge({
               error.details
             );
           }
-        }
-        if (request.method === "app.capabilities") {
-          const visualControl = inputsRef.current.visual;
-          const capabilityRuntime = visualControl
-            ? {
-                ...runtime,
-                visual: {
-                  screenshot: visualControl.platformCapabilities?.screenshot?.available === true,
-                  recording: visualControl.platformCapabilities?.recording?.available === true,
-                },
-              }
-            : runtime;
-          return {
-            requestId,
-            result: buildAgentControlCapabilities(capabilityRuntime, clock.current()),
-          };
         }
         if (request.method === "editorDraft.describe") {
           const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : "theme";
@@ -1592,82 +1558,6 @@ export function useAgentControlBridge({
               predicate,
               measurement: result.measurement,
             },
-          };
-        }
-        if (request.method === "app.wait") {
-          const activeBatch = clock.activeBatch();
-          const awaitingActiveBatch =
-            activeBatch?.bumped === true &&
-            request.params.afterRevision === activeBatch.startRevision;
-          if (clock.current() !== request.params.afterRevision && !awaitingActiveBatch) {
-            return {
-              requestId,
-              result: {
-                outcome: "changed",
-                matchedImmediately: true,
-                revision: clock.current(),
-              },
-            };
-          }
-          if (waiters.entries.size >= 4) {
-            throw semanticFailure(
-              "waitLimitReached",
-              "$",
-              "Too many long waits are active.",
-              -32070
-            );
-          }
-          const result = await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => {
-              waiters.entries.delete(requestId);
-              resolve({
-                outcome: "timeout",
-                revision: clock.current(),
-              });
-            }, request.params.timeoutMs);
-            waiters.entries.set(requestId, {
-              kind: "revision",
-              afterRevision: request.params.afterRevision,
-              timer,
-              resolve,
-              reject,
-            });
-          });
-          if (result === WAIT_CANCELLED) return null;
-          if (result.outcome === "timeout") {
-            throw semanticFailure(
-              "timeout",
-              "$.params.timeoutMs",
-              "The app revision did not change before the timeout.",
-              -32071,
-              {
-                afterRevision: request.params.afterRevision,
-                currentRevision: result.revision,
-              }
-            );
-          }
-          return { requestId, result };
-        }
-        if (request.method === "app.inspect") {
-          return {
-            requestId,
-            result: buildAgentControlSnapshot({
-              runtime,
-              revision: clock.current(),
-              workspace,
-              presets,
-              appearance: inputsRef.current.themeState.appearance,
-              loudnessProfile: {
-                activeId: activeLoudnessProfileId(loudnessProfiles, loudnessActive),
-              },
-              settings,
-              transport,
-              device: device ? deviceInspection(device) : null,
-              dock: buildDockSnapshot(dock, dockRequestContext),
-              view: buildPublicView(inputsRef.current.viewContext.view),
-              hasLoudnessReference,
-              analysisContext,
-            }),
           };
         }
 
