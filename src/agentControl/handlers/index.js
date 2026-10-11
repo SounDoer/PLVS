@@ -1,3 +1,4 @@
+import { measurementHandlers } from "./measurement.js";
 import { configHandlers } from "./config.js";
 import { libraryTransferHandlers } from "./libraryTransfer.js";
 import { presetHandlers } from "./preset.js";
@@ -34,4 +35,5 @@ export const METHOD_TABLE = Object.freeze({
   ...presetHandlers,
   ...libraryTransferHandlers,
   ...configHandlers,
+  ...measurementHandlers,
 });
