@@ -4,7 +4,7 @@ Website presentation rules and the shared source are documented in
 [`docs/website-design.md`](../docs/website-design.md).
 
 This directory is the initial local checkout of the static Sharesets Catalogue content input. It
-is deliberately outside `landing/`: website code reads it only through the versioned manifest and
+is deliberately outside `website/`: website code reads it only through the versioned manifest and
 an explicit content-directory argument, so this tree can move to a separate repository later.
 
 `catalogue/manifest.json` contains the curated Sharesets catalogue. Previews are generated from the
@@ -46,7 +46,7 @@ The static-site command generates the Sharesets root, all three family pages, st
 URLs, and an isolated copy of each validated download and preview. Its default output is the ignored
 `artifacts/sharesets-site/` directory; deployment passes an explicit assembled-site destination.
 
-The normal landing workflow publishes the Catalogue with an app Release. A separate manual
+The normal website workflow publishes the Catalogue with an app Release. A separate manual
 Sharesets workflow can publish a chosen content ref sooner, but it rebuilds the rest of the site
 from the latest stable Release tag. Its content checkout is isolated from the site checkout so the
 path can later point at a dedicated repository without changing the validator or builder commands.

@@ -65,8 +65,8 @@ New specs go to `history/specs/YYYY-MM-DD-<topic>-design.md` and new plans to
 
 ## Where the other documents live
 
-`README.md`, `CHANGELOG.md` and the website under `landing/` are written for people who do not
-know the project. The README and the landing page summarise the user guide and are reconciled
+`README.md`, `CHANGELOG.md` and the website under `website/` are written for people who do not
+know the project. The README and the website homepage summarise the user guide and are reconciled
 against the changelog at release time; the website docs page is generated from `user/`. `CONTRIBUTING.md` covers local development and CI. `AGENTS.md` carries the rules for
 agents, including where to write new documents.
 

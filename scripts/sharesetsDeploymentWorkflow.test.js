@@ -6,11 +6,11 @@ const workflow = read("publish-site");
 
 describe("Sharesets content deployment", () => {
   it("routes both entry points through the same publication gate", () => {
-    for (const name of ["deploy-landing", "deploy-sharesets"]) {
+    for (const name of ["deploy-website", "deploy-sharesets"]) {
       expect(read(name)).toContain("uses: ./.github/workflows/publish-site.yml");
       expect(read(name)).not.toContain("actions/deploy-pages");
     }
-    expect(read("deploy-landing")).toContain("site_ref: ${{ inputs.ref }}");
+    expect(read("deploy-website")).toContain("site_ref: ${{ inputs.ref }}");
     expect(read("deploy-sharesets")).toContain("content_ref: ${{ inputs.content_ref }}");
     expect(read("deploy-sharesets")).not.toContain("site_ref:");
     expect(read("deploy-sharesets")).not.toContain("bootstrap_sharesets:");
@@ -45,5 +45,12 @@ describe("Sharesets content deployment", () => {
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("path: _site/");
     expect(workflow).toContain("actions/deploy-pages@v5");
+  });
+
+  it("uses the same complete-site builder as local development", () => {
+    expect(workflow).toContain(
+      "node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site"
+    );
+    expect(workflow).not.toContain("cp -r site-source/website _site");
   });
 });

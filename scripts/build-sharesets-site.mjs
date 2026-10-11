@@ -330,13 +330,13 @@ async function gateSharesetsNavigation(siteDirectory, visible) {
   }
 }
 
-async function syncSharesetsSiteAssets(siteDirectory) {
+async function syncSharesetsSiteAssets(siteDirectory, websiteDirectory) {
   if (!siteDirectory) return;
   const target = join(siteDirectory, "assets");
   await mkdir(target, { recursive: true });
   await Promise.all(
     SHARESETS_SITE_ASSETS.map((name) =>
-      copyFile(join("landing", "assets", name), join(target, name))
+      copyFile(join(websiteDirectory, "assets", name), join(target, name))
     )
   );
 }
@@ -363,6 +363,7 @@ export async function buildSharesetsSite({
   contentDirectory,
   outputDirectory,
   siteDirectory,
+  websiteDirectory,
 } = {}) {
   const source = await readSharesetsSource(contentDirectory ?? resolve("sharesets", "catalogue"));
   const output = resolve(outputDirectory ?? resolve("artifacts", "sharesets-site"));
@@ -392,7 +393,7 @@ export async function buildSharesetsSite({
     await copyReleaseFiles(source, output, listing);
   }
   const assembledSite = siteDirectory ? resolve(siteDirectory) : null;
-  await syncSharesetsSiteAssets(assembledSite);
+  await syncSharesetsSiteAssets(assembledSite, resolve(websiteDirectory ?? "website"));
   await gateSharesetsNavigation(assembledSite, visibleListings.length > 0);
   return {
     outputDirectory: output,

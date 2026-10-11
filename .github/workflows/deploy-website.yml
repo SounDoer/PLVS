@@ -1,4 +1,4 @@
-name: Deploy Landing Page
+name: Deploy Website
 
 # release.yml dispatches this with the published tag. Both publication paths protect live history.
 on:

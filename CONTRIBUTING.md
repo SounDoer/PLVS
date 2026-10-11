@@ -18,6 +18,8 @@ npm run lint
 npm run typecheck        # tsc over src/ (checkJs); types live in JSDoc, there is no baseline
 npm test
 npm run build
+npm run website:dev
+npm run website:check
 npm run sharesets:validate -- path/to/item.plvspreset
 npm run sharesets:metadata -- path/to/item.plvspreset
 npx playwright install chromium # once per clone/worktree when generating Sharesets previews
@@ -112,6 +114,15 @@ form above is always a dry run: it validates the candidate records and new canon
 compares all existing Release records and bytes with the published baseline, and prints a concise
 JSON summary of additions, one-way withdrawals, and Listing copy edits. It writes nothing.
 
+The complete local website has one ordinary entry point: `npm run website:dev`. It assembles the
+homepage, generated user guide, Privacy Policy, and current Sharesets Catalogue in versioned
+directories under ignored `artifacts/website-dev/`, then serves the current successful build at
+`http://127.0.0.1:4173/`. The server owns that exact IPv4 port, watches all three inputs, keeps the
+last successful site after a build error, and reloads the browser after a successful rebuild. Use
+`npm run website:build` for a one-shot assembly under `artifacts/website/` and
+`npm run website:check` for assembly plus complete local-link and asset validation. `docs:site` and
+`sharesets:site` remain focused generator commands, not standalone complete-site previews.
+
 After reading that summary, repeat the same command with `--write`. This generates previews only for
 new Releases, validates the now-complete candidate and its immutable history, then creates a new
 review directory containing `site/`, `report.json`, and `report.md`. Preview IDs and paths belong in
@@ -139,7 +150,7 @@ whose content is older than an independent Sharesets update is rejected: synchro
 changes into the release tree, then retry. Never bypass validation by deleting the marker.
 
 The first Sharesets launch needs one explicit initialization. After the app Release is published,
-dispatch `deploy-landing.yml` with that released tag as `ref` and `bootstrap_sharesets=true`.
+dispatch `deploy-website.yml` with that released tag as `ref` and `bootstrap_sharesets=true`.
 Automatic release-triggered deployment uses the safe default (`false`) and stops if no marker exists.
 Bootstrap checks that the legacy live Catalogue is empty and uses the pinned empty commit above;
 it does not permit a populated markerless site. All later runs leave bootstrap off. An unreadable,

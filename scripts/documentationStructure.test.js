@@ -31,7 +31,7 @@ const collectMarkdown = (dir, skip) => {
 };
 
 /** Documents written for people who do not know the project. */
-const PUBLIC_DOCUMENTS = ["README.md", ...collectMarkdown("docs/user", []), "landing/index.html"];
+const PUBLIC_DOCUMENTS = ["README.md", ...collectMarkdown("docs/user", []), "website/index.html"];
 
 /** The body of a Markdown section, from its heading to the next heading of any level. */
 const sectionBody = (markdown, heading) => {
@@ -119,8 +119,9 @@ describe("public documents state what the code ships", () => {
   });
 
   it("states the macOS minimum version the bundle declares", () => {
-    // Prose ("macOS 14.2", "**macOS** 14.2") and the landing page's spec row.
-    const macosVersion = /macOS(?:\*\*)?(?: |<\/span><span class="spec-val">)(\d+\.\d+(?:\.\d+)?)/g;
+    // Prose ("macOS 14.2", "**macOS** 14.2") and the website homepage's spec row.
+    const macosVersion =
+      /macOS(?:\*\*)?(?: |<\/span><span class="spec-val">)(\d+\.\d+(?:\.\d+)?)/g;
     const { minimumSystemVersion } = JSON.parse(read("src-tauri", "tauri.conf.json")).bundle.macOS;
     const stated = PUBLIC_DOCUMENTS.flatMap((path) =>
       [...read(path).matchAll(macosVersion)].map(([, version]) => ({
@@ -129,7 +130,7 @@ describe("public documents state what the code ships", () => {
       }))
     );
 
-    expect(new Set(stated.map(({ path }) => path))).toContain("landing/index.html");
+    expect(new Set(stated.map(({ path }) => path))).toContain("website/index.html");
     expect(stated.filter(({ version }) => version !== minimumSystemVersion)).toEqual([]);
   });
 

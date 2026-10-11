@@ -12,8 +12,8 @@ const deployment = readFileSync(
 );
 
 describe("Privacy Policy", () => {
-  it("ships at /privacy/ with the recursively deployed landing site", () => {
-    expect(deployment).toContain("cp -r site-source/landing _site");
+  it("ships at /privacy/ through the complete website builder", () => {
+    expect(deployment).toContain("node scripts/build-website.mjs");
     expect(deployment).toContain("path: _site/");
     expect(html).toContain("<title>PLVS Privacy Policy</title>");
   });

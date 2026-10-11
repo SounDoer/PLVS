@@ -185,8 +185,8 @@ describe("Sharesets static site generator", () => {
           JSON.stringify({ schemaVersion: 1, listings: [] })
         );
       mkdirSync(join(site, "docs"));
-      writeFileSync(join(site, "index.html"), readFileSync("landing/index.html"));
-      writeFileSync(join(site, "docs", "index.html"), readFileSync("landing/docs/template.html"));
+      writeFileSync(join(site, "index.html"), readFileSync("website/index.html"));
+      writeFileSync(join(site, "docs", "index.html"), readFileSync("website/docs/template.html"));
       await buildSharesetsSite({
         contentDirectory: source,
         outputDirectory: output,
@@ -195,7 +195,7 @@ describe("Sharesets static site generator", () => {
       const home = readFileSync(join(site, "index.html"), "utf8");
       const docs = readFileSync(join(site, "docs", "index.html"), "utf8");
       expect(readFileSync(join(site, "assets", "sharesets-detail.css"), "utf8")).toBe(
-        readFileSync(join("landing", "assets", "sharesets-detail.css"), "utf8")
+        readFileSync(join("website", "assets", "sharesets-detail.css"), "utf8")
       );
       expect(home.includes('href="sharesets/"')).toBe(published);
       expect(docs.includes('href="../sharesets/"')).toBe(published);
@@ -203,10 +203,10 @@ describe("Sharesets static site generator", () => {
     }
   );
 
-  it("is part of release-bound landing site assembly", () => {
+  it("is part of release-bound website assembly", () => {
     const workflow = readFileSync(join(".github", "workflows", "publish-site.yml"), "utf8");
     expect(workflow).toContain(
-      "node site-source/scripts/build-sharesets-site.mjs content-source/sharesets/catalogue _site/sharesets _site"
+      "node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site"
     );
   });
 

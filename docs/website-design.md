@@ -5,12 +5,12 @@ runtime Theme tokens described in `design-tokens.md`.
 
 ## Shared source
 
-- `landing/assets/site-tokens.css` owns the approved website foundation: Inter, semantic text
+- `website/assets/site-tokens.css` owns the approved website foundation: Inter, semantic text
   and color roles, spacing, control height, and radii.
-- `landing/assets/site-components.css` owns shared controls, resource cards, and responsive
+- `website/assets/site-components.css` owns shared controls, resource cards, and responsive
   site navigation. `site-navigation.js` supplies the Menu interaction.
 - `scripts/site-components.mjs` renders shared navigation and resource-card markup.
-- `landing/assets/sharesets.css` and `sharesets.js` compose those pieces for catalogue browsing.
+- `website/assets/sharesets.css` and `sharesets.js` compose those pieces for catalogue browsing.
 
 The Sharesets root, category listing pages and all three resource detail families consume this
 shared source. Detail layouts remain in `sharesets-detail.css`; gallery and copy interactions remain

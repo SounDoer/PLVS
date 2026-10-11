@@ -15,7 +15,7 @@
   },
   "images": [
     {
-      "path": "landing/assets/raw/landing-channel-level-7-1-4.png",
+      "path": "website/assets/raw/landing-channel-level-7-1-4.png",
       "sha256": "c593924f9e9857da6064b73ff52e027e0cd743c4563713cb16f2e952f9a752c2",
       "width": 587,
       "height": 300,
@@ -24,7 +24,7 @@
       "sourceCandidate": "multichannel-levelMeter-70s.png"
     },
     {
-      "path": "landing/assets/raw/landing-channel-waveform-7-1-4.png",
+      "path": "website/assets/raw/landing-channel-waveform-7-1-4.png",
       "sha256": "8ba40ac11dc0fc7f61080e15f7e43c154933897af056580d5550dda74e83aa6b",
       "width": 587,
       "height": 291,
@@ -53,8 +53,8 @@
   "export": {
     "format": "lossless WebP",
     "files": [
-      "landing/assets/landing-channel-level-7-1-4.webp",
-      "landing/assets/landing-channel-waveform-7-1-4.webp"
+      "website/assets/landing-channel-level-7-1-4.webp",
+      "website/assets/landing-channel-waveform-7-1-4.webp"
     ]
   }
 }

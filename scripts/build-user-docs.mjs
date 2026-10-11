@@ -1,19 +1,19 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { Marked } from "marked";
 
 /**
  * Renders the Markdown user guide in `docs/user/` into the website's docs page. The Markdown is the
- * source; `landing/docs/template.html` only supplies the page around it. Chapter order comes from
+ * source; `website/docs/template.html` only supplies the page around it. Chapter order comes from
  * the numbered list under "## Chapters" in `docs/user/README.md`.
  *
- * Usage: node scripts/build-user-docs.mjs [output]   (default: landing/docs/index.html)
+ * Usage: node scripts/build-user-docs.mjs [output]   (default: artifacts/docs-site/index.html)
  */
 
 const GUIDE_DIR = join("docs", "user");
-const TEMPLATE = join("landing", "docs", "template.html");
+const TEMPLATE = join("website", "docs", "template.html");
 const REPO_BLOB = "https://github.com/SounDoer/PLVS/blob/main/docs/user/";
 
 const escapeHtml = (text) =>
@@ -91,7 +91,8 @@ export function buildDocsPage(root = process.cwd()) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const output = process.argv[2] ?? join("landing", "docs", "index.html");
+  const output = process.argv[2] ?? join("artifacts", "docs-site", "index.html");
+  mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, buildDocsPage());
   console.log(`Wrote ${output}`);
 }

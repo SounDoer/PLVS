@@ -89,8 +89,8 @@ Until then, ignore this section.
 │  - docs/user/: every user-visible change is described in its    │
 │    chapter, and no claim contradicts what now ships             │
 │  - README.md highlights still summarise the product             │
-│  - landing/index.html selling points still hold                 │
-│  - landing/assets screenshots: retake if the UI visibly changed │
+│  - website/index.html selling points still hold                 │
+│  - website/assets screenshots: retake if the UI visibly changed │
 │  - A changed promise or non-goal also updates docs/prd.md       │
 │  The website deploys from the tag after the release publishes.  │
 └─────────────────────────────────────────────────────────────────┘
@@ -127,7 +127,7 @@ Until then, ignore this section.
 │  - Assemble every asset and latest.json in a Draft Release      │
 │  - Publish once, locking the tag and assets                     │
 │  - Verify the immutable Release attestation                     │
-│  - Dispatch the website deployment (deploy-landing)             │
+│  - Dispatch the website deployment (deploy-website)             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -625,7 +625,7 @@ cannot cover:
    immutable-release policy locks the tag and assets at this point.
 7. The workflow requires the published Release's API `immutable` field to be
    true and verifies its GitHub Release attestation.
-8. Only then does `deploy-landing` dispatch the website deployment from the
+8. Only then does `deploy-website` dispatch the website deployment from the
    published tag.
 
 > The installation section (SmartScreen / Gatekeeper bypass, download
@@ -654,12 +654,12 @@ The Draft cannot publish unless all five assets are present and valid. This
 prevents a platform failure or updater-manifest failure from leaving a partial
 public Release.
 
-**Check that `deploy-landing` succeeded, then that its dispatched "Deploy Landing
+**Check that `deploy-website` succeeded, then that its dispatched "Deploy Website
 Page" run did.** A failure there also leaves the Release looking complete while the
 website keeps describing the previous version. Redeploy from the tag with:
 
 ```bash
-gh workflow run deploy-landing.yml -f ref=vX.Y.Z
+gh workflow run deploy-website.yml -f ref=vX.Y.Z
 ```
 
 ---

@@ -62,7 +62,7 @@ jobs:
         id: baseline
         env:
           ALLOW_SHARESETS_BOOTSTRAP: ${{ inputs.bootstrap_sharesets }}
-        run: node site-source/scripts/sharesets-publication.mjs resolve site-source/landing/CNAME
+        run: node site-source/scripts/sharesets-publication.mjs resolve site-source/website/CNAME
       - name: Check out published Sharesets content
         uses: actions/checkout@v7
         with:
@@ -82,13 +82,9 @@ jobs:
         run: node site-source/scripts/sharesets-catalogue-update.mjs published-content-source/sharesets/catalogue content-source/sharesets/catalogue
       - name: Assemble the website and record its content identity
         run: |
-          cp -r site-source/landing _site
-          find _site -type f -name '*.test.*' -delete
-          (cd site-source && node scripts/build-user-docs.mjs ../_site/docs/index.html)
-          node site-source/scripts/build-sharesets-site.mjs content-source/sharesets/catalogue _site/sharesets _site
+          (cd site-source && node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site)
           candidate_sha=$(git -C content-source rev-parse HEAD)
           node site-source/scripts/sharesets-publication.mjs write _site/sharesets/publication.json "$candidate_sha"
-          rm _site/docs/template.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

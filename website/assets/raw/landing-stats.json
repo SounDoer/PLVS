@@ -16,7 +16,7 @@
   "sourceRun": "artifacts/marketing/stats-group-1791456735292/capture-report.json",
   "sourceCandidate": "stereo-stats-70s.png",
   "image": {
-    "path": "landing/assets/raw/landing-stats.png",
+    "path": "website/assets/raw/landing-stats.png",
     "sha256": "daa1435f03a89df8179769e6be438fad339d0604bd099cfed5833dec5c31868f",
     "width": 270,
     "height": 434
@@ -36,6 +36,6 @@
   },
   "export": {
     "format": "lossless WebP",
-    "path": "landing/assets/landing-stats.webp"
+    "path": "website/assets/landing-stats.webp"
   }
 }

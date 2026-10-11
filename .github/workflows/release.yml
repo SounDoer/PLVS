@@ -414,7 +414,7 @@ jobs:
             sleep 5
           done
 
-  deploy-landing:
+  deploy-website:
     needs: publish-release
     runs-on: ubuntu-latest
     permissions:
@@ -425,4 +425,4 @@ jobs:
       TAG: v${{ inputs.version }}
     steps:
       - name: Dispatch the website deployment for the published tag
-        run: gh workflow run deploy-landing.yml --repo "$GITHUB_REPOSITORY" --ref main -f ref="$TAG"
+        run: gh workflow run deploy-website.yml --repo "$GITHUB_REPOSITORY" --ref main -f ref="$TAG"

@@ -29,8 +29,8 @@
     "requiredStatuses": { "integrated": "warn", "shortTermMax": "warn", "truePeak": "fail" }
   },
   "publication": {
-    "webp": "landing/assets/landing-hero.webp",
-    "png": "landing/assets/raw/landing-hero.png",
-    "metadata": "landing/assets/raw/landing-hero.json"
+    "webp": "website/assets/landing-hero.webp",
+    "png": "website/assets/raw/landing-hero.png",
+    "metadata": "website/assets/raw/landing-hero.json"
   }
 }

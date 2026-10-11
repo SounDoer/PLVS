@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it, vi } from "vitest";
 import { releaseAssetNames } from "./release-assets.mjs";
 
-const html = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+const html = readFileSync(new URL("../website/index.html", import.meta.url), "utf8");
 const releaseScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
 
 async function renderRelease(payload, { ok = true } = {}) {
@@ -21,7 +21,7 @@ async function renderRelease(payload, { ok = true } = {}) {
   return dom.window.document;
 }
 
-describe("landing release links", () => {
+describe("website release links", () => {
   it("resolves the installer and portable ZIP from real release asset names", async () => {
     const names = releaseAssetNames("0.16.0");
     const assets = [

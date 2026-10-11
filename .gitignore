@@ -35,6 +35,3 @@ soak-*.jsonl
 .claude/
 .codex/
 .superpowers/
-
-# Generated from docs/user by scripts/build-user-docs.mjs
-landing/docs/index.html

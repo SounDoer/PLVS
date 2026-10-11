@@ -35,7 +35,10 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
 | `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the dev app running.         |
 | `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                    |
-| `npm run docs:site`                    | Render `docs/user/` into `landing/docs/index.html` to preview the website docs.   |
+| `npm run website:dev`                  | Build, watch and serve the complete website at `127.0.0.1:4173`.                  |
+| `npm run website:build`                | Assemble the complete static website under `artifacts/website/`.                  |
+| `npm run website:check`                | Assemble and validate all local website pages, links and assets.                  |
+| `npm run docs:site`                    | Render `docs/user/` into an isolated ignored Docs artifact.                       |
 
 ## Agent Control
 
@@ -96,7 +99,7 @@ with the code beside them.
 **A change to user-visible behaviour updates the matching `docs/user/` chapter in the same
 commit.** The user guide is the single source for how PLVS behaves; the website renders it and is
 deployed only when a version is released, so writing it early publishes nothing. The `README.md`
-highlights, the landing page and its screenshots are summaries, reconciled at release by
+highlights, the website homepage and its screenshots are summaries, reconciled at release by
 `.agents/skills/plvs-release` Step 4b. `docs/prd.md` states intent and boundaries; a new capability reaches
 it only when it changes a promise or a non-goal.
 
