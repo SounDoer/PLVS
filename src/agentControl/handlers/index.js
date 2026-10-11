@@ -1,3 +1,4 @@
+import { panelHandlers } from "./panel.js";
 import { axisHandlers } from "./axis.js";
 import { viewHandlers } from "./view.js";
 import { settingsHandlers } from "./settings.js";
@@ -14,4 +15,5 @@ export const METHOD_TABLE = Object.freeze({
   ...settingsHandlers,
   ...viewHandlers,
   ...axisHandlers,
+  ...panelHandlers,
 });
