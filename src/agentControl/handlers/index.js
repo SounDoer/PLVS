@@ -1,3 +1,4 @@
+import { themeHandlers } from "./theme.js";
 import { dockHandlers } from "./dock.js";
 import { deviceHandlers } from "./device.js";
 import { transportHandlers } from "./transport.js";
@@ -24,4 +25,5 @@ export const METHOD_TABLE = Object.freeze({
   ...transportHandlers,
   ...deviceHandlers,
   ...dockHandlers,
+  ...themeHandlers,
 });
