@@ -36,11 +36,6 @@ import {
 import { buildAgentControlPanelSnapshot } from "./appSnapshot.js";
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
-import {
-  buildModuleDescription,
-  buildModuleDescriptionContext,
-  buildModuleList,
-} from "./moduleControl.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { buildMeasurementDescription, buildMeasurementInspection } from "./measurementControl.js";
 import { measurementPredicateMatches } from "./measurementPredicates.js";
@@ -3481,38 +3476,6 @@ export function useAgentControlBridge({
             );
           }
           return { requestId, result };
-        }
-
-        if (request.method === "module.list") {
-          return {
-            requestId,
-            result: {
-              revision: clock.current(),
-              modules: buildModuleList(),
-            },
-          };
-        }
-
-        if (request.method === "module.describe") {
-          const context = { ...analysisContext, hasLoudnessReference };
-          const module = buildModuleDescription(request.params.moduleId, context);
-          if (!module) {
-            throw semanticFailure(
-              "moduleNotFound",
-              "$.params.moduleId",
-              `Module ${request.params.moduleId} was not found.`,
-              -32011
-            );
-          }
-          return {
-            requestId,
-            result: {
-              revision: clock.current(),
-              schemaBasis: "defaultControls",
-              context: buildModuleDescriptionContext(analysisContext, hasLoudnessReference),
-              module,
-            },
-          };
         }
 
         if (request.method === "panel.describe") {
