@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { UI_PREFERENCES } from "../preferences/data.js";
+import { resolveInterfacePreferencesForSurface } from "../preferences/interfaceSize.js";
 import {
   DOCK_DEFAULT_HEIGHT,
   DOCK_HEADER_HEIGHT,
@@ -61,9 +62,18 @@ describe("dock sizing", () => {
 
 describe("Dock header height", () => {
   it("is what the shell header classes produce at the Small profile accessories are pinned to", () => {
-    const { control, header } = UI_PREFERENCES.layout;
     // --ui-shell-h is --ui-control-h + 4px; --ui-header-pad-y applies above and below.
-    expect(control.heightPx + 4 + 2 * header.paddingYRem * 16).toBe(DOCK_HEADER_HEIGHT);
+    const shellHeaderHeight = (/** @type {string} */ surface) => {
+      const { control, header } = resolveInterfacePreferencesForSurface(
+        UI_PREFERENCES,
+        "extra-large",
+        surface
+      ).layout;
+      return control.heightPx + 4 + 2 * header.paddingYRem * 16;
+    };
+    expect(shellHeaderHeight("dock-header")).toBe(DOCK_HEADER_HEIGHT);
+    // The same setting does grow the main window's header, so the pinning is what holds this.
+    expect(shellHeaderHeight("main")).toBeGreaterThan(DOCK_HEADER_HEIGHT);
   });
 
   it("matches the native window height Rust gives the header", () => {

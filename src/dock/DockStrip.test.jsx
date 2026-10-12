@@ -98,6 +98,18 @@ describe("DockStrip", () => {
     expect(entry.getAttribute("aria-pressed")).toBe("true");
   });
 
+  it.each([
+    ["bottom", false, "up"],
+    ["bottom", true, "down"],
+    ["top", false, "down"],
+    ["top", true, "up"],
+  ])("points the entry arrow for edge %s, open %s: %s", (edge, toolbarOpen, direction) => {
+    renderStrip({ edge, toolbarOpen });
+
+    const icon = screen.getByRole("button", { name: /toolbar$/ }).querySelector("svg");
+    expect(icon.dataset.direction).toBe(direction);
+  });
+
   it("keeps the entry out of the module row", () => {
     renderStrip();
 

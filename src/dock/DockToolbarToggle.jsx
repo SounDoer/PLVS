@@ -10,11 +10,12 @@ import { cn } from "@/lib/utils";
  */
 export function DockToolbarToggle({ edge, open, onToggle }) {
   // Towards where the toolbar will appear while closed, back at the strip while open.
-  const Icon = (edge === "bottom") !== open ? ChevronUp : ChevronDown;
+  const direction = (edge === "bottom") !== open ? "up" : "down";
+  const Icon = direction === "up" ? ChevronUp : ChevronDown;
   const tip = open ? "Hide Toolbar" : "Show Toolbar";
   return (
     <IconButton
-      icon={<Icon className="size-3" />}
+      icon={<Icon className="size-3" data-direction={direction} />}
       tip={tip}
       tipSide="left"
       aria-label={tip.toLowerCase()}

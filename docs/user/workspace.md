@@ -68,12 +68,13 @@ the screen, so the meters stay visible while you work in another app. Click the 
 end of the strip to show the Dock toolbar, where you can start and stop measuring, clear the
 session, switch the Loudness Profile, edit which modules the strip shows, and manage Presets. The
 toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
-the pointer over the strip never opens or closes it. On Windows, the strip can also reserve its
-screen space so maximised windows do not cover it. On macOS, it starts as an overlay within the
-monitor work area, leaving room for the menu bar and system Dock. Enable **Reserve Screen Space** in
-the Dock toolbar to automatically move or shrink the active application's window away from the strip.
-Grant PLVS **Accessibility** access in System Settings → Privacy & Security, then enable the action
-again. Without permission, Dock remains an overlay.
+the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
+stays open until the error clears. On Windows, the strip can also reserve its screen space so
+maximised windows do not cover it. On macOS, it starts as an overlay within the monitor work area,
+leaving room for the menu bar and system Dock. Enable **Reserve Screen Space** in the Dock toolbar
+to automatically move or shrink the active application's window away from the strip. Grant PLVS
+**Accessibility** access in System Settings → Privacy & Security, then enable the action again.
+Without permission, Dock remains an overlay.
 
 macOS avoidance waits for the window to settle after dragging or resizing. It affects standard,
 resizable foreground windows primarily on the Dock's display; full-screen, minimized and unsupported

@@ -172,16 +172,17 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     set_rect(header, rects.header)?;
     show_or_hide(header, header_visible, false)?;
   }
-  if let Some(editor) = &editor {
-    set_rect(editor, rects.editor)?;
-    show_or_hide(editor, editor_visible, true)?;
-  }
   // Hiding the window that holds focus hands focus to whatever is behind PLVS. The
-  // frontend would read that as the user leaving and close the toolbar under them.
+  // frontend would read that as the user leaving and close the toolbar under them, so
+  // the header takes focus first and no other application is activated in between.
   if editor_had_focus && !editor_visible && header_visible {
     if let Some(header) = &header {
       let _ = header.set_focus();
     }
+  }
+  if let Some(editor) = &editor {
+    set_rect(editor, rects.editor)?;
+    show_or_hide(editor, editor_visible, true)?;
   }
   Ok(())
 }

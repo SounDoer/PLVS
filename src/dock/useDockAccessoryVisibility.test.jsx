@@ -81,6 +81,43 @@ describe("useDockAccessoryVisibility", () => {
     expect(result.current.headerVisible).toBe(false);
   });
 
+  it("ignores a held Escape, so one long press cannot close the editor and the toolbar", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.openEditor("modules"));
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape", repeat: true });
+
+    expect(result.current.editorView).toBeNull();
+    expect(result.current.headerVisible).toBe(true);
+  });
+
+  it("leaves an Escape that something else already handled", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    const consume = (event) => event.preventDefault();
+    document.addEventListener("keydown", consume, true);
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    document.removeEventListener("keydown", consume, true);
+
+    expect(result.current.headerVisible).toBe(true);
+  });
+
+  it("knows the strip already has focus when Dock becomes active", () => {
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+
+    // No strip focus event ever fired; a header blur alone must not read as leaving PLVS.
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: false }));
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(result.current.headerVisible).toBe(true);
+    hasFocus.mockRestore();
+  });
+
   it("closes once focus has left every Dock window for the grace period", () => {
     const { result } = renderVisibility();
     act(() => result.current.toggleToolbar());

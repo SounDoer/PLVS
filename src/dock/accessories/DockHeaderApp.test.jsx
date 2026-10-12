@@ -14,6 +14,7 @@ describe("DockHeaderApp", () => {
     const { unmount } = render(<DockHeaderApp />);
 
     fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape", repeat: true });
     fireEvent.keyDown(window, { key: "Enter" });
     unmount();
     fireEvent.keyDown(window, { key: "Escape" });

@@ -202,8 +202,11 @@ export function useDockAccessoryVisibility({
     const onFocus = () => reportFocus("strip", true);
     const onBlur = () => reportFocus("strip", false);
     const onKeyDown = (event) => {
-      if (event.key === "Escape") dismiss();
+      // A held key repeats: closing an editor must not run on into closing the toolbar.
+      if (event.key === "Escape" && !event.repeat && !event.defaultPrevented) dismiss();
     };
+    // Dock can become active while this window already has focus; no focus event follows.
+    focusRef.current.strip = document.hasFocus();
     window.addEventListener("focus", onFocus);
     window.addEventListener("blur", onBlur);
     window.addEventListener("keydown", onKeyDown);

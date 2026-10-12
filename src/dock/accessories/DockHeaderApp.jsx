@@ -9,7 +9,9 @@ export function DockHeaderApp() {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "Escape") action("dismiss-toolbar");
+      if (event.key === "Escape" && !event.repeat && !event.defaultPrevented) {
+        action("dismiss-toolbar");
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

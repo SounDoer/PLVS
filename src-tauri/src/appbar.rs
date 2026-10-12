@@ -84,7 +84,7 @@ fn state() -> &'static Mutex<AppBarState> {
   })
 }
 
-pub fn is_yielded() -> bool {
+fn is_yielded() -> bool {
   YIELDED.load(Ordering::Relaxed)
 }
 
