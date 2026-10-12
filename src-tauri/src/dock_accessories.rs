@@ -28,6 +28,10 @@ fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   .always_on_top(true)
   .skip_taskbar(true)
   .shadow(false);
+  // Switching between the strip, toolbar and editor must not consume a click
+  // solely to activate the destination window on macOS.
+  #[cfg(target_os = "macos")]
+  let builder = builder.accept_first_mouse(true);
   #[cfg(any(target_os = "windows", target_os = "macos"))]
   let builder = builder.transparent(true);
   builder
