@@ -14,7 +14,6 @@ import {
   agentControlFrontendReadyCommand,
   agentControlRespondCommand,
   captureVisualScreenshot,
-  cursorOverDockSurfaces,
   getUiFrameDiagnostics,
   getVisualCaptureCapabilities,
   listCaptureApplications,
@@ -248,11 +247,6 @@ describe("agent-control command seam", () => {
 });
 
 describe("dock command seam", () => {
-  it("asks Rust to reconcile the cursor against live Dock window geometry", async () => {
-    await cursorOverDockSurfaces();
-    expect(invoke).toHaveBeenCalledWith("cursor_over_dock_surfaces");
-  });
-
   it("reads the native-authoritative Dock state", async () => {
     await getDockState();
     expect(invoke).toHaveBeenCalledWith("get_dock_state");

@@ -125,67 +125,6 @@ pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
   }
 }
 
-fn point_inside(bounds: WindowBounds, x: f64, y: f64) -> bool {
-  x >= bounds.x as f64
-    && x < (bounds.x as f64 + bounds.width as f64)
-    && y >= bounds.y as f64
-    && y < (bounds.y as f64 + bounds.height as f64)
-}
-
-fn visible_window_contains<R: tauri::Runtime>(
-  window: &WebviewWindow<R>,
-  x: f64,
-  y: f64,
-) -> Result<bool, String> {
-  if !window
-    .is_visible()
-    .map_err(|e| format!("{} visibility: {e}", window.label()))?
-  {
-    return Ok(false);
-  }
-  let position = window
-    .outer_position()
-    .map_err(|e| format!("{} position: {e}", window.label()))?;
-  let size = window
-    .inner_size()
-    .map_err(|e| format!("{} size: {e}", window.label()))?;
-  Ok(point_inside(
-    WindowBounds {
-      x: position.x,
-      y: position.y,
-      width: size.width,
-      height: size.height,
-      is_maximized: false,
-    },
-    x,
-    y,
-  ))
-}
-
-#[tauri::command]
-pub fn cursor_over_dock_surfaces<R: tauri::Runtime>(
-  window: WebviewWindow<R>,
-) -> Result<bool, String> {
-  // The strip sits behind a full-screen window; the cursor crossing its
-  // rectangle belongs to that window and must not raise the header over it.
-  #[cfg(target_os = "windows")]
-  if crate::appbar::is_yielded() {
-    return Ok(false);
-  }
-  let app = window.app_handle();
-  let cursor = app
-    .cursor_position()
-    .map_err(|e| format!("dock cursor position: {e}"))?;
-  for label in ["main", DOCK_HEADER_LABEL, DOCK_EDITOR_LABEL] {
-    if let Some(surface) = app.get_webview_window(label) {
-      if visible_window_contains(&surface, cursor.x, cursor.y)? {
-        return Ok(true);
-      }
-    }
-  }
-  Ok(false)
-}
-
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub fn set_dock_accessories<R: tauri::Runtime>(
@@ -226,37 +165,23 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     editor_anchor_x,
   );
 
-  if let Some(header) = header {
-    set_rect(&header, rects.header)?;
-    show_or_hide(&header, header_visible, false)?;
+  let editor_had_focus = editor
+    .as_ref()
+    .is_some_and(|editor| editor.is_focused().unwrap_or(false));
+  if let Some(header) = &header {
+    set_rect(header, rects.header)?;
+    show_or_hide(header, header_visible, false)?;
   }
-  if let Some(editor) = editor {
-    set_rect(&editor, rects.editor)?;
-    show_or_hide(&editor, editor_visible, true)?;
+  if let Some(editor) = &editor {
+    set_rect(editor, rects.editor)?;
+    show_or_hide(editor, editor_visible, true)?;
   }
-  Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  fn bounds(x: i32, y: i32, width: u32, height: u32) -> WindowBounds {
-    WindowBounds {
-      x,
-      y,
-      width,
-      height,
-      is_maximized: false,
+  // Hiding the window that holds focus hands focus to whatever is behind PLVS. The
+  // frontend would read that as the user leaving and close the toolbar under them.
+  if editor_had_focus && !editor_visible && header_visible {
+    if let Some(header) = &header {
+      let _ = header.set_focus();
     }
   }
-
-  #[test]
-  fn point_inside_uses_physical_half_open_window_bounds() {
-    let rect = bounds(-1280, 900, 1280, 72);
-    assert!(point_inside(rect, -1280.0, 900.0));
-    assert!(point_inside(rect, -0.1, 971.9));
-    assert!(!point_inside(rect, 0.0, 930.0));
-    assert!(!point_inside(rect, -640.0, 972.0));
-  }
+  Ok(())
 }

@@ -500,10 +500,16 @@ work area, so opening the toolbar never reflows maximized windows.
 
 While the strip is on screen it stays registered with Shell even as an overlay: `ABM_NEW` without
 `ABM_SETPOS` reserves nothing but still delivers `ABN_FULLSCREENAPP`, which Shell sends only to
-registered appbars and only for the appbar's own monitor. On that notification `appbar.rs` moves
-the strip to the bottom of the z-order, which drops its topmost style, and restores it when the
-full-screen window goes away. The hover poll reports "not over Dock" meanwhile, so the cursor
-crossing the hidden strip's rectangle cannot raise the header over the full-screen window.
+registered appbars and only for the appbar's own monitor. On that notification `appbar.rs` moves the
+strip to the bottom of the z-order, which drops its topmost style, and restores it when the
+full-screen window goes away. Nothing raises the header meanwhile: it is opened only from the
+strip's entry, and the full-screen window taking the foreground closes a toolbar that was already
+open, through the same focus rule that closes it when the user clicks another application.
+
+Toolbar visibility is owned by `useDockAccessoryVisibility`: an explicit open flag, or an open
+editor, or an error notice. Each of the three WebViews reports its own window focus — the strip
+directly, the accessories over `dock-accessory://focus` — and the toolbar closes once none of them
+has had focus for a short grace period. Pointer position is not an input.
 
 On macOS, `macos_dock.rs` and `native/macos/dock_reservation_bridge.m` provide opt-in AX avoidance
 of the foreground application's settled standard window. AppKit snapshots stay on main; AX calls

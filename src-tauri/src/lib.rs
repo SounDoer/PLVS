@@ -272,7 +272,6 @@ pub fn run() {
       dock::set_dock_suspended,
       dock::set_dock_height,
       dock_accessories::set_dock_accessories,
-      dock_accessories::cursor_over_dock_surfaces,
       glass_effect::set_glass_effect,
       taskbar_theme::taskbar_color_scheme,
       window_chrome::sync_main_window_chrome,
