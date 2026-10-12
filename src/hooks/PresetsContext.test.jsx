@@ -73,7 +73,7 @@ describe("PresetsProvider", () => {
     expect(presets.list[0].tree).toEqual(workspace.tree);
     expect(presets.list[0].panelControlsById).toEqual(workspace.panelControlsById);
     const starter = settingsStore.read().loudnessProfiles.profiles[0];
-    expect(starter.name).toBe("Default");
+    expect(starter.name).toBe("PLVS Default");
     expect(parseSelection(presets.list[0].loudnessProfileActive)).toEqual({
       kind: "profile",
       id: starter.id,

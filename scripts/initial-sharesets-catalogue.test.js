@@ -97,7 +97,7 @@ describe("initial Sharesets Catalogue", () => {
     ).document;
     const portable = loudnessProfileToPortable(DEFAULT_LOUDNESS_PROFILE);
 
-    expect(profile.title).toBe("Default");
+    expect(profile.title).toBe("PLVS Default");
     expect(profile.included.sourceId).toBe("default");
     expect(profile.included.item).toEqual({ id: "default", ...portable });
     expect(profile.included.metadata.content.contentHash).toBe(

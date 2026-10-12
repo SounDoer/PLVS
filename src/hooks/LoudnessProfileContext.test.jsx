@@ -96,7 +96,7 @@ describe("cold initialization", () => {
     await waitFor(() => expect(settingsStore.read().loudnessProfiles?.profiles).toHaveLength(1));
 
     const expectedStarter = {
-      name: "Default",
+      name: "PLVS Default",
       referenceLufs: -23,
       rules: [
         { metricId: "momentary", op: ">", value: -6, severity: "warn" },

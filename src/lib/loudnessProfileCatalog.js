@@ -104,7 +104,7 @@ export const DEFAULT_LOUDNESS_PROFILE_ID = "default";
  */
 export const DEFAULT_LOUDNESS_PROFILE = Object.freeze({
   id: DEFAULT_LOUDNESS_PROFILE_ID,
-  name: "Default",
+  name: "PLVS Default",
   referenceLufs: -23,
   rules: Object.freeze(
     [

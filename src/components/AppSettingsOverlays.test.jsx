@@ -702,11 +702,11 @@ describe("Loudness Profile editor wiring", () => {
 
   it("opens the panel on the draft the popover started", () => {
     renderWired();
-    fireEvent.click(screen.getByLabelText("Edit Default rules"));
+    fireEvent.click(screen.getByLabelText("Edit PLVS Default rules"));
 
     const editor = screen.getByRole("dialog", { name: "Loudness Profile editor" });
     expect(editor).toBeTruthy();
-    expect(within(editor).getByText("Default")).toBeTruthy();
+    expect(within(editor).getByText("PLVS Default")).toBeTruthy();
   });
 
   it("repaints what Stats reads as the panel is edited", () => {

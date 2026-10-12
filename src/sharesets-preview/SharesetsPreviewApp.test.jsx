@@ -158,7 +158,8 @@ describe("Sharesets preview browser harness", () => {
     expect(screen.getByText("Source")).toBeTruthy();
     expect(screen.getByText("Preview Audio")).toBeTruthy();
     expect(screen.getAllByText("Loudness")).toHaveLength(2);
-    expect(screen.getAllByText("Default")).toHaveLength(2);
+    expect(screen.getByText("Default")).toBeTruthy();
+    expect(screen.getByText("PLVS Default")).toBeTruthy();
     workspace.unmount();
 
     render(<SharesetsPreviewApp plan={plan} asset={snapshotAsset} />);

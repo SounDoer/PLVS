@@ -180,7 +180,7 @@ describe("Sharesets Catalogue source boundary", () => {
     });
   });
 
-  it("resolves the built-in Default Loudness Profile from the product source", async () => {
+  it("resolves the built-in PLVS Default Loudness Profile from the product source", async () => {
     const directory = temporarySource();
     writeFileSync(
       join(directory, "manifest.json"),
@@ -194,7 +194,7 @@ describe("Sharesets Catalogue source boundary", () => {
         slug: "default",
         type: "loudness",
         classification: "official",
-        title: "Default",
+        title: "PLVS Default",
         summary: "The built-in default profile.",
         descriptionMarkdown: "Included with PLVS.",
         tags: ["Built-in"],
@@ -211,7 +211,7 @@ describe("Sharesets Catalogue source boundary", () => {
               sourceId: "default",
               item: {
                 id: "default",
-                name: "Default",
+                name: "PLVS Default",
                 referenceLufs: -23,
                 rules: [
                   { metricId: "momentary", op: ">", value: -6, severity: "warn" },

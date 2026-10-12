@@ -88,7 +88,7 @@ describe("normalizeLoudnessProfiles", () => {
       profiles: [
         {
           id: "starter-id",
-          name: "Default",
+          name: "PLVS Default",
           referenceLufs: -23,
           rules: [
             { metricId: "momentary", op: ">", value: -6, severity: "warn" },

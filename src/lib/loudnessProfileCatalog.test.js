@@ -20,7 +20,7 @@ import { STATS_CANONICAL_ORDER, STATS_META } from "./statsCatalog.js";
 describe("createStarterProfile", () => {
   const canonical = {
     id: "default",
-    name: "Default",
+    name: "PLVS Default",
     referenceLufs: -23,
     rules: [
       { metricId: "momentary", op: ">", value: -6, severity: "warn" },

@@ -257,7 +257,7 @@ and detail pages. Each summary shows the reference loudness and the first three 
 remaining-rule count when needed. The lower **Details** section shows every rule, grouped by
 metric, with labels on the left and conditions and Warn or Fail outcomes on the right.
 Comparisons use `>` (greater than) and `<` (less than). Values
-come directly from the Profile definition. The built-in **Default** page is marked **Included with
+come directly from the Profile definition. The built-in **PLVS Default** page is marked **Included with
 PLVS** and omits download, import, file, and release controls. Downloadable Profiles retain those
 controls and their release history.
 Profiles based on published standards or platform guidance also show a **Sources** section. Each
@@ -286,7 +286,7 @@ Library is recognized instead of being added again.
 Sharesets previews use fixed example measurements, not your audio. A Theme gallery shows the
 first-run Workspace, the 5.1 **Multichannel Monitoring** scene, a measurement Snapshot, and Theme
 Colors. The Workspace and Snapshot use the Panel Settings saved as the Default Preset, with the
-editable Default Loudness Profile active. Example verdict colours do not certify a delivery
+editable **PLVS Default** Loudness Profile active. Example verdict colours do not certify a delivery
 standard; review a downloaded Profile's rules against your own requirements before using it.
 
 Items do not update automatically. A withdrawn release loses its download actions; its history and

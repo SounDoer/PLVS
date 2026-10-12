@@ -1,7 +1,7 @@
 # Loudness Profiles
 
 A Loudness Profile is an editable rule set for judging a measurement. PLVS starts with its built-in
-Default profile, and Sharesets can provide curated profiles based on published standards or platform
+**PLVS Default** profile, and Sharesets can provide curated profiles based on published standards or platform
 guidance. Profiles are monitoring aids, not certification or endorsement; review their rules and
 linked sources against the requirements for your work.
 
@@ -31,7 +31,7 @@ red — but Stats still judges it.
 ## Managing profiles
 
 Select, create, rename, reorder, and delete profiles from the Loudness Profile menu. A new
-installation starts with the editable Default profile described in
+installation starts with the editable **PLVS Default** profile described in
 [Getting Started](getting-started.md); edit or delete it freely.
 In Dock mode, the Dock header can switch the active profile.
 
