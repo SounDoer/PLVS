@@ -5,6 +5,9 @@ export const DOCK_DEFAULT_HEIGHT = 56;
 export const DOCK_MAX_HEIGHT = 160;
 export const DOCK_COMPACT_MAX_HEIGHT = 63;
 export const DOCK_EXPANDED_MIN_HEIGHT = 120;
+/// Height of the Dock toolbar window. Matches Rust's DOCK_HEADER_LOGICAL_HEIGHT, and is what the
+/// shell header classes come to at the Small interface profile accessory WebViews are pinned to.
+export const DOCK_HEADER_HEIGHT = 36;
 
 /**
  * @param {number} value

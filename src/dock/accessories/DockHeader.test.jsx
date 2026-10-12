@@ -19,11 +19,11 @@ const STATE = {
 };
 
 describe("DockHeader", () => {
-  it("centers transport and Dock tools as one compact group", () => {
+  it("puts transport at the start and the Dock tools in the trailing actions group", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     render(<DockHeader state={STATE} onAction={vi.fn()} />);
-    const names = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"));
-    expect(names).toEqual([
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       null,
       "Clear",
       "Loudness Profile",
@@ -33,6 +33,21 @@ describe("DockHeader", () => {
       "Restore window",
       "Presets",
     ]);
+    const actions = screen.getByTestId("dock-header-actions");
+    expect(actions.contains(buttons[0])).toBe(false);
+    expect(buttons.slice(1).every((button) => actions.contains(button))).toBe(true);
+    expect(actions.parentElement).toBe(screen.getByTestId("dock-header"));
+  });
+
+  it("keeps an error notice beside the transport, outside the actions group", () => {
+    render(
+      <DockHeader
+        state={{ ...STATE, notice: { kind: "error", text: "Capture failed" } }}
+        onAction={vi.fn()}
+      />
+    );
+    const notice = screen.getByText("Capture failed");
+    expect(screen.getByTestId("dock-header-actions").contains(notice)).toBe(false);
   });
 
   it("emits semantic actions and ignores pointer presence", () => {

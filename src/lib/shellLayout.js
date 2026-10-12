@@ -13,7 +13,11 @@ export const SHELL_INNER_FOCUS =
 
 export const SHELL_SURFACE_BASE = "rounded-md px-[var(--ui-header-pad-x)]";
 
-export const SHELL_HEADER = `flex shrink-0 items-center gap-3 bg-[color:var(--ui-surface-panel)] py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE}`;
+/** The header's row without the shell card's corners and side padding; Dock's toolbar spans its window. */
+export const SHELL_HEADER_BAR =
+  "flex shrink-0 items-center gap-3 bg-[color:var(--ui-surface-panel)] py-[var(--ui-header-pad-y)] z-10";
+
+export const SHELL_HEADER = `${SHELL_HEADER_BAR} ${SHELL_SURFACE_BASE}`;
 
 export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 bg-popover py-[var(--ui-header-pad-y)] shadow-raised z-30 ${SHELL_SURFACE_BASE}`;
 

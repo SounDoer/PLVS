@@ -491,11 +491,12 @@ Declared exceptions (device px on purpose):
 
 ### Dock three-window boundary
 
-The Dock form consists of three native windows: `main` is the meter strip, 56-160 logical px and 56 px
-by default; `dock-header` is a full-width 44 logical px transient toolbar; `dock-editor` is a
+The Dock form consists of three native windows: `main` is the meter strip, 56-160 logical px and 56
+px by default; `dock-header` is a full-width 36 logical px toolbar, shown when the user opens it
+from the strip's entry, while an editor is open, or while an error notice stands; `dock-editor` is a
 right-aligned single-column editor. On Windows only `main` registers as an AppBar; with Reserve
 screen space enabled only the meter strip is reserved, and header/editor always overlay the adjacent
-work area, so hovering never reflows maximized windows.
+work area, so opening the toolbar never reflows maximized windows.
 
 While the strip is on screen it stays registered with Shell even as an overlay: `ABM_NEW` without
 `ABM_SETPOS` reserves nothing but still delivers `ABN_FULLSCREENAPP`, which Shell sends only to

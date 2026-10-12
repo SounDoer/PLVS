@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { UI_PREFERENCES } from "../preferences/data.js";
 import {
   DOCK_DEFAULT_HEIGHT,
+  DOCK_HEADER_HEIGHT,
   clampDockHeight,
   dockHeightFromPointer,
   dockHeightKeyboardDelta,
@@ -54,5 +56,21 @@ describe("dock sizing", () => {
     expect(dockHeightMode(119)).toBe("standard");
     expect(dockHeightMode(120)).toBe("expanded");
     expect(dockHeightMode(160)).toBe("expanded");
+  });
+});
+
+describe("Dock header height", () => {
+  it("is what the shell header classes produce at the Small profile accessories are pinned to", () => {
+    const { control, header } = UI_PREFERENCES.layout;
+    // --ui-shell-h is --ui-control-h + 4px; --ui-header-pad-y applies above and below.
+    expect(control.heightPx + 4 + 2 * header.paddingYRem * 16).toBe(DOCK_HEADER_HEIGHT);
+  });
+
+  it("matches the native window height Rust gives the header", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const dockRs = readFileSync(join(here, "../../src-tauri/src/dock.rs"), "utf8");
+    expect(dockRs).toContain(
+      `pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = ${DOCK_HEADER_HEIGHT}.0;`
+    );
   });
 });

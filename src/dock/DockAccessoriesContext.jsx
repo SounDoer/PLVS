@@ -14,6 +14,7 @@ import { reportSceneOperationError } from "../lib/sceneOperationNotice.js";
 import { useDock } from "./DockContext.jsx";
 import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
+import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
 
 /**
  * @typedef {{
@@ -137,7 +138,7 @@ export function DockAccessoriesProvider({ children }) {
       dockHeader: {
         visible: docked && !dockSuspended && dockAccessoryVisibility.headerVisible,
         width: window.innerWidth,
-        height: 44,
+        height: DOCK_HEADER_HEIGHT,
       },
       dockEditor: {
         visible: docked && !dockSuspended && dockAccessoryVisibility.editorVisible,

@@ -25,7 +25,7 @@ use crate::window_state::{
 pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 56;
 pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 56;
 pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = 160;
-pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 44.0;
+pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 36.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_WIDTH: f64 = 176.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_WIDTH: f64 = 400.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 80.0;
@@ -1185,7 +1185,7 @@ mod tests {
         rects.header.width,
         rects.header.height
       ),
-      (0, 1040 - 72 - 44, 1920, 44)
+      (0, 1040 - 72 - 36, 1920, 36)
     );
     assert_eq!(
       (
@@ -1194,7 +1194,7 @@ mod tests {
         rects.editor.width,
         rects.editor.height
       ),
-      (1200 - 400 / 2, 1040 - 72 - 44 - 480, 400, 480)
+      (1200 - 400 / 2, 1040 - 72 - 36 - 480, 400, 480)
     );
   }
 
@@ -1202,10 +1202,10 @@ mod tests {
   fn top_accessories_open_below_the_strip_at_scaled_size() {
     let strip = dock_strip_rect(wa(), DockEdge::Top, 108);
     let rects = dock_accessory_rects(wa(), strip, DockEdge::Top, 1.5, 400.0, 300.0, Some(1000.0));
-    assert_eq!((rects.header.y, rects.header.height), (108, 66));
+    assert_eq!((rects.header.y, rects.header.height), (108, 54));
     assert_eq!(
       (rects.editor.y, rects.editor.width, rects.editor.height),
-      (174, 600, 450)
+      (162, 600, 450)
     );
     assert_eq!(rects.editor.x, 1500 - 600 / 2);
   }
@@ -1230,7 +1230,7 @@ mod tests {
     );
     assert_eq!((rects.header.x, rects.header.y), (-2560, -128));
     assert_eq!(rects.editor.x, -2560 + 600 - 400 / 2);
-    assert_eq!(rects.editor.y, -84);
+    assert_eq!(rects.editor.y, -92);
   }
 
   #[test]
@@ -1251,8 +1251,8 @@ mod tests {
       640.0,
       Some(160.0),
     );
-    assert_eq!((rects.header.y, rects.header.height), (144, 44));
+    assert_eq!((rects.header.y, rects.header.height), (152, 36));
     assert_eq!((rects.editor.x, rects.editor.y), (18, 20));
-    assert_eq!((rects.editor.width, rects.editor.height), (304, 124));
+    assert_eq!((rects.editor.width, rects.editor.height), (304, 132));
   }
 }
