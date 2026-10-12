@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildPack } from "../src/transfer/packShape.js";
+import { DEFAULT_WORKSPACE_STATE } from "../src/workspace/constants.js";
 import { curateSharesetsCatalogue } from "./curate-sharesets-catalogue.mjs";
 
 const temporaryDirectories = [];
@@ -30,11 +31,8 @@ function release(number, { status = "published", withdrawalReason, referenceLufs
       publishedAt: `2026-09-${24 + number}`,
       status,
       notesMarkdown: `Release ${number}.`,
-      artifact: `artifacts/broadcast-v${number}.plvsloudness`,
-      previews: [
-        { id: "profile-summary", path: `previews/v${number}/profile-summary.png` },
-        { id: "profile-stats-example", path: `previews/v${number}/profile-stats-example.png` },
-      ],
+      artifact: `artifacts/broadcast-v${number}.plvspreset`,
+      previews: [{ id: "preset-workspace", path: `previews/v${number}/preset-workspace.png` }],
       ...(withdrawalReason ? { withdrawalReason } : {}),
     },
     referenceLufs,
@@ -57,7 +55,7 @@ function writeSource(
       schemaVersion: 1,
       id: "broadcast",
       slug: "broadcast",
-      type: "loudness",
+      type: "presets",
       classification: "official",
       title,
       summary: "A broadcast profile.",
@@ -68,12 +66,13 @@ function writeSource(
     })
   );
   for (const [index, { record, referenceLufs }] of releases.entries()) {
-    const pack = buildPack("loudness", [
+    const pack = buildPack("presets", [
       {
         id: `broadcast-${record.number}`,
-        name: "Broadcast",
-        referenceLufs,
-        rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
+        name: referenceLufs === -23 ? "Broadcast" : "Broadcast Alternate",
+        ...structuredClone(DEFAULT_WORKSPACE_STATE),
+        dock: { enabled: false },
+        loudnessProfileActive: "off",
       },
     ]);
     writeFileSync(join(directory, record.artifact), `${JSON.stringify(pack, null, 2)}\n`);
@@ -87,8 +86,7 @@ function writeSource(
 
 async function fakeGenerate({ outputDirectory }) {
   mkdirSync(outputDirectory);
-  writeFileSync(join(outputDirectory, "profile-summary.png"), PNG);
-  writeFileSync(join(outputDirectory, "profile-stats-example.png"), PNG);
+  writeFileSync(join(outputDirectory, "preset-workspace.png"), PNG);
   writeFileSync(join(outputDirectory, "preview-result.json"), "{}\n");
 }
 
@@ -116,7 +114,7 @@ describe("Sharesets curator workflow", () => {
       additions: [{ listingId: "broadcast", releaseNumber: 2 }],
       copyChanges: [{ listingId: "broadcast", fields: ["title"] }],
     });
-    expect(existsSync(join(candidate, "previews", "v2", "profile-summary.png"))).toBe(false);
+    expect(existsSync(join(candidate, "previews", "v2", "preset-workspace.png"))).toBe(false);
     expect(existsSync(output)).toBe(false);
   });
 
@@ -143,8 +141,8 @@ describe("Sharesets curator workflow", () => {
     ).resolves.toMatchObject({ mode: "write", additions: [{ releaseNumber: 2 }] });
 
     expect(generatePreviews).toHaveBeenCalledTimes(1);
-    expect(readFileSync(join(candidate, "previews", "v1", "profile-summary.png"))).toEqual(PNG);
-    expect(readFileSync(join(candidate, "previews", "v2", "profile-summary.png"))).toEqual(PNG);
+    expect(readFileSync(join(candidate, "previews", "v1", "preset-workspace.png"))).toEqual(PNG);
+    expect(readFileSync(join(candidate, "previews", "v2", "preset-workspace.png"))).toEqual(PNG);
     expect(readFileSync(join(output, "site", "index.html"), "utf8")).toContain("Broadcast");
     expect(JSON.parse(readFileSync(join(output, "report.json"), "utf8"))).toMatchObject({
       additions: [{ listingId: "broadcast", releaseNumber: 2 }],
@@ -186,8 +184,7 @@ describe("Sharesets curator workflow", () => {
     });
     const generateInvalidPreviews = async ({ outputDirectory }) => {
       mkdirSync(outputDirectory);
-      writeFileSync(join(outputDirectory, "profile-summary.png"), "not a png");
-      writeFileSync(join(outputDirectory, "profile-stats-example.png"), "not a png");
+      writeFileSync(join(outputDirectory, "preset-workspace.png"), "not a png");
     };
 
     await expect(
@@ -200,8 +197,7 @@ describe("Sharesets curator workflow", () => {
       })
     ).rejects.toMatchObject({ code: "invalidSharesetsSource" });
 
-    expect(existsSync(join(candidate, "previews", "v2", "profile-summary.png"))).toBe(false);
-    expect(existsSync(join(candidate, "previews", "v2", "profile-stats-example.png"))).toBe(false);
+    expect(existsSync(join(candidate, "previews", "v2", "preset-workspace.png"))).toBe(false);
     expect(existsSync(output)).toBe(false);
   });
 

@@ -32,11 +32,8 @@ function artifact() {
   return `${JSON.stringify(buildPack("loudness", [PROFILE]), null, 2)}\n`;
 }
 
-function previewRecords(prefix = "previews/example") {
-  return [
-    { id: "profile-summary", path: `${prefix}/profile-summary.png` },
-    { id: "profile-stats-example", path: `${prefix}/profile-stats-example.png` },
-  ];
+function previewRecords() {
+  return [];
 }
 
 function writePreviews(directory, records = previewRecords()) {
@@ -120,14 +117,7 @@ describe("Sharesets Catalogue source boundary", () => {
                 metadata: expect.objectContaining({
                   content: expect.objectContaining({ type: "loudness", itemId: "broadcast" }),
                 }),
-                previews: [
-                  expect.objectContaining({
-                    id: "profile-summary",
-                    mediaType: "image/png",
-                    sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
-                  }),
-                  expect.objectContaining({ id: "profile-stats-example" }),
-                ],
+                previews: [],
               }),
             ],
           }),
@@ -183,6 +173,11 @@ describe("Sharesets Catalogue source boundary", () => {
         },
       ],
     });
+
+    writeFileSync(join(directory, previews[0].path), "not a png");
+    await expect(readSharesetsSource(directory)).rejects.toMatchObject({
+      issues: [expect.objectContaining({ code: "invalidPreviewPng" })],
+    });
   });
 
   it("rejects an included source that is not built into PLVS", async () => {
@@ -213,7 +208,7 @@ describe("Sharesets Catalogue source boundary", () => {
     });
   });
 
-  it("requires the exact generated preview set and valid PNG bytes", async () => {
+  it("requires the exact generated preview set", async () => {
     const directory = temporarySource();
     writeFileSync(
       join(directory, "manifest.json"),
@@ -237,23 +232,21 @@ describe("Sharesets Catalogue source boundary", () => {
           status: "published",
           notesMarkdown: "Initial.",
           artifact: "example.plvsloudness",
-          previews: [{ id: "profile-summary", path: "summary.png" }],
+          previews: [{ id: "unexpected", path: "unexpected.png" }],
         },
       ],
     };
     writeFileSync(join(directory, "listing.json"), JSON.stringify(listing));
     writeFileSync(join(directory, "example.plvsloudness"), artifact());
-    writeFileSync(join(directory, "summary.png"), PNG);
+    writeFileSync(join(directory, "unexpected.png"), PNG);
     await expect(readSharesetsSource(directory)).rejects.toMatchObject({
       issues: [expect.objectContaining({ code: "previewSetMismatch" })],
     });
 
-    listing.releases[0].previews = previewRecords();
+    listing.releases[0].previews = [];
     writeFileSync(join(directory, "listing.json"), JSON.stringify(listing));
-    writePreviews(directory);
-    writeFileSync(join(directory, listing.releases[0].previews[0].path), "not a png");
-    await expect(readSharesetsSource(directory)).rejects.toMatchObject({
-      issues: [expect.objectContaining({ code: "invalidPreviewPng" })],
+    await expect(readSharesetsSource(directory)).resolves.toMatchObject({
+      listings: [{ document: { releases: [{ previews: [] }] } }],
     });
   });
 

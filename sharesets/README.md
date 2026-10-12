@@ -37,10 +37,12 @@ and preview contract from the current built-in document. Included content has no
 Release artifact; its detail page shows `Included with PLVS` and omits import instructions, file
 metadata, and Release History.
 
-Every Release or included source must reference exactly the preview IDs required by that derived contract. The source
-validator rejects missing or additional slots, checks the PNG structure, and seals each image's
-exact byte length and SHA-256 hash. Preview generation remains a PLVS-owned curator/CI operation;
-the Listing format has no publisher-selected cover image or screenshot field.
+Every Release or included source must reference exactly the preview IDs required by that derived
+contract. Loudness Profiles require none because their structured rules render the Catalogue card
+and detail page directly. For Presets and Themes, the source validator rejects missing or additional
+slots, checks the PNG structure, and seals each image's exact byte length and SHA-256 hash. Preview
+generation remains a PLVS-owned curator/CI operation; the Listing format has no publisher-selected
+cover image or screenshot field.
 
 The static-site command generates the Sharesets root, all three family pages, stable Listing detail
 URLs, and an isolated copy of each validated download and preview. Its default output is the ignored

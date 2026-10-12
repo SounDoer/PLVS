@@ -26,7 +26,7 @@ describe("static Catalogue handoff contract", () => {
       contract: 1,
       validator: 1,
       metadata: 1,
-      preview: 3,
+      preview: 4,
       previewRenderer: 2,
       previewResult: 1,
       themePreview: 3,

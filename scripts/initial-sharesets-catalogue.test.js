@@ -10,7 +10,6 @@ const INITIAL_LISTINGS = [
   "listings/control-room-amber.json",
   "listings/studio-daylight.json",
   "listings/night-circuit.json",
-  "listings/i-23-tp-1.json",
   "listings/phosphor-field.json",
   "listings/graphite-monitor.json",
   "listings/paper-console.json",
@@ -41,7 +40,6 @@ describe("initial Sharesets Catalogue", () => {
     expect(listings.map(({ id }) => id).sort()).toEqual([
       "control-room-amber",
       "graphite-monitor",
-      "i-23-tp-1",
       "mono-dark",
       "mono-light",
       "multichannel-monitoring",
@@ -53,9 +51,7 @@ describe("initial Sharesets Catalogue", () => {
       "stereo-overview",
       "studio-daylight",
     ]);
-    expect(new Set(listings.map(({ type }) => type))).toEqual(
-      new Set(["loudness", "presets", "themes"])
-    );
+    expect(new Set(listings.map(({ type }) => type))).toEqual(new Set(["presets", "themes"]));
     expect(listings.every(({ classification }) => classification === "official")).toBe(true);
     expect(listings.every(({ author }) => author?.name === "PLVS")).toBe(true);
     expect(
@@ -83,23 +79,6 @@ describe("initial Sharesets Catalogue", () => {
     expect(theme.included.sourceId).toBe("plvs-light");
     expect(theme.included.metadata.content.contentHash).toBe(builtinHash);
     expect(theme.releases).toEqual([]);
-  });
-
-  it("keeps the parameter-named Loudness Profile explicit and non-certifying", async () => {
-    const source = await readLaunchSource();
-    const profile = source.listings.find(({ document }) => document.type === "loudness").document;
-    const searchableCopy = [profile.title, profile.summary, profile.descriptionMarkdown].join(" ");
-
-    expect(profile.title).toBe("I −23 ±0.5 · TP ≤ −1");
-    expect(profile.descriptionMarkdown).toContain(
-      "editable monitoring rule set, not a certified delivery standard"
-    );
-    expect(searchableCopy).not.toMatch(/YouTube|Spotify|Netflix|broadcaster|endorsement/i);
-    expect(profile.releases[0].metadata.content.summary).toMatchObject({
-      referenceLufs: -23,
-      ruleCount: 3,
-      metricIds: ["integrated", "truePeak"],
-    });
   });
 
   it("keeps Control Room Amber distinct from the built-ins", async () => {
@@ -152,7 +131,7 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 3 }),
+        source: expect.objectContaining({ contractVersion: 4 }),
       }),
     ]);
   });

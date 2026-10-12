@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { buildPack } from "../src/transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../src/workspace/constants.js";
@@ -77,7 +77,7 @@ afterEach(() => {
 
 describe("Sharesets preview command", () => {
   it.each([
-    ["loudness", 2],
+    ["loudness", 0],
     ["presets", 1],
     ["themes", 4],
   ])("generates the exact sealed %s asset set", async (type, assetCount) => {
@@ -99,6 +99,20 @@ describe("Sharesets preview command", () => {
     expect(JSON.parse(readFileSync(join(output, "preview-result.json"), "utf8"))).toEqual(
       result.report
     );
+  });
+
+  it("does not start a browser renderer for a Loudness Profile", async () => {
+    const root = temporaryRoot();
+    const createRuntime = vi.fn(async () => imageRuntime());
+
+    const result = await generateSharesetsPreviews({
+      artifactPath: artifact(root, "loudness"),
+      outputDirectory: join(root, "rendered"),
+      createRuntime,
+    });
+
+    expect(createRuntime).not.toHaveBeenCalled();
+    expect(result.report.assets).toEqual([]);
   });
 
   it("renders a built-in Theme directly from the product source", async () => {
@@ -150,7 +164,7 @@ describe("Sharesets preview command", () => {
 
   it("removes its private staging directory when render settlement fails", async () => {
     const root = temporaryRoot();
-    const source = artifact(root, "loudness");
+    const source = artifact(root, "presets");
     const output = join(root, "rendered");
 
     await expect(
@@ -166,7 +180,7 @@ describe("Sharesets preview command", () => {
       })
     ).rejects.toThrow("did not settle");
     expect(existsSync(output)).toBe(false);
-    expect(readFileSync(source, "utf8")).toContain('"loudness-pack"');
+    expect(readFileSync(source, "utf8")).toContain('"preset-pack"');
   });
 
   it("refuses malformed artifacts and missing output parents without leaving output", async () => {

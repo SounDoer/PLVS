@@ -44,16 +44,7 @@ function writeFixtureSource(directory, { status = "published", statuses = [statu
       artifact: multiple
         ? `artifacts/broadcast-v${number}.plvsloudness`
         : "artifacts/broadcast.plvsloudness",
-      previews: [
-        {
-          id: "profile-summary",
-          path: multiple ? `previews/v${number}/summary.png` : "previews/summary.png",
-        },
-        {
-          id: "profile-stats-example",
-          path: multiple ? `previews/v${number}/stats.png` : "previews/stats.png",
-        },
-      ],
+      previews: [],
       ...(releaseStatus === "withdrawn" ? { withdrawalReason: "Unsafe guidance." } : {}),
     };
   });
@@ -245,15 +236,10 @@ describe("Sharesets static site generator", () => {
     expect(detail).not.toContain("<h2>Compatibility</h2>");
     expect(detail).not.toContain("No bundled dependencies");
     expect(detail).toContain("Settings → Saved Items → Import…");
-    expect(detail).not.toContain("/sharesets/files/broadcast/v1/profile-summary.png");
     expect(detail).not.toContain("data-preview-gallery");
     expect(detail).not.toContain("<h3>Rules</h3>");
     expect(root).toContain('aria-label="Profile rule summary"');
-    expect(root).not.toContain("/sharesets/files/broadcast/v1/profile-summary.png");
     expect(detail.toLowerCase()).not.toContain("license");
-    expect(readFileSync(join(output, "files", "broadcast", "v1", "profile-summary.png"))).toEqual(
-      PNG
-    );
     expect(
       readFileSync(join(output, "files", "broadcast", "v1", "broadcast.plvsloudness"), "utf8")
     ).toContain('"kind": "loudness-pack"');

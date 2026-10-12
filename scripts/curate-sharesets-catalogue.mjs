@@ -352,6 +352,7 @@ export async function curateSharesetsCatalogue({
   const generatedFiles = [];
   try {
     for (const addition of changes.additions) {
+      if (addition.release.previews.length === 0) continue;
       const generatedRoot = await mkdtemp(join(tmpdir(), "plvs-sharesets-curation-"));
       const generatedOutput = join(generatedRoot, "previews");
       try {

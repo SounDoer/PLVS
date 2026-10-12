@@ -45,6 +45,10 @@ the Chromium revision pinned by Playwright to generate the exact contract-owned 
 edits Catalogue records or deploys content. Run `npx playwright install chromium` once after
 installing dependencies on a machine that generates previews.
 
+Loudness Profiles deliberately have an empty PNG set: Catalogue cards and detail pages render their
+structured rules directly. Their preview result therefore records the validated empty set without
+starting Chromium. Presets and Themes still require every PNG in their preview plan.
+
 ### Theme Lab
 
 Theme Lab is the disposable Theme-authoring path for comparing Core, Palette, and Advanced override

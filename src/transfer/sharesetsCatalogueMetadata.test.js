@@ -45,7 +45,7 @@ describe("Sharesets Catalogue metadata", () => {
         themeScheme: null,
       },
       preview: {
-        contractVersion: 3,
+        contractVersion: 4,
         renderer: { name: "plvs-sharesets-preview", version: 2 },
         fixture: {
           id: "plvs-sharesets-discovery-v5",
@@ -54,6 +54,7 @@ describe("Sharesets Catalogue metadata", () => {
         },
       },
     });
+    expect(metadata.preview.assets).toEqual([]);
   });
 
   it("derives Preset modules, capabilities, dependency identity, and both render surfaces", async () => {

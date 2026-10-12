@@ -8,12 +8,10 @@ import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMu
 import { hashPortablePreset } from "./portablePreset.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
-export const SHARESETS_PREVIEW_CONTRACT_VERSION = 3;
+export const SHARESETS_PREVIEW_CONTRACT_VERSION = 4;
 export const SHARESETS_PREVIEW_RENDERER_VERSION = 2;
 
 const VIEWPORTS = Object.freeze({
-  loudnessSummary: Object.freeze({ widthCssPx: 720, heightCssPx: 540, deviceScaleFactor: 1 }),
-  loudnessStats: Object.freeze({ widthCssPx: 720, heightCssPx: 480, deviceScaleFactor: 1 }),
   presetWorkspace: Object.freeze({ widthCssPx: 1280, heightCssPx: 720, deviceScaleFactor: 1 }),
   multichannelPresetWorkspace: Object.freeze({
     widthCssPx: 1280,
@@ -45,24 +43,9 @@ export async function hashSharesetsPreviewFixture(value) {
  * @param {string} type
  */
 function previewAssets(type, portableItem, { multichannelMonitoring = false } = {}) {
-  if (type === "loudness") {
-    return [
-      {
-        id: "profile-summary",
-        renderer: "loudness-profile-summary",
-        surface: "summary",
-        format: "png",
-        viewport: VIEWPORTS.loudnessSummary,
-      },
-      {
-        id: "profile-stats-example",
-        renderer: "loudness-profile-stats",
-        surface: "stats",
-        format: "png",
-        viewport: VIEWPORTS.loudnessStats,
-      },
-    ];
-  }
+  // Loudness Profile cards and detail pages are rendered from their structured rules. A screenshot
+  // would duplicate that source of truth and is deliberately not part of the preview contract.
+  if (type === "loudness") return [];
   return [
     {
       id: "preset-workspace",

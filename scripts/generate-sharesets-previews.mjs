@@ -233,23 +233,25 @@ export async function generateSharesetsPreviews({
     const { plan, type } = builtinThemeId
       ? await buildPreviewPlanForBuiltinTheme(builtinThemeId)
       : await buildPreviewPlanForArtifact(source);
-    runtime = await createRuntime();
     const assets = [];
-    for (const asset of plan.assets) {
-      const path = join(staging, `${asset.id}.png`);
-      await runtime.capture({ plan, asset, path });
-      const bytes = await readFile(path);
-      const metadata = await sharp(bytes).metadata();
-      assets.push({
-        id: asset.id,
-        path: `${asset.id}.png`,
-        mediaType: "image/png",
-        width: metadata.width,
-        height: metadata.height,
-        byteLength: bytes.byteLength,
-        sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
-        source: asset.source,
-      });
+    if (plan.assets.length > 0) {
+      runtime = await createRuntime();
+      for (const asset of plan.assets) {
+        const path = join(staging, `${asset.id}.png`);
+        await runtime.capture({ plan, asset, path });
+        const bytes = await readFile(path);
+        const metadata = await sharp(bytes).metadata();
+        assets.push({
+          id: asset.id,
+          path: `${asset.id}.png`,
+          mediaType: "image/png",
+          width: metadata.width,
+          height: metadata.height,
+          byteLength: bytes.byteLength,
+          sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+          source: asset.source,
+        });
+      }
     }
     const report = validateSharesetsPreviewResult(plan, {
       resultVersion: SHARESETS_PREVIEW_RESULT_VERSION,
@@ -264,7 +266,7 @@ export async function generateSharesetsPreviews({
     if (JSON.stringify(names) !== JSON.stringify(expected)) {
       throw new Error("The generated preview directory contains an unexpected file set.");
     }
-    await runtime.close();
+    await runtime?.close();
     runtime = null;
     await rename(staging, output);
     return { type, outputDirectory: output, report };

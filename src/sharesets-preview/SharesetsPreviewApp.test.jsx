@@ -2,7 +2,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { useSpectrogram3dCanvas } from "../hooks/useSpectrogram3dCanvas";
-import { settingsStore, workspaceStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { buildSharesetsThemePreviewPlan } from "../theme/sharesetsThemePreview.js";
 import { compileTheme } from "../theme/compileTheme.js";
@@ -23,17 +22,6 @@ vi.mock("../hooks/useSpectrogram3dCanvas", () => ({
   useSpectrogram3dCanvas: vi.fn(),
 }));
 
-const PROFILE = {
-  id: "broadcast",
-  name: "I −23 ±0.5 · TP ≤ −1",
-  referenceLufs: -23,
-  rules: [
-    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
-    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
-    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
-  ],
-};
-
 beforeAll(() => {
   class ResizeObserverStub {
     observe() {}
@@ -49,41 +37,6 @@ afterEach(() => {
 });
 
 describe("Sharesets preview browser harness", () => {
-  it("renders the production Profile editor without reading or writing persisted state", async () => {
-    const settingsRead = vi.spyOn(settingsStore, "read");
-    const settingsPatch = vi.spyOn(settingsStore, "patch");
-    const workspaceRead = vi.spyOn(workspaceStore, "read");
-    const workspacePatch = vi.spyOn(workspaceStore, "patchCoalesced");
-    const plan = await buildSharesetsPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
-
-    render(<SharesetsPreviewApp plan={plan} asset={plan.assets[0]} />);
-
-    expect(screen.getByRole("dialog", { name: "Loudness Profile editor" })).toBeTruthy();
-    expect(screen.getByText(PROFILE.name)).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Rule 3 metric" }).textContent).toContain(
-      "True Peak Max"
-    );
-    expect(settingsRead).not.toHaveBeenCalled();
-    expect(settingsPatch).not.toHaveBeenCalled();
-    expect(workspaceRead).not.toHaveBeenCalled();
-    expect(workspacePatch).not.toHaveBeenCalled();
-  });
-
-  it("evaluates the fixture through the production Stats panel and Profile context", async () => {
-    const plan = await buildSharesetsPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
-
-    render(<SharesetsPreviewApp plan={plan} asset={plan.assets[1]} />);
-
-    expect(screen.getByText("Stats")).toBeTruthy();
-    expect(screen.getByText("Integrated")).toBeTruthy();
-    expect(
-      screen.getByText(
-        SHARESETS_PREVIEW_FIXTURE_V5.measurementFrame.loudness.integratedLufs.toFixed(1)
-      )
-    ).toBeTruthy();
-    expect(screen.getByText("True Peak Max")).toBeTruthy();
-  });
-
   it("renders a portable Preset through the production Dock", async () => {
     const preset = {
       id: "stereo-overview",

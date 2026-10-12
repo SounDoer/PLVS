@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { LoudnessProfileEditor } from "../components/LoudnessProfileEditor.jsx";
 import { AppShell } from "../components/AppShell.jsx";
 import { ThemePreview } from "../components/theme-editor/ThemePreview.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
@@ -43,39 +42,6 @@ function FixedProviders({ fixture, profile, snapshot = false, children }) {
         </HistoryDataProvider>
       </FrameDataProvider>
     </LoudnessProfilePreviewProvider>
-  );
-}
-
-function ProfileSummary({ document }) {
-  const draft = useMemo(
-    () => ({ editingId: "sharesets-preview", document, dirty: false, stale: false }),
-    [document]
-  );
-  return (
-    <LoudnessProfileEditor
-      draft={draft}
-      onEdit={noop}
-      onSave={noop}
-      onCancel={noop}
-      pos={{ x: 120, y: 20 }}
-      onMove={noop}
-    />
-  );
-}
-
-function StatsExample({ plan }) {
-  const profile = plan.item.document;
-  const state = useMemo(() => singlePanelState("stats"), []);
-  return (
-    <FixedProviders fixture={plan.fixture} profile={profile}>
-      <WorkspacePreviewProvider state={state}>
-        <DragProvider onDrop={noop}>
-          <div className="flex h-screen w-screen bg-card text-card-foreground">
-            <SplitLayout />
-          </div>
-        </DragProvider>
-      </WorkspacePreviewProvider>
-    </FixedProviders>
   );
 }
 
@@ -366,10 +332,6 @@ function MultichannelMonitoringExample({ plan, fullShell }) {
 }
 
 export function SharesetsPreviewApp({ plan, asset }) {
-  if (asset.renderer === "loudness-profile-summary") {
-    return <ProfileSummary document={plan.item.document} />;
-  }
-  if (asset.renderer === "loudness-profile-stats") return <StatsExample plan={plan} />;
   if (asset.renderer === "preset-workspace") return <WorkspaceExample plan={plan} />;
   if (asset.renderer === "preset-dock") return <DockExample plan={plan} />;
   if (asset.renderer === "semantic-gallery") return <ThemeSemanticExample plan={plan} />;

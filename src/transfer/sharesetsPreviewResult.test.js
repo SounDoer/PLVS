@@ -5,6 +5,7 @@ import {
   validateSharesetsPreviewResult,
 } from "./sharesetsPreviewResult.js";
 import { buildPack } from "./packShape.js";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 const PROFILE = {
   id: "profile",
@@ -12,9 +13,17 @@ const PROFILE = {
   referenceLufs: -23,
   rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
 };
+const PRESET = {
+  id: "workspace",
+  name: "Workspace",
+  ...structuredClone(DEFAULT_WORKSPACE_STATE),
+  dock: { enabled: false },
+  loudnessProfileActive: "off",
+};
 
-async function fixture() {
-  const plan = await buildSharesetsPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
+async function fixture(type = "presets") {
+  const item = type === "loudness" ? PROFILE : PRESET;
+  const plan = await buildSharesetsPreviewPlan(buildPack(type, [item]), type);
   const result = {
     resultVersion: SHARESETS_PREVIEW_RESULT_VERSION,
     renderer: { name: plan.renderer.name, version: plan.renderer.version },
@@ -35,6 +44,12 @@ async function fixture() {
 }
 
 describe("Sharesets preview result", () => {
+  it("accepts the empty generated asset set for a Loudness Profile", async () => {
+    const { plan, result } = await fixture("loudness");
+
+    expect(validateSharesetsPreviewResult(plan, result).assets).toEqual([]);
+  });
+
   it("normalizes the exact ordered asset set and immutable render identity", async () => {
     const { plan, result } = await fixture();
     expect(
@@ -56,7 +71,6 @@ describe("Sharesets preview result", () => {
     malformed.assets[0].path = "publisher-cover.png";
     malformed.assets[0].width += 1;
     malformed.assets[0].source = { ...malformed.assets[0].source, generator: "publisher" };
-    malformed.assets.pop();
     malformed.assets.push({ ...result.assets[0], id: "promo" });
 
     expect(() => validateSharesetsPreviewResult(plan, malformed)).toThrowError(
@@ -65,9 +79,13 @@ describe("Sharesets preview result", () => {
           expect.objectContaining({ code: "invalidPreviewAssetPath" }),
           expect.objectContaining({ code: "invalidPreviewWidth" }),
           expect.objectContaining({ code: "previewSourceMismatch" }),
-          expect.objectContaining({ code: "missingPreviewAsset" }),
           expect.objectContaining({ code: "unexpectedPreviewAsset" }),
         ]),
+      })
+    );
+    expect(() => validateSharesetsPreviewResult(plan, { ...result, assets: [] })).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([expect.objectContaining({ code: "missingPreviewAsset" })]),
       })
     );
   });

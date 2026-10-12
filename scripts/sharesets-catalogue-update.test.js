@@ -6,10 +6,6 @@ import { buildPack } from "../src/transfer/packShape.js";
 import { validateSharesetsSourceUpdate } from "./sharesets-catalogue-update.mjs";
 
 const temporaryDirectories = [];
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-  "base64"
-);
 
 function temporaryDirectory() {
   const directory = mkdtempSync(join(tmpdir(), "plvs-sharesets-update-"));
@@ -31,10 +27,7 @@ function release(number, { status = "published", withdrawalReason, referenceLufs
       status,
       notesMarkdown: `Release ${number}.`,
       artifact: `artifacts/broadcast-v${number}.plvsloudness`,
-      previews: [
-        { id: "profile-summary", path: `previews/v${number}/profile-summary.png` },
-        { id: "profile-stats-example", path: `previews/v${number}/profile-stats-example.png` },
-      ],
+      previews: [],
       ...(withdrawalReason ? { withdrawalReason } : {}),
     },
     referenceLufs,

@@ -18,7 +18,7 @@ describe("Sharesets preview input contract", () => {
     const plan = await buildSharesetsPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
 
     expect(plan).toMatchObject({
-      contractVersion: 3,
+      contractVersion: 4,
       renderer: {
         name: "plvs-sharesets-preview",
         version: 2,
@@ -38,8 +38,7 @@ describe("Sharesets preview input contract", () => {
       },
       dependencies: [],
     });
-    expect(plan.assets.map(({ id }) => id)).toEqual(["profile-summary", "profile-stats-example"]);
-    expect(plan.assets.every(({ source }) => source.fixtureHash === plan.fixtureHash)).toBe(true);
+    expect(plan.assets).toEqual([]);
   });
 
   it("renders a Preset workspace plus its optional Dock with the same fixture", async () => {
