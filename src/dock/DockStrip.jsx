@@ -62,7 +62,8 @@ export function DockStrip({
         onHeightChange={onHeightChange}
       />
       <div className="flex h-full min-w-0 items-stretch">
-        <div className="flex h-full min-w-0 flex-1 items-stretch">
+        {/* Clipped so modules that cannot shrink further never cover the toolbar entry. */}
+        <div className="flex h-full min-w-0 flex-1 items-stretch overflow-hidden">
           {panels.map((panel, index) => {
             const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
             const entry = DOCK_MODULE_REGISTRY[dockModuleId];

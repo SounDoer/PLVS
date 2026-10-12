@@ -125,6 +125,31 @@ describe("useDockAccessoryVisibility", () => {
     expect(result.current.headerVisible).toBe(false);
   });
 
+  it("forgets the editor's focus when the editor closes under an open toolbar", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.openEditor("modules"));
+    // The editor is hidden while it still claims focus and never reports the blur.
+    act(() => result.current.onAccessoryFocus({ surface: "dock-editor", focused: true }));
+    act(() => result.current.closeEditor());
+
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: true }));
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: false }));
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("treats an entry click as Hide while an error is what shows the toolbar", () => {
+    const { result, rerender } = renderVisibility({ forceHeaderVisible: true });
+
+    act(() => result.current.toggleToolbar());
+    expect(result.current.headerVisible).toBe(true);
+
+    rerender({ forceHeaderVisible: false });
+    expect(result.current.headerVisible).toBe(false);
+  });
+
   it("cannot be dismissed while an error requires attention", () => {
     const { result, rerender } = renderVisibility({ forceHeaderVisible: true });
     expect(result.current.headerVisible).toBe(true);

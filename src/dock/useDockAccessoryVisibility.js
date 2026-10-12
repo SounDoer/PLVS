@@ -130,6 +130,8 @@ export function useDockAccessoryVisibility({
     if (reason === "blur" && measuredEditorViewRef.current !== editorViewRef.current) return;
     editorViewRef.current = null;
     measuredEditorViewRef.current = null;
+    // The editor is hidden while it may still hold focus, and may never report the blur.
+    focusRef.current["dock-editor"] = false;
     setMeasuredEditorView(null);
     setEditorView(null);
   }, []);
@@ -148,13 +150,14 @@ export function useDockAccessoryVisibility({
   }, []);
 
   const toggleToolbar = useCallback(() => {
-    if (toolbarOpenRef.current || editorViewRef.current !== null) {
+    // The entry reads as pressed whenever the header shows, so a click then always means Hide.
+    if (toolbarOpenRef.current || editorViewRef.current !== null || forceHeaderVisible) {
       closeEditor();
       setToolbarOpen(false);
     } else {
       setToolbarOpen(true);
     }
-  }, [closeEditor, setToolbarOpen]);
+  }, [closeEditor, forceHeaderVisible, setToolbarOpen]);
   const dismiss = useCallback(() => {
     if (editorViewRef.current !== null) closeEditor();
     else setToolbarOpen(false);
