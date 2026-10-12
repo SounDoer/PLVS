@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataContext.jsx";
@@ -20,8 +20,6 @@ const BASE_PROPS = {
     { id: "levelMeter", moduleId: "levelMeter" },
     { id: "vectorscope", moduleId: "vectorscope" },
   ],
-  onPointerEnter: vi.fn(),
-  onPointerLeave: vi.fn(),
   controls: {
     sourceTransportState: {
       chromeState: "ready",
@@ -78,21 +76,41 @@ describe("DockStrip", () => {
     expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("expanded");
   });
 
-  it("reports pointer presence without rendering accessory controls in the strip", () => {
-    const onPointerEnter = vi.fn();
-    const onPointerLeave = vi.fn();
-    renderStrip({ onPointerEnter, onPointerLeave });
+  it("offers the toolbar entry and no accessory controls", () => {
+    const onToolbarToggle = vi.fn();
+    renderStrip({ onToolbarToggle });
+
+    const entry = screen.getByRole("button", { name: "show toolbar" });
+    expect(entry.getAttribute("aria-pressed")).toBe("false");
     fireEvent.pointerEnter(screen.getByTestId("dock-strip"));
     fireEvent.pointerLeave(screen.getByTestId("dock-strip"));
-    expect(onPointerEnter).toHaveBeenCalledOnce();
-    expect(onPointerLeave).toHaveBeenCalledOnce();
+    expect(onToolbarToggle).not.toHaveBeenCalled();
+
+    fireEvent.click(entry);
+    expect(onToolbarToggle).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: /restore window/i })).toBeNull();
+  });
+
+  it("marks the entry pressed while the toolbar is shown", () => {
+    renderStrip({ toolbarOpen: true });
+
+    const entry = screen.getByRole("button", { name: "hide toolbar" });
+    expect(entry.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("keeps the entry out of the module row", () => {
+    renderStrip();
+
+    const entry = screen.getByRole("button", { name: "show toolbar" });
+    for (const module of screen.getAllByTestId("dock-module")) {
+      expect(module.contains(entry)).toBe(false);
+    }
   });
 
   it("passes controls down to the timer-only transport module", () => {
     renderStrip({ panels: [{ id: "transport", moduleId: "transport" }] });
     expect(screen.getByTestId("dock-transport-timer").textContent).toBe("00:00");
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(within(screen.getByTestId("dock-module")).queryByRole("button")).toBeNull();
   });
 
   it("routes time-window gestures through the shared Dock viewport", () => {

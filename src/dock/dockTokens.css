@@ -9,6 +9,7 @@
   --ui-dock-gap-row: 3px;
   --ui-dock-bar-min-h: 5px;
   --ui-dock-readout-w: 5ch;
+  --ui-dock-toolbar-toggle-w: 20px;
 }
 
 @media (max-height: 63px) {

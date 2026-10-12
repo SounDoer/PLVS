@@ -63,14 +63,17 @@ while that mode is enabled. Normal windows retain their native shadow in either 
 
 ## Dock
 
-On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge
-of the screen, so the meters stay visible while you work in another app. Hovering the strip shows a header
-for switching the Loudness Profile and editing which modules the strip shows. On Windows, the strip
-can also reserve its screen space so maximised windows do not cover it. On macOS, it starts as an
-overlay within the monitor work area, leaving room for the menu bar and system Dock. Enable
-**Reserve Screen Space** in the Dock header to automatically move or shrink the active application's
-window away from the strip. Grant PLVS **Accessibility** access in System Settings → Privacy &
-Security, then enable the action again. Without permission, Dock remains an overlay.
+On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of
+the screen, so the meters stay visible while you work in another app. Click the arrow at the right
+end of the strip to show the Dock toolbar, where you can start and stop measuring, clear the
+session, switch the Loudness Profile, edit which modules the strip shows, and manage Presets. The
+toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
+the pointer over the strip never opens or closes it. On Windows, the strip can also reserve its
+screen space so maximised windows do not cover it. On macOS, it starts as an overlay within the
+monitor work area, leaving room for the menu bar and system Dock. Enable **Reserve Screen Space** in
+the Dock toolbar to automatically move or shrink the active application's window away from the strip.
+Grant PLVS **Accessibility** access in System Settings → Privacy & Security, then enable the action
+again. Without permission, Dock remains an overlay.
 
 macOS avoidance waits for the window to settle after dragging or resizing. It affects standard,
 resizable foreground windows primarily on the Dock's display; full-screen, minimized and unsupported
