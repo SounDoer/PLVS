@@ -598,8 +598,6 @@ function AppContent() {
         panelSizesById: dockLayout.panelSizesById,
         hoveredPanelId:
           dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
-        onPointerEnter: dockAccessoryVisibility.onStripPointerEnter,
-        onPointerLeave: dockAccessoryVisibility.onStripPointerLeave,
         edge: dockEdge,
         height: dockPreviewHeight ?? dockHeight,
         heightResizeDisabled: dockAccessoryVisibility.editorView !== null,

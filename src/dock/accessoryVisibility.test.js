@@ -3,12 +3,11 @@ import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
 describe("dock accessory visibility", () => {
   it.each([
-    [{ stripInside: true, headerInside: false, editorOpen: false }, true],
-    [{ stripInside: false, headerInside: true, editorOpen: false }, true],
-    [{ stripInside: false, headerInside: false, editorOpen: true }, true],
-    [{ stripInside: false, headerInside: false, editorOpen: false, forceVisible: true }, true],
-    [{ stripInside: false, headerInside: false, editorOpen: false }, false],
-  ])("derives visibility from all Dock surfaces", (presence, expected) => {
-    expect(shouldShowDockHeader(presence)).toBe(expected);
+    [{ userOpen: true, editorOpen: false }, true],
+    [{ userOpen: false, editorOpen: true }, true],
+    [{ userOpen: false, editorOpen: false, forceVisible: true }, true],
+    [{ userOpen: false, editorOpen: false }, false],
+  ])("shows the header only on request, for an editor, or for an error", (input, expected) => {
+    expect(shouldShowDockHeader(input)).toBe(expected);
   });
 });

@@ -313,7 +313,7 @@ export function DockAccessoriesProvider({ children }) {
     headerState: dockHeaderState,
     editorState: dockEditorState,
     onAction: onDockAccessoryAction,
-    onPointer: dockAccessoryVisibility.onAccessoryPointer,
+    onPointer: undefined,
   });
 
   return (

@@ -1,8 +1,3 @@
-export function shouldShowDockHeader({
-  stripInside,
-  headerInside,
-  editorOpen,
-  forceVisible = false,
-}) {
-  return stripInside || headerInside || editorOpen || forceVisible;
+export function shouldShowDockHeader({ userOpen, editorOpen, forceVisible = false }) {
+  return userOpen || editorOpen || forceVisible;
 }

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cursorOverDockSurfaces, setDockAccessories } from "../ipc/commands.js";
+import { setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
 const ACCESSORY_READY_RETRY_MS = 50;
 const ACCESSORY_READY_ATTEMPTS = 4;
-const CURSOR_RECONCILE_MS = 33;
+// Focus hops between the strip, the header and the editor pass through a moment where none of
+// them has it. Longer than the editor's own 100 ms blur delay, so the editor settles first.
+const TOOLBAR_FOCUS_GRACE_MS = 150;
 
 /**
  * @param {string} view
@@ -83,24 +85,32 @@ export function useDockAccessoryVisibility({
   forceHeaderVisible = false,
   onError,
 }) {
-  const [presence, setPresence] = useState({ stripInside: false, headerInside: false });
-  const [headerVisible, setHeaderVisible] = useState(false);
+  const [toolbarOpen, setToolbarOpenState] = useState(false);
   const [editorView, setEditorView] = useState(null);
   const [editorSize, setEditorSize] = useState(() => initialEditorSize(null));
   const [editorAnchorX, setEditorAnchorX] = useState(null);
   const [measuredEditorView, setMeasuredEditorView] = useState(null);
+  const toolbarOpenRef = useRef(false);
   const editorViewRef = useRef(null);
   const measuredEditorViewRef = useRef(null);
-  const presenceRevisionRef = useRef(0);
+  const focusRef = useRef({ strip: false, "dock-header": false, "dock-editor": false });
+  const focusTimerRef = useRef(null);
   const accessoryUpdaterRef = useRef(null);
   if (accessoryUpdaterRef.current === null) {
     accessoryUpdaterRef.current = createLatestDockAccessoryUpdater();
   }
 
-  const updatePresence = useCallback((key, inside) => {
-    presenceRevisionRef.current += 1;
-    setPresence((current) => ({ ...current, [key]: inside }));
-    if (inside) setHeaderVisible(true);
+  const headerVisible =
+    active &&
+    shouldShowDockHeader({
+      userOpen: toolbarOpen,
+      editorOpen: editorView !== null,
+      forceVisible: forceHeaderVisible,
+    });
+
+  const setToolbarOpen = useCallback((open) => {
+    toolbarOpenRef.current = open;
+    setToolbarOpenState(open);
   }, []);
 
   const openEditor = useCallback((view, anchorX) => {
@@ -114,7 +124,6 @@ export function useDockAccessoryVisibility({
     editorViewRef.current = view;
     if (Number.isFinite(anchorX)) setEditorAnchorX(anchorX);
     setEditorView(view);
-    setHeaderVisible(true);
   }, []);
   const closeEditor = useCallback((expectedView, reason) => {
     if (expectedView && editorViewRef.current !== expectedView) return;
@@ -138,84 +147,87 @@ export function useDockAccessoryVisibility({
     setMeasuredEditorView(view);
   }, []);
 
-  useEffect(() => {
-    if (!active) {
-      const resetTimer = setTimeout(() => {
-        presenceRevisionRef.current += 1;
-        editorViewRef.current = null;
-        measuredEditorViewRef.current = null;
-        setMeasuredEditorView(null);
-        setHeaderVisible(false);
-        setEditorView(null);
-        setEditorAnchorX(null);
-        // A fresh object here would never be Object.is-equal to the previous `presence`,
-        // which is an effect dependency -- the effect would re-arm this timer forever.
-        setPresence((current) =>
-          current.stripInside || current.headerInside
-            ? { stripInside: false, headerInside: false }
-            : current
-        );
-      }, 0);
-      return () => clearTimeout(resetTimer);
+  const toggleToolbar = useCallback(() => {
+    if (toolbarOpenRef.current || editorViewRef.current !== null) {
+      closeEditor();
+      setToolbarOpen(false);
+    } else {
+      setToolbarOpen(true);
     }
-    if (
-      shouldShowDockHeader({
-        ...presence,
-        editorOpen: editorView !== null,
-        forceVisible: forceHeaderVisible,
-      })
-    ) {
-      const showTimer = setTimeout(() => setHeaderVisible(true), 0);
-      return () => clearTimeout(showTimer);
-    }
-    const hideTimer = setTimeout(() => setHeaderVisible(false), 0);
-    return () => clearTimeout(hideTimer);
-  }, [active, editorView, forceHeaderVisible, presence]);
+  }, [closeEditor, setToolbarOpen]);
+  const dismiss = useCallback(() => {
+    if (editorViewRef.current !== null) closeEditor();
+    else setToolbarOpen(false);
+  }, [closeEditor, setToolbarOpen]);
+
+  const reportFocus = useCallback(
+    (surface, focused) => {
+      if (!(surface in focusRef.current)) return;
+      focusRef.current[surface] = focused;
+      if (focusTimerRef.current !== null) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+      if (Object.values(focusRef.current).some(Boolean)) return;
+      focusTimerRef.current = setTimeout(() => {
+        focusTimerRef.current = null;
+        setToolbarOpen(false);
+      }, TOOLBAR_FOCUS_GRACE_MS);
+    },
+    [setToolbarOpen]
+  );
+  const onAccessoryFocus = useCallback(
+    ({ surface, focused }) => reportFocus(surface, focused),
+    [reportFocus]
+  );
 
   useEffect(() => {
-    if (!active || editorView !== null || forceHeaderVisible || !isTauri()) {
-      return;
-    }
-    let cancelled = false;
-    let timer = null;
-    const schedule = () => {
-      timer = window.setTimeout(async () => {
-        const revision = presenceRevisionRef.current;
-        try {
-          const inside = await cursorOverDockSurfaces();
-          if (!cancelled && presenceRevisionRef.current === revision) {
-            setPresence((current) => {
-              if (cancelled || presenceRevisionRef.current !== revision) return current;
-              if (inside && !current.stripInside && !current.headerInside) {
-                presenceRevisionRef.current += 1;
-                return { stripInside: true, headerInside: false };
-              }
-              if (!inside && (current.stripInside || current.headerInside)) {
-                presenceRevisionRef.current += 1;
-                return { stripInside: false, headerInside: false };
-              }
-              return current;
-            });
-          }
-        } catch (_) {
-          // DOM pointer events remain the fast path if native reconciliation is unavailable.
-        }
-        if (!cancelled) schedule();
-      }, CURSOR_RECONCILE_MS);
+    if (active) return;
+    const resetTimer = setTimeout(() => {
+      editorViewRef.current = null;
+      measuredEditorViewRef.current = null;
+      setMeasuredEditorView(null);
+      setEditorView(null);
+      setEditorAnchorX(null);
+      setToolbarOpen(false);
+    }, 0);
+    return () => clearTimeout(resetTimer);
+  }, [active, setToolbarOpen]);
+
+  useEffect(() => {
+    if (!active) return;
+    const onFocus = () => reportFocus("strip", true);
+    const onBlur = () => reportFocus("strip", false);
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") dismiss();
     };
-    schedule();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("keydown", onKeyDown);
     return () => {
-      cancelled = true;
-      if (timer !== null) window.clearTimeout(timer);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("keydown", onKeyDown);
+      if (focusTimerRef.current !== null) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
     };
-  }, [active, editorView, forceHeaderVisible]);
+  }, [active, dismiss, reportFocus]);
+
+  useEffect(() => {
+    if (headerVisible) return;
+    // A window hidden while it holds focus may never report the blur.
+    focusRef.current["dock-header"] = false;
+    focusRef.current["dock-editor"] = false;
+  }, [headerVisible]);
 
   useEffect(() => {
     if (!isTauri()) return;
     accessoryUpdaterRef.current.update(
       {
         edge,
-        headerVisible: active && headerVisible,
+        headerVisible,
         editorVisible: active && editorView !== null && measuredEditorView !== null,
         editorWidth: editorSize.width,
         editorHeight: editorSize.height,
@@ -240,11 +252,9 @@ export function useDockAccessoryVisibility({
     editorView,
     editorVisible: editorView !== null && measuredEditorView === editorView,
     editorSize,
-    onStripPointerEnter: () => updatePresence("stripInside", true),
-    onStripPointerLeave: () => updatePresence("stripInside", false),
-    onAccessoryPointer: ({ surface, inside }) => {
-      if (surface === "dock-header") updatePresence("headerInside", inside);
-    },
+    toggleToolbar,
+    dismiss,
+    onAccessoryFocus,
     openEditor,
     closeEditor,
     resizeEditor,

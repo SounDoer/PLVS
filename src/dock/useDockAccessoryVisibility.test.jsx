@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
-import { act, renderHook } from "@testing-library/react";
+import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cursorOverDockSurfaces, setDockAccessories } from "../ipc/commands.js";
+import { setDockAccessories } from "../ipc/commands.js";
 import {
   createLatestDockAccessoryUpdater,
   setDockAccessoriesWhenReady,
@@ -10,150 +10,153 @@ import {
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../ipc/commands.js", () => ({
-  cursorOverDockSurfaces: vi.fn().mockResolvedValue(true),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
 }));
+
+function renderVisibility(initialProps = {}) {
+  return renderHook(
+    (props) =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+        ...props,
+      }),
+    { initialProps }
+  );
+}
+
+const blurStrip = () => act(() => void window.dispatchEvent(new Event("blur")));
+const focusStrip = () => act(() => void window.dispatchEvent(new Event("focus")));
 
 describe("useDockAccessoryVisibility", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
   });
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  it("shows on strip enter and hides immediately after both surfaces are left", async () => {
-    const { result } = renderHook(() =>
-      useDockAccessoryVisibility({
-        active: true,
-        edge: "bottom",
-        geometryVersion: undefined,
-        onError: undefined,
-      })
-    );
-    act(() => result.current.onStripPointerEnter());
-    await act(async () => Promise.resolve());
-    expect(result.current.headerVisible).toBe(true);
-    act(() => result.current.onStripPointerLeave());
-    act(() => vi.advanceTimersByTime(0));
+  it("stays closed until the entry is toggled, and publishes the change", async () => {
+    const { result } = renderVisibility();
     expect(result.current.headerVisible).toBe(false);
+
+    act(() => result.current.toggleToolbar());
+    expect(result.current.headerVisible).toBe(true);
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
     expect(setDockAccessories).toHaveBeenLastCalledWith(
-      expect.objectContaining({ headerVisible: false })
-    );
-  });
-
-  it("repairs a missed pointer leave from live native window geometry", async () => {
-    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
-    const { result } = renderHook(() =>
-      useDockAccessoryVisibility({
-        active: true,
-        edge: "bottom",
-        geometryVersion: undefined,
-        onError: undefined,
-      })
+      expect.objectContaining({ headerVisible: true })
     );
 
-    act(() => result.current.onStripPointerEnter());
-    expect(result.current.headerVisible).toBe(true);
-    await act(async () => {
-      vi.advanceTimersByTime(33);
-      await Promise.resolve();
-    });
-    act(() => vi.advanceTimersByTime(0));
-
-    expect(result.current.headerVisible).toBe(false);
-    expect(cursorOverDockSurfaces).toHaveBeenCalledOnce();
-  });
-
-  it("repairs a missed re-enter after native geometry hid the header", async () => {
-    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
-    const { result } = renderHook(() =>
-      useDockAccessoryVisibility({
-        active: true,
-        edge: "bottom",
-        geometryVersion: undefined,
-        onError: undefined,
-      })
-    );
-
-    act(() => result.current.onStripPointerEnter());
-    await act(async () => {
-      vi.advanceTimersByTime(33);
-      await Promise.resolve();
-    });
-    act(() => vi.advanceTimersByTime(0));
-    expect(result.current.headerVisible).toBe(false);
-
-    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
-    await act(async () => {
-      vi.advanceTimersByTime(33);
-      await Promise.resolve();
-    });
-    act(() => vi.advanceTimersByTime(0));
-
-    expect(result.current.headerVisible).toBe(true);
-    expect(cursorOverDockSurfaces).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not fight reliable DOM enter and leave events when native geometry agrees", async () => {
-    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
-    const { result } = renderHook(() =>
-      useDockAccessoryVisibility({
-        active: true,
-        edge: "bottom",
-        geometryVersion: undefined,
-        onError: undefined,
-      })
-    );
-
-    act(() => result.current.onStripPointerEnter());
-    await act(async () => {
-      vi.advanceTimersByTime(33);
-      await Promise.resolve();
-    });
-    expect(result.current.headerVisible).toBe(true);
-
-    vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
-    act(() => result.current.onStripPointerLeave());
-    act(() => vi.advanceTimersByTime(0));
-    expect(result.current.headerVisible).toBe(false);
-
-    await act(async () => {
-      vi.advanceTimersByTime(33);
-      await Promise.resolve();
-    });
-    act(() => vi.advanceTimersByTime(0));
+    act(() => result.current.toggleToolbar());
     expect(result.current.headerVisible).toBe(false);
   });
 
-  it("does not let a stale cursor result overwrite a newer pointer enter", async () => {
-    let resolveCursor;
-    vi.mocked(cursorOverDockSurfaces).mockReturnValue(
-      new Promise((resolve) => {
-        resolveCursor = resolve;
-      })
-    );
-    const { result } = renderHook(() =>
-      useDockAccessoryVisibility({
-        active: true,
-        edge: "bottom",
-        geometryVersion: undefined,
-        onError: undefined,
-      })
-    );
+  it("closes the editor and the toolbar together when the entry is toggled", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.openEditor("modules"));
 
-    act(() => result.current.onStripPointerEnter());
-    act(() => vi.advanceTimersByTime(33));
-    act(() => result.current.onAccessoryPointer({ surface: "dock-header", inside: true }));
-    await act(async () => resolveCursor(false));
+    act(() => result.current.toggleToolbar());
 
+    expect(result.current.editorView).toBeNull();
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("closes the editor on the first Escape and the toolbar on the second", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.openEditor("modules"));
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(result.current.editorView).toBeNull();
     expect(result.current.headerVisible).toBe(true);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("closes once focus has left every Dock window for the grace period", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+
+    blurStrip();
+    act(() => vi.advanceTimersByTime(149));
+    expect(result.current.headerVisible).toBe(true);
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("stays open while focus moves between Dock windows", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+
+    blurStrip();
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: true }));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.headerVisible).toBe(true);
+
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: false }));
+    focusStrip();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.headerVisible).toBe(true);
+
+    blurStrip();
+    act(() => vi.advanceTimersByTime(150));
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("forgets an accessory's focus once the toolbar has closed", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    // The header is hidden while it still claims focus and never reports the blur.
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: true }));
+    act(() => result.current.toggleToolbar());
+
+    act(() => result.current.toggleToolbar());
+    blurStrip();
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("cannot be dismissed while an error requires attention", () => {
+    const { result, rerender } = renderVisibility({ forceHeaderVisible: true });
+    expect(result.current.headerVisible).toBe(true);
+
+    act(() => result.current.dismiss());
+    blurStrip();
+    act(() => vi.advanceTimersByTime(150));
+    expect(result.current.headerVisible).toBe(true);
+
+    rerender({ forceHeaderVisible: false });
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("shows the header for an editor opened without the toolbar and hides it afterwards", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.openEditor("module:spectrogram"));
+    expect(result.current.headerVisible).toBe(true);
+
+    act(() => result.current.closeEditor());
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("starts closed again after Dock was inactive", () => {
+    const { result, rerender } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+
+    rerender({ active: false });
+    expect(result.current.headerVisible).toBe(false);
+    act(() => vi.advanceTimersByTime(0));
+    rerender({ active: true });
+
+    expect(result.current.headerVisible).toBe(false);
   });
 
   it("keeps header and editor visible until the editor closes", () => {
@@ -174,55 +177,6 @@ describe("useDockAccessoryVisibility", () => {
     act(() => vi.advanceTimersByTime(0));
     expect(result.current.editorView).toBeNull();
     expect(result.current.headerVisible).toBe(false);
-  });
-
-  it("does not reconcile hover while an editor or forced error keeps the header open", () => {
-    const { result, rerender } = renderHook(
-      ({ forceHeaderVisible }) =>
-        useDockAccessoryVisibility({
-          active: true,
-          edge: "top",
-          forceHeaderVisible,
-          geometryVersion: undefined,
-          onError: undefined,
-        }),
-      { initialProps: { forceHeaderVisible: false } }
-    );
-
-    act(() => result.current.openEditor("presets"));
-    act(() => vi.advanceTimersByTime(1000));
-    expect(cursorOverDockSurfaces).not.toHaveBeenCalled();
-
-    act(() => result.current.closeEditor());
-    rerender({ forceHeaderVisible: true });
-    act(() => vi.advanceTimersByTime(1000));
-    expect(cursorOverDockSurfaces).not.toHaveBeenCalled();
-  });
-
-  it("stops reconciliation across preset-style Dock exit and restarts with live geometry", async () => {
-    const { result, rerender } = renderHook(
-      ({ active, edge }) =>
-        useDockAccessoryVisibility({
-          active,
-          edge,
-          geometryVersion: undefined,
-          onError: undefined,
-        }),
-      { initialProps: { active: true, edge: "bottom" } }
-    );
-
-    act(() => result.current.onStripPointerEnter());
-    rerender({ active: true, edge: "top" });
-    await act(async () => {
-      vi.advanceTimersByTime(33);
-      await Promise.resolve();
-    });
-    expect(cursorOverDockSurfaces).toHaveBeenCalledOnce();
-
-    rerender({ active: false, edge: "top" });
-    act(() => vi.advanceTimersByTime(1000));
-    expect(result.current.headerVisible).toBe(false);
-    expect(cursorOverDockSurfaces).toHaveBeenCalledOnce();
   });
 
   it("keeps the header visible while an error requires attention", async () => {
