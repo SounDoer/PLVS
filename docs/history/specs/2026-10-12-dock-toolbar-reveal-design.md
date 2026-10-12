@@ -113,7 +113,8 @@ The user-opened state is cleared by:
 - focus leaving all three PLVS Dock windows (strip, header, editor). Moving focus between the three
   does not close it, so strip actions such as a true-peak reset keep working with the toolbar open;
 - Dock becoming inactive (exit, suspension), as today;
-- on Windows, the strip yielding to a full-screen window.
+- on Windows, the strip yielding to a full-screen window. This needs no mechanism of its own: the
+  full-screen window takes the foreground, which is focus leaving PLVS.
 
 Clicking the entry while an editor is open closes the editor and the toolbar together.
 
@@ -121,10 +122,14 @@ The state is not persisted. Entering Dock always starts with the toolbar closed.
 
 Pointer enter and leave no longer feed visibility at all.
 
-**Focus.** Today the header is shown without taking focus. To observe "focus left PLVS" the header
-takes focus when the user opens it, as the editor already does. Closing on focus loss uses a short
-grace period so that focus moving from one PLVS Dock window to another is not seen as leaving; the
-editor's existing blur delay is the model.
+**Focus.** Each of the three WebViews reports its own window's focus and blur to the main root:
+the strip directly, the header and the editor over the accessory event channel that used to carry
+pointer presence. The toolbar closes once none of the three has held focus for a short grace
+period, which covers the moment focus is in transit between two Dock windows; the editor's existing
+blur delay is the model. Clicking the entry activates the strip's window, so no window has to be
+given focus just to open the toolbar. The one place Rust moves focus is when an editor that holds
+focus is closed while the toolbar stays: focus goes to the header, because it would otherwise fall
+to whatever is behind PLVS and read as the user leaving.
 
 ### 4. Removed
 
@@ -138,21 +143,21 @@ editor's existing blur delay is the model.
 `cursor_over_dock_surfaces` also returned "not over Dock" while the strip was yielded to a
 full-screen window, which kept the header from rising over that window. With no hover trigger that
 guard has nothing left to guard, but an already-open toolbar must still go away when the strip
-yields; that is the last bullet under "cleared by" above.
+yields; the focus rule does that, as the last bullet under "cleared by" says.
 
 ### 5. Components touched
 
-| Unit                                     | Change                                                                      |
-| ---------------------------------------- | --------------------------------------------------------------------------- |
-| `src/dock/DockStrip.jsx`                 | Renders the entry column; drops the pointer enter/leave props               |
-| `src/dock/useDockAccessoryVisibility.js` | Explicit open state and the rules in section 3; loses presence and the poll |
-| `src/dock/accessoryVisibility.js`        | `shouldShowDockHeader` takes `userOpen`, `editorOpen`, `forceVisible`       |
-| `src/dock/accessories/DockHeader.jsx`    | Layout and tokens from `shellLayout`; Escape and focus-loss actions         |
-| `src/dock/DockAccessoriesContext.jsx`    | Wires the toggle and the new actions; header geometry literal becomes 36    |
-| `src/components/RecordingIndicator.jsx`  | Offset in Dock                                                              |
-| `src-tauri/src/dock_accessories.rs`      | Focus on user-open; removes the cursor command                              |
-| `src-tauri/src/dock.rs`                  | `DOCK_HEADER_LOGICAL_HEIGHT` becomes 36                                     |
-| `src-tauri/src/appbar.rs`                | Yielding notifies the frontend so an open toolbar closes                    |
+| Unit                                                                                       | Change                                                                        |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `src/dock/DockStrip.jsx`                                                                   | Renders the entry column; drops the pointer enter/leave props                 |
+| `src/dock/useDockAccessoryVisibility.js`                                                   | Explicit open state and the rules in section 3; loses presence and the poll   |
+| `src/dock/accessoryVisibility.js`                                                          | `shouldShowDockHeader` takes `userOpen`, `editorOpen`, `forceVisible`         |
+| `src/dock/accessories/DockHeader.jsx`                                                      | Layout and tokens from `shellLayout`; no pointer reporting                    |
+| `src/dock/accessoryProtocol.js`, `src/ipc/dockAccessoryEvents.js`, `useAccessoryClient.js` | The pointer channel becomes a focus channel; a dismiss action for Escape      |
+| `src/dock/DockAccessoriesContext.jsx`                                                      | Wires the toggle and the new actions; header geometry literal becomes 36      |
+| `src/components/RecordingIndicator.jsx`                                                    | Offset in Dock                                                                |
+| `src-tauri/src/dock_accessories.rs`                                                        | Refocuses the header when a focused editor closes; removes the cursor command |
+| `src-tauri/src/dock.rs`                                                                    | `DOCK_HEADER_LOGICAL_HEIGHT` becomes 36                                       |
 
 ## Documentation
 
