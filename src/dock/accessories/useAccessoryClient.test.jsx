@@ -4,12 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   emitReady: vi.fn(async () => {}),
+  emitFocus: vi.fn(async () => {}),
   listenState: vi.fn(),
 }));
 
 vi.mock("../../ipc/dockAccessoryEvents.js", () => ({
   emitDockAccessoryAction: vi.fn(async () => {}),
-  emitDockAccessoryPointer: vi.fn(async () => {}),
+  emitDockAccessoryFocus: mocks.emitFocus,
   emitDockAccessoryReady: mocks.emitReady,
   listenDockAccessoryState: mocks.listenState,
 }));
@@ -21,11 +22,29 @@ describe("useAccessoryClient", () => {
 
   beforeEach(() => {
     mocks.emitReady.mockClear();
+    mocks.emitFocus.mockClear();
     mocks.listenState.mockReset();
     stateHandler = null;
     document.documentElement.removeAttribute("style");
     delete document.documentElement.dataset.theme;
     delete document.documentElement.dataset.themeRevision;
+  });
+
+  it("reports its own window focus to the main window", () => {
+    mocks.listenState.mockResolvedValue(() => {});
+    const { unmount } = renderHook(() => useAccessoryClient("dock-header"));
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("blur"));
+    });
+    unmount();
+    act(() => void window.dispatchEvent(new Event("focus")));
+
+    expect(mocks.emitFocus.mock.calls).toEqual([
+      [{ surface: "dock-header", focused: true }],
+      [{ surface: "dock-header", focused: false }],
+    ]);
   });
 
   it("announces ready only after the state listener is registered", async () => {

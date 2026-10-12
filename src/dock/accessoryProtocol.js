@@ -1,7 +1,7 @@
 export const DOCK_ACCESSORY_EVENTS = Object.freeze({
   state: "dock-accessory://state",
   action: "dock-accessory://action",
-  pointer: "dock-accessory://pointer",
+  focus: "dock-accessory://focus",
   ready: "dock-accessory://ready",
 });
 
@@ -12,6 +12,7 @@ const ACTION_TYPES = new Set([
   "clear",
   "open-editor",
   "close-editor",
+  "dismiss-toolbar",
   "resize-editor",
   "set-edge",
   "toggle-reserve-space",
@@ -89,9 +90,9 @@ export function normalizeAccessoryAction(raw) {
   };
 }
 
-export function normalizeAccessoryPointer(raw) {
-  if (!raw || !isDockAccessorySurface(raw.surface) || typeof raw.inside !== "boolean") {
+export function normalizeAccessoryFocus(raw) {
+  if (!raw || !isDockAccessorySurface(raw.surface) || typeof raw.focused !== "boolean") {
     return null;
   }
-  return { surface: raw.surface, inside: raw.inside };
+  return { surface: raw.surface, focused: raw.focused };
 }

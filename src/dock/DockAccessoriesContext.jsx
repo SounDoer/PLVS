@@ -226,6 +226,9 @@ export function DockAccessoriesProvider({ children }) {
       } else if (type === "close-editor") {
         setHoveredDockPanelId(null);
         dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
+      } else if (type === "dismiss-toolbar") {
+        setHoveredDockPanelId(null);
+        dockAccessoryVisibility.dismiss();
       } else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
       else if (type === "set-edge") void onDockChange(payload.edge);
       else if (type === "toggle-reserve-space") {
@@ -313,7 +316,7 @@ export function DockAccessoriesProvider({ children }) {
     headerState: dockHeaderState,
     editorState: dockEditorState,
     onAction: onDockAccessoryAction,
-    onPointer: undefined,
+    onFocus: dockAccessoryVisibility.onAccessoryFocus,
   });
 
   return (

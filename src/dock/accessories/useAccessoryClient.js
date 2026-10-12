@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   emitDockAccessoryAction,
-  emitDockAccessoryPointer,
+  emitDockAccessoryFocus,
   emitDockAccessoryReady,
   listenDockAccessoryState,
 } from "../../ipc/dockAccessoryEvents.js";
@@ -36,6 +36,17 @@ export function useAccessoryClient(surface) {
     };
   }, [surface]);
 
+  useEffect(() => {
+    const onFocus = () => void emitDockAccessoryFocus({ surface, focused: true });
+    const onBlur = () => void emitDockAccessoryFocus({ surface, focused: false });
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [surface]);
+
   const action = useCallback(
     (type, actionPayload = {}) =>
       emitDockAccessoryAction({
@@ -46,7 +57,6 @@ export function useAccessoryClient(surface) {
       }),
     [surface]
   );
-  const pointer = useCallback((inside) => emitDockAccessoryPointer({ surface, inside }), [surface]);
 
-  return { payload, action, pointer };
+  return { payload, action };
 }

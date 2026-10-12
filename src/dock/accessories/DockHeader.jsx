@@ -14,8 +14,8 @@ import { SourceTransportCluster } from "../../components/SourceTransportCluster.
 import { HoverTip } from "../../components/HoverTip.jsx";
 import { cn } from "../../lib/utils.js";
 
-/** @param {{ state: any, onAction: (...args: any[]) => any, onPointer: (...args: any[]) => any }} props */
-export function DockHeader({ state, onAction, onPointer }) {
+/** @param {{ state: any, onAction: (...args: any[]) => any }} props */
+export function DockHeader({ state, onAction }) {
   const supportsReservation = /Win|Mac/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;
   const toolTipProps = /** @type {const} */ ({ tipSide: "left", tipAlign: "center" });
@@ -32,8 +32,6 @@ export function DockHeader({ state, onAction, onPointer }) {
       data-testid="dock-header"
       data-visual-capture-surface="dockHeader"
       data-visual-capture-ready="true"
-      onPointerEnter={() => onPointer(true)}
-      onPointerLeave={() => onPointer(false)}
       className="flex h-[44px] w-screen select-none items-center justify-center border-y border-border bg-background px-2 text-foreground"
     >
       <div

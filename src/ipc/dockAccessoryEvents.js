@@ -5,8 +5,8 @@ export function listenDockAccessoryAction(handler) {
   return listen(DOCK_ACCESSORY_EVENTS.action, (event) => handler(event.payload));
 }
 
-export function listenDockAccessoryPointer(handler) {
-  return listen(DOCK_ACCESSORY_EVENTS.pointer, (event) => handler(event.payload));
+export function listenDockAccessoryFocus(handler) {
+  return listen(DOCK_ACCESSORY_EVENTS.focus, (event) => handler(event.payload));
 }
 
 export function listenDockAccessoryReady(handler) {
@@ -25,8 +25,8 @@ export function emitDockAccessoryAction(action) {
   return emitTo("main", DOCK_ACCESSORY_EVENTS.action, action);
 }
 
-export function emitDockAccessoryPointer(pointer) {
-  return emitTo("main", DOCK_ACCESSORY_EVENTS.pointer, pointer);
+export function emitDockAccessoryFocus(focus) {
+  return emitTo("main", DOCK_ACCESSORY_EVENTS.focus, focus);
 }
 
 export function emitDockAccessoryReady(surface) {

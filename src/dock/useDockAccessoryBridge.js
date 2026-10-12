@@ -2,29 +2,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   emitDockAccessoryState,
   listenDockAccessoryAction,
-  listenDockAccessoryPointer,
+  listenDockAccessoryFocus,
   listenDockAccessoryReady,
 } from "../ipc/dockAccessoryEvents.js";
 import {
   createAccessorySnapshot,
   isDockAccessorySurface,
   normalizeAccessoryAction,
-  normalizeAccessoryPointer,
+  normalizeAccessoryFocus,
 } from "./accessoryProtocol.js";
 import { createThemePublication, themeRuntime } from "../theme/themeRuntime.js";
 
-export function useDockAccessoryBridge({ active, headerState, editorState, onAction, onPointer }) {
+export function useDockAccessoryBridge({ active, headerState, editorState, onAction, onFocus }) {
   const [theme, setTheme] = useState(() => createThemePublication(themeRuntime.getSnapshot()));
   const revisionRef = useRef(0);
   const latestRef = useRef({ headerState, editorState, theme });
   const onActionRef = useRef(onAction);
-  const onPointerRef = useRef(onPointer);
+  const onFocusRef = useRef(onFocus);
 
   useEffect(() => {
     latestRef.current = { headerState, editorState, theme };
     onActionRef.current = onAction;
-    onPointerRef.current = onPointer;
-  }, [editorState, headerState, onAction, onPointer, theme]);
+    onFocusRef.current = onFocus;
+  }, [editorState, headerState, onAction, onFocus, theme]);
 
   useEffect(
     () =>
@@ -61,9 +61,9 @@ export function useDockAccessoryBridge({ active, headerState, editorState, onAct
         const action = normalizeAccessoryAction(raw);
         if (action) onActionRef.current?.(action);
       }),
-      listenDockAccessoryPointer((raw) => {
-        const pointer = normalizeAccessoryPointer(raw);
-        if (pointer) onPointerRef.current?.(pointer);
+      listenDockAccessoryFocus((raw) => {
+        const focus = normalizeAccessoryFocus(raw);
+        if (focus) onFocusRef.current?.(focus);
       }),
       listenDockAccessoryReady((raw) => {
         if (!isDockAccessorySurface(raw?.surface)) return;

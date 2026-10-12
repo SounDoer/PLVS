@@ -21,7 +21,7 @@ const STATE = {
 describe("DockHeader", () => {
   it("centers transport and Dock tools as one compact group", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
-    render(<DockHeader state={STATE} onAction={vi.fn()} onPointer={vi.fn()} />);
+    render(<DockHeader state={STATE} onAction={vi.fn()} />);
     const names = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"));
     expect(names).toEqual([
       null,
@@ -35,10 +35,9 @@ describe("DockHeader", () => {
     ]);
   });
 
-  it("emits semantic actions and pointer presence", () => {
+  it("emits semantic actions and ignores pointer presence", () => {
     const onAction = vi.fn();
-    const onPointer = vi.fn();
-    render(<DockHeader state={STATE} onAction={onAction} onPointer={onPointer} />);
+    render(<DockHeader state={STATE} onAction={onAction} />);
     fireEvent.pointerEnter(screen.getByTestId("dock-header"));
     const modulesButton = screen.getByRole("button", { name: "Edit modules" });
     vi.spyOn(modulesButton, "getBoundingClientRect").mockReturnValue(
@@ -49,19 +48,12 @@ describe("DockHeader", () => {
     );
     fireEvent.click(modulesButton);
     fireEvent.pointerLeave(screen.getByTestId("dock-header"));
-    expect(onPointer.mock.calls).toEqual([[true], [false]]);
-    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "modules", anchorX: 332 });
+    expect(onAction.mock.calls).toEqual([["open-editor", { view: "modules", anchorX: 332 }]]);
   });
 
   it("closes an editor when its active toolbar button is clicked again", () => {
     const onAction = vi.fn();
-    render(
-      <DockHeader
-        state={{ ...STATE, editorView: "modules" }}
-        onAction={onAction}
-        onPointer={vi.fn()}
-      />
-    );
+    render(<DockHeader state={{ ...STATE, editorView: "modules" }} onAction={onAction} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit modules" }));
 
@@ -70,13 +62,7 @@ describe("DockHeader", () => {
 
   it("opens the requested editor directly when another editor is active", () => {
     const onAction = vi.fn();
-    render(
-      <DockHeader
-        state={{ ...STATE, editorView: "modules" }}
-        onAction={onAction}
-        onPointer={vi.fn()}
-      />
-    );
+    render(<DockHeader state={{ ...STATE, editorView: "modules" }} onAction={onAction} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Presets" }));
 
@@ -86,11 +72,7 @@ describe("DockHeader", () => {
   it("opens the Loudness Profile editor without highlighting active configuration", () => {
     const onAction = vi.fn();
     const { rerender } = render(
-      <DockHeader
-        state={{ ...STATE, loudnessProfileActive: false }}
-        onAction={onAction}
-        onPointer={undefined}
-      />
+      <DockHeader state={{ ...STATE, loudnessProfileActive: false }} onAction={onAction} />
     );
     const button = screen.getByRole("button", { name: "Loudness Profile" });
 
@@ -103,19 +85,13 @@ describe("DockHeader", () => {
       anchorX: 110,
     });
 
-    rerender(
-      <DockHeader
-        state={{ ...STATE, loudnessProfileActive: true }}
-        onAction={onAction}
-        onPointer={undefined}
-      />
-    );
+    rerender(<DockHeader state={{ ...STATE, loudnessProfileActive: true }} onAction={onAction} />);
   });
 
   it("emits a reserve toggle instead of a stale target value", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     const onAction = vi.fn();
-    render(<DockHeader state={STATE} onAction={onAction} onPointer={vi.fn()} />);
+    render(<DockHeader state={STATE} onAction={onAction} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Stop reserving screen space" }));
 
@@ -125,13 +101,7 @@ describe("DockHeader", () => {
   it("offers the opt-in reserve action on macOS", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     const onAction = vi.fn();
-    render(
-      <DockHeader
-        state={{ ...STATE, reserveSpace: false }}
-        onAction={onAction}
-        onPointer={vi.fn()}
-      />
-    );
+    render(<DockHeader state={{ ...STATE, reserveSpace: false }} onAction={onAction} />);
     fireEvent.click(screen.getByRole("button", { name: "Reserve screen space" }));
     expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
   });
@@ -148,7 +118,6 @@ describe("DockHeader", () => {
           },
         }}
         onAction={vi.fn()}
-        onPointer={vi.fn()}
       />
     );
 
@@ -176,7 +145,6 @@ describe("DockHeader", () => {
           },
         }}
         onAction={onAction}
-        onPointer={vi.fn()}
       />
     );
 

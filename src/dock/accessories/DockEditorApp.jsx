@@ -33,7 +33,7 @@ export function measureDockEditorContent(root) {
 }
 
 export function DockEditorApp() {
-  const { payload, action, pointer } = useAccessoryClient("dock-editor");
+  const { payload, action } = useAccessoryClient("dock-editor");
   const rootRef = useRef(null);
   const pointerActiveRef = useRef(false);
   const lastSizeRef = useRef(null);
@@ -153,8 +153,6 @@ export function DockEditorApp() {
       data-testid="dock-editor"
       data-visual-capture-surface="dockEditor"
       data-visual-capture-ready="true"
-      onPointerEnter={() => pointer(true)}
-      onPointerLeave={() => pointer(false)}
       className={cn(
         "inline-block max-h-screen overflow-hidden",
         POPOVER_SURFACE_CLASS,

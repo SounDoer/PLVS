@@ -9,7 +9,6 @@ const { action, client } = vi.hoisted(() => ({
   client: {
     payload: null,
     action: null,
-    pointer: vi.fn(),
   },
 }));
 

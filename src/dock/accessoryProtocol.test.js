@@ -3,7 +3,7 @@ import {
   acceptAccessorySnapshot,
   createAccessorySnapshot,
   normalizeAccessoryAction,
-  normalizeAccessoryPointer,
+  normalizeAccessoryFocus,
 } from "./accessoryProtocol.js";
 
 describe("Dock accessory protocol", () => {
@@ -15,7 +15,7 @@ describe("Dock accessory protocol", () => {
     expect(acceptAccessorySnapshot(0, snapshot, "dock-editor")).toBeNull();
   });
 
-  it("normalizes known semantic actions and pointer messages", () => {
+  it("normalizes known semantic actions and focus messages", () => {
     expect(
       normalizeAccessoryAction({
         surface: "dock-header",
@@ -65,9 +65,14 @@ describe("Dock accessory protocol", () => {
       })
     ).toMatchObject({ type: "reorder-loudness-profiles", payload: { profileIds: ["b", "a"] } });
     expect(normalizeAccessoryAction({ surface: "dock-header", type: "unknown" })).toBeNull();
-    expect(normalizeAccessoryPointer({ surface: "dock-editor", inside: true })).toEqual({
+    expect(
+      normalizeAccessoryAction({ surface: "dock-header", type: "dismiss-toolbar" })
+    ).toMatchObject({ type: "dismiss-toolbar" });
+    expect(normalizeAccessoryFocus({ surface: "dock-editor", focused: true })).toEqual({
       surface: "dock-editor",
-      inside: true,
+      focused: true,
     });
+    expect(normalizeAccessoryFocus({ surface: "main", focused: true })).toBeNull();
+    expect(normalizeAccessoryFocus({ surface: "dock-editor", focused: "yes" })).toBeNull();
   });
 });
