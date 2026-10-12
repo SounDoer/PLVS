@@ -20,12 +20,14 @@ const LISTING_FIELDS = new Set([
   "title",
   "summary",
   "descriptionMarkdown",
+  "references",
   "tags",
   "author",
   "included",
   "releases",
 ]);
 const AUTHOR_FIELDS = new Set(["name", "url"]);
+const REFERENCE_FIELDS = new Set(["publisher", "title", "edition", "url", "relevanceMarkdown"]);
 const INCLUDED_FIELDS = new Set(["sourceId", "previews"]);
 const RELEASE_FIELDS = new Set([
   "number",
@@ -143,6 +145,66 @@ function validateAuthor(raw, issues) {
     }
   }
   return { name, url };
+}
+
+function validateReferences(raw, issues) {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) {
+    issues.push(issue("invalidReferences", "$.references", "references must be an array."));
+    return [];
+  }
+  if (raw.length > 12) {
+    issues.push(
+      issue("tooManyReferences", "$.references", "A Listing may have at most 12 references.")
+    );
+  }
+  const seenUrls = new Set();
+  return raw.map((reference, index) => {
+    const path = `$.references[${index}]`;
+    if (!isPlainObject(reference)) {
+      issues.push(issue("invalidReference", path, "Each reference must be an object."));
+      return { publisher: "", title: "", edition: null, url: "", relevanceMarkdown: "" };
+    }
+    unknownFields(reference, REFERENCE_FIELDS, path, issues);
+    const publisher = normalizedText(
+      reference.publisher,
+      { path: `${path}.publisher`, label: "Reference publisher", max: 120 },
+      issues
+    );
+    const title = normalizedText(
+      reference.title,
+      { path: `${path}.title`, label: "Reference title", max: 240 },
+      issues
+    );
+    const edition =
+      reference.edition == null
+        ? null
+        : normalizedText(
+            reference.edition,
+            { path: `${path}.edition`, label: "Reference edition", max: 80 },
+            issues
+          );
+    let url = "";
+    if (typeof reference.url !== "string" || !/^https:\/\/[^\s]+$/i.test(reference.url)) {
+      issues.push(issue("invalidReferenceUrl", `${path}.url`, "Reference URL must use HTTPS."));
+    } else {
+      url = reference.url;
+      const key = url.toLocaleLowerCase("en-US");
+      if (seenUrls.has(key)) {
+        issues.push(
+          issue("duplicateReferenceUrl", `${path}.url`, "Reference URLs must be unique.")
+        );
+      }
+      seenUrls.add(key);
+    }
+    const relevanceMarkdown = markdownIssues(
+      reference.relevanceMarkdown,
+      `${path}.relevanceMarkdown`,
+      "Reference relevance",
+      issues
+    );
+    return { publisher, title, edition, url, relevanceMarkdown };
+  });
 }
 
 function validateTags(raw, issues) {
@@ -360,6 +422,7 @@ export function validateSharesetsListingRecord(raw) {
     "Description",
     issues
   );
+  const references = validateReferences(raw.references, issues);
   const tags = validateTags(raw.tags, issues);
   const author = validateAuthor(raw.author, issues);
   const included = raw.included == null ? null : validateIncluded(raw.included, issues);
@@ -419,6 +482,7 @@ export function validateSharesetsListingRecord(raw) {
     title,
     summary,
     descriptionMarkdown,
+    references,
     tags,
     author,
     included,

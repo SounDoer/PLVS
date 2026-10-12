@@ -11,6 +11,15 @@ function listing(overrides = {}) {
     title: "Broadcast Profile",
     summary: "A compact profile for broadcast checks.",
     descriptionMarkdown: "Designed for a **clear** reference. [Details](https://example.com).",
+    references: [
+      {
+        publisher: "Example Standards Body",
+        title: "Example Loudness Recommendation",
+        edition: "Version 2.0 (2026)",
+        url: "https://example.com/loudness",
+        relevanceMarkdown: "Defines the target used by the Integrated rules.",
+      },
+    ],
     tags: ["Broadcast", "Loudness"],
     author: { name: "Example Author", url: "https://example.com" },
     releases: [
@@ -35,6 +44,12 @@ describe("Sharesets Listing and Release records", () => {
       slug: "broadcast-profile",
       classification: "sharesets",
       author: { name: "Example Author", url: "https://example.com" },
+      references: [
+        expect.objectContaining({
+          publisher: "Example Standards Body",
+          edition: "Version 2.0 (2026)",
+        }),
+      ],
       releases: [{ number: 1, status: "published", withdrawalReason: null }],
     });
     expect(result).not.toHaveProperty("license");
@@ -115,6 +130,43 @@ describe("Sharesets Listing and Release records", () => {
         issues: expect.arrayContaining([
           expect.objectContaining({ code: "duplicateTag" }),
           expect.objectContaining({ code: "invalidAuthorUrl" }),
+        ]),
+      })
+    );
+  });
+
+  it("rejects unsafe, duplicate, or unstructured references", () => {
+    expect(() =>
+      validateSharesetsListingRecord(
+        listing({
+          references: [
+            {
+              publisher: "Example",
+              title: "First",
+              url: "http://example.com/reference",
+              relevanceMarkdown: "Relevant.",
+            },
+            {
+              publisher: "Example",
+              title: "Second",
+              url: "https://example.com/reference",
+              relevanceMarkdown: "<strong>Raw HTML</strong>",
+            },
+            {
+              publisher: "Example",
+              title: "Duplicate",
+              url: "https://example.com/reference",
+              relevanceMarkdown: "Relevant.",
+            },
+          ],
+        })
+      )
+    ).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "invalidReferenceUrl" }),
+          expect.objectContaining({ code: "rawHtmlNotAllowed" }),
+          expect.objectContaining({ code: "duplicateReferenceUrl" }),
         ]),
       })
     );

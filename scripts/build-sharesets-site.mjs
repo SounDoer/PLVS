@@ -111,7 +111,21 @@ function card(listing, activeType) {
   const preview =
     release?.previews.find((item) => item.id === "product-workspace-file") ?? release?.previews[0];
   const previewUrl = preview ? `${contentFilesPath(listing, release)}/${preview.id}.png` : null;
-  const searchText = [listing.title, listing.summary, listing.descriptionMarkdown, ...listing.tags]
+  const referenceSearch = listing.references.flatMap(
+    ({ publisher, title, edition, relevanceMarkdown }) => [
+      publisher,
+      title,
+      edition ?? "",
+      relevanceMarkdown,
+    ]
+  );
+  const searchText = [
+    listing.title,
+    listing.summary,
+    listing.descriptionMarkdown,
+    ...listing.tags,
+    ...referenceSearch,
+  ]
     .join(" ")
     .toLocaleLowerCase("en-US");
   const attributes = {
@@ -192,6 +206,16 @@ function renderCompatibility(metadata) {
 function renderDependencies(metadata) {
   if (metadata.dependencies.length === 0) return `<p class="muted">No bundled dependencies.</p>`;
   return `<ul class="dependency-list">${metadata.dependencies.map((dependency) => `<li><strong>${escapeHtml(dependency.name)}</strong><span>${escapeHtml({ "plvs-loudness-profile": "Loudness Profile", "plvs-theme": "Theme", "plvs-preset": "Preset" }[dependency.kind] ?? dependency.kind)}</span></li>`).join("")}</ul>`;
+}
+
+function renderReferences(references) {
+  if (references.length === 0) return "";
+  return `<section class="profile-sources"><h2>Sources</h2><div class="source-list">${references
+    .map(
+      (reference) =>
+        `<article class="source-card"><h3><a href="${escapeHtml(reference.url)}" target="_blank" rel="noopener">${escapeHtml(reference.title)}</a></h3><p class="source-meta">${escapeHtml(reference.publisher)}${reference.edition ? ` · ${escapeHtml(reference.edition)}` : ""}</p><div class="markdown">${marked.parse(reference.relevanceMarkdown)}</div></article>`
+    )
+    .join("")}</div></section>`;
 }
 
 function renderPresetDetails(metadata) {
@@ -285,6 +309,7 @@ function detailPage(listing, profile = null) {
         <div class="theme-more">
           <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isIncluded ? "<div><dt>Availability</dt><dd>Included with PLVS</dd></div>" : ""}${isProfile ? "" : isPreset ? renderPresetDetails(metadata) : renderSummary(metadata.content.summary)}${isPreset && listing.presetPack ? presetExtraDetails(listing.presetPack) : ""}${isIncluded ? "" : `<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div>`}</dl></div>${isIncluded ? "" : `<details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>`}` : `<p class="muted">No current release is available.</p>`}</section>
         </div>
+        ${renderReferences(listing.references)}
         ${isPreset && listing.presetPack ? presetPanels(listing.presetPack) : ""}
         ${isIncluded ? "" : `<section class="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>`}
         ${gallery.length ? `<dialog class="preview-dialog" aria-label="${FAMILIES[listing.type].singular} preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous${gallery.length === 1 ? " hidden" : ""} aria-label="Previous image">←</button><span data-preview-position${gallery.length === 1 ? " hidden" : ""} aria-live="polite"></span><button class="button secondary" type="button" data-preview-next${gallery.length === 1 ? " hidden" : ""} aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
@@ -299,6 +324,7 @@ function detailPage(listing, profile = null) {
       <header class="detail-hero"><div><p class="eyebrow">${FAMILIES[listing.type].singular} · ${escapeHtml(listing.classification)}</p><h1>${escapeHtml(listing.title)}</h1><p class="lede">${escapeHtml(listing.summary)}</p><p class="byline">By ${author}</p>${primaryAction}</div>${previews[0] ? `<img src="/sharesets/files/${listing.id}/v${current.number}/${previews[0].id}.png" alt="Preview of ${escapeHtml(listing.title)}" />` : ""}</header>
       <section class="detail-grid"><article class="prose"><h2>About</h2><div class="markdown">${marked.parse(listing.descriptionMarkdown)}</div></article>${metadata ? `<aside><h2>Content</h2><dl>${renderSummary(metadata.content.summary)}</dl><dl><div><dt>File size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div><div><dt>SHA-256</dt><dd class="hash">${escapeHtml(metadata.artifact.sha256)}</dd></div></dl></aside>` : ""}</section>
       ${metadata ? `<section class="detail-grid"><article><h2>Compatibility</h2>${renderCompatibility(metadata)}</article><article><h2>Dependencies</h2>${renderDependencies(metadata)}</article></section>` : ""}
+      ${renderReferences(listing.references)}
       ${current ? `<section><h2>Install in PLVS</h2><ol class="steps"><li>Download the current Release file.</li><li>Open PLVS Settings and choose <strong>Import…</strong> in the <strong>Saved Items</strong> row.</li><li>Review what will be added, then confirm the import. Applying or activating the Item is a separate choice.</li></ol></section>` : ""}
       ${previews.length > 0 ? `<section><h2>Previews</h2><div class="preview-grid">${previews.map((preview) => `<figure><img src="/sharesets/files/${listing.id}/v${current.number}/${preview.id}.png" alt="${escapeHtml(preview.id.replaceAll("-", " "))}" loading="lazy" /><figcaption>${escapeHtml(preview.id.replaceAll("-", " "))}</figcaption></figure>`).join("")}</div></section>` : ""}
       <section><h2>Release history</h2><div class="release-list">${releases}</div></section>

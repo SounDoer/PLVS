@@ -17,6 +17,11 @@ Listing and Release records intentionally contain no per-Item licence field. Sub
 and repository-wide contribution/publication permission are undecided and deferred until PLVS
 separately chooses to design a public submission programme.
 
+A Listing may include structured `references`. Each reference records its publisher, document
+title, optional edition, official HTTPS URL, and a short Markdown explanation of how the source
+relates to the Item. Use this for standards and platform guidance; do not attach a source when it
+would falsely imply that every rule in an editorial Profile came from that document.
+
 Validate this source boundary with:
 
 ```text

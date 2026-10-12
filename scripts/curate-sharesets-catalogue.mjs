@@ -90,7 +90,7 @@ async function oldReleaseBytesMatch(previousRoot, candidateRoot, previous, candi
 }
 
 function changedCopyFields(previous, candidate) {
-  return ["title", "summary", "descriptionMarkdown", "tags", "author"].filter(
+  return ["title", "summary", "descriptionMarkdown", "references", "tags", "author"].filter(
     (field) => !same(previous[field], candidate[field])
   );
 }

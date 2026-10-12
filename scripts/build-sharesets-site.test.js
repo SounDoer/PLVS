@@ -63,6 +63,15 @@ function writeFixtureSource(directory, { status = "published", statuses = [statu
       title: "Broadcast Safe",
       summary: "A conservative broadcast profile.",
       descriptionMarkdown: "Designed for **broadcast delivery**.",
+      references: [
+        {
+          publisher: "Example Standards Body",
+          title: "Example Loudness Recommendation",
+          edition: "Version 2.0 (2026)",
+          url: "https://example.com/loudness",
+          relevanceMarkdown: "Defines the **Integrated target** represented by this profile.",
+        },
+      ],
       tags: ["Broadcast"],
       author: { name: "Example Author", url: "https://example.com" },
       releases,
@@ -259,6 +268,12 @@ describe("Sharesets static site generator", () => {
     expect(detail).not.toContain("<h2>Compatibility</h2>");
     expect(detail).not.toContain("No bundled dependencies");
     expect(detail).toContain("Settings → Saved Items → Import…");
+    expect(detail).toContain("<h2>Sources</h2>");
+    expect(detail).toContain("Example Loudness Recommendation");
+    expect(detail).toContain("Version 2.0 (2026)");
+    expect(detail).toContain("Defines the <strong>Integrated target</strong>");
+    expect(detail).toContain('href="https://example.com/loudness"');
+    expect(root).toContain("example loudness recommendation");
     expect(detail).not.toContain("data-preview-gallery");
     expect(detail).not.toContain("<h3>Rules</h3>");
     expect(root).toContain('aria-label="Profile rule summary"');

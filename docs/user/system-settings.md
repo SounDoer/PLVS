@@ -260,6 +260,10 @@ Comparisons use `>` (greater than) and `<` (less than). Values
 come directly from the Profile definition. The built-in **Default** page is marked **Included with
 PLVS** and omits download, import, file, and release controls. Downloadable Profiles retain those
 controls and their release history.
+Profiles based on published standards or platform guidance also show a **Sources** section. Each
+entry identifies the publisher, document, version or edition when available, an official link, and
+how that source maps to the Profile. A source link documents the curator's interpretation; it does
+not mean the publisher endorses or certifies PLVS.
 Preset pages show the workspace preview alongside the description, tags, download action and
 import instructions. Select the preview to enlarge it in place; a single preview needs no
 thumbnail strip. **Details** lists workspace panels, module names and Dock status, plus file

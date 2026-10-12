@@ -457,6 +457,32 @@ body:has(.preview-dialog[open]) {
   scroll-margin-top: var(--space-6);
 }
 
+.profile-sources {
+  margin-top: var(--space-6);
+}
+.source-list {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 760px;
+}
+.source-card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+}
+.source-card h3,
+.source-card p {
+  margin-top: 0;
+}
+.source-card .markdown > :last-child {
+  margin-bottom: 0;
+}
+.source-meta {
+  color: var(--color-muted);
+  font-size: var(--text-small);
+}
+
 .preset-settings,
 .preset-profile {
   margin-top: var(--space-6);
