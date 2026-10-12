@@ -27,13 +27,14 @@ Neither problem was reproduced on a machine while writing this; the analysis is 
 
 - The toolbar never appears unless the user asks for it, with one existing exception (an error).
 - Pointer movement alone never changes what is on screen.
-- The toolbar reads as the same object as the normal window's header.
+- The toolbar is laid out like the normal window's header, at Dock's own fixed density.
 
 ## Non-goals
 
 - No new toolbar actions. Sources, Views and Settings stay in the normal window.
 - No change to the editors' content, sizing or anchoring.
 - No global shortcut and no tray item for the toolbar.
+- Interface Size does not start affecting Dock. Whether it should is a separate question.
 - No Agent Control command to open the toolbar. Visual capture can still target `dock-header`
   while it is open; opening it stays a user action. Adding a command is a separate change with its
   own schema, documentation and contract tests.
@@ -53,6 +54,9 @@ A persistent column at the right end of the strip, inside the strip window.
   (`aria-pressed`, `bg-ui-hover text-foreground`).
 - Tip: `Show Toolbar` / `Hide Toolbar`.
 - The column takes its width out of the module row; modules lay out in the remaining width.
+- It is sized in fixed CSS px or `--ui-dock-*` tokens, not with the shell control tokens. The strip
+  lives in the main WebView, which does receive the user's Interface Size; an entry built from
+  `--ui-shell-h` would grow beside meters that do not.
 - `RecordingIndicator` currently sits at the strip's top-right corner. In Dock it moves left by the
   column's width so the two do not overlap.
 
@@ -63,14 +67,14 @@ use double-click.
 ### 2. Toolbar
 
 The toolbar stays the `dock-header` accessory window, full strip width, against the strip's inner
-edge. What changes is its presentation, which aligns with `AppHeader`:
+edge. What changes is its presentation, which takes `AppHeader`'s structure:
 
 | Aspect    | Today                                   | After                                                        |
 | --------- | --------------------------------------- | ------------------------------------------------------------ |
 | Layout    | One centred group                       | Transport at the left, notice after it, actions at the right |
-| Height    | Fixed 44 px                             | `--ui-shell-h` plus twice `--ui-header-pad-y`                |
+| Height    | Fixed 44 px                             | Fixed 36 px                                                  |
 | Surface   | `bg-background`, top and bottom borders | `--ui-surface-panel`, no divider lines                       |
-| Icon size | `size-3.5`                              | `--ui-icon-shell-action`                                     |
+| Icon size | `size-3.5` (14 px)                      | `--ui-icon-shell-action` (14 px here)                        |
 
 `DockHeader` reuses the layout classes from `src/lib/shellLayout.js` rather than copying their
 values, so a later change to the normal header carries over. The two headers remain separate
@@ -80,12 +84,17 @@ actions back.
 The set of actions is unchanged: Clear, Loudness Profile, Modules, Reserve Screen Space, edge
 switch, Restore Window, Presets.
 
-**Height becomes frontend-owned.** The normal header's height follows Interface Size, so a fixed
-`DOCK_HEADER_LOGICAL_HEIGHT` can no longer be correct. The header WebView measures its own root and
-reports it, the way the editor already reports its size; the main root passes that height to
-`set_dock_accessories`, which converts it with `webviewScale` like every other CSS length crossing
-into Rust. Until the first measurement arrives the current 44 px is the fallback. Agent Control's
-`accessoryGeometry.dockHeader.height` reads the same measured value instead of the literal 44.
+**Density is Dock's own.** Dock accessory WebViews are pinned to the Small interface profile
+(`resolveInterfacePreferencesForSurface`), whatever Interface Size the user chose, and the strip
+sizes itself from `--ui-dock-*` tokens keyed to its height. The shell tokens the shared classes
+read therefore resolve to constants in the header: a 28 px control row with 4 px of padding above
+and below, which is the 36 px in the table and the height of the normal header at Small. The goal
+is consistency among the three things on screen together — entry, header, editor — not with a
+normal window that is never visible at the same time.
+
+The window height stays a Rust constant, `DOCK_HEADER_LOGICAL_HEIGHT`, changed from 44 to 36.
+Agent Control's `accessoryGeometry.dockHeader.height` literal changes with it. A header 8 px
+thinner also covers that much less of the neighbouring application.
 
 ### 3. Visibility rules
 
@@ -133,17 +142,17 @@ yields; that is the last bullet under "cleared by" above.
 
 ### 5. Components touched
 
-| Unit                                     | Change                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| `src/dock/DockStrip.jsx`                 | Renders the entry column; drops the pointer enter/leave props                           |
-| `src/dock/useDockAccessoryVisibility.js` | Explicit open state and the rules in section 3; loses presence and the poll             |
-| `src/dock/accessoryVisibility.js`        | `shouldShowDockHeader` takes `userOpen`, `editorOpen`, `forceVisible`                   |
-| `src/dock/accessories/DockHeader.jsx`    | Layout and tokens from `shellLayout`; reports its height; Escape and focus-loss actions |
-| `src/dock/DockAccessoriesContext.jsx`    | Wires the toggle, the new actions and the measured header height                        |
-| `src/components/RecordingIndicator.jsx`  | Offset in Dock                                                                          |
-| `src-tauri/src/dock_accessories.rs`      | Header height parameter; focus on user-open; removes the cursor command                 |
-| `src-tauri/src/dock.rs`                  | `dock_accessory_rects` takes the header height                                          |
-| `src-tauri/src/appbar.rs`                | Yielding notifies the frontend so an open toolbar closes                                |
+| Unit                                     | Change                                                                      |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| `src/dock/DockStrip.jsx`                 | Renders the entry column; drops the pointer enter/leave props               |
+| `src/dock/useDockAccessoryVisibility.js` | Explicit open state and the rules in section 3; loses presence and the poll |
+| `src/dock/accessoryVisibility.js`        | `shouldShowDockHeader` takes `userOpen`, `editorOpen`, `forceVisible`       |
+| `src/dock/accessories/DockHeader.jsx`    | Layout and tokens from `shellLayout`; Escape and focus-loss actions         |
+| `src/dock/DockAccessoriesContext.jsx`    | Wires the toggle and the new actions; header geometry literal becomes 36    |
+| `src/components/RecordingIndicator.jsx`  | Offset in Dock                                                              |
+| `src-tauri/src/dock_accessories.rs`      | Focus on user-open; removes the cursor command                              |
+| `src-tauri/src/dock.rs`                  | `DOCK_HEADER_LOGICAL_HEIGHT` becomes 36                                     |
+| `src-tauri/src/appbar.rs`                | Yielding notifies the frontend so an open toolbar closes                    |
 
 ## Documentation
 
@@ -151,22 +160,22 @@ Updated in the same commits as the behaviour:
 
 - `docs/user/workspace.md`, Dock: "Hovering the strip shows a header" becomes the entry and its
   dismissal rules.
-- `docs/architecture.md`, "Dock three-window boundary": the header height is no longer a fixed
-  44 px, and the paragraph about the hover poll during full-screen yield is replaced.
+- `docs/architecture.md`, "Dock three-window boundary": the header is 36 logical px and shown on
+  request, and the paragraph about the hover poll during full-screen yield is replaced.
 
 ## Testing
 
 - `useDockAccessoryVisibility.test.jsx` is rewritten around section 3: one test per show condition
-  and per clearing trigger, plus that pointer events change nothing and that the cursor command is
-  never called.
+  and per clearing trigger.
 - `accessoryVisibility.test.js` follows the new inputs.
 - `DockStrip.test.jsx`: the entry renders, toggles, flips its icon with edge and state.
-- `DockHeader.test.jsx`: layout groups, Escape, height report.
-- Rust: `dock_accessory_rects` with a supplied header height, including clamping to the monitor.
+- `DockHeader.test.jsx`: layout groups, Escape.
+- Rust: existing `dock_accessory_rects` tests follow the 36 px constant.
 - Rendering: cold start, then Agent Control screenshots of `main` and `dock-header` before and
   after, compared by pixels. The toolbar is opened with a real click for these.
 - By hand on Windows: open, each way of closing, strip interaction with the toolbar open, error
-  forcing it open, full-screen yield closing it, Interface Size changing the header height.
+  forcing it open, full-screen yield closing it, and Interface Size at Extra Large leaving the entry
+  and the header unchanged.
 - By hand on macOS (needs the user's machine): the header taking focus, and focus loss closing the
   toolbar. This path is unverified on macOS and is the main risk in the design.
 
