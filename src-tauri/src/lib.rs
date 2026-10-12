@@ -496,6 +496,10 @@ pub fn run() {
         .decorations(initial_decorations)
         .shadow(!boot_docked && normal_shadow)
         .visible(false);
+      // Dock accessories take focus when shown on macOS. The strip's next click
+      // must activate its control as well as its window (including Hide Toolbar).
+      #[cfg(target_os = "macos")]
+      let builder = builder.accept_first_mouse(true);
       #[cfg(any(target_os = "windows", target_os = "macos"))]
       let builder = builder.transparent(true);
 

@@ -69,7 +69,9 @@ end of the strip to show the Dock toolbar, where you can start and stop measurin
 session, switch the Loudness Profile, edit which modules the strip shows, and manage Presets. The
 toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
 the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
-stays open until the error clears. On Windows, the strip can also reserve its screen space so
+stays open until the error clears. On macOS, controls respond to the first click when switching
+between the strip, toolbar, and editor windows, including the arrow that closes the toolbar.
+On Windows, the strip can also reserve its screen space so
 maximised windows do not cover it. On macOS, it starts as an overlay within the monitor work area,
 leaving room for the menu bar and system Dock. Enable **Reserve Screen Space** in the Dock toolbar
 to automatically move or shrink the active application's window away from the strip. Grant PLVS
