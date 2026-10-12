@@ -277,7 +277,7 @@ function detailPage(listing, profile = null) {
           </div>`
                 : ""
           }
-          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile || isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${(isProfile || isPreset) && current ? `<div class="actions"><a class="button" href="${currentDownload}" download>Download</a></div>` : primaryAction.replace("Download .plvstheme", "Download")}
+          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile || isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${(isProfile || isPreset) && current && !isIncluded ? `<div class="actions"><a class="button" href="${currentDownload}" download>Download</a></div>` : primaryAction.replace("Download .plvstheme", "Download")}
             ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2>${isProfile || isPreset ? `<p>Download the file, then choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Review and confirm the import, then ${isPreset ? "apply the Preset from your Library" : "select the Profile in PLVS"}. Importing does not apply it automatically.</p>` : `<p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p>`}</div>` : `<p class="withdrawn">No current release is available.</p>`}
             ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>
@@ -373,8 +373,11 @@ export async function buildSharesetsSite({
         ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8"))
         : null;
     listing.profile =
-      listing.type === "loudness" && current
-        ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8")).items[0]
+      listing.type === "loudness"
+        ? (listing.included?.item ??
+          (current
+            ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8")).items[0]
+            : null))
         : null;
   }
   const visibleListings = listings.filter(currentContent);

@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve, sep } from "node:path";
+import {
+  DEFAULT_LOUDNESS_PROFILE,
+  DEFAULT_LOUDNESS_PROFILE_ID,
+} from "../src/lib/loudnessProfileCatalog.js";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { deriveSharesetsCatalogueMetadata } from "../src/transfer/sharesetsContract.js";
 import { buildPack } from "../src/transfer/packShape.js";
@@ -279,7 +283,14 @@ async function resolveReleases(root, listing, listingIndex) {
 async function resolveIncluded(root, listing, listingIndex) {
   if (!listing.included) return null;
   const sourcePath = `$.listings[${listingIndex}].included.sourceId`;
-  if (listing.type !== "themes" || !BUILTIN_THEMES_V2[listing.included.sourceId]) {
+  const sourceId = listing.included.sourceId;
+  const builtInDocument =
+    listing.type === "themes"
+      ? BUILTIN_THEMES_V2[sourceId]
+      : listing.type === "loudness" && sourceId === DEFAULT_LOUDNESS_PROFILE_ID
+        ? DEFAULT_LOUDNESS_PROFILE
+        : null;
+  if (!builtInDocument) {
     throw new SharesetsSourceError([
       issue(
         "unknownIncludedSource",
@@ -289,10 +300,10 @@ async function resolveIncluded(root, listing, listingIndex) {
       ),
     ]);
   }
-  const pack = buildPack("themes", [BUILTIN_THEMES_V2[listing.included.sourceId]]);
+  const pack = buildPack(listing.type, [builtInDocument]);
   const text = `${JSON.stringify(pack, null, 2)}\n`;
   const metadata = await deriveSharesetsCatalogueMetadata(text, {
-    fileName: `${listing.included.sourceId}.plvstheme`,
+    fileName: `${sourceId}.${listing.type === "themes" ? "plvstheme" : "plvsloudness"}`,
   });
   const previews = await sealPreviews(
     root,
@@ -300,7 +311,7 @@ async function resolveIncluded(root, listing, listingIndex) {
     metadata,
     `$.listings[${listingIndex}].included`
   );
-  return { ...listing.included, previews, metadata };
+  return { ...listing.included, previews, metadata, item: structuredClone(pack.items[0]) };
 }
 
 export async function readSharesetsSourceRecords(contentDirectory) {

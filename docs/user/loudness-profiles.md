@@ -1,7 +1,9 @@
 # Loudness Profiles
 
-A Loudness Profile is your own rule set for judging a measurement. PLVS ships no platform or
-broadcast certification presets; every value in a profile is one you chose.
+A Loudness Profile is an editable rule set for judging a measurement. PLVS starts with its built-in
+Default profile, and Sharesets can provide curated profiles based on published standards or platform
+guidance. Profiles are monitoring aids, not certification or endorsement; review their rules and
+linked sources against the requirements for your work.
 
 ## What a profile contains
 

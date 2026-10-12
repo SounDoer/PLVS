@@ -123,6 +123,29 @@ function writeBuiltinThemeSource(directory) {
   for (const preview of previews) writeFileSync(join(directory, preview.path), PNG);
 }
 
+function writeBuiltinProfileSource(directory) {
+  writeFileSync(
+    join(directory, "manifest.json"),
+    JSON.stringify({ schemaVersion: 1, listings: ["default.json"] })
+  );
+  writeFileSync(
+    join(directory, "default.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: "default-loudness-profile",
+      slug: "default",
+      type: "loudness",
+      classification: "official",
+      title: "Default",
+      summary: "The built-in PLVS profile.",
+      descriptionMarkdown: "A flexible monitoring baseline, not a delivery standard.",
+      tags: ["Built-in", "Monitoring"],
+      author: { name: "PLVS", url: "https://github.com/SounDoer/PLVS" },
+      included: { sourceId: "default", previews: [] },
+    })
+  );
+}
+
 describe("Sharesets static site generator", () => {
   it("uses the fixed four-image Theme gallery order and plain-language labels", () => {
     const previews = [
@@ -271,6 +294,29 @@ describe("Sharesets static site generator", () => {
     expect(
       readFileSync(join(output, "files", "plvs-dark", "included", "semantic-overview.png"))
     ).toEqual(PNG);
+  });
+
+  it("renders the included Default Profile from its structured built-in rules", async () => {
+    const source = temporaryDirectory("plvs-sharesets-default-profile-source-");
+    const output = temporaryDirectory("plvs-sharesets-default-profile-output-");
+    writeBuiltinProfileSource(source);
+
+    await expect(
+      buildSharesetsSite({ contentDirectory: source, outputDirectory: output })
+    ).resolves.toMatchObject({ listingCount: 1, visibleListingCount: 1 });
+    const browse = readFileSync(join(output, "index.html"), "utf8");
+    const detail = readFileSync(join(output, "loudness", "default", "index.html"), "utf8");
+
+    expect(browse).toContain('aria-label="Profile rule summary"');
+    expect(detail).toContain("Included with PLVS");
+    expect(detail).toContain("−23 LUFS");
+    expect(detail).toContain("&gt; −6 LUFS → Warn");
+    expect(detail).toContain("&gt; −1 dBTP → Fail");
+    expect(detail).not.toContain(" download>");
+    expect(detail).not.toContain('href="null"');
+    expect(detail).not.toContain("How to Use");
+    expect(detail).not.toContain("Release History");
+    expect(detail).not.toContain("File Checksum");
   });
 
   it("keeps a partially withdrawn Listing visible and links only its published Release", async () => {

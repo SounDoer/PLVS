@@ -257,8 +257,9 @@ and detail pages. Each summary shows the reference loudness and the first three 
 remaining-rule count when needed. The lower **Details** section shows every rule, grouped by
 metric, with labels on the left and conditions and Warn or Fail outcomes on the right.
 Comparisons use `>` (greater than) and `<` (less than). Values
-come directly from the downloadable Profile. Tags, import instructions, file information and
-release history remain available on the detail page.
+come directly from the Profile definition. The built-in **Default** page is marked **Included with
+PLVS** and omits download, import, file, and release controls. Downloadable Profiles retain those
+controls and their release history.
 Preset pages show the workspace preview alongside the description, tags, download action and
 import instructions. Select the preview to enlarge it in place; a single preview needs no
 thumbnail strip. **Details** lists workspace panels, module names and Dock status, plus file
@@ -271,8 +272,9 @@ appears last, after all resource information and settings.
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
 **Download** remains visible.
 
-Download a `.plvstheme`, `.plvspreset`, or `.plvsloudness` file, then open **Settings → Saved Items →
-Import…**. Review what will be added and confirm. Importing adds to the
+For an Item that is not already included with PLVS, download its `.plvstheme`, `.plvspreset`, or
+`.plvsloudness` file, then open **Settings → Saved Items → Import…**. Review what will be added and
+confirm. Importing adds to the
 Library; applying the Item is a separate action. You can also use **Copy Theme** on a Theme page and
 paste into PLVS outside a text field to open the same review. An identical Item already in your
 Library is recognized instead of being added again.

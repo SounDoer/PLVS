@@ -3,6 +3,7 @@
   "listings": [
     "listings/plvs-dark.json",
     "listings/plvs-light.json",
+    "listings/default-loudness-profile.json",
     "listings/control-room-amber.json",
     "listings/studio-daylight.json",
     "listings/night-circuit.json",

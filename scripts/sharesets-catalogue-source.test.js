@@ -180,6 +180,64 @@ describe("Sharesets Catalogue source boundary", () => {
     });
   });
 
+  it("resolves the built-in Default Loudness Profile from the product source", async () => {
+    const directory = temporarySource();
+    writeFileSync(
+      join(directory, "manifest.json"),
+      JSON.stringify({ schemaVersion: 1, listings: ["default.json"] })
+    );
+    writeFileSync(
+      join(directory, "default.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "default-loudness-profile",
+        slug: "default",
+        type: "loudness",
+        classification: "official",
+        title: "Default",
+        summary: "The built-in default profile.",
+        descriptionMarkdown: "Included with PLVS.",
+        tags: ["Built-in"],
+        author: { name: "PLVS", url: "https://github.com/SounDoer/PLVS" },
+        included: { sourceId: "default", previews: [] },
+      })
+    );
+
+    await expect(readSharesetsSource(directory)).resolves.toMatchObject({
+      listings: [
+        {
+          document: {
+            included: {
+              sourceId: "default",
+              item: {
+                id: "default",
+                name: "Default",
+                referenceLufs: -23,
+                rules: [
+                  { metricId: "momentary", op: ">", value: -6, severity: "warn" },
+                  { metricId: "shortTerm", op: ">", value: -12, severity: "warn" },
+                  { metricId: "integrated", op: ">", value: -16, severity: "warn" },
+                  { metricId: "integrated", op: "<", value: -30, severity: "warn" },
+                  { metricId: "lra", op: ">", value: 18, severity: "warn" },
+                  { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+                ],
+              },
+              previews: [],
+              metadata: {
+                content: {
+                  type: "loudness",
+                  itemId: "default",
+                  summary: { referenceLufs: -23, ruleCount: 6 },
+                },
+              },
+            },
+            releases: [],
+          },
+        },
+      ],
+    });
+  });
+
   it("rejects an included source that is not built into PLVS", async () => {
     const directory = temporarySource();
     writeFileSync(

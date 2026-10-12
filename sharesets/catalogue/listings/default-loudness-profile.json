@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "default-loudness-profile",
+  "slug": "default",
+  "type": "loudness",
+  "classification": "official",
+  "title": "Default",
+  "summary": "The built-in PLVS profile for sound design, game-audio development, and everyday game testing.",
+  "descriptionMarkdown": "Default is the built-in PLVS working profile for sound design, game-audio development, and everyday game testing. It keeps −23 LUFS as a familiar professional reference while using broad monitoring bounds for varied material. Momentary above −6 LUFS and Short-term above −12 LUFS warn so the Loudness panel visibly demonstrates its rule colors; Integrated outside −30 to −16 LUFS and LRA above 18 LU also warn, while True Peak above −1 dBTP fails. This is a flexible monitoring baseline and product demonstration, not a delivery standard.",
+  "tags": ["Built-in", "Game Audio", "Sound Design", "Monitoring"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "included": {
+    "sourceId": "default",
+    "previews": []
+  }
+}

@@ -1,5 +1,10 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
+import { DEFAULT_LOUDNESS_PROFILE } from "../src/lib/loudnessProfileCatalog.js";
+import {
+  hashPortableLoudnessProfile,
+  loudnessProfileToPortable,
+} from "../src/lib/portableLoudnessProfile.js";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { hashPortableTheme, themeToPortable } from "../src/theme/portableTheme.js";
 import { readSharesetsSource } from "./sharesets-catalogue-source.mjs";
@@ -7,6 +12,7 @@ import { readSharesetsSource } from "./sharesets-catalogue-source.mjs";
 const INITIAL_LISTINGS = [
   "listings/plvs-dark.json",
   "listings/plvs-light.json",
+  "listings/default-loudness-profile.json",
   "listings/control-room-amber.json",
   "listings/studio-daylight.json",
   "listings/night-circuit.json",
@@ -39,6 +45,7 @@ describe("initial Sharesets Catalogue", () => {
 
     expect(listings.map(({ id }) => id).sort()).toEqual([
       "control-room-amber",
+      "default-loudness-profile",
       "graphite-monitor",
       "mono-dark",
       "mono-light",
@@ -51,7 +58,9 @@ describe("initial Sharesets Catalogue", () => {
       "stereo-overview",
       "studio-daylight",
     ]);
-    expect(new Set(listings.map(({ type }) => type))).toEqual(new Set(["presets", "themes"]));
+    expect(new Set(listings.map(({ type }) => type))).toEqual(
+      new Set(["loudness", "presets", "themes"])
+    );
     expect(listings.every(({ classification }) => classification === "official")).toBe(true);
     expect(listings.every(({ author }) => author?.name === "PLVS")).toBe(true);
     expect(
@@ -79,6 +88,23 @@ describe("initial Sharesets Catalogue", () => {
     expect(theme.included.sourceId).toBe("plvs-light");
     expect(theme.included.metadata.content.contentHash).toBe(builtinHash);
     expect(theme.releases).toEqual([]);
+  });
+
+  it("keeps Default linked to the current built-in Loudness Profile", async () => {
+    const source = await readLaunchSource();
+    const profile = source.listings.find(
+      ({ document }) => document.id === "default-loudness-profile"
+    ).document;
+    const portable = loudnessProfileToPortable(DEFAULT_LOUDNESS_PROFILE);
+
+    expect(profile.title).toBe("Default");
+    expect(profile.included.sourceId).toBe("default");
+    expect(profile.included.item).toEqual({ id: "default", ...portable });
+    expect(profile.included.metadata.content.contentHash).toBe(
+      await hashPortableLoudnessProfile(portable)
+    );
+    expect(profile.included.previews).toEqual([]);
+    expect(profile.releases).toEqual([]);
   });
 
   it("keeps Control Room Amber distinct from the built-ins", async () => {
