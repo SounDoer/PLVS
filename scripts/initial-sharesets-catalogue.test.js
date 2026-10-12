@@ -19,6 +19,9 @@ const INITIAL_LISTINGS = [
   "listings/atsc-a-85-long-form-monitor.json",
   "listings/spotify.json",
   "listings/apple-podcasts.json",
+  "listings/ebu-r-128-streaming-monitor.json",
+  "listings/aes77-streaming-speech.json",
+  "listings/aes77-streaming-music.json",
   "listings/itu-t-h-872-game-audio.json",
   "listings/itu-t-h-872-portable-game-audio.json",
   "listings/control-room-amber.json",
@@ -52,6 +55,8 @@ describe("initial Sharesets Catalogue", () => {
     const listings = source.listings.map(({ document }) => document);
 
     expect(listings.map(({ id }) => id).sort()).toEqual([
+      "aes77-streaming-music",
+      "aes77-streaming-speech",
       "apple-podcasts",
       "atsc-a-85-long-form-monitor",
       "atsc-a-85-short-form",
@@ -59,6 +64,7 @@ describe("initial Sharesets Catalogue", () => {
       "default-loudness-profile",
       "ebu-r-128-programme",
       "ebu-r-128-short-form",
+      "ebu-r-128-streaming-monitor",
       "graphite-monitor",
       "itu-t-h-872-game-audio",
       "itu-t-h-872-portable-game-audio",

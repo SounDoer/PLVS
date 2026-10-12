@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "aes77-streaming-music",
+  "slug": "aes77-streaming-music",
+  "type": "loudness",
+  "classification": "official",
+  "title": "AES77 Streaming Music",
+  "summary": "A monitoring Profile for track-normalized internet music distribution.",
+  "descriptionMarkdown": "AES77 recommends −16 LUFS Distribution Loudness for track-normalized music and a Maximum True Peak no higher than −1 dBTP at the input of a lossy encoder. This Profile warns above the nominal target rather than treating the permitted upper tolerance as an operating goal. AES77 separately recommends −14 LUFS for the loudest track when album-loudest-track normalization is used; that workflow depends on relationships across an album and is intentionally not represented by this single-item Profile. AES77 does not prescribe Loudness Range, so no LRA rule is added.",
+  "references": [
+    {
+      "publisher": "Audio Engineering Society",
+      "title": "AES77-2023 Loudness Guidelines for Internet Audio Streaming and On-Demand Distribution",
+      "edition": "2023",
+      "url": "https://www.aes.org/publications/standards/preview.cfm?ID=114",
+      "relevanceMarkdown": "Defines the track-normalized music target, album alternative, tolerance and True Peak recommendation represented by this Profile."
+    },
+    {
+      "publisher": "Audio Engineering Society",
+      "title": "Loudness Normalization",
+      "edition": "Current online guidance, accessed October 2026",
+      "url": "https://aes.org/resources/audio-topics/loudness-project/loudness-normalization/",
+      "relevanceMarkdown": "Explains track and album normalization and the −16 LUFS track-normalized music recommendation."
+    }
+  ],
+  "tags": ["Standard", "Streaming", "Music"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial monitoring release for track-normalized AES77 music distribution.",
+      "artifact": "artifacts/aes77-streaming-music-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

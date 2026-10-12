@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "aes77-streaming-speech",
+  "slug": "aes77-streaming-speech",
+  "type": "loudness",
+  "classification": "official",
+  "title": "AES77 Streaming Speech",
+  "summary": "A monitoring Profile for speech-led internet audio distribution.",
+  "descriptionMarkdown": "AES77 recommends −18 LUFS Distribution Loudness for speech-led internet audio and a Maximum True Peak no higher than −1 dBTP at the input of a lossy encoder. This Profile uses whole-program Integrated Loudness and is intended for speech-only or strongly speech-dominant material. For assorted content with a separately measurable speech anchor, AES77 instead calls for Dialogue Integrated Loudness with an upper tolerance; PLVS does not claim that this Profile replaces that dialogue measurement workflow. The warning begins above the nominal target rather than encouraging operation at the upper tolerance.",
+  "references": [
+    {
+      "publisher": "Audio Engineering Society",
+      "title": "AES77-2023 Loudness Guidelines for Internet Audio Streaming and On-Demand Distribution",
+      "edition": "2023",
+      "url": "https://www.aes.org/publications/standards/preview.cfm?ID=114",
+      "relevanceMarkdown": "Defines distribution targets, measurement methods, tolerances and the True Peak recommendation for internet audio."
+    },
+    {
+      "publisher": "Audio Engineering Society",
+      "title": "Loudness Normalization",
+      "edition": "Current online guidance, accessed October 2026",
+      "url": "https://aes.org/resources/audio-topics/loudness-project/loudness-normalization/",
+      "relevanceMarkdown": "Explains the −18 LUFS speech target and the distinction between speech-anchor and whole-program workflows."
+    }
+  ],
+  "tags": ["Standard", "Streaming", "Speech"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial monitoring release for speech-led AES77 distribution workflows.",
+      "artifact": "artifacts/aes77-streaming-speech-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

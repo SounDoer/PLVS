@@ -1,6 +1,6 @@
 # Loudness Standard Profiles Implementation Plan
 
-1. Add eight validated V2 Loudness Profile pack artifacts and corresponding curated Listing records.
+1. Add eleven validated V2 Loudness Profile pack artifacts and corresponding curated Listing records.
 2. Add the Listings to the catalogue manifest with no preview assets.
 3. Keep Profile heroes concise and render Listing guidance under Details while retaining artifact-
    generated rules as the only numeric rule presentation.

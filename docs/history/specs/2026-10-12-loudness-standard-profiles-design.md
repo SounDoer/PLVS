@@ -21,6 +21,9 @@ The first set contains:
 6. Apple Podcasts
 7. ITU-T H.872 Game Audio
 8. ITU-T H.872 Portable Game Audio
+9. EBU R 128 Streaming Monitor
+10. AES77 Streaming Speech
+11. AES77 Streaming Music
 
 The former EBU R 128 s1 Momentary variant is excluded because it was removed from the current
 recommendation. Catalogue names avoid punctuation between the standard or platform name and its
@@ -52,6 +55,14 @@ variant.
 - H.872 guidance refers to a representative 30-minute gameplay window. A Profile cannot select that
   interval or verify portable-device capability and headphone safety behaviour, so Details states
   those operator responsibilities.
+- EBU R 128 Streaming Monitor represents the S2 interim Distribution Loudness range of −20 to
+  −16 LUFS and uses its midpoint only as a display reference. It does not replace the preferred
+  unchanged −23 LUFS workflow with loudness metadata.
+- AES77 Streaming Speech uses whole-program Integrated Loudness for speech-only or strongly
+  speech-dominant material. It does not claim to implement the standard's Dialogue Integrated
+  workflow for assorted content with a measurable speech anchor.
+- AES77 Streaming Music represents track normalization at −16 LUFS. Album-loudest-track
+  normalization depends on relationships across multiple tracks and is outside a single Profile.
 
 ## Severity policy
 

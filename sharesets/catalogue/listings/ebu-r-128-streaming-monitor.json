@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "ebu-r-128-streaming-monitor",
+  "slug": "ebu-r-128-streaming-monitor",
+  "type": "loudness",
+  "classification": "official",
+  "title": "EBU R 128 Streaming Monitor",
+  "summary": "A monitor for the interim streaming range described by EBU R 128 S2.",
+  "descriptionMarkdown": "EBU R 128 S2 prefers programmes to remain at −23 LUFS with accurate loudness metadata. When a broadcaster instead adapts content before streaming, S2 permits an interim Distribution Loudness Level from −20 to −16 LUFS. This Profile uses the midpoint, −18 LUFS, as its reference and warns outside that range; −18 LUFS is not presented as the only EBU streaming target. The True Peak check follows the R 128 production ceiling inherited by programmes prepared for this workflow.",
+  "references": [
+    {
+      "publisher": "European Broadcasting Union",
+      "title": "EBU R 128 S2 Loudness in Streaming",
+      "edition": "Version 3, November 2023",
+      "url": "https://tech.ebu.ch/publications/r128s2",
+      "relevanceMarkdown": "Recommends unchanged −23 LUFS streaming with metadata and defines the interim −20 to −16 LUFS distribution range represented by this monitoring Profile."
+    },
+    {
+      "publisher": "European Broadcasting Union",
+      "title": "EBU R 128 Loudness Normalisation and Permitted Maximum Level of Audio Signals",
+      "edition": "Current recommendation",
+      "url": "https://tech.ebu.ch/publications/r128",
+      "relevanceMarkdown": "Defines the programme preparation and Maximum True Peak requirements referenced by R 128 S2."
+    }
+  ],
+  "tags": ["Standard", "Streaming", "Monitoring"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial monitoring release based on the EBU R 128 S2 interim distribution range.",
+      "artifact": "artifacts/ebu-r-128-streaming-monitor-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

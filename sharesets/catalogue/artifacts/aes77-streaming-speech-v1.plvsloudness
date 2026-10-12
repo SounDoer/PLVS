@@ -1,0 +1,30 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "aes77-streaming-speech",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "AES77 Streaming Speech",
+      "referenceLufs": -18,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -18,
+          "severity": "warn"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -1,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}
