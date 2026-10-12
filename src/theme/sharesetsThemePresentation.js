@@ -14,7 +14,7 @@ export const SHARESETS_THEME_COMPATIBILITY = Object.freeze({
     maximumAppVersion: null,
   }),
   "1:5": Object.freeze({
-    minimumAppVersion: null,
+    minimumAppVersion: "0.19.2",
     maximumAppVersion: null,
   }),
 });

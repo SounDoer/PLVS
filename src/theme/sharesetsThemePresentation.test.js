@@ -17,20 +17,23 @@ describe("sharesets Theme page presentation", () => {
   it.each([
     ["plvs-dark", "dark", "Dark Theme"],
     ["plvs-light", "light", "Light Theme"],
-  ])("keeps the unreleased current semantics pending for %s", (themeId, colorScheme, label) => {
-    expect(buildSharesetsThemePresentation(portable(themeId))).toMatchObject({
-      appearance: { colorScheme, label },
-      compatibility: {
-        status: "pending-release",
-        minimumAppVersion: null,
-        maximumAppVersion: null,
-        label: null,
-        formatVersion: 1,
-        semanticsVersion: 5,
-        technicalLabel: "Theme Format 1 · Semantics 5",
-      },
-    });
-  });
+  ])(
+    "resolves the current semantics to its first release for %s",
+    (themeId, colorScheme, label) => {
+      expect(buildSharesetsThemePresentation(portable(themeId))).toMatchObject({
+        appearance: { colorScheme, label },
+        compatibility: {
+          status: "resolved",
+          minimumAppVersion: "0.19.2",
+          maximumAppVersion: null,
+          label: "Requires PLVS 0.19.2 or later",
+          formatVersion: 1,
+          semanticsVersion: 5,
+          technicalLabel: "Theme Format 1 · Semantics 5",
+        },
+      });
+    }
+  );
 
   it("renders the user-facing minimum from the central release mapping", () => {
     const presentation = requireResolvedSharesetsThemePresentation(portable("plvs-dark"), {
