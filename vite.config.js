@@ -27,7 +27,9 @@ export default defineConfig({
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      // A watched directory cannot be renamed on Windows, and `website:build` replaces
+      // `artifacts/website` by rename, so `npm run check` fails beside a running dev app.
+      ignored: ["**/src-tauri/**", "**/artifacts/**"],
     },
   },
   test: {
