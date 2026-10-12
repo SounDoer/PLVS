@@ -232,6 +232,9 @@ figcaption {
   align-items: start;
   gap: var(--detail-section-gap);
 }
+.profile-detail .theme-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+}
 .theme-gallery,
 .theme-summary {
   min-width: 0;
@@ -424,7 +427,8 @@ body:has(.preview-dialog[open]) {
     grid-template-columns: 1fr;
     gap: var(--space-6);
   }
-  .theme-layout {
+  .theme-layout,
+  .profile-detail .theme-layout {
     grid-template-columns: 1fr;
     gap: var(--space-5);
   }

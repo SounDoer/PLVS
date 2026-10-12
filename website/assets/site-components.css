@@ -359,11 +359,19 @@ footer a {
   margin: var(--space-4) 0 0;
 }
 .profile-preview-detail {
-  padding: var(--space-6);
+  padding: var(--space-5);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-panel);
   background: var(--color-surface);
   align-self: start;
+}
+.profile-preview-detail .profile-reference {
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+.profile-preview-detail .profile-preview-rules > div {
+  grid-template-columns: minmax(8.5rem, 0.75fr) minmax(0, 1.25fr);
+  padding: 0;
 }
 .profile-preview-detail .profile-reference strong {
   font-size: var(--text-page);
@@ -374,7 +382,7 @@ footer a {
 }
 @media (max-width: 560px) {
   .profile-preview-detail {
-    padding: var(--space-5);
+    padding: var(--space-4);
   }
 }
 
