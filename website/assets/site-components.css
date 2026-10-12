@@ -356,7 +356,7 @@ footer a {
   display: block;
 }
 .profile-preview-note {
-  margin: var(--space-4) 0 0;
+  margin: var(--space-3) 0 0;
 }
 .profile-preview-detail {
   padding: var(--space-5);
