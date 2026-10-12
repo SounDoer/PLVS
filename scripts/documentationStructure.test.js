@@ -141,7 +141,9 @@ describe("public documents state what the code ships", () => {
     const earlierSpellings =
       /\b(?:release|production|official)[- ]identity\b|\bdevelopment[- ](?:app|GUI|CLI|identity)\b|\binstalled release\b|--identity (?:development|release)\b/gi;
     const withoutEarlierNames = (markdown) =>
-      markdown.replace(/^\| Earlier name \|.*\n(?:\|.*\n)*/m, "").replace(/adr\/[\w.-]+/g, "");
+      markdown
+        .replace(/^\|\s*Earlier name\s*\|.*\n(?:\|.*\n)*/m, "")
+        .replace(/adr\/[\w.-]+/g, "");
     const documents = [
       ...collectMarkdown("docs", ["docs/history", "docs/adr"]),
       ...collectMarkdown(".agents/skills", []),

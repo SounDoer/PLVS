@@ -5,7 +5,7 @@
  * nobody knows yet which version will ship them; the release gate is the first moment the answer
  * exists, and the last moment it is cheap to write down.
  */
-import { COMMUNITY_THEME_COMPATIBILITY } from "../src/theme/communityThemePresentation.js";
+import { SHARESETS_THEME_COMPATIBILITY } from "../src/theme/sharesetsThemePresentation.js";
 import {
   PORTABLE_THEME_FORMAT_VERSION,
   PORTABLE_THEME_SEMANTICS_VERSION,
@@ -24,12 +24,12 @@ function isNewer(a, b) {
 
 export function checkThemeCompatibilityRegistered({
   appVersion,
-  compatibility = COMMUNITY_THEME_COMPATIBILITY,
+  compatibility = SHARESETS_THEME_COMPATIBILITY,
   formatVersion = PORTABLE_THEME_FORMAT_VERSION,
   semanticsVersion = PORTABLE_THEME_SEMANTICS_VERSION,
 }) {
   const key = `${formatVersion}:${semanticsVersion}`;
-  const where = "COMMUNITY_THEME_COMPATIBILITY (src/theme/communityThemePresentation.js)";
+  const where = "SHARESETS_THEME_COMPATIBILITY (src/theme/sharesetsThemePresentation.js)";
   const minimum = compatibility[key]?.minimumAppVersion ?? null;
   if (minimum === null) {
     return {
