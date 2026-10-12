@@ -8,7 +8,14 @@ import { themeRuntime } from "../theme/themeRuntime.js";
  * other asset renders on the built-in Dark shell.
  */
 export function publishSharesetsPreviewTheme(plan, asset) {
-  if (asset.renderer !== "product-gallery") return themeRuntime.publishSelection("plvs-dark");
+  if (
+    !plan.theme ||
+    (asset.renderer !== "product-gallery" &&
+      asset.renderer !== "multichannel-monitoring-prototype" &&
+      asset.renderer !== "multichannel-monitoring")
+  ) {
+    return themeRuntime.publishSelection("plvs-dark");
+  }
   return themeRuntime.publishAuthoring(
     portableToStoredTheme(plan.theme.document, "custom-sharesets-preview")
   );

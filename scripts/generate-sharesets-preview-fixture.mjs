@@ -11,10 +11,18 @@ import {
   buildPolarLevelMaxHoldTable,
   polarLevelMaxHoldAt,
 } from "../src/math/vectorscopePolarMath.js";
+import { buildDerivedSurround51Wav } from "./sharesets-preview-audio.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const audioPath = join(root, "assets", "marketing", "audio", "discovery-hero.wav");
 const fixturePath = join(root, "src", "transfer", "fixtures", "sharesetsPreviewV5.json");
+const multichannelFixturePath = join(
+  root,
+  "src",
+  "transfer",
+  "fixtures",
+  "sharesetsPreviewMultichannelV1.json"
+);
 const binDir = join(root, "src-tauri", "binaries");
 const write = process.argv.slice(2).includes("--write");
 const unknown = process.argv.slice(2).filter((argument) => argument !== "--write");
@@ -87,48 +95,55 @@ try {
   const analysisRequests = buildDefaultSharesetsPreviewAnalysisRequests();
   const requestsPath = join(staged, "analysis-requests.json");
   await writeFile(requestsPath, JSON.stringify(analysisRequests), "utf8");
-  const result = spawnSync(
-    "cargo",
-    [
-      "run",
-      "--quiet",
-      "--manifest-path",
-      "src-tauri/Cargo.toml",
-      "--example",
-      "sharesets_preview_fixture",
-      "--",
-      audioPath,
-      requestsPath,
-    ],
-    {
-      cwd: root,
-      env: { ...process.env, PLVS_FFMPEG_DIR: staged },
-      encoding: "utf8",
-      maxBuffer: 16 * 1024 * 1024,
+  const surroundPath = join(staged, "discovery-hero-5-1-derived.wav");
+  await buildDerivedSurround51Wav({
+    ffmpegPath: join(staged, assets.runtime.ffmpeg),
+    sourcePath: audioPath,
+    outputPath: surroundPath,
+  });
+
+  async function generateFixture(sourcePath, layout, outputPath) {
+    const result = spawnSync(
+      "cargo",
+      [
+        "run",
+        "--quiet",
+        "--manifest-path",
+        "src-tauri/Cargo.toml",
+        "--example",
+        "sharesets_preview_fixture",
+        "--",
+        sourcePath,
+        requestsPath,
+        layout,
+      ],
+      {
+        cwd: root,
+        env: { ...process.env, PLVS_FFMPEG_DIR: staged },
+        encoding: "utf8",
+        maxBuffer: 32 * 1024 * 1024,
+      }
+    );
+    if (result.status !== 0) {
+      throw new Error(result.stderr || "Sharesets preview Fixture generation failed.");
     }
-  );
-  if (result.status !== 0) {
-    process.stderr.write(result.stderr || "Sharesets preview Fixture generation failed.\n");
-    process.exitCode = result.status ?? 1;
-  } else {
-    const prettierConfig = (await resolveConfig(fixturePath)) ?? {};
+    const prettierConfig = (await resolveConfig(outputPath)) ?? {};
     const fixture = finalizeVectorscopeState(JSON.parse(result.stdout));
     const generated = await format(JSON.stringify(fixture), { ...prettierConfig, parser: "json" });
     if (write) {
-      await writeFile(fixturePath, generated, "utf8");
-      console.log(`Wrote ${fixturePath}`);
-    } else {
-      const current = await readFile(fixturePath, "utf8").catch(() => null);
-      if (current !== generated) {
-        console.error(
-          "Sharesets preview Fixture is stale. Run `npm run sharesets:fixture -- --write`."
-        );
-        process.exitCode = 1;
-      } else {
-        console.log("Sharesets preview Fixture matches the production analyzer.");
-      }
+      await writeFile(outputPath, generated, "utf8");
+      console.log(`Wrote ${outputPath}`);
+      return;
     }
+    const current = await readFile(outputPath, "utf8").catch(() => null);
+    if (current !== generated) {
+      throw new Error(`${outputPath} is stale. Run \`npm run sharesets:fixture -- --write\`.`);
+    }
+    console.log(`${outputPath} matches the production analyzer.`);
   }
+
+  await generateFixture(audioPath, "stereo", fixturePath);
+  await generateFixture(surroundPath, "5.1", multichannelFixturePath);
 } finally {
   await rm(staged, { recursive: true, force: true });
 }

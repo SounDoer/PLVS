@@ -11,7 +11,10 @@ use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, SpectrumFrameResult, VisualHistEntry,
 };
 
-const SOURCE_SHA256: &str = "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988";
+const STEREO_SOURCE_SHA256: &str =
+  "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988";
+const SURROUND_51_SOURCE_SHA256: &str =
+  "877339010e236b200839faea257271c5917506fe1e6125405b07aeaadb979488";
 const WINDOW_START_MS: u64 = 18_000;
 const WINDOW_END_MS: u64 = 78_000;
 const FREQUENCY_BIN_STRIDE: usize = 4;
@@ -19,7 +22,7 @@ const FREQUENCY_BIN_STRIDE: usize = 4;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SharesetsPreviewFixture {
-  id: &'static str,
+  id: String,
   version: u32,
   analysis_requests: AnalysisRequests,
   source: FixtureSource,
@@ -33,15 +36,26 @@ pub struct SharesetsPreviewFixture {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct FixtureSource {
-  file_name: &'static str,
-  sha256: &'static str,
-  title: &'static str,
-  artist: &'static str,
-  license: &'static str,
+  file_name: String,
+  sha256: String,
+  title: String,
+  artist: String,
+  license: String,
   window_start_ms: u64,
   window_end_ms: u64,
-  analyzer: &'static str,
+  analyzer: String,
   frequency_bin_stride: usize,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  derivation: Option<FixtureDerivation>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FixtureDerivation {
+  source_file_name: String,
+  source_sha256: String,
+  recipe: String,
+  recipe_version: u32,
 }
 
 #[derive(Serialize)]
@@ -56,7 +70,74 @@ struct FixtureClock {
 #[serde(rename_all = "camelCase")]
 struct FixtureAudio {
   sample_rate_hz: u32,
-  channel_labels: [&'static str; 2],
+  channel_labels: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PreviewFixtureLayout {
+  Stereo,
+  Surround51,
+}
+
+impl PreviewFixtureLayout {
+  pub fn from_id(id: &str) -> Result<Self, String> {
+    match id {
+      "stereo" => Ok(Self::Stereo),
+      "5.1" => Ok(Self::Surround51),
+      _ => Err(format!("Unsupported Sharesets preview layout: {id}")),
+    }
+  }
+
+  fn id(self) -> &'static str {
+    match self {
+      Self::Stereo => "plvs-sharesets-discovery-v5",
+      Self::Surround51 => "plvs-sharesets-discovery-5-1-v1",
+    }
+  }
+
+  fn version(self) -> u32 {
+    match self {
+      Self::Stereo => 5,
+      Self::Surround51 => 1,
+    }
+  }
+
+  fn file_name(self) -> &'static str {
+    match self {
+      Self::Stereo => "discovery-hero.wav",
+      Self::Surround51 => "discovery-hero-5-1-derived.wav",
+    }
+  }
+
+  fn title(self) -> &'static str {
+    match self {
+      Self::Stereo => "Discovery",
+      Self::Surround51 => "Discovery — deterministic 5.1 derivative",
+    }
+  }
+
+  fn channel_labels(self) -> &'static [&'static str] {
+    match self {
+      Self::Stereo => &["L", "R"],
+      Self::Surround51 => &["L", "R", "C", "LFE", "Ls", "Rs"],
+    }
+  }
+
+  fn expected_source_sha256(self) -> Option<&'static str> {
+    match self {
+      Self::Stereo => Some(STEREO_SOURCE_SHA256),
+      Self::Surround51 => Some(SURROUND_51_SOURCE_SHA256),
+    }
+  }
+
+  fn derivation(self) -> Option<FixtureDerivation> {
+    (self == Self::Surround51).then(|| FixtureDerivation {
+      source_file_name: "discovery-hero.wav".to_string(),
+      source_sha256: STEREO_SOURCE_SHA256.to_string(),
+      recipe: "plvs-sharesets-stereo-to-5-1".to_string(),
+      recipe_version: 1,
+    })
+  }
 }
 
 #[derive(Serialize)]
@@ -222,19 +303,27 @@ fn fixture_spectrum_curves(
 pub fn generate_sharesets_preview_fixture(
   audio_path: &Path,
   analysis_requests: AnalysisRequests,
+  layout: PreviewFixtureLayout,
 ) -> Result<SharesetsPreviewFixture, String> {
   let actual_hash = sha256(audio_path)?;
-  if actual_hash != SOURCE_SHA256 {
+  if layout
+    .expected_source_sha256()
+    .is_some_and(|expected| actual_hash != expected)
+  {
     return Err(format!(
-      "Preview audio hash mismatch: expected {SOURCE_SHA256}, got {actual_hash}"
+      "Preview audio hash mismatch: expected {}, got {actual_hash}",
+      layout.expected_source_sha256().unwrap_or_default()
     ));
   }
   let path = audio_path
     .to_str()
     .ok_or_else(|| "Preview audio path is not valid UTF-8".to_string())?;
   let probe = probe_file(audio_path)?;
-  if probe.selected_track.channels != Some(2) {
-    return Err("Sharesets preview audio must be stereo".to_string());
+  let expected_channels = layout.channel_labels().len() as u16;
+  if probe.selected_track.channels != Some(expected_channels) {
+    return Err(format!(
+      "Sharesets preview {layout:?} audio must have {expected_channels} channels"
+    ));
   }
   let sample_rate_hz = probe
     .selected_track
@@ -406,19 +495,20 @@ pub fn generate_sharesets_preview_fixture(
     .collect::<Result<BTreeMap<_, _>, String>>()?;
   let duration_ms = WINDOW_END_MS - WINDOW_START_MS;
   Ok(SharesetsPreviewFixture {
-    id: "plvs-sharesets-discovery-v5",
-    version: 5,
+    id: layout.id().to_string(),
+    version: layout.version(),
     analysis_requests,
     source: FixtureSource {
-      file_name: "discovery-hero.wav",
-      sha256: SOURCE_SHA256,
-      title: "Discovery",
-      artist: "Scott Buckley",
-      license: "CC BY 4.0",
+      file_name: layout.file_name().to_string(),
+      sha256: actual_hash,
+      title: layout.title().to_string(),
+      artist: "Scott Buckley".to_string(),
+      license: "CC BY 4.0".to_string(),
       window_start_ms: WINDOW_START_MS,
       window_end_ms: WINDOW_END_MS,
-      analyzer: "plvs-meter-pipeline-v1",
+      analyzer: "plvs-meter-pipeline-v1".to_string(),
       frequency_bin_stride: FREQUENCY_BIN_STRIDE,
+      derivation: layout.derivation(),
     },
     clock: FixtureClock {
       start_ms: 0,
@@ -427,7 +517,11 @@ pub fn generate_sharesets_preview_fixture(
     },
     audio: FixtureAudio {
       sample_rate_hz,
-      channel_labels: ["L", "R"],
+      channel_labels: layout
+        .channel_labels()
+        .iter()
+        .map(|label| (*label).to_string())
+        .collect(),
     },
     measurement_frame: MeasurementFrame {
       sequence: duration_ms / 100,

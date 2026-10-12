@@ -21,17 +21,15 @@ const FAMILIES = {
 
 const THEME_GALLERY_ORDER = [
   "product-workspace-file",
+  "product-multichannel-monitoring",
   "product-workspace-snapshot",
-  "product-spectrum-file",
-  "product-spectrogram-heatmap",
   "semantic-overview",
 ];
 
 const THEME_PREVIEW_LABELS = {
   "product-workspace-file": "Workspace",
+  "product-multichannel-monitoring": "Multichannel Monitoring",
   "product-workspace-snapshot": "Snapshot",
-  "product-spectrum-file": "Spectrum",
-  "product-spectrogram-heatmap": "Spectrogram",
   "semantic-overview": "Theme Colors",
 };
 

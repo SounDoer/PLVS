@@ -22,17 +22,10 @@ const PROFILE = {
   rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
 };
 const THEME_PREVIEW_IDS = [
-  "semantic-overview",
   "product-workspace-file",
+  "product-multichannel-monitoring",
   "product-workspace-snapshot",
-  "product-level-meter-file",
-  "product-loudness-file",
-  "product-stats-file",
-  "product-vectorscope-file",
-  "product-spectrum-file",
-  "product-spectrogram-heatmap",
-  "product-waveform-file",
-  "product-stereo-map-file",
+  "semantic-overview",
 ];
 
 function artifact() {

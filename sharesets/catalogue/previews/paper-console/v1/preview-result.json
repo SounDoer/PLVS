@@ -2,26 +2,11 @@
   "resultVersion": 1,
   "renderer": {
     "name": "plvs-theme-gallery",
-    "version": 2
+    "version": 3
   },
   "contentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-  "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+  "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf",
   "assets": [
-    {
-      "id": "semantic-overview",
-      "path": "semantic-overview.png",
-      "mediaType": "image/png",
-      "width": 1392,
-      "height": 523,
-      "byteLength": 55980,
-      "sha256": "sha256:eced7563581838d1bd04dad3013e3e6ea0f0e524049f3ae87c06adf99eac949d",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
     {
       "id": "product-workspace-file",
       "path": "product-workspace-file.png",
@@ -32,9 +17,24 @@
       "sha256": "sha256:2ae15341a264013cacda29499ceab7d1382454e4d47e99ee35af1111a108c8e1",
       "source": {
         "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
+        "contractVersion": 3,
         "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
+      }
+    },
+    {
+      "id": "product-multichannel-monitoring",
+      "path": "product-multichannel-monitoring.png",
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 800,
+      "byteLength": 186924,
+      "sha256": "sha256:107779e770c250926cb2941fa7867d80212ffbfdea2486d45f8de4d38ef9b364",
+      "source": {
+        "generator": "plvs-theme-gallery",
+        "contractVersion": 3,
+        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
       }
     },
     {
@@ -47,129 +47,24 @@
       "sha256": "sha256:d139f5d3f024fb78b0b4c3383c4358af129db8020ee8ca585e60a907bef68f3c",
       "source": {
         "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
+        "contractVersion": 3,
         "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
       }
     },
     {
-      "id": "product-level-meter-file",
-      "path": "product-level-meter-file.png",
+      "id": "semantic-overview",
+      "path": "semantic-overview.png",
       "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 19776,
-      "sha256": "sha256:c22219b27cd72473433bc4e6383461f45ae2c6ad7f6c9159f25d609d44dadece",
+      "width": 1392,
+      "height": 523,
+      "byteLength": 55980,
+      "sha256": "sha256:eced7563581838d1bd04dad3013e3e6ea0f0e524049f3ae87c06adf99eac949d",
       "source": {
         "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
+        "contractVersion": 3,
         "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-loudness-file",
-      "path": "product-loudness-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 35772,
-      "sha256": "sha256:fa63ce7d37623c6b2c1eb8b7a9549916c4df45a82073a188b2aeb43c13adba70",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-stats-file",
-      "path": "product-stats-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 36524,
-      "sha256": "sha256:d03ed19907fee9de5b95108699a516e29576596b108f0fca9627e9eb2e61a4eb",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-vectorscope-file",
-      "path": "product-vectorscope-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 32153,
-      "sha256": "sha256:4b60af5f21f94b99db73bf6f5b7be92859ef3078b8e775561700d7c46c603d5d",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-spectrum-file",
-      "path": "product-spectrum-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 86905,
-      "sha256": "sha256:a91b2fe371e8b116e2b348255ba35ab3a78ca9089c58cb2004c37e85f23501b1",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-spectrogram-heatmap",
-      "path": "product-spectrogram-heatmap.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 238314,
-      "sha256": "sha256:2625bc27c3d6c41aba18f36cfd5512cba3c488e2ae62b655da430c8414b607ca",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-waveform-file",
-      "path": "product-waveform-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 100145,
-      "sha256": "sha256:ba8c18c5965941f2a3ef5a16ead024c62058e1b3786963da99dd148132d2c4f5",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-stereo-map-file",
-      "path": "product-stereo-map-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 67789,
-      "sha256": "sha256:b2c3b3568f0f7ac0145958d4509033f9d0a377bba589bd30ceb673adfc2d5fb0",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
       }
     }
   ]

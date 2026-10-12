@@ -11,17 +11,10 @@ const PNG = Buffer.from(
   "base64"
 );
 const THEME_PREVIEW_IDS = [
-  "semantic-overview",
   "product-workspace-file",
+  "product-multichannel-monitoring",
   "product-workspace-snapshot",
-  "product-level-meter-file",
-  "product-loudness-file",
-  "product-stats-file",
-  "product-vectorscope-file",
-  "product-spectrum-file",
-  "product-spectrogram-heatmap",
-  "product-waveform-file",
-  "product-stereo-map-file",
+  "semantic-overview",
 ];
 
 function temporaryDirectory(label) {
@@ -140,34 +133,25 @@ function writeBuiltinThemeSource(directory) {
 }
 
 describe("Sharesets static site generator", () => {
-  it("uses the fixed five-image Theme gallery order and a plain-language palette label", () => {
+  it("uses the fixed four-image Theme gallery order and plain-language labels", () => {
     const previews = [
       "semantic-overview",
-      "product-level-meter-file",
-      "product-loudness-file",
-      "product-stats-file",
-      "product-vectorscope-file",
-      "product-spectrum-file",
-      "product-spectrogram-heatmap",
-      "product-waveform-file",
-      "product-stereo-map-file",
       "product-workspace-file",
+      "product-multichannel-monitoring",
       "product-workspace-snapshot",
     ].map((id) => ({ id }));
 
     const gallery = detailGallery("themes", previews);
     expect(gallery.map(({ id }) => id)).toEqual([
       "product-workspace-file",
+      "product-multichannel-monitoring",
       "product-workspace-snapshot",
-      "product-spectrum-file",
-      "product-spectrogram-heatmap",
       "semantic-overview",
     ]);
     expect(gallery.map(previewLabel)).toEqual([
       "Workspace",
+      "Multichannel Monitoring",
       "Snapshot",
-      "Spectrum",
-      "Spectrogram",
       "Theme Colors",
     ]);
   });

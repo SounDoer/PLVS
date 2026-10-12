@@ -4,15 +4,22 @@ import {
 } from "../lib/portableLoudnessProfile.js";
 import { validatePublishablePack } from "./sharesetsPack.js";
 import { SHARESETS_PREVIEW_FIXTURE_V5 } from "./fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMultichannelV1.js";
 import { hashPortablePreset } from "./portablePreset.js";
+import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
-export const SHARESETS_PREVIEW_CONTRACT_VERSION = 2;
+export const SHARESETS_PREVIEW_CONTRACT_VERSION = 3;
 export const SHARESETS_PREVIEW_RENDERER_VERSION = 2;
 
 const VIEWPORTS = Object.freeze({
   loudnessSummary: Object.freeze({ widthCssPx: 720, heightCssPx: 540, deviceScaleFactor: 1 }),
   loudnessStats: Object.freeze({ widthCssPx: 720, heightCssPx: 480, deviceScaleFactor: 1 }),
   presetWorkspace: Object.freeze({ widthCssPx: 1280, heightCssPx: 720, deviceScaleFactor: 1 }),
+  multichannelPresetWorkspace: Object.freeze({
+    widthCssPx: 1280,
+    heightCssPx: 800,
+    deviceScaleFactor: 1,
+  }),
   presetDock: Object.freeze({ widthCssPx: 1280, heightCssPx: 240, deviceScaleFactor: 1 }),
 });
 
@@ -37,7 +44,7 @@ export async function hashSharesetsPreviewFixture(value) {
 /**
  * @param {string} type
  */
-function previewAssets(type, portableItem) {
+function previewAssets(type, portableItem, { multichannelMonitoring = false } = {}) {
   if (type === "loudness") {
     return [
       {
@@ -59,10 +66,12 @@ function previewAssets(type, portableItem) {
   return [
     {
       id: "preset-workspace",
-      renderer: "preset-workspace",
+      renderer: multichannelMonitoring ? "multichannel-monitoring" : "preset-workspace",
       surface: "workspace",
       format: "png",
-      viewport: VIEWPORTS.presetWorkspace,
+      viewport: multichannelMonitoring
+        ? VIEWPORTS.multichannelPresetWorkspace
+        : VIEWPORTS.presetWorkspace,
     },
     ...(portableItem.dock.enabled
       ? [
@@ -100,7 +109,13 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     type === "loudness"
       ? await hashPortableLoudnessProfile(publication.portableItem)
       : await hashPortablePreset(publication.portableItem);
-  const fixtureHash = await hashSharesetsPreviewFixture(SHARESETS_PREVIEW_FIXTURE_V5);
+  const multichannelMonitoring =
+    type === "presets" &&
+    contentHash === (await hashPortablePreset(MULTICHANNEL_MONITORING_PRESET));
+  const fixture = multichannelMonitoring
+    ? SHARESETS_PREVIEW_MULTICHANNEL_V1
+    : SHARESETS_PREVIEW_FIXTURE_V5;
+  const fixtureHash = await hashSharesetsPreviewFixture(fixture);
   const dependencyItems = rawPack.dependencies?.flatMap((group) =>
     group.kind === "loudness-profile" ? group.items : []
   );
@@ -134,7 +149,7 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
       clock: "fixture",
       stableRenderBarrier: { documentFonts: "ready", animationFrames: 2, canvases: "settled" },
     },
-    fixture: structuredClone(SHARESETS_PREVIEW_FIXTURE_V5),
+    fixture: structuredClone(fixture),
     fixtureHash,
     item: {
       type,
@@ -143,6 +158,8 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
       compatibility: publication.assessment.compatibility,
     },
     dependencies,
-    assets: previewAssets(type, publication.portableItem).map((asset) => ({ ...asset, source })),
+    assets: previewAssets(type, publication.portableItem, { multichannelMonitoring }).map(
+      (asset) => ({ ...asset, source })
+    ),
   };
 }

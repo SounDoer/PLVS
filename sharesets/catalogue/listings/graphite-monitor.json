@@ -7,12 +7,7 @@
   "title": "Graphite Monitor",
   "summary": "A disciplined dark theme built from graphite surfaces, warm white traces, and precise signal-red accents.",
   "descriptionMarkdown": "Graphite Monitor strips the workspace back to graphite, warm white, and signal red. Neutral primary traces keep dense measurements calm, while red secondary data and overload states create a precise visual hierarchy. Its level meter, waveform, spectrum, and spectrogram share the same restrained monitoring-instrument language.",
-  "tags": [
-    "Dark",
-    "Monitoring",
-    "Monochrome",
-    "Red"
-  ],
+  "tags": ["Dark", "Monitoring", "Monochrome", "Red"],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -26,48 +21,20 @@
       "artifact": "artifacts/graphite-monitor-v1.plvstheme",
       "previews": [
         {
-          "id": "semantic-overview",
-          "path": "previews/graphite-monitor/v1/semantic-overview.png"
-        },
-        {
           "id": "product-workspace-file",
           "path": "previews/graphite-monitor/v1/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/graphite-monitor/v1/product-multichannel-monitoring.png"
         },
         {
           "id": "product-workspace-snapshot",
           "path": "previews/graphite-monitor/v1/product-workspace-snapshot.png"
         },
         {
-          "id": "product-level-meter-file",
-          "path": "previews/graphite-monitor/v1/product-level-meter-file.png"
-        },
-        {
-          "id": "product-loudness-file",
-          "path": "previews/graphite-monitor/v1/product-loudness-file.png"
-        },
-        {
-          "id": "product-stats-file",
-          "path": "previews/graphite-monitor/v1/product-stats-file.png"
-        },
-        {
-          "id": "product-vectorscope-file",
-          "path": "previews/graphite-monitor/v1/product-vectorscope-file.png"
-        },
-        {
-          "id": "product-spectrum-file",
-          "path": "previews/graphite-monitor/v1/product-spectrum-file.png"
-        },
-        {
-          "id": "product-spectrogram-heatmap",
-          "path": "previews/graphite-monitor/v1/product-spectrogram-heatmap.png"
-        },
-        {
-          "id": "product-waveform-file",
-          "path": "previews/graphite-monitor/v1/product-waveform-file.png"
-        },
-        {
-          "id": "product-stereo-map-file",
-          "path": "previews/graphite-monitor/v1/product-stereo-map-file.png"
+          "id": "semantic-overview",
+          "path": "previews/graphite-monitor/v1/semantic-overview.png"
         }
       ]
     }

@@ -45,7 +45,7 @@ describe("Sharesets Catalogue metadata", () => {
         themeScheme: null,
       },
       preview: {
-        contractVersion: 2,
+        contractVersion: 3,
         renderer: { name: "plvs-sharesets-preview", version: 2 },
         fixture: {
           id: "plvs-sharesets-discovery-v5",
@@ -108,14 +108,14 @@ describe("Sharesets Catalogue metadata", () => {
 
     expect(metadata.facets.themeScheme).toBe("dark");
     expect(metadata.preview).toMatchObject({
-      renderer: { name: "plvs-theme-gallery", version: 2 },
+      renderer: { name: "plvs-theme-gallery", version: 3 },
       fixture: {
         id: "plvs-sharesets-discovery-v5",
         version: 5,
-        sha256: "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+        sha256: "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf",
       },
     });
-    expect(metadata.preview.assets).toHaveLength(11);
+    expect(metadata.preview.assets).toHaveLength(4);
     expect(metadata.preview.assets.every(({ viewport }) => viewport.deviceScaleFactor === 1)).toBe(
       true
     );

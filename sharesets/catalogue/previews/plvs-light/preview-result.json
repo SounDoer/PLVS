@@ -2,26 +2,11 @@
   "resultVersion": 1,
   "renderer": {
     "name": "plvs-theme-gallery",
-    "version": 2
+    "version": 3
   },
   "contentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-  "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+  "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf",
   "assets": [
-    {
-      "id": "semantic-overview",
-      "path": "semantic-overview.png",
-      "mediaType": "image/png",
-      "width": 1392,
-      "height": 523,
-      "byteLength": 53724,
-      "sha256": "sha256:5a2823c1d97941e1484064340c2e3306c186e1e9ce0d420f6d1f503a9eb493ad",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
     {
       "id": "product-workspace-file",
       "path": "product-workspace-file.png",
@@ -32,9 +17,24 @@
       "sha256": "sha256:493cacde3c98ce380866d7895038559488ef361bc16e8b4bf090dd9dc6123e86",
       "source": {
         "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
+        "contractVersion": 3,
         "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
+      }
+    },
+    {
+      "id": "product-multichannel-monitoring",
+      "path": "product-multichannel-monitoring.png",
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 800,
+      "byteLength": 184404,
+      "sha256": "sha256:41ceea434025cdc72e7078daa970c621e69a7a1c819b21744ebc713375d2906c",
+      "source": {
+        "generator": "plvs-theme-gallery",
+        "contractVersion": 3,
+        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
       }
     },
     {
@@ -43,133 +43,28 @@
       "mediaType": "image/png",
       "width": 1280,
       "height": 800,
-      "byteLength": 329365,
-      "sha256": "sha256:b845a87bd1b6cba35aaa1d17b3116d02474d5ba7552d6955e037edc964f7e20a",
+      "byteLength": 330858,
+      "sha256": "sha256:92cc0d8a8d5fbe4a8131eb2958b01b32d07c98d055d7c13c4bc05dbee0e4fed2",
       "source": {
         "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
+        "contractVersion": 3,
         "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
       }
     },
     {
-      "id": "product-level-meter-file",
-      "path": "product-level-meter-file.png",
+      "id": "semantic-overview",
+      "path": "semantic-overview.png",
       "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 19853,
-      "sha256": "sha256:47b2158a49acee3ab46736f4ee25fbb5bc8142dfc6b59c440be05c7435f93a20",
+      "width": 1392,
+      "height": 523,
+      "byteLength": 53662,
+      "sha256": "sha256:97608d584724f9a443168ecff9f8b77a153f9c06ec3ab5a30bd822f55be8f1c1",
       "source": {
         "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
+        "contractVersion": 3,
         "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-loudness-file",
-      "path": "product-loudness-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 35087,
-      "sha256": "sha256:96e6a3bc5a8a8b5c21c2e69a1904bc15cf6155d165a4afcaf26bd6360a91aabd",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-stats-file",
-      "path": "product-stats-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 35968,
-      "sha256": "sha256:1b7b66aa4255d1feb3c3daed71946b1a57d2caf6a901e6e691318157756fe35d",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-vectorscope-file",
-      "path": "product-vectorscope-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 30414,
-      "sha256": "sha256:5cc9c7ac10d8ab3f6a3b092ad2708a4ae81d979cac716628457ca016585a8700",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-spectrum-file",
-      "path": "product-spectrum-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 86121,
-      "sha256": "sha256:050e7b76a30c29f2f675667f815908fc2aca34ec4fde8969a12907a74cf7971d",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-spectrogram-heatmap",
-      "path": "product-spectrogram-heatmap.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 258087,
-      "sha256": "sha256:df7151ca6d1d75c7c0f9e3b032ce1f4082b31d1ad2ec133fbc83841d9568b295",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-waveform-file",
-      "path": "product-waveform-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 100139,
-      "sha256": "sha256:3f2e7529eea043d073771cb6a087ecb78005ce6d0792387f8910d0d21d4a7ac8",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
-      }
-    },
-    {
-      "id": "product-stereo-map-file",
-      "path": "product-stereo-map-file.png",
-      "mediaType": "image/png",
-      "width": 720,
-      "height": 480,
-      "byteLength": 68642,
-      "sha256": "sha256:2ed81ac9338d4c859bf5859f01964b06acf9469774a01c5aef12de0ea0f84688",
-      "source": {
-        "generator": "plvs-theme-gallery",
-        "contractVersion": 2,
-        "themeContentHash": "sha256:de32585a7a1b247c254aa78b76c37bb3e70999db97464ca861a7dbac6c03b51c",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf"
       }
     }
   ]

@@ -121,8 +121,8 @@ describe("Theme Lab", () => {
     });
 
     expect(result.report.variants).toHaveLength(2);
-    expect(result.report.variants[0].assets).toHaveLength(11);
-    expect(result.report.comparisons).toHaveLength(11);
+    expect(result.report.variants[0].assets).toHaveLength(4);
+    expect(result.report.comparisons).toHaveLength(4);
     expect(
       validatePortableTheme(
         JSON.parse(readFileSync(join(outputDirectory, "warm-orange", "theme.json"), "utf8"))

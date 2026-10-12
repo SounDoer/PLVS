@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "multichannel-monitoring",
+  "slug": "multichannel-monitoring",
+  "type": "presets",
+  "classification": "official",
+  "title": "Multichannel Monitoring",
+  "summary": "A focused five-panel workspace for common multichannel monitoring.",
+  "descriptionMarkdown": "A source-adaptive monitoring layout that keeps full-height channel levels beside Waveform, Spectrum, Lissajous Vectorscope, and essential Stats. It is optimised for common 5.1 and 7.1 sources, uses the first available channel pair for Spectrum and Vectorscope, keeps the Dock off, and sets Loudness Profile to Off when applied.",
+  "tags": ["Multichannel", "5.1", "7.1", "Workspace", "Monitoring"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/multichannel-monitoring-v1.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace",
+          "path": "previews/multichannel-monitoring/v1/preset-workspace.png"
+        }
+      ]
+    }
+  ]
+}

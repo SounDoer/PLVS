@@ -12,6 +12,7 @@
     "listings/paper-console.json",
     "listings/mono-dark.json",
     "listings/mono-light.json",
-    "listings/stereo-overview.json"
+    "listings/stereo-overview.json",
+    "listings/multichannel-monitoring.json"
   ]
 }

@@ -16,48 +16,20 @@
     "sourceId": "plvs-dark",
     "previews": [
       {
-        "id": "semantic-overview",
-        "path": "previews/plvs-dark/semantic-overview.png"
-      },
-      {
         "id": "product-workspace-file",
         "path": "previews/plvs-dark/product-workspace-file.png"
+      },
+      {
+        "id": "product-multichannel-monitoring",
+        "path": "previews/plvs-dark/product-multichannel-monitoring.png"
       },
       {
         "id": "product-workspace-snapshot",
         "path": "previews/plvs-dark/product-workspace-snapshot.png"
       },
       {
-        "id": "product-level-meter-file",
-        "path": "previews/plvs-dark/product-level-meter-file.png"
-      },
-      {
-        "id": "product-loudness-file",
-        "path": "previews/plvs-dark/product-loudness-file.png"
-      },
-      {
-        "id": "product-stats-file",
-        "path": "previews/plvs-dark/product-stats-file.png"
-      },
-      {
-        "id": "product-vectorscope-file",
-        "path": "previews/plvs-dark/product-vectorscope-file.png"
-      },
-      {
-        "id": "product-spectrum-file",
-        "path": "previews/plvs-dark/product-spectrum-file.png"
-      },
-      {
-        "id": "product-spectrogram-heatmap",
-        "path": "previews/plvs-dark/product-spectrogram-heatmap.png"
-      },
-      {
-        "id": "product-waveform-file",
-        "path": "previews/plvs-dark/product-waveform-file.png"
-      },
-      {
-        "id": "product-stereo-map-file",
-        "path": "previews/plvs-dark/product-stereo-map-file.png"
+        "id": "semantic-overview",
+        "path": "previews/plvs-dark/semantic-overview.png"
       }
     ]
   }

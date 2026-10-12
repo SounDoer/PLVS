@@ -23,13 +23,17 @@ describe("sharesets Theme preview contract", () => {
     const plan = await buildSharesetsThemePreviewPlan({ theme: portableTheme() });
 
     expect(plan).toMatchObject({
-      contractVersion: 2,
+      contractVersion: 3,
       generator: "plvs-theme-gallery",
       generatorSource: "plvs",
       acceptsPublisherMedia: false,
       interactivePreview: false,
       fixture: expect.objectContaining({ id: "plvs-sharesets-discovery-v5", version: 5 }),
-      fixtureHash: "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+      multichannelFixture: expect.objectContaining({
+        id: "plvs-sharesets-discovery-5-1-v1",
+        version: 1,
+      }),
+      fixtureHash: "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf",
       theme: {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",
@@ -43,19 +47,24 @@ describe("sharesets Theme preview contract", () => {
       SHARESETS_THEME_PREVIEW_ASSETS
     );
     expect(plan.assets[0]).toMatchObject({
-      id: "semantic-overview",
-      kind: "semantic",
-      renderer: "semantic-gallery",
+      id: "product-workspace-file",
+      kind: "product",
+      renderer: "product-gallery",
       format: "png",
-      crop: "dialog",
       source: {
         generator: "plvs-theme-gallery",
-        contractVersion: 2,
+        contractVersion: 3,
         themeContentHash: plan.theme.contentHash,
         fixtureHash: plan.fixtureHash,
       },
     });
-    expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(10);
+    expect(plan.assets.map(({ id }) => id)).toEqual([
+      "product-workspace-file",
+      "product-multichannel-monitoring",
+      "product-workspace-snapshot",
+      "semantic-overview",
+    ]);
+    expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(3);
     expect(plan.assets.find(({ id }) => id === "product-workspace-file")?.viewport).toEqual({
       widthCssPx: 1280,
       heightCssPx: 800,
@@ -122,7 +131,7 @@ describe("sharesets Theme preview contract", () => {
     ).toThrowError(
       expect.objectContaining({
         issues: expect.arrayContaining([
-          expect.objectContaining({ code: "unexpectedAsset", path: "$[11].id" }),
+          expect.objectContaining({ code: "unexpectedAsset", path: "$[4].id" }),
         ]),
       })
     );

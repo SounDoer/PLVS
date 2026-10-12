@@ -79,7 +79,7 @@ describe("Sharesets preview command", () => {
   it.each([
     ["loudness", 2],
     ["presets", 1],
-    ["themes", 11],
+    ["themes", 4],
   ])("generates the exact sealed %s asset set", async (type, assetCount) => {
     const root = temporaryRoot();
     const source = artifact(root, type);
@@ -110,7 +110,7 @@ describe("Sharesets preview command", () => {
     });
 
     expect(result.type).toBe("themes");
-    expect(result.report.assets).toHaveLength(11);
+    expect(result.report.assets).toHaveLength(4);
     await expect(
       generateSharesetsPreviews({
         builtinThemeId: "not-built-in",

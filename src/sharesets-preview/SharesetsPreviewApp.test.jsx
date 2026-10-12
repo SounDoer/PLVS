@@ -14,6 +14,7 @@ import { SHARESETS_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/sharesetsPrev
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SharesetsPreviewApp } from "./SharesetsPreviewApp.jsx";
+import { MULTICHANNEL_MONITORING_PRESET } from "./multichannelMonitoringPreset.js";
 import { publishSharesetsPreviewTheme } from "./previewTheme.js";
 
 // The 3D renderer is idle in every preview scene; observing its arguments shows which Canvas
@@ -131,6 +132,28 @@ describe("Sharesets preview browser harness", () => {
     expect(screen.getByTestId("stereo-map-chart")).toBeTruthy();
   });
 
+  it("renders the official Multichannel Monitoring Preset with its 5.1 fixture", async () => {
+    const plan = await buildSharesetsPreviewPlan(
+      {
+        app: "PLVS",
+        kind: "preset-pack",
+        version: 2,
+        items: [{ id: "multichannel-monitoring", ...MULTICHANNEL_MONITORING_PRESET }],
+        dependencies: [],
+      },
+      "presets"
+    );
+
+    publishSharesetsPreviewTheme(plan, plan.assets[0]);
+    render(<SharesetsPreviewApp plan={plan} asset={plan.assets[0]} />);
+
+    expect(screen.getAllByText("LFE").length).toBeGreaterThan(0);
+    expect(screen.getByText("Spectrum")).toBeTruthy();
+    expect(screen.getByText("Waveform")).toBeTruthy();
+    expect(screen.getByText("Vectorscope")).toBeTruthy();
+    expect(screen.getByText("Stats")).toBeTruthy();
+  });
+
   it("applies a portable Theme to semantic and real product scenes", async () => {
     const stored = {
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -139,65 +162,33 @@ describe("Sharesets preview browser harness", () => {
     };
     const plan = await buildSharesetsThemePreviewPlan({ theme: themeToPortable(stored) });
 
-    const semantic = render(<SharesetsPreviewApp plan={plan} asset={plan.assets[0]} />);
+    const semanticAsset = plan.assets.find(({ id }) => id === "semantic-overview");
+    const semantic = render(<SharesetsPreviewApp plan={plan} asset={semanticAsset} />);
     expect(screen.getByRole("dialog", { name: "Theme Preview" })).toBeTruthy();
     expect(screen.getByText("Surfaces")).toBeTruthy();
     semantic.unmount();
 
-    const statsAsset = /** @type {Array<Record<string, any>>} */ (plan.assets).find(
-      ({ sceneId }) => sceneId === "stats-file"
+    const multichannelAsset = plan.assets.find(
+      ({ id }) => id === "product-multichannel-monitoring"
     );
-    render(<SharesetsPreviewApp plan={plan} asset={statsAsset} />);
+    render(<SharesetsPreviewApp plan={plan} asset={multichannelAsset} />);
     expect(screen.getByText("Stats")).toBeTruthy();
     expect(screen.getByText("Integrated")).toBeTruthy();
-    cleanup();
-
-    const spectrogramAsset = /** @type {Array<Record<string, any>>} */ (plan.assets).find(
-      ({ sceneId }) => sceneId === "spectrogram-heatmap"
-    );
-    render(<SharesetsPreviewApp plan={plan} asset={spectrogramAsset} />);
-    expect(screen.getByText("Spectrogram")).toBeTruthy();
+    expect(screen.getByText("Spectrum")).toBeTruthy();
+    expect(screen.getByText("Vectorscope")).toBeTruthy();
   });
 
-  it("renders Theme product scenes with the first-run Default Profile", async () => {
+  it("renders the Theme multichannel scene from the measured 5.1 fixture", async () => {
     const plan = await buildSharesetsThemePreviewPlan({
       theme: themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]),
     });
-    const statsAsset = plan.assets.find(({ id }) => id === "product-stats-file");
-    const loudnessAsset = plan.assets.find(({ id }) => id === "product-loudness-file");
-    const levelMeterAsset = plan.assets.find(({ id }) => id === "product-level-meter-file");
-    const spectrumAsset = plan.assets.find(({ id }) => id === "product-spectrum-file");
+    const asset = plan.assets.find(({ id }) => id === "product-multichannel-monitoring");
+    const preview = render(<SharesetsPreviewApp plan={plan} asset={asset} />);
 
-    const stats = render(<SharesetsPreviewApp plan={plan} asset={statsAsset} />);
-    expect(
-      stats.container
-        .querySelector('[data-stat-value="integrated"]')
-        ?.getAttribute("data-loudness-status")
-    ).toBe("warn");
-    expect(
-      stats.container
-        .querySelector('[data-stat-value="truePeak"]')
-        ?.getAttribute("data-loudness-status")
-    ).toBe("fail");
-    stats.unmount();
-
-    const loudness = render(<SharesetsPreviewApp plan={plan} asset={loudnessAsset} />);
-    expect(
-      loudness.container.querySelector('[data-testid="loudness-reference-line"]')
-    ).toBeTruthy();
-    loudness.unmount();
-
-    const levelMeter = render(<SharesetsPreviewApp plan={plan} asset={levelMeterAsset} />);
-    expect(
-      levelMeter.container
-        .querySelector("[data-level-tp-max-marker]")
-        ?.getAttribute("data-loudness-status")
-    ).toBe("fail");
-    levelMeter.unmount();
-
-    const spectrum = render(<SharesetsPreviewApp plan={plan} asset={spectrumAsset} />);
-    expect(spectrum.container.querySelector('[data-spectrum-live="primary"]')).toBeTruthy();
-    expect(spectrum.container.querySelector('[data-spectrum-live="secondary"]')).toBeTruthy();
+    expect(screen.getAllByText("L").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("LFE").length).toBeGreaterThan(0);
+    expect(preview.container.querySelector('[data-spectrum-live="primary"]')).toBeTruthy();
+    expect(screen.getByText("Multichannel Monitoring")).toBeTruthy();
   });
 
   it("renders workspace Theme scenes inside the real Header and Footer shell", async () => {
@@ -233,9 +224,7 @@ describe("Sharesets preview browser harness", () => {
     const expected = compileTheme(light);
     const dark = compileTheme(BUILTIN_THEMES_V2["plvs-dark"]);
     const root = document.documentElement;
-    const asset = /** @type {Array<Record<string, any>>} */ (plan.assets).find(
-      ({ sceneId }) => sceneId === "spectrogram-heatmap"
-    );
+    const asset = plan.assets.find(({ id }) => id === "product-workspace-file");
 
     publishSharesetsPreviewTheme(plan, asset);
     const { container } = render(<SharesetsPreviewApp plan={plan} asset={asset} />);
@@ -252,7 +241,10 @@ describe("Sharesets preview browser harness", () => {
     );
 
     cleanup();
-    publishSharesetsPreviewTheme(plan, plan.assets[0]);
+    publishSharesetsPreviewTheme(
+      plan,
+      plan.assets.find(({ id }) => id === "semantic-overview")
+    );
     expect(root.style.getPropertyValue("--card")).toBe(dark.css["--card"]);
     expect(root.style.getPropertyValue("color-scheme")).toBe("dark");
   });

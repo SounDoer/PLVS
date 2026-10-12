@@ -20,6 +20,7 @@ import { DragProvider } from "../workspace/DragContext.jsx";
 import { SplitLayout } from "../workspace/SplitLayout.jsx";
 import { WorkspacePreviewProvider } from "../workspace/WorkspaceContext.jsx";
 import { buildSharesetsPreviewFixtureValues } from "./fixture.js";
+import { MULTICHANNEL_MONITORING_PRESET } from "./multichannelMonitoringPreset.js";
 
 const noop = () => {};
 
@@ -123,7 +124,7 @@ const PREVIEW_PRESETS = {
   reorder: noop,
 };
 
-function FullWorkspaceExample({ fixture, profile, snapshot, state }) {
+function FullWorkspaceExample({ fixture, profile, snapshot, state, presetName = "Default" }) {
   const values = useMemo(
     () => buildSharesetsPreviewFixtureValues(fixture, { snapshot }),
     [fixture, snapshot]
@@ -219,7 +220,7 @@ function FullWorkspaceExample({ fixture, profile, snapshot, state }) {
             sourceLabel: "Preview Audio",
             audioDrop: null,
             loudnessProfileName: profile?.name ?? null,
-            activePresetName: "Default",
+            activePresetName: presetName,
             hasUpdate: false,
           }}
         />
@@ -228,13 +229,14 @@ function FullWorkspaceExample({ fixture, profile, snapshot, state }) {
   );
 }
 
-/** @param {{ plan: any, state?: any, profile?: any, snapshot?: boolean, fullShell?: boolean }} props */
+/** @param {{ plan: any, state?: any, profile?: any, snapshot?: boolean, fullShell?: boolean, presetName?: string }} props */
 function WorkspaceExample({
   plan,
   state: stateOverride,
   profile: profileOverride,
   snapshot = false,
   fullShell = false,
+  presetName,
 }) {
   const preset = useMemo(() => (stateOverride ? null : compilePreset(plan)), [plan, stateOverride]);
   const state = stateOverride ?? preset;
@@ -246,6 +248,7 @@ function WorkspaceExample({
         profile={profile}
         snapshot={snapshot}
         state={state}
+        presetName={presetName}
       />
     );
   }
@@ -341,6 +344,27 @@ function ThemeProductExample({ plan, sceneId }) {
   );
 }
 
+function MultichannelMonitoringExample({ plan, fullShell }) {
+  const state = useMemo(
+    () => portableToStoredPreset(MULTICHANNEL_MONITORING_PRESET, "multichannel-preview"),
+    []
+  );
+  const syntheticPlan = {
+    fixture: plan.multichannelFixture ?? plan.fixture,
+    item: { document: null },
+    dependencies: [],
+  };
+  return (
+    <WorkspaceExample
+      plan={syntheticPlan}
+      state={state}
+      profile={null}
+      fullShell={fullShell}
+      presetName="Multichannel Monitoring"
+    />
+  );
+}
+
 export function SharesetsPreviewApp({ plan, asset }) {
   if (asset.renderer === "loudness-profile-summary") {
     return <ProfileSummary document={plan.item.document} />;
@@ -349,6 +373,12 @@ export function SharesetsPreviewApp({ plan, asset }) {
   if (asset.renderer === "preset-workspace") return <WorkspaceExample plan={plan} />;
   if (asset.renderer === "preset-dock") return <DockExample plan={plan} />;
   if (asset.renderer === "semantic-gallery") return <ThemeSemanticExample plan={plan} />;
+  if (
+    asset.renderer === "multichannel-monitoring-prototype" ||
+    asset.renderer === "multichannel-monitoring"
+  ) {
+    return <MultichannelMonitoringExample plan={plan} fullShell={asset.surface === "theme"} />;
+  }
   if (asset.renderer === "product-gallery") {
     return <ThemeProductExample plan={plan} sceneId={asset.sceneId} />;
   }

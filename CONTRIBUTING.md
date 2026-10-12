@@ -85,6 +85,13 @@ waveform, and Spectrogram keep every 100 ms measurement, while the analyzer's fr
 fixed 1-in-4 stride to keep the committed payload bounded. Every retained value is still a
 production measurement.
 
+Multichannel preview review uses a sibling 5.1 Fixture derived deterministically from the same
+attributed stereo source. The generator decodes with PLVS's bundled FFmpeg sidecar, constructs the
+standard `L, R, C, LFE, Ls, Rs` PCM channels with the versioned repository recipe, and sends the
+temporary WAV through the same Rust analysis pipeline. The derived audio is never committed. Its
+source hash, recipe identity, derived hash, layout, and analysed output are sealed in
+`src/transfer/fixtures/sharesetsPreviewMultichannelV1.json`.
+
 The Fixture is maintainer-owned input, not part of a Theme manifest. Regenerate it only after an
 intentional source-audio or analysis change, then review the resulting product screenshots:
 
@@ -94,14 +101,33 @@ npm run sharesets:fixture -- --write
 npm run sharesets:fixture
 ```
 
-The first Fixture command runs the real Rust analyzer and writes the versioned JSON; the second
-repeats the analysis and fails if the committed JSON differs. The generator pins the reference WAV
-SHA-256 plus explicit Spectrum, Vectorscope, and Stereo Map requests, so replacing the audio or
-changing those controls requires a deliberate Fixture regeneration. Never hand-edit the current
-`src/transfer/fixtures/sharesetsPreviewV5.json`. The generator derives its analysis requests from
-the production `DEFAULT_WORKSPACE_STATE`, records those requests in the Fixture, and stores every
-result under its real request key. A Default Preset change therefore makes the committed Fixture
-stale instead of silently substituting data measured with different controls.
+The first Fixture command runs the real Rust analyzer and writes both versioned JSON files; the
+second repeats both analyses and fails if either committed JSON differs. The generator pins the
+reference WAV SHA-256, 5.1 derivation hash, and explicit Spectrum, Vectorscope, and Stereo Map
+requests, so replacing the audio or changing those controls requires a deliberate Fixture
+regeneration. Never hand-edit either file under `src/transfer/fixtures/`. The generator derives its
+analysis requests from the production `DEFAULT_WORKSPACE_STATE`, records those requests in each
+Fixture, and stores every result under its real request key. A Default Preset change therefore
+makes the committed Fixtures stale instead of silently substituting data measured with different
+controls.
+
+Generate the current Multichannel Monitoring review surfaces before regenerating the public Theme
+gallery and Preset preview:
+
+```powershell
+npm run sharesets:multichannel-prototype -- artifacts/multichannel-monitoring-review
+```
+
+The destination must not already exist. The command renders PLVS Dark and PLVS Light at the Preset
+and full Theme-gallery viewports; its output is review material under `artifacts/`, not Catalogue
+content. After changing the canonical Preset, sync its publishable pack before preview generation:
+
+```powershell
+npm run sharesets:multichannel-preset:sync
+```
+
+The public Theme contract publishes four images in order: first-run Workspace, Multichannel
+Monitoring, Snapshot, and Theme Colors. All three application scenes are captured at 1280 x 800.
 
 `sharesets:source:check` validates the detachable Catalogue content manifest. The directory argument
 is optional while content lives at `sharesets/catalogue`; external Catalogue checkouts pass their
@@ -178,16 +204,16 @@ npm run desktop:dev
 
 The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.soundoer.plvs.dev`) and `preview` (`com.soundoer.plvs.preview`). "Release" names only the Cargo profile and the act of publishing a version, never an identity. ADRs written before this naming keep the earlier names:
 
-| Earlier name | Current name |
-| --- | --- |
-| `npm run desktop` | `npm run desktop:dev` |
-| `desktop:build` | `desktop:dev-optimized` |
-| `desktop:release-nsis`, `desktop:release-dmg` | `desktop:stable-nsis`, `desktop:stable-dmg` |
+| Earlier name                                                   | Current name                                              |
+| -------------------------------------------------------------- | --------------------------------------------------------- |
+| `npm run desktop`                                              | `npm run desktop:dev`                                     |
+| `desktop:build`                                                | `desktop:dev-optimized`                                   |
+| `desktop:release-nsis`, `desktop:release-dmg`                  | `desktop:stable-nsis`, `desktop:stable-dmg`               |
 | `desktop:verify-windows-installer`, `desktop:verify-macos-dmg` | `desktop:verify-stable-nsis`, `desktop:verify-stable-dmg` |
-| `desktop:verify-windows-preview-installer` | `desktop:verify-preview-nsis` |
-| `--identity development`, `--identity release` | `--identity dev`, `--identity stable` |
-| `DEVELOPMENT_TARGET_DIRECTORY` | `DEV_IDENTITY_TARGET_DIRECTORY` |
-| "release identity", "production identity", "development app" | stable identity, stable identity, dev app |
+| `desktop:verify-windows-preview-installer`                     | `desktop:verify-preview-nsis`                             |
+| `--identity development`, `--identity release`                 | `--identity dev`, `--identity stable`                     |
+| `DEVELOPMENT_TARGET_DIRECTORY`                                 | `DEV_IDENTITY_TARGET_DIRECTORY`                           |
+| "release identity", "production identity", "development app"   | stable identity, stable identity, dev app                 |
 
 #### Identities and build profiles
 

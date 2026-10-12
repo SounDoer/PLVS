@@ -3,6 +3,8 @@ import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { buildPack } from "./packShape.js";
 import { buildSharesetsPreviewPlan } from "./sharesetsPreview.js";
 import { SHARESETS_PREVIEW_FIXTURE_V5 } from "./fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMultichannelV1.js";
+import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
 const PROFILE = {
   id: "broadcast",
@@ -16,7 +18,7 @@ describe("Sharesets preview input contract", () => {
     const plan = await buildSharesetsPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
 
     expect(plan).toMatchObject({
-      contractVersion: 2,
+      contractVersion: 3,
       renderer: {
         name: "plvs-sharesets-preview",
         version: 2,
@@ -92,6 +94,26 @@ describe("Sharesets preview input contract", () => {
     };
     const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
     expect(plan.assets.map(({ id }) => id)).toEqual(["preset-workspace"]);
+  });
+
+  it("renders the official Multichannel Monitoring Preset with the 5.1 fixture at 1280×800", async () => {
+    const pack = {
+      app: "PLVS",
+      kind: "preset-pack",
+      version: 2,
+      items: [{ id: "multichannel-monitoring", ...MULTICHANNEL_MONITORING_PRESET }],
+      dependencies: [],
+    };
+    const plan = await buildSharesetsPreviewPlan(pack, "presets");
+
+    expect(plan.fixture).toEqual(SHARESETS_PREVIEW_MULTICHANNEL_V1);
+    expect(plan.assets).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace",
+        renderer: "multichannel-monitoring",
+        viewport: { widthCssPx: 1280, heightCssPx: 800, deviceScaleFactor: 1 },
+      }),
+    ]);
   });
 
   it("rejects desktop multi-item packs before producing preview inputs", async () => {

@@ -17,6 +17,7 @@ const INITIAL_LISTINGS = [
   "listings/mono-dark.json",
   "listings/mono-light.json",
   "listings/stereo-overview.json",
+  "listings/multichannel-monitoring.json",
 ];
 
 let launchSource;
@@ -43,6 +44,7 @@ describe("initial Sharesets Catalogue", () => {
       "i-23-tp-1",
       "mono-dark",
       "mono-light",
+      "multichannel-monitoring",
       "night-circuit",
       "paper-console",
       "phosphor-field",
@@ -132,5 +134,26 @@ describe("initial Sharesets Catalogue", () => {
       dependencyIds: [],
       optionalCapabilities: [],
     });
+  });
+
+  it("publishes the source-adaptive Multichannel Monitoring Preset", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(
+      ({ document }) => document.id === "multichannel-monitoring"
+    ).document;
+
+    expect(preset.title).toBe("Multichannel Monitoring");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["levelMeter", "spectrum", "stats", "vectorscope", "waveform"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 3 }),
+      }),
+    ]);
   });
 });

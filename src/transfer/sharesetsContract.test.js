@@ -26,10 +26,10 @@ describe("static Catalogue handoff contract", () => {
       contract: 1,
       validator: 1,
       metadata: 1,
-      preview: 2,
+      preview: 3,
       previewRenderer: 2,
       previewResult: 1,
-      themePreview: 2,
+      themePreview: 3,
     });
   });
 

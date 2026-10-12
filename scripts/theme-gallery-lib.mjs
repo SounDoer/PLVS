@@ -87,7 +87,7 @@ export function validateGalleryManifest(manifest) {
         issues.push(`$.product.scenes[${index}].covers is required.`);
     }
     for (const asset of SHARESETS_THEME_PREVIEW_ASSETS) {
-      if (asset.kind === "product" && !ids.has(asset.sceneId)) {
+      if (asset.renderer === "product-gallery" && !ids.has(asset.sceneId)) {
         issues.push(
           `Sharesets preview asset ${asset.id} references missing scene ${asset.sceneId}.`
         );

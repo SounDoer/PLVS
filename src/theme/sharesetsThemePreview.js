@@ -1,8 +1,9 @@
 import { assessPortableThemeSharesetsPublication, hashPortableTheme } from "./portableTheme.js";
 import { SHARESETS_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "../transfer/fixtures/sharesetsPreviewMultichannelV1.js";
 import { hashSharesetsPreviewFixture } from "../transfer/sharesetsPreview.js";
 
-export const SHARESETS_THEME_PREVIEW_CONTRACT_VERSION = 2;
+export const SHARESETS_THEME_PREVIEW_CONTRACT_VERSION = 3;
 
 const SEMANTIC_VIEWPORT = Object.freeze({
   widthCssPx: 1440,
@@ -14,13 +15,31 @@ const WORKSPACE_VIEWPORT = Object.freeze({
   heightCssPx: 800,
   deviceScaleFactor: 1,
 });
-const PANEL_VIEWPORT = Object.freeze({
-  widthCssPx: 720,
-  heightCssPx: 480,
-  deviceScaleFactor: 1,
-});
-
 export const SHARESETS_THEME_PREVIEW_ASSETS = Object.freeze([
+  Object.freeze({
+    id: "product-workspace-file",
+    kind: "product",
+    renderer: "product-gallery",
+    sceneId: "workspace-file",
+    format: "png",
+    viewport: WORKSPACE_VIEWPORT,
+  }),
+  Object.freeze({
+    id: "product-multichannel-monitoring",
+    kind: "product",
+    renderer: "multichannel-monitoring",
+    surface: "theme",
+    format: "png",
+    viewport: WORKSPACE_VIEWPORT,
+  }),
+  Object.freeze({
+    id: "product-workspace-snapshot",
+    kind: "product",
+    renderer: "product-gallery",
+    sceneId: "workspace-snapshot",
+    format: "png",
+    viewport: WORKSPACE_VIEWPORT,
+  }),
   Object.freeze({
     id: "semantic-overview",
     kind: "semantic",
@@ -31,27 +50,6 @@ export const SHARESETS_THEME_PREVIEW_ASSETS = Object.freeze([
     // is as tall as its content rather than as tall as the viewport.
     crop: "dialog",
   }),
-  ...[
-    "workspace-file",
-    "workspace-snapshot",
-    "level-meter-file",
-    "loudness-file",
-    "stats-file",
-    "vectorscope-file",
-    "spectrum-file",
-    "spectrogram-heatmap",
-    "waveform-file",
-    "stereo-map-file",
-  ].map((sceneId) =>
-    Object.freeze({
-      id: `product-${sceneId}`,
-      kind: "product",
-      renderer: "product-gallery",
-      sceneId,
-      format: "png",
-      viewport: sceneId.startsWith("workspace-") ? WORKSPACE_VIEWPORT : PANEL_VIEWPORT,
-    })
-  ),
 ]);
 
 export class SharesetsThemePreviewRequestError extends Error {
@@ -83,11 +81,6 @@ function isPlainObject(value) {
  * author metadata, uploaded screenshots, URLs, thumbnails, and other media never enter this trust
  * boundary, so every publishable image has to be produced by the versioned PLVS render plan.
  */
-/**
- * The preview generator deliberately accepts only the immutable portable Theme. Catalogue copy,
- * author metadata, uploaded screenshots, URLs, thumbnails, and other media never enter this trust
- * boundary, so every publishable image has to be produced by the versioned PLVS render plan.
- */
 export function validateSharesetsThemePreviewRequest(raw) {
   if (!isPlainObject(raw)) {
     throw new SharesetsThemePreviewRequestError([
@@ -107,14 +100,16 @@ export function validateSharesetsThemePreviewRequest(raw) {
   return { theme: assessPortableThemeSharesetsPublication(raw.theme) };
 }
 
-/** Build the complete, deterministic render plan for one immutable Theme artefact. */
 /**
  * Build the complete, deterministic render plan for one immutable Theme artefact.
  */
 export async function buildSharesetsThemePreviewPlan(raw) {
   const { theme: assessment } = validateSharesetsThemePreviewRequest(raw);
   const contentHash = await hashPortableTheme(assessment.document);
-  const fixtureHash = await hashSharesetsPreviewFixture(SHARESETS_PREVIEW_FIXTURE_V5);
+  const fixtureHash = await hashSharesetsPreviewFixture({
+    stereo: SHARESETS_PREVIEW_FIXTURE_V5,
+    multichannel: SHARESETS_PREVIEW_MULTICHANNEL_V1,
+  });
   return {
     contractVersion: SHARESETS_THEME_PREVIEW_CONTRACT_VERSION,
     generator: "plvs-theme-gallery",
@@ -122,6 +117,7 @@ export async function buildSharesetsThemePreviewPlan(raw) {
     acceptsPublisherMedia: false,
     interactivePreview: false,
     fixture: structuredClone(SHARESETS_PREVIEW_FIXTURE_V5),
+    multichannelFixture: structuredClone(SHARESETS_PREVIEW_MULTICHANNEL_V1),
     fixtureHash,
     theme: {
       contentHash,
@@ -143,10 +139,6 @@ export async function buildSharesetsThemePreviewPlan(raw) {
   };
 }
 
-/**
- * Seal only the exact PNG set named by the PLVS contract. This rejects missing, additional, or
- * externally sourced images before a catalogue record can reference them.
- */
 /**
  * Seal only the exact PNG set named by the PLVS contract. This rejects missing, additional, or
  * externally sourced images before a catalogue record can reference them.

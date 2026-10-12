@@ -22,6 +22,8 @@
     "sharesets:metadata": "node scripts/derive-sharesets-metadata.mjs",
     "sharesets:preview": "node scripts/generate-sharesets-previews.mjs",
     "sharesets:fixture": "node scripts/generate-sharesets-preview-fixture.mjs",
+    "sharesets:multichannel-prototype": "node scripts/generate-multichannel-monitoring-prototype.mjs",
+    "sharesets:multichannel-preset:sync": "node scripts/sync-multichannel-monitoring-preset.mjs",
     "sharesets:curate": "node scripts/curate-sharesets-catalogue.mjs",
     "sharesets:source:check": "node scripts/validate-sharesets-source.mjs",
     "sharesets:update:check": "node scripts/sharesets-catalogue-update.mjs",

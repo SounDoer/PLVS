@@ -44,30 +44,19 @@ describe("Theme Gallery", () => {
       ].sort()
     );
     const publicationSceneIds = SHARESETS_THEME_PREVIEW_ASSETS.filter(
-      ({ kind }) => kind === "product"
+      ({ renderer }) => renderer === "product-gallery"
     ).map(({ sceneId }) => sceneId);
-    expect(publicationSceneIds).toEqual([
-      "workspace-file",
-      "workspace-snapshot",
-      "level-meter-file",
-      "loudness-file",
-      "stats-file",
-      "vectorscope-file",
-      "spectrum-file",
-      "spectrogram-heatmap",
-      "waveform-file",
-      "stereo-map-file",
-    ]);
+    expect(publicationSceneIds).toEqual(["workspace-file", "workspace-snapshot"]);
   });
 
   it("fails when the baseline no longer contains a required publication scene", async () => {
     const manifest = await readGalleryManifest();
     const incomplete = structuredClone(manifest);
     incomplete.product.scenes = incomplete.product.scenes.filter(
-      ({ id }) => id !== "vectorscope-file"
+      ({ id }) => id !== "workspace-snapshot"
     );
     expect(validateGalleryManifest(incomplete)).toContain(
-      "Sharesets preview asset product-vectorscope-file references missing scene vectorscope-file."
+      "Sharesets preview asset product-workspace-snapshot references missing scene workspace-snapshot."
     );
   });
 
