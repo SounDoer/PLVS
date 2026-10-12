@@ -579,6 +579,8 @@ pub fn enter_dock<R: tauri::Runtime>(
             true,
           )?;
         }
+        #[cfg(target_os = "windows")]
+        crate::appbar::watch_fullscreen(&window, true)?;
         Ok((monitor, reserve_space))
       })();
       let (monitor, reserve_space) = match transition {
@@ -634,6 +636,8 @@ pub fn exit_dock<R: tauri::Runtime>(
       crate::dock_accessories::hide_all(window.app_handle());
       #[cfg(target_os = "macos")]
       crate::macos_dock::stop()?;
+      #[cfg(target_os = "windows")]
+      crate::appbar::watch_fullscreen(&window, false)?;
       #[cfg(target_os = "windows")]
       let unreserve_result = crate::appbar::set_reserved(
         &window,
@@ -867,6 +871,8 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         #[cfg(target_os = "macos")]
         crate::macos_dock::stop()?;
         #[cfg(target_os = "windows")]
+        crate::appbar::watch_fullscreen(&window, false)?;
+        #[cfg(target_os = "windows")]
         if state.reserve_space {
           crate::appbar::set_reserved(&window, false, state.edge, state.height)?;
         }
@@ -897,6 +903,8 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         state.reserve_space = false;
         write_dock_state(window.app_handle(), &state);
       }
+      #[cfg(target_os = "windows")]
+      crate::appbar::watch_fullscreen(&window, true)?;
       #[cfg(target_os = "macos")]
       if state.reserve_space {
         state.reserve_space = crate::macos_dock::configure(

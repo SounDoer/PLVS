@@ -497,6 +497,13 @@ right-aligned single-column editor. On Windows only `main` registers as an AppBa
 screen space enabled only the meter strip is reserved, and header/editor always overlay the adjacent
 work area, so hovering never reflows maximized windows.
 
+While the strip is on screen it stays registered with Shell even as an overlay: `ABM_NEW` without
+`ABM_SETPOS` reserves nothing but still delivers `ABN_FULLSCREENAPP`, which Shell sends only to
+registered appbars and only for the appbar's own monitor. On that notification `appbar.rs` moves
+the strip to the bottom of the z-order, which drops its topmost style, and restores it when the
+full-screen window goes away. The hover poll reports "not over Dock" meanwhile, so the cursor
+crossing the hidden strip's rectangle cannot raise the header over the full-screen window.
+
 On macOS, `macos_dock.rs` and `native/macos/dock_reservation_bridge.m` provide opt-in AX avoidance
 of the foreground application's settled standard window. AppKit snapshots stay on main; AX calls
 and atomic recovery journals use a serial queue. A display-wide lease prevents competing

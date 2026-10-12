@@ -675,6 +675,16 @@ pub fn run() {
         }
       }
 
+      #[cfg(target_os = "windows")]
+      if app
+        .state::<dock::DockedFlag>()
+        .0
+        .load(std::sync::atomic::Ordering::Relaxed)
+      {
+        appbar::watch_fullscreen(&window, true)
+          .map_err(|e| format!("appbar fullscreen watch: {e}"))?;
+      }
+
       app
         .state::<dock::DockBootReady>()
         .0

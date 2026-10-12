@@ -1,4 +1,5 @@
 use std::mem::size_of;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use tauri::WebviewWindow;
@@ -8,11 +9,13 @@ use windows_sys::Win32::Graphics::Gdi::{
 };
 use windows_sys::Win32::UI::Shell::{
   DefSubclassProc, RemoveWindowSubclass, SHAppBarMessage, SetWindowSubclass, ABE_BOTTOM, ABE_TOP,
-  ABM_NEW, ABM_REMOVE, ABM_SETPOS, ABM_WINDOWPOSCHANGED, ABN_POSCHANGED, APPBARDATA,
+  ABM_NEW, ABM_REMOVE, ABM_SETPOS, ABM_WINDOWPOSCHANGED, ABN_FULLSCREENAPP, ABN_POSCHANGED,
+  APPBARDATA,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  MoveWindow, SWP_NOMOVE, SWP_NOSIZE, WINDOWPOS, WM_APP, WM_NCDESTROY, WM_WINDOWPOSCHANGED,
-  WM_WINDOWPOSCHANGING,
+  GetWindowLongW, KillTimer, MoveWindow, SetTimer, SetWindowPos, GWL_EXSTYLE, HWND_BOTTOM,
+  HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, WINDOWPOS, WM_APP, WM_NCDESTROY, WM_TIMER,
+  WM_WINDOWPOSCHANGED, WM_WINDOWPOSCHANGING, WS_EX_TOPMOST,
 };
 
 use crate::dock::DockEdge;
@@ -20,6 +23,9 @@ use crate::window_state::MonitorRect;
 
 const APPBAR_CALLBACK_MESSAGE: u32 = WM_APP + 0x31;
 const APPBAR_SUBCLASS_ID: usize = 0x504c5653;
+const RESTORE_TIMER_ID: usize = 0x504c5654;
+const RESTORE_RETRY_MS: u32 = 250;
+const RESTORE_MAX_ATTEMPTS: u32 = 20;
 
 #[derive(Clone, Copy)]
 struct AppBarState {
@@ -28,11 +34,21 @@ struct AppBarState {
   height: i32,
   target_work_area: RECT,
   registered: bool,
+  /// The Dock is on screen and wants Shell's full-screen notifications. While
+  /// this is set and `registered` is not, the window holds an ABM_NEW
+  /// registration without ABM_SETPOS: it reserves nothing, but Shell only sends
+  /// ABN_FULLSCREENAPP to registered appbars, and an overlay Dock has to yield
+  /// too.
+  watching: bool,
   positioning: bool,
   transitioning: bool,
 }
 
 impl AppBarState {
+  fn receives_shell_notifications(&self, hwnd: isize) -> bool {
+    (self.registered || self.watching) && self.hwnd == hwnd
+  }
+
   fn requested_position(&self, hwnd: isize) -> Option<(DockEdge, i32, RECT)> {
     (self.registered && !self.positioning && !self.transitioning && self.hwnd == hwnd).then_some((
       self.edge,
@@ -46,6 +62,10 @@ impl AppBarState {
   }
 }
 
+/// A full-screen window owns the Dock's monitor, so the strip has dropped out
+/// of the topmost band until Shell reports that window gone.
+static YIELDED: AtomicBool = AtomicBool::new(false);
+static RESTORE_ATTEMPTS: AtomicU32 = AtomicU32::new(0);
 static STATE: OnceLock<Mutex<AppBarState>> = OnceLock::new();
 static TRANSITION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -57,10 +77,70 @@ fn state() -> &'static Mutex<AppBarState> {
       height: 72,
       target_work_area: RECT::default(),
       registered: false,
+      watching: false,
       positioning: false,
       transitioning: false,
     })
   })
+}
+
+pub fn is_yielded() -> bool {
+  YIELDED.load(Ordering::Relaxed)
+}
+
+/// Step behind a full-screen window, or return to the topmost band. Shell lowers
+/// its own taskbar for full-screen windows but only notifies other appbars;
+/// HWND_BOTTOM is what removes the topmost style.
+unsafe fn set_yielded(hwnd: HWND, yielded: bool) {
+  YIELDED.store(yielded, Ordering::Relaxed);
+  SetWindowPos(
+    hwnd,
+    if yielded { HWND_BOTTOM } else { HWND_TOPMOST },
+    0,
+    0,
+    0,
+    0,
+    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+  );
+  if yielded || is_topmost(hwnd) {
+    KillTimer(hwnd, RESTORE_TIMER_ID);
+  } else {
+    RESTORE_ATTEMPTS.store(0, Ordering::Relaxed);
+    SetTimer(hwnd, RESTORE_TIMER_ID, RESTORE_RETRY_MS, None);
+  }
+}
+
+unsafe fn is_topmost(hwnd: HWND) -> bool {
+  GetWindowLongW(hwnd, GWL_EXSTYLE) as u32 & WS_EX_TOPMOST != 0
+}
+
+/// Shell can report the full-screen window gone while it is still being torn
+/// down, and Windows then places the strip behind it instead of in the topmost
+/// band. No later notification follows, so retry until the style sticks.
+unsafe fn retry_topmost(hwnd: HWND) {
+  let wanted = !is_yielded()
+    && state()
+      .lock()
+      .map(|current| current.receives_shell_notifications(hwnd as isize))
+      .unwrap_or(false);
+  if wanted && !is_topmost(hwnd) {
+    SetWindowPos(
+      hwnd,
+      HWND_TOPMOST,
+      0,
+      0,
+      0,
+      0,
+      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+    );
+  }
+  let attempts = RESTORE_ATTEMPTS.fetch_add(1, Ordering::Relaxed) + 1;
+  if !wanted || is_topmost(hwnd) {
+    KillTimer(hwnd, RESTORE_TIMER_ID);
+  } else if attempts >= RESTORE_MAX_ATTEMPTS {
+    KillTimer(hwnd, RESTORE_TIMER_ID);
+    log::warn!("dock strip could not return to the topmost band after a full-screen window");
+  }
 }
 
 fn transition_lock() -> &'static Mutex<()> {
@@ -287,6 +367,24 @@ unsafe extern "system" fn subclass_proc(
     }
     return 0;
   }
+  if msg == APPBAR_CALLBACK_MESSAGE && wparam as u32 == ABN_FULLSCREENAPP {
+    let notified = state()
+      .lock()
+      .map(|current| current.receives_shell_notifications(hwnd as isize))
+      .unwrap_or(false);
+    log::info!(
+      "dock fullscreen notification: fullscreen={} applied={notified}",
+      lparam != 0
+    );
+    if notified {
+      set_yielded(hwnd, lparam != 0);
+    }
+    return 0;
+  }
+  if msg == WM_TIMER && wparam == RESTORE_TIMER_ID {
+    retry_topmost(hwnd);
+    return 0;
+  }
   if msg == WM_WINDOWPOSCHANGING {
     let requested = state()
       .lock()
@@ -314,8 +412,9 @@ unsafe extern "system" fn subclass_proc(
     let registered = state()
       .lock()
       .map(|mut current| {
-        let registered = current.registered && current.hwnd == hwnd as isize;
+        let registered = current.receives_shell_notifications(hwnd as isize);
         current.registered = false;
+        current.watching = false;
         registered
       })
       .unwrap_or(false);
@@ -335,6 +434,38 @@ pub fn install_window_subclass<R: tauri::Runtime>(window: &WebviewWindow<R>) -> 
     return Err("SetWindowSubclass failed".into());
   }
   state().lock().map_err(|_| "appbar state poisoned")?.hwnd = hwnd as isize;
+  Ok(())
+}
+
+/// Start or stop following full-screen windows on the Dock's monitor. Turn it
+/// on once the strip is on screen and off before the strip goes away; the
+/// caller owns the window's topmost state on both sides of that.
+pub fn watch_fullscreen<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  enabled: bool,
+) -> Result<(), String> {
+  let _transition = transition_lock()
+    .lock()
+    .map_err(|_| "appbar transition lock poisoned")?;
+  let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
+  let changes_registration = {
+    let mut current = state().lock().map_err(|_| "appbar state poisoned")?;
+    let changed = current.watching != enabled;
+    current.watching = enabled;
+    if enabled {
+      current.hwnd = hwnd as isize;
+    }
+    changed && !current.registered
+  };
+  if !enabled {
+    YIELDED.store(false, Ordering::Relaxed);
+  }
+  if changes_registration {
+    let mut data = appbar_data(hwnd);
+    unsafe {
+      SHAppBarMessage(if enabled { ABM_NEW } else { ABM_REMOVE }, &mut data);
+    }
+  }
   Ok(())
 }
 
@@ -366,11 +497,11 @@ fn set_reserved_inner<R: tauri::Runtime>(
 ) -> Result<(), String> {
   let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
   let height = (logical_height as f64 * window.scale_factor().unwrap_or(1.0)).round() as i32;
-  let previous_registration = {
+  let (previous_registration, watching) = {
     let mut current = state().lock().map_err(|_| "appbar state poisoned")?;
     let registration = current.registered.then_some((current.edge, current.height));
     current.registered = false;
-    registration
+    (registration, current.watching)
   };
 
   unsafe {
@@ -384,7 +515,7 @@ fn set_reserved_inner<R: tauri::Runtime>(
       }
       None => work_area,
     };
-    if previous_registration.is_some() {
+    if previous_registration.is_some() || watching {
       let mut data = appbar_data(hwnd);
       SHAppBarMessage(ABM_REMOVE, &mut data);
     }
@@ -409,8 +540,14 @@ fn set_reserved_inner<R: tauri::Runtime>(
         }
         return Err(error);
       }
-    } else if previous_registration.is_some() {
-      move_overlay(hwnd, edge, height.max(1), available_work_area)?;
+    } else {
+      if previous_registration.is_some() {
+        move_overlay(hwnd, edge, height.max(1), available_work_area)?;
+      }
+      if watching {
+        let mut data = appbar_data(hwnd);
+        SHAppBarMessage(ABM_NEW, &mut data);
+      }
     }
   }
   Ok(())
@@ -562,6 +699,7 @@ mod tests {
       height: 108,
       target_work_area,
       registered: true,
+      watching: false,
       positioning: false,
       transitioning: false,
     };
@@ -592,12 +730,48 @@ mod tests {
       height: 72,
       target_work_area: monitor_rect(),
       registered: true,
+      watching: false,
       positioning: true,
       transitioning: false,
     };
 
     assert!(current.requested_position(42).is_none());
     assert!(!current.should_notify_window_position_changed(42));
+  }
+
+  #[test]
+  fn overlay_dock_follows_fullscreen_notifications_without_enforcing_a_position() {
+    let current = AppBarState {
+      hwnd: 42,
+      edge: DockEdge::Bottom,
+      height: 72,
+      target_work_area: monitor_rect(),
+      registered: false,
+      watching: true,
+      positioning: false,
+      transitioning: false,
+    };
+
+    assert!(current.receives_shell_notifications(42));
+    assert!(!current.receives_shell_notifications(7));
+    assert!(current.requested_position(42).is_none());
+    assert!(!current.should_notify_window_position_changed(42));
+  }
+
+  #[test]
+  fn undocked_window_ignores_fullscreen_notifications() {
+    let current = AppBarState {
+      hwnd: 42,
+      edge: DockEdge::Bottom,
+      height: 72,
+      target_work_area: monitor_rect(),
+      registered: false,
+      watching: false,
+      positioning: false,
+      transitioning: false,
+    };
+
+    assert!(!current.receives_shell_notifications(42));
   }
 
   #[test]
@@ -608,6 +782,7 @@ mod tests {
       height: 72,
       target_work_area: monitor_rect(),
       registered: true,
+      watching: false,
       positioning: false,
       transitioning: true,
     };

@@ -166,6 +166,12 @@ fn visible_window_contains<R: tauri::Runtime>(
 pub fn cursor_over_dock_surfaces<R: tauri::Runtime>(
   window: WebviewWindow<R>,
 ) -> Result<bool, String> {
+  // The strip sits behind a full-screen window; the cursor crossing its
+  // rectangle belongs to that window and must not raise the header over it.
+  #[cfg(target_os = "windows")]
+  if crate::appbar::is_yielded() {
+    return Ok(false);
+  }
   let app = window.app_handle();
   let cursor = app
     .cursor_position()
