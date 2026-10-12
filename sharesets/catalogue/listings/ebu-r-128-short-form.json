@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "ebu-r-128-short-form",
+  "slug": "ebu-r-128-short-form",
+  "type": "loudness",
+  "classification": "official",
+  "title": "EBU R 128 Short-form",
+  "summary": "EBU checks for advertisements, promos and similar short-form content.",
+  "descriptionMarkdown": "For advertisements, promos, interstitials and similar short programmes. The current supplement adds a Maximum Short-term check to Programme Loudness and True Peak. LRA is intentionally omitted because the recommendation considers it unsuitable for this content length. The historical alternative Maximum Momentary limit is not included because EBU removed it from the current recommendation.",
+  "references": [
+    {
+      "publisher": "European Broadcasting Union",
+      "title": "EBU R 128 s1 Loudness Parameters for Short-form Content",
+      "edition": "Version 3.0, August 2020",
+      "url": "https://tech.ebu.ch/files/live/sites/tech/files/shared/r/r128s1.pdf",
+      "relevanceMarkdown": "Defines the current Programme Loudness, Maximum Short-term and Maximum True Peak checks for short-form content, including workflow measurement allowances."
+    }
+  ],
+  "tags": ["Standard", "Broadcast", "Short-form"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release based on the current EBU short-form supplement.",
+      "artifact": "artifacts/ebu-r-128-short-form-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

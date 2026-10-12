@@ -16,11 +16,17 @@ describe("Profile presentation", () => {
     expect(card).toContain("1 more rule");
     expect(card).not.toContain("<a ");
     expect(card).not.toContain("&gt; 0 dBTP");
-    expect(card).toContain("&lt; −23.5 LUFS → Fail");
-    expect(card).toContain("&gt; −1 dBTP → Warn");
+    expect(card).toContain(
+      '&lt; −23.5 LUFS → <span class="profile-rule-severity profile-rule-severity-fail">Fail</span>'
+    );
+    expect(card).toContain(
+      '&gt; −1 dBTP → <span class="profile-rule-severity profile-rule-severity-warn">Warn</span>'
+    );
     expect(profilePreview(profile, true)).toContain('href="#profile-details"');
     const full = profileDetails(profile);
-    expect(full).toContain("&gt; 0 dBTP → Fail");
+    expect(full).toContain(
+      '&gt; 0 dBTP → <span class="profile-rule-severity profile-rule-severity-fail">Fail</span>'
+    );
     expect(full.match(/<dt>Integrated<\/dt>/g)).toHaveLength(1);
     expect(full.match(/<dt>True Peak Max<\/dt>/g)).toHaveLength(1);
   });

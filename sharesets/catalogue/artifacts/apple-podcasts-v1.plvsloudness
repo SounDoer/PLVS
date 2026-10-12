@@ -1,0 +1,36 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "apple-podcasts",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Apple Podcasts",
+      "referenceLufs": -16,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -15,
+          "severity": "warn"
+        },
+        {
+          "metricId": "integrated",
+          "op": "<",
+          "value": -17,
+          "severity": "warn"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -1,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}

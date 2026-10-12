@@ -78,7 +78,9 @@ not appear in the gallery. The catalogue card uses Workspace as its cover.
 Details groups all conditions by metric in label/value rows without a Rules subheading. Preset Details show readable module names, panel counts and Dock On/Off; omit Dock panel counts when disabled. Single-image galleries omit visible thumbnails and navigation arrows. Profile reference
 values and rules are read from the validated release artifact during generation; metric labels
 and units come from the application's Stats catalogue. Listing prose must not become a second
-manually maintained source of rule values. Omit empty dependency sections and duplicate metric
+manually maintained source of rule values. Profile heroes use the concise Listing summary; longer
+applicability, measurement and limitation guidance appears under Details before the generated rule
+rows, with structured publisher links in Sources. Omit empty dependency sections and duplicate metric
 compatibility listings. Current releases download from the top action; older published releases
 use inline text download links in the history, and withdrawn releases have no download link.
 Content built into PLVS replaces download actions with `Included with PLVS`. Its settings and

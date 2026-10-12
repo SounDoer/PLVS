@@ -1,0 +1,36 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "itu-t-h-872-game-audio",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "ITU-T H.872 Game Audio",
+      "referenceLufs": -23,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -21,
+          "severity": "warn"
+        },
+        {
+          "metricId": "integrated",
+          "op": "<",
+          "value": -25,
+          "severity": "warn"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -1,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}

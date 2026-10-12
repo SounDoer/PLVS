@@ -32,6 +32,8 @@ export function resourceCard({
   profile,
   hidden,
 }) {
+  const visibleTags = tags.length > 3 ? tags.slice(0, 2) : tags;
+  const hiddenTags = tags.slice(visibleTags.length);
   return `<a class="resource-card card" href="${escapeHtml(href)}"${hidden ? " hidden" : ""} ${Object.entries(
     attributes
   )
@@ -40,14 +42,16 @@ export function resourceCard({
     ${profile ? profilePreview(profile) : image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />` : `<div class="resource-placeholder">${escapeHtml(family)}</div>`}
     <div class="card-body"><div class="card-meta"><span>${escapeHtml(family)}</span><span>By ${escapeHtml(author)}</span></div>
     <h2>${escapeHtml(title)}</h2><p>${escapeHtml(summary)}</p>
-    <div class="card-tags">${tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div></div>
+    <div class="card-tags" title="${escapeHtml(tags.join(", "))}">${visibleTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}${hiddenTags.length ? `<span class="tag tag-overflow" aria-label="${hiddenTags.length} more tags: ${escapeHtml(hiddenTags.join(", "))}">+${hiddenTags.length}</span>` : ""}</div></div>
   </a>`;
 }
 
 const profileNumber = (value) => escapeHtml(String(value).replace("-", "−"));
 const ruleLabel = (rule) => STATS_META[rule.metricId]?.label ?? rule.metricId;
-const ruleText = (rule) =>
-  `${escapeHtml(rule.op)} ${profileNumber(rule.value)} ${escapeHtml(STATS_META[rule.metricId]?.unit ?? "")} → ${rule.severity === "warn" ? "Warn" : "Fail"}`;
+const ruleText = (rule) => {
+  const severity = rule.severity === "warn" ? "Warn" : "Fail";
+  return `${escapeHtml(rule.op)} ${profileNumber(rule.value)} ${escapeHtml(STATS_META[rule.metricId]?.unit ?? "")} → <span class="profile-rule-severity profile-rule-severity-${rule.severity}">${severity}</span>`;
+};
 
 function ruleRows(rules) {
   const groups = new Map();

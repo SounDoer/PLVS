@@ -72,7 +72,7 @@ function writeFixtureSource(directory, { status = "published", statuses = [statu
           relevanceMarkdown: "Defines the **Integrated target** represented by this profile.",
         },
       ],
-      tags: ["Broadcast"],
+      tags: ["Broadcast", "Standard", "Dialogue", "Monitoring"],
       author: { name: "Example Author", url: "https://example.com" },
       releases,
     })
@@ -255,16 +255,30 @@ describe("Sharesets static site generator", () => {
     expect(root).not.toContain("<span>Search</span>");
     expect(root).toContain("/assets/site-tokens.css");
     expect(root).toContain('class="resource-card card"');
-    expect(root).toContain('data-tags="[&quot;Broadcast&quot;]"');
+    expect(root).toContain(
+      'data-tags="[&quot;Broadcast&quot;,&quot;Standard&quot;,&quot;Dialogue&quot;,&quot;Monitoring&quot;]"'
+    );
+    expect(root).toContain('aria-label="2 more tags: Dialogue, Monitoring">+2</span>');
     expect(root).not.toContain('data-catalogue-filter="type"');
     expect(detail).toContain("/assets/site-tokens.css");
     expect(detail).toContain("data-site-navigation");
     expect(root).toContain('data-metric="truePeak"');
     expect(detail).toContain("Designed for <strong>broadcast delivery</strong>.");
+    expect(detail.indexOf("Designed for <strong>broadcast delivery</strong>.")).toBeGreaterThan(
+      detail.indexOf("<h2>Details</h2>")
+    );
+    expect(
+      detail.slice(detail.indexOf('<header class="theme-summary">'), detail.indexOf("</header>"))
+    ).toContain("A conservative broadcast profile.");
+    expect(
+      detail.slice(detail.indexOf('<header class="theme-summary">'), detail.indexOf("</header>"))
+    ).not.toContain("Designed for <strong>broadcast delivery</strong>.");
     expect(detail).toContain("Example Author");
     expect(detail.match(/ download>/g)).toHaveLength(1);
     expect(detail).toContain("−23 LUFS");
-    expect(detail).toContain("&gt; −1 dBTP → Fail");
+    expect(detail).toContain(
+      '&gt; −1 dBTP → <span class="profile-rule-severity profile-rule-severity-fail">Fail</span>'
+    );
     expect(detail).not.toContain("<h2>Compatibility</h2>");
     expect(detail).not.toContain("No bundled dependencies");
     expect(detail).toContain("Settings → Saved Items → Import…");
@@ -325,8 +339,12 @@ describe("Sharesets static site generator", () => {
     expect(browse).toContain('aria-label="Profile rule summary"');
     expect(detail).toContain("Included with PLVS");
     expect(detail).toContain("−23 LUFS");
-    expect(detail).toContain("&gt; −6 LUFS → Warn");
-    expect(detail).toContain("&gt; −1 dBTP → Fail");
+    expect(detail).toContain(
+      '&gt; −6 LUFS → <span class="profile-rule-severity profile-rule-severity-warn">Warn</span>'
+    );
+    expect(detail).toContain(
+      '&gt; −1 dBTP → <span class="profile-rule-severity profile-rule-severity-fail">Fail</span>'
+    );
     expect(detail).not.toContain(" download>");
     expect(detail).not.toContain('href="null"');
     expect(detail).not.toContain("How to Use");

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "atsc-a-85-long-form-monitor",
+  "slug": "atsc-a-85-long-form-monitor",
+  "type": "loudness",
+  "classification": "official",
+  "title": "ATSC A/85 Long-form Monitor",
+  "summary": "A practical PLVS monitor for dialogue-led ATSC long-form content.",
+  "descriptionMarkdown": "This is a monitoring aid, not an A/85 conformance measurement. A/85 calls for dialogue-gated measurement over the complete composite mix using BS.1770-1 without the relative-level gate added by later versions. PLVS instead uses an open voice-activity detector followed by its existing gated Dialogue Integrated calculation. Results therefore depend on detection quality and only evaluate when PLVS has a dialogue estimate. Use a conforming system for delivery certification. ATSC's LKFS values are displayed as numerically equivalent LUFS in PLVS.",
+  "references": [
+    {
+      "publisher": "Advanced Television Systems Committee",
+      "title": "ATSC A/85 Techniques for Establishing and Maintaining Audio Loudness",
+      "edition": "A/85:2026-07",
+      "url": "https://www.atsc.org/wp-content/uploads/2026/07/A85-2026-07.pdf",
+      "relevanceMarkdown": "Defines the long-form dialogue measurement method, target, anticipated measurement variation and True Peak ceiling that this approximate monitor is intended to follow."
+    },
+    {
+      "publisher": "Advanced Television Systems Committee",
+      "title": "ATSC A/85 Annex M Loudness and True Peak Quick Reference",
+      "edition": "A/85:2026-07",
+      "url": "https://www.atsc.org/wp-content/uploads/2026/07/A85-2026-07-Annex-M.pdf",
+      "relevanceMarkdown": "Summarises the distinction between long-form dialogue loudness and short-form full-program loudness."
+    }
+  ],
+  "tags": ["Standard", "Broadcast", "Dialogue", "Monitoring"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial monitoring release with explicit non-conformance limitations.",
+      "artifact": "artifacts/atsc-a-85-long-form-monitor-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

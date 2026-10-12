@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "apple-podcasts",
+  "slug": "apple-podcasts",
+  "type": "loudness",
+  "classification": "official",
+  "title": "Apple Podcasts",
+  "summary": "Loudness and True Peak guidance for Apple Podcasts audio.",
+  "descriptionMarkdown": "For podcast episodes prepared against Apple Podcasts for Creators audio guidance. The Integrated band is a warning so producers can review artistic and distribution context, while the True Peak ceiling is treated as a failure. This is specifically a podcast Profile; Apple Music uses a different workflow and is not implied by this Listing.",
+  "references": [
+    {
+      "publisher": "Apple",
+      "title": "Apple Podcasts for Creators Audio Requirements",
+      "edition": "Current online guidance, accessed October 2026",
+      "url": "https://podcasters.apple.com/support/893-audio-requirements",
+      "relevanceMarkdown": "Defines Apple's recommended loudness range, True Peak ceiling and BS.1770 measurement basis for podcast audio."
+    }
+  ],
+  "tags": ["Platform Guidance", "Podcast"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release based on Apple Podcasts for Creators guidance.",
+      "artifact": "artifacts/apple-podcasts-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

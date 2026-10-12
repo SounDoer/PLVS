@@ -27,6 +27,8 @@
   --color-control-border: #666;
   --color-control-hover: #999;
   --color-selected-surface: #2a1b0c;
+  --color-warning: #fbbf24;
+  --color-critical: #f97373;
   --color-error: #fca5a5;
   --color-success: #86efac;
   --space-1: 4px;

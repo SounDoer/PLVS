@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "itu-t-h-872-game-audio",
+  "slug": "itu-t-h-872-game-audio",
+  "type": "loudness",
+  "classification": "official",
+  "title": "ITU-T H.872 Game Audio",
+  "summary": "Game output scaling guidance from the ITU safe-listening recommendation.",
+  "descriptionMarkdown": "Apply this Profile to a representative 30-minute gameplay measurement. PLVS cannot choose or validate that representative interval, so a whole-file result only maps directly when the analysed file is the intended test window. H.872 contains additional safe-listening features beyond output scaling; passing these loudness rules does not establish complete H.872 conformity.",
+  "references": [
+    {
+      "publisher": "International Telecommunication Union",
+      "title": "ITU-T H.872 Safe Listening for Video Gameplay and Esports",
+      "edition": "October 2024",
+      "url": "https://www.itu.int/rec/T-REC-H.872-202410-I/en",
+      "relevanceMarkdown": "Clause 9.3.1 defines the representative gameplay measurement window, output-scaling band and True Peak ceiling represented by this Profile."
+    }
+  ],
+  "tags": ["Standard", "Game Audio", "Safe Listening"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release based on ITU-T H.872 output-scaling guidance.",
+      "artifact": "artifacts/itu-t-h-872-game-audio-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

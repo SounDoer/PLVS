@@ -78,7 +78,7 @@ describe("Preset presentation", () => {
     ];
     const html = presetPanels(input);
     expect(html).toContain("Included Loudness Profile");
-    expect(html.match(/→ Warn/g)).toHaveLength(5);
+    expect(html.match(/profile-rule-severity-warn/g)).toHaveLength(5);
     expect(html).not.toContain("Other");
     expect(presetExtraDetails(input)).toContain("<dd>Target</dd>");
   });

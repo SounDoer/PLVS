@@ -1,0 +1,42 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "ebu-r-128-short-form",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "EBU R 128 Short-form",
+      "referenceLufs": -23,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -22.8,
+          "severity": "fail"
+        },
+        {
+          "metricId": "integrated",
+          "op": "<",
+          "value": -23.2,
+          "severity": "fail"
+        },
+        {
+          "metricId": "shortTermMax",
+          "op": ">",
+          "value": -18,
+          "severity": "fail"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -1,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "spotify",
+  "slug": "spotify",
+  "type": "loudness",
+  "classification": "official",
+  "title": "Spotify",
+  "summary": "A monitoring Profile based on Spotify's current mastering guidance.",
+  "descriptionMarkdown": "Spotify describes playback normalisation and mastering guidance rather than a delivery acceptance specification. This Profile warns when a master is louder than the normal playback target and checks the general True Peak recommendation. Spotify also advises a stricter True Peak ceiling when a master is louder than target; the current PLVS rule model cannot express that conditional relationship, so review the source guidance when the Integrated warning is active. Playback behaviour can vary by normalisation setting and device.",
+  "references": [
+    {
+      "publisher": "Spotify",
+      "title": "Loudness Normalization on Spotify",
+      "edition": "Current online guidance, accessed October 2026",
+      "url": "https://support.spotify.com/us/artists/article/loudness-normalization/",
+      "relevanceMarkdown": "Describes Spotify playback normalisation, the mastering target, general True Peak guidance and the conditional advice for masters above target."
+    }
+  ],
+  "tags": ["Platform Guidance", "Music Streaming"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release based on Spotify's current public guidance.",
+      "artifact": "artifacts/spotify-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

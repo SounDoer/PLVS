@@ -1,0 +1,36 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "atsc-a-85-long-form-monitor",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "ATSC A/85 Long-form Monitor",
+      "referenceLufs": -24,
+      "rules": [
+        {
+          "metricId": "dialogueIntegrated",
+          "op": ">",
+          "value": -22,
+          "severity": "warn"
+        },
+        {
+          "metricId": "dialogueIntegrated",
+          "op": "<",
+          "value": -26,
+          "severity": "warn"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -2,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}

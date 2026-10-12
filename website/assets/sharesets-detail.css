@@ -308,6 +308,13 @@ figcaption {
   margin-top: 0;
   min-width: 0;
 }
+.profile-guidance {
+  max-width: 76ch;
+  margin-bottom: var(--space-5);
+}
+.profile-guidance > :first-child {
+  margin-top: 0;
+}
 .theme-facts {
   display: grid;
   gap: var(--space-5);
@@ -451,10 +458,10 @@ body:has(.preview-dialog[open]) {
   gap: var(--space-2);
 }
 
-.profile-rule-details dd span {
+.profile-rule-details dd > span {
   display: block;
 }
-.profile-rule-details dd span + span {
+.profile-rule-details dd > span + span {
   margin-top: var(--space-2);
 }
 #profile-details {

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "ebu-r-128-programme",
+  "slug": "ebu-r-128-programme",
+  "type": "loudness",
+  "classification": "official",
+  "title": "EBU R 128 Programme",
+  "summary": "Programme loudness and True Peak checks for EBU broadcast production.",
+  "descriptionMarkdown": "For completed, non-live programme material measured across the full programme. This Profile uses the recommendation's quality-control allowance. Live programmes and material intentionally produced below target need contextual judgement and may not fit these fixed rules. Maximum Momentary, Maximum Short-term and LRA are intentionally unconstrained because EBU R 128 treats them as programme-, audience- and platform-dependent.",
+  "references": [
+    {
+      "publisher": "European Broadcasting Union",
+      "title": "EBU R 128 Loudness Normalisation and Permitted Maximum Level of Audio Signals",
+      "edition": "Version 5.0, November 2023",
+      "url": "https://tech.ebu.ch/files/live/sites/tech/files/shared/r/r128.pdf",
+      "relevanceMarkdown": "Defines the Programme Loudness target, quality-control allowance, measurement method and production True Peak ceiling represented by this Profile."
+    },
+    {
+      "publisher": "European Broadcasting Union",
+      "title": "EBU Tech 3343 Guidelines for Production of Programmes in Accordance with R 128",
+      "edition": "Version 4.0, November 2023",
+      "url": "https://tech.ebu.ch/files/live/sites/tech/files/shared/tech/tech3343.pdf",
+      "relevanceMarkdown": "Provides the production and post-production context for applying the recommendation and distinguishes quality-control from live tolerances."
+    }
+  ],
+  "tags": ["Standard", "Broadcast"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release based on the current EBU recommendation and production guidance.",
+      "artifact": "artifacts/ebu-r-128-programme-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

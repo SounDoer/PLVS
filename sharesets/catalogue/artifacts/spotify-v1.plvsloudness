@@ -1,0 +1,30 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "spotify",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Spotify",
+      "referenceLufs": -14,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -14,
+          "severity": "warn"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -1,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}

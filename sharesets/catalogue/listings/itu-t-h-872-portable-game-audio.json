@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "itu-t-h-872-portable-game-audio",
+  "slug": "itu-t-h-872-portable-game-audio",
+  "type": "loudness",
+  "classification": "official",
+  "title": "ITU-T H.872 Portable Game Audio",
+  "summary": "The conditional H.872 output-scaling alternative for portable game devices.",
+  "descriptionMarkdown": "This alternative is only intended for a title specifically designed for a handheld or portable device whose onboard loudspeaker lacks sufficient dynamic range for the general H.872 scaling guidance. Apply it to a representative 30-minute gameplay measurement. H.872 also strongly recommends a headphone output safety mode with additional attenuation in this case; PLVS cannot verify device capability, playback routing or that safety mode. Passing this Profile therefore does not establish complete H.872 conformity.",
+  "references": [
+    {
+      "publisher": "International Telecommunication Union",
+      "title": "ITU-T H.872 Safe Listening for Video Gameplay and Esports",
+      "edition": "October 2024",
+      "url": "https://www.itu.int/rec/T-REC-H.872-202410-I/en",
+      "relevanceMarkdown": "Clause 9.3.1 Note 4 defines the conditional portable-device alternative and its associated headphone safety recommendation."
+    }
+  ],
+  "tags": ["Standard", "Game Audio", "Portable", "Safe Listening"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release for the conditional H.872 portable-device alternative.",
+      "artifact": "artifacts/itu-t-h-872-portable-game-audio-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}

@@ -162,7 +162,7 @@ select {
   color: var(--color-text);
 }
 .resource-card:hover {
-  border-color: var(--color-control-hover);
+  border-color: var(--color-link);
 }
 .resource-card > img,
 .resource-card > .profile-preview,
@@ -352,8 +352,18 @@ footer a {
   margin: 0;
   font-size: var(--text-small);
 }
-.profile-preview-rules dd span {
+.profile-preview-rules dd > span {
   display: block;
+}
+.profile-rule-severity {
+  display: inline;
+  font-weight: var(--weight-heading);
+}
+.profile-rule-severity-warn {
+  color: var(--color-warning);
+}
+.profile-rule-severity-fail {
+  color: var(--color-critical);
 }
 .profile-preview-summary {
   display: grid;
@@ -394,7 +404,7 @@ footer a {
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 0;
 }
 .resource-card .profile-reference {

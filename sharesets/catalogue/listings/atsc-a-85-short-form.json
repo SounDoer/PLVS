@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "atsc-a-85-short-form",
+  "slug": "atsc-a-85-short-form",
+  "type": "loudness",
+  "classification": "official",
+  "title": "ATSC A/85 Short-form",
+  "summary": "Full-program loudness and True Peak checks for ATSC short-form content.",
+  "descriptionMarkdown": "For commercials and other short-form television content measured from the full-program mix using the current BS.1770 method. ATSC publishes loudness in LKFS; PLVS displays the numerically equivalent LUFS value. The tolerance describes anticipated measurement variation and should not be treated as an alternate production target.",
+  "references": [
+    {
+      "publisher": "Advanced Television Systems Committee",
+      "title": "ATSC A/85 Techniques for Establishing and Maintaining Audio Loudness",
+      "edition": "A/85:2026-07",
+      "url": "https://www.atsc.org/wp-content/uploads/2026/07/A85-2026-07.pdf",
+      "relevanceMarkdown": "Defines the short-form full-program measurement approach, target loudness, anticipated measurement variation and True Peak ceiling represented here."
+    }
+  ],
+  "tags": ["Standard", "Broadcast", "Short-form"],
+  "author": { "name": "PLVS", "url": "https://github.com/SounDoer/PLVS" },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-12",
+      "status": "published",
+      "notesMarkdown": "Initial curated release based on the current ATSC recommended practice.",
+      "artifact": "artifacts/atsc-a-85-short-form-v1.plvsloudness",
+      "previews": []
+    }
+  ]
+}
