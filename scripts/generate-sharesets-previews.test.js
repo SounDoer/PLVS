@@ -31,8 +31,8 @@ function artifact(root, type) {
   }
   if (type === "presets") {
     const preset = {
-      id: "stereo-overview",
-      name: "Stereo Overview",
+      id: "preview-preset",
+      name: "Preview Preset",
       ...structuredClone(DEFAULT_WORKSPACE_STATE),
       dock: { enabled: false },
       loudnessProfileActive: "off",
@@ -132,6 +132,25 @@ describe("Sharesets preview command", () => {
         createRuntime: async () => imageRuntime(),
       })
     ).rejects.toThrow("Unknown built-in Theme");
+  });
+
+  it("renders the built-in Default Preset directly from the product source", async () => {
+    const root = temporaryRoot();
+    const result = await generateSharesetsPreviews({
+      builtinPresetId: "default",
+      outputDirectory: join(root, "rendered"),
+      createRuntime: async () => imageRuntime(),
+    });
+
+    expect(result.type).toBe("presets");
+    expect(result.report.assets.map(({ id }) => id)).toEqual(["preset-workspace"]);
+    await expect(
+      generateSharesetsPreviews({
+        builtinPresetId: "not-built-in",
+        outputDirectory: join(root, "unknown"),
+        createRuntime: async () => imageRuntime(),
+      })
+    ).rejects.toThrow("Unknown built-in Preset");
   });
 
   it("refuses an existing output directory before rendering", async () => {

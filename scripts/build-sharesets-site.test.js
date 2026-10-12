@@ -155,6 +155,35 @@ function writeBuiltinProfileSource(directory) {
   );
 }
 
+function writeBuiltinPresetSource(directory) {
+  const preview = {
+    id: "preset-workspace",
+    path: "previews/default-preset/preset-workspace.png",
+  };
+  mkdirSync(join(directory, "previews", "default-preset"), { recursive: true });
+  writeFileSync(
+    join(directory, "manifest.json"),
+    JSON.stringify({ schemaVersion: 1, listings: ["default-preset.json"] })
+  );
+  writeFileSync(
+    join(directory, "default-preset.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: "default-preset",
+      slug: "default-preset",
+      type: "presets",
+      classification: "official",
+      title: "Default",
+      summary: "The default Preset included with PLVS.",
+      descriptionMarkdown: "The default Preset included with PLVS.",
+      tags: ["Built-in"],
+      author: { name: "PLVS", url: "https://github.com/SounDoer/PLVS" },
+      included: { sourceId: "default", previews: [preview] },
+    })
+  );
+  writeFileSync(join(directory, preview.path), PNG);
+}
+
 describe("Sharesets static site generator", () => {
   it("uses the fixed four-image Theme gallery order and plain-language labels", () => {
     const previews = [
@@ -347,6 +376,29 @@ describe("Sharesets static site generator", () => {
     );
     expect(detail).not.toContain(" download>");
     expect(detail).not.toContain('href="null"');
+    expect(detail).not.toContain("How to Use");
+    expect(detail).not.toContain("Release History");
+    expect(detail).not.toContain("File Checksum");
+  });
+
+  it("renders the included Default Preset without download or import controls", async () => {
+    const source = temporaryDirectory("plvs-sharesets-default-preset-source-");
+    const output = temporaryDirectory("plvs-sharesets-default-preset-output-");
+    writeBuiltinPresetSource(source);
+
+    await expect(
+      buildSharesetsSite({ contentDirectory: source, outputDirectory: output })
+    ).resolves.toMatchObject({ listingCount: 1, visibleListingCount: 1 });
+    const browse = readFileSync(join(output, "index.html"), "utf8");
+    const detail = readFileSync(join(output, "presets", "default-preset", "index.html"), "utf8");
+
+    expect(browse).toContain("/sharesets/files/default-preset/included/preset-workspace.png");
+    expect(detail).toContain("Included with PLVS");
+    expect(detail).toContain("Workspace Panels</dt><dd>8");
+    expect(detail).toContain("Included Loudness Profile");
+    expect(detail).toContain("PLVS Default");
+    expect(detail).toContain("Panel Settings");
+    expect(detail).not.toContain(" download>");
     expect(detail).not.toContain("How to Use");
     expect(detail).not.toContain("Release History");
     expect(detail).not.toContain("File Checksum");

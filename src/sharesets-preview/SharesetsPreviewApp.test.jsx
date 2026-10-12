@@ -39,8 +39,8 @@ afterEach(() => {
 describe("Sharesets preview browser harness", () => {
   it("renders a portable Preset through the production Dock", async () => {
     const preset = {
-      id: "stereo-overview",
-      name: "Stereo Overview",
+      id: "preview-preset",
+      name: "Preview Preset",
       ...structuredClone(DEFAULT_WORKSPACE_STATE),
       dock: {
         enabled: true,
@@ -71,8 +71,8 @@ describe("Sharesets preview browser harness", () => {
 
   it("renders the complete production Workspace with valid Stereo Map fixture data", async () => {
     const preset = {
-      id: "stereo-overview",
-      name: "Stereo Overview",
+      id: "preview-preset",
+      name: "Preview Preset",
       ...structuredClone(DEFAULT_WORKSPACE_STATE),
       dock: { enabled: false },
       loudnessProfileActive: "off",

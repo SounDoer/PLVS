@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_LOUDNESS_PROFILE } from "../src/lib/loudnessProfileCatalog.js";
+import { DEFAULT_PRESET } from "../src/lib/defaultPreset.js";
 import {
   hashPortableLoudnessProfile,
   loudnessProfileToPortable,
 } from "../src/lib/portableLoudnessProfile.js";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { hashPortableTheme, themeToPortable } from "../src/theme/portableTheme.js";
+import { hashPortablePreset, presetToPortable } from "../src/transfer/portablePreset.js";
 import { readSharesetsSource } from "./sharesets-catalogue-source.mjs";
 
 const INITIAL_LISTINGS = [
@@ -32,7 +34,7 @@ const INITIAL_LISTINGS = [
   "listings/paper-console.json",
   "listings/mono-dark.json",
   "listings/mono-light.json",
-  "listings/stereo-overview.json",
+  "listings/default-preset.json",
   "listings/multichannel-monitoring.json",
 ];
 
@@ -62,6 +64,7 @@ describe("initial Sharesets Catalogue", () => {
       "atsc-a-85-short-form",
       "control-room-amber",
       "default-loudness-profile",
+      "default-preset",
       "ebu-r-128-programme",
       "ebu-r-128-short-form",
       "ebu-r-128-streaming-monitor",
@@ -77,7 +80,6 @@ describe("initial Sharesets Catalogue", () => {
       "plvs-dark",
       "plvs-light",
       "spotify",
-      "stereo-overview",
       "studio-daylight",
     ]);
     expect(new Set(listings.map(({ type }) => type))).toEqual(
@@ -151,16 +153,35 @@ describe("initial Sharesets Catalogue", () => {
     expect(theme.releases[0].metadata.content.contentHash).not.toBe(builtinHash);
   });
 
-  it("keeps the current stereo Workspace fixture dependency-free", async () => {
+  it("keeps Default linked to the current built-in Preset", async () => {
     const source = await readLaunchSource();
-    const preset = source.listings.find(({ document }) => document.type === "presets").document;
+    const preset = source.listings.find(
+      ({ document }) => document.id === "default-preset"
+    ).document;
+    const portable = presetToPortable(DEFAULT_PRESET, {
+      loudnessProfiles: [DEFAULT_LOUDNESS_PROFILE],
+    });
 
-    expect(preset.title).toBe("Stereo Overview");
-    expect(preset.releases[0].metadata.facets).toMatchObject({
-      moduleIds: ["levelMeter", "loudness", "spectrum", "stats", "stereo-map", "vectorscope"],
-      dependencyIds: [],
+    expect(preset.title).toBe("Default");
+    expect(preset.included.sourceId).toBe("default");
+    expect(preset.included.item).toEqual({ id: "default", ...portable });
+    expect(preset.included.metadata.content.contentHash).toBe(await hashPortablePreset(portable));
+    expect(preset.included.metadata.facets).toMatchObject({
+      moduleIds: [
+        "levelMeter",
+        "loudness",
+        "spectrogram",
+        "spectrum",
+        "stats",
+        "stereo-map",
+        "vectorscope",
+        "waveform",
+      ],
+      dependencyIds: ["default"],
       optionalCapabilities: [],
     });
+    expect(preset.included.previews).toEqual([expect.objectContaining({ id: "preset-workspace" })]);
+    expect(preset.releases).toEqual([]);
   });
 
   it("publishes the source-adaptive Multichannel Monitoring Preset", async () => {

@@ -5,9 +5,10 @@ import {
   DEFAULT_LOUDNESS_PROFILE,
   DEFAULT_LOUDNESS_PROFILE_ID,
 } from "../src/lib/loudnessProfileCatalog.js";
+import { DEFAULT_PRESET, DEFAULT_PRESET_ID } from "../src/lib/defaultPreset.js";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { deriveSharesetsCatalogueMetadata } from "../src/transfer/sharesetsContract.js";
-import { buildPack } from "../src/transfer/packShape.js";
+import { buildPack, packDescriptor } from "../src/transfer/packShape.js";
 import { validateSharesetsListingRecord } from "./sharesets-catalogue-record.mjs";
 
 export const SHARESETS_SOURCE_SCHEMA_VERSION = 1;
@@ -289,7 +290,9 @@ async function resolveIncluded(root, listing, listingIndex) {
       ? BUILTIN_THEMES_V2[sourceId]
       : listing.type === "loudness" && sourceId === DEFAULT_LOUDNESS_PROFILE_ID
         ? DEFAULT_LOUDNESS_PROFILE
-        : null;
+        : listing.type === "presets" && sourceId === DEFAULT_PRESET_ID
+          ? DEFAULT_PRESET
+          : null;
   if (!builtInDocument) {
     throw new SharesetsSourceError([
       issue(
@@ -300,10 +303,12 @@ async function resolveIncluded(root, listing, listingIndex) {
       ),
     ]);
   }
-  const pack = buildPack(listing.type, [builtInDocument]);
+  const pack = buildPack(listing.type, [builtInDocument], {
+    ...(listing.type === "presets" ? { loudnessProfiles: [DEFAULT_LOUDNESS_PROFILE] } : {}),
+  });
   const text = `${JSON.stringify(pack, null, 2)}\n`;
   const metadata = await deriveSharesetsCatalogueMetadata(text, {
-    fileName: `${sourceId}.${listing.type === "themes" ? "plvstheme" : "plvsloudness"}`,
+    fileName: `${sourceId}.${packDescriptor(listing.type).extension}`,
   });
   const previews = await sealPreviews(
     root,
@@ -311,7 +316,13 @@ async function resolveIncluded(root, listing, listingIndex) {
     metadata,
     `$.listings[${listingIndex}].included`
   );
-  return { ...listing.included, previews, metadata, item: structuredClone(pack.items[0]) };
+  return {
+    ...listing.included,
+    previews,
+    metadata,
+    item: structuredClone(pack.items[0]),
+    pack: structuredClone(pack),
+  };
 }
 
 export async function readSharesetsSourceRecords(contentDirectory) {

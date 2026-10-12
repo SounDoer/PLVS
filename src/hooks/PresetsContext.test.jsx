@@ -14,6 +14,8 @@ import { WindowChromeProvider } from "./WindowChromeContext.jsx";
 import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
+import { createDefaultPreset } from "../lib/defaultPreset.js";
+import { presetToPortable } from "../transfer/portablePreset.js";
 import { stubMatchMedia } from "../testing/matchMedia.js";
 import { PresetsProvider, usePresetLibrary } from "./PresetsContext.jsx";
 
@@ -78,6 +80,11 @@ describe("PresetsProvider", () => {
       kind: "profile",
       id: starter.id,
     });
+    expect(presetToPortable(presets.list[0], { loudnessProfiles: [starter] })).toEqual(
+      presetToPortable(createDefaultPreset({ loudnessProfileId: starter.id }), {
+        loudnessProfiles: [starter],
+      })
+    );
   });
 
   it("does not seed a preset into an installation that has run before", async () => {

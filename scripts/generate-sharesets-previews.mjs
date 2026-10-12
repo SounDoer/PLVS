@@ -7,9 +7,12 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { pathToFileURL } from "node:url";
 import { chromium } from "playwright";
 import sharp from "sharp";
+import { DEFAULT_PRESET, DEFAULT_PRESET_ID } from "../src/lib/defaultPreset.js";
+import { DEFAULT_LOUDNESS_PROFILE } from "../src/lib/loudnessProfileCatalog.js";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { themeToPortable } from "../src/theme/portableTheme.js";
 import { build } from "vite";
+import { buildPack } from "../src/transfer/packShape.js";
 import {
   buildSharesetsPreviewPlan,
   buildSharesetsThemePreviewPlan,
@@ -67,6 +70,21 @@ export async function buildPreviewPlanForBuiltinTheme(themeId) {
   return {
     type: "themes",
     plan: await buildSharesetsThemePreviewPlan({ theme: themeToPortable(theme) }),
+  };
+}
+
+export async function buildPreviewPlanForBuiltinPreset(presetId) {
+  if (presetId !== DEFAULT_PRESET_ID) {
+    throw new Error(`Unknown built-in Preset: ${presetId}.`);
+  }
+  return {
+    type: "presets",
+    plan: await buildSharesetsPreviewPlan(
+      buildPack("presets", [DEFAULT_PRESET], {
+        loudnessProfiles: [DEFAULT_LOUDNESS_PROFILE],
+      }),
+      "presets"
+    ),
   };
 }
 
@@ -218,21 +236,27 @@ function contentIdentity(plan) {
 export async function generateSharesetsPreviews({
   artifactPath,
   builtinThemeId,
+  builtinPresetId,
   outputDirectory,
   createRuntime = createSharesetsPreviewBrowserRuntime,
 }) {
-  if (Boolean(artifactPath) === Boolean(builtinThemeId)) {
-    throw new Error("Choose exactly one preview source: an artifact or a built-in Theme.");
+  const sourceCount = [artifactPath, builtinThemeId, builtinPresetId].filter(Boolean).length;
+  if (sourceCount !== 1) {
+    throw new Error("Choose exactly one preview source: an artifact or a built-in Item.");
   }
   const source = artifactPath
     ? resolve(artifactPath)
-    : resolve("src", "theme", "builtinThemesV2.js");
+    : builtinThemeId
+      ? resolve("src", "theme", "builtinThemesV2.js")
+      : resolve("src", "lib", "defaultPreset.js");
   const { output, staging } = await prepareSharesetsPreviewOutput(source, outputDirectory);
   let runtime;
   try {
     const { plan, type } = builtinThemeId
       ? await buildPreviewPlanForBuiltinTheme(builtinThemeId)
-      : await buildPreviewPlanForArtifact(source);
+      : builtinPresetId
+        ? await buildPreviewPlanForBuiltinPreset(builtinPresetId)
+        : await buildPreviewPlanForArtifact(source);
     const assets = [];
     if (plan.assets.length > 0) {
       runtime = await createRuntime();
@@ -280,12 +304,21 @@ export async function generateSharesetsPreviews({
 async function main(args) {
   if (args.length !== 2) {
     throw new Error(
-      "Usage: npm run sharesets:preview -- <artifact.plvsloudness|plvspreset|plvstheme|builtin:theme-id> <new-output-directory>"
+      "Usage: npm run sharesets:preview -- <artifact.plvsloudness|plvspreset|plvstheme|builtin:theme-id|builtin:preset:preset-id> <new-output-directory>"
     );
   }
-  const builtinThemeId = args[0].startsWith("builtin:") ? args[0].slice("builtin:".length) : null;
+  const builtinPresetPrefix = "builtin:preset:";
+  const builtinPresetId = args[0].startsWith(builtinPresetPrefix)
+    ? args[0].slice(builtinPresetPrefix.length)
+    : null;
+  const builtinThemeId =
+    !builtinPresetId && args[0].startsWith("builtin:") ? args[0].slice("builtin:".length) : null;
   const result = await generateSharesetsPreviews({
-    ...(builtinThemeId ? { builtinThemeId } : { artifactPath: args[0] }),
+    ...(builtinPresetId
+      ? { builtinPresetId }
+      : builtinThemeId
+        ? { builtinThemeId }
+        : { artifactPath: args[0] }),
     outputDirectory: args[1],
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

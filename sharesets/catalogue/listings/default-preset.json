@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "default-preset",
+  "slug": "default-preset",
+  "type": "presets",
+  "classification": "official",
+  "title": "Default",
+  "summary": "The complete first-run monitoring workspace included with PLVS.",
+  "descriptionMarkdown": "The built-in starting point for general monitoring. Default keeps all eight Workspace modules visible, uses PLVS Default as its Loudness Profile, retains the normal opaque window presentation, and leaves Dock off. A new PLVS installation saves this scene as the active Default Preset so it remains available after the workspace is rearranged.",
+  "tags": ["Built-in", "General", "Workspace", "Monitoring"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "included": {
+    "sourceId": "default",
+    "previews": [
+      {
+        "id": "preset-workspace",
+        "path": "previews/default-preset/preset-workspace.png"
+      }
+    ]
+  }
+}

@@ -238,6 +238,58 @@ describe("Sharesets Catalogue source boundary", () => {
     });
   });
 
+  it("resolves the built-in Default Preset from the product source", async () => {
+    const directory = temporarySource();
+    const previews = [{ id: "preset-workspace", path: "previews/default/preset-workspace.png" }];
+    writeFileSync(
+      join(directory, "manifest.json"),
+      JSON.stringify({ schemaVersion: 1, listings: ["default-preset.json"] })
+    );
+    writeFileSync(
+      join(directory, "default-preset.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "default-preset",
+        slug: "default-preset",
+        type: "presets",
+        classification: "official",
+        title: "Default",
+        summary: "The built-in default Preset.",
+        descriptionMarkdown: "Included with PLVS.",
+        tags: ["Built-in"],
+        author: { name: "PLVS", url: "https://github.com/SounDoer/PLVS" },
+        included: { sourceId: "default", previews },
+      })
+    );
+    writePreviews(directory, previews);
+
+    await expect(readSharesetsSource(directory)).resolves.toMatchObject({
+      listings: [
+        {
+          document: {
+            included: {
+              sourceId: "default",
+              item: {
+                id: "default",
+                name: "Default",
+                loudnessProfile: { dependencyId: "default" },
+              },
+              metadata: {
+                content: {
+                  type: "presets",
+                  itemId: "default",
+                  summary: { workspacePanelCount: 8, dockEnabled: false, dockPanelCount: 0 },
+                },
+                compatibility: { dependencyIds: ["default"] },
+              },
+            },
+            releases: [],
+          },
+        },
+      ],
+    });
+  });
+
   it("rejects an included source that is not built into PLVS", async () => {
     const directory = temporarySource();
     writeFileSync(

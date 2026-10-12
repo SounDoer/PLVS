@@ -395,8 +395,11 @@ export async function buildSharesetsSite({
   for (const listing of listings) {
     const current = latestPublished(listing);
     listing.presetPack =
-      listing.type === "presets" && current
-        ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8"))
+      listing.type === "presets"
+        ? (listing.included?.pack ??
+          (current
+            ? JSON.parse(await readFile(join(source.root, current.artifact), "utf8"))
+            : null))
         : null;
     listing.profile =
       listing.type === "loudness"
