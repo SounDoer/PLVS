@@ -7,7 +7,7 @@
   "title": "PLVS Default",
   "summary": "The default Loudness Profile included with PLVS.",
   "descriptionMarkdown": "The default Loudness Profile included with PLVS.",
-  "tags": [],
+  "tags": ["Built-in", "General", "Monitoring"],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
