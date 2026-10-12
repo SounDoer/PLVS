@@ -133,6 +133,9 @@ pub struct CliAnalyzeMetadata {
 pub struct CliAnalyzeDialogue {
   pub enabled: bool,
   pub engine: Option<String>,
+  pub metric_algorithm_version: Option<u32>,
+  pub engine_configuration: Option<String>,
+  pub multichannel_fusion: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -151,8 +154,10 @@ pub struct CliAnalyzeSummary {
   pub sample_peak_max_l_db: Option<f64>,
   pub sample_peak_max_r_db: Option<f64>,
   pub sample_peak_max_db: Option<f64>,
-  pub dialogue_integrated_lufs: Option<f64>,
-  pub dialogue_lra: Option<f64>,
+  pub dialogue_loudness_lufs: Option<f64>,
+  pub loudness_to_dialogue_ratio_lu: Option<f64>,
+  pub dialogue_coverage_percent: Option<f64>,
+  pub dialogue_range_lu: Option<f64>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub dialogue_offset_from_reference_lu: Option<f64>,
 }
@@ -251,14 +256,14 @@ fn success_report(
   };
   let mut summary = summary_from_metrics(result.summary, dialogue_enabled);
   if let (Some(dialogue), Some(reference)) = (
-    summary.dialogue_integrated_lufs,
+    summary.dialogue_loudness_lufs,
     options.dialogue.reference_lufs,
   ) {
     summary.dialogue_offset_from_reference_lu = Some(dialogue - reference);
   }
   let quality_control = evaluate_quality_control(&summary, options.quality_control);
   CliAnalyzeSuccessReport {
-    schema_version: 1,
+    schema_version: 2,
     command: "analyze".to_string(),
     status: CliAnalyzeStatus::Ok,
     app: app_info(),
@@ -268,6 +273,9 @@ fn success_report(
       dialogue: CliAnalyzeDialogue {
         enabled: dialogue_enabled,
         engine: dialogue_engine,
+        metric_algorithm_version: dialogue_enabled.then_some(1),
+        engine_configuration: dialogue_enabled.then(|| "default".to_string()),
+        multichannel_fusion: dialogue_enabled.then(|| "average-all-channels-v1".to_string()),
       },
       reference_lufs: options.dialogue.reference_lufs,
     },
@@ -278,7 +286,7 @@ fn success_report(
 
 fn error_report(path: &str, message: String) -> CliAnalyzeErrorReport {
   CliAnalyzeErrorReport {
-    schema_version: 1,
+    schema_version: 2,
     command: "analyze".to_string(),
     status: CliAnalyzeStatus::Error,
     app: app_info(),
@@ -336,12 +344,24 @@ fn summary_from_metrics(
     sample_peak_max_l_db,
     sample_peak_max_r_db,
     sample_peak_max_db: max_optional(sample_peak_max_l_db, sample_peak_max_r_db),
-    dialogue_integrated_lufs: if dialogue_enabled {
+    dialogue_loudness_lufs: if dialogue_enabled {
       finite_or_none(summary.dialogue_integrated)
     } else {
       None
     },
-    dialogue_lra: if dialogue_enabled {
+    loudness_to_dialogue_ratio_lu: if dialogue_enabled {
+      finite_or_none(summary.integrated_lufs)
+        .zip(finite_or_none(summary.dialogue_integrated))
+        .map(|(programme, dialogue)| programme - dialogue)
+    } else {
+      None
+    },
+    dialogue_coverage_percent: if dialogue_enabled {
+      finite_or_none(summary.dialogue_percent)
+    } else {
+      None
+    },
+    dialogue_range_lu: if dialogue_enabled {
       finite_or_none(summary.dialogue_lra)
     } else {
       None
@@ -450,7 +470,8 @@ mod tests {
       loudness_layout: "stereo".to_string(),
       loudness_layout_known: true,
       dialogue_integrated: f64::NEG_INFINITY,
-      dialogue_lra: 0.0,
+      dialogue_lra: f64::NEG_INFINITY,
+      dialogue_percent: 0.0,
     }
   }
 
@@ -462,8 +483,10 @@ mod tests {
     assert_eq!(summary.sample_peak_max_l_db, Some(-3.0));
     assert_eq!(summary.sample_peak_max_r_db, None);
     assert_eq!(summary.sample_peak_max_db, Some(-3.0));
-    assert_eq!(summary.dialogue_integrated_lufs, None);
-    assert_eq!(summary.dialogue_lra, None);
+    assert_eq!(summary.dialogue_loudness_lufs, None);
+    assert_eq!(summary.loudness_to_dialogue_ratio_lu, None);
+    assert_eq!(summary.dialogue_coverage_percent, None);
+    assert_eq!(summary.dialogue_range_lu, None);
   }
 
   #[test]
@@ -481,10 +504,12 @@ mod tests {
     let mut metrics = summary_with_peaks(-3.0, -4.0);
     metrics.dialogue_integrated = -20.5;
     metrics.dialogue_lra = 2.25;
+    metrics.dialogue_percent = 62.5;
     let summary = summary_from_metrics(metrics, true);
 
-    assert_eq!(summary.dialogue_integrated_lufs, Some(-20.5));
-    assert_eq!(summary.dialogue_lra, Some(2.25));
+    assert_eq!(summary.dialogue_loudness_lufs, Some(-20.5));
+    assert_eq!(summary.dialogue_coverage_percent, Some(62.5));
+    assert_eq!(summary.dialogue_range_lu, Some(2.25));
   }
 
   #[test]
@@ -493,7 +518,7 @@ mod tests {
 
     assert_eq!(report.status(), CliAnalyzeStatus::Error);
     let json = serde_json::to_value(report).expect("serialize");
-    assert_eq!(json["schemaVersion"], 1);
+    assert_eq!(json["schemaVersion"], 2);
     assert_eq!(json["command"], "analyze");
     assert_eq!(json["status"], "error");
     assert_eq!(json["source"]["path"], "missing.wav");
@@ -607,7 +632,10 @@ mod tests {
     assert_eq!(json["analysis"]["dialogue"]["enabled"], true);
     assert_eq!(json["analysis"]["dialogue"]["engine"], "firered");
     assert_eq!(json["analysis"]["referenceLufs"], -16.0);
-    assert_eq!(json["summary"]["dialogueIntegratedLufs"], -18.0);
+    assert_eq!(json["schemaVersion"], 2);
+    assert_eq!(json["analysis"]["dialogue"]["metricAlgorithmVersion"], 1);
+    assert_eq!(json["summary"]["dialogueLoudnessLufs"], -18.0);
+    assert_eq!(json["summary"]["loudnessToDialogueRatioLu"], 2.0);
     assert_eq!(json["summary"]["dialogueOffsetFromReferenceLu"], -2.0);
   }
 }

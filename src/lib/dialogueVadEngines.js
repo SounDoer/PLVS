@@ -11,11 +11,6 @@ export const DIALOGUE_VAD_ENGINE_OPTIONS = [
     label: "Silero VAD",
     url: "https://github.com/snakers4/silero-vad",
   },
-  {
-    id: "ten",
-    label: "TEN VAD",
-    url: "https://github.com/TEN-framework/ten-vad",
-  },
 ];
 
 export const DEFAULT_DIALOGUE_VAD_ENGINE = "firered";

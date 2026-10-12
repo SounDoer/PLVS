@@ -1,7 +1,7 @@
 import { isRuleEmpty } from "./loudnessProfileCatalog.js";
 import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
 
-const REPORT_SCHEMA_VERSION = 1;
+const REPORT_SCHEMA_VERSION = 2;
 const REPORT_TYPE = "fileAnalysis";
 
 /// The Loudness Profile metrics a whole-file report can judge, keyed to the `summary` field that
@@ -13,8 +13,10 @@ export const REPORT_PROFILE_METRIC_FIELDS = Object.freeze({
   momentaryMax: "mMaxLufs",
   shortTermMax: "stMaxLufs",
   truePeak: "truePeakMaxDbtp",
-  dialogueIntegrated: "dialogueIntegratedLufs",
-  dialogueRange: "dialogueLra",
+  dialogueIntegrated: "dialogueLoudnessLufs",
+  loudnessToDialogueRatio: "loudnessToDialogueRatioLu",
+  dialogueCoverage: "dialogueCoveragePercent",
+  dialogueRange: "dialogueRangeLu",
 });
 
 function finiteOrNull(value) {
@@ -90,10 +92,11 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
   const selectedTrack = metadata.selectedTrack ?? {};
   const dialogue = fileSession.analysisSettings?.dialogue ?? {};
   const dialogueEnabled = dialogue.enabled === true;
-  // A dialogue range of 0.0 means either "no speech was found" or "the speech sat at one level".
-  // Integrated is the reading that goes non-finite when nothing was measured, so it gates both --
-  // the rule `measurementControl` already applies to the LIVE readings.
   const dialogueMeasured = dialogueEnabled && Number.isFinite(summary.dialogueIntegrated);
+  const ldr =
+    dialogueMeasured && Number.isFinite(summary.integratedLufs)
+      ? summary.integratedLufs - summary.dialogueIntegrated
+      : null;
   const samplePeakMaxDb = Math.max(
     Number.isFinite(summary.samplePeakMaxLDb) ? summary.samplePeakMaxLDb : -Infinity,
     Number.isFinite(summary.samplePeakMaxRDb) ? summary.samplePeakMaxRDb : -Infinity
@@ -113,8 +116,10 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     samplePeakMaxLDb: finiteOrNull(summary.samplePeakMaxLDb),
     samplePeakMaxRDb: finiteOrNull(summary.samplePeakMaxRDb),
     samplePeakMaxDb: finiteOrNull(samplePeakMaxDb),
-    dialogueIntegratedLufs: dialogueMeasured ? finiteOrNull(summary.dialogueIntegrated) : null,
-    dialogueLra: dialogueMeasured ? finiteOrNull(summary.dialogueLra) : null,
+    dialogueLoudnessLufs: dialogueMeasured ? summary.dialogueIntegrated : null,
+    loudnessToDialogueRatioLu: ldr,
+    dialogueCoveragePercent: dialogueEnabled ? finiteOrNull(summary.dialoguePercent) : null,
+    dialogueRangeLu: dialogueMeasured ? finiteOrNull(summary.dialogueLra) : null,
   };
 
   return {
@@ -146,6 +151,9 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
       dialogue: {
         enabled: dialogueEnabled,
         engine: dialogueEnabled ? stringOrNull(dialogue.engine) : null,
+        metricAlgorithmVersion: dialogueEnabled ? 1 : null,
+        engineConfiguration: dialogueEnabled ? stringOrNull(dialogue.engineConfiguration) : null,
+        multichannelFusion: dialogueEnabled ? stringOrNull(dialogue.multichannelFusion) : null,
       },
     },
     summary: reportSummary,

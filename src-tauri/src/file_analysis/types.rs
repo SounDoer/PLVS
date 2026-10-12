@@ -57,8 +57,10 @@ pub struct FileAnalysisSummaryMetrics {
   pub loudness_layout: String,
   /// False when loudness is Ch1/Ch2 stereo loudness of an unrecognized layout.
   pub loudness_layout_known: bool,
-  /// Dialogue-gated integrated loudness; `NEG_INFINITY` when gating was off.
+  /// Dialogue Loudness; `NEG_INFINITY` when detection was off or no dialogue was measured.
   pub dialogue_integrated: f64,
-  /// Dialogue-gated loudness range; `0.0` when gating was off or insufficient speech.
+  /// PLVS Dialogue Range; `NEG_INFINITY` until one complete masked observation exists.
   pub dialogue_lra: f64,
+  /// Percentage of valid measurement time classified as dialogue.
+  pub dialogue_percent: f64,
 }

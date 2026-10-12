@@ -460,6 +460,7 @@ pub(crate) fn analyze_file_core(
     loudness_layout_known: metrics.loudness_layout_known,
     dialogue_integrated: metrics.dialogue_integrated,
     dialogue_lra: metrics.dialogue_lra,
+    dialogue_percent: metrics.dialogue_percent,
   };
   Ok(Some((pcm_chunker.decoded_frames(), summary)))
 }
@@ -1120,7 +1121,8 @@ mod tests {
       loudness_layout: metrics.loudness_layout.to_string(),
       loudness_layout_known: metrics.loudness_layout_known,
       dialogue_integrated: f64::NEG_INFINITY,
-      dialogue_lra: 0.0,
+      dialogue_lra: f64::NEG_INFINITY,
+      dialogue_percent: 0.0,
     }
   }
 
@@ -1164,6 +1166,7 @@ mod tests {
       loudness_layout_known: metrics.loudness_layout_known,
       dialogue_integrated: metrics.dialogue_integrated,
       dialogue_lra: metrics.dialogue_lra,
+      dialogue_percent: metrics.dialogue_percent,
     }
   }
 
@@ -1350,7 +1353,7 @@ mod tests {
     assert!(summary.integrated_lufs.is_finite());
     assert!(summary.m_max_lufs.is_finite());
     assert!(summary.st_max_lufs.is_finite());
-    assert_eq!(summary.dialogue_lra, 0.0);
+    assert!(!summary.dialogue_lra.is_finite());
   }
 
   #[test]

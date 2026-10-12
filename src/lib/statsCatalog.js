@@ -55,25 +55,25 @@ export const STATS_META = {
     label: "Dialogue Coverage",
     shortLabel: "Dlg Cov",
     unit: "%",
-    hint: "Share of audible time classified as dialogue in the current measurement or file",
+    hint: "Share of valid measurement time automatically classified as dialogue; a PLVS auxiliary metric",
   },
   dialogueIntegrated: {
-    label: "Dialogue Integrated",
-    shortLabel: "Dlg I",
+    label: "Dialogue Loudness",
+    shortLabel: "DL",
     unit: "LUFS",
-    hint: "Integrated loudness over detected dialogue in the current measurement or file",
+    hint: "BS.1770 loudness over automatically detected dialogue, using the −70 LUFS absolute gate without the programme-relative gate",
   },
   dialogueRange: {
     label: "Dialogue Range",
-    shortLabel: "Dlg LRA",
+    shortLabel: "Dlg Rng",
     unit: "LU",
-    hint: "Loudness range over detected dialogue in the current measurement or file",
+    hint: "Weighted 10th–95th percentile variation of dialogue-masked 3s loudness; a PLVS auxiliary metric",
   },
-  dialogueOffset: {
-    label: "Dialogue Offset",
-    shortLabel: "Dlg Offset",
+  loudnessToDialogueRatio: {
+    label: "Loudness-to-Dialogue Ratio",
+    shortLabel: "LDR",
     unit: "LU",
-    hint: "Dialogue loudness relative to the overall current measurement or file",
+    hint: "LDR, Programme Loudness minus Dialogue Loudness over the same measurement or file",
   },
   truePeak: {
     label: "True Peak Max",
@@ -107,7 +107,7 @@ export const STATS_CANONICAL_ORDER = [
   "dialogueCoverage",
   "dialogueIntegrated",
   "dialogueRange",
-  "dialogueOffset",
+  "loudnessToDialogueRatio",
   "truePeak",
   "correlation",
   "sideToMid",
@@ -143,9 +143,9 @@ export const STATS_OPTIONS = STATS_CANONICAL_ORDER.map((id) => ({
   hint: STATS_META[id].hint,
 }));
 
-export function dialogueOffsetText(dialogueIntegrated, integrated) {
+export function ldrText(dialogueIntegrated, integrated) {
   if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "-";
-  const d = dialogueIntegrated - integrated;
+  const d = integrated - dialogueIntegrated;
   return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
 }
 
@@ -190,16 +190,14 @@ export function buildStatsValues(displayAudio) {
     Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
       ? displayAudio.tpMax - displayAudio.integrated
       : -Infinity;
-  const dialogueOffset =
+  const loudnessToDialogueRatio =
     Number.isFinite(displayAudio.dialogueIntegrated) && Number.isFinite(displayAudio.integrated)
-      ? displayAudio.dialogueIntegrated - displayAudio.integrated
+      ? displayAudio.integrated - displayAudio.dialogueIntegrated
       : -Infinity;
-  // The engine reports an unmeasured dialogue range as 0.0, which is also a real reading for
-  // dialogue held at one level. Integrated is the field that can say "nothing was measured", so it
-  // decides here too, exactly as the offset above already does.
-  const dialogueRange = Number.isFinite(displayAudio.dialogueIntegrated)
-    ? displayAudio.dialogueLra
-    : -Infinity;
+  const dialogueRange =
+    Number.isFinite(displayAudio.dialogueIntegrated) && Number.isFinite(displayAudio.dialogueLra)
+      ? displayAudio.dialogueLra
+      : -Infinity;
 
   return {
     momentary: displayAudio.momentary,
@@ -213,7 +211,7 @@ export function buildStatsValues(displayAudio) {
     dialogueCoverage: displayAudio.dialoguePercent,
     dialogueIntegrated: displayAudio.dialogueIntegrated,
     dialogueRange,
-    dialogueOffset,
+    loudnessToDialogueRatio,
     truePeak: displayAudio.tpMax,
     correlation: displayAudio.correlation,
     sideToMid: displayAudio.sideToMidDb,
@@ -242,7 +240,7 @@ export function buildStatsMetrics(displayAudio) {
       : "-",
     dialogueIntegrated: fmtMetric(raw.dialogueIntegrated),
     dialogueRange: fmtMetric(raw.dialogueRange),
-    dialogueOffset: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
+    loudnessToDialogueRatio: ldrText(displayAudio.dialogueIntegrated, displayAudio.integrated),
     truePeak: fmtMetric(raw.truePeak),
     correlation: fmtCorrelation(displayAudio),
     sideToMid: fmtSideToMid(displayAudio),

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, renderHook } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider } from "../uiNavigation/UiNavigationContext.jsx";
@@ -94,15 +94,19 @@ describe("AnalysisSessionProvider", () => {
     expect(seen.session.channelLabelRuntime.channelAutoLabels).toHaveLength(6);
   });
 
-  it("stores a custom channel label for the current channel count and resets it", () => {
+  it("stores a custom channel label for the current channel count and resets it", async () => {
     const seen = mount();
     act(() => seen.assembly.display.setAudio((current) => ({ ...current, peakDb: [-1, -2] })));
 
-    act(() => seen.session.setChannelLabelToken(0, "C"));
+    await act(async () => seen.session.setChannelLabelToken(0, "C"));
     expect(seen.settings.channelLabelOverrides[2][0]).toBe("C");
+    // A measurement-method change performs a coherent Clear; the next live frame restores the
+    // detected topology and applies the saved override.
+    await waitFor(() => expect(seen.session.channelCount).toBe(0));
+    act(() => seen.assembly.display.setAudio((current) => ({ ...current, peakDb: [-1, -2] })));
     expect(seen.session.channelLabelRuntime.channelLabelOverride).toBeTruthy();
 
-    act(() => seen.session.resetChannelLabels());
+    await act(async () => seen.session.resetChannelLabels());
     expect(seen.settings.channelLabelOverrides[2]).toBeUndefined();
   });
 

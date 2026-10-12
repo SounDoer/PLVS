@@ -8,7 +8,6 @@ use rubato::audioadapter_buffers::direct::InterleavedSlice;
 use rubato::{
   Async, FixedAsync, Resampler, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
-use ten_vad_rs::TenVad;
 use voice_activity_detector::VoiceActivityDetector;
 
 use crate::vad::{VadBlockAggregator, VadDecision};
@@ -18,9 +17,6 @@ use crate::vad::{VadBlockAggregator, VadDecision};
 const VAD_RATE: usize = 16_000;
 /// Silero operates at 16 kHz over fixed 512-sample (32 ms) chunks.
 const VAD_CHUNK: usize = 512;
-/// TEN VAD is designed around a 256-sample hop at 16 kHz.
-const TEN_VAD_CHUNK: usize = 256;
-const TEN_VAD_MODEL: &[u8] = include_bytes!("../../vendor/ten-vad-rs/ten-vad.onnx");
 /// Mono input frames fed to the resampler per call (must be fixed for `FixedAsync::Input`).
 const RESAMPLER_IN_CHUNK: usize = 1024;
 /// Speech probability at/above which a chunk counts as speech.
@@ -32,7 +28,6 @@ pub enum VadEngineKind {
   Silero,
   #[default]
   FireRed,
-  Ten,
 }
 
 impl VadEngineKind {
@@ -40,7 +35,6 @@ impl VadEngineKind {
     match key {
       "silero" => Some(Self::Silero),
       "firered" => Some(Self::FireRed),
-      "ten" => Some(Self::Ten),
       _ => None,
     }
   }
@@ -49,7 +43,6 @@ impl VadEngineKind {
     match self {
       Self::Silero => "silero",
       Self::FireRed => "firered",
-      Self::Ten => "ten",
     }
   }
 }
@@ -70,7 +63,7 @@ impl VadDecision {
 pub trait DialogueVadEngine: Send {
   fn kind(&self) -> VadEngineKind;
   fn frame_size(&self) -> usize;
-  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision>;
+  fn predict(&mut self, frame: Vec<f32>) -> Result<Option<VadDecision>, ()>;
   fn reset(&mut self);
 }
 
@@ -98,8 +91,8 @@ impl DialogueVadEngine for SileroVadEngine {
     VAD_CHUNK
   }
 
-  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision> {
-    Some(VadDecision::speech(self.vad.predict(frame)))
+  fn predict(&mut self, frame: Vec<f32>) -> Result<Option<VadDecision>, ()> {
+    Ok(Some(VadDecision::speech(self.vad.predict(frame))))
   }
 
   fn reset(&mut self) {
@@ -127,49 +120,18 @@ impl DialogueVadEngine for FireRedVadEngine {
     firered_vad::FrameResult::FRAME_SHIFT_SAMPLES as usize
   }
 
-  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision> {
-    self.vad.push_samples(&frame).ok()?;
-    let frame = self.vad.recent_frames().last()?;
-    Some(VadDecision {
+  fn predict(&mut self, frame: Vec<f32>) -> Result<Option<VadDecision>, ()> {
+    self.vad.push_samples(&frame).map_err(|_| ())?;
+    let Some(frame) = self.vad.recent_frames().last() else {
+      return Ok(None);
+    };
+    Ok(Some(VadDecision {
       active: frame.is_speech(),
       voice_probability: Some(frame.smoothed_prob()),
       speech_probability: Some(frame.smoothed_prob()),
       singing_probability: None,
       music_probability: None,
-    })
-  }
-
-  fn reset(&mut self) {
-    self.vad.reset();
-  }
-}
-
-struct TenVadEngine {
-  vad: TenVad,
-}
-
-impl TenVadEngine {
-  fn new() -> Option<Self> {
-    let vad = TenVad::new_from_bytes(TEN_VAD_MODEL, VAD_RATE as u32).ok()?;
-    Some(Self { vad })
-  }
-}
-
-impl DialogueVadEngine for TenVadEngine {
-  fn kind(&self) -> VadEngineKind {
-    VadEngineKind::Ten
-  }
-
-  fn frame_size(&self) -> usize {
-    TEN_VAD_CHUNK
-  }
-
-  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision> {
-    let frame: Vec<i16> = frame
-      .into_iter()
-      .map(|sample| (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16)
-      .collect();
-    Some(VadDecision::speech(self.vad.process_frame(&frame).ok()?))
+    }))
   }
 
   fn reset(&mut self) {
@@ -203,6 +165,7 @@ pub struct SpeechDetector {
   chunk_buf: Vec<f32>,
   /// Aggregates engine frames into the in-progress 100ms loudness block.
   aggregator: VadBlockAggregator,
+  failed: bool,
 }
 
 impl SpeechDetector {
@@ -217,7 +180,6 @@ impl SpeechDetector {
     let engine: Box<dyn DialogueVadEngine> = match kind {
       VadEngineKind::Silero => Box::new(SileroVadEngine::new()?),
       VadEngineKind::FireRed => Box::new(FireRedVadEngine::new()?),
-      VadEngineKind::Ten => Box::new(TenVadEngine::new()?),
     };
     let resampler = Self::build_resampler(source_rate)?;
     Some(Self {
@@ -226,6 +188,7 @@ impl SpeechDetector {
       in_buf: Vec::new(),
       chunk_buf: Vec::new(),
       aggregator: VadBlockAggregator::majority(),
+      failed: false,
     })
   }
 
@@ -251,6 +214,9 @@ impl SpeechDetector {
   /// Feed mono samples (source rate). Resamples to 16 kHz, runs the selected VAD over completed
   /// engine-sized frames, and records each frame's speech decision into the current block.
   pub fn push_mono(&mut self, mono: &[f32]) {
+    if self.failed {
+      return;
+    }
     self.in_buf.extend_from_slice(mono);
     while self.in_buf.len() >= RESAMPLER_IN_CHUNK {
       let block: Vec<f32> = self.in_buf.drain(..RESAMPLER_IN_CHUNK).collect();
@@ -272,22 +238,37 @@ impl SpeechDetector {
       let frame_size = self.engine.frame_size();
       while self.chunk_buf.len() >= frame_size {
         let chunk: Vec<f32> = self.chunk_buf.drain(..frame_size).collect();
-        if let Some(decision) = self.engine.predict(chunk) {
-          self.aggregator.record(decision);
+        match self.engine.predict(chunk) {
+          Ok(Some(decision)) => self.aggregator.record(decision),
+          Ok(None) => {}
+          Err(()) => {
+            self.failed = true;
+            self.aggregator.reset();
+            return;
+          }
         }
       }
     }
   }
 
   /// 100ms block verdict since the last call, then clears the block's frame decisions.
-  pub fn take_block_decision(&mut self) -> bool {
-    self.aggregator.take_decision()
+  pub fn take_block_decision(&mut self) -> Option<bool> {
+    if self.failed || !self.aggregator.has_evidence() {
+      None
+    } else {
+      Some(self.aggregator.take_decision())
+    }
+  }
+
+  pub fn has_failed(&self) -> bool {
+    self.failed
   }
 
   pub fn reset(&mut self) {
     self.in_buf.clear();
     self.chunk_buf.clear();
     self.aggregator.reset();
+    self.failed = false;
     self.resampler.reset();
     self.engine.reset();
   }
@@ -324,14 +305,6 @@ mod tests {
     );
   }
 
-  #[test]
-  fn ten_engine_reports_expected_frame_size() {
-    let d = SpeechDetector::new_with_engine(48_000.0, VadEngineKind::Ten)
-      .expect("ten detector builds from bundled model");
-    assert_eq!(d.engine.kind(), VadEngineKind::Ten);
-    assert_eq!(d.engine.frame_size(), TEN_VAD_CHUNK);
-  }
-
   // Integration smoke test: exercises the full mono->resample->Silero->vote chain on real
   // audio. Pure silence must come out as non-speech. The positive (speech->true) path needs
   // a real recording and is covered by manual verification per the design spec.
@@ -341,7 +314,7 @@ mod tests {
     let silence = vec![0.0_f32; 48_000]; // 1s of silence at 48 kHz
     d.push_mono(&silence);
     assert!(
-      !d.take_block_decision(),
+      !d.take_block_decision().unwrap_or(false),
       "pure silence must not be classified as speech"
     );
   }
@@ -353,20 +326,8 @@ mod tests {
     let silence = vec![0.0_f32; 48_000]; // 1s of silence at 48 kHz
     d.push_mono(&silence);
     assert!(
-      !d.take_block_decision(),
+      !d.take_block_decision().unwrap_or(false),
       "pure silence must not be classified as speech by FireRed"
-    );
-  }
-
-  #[test]
-  fn ten_silence_is_not_classified_as_speech() {
-    let mut d = SpeechDetector::new_with_engine(48_000.0, VadEngineKind::Ten)
-      .expect("ten detector builds from bundled model");
-    let silence = vec![0.0_f32; 48_000]; // 1s of silence at 48 kHz
-    d.push_mono(&silence);
-    assert!(
-      !d.take_block_decision(),
-      "pure silence must not be classified as speech by TEN"
     );
   }
 }

@@ -1,14 +1,6 @@
 import { roleTokensToLabels, seedTokensFromLabels } from "../math/channelRoles.js";
 import { layoutIdForRoles, standardLayoutIdForCount } from "../math/channelLayoutTable.js";
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
-import { getPanelControls } from "../workspace/panelControlInstances.js";
-
-export const DIALOGUE_STAT_IDS = [
-  "dialogueCoverage",
-  "dialogueIntegrated",
-  "dialogueRange",
-  "dialogueOffset",
-];
 
 /// Every request-family array and every request field here is required by `AnalysisRequests` in
 /// src-tauri/src/ipc/types.rs, which declares no serde defaults. A missing field fails
@@ -74,17 +66,9 @@ export function deriveChannelLabelRuntime({ channelCount, channelLabelOverrides 
   };
 }
 
-/// Whether any Stats panel is showing a dialogue row. Showing one is what turns the detector on;
-/// which detector runs is a global setting, not a panel control.
+/// Dialogue analysis is a measurement capability, not a rendering side effect. It remains active
+/// even when no Stats panel currently exposes one of its readings.
 export function deriveDialogueRuntime(workspaceState) {
-  for (const panelId of workspaceState.panelOrder) {
-    const panel = workspaceState.panelsById[panelId];
-    if (panel?.moduleId !== "stats") continue;
-    const controls = getPanelControls(workspaceState, panelId);
-    if (controls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id))) {
-      return { dialogueGating: true };
-    }
-  }
-
-  return { dialogueGating: false };
+  void workspaceState;
+  return { dialogueGating: true };
 }

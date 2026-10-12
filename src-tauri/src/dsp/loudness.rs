@@ -411,17 +411,17 @@ pub struct LoudnessBlock {
   pub true_peak: f64,
   pub true_peak_l: f64,
   pub true_peak_r: f64,
-  /// Dialogue-gated integrated loudness (LUFS); `NEG_INFINITY` when gating off or no speech.
+  /// Dialogue Loudness (LUFS); non-finite until detector evidence exists.
   pub dialogue_integrated: f64,
-  /// Dialogue-gated loudness range (LU); `0.0` when gating off or insufficient speech.
+  /// PLVS Dialogue Range (LU); non-finite until one complete masked observation exists.
   pub dialogue_lra: f64,
-  /// Percentage of audible program classified as dialogue; `0.0` when gating off.
+  /// Percentage of valid measurement time classified as dialogue; non-finite before evidence.
   pub dialogue_percent: f64,
 }
 
 impl LoudnessBlock {
   /// Default dialogue fields for blocks produced with gating off.
-  const DIALOGUE_OFF: (f64, f64, f64) = (f64::NEG_INFINITY, 0.0, 0.0);
+  const DIALOGUE_OFF: (f64, f64, f64) = (f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
 }
 
 impl Meter for LoudnessMeter {
@@ -461,16 +461,27 @@ impl Meter for LoudnessMeter {
       // A block just closed: settle its speech verdict and fold it into the dialogue readouts.
       if ctx.dialogue_gating {
         let ms = self.last_mean_square;
-        let is_speech = self
-          .speech
-          .as_mut()
-          .map(|det| det.take_block_decision())
-          .unwrap_or(false);
-        self.speech_now = is_speech;
-        self.dialogue.push_block(ms, b.short_term, is_speech);
-        b.dialogue_integrated = self.dialogue.integrated();
-        b.dialogue_lra = self.dialogue.lra();
-        b.dialogue_percent = self.dialogue.percent();
+        if let Some(detector) = self.speech.as_mut() {
+          match detector.take_block_decision() {
+            Some(is_speech) => {
+              self.speech_now = is_speech;
+              self.dialogue.push_block(ms, is_speech);
+              b.dialogue_integrated = self.dialogue.integrated();
+              b.dialogue_lra = self.dialogue.lra();
+              b.dialogue_percent = self.dialogue.percent();
+            }
+            None if detector.has_failed() => {
+              self.speech_now = false;
+            }
+            None => {
+              b.dialogue_integrated = self.dialogue.integrated();
+              b.dialogue_lra = self.dialogue.lra();
+              b.dialogue_percent = self.dialogue.percent();
+            }
+          }
+        } else {
+          self.speech_now = false;
+        }
       } else {
         self.speech_now = false;
       }

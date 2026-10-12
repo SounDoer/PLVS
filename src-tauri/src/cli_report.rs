@@ -47,15 +47,17 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
       );
       if report.analysis.dialogue.enabled {
         output.push_str(&format!(
-          "Dialogue ({}) integrated: {}\nDialogue LRA: {}\n",
+          "Dialogue Loudness ({}): {}\nLDR: {}\nDialogue Coverage: {}\nDialogue Range: {}\n",
           report
             .analysis
             .dialogue
             .engine
             .as_deref()
             .unwrap_or("unknown"),
-          format_number(summary.dialogue_integrated_lufs, 1, " LUFS"),
-          format_number(summary.dialogue_lra, 1, " LU"),
+          format_number(summary.dialogue_loudness_lufs, 1, " LUFS"),
+          format_number(summary.loudness_to_dialogue_ratio_lu, 1, " LU"),
+          format_number(summary.dialogue_coverage_percent, 0, "%"),
+          format_number(summary.dialogue_range_lu, 1, " LU"),
         ));
         if let Some(reference) = report.analysis.reference_lufs {
           output.push_str(&format!(
@@ -237,15 +239,17 @@ mod tests {
       sample_peak_max_l_db: Some(-3.0),
       sample_peak_max_r_db: Some(-4.0),
       sample_peak_max_db: Some(-3.0),
-      dialogue_integrated_lufs: None,
-      dialogue_lra: None,
+      dialogue_loudness_lufs: None,
+      loudness_to_dialogue_ratio_lu: None,
+      dialogue_coverage_percent: None,
+      dialogue_range_lu: None,
       dialogue_offset_from_reference_lu: None,
     }
   }
 
   fn sample_success_report() -> CliAnalyzeSuccessReport {
     CliAnalyzeSuccessReport {
-      schema_version: 1,
+      schema_version: 2,
       command: "analyze".to_string(),
       status: crate::cli_analyze::CliAnalyzeStatus::Ok,
       app: crate::cli_analyze::CliAnalyzeApp {
@@ -264,6 +268,9 @@ mod tests {
         dialogue: crate::cli_analyze::CliAnalyzeDialogue {
           enabled: false,
           engine: None,
+          metric_algorithm_version: None,
+          engine_configuration: None,
+          multichannel_fusion: None,
         },
         reference_lufs: None,
       },
@@ -279,7 +286,7 @@ mod tests {
   #[test]
   fn analyze_text_error_report_renders_path_and_message() {
     let report = CliAnalyzeReport::Error(Box::new(crate::cli_analyze::CliAnalyzeErrorReport {
-      schema_version: 1,
+      schema_version: 2,
       command: "analyze".to_string(),
       status: crate::cli_analyze::CliAnalyzeStatus::Error,
       app: crate::cli_analyze::CliAnalyzeApp {
@@ -340,14 +347,18 @@ mod tests {
     let mut success = sample_success_report();
     success.analysis.dialogue.enabled = true;
     success.analysis.dialogue.engine = Some("silero".to_string());
-    success.summary.dialogue_integrated_lufs = Some(-20.5);
-    success.summary.dialogue_lra = Some(2.3);
+    success.summary.dialogue_loudness_lufs = Some(-20.5);
+    success.summary.loudness_to_dialogue_ratio_lu = Some(4.5);
+    success.summary.dialogue_coverage_percent = Some(63.0);
+    success.summary.dialogue_range_lu = Some(2.3);
 
     let report = CliAnalyzeReport::Success(Box::new(success));
     let output = render_analyze_text(&report);
 
-    assert!(output.contains("Dialogue (silero) integrated: -20.5 LUFS"));
-    assert!(output.contains("Dialogue LRA: 2.3 LU"));
+    assert!(output.contains("Dialogue Loudness (silero): -20.5 LUFS"));
+    assert!(output.contains("LDR: 4.5 LU"));
+    assert!(output.contains("Dialogue Coverage: 63%"));
+    assert!(output.contains("Dialogue Range: 2.3 LU"));
     assert!(!output.contains("Dialogue vs reference"));
   }
 
@@ -355,10 +366,10 @@ mod tests {
   fn analyze_text_shows_reference_line_when_reference_lufs_present() {
     let mut success = sample_success_report();
     success.analysis.dialogue.enabled = true;
-    success.analysis.dialogue.engine = Some("ten".to_string());
+    success.analysis.dialogue.engine = Some("firered".to_string());
     success.analysis.reference_lufs = Some(-23.0);
-    success.summary.dialogue_integrated_lufs = Some(-20.5);
-    success.summary.dialogue_lra = Some(2.25);
+    success.summary.dialogue_loudness_lufs = Some(-20.5);
+    success.summary.dialogue_range_lu = Some(2.25);
     success.summary.dialogue_offset_from_reference_lu = Some(2.5);
 
     let report = CliAnalyzeReport::Success(Box::new(success));

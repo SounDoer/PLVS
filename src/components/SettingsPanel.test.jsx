@@ -838,14 +838,13 @@ describe("SettingsPanel", () => {
     setDialogueVadEngine: vi.fn(),
   };
 
-  it("renders Dialogue Detection with the three engines", () => {
+  it("renders Dialogue Detection with the two supported engines", () => {
     render(<SettingsPanel {...BASE_PROPS} {...DIALOGUE_PROPS} />);
     fireEvent.click(screen.getByLabelText("Dialogue Detection"));
     // Order matters: the default engine is offered first.
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
       "FireRedVAD",
       "Silero VAD",
-      "TEN VAD",
     ]);
     // No Off option: showing a dialogue metric is what enables detection.
     expect(screen.queryByRole("option", { name: /off/i })).toBeNull();
@@ -861,8 +860,8 @@ describe("SettingsPanel", () => {
       />
     );
     fireEvent.click(screen.getByLabelText("Dialogue Detection"));
-    fireEvent.click(screen.getByText("TEN VAD"));
-    expect(setDialogueVadEngine).toHaveBeenCalledWith("ten");
+    fireEvent.click(screen.getByText("Silero VAD"));
+    expect(setDialogueVadEngine).toHaveBeenCalledWith("silero");
   });
 
   it("opens the official link for the selected engine", () => {
@@ -871,12 +870,12 @@ describe("SettingsPanel", () => {
       <SettingsPanel
         {...BASE_PROPS}
         {...DIALOGUE_PROPS}
-        dialogueVadEngine="ten"
+        dialogueVadEngine="silero"
         openExternalUrl={openExternalUrl}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Open TEN VAD official link" }));
-    expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/TEN-framework/ten-vad");
+    fireEvent.click(screen.getByRole("button", { name: "Open Silero VAD official link" }));
+    expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/snakers4/silero-vad");
   });
 
   it("existing controls still render with new props absent (backwards compat)", () => {

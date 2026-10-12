@@ -12,7 +12,7 @@ import { createPluginStoreBackend } from "./pluginStoreBackend.js";
 import { createMultiInstanceBackend } from "./multiInstanceBackend.js";
 import { createDomainStore } from "./createDomainStore.js";
 import { isTauri } from "../ipc/env.js";
-import { normalizeSurfaceOpacity } from "../settings/defaults.js";
+import { normalizeDialogueVadEngine, normalizeSurfaceOpacity } from "../settings/defaults.js";
 
 const transactionalBoot =
   typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__?.multiInstancePersistence;
@@ -58,6 +58,9 @@ function migrateSettings(raw) {
   const { panelOpacity, ...rest } = raw;
   if (!("surfaceOpacity" in rest) && panelOpacity != null) {
     rest.surfaceOpacity = normalizeSurfaceOpacity(panelOpacity);
+  }
+  if (rest.dialogueVadEngine !== undefined) {
+    rest.dialogueVadEngine = normalizeDialogueVadEngine(rest.dialogueVadEngine);
   }
   return rest;
 }

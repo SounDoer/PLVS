@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { portableToStoredPreset } from "../transfer/portablePreset.js";
+import { portableToStoredPreset, validatePortablePreset } from "../transfer/portablePreset.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "./multichannelMonitoringPreset.js";
 
 describe("Multichannel Monitoring Preset", () => {
@@ -17,7 +17,7 @@ describe("Multichannel Monitoring Preset", () => {
     const { id, ...published } = pack.items[0];
 
     expect(id).toBe("multichannel-monitoring");
-    expect(published).toEqual(MULTICHANNEL_MONITORING_PRESET);
+    expect(validatePortablePreset(published)).toEqual(MULTICHANNEL_MONITORING_PRESET);
   });
 
   it("keeps the asymmetric five-panel layout and source-adaptive controls", () => {

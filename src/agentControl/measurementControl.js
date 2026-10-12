@@ -1,7 +1,7 @@
 import { loudnessProfileEvaluate } from "../lib/loudnessProfileEvaluate.js";
 import { buildStatsValues, hasCorrelationSignal, STATS_META } from "../lib/statsCatalog.js";
 
-export const MEASUREMENT_SCHEMA_VERSION = 1;
+export const MEASUREMENT_SCHEMA_VERSION = 2;
 export const MEASUREMENT_FRESHNESS_THRESHOLD_MS = 2000;
 export const MEASUREMENT_AVAILABILITY_REASONS = Object.freeze([
   "noSample",
@@ -41,9 +41,14 @@ export const MEASUREMENT_METRICS = Object.freeze([
   descriptor("stereo.sideToMidDb", STATS_META.sideToMid.label, "dB", "currentFrame"),
   descriptor("dialogue.activeNow", "Dialogue Active Now", "boolean", "currentFrame"),
   descriptor("dialogue.coveragePercent", STATS_META.dialogueCoverage.label, "%", "liveSession"),
-  descriptor("dialogue.integratedLufs", STATS_META.dialogueIntegrated.label, "LUFS", "liveSession"),
+  descriptor("dialogue.loudnessLufs", STATS_META.dialogueIntegrated.label, "LUFS", "liveSession"),
   descriptor("dialogue.rangeLu", STATS_META.dialogueRange.label, "LU", "liveSession"),
-  descriptor("dialogue.offsetLu", STATS_META.dialogueOffset.label, "LU", "derived"),
+  descriptor(
+    "dialogue.loudnessToDialogueRatioLu",
+    STATS_META.loudnessToDialogueRatio.label,
+    "LU",
+    "derived"
+  ),
   descriptor("profile.overall", "Loudness Profile Overall", "status", "evaluation"),
 ]);
 
@@ -243,23 +248,27 @@ export function buildMeasurementInspection({
       dialogueReason === null
         ? finiteOrNull(stats.dialogueCoverage, "dialogue.coveragePercent", "notReady", unavailable)
         : nullWithReason("dialogue.coveragePercent", dialogueReason, unavailable),
-    integratedLufs:
+    loudnessLufs:
       dialogueReason === null
-        ? finiteOrNull(
-            stats.dialogueIntegrated,
-            "dialogue.integratedLufs",
-            "noDialogue",
-            unavailable
-          )
-        : nullWithReason("dialogue.integratedLufs", dialogueReason, unavailable),
+        ? finiteOrNull(stats.dialogueIntegrated, "dialogue.loudnessLufs", "noDialogue", unavailable)
+        : nullWithReason("dialogue.loudnessLufs", dialogueReason, unavailable),
     rangeLu:
       dialogueReason === null && Number.isFinite(stats.dialogueIntegrated)
         ? finiteOrNull(stats.dialogueRange, "dialogue.rangeLu", "notReady", unavailable)
         : nullWithReason("dialogue.rangeLu", dialogueReason ?? "noDialogue", unavailable),
-    offsetLu:
+    loudnessToDialogueRatioLu:
       dialogueReason === null && Number.isFinite(stats.dialogueIntegrated)
-        ? finiteOrNull(stats.dialogueOffset, "dialogue.offsetLu", "notReady", unavailable)
-        : nullWithReason("dialogue.offsetLu", dialogueReason ?? "noDialogue", unavailable),
+        ? finiteOrNull(
+            stats.loudnessToDialogueRatio,
+            "dialogue.loudnessToDialogueRatioLu",
+            "notReady",
+            unavailable
+          )
+        : nullWithReason(
+            "dialogue.loudnessToDialogueRatioLu",
+            dialogueReason ?? "noDialogue",
+            unavailable
+          ),
   };
 
   const receivedAtMs = Number.isFinite(record?.receivedAtMs) ? record.receivedAtMs : null;

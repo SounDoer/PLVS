@@ -300,7 +300,7 @@ export function setDialogueGating(enabled) {
   return invoke("set_dialogue_gating", { enabled: !!enabled });
 }
 
-/** @param {"silero" | "firered" | "ten"} engine */
+/** @param {"silero" | "firered"} engine */
 export function setDialogueVadEngine(engine) {
   return invoke("set_dialogue_vad_engine", { engine });
 }

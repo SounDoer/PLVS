@@ -123,17 +123,17 @@ describe("useRuntimeBackendSync", () => {
     mocks.setDialogueVadEngine.mockClear();
 
     await result.current.setChannelRolesForControl([1, 0]);
-    await result.current.setDialogueVadEngineForControl("ten");
+    await result.current.setDialogueVadEngineForControl("firered");
 
     expect(mocks.setChannelRoles).toHaveBeenCalledWith([1, 0]);
-    expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("ten");
+    expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("firered");
     expect(result.current.channelRolesRef.current).toEqual([1, 0]);
-    expect(result.current.dialogueVadEngineRef.current).toBe("ten");
+    expect(result.current.dialogueVadEngineRef.current).toBe("firered");
 
     mocks.setDialogueVadEngine.mockRejectedValueOnce(new Error("ipc failed"));
-    await expect(result.current.setDialogueVadEngineForControl("firered")).rejects.toThrow(
+    await expect(result.current.setDialogueVadEngineForControl("silero")).rejects.toThrow(
       "ipc failed"
     );
-    expect(result.current.dialogueVadEngineRef.current).toBe("ten");
+    expect(result.current.dialogueVadEngineRef.current).toBe("firered");
   });
 });

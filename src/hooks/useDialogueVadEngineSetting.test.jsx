@@ -14,10 +14,10 @@ describe("useDialogueVadEngineSetting", () => {
     expect(result.current.dialogueVadEngine).toBe("firered");
   });
 
-  it("reads a stored engine", () => {
+  it("repairs the removed TEN engine to FireRed", () => {
     settingsStore.patch({ dialogueVadEngine: "ten" });
     const { result } = renderHook(() => useDialogueVadEngineSetting());
-    expect(result.current.dialogueVadEngine).toBe("ten");
+    expect(result.current.dialogueVadEngine).toBe("firered");
   });
 
   it("repairs an unknown stored engine", () => {

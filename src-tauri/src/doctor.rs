@@ -391,7 +391,7 @@ fn check_capabilities() -> DoctorCheck {
       "fileAnalysis": true,
       "liveCapture": true,
       "deviceListing": true,
-      "dialogueVadEngines": ["silero", "firered", "ten"],
+      "dialogueVadEngines": ["silero", "firered"],
       "captureDeviceSelectors": ["default", "stableId", "substring"],
       "captureBackend": capture_backend_name(),
     }),
@@ -447,8 +447,7 @@ fn check_dialogue_vad_engines() -> DoctorCheck {
     json!({
       "engines": [
         {"id": "silero", "bundled": true},
-        {"id": "firered", "bundled": true},
-        {"id": "ten", "bundled": true}
+        {"id": "firered", "bundled": true}
       ],
       "note": "Models are linked into PLVS; they are not separate sidecar files."
     }),

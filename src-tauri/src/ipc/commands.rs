@@ -851,11 +851,12 @@ mod tests {
       *engine.lock().unwrap(),
       crate::dsp::speech::VadEngineKind::FireRed
     );
-    super::apply_dialogue_vad_engine(&engine, "ten").unwrap();
+    super::apply_dialogue_vad_engine(&engine, "silero").unwrap();
     assert_eq!(
       *engine.lock().unwrap(),
-      crate::dsp::speech::VadEngineKind::Ten
+      crate::dsp::speech::VadEngineKind::Silero
     );
+    assert!(super::apply_dialogue_vad_engine(&engine, "ten").is_err());
     assert!(super::apply_dialogue_vad_engine(&engine, "unknown").is_err());
   }
 

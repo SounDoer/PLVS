@@ -173,6 +173,11 @@ export function renderFileAnalysisReportMarkdown(report) {
       "",
       item("Engine", dialogue.engine ?? MISSING),
       item(STATS_META.dialogueIntegrated.label, metricValue("dialogueIntegrated", summary)),
+      item(
+        STATS_META.loudnessToDialogueRatio.label,
+        metricValue("loudnessToDialogueRatio", summary)
+      ),
+      item(STATS_META.dialogueCoverage.label, metricValue("dialogueCoverage", summary)),
       item(STATS_META.dialogueRange.label, metricValue("dialogueRange", summary))
     );
   }

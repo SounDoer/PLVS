@@ -36,14 +36,17 @@ function normalizeSeverity(raw) {
 
 function normalizeRule(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (!isKnownMetricId(raw.metricId)) return null;
-  if (!VALID_OPS.has(raw.op)) return null;
+  const legacyOffset = raw.metricId === "dialogueOffset";
+  const metricId = legacyOffset ? "loudnessToDialogueRatio" : raw.metricId;
+  if (!isKnownMetricId(metricId)) return null;
+  const op = legacyOffset ? (raw.op === ">" ? "<" : raw.op === "<" ? ">" : raw.op) : raw.op;
+  if (!VALID_OPS.has(op)) return null;
 
-  const rule = { metricId: raw.metricId, op: raw.op, severity: normalizeSeverity(raw.severity) };
+  const rule = { metricId, op, severity: normalizeSeverity(raw.severity) };
   // The value goes through `isUsableThreshold`, never `Number`: a blank field is `null` or `""`,
   // both of which coerce to a perfectly good 0, and persisting that invents a threshold nobody
   // chose. A rule with no usable value survives as an empty (unfilled) row.
-  if (isUsableThreshold(raw.value)) rule.value = raw.value;
+  if (isUsableThreshold(raw.value)) rule.value = legacyOffset ? -raw.value : raw.value;
   return rule;
 }
 

@@ -53,6 +53,30 @@ describe("normalizeRuleDocument", () => {
     expect(doc.rules[0].value).toBeUndefined();
   });
 
+  it("migrates legacy Dialogue Offset rules without changing their verdict", () => {
+    const doc = normalizeRuleDocument(
+      rawDoc([
+        { metricId: "dialogueOffset", op: ">", value: 3, severity: "fail" },
+        { metricId: "dialogueOffset", op: "<", value: -2, severity: "warn" },
+      ])
+    );
+
+    expect(doc.rules).toEqual([
+      {
+        metricId: "loudnessToDialogueRatio",
+        op: "<",
+        value: -3,
+        severity: "fail",
+      },
+      {
+        metricId: "loudnessToDialogueRatio",
+        op: ">",
+        value: 2,
+        severity: "warn",
+      },
+    ]);
+  });
+
   it("normalizes the reference to the accepted window or null", () => {
     expect(normalizeRuleDocument(rawDoc([], { referenceLufs: -14 })).referenceLufs).toBe(-14);
     expect(normalizeRuleDocument(rawDoc([], { referenceLufs: 5 })).referenceLufs).toBeNull();

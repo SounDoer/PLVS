@@ -33,6 +33,7 @@ const COMPLETE_SESSION = {
     samplePeakMaxRDb: -2.1,
     dialogueIntegrated: -24.0,
     dialogueLra: 2.5,
+    dialoguePercent: 62.5,
   },
   analyzedAt: Date.UTC(2026, 6, 6, 12, 0, 0),
   decodedFrames: 480_000,
@@ -67,7 +68,7 @@ describe("fileAnalysisReport", () => {
     });
 
     expect(report).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       reportType: "fileAnalysis",
       exportedAt: "2026-07-06T12:30:00.000Z",
       app: { name: "PLVS", version: "0.6.4" },
@@ -87,7 +88,13 @@ describe("fileAnalysisReport", () => {
       analysis: {
         analyzedAt: "2026-07-06T12:00:00.000Z",
         decodedFrames: 480_000,
-        dialogue: { enabled: true, engine: "firered" },
+        dialogue: {
+          enabled: true,
+          engine: "firered",
+          metricAlgorithmVersion: 1,
+          engineConfiguration: null,
+          multichannelFusion: null,
+        },
       },
       summary: {
         durationMs: 10_000,
@@ -101,11 +108,13 @@ describe("fileAnalysisReport", () => {
         samplePeakMaxLDb: -2.4,
         samplePeakMaxRDb: -2.1,
         samplePeakMaxDb: -2.1,
-        dialogueIntegratedLufs: -24.0,
-        dialogueLra: 2.5,
+        dialogueLoudnessLufs: -24.0,
+        dialogueCoveragePercent: 62.5,
+        dialogueRangeLu: 2.5,
       },
       history: { completeTimeline: true },
     });
+    expect(report.summary.loudnessToDialogueRatioLu).toBeCloseTo(0.9, 10);
   });
 
   it("uses null for non-finite and disabled dialogue report values", () => {
@@ -119,16 +128,24 @@ describe("fileAnalysisReport", () => {
           dialogueIntegrated: -Infinity,
           dialogueLra: 0,
         },
-        analysisSettings: { dialogue: { enabled: false, engine: "ten" } },
+        analysisSettings: { dialogue: { enabled: false, engine: "firered" } },
       },
       { exportedAt: "2026-07-06T12:30:00.000Z" }
     );
 
     expect(report.summary.mMaxLufs).toBeNull();
     expect(report.summary.stMaxLufs).toBeNull();
-    expect(report.summary.dialogueIntegratedLufs).toBeNull();
-    expect(report.summary.dialogueLra).toBeNull();
-    expect(report.analysis.dialogue).toEqual({ enabled: false, engine: null });
+    expect(report.summary.dialogueLoudnessLufs).toBeNull();
+    expect(report.summary.loudnessToDialogueRatioLu).toBeNull();
+    expect(report.summary.dialogueCoveragePercent).toBeNull();
+    expect(report.summary.dialogueRangeLu).toBeNull();
+    expect(report.analysis.dialogue).toEqual({
+      enabled: false,
+      engine: null,
+      metricAlgorithmVersion: null,
+      engineConfiguration: null,
+      multichannelFusion: null,
+    });
     expect(JSON.parse(stringifyFileAnalysisReport(report)).summary.mMaxLufs).toBeNull();
   });
 
@@ -230,8 +247,9 @@ describe("fileAnalysisReport", () => {
       { exportedAt: "2026-07-06T12:30:00.000Z" }
     );
 
-    expect(report.summary.dialogueIntegratedLufs).toBeNull();
-    expect(report.summary.dialogueLra).toBeNull();
+    expect(report.summary.dialogueLoudnessLufs).toBeNull();
+    expect(report.summary.loudnessToDialogueRatioLu).toBeNull();
+    expect(report.summary.dialogueRangeLu).toBeNull();
   });
 
   it("keeps a measured dialogue range of zero", () => {
@@ -243,7 +261,7 @@ describe("fileAnalysisReport", () => {
       { exportedAt: "2026-07-06T12:30:00.000Z" }
     );
 
-    expect(report.summary.dialogueLra).toBe(0);
+    expect(report.summary.dialogueRangeLu).toBe(0);
   });
 
   it("records an unrecognized loudness layout", () => {

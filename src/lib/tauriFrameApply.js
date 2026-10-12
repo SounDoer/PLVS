@@ -54,7 +54,7 @@ export function reduceMeterAudioFrame(previous, frame) {
     dialogueIntegrated: Number.isFinite(frame.dialogueIntegrated)
       ? frame.dialogueIntegrated
       : -Infinity,
-    dialogueLra: Number.isFinite(frame.dialogueLra) ? frame.dialogueLra : 0,
+    dialogueLra: Number.isFinite(frame.dialogueLra) ? frame.dialogueLra : -Infinity,
     dialoguePercent: Number.isFinite(frame.dialoguePercent) ? frame.dialoguePercent : null,
     dialogueActiveNow: !!frame.dialogueActiveNow,
     loudnessLayoutKnown:

@@ -56,6 +56,28 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+function migrateLegacyStatsMetricIds(raw) {
+  const migrated = structuredClone(raw);
+  const migratePanels = (panels) => {
+    if (!Array.isArray(panels)) return;
+    for (const panel of panels) {
+      if (panel?.moduleId !== "stats") continue;
+      const metrics = panel.controls?.metrics;
+      if (!isPlainObject(metrics)) continue;
+      for (const field of ["visible", "order"]) {
+        if (Array.isArray(metrics[field])) {
+          metrics[field] = metrics[field].map((id) =>
+            id === "dialogueOffset" ? "loudnessToDialogueRatio" : id
+          );
+        }
+      }
+    }
+  };
+  migratePanels(migrated.workspace?.panels);
+  migratePanels(migrated.dock?.panels);
+  return migrated;
+}
+
 /**
  * @param {string} path
  */
@@ -636,6 +658,7 @@ function compilePortablePreset(raw, { resolveDependencyId = (id) => id } = {}) {
       packIssue("invalidDocument", "$", "A portable Preset must be a plain object."),
     ]);
   }
+  raw = migrateLegacyStatsMetricIds(raw);
   const issues = [];
   collectUnknownFields(raw, TOP_FIELDS, "$", issues);
   if (raw.kind !== PORTABLE_PRESET_KIND) {

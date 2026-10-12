@@ -192,7 +192,7 @@ describe("app runtime derivations", () => {
     expect(runtime.channelLabelTokens).toEqual(Array.from({ length: 12 }, () => "generic"));
   });
 
-  it("derives dialogue gating from visible stats controls", () => {
+  it("keeps dialogue analysis enabled when dialogue stats are visible", () => {
     expect(
       deriveDialogueRuntime(
         workspace({
@@ -205,7 +205,7 @@ describe("app runtime derivations", () => {
             "stats-hidden": {
               ...DEFAULT_PANEL_CONTROLS,
               statsVisibleIds: ["integrated"],
-              dialogueVadEngine: "ten",
+              dialogueVadEngine: "firered",
             },
             stats: {
               ...DEFAULT_PANEL_CONTROLS,
@@ -218,7 +218,7 @@ describe("app runtime derivations", () => {
     ).toEqual({ dialogueGating: true });
   });
 
-  it("keeps dialogue disabled when dialogue stats are absent", () => {
+  it("keeps dialogue analysis enabled when dialogue stats are absent", () => {
     expect(
       deriveDialogueRuntime(
         workspace({
@@ -228,6 +228,6 @@ describe("app runtime derivations", () => {
           },
         })
       )
-    ).toEqual({ dialogueGating: false });
+    ).toEqual({ dialogueGating: true });
   });
 });

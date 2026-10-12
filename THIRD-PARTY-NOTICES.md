@@ -60,10 +60,6 @@ runtime.
   Upstream model: <https://github.com/snakers4/silero-vad/releases/tag/v5.0>. Integration:
   <https://github.com/nkeenan38/voice_activity_detector>. The exact embedded model has SHA-256
   `2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f`.
-- **TEN VAD** — model embedded from `ten-vad-rs` **0.1.7**, under Apache-2.0. Upstream model:
-  <https://github.com/TEN-framework/ten-vad>. Integration:
-  <https://github.com/wangfu91/ten-vad-rs>. The exact embedded model has SHA-256
-  `e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4`.
 - **FireRedVAD** — streaming model and CMVN data embedded by `firered-vad` **0.1.0**, under
   Apache-2.0. Copyright Xiaohongshu — Kaituo Xu, Wenpeng Li, Kai Huang, Kun Liu. Upstream:
   <https://github.com/FireRedTeam/FireRedVAD>. Rust integration:

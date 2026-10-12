@@ -200,6 +200,7 @@ pub struct PipelineSummary {
   pub sample_peak_max_r_db: f64,
   pub dialogue_integrated: f64,
   pub dialogue_lra: f64,
+  pub dialogue_percent: f64,
   pub loudness_layout: String,
   pub loudness_layout_known: bool,
 }
@@ -345,10 +346,17 @@ impl MeterPipeline {
   }
 
   pub fn summary_metrics(&self) -> PipelineSummary {
-    let (integrated_lufs, lra, dialogue_integrated, dialogue_lra) = match &self.last_loudness {
-      Some(l) => (l.integrated, l.lra, l.dialogue_integrated, l.dialogue_lra),
-      None => (f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY, 0.0),
-    };
+    let (integrated_lufs, lra, dialogue_integrated, dialogue_lra, dialogue_percent) =
+      match &self.last_loudness {
+        Some(l) => (
+          l.integrated,
+          l.lra,
+          l.dialogue_integrated,
+          l.dialogue_lra,
+          l.dialogue_percent,
+        ),
+        None => (f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY, 0.0, 0.0),
+      };
     PipelineSummary {
       integrated_lufs,
       lra,
@@ -359,6 +367,7 @@ impl MeterPipeline {
       sample_peak_max_r_db: self.sample_peak_max_r,
       dialogue_integrated,
       dialogue_lra,
+      dialogue_percent,
       loudness_layout: self.last_loudness_layout.0.clone(),
       loudness_layout_known: self.last_loudness_layout.1,
     }
@@ -912,8 +921,14 @@ impl MeterPipeline {
       .as_ref()
       .map(|l| l.dialogue_integrated)
       .unwrap_or(f64::NEG_INFINITY);
-    let dialogue_percent = lb.as_ref().map(|l| l.dialogue_percent).unwrap_or(0.0);
-    let dialogue_lra = lb.as_ref().map(|l| l.dialogue_lra).unwrap_or(0.0);
+    let dialogue_percent = lb
+      .as_ref()
+      .map(|l| l.dialogue_percent)
+      .unwrap_or(f64::NEG_INFINITY);
+    let dialogue_lra = lb
+      .as_ref()
+      .map(|l| l.dialogue_lra)
+      .unwrap_or(f64::NEG_INFINITY);
 
     // One reading for the whole emit: the frame, its nested visual tick and the loudness tick all
     // describe the same instant, and `timestamp_ms()` is a wall-clock read in live mode. Reading it
@@ -4222,7 +4237,10 @@ mod tests {
     for _ in 0..3 {
       if let Some(f) = push_pcm_no_requests(&mut p, &silence, None, true) {
         assert!(!f.dialogue_active_now, "silence must not be active speech");
-        assert_eq!(f.dialogue_lra, 0.0, "no speech yet 鈫?dialogue lra 0.0");
+        assert!(
+          !f.dialogue_lra.is_finite(),
+          "no complete dialogue observation means range is unavailable"
+        );
         seen = true;
       }
     }

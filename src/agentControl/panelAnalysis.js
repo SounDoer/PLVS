@@ -4,7 +4,7 @@ const DIALOGUE_METRICS = new Set([
   "dialogueCoverage",
   "dialogueIntegrated",
   "dialogueRange",
-  "dialogueOffset",
+  "loudnessToDialogueRatio",
 ]);
 
 function channelIsAvailable(selection, channelCount) {

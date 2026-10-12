@@ -3,7 +3,7 @@ import {
   STATS_META,
   STATS_CANONICAL_ORDER,
   STATS_OPTIONS,
-  dialogueOffsetText,
+  ldrText,
   buildStatsMetrics,
   buildStatsValues,
   roundToStatPrecision,
@@ -23,7 +23,7 @@ describe("statsCatalog", () => {
       "dialogueCoverage",
       "dialogueIntegrated",
       "dialogueRange",
-      "dialogueOffset",
+      "loudnessToDialogueRatio",
       "truePeak",
       "correlation",
       "sideToMid",
@@ -55,9 +55,9 @@ describe("statsCatalog", () => {
       psr: "PSR",
       plr: "PLR",
       dialogueCoverage: "Dlg Cov",
-      dialogueIntegrated: "Dlg I",
-      dialogueRange: "Dlg LRA",
-      dialogueOffset: "Dlg Offset",
+      dialogueIntegrated: "DL",
+      dialogueRange: "Dlg Rng",
+      loudnessToDialogueRatio: "LDR",
       truePeak: "TP Max",
       correlation: "Corr",
       sideToMid: "S/M",
@@ -76,10 +76,10 @@ describe("statsCatalog", () => {
     expect(truePeak.hint.length).toBeGreaterThan(0);
   });
 
-  it("formats the dialogue offset as a signed LU value", () => {
-    expect(dialogueOffsetText(-22, -20)).toBe("-2.0");
-    expect(dialogueOffsetText(-18, -20)).toBe("+2.0");
-    expect(dialogueOffsetText(-Infinity, -20)).toBe("-");
+  it("formats LDR as Programme Loudness minus Dialogue Loudness", () => {
+    expect(ldrText(-22, -20)).toBe("+2.0");
+    expect(ldrText(-18, -20)).toBe("-2.0");
+    expect(ldrText(-Infinity, -20)).toBe("-");
   });
 
   it("builds a single metrics array including True Peak Max and Correlation", () => {

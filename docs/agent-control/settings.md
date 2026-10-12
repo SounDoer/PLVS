@@ -102,7 +102,7 @@ results include `historyRetentionReduced` with the previous and target values. T
 
 ## Dialogue Detection engine
 
-`dialogueVadEngine` accepts exactly `firered`, `silero`, or `ten`, with `firered` as the default.
+`dialogueVadEngine` accepts exactly `firered` or `silero`, with `firered` as the default.
 There is no Off value: the setting selects the engine, while Stats dialogue-metric demand determines
 whether the shared runtime is requested. Inspection separates the configured setting from runtime
 `dialogueDetection.requested`, `active`, and effective `engine`.

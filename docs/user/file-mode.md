@@ -20,5 +20,9 @@ When analysis completes, the summary can be exported as a report: **Export Markd
 **Export JSON**, or **Copy as Markdown**. Reports include the channel layout and the verdicts of the
 active [Loudness Profile](loudness-profiles.md).
 
-Integrated, Loudness Range, and Max results in the report are calculated from the complete decoded
-audio track, independently of the display checkpoints used for scrubbing.
+JSON report schema version 2 names Dialogue Loudness, LDR, Dialogue Coverage, and Dialogue Range
+explicitly and records the dialogue metric algorithm version, detector configuration, and
+multichannel fusion identity used for the run.
+
+Integrated, Loudness Range, Max, and dialogue results in the report are calculated from the complete
+decoded audio track, independently of the display checkpoints used for scrubbing.

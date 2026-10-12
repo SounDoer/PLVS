@@ -218,7 +218,7 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
     );
 
     const copy = screen.getByText(/Missing stats/).textContent;
-    expect(copy).toContain("Dialogue Integrated");
+    expect(copy).toContain("Dialogue Loudness");
     expect(copy).not.toMatch(/gating|sidechain|VAD/i);
   });
 

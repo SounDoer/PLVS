@@ -15,7 +15,7 @@ here.
 | `clearShortcut.global` | boolean | - | `false` | - | - |
 | `interfaceSize` | enum | - | `"default"` | "small", "default", "large", "extra-large" | - |
 | `historyRetentionSec` | enum | s | `3600` | 1800, 3600, 7200, 14400 | - |
-| `dialogueVadEngine` | enum | - | `"firered"` | "firered", "silero", "ten" | - |
+| `dialogueVadEngine` | enum | - | `"firered"` | "firered", "silero" | - |
 | `channelLabels` | object | - | - | - | - |
 | `channelLabels.channelCount` | integer | - | - | - | - |
 | `channelLabels.mode` | enum | - | - | "auto", "custom" | - |

@@ -76,13 +76,13 @@ describe("AppSettingsOverlays: Dialogue Detection round trip through the real pa
   });
 
   it("reads a stored engine into the select and persists a new choice back to settingsStore", async () => {
-    settingsStore.patch({ dialogueVadEngine: "ten" });
+    settingsStore.patch({ dialogueVadEngine: "firered" });
     renderHarness();
 
     await waitFor(() => {
       expect(screen.getByLabelText("Dialogue Detection")).toBeTruthy();
     });
-    expect(screen.getByLabelText("Dialogue Detection").textContent).toBe("TEN VAD");
+    expect(screen.getByLabelText("Dialogue Detection").textContent).toBe("FireRedVAD");
 
     fireEvent.click(screen.getByLabelText("Dialogue Detection"));
     fireEvent.click(screen.getByText("Silero VAD"));

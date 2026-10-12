@@ -33,7 +33,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
       "dialogueCoverage",
       "dialogueIntegrated",
       "dialogueRange",
-      "dialogueOffset",
+      "loudnessToDialogueRatio",
       "truePeak",
       "correlation",
       "sideToMid"
@@ -47,8 +47,8 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
 | `metrics` | object | - | - | - | active |
-| `metrics.visible` | array | - | `["momentary","shortTerm","integrated","momentaryMax","shortTermMax","lra","psr","plr"]` | "momentary", "shortTerm", "integrated", "momentaryMax", "shortTermMax", "lra", "psr", "plr", "dialogueCoverage", "dialogueIntegrated", "dialogueRange", "dialogueOffset", "truePeak", "correlation", "sideToMid"; unique | active |
-| `metrics.order` | array | - | `["momentary","shortTerm","integrated","momentaryMax","shortTermMax","lra","psr","plr","dialogueCoverage","dialogueIntegrated","dialogueRange","dialogueOffset","truePeak","correlation","sideToMid"]` | "momentary", "shortTerm", "integrated", "momentaryMax", "shortTermMax", "lra", "psr", "plr", "dialogueCoverage", "dialogueIntegrated", "dialogueRange", "dialogueOffset", "truePeak", "correlation", "sideToMid"; unique; every id exactly once | active |
+| `metrics.visible` | array | - | `["momentary","shortTerm","integrated","momentaryMax","shortTermMax","lra","psr","plr"]` | "momentary", "shortTerm", "integrated", "momentaryMax", "shortTermMax", "lra", "psr", "plr", "dialogueCoverage", "dialogueIntegrated", "dialogueRange", "loudnessToDialogueRatio", "truePeak", "correlation", "sideToMid"; unique | active |
+| `metrics.order` | array | - | `["momentary","shortTerm","integrated","momentaryMax","shortTermMax","lra","psr","plr","dialogueCoverage","dialogueIntegrated","dialogueRange","loudnessToDialogueRatio","truePeak","correlation","sideToMid"]` | "momentary", "shortTerm", "integrated", "momentaryMax", "shortTermMax", "lra", "psr", "plr", "dialogueCoverage", "dialogueIntegrated", "dialogueRange", "loudnessToDialogueRatio", "truePeak", "correlation", "sideToMid"; unique; every id exactly once | active |
 
 The last column is this field's availability while every control sits at its default. A field
 reported inactive still accepts a patch; the result carries a `currentlyInactive` warning.

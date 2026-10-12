@@ -59,7 +59,7 @@ describe("Measurement Control", () => {
     const result = buildMeasurementDescription(12);
     expect(result).toMatchObject({
       revision: 12,
-      schemaVersion: 1,
+      schemaVersion: 2,
       source: "live",
       freshnessThresholdMs: MEASUREMENT_FRESHNESS_THRESHOLD_MS,
       availabilityReasons: [...MEASUREMENT_AVAILABILITY_REASONS],
@@ -99,9 +99,9 @@ describe("Measurement Control", () => {
       active: true,
       activeNow: false,
       coveragePercent: 61,
-      integratedLufs: -21.125,
+      loudnessLufs: -21.125,
       rangeLu: 3.25,
-      offsetLu: -0.75,
+      loudnessToDialogueRatioLu: 0.75,
     });
     expect(result.unavailable).toEqual({});
   });
@@ -164,8 +164,8 @@ describe("Measurement Control", () => {
       }),
     });
     expect(result.dialogue.coveragePercent).toBe(0);
-    expect(result.dialogue.integratedLufs).toBeNull();
-    expect(result.unavailable["dialogue.integratedLufs"]).toBe("noDialogue");
+    expect(result.dialogue.loudnessLufs).toBeNull();
+    expect(result.unavailable["dialogue.loudnessLufs"]).toBe("noDialogue");
     expect(result.unavailable["dialogue.rangeLu"]).toBe("noDialogue");
   });
 

@@ -17,7 +17,12 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
  * @typedef {ReturnType<typeof useSourceTransportActions> & {
  *   fileSession: any,
  *   dialogueGating: boolean,
- *   currentFileAnalysisSettings: () => { dialogue: { enabled: boolean, engine: any } },
+ *   currentFileAnalysisSettings: () => { dialogue: {
+ *     enabled: boolean,
+ *     engine: any,
+ *     engineConfiguration: string | null,
+ *     multichannelFusion: string | null,
+ *   } },
  *   exportFileAnalysisReport: (...args: any[]) => any,
  *   copyFileAnalysisReportMarkdown: (...args: any[]) => any,
  *   vectorscopeResetEpoch: number,
@@ -64,6 +69,8 @@ export function SourceActionsProvider({ children }) {
       dialogue: {
         enabled: dialogueGating,
         engine: dialogueGating ? settings.dialogueVadEngine : null,
+        engineConfiguration: dialogueGating ? "default" : null,
+        multichannelFusion: dialogueGating ? "average-all-channels-v1" : null,
       },
     }),
     [dialogueGating, settings.dialogueVadEngine]

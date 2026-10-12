@@ -14,6 +14,10 @@ linked sources against the requirements for your work.
 
 Integrated loudness is not judged until the measurement has settled.
 
+Dialogue Coverage and Dialogue Range are PLVS auxiliary metrics. A Custom Profile may judge them,
+but a profile claiming a published standard should use only metrics and limits supported by that
+standard's source.
+
 ## Where profiles apply
 
 - The Loudness panel's reference line

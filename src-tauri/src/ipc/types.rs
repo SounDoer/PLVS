@@ -170,11 +170,11 @@ pub struct MeterHistoryEntry {
   pub lufs_st_max: f64,
   pub integrated: f64,
   pub lra: f64,
-  /// Dialogue-gated integrated loudness (LUFS) as of this tick; `NEG_INFINITY` when gating off.
+  /// Dialogue Loudness (LUFS) as of this tick; non-finite until detector evidence exists.
   pub dialogue_integrated: f64,
-  /// Percentage of audible program classified as dialogue as of this tick; `0.0` when gating off.
+  /// Percentage of valid measurement time classified as dialogue as of this tick.
   pub dialogue_percent: f64,
-  /// Dialogue-gated loudness range (LU) as of this tick; `0.0` when gating off.
+  /// PLVS Dialogue Range (LU) as of this tick; non-finite until an observation exists.
   pub dialogue_lra: f64,
   /// Whether this tick's 100ms block was classified as active speech.
   pub dialogue_active_now: bool,
@@ -310,11 +310,11 @@ pub struct AudioFramePayload {
   pub loudness_hist_tick: Option<MeterHistoryEntry>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub visual_hist_tick: Option<VisualHistEntry>,
-  /// Dialogue-gated integrated loudness (LUFS); `NEG_INFINITY` when gating off or no speech.
+  /// Dialogue Loudness (LUFS); non-finite until detector evidence exists.
   pub dialogue_integrated: f64,
-  /// Percentage of audible program classified as dialogue; `0.0` when gating off.
+  /// Percentage of valid measurement time classified as dialogue; non-finite before evidence.
   pub dialogue_percent: f64,
-  /// Dialogue-gated loudness range (LU); `0.0` when gating off or insufficient speech.
+  /// PLVS Dialogue Range (LU); non-finite until a complete masked observation exists.
   pub dialogue_lra: f64,
   /// Whether the current 100ms block was classified as active speech.
   pub dialogue_active_now: bool,

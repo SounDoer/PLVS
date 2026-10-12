@@ -24,7 +24,7 @@ describe("panelControls", () => {
         "dialogueCoverage",
         "dialogueIntegrated",
         "dialogueRange",
-        "dialogueOffset",
+        "loudnessToDialogueRatio",
       ])
     );
     expect(DEFAULT_PANEL_CONTROLS.statsVisibleIds).not.toContain("dialogueCoverage");
@@ -49,7 +49,7 @@ describe("panelControls", () => {
       "dialogueCoverage",
       "dialogueIntegrated",
       "dialogueRange",
-      "dialogueOffset",
+      "loudnessToDialogueRatio",
       "truePeak",
       "correlation",
       "sideToMid",
@@ -137,7 +137,7 @@ describe("panelControls", () => {
         "dialogueCoverage",
         "dialogueIntegrated",
         "dialogueRange",
-        "dialogueOffset",
+        "loudnessToDialogueRatio",
         "truePeak",
         "correlation",
         "sideToMid",
@@ -202,7 +202,7 @@ describe("panelControls", () => {
       "dialogueCoverage",
       "dialogueIntegrated",
       "dialogueRange",
-      "dialogueOffset",
+      "loudnessToDialogueRatio",
       "truePeak",
       "correlation",
       "sideToMid",
@@ -225,11 +225,22 @@ describe("panelControls", () => {
       "dialogueCoverage",
       "dialogueIntegrated",
       "dialogueRange",
-      "dialogueOffset",
+      "loudnessToDialogueRatio",
       "truePeak",
       "correlation",
       "sideToMid",
     ]);
+  });
+
+  it("migrates the legacy Dialogue Offset id in visibility and order", () => {
+    const result = normalizePanelControls({
+      statsVisibleIds: ["dialogueOffset"],
+      statsOrder: ["dialogueOffset", "integrated"],
+    });
+
+    expect(result.statsVisibleIds).toEqual(["loudnessToDialogueRatio"]);
+    expect(result.statsOrder.slice(0, 2)).toEqual(["loudnessToDialogueRatio", "integrated"]);
+    expect(result.statsOrder).not.toContain("dialogueOffset");
   });
 
   it("falls back to default statsOrder when raw is not an array", () => {

@@ -3,6 +3,7 @@ import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
 import { deriveClampedPanelControls } from "../workspace/clampPanelControls.js";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
+import { useChannelRolesRestart } from "../hooks/useDialogueEngineRestart.js";
 import { useDock } from "../dock/DockContext.jsx";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "../dock/dockAnalysisRequest.js";
 import {
@@ -76,6 +77,7 @@ export function AnalysisSessionProvider({ children }) {
     dialogueVadEngine,
     channelLabelOverrides,
     setChannelLabelOverrides,
+    onClearRef,
   } = useAppSettings();
 
   const fileDurationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
@@ -153,6 +155,7 @@ export function AnalysisSessionProvider({ children }) {
     [channelCount, channelLabelOverrides]
   );
   const { channelRoles } = channelLabelRuntime;
+  useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", onClearRef);
   const {
     channelRolesRef,
     dialogueGatingRef,

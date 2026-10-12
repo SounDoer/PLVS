@@ -345,7 +345,7 @@ fn parse_analyze_option_flag(
       let value = take_value(args, *index, "--vad")?;
       options.vad = Some(
         VadEngineKind::from_key(&value)
-          .ok_or_else(|| "The --vad value must be one of: silero, firered, ten".to_string())?,
+          .ok_or_else(|| "The --vad value must be one of: silero, firered".to_string())?,
       );
       *index += 2;
       Ok(true)
@@ -875,7 +875,7 @@ fn help_text(topic: HelpTopic) -> String {
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
-      "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--layout <id>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
+      "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--layout <id>] [--dialogue] [--vad silero|firered] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Capture => {

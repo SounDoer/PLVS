@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useRef } from "react";
 
-import { useDialogueEngineRestart } from "./useDialogueEngineRestart.js";
+import { useChannelRolesRestart, useDialogueEngineRestart } from "./useDialogueEngineRestart.js";
 
 describe("useDialogueEngineRestart", () => {
   it("clears when the engine changes while gating is on", () => {
@@ -69,6 +69,38 @@ describe("useDialogueEngineRestart", () => {
 
     rerender({ engine: "silero", gating: false });
     rerender({ engine: "silero", gating: true });
+    expect(clearAll).not.toHaveBeenCalled();
+  });
+});
+
+describe("useChannelRolesRestart", () => {
+  it("clears a Live measurement when the effective role list changes", () => {
+    const clearAll = vi.fn();
+    const { rerender } = renderHook(
+      ({ roles, live }) => {
+        const ref = useRef(clearAll);
+        ref.current = clearAll;
+        useChannelRolesRestart(roles, live, ref);
+      },
+      { initialProps: { roles: {}, live: true } }
+    );
+
+    rerender({ roles: { 6: ["L", "R", "C", "LFE", "Ls", "Rs"] }, live: true });
+    expect(clearAll).toHaveBeenCalledOnce();
+  });
+
+  it("locks an in-progress File measurement against role-setting changes", () => {
+    const clearAll = vi.fn();
+    const { rerender } = renderHook(
+      ({ roles, live }) => {
+        const ref = useRef(clearAll);
+        ref.current = clearAll;
+        useChannelRolesRestart(roles, live, ref);
+      },
+      { initialProps: { roles: { 2: ["L", "R"] }, live: false } }
+    );
+
+    rerender({ roles: { 2: ["M", "M"] }, live: false });
     expect(clearAll).not.toHaveBeenCalled();
   });
 });

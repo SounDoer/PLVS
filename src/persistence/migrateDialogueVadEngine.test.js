@@ -27,7 +27,7 @@ describe("migrateDialogueVadEngine", () => {
   it("lifts the first Stats panel's engine into settings", () => {
     workspaceStore.patch(workspaceWith([{ id: "p1", moduleId: "stats", engine: "ten" }]));
     migrateDialogueVadEngine();
-    expect(settingsStore.read().dialogueVadEngine).toBe("ten");
+    expect(settingsStore.read().dialogueVadEngine).toBe("firered");
   });
 
   it("takes the first Stats panel in panelOrder when they disagree", () => {
@@ -94,6 +94,6 @@ describe("migrateDialogueVadEngine", () => {
       },
     });
     expect(() => migrateDialogueVadEngine()).not.toThrow();
-    expect(settingsStore.read().dialogueVadEngine).toBe("ten");
+    expect(settingsStore.read().dialogueVadEngine).toBe("firered");
   });
 });

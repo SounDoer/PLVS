@@ -44,6 +44,10 @@ impl VadBlockAggregator {
     }
   }
 
+  pub fn has_evidence(&self) -> bool {
+    self.total > 0
+  }
+
   pub fn take_decision(&mut self) -> bool {
     let decision = self.is_active();
     self.reset();

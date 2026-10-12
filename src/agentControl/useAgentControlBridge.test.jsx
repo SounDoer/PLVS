@@ -2491,7 +2491,7 @@ describe("useAgentControlBridge", () => {
 
     expect(description.result).toMatchObject({
       revision: 0,
-      schemaVersion: 1,
+      schemaVersion: 2,
       source: "live",
       freshnessThresholdMs: 2000,
     });
@@ -6597,7 +6597,7 @@ describe("File analysis report", () => {
       ),
     });
     expect(response.result.report).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       reportType: "fileAnalysis",
       app: { version: runtime.appVersion },
       source: { fileName: "mix.wav", container: "wav" },

@@ -33,7 +33,7 @@ const LAYOUT_DEPENDENT_STAT_IDS = new Set([
   "plr",
   "dialogueIntegrated",
   "dialogueRange",
-  "dialogueOffset",
+  "loudnessToDialogueRatio",
 ]);
 
 function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, watched }) {

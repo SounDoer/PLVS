@@ -192,7 +192,8 @@ pub fn analyze_file_track_to_summary_with_layout(
     loudness_layout: metrics.loudness_layout.to_string(),
     loudness_layout_known: metrics.loudness_layout_known,
     dialogue_integrated: f64::NEG_INFINITY,
-    dialogue_lra: 0.0,
+    dialogue_lra: f64::NEG_INFINITY,
+    dialogue_percent: 0.0,
   };
 
   Ok(FileAnalysisSummaryRun {

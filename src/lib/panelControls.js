@@ -99,6 +99,12 @@ function ids(options) {
   return options.map((option) => option.id);
 }
 
+function migrateMetricId(row, id) {
+  return id === "dialogueOffset" && row.options.includes("loudnessToDialogueRatio")
+    ? "loudnessToDialogueRatio"
+    : id;
+}
+
 // ---------------------------------------------------------------------------
 // The control table
 //
@@ -216,7 +222,10 @@ const KINDS = {
     if (!Array.isArray(value)) return [...row.default];
     const normalized = [];
     for (const id of value) {
-      if (row.options.includes(id) && !normalized.includes(id)) normalized.push(id);
+      const migratedId = migrateMetricId(row, id);
+      if (row.options.includes(migratedId) && !normalized.includes(migratedId)) {
+        normalized.push(migratedId);
+      }
     }
     return normalized;
   },
@@ -230,7 +239,10 @@ const KINDS = {
     const ordered = [];
     if (Array.isArray(value)) {
       for (const id of value) {
-        if (row.options.includes(id) && !ordered.includes(id)) ordered.push(id);
+        const migratedId = migrateMetricId(row, id);
+        if (row.options.includes(migratedId) && !ordered.includes(migratedId)) {
+          ordered.push(migratedId);
+        }
       }
     }
     for (const id of row.options) {

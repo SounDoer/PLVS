@@ -97,7 +97,7 @@ describe("settings defaults", () => {
     expect(DEFAULT_DIALOGUE_VAD_ENGINE).toBe("firered");
     expect(normalizeDialogueVadEngine("silero")).toBe("silero");
     expect(normalizeDialogueVadEngine("firered")).toBe("firered");
-    expect(normalizeDialogueVadEngine("ten")).toBe("ten");
+    expect(normalizeDialogueVadEngine("ten")).toBe("firered");
     expect(normalizeDialogueVadEngine("nonsense")).toBe(DEFAULT_DIALOGUE_VAD_ENGINE);
     expect(normalizeDialogueVadEngine(undefined)).toBe(DEFAULT_DIALOGUE_VAD_ENGINE);
   });

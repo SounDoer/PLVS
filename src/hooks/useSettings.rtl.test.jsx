@@ -214,10 +214,10 @@ describe("useSettings", () => {
     expect(result.current.closeAction).toBe("ask");
   });
 
-  it("reads dialogueVadEngine from localStorage on mount", () => {
+  it("normalizes a removed TEN setting to FireRed on mount", () => {
     localStorage.setItem("plvs:settings", JSON.stringify({ dialogueVadEngine: "ten" }));
     const { result } = renderHook(() => useSettings());
-    expect(result.current.dialogueVadEngine).toBe("ten");
+    expect(result.current.dialogueVadEngine).toBe("firered");
   });
 
   it("setDialogueVadEngine persists to localStorage and updates state", () => {

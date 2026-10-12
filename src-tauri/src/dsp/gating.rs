@@ -26,6 +26,10 @@ struct OrderNode {
 
 impl OrderNode {
   fn new(key: f64, sum0: f64, sum1: f64) -> Self {
+    Self::new_weighted(key, sum0, sum1, 1)
+  }
+
+  fn new_weighted(key: f64, sum0: f64, sum1: f64, weight: usize) -> Self {
     let mut priority = key.to_bits().wrapping_add(0x9e3779b97f4a7c15);
     priority = (priority ^ (priority >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
     priority = (priority ^ (priority >> 27)).wrapping_mul(0x94d049bb133111eb);
@@ -33,10 +37,10 @@ impl OrderNode {
     Self {
       key,
       priority,
-      own_count: 1,
+      own_count: weight,
       own_sum0: sum0,
       own_sum1: sum1,
-      count: 1,
+      count: weight,
       sum0,
       sum1,
       left: None,
@@ -66,6 +70,12 @@ impl ExactOrderTree {
     insert_node(&mut self.root, key, sum0, sum1);
   }
 
+  fn insert_weighted(&mut self, key: f64, weight: usize) {
+    if weight > 0 {
+      insert_weighted_node(&mut self.root, key, weight);
+    }
+  }
+
   fn totals(&self) -> (usize, f64, f64) {
     self
       .root
@@ -85,6 +95,39 @@ impl ExactOrderTree {
 
   fn kth(&self, index: usize) -> Option<f64> {
     kth(&self.root, index)
+  }
+}
+
+fn insert_weighted_node(root: &mut Option<Box<OrderNode>>, key: f64, weight: usize) {
+  let Some(node) = root.as_mut() else {
+    *root = Some(Box::new(OrderNode::new_weighted(key, 0.0, 0.0, weight)));
+    return;
+  };
+  match key.total_cmp(&node.key) {
+    std::cmp::Ordering::Equal => node.own_count += weight,
+    std::cmp::Ordering::Less => {
+      insert_weighted_node(&mut node.left, key, weight);
+      if node
+        .left
+        .as_ref()
+        .is_some_and(|left| left.priority < node.priority)
+      {
+        rotate_right(root);
+      }
+    }
+    std::cmp::Ordering::Greater => {
+      insert_weighted_node(&mut node.right, key, weight);
+      if node
+        .right
+        .as_ref()
+        .is_some_and(|right| right.priority < node.priority)
+      {
+        rotate_left(root);
+      }
+    }
+  }
+  if let Some(node) = root.as_mut() {
+    node.refresh();
   }
 }
 
@@ -237,6 +280,41 @@ impl IntegratedAccumulator {
 
 pub(crate) struct LraAccumulator {
   tree: ExactOrderTree,
+}
+
+/// Exact duration-weighted percentile range without the EBU LRA relative gate.
+pub(crate) struct WeightedRangeAccumulator {
+  tree: ExactOrderTree,
+}
+
+impl WeightedRangeAccumulator {
+  pub(crate) fn new() -> Self {
+    Self {
+      tree: ExactOrderTree::default(),
+    }
+  }
+
+  pub(crate) fn push(&mut self, loudness: f64, weight: usize) {
+    if loudness.is_finite() {
+      self.tree.insert_weighted(loudness, weight);
+    }
+  }
+
+  pub(crate) fn value(&self) -> f64 {
+    let count = self.tree.totals().0;
+    if count == 0 {
+      return f64::NEG_INFINITY;
+    }
+    let p95 = self
+      .tree
+      .kth(((count as f64 * 0.95).floor() as usize).min(count - 1))
+      .expect("weighted p95 index");
+    let p10 = self
+      .tree
+      .kth((count as f64 * 0.1).floor() as usize)
+      .expect("weighted p10 index");
+    (p95 - p10).max(0.0)
+  }
 }
 
 impl LraAccumulator {
@@ -477,5 +555,30 @@ mod tests {
 
     assert!(integrated.value() < -15.0);
     assert!(lra.value() > 5.0);
+  }
+
+  #[test]
+  fn weighted_range_matches_an_expanded_reference_distribution() {
+    let observations = [(-30.0, 1_usize), (-24.0, 3), (-18.0, 6), (-8.0, 1)];
+    let mut accumulator = WeightedRangeAccumulator::new();
+    let mut expanded = Vec::new();
+    for (value, weight) in observations {
+      accumulator.push(value, weight);
+      expanded.extend(std::iter::repeat_n(value, weight));
+    }
+    expanded.sort_by(f64::total_cmp);
+    let p10 = expanded[((expanded.len() as f64 * 0.1).floor() as usize).min(expanded.len() - 1)];
+    let p95 = expanded[((expanded.len() as f64 * 0.95).floor() as usize).min(expanded.len() - 1)];
+
+    assert_eq!(accumulator.value(), p95 - p10);
+  }
+
+  #[test]
+  fn weighted_range_has_no_relative_gate() {
+    let mut accumulator = WeightedRangeAccumulator::new();
+    accumulator.push(-55.0, 3);
+    accumulator.push(-20.0, 18);
+
+    assert_eq!(accumulator.value(), 35.0);
   }
 }

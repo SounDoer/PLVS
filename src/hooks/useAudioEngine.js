@@ -37,7 +37,7 @@ const CLEARED_AUDIO_STATE = {
   vectorscopePairX: 0,
   vectorscopePairY: 1,
   dialogueIntegrated: -Infinity,
-  dialogueLra: 0,
+  dialogueLra: -Infinity,
   dialoguePercent: null,
   dialogueActiveNow: false,
 };

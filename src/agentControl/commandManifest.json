@@ -694,9 +694,9 @@
                   "stereo.sideToMidDb",
                   "dialogue.activeNow",
                   "dialogue.coveragePercent",
-                  "dialogue.integratedLufs",
+                  "dialogue.loudnessLufs",
                   "dialogue.rangeLu",
-                  "dialogue.offsetLu"
+                  "dialogue.loudnessToDialogueRatioLu"
                 ]
               },
               "operator": {

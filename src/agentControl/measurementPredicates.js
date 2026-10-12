@@ -16,9 +16,9 @@ export const MEASUREMENT_AVAILABLE_METRICS = Object.freeze([
   "stereo.sideToMidDb",
   "dialogue.activeNow",
   "dialogue.coveragePercent",
-  "dialogue.integratedLufs",
+  "dialogue.loudnessLufs",
   "dialogue.rangeLu",
-  "dialogue.offsetLu",
+  "dialogue.loudnessToDialogueRatioLu",
 ]);
 
 export const MEASUREMENT_THRESHOLD_METRICS = Object.freeze(

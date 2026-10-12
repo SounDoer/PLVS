@@ -166,7 +166,9 @@ Module findings use the final overridden colours and link to the corresponding m
 **History Length** sets how far back Live history panels can be scrolled: 30, 60, 120, or 240
 minutes. Changing it clears the current Live measurement, exits Snapshot, and starts the measurement
 clock again while capture continues. File Mode is unaffected. **Dialogue Detection** chooses the
-engine behind the [dialogue readouts](dialogue-gated-loudness.md).
+engine behind the [dialogue readouts](dialogue-gated-loudness.md). Detection is collected by default
+even when those Stats rows are hidden. Changing the engine clears the complete Live measurement;
+an in-progress File analysis keeps the engine it started with.
 
 ## Channels
 

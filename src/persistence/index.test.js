@@ -30,6 +30,13 @@ describe("persistence index", () => {
     expect(settingsStore.export()).not.toHaveProperty("panelOpacity");
   });
 
+  it("normalizes the removed TEN dialogue engine to FireRed", () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ dialogueVadEngine: "ten" }));
+
+    expect(settingsStore.read()).toEqual({ dialogueVadEngine: "firered" });
+    expect(settingsStore.export()).toEqual({ dialogueVadEngine: "firered" });
+  });
+
   it("workspaceStore persists under plvs:workspace", () => {
     workspaceStore.patch({ visibleModules: ["levelMeter"] });
     expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({

@@ -86,7 +86,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
       <button type="button" onClick={() => setInterfaceSize("large")}>
         Set interface size
       </button>
-      <button type="button" onClick={() => setDialogueVadEngine("ten")}>
+      <button type="button" onClick={() => setDialogueVadEngine("silero")}>
         Set dialogue engine
       </button>
       <button type="button" onClick={onInstallUpdate}>
@@ -349,7 +349,7 @@ describe("AppSettingsOverlays", () => {
 
     expect(screen.getByTestId("dialogue-vad-engine").textContent).toBe("firered");
     fireEvent.click(screen.getByRole("button", { name: "Set dialogue engine" }));
-    expect(settings.setDialogueVadEngine).toHaveBeenCalledWith("ten");
+    expect(settings.setDialogueVadEngine).toHaveBeenCalledWith("silero");
   });
 
   it("opens feedback from Settings and closes the settings sheet", () => {

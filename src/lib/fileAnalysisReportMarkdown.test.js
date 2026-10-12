@@ -33,6 +33,7 @@ const SESSION = {
     samplePeakMaxRDb: -2.1,
     dialogueIntegrated: -24.0,
     dialogueLra: 2.5,
+    dialoguePercent: 62.5,
   },
   analyzedAt: Date.UTC(2026, 6, 6, 12, 0, 0),
   decodedFrames: 480_000,
@@ -97,7 +98,9 @@ describe("renderFileAnalysisReportMarkdown", () => {
       "- True Peak Max: -1.0 dBTP",
       "- Sample Peak Max: -2.1 dBFS (L -2.4 · R -2.1)",
       "- Engine: firered",
-      "- Dialogue Integrated: -24.0 LUFS",
+      "- Dialogue Loudness: -24.0 LUFS",
+      "- Loudness-to-Dialogue Ratio: 0.9 LU",
+      "- Dialogue Coverage: 63 %",
       "- Dialogue Range: 2.5 LU",
     ]) {
       expect(lines).toContain(line);

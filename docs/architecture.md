@@ -258,6 +258,20 @@ need it. When adding a top-level directory, add a row in the same commit.
 | `spectrum.rs`        | rFFT + Hann window, hop=N/4, 4-frame incoherent averaging; in-band energy integrated over continuous Hz edges and fractional bin overlap (no integer-bin truncation) |
 | `vectorscope.rs`     | L/R → XY + correlation coefficient                                                                                                                                   |
 
+Dialogue analysis is a sidechain on the same 100 ms K-weighted programme-energy timeline used by
+Live and File loudness. `speech.rs` owns detector-specific framing and resampling;
+`dialogue.rs` owns the detector-independent metric definitions. Dialogue Loudness applies only the
+−70 LUFS absolute gate to dialogue-selected programme energy. Dialogue Coverage counts selected
+valid duration without a loudness gate. Dialogue Range forms masked three-second observations at a
+one-second hop and computes an exact duration-weighted P95−P10 without the EBU LRA relative gate.
+The detector never replaces programme audio in the loudness path.
+
+Dialogue collection is enabled independently of panel visibility. A detector or method change
+uses the normal coherent Live Clear path so Programme Loudness and dialogue-derived metrics keep a
+common session scope. File analysis snapshots its dialogue settings at start. Reports carry a
+dialogue metric algorithm version; changing a meaning requires a new version rather than silently
+reinterpreting an old field.
+
 ### Orchestration layer (`src-tauri/src/engine/meter_pipeline.rs`)
 
 PCM frames → parallel DSP → pack `MeteringFrame` → Channel (~60 Hz) to the frontend; slow loudness / state → Event (~2 Hz) broadcast.

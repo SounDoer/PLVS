@@ -106,7 +106,7 @@ function buildAudioSnap(row) {
     dialogueIntegrated: Number.isFinite(row.dialogueIntegrated)
       ? row.dialogueIntegrated
       : -Infinity,
-    dialogueLra: Number.isFinite(row.dialogueLra) ? row.dialogueLra : 0,
+    dialogueLra: Number.isFinite(row.dialogueLra) ? row.dialogueLra : -Infinity,
     dialoguePercent: Number.isFinite(row.dialoguePercent) ? row.dialoguePercent : null,
     dialogueActiveNow: !!row.dialogueActiveNow,
     loudnessLayoutKnown: row.loudnessLayoutKnown !== false,
