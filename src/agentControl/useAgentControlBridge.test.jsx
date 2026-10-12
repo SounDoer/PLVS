@@ -6501,8 +6501,6 @@ describe("File analysis report", () => {
     createdAt: 1757548790000,
     analyzedAt: 1757548800000,
     decodedFrames: 576000,
-    historyTruncated: false,
-    historyCoveredMs: null,
     analysisSettings: { dialogue: { enabled: false } },
     error: null,
   };

@@ -36,8 +36,6 @@ const COMPLETE_SESSION = {
   },
   analyzedAt: Date.UTC(2026, 6, 6, 12, 0, 0),
   decodedFrames: 480_000,
-  historyTruncated: true,
-  historyCoveredMs: 8_000,
   analysisSettings: {
     dialogue: { enabled: true, engine: "firered" },
   },
@@ -106,11 +104,7 @@ describe("fileAnalysisReport", () => {
         dialogueIntegratedLufs: -24.0,
         dialogueLra: 2.5,
       },
-      history: {
-        retained: true,
-        truncated: true,
-        coveredMs: 8_000,
-      },
+      history: { completeTimeline: true },
     });
   });
 

@@ -641,7 +641,7 @@ export function SettingsPanel({
                     labelNode={
                       <SettingsLabelWithTip
                         label="History Length"
-                        tip="How far back the history panels can be scrolled. Changing it does not restart the measurement; shortening it drops rows older than the new length."
+                        tip="How far back Live history can be inspected. Changing it clears the current Live measurement and starts again. File analysis is unaffected."
                       />
                     }
                   >

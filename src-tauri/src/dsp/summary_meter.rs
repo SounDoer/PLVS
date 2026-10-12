@@ -1,9 +1,7 @@
 use crate::dsp::channel_layouts::{layout_id_for_roles, roles_for_layout, weights_for_roles};
 use crate::dsp::channel_weights::{standard_layout_name, standard_loudness_weights};
 use crate::dsp::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
-use crate::dsp::gating::{
-  gated_integrated_lufs, gated_lra, lufs_from_mean_squares, IBL_CAP, STH_CAP,
-};
+use crate::dsp::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
 
 fn db_from_linear(value: f64) -> f64 {
   if value > 0.0 {
@@ -38,8 +36,8 @@ pub struct SummaryMeter {
   ring: Vec<f64>,
   ring_head: usize,
   ring_count: usize,
-  integrated_blocks: Vec<[f64; 2]>,
-  short_terms: Vec<f64>,
+  integrated_accumulator: IntegratedAccumulator,
+  lra_accumulator: LraAccumulator,
   m_max_lufs: f64,
   st_max_lufs: f64,
   true_peak_max: f64,
@@ -112,8 +110,8 @@ impl SummaryMeter {
       ring: vec![0.0_f64; 60 * 2],
       ring_head: 0,
       ring_count: 0,
-      integrated_blocks: Vec::with_capacity(1024),
-      short_terms: Vec::with_capacity(1024),
+      integrated_accumulator: IntegratedAccumulator::new(),
+      lra_accumulator: LraAccumulator::new(),
       m_max_lufs: f64::NEG_INFINITY,
       st_max_lufs: f64::NEG_INFINITY,
       true_peak_max: 0.0,
@@ -172,8 +170,8 @@ impl SummaryMeter {
 
   pub fn finish(&self) -> SummaryMetrics {
     SummaryMetrics {
-      integrated_lufs: gated_integrated_lufs(&self.integrated_blocks),
-      lra: gated_lra(&self.short_terms),
+      integrated_lufs: self.integrated_accumulator.value(),
+      lra: self.lra_accumulator.value(),
       m_max_lufs: self.m_max_lufs,
       st_max_lufs: self.st_max_lufs,
       true_peak_max_dbtp: db_from_linear(self.true_peak_max),
@@ -243,10 +241,7 @@ impl SummaryMeter {
     self.ring[ring_index + 1] = mean[1];
     self.ring_head = (self.ring_head + 1) % 60;
     self.ring_count = (self.ring_count + 1).min(60);
-    self.integrated_blocks.push(mean);
-    if self.integrated_blocks.len() > IBL_CAP {
-      self.integrated_blocks.remove(0);
-    }
+    self.integrated_accumulator.push(mean);
 
     let momentary = self.window_lufs(4);
     let short_term = self.window_lufs(30);
@@ -255,10 +250,7 @@ impl SummaryMeter {
     }
     if short_term.is_finite() {
       self.st_max_lufs = self.st_max_lufs.max(short_term);
-      self.short_terms.push(short_term);
-      if self.short_terms.len() > STH_CAP {
-        self.short_terms.remove(0);
-      }
+      self.lra_accumulator.push(short_term);
     }
 
     self.block_sum = [0.0, 0.0];

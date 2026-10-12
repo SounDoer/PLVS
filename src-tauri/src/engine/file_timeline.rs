@@ -2,8 +2,11 @@
 
 /// Owns file-only time and batching state without knowing anything about PCM or frame payloads.
 pub(super) struct FileTimeline<LoudnessCheckpoint, VisualCheckpoint> {
+  loudness_cadence_ms: u64,
+  visual_cadence_ms: u64,
   current_media_time_ms: Option<u64>,
   last_media_time_ms: Option<u64>,
+  last_loudness_observation_ms: Option<u64>,
   last_loudness_checkpoint_ms: Option<u64>,
   last_visual_checkpoint_ms: Option<u64>,
   pending_loudness: Vec<LoudnessCheckpoint>,
@@ -11,10 +14,13 @@ pub(super) struct FileTimeline<LoudnessCheckpoint, VisualCheckpoint> {
 }
 
 impl<LoudnessCheckpoint, VisualCheckpoint> FileTimeline<LoudnessCheckpoint, VisualCheckpoint> {
-  pub(super) fn new() -> Self {
+  pub(super) fn new(loudness_cadence_ms: u64, visual_cadence_ms: u64) -> Self {
     Self {
+      loudness_cadence_ms,
+      visual_cadence_ms,
       current_media_time_ms: None,
       last_media_time_ms: None,
+      last_loudness_observation_ms: None,
       last_loudness_checkpoint_ms: None,
       last_visual_checkpoint_ms: None,
       pending_loudness: Vec::new(),
@@ -35,20 +41,32 @@ impl<LoudnessCheckpoint, VisualCheckpoint> FileTimeline<LoudnessCheckpoint, Visu
     self.current_media_time_ms.or(self.last_media_time_ms)
   }
 
-  pub(super) fn loudness_checkpoint_due(&mut self, timestamp_ms: u64, cadence_ms: u64) -> bool {
+  pub(super) fn loudness_checkpoint_due(&mut self, timestamp_ms: u64) -> bool {
+    self.last_loudness_observation_ms = Some(timestamp_ms);
     checkpoint_due(
       &mut self.last_loudness_checkpoint_ms,
       timestamp_ms,
-      cadence_ms,
+      self.loudness_cadence_ms,
     )
   }
 
-  pub(super) fn visual_checkpoint_due(&mut self, timestamp_ms: u64, cadence_ms: u64) -> bool {
+  pub(super) fn visual_checkpoint_due(&mut self, timestamp_ms: u64) -> bool {
     checkpoint_due(
       &mut self.last_visual_checkpoint_ms,
       timestamp_ms,
-      cadence_ms,
+      self.visual_cadence_ms,
     )
+  }
+
+  pub(super) fn final_loudness_checkpoint_due(&mut self) -> Option<u64> {
+    final_checkpoint_due(
+      self.last_loudness_observation_ms,
+      &mut self.last_loudness_checkpoint_ms,
+    )
+  }
+
+  pub(super) fn final_visual_checkpoint_due(&mut self) -> Option<u64> {
+    final_checkpoint_due(self.last_media_time_ms, &mut self.last_visual_checkpoint_ms)
   }
 
   pub(super) fn queue_loudness(&mut self, checkpoint: LoudnessCheckpoint) {
@@ -73,6 +91,7 @@ impl<LoudnessCheckpoint, VisualCheckpoint> FileTimeline<LoudnessCheckpoint, Visu
   pub(super) fn reset(&mut self) {
     self.current_media_time_ms = None;
     self.last_media_time_ms = None;
+    self.last_loudness_observation_ms = None;
     self.last_loudness_checkpoint_ms = None;
     self.last_visual_checkpoint_ms = None;
     self.pending_loudness.clear();
@@ -94,21 +113,33 @@ fn checkpoint_due(
   due
 }
 
+fn final_checkpoint_due(
+  last_media_time_ms: Option<u64>,
+  last_checkpoint_ms: &mut Option<u64>,
+) -> Option<u64> {
+  let timestamp_ms = last_media_time_ms?;
+  if *last_checkpoint_ms == Some(timestamp_ms) {
+    return None;
+  }
+  *last_checkpoint_ms = Some(timestamp_ms);
+  Some(timestamp_ms)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
 
   #[test]
   fn media_time_cadence_is_independent_from_wall_clock() {
-    let mut timeline = FileTimeline::<(), ()>::new();
-    assert!(timeline.visual_checkpoint_due(100, 40));
-    assert!(!timeline.visual_checkpoint_due(120, 40));
-    assert!(timeline.visual_checkpoint_due(140, 40));
+    let mut timeline = FileTimeline::<(), ()>::new(100, 40);
+    assert!(timeline.visual_checkpoint_due(100));
+    assert!(!timeline.visual_checkpoint_due(120));
+    assert!(timeline.visual_checkpoint_due(140));
   }
 
   #[test]
   fn last_media_time_survives_until_reset() {
-    let mut timeline = FileTimeline::<(), ()>::new();
+    let mut timeline = FileTimeline::<(), ()>::new(100, 40);
     timeline.begin_push(1_250);
     assert_eq!(timeline.timestamp_ms(), Some(1_250));
     timeline.end_push();
@@ -119,7 +150,7 @@ mod tests {
 
   #[test]
   fn queues_drain_without_pcm_or_frame_assembly() {
-    let mut timeline = FileTimeline::new();
+    let mut timeline = FileTimeline::new(100, 40);
     timeline.queue_loudness("loudness");
     timeline.queue_visual("visual");
     assert!(timeline.has_pending());
@@ -127,5 +158,19 @@ mod tests {
     let drained = timeline.drain();
     assert_eq!(drained, (vec!["loudness"], vec!["visual"]));
     assert!(!timeline.has_pending());
+  }
+
+  #[test]
+  fn final_checkpoint_closes_the_media_time_range_once() {
+    let mut timeline = FileTimeline::<(), ()>::new(1_000, 1_000);
+    assert!(timeline.loudness_checkpoint_due(1_000));
+    assert!(!timeline.loudness_checkpoint_due(1_900));
+    timeline.begin_push(2_000);
+    timeline.end_push();
+
+    assert_eq!(timeline.final_loudness_checkpoint_due(), Some(1_900));
+    assert_eq!(timeline.final_visual_checkpoint_due(), Some(2_000));
+    assert_eq!(timeline.final_loudness_checkpoint_due(), None);
+    assert_eq!(timeline.final_visual_checkpoint_due(), None);
   }
 }

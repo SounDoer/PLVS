@@ -809,12 +809,10 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("History Length")).toBeTruthy();
   });
 
-  // Pins the copy: the neighbouring Dialogue Detection row does restart the measurement, so this
-  // row has to say that it does not, or the pair reads as arbitrary.
-  it("explains that History Length does not restart the measurement", () => {
+  it("explains that History Length clears only the Live measurement", () => {
     const tip =
-      "How far back the history panels can be scrolled. Changing it does not restart the " +
-      "measurement; shortening it drops rows older than the new length.";
+      "How far back Live history can be inspected. Changing it clears the current Live " +
+      "measurement and starts again. File analysis is unaffected.";
     render(<SettingsPanel {...BASE_PROPS} {...HISTORY_PROPS} />);
     expect(screen.queryByText(tip)).toBeNull();
     fireEvent.mouseEnter(screen.getByRole("button", { name: `History Length help: ${tip}` }));

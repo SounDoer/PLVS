@@ -146,7 +146,6 @@ describe("fileAnalysisSessionRegistry", () => {
           : markFileAnalysisComplete(history, `entry-${index}`, {
               summary: { durationMs: index },
               decodedFrames: index,
-              historyCoveredMs: index * 1000,
               analyzedAt: index,
             });
     }
@@ -200,8 +199,6 @@ describe("fileAnalysisSessionRegistry", () => {
       summary: { stale: true },
       error: "stale",
       progress: 0.75,
-      historyTruncated: true,
-      historyCoveredMs: 123,
       decodedFrames: 456,
     }));
 
@@ -212,8 +209,6 @@ describe("fileAnalysisSessionRegistry", () => {
       progress: 0,
       error: null,
       summary: null,
-      historyTruncated: false,
-      historyCoveredMs: null,
       decodedFrames: 0,
       runId: 1,
     });
@@ -222,8 +217,6 @@ describe("fileAnalysisSessionRegistry", () => {
     history = markFileAnalysisComplete(history, "one", {
       summary: { durationMs: 9000 },
       decodedFrames: 2048,
-      historyTruncated: true,
-      historyCoveredMs: 8000,
       now: 10,
     });
 
@@ -233,8 +226,6 @@ describe("fileAnalysisSessionRegistry", () => {
       progress: 1,
       summary: { durationMs: 9000 },
       decodedFrames: 2048,
-      historyTruncated: true,
-      historyCoveredMs: 8000,
       analyzedAt: 10,
     });
   });

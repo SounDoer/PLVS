@@ -244,6 +244,24 @@ describe("Settings Control", () => {
     ).toBeNull();
   });
 
+  it("treats a Live History Length change as a confirmed measurement restart", () => {
+    const unconfirmed = planSettingsUpdate(
+      current,
+      { historyRetentionSec: 7200 },
+      { ...context, sourceMode: "live" }
+    );
+    expect(unconfirmed.effects).toEqual(["measurementRestart"]);
+    expect(unconfirmed.confirmation).toEqual({ requiredFlag: "allowMeasurementRestart" });
+
+    const file = planSettingsUpdate(
+      current,
+      { historyRetentionSec: 7200 },
+      { ...context, sourceMode: "file" }
+    );
+    expect(file.effects).toEqual([]);
+    expect(file.confirmation).toBeNull();
+  });
+
   it("warns that completed FILE results need reanalysis when the VAD engine changes", () => {
     const planned = planSettingsUpdate(
       current,

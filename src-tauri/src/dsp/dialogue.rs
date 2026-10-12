@@ -7,14 +7,14 @@
 //! differs (speech-classified blocks for loudness, energy-gated blocks for the %
 //! denominator).
 
-use super::gating::{gated_integrated_lufs, gated_lra, lufs_from_mean_squares};
+use super::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
 
 /// Accumulates speech-classified loudness blocks for dialogue-gated readouts.
 pub struct DialogueIntegrator {
   /// Mean-square blocks `[m0, m1]` that were speech-classified AND passed the −70 LUFS gate.
-  speech_blocks: Vec<[f64; 2]>,
+  integrated: IntegratedAccumulator,
   /// Short-term loudness values (LUFS) observed at speech-classified blocks, for dialogue LRA.
-  speech_short_terms: Vec<f64>,
+  lra: LraAccumulator,
   /// Count of blocks that passed the −70 LUFS absolute gate (the % denominator).
   gated_total: usize,
   /// Count of blocks that were both speech-classified and passed the −70 LUFS gate.
@@ -24,8 +24,8 @@ pub struct DialogueIntegrator {
 impl DialogueIntegrator {
   pub fn new() -> Self {
     Self {
-      speech_blocks: Vec::new(),
-      speech_short_terms: Vec::new(),
+      integrated: IntegratedAccumulator::new(),
+      lra: LraAccumulator::new(),
       gated_total: 0,
       speech_gated: 0,
     }
@@ -40,8 +40,8 @@ impl DialogueIntegrator {
     self.gated_total += 1;
     if is_speech {
       self.speech_gated += 1;
-      self.speech_blocks.push(ms);
-      self.speech_short_terms.push(short_term);
+      self.integrated.push(ms);
+      self.lra.push(short_term);
     }
   }
 
@@ -57,12 +57,12 @@ impl DialogueIntegrator {
   /// Dialogue-gated integrated loudness over speech-classified blocks (LUFS),
   /// `NEG_INFINITY` when there are no qualifying speech blocks.
   pub fn integrated(&self) -> f64 {
-    gated_integrated_lufs(&self.speech_blocks)
+    self.integrated.value()
   }
 
   /// Dialogue Range: loudness range over the short-term values seen during speech.
   pub fn lra(&self) -> f64 {
-    gated_lra(&self.speech_short_terms)
+    self.lra.value()
   }
 
   pub fn reset(&mut self) {

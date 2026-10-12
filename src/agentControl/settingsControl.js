@@ -430,6 +430,9 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
   changedValue(changed, "settings.channelLabels", current.channelLabels, settings.channelLabels);
 
   const effects = [];
+  if (changed.includes("settings.historyRetentionSec") && context.sourceMode === "live") {
+    effects.push("measurementRestart");
+  }
   if (changed.includes("settings.dialogueVadEngine") && context.dialogueDetectionActive === true) {
     effects.push("measurementRestart");
   }

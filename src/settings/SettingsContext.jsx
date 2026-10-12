@@ -4,6 +4,7 @@ import { useSettings } from "../hooks/useSettings.js";
 /**
  * @typedef {ReturnType<typeof useSettings> & {
  *   onClearRef: import("react").MutableRefObject<(() => any) | null>,
+ *   onHistoryRetentionChangeRef: import("react").MutableRefObject<(() => any) | null>,
  * }} AppSettings
  */
 const SettingsContext = createContext(/** @type {AppSettings | null} */ (null));
@@ -19,9 +20,10 @@ const SettingsContext = createContext(/** @type {AppSettings | null} */ (null));
  */
 export function SettingsProvider({ children }) {
   const onClearRef = useRef(/** @type {(() => any) | null} */ (null));
-  const settings = useSettings({ onClearRef });
+  const onHistoryRetentionChangeRef = useRef(/** @type {(() => any) | null} */ (null));
+  const settings = useSettings({ onClearRef, onHistoryRetentionChangeRef });
   return (
-    <SettingsContext.Provider value={{ ...settings, onClearRef }}>
+    <SettingsContext.Provider value={{ ...settings, onClearRef, onHistoryRetentionChangeRef }}>
       {children}
     </SettingsContext.Provider>
   );

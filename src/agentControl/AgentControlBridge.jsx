@@ -355,7 +355,7 @@ export function AgentControlBridge() {
         settings.setInterfaceSize(next.interfaceSize);
       }
       if (changed.includes("settings.historyRetentionSec")) {
-        settings.setHistoryRetentionSec(next.historyRetentionSec);
+        await settings.setHistoryRetentionSec(next.historyRetentionSec);
       }
       if (changed.includes("settings.dialogueVadEngine")) {
         settings.setDialogueVadEngine(next.dialogueVadEngine);
@@ -371,7 +371,9 @@ export function AgentControlBridge() {
           return updated;
         });
       }
-      if (effects.length > 0) {
+      // History Length already routes through its shared Live-clear operation. Other restart
+      // effects still use the general source Clear below; a combined patch must clear only once.
+      if (effects.length > 0 && !changed.includes("settings.historyRetentionSec")) {
         try {
           await onClearRef.current?.();
         } catch (error) {

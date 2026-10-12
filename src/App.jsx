@@ -497,9 +497,9 @@ function AppContent() {
     () => ({ statsMetrics, dialogueActiveNow }),
     [statsMetrics, dialogueActiveNow]
   );
-  // Live and file sessions share bounded display history, sized from the user's History Length
-  // setting. File-mode summary metrics are authoritative for the whole file; panel history is an
-  // inspectable downsampled/session view, not unlimited storage.
+  // History Length sizes only the Live rings. File analysis owns fixed display budgets and adapts
+  // its native checkpoint cadence to the complete file duration; its summary remains full-rate and
+  // authoritative for the whole file.
   const runtimeEnginesProps = {
     captureDeviceId,
     captureFormatSignature,

@@ -29,8 +29,6 @@ function serializeFileSession(session) {
     createdAt: session.createdAt ?? null,
     analyzedAt: session.analyzedAt ?? null,
     decodedFrames: Number.isFinite(session.decodedFrames) ? session.decodedFrames : 0,
-    historyTruncated: session.historyTruncated === true,
-    historyCoveredMs: Number.isFinite(session.historyCoveredMs) ? session.historyCoveredMs : null,
     analysisSettings: cloneJson(session.analysisSettings),
     error: compactError(session.error),
   };

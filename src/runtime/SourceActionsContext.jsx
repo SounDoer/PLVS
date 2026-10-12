@@ -52,7 +52,7 @@ export function SourceActionsProvider({ children }) {
   } = useMeterRuntime();
   const { selectedOffset, setSelectedOffset, clearSnapshot, raiseNotice } = useMeterDisplayState();
   const settings = useAppSettings();
-  const { onClearRef, dialogueVadEngine } = settings;
+  const { onClearRef, onHistoryRetentionChangeRef, dialogueVadEngine } = settings;
   const loudnessProfile = useLoudnessProfile();
 
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
@@ -100,6 +100,7 @@ export function SourceActionsProvider({ children }) {
     },
   });
   onClearRef.current = actions.clearAll;
+  onHistoryRetentionChangeRef.current = sourceMode === "live" ? actions.clearAll : async () => true;
   useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);
 
   return (

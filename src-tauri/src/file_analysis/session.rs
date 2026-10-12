@@ -382,7 +382,7 @@ pub(crate) fn analyze_file_core(
   let mut pipeline = if config.deterministic_spectral_time {
     MeterPipeline::new_for_deterministic_file_fixture(sample_rate, channels)
   } else {
-    MeterPipeline::new_for_file(sample_rate, channels)
+    MeterPipeline::new_for_file_with_duration(sample_rate, channels, duration_ms)
   };
   let mut last_progress_emit_frames = 0_u64;
   let mut pcm_chunker = FilePcmHistoryChunker::new(sample_rate, channels);

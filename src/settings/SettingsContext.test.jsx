@@ -36,13 +36,16 @@ describe("SettingsProvider", () => {
     expect(settingsStore.read().windowPinned).toBe(true);
   });
 
-  it("hands out one clear ref for the whole session", () => {
+  it("hands out stable clear refs for the whole session", () => {
     const { result, rerender } = renderHook(() => useAppSettings(), { wrapper });
     const first = result.current.onClearRef;
+    const historyFirst = result.current.onHistoryRetentionChangeRef;
 
     expect(first.current).toBeNull();
+    expect(historyFirst.current).toBeNull();
     rerender();
     expect(result.current.onClearRef).toBe(first);
+    expect(result.current.onHistoryRetentionChangeRef).toBe(historyFirst);
   });
 
   it("refuses the hook outside the provider", () => {

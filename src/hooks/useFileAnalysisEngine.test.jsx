@@ -2,13 +2,19 @@
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, waitFor } from "@testing-library/react";
-import { detectHistoryTruncation, useFileAnalysisEngine } from "./useFileAnalysisEngine.js";
+import {
+  FILE_LOUDNESS_HISTORY_MAX_SAMPLES,
+  FILE_VISUAL_HISTORY_MAX_SAMPLES,
+  fileHistoryCapacities,
+  useFileAnalysisEngine,
+} from "./useFileAnalysisEngine.js";
 
 vi.mock("../ipc/commands.js", () => ({
   probeFileAnalysis: vi.fn(async () => ({
     path: "C:/mix/final.wav",
     fileName: "final.wav",
     container: "wav",
+    durationMs: 1_000,
     selectedTrack: { index: 0, codec: "pcm", sampleRateHz: 48000, channels: 2 },
   })),
   startFileAnalysis: vi.fn(async ({ onFrame }) => {
@@ -100,8 +106,6 @@ function Harness({
       enabled,
       runId,
       sessionId,
-      histMaxSamples: 10,
-      visualMaxSamples: 10,
       audioRef,
       defaultSampleRateRef,
       intake,
@@ -161,6 +165,13 @@ afterEach(() => {
 });
 
 describe("useFileAnalysisEngine", () => {
+  it("keeps unknown-duration file history complete instead of silently expiring its front", () => {
+    expect(fileHistoryCapacities(undefined)).toEqual({
+      loudness: Number.MAX_SAFE_INTEGER,
+      visual: Number.MAX_SAFE_INTEGER,
+    });
+  });
+
   it("starts analysis by marking the targeted file session as analyzing", async () => {
     const setAnalyzingFileId = vi.fn();
     const updateFileSession = vi.fn();
@@ -215,6 +226,8 @@ describe("useFileAnalysisEngine", () => {
     await waitFor(() => expect(buildTauriFrameApply).toHaveBeenCalledOnce());
 
     const options = vi.mocked(buildTauriFrameApply).mock.calls[0][0];
+    expect(options.histMaxSamples).toBe(FILE_LOUDNESS_HISTORY_MAX_SAMPLES);
+    expect(options.visualMaxSamples).toBe(FILE_VISUAL_HISTORY_MAX_SAMPLES);
     expect(options.shouldDriveDisplay).toBe(shouldDriveDisplay);
     expect(options.latestAudioRef).toEqual(expect.objectContaining({ current: { peakDb: [] } }));
     expect(options.shouldPublishDisplay()).toBe(true);
@@ -260,12 +273,8 @@ describe("useFileAnalysisEngine", () => {
     expect(setAnalyzingFileId).toHaveBeenCalledTimes(1);
   });
 
-  it("completes the targeted session with summary and truncation details", async () => {
-    const intake = {
-      reset: vi.fn(),
-      getLoudnessHistory: () =>
-        Array.from({ length: 10 }, (_, i) => ({ timestampMs: 600_000 + i * 100 })),
-    };
+  it("completes the targeted session with whole-file history coverage", async () => {
+    const intake = { reset: vi.fn(), getLoudnessHistory: () => [] };
     const { updateFileSession, setAnalyzingFileId } = renderHarness({
       sessionId: "session-a",
       intake,
@@ -287,8 +296,6 @@ describe("useFileAnalysisEngine", () => {
       progress: 1,
       decodedFrames: 4096,
       summary: { durationMs: 3_600_000 },
-      historyTruncated: true,
-      historyCoveredMs: 900,
       analyzedAt: expect.any(Number),
     });
     expect(setAnalyzingFileId).toHaveBeenLastCalledWith(expect.any(Function));
@@ -377,35 +384,5 @@ describe("useFileAnalysisEngine", () => {
       "error",
       "Error: File analysis runs in the desktop app"
     );
-  });
-});
-
-function intakeWithLoudness(entries) {
-  return { getLoudnessHistory: () => entries };
-}
-
-describe("detectHistoryTruncation", () => {
-  it("flags truncation when a full ring covers less than the file duration", () => {
-    const entries = Array.from({ length: 10 }, (_, i) => ({ timestampMs: 600_000 + i * 100 }));
-    const result = detectHistoryTruncation(intakeWithLoudness(entries), 10, 3_600_000);
-    expect(result.historyTruncated).toBe(true);
-    expect(result.historyCoveredMs).toBe(900);
-  });
-
-  it("does not flag truncation when the ring is not full", () => {
-    const entries = Array.from({ length: 5 }, (_, i) => ({ timestampMs: i * 100 }));
-    expect(detectHistoryTruncation(intakeWithLoudness(entries), 10, 3_600_000)).toEqual({
-      historyTruncated: false,
-      historyCoveredMs: undefined,
-    });
-  });
-
-  it("does not flag truncation when the retained window covers the whole file", () => {
-    const entries = Array.from({ length: 10 }, (_, i) => ({ timestampMs: i * 100 }));
-    // Covered window is 900ms; a 900ms file is fully represented, so no truncation.
-    expect(detectHistoryTruncation(intakeWithLoudness(entries), 10, 900)).toEqual({
-      historyTruncated: false,
-      historyCoveredMs: undefined,
-    });
   });
 });

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Download } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatClock } from "../hooks/useSessionTimer.js";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDisplay";
 import { SHELL_SURFACE_BASE } from "@/lib/shellLayout";
@@ -88,12 +87,6 @@ export function FileAnalysisSummary({
       ) : null}
       {isComplete ? (
         <ExportReportMenu onExportReport={onExportReport} onCopyReport={onCopyReport} />
-      ) : null}
-      {isComplete && fileSession?.historyTruncated ? (
-        <p className="min-w-0 text-[length:var(--ui-fs-control)] text-[color:var(--ui-feedback-warning)]">
-          Delivery metrics cover the whole file. Scrub history is limited to the last{" "}
-          {formatClock(fileSession.historyCoveredMs ?? 0)}.
-        </p>
       ) : null}
     </section>
   );

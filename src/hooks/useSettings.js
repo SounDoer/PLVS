@@ -11,8 +11,8 @@ import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
 import { useWindowPinnedSetting } from "./useWindowPinnedSetting.js";
 
-/** @param {{ onClearRef?: { current: any } }} [options] */
-export function useSettings({ onClearRef } = {}) {
+/** @param {{ onClearRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
+export function useSettings({ onClearRef, onHistoryRetentionChangeRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { autostartEnabled, setAutostartEnabled, setAutostartEnabledForControl, autostartReady } =
     useAutostart();
@@ -21,7 +21,9 @@ export function useSettings({ onClearRef } = {}) {
   const customThemeSettings = useCustomThemeSettings({ themeSettings, setSettingsOpen });
   const closeActionSetting = useCloseActionSetting();
   const dialogueVadEngineSetting = useDialogueVadEngineSetting();
-  const historyRetentionSetting = useHistoryRetentionSetting();
+  const historyRetentionSetting = useHistoryRetentionSetting({
+    onChangeRef: onHistoryRetentionChangeRef,
+  });
   const interfaceSizeSetting = useInterfaceSizeSetting();
   const meterSettings = useMeterSettings();
   const viewSettings = useViewSettings();

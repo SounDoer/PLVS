@@ -195,7 +195,7 @@ describe("useAudioEngine", () => {
     );
   });
 
-  it("restarts and clears local meter state when history capacity changes during a running session", async () => {
+  it("updates frontend history capacity without restarting a running measurement", async () => {
     const props = {
       captureFormatSignature: "2:48000",
       histMaxSamples: 10,
@@ -219,13 +219,14 @@ describe("useAudioEngine", () => {
 
     rerender({ ...props, histMaxSamples: 20, visualMaxSamples: 20 });
 
-    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(1));
-    expect(stopAudioCapture).toHaveBeenCalledTimes(1);
-    expect(props.intake.reset).toHaveBeenCalledTimes(1);
-    expect(result.current.frameRef.current).toBe(0);
-    expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
-    expect(props.setShowClock).toHaveBeenCalledWith(true);
+    await act(async () => {});
+    expect(startAudioCapture).not.toHaveBeenCalled();
+    expect(stopAudioCapture).not.toHaveBeenCalled();
+    expect(props.intake.reset).not.toHaveBeenCalled();
+    expect(result.current.frameRef.current).toBe(12);
+    expect(props.setSelectedOffset).not.toHaveBeenCalled();
+    expect(props.resetTimer).not.toHaveBeenCalled();
+    expect(props.setShowClock).not.toHaveBeenCalled();
   });
 
   it("raises a transport notice when native capture cannot start", async () => {

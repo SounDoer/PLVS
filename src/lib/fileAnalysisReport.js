@@ -150,9 +150,7 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     },
     summary: reportSummary,
     history: {
-      retained: true,
-      truncated: fileSession.historyTruncated === true,
-      coveredMs: finiteOrNull(fileSession.historyCoveredMs),
+      completeTimeline: true,
     },
     loudnessProfile: buildLoudnessProfileBlock(options.loudnessProfile, reportSummary),
   };

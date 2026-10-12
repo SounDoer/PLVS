@@ -116,7 +116,7 @@ export function useAudioEngine({
     recoveryAvailableRef.current = true;
     recoveryPendingRef.current = false;
     recoveryRearmAtRef.current = 0;
-  }, [running, captureDeviceId, captureFormatSignature, histMaxSamples, visualMaxSamples]);
+  }, [running, captureDeviceId, captureFormatSignature]);
 
   const clearLocalMeterStateForRestart = () => {
     intake.reset();
@@ -130,8 +130,9 @@ export function useAudioEngine({
 
   /**
    * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
-   * - `running`, `captureDeviceId`, `captureFormatSignature`, and history ring capacities are the only
-   *   inputs that should restart the engine when they change.
+   * - `running`, `captureDeviceId`, and `captureFormatSignature` are the only inputs that should
+   *   restart the engine when they change. History capacities are frontend retention and update
+   *   through refs without interrupting native measurement.
    * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
    *   stable (useRef), and the effect reads `.current` on each run — listing them would
    *   not change behavior but would force redundant teardown/restart.
@@ -334,13 +335,6 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [
-    running,
-    captureDeviceId,
-    captureFormatSignature,
-    histMaxSamples,
-    visualMaxSamples,
-    recoveryRevision,
-  ]);
+  }, [running, captureDeviceId, captureFormatSignature, recoveryRevision]);
   /* eslint-enable react-hooks/exhaustive-deps, react-hooks/immutability */
 }

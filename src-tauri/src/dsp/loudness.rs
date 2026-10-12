@@ -3,7 +3,7 @@
 use super::channel_weights::standard_loudness_weights;
 use super::dialogue::DialogueIntegrator;
 use super::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
-use super::gating::{gated_integrated_lufs, gated_lra, lufs_from_mean_squares, IBL_CAP, STH_CAP};
+use super::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
 use super::meter::{Meter, PcmContext};
 use super::speech::{downmix_to_mono, SpeechDetector, VadEngineKind};
 
@@ -18,8 +18,9 @@ pub struct LoudnessMeter {
   ring: Vec<f64>,
   rh: usize,
   rc: usize,
-  ibl: Vec<[f64; 2]>,
-  sth: Vec<f64>,
+  integrated_accumulator: IntegratedAccumulator,
+  lra_accumulator: LraAccumulator,
+  last_mean_square: [f64; 2],
   tp_block: f64,
   tp_block_ch: [f64; 2],
   tp_t: usize,
@@ -58,8 +59,9 @@ impl LoudnessMeter {
       ring: vec![0.0_f64; rn * 2],
       rh: 0,
       rc: 0,
-      ibl: Vec::with_capacity(1024),
-      sth: Vec::with_capacity(1024),
+      integrated_accumulator: IntegratedAccumulator::new(),
+      lra_accumulator: LraAccumulator::new(),
+      last_mean_square: [0.0, 0.0],
       tp_block: 0.0,
       tp_block_ch: [0.0, 0.0],
       tp_t,
@@ -124,11 +126,11 @@ impl LoudnessMeter {
   }
 
   fn integrated(&self) -> f64 {
-    gated_integrated_lufs(&self.ibl)
+    self.integrated_accumulator.value()
   }
 
   fn lra(&self) -> f64 {
-    gated_lra(&self.sth)
+    self.lra_accumulator.value()
   }
 
   /// Stereo samples interleaved L,R,... Returns `Some` each ~100ms with block loudness.
@@ -159,15 +161,13 @@ impl LoudnessMeter {
       if self.bn >= self.bsz {
         let m0 = self.ba[0] / self.bn as f64;
         let m1 = self.ba[1] / self.bn as f64;
+        self.last_mean_square = [m0, m1];
         let idx = self.rh * 2;
         self.ring[idx] = m0;
         self.ring[idx + 1] = m1;
         self.rh = (self.rh + 1) % self.rn;
         self.rc = (self.rc + 1).min(self.rn);
-        self.ibl.push([m0, m1]);
-        if self.ibl.len() > IBL_CAP {
-          self.ibl.remove(0);
-        }
+        self.integrated_accumulator.push([m0, m1]);
         let mut a0 = 0.0;
         let mut a1 = 0.0;
         let mut an = 0_usize;
@@ -197,10 +197,7 @@ impl LoudnessMeter {
           f64::NEG_INFINITY
         };
         if short_term.is_finite() {
-          self.sth.push(short_term);
-          if self.sth.len() > STH_CAP {
-            self.sth.remove(0);
-          }
+          self.lra_accumulator.push(short_term);
         }
         let tp_now = if self.tp_block > 0.0 {
           20.0 * self.tp_block.log10()
@@ -291,15 +288,13 @@ impl LoudnessMeter {
       if self.bn >= self.bsz {
         let m0 = self.ba[0] / self.bn as f64;
         let m1 = 0.0_f64;
+        self.last_mean_square = [m0, m1];
         let idx = self.rh * 2;
         self.ring[idx] = m0;
         self.ring[idx + 1] = m1;
         self.rh = (self.rh + 1) % self.rn;
         self.rc = (self.rc + 1).min(self.rn);
-        self.ibl.push([m0, m1]);
-        if self.ibl.len() > IBL_CAP {
-          self.ibl.remove(0);
-        }
+        self.integrated_accumulator.push([m0, m1]);
         let mut a0 = 0.0;
         let mut a1 = 0.0;
         let mut an = 0_usize;
@@ -329,10 +324,7 @@ impl LoudnessMeter {
           f64::NEG_INFINITY
         };
         if short_term.is_finite() {
-          self.sth.push(short_term);
-          if self.sth.len() > STH_CAP {
-            self.sth.remove(0);
-          }
+          self.lra_accumulator.push(short_term);
         }
         let tp_now = if self.tp_block > 0.0 {
           20.0 * self.tp_block.log10()
@@ -468,7 +460,7 @@ impl Meter for LoudnessMeter {
     if let Some(mut b) = block {
       // A block just closed: settle its speech verdict and fold it into the dialogue readouts.
       if ctx.dialogue_gating {
-        let ms = self.ibl.last().copied().unwrap_or([0.0, 0.0]);
+        let ms = self.last_mean_square;
         let is_speech = self
           .speech
           .as_mut()

@@ -8,40 +8,33 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
-// File history rings are bounded (see HIST_MAX_SAMPLES in App.jsx). When a file is long enough to
-// fill them, scrub only reaches the most recent window. Compare the retained loudness window
-// against the authoritative file duration so the summary can warn instead of silently truncating.
-/**
- * @param {number} histMaxSamples
- */
-export function detectHistoryTruncation(intake, histMaxSamples, durationMs) {
-  const loudness = intake?.getLoudnessHistory?.() ?? [];
-  if (loudness.length < histMaxSamples || !Number.isFinite(durationMs) || durationMs <= 0) {
-    return { historyTruncated: false, historyCoveredMs: undefined };
+// File display history is independent of the Live History Length preference. The native worker
+// adapts checkpoint cadence to keep the whole known duration inside these fixed four-hour-at-base-
+// cadence budgets; longer files retain complete coverage at a coarser display resolution.
+export const FILE_LOUDNESS_HISTORY_MAX_SAMPLES = 4 * 60 * 60 * 10;
+export const FILE_VISUAL_HISTORY_MAX_SAMPLES = 4 * 60 * 60 * 25;
+
+/** @param {number | null | undefined} durationMs */
+export function fileHistoryCapacities(durationMs) {
+  // A missing container duration must not turn into silent front truncation. In that uncommon
+  // case the native worker keeps base-cadence checkpoints and the chunked frontend stores grow
+  // with the decoded programme; an actual resource failure remains explicit.
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return {
+      loudness: Number.MAX_SAFE_INTEGER,
+      visual: Number.MAX_SAFE_INTEGER,
+    };
   }
-  const first = typeof loudness.rowAt === "function" ? loudness.rowAt(0) : loudness[0];
-  const last =
-    typeof loudness.rowAt === "function"
-      ? loudness.rowAt(loudness.length - 1)
-      : loudness[loudness.length - 1];
-  // A row that arrived without a usable timestamp reads back as -Infinity from the packed slab,
-  // which `??` does not catch; subtracting it would report infinite coverage and clear the
-  // truncation flag.
-  const firstTs = Number.isFinite(first?.timestampMs) ? first.timestampMs : 0;
-  const lastTs = Number.isFinite(last?.timestampMs) ? last.timestampMs : 0;
-  const coveredMs = Math.max(0, lastTs - firstTs);
-  if (coveredMs >= durationMs * 0.98) {
-    return { historyTruncated: false, historyCoveredMs: undefined };
-  }
-  return { historyTruncated: true, historyCoveredMs: coveredMs };
+  return {
+    loudness: FILE_LOUDNESS_HISTORY_MAX_SAMPLES,
+    visual: FILE_VISUAL_HISTORY_MAX_SAMPLES,
+  };
 }
 
 export function useFileAnalysisEngine({
   enabled,
   filePath,
   runId,
-  histMaxSamples,
-  visualMaxSamples,
   audioRef,
   defaultSampleRateRef,
   intake,
@@ -117,19 +110,12 @@ export function useFileAnalysisEngine({
         unsubs.push(
           await onFileAnalysisCompleted((payload) => {
             if (payload?.path !== activePathRef.current) return;
-            const { historyTruncated, historyCoveredMs } = detectHistoryTruncation(
-              intake,
-              histMaxSamples,
-              payload.summary?.durationMs
-            );
             updateFileSession(sessionId, (current) => ({
               ...current,
               state: "complete",
               progress: 1,
               decodedFrames: payload.decodedFrames,
               summary: payload.summary,
-              historyTruncated,
-              historyCoveredMs,
               analyzedAt: Date.now(),
             }));
             setAnalyzingFileId((current) => (current === sessionId ? null : current));
@@ -149,9 +135,10 @@ export function useFileAnalysisEngine({
           })
         );
 
+        const historyCapacities = fileHistoryCapacities(metadata.durationMs);
         const { applyFrame } = buildTauriFrameApply({
-          histMaxSamples,
-          visualMaxSamples,
+          histMaxSamples: historyCapacities.loudness,
+          visualMaxSamples: historyCapacities.visual,
           intake,
           frameRef,
           defaultSampleRateRef,

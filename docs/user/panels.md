@@ -59,7 +59,8 @@ Numeric readouts you choose and reorder: Momentary, Short-term, Integrated, Mome
 Short-term Max, Loudness Range, Short-term Dynamics, Integrated Dynamics, True Peak Max, Correlation,
 Side/Mid, and the dialogue readouts described in
 [Dialogue-Gated Loudness](dialogue-gated-loudness.md). The active Loudness Profile colours readouts
-that breach its rules.
+that breach its rules. Integrated, Loudness Range, the Max readouts, and dialogue accumulations cover
+the complete current Live measurement since Start or Clear; they are not limited by History Length.
 
 ## Spectrum
 

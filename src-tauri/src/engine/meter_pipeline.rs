@@ -35,6 +35,8 @@ const BAND_GRID_RESEND_FRAMES: u32 = 64;
 /// history needs no gate: it emits one row per 100 ms loudness block.
 const HIST_EMIT_MS: u128 = 95;
 const VISUAL_EMIT_MS: u128 = 40;
+pub(crate) const FILE_LOUDNESS_HISTORY_MAX_ROWS: u64 = 4 * 60 * 60 * 10;
+pub(crate) const FILE_VISUAL_HISTORY_MAX_ROWS: u64 = 4 * 60 * 60 * 25;
 const VS_HISTORY_POINTS: usize = 100;
 
 fn instant_ago(duration: Duration) -> Instant {
@@ -119,6 +121,16 @@ fn stereo_map_visual_from_shared_output(
 struct PendingFileLoudnessCheckpoint {
   momentary: f64,
   short_term: f64,
+  integrated: f64,
+  lra: f64,
+  m_max: f64,
+  st_max: f64,
+  true_peak_l: f64,
+  true_peak_r: f64,
+  true_peak_max: f64,
+  dialogue_integrated: f64,
+  dialogue_lra: f64,
+  dialogue_percent: f64,
   timestamp_ms: u64,
   rms_db: Vec<f64>,
   waveform: HistoryWaveform,
@@ -276,8 +288,26 @@ impl MeterPipeline {
   /// Create a pipeline configured for offline file analysis. Timestamps on emitted frames and
   /// history ticks are driven by the caller-supplied media time rather than wall-clock elapsed.
   pub fn new_for_file(sample_rate: u32, channels: u16) -> Self {
+    Self::new_for_file_with_duration(sample_rate, channels, None)
+  }
+
+  pub fn new_for_file_with_duration(
+    sample_rate: u32,
+    channels: u16,
+    duration_ms: Option<u64>,
+  ) -> Self {
     let mut pipeline = Self::new(sample_rate, channels);
-    pipeline.file_timeline = Some(PipelineFileTimeline::new());
+    let cadence = |base_ms: u64, max_rows: u64| {
+      duration_ms
+        // Reserve one row for the forced end-of-file checkpoint so the frontend's bounded store
+        // keeps both ends of the programme without evicting the first checkpoint.
+        .map(|duration| duration.div_ceil(max_rows.saturating_sub(1)).max(base_ms))
+        .unwrap_or(base_ms)
+    };
+    pipeline.file_timeline = Some(PipelineFileTimeline::new(
+      cadence(HIST_EMIT_MS as u64, FILE_LOUDNESS_HISTORY_MAX_ROWS),
+      cadence(VISUAL_EMIT_MS as u64, FILE_VISUAL_HISTORY_MAX_ROWS),
+    ));
     // Pre-expire the frame emit timer so the first push can emit a frame immediately,
     // even before 16 ms of wall-clock time has elapsed (offline decoding is faster than real-time).
     pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
@@ -645,6 +675,7 @@ impl MeterPipeline {
     &mut self,
     analysis_requests: &AnalysisRequests,
   ) -> Option<AudioFramePayload> {
+    self.queue_final_file_checkpoints(analysis_requests);
     if !self
       .file_timeline
       .as_ref()
@@ -663,6 +694,58 @@ impl MeterPipeline {
       self.last_dialogue_gating,
       self.last_dialogue_vad_engine,
     )
+  }
+
+  fn queue_final_file_checkpoints(&mut self, analysis_requests: &AnalysisRequests) {
+    let Some(timeline) = self.file_timeline.as_mut() else {
+      return;
+    };
+    let final_loudness_timestamp = timeline.final_loudness_checkpoint_due();
+    let final_visual_timestamp = timeline.final_visual_checkpoint_due();
+
+    if let (Some(timestamp_ms), Some(lb)) = (final_loudness_timestamp, self.last_loudness.as_ref())
+    {
+      timeline.queue_loudness(PendingFileLoudnessCheckpoint {
+        momentary: lb.momentary,
+        short_term: lb.short_term,
+        integrated: lb.integrated,
+        lra: lb.lra,
+        m_max: self.m_max,
+        st_max: self.st_max,
+        true_peak_l: lb.true_peak_l,
+        true_peak_r: lb.true_peak_r,
+        true_peak_max: self.tp_max_db,
+        dialogue_integrated: lb.dialogue_integrated,
+        dialogue_lra: lb.dialogue_lra,
+        dialogue_percent: lb.dialogue_percent,
+        timestamp_ms,
+        rms_db: self.rms_window.db_per_channel(),
+        waveform: self.waveform.take_history(),
+      });
+    }
+
+    if let Some(timestamp_ms) = final_visual_timestamp {
+      let stereo_map_by_key = analysis_requests
+        .stereo_map
+        .iter()
+        .filter_map(|request| {
+          self
+            .shared_spectral_runtime
+            .stereo_map_output(&request.key)
+            .map(|output| {
+              (
+                request.key.clone(),
+                stereo_map_visual_from_shared_output(output),
+              )
+            })
+        })
+        .collect();
+      timeline.queue_visual(PendingFileVisualCheckpoint {
+        timestamp_ms,
+        waveform: self.waveform.take_visual(),
+        stereo_map_by_key,
+      });
+    }
   }
 
   #[allow(clippy::too_many_arguments)]
@@ -752,7 +835,7 @@ impl MeterPipeline {
         .file_timeline
         .as_mut()
         .expect("file timeline")
-        .visual_checkpoint_due(ts, VISUAL_EMIT_MS as u64);
+        .visual_checkpoint_due(ts);
       if checkpoint_due {
         let waveform = self.waveform.take_visual();
         let stereo_map_by_key = analysis_requests
@@ -923,17 +1006,17 @@ impl MeterPipeline {
             rms_db: checkpoint.rms_db,
             lufs_momentary: checkpoint.momentary,
             lufs_short_term: checkpoint.short_term,
-            lufs_m_max: self.m_max,
-            lufs_st_max: self.st_max,
-            integrated: integ,
-            lra,
-            dialogue_integrated,
-            dialogue_percent,
-            dialogue_lra,
+            lufs_m_max: checkpoint.m_max,
+            lufs_st_max: checkpoint.st_max,
+            integrated: checkpoint.integrated,
+            lra: checkpoint.lra,
+            dialogue_integrated: checkpoint.dialogue_integrated,
+            dialogue_percent: checkpoint.dialogue_percent,
+            dialogue_lra: checkpoint.dialogue_lra,
             dialogue_active_now: self.last_dialogue_gating && self.loudness.speech_now(),
-            true_peak_l: tpl,
-            true_peak_r: tpr,
-            true_peak_max_dbtp: self.tp_max_db,
+            true_peak_l: checkpoint.true_peak_l,
+            true_peak_r: checkpoint.true_peak_r,
+            true_peak_max_dbtp: checkpoint.true_peak_max,
             sample_l_db: sl,
             sample_r_db: sr,
             sample_peak_max_l: self.sample_peak_max_l,
@@ -1043,13 +1126,23 @@ impl MeterPipeline {
         .file_timeline
         .as_mut()
         .expect("file timeline")
-        .loudness_checkpoint_due(ts, HIST_EMIT_MS as u64);
+        .loudness_checkpoint_due(ts);
       if !checkpoint_due {
         return;
       }
       let checkpoint = PendingFileLoudnessCheckpoint {
         momentary: lb.momentary,
         short_term: lb.short_term,
+        integrated: lb.integrated,
+        lra: lb.lra,
+        m_max: self.m_max,
+        st_max: self.st_max,
+        true_peak_l: lb.true_peak_l,
+        true_peak_r: lb.true_peak_r,
+        true_peak_max: self.tp_max_db,
+        dialogue_integrated: lb.dialogue_integrated,
+        dialogue_lra: lb.dialogue_lra,
+        dialogue_percent: lb.dialogue_percent,
         timestamp_ms: ts,
         rms_db: self.rms_window.db_per_channel(),
         waveform: self.waveform.take_history(),
@@ -2219,6 +2312,76 @@ mod tests {
     assert_eq!(frame.loudness_hist_batch.len(), 2);
     assert_eq!(frame.loudness_hist_batch[0].waveform_max, vec![0.1, 0.1]);
     assert_eq!(frame.loudness_hist_batch[1].waveform_max, vec![0.8, 0.8]);
+  }
+
+  #[test]
+  fn file_mode_loudness_checkpoints_keep_the_values_from_their_own_time() {
+    let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
+    let requests = AnalysisRequests::default();
+
+    for (timestamp_ms, amplitude) in [(100_u64, 0.02_f32), (200, 0.8)] {
+      pipeline.last_frame_emit = Instant::now()
+        .checked_add(Duration::from_secs(60))
+        .expect("future throttle instant");
+      let pcm = vec![amplitude; 4_800 * 2];
+      assert!(pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &pcm,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          timestamp_ms,
+        )
+        .is_none());
+    }
+
+    let frame = pipeline
+      .flush_file_batch(&requests)
+      .expect("pending checkpoints");
+    let first = &frame.loudness_hist_batch[0];
+    let second = &frame.loudness_hist_batch[1];
+    assert!(first.integrated < second.integrated);
+    assert!(first.lufs_m_max < second.lufs_m_max);
+  }
+
+  #[test]
+  fn long_files_reduce_checkpoint_density_without_losing_time_coverage() {
+    let sixteen_hours_ms = 16 * 60 * 60 * 1_000;
+    let mut pipeline = MeterPipeline::new_for_file_with_duration(48_000, 2, Some(sixteen_hours_ms));
+    let requests = AnalysisRequests::default();
+    let chunk = vec![0.1_f32; 4_800 * 2];
+
+    for index in 1..=20_u64 {
+      pipeline.last_frame_emit = Instant::now()
+        .checked_add(Duration::from_secs(60))
+        .expect("future throttle instant");
+      assert!(pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &chunk,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          index * 100,
+        )
+        .is_none());
+    }
+
+    let frame = pipeline
+      .flush_file_batch(&requests)
+      .expect("pending checkpoints");
+    assert!(frame.loudness_hist_batch.len() <= 6);
+    assert!(frame.visual_hist_batch.len() <= 11);
+    assert_eq!(
+      frame.loudness_hist_batch.last().map(|row| row.timestamp_ms),
+      Some(2_000)
+    );
+    assert_eq!(
+      frame.visual_hist_batch.last().map(|row| row.timestamp_ms),
+      Some(2_000)
+    );
+    assert!(pipeline.flush_file_batch(&requests).is_none());
   }
 
   fn tone_on_channel(frames: usize, channels: usize, sr: f64, hz: f64, ch: usize) -> Vec<f32> {

@@ -248,57 +248,6 @@ describe("FileAnalysisSummary", () => {
     expect(onSelectFile).toHaveBeenCalledWith("complete");
   });
 
-  it("warns that scrub history is limited when the session was truncated", () => {
-    render(
-      <FileAnalysisSummary
-        fileSession={{
-          state: "complete",
-          fileName: "long.wav",
-          summary: { durationMs: 3_600_000, sampleRateHz: 48000, channels: 2 },
-          historyTruncated: true,
-          historyCoveredMs: 300_000,
-        }}
-        fileSessions={undefined}
-        activeFileId={undefined}
-        analyzingFileId={undefined}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-        onExportReport={undefined}
-        onCopyReport={undefined}
-      />
-    );
-
-    expect(screen.getByText(/Scrub history is limited to the last/)).toBeTruthy();
-    expect(screen.getByText(/00:05:00/)).toBeTruthy();
-  });
-
-  it("omits the truncation warning for a fully-covered session", () => {
-    render(
-      <FileAnalysisSummary
-        fileSession={{
-          state: "complete",
-          fileName: "short.wav",
-          summary: { durationMs: 5_000, sampleRateHz: 48000, channels: 2 },
-        }}
-        fileSessions={undefined}
-        activeFileId={undefined}
-        analyzingFileId={undefined}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-        onExportReport={undefined}
-        onCopyReport={undefined}
-      />
-    );
-
-    expect(screen.queryByText(/Scrub history is limited/)).toBeNull();
-  });
-
   it("marks a completed summary measured on an unrecognized layout", () => {
     render(
       <FileAnalysisSummary
