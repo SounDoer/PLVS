@@ -17,6 +17,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Website releases and independent Sharesets updates now share publication-history validation,
   preventing an older app release's Catalogue from replacing newer published content.
 
+## [0.19.2] - 2026-10-12
+
+### Added
+
+- Dock toolbar opens from an arrow at the right end of the strip, with transport, Clear, Loudness
+  Profile, module editing, and Presets laid out like the window header.
+- Theme Preview has a **Live / Snapshot** switch for comparing the two data states.
+
+### Changed
+
+- The Dock toolbar no longer appears on hover. It closes on the arrow, Escape, or a click outside
+  PLVS, and stays open while an error is showing.
+- Integrated, Loudness Range, the Max readouts, and dialogue accumulations now cover the complete
+  Live measurement since Start or Clear, independent of **History Length**.
+- Changing **History Length** clears the current Live measurement and restarts its clock while
+  capture continues. File Mode is unaffected.
+- File Mode history covers the complete file, and report results are calculated from the complete
+  decoded track rather than the display checkpoints.
+- The starter Loudness Profile is now **PLVS Default**: Momentary above −6 LUFS and Short-term above
+  −12 LUFS warn in place of the Max rules, and the Loudness Range lower bound is gone.
+- Snapshot colours come from shared History Primary and History Secondary Theme roles; Status,
+  Frequency, and Intensity palettes use one subtle History treatment.
+
+### Fixed
+
+- On Windows, the Dock strip yields to full-screen video and borderless full-screen games.
+- On macOS, Dock controls respond to the first click when switching between the strip, toolbar,
+  and editor windows.
+- Saving or importing a Preset no longer registers as a change from another PLVS instance.
+- Agent Control `loudness-profile` select, create, and delete no longer time out when the stored
+  Preset record differs from the rendered state.
+
 ## [0.19.1] - 2026-10-10
 
 ### Added
