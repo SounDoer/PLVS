@@ -346,6 +346,7 @@ footer a {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
   gap: var(--space-3);
+  border-top: 0;
 }
 .profile-preview-rules dd {
   margin: 0;
