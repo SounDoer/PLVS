@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  DEFAULT_LOUDNESS_PROFILE,
   LOUDNESS_PROFILE_OFF,
   RULEABLE_METRIC_IDS,
   createEmptyRule,
@@ -17,21 +18,34 @@ import {
 import { STATS_CANONICAL_ORDER, STATS_META } from "./statsCatalog.js";
 
 describe("createStarterProfile", () => {
-  it("creates the starter profile with an injected id", () => {
-    expect(createStarterProfile(() => "starter-id")).toEqual({
+  const canonical = {
+    id: "default",
+    name: "Default",
+    referenceLufs: -23,
+    rules: [
+      { metricId: "momentary", op: ">", value: -6, severity: "warn" },
+      { metricId: "shortTerm", op: ">", value: -12, severity: "warn" },
+      { metricId: "integrated", op: ">", value: -16, severity: "warn" },
+      { metricId: "integrated", op: "<", value: -30, severity: "warn" },
+      { metricId: "lra", op: ">", value: 18, severity: "warn" },
+      { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+    ],
+  };
+
+  it("keeps one frozen canonical built-in definition", () => {
+    expect(DEFAULT_LOUDNESS_PROFILE).toEqual(canonical);
+    expect(Object.isFrozen(DEFAULT_LOUDNESS_PROFILE)).toBe(true);
+    expect(DEFAULT_LOUDNESS_PROFILE.rules.every(Object.isFrozen)).toBe(true);
+  });
+
+  it("creates an editable starter copy with an injected local id", () => {
+    const starter = createStarterProfile(() => "starter-id");
+    expect(starter).toEqual({
+      ...canonical,
       id: "starter-id",
-      name: "Default",
-      referenceLufs: -23,
-      rules: [
-        { metricId: "integrated", op: ">", value: -16, severity: "warn" },
-        { metricId: "integrated", op: "<", value: -30, severity: "warn" },
-        { metricId: "shortTermMax", op: ">", value: -12, severity: "warn" },
-        { metricId: "momentaryMax", op: ">", value: -9, severity: "warn" },
-        { metricId: "lra", op: ">", value: 18, severity: "warn" },
-        { metricId: "lra", op: "<", value: 6, severity: "warn" },
-        { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
-      ],
     });
+    starter.rules[0].value = -5;
+    expect(DEFAULT_LOUDNESS_PROFILE.rules[0].value).toBe(-6);
   });
 });
 

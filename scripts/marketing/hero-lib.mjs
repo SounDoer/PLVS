@@ -57,7 +57,7 @@ export function validateRecipe(recipe) {
     Object.keys(c.requiredStatuses).length === 0 ||
     Object.entries(c.requiredStatuses).some(
       ([key, value]) =>
-        !["integrated", "shortTermMax", "truePeak"].includes(key) ||
+        !["integrated", "shortTerm", "truePeak"].includes(key) ||
         !["ok", "warn", "fail"].includes(value)
     )
   ) {

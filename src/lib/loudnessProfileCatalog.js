@@ -20,6 +20,24 @@
 
 import { STATS_CANONICAL_ORDER, STATS_META } from "./statsCatalog.js";
 
+/**
+ * @typedef {{
+ *   metricId: string,
+ *   op: ">" | "<",
+ *   value: number,
+ *   severity: "warn" | "fail",
+ * }} LoudnessProfileRule
+ */
+
+/**
+ * @typedef {{
+ *   id: string,
+ *   name: string,
+ *   referenceLufs: number | null,
+ *   rules: LoudnessProfileRule[],
+ * }} LoudnessProfileDocument
+ */
+
 export const LOUDNESS_PROFILE_OFF = "off";
 
 const PROFILE_PREFIX = "profile:";
@@ -47,7 +65,7 @@ const RULEABLE_METRIC_SET = new Set(RULEABLE_METRIC_IDS);
  * @param {number} value
  */
 function rule(metricId, op, value, severity = "fail") {
-  return { metricId, op, value, severity };
+  return /** @type {LoudnessProfileRule} */ ({ metricId, op, value, severity });
 }
 
 /// A target band `t ± (minus, plus)` expressed as the two breach rules it really is.
@@ -74,20 +92,36 @@ export function createEmptyRule(metricId) {
 /** @type {() => string} */
 const defaultMakeId = () => crypto.randomUUID();
 
-export function createStarterProfile(makeId = defaultMakeId) {
-  return {
-    id: makeId(),
-    name: "Default",
-    referenceLufs: -23,
-    rules: [
+export const DEFAULT_LOUDNESS_PROFILE_ID = "default";
+
+/// The canonical built-in content behind first launch, Reset PLVS to Default, deterministic
+/// previews, and the Sharesets Included listing. Runtime libraries receive editable copies with a
+/// caller-owned local ID; this frozen source must never become user state itself.
+/**
+ * @type {Readonly<Omit<LoudnessProfileDocument, "rules"> & {
+ *   rules: readonly Readonly<LoudnessProfileRule>[],
+ * }>}
+ */
+export const DEFAULT_LOUDNESS_PROFILE = Object.freeze({
+  id: DEFAULT_LOUDNESS_PROFILE_ID,
+  name: "Default",
+  referenceLufs: -23,
+  rules: Object.freeze(
+    [
+      rule("momentary", ">", -6, "warn"),
+      rule("shortTerm", ">", -12, "warn"),
       ...band("integrated", -23, 7, 7, "warn"),
-      rule("shortTermMax", ">", -12, "warn"),
-      rule("momentaryMax", ">", -9, "warn"),
       rule("lra", ">", 18, "warn"),
-      rule("lra", "<", 6, "warn"),
       rule("truePeak", ">", -1),
-    ],
-  };
+    ].map((profileRule) => Object.freeze(profileRule))
+  ),
+});
+
+export function createStarterProfile(makeId = defaultMakeId) {
+  return /** @type {LoudnessProfileDocument} */ ({
+    ...structuredClone(DEFAULT_LOUDNESS_PROFILE),
+    id: makeId(),
+  });
 }
 
 export function createProfileDraft() {

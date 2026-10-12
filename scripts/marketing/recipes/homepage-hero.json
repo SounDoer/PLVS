@@ -26,7 +26,7 @@
     "renderEndpointName": "CABLE Input",
     "historySeconds": 60,
     "candidateSeconds": [62, 66, 70, 74, 78, 82],
-    "requiredStatuses": { "integrated": "warn", "shortTermMax": "warn", "truePeak": "fail" }
+    "requiredStatuses": { "integrated": "warn", "shortTerm": "warn", "truePeak": "fail" }
   },
   "publication": {
     "webp": "website/assets/landing-hero.webp",
