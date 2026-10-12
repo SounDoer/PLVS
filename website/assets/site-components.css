@@ -355,8 +355,12 @@ footer a {
 .profile-preview-rules dd span {
   display: block;
 }
+.profile-preview-summary {
+  display: grid;
+  gap: var(--space-3);
+}
 .profile-preview-note {
-  margin: var(--space-3) 0 0;
+  margin: 0;
 }
 .profile-preview-detail {
   padding: var(--space-5);
@@ -400,6 +404,6 @@ footer a {
 .resource-card .profile-preview-rules {
   gap: var(--space-2);
 }
-.resource-card .profile-preview-note {
-  margin-top: var(--space-2);
+.resource-card .profile-preview-summary {
+  gap: var(--space-2);
 }

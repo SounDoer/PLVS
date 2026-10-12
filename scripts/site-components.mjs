@@ -69,9 +69,11 @@ export function profilePreview(profile, detail = false) {
     profile.referenceLufs == null ? "Not Set" : `${profileNumber(profile.referenceLufs)} LUFS`;
   return `<div class="profile-preview${detail ? " profile-preview-detail" : ""}" aria-label="Profile rule summary">
     <div class="profile-reference"><span>Reference Loudness</span><strong>${reference}</strong></div>
-    <dl class="profile-preview-rules">${ruleRows(profile.rules.slice(0, 3))}</dl>
-    ${profile.rules.length ? "" : `<p class="profile-preview-note">No rules configured.</p>`}
-    ${remaining ? `<p class="profile-preview-note">${detail ? `<a href="#profile-details">${remaining} more ${remaining === 1 ? "rule" : "rules"} · View Details</a>` : `${remaining} more ${remaining === 1 ? "rule" : "rules"}`}</p>` : ""}
+    <div class="profile-preview-summary">
+      <dl class="profile-preview-rules">${ruleRows(profile.rules.slice(0, 3))}</dl>
+      ${profile.rules.length ? "" : `<p class="profile-preview-note">No rules configured.</p>`}
+      ${remaining ? `<p class="profile-preview-note">${detail ? `<a href="#profile-details">${remaining} more ${remaining === 1 ? "rule" : "rules"} · View Details</a>` : `${remaining} more ${remaining === 1 ? "rule" : "rules"}`}</p>` : ""}
+    </div>
   </div>`;
 }
 
