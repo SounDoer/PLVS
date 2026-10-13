@@ -35,9 +35,16 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The dialogue benchmark fixture test decodes FLAC sources, and no Linux ffmpeg sidecar is
+      # published for `npm run ffmpeg:fetch` to stage.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       # One run: the coverage command executes the whole suite and fails on any failing test.
       - name: Test (with coverage)
         run: npm run test:coverage
+        env:
+          PLVS_FFMPEG: ffmpeg
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
