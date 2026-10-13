@@ -69,6 +69,9 @@ describe("SourceActionsProvider", () => {
 
     expect(dialogue.enabled).toBe(result.current.dialogueGating);
     expect(dialogue.engine === null).toBe(!result.current.dialogueGating);
+    expect(dialogue.multichannelFusion).toBe(
+      result.current.dialogueGating ? "center-priority-fallback-v1" : null
+    );
   });
 
   it("refuses the hook outside the provider", () => {

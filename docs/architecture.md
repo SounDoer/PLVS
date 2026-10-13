@@ -266,6 +266,15 @@ valid duration without a loudness gate. Dialogue Range forms masked three-second
 one-second hop and computes an exact duration-weighted P95−P10 without the EBU LRA relative gate.
 The detector never replaces programme audio in the loudness path.
 
+Multichannel detection uses the versioned `center-priority-fallback-v1` policy. Each non-LFE
+channel has independent detector state, so opposite phase and an LFE-heavy mix cannot cancel or
+dilute the detector input. In a layout with a known centre, centre speech is accepted directly;
+speech on another channel is accepted only when the strongest other channel carries more than
+twice the centre's block energy. A layout without a centre uses the maximum of its independent
+non-LFE decisions. Model inference and fusion run in the meter pipeline after capture delivery,
+never in the realtime capture callback. Reports preserve the policy identity next to the engine
+identity.
+
 Dialogue collection is enabled independently of panel visibility. A detector or method change
 uses the normal coherent Live Clear path so Programme Loudness and dialogue-derived metrics keep a
 common session scope. File analysis snapshots its dialogue settings at start. Reports carry a

@@ -29,15 +29,15 @@
 
 ## 3. Separate VAD evidence, fusion, and block alignment
 
-- [ ] Replace the unconditional all-channel arithmetic average with a detector-input layer that
+- [x] Replace the unconditional all-channel arithmetic average with a detector-input layer that
       receives configured channel roles and excludes LFE.
-- [ ] Preserve per-channel evidence through a dedicated fusion policy instead of hiding fusion in an
+- [x] Preserve per-channel evidence through a dedicated fusion policy instead of hiding fusion in an
       engine adapter.
 - [ ] Normalize engine-native frames, probabilities, readiness, and errors into time-aligned evidence
       without treating scores from different engines as interchangeable.
 - [ ] Align fused decisions to the exact 100 ms loudness-block timeline and test boundary conditions,
       resampler delay, partial frames, resets, and gaps.
-- [ ] Keep inference and any allocations, locks, model calls, or syscalls off the realtime audio
+- [x] Keep inference and any allocations, locks, model calls, or syscalls off the realtime audio
       callback.
 
 ## 4. Implement the metric core

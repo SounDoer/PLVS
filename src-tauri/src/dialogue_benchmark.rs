@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::dsp::dialogue::DialogueIntegrator;
 use crate::dsp::filters::KWeightMono;
 use crate::dsp::gating::IntegratedAccumulator;
-use crate::dsp::speech::{SpeechDetector, VadEngineKind};
+use crate::dsp::speech::{fuse_center_priority, SpeechDetector, VadEngineKind};
 
 const BLOCK_MS: usize = 100;
 const SILERO_V5_SHA256: &str = "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f";
@@ -339,25 +339,15 @@ fn detect_blocks(
             detector.take_block_decision()
           })
           .collect();
-        if decisions.iter().any(Option::is_none) {
-          None
-        } else if matches!(fusion, FusionPolicy::IndependentNonLfeMaxV1) || centre.is_none() {
-          Some(decisions.iter().any(|decision| decision == &Some(true)))
-        } else {
-          let centre = centre.expect("checked above");
-          let centre_active = decisions[centre] == Some(true);
-          let strongest_other = energies
+        match fusion {
+          FusionPolicy::IndependentNonLfeMaxV1 => decisions
             .iter()
-            .enumerate()
-            .filter(|(index, _)| *index != centre)
-            .map(|(_, energy)| *energy)
-            .fold(0.0_f64, f64::max);
-          let fallback = strongest_other > energies[centre] * 2.0
-            && decisions
-              .iter()
-              .enumerate()
-              .any(|(index, decision)| index != centre && decision == &Some(true));
-          Some(centre_active || fallback)
+            .all(Option::is_some)
+            .then(|| decisions.contains(&Some(true))),
+          FusionPolicy::CenterPriorityFallbackV1 => {
+            fuse_center_priority(&decisions, &energies, centre)
+          }
+          _ => unreachable!("handled by the outer fusion match"),
         }
       }
     };

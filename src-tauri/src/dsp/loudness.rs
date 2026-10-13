@@ -5,7 +5,7 @@ use super::dialogue::DialogueIntegrator;
 use super::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use super::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
 use super::meter::{Meter, PcmContext};
-use super::speech::{downmix_to_mono, SpeechDetector, VadEngineKind};
+use super::speech::{MultichannelSpeechDetector, VadEngineKind};
 
 pub struct LoudnessMeter {
   sample_rate: f64,
@@ -33,7 +33,7 @@ pub struct LoudnessMeter {
   pending_block: Option<LoudnessBlock>,
   /// Speech detector for dialogue gating; lazily built on first gated push (`None` until then,
   /// or if model init fails).
-  speech: Option<SpeechDetector>,
+  speech: Option<MultichannelSpeechDetector>,
   speech_kind: VadEngineKind,
   /// Dialogue-gated loudness accumulator.
   dialogue: DialogueIntegrator,
@@ -436,11 +436,15 @@ impl Meter for LoudnessMeter {
         self.speech_now = false;
       }
       if self.speech.is_none() {
-        self.speech = SpeechDetector::new_with_engine(self.sample_rate, self.speech_kind);
+        self.speech = MultichannelSpeechDetector::new(
+          self.sample_rate,
+          self.speech_kind,
+          ctx.channels,
+          ctx.dialogue_channel_roles,
+        );
       }
       if let Some(det) = self.speech.as_mut() {
-        let mono = downmix_to_mono(ctx.interleaved, ctx.channels);
-        det.push_mono(&mono);
+        det.push_interleaved(ctx.interleaved, ctx.channels);
       }
     }
 
@@ -550,6 +554,7 @@ mod tests {
       channels,
       now_sec: 0.0,
       loudness_weights: None,
+      dialogue_channel_roles: None,
       vectorscope_pair: (0, 1),
       spectrum_channel: SpectrumChannelSel::default(),
       spectrum_view: crate::dsp::SpectrumView::default(),

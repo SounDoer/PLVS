@@ -775,6 +775,7 @@ mod tests {
         channels: 2,
         now_sec: 1.0,
         loudness_weights: None,
+        dialogue_channel_roles: None,
         vectorscope_pair: (0, 1),
         spectrum_channel: SpectrumChannelSel::Pair(0, 1),
         spectrum_view: SpectrumView::Ms,

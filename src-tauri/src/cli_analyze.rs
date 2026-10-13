@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::dsp::speech::VadEngineKind;
+use crate::dsp::speech::{VadEngineKind, MULTICHANNEL_FUSION_POLICY};
 use crate::file_analysis::session::analyze_file_track_with_dialogue_and_layout;
 use crate::file_analysis::summary::{
   analyze_file_track_to_summary_with_layout, FileAnalysisSummaryRun,
@@ -275,7 +275,7 @@ fn success_report(
         engine: dialogue_engine,
         metric_algorithm_version: dialogue_enabled.then_some(1),
         engine_configuration: dialogue_enabled.then(|| "default".to_string()),
-        multichannel_fusion: dialogue_enabled.then(|| "average-all-channels-v1".to_string()),
+        multichannel_fusion: dialogue_enabled.then(|| MULTICHANNEL_FUSION_POLICY.to_string()),
       },
       reference_lufs: options.dialogue.reference_lufs,
     },
@@ -634,6 +634,10 @@ mod tests {
     assert_eq!(json["analysis"]["referenceLufs"], -16.0);
     assert_eq!(json["schemaVersion"], 2);
     assert_eq!(json["analysis"]["dialogue"]["metricAlgorithmVersion"], 1);
+    assert_eq!(
+      json["analysis"]["dialogue"]["multichannelFusion"],
+      MULTICHANNEL_FUSION_POLICY
+    );
     assert_eq!(json["summary"]["dialogueLoudnessLufs"], -18.0);
     assert_eq!(json["summary"]["loudnessToDialogueRatioLu"], 2.0);
     assert_eq!(json["summary"]["dialogueOffsetFromReferenceLu"], -2.0);

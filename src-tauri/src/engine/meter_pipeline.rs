@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
+use crate::dsp::channel_layouts::first_layout_for_channel_count;
 use crate::dsp::channel_weights::standard_layout_name;
 use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::peak::{
@@ -468,6 +469,7 @@ impl MeterPipeline {
         channels: ch,
         now_sec,
         loudness_weights: selected_weights.clone(),
+        dialogue_channel_roles: None,
         vectorscope_pair: (request.x, request.y),
         spectrum_channel: SpectrumChannelSel::default(),
         spectrum_view: SpectrumView::default(),
@@ -770,6 +772,13 @@ impl MeterPipeline {
   ) -> Option<AudioFramePayload> {
     let now_sec = self.spectral_now_sec();
     let ch = self.channels.max(1);
+    let dialogue_channel_roles = channel_selection
+      .as_ref()
+      .filter(|selection| selection.roles.len() == ch as usize)
+      .map(|selection| selection.roles.as_slice())
+      .or_else(|| {
+        first_layout_for_channel_count(ch as usize).map(|layout| layout.roles.as_slice())
+      });
     let (pair_x, pair_y) = vectorscope_summary
       .map(|(x, y, _, _)| (x, y))
       .unwrap_or((0, 1));
@@ -806,6 +815,7 @@ impl MeterPipeline {
       channels: ch,
       now_sec,
       loudness_weights: selected_weights,
+      dialogue_channel_roles,
       vectorscope_pair: (pair_x, pair_y),
       spectrum_channel: SpectrumChannelSel::default(),
       spectrum_view: SpectrumView::default(),

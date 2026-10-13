@@ -70,7 +70,7 @@ export function SourceActionsProvider({ children }) {
         enabled: dialogueGating,
         engine: dialogueGating ? settings.dialogueVadEngine : null,
         engineConfiguration: dialogueGating ? "default" : null,
-        multichannelFusion: dialogueGating ? "average-all-channels-v1" : null,
+        multichannelFusion: dialogueGating ? "center-priority-fallback-v1" : null,
       },
     }),
     [dialogueGating, settings.dialogueVadEngine]

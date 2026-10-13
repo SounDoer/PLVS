@@ -1,7 +1,7 @@
 //! Speech-activity sidechain for dialogue-gated loudness.
 //!
-//! Downmixes the input to mono, resamples to 16 kHz, runs the Silero VAD over fixed
-//! 512-sample chunks, and reports a per-100ms-block speech decision by majority vote.
+//! Resamples detector inputs to 16 kHz, normalizes engine-native evidence to 100 ms blocks, and
+//! fuses per-channel decisions without arithmetic downmix cancellation.
 
 use firered_vad::Vad as FireRedVad;
 use rubato::audioadapter_buffers::direct::InterleavedSlice;
@@ -21,6 +21,12 @@ const VAD_CHUNK: usize = 512;
 const RESAMPLER_IN_CHUNK: usize = 1024;
 /// Speech probability at/above which a chunk counts as speech.
 const SPEECH_THRESHOLD: f32 = 0.5;
+
+/// Versioned identity written into reports whenever the dialogue sidechain is enabled.
+pub const MULTICHANNEL_FUSION_POLICY: &str = "center-priority-fallback-v1";
+/// A non-centre channel may override an inactive centre only when it carries materially more
+/// energy. This keeps a routed centre authoritative while still supporting off-centre dialogue.
+const CENTER_FALLBACK_ENERGY_RATIO: f64 = 2.0;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -152,6 +158,7 @@ impl DialogueVadEngine for FireRedVadEngine {
 }
 
 /// Average all channels of an interleaved frame buffer into a mono signal.
+#[cfg(test)]
 pub fn downmix_to_mono(interleaved: &[f32], channels: u16) -> Vec<f32> {
   let ch = channels.max(1) as usize;
   if ch == 1 {
@@ -302,6 +309,136 @@ impl SpeechDetector {
   }
 }
 
+/// Fuse time-aligned per-channel VAD decisions for one loudness block.
+///
+/// LFE has already been removed by [`MultichannelSpeechDetector`]. With a known centre, centre
+/// speech wins directly; off-centre speech is accepted only when the strongest other channel has
+/// more than twice the centre energy. Layouts without a centre use an independent-channel maximum.
+pub(crate) fn fuse_center_priority(
+  decisions: &[Option<bool>],
+  energies: &[f64],
+  center_position: Option<usize>,
+) -> Option<bool> {
+  if decisions.is_empty()
+    || decisions.len() != energies.len()
+    || decisions.iter().any(Option::is_none)
+  {
+    return None;
+  }
+  let Some(center) = center_position.filter(|index| *index < decisions.len()) else {
+    return Some(decisions.contains(&Some(true)));
+  };
+  if decisions[center] == Some(true) {
+    return Some(true);
+  }
+  let strongest_other = energies
+    .iter()
+    .enumerate()
+    .filter(|(index, _)| *index != center)
+    .map(|(_, energy)| *energy)
+    .fold(0.0_f64, f64::max);
+  let other_speech = decisions
+    .iter()
+    .enumerate()
+    .any(|(index, decision)| index != center && *decision == Some(true));
+  Some(other_speech && strongest_other > energies[center] * CENTER_FALLBACK_ENERGY_RATIO)
+}
+
+/// Production multichannel dialogue detector. Every eligible channel keeps an independent VAD
+/// state; LFE is excluded before inference, so phase cancellation and LFE dilution cannot hide
+/// dialogue. The owner resets this object coherently when the engine or resolved roles change.
+pub struct MultichannelSpeechDetector {
+  source_channels: usize,
+  channel_indices: Vec<usize>,
+  detectors: Vec<SpeechDetector>,
+  block_energies: Vec<f64>,
+  center_position: Option<usize>,
+  invalid_input: bool,
+}
+
+impl MultichannelSpeechDetector {
+  pub fn new(
+    source_rate: f64,
+    kind: VadEngineKind,
+    channels: u16,
+    roles: Option<&[String]>,
+  ) -> Option<Self> {
+    let source_channels = channels.max(1) as usize;
+    let roles = roles.filter(|roles| roles.len() == source_channels);
+    let channel_indices: Vec<usize> = (0..source_channels)
+      .filter(|index| roles.is_none_or(|roles| roles[*index] != "LFE"))
+      .collect();
+    if channel_indices.is_empty() {
+      return None;
+    }
+    let center_position = roles.and_then(|roles| {
+      channel_indices
+        .iter()
+        .position(|index| roles[*index] == "C")
+    });
+    let detectors = (0..channel_indices.len())
+      .map(|_| SpeechDetector::new_with_engine(source_rate, kind))
+      .collect::<Option<Vec<_>>>()?;
+    Some(Self {
+      source_channels,
+      block_energies: vec![0.0; channel_indices.len()],
+      channel_indices,
+      detectors,
+      center_position,
+      invalid_input: false,
+    })
+  }
+
+  pub fn push_interleaved(&mut self, interleaved: &[f32], channels: u16) {
+    let channels = channels.max(1) as usize;
+    if channels != self.source_channels || !interleaved.len().is_multiple_of(channels) {
+      self.invalid_input = true;
+      return;
+    }
+    let frames = interleaved.len() / channels;
+    for ((channel_index, detector), energy) in self
+      .channel_indices
+      .iter()
+      .zip(&mut self.detectors)
+      .zip(&mut self.block_energies)
+    {
+      let mut mono = Vec::with_capacity(frames);
+      for frame in interleaved.chunks_exact(channels) {
+        let sample = frame[*channel_index];
+        mono.push(sample);
+        *energy += sample as f64 * sample as f64;
+      }
+      detector.push_mono(&mono);
+    }
+  }
+
+  pub fn take_block_decision(&mut self) -> Option<bool> {
+    if self.invalid_input {
+      return None;
+    }
+    let decisions: Vec<Option<bool>> = self
+      .detectors
+      .iter_mut()
+      .map(SpeechDetector::take_block_decision)
+      .collect();
+    let decision = fuse_center_priority(&decisions, &self.block_energies, self.center_position);
+    self.block_energies.fill(0.0);
+    decision
+  }
+
+  pub fn has_failed(&self) -> bool {
+    self.invalid_input || self.detectors.iter().any(SpeechDetector::has_failed)
+  }
+
+  pub fn reset(&mut self) {
+    for detector in &mut self.detectors {
+      detector.reset();
+    }
+    self.block_energies.fill(0.0);
+    self.invalid_input = false;
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -312,6 +449,68 @@ mod tests {
     let interleaved = [1.0_f32, 0.0, 0.0, 1.0];
     let mono = downmix_to_mono(&interleaved, 2);
     assert_eq!(mono, vec![0.5, 0.5]);
+  }
+
+  #[test]
+  fn fusion_uses_independent_max_without_a_center() {
+    assert_eq!(
+      fuse_center_priority(&[Some(false), Some(true)], &[1.0, 0.2], None),
+      Some(true)
+    );
+  }
+
+  #[test]
+  fn fusion_keeps_center_authoritative_unless_another_channel_is_materially_stronger() {
+    assert_eq!(
+      fuse_center_priority(
+        &[Some(true), Some(false), Some(true)],
+        &[0.1, 1.0, 0.1],
+        Some(1)
+      ),
+      Some(false)
+    );
+    assert_eq!(
+      fuse_center_priority(
+        &[Some(true), Some(false), Some(false)],
+        &[2.01, 1.0, 0.0],
+        Some(1)
+      ),
+      Some(true)
+    );
+    assert_eq!(
+      fuse_center_priority(
+        &[Some(false), Some(true), Some(false)],
+        &[100.0, 0.01, 100.0],
+        Some(1)
+      ),
+      Some(true)
+    );
+  }
+
+  #[test]
+  fn fusion_waits_for_every_independent_detector() {
+    assert_eq!(
+      fuse_center_priority(&[Some(true), None], &[1.0, 1.0], None),
+      None
+    );
+  }
+
+  #[test]
+  fn multichannel_detector_excludes_lfe_and_finds_center() {
+    let roles = ["L", "R", "C", "LFE", "Ls", "Rs"].map(str::to_string);
+    let detector =
+      MultichannelSpeechDetector::new(48_000.0, VadEngineKind::Silero, 6, Some(&roles))
+        .expect("detector builds");
+    assert_eq!(detector.channel_indices, vec![0, 1, 2, 4, 5]);
+    assert_eq!(detector.center_position, Some(2));
+  }
+
+  #[test]
+  fn multichannel_detector_rejects_an_lfe_only_selection() {
+    let roles = ["LFE".to_string()];
+    assert!(
+      MultichannelSpeechDetector::new(48_000.0, VadEngineKind::Silero, 1, Some(&roles)).is_none()
+    );
   }
 
   #[test]

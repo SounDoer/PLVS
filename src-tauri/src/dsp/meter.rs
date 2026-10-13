@@ -10,6 +10,9 @@ pub struct PcmContext<'a> {
   #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
   pub now_sec: f64,
   pub loudness_weights: Option<Vec<f64>>,
+  /// Resolved channel roles for dialogue detection. `None` means the layout is unknown, so the
+  /// dialogue sidechain treats every channel independently and cannot apply centre priority.
+  pub dialogue_channel_roles: Option<&'a [String]>,
   pub vectorscope_pair: (u16, u16),
   #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
   pub spectrum_channel: SpectrumChannelSel,

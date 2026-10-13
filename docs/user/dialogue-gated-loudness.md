@@ -11,6 +11,12 @@ Dialogue Detection is on by default and runs throughout Live and File measuremen
 a dialogue row is currently visible in Stats. Adding or hiding a row changes only the display; it
 does not restart the measurement.
 
+For multichannel audio, PLVS analyzes non-LFE channels independently instead of averaging them.
+When the channel layout has a centre channel, detected centre speech takes priority; substantially
+stronger speech routed elsewhere can still be included. With no known centre channel, speech on
+any non-LFE channel can be included. Choose the correct channel layout or channel roles so PLVS can
+apply this routing as intended.
+
 ## Readouts
 
 - **Dialogue Loudness (DL)** — BS.1770 loudness over detected dialogue, with the −70 LUFS absolute
