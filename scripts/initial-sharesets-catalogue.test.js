@@ -37,6 +37,7 @@ const INITIAL_LISTINGS = [
   "listings/default-preset.json",
   "listings/multichannel-monitoring.json",
   "listings/stereo-field-check.json",
+  "listings/spectral-inspection.json",
 ];
 
 let launchSource;
@@ -80,6 +81,7 @@ describe("initial Sharesets Catalogue", () => {
       "phosphor-field",
       "plvs-dark",
       "plvs-light",
+      "spectral-inspection",
       "spotify",
       "stereo-field-check",
       "studio-daylight",
@@ -216,6 +218,27 @@ describe("initial Sharesets Catalogue", () => {
     expect(preset.title).toBe("Stereo Field Check");
     expect(preset.releases[0].metadata.facets).toMatchObject({
       moduleIds: ["spectrum", "stats", "stereo-map", "vectorscope"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 4 }),
+      }),
+    ]);
+  });
+
+  it("publishes the focused Spectral Inspection Preset", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(
+      ({ document }) => document.id === "spectral-inspection"
+    ).document;
+
+    expect(preset.title).toBe("Spectral Inspection");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["spectrogram", "spectrum", "waveform"],
       dependencyIds: [],
       optionalCapabilities: [],
     });

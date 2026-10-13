@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "spectral-inspection",
+  "slug": "spectral-inspection",
+  "type": "presets",
+  "classification": "official",
+  "title": "Spectral Inspection",
+  "summary": "A focused workspace for tonal balance, spectral history, and low-end detail.",
+  "descriptionMarkdown": "Inspect the first available channel pair across complementary frequency and time views. Full Spectrum keeps a decaying maximum trace for overall tonal balance, while Low End Detail isolates 20–250 Hz with Max Hold and Peak Labels. Spectrum History and a frequency-coloured Waveform align persistent energy with programme structure. The Preset keeps Loudness Profile and Dock off and does not imply a universal target curve.",
+  "tags": ["Spectrum", "Spectrogram", "Low End", "Tonal Balance", "Analysis"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-13",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/spectral-inspection-v1.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace",
+          "path": "previews/spectral-inspection/v1/preset-workspace.png"
+        }
+      ]
+    }
+  ]
+}

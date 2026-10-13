@@ -25,6 +25,7 @@
     "listings/mono-light.json",
     "listings/default-preset.json",
     "listings/multichannel-monitoring.json",
-    "listings/stereo-field-check.json"
+    "listings/stereo-field-check.json",
+    "listings/spectral-inspection.json"
   ]
 }
