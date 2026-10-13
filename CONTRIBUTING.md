@@ -162,16 +162,13 @@ does not commit or deploy. Serve the review directory's `site/` as a static webs
 review is useful; for example, `npx vite preview --outDir path/to/review/site`.
 
 The baseline must be the exact content commit currently named by the deployed
-`/sharesets/publication.json`, not an arbitrary old checkout. For the first publication, use the
-empty Catalogue at v0.19.0's immutable commit
-`a953766217e6ebeceac264ba86e10f4b69eeabcd`. Keep both checkouts unchanged while curating so the byte
-comparison remains meaningful.
+`/sharesets/publication.json`, not an arbitrary old checkout. Keep both checkouts unchanged while
+curating so the byte comparison remains meaningful.
 
 To publish after review, commit the candidate content, wait for the normal merge gate, then dispatch
 `.github/workflows/deploy-sharesets.yml` with that exact commit SHA as `content_ref`. The workflow
 repeats source and immutable-history validation against the deployed marker before GitHub Pages is
-changed. The first public Catalogue instead ships through the normal PLVS Release workflow so the
-navigation and initial content appear together.
+changed.
 
 Both deployment entry points call `publish-site.yml`, which holds the shared Pages lock from live
 baseline discovery through deployment, validates the complete immutable history, and writes the
@@ -179,18 +176,13 @@ candidate's exact content commit into the same Pages artifact as the website. A 
 whose content is older than an independent Sharesets update is rejected: synchronize those content
 changes into the release tree, then retry. Never bypass validation by deleting the marker.
 
-The first Sharesets launch needs one explicit initialization. After the app Release is published,
-dispatch `deploy-website.yml` with that released tag as `ref` and `bootstrap_sharesets=true`.
-Automatic release-triggered deployment uses the safe default (`false`) and stops if no marker exists.
-Bootstrap checks that the legacy live Catalogue, still served at `/community/`, is empty and uses
-the pinned empty commit and its `community/catalogue` directory as the baseline; it does not permit
-a populated markerless site. All later runs leave bootstrap off. An unreadable,
-malformed, foreign-repository, or missing marker stops publication. Recover a lost marker from the
-last successful Pages artifact and its exact content commit before trying again. Older website
-tags without the publication helper cannot be deployed through this workflow.
+An unreadable, malformed, foreign-repository, or missing marker stops publication. Recover a lost
+marker from the last successful Pages artifact and its exact content commit before trying again.
+Website tags older than v0.20.0, the first Sharesets publication, cannot be deployed through this
+workflow.
 
-Before first publication, confirm the Listing release dates and regenerate any previews affected by
-subsequent UI changes. Once published, those dates and preview bytes become immutable.
+Before publishing a new Release, confirm its date and regenerate any previews affected by UI changes
+made since they were generated. Once published, the date and preview bytes are immutable.
 
 To withdraw a bad Release, leave its artifact, previews, paths, notes, and date untouched; change
 only `status` to `withdrawn` and add `withdrawalReason`, then run the dry run and `--write` review

@@ -1,11 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  SHARESETS_BOOTSTRAP_CATALOGUE,
-  SHARESETS_BOOTSTRAP_COMMIT,
-  SHARESETS_CATALOGUE,
-  publicationMarker,
-  resolvePublishedSharesets,
-} from "./sharesets-publication.mjs";
+import { publicationMarker, resolvePublishedSharesets } from "./sharesets-publication.mjs";
 
 const repository = "SounDoer/PLVS";
 const commitSha = "a".repeat(40);
@@ -19,8 +13,6 @@ describe("Sharesets publication identity", () => {
       schemaVersion: 1,
       repository,
       commitSha,
-      cataloguePath: SHARESETS_CATALOGUE,
-      bootstrap: false,
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -43,64 +35,21 @@ describe("Sharesets publication identity", () => {
     }
   );
 
-  it("requires explicit first-publication bootstrap for a missing marker", async () => {
+  it("refuses a missing marker instead of treating the Catalogue as empty", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 404 }));
     await expect(resolvePublishedSharesets({ ...options, fetchImpl })).rejects.toThrow(
-      "first empty-site"
+      "recover its exact baseline"
     );
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it("bootstraps only the known legacy empty site to its immutable empty commit", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("", { status: 404 }))
-      .mockResolvedValueOnce(new Response("<h2>Nothing published yet</h2>"));
-    await expect(
-      resolvePublishedSharesets({ ...options, allowBootstrap: true, fetchImpl })
-    ).resolves.toMatchObject({
-      commitSha: SHARESETS_BOOTSTRAP_COMMIT,
-      cataloguePath: SHARESETS_BOOTSTRAP_CATALOGUE,
-      bootstrap: true,
-    });
-    expect(fetchImpl).toHaveBeenLastCalledWith(
-      expect.stringContaining("plvs.soundoer.com/community/?"),
-      expect.anything()
+  it.each([403, 500, 502])("fails closed on HTTP %s", async (status) => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status }));
+    await expect(resolvePublishedSharesets({ ...options, fetchImpl })).rejects.toThrow(
+      `HTTP ${status}`
     );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
-
-  it("refuses bootstrap once the legacy Catalogue page is gone", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 404 }));
-    await expect(
-      resolvePublishedSharesets({ ...options, allowBootstrap: true, fetchImpl })
-    ).rejects.toThrow("Cannot verify");
-  });
-
-  it.each([
-    "Unrelated page",
-    "Nothing published yet <section data-catalogue-grid>",
-    "Nothing published yet /sharesets/files/item",
-    "Nothing published yet /community/files/item",
-  ])("refuses nonempty or unrecognized markerless sites: %s", async (html) => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("", { status: 404 }))
-      .mockResolvedValueOnce(new Response(html));
-    await expect(
-      resolvePublishedSharesets({ ...options, allowBootstrap: true, fetchImpl })
-    ).rejects.toThrow("recover its exact baseline");
-  });
-
-  it.each([403, 500, 502])(
-    "fails closed on HTTP %s even when bootstrap is requested",
-    async (status) => {
-      const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status }));
-      await expect(
-        resolvePublishedSharesets({ ...options, allowBootstrap: true, fetchImpl })
-      ).rejects.toThrow(`HTTP ${status}`);
-      expect(fetchImpl).toHaveBeenCalledTimes(1);
-    }
-  );
 
   it("fails closed on network and malformed JSON responses", async () => {
     await expect(

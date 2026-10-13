@@ -9,7 +9,7 @@ an explicit content-directory argument, so this tree can move to a separate repo
 
 `catalogue/manifest.json` contains the curated Sharesets catalogue. Previews are generated from the
 current production components with the pinned renderer. An empty manifest remains valid for
-fixtures and bootstrap; it must never replace a Catalogue with published history.
+fixtures; it must never replace a Catalogue with published history.
 Real content is added only through an explicit maintainer-curated publication workflow. The current
 project does not accept or advertise public submissions.
 
@@ -59,6 +59,5 @@ from the latest stable Release tag. Its content checkout is isolated from the si
 path can later point at a dedicated repository without changing the validator or builder commands.
 Both entry points call the same `publish-site.yml` workflow. The deployed Catalogue records its
 exact content commit in `sharesets/publication.json`; every deployment reads that marker and refuses
-any candidate that rewrites its published history. See CONTRIBUTING.md for first-publication
-bootstrap and recovery. Content-only additions must be brought back into the next app release's
+any candidate that rewrites its published history. See CONTRIBUTING.md for recovery. Content-only additions must be brought back into the next app release's
 content tree before that release can replace the website.
