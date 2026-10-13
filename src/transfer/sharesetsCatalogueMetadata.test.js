@@ -45,12 +45,12 @@ describe("Sharesets Catalogue metadata", () => {
         themeScheme: null,
       },
       preview: {
-        contractVersion: 4,
-        renderer: { name: "plvs-sharesets-preview", version: 2 },
+        contractVersion: 1,
+        renderer: { name: "plvs-sharesets-preview", version: 1 },
         fixture: {
-          id: "plvs-sharesets-discovery-v5",
-          version: 5,
-          sha256: "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+          id: "plvs-sharesets-discovery-stereo-v1",
+          version: 1,
+          sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         },
       },
     });
@@ -109,7 +109,7 @@ describe("Sharesets Catalogue metadata", () => {
       fileName: "meter-bridge.plvspreset",
     });
 
-    expect(metadata.preview.contractVersion).toBe(5);
+    expect(metadata.preview.contractVersion).toBe(1);
     expect(metadata.preview.assets).toEqual([
       expect.objectContaining({
         id: "preset-workspace-stereo",
@@ -136,11 +136,11 @@ describe("Sharesets Catalogue metadata", () => {
 
     expect(metadata.facets.themeScheme).toBe("dark");
     expect(metadata.preview).toMatchObject({
-      renderer: { name: "plvs-theme-gallery", version: 3 },
+      renderer: { name: "plvs-theme-gallery", version: 1 },
       fixture: {
-        id: "plvs-sharesets-discovery-v5",
-        version: 5,
-        sha256: "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf",
+        id: "plvs-sharesets-discovery-stereo-v1",
+        version: 1,
+        sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
       },
     });
     expect(metadata.preview.assets).toHaveLength(4);

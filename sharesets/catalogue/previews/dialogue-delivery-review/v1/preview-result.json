@@ -2,7 +2,7 @@
   "resultVersion": 1,
   "renderer": {
     "name": "plvs-sharesets-preview",
-    "version": 2
+    "version": 1
   },
   "contentHash": "sha256:e780ed90b00bb8d310c55125d7eb34667aca5ebf89f46177b458f3e4424b1bd0",
   "fixtureHash": "sha256:2b2774eddef06d5e1a36c13e8e209be8a417fbdda8a137061fe8c72e2069da65",
@@ -17,8 +17,8 @@
       "sha256": "sha256:c226b000896e7cb8e44066753fcc71b833446a5b28ef364c6ed1727a8ee7f1e0",
       "source": {
         "generator": "plvs-sharesets-preview",
-        "contractVersion": 5,
-        "rendererVersion": 2,
+        "contractVersion": 1,
+        "rendererVersion": 1,
         "itemContentHash": "sha256:e780ed90b00bb8d310c55125d7eb34667aca5ebf89f46177b458f3e4424b1bd0",
         "fixtureHash": "sha256:2b2774eddef06d5e1a36c13e8e209be8a417fbdda8a137061fe8c72e2069da65"
       }
@@ -33,8 +33,8 @@
       "sha256": "sha256:381651ac2744dc24de48b46137d7cb5ed56d1865f2db16383d4a6e57605ba125",
       "source": {
         "generator": "plvs-sharesets-preview",
-        "contractVersion": 5,
-        "rendererVersion": 2,
+        "contractVersion": 1,
+        "rendererVersion": 1,
         "itemContentHash": "sha256:e780ed90b00bb8d310c55125d7eb34667aca5ebf89f46177b458f3e4424b1bd0",
         "fixtureHash": "sha256:711b9ea2db6a31ce518326b436dca3208c872e71032936199e19c1e5f57c8df6"
       }

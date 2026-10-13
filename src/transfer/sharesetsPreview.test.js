@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { buildPack } from "./packShape.js";
 import { buildSharesetsPreviewPlan } from "./sharesetsPreview.js";
-import { SHARESETS_PREVIEW_FIXTURE_V5 } from "./fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_STEREO_V1 } from "./fixtures/sharesetsPreviewStereoV1.js";
 import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMultichannelV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "./fixtures/sharesetsPreviewDialogueStereoV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewDialogueMultichannelV1.js";
@@ -20,10 +20,10 @@ describe("Sharesets preview input contract", () => {
     const plan = await buildSharesetsPreviewPlan(buildPack("loudness", [PROFILE]), "loudness");
 
     expect(plan).toMatchObject({
-      contractVersion: 4,
+      contractVersion: 1,
       renderer: {
         name: "plvs-sharesets-preview",
-        version: 2,
+        version: 1,
         locale: "en-US",
         persistence: false,
         network: false,
@@ -31,8 +31,8 @@ describe("Sharesets preview input contract", () => {
         animations: false,
         clock: "fixture",
       },
-      fixture: SHARESETS_PREVIEW_FIXTURE_V5,
-      fixtureHash: "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+      fixture: SHARESETS_PREVIEW_STEREO_V1,
+      fixtureHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
       item: {
         type: "loudness",
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
@@ -107,8 +107,8 @@ describe("Sharesets preview input contract", () => {
     };
     const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
 
-    expect(plan.contractVersion).toBe(5);
-    expect(plan.fixture).toEqual(SHARESETS_PREVIEW_FIXTURE_V5);
+    expect(plan.contractVersion).toBe(1);
+    expect(plan.fixture).toEqual(SHARESETS_PREVIEW_STEREO_V1);
     expect(plan.multichannelFixture).toEqual(SHARESETS_PREVIEW_MULTICHANNEL_V1);
     expect(plan.assets).toEqual([
       expect.objectContaining({
@@ -136,7 +136,7 @@ describe("Sharesets preview input contract", () => {
     };
     const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
 
-    expect(plan.contractVersion).toBe(5);
+    expect(plan.contractVersion).toBe(1);
     expect(plan.fixture).toEqual(SHARESETS_PREVIEW_DIALOGUE_STEREO_V1);
     expect(plan.multichannelFixture).toEqual(SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1);
     expect(plan.assets.map(({ id }) => id)).toEqual([

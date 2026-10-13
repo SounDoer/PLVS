@@ -2,10 +2,10 @@
   "resultVersion": 1,
   "renderer": {
     "name": "plvs-sharesets-preview",
-    "version": 2
+    "version": 1
   },
-  "contentHash": "sha256:9653f57596525096ac7b6a066da64cb55ccac455206749c4b135191d0b1b1050",
-  "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+  "contentHash": "sha256:1004be19e69f1a61b3d294c8432451b9bf0d50df9959b61c017f0dca4b493bbe",
+  "fixtureHash": "sha256:2154a8d6a575adddd1dee03a97b102a554426de1f7317682a0c3aea25b494225",
   "assets": [
     {
       "id": "preset-workspace",
@@ -13,14 +13,14 @@
       "mediaType": "image/png",
       "width": 1280,
       "height": 720,
-      "byteLength": 175938,
-      "sha256": "sha256:6726ba77908be902fa8fd016355b5b20d115a0f44cf326805721cb998c993819",
+      "byteLength": 174989,
+      "sha256": "sha256:5bfe59829c0b064e6c8cdcf1b5430102d0b0ddfb1c620c7d87936b3fa495bd41",
       "source": {
         "generator": "plvs-sharesets-preview",
-        "contractVersion": 4,
-        "rendererVersion": 2,
-        "itemContentHash": "sha256:9653f57596525096ac7b6a066da64cb55ccac455206749c4b135191d0b1b1050",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "contractVersion": 1,
+        "rendererVersion": 1,
+        "itemContentHash": "sha256:1004be19e69f1a61b3d294c8432451b9bf0d50df9959b61c017f0dca4b493bbe",
+        "fixtureHash": "sha256:2154a8d6a575adddd1dee03a97b102a554426de1f7317682a0c3aea25b494225"
       }
     }
   ]

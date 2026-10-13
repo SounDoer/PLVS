@@ -3,17 +3,15 @@ import {
   validatePortableLoudnessProfile,
 } from "../lib/portableLoudnessProfile.js";
 import { validatePublishablePack } from "./sharesetsPack.js";
-import { SHARESETS_PREVIEW_FIXTURE_V5 } from "./fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_STEREO_V1 } from "./fixtures/sharesetsPreviewStereoV1.js";
 import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMultichannelV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "./fixtures/sharesetsPreviewDialogueStereoV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewDialogueMultichannelV1.js";
 import { hashPortablePreset } from "./portablePreset.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
-export const SHARESETS_PREVIEW_CONTRACT_VERSION = 5;
-export const SHARESETS_PREVIEW_RENDERER_VERSION = 2;
-
-const LEGACY_PREVIEW_CONTRACT_VERSION = 4;
+export const SHARESETS_PREVIEW_CONTRACT_VERSION = 1;
+export const SHARESETS_PREVIEW_RENDERER_VERSION = 1;
 const PRESET_WORKSPACE_VARIANTS_BY_ITEM_ID = Object.freeze({
   "meter-bridge": Object.freeze(["stereo", "5.1"]),
   "dialogue-delivery-review": Object.freeze(["stereo", "5.1"]),
@@ -125,7 +123,7 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     ? SHARESETS_PREVIEW_DIALOGUE_STEREO_V1
     : multichannelMonitoring
       ? SHARESETS_PREVIEW_MULTICHANNEL_V1
-      : SHARESETS_PREVIEW_FIXTURE_V5;
+      : SHARESETS_PREVIEW_STEREO_V1;
   const fixtureHash = await hashSharesetsPreviewFixture(fixture);
   const multichannelFixture = dialoguePreview
     ? SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1
@@ -144,9 +142,7 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     }))
   );
 
-  const contractVersion = workspaceVariants
-    ? SHARESETS_PREVIEW_CONTRACT_VERSION
-    : LEGACY_PREVIEW_CONTRACT_VERSION;
+  const contractVersion = SHARESETS_PREVIEW_CONTRACT_VERSION;
   const source = {
     generator: "plvs-sharesets-preview",
     contractVersion,

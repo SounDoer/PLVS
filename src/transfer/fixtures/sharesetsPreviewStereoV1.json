@@ -1,6 +1,6 @@
 {
-  "id": "plvs-sharesets-discovery-v5",
-  "version": 5,
+  "id": "plvs-sharesets-discovery-stereo-v1",
+  "version": 1,
   "analysisRequests": {
     "spectrum": [
       {
@@ -52,7 +52,7 @@
     "loudness": {
       "momentaryLufs": -12.345773159540286,
       "shortTermLufs": -12.60777314492396,
-      "integratedLufs": -15.294281367521975,
+      "integratedLufs": -15.294281367521974,
       "rangeLu": 9.1342930991687,
       "truePeakDbtp": -0.798345517417699
     },

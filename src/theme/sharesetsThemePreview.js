@@ -1,9 +1,9 @@
 import { assessPortableThemeSharesetsPublication, hashPortableTheme } from "./portableTheme.js";
-import { SHARESETS_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewStereoV1.js";
 import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "../transfer/fixtures/sharesetsPreviewMultichannelV1.js";
 import { hashSharesetsPreviewFixture } from "../transfer/sharesetsPreview.js";
 
-export const SHARESETS_THEME_PREVIEW_CONTRACT_VERSION = 3;
+export const SHARESETS_THEME_PREVIEW_CONTRACT_VERSION = 1;
 
 const SEMANTIC_VIEWPORT = Object.freeze({
   widthCssPx: 1440,
@@ -107,7 +107,7 @@ export async function buildSharesetsThemePreviewPlan(raw) {
   const { theme: assessment } = validateSharesetsThemePreviewRequest(raw);
   const contentHash = await hashPortableTheme(assessment.document);
   const fixtureHash = await hashSharesetsPreviewFixture({
-    stereo: SHARESETS_PREVIEW_FIXTURE_V5,
+    stereo: SHARESETS_PREVIEW_STEREO_V1,
     multichannel: SHARESETS_PREVIEW_MULTICHANNEL_V1,
   });
   return {
@@ -116,7 +116,7 @@ export async function buildSharesetsThemePreviewPlan(raw) {
     generatorSource: "plvs",
     acceptsPublisherMedia: false,
     interactivePreview: false,
-    fixture: structuredClone(SHARESETS_PREVIEW_FIXTURE_V5),
+    fixture: structuredClone(SHARESETS_PREVIEW_STEREO_V1),
     multichannelFixture: structuredClone(SHARESETS_PREVIEW_MULTICHANNEL_V1),
     fixtureHash,
     theme: {

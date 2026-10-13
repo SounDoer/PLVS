@@ -1,4 +1,4 @@
-import fixture from "./sharesetsPreviewV5.json" with { type: "json" };
+import fixture from "./sharesetsPreviewStereoV1.json" with { type: "json" };
 
 function deepFreeze(value) {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
@@ -10,4 +10,4 @@ function deepFreeze(value) {
 
 // Generated from the production file-analysis pipeline. Regenerate only with
 // `npm run sharesets:fixture -- --write`; never hand-edit the JSON payload.
-export const SHARESETS_PREVIEW_FIXTURE_V5 = deepFreeze(fixture);
+export const SHARESETS_PREVIEW_STEREO_V1 = deepFreeze(fixture);

@@ -5,7 +5,7 @@ import {
   buildPolarLevelMaxHoldTable,
   polarLevelMaxHoldAt,
 } from "../math/vectorscopePolarMath.js";
-import { SHARESETS_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewStereoV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewDialogueStereoV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "../transfer/fixtures/sharesetsPreviewDialogueMultichannelV1.js";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "./defaultAnalysisRequests.js";
@@ -19,11 +19,11 @@ const msKey = defaultRequests.spectrum.find(({ view }) => view === "ms").key;
 
 describe("Sharesets Vectorscope preview data", () => {
   it("supplies deterministic non-silent stereo history for Polar Sample and Polar Level", () => {
-    const build = () => buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_FIXTURE_V5);
+    const build = () => buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1);
     const history = build().historyData.getVectorscopeHistoryForKey(vectorscopeKey);
     const rows = selectPolarWindow(history, 400);
     expect(rows).toHaveLength(5);
-    expect(rows.at(-1).timestampMs).toBe(SHARESETS_PREVIEW_FIXTURE_V5.clock.durationMs);
+    expect(rows.at(-1).timestampMs).toBe(SHARESETS_PREVIEW_STEREO_V1.clock.durationMs);
     expect(rows.every(({ pairs }) => pairs.length === 200 && pairs.every(Number.isFinite))).toBe(
       true
     );
@@ -45,8 +45,8 @@ describe("Sharesets Vectorscope preview data", () => {
   });
 
   it("uses measured Discovery data instead of interpolated display curves", () => {
-    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_FIXTURE_V5);
-    expect(SHARESETS_PREVIEW_FIXTURE_V5.source).toMatchObject({
+    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1);
+    expect(SHARESETS_PREVIEW_STEREO_V1.source).toMatchObject({
       fileName: "discovery-hero.wav",
       windowStartMs: 18000,
       windowEndMs: 78000,
@@ -69,8 +69,8 @@ describe("Sharesets Vectorscope preview data", () => {
   });
 
   it("derives and stores only the analysis requests used by the real Default Preset", () => {
-    expect(SHARESETS_PREVIEW_FIXTURE_V5.analysisRequests).toEqual(defaultRequests);
-    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_FIXTURE_V5);
+    expect(SHARESETS_PREVIEW_STEREO_V1.analysisRequests).toEqual(defaultRequests);
+    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1);
     const results = values.frameData.displayAudio.spectrumResultsByKey;
     const combined = results[combinedKey];
     const ms = results[msKey];
@@ -87,7 +87,7 @@ describe("Sharesets Vectorscope preview data", () => {
 
   it("carries every stateful first-run visual with its production Default setting", () => {
     const controls = DEFAULT_WORKSPACE_STATE.panelControlsById;
-    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_FIXTURE_V5);
+    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1);
     const spectrum = values.frameData.displayAudio.spectrumResultsByKey[msKey];
 
     expect(controls.vectorscope).toMatchObject({
@@ -101,13 +101,13 @@ describe("Sharesets Vectorscope preview data", () => {
     expect(controls.levelMeter.levelMeterTpMaxMarker).toBe(true);
     expect(values.frameData.hasTpMaxValue).toBe(true);
     expect(values.frameData.displayAudio.tpMax).toBe(
-      SHARESETS_PREVIEW_FIXTURE_V5.measurementFrame.loudness.truePeakDbtp
+      SHARESETS_PREVIEW_STEREO_V1.measurementFrame.loudness.truePeakDbtp
     );
     expect(controls["stereo-map"].stereoMapHold).toBe(false);
   });
 
   it("freezes the measured final frame for the Snapshot workspace", () => {
-    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_FIXTURE_V5, {
+    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1, {
       snapshot: true,
     });
     expect(values.historyData.selectedOffset).toBe(0);

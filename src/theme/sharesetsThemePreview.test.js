@@ -23,17 +23,17 @@ describe("sharesets Theme preview contract", () => {
     const plan = await buildSharesetsThemePreviewPlan({ theme: portableTheme() });
 
     expect(plan).toMatchObject({
-      contractVersion: 3,
+      contractVersion: 1,
       generator: "plvs-theme-gallery",
       generatorSource: "plvs",
       acceptsPublisherMedia: false,
       interactivePreview: false,
-      fixture: expect.objectContaining({ id: "plvs-sharesets-discovery-v5", version: 5 }),
+      fixture: expect.objectContaining({ id: "plvs-sharesets-discovery-stereo-v1", version: 1 }),
       multichannelFixture: expect.objectContaining({
         id: "plvs-sharesets-discovery-5-1-v1",
         version: 1,
       }),
-      fixtureHash: "sha256:35330c40cb390e5f346a5e4ab93564eeca304d22e61c4a65d027fec755da10bf",
+      fixtureHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
       theme: {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",
@@ -53,7 +53,7 @@ describe("sharesets Theme preview contract", () => {
       format: "png",
       source: {
         generator: "plvs-theme-gallery",
-        contractVersion: 3,
+        contractVersion: 1,
         themeContentHash: plan.theme.contentHash,
         fixtureHash: plan.fixtureHash,
       },

@@ -2,9 +2,9 @@
   "resultVersion": 1,
   "renderer": {
     "name": "plvs-sharesets-preview",
-    "version": 2
+    "version": 1
   },
-  "contentHash": "sha256:f131e2ebec93a78a491be3bbf1fb22ade140e5940a2ca0e6379065875e2d58db",
+  "contentHash": "sha256:db5ae78084bba7378cb4ce08fb046169833ffd2ad0800e361c72a2a1cbee5b95",
   "fixtureHash": "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1",
   "assets": [
     {
@@ -13,13 +13,13 @@
       "mediaType": "image/png",
       "width": 1280,
       "height": 800,
-      "byteLength": 185629,
-      "sha256": "sha256:fd0f3e4aee4a2e5563ed7199d5ca60476c93866355baf7a857b8340ab63064e0",
+      "byteLength": 186826,
+      "sha256": "sha256:658ba5b6724fbb4382bf77769f1e272c8212a2b1a73d1991d8893b87413a8211",
       "source": {
         "generator": "plvs-sharesets-preview",
-        "contractVersion": 3,
-        "rendererVersion": 2,
-        "itemContentHash": "sha256:f131e2ebec93a78a491be3bbf1fb22ade140e5940a2ca0e6379065875e2d58db",
+        "contractVersion": 1,
+        "rendererVersion": 1,
+        "itemContentHash": "sha256:db5ae78084bba7378cb4ce08fb046169833ffd2ad0800e361c72a2a1cbee5b95",
         "fixtureHash": "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1"
       }
     }

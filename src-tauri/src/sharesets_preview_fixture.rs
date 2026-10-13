@@ -96,7 +96,7 @@ impl PreviewFixtureLayout {
 
   fn id(self) -> &'static str {
     match self {
-      Self::Stereo => "plvs-sharesets-discovery-v5",
+      Self::Stereo => "plvs-sharesets-discovery-stereo-v1",
       Self::Surround51 => "plvs-sharesets-discovery-5-1-v1",
       Self::DialogueStereo => "plvs-sharesets-dialogue-stereo-v1",
       Self::DialogueSurround51 => "plvs-sharesets-dialogue-5-1-v1",
@@ -105,7 +105,7 @@ impl PreviewFixtureLayout {
 
   fn version(self) -> u32 {
     match self {
-      Self::Stereo => 5,
+      Self::Stereo => 1,
       Self::Surround51 => 1,
       Self::DialogueStereo | Self::DialogueSurround51 => 1,
     }

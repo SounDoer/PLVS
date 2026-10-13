@@ -16,7 +16,7 @@ import { generateDialogueBenchmarkFixtures } from "./dialogue-benchmark-fixtures
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const audioPath = join(root, "assets", "marketing", "audio", "discovery-hero.wav");
-const fixturePath = join(root, "src", "transfer", "fixtures", "sharesetsPreviewV5.json");
+const fixturePath = join(root, "src", "transfer", "fixtures", "sharesetsPreviewStereoV1.json");
 const multichannelFixturePath = join(
   root,
   "src",

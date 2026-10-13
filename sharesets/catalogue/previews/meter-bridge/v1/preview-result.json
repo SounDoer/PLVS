@@ -2,10 +2,10 @@
   "resultVersion": 1,
   "renderer": {
     "name": "plvs-sharesets-preview",
-    "version": 2
+    "version": 1
   },
   "contentHash": "sha256:ffe3a2bd2a8e97b3d90730eeade5c1ab724e8bb3e4561b5490ddddd73ee84381",
-  "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+  "fixtureHash": "sha256:2154a8d6a575adddd1dee03a97b102a554426de1f7317682a0c3aea25b494225",
   "assets": [
     {
       "id": "preset-workspace-stereo",
@@ -17,10 +17,10 @@
       "sha256": "sha256:153ec419a723721a0d8711940aaae598e3dfaf5739c034f577cc4b534a3debda",
       "source": {
         "generator": "plvs-sharesets-preview",
-        "contractVersion": 5,
-        "rendererVersion": 2,
+        "contractVersion": 1,
+        "rendererVersion": 1,
         "itemContentHash": "sha256:ffe3a2bd2a8e97b3d90730eeade5c1ab724e8bb3e4561b5490ddddd73ee84381",
-        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+        "fixtureHash": "sha256:2154a8d6a575adddd1dee03a97b102a554426de1f7317682a0c3aea25b494225"
       }
     },
     {
@@ -33,8 +33,8 @@
       "sha256": "sha256:0d8882a5e11dbaa855609c619a98c97da6828fb6d5c6b57036a42fd97841785e",
       "source": {
         "generator": "plvs-sharesets-preview",
-        "contractVersion": 5,
-        "rendererVersion": 2,
+        "contractVersion": 1,
+        "rendererVersion": 1,
         "itemContentHash": "sha256:ffe3a2bd2a8e97b3d90730eeade5c1ab724e8bb3e4561b5490ddddd73ee84381",
         "fixtureHash": "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1"
       }

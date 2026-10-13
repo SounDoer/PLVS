@@ -56,7 +56,7 @@ describe("Sharesets preview result", () => {
       validateSharesetsPreviewResult(plan, { ...result, assets: [...result.assets].reverse() })
     ).toMatchObject({
       resultVersion: 1,
-      renderer: { name: "plvs-sharesets-preview", version: 2 },
+      renderer: { name: "plvs-sharesets-preview", version: 1 },
       contentHash: plan.item.contentHash,
       fixtureHash: plan.fixtureHash,
     });

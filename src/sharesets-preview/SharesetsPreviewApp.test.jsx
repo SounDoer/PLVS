@@ -9,7 +9,7 @@ import { themeToPortable } from "../theme/portableTheme.js";
 import { selectSpectrogramCanvasTheme } from "../theme/themeCanvasSelectors.js";
 import { validatePublishablePack } from "../transfer/sharesetsPack.js";
 import { buildSharesetsPreviewPlan } from "../transfer/sharesetsPreview.js";
-import { SHARESETS_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewStereoV1.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SharesetsPreviewApp } from "./SharesetsPreviewApp.jsx";
@@ -64,7 +64,7 @@ describe("Sharesets preview browser harness", () => {
     expect(screen.getByTestId("dock-module")).toBeTruthy();
     expect(
       screen.getByLabelText(
-        `Integrated ${SHARESETS_PREVIEW_FIXTURE_V5.measurementFrame.loudness.integratedLufs.toFixed(1)}`
+        `Integrated ${SHARESETS_PREVIEW_STEREO_V1.measurementFrame.loudness.integratedLufs.toFixed(1)}`
       )
     ).toBeTruthy();
   });

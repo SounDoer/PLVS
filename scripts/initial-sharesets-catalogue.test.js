@@ -212,7 +212,7 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 4 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
   });
@@ -233,7 +233,7 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 4 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
   });
@@ -254,7 +254,7 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 4 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
   });
@@ -275,7 +275,7 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 4 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
   });
@@ -296,7 +296,7 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 4 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
   });
@@ -315,12 +315,12 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace-stereo",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 5 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
       expect.objectContaining({
         id: "preset-workspace-5-1",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 5 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
     expect(preset.releases[0].previews[0].source.fixtureHash).not.toBe(
@@ -344,12 +344,12 @@ describe("initial Sharesets Catalogue", () => {
       expect.objectContaining({
         id: "preset-workspace-stereo",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 5 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
       expect.objectContaining({
         id: "preset-workspace-5-1",
         mediaType: "image/png",
-        source: expect.objectContaining({ contractVersion: 5 }),
+        source: expect.objectContaining({ contractVersion: 1 }),
       }),
     ]);
     expect(preset.releases[0].previews[0].source.fixtureHash).not.toBe(
