@@ -119,19 +119,15 @@ struct VoiceActivityDetectorConfig {
   sample_rate: i64,
   #[builder(default, setter(strip_option))]
   session: Option<Arc<Mutex<Session>>>,
-  /// Optional ONNX model bytes for evaluation tools that compare a candidate model without
-  /// replacing the model embedded in the production crate.
+  /// Number of previous samples prepended to each model input. Silero v6.2 uses 64 at 16 kHz
+  /// (or 32 at 8 kHz).
   #[builder(default, setter(strip_option))]
-  model: Option<Vec<u8>>,
-  /// Number of previous samples prepended to each model input. Silero v6 uses 64 at 16 kHz;
-  /// the embedded v5 integration retains its established zero-context behaviour.
-  #[builder(default)]
-  context_size: usize,
+  context_size: Option<usize>,
 }
 
 impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> {
   fn from(value: VoiceActivityDetectorConfig) -> Self {
-    // Silero VAD V5 model restriction:
+    // Silero VAD v6.2 model restriction:
     // - For 8 kHz, only chunk_size 256 is allowed
     // - For 16 kHz, only chunk_size 512 is allowed
     let sample_rate = value.sample_rate;
@@ -145,36 +141,40 @@ impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> 
         });
       }
     };
+    let context_size = value
+      .context_size
+      .unwrap_or(if sample_rate == 16_000 { 64 } else { 32 });
 
-    let session = match (value.session, value.model) {
-      (Some(session), None) => session,
-      (None, Some(model)) => Arc::new(Mutex::new(
-        Session::builder()
-          .map_err(|error| Error::ModelLoadError(error.to_string()))?
-          .with_optimization_level(GraphOptimizationLevel::Level3)
-          .map_err(|error| Error::ModelLoadError(error.to_string()))?
-          .with_intra_threads(1)
-          .map_err(|error| Error::ModelLoadError(error.to_string()))?
-          .with_inter_threads(1)
-          .map_err(|error| Error::ModelLoadError(error.to_string()))?
-          .commit_from_memory(&model)
-          .map_err(|error| Error::ModelLoadError(error.to_string()))?,
-      )),
-      (None, None) => DEFAULT_SESSION.clone(),
-      (Some(_), Some(_)) => {
-        return Err(Error::ModelLoadError(
-          "a shared session and model bytes cannot both be supplied".to_string(),
-        ));
-      }
-    };
+    let session = value.session.unwrap_or_else(|| DEFAULT_SESSION.clone());
 
     Ok(VoiceActivityDetector {
       session,
       chunk_size,
       sample_rate,
       state: ndarray::Array3::<f32>::zeros((2, 1, 128)).into_dyn(),
-      context: vec![0.0; value.context_size],
-      context_size: value.context_size,
+      context: vec![0.0; context_size],
+      context_size,
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn v6_streaming_context_defaults_follow_sample_rate() {
+    let detector_16k = VoiceActivityDetector::builder()
+      .sample_rate(16_000)
+      .chunk_size(512_usize)
+      .build()
+      .expect("16 kHz detector");
+    let detector_8k = VoiceActivityDetector::builder()
+      .sample_rate(8_000)
+      .chunk_size(256_usize)
+      .build()
+      .expect("8 kHz detector");
+    assert_eq!(detector_16k.context_size, 64);
+    assert_eq!(detector_8k.context_size, 32);
   }
 }

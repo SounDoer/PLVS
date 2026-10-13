@@ -35,8 +35,8 @@ measurements.
 ## Choosing a detector
 
 **Dialogue Detection** in [System Settings](system-settings.md) chooses the engine: FireRedVAD (the
-default) or Silero VAD. Changing the detector clears and restarts the complete Live measurement so
-Programme Loudness and all dialogue values continue to cover the same time span. File Mode locks
+default) or Silero VAD v6.2. Changing the detector clears and restarts the complete Live measurement
+so Programme Loudness and all dialogue values continue to cover the same time span. File Mode locks
 the selected engine when analysis starts.
 
 If the selected detector cannot start or stops producing valid results, PLVS shows one explicit

@@ -8,7 +8,7 @@ This crate provides a standalone Voice Activity Detector (VAD) which can be used
 
 The VAD predicts speech in a chunk of Linear Pulse Code Modulation (LPCM) encoded audio samples. These may be 8 or 16 bit integers or 32 bit floats.
 
-This project now uses the [Silero VAD V5 model.](https://github.com/snakers4/silero-vad/releases/tag/v5.0) The model only supports fixed window sizes: for 8 kHz sample rate, only a 256-sample window is allowed; for 16 kHz sample rate, only a 512-sample window is allowed.
+PLVS vendors this integration with the [Silero VAD v6.2 model.](https://github.com/snakers4/silero-vad/tree/v6.2) The model only supports fixed window sizes: for 8 kHz sample rate, only a 256-sample window is allowed; for 16 kHz sample rate, only a 512-sample window is allowed. Streaming callers must also preserve the model context (32 samples at 8 kHz or 64 samples at 16 kHz).
 
 The samples passed to `predict` will be truncated or padded if they are not of the correct length.
 

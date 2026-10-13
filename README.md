@@ -74,10 +74,9 @@ Setup requirements, build and release commands, and conventions are in
 
 PLVS stands on the shoulders of excellent open-source work. In particular:
 
-- **Voice activity detection** — dialogue-gated loudness can run on any of three selectable on-device VAD engines:
-  - [**Silero VAD**](https://github.com/snakers4/silero-vad) _(default)_ — bundled via the [`voice_activity_detector`](https://github.com/nkeenan38/voice_activity_detector) crate (MIT).
-  - [**FireRedVAD**](https://github.com/FireRedTeam/FireRedVAD)
-  - [**TEN VAD**](https://github.com/TEN-framework/ten-vad)
+- **Voice activity detection** — dialogue-gated loudness can run on either of two selectable on-device VAD engines:
+  - [**FireRedVAD**](https://github.com/FireRedTeam/FireRedVAD) _(default)_ — bundled via the [`firered-vad`](https://github.com/uqio/firered-vad) crate (Apache-2.0 model; MIT or Apache-2.0 integration).
+  - [**Silero VAD v6.2**](https://github.com/snakers4/silero-vad/tree/v6.2) — bundled via the [`voice_activity_detector`](https://github.com/nkeenan38/voice_activity_detector) crate (MIT).
 - [**CPAL**](https://github.com/RustAudio/cpal) — cross-platform audio capture (Apache-2.0).
 - [**RustFFT**](https://github.com/ejmahler/RustFFT) & [**RealFFT**](https://github.com/HEnquist/realfft) — the FFT engine behind the spectrum and spectrogram (MIT / Apache-2.0).
 - [**Rubato**](https://github.com/HEnquist/rubato) — sample-rate conversion (MIT).

@@ -1,7 +1,7 @@
 //! Repository-only programme-dialogue evaluation harness.
 //!
 //! The harness deliberately calls the same detector and loudness primitives as production. It is
-//! feature-gated with `capture-harness`; no benchmark model or corpus is shipped in the app.
+//! feature-gated with `capture-harness`; no benchmark corpus is shipped in the app.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,7 +16,6 @@ use crate::dsp::gating::IntegratedAccumulator;
 use crate::dsp::speech::{fuse_center_priority, SpeechDetector, VadEngineKind};
 
 const BLOCK_MS: usize = 100;
-const SILERO_V5_SHA256: &str = "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f";
 const SILERO_V6_2_SHA256: &str = "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3";
 const FIRERED_MODEL_SHA256: &str =
   "b3c97836130dc34fc32d56fab551e88cf9454511de2b3c250a5e6578dee74b93";
@@ -58,34 +57,30 @@ struct CorpusOutput {
 }
 
 #[derive(Clone, Copy)]
-enum EngineSpec<'a> {
+enum EngineSpec {
   FireRed,
-  SileroV5,
-  SileroV6(&'a [u8]),
+  SileroV6,
 }
 
-impl EngineSpec<'_> {
+impl EngineSpec {
   fn id(self) -> &'static str {
     match self {
       Self::FireRed => "firered-0.1.0",
-      Self::SileroV5 => "silero-v5",
-      Self::SileroV6(_) => "silero-v6.2",
+      Self::SileroV6 => "silero-v6.2",
     }
   }
 
   fn model_sha256(self) -> &'static str {
     match self {
       Self::FireRed => FIRERED_MODEL_SHA256,
-      Self::SileroV5 => SILERO_V5_SHA256,
-      Self::SileroV6(_) => SILERO_V6_2_SHA256,
+      Self::SileroV6 => SILERO_V6_2_SHA256,
     }
   }
 
   fn detector(self, sample_rate: f64) -> Result<SpeechDetector, String> {
     match self {
       Self::FireRed => SpeechDetector::new_with_engine(sample_rate, VadEngineKind::FireRed),
-      Self::SileroV5 => SpeechDetector::new_with_engine(sample_rate, VadEngineKind::Silero),
-      Self::SileroV6(model) => SpeechDetector::new_silero_candidate(sample_rate, model.to_vec()),
+      Self::SileroV6 => SpeechDetector::new_with_engine(sample_rate, VadEngineKind::Silero),
     }
     .ok_or_else(|| format!("Unable to initialize {}", self.id()))
   }
@@ -288,7 +283,7 @@ fn mix_energy_weighted(pcm: &WavPcm, start: usize, frames: usize, channels: &[us
 }
 
 fn detectors_for(
-  engine: EngineSpec<'_>,
+  engine: EngineSpec,
   fusion: FusionPolicy,
   sample_rate: f64,
   non_lfe_count: usize,
@@ -303,7 +298,7 @@ fn detectors_for(
 fn detect_blocks(
   pcm: &WavPcm,
   labels: &[String],
-  engine: EngineSpec<'_>,
+  engine: EngineSpec,
   fusion: FusionPolicy,
 ) -> Result<Vec<Option<bool>>, String> {
   let block_frames = pcm.sample_rate as usize * BLOCK_MS / 1000;
@@ -513,7 +508,7 @@ fn safe_ratio(numerator: usize, denominator: usize) -> Option<f64> {
 fn evaluate_run(
   fixture: &CorpusCase,
   pcm: &WavPcm,
-  engine: EngineSpec<'_>,
+  engine: EngineSpec,
   fusion: FusionPolicy,
 ) -> Result<BenchmarkRun, String> {
   let started = Instant::now();
@@ -584,7 +579,7 @@ fn evaluate_run(
   })
 }
 
-pub fn run(manifest_path: &Path, silero_v6_model: &Path, output_path: &Path) -> Result<(), String> {
+pub fn run(manifest_path: &Path, output_path: &Path) -> Result<(), String> {
   let manifest_bytes = fs::read(manifest_path)
     .map_err(|error| format!("Unable to read {}: {error}", manifest_path.display()))?;
   let manifest: CorpusManifest = serde_json::from_slice(&manifest_bytes)
@@ -595,20 +590,8 @@ pub fn run(manifest_path: &Path, silero_v6_model: &Path, output_path: &Path) -> 
       manifest.schema_version
     ));
   }
-  let model = fs::read(silero_v6_model)
-    .map_err(|error| format!("Unable to read {}: {error}", silero_v6_model.display()))?;
-  let model_hash = sha256_hex(&model);
-  if model_hash != SILERO_V6_2_SHA256 {
-    return Err(format!(
-      "Silero candidate hash {model_hash} does not match audited v6.2 {SILERO_V6_2_SHA256}"
-    ));
-  }
   let root = manifest_path.parent().unwrap_or_else(|| Path::new("."));
-  let engines = [
-    EngineSpec::FireRed,
-    EngineSpec::SileroV5,
-    EngineSpec::SileroV6(&model),
-  ];
+  let engines = [EngineSpec::FireRed, EngineSpec::SileroV6];
   let fusions = [
     FusionPolicy::AverageAllChannelsV1,
     FusionPolicy::NonLfeEnergyWeightedV1,
@@ -677,13 +660,11 @@ pub fn run(manifest_path: &Path, silero_v6_model: &Path, output_path: &Path) -> 
 
 pub fn parse_and_run(args: &[String]) -> Result<(), String> {
   let mut manifest = None;
-  let mut model = None;
   let mut output = None;
   let mut index = 0;
   while index < args.len() {
     let slot = match args[index].as_str() {
       "--manifest" => &mut manifest,
-      "--silero-v6-model" => &mut model,
       "--out" => &mut output,
       value => return Err(format!("Unknown dialogue-benchmark option: {value}")),
     };
@@ -698,9 +679,6 @@ pub fn parse_and_run(args: &[String]) -> Result<(), String> {
     manifest
       .as_deref()
       .ok_or_else(|| "--manifest is required".to_string())?,
-    model
-      .as_deref()
-      .ok_or_else(|| "--silero-v6-model is required".to_string())?,
     output
       .as_deref()
       .ok_or_else(|| "--out is required".to_string())?,

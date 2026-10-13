@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -9,38 +8,9 @@ import { generateDialogueBenchmarkFixtures } from "./dialogue-benchmark-fixtures
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = join(ROOT, "artifacts/dialogue-benchmark");
-const MODEL_PATH = join(ARTIFACT_ROOT, "models/silero-v6.2.onnx");
 const RESULT_PATH = join(ARTIFACT_ROOT, "results.json");
 const SUMMARY_PATH = join(ARTIFACT_ROOT, "summary.md");
 const GENERATED_MANIFEST_PATH = join(ARTIFACT_ROOT, "corpus/manifest.resolved.json");
-const SILERO_V6_URL =
-  "https://raw.githubusercontent.com/snakers4/silero-vad/v6.2/src/silero_vad/data/silero_vad.onnx";
-const SILERO_V6_SHA256 = "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3";
-
-function sha256(bytes) {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
-export async function ensureSileroV6Model({ path = MODEL_PATH, fetchImpl = fetch } = {}) {
-  let existing = null;
-  try {
-    existing = await readFile(path);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
-  if (existing && sha256(existing) === SILERO_V6_SHA256) return path;
-  const response = await fetchImpl(SILERO_V6_URL);
-  if (!response.ok) throw new Error(`Unable to download Silero v6.2: HTTP ${response.status}`);
-  const bytes = Buffer.from(await response.arrayBuffer());
-  const actual = sha256(bytes);
-  if (actual !== SILERO_V6_SHA256) {
-    throw new Error(`Silero v6.2 hash ${actual} does not match ${SILERO_V6_SHA256}.`);
-  }
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, bytes);
-  return path;
-}
-
 export function aggregateDialogueBenchmark(report) {
   const groups = new Map();
   for (const run of report.runs) {
@@ -171,7 +141,6 @@ export async function runDialogueBenchmark({ manifestPath = null } = {}) {
     corpusId = corpus.corpusId;
     manifestPath = GENERATED_MANIFEST_PATH;
   }
-  const modelPath = await ensureSileroV6Model();
   const harness = locateHarness();
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   const result = runCli(
@@ -180,8 +149,6 @@ export async function runDialogueBenchmark({ manifestPath = null } = {}) {
       "dialogue-benchmark",
       "--manifest",
       manifestPath,
-      "--silero-v6-model",
-      modelPath,
       "--out",
       RESULT_PATH,
     ])

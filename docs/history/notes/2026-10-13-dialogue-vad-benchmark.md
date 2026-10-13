@@ -13,9 +13,9 @@ Run:
 npm run benchmark:dialogue
 ```
 
-The command verifies and generates corpus `plvs-dialogue-synthetic-v1`, downloads the exact audited
-Silero v6.2 model when absent, runs the feature-gated harness, and writes JSON plus Markdown results
-under `artifacts/dialogue-benchmark/`.
+The command verifies and generates corpus `plvs-dialogue-synthetic-v1`, runs the exact bundled
+engines through the feature-gated harness, and writes JSON plus Markdown results under
+`artifacts/dialogue-benchmark/`.
 
 Private programme material stays outside the repository. Run the same audited engines and report
 pipeline against a resolved schema-v1 manifest with paths and hashes relative to that manifest:
@@ -34,18 +34,17 @@ The speech sources are four attributed LibriSpeech SLR12 clips under CC BY 4.0. 
 noise, LFE energy, stereo cancellation, and the voice-like music negative case are generated
 deterministically. See `fixtures/dialogue-benchmark/README.md` for source identities and hashes.
 
-Model identities:
+Model identities at the time of the comparison:
 
 - FireRed model from `firered-vad` 0.1.0:
   `b3c97836130dc34fc32d56fab551e88cf9454511de2b3c250a5e6578dee74b93`;
-- shipped Silero v5:
+- then-shipped Silero v5 baseline:
   `2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f`;
-- evaluated-only Silero v6.2:
+- Silero v6.2 candidate, subsequently shipped:
   `1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`.
 
 Silero v6.2 requires the official 64-sample 16 kHz streaming context. An initial run without that
-context returned all-negative output; the harness now applies it only to the v6.2 candidate and
-keeps the shipped v5 adapter unchanged.
+context returned all-negative output; the production adapter and harness now apply it.
 
 ## Aggregate result
 
@@ -72,8 +71,9 @@ duration on the test machine; it is not isolated CPU time.
 1. Keep FireRed as the default. On this corpus it has the strongest accuracy/recall trade-off and
    remains comfortably faster than real time. The corpus is too small to justify changing the
    default merely because Silero v6.2 is newer.
-2. Do not ship Silero v6.2 yet. Keep its correct adapter in the evaluation harness and expand the
-   corpus before reconsidering the shipped Silero generation.
+2. Upgrade the optional Silero engine from v5 to v6.2. It materially improves the Silero result on
+   this corpus without changing the conclusion that FireRed should remain the default. Continue to
+   expand the corpus before reconsidering the default engine.
 3. Remove the all-channel arithmetic average from the production detector feed. Stereo
    anti-correlation and LFE dilution make it structurally unsuitable, independent of model choice.
 4. Implement `center-priority-fallback-v1`: evaluate the centre independently when the layout has
