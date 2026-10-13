@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { formatCompactSessionMetadata, formatDeliveryTriple } from "@/lib/fileAnalysisDisplay";
 import { cn } from "@/lib/utils";
+import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { IconAction } from "@/components/ui/icon-action";
 import { RowAction } from "@/components/ui/row";
@@ -151,21 +152,22 @@ export function FileAnalysisHistoryMenu({
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </IconAction>
                   ) : (
-                    <span className="flex items-center gap-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-                      <IconAction
+                    // `pr-1` on top of the wrapper's: these have no side padding of their own, unlike
+                    // the filled Stop button they trade places with.
+                    <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-1")}>
+                      <ManagementIconAction
+                        label={`Reanalyze ${session.fileName}`}
+                        icon={
+                          <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
+                        }
                         onClick={() => onReanalyzeFile?.(session.id)}
-                        aria-label={`Reanalyze ${session.fileName}`}
-                        className="p-1"
-                      >
-                        <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
-                      <IconAction
+                      />
+                      <ManagementIconAction
+                        label={`Remove ${session.fileName}`}
+                        icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
                         onClick={() => onRemoveFile?.(session.id)}
-                        aria-label={`Remove ${session.fileName}`}
-                        className="p-1 hover:text-destructive"
-                      >
-                        <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
+                        className="hover:text-destructive"
+                      />
                     </span>
                   )}
                 </span>

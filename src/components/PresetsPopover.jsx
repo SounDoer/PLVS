@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { Check, Download, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { AddButton } from "@/components/AddButton";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
-import { IconAction } from "@/components/ui/icon-action";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
 
@@ -149,21 +149,19 @@ export function PresetsPopoverContent({
                       autoFocus
                       className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
                     />
-                    <IconAction
-                      aria-label="Save rename"
+                    <ManagementIconAction
+                      label="Save rename"
+                      icon={<Check className="size-[length:var(--ui-icon-management-action)]" />}
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="shrink-0 disabled:opacity-50"
-                    >
-                      <Check className="size-[length:var(--ui-icon-management-action)]" />
-                    </IconAction>
-                    <IconAction
-                      aria-label="Cancel rename"
+                      className="shrink-0"
+                    />
+                    <ManagementIconAction
+                      label="Cancel rename"
+                      icon={<X className="size-[length:var(--ui-icon-management-action)]" />}
                       onClick={cancelRename}
                       className="shrink-0"
-                    >
-                      <X className="size-[length:var(--ui-icon-management-action)]" />
-                    </IconAction>
+                    />
                   </div>
                 ) : (
                   <div
@@ -204,51 +202,52 @@ export function PresetsPopoverContent({
                         className="min-w-0 flex-1 text-foreground"
                       />
                     </RowAction>
-                    <span className="flex shrink-0 items-center gap-0 pr-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-                      <IconAction
-                        aria-label={`Update preset ${preset.name}`}
+                    <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-2")}>
+                      <ManagementIconAction
+                        label={`Update preset ${preset.name}`}
+                        icon={
+                          <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
+                        }
                         onClick={(e) => {
                           e.stopPropagation();
                           runPresetAction(presets.update(preset.id));
                         }}
                         disabled={blocked}
-                        className={blockedClass}
-                      >
-                        <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
-                      <IconAction
-                        aria-label={`Export preset ${preset.name}`}
+                      />
+                      <ManagementIconAction
+                        label={`Export preset ${preset.name}`}
+                        icon={
+                          <Download className="size-[length:var(--ui-icon-management-action)]" />
+                        }
                         onClick={(e) => {
                           e.stopPropagation();
                           onExport(preset.id);
                         }}
-                      >
-                        <Download className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
-                      <IconAction
-                        aria-label={`Rename preset ${preset.name}`}
+                      />
+                      <ManagementIconAction
+                        label={`Rename preset ${preset.name}`}
+                        icon={<Pencil className="size-[length:var(--ui-icon-management-action)]" />}
                         onClick={(e) => {
                           e.stopPropagation();
                           startRename(preset);
                         }}
-                      >
-                        <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
+                      />
                       <InlineConfirm
                         onConfirm={() => presets.remove(preset.id)}
                         confirmLabel={`Confirm delete preset ${preset.name}`}
                         cancelLabel={`Cancel delete preset ${preset.name}`}
                         trigger={(arm) => (
-                          <IconAction
-                            aria-label={`Delete preset ${preset.name}`}
+                          <ManagementIconAction
+                            label={`Delete preset ${preset.name}`}
+                            icon={
+                              <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
+                            }
                             onClick={(e) => {
                               e.stopPropagation();
                               arm();
                             }}
                             className="hover:text-destructive"
-                          >
-                            <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                          </IconAction>
+                          />
                         )}
                       />
                     </span>

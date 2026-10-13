@@ -77,13 +77,13 @@ function DockModuleRow({
           autoFocus
         />
         <ManagementIconAction
-          icon={<Check className="size-3.5" />}
+          icon={<Check className="size-[length:var(--ui-icon-management-action)]" />}
           label={`Save ${title} name`}
           tip="Save"
           onClick={commitRename}
         />
         <ManagementIconAction
-          icon={<X className="size-3.5" />}
+          icon={<X className="size-[length:var(--ui-icon-management-action)]" />}
           label={`Cancel ${title} rename`}
           tip="Cancel"
           onClick={() => setEditing(false)}
@@ -115,14 +115,14 @@ function DockModuleRow({
         {dockEntry?.settingsFamily &&
         (panel.moduleId !== "vectorscope" || vectorscopeSettingsAvailable) ? (
           <ManagementIconAction
-            icon={<Settings2 className="size-3.5" />}
+            icon={<Settings2 className="size-[length:var(--ui-icon-management-action)]" />}
             label={`${title} settings`}
             tip="Settings"
             onClick={() => onOpenSettings(panel.id)}
           />
         ) : null}
         <ManagementIconAction
-          icon={<Pencil className="size-3.5" />}
+          icon={<Pencil className="size-[length:var(--ui-icon-management-action)]" />}
           label={`Rename ${title}`}
           tip="Rename"
           onClick={startRename}
@@ -133,7 +133,7 @@ function DockModuleRow({
           cancelLabel={`Cancel delete ${title}`}
           trigger={(arm) => (
             <ManagementIconAction
-              icon={<Trash2 className="size-3.5" />}
+              icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
               label={`Delete ${title}`}
               tip="Delete"
               onClick={arm}

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Download, SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
 import { AddButton } from "@/components/AddButton";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
-import { IconAction } from "@/components/ui/icon-action";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
 
@@ -21,8 +21,6 @@ const ROW_CLASS =
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
 // padding for its own hover/focus rounding, not a second helping of the handle's own gap.
 const ROW_BUTTON_CLASS = "pl-1 pr-2";
-
-const ICON_BUTTON_CLASS = "opacity-0 focus-visible:opacity-100 group-hover:opacity-100";
 
 function ActiveDot({ active }) {
   return (
@@ -134,46 +132,42 @@ export function LoudnessProfilePopoverContent({
                 <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
               </RowAction>
               {manageable ? (
-                <>
-                  <IconAction
+                <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-2")}>
+                  <ManagementIconAction
                     // "Edit" and "Rename" sit next to each other and read as synonyms in sequence;
-                    // the title that tells them apart is not reliably announced.
-                    aria-label={`Edit ${entry.name} rules`}
-                    title="Edit rules"
+                    // the tip that tells them apart is not reliably announced.
+                    label={`Edit ${entry.name} rules`}
+                    tip="Edit rules"
+                    icon={
+                      <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
+                    }
                     onClick={() => profile.beginEdit(entry.id)}
                     disabled={blocked}
-                    className={cn(ICON_BUTTON_CLASS, blockedClass)}
-                  >
-                    <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
-                  </IconAction>
-                  <IconAction
-                    aria-label={`Export ${entry.name}`}
-                    title="Export"
+                  />
+                  <ManagementIconAction
+                    label={`Export ${entry.name}`}
+                    tip="Export"
+                    icon={<Download className="size-[length:var(--ui-icon-management-action)]" />}
                     onClick={() => onExport(entry.id)}
-                    className={ICON_BUTTON_CLASS}
-                  >
-                    <Download className="size-[length:var(--ui-icon-management-action)]" />
-                  </IconAction>
+                  />
                   <InlineConfirm
                     onConfirm={() => profile.removeProfile(entry.id)}
                     confirmLabel={`Confirm delete ${entry.name}`}
                     cancelLabel={`Cancel delete ${entry.name}`}
-                    className="mr-2"
                     trigger={(arm) => (
-                      <IconAction
-                        aria-label={`Delete ${entry.name}`}
+                      <ManagementIconAction
+                        label={`Delete ${entry.name}`}
+                        icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
                         onClick={(event) => {
                           event.stopPropagation();
                           arm();
                         }}
                         disabled={blocked}
-                        className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-2")}
-                      >
-                        <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
+                        className="hover:text-destructive"
+                      />
                     )}
                   />
-                </>
+                </span>
               ) : null}
             </div>
           );

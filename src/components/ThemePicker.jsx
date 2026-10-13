@@ -1,11 +1,12 @@
 import { Check, ChevronDown, Copy, Download, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { AddButton } from "./AddButton.jsx";
-import { IconButton } from "./IconButton.jsx";
 import { InlineConfirm } from "./InlineConfirm.jsx";
+import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "./ManagementRow.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { RowAction } from "@/components/ui/row";
+import { cn } from "@/lib/utils";
 
 /**
  * A miniature of the app rather than a row of chips: workspace behind a surface
@@ -54,10 +55,10 @@ function ThemeSwatch({ theme }) {
  * actions from the next. The tooltip says only the verb: it appears next to the
  * row it acts on, and repeating the theme name there just makes it long.
  */
-function Action({ label, tip, icon, onClick }) {
+function Action({ label, tip, icon, onClick, className = undefined }) {
   return (
-    <IconButton
-      aria-label={label}
+    <ManagementIconAction
+      label={label}
       tip={tip}
       tipSide="left"
       icon={icon}
@@ -67,14 +68,14 @@ function Action({ label, tip, icon, onClick }) {
         onClick();
       }}
       onMouseDown={(event) => event.preventDefault()}
-      className="size-[var(--ui-control-h)]"
+      className={className}
     />
   );
 }
 
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
-    <div className="flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs px-1 hover:bg-ui-hover focus-within:bg-ui-hover">
+    <div className="group flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs px-1 hover:bg-ui-hover focus-within:bg-ui-hover">
       <RowAction onClick={() => onSelect(theme.id)} className="text-[length:var(--ui-fs-control)]">
         <span className="flex size-4 items-center justify-center">
           {selected ? <Check className="size-[length:var(--ui-icon-management-action)]" /> : null}
@@ -82,7 +83,7 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
         <ThemeSwatch theme={theme} />
         <span className="min-w-0 flex-1 truncate">{theme.name}</span>
       </RowAction>
-      <div className="flex shrink-0 items-center">{actions}</div>
+      <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-1")}>{actions}</span>
     </div>
   );
 }
@@ -216,6 +217,7 @@ export function ThemePicker({
                       label={`Delete ${theme.name}`}
                       tip="Delete"
                       icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
+                      className="hover:text-destructive"
                       onClick={() => {
                         confirmingDeleteRef.current = true;
                         arm();
