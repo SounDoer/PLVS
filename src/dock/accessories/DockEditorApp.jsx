@@ -11,6 +11,7 @@ import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
 import { panelModuleIdForDockModuleId } from "../dockLayout.js";
 import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
+import { SettingsMenuRoomContext } from "../../components/panel-settings/SettingsWidgets.jsx";
 
 export const DOCK_EDITOR_BLUR_CLOSE_DELAY_MS = 100;
 
@@ -32,11 +33,45 @@ export function measureDockEditorContent(root) {
   };
 }
 
+// Radix keeps a floating menu 10px clear of the window edge; the rest covers the menu's own offset
+// from its trigger.
+const SELECT_MENU_MARGIN_PX = 16;
+// The tallest a settings select menu gets; see SettingsSelect.
+const SELECT_MENU_MAX_HEIGHT_REM = 24;
+// How long to wait for the native window to report its new size before opening the menu anyway.
+const SELECT_MENU_ROOM_TIMEOUT_MS = 250;
+
+/**
+ * Extra window height that lets a settings select open its menu whole from `trigger`. This window
+ * is only as large as the editor and a floating menu is confined to the window, so without it a
+ * menu is squeezed down to its scroll buttons. The room is always for the tallest menu: the real
+ * height is unknown until the menu is up, when resizing would close it, and the window is
+ * transparent, so spare room shows nothing. The window grows away from the Dock strip, below the
+ * editor on a top Dock and above it on a bottom Dock.
+ *
+ * @param {HTMLElement} root
+ * @param {HTMLElement} trigger
+ * @param {string} [edge]
+ */
+export function measureSelectMenuRoom(root, trigger, edge) {
+  const remPx = Number.parseFloat(getComputedStyle(root.ownerDocument.documentElement).fontSize);
+  const needed = SELECT_MENU_MAX_HEIGHT_REM * (remPx || 16) + SELECT_MENU_MARGIN_PX;
+  const rootRect = root.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const available =
+    edge === "bottom" ? triggerRect.top - rootRect.top : rootRect.bottom - triggerRect.bottom;
+  return Math.max(0, Math.ceil(needed - available));
+}
+
 export function DockEditorApp() {
   const { payload, action } = useAccessoryClient("dock-editor");
   const rootRef = useRef(null);
   const pointerActiveRef = useRef(false);
   const lastSizeRef = useRef(null);
+  // The select trigger whose menu the window currently holds room for, and whether that menu has
+  // yet to appear.
+  const menuRoomRef = useRef({ trigger: null, pending: false });
+  const measureRef = useRef(/** @type {() => boolean} */ (() => false));
   const onHoverModule = useCallback((panelId) => action("hover-module", { panelId }), [action]);
   useSuppressNativeContextMenu();
 
@@ -90,18 +125,33 @@ export function DockEditorApp() {
     if (!root) return;
     let frame = 0;
     const measureNow = () => {
-      const next = measureDockEditorContent(root);
-      if (!next) return;
+      const content = measureDockEditorContent(root);
+      if (!content) return false;
+      const menuRoom = menuRoomRef.current;
+      if (root.ownerDocument.querySelector("[data-settings-select-menu]")) {
+        menuRoom.pending = false;
+      } else if (!menuRoom.pending || !menuRoom.trigger?.isConnected) {
+        menuRoom.trigger = null;
+        menuRoom.pending = false;
+      }
+      const next = {
+        width: content.width,
+        height:
+          content.height +
+          (menuRoom.trigger ? measureSelectMenuRoom(root, menuRoom.trigger, payload.edge) : 0),
+      };
       if (
         lastSizeRef.current?.view === payload.view &&
         lastSizeRef.current?.width === next.width &&
         lastSizeRef.current?.height === next.height
       ) {
-        return;
+        return false;
       }
       lastSizeRef.current = { ...next, view: payload.view };
       action("resize-editor", { ...next, view: payload.view });
+      return true;
     };
+    measureRef.current = measureNow;
     const scheduleMeasure = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(measureNow);
@@ -113,13 +163,47 @@ export function DockEditorApp() {
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
     resizeObserver?.observe(root);
     const mutationObserver = new MutationObserver(scheduleMeasure);
-    mutationObserver.observe(root, { childList: true, subtree: true, characterData: true });
+    // The whole body, not only the editor: a select menu is portalled beside it.
+    mutationObserver.observe(root.ownerDocument.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
     return () => {
+      measureRef.current = () => false;
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       mutationObserver.disconnect();
     };
-  }, [action, payload?.view]);
+  }, [action, payload?.view, payload?.edge]);
+
+  const reserveMenuRoom = useCallback(
+    (trigger) =>
+      new Promise((resolve) => {
+        if (!trigger) {
+          resolve();
+          return;
+        }
+        menuRoomRef.current = { trigger, pending: true };
+        let settled = false;
+        const settle = () => {
+          if (settled) return;
+          settled = true;
+          window.removeEventListener("resize", settle);
+          clearTimeout(timer);
+          resolve();
+          // Release the room if the menu never came up after all.
+          setTimeout(() => {
+            menuRoomRef.current.pending = false;
+            measureRef.current();
+          }, SELECT_MENU_ROOM_TIMEOUT_MS * 2);
+        };
+        window.addEventListener("resize", settle);
+        const timer = setTimeout(settle, SELECT_MENU_ROOM_TIMEOUT_MS);
+        if (!measureRef.current()) settle();
+      }),
+    []
+  );
 
   if (!payload) return null;
   const presetController = {
@@ -155,6 +239,9 @@ export function DockEditorApp() {
       data-visual-capture-ready="true"
       className={cn(
         "inline-block max-h-screen overflow-hidden",
+        // Against the strip's side of the window, so the editor stays put while the window grows
+        // away from the strip for an open select menu.
+        payload.edge === "bottom" && "fixed bottom-0 left-0",
         POPOVER_SURFACE_CLASS,
         payload.view?.startsWith("module:") && "p-1",
         // Presets owns a minimum width that follows Interface Size; the other library menus grow
@@ -191,22 +278,24 @@ export function DockEditorApp() {
         // backed by the same persisted settingsStore, so it stays in sync with the main window.
         // It never seeds a cold library: that write belongs to the main window.
         <LoudnessProfileProvider seedColdStart={false}>
-          <DockModuleSettings
-            moduleId={panel.moduleId}
-            title={resolvePanelDisplayName(
-              { panelsById: payload.panelsById, panelOrder: payload.panelOrder },
-              panel.id
-            )}
-            controls={payload.controlsByPanelId?.[panel.id]}
-            vectorscopeOptions={payload.vectorscopeOptions}
-            spectrumOptions={payload.spectrumOptions}
-            channelCount={payload.channelCount}
-            onChange={(controls) =>
-              action("update-module-controls", { panelId: panel.id, controls })
-            }
-            onReset={() => action("reset-module-controls", { panelId: panel.id })}
-            onBack={() => action("open-editor", { view: "modules" })}
-          />
+          <SettingsMenuRoomContext.Provider value={reserveMenuRoom}>
+            <DockModuleSettings
+              moduleId={panel.moduleId}
+              title={resolvePanelDisplayName(
+                { panelsById: payload.panelsById, panelOrder: payload.panelOrder },
+                panel.id
+              )}
+              controls={payload.controlsByPanelId?.[panel.id]}
+              vectorscopeOptions={payload.vectorscopeOptions}
+              spectrumOptions={payload.spectrumOptions}
+              channelCount={payload.channelCount}
+              onChange={(controls) =>
+                action("update-module-controls", { panelId: panel.id, controls })
+              }
+              onReset={() => action("reset-module-controls", { panelId: panel.id })}
+              onBack={() => action("open-editor", { view: "modules" })}
+            />
+          </SettingsMenuRoomContext.Provider>
         </LoudnessProfileProvider>
       ) : null}
     </div>

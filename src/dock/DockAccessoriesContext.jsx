@@ -176,6 +176,7 @@ export function DockAccessoriesProvider({ children }) {
   const dockEditorState = useMemo(
     () => ({
       view: dockAccessoryVisibility.editorView,
+      edge: dockEdge,
       panels: dockLayout.panels,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
@@ -200,6 +201,7 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       dockAccessoryVisibility.editorView,
+      dockEdge,
       dockLayout.controlsByPanelId,
       dockLayout.isDefault,
       dockLayout.panelOrder,

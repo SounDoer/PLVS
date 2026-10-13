@@ -2,7 +2,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settingsStore } from "../../persistence/index.js";
-import { DockEditorApp, measureDockEditorContent } from "./DockEditorApp.jsx";
+import {
+  DockEditorApp,
+  measureDockEditorContent,
+  measureSelectMenuRoom,
+} from "./DockEditorApp.jsx";
+import { standIn } from "../../testing/standIn.js";
 
 const { action, client } = vi.hoisted(() => ({
   action: vi.fn(),
@@ -30,6 +35,8 @@ describe("DockEditorApp window behavior", () => {
     action.mockClear();
     client.payload = PRESETS_PAYLOAD;
     client.action = action;
+    // jsdom has none, and an opening select scrolls its selected option into view.
+    HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
   it("closes when the accessory window loses focus", async () => {
@@ -50,7 +57,7 @@ describe("DockEditorApp window behavior", () => {
     expect(action).toHaveBeenCalledWith("close-editor");
   });
 
-  it("keeps the editor open when interacting with a floating settings selector", () => {
+  it("keeps the editor open when interacting with a floating settings selector", async () => {
     client.payload = {
       ...PRESETS_PAYLOAD,
       view: "module:levelMeter",
@@ -63,7 +70,7 @@ describe("DockEditorApp window behavior", () => {
     render(<DockEditorApp />);
     const trigger = screen.getByRole("combobox", { name: "level meter mode" });
     fireEvent.keyDown(trigger, { key: "ArrowDown" });
-    const option = screen.getByRole("option", { name: "Momentary" });
+    const option = await screen.findByRole("option", { name: "Momentary" });
     fireEvent.pointerDown(option);
     expect(action).not.toHaveBeenCalledWith("close-editor");
     fireEvent.keyDown(option, { key: "Escape" });
@@ -131,6 +138,47 @@ describe("DockEditorApp window behavior", () => {
     Object.defineProperties(header, { offsetHeight: { configurable: true, value: 28 } });
 
     expect(measureDockEditorContent(root)).toEqual({ width: 192, height: 118 });
+  });
+
+  it.each([
+    ["top", 348],
+    ["bottom", 360],
+  ])("makes room on the far side of a %s Dock before a select menu opens", async (edge, room) => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      edge,
+      view: "module:levelMeter",
+      panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+      panelOrder: ["levelMeter"],
+      controlsByPanelId: {
+        levelMeter: { levelMeterMode: "peak", readout: "live", showLabels: true },
+      },
+    };
+    render(<DockEditorApp />);
+    const root = screen.getByTestId("dock-editor");
+    const trigger = screen.getByRole("combobox", { name: "level meter mode" });
+    const rect = (top, bottom) => standIn({ top, bottom, left: 0, right: 200, width: 200 });
+    vi.spyOn(root, "getBoundingClientRect").mockReturnValue(rect(0, 120));
+    vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(rect(40, 68));
+
+    // The tallest menu is 24rem = 384, plus a 16 margin; 52 is free below the trigger, 40 above.
+    expect(measureSelectMenuRoom(root, trigger, edge)).toBe(room);
+
+    const sizes = () =>
+      action.mock.calls.filter(([type]) => type === "resize-editor").map(([, size]) => size.height);
+    await waitFor(() => expect(sizes()).toHaveLength(1));
+    const [closedHeight] = sizes();
+
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    // The window is asked to grow first; the menu waits for it.
+    expect(sizes().at(-1)).toBe(closedHeight + room);
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    fireEvent(window, new Event("resize"));
+    expect(await screen.findByRole("listbox")).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByRole("option", { name: "Momentary" }), { key: "Escape" });
+    await waitFor(() => expect(sizes().at(-1)).toBe(closedHeight));
   });
 
   it("publishes intrinsic size again when the same editor is reopened", async () => {
