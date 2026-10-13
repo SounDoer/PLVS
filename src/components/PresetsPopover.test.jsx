@@ -15,6 +15,20 @@ const NOOP_PRESETS = {
 };
 
 describe("PresetsPopoverContent", () => {
+  it("can browse Sharesets while scene changes are blocked without applying a preset", () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const apply = vi.fn();
+    render(<PresetsPopoverContent presets={{ ...NOOP_PRESETS, blocked: true, apply }} />);
+    fireEvent.click(screen.getByRole("button", { name: "browse presets on sharesets" }));
+    expect(open).toHaveBeenCalledWith(
+      "https://plvs.soundoer.com/sharesets/presets/",
+      "_blank",
+      "noopener,noreferrer"
+    );
+    expect(apply).not.toHaveBeenCalled();
+    open.mockRestore();
+  });
+
   it("moves the empty-state guidance into the create input", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     const add = screen.getByRole("button", { name: "Add preset" });

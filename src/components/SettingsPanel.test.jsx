@@ -51,6 +51,20 @@ function hexToRgb(hex) {
 }
 
 describe("SettingsPanel", () => {
+  it("opens Sharesets categories without changing appearance and hides Theme browsing in system mode", () => {
+    const openExternalUrl = vi.fn();
+    const setAppearanceMode = vi.fn();
+    const props = { ...BASE_PROPS, appVersion: "0.19.2", openExternalUrl, setAppearanceMode };
+    const { rerender } = render(<SettingsPanel {...props} appearance="fixed" />);
+    fireEvent.click(screen.getByRole("button", { name: "browse themes on sharesets" }));
+    expect(openExternalUrl).toHaveBeenLastCalledWith("https://plvs.soundoer.com/sharesets/themes/");
+    expect(setAppearanceMode).not.toHaveBeenCalled();
+    rerender(<SettingsPanel {...props} appearance="system" />);
+    expect(screen.queryByRole("button", { name: "browse themes on sharesets" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Sharesets" }));
+    expect(openExternalUrl).toHaveBeenLastCalledWith("https://plvs.soundoer.com/sharesets/");
+  });
+
   it("marks every public destination with a stable semantic section ID", () => {
     render(
       <SettingsPanel

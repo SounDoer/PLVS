@@ -246,6 +246,11 @@ the same **Import** action as PLVS-exported Theme pack files.
 
 ## Sharesets
 
+Open **Sharesets** in the Settings footer to browse all resources in your system browser.
+The **Browse** action beside the Presets or Loudness Profile popover title opens that category
+directly. In Settings, choose **Fixed Theme** to reveal **Browse Themes** below the Theme row;
+it opens the Themes category. Browsing does not change your current setup or discard an editor draft.
+
 The [Sharesets](https://plvs.soundoer.com/sharesets/) offers curated Themes, Presets, and
 Loudness Profiles. Choose a category, search by name or description, and optionally narrow the
 results by Tag under **Filters**. The selected tag remains visible when Filters is closed.

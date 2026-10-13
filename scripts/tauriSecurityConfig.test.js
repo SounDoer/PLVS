@@ -85,6 +85,18 @@ describe("Tauri security configuration", () => {
     expect(opener?.allow).toContainEqual({ url: "https://plvs.soundoer.com/privacy/" });
   });
 
+  it("allows Sharesets browsing only at the catalogue and category entry points", () => {
+    const opener = defaultCapability.permissions.find(
+      (permission) => permission?.identifier === "opener:allow-open-url"
+    );
+    expect(opener.allow.filter(({ url }) => url.includes("/sharesets"))).toEqual([
+      { url: "https://plvs.soundoer.com/sharesets/" },
+      { url: "https://plvs.soundoer.com/sharesets/themes/" },
+      { url: "https://plvs.soundoer.com/sharesets/presets/" },
+      { url: "https://plvs.soundoer.com/sharesets/loudness/" },
+    ]);
+  });
+
   it("does not grant local path opening after removing the in-app license entry", () => {
     const opener = defaultCapability.permissions.find(
       (permission) => permission?.identifier === "opener:allow-open-path"

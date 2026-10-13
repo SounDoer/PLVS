@@ -53,6 +53,21 @@ function renderPopover({ overrides, stats, showTitle = true, onExport } = {}) {
 }
 
 describe("LoudnessProfilePopoverContent listing", () => {
+  it("can browse Sharesets with an open draft without selecting a profile", () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const profile = makeController({ draftBlocksLibraryActions: true });
+    render(<LoudnessProfilePopoverContent profile={profile} />);
+    fireEvent.click(screen.getByRole("button", { name: "browse loudness profiles on sharesets" }));
+    expect(open).toHaveBeenCalledWith(
+      "https://plvs.soundoer.com/sharesets/loudness/",
+      "_blank",
+      "noopener,noreferrer"
+    );
+    expect(profile.select).not.toHaveBeenCalled();
+    expect(profile.selectOff).not.toHaveBeenCalled();
+    open.mockRestore();
+  });
+
   it("lists Off, profiles in controller order, and Add Profile", () => {
     renderPopover();
 

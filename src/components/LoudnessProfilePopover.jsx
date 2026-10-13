@@ -13,6 +13,7 @@ import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
+import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
 
 const ROW_CLASS =
   "flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover";
@@ -85,7 +86,10 @@ export function LoudnessProfilePopoverContent({
   return (
     <>
       {showTitle ? (
-        <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Loudness Profile</p>
+        <header className={POPOVER_HEADER_CLASS}>
+          <p className={`flex-1 ${POPOVER_TITLE_CLASS}`}>Loudness Profile</p>
+          <SharesetsBrowseButton category="loudness" />
+        </header>
       ) : null}
 
       <div className={ROW_CLASS}>

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
+import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
 
 const NOOP_PRESETS = {
   list: [],
@@ -96,7 +97,10 @@ export function PresetsPopoverContent({
   return (
     <div className="min-w-[calc(15em+4rem)] text-[length:var(--ui-fs-control)]">
       {showTitle ? (
-        <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Presets</p>
+        <header className={POPOVER_HEADER_CLASS}>
+          <p className={`flex-1 ${POPOVER_TITLE_CLASS}`}>Presets</p>
+          <SharesetsBrowseButton category="presets" />
+        </header>
       ) : null}
       <div className="flex items-center gap-2 px-2 py-1">
         <input

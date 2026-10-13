@@ -24,6 +24,8 @@ import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
+import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
+import { SHARESETS_URL } from "../ipc/openExternal.js";
 import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
 import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
@@ -608,28 +610,35 @@ export function SettingsPanel({
                     </Select>
                   </SettingsRow>
                   {appearance === "fixed" ? (
-                    <div
-                      role="group"
-                      aria-label="Theme picker"
-                      className="flex min-h-[var(--ui-control-h)] items-center gap-1 px-2"
-                    >
-                      <span className={ROW_LABEL_CLASS}>Theme</span>
-                      <div className="flex-1" />
-                      <ThemePicker
-                        value={fixedThemeSelectValue}
-                        onSelect={setFixedThemeIdFromPicker}
-                        customThemes={customThemeOptions
-                          .map((option) => option.theme)
-                          .filter(Boolean)}
-                        onCustomize={customizeBuiltinTheme}
-                        onEdit={editCustomTheme}
-                        onDuplicate={duplicateCustomTheme}
-                        onExport={onExportTheme}
-                        onDelete={deleteCustomTheme}
-                        onCreate={createCustomTheme}
-                        disabled={themeControlsDisabled}
-                      />
-                    </div>
+                    <>
+                      <div
+                        role="group"
+                        aria-label="Theme picker"
+                        className="flex min-h-[var(--ui-control-h)] items-center gap-1 px-2"
+                      >
+                        <span className={ROW_LABEL_CLASS}>Theme</span>
+                        <div className="flex-1" />
+                        <ThemePicker
+                          value={fixedThemeSelectValue}
+                          onSelect={setFixedThemeIdFromPicker}
+                          customThemes={customThemeOptions
+                            .map((option) => option.theme)
+                            .filter(Boolean)}
+                          onCustomize={customizeBuiltinTheme}
+                          onEdit={editCustomTheme}
+                          onDuplicate={duplicateCustomTheme}
+                          onExport={onExportTheme}
+                          onDelete={deleteCustomTheme}
+                          onCreate={createCustomTheme}
+                          disabled={themeControlsDisabled}
+                        />
+                      </div>
+                      <SettingsRow label="">
+                        <SharesetsBrowseButton category="themes" onOpen={openExternalUrl}>
+                          Browse Themes
+                        </SharesetsBrowseButton>
+                      </SettingsRow>
+                    </>
                   ) : null}
                 </SettingsSection>
 
@@ -957,6 +966,13 @@ export function SettingsPanel({
                         data-settings-footer-links
                         className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1"
                       >
+                        <LinkButton
+                          className={FOOTER_LINK_CLASS}
+                          onClick={() => openExternalUrl(SHARESETS_URL)}
+                        >
+                          Sharesets
+                          <ExternalLink className="size-[1em]" />
+                        </LinkButton>
                         <LinkButton
                           className={cn(
                             FOOTER_LINK_CLASS,
