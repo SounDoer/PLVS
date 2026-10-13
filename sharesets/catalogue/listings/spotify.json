@@ -21,7 +21,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-12",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial curated release based on Spotify's current public guidance.",
       "artifact": "artifacts/spotify-v1.plvsloudness",

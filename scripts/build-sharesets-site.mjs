@@ -20,9 +20,10 @@ const FAMILIES = {
 };
 
 const COPY_NOUNS = { loudness: "Profile", presets: "Preset", themes: "Theme" };
-// Themes have pasted since 0.18.0. Earlier apps answer a pasted Preset or Profile with a Theme
-// error, so the page names the first version that accepts them.
-const ITEM_PASTE_MINIMUM_APP_VERSION = "0.20.0";
+// Sharesets launched with 0.20.0 and supports no earlier app: some Items need its metric ids, and
+// earlier apps answer a pasted Preset or Profile with a Theme error. Every page states this one
+// floor rather than a per-Item minimum.
+const SHARESETS_MINIMUM_APP_VERSION = "0.20.0";
 
 const THEME_GALLERY_ORDER = [
   "product-workspace-file",
@@ -312,7 +313,7 @@ function detailPage(listing, profile = null) {
                 : ""
           }
           <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<p class="lede">${escapeHtml(listing.summary)}</p>` : isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace(/Download \.\w+</, "Download<")}
-            ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.${isProfile || isPreset ? ` Pasting a ${copyNoun} requires PLVS ${ITEM_PASTE_MINIMUM_APP_VERSION} or later.` : ""}</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
+            ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2><p>Requires PLVS ${SHARESETS_MINIMUM_APP_VERSION} or later.</p><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
             ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>
         </div>

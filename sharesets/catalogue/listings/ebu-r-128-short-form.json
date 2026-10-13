@@ -21,7 +21,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-12",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial curated release based on the current EBU short-form supplement.",
       "artifact": "artifacts/ebu-r-128-short-form-v1.plvsloudness",

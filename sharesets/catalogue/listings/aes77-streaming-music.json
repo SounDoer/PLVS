@@ -28,7 +28,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-12",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial monitoring release for track-normalized AES77 music distribution.",
       "artifact": "artifacts/aes77-streaming-music-v1.plvsloudness",

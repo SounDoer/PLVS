@@ -28,7 +28,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-12",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial monitoring release for speech-led AES77 distribution workflows.",
       "artifact": "artifacts/aes77-streaming-speech-v1.plvsloudness",

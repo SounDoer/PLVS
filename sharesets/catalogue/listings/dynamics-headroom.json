@@ -15,7 +15,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-13",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial official release.",
       "artifact": "artifacts/dynamics-headroom-v1.plvspreset",

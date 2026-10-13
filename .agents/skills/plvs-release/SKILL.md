@@ -378,8 +378,9 @@ fast version / CHANGELOG / Theme compatibility / git / tag check.
 Portable Theme files carry a contract, `formatVersion:semanticsVersion` (for
 example `1:4`). `SHARESETS_THEME_COMPATIBILITY` in
 `src/theme/sharesetsThemePresentation.js` records, per contract, the first PLVS
-version able to read it; Sharesets Theme pages print it as "Requires PLVS x.y.z
-or later". During development a new contract may sit in that table with
+version able to read it. Sharesets pages do not print it: every page states the one
+Sharesets floor, `SHARESETS_MINIMUM_APP_VERSION` in `scripts/build-sharesets-site.mjs`.
+Raise that floor when a release ships a contract older apps cannot read. During development a new contract may sit in that table with
 `minimumAppVersion: null`, because nobody knows yet which version will ship it.
 
 The release-state check fails when the contract the app currently writes has no

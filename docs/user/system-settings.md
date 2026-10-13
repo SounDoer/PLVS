@@ -239,7 +239,7 @@ A Theme, Preset, or Loudness Profile copied as text can be pasted straight into 
 **Ctrl+V** on Windows or **Command+V** on macOS anywhere outside a text field. The text is the
 same content as the shared file, so anything **Import** accepts can also be pasted. PLVS opens the
 normal import review before adding anything; it never applies or overwrites an Item just because
-it was pasted. Pasting a Preset or Loudness Profile requires PLVS 0.20.0 or later. A copied or
+it was pasted. A copied or
 downloaded Theme is recognized by its content: if an identical Theme, including its name, is
 already in your library, the review says so and nothing is added. Single `.plvstheme` files use
 the same **Import** action as PLVS-exported Theme pack files.
@@ -287,6 +287,9 @@ links in **Release History**, as on Theme pages. The built-in **Default** Preset
 detail page, release history appears last, after all resource information and settings.
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
 **Download** remains visible.
+
+Sharesets Items require PLVS 0.20.0 or later; each downloadable Item's page says so under **How to
+Use**.
 
 For an Item that is not already included with PLVS, download its `.plvstheme`, `.plvspreset`, or
 `.plvsloudness` file, then open **Settings → Saved Items → Import…**. Review what will be added and

@@ -28,7 +28,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-12",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial monitoring release based on the EBU R 128 S2 interim distribution range.",
       "artifact": "artifacts/ebu-r-128-streaming-monitor-v1.plvsloudness",

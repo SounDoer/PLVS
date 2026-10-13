@@ -316,7 +316,7 @@ describe("Sharesets static site generator", () => {
     expect(detail).toContain(
       'data-copy-artifact="/sharesets/files/broadcast/v1/broadcast.plvsloudness" data-copy-noun="Profile">Copy Profile</button>'
     );
-    expect(detail).toContain("Pasting a Profile requires PLVS 0.20.0 or later.");
+    expect(detail).toContain("<p>Requires PLVS 0.20.0 or later.</p>");
     expect(detail).toContain("<h2>Sources</h2>");
     expect(detail).toContain("Example Loudness Recommendation");
     expect(detail).toContain("Version 2.0 (2026)");

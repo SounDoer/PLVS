@@ -28,7 +28,7 @@
   "releases": [
     {
       "number": 1,
-      "publishedAt": "2026-10-12",
+      "publishedAt": "2026-10-14",
       "status": "published",
       "notesMarkdown": "Initial monitoring release with explicit non-conformance limitations.",
       "artifact": "artifacts/atsc-a-85-long-form-monitor-v1.plvsloudness",
