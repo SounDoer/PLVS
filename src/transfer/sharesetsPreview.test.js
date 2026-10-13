@@ -4,6 +4,8 @@ import { buildPack } from "./packShape.js";
 import { buildSharesetsPreviewPlan } from "./sharesetsPreview.js";
 import { SHARESETS_PREVIEW_FIXTURE_V5 } from "./fixtures/sharesetsPreviewV5.js";
 import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMultichannelV1.js";
+import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "./fixtures/sharesetsPreviewDialogueStereoV1.js";
+import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewDialogueMultichannelV1.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
 const PROFILE = {
@@ -122,6 +124,26 @@ describe("Sharesets preview input contract", () => {
         }),
       }),
     ]);
+  });
+
+  it("uses measured Dialogue fixtures for Dialogue Delivery Review", async () => {
+    const preset = {
+      id: "dialogue-delivery-review",
+      name: "Dialogue Delivery Review",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
+
+    expect(plan.contractVersion).toBe(5);
+    expect(plan.fixture).toEqual(SHARESETS_PREVIEW_DIALOGUE_STEREO_V1);
+    expect(plan.multichannelFixture).toEqual(SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1);
+    expect(plan.assets.map(({ id }) => id)).toEqual([
+      "preset-workspace-stereo",
+      "preset-workspace-5-1",
+    ]);
+    expect(plan.assets[0].source.fixtureHash).not.toBe(plan.assets[1].source.fixtureHash);
   });
 
   it("renders the official Multichannel Monitoring Preset with the 5.1 fixture at 1280×800", async () => {

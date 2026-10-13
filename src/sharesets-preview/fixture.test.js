@@ -6,6 +6,8 @@ import {
   polarLevelMaxHoldAt,
 } from "../math/vectorscopePolarMath.js";
 import { SHARESETS_PREVIEW_FIXTURE_V5 } from "../transfer/fixtures/sharesetsPreviewV5.js";
+import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewDialogueStereoV1.js";
+import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "../transfer/fixtures/sharesetsPreviewDialogueMultichannelV1.js";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "./defaultAnalysisRequests.js";
 import { buildSharesetsPreviewFixtureValues } from "./fixture.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
@@ -120,5 +122,37 @@ describe("Sharesets Vectorscope preview data", () => {
     expect(vectorscope.pairs).toHaveLength(200);
     expect(vectorscope.maxHold).toHaveLength(64);
     expect(vectorscope.maxHold.some((value) => value > 0)).toBe(true);
+  });
+});
+
+describe("Sharesets Dialogue preview data", () => {
+  it("carries measured Dialogue metrics and the speaking-now state into Stats", () => {
+    const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_DIALOGUE_STEREO_V1);
+    const audio = values.frameData.displayAudio;
+    const metrics = new Map(values.metricsData.statsMetrics.map((metric) => [metric.id, metric]));
+
+    expect(audio).toMatchObject({
+      dialogueIntegrated: expect.any(Number),
+      dialogueLra: expect.any(Number),
+      dialoguePercent: expect.any(Number),
+      dialogueActiveNow: true,
+    });
+    expect(metrics.get("dialogueIntegrated").value).not.toBe("-");
+    expect(metrics.get("loudnessToDialogueRatio").value).not.toBe("-");
+    expect(metrics.get("dialogueCoverage").value).not.toBe("-");
+    expect(metrics.get("dialogueRange").value).not.toBe("-");
+    expect(values.metricsData.dialogueActiveNow).toBe(true);
+    expect(values.historyData.histSourceList[0].waveformSubCount).toBeGreaterThan(1);
+    expect(values.historyData.histSourceList[0].waveformSubPairs.length).toBeGreaterThan(0);
+  });
+
+  it("uses the documented LFE-attenuated derivative for the 5.1 catalogue preview", () => {
+    expect(SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1.source.derivation).toMatchObject({
+      sourceFileName: "surround-dialogue.wav",
+      recipe: "plvs-sharesets-dialogue-preview-lfe-minus-18db",
+    });
+    expect(SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1.measurementFrame.peaksDbfs[3]).toBeLessThan(
+      -18
+    );
   });
 });

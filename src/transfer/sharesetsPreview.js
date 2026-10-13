@@ -5,6 +5,8 @@ import {
 import { validatePublishablePack } from "./sharesetsPack.js";
 import { SHARESETS_PREVIEW_FIXTURE_V5 } from "./fixtures/sharesetsPreviewV5.js";
 import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMultichannelV1.js";
+import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "./fixtures/sharesetsPreviewDialogueStereoV1.js";
+import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewDialogueMultichannelV1.js";
 import { hashPortablePreset } from "./portablePreset.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
@@ -14,6 +16,7 @@ export const SHARESETS_PREVIEW_RENDERER_VERSION = 2;
 const LEGACY_PREVIEW_CONTRACT_VERSION = 4;
 const PRESET_WORKSPACE_VARIANTS_BY_ITEM_ID = Object.freeze({
   "meter-bridge": Object.freeze(["stereo", "5.1"]),
+  "dialogue-delivery-review": Object.freeze(["stereo", "5.1"]),
 });
 
 const VIEWPORTS = Object.freeze({
@@ -115,14 +118,20 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     contentHash === (await hashPortablePreset(MULTICHANNEL_MONITORING_PRESET));
   const itemId = rawPack.items[0]?.id ?? null;
   const workspaceVariants = PRESET_WORKSPACE_VARIANTS_BY_ITEM_ID[itemId] ?? null;
+  const dialoguePreview = itemId === "dialogue-delivery-review";
   const usesMultichannelFixture =
     multichannelMonitoring || workspaceVariants?.includes("5.1") === true;
-  const fixture = multichannelMonitoring
-    ? SHARESETS_PREVIEW_MULTICHANNEL_V1
-    : SHARESETS_PREVIEW_FIXTURE_V5;
+  const fixture = dialoguePreview
+    ? SHARESETS_PREVIEW_DIALOGUE_STEREO_V1
+    : multichannelMonitoring
+      ? SHARESETS_PREVIEW_MULTICHANNEL_V1
+      : SHARESETS_PREVIEW_FIXTURE_V5;
   const fixtureHash = await hashSharesetsPreviewFixture(fixture);
+  const multichannelFixture = dialoguePreview
+    ? SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1
+    : SHARESETS_PREVIEW_MULTICHANNEL_V1;
   const multichannelFixtureHash = usesMultichannelFixture
-    ? await hashSharesetsPreviewFixture(SHARESETS_PREVIEW_MULTICHANNEL_V1)
+    ? await hashSharesetsPreviewFixture(multichannelFixture)
     : null;
   const dependencyItems = rawPack.dependencies?.flatMap((group) =>
     group.kind === "loudness-profile" ? group.items : []
@@ -173,7 +182,7 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     fixture: structuredClone(fixture),
     fixtureHash,
     ...(workspaceVariants?.includes("5.1")
-      ? { multichannelFixture: structuredClone(SHARESETS_PREVIEW_MULTICHANNEL_V1) }
+      ? { multichannelFixture: structuredClone(multichannelFixture) }
       : {}),
     item: {
       type,

@@ -15,8 +15,10 @@ const STEREO_SOURCE_SHA256: &str =
   "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988";
 const SURROUND_51_SOURCE_SHA256: &str =
   "877339010e236b200839faea257271c5917506fe1e6125405b07aeaadb979488";
-const WINDOW_START_MS: u64 = 18_000;
-const WINDOW_END_MS: u64 = 78_000;
+const DIALOGUE_SURROUND_SOURCE_SHA256: &str =
+  "bff057f193f46cdf466f00968ac46a3ea6e4a4713ee8ef07d74a232fa8fbb8a5";
+const DISCOVERY_WINDOW_START_MS: u64 = 18_000;
+const DISCOVERY_WINDOW_END_MS: u64 = 78_000;
 const FREQUENCY_BIN_STRIDE: usize = 4;
 
 #[derive(Serialize)]
@@ -77,6 +79,8 @@ struct FixtureAudio {
 pub enum PreviewFixtureLayout {
   Stereo,
   Surround51,
+  DialogueStereo,
+  DialogueSurround51,
 }
 
 impl PreviewFixtureLayout {
@@ -84,6 +88,8 @@ impl PreviewFixtureLayout {
     match id {
       "stereo" => Ok(Self::Stereo),
       "5.1" => Ok(Self::Surround51),
+      "dialogue-stereo" => Ok(Self::DialogueStereo),
+      "dialogue-5.1" => Ok(Self::DialogueSurround51),
       _ => Err(format!("Unsupported Sharesets preview layout: {id}")),
     }
   }
@@ -92,6 +98,8 @@ impl PreviewFixtureLayout {
     match self {
       Self::Stereo => "plvs-sharesets-discovery-v5",
       Self::Surround51 => "plvs-sharesets-discovery-5-1-v1",
+      Self::DialogueStereo => "plvs-sharesets-dialogue-stereo-v1",
+      Self::DialogueSurround51 => "plvs-sharesets-dialogue-5-1-v1",
     }
   }
 
@@ -99,6 +107,7 @@ impl PreviewFixtureLayout {
     match self {
       Self::Stereo => 5,
       Self::Surround51 => 1,
+      Self::DialogueStereo | Self::DialogueSurround51 => 1,
     }
   }
 
@@ -106,6 +115,8 @@ impl PreviewFixtureLayout {
     match self {
       Self::Stereo => "discovery-hero.wav",
       Self::Surround51 => "discovery-hero-5-1-derived.wav",
+      Self::DialogueStereo => "stereo-antiphase.wav",
+      Self::DialogueSurround51 => "surround-dialogue-preview.wav",
     }
   }
 
@@ -113,13 +124,15 @@ impl PreviewFixtureLayout {
     match self {
       Self::Stereo => "Discovery",
       Self::Surround51 => "Discovery — deterministic 5.1 derivative",
+      Self::DialogueStereo => "PLVS dialogue benchmark — stereo antiphase",
+      Self::DialogueSurround51 => "PLVS dialogue benchmark — surround dialogue preview",
     }
   }
 
   fn channel_labels(self) -> &'static [&'static str] {
     match self {
-      Self::Stereo => &["L", "R"],
-      Self::Surround51 => &["L", "R", "C", "LFE", "Ls", "Rs"],
+      Self::Stereo | Self::DialogueStereo => &["L", "R"],
+      Self::Surround51 | Self::DialogueSurround51 => &["L", "R", "C", "LFE", "Ls", "Rs"],
     }
   }
 
@@ -127,16 +140,42 @@ impl PreviewFixtureLayout {
     match self {
       Self::Stereo => Some(STEREO_SOURCE_SHA256),
       Self::Surround51 => Some(SURROUND_51_SOURCE_SHA256),
+      Self::DialogueStereo | Self::DialogueSurround51 => None,
     }
   }
 
   fn derivation(self) -> Option<FixtureDerivation> {
-    (self == Self::Surround51).then(|| FixtureDerivation {
-      source_file_name: "discovery-hero.wav".to_string(),
-      source_sha256: STEREO_SOURCE_SHA256.to_string(),
-      recipe: "plvs-sharesets-stereo-to-5-1".to_string(),
-      recipe_version: 1,
-    })
+    match self {
+      Self::Surround51 => Some(FixtureDerivation {
+        source_file_name: "discovery-hero.wav".to_string(),
+        source_sha256: STEREO_SOURCE_SHA256.to_string(),
+        recipe: "plvs-sharesets-stereo-to-5-1".to_string(),
+        recipe_version: 1,
+      }),
+      Self::DialogueSurround51 => Some(FixtureDerivation {
+        source_file_name: "surround-dialogue.wav".to_string(),
+        source_sha256: DIALOGUE_SURROUND_SOURCE_SHA256.to_string(),
+        recipe: "plvs-sharesets-dialogue-preview-lfe-minus-18db".to_string(),
+        recipe_version: 1,
+      }),
+      Self::Stereo | Self::DialogueStereo => None,
+    }
+  }
+
+  fn dialogue_gating(self) -> bool {
+    matches!(self, Self::DialogueStereo | Self::DialogueSurround51)
+  }
+
+  fn artist(self) -> &'static str {
+    if self.dialogue_gating() {
+      "PLVS dialogue benchmark / LibriSpeech"
+    } else {
+      "Scott Buckley"
+    }
+  }
+
+  fn license(self) -> &'static str {
+    "CC BY 4.0"
   }
 }
 
@@ -154,6 +193,17 @@ struct MeasurementFrame {
   side_to_mid_db: f64,
   m_max_lufs: f64,
   st_max_lufs: f64,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  dialogue: Option<FixtureDialogue>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FixtureDialogue {
+  integrated_lufs: f64,
+  range_lu: f64,
+  coverage_percent: f64,
+  active_now: bool,
 }
 
 #[derive(Serialize)]
@@ -174,6 +224,10 @@ struct LoudnessRow {
   short_term_lufs: f64,
   waveform_min: Vec<f32>,
   waveform_max: Vec<f32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  waveform_sub_pairs: Option<Vec<f32>>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  waveform_sub_count: Option<u32>,
 }
 
 #[derive(Serialize)]
@@ -252,8 +306,8 @@ fn sha256(path: &Path) -> Result<String, String> {
   )
 }
 
-fn relative_time(timestamp_ms: u64) -> u64 {
-  timestamp_ms.saturating_sub(WINDOW_START_MS)
+fn relative_time(timestamp_ms: u64, window_start_ms: u64) -> u64 {
+  timestamp_ms.saturating_sub(window_start_ms)
 }
 
 fn finite(value: f64, label: &str) -> Result<f64, String> {
@@ -264,11 +318,15 @@ fn finite(value: f64, label: &str) -> Result<f64, String> {
   }
 }
 
-fn selected_visual_rows(frames: &[AudioFramePayload]) -> Vec<VisualHistEntry> {
+fn selected_visual_rows(
+  frames: &[AudioFramePayload],
+  window_start_ms: u64,
+  window_end_ms: u64,
+) -> Vec<VisualHistEntry> {
   frames
     .iter()
     .flat_map(|frame| frame.visual_hist_batch.iter())
-    .filter(|row| (WINDOW_START_MS..=WINDOW_END_MS).contains(&row.timestamp_ms))
+    .filter(|row| (window_start_ms..=window_end_ms).contains(&row.timestamp_ms))
     .cloned()
     .collect()
 }
@@ -332,7 +390,7 @@ pub fn generate_sharesets_preview_fixture(
   let config = WorkerConfig {
     requests: analysis_requests.clone(),
     channel_selection: None,
-    dialogue_gating: false,
+    dialogue_gating: layout.dialogue_gating(),
     dialogue_vad_engine: VadEngineKind::default(),
     deterministic_spectral_time: true,
   };
@@ -342,7 +400,7 @@ pub fn generate_sharesets_preview_fixture(
     Some(&probe),
     &config,
     |frame| {
-      if frame.timestamp_ms <= WINDOW_END_MS || !frame.loudness_hist_batch.is_empty() {
+      if frame.timestamp_ms <= DISCOVERY_WINDOW_END_MS || !frame.loudness_hist_batch.is_empty() {
         frames.push(frame);
       }
       Ok(())
@@ -353,14 +411,32 @@ pub fn generate_sharesets_preview_fixture(
   if outcome.is_none() {
     return Err("Sharesets preview analysis was cancelled".to_string());
   }
-  let frame = frames
-    .iter()
-    .filter(|frame| frame.timestamp_ms <= WINDOW_END_MS)
-    .max_by_key(|frame| frame.timestamp_ms)
-    .ok_or_else(|| "Sharesets preview analysis produced no selected frame".to_string())?;
+  let frame = if layout.dialogue_gating() {
+    frames
+      .iter()
+      .filter(|frame| frame.dialogue_active_now)
+      .max_by_key(|frame| frame.timestamp_ms)
+      .ok_or_else(|| "Dialogue preview analysis detected no active speech".to_string())?
+  } else {
+    frames
+      .iter()
+      .filter(|frame| frame.timestamp_ms <= DISCOVERY_WINDOW_END_MS)
+      .max_by_key(|frame| frame.timestamp_ms)
+      .ok_or_else(|| "Sharesets preview analysis produced no selected frame".to_string())?
+  };
+  let window_end_ms = if layout.dialogue_gating() {
+    frame.timestamp_ms
+  } else {
+    DISCOVERY_WINDOW_END_MS
+  };
+  let window_start_ms = if layout.dialogue_gating() {
+    window_end_ms.saturating_sub(60_000)
+  } else {
+    DISCOVERY_WINDOW_START_MS
+  };
   let band_centers_hz = frames
     .iter()
-    .filter(|frame| frame.timestamp_ms <= WINDOW_END_MS)
+    .filter(|frame| frame.timestamp_ms <= window_end_ms)
     .rev()
     .find_map(|frame| {
       (!frame.band_grid_centers_hz.is_empty()).then(|| frame.band_grid_centers_hz.clone())
@@ -389,22 +465,26 @@ pub fn generate_sharesets_preview_fixture(
   let loudness_history = frames
     .iter()
     .flat_map(|frame| frame.loudness_hist_batch.iter())
-    .filter(|row| (WINDOW_START_MS..=WINDOW_END_MS).contains(&row.timestamp_ms))
+    .filter(|row| (window_start_ms..=window_end_ms).contains(&row.timestamp_ms))
     .map(|row| {
       Ok(LoudnessRow {
-        at_ms: relative_time(row.timestamp_ms),
+        at_ms: relative_time(row.timestamp_ms, window_start_ms),
         momentary_lufs: finite(row.lufs_momentary, "momentary loudness")?,
         short_term_lufs: finite(row.lufs_short_term, "short-term loudness")?,
         waveform_min: row.waveform_min.clone(),
         waveform_max: row.waveform_max.clone(),
+        waveform_sub_pairs: layout
+          .dialogue_gating()
+          .then(|| row.waveform_sub_pairs.clone()),
+        waveform_sub_count: layout.dialogue_gating().then_some(row.waveform_sub_count),
       })
     })
     .collect::<Result<Vec<_>, String>>()?;
-  let visual_rows = selected_visual_rows(&frames);
+  let visual_rows = selected_visual_rows(&frames, window_start_ms, window_end_ms);
   let waveform = visual_rows
     .iter()
     .map(|row| FixtureWaveformRow {
-      at_ms: relative_time(row.timestamp_ms),
+      at_ms: relative_time(row.timestamp_ms, window_start_ms),
       min: row.waveform_min.clone(),
       max: row.waveform_max.clone(),
       dominant_frequency_hz: row.dominant_frequency_hz.clone(),
@@ -423,7 +503,7 @@ pub fn generate_sharesets_preview_fixture(
             .spectrum_by_key
             .get(&request.key)
             .map(|entry| FixtureSpectrogramRow {
-              at_ms: relative_time(row.timestamp_ms),
+              at_ms: relative_time(row.timestamp_ms, window_start_ms),
               db: select_frequency_values(&entry.smooth_db, &frequency_indices),
             })
         })
@@ -451,7 +531,7 @@ pub fn generate_sharesets_preview_fixture(
             .vectorscope_by_key
             .get(&request.key)
             .map(|entry| FixtureVectorscopeRow {
-              at_ms: relative_time(row.timestamp_ms),
+              at_ms: relative_time(row.timestamp_ms, window_start_ms),
               pairs: entry.pairs.clone(),
             })
         })
@@ -493,7 +573,7 @@ pub fn generate_sharesets_preview_fixture(
       ))
     })
     .collect::<Result<BTreeMap<_, _>, String>>()?;
-  let duration_ms = WINDOW_END_MS - WINDOW_START_MS;
+  let duration_ms = window_end_ms - window_start_ms;
   Ok(SharesetsPreviewFixture {
     id: layout.id().to_string(),
     version: layout.version(),
@@ -502,10 +582,10 @@ pub fn generate_sharesets_preview_fixture(
       file_name: layout.file_name().to_string(),
       sha256: actual_hash,
       title: layout.title().to_string(),
-      artist: "Scott Buckley".to_string(),
-      license: "CC BY 4.0".to_string(),
-      window_start_ms: WINDOW_START_MS,
-      window_end_ms: WINDOW_END_MS,
+      artist: layout.artist().to_string(),
+      license: layout.license().to_string(),
+      window_start_ms,
+      window_end_ms,
       analyzer: "plvs-meter-pipeline-v1".to_string(),
       frequency_bin_stride: FREQUENCY_BIN_STRIDE,
       derivation: layout.derivation(),
@@ -541,6 +621,16 @@ pub fn generate_sharesets_preview_fixture(
       side_to_mid_db: finite(frame.side_to_mid_db, "side-to-mid ratio")?,
       m_max_lufs: finite(frame.lufs_m_max, "maximum momentary loudness")?,
       st_max_lufs: finite(frame.lufs_st_max, "maximum short-term loudness")?,
+      dialogue: if layout.dialogue_gating() {
+        Some(FixtureDialogue {
+          integrated_lufs: finite(frame.dialogue_integrated, "dialogue loudness")?,
+          range_lu: finite(frame.dialogue_lra, "dialogue range")?,
+          coverage_percent: finite(frame.dialogue_percent, "dialogue coverage")?,
+          active_now: frame.dialogue_active_now,
+        })
+      } else {
+        None
+      },
     },
     loudness_history,
     visuals: FixtureVisuals {
@@ -578,8 +668,8 @@ mod tests {
 
   #[test]
   fn selected_window_is_sixty_seconds_ending_at_the_hero_frame() {
-    assert_eq!(WINDOW_START_MS, 18_000);
-    assert_eq!(WINDOW_END_MS - WINDOW_START_MS, 60_000);
+    assert_eq!(DISCOVERY_WINDOW_START_MS, 18_000);
+    assert_eq!(DISCOVERY_WINDOW_END_MS - DISCOVERY_WINDOW_START_MS, 60_000);
   }
 
   #[test]

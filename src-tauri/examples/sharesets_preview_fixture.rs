@@ -9,14 +9,14 @@ fn main() -> ExitCode {
   };
   let Some(requests_path) = args.next() else {
     eprintln!(
-      "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1]"
+      "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1|dialogue-stereo|dialogue-5.1]"
     );
     return ExitCode::from(2);
   };
   let layout_id = args.next().unwrap_or_else(|| "stereo".to_string());
   if args.next().is_some() {
     eprintln!(
-      "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1]"
+      "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1|dialogue-stereo|dialogue-5.1]"
     );
     return ExitCode::from(2);
   }

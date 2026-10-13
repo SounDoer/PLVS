@@ -41,6 +41,7 @@ const INITIAL_LISTINGS = [
   "listings/dynamics-headroom.json",
   "listings/essential-monitoring.json",
   "listings/meter-bridge.json",
+  "listings/dialogue-delivery-review.json",
 ];
 
 let launchSource;
@@ -70,6 +71,7 @@ describe("initial Sharesets Catalogue", () => {
       "control-room-amber",
       "default-loudness-profile",
       "default-preset",
+      "dialogue-delivery-review",
       "dynamics-headroom",
       "ebu-r-128-programme",
       "ebu-r-128-short-form",
@@ -306,6 +308,35 @@ describe("initial Sharesets Catalogue", () => {
     expect(preset.title).toBe("Meter Bridge");
     expect(preset.releases[0].metadata.facets).toMatchObject({
       moduleIds: ["levelMeter", "waveform"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace-stereo",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 5 }),
+      }),
+      expect.objectContaining({
+        id: "preset-workspace-5-1",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 5 }),
+      }),
+    ]);
+    expect(preset.releases[0].previews[0].source.fixtureHash).not.toBe(
+      preset.releases[0].previews[1].source.fixtureHash
+    );
+  });
+
+  it("publishes Dialogue Delivery Review with measured Stereo and 5.1 previews", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(
+      ({ document }) => document.id === "dialogue-delivery-review"
+    ).document;
+
+    expect(preset.title).toBe("Dialogue Delivery Review");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["loudness", "stats", "waveform"],
       dependencyIds: [],
       optionalCapabilities: [],
     });

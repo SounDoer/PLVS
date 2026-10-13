@@ -12,6 +12,7 @@ import {
   polarLevelMaxHoldAt,
 } from "../src/math/vectorscopePolarMath.js";
 import { buildDerivedSurround51Wav } from "./sharesets-preview-audio.mjs";
+import { generateDialogueBenchmarkFixtures } from "./dialogue-benchmark-fixtures.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const audioPath = join(root, "assets", "marketing", "audio", "discovery-hero.wav");
@@ -22,6 +23,20 @@ const multichannelFixturePath = join(
   "transfer",
   "fixtures",
   "sharesetsPreviewMultichannelV1.json"
+);
+const dialogueStereoFixturePath = join(
+  root,
+  "src",
+  "transfer",
+  "fixtures",
+  "sharesetsPreviewDialogueStereoV1.json"
+);
+const dialogueMultichannelFixturePath = join(
+  root,
+  "src",
+  "transfer",
+  "fixtures",
+  "sharesetsPreviewDialogueMultichannelV1.json"
 );
 const binDir = join(root, "src-tauri", "binaries");
 const write = process.argv.slice(2).includes("--write");
@@ -49,6 +64,29 @@ function finalizeVectorscopeState(fixture) {
     result.history = result.history.filter(({ atMs }) => atMs + 500 >= durationMs);
   }
   return fixture;
+}
+
+async function buildDialogueSurroundPreview(sourcePath, outputPath) {
+  const wav = Buffer.from(await readFile(sourcePath));
+  const channels = wav.readUInt16LE(22);
+  const format = wav.readUInt16LE(20);
+  const bitsPerSample = wav.readUInt16LE(34);
+  if (
+    wav.toString("ascii", 0, 4) !== "RIFF" ||
+    channels !== 6 ||
+    format !== 3 ||
+    bitsPerSample !== 32
+  ) {
+    throw new Error("Dialogue 5.1 preview source must be a six-channel float32 WAV.");
+  }
+  const frameBytes = channels * 4;
+  const lfeOffset = 3 * 4;
+  const lfeScale = 10 ** (-18 / 20);
+  for (let frameOffset = 44; frameOffset + frameBytes <= wav.length; frameOffset += frameBytes) {
+    const offset = frameOffset + lfeOffset;
+    wav.writeFloatLE(wav.readFloatLE(offset) * lfeScale, offset);
+  }
+  await writeFile(outputPath, wav);
 }
 
 if (unknown.length > 0) {
@@ -101,6 +139,16 @@ try {
     sourcePath: audioPath,
     outputPath: surroundPath,
   });
+  const dialogueCorpusRoot = join(staged, "dialogue-corpus");
+  await generateDialogueBenchmarkFixtures({
+    outputRoot: dialogueCorpusRoot,
+    ffmpeg: join(staged, assets.runtime.ffmpeg),
+  });
+  const dialogueSurroundPreviewPath = join(dialogueCorpusRoot, "surround-dialogue-preview.wav");
+  await buildDialogueSurroundPreview(
+    join(dialogueCorpusRoot, "surround-dialogue.wav"),
+    dialogueSurroundPreviewPath
+  );
 
   async function generateFixture(sourcePath, layout, outputPath) {
     const result = spawnSync(
@@ -144,6 +192,16 @@ try {
 
   await generateFixture(audioPath, "stereo", fixturePath);
   await generateFixture(surroundPath, "5.1", multichannelFixturePath);
+  await generateFixture(
+    join(dialogueCorpusRoot, "stereo-antiphase.wav"),
+    "dialogue-stereo",
+    dialogueStereoFixturePath
+  );
+  await generateFixture(
+    dialogueSurroundPreviewPath,
+    "dialogue-5.1",
+    dialogueMultichannelFixturePath
+  );
 } finally {
   await rm(staged, { recursive: true, force: true });
 }

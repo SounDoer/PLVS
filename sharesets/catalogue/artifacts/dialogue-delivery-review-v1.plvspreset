@@ -1,0 +1,139 @@
+{
+  "app": "PLVS",
+  "kind": "preset-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "dialogue-delivery-review",
+      "kind": "plvs-preset",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Dialogue Delivery Review",
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "vertical",
+          "weights": [
+            0.55,
+            0.45
+          ],
+          "children": [
+            {
+              "type": "panel",
+              "key": "dialogue-structure"
+            },
+            {
+              "type": "split",
+              "direction": "horizontal",
+              "weights": [
+                0.5,
+                0.5
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "programme-loudness"
+                },
+                {
+                  "type": "panel",
+                  "key": "dialogue-summary"
+                }
+              ]
+            }
+          ]
+        },
+        "panels": [
+          {
+            "key": "dialogue-structure",
+            "moduleId": "waveform",
+            "title": "Dialogue Structure",
+            "controls": {
+              "frequencyColor": false,
+              "centroid": false
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 15
+              }
+            }
+          },
+          {
+            "key": "programme-loudness",
+            "moduleId": "loudness",
+            "title": "Programme Loudness",
+            "controls": {
+              "layers": [
+                "momentary",
+                "shortTerm"
+              ],
+              "grid": true,
+              "loudnessRangeLufs": {
+                "min": -48,
+                "max": -6
+              }
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 15
+              }
+            }
+          },
+          {
+            "key": "dialogue-summary",
+            "moduleId": "stats",
+            "title": "Dialogue Summary",
+            "controls": {
+              "metrics": {
+                "visible": [
+                  "dialogueIntegrated",
+                  "loudnessToDialogueRatio",
+                  "dialogueCoverage",
+                  "dialogueRange",
+                  "integrated",
+                  "truePeak"
+                ],
+                "order": [
+                  "dialogueIntegrated",
+                  "loudnessToDialogueRatio",
+                  "dialogueCoverage",
+                  "dialogueRange",
+                  "integrated",
+                  "truePeak",
+                  "momentary",
+                  "shortTerm",
+                  "momentaryMax",
+                  "shortTermMax",
+                  "lra",
+                  "psr",
+                  "plr",
+                  "correlation",
+                  "sideToMid"
+                ]
+              }
+            },
+            "axes": {}
+          }
+        ]
+      },
+      "presentation": {
+        "alwaysOnTop": false,
+        "focusView": {
+          "autoHideControls": false,
+          "compactPanels": false,
+          "borderless": false
+        },
+        "panelOpacityPercent": 100,
+        "glassEnabled": false
+      },
+      "dock": {
+        "enabled": false
+      },
+      "loudnessProfile": {
+        "dependencyId": null
+      }
+    }
+  ],
+  "dependencies": []
+}

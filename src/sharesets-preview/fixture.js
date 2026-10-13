@@ -70,6 +70,10 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
     tpMax: frame.loudness.truePeakDbtp,
     correlation: frame.correlation,
     sideToMidDb: frame.sideToMidDb,
+    dialogueIntegrated: frame.dialogue?.integratedLufs ?? -Infinity,
+    dialogueLra: frame.dialogue?.rangeLu ?? -Infinity,
+    dialoguePercent: frame.dialogue?.coveragePercent ?? null,
+    dialogueActiveNow: frame.dialogue?.activeNow ?? false,
     loudnessLayoutKnown: true,
     spectrumResultsByKey,
     vectorscopeResultsByKey,
@@ -83,6 +87,8 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
     max: row.waveformMax,
     waveformMin: row.waveformMin,
     waveformMax: row.waveformMax,
+    waveformSubPairs: Float32Array.from(row.waveformSubPairs ?? []),
+    waveformSubCount: row.waveformSubCount ?? 0,
   }));
   const visualWaveformHist = fixture.visuals.waveform.map((row) => ({
     timestampMs: row.atMs,
@@ -145,7 +151,7 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
     },
     metricsData: {
       statsMetrics: buildStatsMetrics(displayAudio),
-      dialogueActiveNow: false,
+      dialogueActiveNow: displayAudio.dialogueActiveNow,
     },
     historyData: {
       hasHistoryData: true,
