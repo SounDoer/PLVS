@@ -13,8 +13,8 @@
       "mediaType": "image/png",
       "width": 1280,
       "height": 800,
-      "byteLength": 329058,
-      "sha256": "sha256:2ae15341a264013cacda29499ceab7d1382454e4d47e99ee35af1111a108c8e1",
+      "byteLength": 328416,
+      "sha256": "sha256:da831956ac53e89bfffa431801edf19702d121c1b4aa2f8a0aa51d171764b0d4",
       "source": {
         "generator": "plvs-theme-gallery",
         "contractVersion": 1,
@@ -28,8 +28,8 @@
       "mediaType": "image/png",
       "width": 1280,
       "height": 800,
-      "byteLength": 186924,
-      "sha256": "sha256:107779e770c250926cb2941fa7867d80212ffbfdea2486d45f8de4d38ef9b364",
+      "byteLength": 188237,
+      "sha256": "sha256:05196a23568206f7411e6ce724f0ce33e8792daa6efda831513e5450c6eaaf96",
       "source": {
         "generator": "plvs-theme-gallery",
         "contractVersion": 1,
@@ -43,8 +43,8 @@
       "mediaType": "image/png",
       "width": 1280,
       "height": 800,
-      "byteLength": 319112,
-      "sha256": "sha256:d139f5d3f024fb78b0b4c3383c4358af129db8020ee8ca585e60a907bef68f3c",
+      "byteLength": 318689,
+      "sha256": "sha256:d11db4e0abf2addf5adc6bc377c7dce5efebb72ce8cf7610f3e4a4c5e9b6f8a7",
       "source": {
         "generator": "plvs-theme-gallery",
         "contractVersion": 1,
