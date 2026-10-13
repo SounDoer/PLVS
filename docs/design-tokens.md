@@ -368,11 +368,11 @@ Level Zones both follow the module's Safe, Warning, and Critical colours. A sele
 remaps the Gradient tokens to the same lightly toned Palette History values that Level Zones use;
 there is no meter-specific History family and no additional Theme Editor control.
 
-| Token                        | Role                              |
-| ---------------------------- | --------------------------------- |
-| `--ui-meter-gradient-top`    | Active decorative Critical stop   |
-| `--ui-meter-gradient-mid`    | Active decorative Warning stop    |
-| `--ui-meter-gradient-bottom` | Active decorative Safe stop       |
+| Token                        | Role                            |
+| ---------------------------- | ------------------------------- |
+| `--ui-meter-gradient-top`    | Active decorative Critical stop |
+| `--ui-meter-gradient-mid`    | Active decorative Warning stop  |
+| `--ui-meter-gradient-bottom` | Active decorative Safe stop     |
 
 ### Component: Instrument Traces
 
@@ -483,16 +483,16 @@ reuses Status Critical. Each instrument consumes Status through module-local res
 local override cannot recolor another module. Interface feedback inherits the Interface Palette
 directly. Transport Snapshot reuses the shared History Primary family.
 
-| Binding family                                                   | Role                                                  |
-| ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `--ui-level-{safe,warning,critical}`                             | Level Meter Level Zones and profile markers           |
-| `--ui-meter-gradient-{bottom,mid,top}`                           | Level Meter appearance-only Gradient                   |
-| `--ui-stats-{warning,critical}-value`                            | Stats and Dock Stats profile values                   |
-| `--ui-vectorscope-correlation-*`                                 | Vectorscope and Dock Vectorscope correlation marker   |
-| Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes                         |
-| `--ui-waveform-{warning,critical}-range`                         | Loudness Profile breach portions                      |
-| `--ui-feedback-{success,warning,danger}`                         | Application feedback on ordinary or tinted surfaces   |
-| `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity        |
+| Binding family                                                   | Role                                                |
+| ---------------------------------------------------------------- | --------------------------------------------------- |
+| `--ui-level-{safe,warning,critical}`                             | Level Meter Level Zones and profile markers         |
+| `--ui-meter-gradient-{bottom,mid,top}`                           | Level Meter appearance-only Gradient                |
+| `--ui-stats-{warning,critical}-value`                            | Stats and Dock Stats profile values                 |
+| `--ui-vectorscope-correlation-*`                                 | Vectorscope and Dock Vectorscope correlation marker |
+| Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes                       |
+| `--ui-waveform-{warning,critical}-range`                         | Loudness Profile breach portions                    |
+| `--ui-feedback-{success,warning,danger}`                         | Application feedback on ordinary or tinted surfaces |
+| `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity      |
 
 Feedback and activity colours are foregrounds on the panel. Feedback publishes the Interface
 Palette value unchanged; Live publishes Status Critical; Snapshot publishes History Primary.
@@ -671,7 +671,6 @@ so the two bars match although the footer holds only a line of status text.
 --ui-meter-chart-inset-x    0.5rem   Horizontal inset inside meter chart area
 --ui-meter-label-top-inset  0.5rem   Top inset for meter channel labels
 --ui-vector-outer-inset     0rem     Outer inset around vectorscope plot
---ui-vector-corner-inset    0.5rem   Corner label inset in vectorscope
 ```
 
 #### Panel → Minimum Heights

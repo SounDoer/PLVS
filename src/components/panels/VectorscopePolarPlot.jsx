@@ -277,24 +277,37 @@ export function VectorscopePolarPlot({
 }
 
 /**
+ * Height a polar stage keeps free below itself for its pair labels. The baseline already sits the
+ * plot padding above the stage's bottom edge, so that much of the gap is not reserved again.
+ *
+ * @param {number} labelPx
+ * @param {number} gapPx
+ */
+export function polarLabelStripPx(labelPx, gapPx) {
+  return labelPx + gapPx - PLOT_PADDING_CSS_PX;
+}
+
+/**
  * The area a polar plot draws in, with its pair labels hung under the ends of the semicircle's
  * baseline. The plot is as large as the stage's width or height allows, whichever runs out first,
  * so the labels follow the semicircle's own width instead of the stage's: they stay under the
  * baseline ends however the surrounding layout is proportioned.
  *
  * @param {{
- *   labelStrip?: string | null,
+ *   labelSize?: string | null,
+ *   labelGap?: string,
  *   labelClassName?: string,
  *   firstLabel?: string,
  *   secondLabel?: string,
  *   stageProps?: Record<string, any>,
  *   labelProps?: Record<string, any>,
  *   children?: import("react").ReactNode,
- * }} props `labelStrip` is the CSS height kept free below the stage for the labels; leave it out
- *   to show no labels.
+ * }} props `labelSize` is the labels' CSS font size, `labelGap` the CSS distance from the baseline
+ *   down to them; leave `labelSize` out to show no labels.
  */
 export function VectorscopePolarStage({
-  labelStrip = null,
+  labelSize = null,
+  labelGap,
   labelClassName,
   firstLabel,
   secondLabel,
@@ -302,22 +315,30 @@ export function VectorscopePolarStage({
   labelProps,
   children,
 }) {
+  const labelTop = `calc(${labelGap} - ${PLOT_PADDING_CSS_PX}px)`;
   return (
     <div
       {...stageProps}
       className="absolute inset-x-0 top-0"
-      style={{ bottom: labelStrip ?? 0, containerType: "size" }}
+      style={{
+        bottom: labelSize ? `calc(${labelSize} + ${labelTop})` : 0,
+        containerType: "size",
+      }}
     >
       {children}
-      {labelStrip ? (
+      {labelSize ? (
         <div
           {...labelProps}
           className={cn(
-            "pointer-events-none absolute left-1/2 top-full flex -translate-x-1/2 justify-between leading-none",
+            "pointer-events-none absolute left-1/2 flex -translate-x-1/2 justify-between leading-none",
             labelClassName
           )}
-          // The semicircle's diameter plus its padding on both sides; see plotGeometry.
-          style={{ width: `min(100cqw, calc(200cqh - ${2 * PLOT_PADDING_CSS_PX}px))` }}
+          style={{
+            top: `calc(100% + ${labelTop})`,
+            fontSize: labelSize,
+            // The semicircle's diameter plus its padding on both sides; see plotGeometry.
+            width: `min(100cqw, calc(200cqh - ${2 * PLOT_PADDING_CSS_PX}px))`,
+          }}
         >
           <span className="max-w-[45%] truncate">{firstLabel}</span>
           <span className="max-w-[45%] truncate text-right">{secondLabel}</span>

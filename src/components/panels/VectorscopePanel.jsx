@@ -341,6 +341,7 @@ export function VectorscopePanel() {
               <>
                 <VectorscopeLissajousGrid
                   labelSize="var(--ui-fs-axis)"
+                  labelGap="var(--ui-chart-axis-gap)"
                   labelClassName={ANNOTATION_TEXT}
                   firstLabel={axisXLabel}
                   secondLabel={axisYLabel}
@@ -379,8 +380,9 @@ export function VectorscopePanel() {
             )}
             {!isLissajous ? (
               <VectorscopePolarStage
-                labelStrip="calc(var(--ui-fs-axis) + var(--ui-vector-corner-inset))"
-                labelClassName={CAPTION_TEXT}
+                labelSize="var(--ui-fs-axis)"
+                labelGap="var(--ui-chart-axis-gap)"
+                labelClassName={ANNOTATION_TEXT}
                 firstLabel={axisXLabel}
                 secondLabel={axisYLabel}
                 stageProps={{ "data-vectorscope-polar-stage": true }}
@@ -405,10 +407,7 @@ export function VectorscopePanel() {
           </div>
         </div>
       </div>
-      <div
-        data-vectorscope-correlation-rail
-        className="mt-[var(--ui-chart-axis-gap)] h-3 shrink-0 px-[var(--ui-vector-corner-inset)]"
-      >
+      <div data-vectorscope-correlation-rail className="mt-[var(--ui-chart-axis-gap)] h-3 shrink-0">
         <div className="relative h-full w-full" aria-hidden>
           <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2">
             <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:var(--ui-vectorscope-guides-stroke)]" />
@@ -433,7 +432,7 @@ export function VectorscopePanel() {
         data-vectorscope-correlation-axis
         className={cn(
           CAPTION_TEXT,
-          "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0 px-[var(--ui-vector-corner-inset)]"
+          "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0"
         )}
       >
         <div className="relative h-full w-full" aria-hidden>

@@ -2,21 +2,25 @@ import { cn } from "../../lib/utils.js";
 
 /**
  * The Lissajous guides: the two channel axes as dashed diagonals, with the pair labels in the top
- * corners those axes point at. The diagonals stop short of the corners by the label size, so a
- * guide never runs through a label; all four ends are inset alike to keep the cross centred.
+ * corners those axes point at. The diagonals stop short of the corners by the label size plus a
+ * gap, so a guide never runs through a label; all four ends are inset alike to keep the cross
+ * centred.
  *
  * @param {{
  *   labelSize?: string | null,
+ *   labelGap?: string,
  *   labelClassName?: string,
  *   firstLabel?: string,
  *   secondLabel?: string,
  *   gridProps?: Record<string, any>,
  *   labelProps?: Record<string, any>,
- * }} props `labelSize` is the labels' CSS font size; leave it out to show no labels and run the
- *   guides corner to corner.
+ * }} props `labelSize` is the labels' CSS font size and `labelGap` the CSS distance kept between
+ *   a label and its guide; leave `labelSize` out to show no labels and run the guides corner to
+ *   corner.
  */
 export function VectorscopeLissajousGrid({
   labelSize = null,
+  labelGap,
   labelClassName,
   firstLabel,
   secondLabel,
@@ -27,7 +31,7 @@ export function VectorscopeLissajousGrid({
     <>
       <div
         className="pointer-events-none absolute"
-        style={{ inset: labelSize ? `calc(${labelSize} + 2px)` : 0 }}
+        style={{ inset: labelSize ? `calc(${labelSize} + ${labelGap})` : 0 }}
       >
         <svg
           {...gridProps}

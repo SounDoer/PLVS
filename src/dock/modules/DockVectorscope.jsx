@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
 import {
+  polarLabelStripPx,
   VectorscopePolarPlot,
   VectorscopePolarStage,
 } from "../../components/panels/VectorscopePolarPlot.jsx";
@@ -17,6 +18,7 @@ const CONTENT_GAP_PX = 8;
 const EXPANDED_CORRELATION_HEIGHT_PX = 44;
 const CORRELATION_FULL_LABEL_MIN_WIDTH_PX = 184;
 const PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX = 44;
+const POLAR_LABEL_GAP_PX = 4;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -140,11 +142,14 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
       const rect = content.getBoundingClientRect();
       setContentWidth(rect.width);
       setContentHeight(rect.height);
-      // Must equal the labelStrip given to the polar stage below; the label size follows Dock density.
+      // The label size follows Dock density.
       const labelPx =
         Number.parseFloat(getComputedStyle(content).getPropertyValue("--ui-dock-fs-label")) || 9;
       const availHeight = rect.height - (expanded ? EXPANDED_CORRELATION_HEIGHT_PX : 0);
-      const labelStripPx = availHeight >= PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX ? labelPx + 2 : 0;
+      const labelStripPx =
+        availHeight >= PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX
+          ? polarLabelStripPx(labelPx, POLAR_LABEL_GAP_PX)
+          : 0;
       setPlotBox(computePlotBox(rect.width, rect.height, expanded, !isLissajous, labelStripPx));
     };
     measure();
@@ -174,6 +179,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
             <>
               <VectorscopeLissajousGrid
                 labelSize={showPairLabels ? "var(--ui-dock-fs-label)" : null}
+                labelGap="2px"
                 labelClassName="font-[family-name:var(--ui-font-sans)] font-medium text-muted-foreground"
                 firstLabel={firstLabel}
                 secondLabel={secondLabel}
@@ -201,8 +207,9 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
             </>
           ) : (
             <VectorscopePolarStage
-              labelStrip={showPairLabels ? "calc(var(--ui-dock-fs-label) + 2px)" : null}
-              labelClassName="font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium text-muted-foreground"
+              labelSize={showPairLabels ? "var(--ui-dock-fs-label)" : null}
+              labelGap={`${POLAR_LABEL_GAP_PX}px`}
+              labelClassName="font-[family-name:var(--ui-font-sans)] font-medium text-muted-foreground"
               firstLabel={firstLabel}
               secondLabel={secondLabel}
               stageProps={{ "data-testid": "dock-vectorscope-polar-stage" }}
