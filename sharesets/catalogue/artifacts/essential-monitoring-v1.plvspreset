@@ -1,0 +1,171 @@
+{
+  "app": "PLVS",
+  "kind": "preset-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "essential-monitoring",
+      "kind": "plvs-preset",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Essential Monitoring",
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "horizontal",
+          "weights": [
+            0.25,
+            0.75
+          ],
+          "children": [
+            {
+              "type": "panel",
+              "key": "level-meter"
+            },
+            {
+              "type": "split",
+              "direction": "vertical",
+              "weights": [
+                0.6,
+                0.4
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "loudness-history"
+                },
+                {
+                  "type": "split",
+                  "direction": "horizontal",
+                  "weights": [
+                    0.5,
+                    0.5
+                  ],
+                  "children": [
+                    {
+                      "type": "panel",
+                      "key": "stereo-image"
+                    },
+                    {
+                      "type": "panel",
+                      "key": "monitoring-summary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "panels": [
+          {
+            "key": "level-meter",
+            "moduleId": "levelMeter",
+            "title": "Peak Level",
+            "controls": {
+              "mode": "peak",
+              "tpMaxMarker": true,
+              "barColors": "levelZones",
+              "peakThresholdsDbfs": {
+                "warning": -6,
+                "critical": -1
+              },
+              "levelRangeDbfs": {
+                "min": -60,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "loudness-history",
+            "moduleId": "loudness",
+            "title": "Loudness",
+            "controls": {
+              "layers": [
+                "momentary",
+                "shortTerm"
+              ],
+              "grid": true,
+              "loudnessRangeLufs": {
+                "min": -48,
+                "max": -6
+              }
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 60
+              }
+            }
+          },
+          {
+            "key": "stereo-image",
+            "moduleId": "vectorscope",
+            "title": "Stereo Image",
+            "controls": {
+              "channelPair": {
+                "x": 0,
+                "y": 1
+              },
+              "mode": "polarLevel",
+              "maxHold": false
+            },
+            "axes": {}
+          },
+          {
+            "key": "monitoring-summary",
+            "moduleId": "stats",
+            "title": "Monitoring Summary",
+            "controls": {
+              "metrics": {
+                "visible": [
+                  "momentary",
+                  "shortTerm",
+                  "integrated",
+                  "truePeak",
+                  "correlation",
+                  "sideToMid"
+                ],
+                "order": [
+                  "momentary",
+                  "shortTerm",
+                  "integrated",
+                  "truePeak",
+                  "correlation",
+                  "sideToMid",
+                  "momentaryMax",
+                  "shortTermMax",
+                  "lra",
+                  "psr",
+                  "plr",
+                  "dialogueCoverage",
+                  "dialogueIntegrated",
+                  "dialogueRange",
+                  "dialogueOffset"
+                ]
+              }
+            },
+            "axes": {}
+          }
+        ]
+      },
+      "presentation": {
+        "alwaysOnTop": false,
+        "focusView": {
+          "autoHideControls": false,
+          "compactPanels": false,
+          "borderless": false
+        },
+        "panelOpacityPercent": 100,
+        "glassEnabled": false
+      },
+      "dock": {
+        "enabled": false
+      },
+      "loudnessProfile": {
+        "dependencyId": null
+      }
+    }
+  ],
+  "dependencies": []
+}

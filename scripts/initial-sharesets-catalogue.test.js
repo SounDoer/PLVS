@@ -39,6 +39,7 @@ const INITIAL_LISTINGS = [
   "listings/stereo-field-check.json",
   "listings/spectral-inspection.json",
   "listings/dynamics-headroom.json",
+  "listings/essential-monitoring.json",
 ];
 
 let launchSource;
@@ -72,6 +73,7 @@ describe("initial Sharesets Catalogue", () => {
       "ebu-r-128-programme",
       "ebu-r-128-short-form",
       "ebu-r-128-streaming-monitor",
+      "essential-monitoring",
       "graphite-monitor",
       "itu-t-h-872-game-audio",
       "itu-t-h-872-portable-game-audio",
@@ -262,6 +264,27 @@ describe("initial Sharesets Catalogue", () => {
     expect(preset.title).toBe("Dynamics & Headroom");
     expect(preset.releases[0].metadata.facets).toMatchObject({
       moduleIds: ["levelMeter", "loudness", "stats", "waveform"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 4 }),
+      }),
+    ]);
+  });
+
+  it("publishes the focused Essential Monitoring Preset", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(
+      ({ document }) => document.id === "essential-monitoring"
+    ).document;
+
+    expect(preset.title).toBe("Essential Monitoring");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["levelMeter", "loudness", "stats", "vectorscope"],
       dependencyIds: [],
       optionalCapabilities: [],
     });
