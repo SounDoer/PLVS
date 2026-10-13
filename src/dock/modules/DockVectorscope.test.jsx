@@ -1,6 +1,9 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { standIn } from "../../testing/standIn.js";
+import { BUILTIN_THEMES_V2 } from "../../theme/builtinThemesV2.js";
+import { themeRuntime } from "../../theme/themeRuntime.js";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { DockVectorscope } from "./DockVectorscope.jsx";
@@ -383,5 +386,35 @@ describe("DockVectorscope", () => {
       );
       unmount();
     }
+  });
+
+  it("draws the Polar plot in the published theme's colors", () => {
+    const light = themeRuntime.publishAuthoring(BUILTIN_THEMES_V2["plvs-light"]);
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientWidth", {
+      configurable: true,
+      get: () => 200,
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    const strokedColors = [];
+    const ctx = new Proxy(/** @type {Record<string | symbol, any>} */ ({}), {
+      get: (target, prop) => {
+        if (prop === "stroke") return () => strokedColors.push(target.strokeStyle);
+        return prop in target ? target[prop] : () => {};
+      },
+    });
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue(standIn(ctx));
+
+    renderWith(null, [-12, -10], "standard", { ...controls, vectorscopeMode: "polarSample" });
+
+    expect(strokedColors).toContain(light.canvas["vectorscope.guides"]);
+    getContext.mockRestore();
+    Reflect.deleteProperty(HTMLCanvasElement.prototype, "clientWidth");
+    Reflect.deleteProperty(HTMLCanvasElement.prototype, "clientHeight");
+    themeRuntime.publishAuthoring(BUILTIN_THEMES_V2["plvs-dark"]);
   });
 });
