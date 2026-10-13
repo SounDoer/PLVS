@@ -424,7 +424,8 @@ export function VectorscopePanel() {
             data-vectorscope-pair-labels
             className={cn(
               CAPTION_TEXT,
-              "pointer-events-none absolute inset-x-0 flex justify-between px-[var(--ui-vector-corner-inset)]",
+              // One font-size tall, which is exactly what the polar stage leaves free below itself.
+              "pointer-events-none absolute inset-x-0 flex justify-between px-[var(--ui-vector-corner-inset)] leading-none",
               isLissajous
                 ? "top-[var(--ui-vector-corner-inset)]"
                 : "bottom-[var(--ui-vector-corner-inset)]"
