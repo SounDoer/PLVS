@@ -233,13 +233,14 @@ local IDs and the palette preset originally used to choose those colors are not 
 Theme. PLVS still imports older Theme pack files. If any Theme entry is damaged or incompatible,
 the import reports the problem and adds nothing instead of silently skipping that entry.
 
-A portable Theme document copied as text can be pasted straight into PLVS: press **Ctrl+V** on
-Windows or **Command+V** on macOS anywhere outside a text field, or choose **Paste** on the Theme row
-in Settings. PLVS opens the normal Theme import review before adding anything; it
-never activates or overwrites a Theme just because it was pasted. A copied or downloaded Theme is
-recognized by its content: if an identical Theme, including its name, is already in your library,
-the review says so and nothing is added. Single `.plvstheme` files use the same **Import** action
-as PLVS-exported Theme pack files.
+A Theme, Preset, or Loudness Profile copied as text can be pasted straight into PLVS: press
+**Ctrl+V** on Windows or **Command+V** on macOS anywhere outside a text field. The text is the
+same content as the shared file, so anything **Import** accepts can also be pasted. PLVS opens the
+normal import review before adding anything; it never applies or overwrites an Item just because
+it was pasted. Pasting a Preset or Loudness Profile requires PLVS 0.20.0 or later. A copied or
+downloaded Theme is recognized by its content: if an identical Theme, including its name, is
+already in your library, the review says so and nothing is added. Single `.plvstheme` files use
+the same **Import** action as PLVS-exported Theme pack files.
 
 ## Sharesets
 
@@ -267,8 +268,8 @@ Profiles based on published standards or platform guidance also show a **Sources
 entry identifies the publisher, document, version or edition when available, an official link, and
 how that source maps to the Profile. A source link documents the curator's interpretation; it does
 not mean the publisher endorses or certifies PLVS.
-Preset pages show the workspace preview alongside the description, tags, download action and
-import instructions. Select the preview to enlarge it in place; a single preview needs no
+Preset pages show the workspace preview alongside the description, tags, copy and download
+actions and import instructions. Select the preview to enlarge it in place; a single preview needs no
 thumbnail strip. **Details** lists workspace panels, module names and Dock status, plus file
 information and saved display settings. Loudness Profile shows its included name or **Off**;
 applying a Preset with **Off** turns off the active Profile. Expand each row under **Panel Settings**
@@ -283,9 +284,9 @@ On narrow screens, **Menu** exposes the website navigation on both listing and d
 For an Item that is not already included with PLVS, download its `.plvstheme`, `.plvspreset`, or
 `.plvsloudness` file, then open **Settings → Saved Items → Import…**. Review what will be added and
 confirm. Importing adds to the
-Library; applying the Item is a separate action. You can also use **Copy Theme** on a Theme page and
-paste into PLVS outside a text field to open the same review. An identical Item already in your
-Library is recognized instead of being added again.
+Library; applying the Item is a separate action. You can also use **Copy Theme**, **Copy Preset**,
+or **Copy Profile** on the Item's page and paste into PLVS outside a text field to open the same
+review. An identical Item already in your Library is recognized instead of being added again.
 
 Sharesets previews use fixed example measurements, not your audio. A Theme gallery shows the
 first-run Workspace, the 5.1 **Multichannel Monitoring** scene, a measurement Snapshot, and Theme

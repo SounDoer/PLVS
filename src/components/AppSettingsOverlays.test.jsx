@@ -8,6 +8,7 @@ import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessPr
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
+import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
@@ -266,8 +267,7 @@ describe("AppSettingsOverlays", () => {
       completion: null,
       exportSelection: vi.fn(),
       beginSharedImport: vi.fn(),
-      beginThemePaste: vi.fn(),
-      pasteThemeFromClipboard: vi.fn(),
+      beginPaste: vi.fn(),
       confirmImport,
       cancelImport: vi.fn(),
       runCompletionAction: vi.fn(),
@@ -307,8 +307,7 @@ describe("AppSettingsOverlays", () => {
       },
       exportSelection: vi.fn(),
       beginSharedImport: vi.fn(),
-      beginThemePaste: vi.fn(),
-      pasteThemeFromClipboard: vi.fn(),
+      beginPaste: vi.fn(),
       confirmImport: vi.fn(),
       cancelImport: vi.fn(),
       runCompletionAction,
@@ -616,6 +615,21 @@ describe("AppSettingsOverlays", () => {
     expect(screen.getByText("Pasted Theme")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
     expect(themesStore.read()).toEqual({});
+  });
+
+  it("reviews a pasted Loudness Profile pack under its own name", async () => {
+    const text = JSON.stringify(
+      buildPack("loudness", [
+        { id: "pasted", name: "Pasted Profile", referenceLufs: -16, rules: [] },
+      ])
+    );
+    renderOverlays();
+
+    fireEvent.paste(window, { clipboardData: { getData: () => text } });
+
+    expect(await screen.findByRole("dialog", { name: "Paste Loudness Profile" })).toBeTruthy();
+    expect(screen.getByText("Pasted Profile")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Loudness Profile" })).toBeTruthy();
   });
 
   it("leaves ordinary paste alone while a text field owns focus", () => {

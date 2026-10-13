@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 // `isTauri` is a vi.fn created inside the factory (not a variable closed over from this file's
@@ -25,15 +26,11 @@ vi.mock("../ipc/fileDialog.js", () => ({
   savePackFile: (...args) => savePackFile(...args),
 }));
 
-const readClipboardText = vi.fn();
-vi.mock("../ipc/clipboard.js", () => ({
-  readClipboardText: (...args) => readClipboardText(...args),
-}));
-
 import { isTauri } from "../ipc/env.js";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { STATUS_DISMISS_MS } from "../hooks/useTransientStatus.js";
 import { usePackTransfer } from "./usePackTransfer.js";
+import { buildPack } from "./packShape.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
 
@@ -456,12 +453,12 @@ describe("usePackTransfer import", () => {
   });
 });
 
-describe("usePackTransfer Theme paste", () => {
+describe("usePackTransfer paste", () => {
   it("opens the normal review before mutating the Theme library", async () => {
     const { result } = renderHook(() => usePackTransfer());
 
     await act(async () => {
-      await result.current.beginThemePaste(clipboardTheme());
+      await result.current.beginPaste(clipboardTheme());
     });
 
     expect(result.current.review).toMatchObject({
@@ -478,26 +475,61 @@ describe("usePackTransfer Theme paste", () => {
     expect(result.current.status).toBe("Theme added to your library.");
   });
 
-  it("reports non-Theme clipboard text without opening review", async () => {
+  it("reviews a pasted Loudness Profile pack before adding it", async () => {
     const { result } = renderHook(() => usePackTransfer());
 
     await act(async () => {
-      await result.current.beginThemePaste("ordinary clipboard text");
+      await result.current.beginPaste(
+        JSON.stringify(
+          buildPack("loudness", [{ id: "spotify", name: "Spotify", referenceLufs: -14, rules: [] }])
+        )
+      );
+    });
+
+    expect(result.current.review).toMatchObject({
+      type: "loudness",
+      origin: "clipboard",
+      itemPlan: [{ name: "Spotify", disposition: "added" }],
+    });
+    expect(settingsStore.read().loudnessProfiles?.profiles ?? []).toEqual([]);
+
+    act(() => result.current.confirmImport());
+    expect(settingsStore.read().loudnessProfiles.profiles.map(({ name }) => name)).toEqual([
+      "Spotify",
+    ]);
+    expect(result.current.status).toBe("Loudness Profile added to your library.");
+  });
+
+  it("reviews a pasted Sharesets Preset before adding it", async () => {
+    const { result } = renderHook(() => usePackTransfer());
+
+    await act(async () => {
+      await result.current.beginPaste(
+        readFileSync("sharesets/catalogue/artifacts/dialogue-delivery-review-v1.plvspreset", "utf8")
+      );
+    });
+
+    expect(result.current.review).toMatchObject({
+      type: "presets",
+      origin: "clipboard",
+      itemPlan: [{ disposition: "added" }],
+    });
+    expect(presetsStore.read()).toEqual({});
+
+    act(() => result.current.confirmImport());
+    expect(result.current.status).toBe("Preset added to your library.");
+  });
+
+  it("reports unrelated clipboard text without opening review", async () => {
+    const { result } = renderHook(() => usePackTransfer());
+
+    await act(async () => {
+      await result.current.beginPaste("ordinary clipboard text");
     });
 
     expect(result.current.review).toBeNull();
-    expect(result.current.status).toBe("Clipboard doesn't contain a PLVS Theme.");
-  });
-
-  it("uses the clipboard reader for the discoverable Paste button", async () => {
-    readClipboardText.mockResolvedValue(clipboardTheme("Button Theme"));
-    const { result } = renderHook(() => usePackTransfer());
-
-    await act(async () => {
-      await result.current.pasteThemeFromClipboard();
-    });
-
-    expect(readClipboardText).toHaveBeenCalledTimes(1);
-    expect(result.current.review.itemPlan[0].name).toBe("Button Theme");
+    expect(result.current.status).toBe(
+      "Clipboard doesn't contain a PLVS Theme, Preset, or Loudness Profile."
+    );
   });
 });

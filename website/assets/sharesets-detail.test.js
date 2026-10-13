@@ -23,7 +23,7 @@ describe("Sharesets Catalogue search", () => {
   });
 });
 
-describe("Sharesets Theme copy", () => {
+describe("Sharesets Item copy", () => {
   it("copies the exact downloaded artifact text", async () => {
     const writeText = vi.fn();
     await copySharesetsArtifact("/theme.plvstheme", {

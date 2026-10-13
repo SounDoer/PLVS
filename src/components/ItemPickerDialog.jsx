@@ -107,15 +107,15 @@ export function ItemPickerDialog({
   const [pos, setPos] = useState(null);
   const contentRef = useRef(null);
   const dragHandlers = useFloatingPanelDrag(contentRef, setPos);
-  const label = PACK_KINDS[type].label;
-  const clipboardTheme = mode === "review" && review?.origin === "clipboard";
+  const { label, itemLabel } = PACK_KINDS[type];
+  const pasted = mode === "review" && review?.origin === "clipboard";
   const title =
     mode === "pick"
       ? `Export ${label}`
       : mode === "complete"
         ? "Import Complete"
-        : clipboardTheme
-          ? "Paste Theme"
+        : pasted
+          ? `Paste ${itemLabel}`
           : `Import ${label}`;
   const singleCompletion = mode === "complete" && review?.itemPlan?.length === 1;
 
@@ -268,7 +268,7 @@ export function ItemPickerDialog({
               <Button onClick={onAction}>{COMPLETION_ACTION_LABEL[type]}</Button>
             ) : null
           ) : (
-            <Button onClick={onConfirm}>{clipboardTheme ? "Add Theme" : "Import"}</Button>
+            <Button onClick={onConfirm}>{pasted ? `Add ${itemLabel}` : "Import"}</Button>
           )}
         </DialogFooter>
       </DialogContent>

@@ -1,7 +1,7 @@
 import { presetExtraDetails, presetPanels } from "./preset-presentation.mjs";
 import { MODULE_CATALOG } from "../src/workspace/moduleCatalog.js";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { basename, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { marked } from "marked";
 import {
@@ -18,6 +18,11 @@ const FAMILIES = {
   presets: { label: "Presets", singular: "Preset" },
   themes: { label: "Themes", singular: "Theme" },
 };
+
+const COPY_NOUNS = { loudness: "Profile", presets: "Preset", themes: "Theme" };
+// Themes have pasted since 0.18.0. Earlier apps answer a pasted Preset or Profile with a Theme
+// error, so the page names the first version that accepts them.
+const ITEM_PASTE_MINIMUM_APP_VERSION = "0.20.0";
 
 const THEME_GALLERY_ORDER = [
   "product-workspace-file",
@@ -254,12 +259,11 @@ function detailPage(listing, profile = null) {
     current && !isIncluded
       ? `/sharesets/files/${listing.id}/v${current.number}/${basename(current.artifact)}`
       : null;
+  const copyNoun = COPY_NOUNS[listing.type];
   const primaryAction = isIncluded
     ? `<div class="actions"><span class="included-label">Included with PLVS</span></div>`
     : current
-      ? listing.type === "themes"
-        ? `<div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}">Copy Theme</button><a class="button secondary" href="${currentDownload}" download>Download .plvstheme</a><span class="copy-status" data-copy-status aria-live="polite"></span></div>`
-        : `<a class="button" href="${currentDownload}" download>Download Release ${current.number}</a>`
+      ? `<div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}" data-copy-noun="${copyNoun}">Copy ${copyNoun}</button><a class="button secondary" href="${currentDownload}" download>Download ${extname(current.artifact)}</a><span class="copy-status" data-copy-status aria-live="polite"></span></div>`
       : "";
   const releases = [...listing.releases]
     .reverse()
@@ -307,8 +311,8 @@ function detailPage(listing, profile = null) {
           </div>`
                 : ""
           }
-          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<p class="lede">${escapeHtml(listing.summary)}</p>` : isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${(isProfile || isPreset) && current && !isIncluded ? `<div class="actions"><a class="button" href="${currentDownload}" download>Download</a></div>` : primaryAction.replace("Download .plvstheme", "Download")}
-            ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2>${isProfile || isPreset ? `<p>Download the file, then choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Review and confirm the import, then ${isPreset ? "apply the Preset from your Library" : "select the Profile in PLVS"}. Importing does not apply it automatically.</p>` : `<p><strong>Copy Theme</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then apply the Theme from your Library.</p>`}</div>` : `<p class="withdrawn">No current release is available.</p>`}
+          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<p class="lede">${escapeHtml(listing.summary)}</p>` : isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace(/Download \.\w+</, "Download<")}
+            ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.${isProfile || isPreset ? ` Pasting a ${copyNoun} requires PLVS ${ITEM_PASTE_MINIMUM_APP_VERSION} or later.` : ""}</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
             ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>
         </div>

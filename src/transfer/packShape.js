@@ -57,6 +57,7 @@ export const PACK_KINDS = {
     kind: "loudness-pack",
     extension: "plvsloudness",
     label: "Loudness Profiles",
+    itemLabel: "Loudness Profile",
     filterName: "PLVS Loudness Profiles",
     defaultBaseName: "plvs-loudness",
     normalizeItem: normalizeRuleDocument,
@@ -67,6 +68,7 @@ export const PACK_KINDS = {
     kind: "preset-pack",
     extension: "plvspreset",
     label: "Presets",
+    itemLabel: "Preset",
     filterName: "PLVS Presets",
     defaultBaseName: "plvs-presets",
     normalizeItem: normalizePresetEntry,
@@ -77,6 +79,7 @@ export const PACK_KINDS = {
     kind: "theme-pack",
     extension: "plvstheme",
     label: "Theme",
+    itemLabel: "Theme",
     filterName: "PLVS Themes",
     defaultBaseName: "plvs-themes",
     normalizeItem: normalizeThemeDocument,
@@ -604,4 +607,29 @@ export function parseClipboardTheme(raw) {
     invalidMessage: "Clipboard doesn't contain a PLVS Theme.",
     newerMessage: "This Theme requires a newer version of PLVS.",
   });
+}
+
+/**
+ * Parse text pasted into PLVS: anything a sharesets page copies, which is the same canonical text
+ * its download serves. Unrelated clipboard text is the common case, so it gets one plain answer.
+ * @returns {{type: "loudness" | "presets" | "themes";pack: any;}}
+ * @param {string} text
+ */
+export function parseClipboardItem(text) {
+  const invalidMessage = "Clipboard doesn't contain a PLVS Theme, Preset, or Loudness Profile.";
+  let raw;
+  try {
+    raw = parseJsonText(text);
+  } catch (_) {
+    throw new PackValidationError(invalidMessage);
+  }
+  if (raw?.kind === PORTABLE_THEME_KIND) {
+    return { type: "themes", pack: parseClipboardTheme(raw) };
+  }
+  const descriptor = descriptorForKind(raw?.kind);
+  if (!descriptor || raw?.app !== PACK_APP) throw new PackValidationError(invalidMessage);
+  return {
+    type: /** @type {"loudness" | "presets" | "themes"} */ (descriptor.type),
+    pack: parsePack(raw, descriptor.type),
+  };
 }

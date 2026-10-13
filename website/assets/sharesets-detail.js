@@ -58,7 +58,7 @@ function enhanceCopyAction() {
     status.textContent = "Copying…";
     try {
       await copySharesetsArtifact(button.dataset.copyArtifact);
-      status.textContent = "Theme copied. Paste it in PLVS.";
+      status.textContent = `${button.dataset.copyNoun} copied. Paste it in PLVS.`;
     } catch (_) {
       status.textContent = "Copy failed. Use the download instead.";
     } finally {

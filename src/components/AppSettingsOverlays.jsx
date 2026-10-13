@@ -66,7 +66,7 @@ export function AppSettingsOverlays({
   } = useConfigurationProfileActions();
   const localPack = usePackTransfer();
   const pack = packTransfer ?? localPack;
-  const { beginThemePaste } = pack;
+  const { beginPaste } = pack;
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
@@ -215,11 +215,11 @@ export function AppSettingsOverlays({
       const text = event.clipboardData?.getData("text/plain");
       if (!text) return;
       event.preventDefault();
-      void beginThemePaste(text);
+      void beginPaste(text);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [beginThemePaste]);
+  }, [beginPaste]);
 
   function openUpdateDialogFromInfo(info, developmentFixtureId = null) {
     resetInstall();

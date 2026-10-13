@@ -10,7 +10,6 @@ import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { pickPackFile, pickSharedPackFile, savePackFile } from "../ipc/fileDialog.js";
-import { readClipboardText } from "../ipc/clipboard.js";
 import { collectPackItems } from "./collectPackItems.js";
 import { getAdapter } from "./libraryAdapters.js";
 import { planPackImport } from "./mergeIntoLibrary.js";
@@ -18,7 +17,7 @@ import {
   PackValidationError,
   buildPack,
   packDescriptor,
-  parseClipboardTheme,
+  parseClipboardItem,
   parsePackText,
   parseSharedPackText,
 } from "./packShape.js";
@@ -165,7 +164,7 @@ export function usePackTransfer() {
     }
   }, [setStatus]);
 
-  const beginThemePaste = useCallback(
+  const beginPaste = useCallback(
     async (/** @type {string} */ text) => {
       if (operationActiveRef.current) return;
       operationActiveRef.current = true;
@@ -174,22 +173,17 @@ export function usePackTransfer() {
       setReview(null);
       setCompletion(null);
       try {
-        let raw;
-        try {
-          raw = JSON.parse(text);
-        } catch (_) {
-          throw new PackValidationError("Clipboard doesn't contain a PLVS Theme.");
-        }
-        const pack = parseClipboardTheme(raw);
-        const planned = planPackImport("themes", pack, {
-          existingItems: getAdapter("themes").list(),
+        const { type, pack } = parseClipboardItem(text);
+        const planned = planPackImport(type, pack, {
+          existingItems: getAdapter(type).list(),
+          existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],
         });
-        setReview({ type: "themes", origin: "clipboard", pack, ...planned });
+        setReview({ type, origin: "clipboard", pack, ...planned });
       } catch (error) {
         setStatus(
           error instanceof PackValidationError
             ? error.message
-            : "PLVS couldn't read the clipboard. Use Import to choose a .plvstheme file instead."
+            : "PLVS couldn't read the clipboard. Use Import to choose the file instead."
         );
       } finally {
         operationActiveRef.current = false;
@@ -199,28 +193,17 @@ export function usePackTransfer() {
     [setStatus]
   );
 
-  const pasteThemeFromClipboard = useCallback(async () => {
-    if (operationActiveRef.current) return;
-    try {
-      const text = await readClipboardText();
-      await beginThemePaste(text);
-    } catch (_) {
-      setStatus(
-        "PLVS couldn't read the clipboard. Use Import to choose a .plvstheme file instead."
-      );
-    }
-  }, [beginThemePaste, setStatus]);
-
   const confirmImport = useCallback(() => {
     if (!review) return;
     const { type, profileAdditions, itemAdditions } = review;
     if (profileAdditions.length > 0) getAdapter("loudness").append(profileAdditions);
     getAdapter(type).append(itemAdditions);
     if (review.origin === "clipboard") {
+      const { itemLabel } = packDescriptor(type);
       setStatus(
         itemAdditions.length > 0
-          ? "Theme added to your library."
-          : "Theme is already in your library."
+          ? `${itemLabel} added to your library.`
+          : `${itemLabel} is already in your library.`
       );
     } else {
       setStatus(`${packDescriptor(type).label} imported`);
@@ -272,8 +255,7 @@ export function usePackTransfer() {
     exportSelection,
     beginImport,
     beginSharedImport,
-    beginThemePaste,
-    pasteThemeFromClipboard,
+    beginPaste,
     confirmImport,
     cancelImport,
     runCompletionAction,
