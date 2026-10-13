@@ -17,6 +17,16 @@ The command verifies and generates corpus `plvs-dialogue-synthetic-v1`, download
 Silero v6.2 model when absent, runs the feature-gated harness, and writes JSON plus Markdown results
 under `artifacts/dialogue-benchmark/`.
 
+Private programme material stays outside the repository. Run the same audited engines and report
+pipeline against a resolved schema-v1 manifest with paths and hashes relative to that manifest:
+
+```text
+npm run benchmark:dialogue -- --manifest D:\private-corpus\manifest.json
+```
+
+The command rejects a custom manifest inside the repository so non-redistributable audio cannot be
+added accidentally. Generated results remain in the ignored artifact directory.
+
 Corpus manifest SHA-256 for this run:
 `955973cb0b193ff97d13ddbd6aa18b73b7a7573ea7d4235a6451c976d1c994ab`.
 
@@ -43,18 +53,19 @@ All values aggregate four programme cases on 100 ms aligned blocks. DL error is 
 the same BS.1770 programme-energy blocks selected by the annotated dialogue mask. Coverage error is
 in percentage points.
 
-| Engine | Fusion | F1 | Precision | Recall | FP | FN | Mean abs DL error | Mean abs Coverage error | RTF |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| FireRed 0.1.0 | centre-priority fallback | 0.884 | 0.967 | 0.814 | 1.0 s | 6.7 s | 0.97 LU | 8.9 pp | 0.136 |
-| FireRed 0.1.0 | independent non-LFE maximum | 0.871 | 0.936 | 0.814 | 2.0 s | 6.7 s | 0.81 LU | 10.7 pp | 0.141 |
-| Silero v6.2 | centre-priority fallback | 0.853 | 0.917 | 0.797 | 2.6 s | 7.3 s | 1.29 LU | 13.0 pp | 0.021 |
-| Silero v6.2 | independent non-LFE maximum | 0.824 | 0.852 | 0.797 | 5.0 s | 7.3 s | 1.04 LU | 17.3 pp | 0.021 |
-| FireRed 0.1.0 | non-LFE energy-weighted mono | 0.783 | 0.921 | 0.681 | 2.1 s | 11.5 s | 0.64 LU | 15.4 pp | 0.040 |
-| Silero v5 | centre-priority fallback | 0.759 | 0.891 | 0.661 | 2.9 s | 12.2 s | 1.59 LU | 18.3 pp | 0.010 |
-| FireRed 0.1.0 | all-channel arithmetic average | 0.627 | 0.955 | 0.467 | 0.8 s | 19.2 s | 1.41 LU | 26.5 pp | 0.041 |
+| Engine        | Fusion                         |    F1 | Precision | Recall |    FP |     FN | Boundary | DL error | Coverage error |   RTF |
+| ------------- | ------------------------------ | ----: | --------: | -----: | ----: | -----: | -------: | -------: | -------------: | ----: |
+| FireRed 0.1.0 | centre-priority fallback       | 0.884 |     0.967 |  0.814 | 1.0 s |  6.7 s |   327 ms |  0.97 LU |         8.9 pp | 0.136 |
+| FireRed 0.1.0 | independent non-LFE maximum    | 0.869 |     0.933 |  0.814 | 2.1 s |  6.7 s |   327 ms |  0.80 LU |        10.9 pp | 0.140 |
+| Silero v6.2   | centre-priority fallback       | 0.858 |     0.920 |  0.803 | 2.5 s |  7.1 s |   360 ms |  1.38 LU |        12.8 pp | 0.020 |
+| Silero v6.2   | independent non-LFE maximum    | 0.832 |     0.863 |  0.803 | 4.6 s |  7.1 s |   360 ms |  1.17 LU |        16.6 pp | 0.020 |
+| FireRed 0.1.0 | non-LFE energy-weighted mono   | 0.782 |     0.914 |  0.683 | 2.3 s | 11.4 s |   381 ms |  0.80 LU |        15.7 pp | 0.040 |
+| Silero v5     | centre-priority fallback       | 0.762 |     0.895 |  0.664 | 2.8 s | 12.1 s |   527 ms |  1.70 LU |        18.0 pp | 0.009 |
+| FireRed 0.1.0 | all-channel arithmetic average | 0.631 |     0.960 |  0.469 | 0.7 s | 19.1 s |  1240 ms |  1.44 LU |        26.5 pp | 0.042 |
 
-The omitted lower-ranked combinations remain in the generated JSON. Runtime factor is wall-clock
-inference time divided by programme duration on the test machine; it is not isolated CPU time.
+The generated summary and JSON also retain LDR and Dialogue Range errors, readiness exclusion, and
+every lower-ranked combination. Runtime factor is wall-clock inference time divided by programme
+duration on the test machine; it is not isolated CPU time.
 
 ## Decision
 

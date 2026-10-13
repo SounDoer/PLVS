@@ -47,6 +47,17 @@ describe("createStarterProfile", () => {
     starter.rules[0].value = -5;
     expect(DEFAULT_LOUDNESS_PROFILE.rules[0].value).toBe(-6);
   });
+
+  it("keeps auxiliary dialogue metrics out of shipped profile rules", () => {
+    const shippedMetricIds = DEFAULT_LOUDNESS_PROFILE.rules.map(({ metricId }) => metricId);
+    expect(shippedMetricIds).not.toContain("dialogueCoverage");
+    expect(shippedMetricIds).not.toContain("dialogueRange");
+    // Once the shipped starter is copied into the editable local library it is a Custom Profile,
+    // where users may deliberately author either auxiliary rule.
+    expect(RULEABLE_METRIC_IDS).toEqual(
+      expect.arrayContaining(["dialogueCoverage", "dialogueRange"])
+    );
+  });
 });
 
 describe("RULEABLE_METRIC_IDS", () => {

@@ -21,7 +21,7 @@
 - [ ] Report precision/recall, false-positive and false-negative duration, boundary error, downstream
       DL/LDR/Coverage error, runtime factor, latency, CPU, and peak memory.
 - [x] Assemble redistributable synthetic fixtures in the repository.
-- [ ] Add a reproducible local-manifest path for non-redistributable programme material kept
+- [x] Add a reproducible local-manifest path for non-redistributable programme material kept
       outside the repository.
 - [x] Record the model hashes, runtime versions, thresholds, and corpus revision in every result.
 - [x] Select the Silero generation and fusion policy from the results; do not change the default from
@@ -33,9 +33,9 @@
       receives configured channel roles and excludes LFE.
 - [x] Preserve per-channel evidence through a dedicated fusion policy instead of hiding fusion in an
       engine adapter.
-- [ ] Normalize engine-native frames, probabilities, readiness, and errors into time-aligned evidence
+- [x] Normalize engine-native frames, probabilities, readiness, and errors into time-aligned evidence
       without treating scores from different engines as interchangeable.
-- [ ] Align fused decisions to the exact 100 ms loudness-block timeline and test boundary conditions,
+- [x] Align fused decisions to the exact 100 ms loudness-block timeline and test boundary conditions,
       resampler delay, partial frames, resets, and gaps.
 - [x] Keep inference and any allocations, locks, model calls, or syscalls off the realtime audio
       callback.
@@ -76,8 +76,8 @@
 - [x] Add whole-row hover explanations identifying the standardized and PLVS auxiliary metrics.
 - [x] Display `—`, neutral, `warn`, and `fail` according to the design without adding Collecting,
       Insufficient, or Pass visual states.
-- [ ] Restrict built-in standards Profiles to metrics supported by their sources; retain auxiliary
-      dialogue rules for Custom Profiles only.
+- [x] Keep shipped Profile rules free of auxiliary Dialogue Coverage/Range rules (no built-in
+      standards Profiles currently ship); retain both metrics for deliberate Custom Profile rules.
 - [x] Update File summaries, Markdown/JSON reports, Live history rows, Snapshot resolution, Agent
       Control inspection, and CLI output to carry the renamed metrics and method identity.
 - [x] Treat report/schema compatibility deliberately; do not leave `dialogueLra` or opposite-sign

@@ -10,15 +10,17 @@ use rubato::{
 };
 use voice_activity_detector::VoiceActivityDetector;
 
-use crate::vad::{VadBlockAggregator, VadDecision};
+use crate::vad::{VadBlockAggregator, VadBlockEvidence, VadDecision};
 
 /// All supported VAD engines consume mono 16 kHz audio; source audio is resampled once
 /// before engine-specific frame splitting.
 const VAD_RATE: usize = 16_000;
 /// Silero operates at 16 kHz over fixed 512-sample (32 ms) chunks.
 const VAD_CHUNK: usize = 512;
-/// Mono input frames fed to the resampler per call (must be fixed for `FixedAsync::Input`).
-const RESAMPLER_IN_CHUNK: usize = 1024;
+/// Dialogue decisions share the same 100 ms clock as the BS.1770 energy blocks. The resampler
+/// therefore consumes one complete source-rate loudness block per call instead of an unrelated
+/// fixed chunk that could strand source samples on the wrong side of a block boundary.
+const DIALOGUE_BLOCK_SECONDS: f64 = 0.1;
 /// Speech probability at/above which a chunk counts as speech.
 const SPEECH_THRESHOLD: f32 = 0.5;
 
@@ -178,7 +180,8 @@ pub fn downmix_to_mono(interleaved: &[f32], channels: u16) -> Vec<f32> {
 pub struct SpeechDetector {
   engine: Box<dyn DialogueVadEngine>,
   resampler: Async<f32>,
-  /// Mono samples at the source rate, accumulating toward `RESAMPLER_IN_CHUNK`.
+  /// Source-rate samples in one exact 100 ms dialogue/loudness block.
+  resampler_input_frames: usize,
   in_buf: Vec<f32>,
   /// Resampled 16 kHz samples, accumulating toward the current engine's frame size.
   chunk_buf: Vec<f32>,
@@ -200,10 +203,11 @@ impl SpeechDetector {
       VadEngineKind::Silero => Box::new(SileroVadEngine::new()?),
       VadEngineKind::FireRed => Box::new(FireRedVadEngine::new()?),
     };
-    let resampler = Self::build_resampler(source_rate)?;
+    let (resampler, resampler_input_frames) = Self::build_resampler(source_rate)?;
     Some(Self {
       engine,
       resampler,
+      resampler_input_frames,
       in_buf: Vec::new(),
       chunk_buf: Vec::new(),
       aggregator: VadBlockAggregator::majority(),
@@ -216,10 +220,11 @@ impl SpeechDetector {
   #[cfg(feature = "capture-harness")]
   pub(crate) fn new_silero_candidate(source_rate: f64, model: Vec<u8>) -> Option<Self> {
     let engine: Box<dyn DialogueVadEngine> = Box::new(SileroVadEngine::new_with_model(model)?);
-    let resampler = Self::build_resampler(source_rate)?;
+    let (resampler, resampler_input_frames) = Self::build_resampler(source_rate)?;
     Some(Self {
       engine,
       resampler,
+      resampler_input_frames,
       in_buf: Vec::new(),
       chunk_buf: Vec::new(),
       aggregator: VadBlockAggregator::majority(),
@@ -227,7 +232,9 @@ impl SpeechDetector {
     })
   }
 
-  fn build_resampler(source_rate: f64) -> Option<Async<f32>> {
+  fn build_resampler(source_rate: f64) -> Option<(Async<f32>, usize)> {
+    let input_frames = (source_rate * DIALOGUE_BLOCK_SECONDS).round() as usize;
+    let input_frames = input_frames.max(1);
     let params = SincInterpolationParameters {
       sinc_len: 128,
       f_cutoff: Some(0.95),
@@ -235,15 +242,16 @@ impl SpeechDetector {
       interpolation: SincInterpolationType::Linear,
       window: WindowFunction::BlackmanHarris2,
     };
-    Async::<f32>::new_sinc(
+    let resampler = Async::<f32>::new_sinc(
       VAD_RATE as f64 / source_rate,
       1.0,
       &params,
-      RESAMPLER_IN_CHUNK,
+      input_frames,
       1,
       FixedAsync::Input,
     )
-    .ok()
+    .ok()?;
+    Some((resampler, input_frames))
   }
 
   /// Feed mono samples (source rate). Resamples to 16 kHz, runs the selected VAD over completed
@@ -253,12 +261,12 @@ impl SpeechDetector {
       return;
     }
     self.in_buf.extend_from_slice(mono);
-    while self.in_buf.len() >= RESAMPLER_IN_CHUNK {
-      let block: Vec<f32> = self.in_buf.drain(..RESAMPLER_IN_CHUNK).collect();
+    while self.in_buf.len() >= self.resampler_input_frames {
+      let block: Vec<f32> = self.in_buf.drain(..self.resampler_input_frames).collect();
       // rubato 1.0+ takes/returns `audioadapter` buffers instead of `Vec<Vec<f32>>`. Mono, so a
       // single-channel interleaved view over the flat slice on both ends; the output frame count
       // varies per call, so size the scratch to the resampler's max and keep only what it wrote.
-      let input = InterleavedSlice::new(&block[..], 1, RESAMPLER_IN_CHUNK).unwrap();
+      let input = InterleavedSlice::new(&block[..], 1, self.resampler_input_frames).unwrap();
       let max_out = self.resampler.output_frames_max();
       let mut scratch = vec![0.0_f32; max_out];
       let nbr_out = {
@@ -287,11 +295,23 @@ impl SpeechDetector {
   }
 
   /// 100ms block verdict since the last call, then clears the block's frame decisions.
+  #[allow(dead_code)] // Used by the feature-gated benchmark and focused detector tests.
   pub fn take_block_decision(&mut self) -> Option<bool> {
-    if self.failed || !self.aggregator.has_evidence() {
-      None
+    self
+      .take_block_evidence()
+      .ok()
+      .flatten()
+      .map(|evidence| evidence.active)
+  }
+
+  /// Returns normalized evidence, distinguishes detector failure from ordinary not-ready state,
+  /// and clears exactly one block. Probabilities remain diagnostic metadata; the engine-specific
+  /// adapter has already made the thresholded decision.
+  pub fn take_block_evidence(&mut self) -> Result<Option<VadBlockEvidence>, ()> {
+    if self.failed {
+      Err(())
     } else {
-      Some(self.aggregator.take_decision())
+      Ok(self.aggregator.take_evidence())
     }
   }
 
@@ -416,10 +436,15 @@ impl MultichannelSpeechDetector {
     if self.invalid_input {
       return None;
     }
-    let decisions: Vec<Option<bool>> = self
+    let evidence = self
       .detectors
       .iter_mut()
-      .map(SpeechDetector::take_block_decision)
+      .map(SpeechDetector::take_block_evidence)
+      .collect::<Result<Vec<_>, _>>()
+      .ok()?;
+    let decisions: Vec<Option<bool>> = evidence
+      .iter()
+      .map(|evidence| evidence.map(|evidence| evidence.active))
       .collect();
     let decision = fuse_center_priority(&decisions, &self.block_energies, self.center_position);
     self.block_energies.fill(0.0);
@@ -530,6 +555,31 @@ mod tests {
       d.engine.frame_size(),
       firered_vad::FrameResult::FRAME_SHIFT_SAMPLES as usize
     );
+  }
+
+  #[test]
+  fn resampler_intake_is_one_exact_loudness_block_at_common_rates() {
+    let d48 =
+      SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed).expect("48 kHz detector");
+    let d441 =
+      SpeechDetector::new_with_engine(44_100.0, VadEngineKind::FireRed).expect("44.1 kHz detector");
+    assert_eq!(d48.resampler_input_frames, 4_800);
+    assert_eq!(d441.resampler_input_frames, 4_410);
+  }
+
+  #[test]
+  fn partial_block_has_no_evidence_and_reset_discards_the_tail() {
+    let mut detector =
+      SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed).expect("detector builds");
+    detector.push_mono(&vec![0.0; 4_799]);
+    assert_eq!(detector.take_block_decision(), None);
+    detector.push_mono(&[0.0]);
+    assert_eq!(detector.take_block_decision(), Some(false));
+
+    detector.reset();
+    detector.push_mono(&[0.0]);
+    assert_eq!(detector.take_block_decision(), None);
+    assert_eq!(detector.in_buf.len(), 1);
   }
 
   // Integration smoke test: exercises the full mono->resample->Silero->vote chain on real

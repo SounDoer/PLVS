@@ -266,6 +266,11 @@ valid duration without a loudness gate. Dialogue Range forms masked three-second
 one-second hop and computes an exact duration-weighted P95−P10 without the EBU LRA relative gate.
 The detector never replaces programme audio in the loudness path.
 
+`loudness.rs` splits every incoming PCM packet at exact sample-counted 100 ms boundaries before
+feeding either side of that path. The detector resampler consumes the same complete source-rate
+block, so callback cadence, decoder read size, partial packets, and resampler batching cannot move
+evidence into an adjacent loudness block. A coherent reset discards both sides' partial block.
+
 Multichannel detection uses the versioned `center-priority-fallback-v1` policy. Each non-LFE
 channel has independent detector state, so opposite phase and an LFE-heavy mix cannot cancel or
 dilute the detector input. In a layout with a known centre, centre speech is accepted directly;

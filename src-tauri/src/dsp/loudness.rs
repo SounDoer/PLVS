@@ -431,8 +431,6 @@ impl LoudnessBlock {
 
 impl Meter for LoudnessMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
-    // Feed the speech sidechain continuously (downmixed mono) so its 16 kHz chunks keep
-    // flowing regardless of which loudness path runs below.
     if ctx.dialogue_gating {
       if ctx.dialogue_vad_engine != self.speech_kind {
         self.dialogue.reset();
@@ -452,54 +450,34 @@ impl Meter for LoudnessMeter {
           self.dialogue_detection_error = Some("initializationFailed");
         }
       }
-      if let Some(det) = self.speech.as_mut() {
-        det.push_interleaved(ctx.interleaved, ctx.channels);
-      }
     }
 
-    let block = if let Some(weights) = ctx.loudness_weights.as_ref() {
-      if weights.len() == ctx.channels.max(1) as usize {
-        self.push_interleaved_weighted(ctx.interleaved, ctx.channels, weights)
-      } else if ctx.channels == 1 {
-        self.push_mono_duplex(ctx.interleaved)
-      } else {
-        self.push_interleaved_multichannel(ctx.interleaved, ctx.channels)
-      }
-    } else if ctx.channels == 1 {
-      self.push_mono_duplex(ctx.interleaved)
-    } else {
-      self.push_interleaved_multichannel(ctx.interleaved, ctx.channels)
-    };
-    if let Some(mut b) = block {
-      // A block just closed: settle its speech verdict and fold it into the dialogue readouts.
+    // Never let callback/decode packet boundaries define dialogue blocks. Split every intake at
+    // the meter's exact 100 ms boundary, feed the matching slice to the detector, and settle the
+    // decision before advancing to the next block. This also keeps accumulation correct if one
+    // intake happens to contain several blocks; `pending_block` remains the latest UI snapshot.
+    let channels = ctx.channels.max(1) as usize;
+    let frames = ctx.interleaved.len() / channels;
+    let mut frame_offset = 0_usize;
+    while frame_offset < frames {
+      let frames_to_boundary = self.bsz - self.bn;
+      let segment_frames = frames_to_boundary.min(frames - frame_offset);
+      let sample_start = frame_offset * channels;
+      let sample_end = (frame_offset + segment_frames) * channels;
+      let segment = &ctx.interleaved[sample_start..sample_end];
+
       if ctx.dialogue_gating {
-        let ms = self.last_mean_square;
         if let Some(detector) = self.speech.as_mut() {
-          match detector.take_block_decision() {
-            Some(is_speech) => {
-              self.speech_now = is_speech;
-              self.dialogue.push_block(ms, is_speech);
-              b.dialogue_integrated = self.dialogue.integrated();
-              b.dialogue_lra = self.dialogue.lra();
-              b.dialogue_percent = self.dialogue.percent();
-            }
-            None if detector.has_failed() => {
-              self.speech_now = false;
-              self.dialogue_detection_error = Some("runtimeFailed");
-            }
-            None => {
-              b.dialogue_integrated = self.dialogue.integrated();
-              b.dialogue_lra = self.dialogue.lra();
-              b.dialogue_percent = self.dialogue.percent();
-            }
-          }
-        } else {
-          self.speech_now = false;
+          detector.push_interleaved(segment, ctx.channels);
         }
-      } else {
-        self.speech_now = false;
       }
-      self.pending_block = Some(b);
+
+      let block =
+        self.push_loudness_segment(segment, ctx.channels, ctx.loudness_weights.as_deref());
+      if let Some(block) = block {
+        self.settle_dialogue_block(block, ctx.dialogue_gating);
+      }
+      frame_offset += segment_frames;
     }
   }
 
@@ -510,6 +488,58 @@ impl Meter for LoudnessMeter {
 }
 
 impl LoudnessMeter {
+  fn push_loudness_segment(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    weights: Option<&[f64]>,
+  ) -> Option<LoudnessBlock> {
+    if let Some(weights) = weights {
+      if weights.len() == channels.max(1) as usize {
+        self.push_interleaved_weighted(interleaved, channels, weights)
+      } else if channels == 1 {
+        self.push_mono_duplex(interleaved)
+      } else {
+        self.push_interleaved_multichannel(interleaved, channels)
+      }
+    } else if channels == 1 {
+      self.push_mono_duplex(interleaved)
+    } else {
+      self.push_interleaved_multichannel(interleaved, channels)
+    }
+  }
+
+  fn settle_dialogue_block(&mut self, mut block: LoudnessBlock, dialogue_gating: bool) {
+    if dialogue_gating {
+      let ms = self.last_mean_square;
+      if let Some(detector) = self.speech.as_mut() {
+        match detector.take_block_decision() {
+          Some(is_speech) => {
+            self.speech_now = is_speech;
+            self.dialogue.push_block(ms, is_speech);
+            block.dialogue_integrated = self.dialogue.integrated();
+            block.dialogue_lra = self.dialogue.lra();
+            block.dialogue_percent = self.dialogue.percent();
+          }
+          None if detector.has_failed() => {
+            self.speech_now = false;
+            self.dialogue_detection_error = Some("runtimeFailed");
+          }
+          None => {
+            block.dialogue_integrated = self.dialogue.integrated();
+            block.dialogue_lra = self.dialogue.lra();
+            block.dialogue_percent = self.dialogue.percent();
+          }
+        }
+      } else {
+        self.speech_now = false;
+      }
+    } else {
+      self.speech_now = false;
+    }
+    self.pending_block = Some(block);
+  }
+
   pub fn speech_now(&self) -> bool {
     self.speech_now
   }
@@ -828,6 +858,53 @@ mod tests {
       !block.dialogue_integrated.is_finite(),
       "no speech blocks → dialogue integrated stays -inf, got {}",
       block.dialogue_integrated
+    );
+  }
+
+  #[test]
+  fn one_large_intake_settles_every_dialogue_block() {
+    let sr = 48_000.0;
+    let frames = 4_800usize * 3;
+    let stereo: Vec<f32> = (0..frames)
+      .flat_map(|i| {
+        let sample = (2.0 * std::f64::consts::PI * 1_000.0 * i as f64 / sr).sin() as f32 * 0.5;
+        [sample, sample]
+      })
+      .collect();
+    let mut meter = LoudnessMeter::new(sr);
+
+    meter.push_pcm(&dialogue_ctx(&stereo, 2));
+
+    assert_eq!(meter.dialogue.valid_blocks_for_test(), 3);
+    assert!(meter.take_block().is_some());
+  }
+
+  #[test]
+  fn arbitrary_packet_boundaries_do_not_move_dialogue_blocks() {
+    let sr = 48_000.0;
+    let frames = 4_800usize * 3;
+    let stereo: Vec<f32> = (0..frames)
+      .flat_map(|i| {
+        let sample = (2.0 * std::f64::consts::PI * 1_000.0 * i as f64 / sr).sin() as f32 * 0.5;
+        [sample, sample]
+      })
+      .collect();
+    let mut whole = LoudnessMeter::new(sr);
+    let mut fragmented = LoudnessMeter::new(sr);
+
+    whole.push_pcm(&dialogue_ctx(&stereo, 2));
+    for packet in stereo.chunks(1_738) {
+      fragmented.push_pcm(&dialogue_ctx(packet, 2));
+    }
+
+    let whole_block = whole.take_block().expect("whole-input block");
+    let fragmented_block = fragmented.take_block().expect("fragmented-input block");
+    assert_eq!(whole.dialogue.valid_blocks_for_test(), 3);
+    assert_eq!(fragmented.dialogue.valid_blocks_for_test(), 3);
+    assert_eq!(whole_block.integrated, fragmented_block.integrated);
+    assert_eq!(
+      whole_block.dialogue_percent,
+      fragmented_block.dialogue_percent
     );
   }
 

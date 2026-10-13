@@ -1,6 +1,8 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   aggregateDialogueBenchmark,
+  parseDialogueBenchmarkArgs,
   renderDialogueBenchmarkSummary,
 } from "./dialogue-benchmark.mjs";
 
@@ -20,8 +22,12 @@ const report = {
       },
       metrics: {
         dialogueLoudnessErrorLu: -1,
+        loudnessToDialogueRatioErrorLu: 1,
         dialogueCoverageErrorPercentagePoints: 5,
+        dialogueRangeErrorLu: -2,
       },
+      readinessExcludedMs: 100,
+      meanBoundaryErrorMs: 50,
       realtimeFactor: 0.25,
     },
   ],
@@ -38,10 +44,20 @@ describe("dialogue benchmark report", () => {
         f1: 0.8000000000000002,
         falsePositiveDurationMs: 200,
         falseNegativeDurationMs: 200,
+        meanBoundaryErrorMs: 50,
         meanAbsoluteDialogueLoudnessErrorLu: 1,
+        meanAbsoluteLoudnessToDialogueRatioErrorLu: 1,
         meanAbsoluteCoverageErrorPercentagePoints: 5,
+        meanAbsoluteDialogueRangeErrorLu: 2,
+        meanReadinessExcludedMs: 100,
       }),
     ]);
+  });
+
+  it("accepts an explicit local manifest path", () => {
+    expect(parseDialogueBenchmarkArgs(["--manifest", "D:/private/manifest.json"])).toEqual({
+      manifestPath: resolve("D:/private/manifest.json"),
+    });
   });
 
   it("renders the reproducibility identity and compact comparison table", () => {
