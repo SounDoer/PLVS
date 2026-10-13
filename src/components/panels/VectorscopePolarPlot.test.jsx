@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
 
@@ -81,21 +81,17 @@ describe("VectorscopePolarPlot", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("draws Polar Sample as points and shows endpoint labels", () => {
+  it("draws Polar Sample as points", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const { container } = render(
       <VectorscopePolarPlot
         mode="polarSample"
         rows={[{ pairs: new Float32Array([1, 1, 0, 1]), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
       />
     );
 
     expect(container.querySelector('[data-vectorscope-polar="polarSample"]')).toBeTruthy();
-    expect(screen.getByText("L")).toBeTruthy();
-    expect(screen.getByText("R")).toBeTruthy();
     expect(ctx.fill).toHaveBeenCalledTimes(2);
     expect(ctx.filledAlphas).toEqual([1, 1]);
   });
@@ -109,8 +105,6 @@ describe("VectorscopePolarPlot", () => {
         { pairs: new Float32Array([1, 1]), ageMs: 200, timestampMs: 0 },
         { pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 200 },
       ],
-      firstLabel: "L",
-      secondLabel: "R",
     };
     const { rerender } = render(<VectorscopePolarPlot {...props} persistenceMs={400} />);
 
@@ -137,8 +131,6 @@ describe("VectorscopePolarPlot", () => {
     const props = {
       mode: "polarSample",
       rows,
-      firstLabel: "L",
-      secondLabel: "R",
     };
     const { rerender } = render(<VectorscopePolarPlot {...props} />);
     const readsAfterFirstRender = widthRead.mock.calls.length + heightRead.mock.calls.length;
@@ -157,8 +149,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarSample"
         rows={[{ pairs: new Float32Array([0, 0, 0.000001, 0]), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
       />
     );
 
@@ -172,15 +162,13 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarSample"
         rows={[{ pairs: new Float32Array([1, 1, 0.25, 0.25]), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
       />
     );
 
     // Full-scale mono reaches the arc; a quiet mono sample sits at its own fixed
     // dB radius rather than being magnified by the louder sample in the window.
     const fullScale = ctx.arc.mock.calls.find(([, y]) => y < 61);
-    const quiet = ctx.arc.mock.calls.find(([, y]) => y > 82 && y < 83);
+    const quiet = ctx.arc.mock.calls.find(([, y]) => y > 84 && y < 85);
     expect(fullScale?.[0]).toBeCloseTo(100);
     expect(fullScale?.[1]).toBeCloseTo(60);
     expect(quiet?.[0]).toBeCloseTo(100);
@@ -193,8 +181,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: allPolarLevelBinPairs(), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
       />
     );
 
@@ -202,9 +188,9 @@ describe("VectorscopePolarPlot", () => {
     expect(ctx.stroke).toHaveBeenCalledOnce();
 
     const fanPath = ctx.filledPaths[0];
-    expect(fanPath[0]).toMatchObject({ command: "moveTo", x: 100, y: 150 });
+    expect(fanPath[0]).toMatchObject({ command: "moveTo", x: 100, y: 158 });
     expect(fanPath.at(-1)).toMatchObject({ command: "closePath" });
-    expect(fanPath.at(-2)).toMatchObject({ command: "lineTo", x: 100, y: 150 });
+    expect(fanPath.at(-2)).toMatchObject({ command: "lineTo", x: 100, y: 158 });
     // 64 bin tips bracketed by the origin move and the closing return to origin.
     expect(fanPath.filter(({ command }) => command === "lineTo")).toHaveLength(65);
   });
@@ -214,27 +200,22 @@ describe("VectorscopePolarPlot", () => {
       const ctx = contextStub();
       vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
       const view = render(
-        <VectorscopePolarPlot
-          mode="polarLevel"
-          rows={[{ pairs, ageMs: 0, timestampMs: 100 }]}
-          firstLabel="L"
-          secondLabel="R"
-        />
+        <VectorscopePolarPlot mode="polarLevel" rows={[{ pairs, ageMs: 0, timestampMs: 100 }]} />
       );
       const y = Math.min(...ctx.lineTo.mock.calls.map(([, yy]) => yy));
       view.unmount();
       return y;
     };
 
-    // Baseline 150, plot radius 90 (arc extension 90). Level uses the same fixed dB transfer as
+    // Baseline 158, plot radius 98 (arc extension 98). Level uses the same fixed dB transfer as
     // Polar Sample: louder reaches near the arc, quieter sits mid-plot, both absolute (not
     // peak-normalized). dB keeps quiet material well out instead of collapsing to the center.
-    const loud = 150 - topmostFor(new Float32Array([1, 1]));
-    const quiet = 150 - topmostFor(new Float32Array([0.1, 0.1]));
+    const loud = 158 - topmostFor(new Float32Array([1, 1]));
+    const quiet = 158 - topmostFor(new Float32Array([0.1, 0.1]));
     expect(loud).toBeGreaterThan(quiet);
     expect(loud).toBeGreaterThan(70);
     expect(quiet).toBeGreaterThan(25);
-    expect(quiet).toBeLessThan(55);
+    expect(quiet).toBeLessThan(62);
   });
 
   it("does not shrink the live Polar Level fill when Max hold is enabled", () => {
@@ -245,8 +226,6 @@ describe("VectorscopePolarPlot", () => {
         <VectorscopePolarPlot
           mode="polarLevel"
           rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
-          firstLabel="L"
-          secondLabel="R"
           maxHoldEnabled={maxHoldEnabled}
         />
       );
@@ -254,8 +233,6 @@ describe("VectorscopePolarPlot", () => {
         <VectorscopePolarPlot
           mode="polarLevel"
           rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
-          firstLabel="L"
-          secondLabel="R"
           maxHoldEnabled={maxHoldEnabled}
         />
       );
@@ -279,8 +256,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -290,8 +265,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([0.25, 0.25]), ageMs: 0, timestampMs: 2100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -307,8 +280,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: allPolarLevelBinPairs(), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -321,12 +292,12 @@ describe("VectorscopePolarPlot", () => {
 
     const heldPath = ctx.strokedPaths[1];
     expect(heldPath[0].command).toBe("moveTo");
-    expect(heldPath[0]).not.toMatchObject({ x: 100, y: 150 });
+    expect(heldPath[0]).not.toMatchObject({ x: 100, y: 158 });
     expect(heldPath[0].x).toBeLessThan(100);
-    expect(heldPath[0].y).toBeCloseTo(150);
+    expect(heldPath[0].y).toBeCloseTo(158);
     expect(heldPath.filter(({ command }) => command === "lineTo")).toHaveLength(63);
     expect(heldPath.at(-1).x).toBeGreaterThan(100);
-    expect(heldPath.at(-1).y).toBeCloseTo(150);
+    expect(heldPath.at(-1).y).toBeCloseTo(158);
     expect(heldPath.some(({ command }) => command === "closePath")).toBe(false);
   });
 
@@ -342,8 +313,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: allPolarLevelBinPairs(), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
         colors={{ trace: "#123456", snapshot: "#abcdef", guides: "#654321" }}
       />
@@ -377,8 +346,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: allPolarLevelBinPairs(), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
         colors={{ trace: "#123456", snapshot: "#abcdef", guides: "#654321" }}
       />
@@ -402,8 +369,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         snapshotPairs={allPolarLevelBinPairs()}
-        firstLabel="L"
-        secondLabel="R"
         colors={{ trace: "#123456", snapshot: "#abcdef", guides: "#654321" }}
       />
     );
@@ -412,21 +377,11 @@ describe("VectorscopePolarPlot", () => {
     expect(ctx.filledColors).toEqual(["#abcdef"]);
   });
 
-  it("hides endpoint labels in compact plots", () => {
+  it("draws snapshot samples at full opacity", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
-    render(
-      <VectorscopePolarPlot
-        mode="polarSample"
-        snapshotPairs={new Float32Array([1, 1])}
-        firstLabel="L"
-        secondLabel="R"
-        showLabels={false}
-      />
-    );
+    render(<VectorscopePolarPlot mode="polarSample" snapshotPairs={new Float32Array([1, 1])} />);
 
-    expect(screen.queryByText("L")).toBeNull();
-    expect(screen.queryByText("R")).toBeNull();
     expect(ctx.filledAlphas).toEqual([1]);
   });
 
@@ -438,8 +393,6 @@ describe("VectorscopePolarPlot", () => {
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
         snapshotMaxHold={new Float64Array(64).fill(0.7)}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -460,8 +413,6 @@ describe("VectorscopePolarPlot", () => {
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
         initialMaxHold={new Float64Array(64).fill(0.7)}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -480,8 +431,6 @@ describe("VectorscopePolarPlot", () => {
         mode="polarLevel"
         snapshotPairs={new Float32Array([1, 1])}
         snapshotMaxHold={null}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -505,8 +454,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -515,8 +462,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -527,8 +472,6 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 4100 }]}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
         maxHoldResetKey={1}
       />
@@ -546,8 +489,6 @@ describe("VectorscopePolarPlot", () => {
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
         snapshotMaxHold={held}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
       />
     );
@@ -557,8 +498,6 @@ describe("VectorscopePolarPlot", () => {
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
         snapshotMaxHold={held}
-        firstLabel="L"
-        secondLabel="R"
         maxHoldEnabled
         maxHoldResetKey={1}
       />

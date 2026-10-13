@@ -47,18 +47,19 @@ function formatCorrelation(value) {
  * @param {boolean} expanded
  * @param {boolean} isPolar
  */
-function computePlotBox(width, height, expanded, isPolar) {
+function computePlotBox(width, height, expanded, isPolar, labelStripPx) {
   if (!Number.isFinite(width) || !Number.isFinite(height)) return { w: 48, h: 48 };
   // Standard layout puts the correlation rail beside the plot (reserve its width); expanded stacks
   // it below (reserve its height).
   const availHeight = expanded ? height - EXPANDED_CORRELATION_HEIGHT_PX : height;
   const availWidth = expanded ? width : width - CONTENT_GAP_PX - CORRELATION_MIN_WIDTH_PX;
   if (isPolar) {
-    // The polar plot is an upper semicircle — a diameter wide by a radius tall, i.e. 2:1. A square
-    // box would leave the top half empty, so give it a 2:1 box: height fills the available height,
-    // width is twice that (capped by the available width so it never overruns the correlation rail).
-    const h = Math.max(32, Math.floor(Math.min(availHeight, availWidth / 2)));
-    return { w: h * 2, h };
+    // The polar plot is an upper semicircle — a diameter wide by a radius tall, i.e. 2:1. The box
+    // fills the available height; the semicircle gets what is left above the label strip, and the
+    // box is exactly as wide as that semicircle (capped so it never overruns the correlation rail),
+    // which puts the pair labels under the ends of its baseline.
+    const h = Math.max(32, Math.floor(Math.min(availHeight, availWidth / 2 + labelStripPx)));
+    return { w: (h - labelStripPx) * 2, h };
   }
   const side = Math.max(32, Math.floor(Math.min(availHeight, availWidth)));
   return { w: side, h: side };
@@ -135,7 +136,12 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
       const rect = content.getBoundingClientRect();
       setContentWidth(rect.width);
       setContentHeight(rect.height);
-      setPlotBox(computePlotBox(rect.width, rect.height, expanded, !isLissajous));
+      // Must equal the polar stage's bottom inset below; the label size follows Dock density.
+      const labelPx =
+        Number.parseFloat(getComputedStyle(content).getPropertyValue("--ui-dock-fs-label")) || 9;
+      const availHeight = rect.height - (expanded ? EXPANDED_CORRELATION_HEIGHT_PX : 0);
+      const labelStripPx = availHeight >= PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX ? labelPx + 2 : 0;
+      setPlotBox(computePlotBox(rect.width, rect.height, expanded, !isLissajous, labelStripPx));
     };
     measure();
     if (typeof ResizeObserver !== "function") return undefined;
@@ -212,9 +218,6 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               <VectorscopePolarPlot
                 mode={mode}
                 rows={polarRows}
-                firstLabel={firstLabel}
-                secondLabel={secondLabel}
-                showLabels={false}
                 maxHoldEnabled={normalizedControls.vectorscopePolarLevelMaxHold}
                 maxHoldResetKey={maxHoldResetKey}
                 persistenceMs={normalizedControls.vectorscopePolarSamplePersistenceMs}

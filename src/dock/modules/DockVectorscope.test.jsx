@@ -299,7 +299,7 @@ describe("DockVectorscope", () => {
     fireEvent.click(plot);
   });
 
-  it("gives a Polar mode a 2:1 plot that fills the dock height", () => {
+  it("sizes a Polar plot to the semicircle left above the pair labels", () => {
     const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       width: 300,
       height: 80,
@@ -316,10 +316,10 @@ describe("DockVectorscope", () => {
       vectorscopeMode: "polarLevel",
       vectorscopePolarLevelMaxHold: false,
     });
-    // availHeight 80, availWidth 300 - 8 - 72 = 220 → height fills to 80, width = 2 * 80 = 160.
+    // Height fills to 80; the 11px label strip leaves a 69px radius, so the box is 2 * 69 wide.
     const plot = screen.getByTestId("dock-vectorscope-plot");
     expect(plot.style.height).toBe("80px");
-    expect(plot.style.width).toBe("160px");
+    expect(plot.style.width).toBe("138px");
     rect.mockRestore();
   });
 

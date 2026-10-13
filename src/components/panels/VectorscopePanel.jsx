@@ -409,9 +409,6 @@ export function VectorscopePanel() {
                   snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
                   snapshotMaxHold={isSnapshot ? snapResolved?.maxHold : null}
                   initialMaxHold={!isSnapshot ? liveVectorscopeResult?.initialMaxHold : null}
-                  firstLabel={axisXLabel}
-                  secondLabel={axisYLabel}
-                  showLabels={false}
                   maxHoldEnabled={normalizedPanelControls.vectorscopePolarLevelMaxHold}
                   maxHoldResetKey={maxHoldResetKey}
                   persistenceMs={normalizedPanelControls.vectorscopePolarSamplePersistenceMs}

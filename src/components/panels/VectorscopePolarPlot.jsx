@@ -13,7 +13,9 @@ import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelect
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 
-const PLOT_PADDING_CSS_PX = 10;
+// Only what the marks themselves overhang: half a stroke on the arc and baseline, a sample dot at
+// full scale. Room for pair labels belongs to whoever draws them, not to the plot.
+const PLOT_PADDING_CSS_PX = 2;
 const POINT_RADIUS_CSS_PX = 1.15;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_FIXED_EXTENT = Math.SQRT2;
@@ -156,9 +158,6 @@ export function VectorscopePolarPlot({
   snapshotPairs = null,
   snapshotMaxHold = null,
   initialMaxHold = null,
-  firstLabel,
-  secondLabel,
-  showLabels = true,
   maxHoldEnabled = false,
   maxHoldResetKey = 0,
   persistenceMs = POLAR_SAMPLE_WINDOW_MS,
@@ -272,16 +271,6 @@ export function VectorscopePolarPlot({
   return (
     <div data-vectorscope-polar={mode} className="absolute inset-0">
       <canvas ref={canvasRef} className="block h-full w-full" aria-hidden />
-      {showLabels ? (
-        <>
-          <span className="pointer-events-none absolute bottom-0 left-0 max-w-[42%] truncate text-[length:var(--ui-fs-axis)] font-medium text-[color:var(--ui-text-annotation)]">
-            {firstLabel}
-          </span>
-          <span className="pointer-events-none absolute bottom-0 right-0 max-w-[42%] truncate text-right text-[length:var(--ui-fs-axis)] font-medium text-[color:var(--ui-text-annotation)]">
-            {secondLabel}
-          </span>
-        </>
-      ) : null}
     </div>
   );
 }
