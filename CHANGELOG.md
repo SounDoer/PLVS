@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-14
+
 ### Added
 
 - [Sharesets](https://plvs.soundoer.com/sharesets/) launches as the PLVS catalogue of curated
