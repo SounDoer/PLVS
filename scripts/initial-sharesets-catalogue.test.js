@@ -36,6 +36,7 @@ const INITIAL_LISTINGS = [
   "listings/mono-light.json",
   "listings/default-preset.json",
   "listings/multichannel-monitoring.json",
+  "listings/stereo-field-check.json",
 ];
 
 let launchSource;
@@ -80,6 +81,7 @@ describe("initial Sharesets Catalogue", () => {
       "plvs-dark",
       "plvs-light",
       "spotify",
+      "stereo-field-check",
       "studio-daylight",
     ]);
     expect(new Set(listings.map(({ type }) => type))).toEqual(
@@ -193,6 +195,27 @@ describe("initial Sharesets Catalogue", () => {
     expect(preset.title).toBe("Multichannel Monitoring");
     expect(preset.releases[0].metadata.facets).toMatchObject({
       moduleIds: ["levelMeter", "spectrum", "stats", "vectorscope", "waveform"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 4 }),
+      }),
+    ]);
+  });
+
+  it("publishes the focused Stereo Field Check Preset", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(
+      ({ document }) => document.id === "stereo-field-check"
+    ).document;
+
+    expect(preset.title).toBe("Stereo Field Check");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["spectrum", "stats", "stereo-map", "vectorscope"],
       dependencyIds: [],
       optionalCapabilities: [],
     });

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "stereo-field-check",
+  "slug": "stereo-field-check",
+  "type": "presets",
+  "classification": "official",
+  "title": "Stereo Field Check",
+  "summary": "A focused workspace for inspecting stereo width and potential mono loss.",
+  "descriptionMarkdown": "Inspect the first available channel pair with a large Mid / Side Spectrum and Polar Vectorscope, then trace frequency-dependent correlation and potential mono loss in two focused Stereo Map views. A compact summary keeps Correlation, Side / Mid, True Peak Max, Integrated Dynamics, and Integrated Loudness visible for context. The Preset keeps Loudness Profile and Dock off and does not replace listening checks in mono.",
+  "tags": ["Stereo", "Imaging", "Mono Compatibility", "M/S", "Analysis"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-13",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/stereo-field-check-v1.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace",
+          "path": "previews/stereo-field-check/v1/preset-workspace.png"
+        }
+      ]
+    }
+  ]
+}
