@@ -8,7 +8,7 @@ import {
   SelectGroup,
   SelectLabel,
 } from "@/components/ui/select";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -18,16 +18,6 @@ import { POPOVER_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useHoverTip } from "@/components/HoverTip.jsx";
 import { IconAction } from "@/components/ui/icon-action";
 import { MenuRow } from "@/components/ui/row";
-
-/**
- * Lets the surface hosting a settings select make room before its floating menu opens. A menu is
- * confined to its window, and the Dock's editor window is only as large as the editor, so that
- * host grows the window first. It has to happen before the menu is up: the select closes on any
- * window resize. Hosts with room to spare provide nothing.
- *
- * @type {import("react").Context<null | ((trigger: HTMLElement | null) => Promise<void>)>}
- */
-export const SettingsMenuRoomContext = createContext(null);
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-[var(--ui-control-h)] max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none";
@@ -487,26 +477,17 @@ export function SettingsSelect({ label, ariaLabel, options, value, onChange, ope
     }
     group.options.push(option);
   }
-  const reserveMenuRoom = useContext(SettingsMenuRoomContext);
-  const triggerRef = useRef(null);
   return (
     <Select
       value={String(value)}
       open={open}
-      onOpenChange={(next) => {
-        if (next && reserveMenuRoom) {
-          void reserveMenuRoom(triggerRef.current).then(() => onOpenChange(true));
-        } else {
-          onOpenChange(next);
-        }
-      }}
+      onOpenChange={onOpenChange}
       onValueChange={(key) => {
         const option = options.find((item) => String(item.key ?? item.id) === key);
         if (option) onChange(option.key ?? option.id);
       }}
     >
       <SelectTrigger
-        ref={triggerRef}
         aria-label={ariaLabel}
         variant="inline"
         className="max-w-none text-popover-foreground hover:text-foreground"
