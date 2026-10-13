@@ -178,6 +178,9 @@ async function sealPreviews(root, owner, metadata, ownerPath) {
   }
 
   const previewsById = new Map(owner.previews.map((preview) => [preview.id, preview]));
+  const metadataAssetsById = new Map(
+    metadata.preview.assets.map((asset) => [asset.id, asset])
+  );
   const sealed = [];
   for (const id of expectedIds) {
     const preview = previewsById.get(id);
@@ -216,7 +219,8 @@ async function sealPreviews(root, owner, metadata, ownerPath) {
         renderer: metadata.preview.renderer,
         contractVersion: metadata.preview.contractVersion,
         itemContentHash: metadata.content.contentHash,
-        fixtureHash: metadata.preview.fixture?.sha256 ?? null,
+        fixtureHash:
+          metadataAssetsById.get(id)?.fixtureHash ?? metadata.preview.fixture?.sha256 ?? null,
       },
     });
   }

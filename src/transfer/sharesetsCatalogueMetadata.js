@@ -83,9 +83,10 @@ function compactPreviewPlan(type, plan) {
       version: plan.fixture.version,
       sha256: plan.fixtureHash,
     },
-    assets: plan.assets.map(({ id, renderer, surface, format, viewport }) => ({
+    assets: plan.assets.map(({ id, renderer, fixtureKey, surface, format, viewport, source }) => ({
       id,
       renderer,
+      ...(fixtureKey ? { fixtureKey, fixtureHash: source.fixtureHash } : {}),
       surface,
       format,
       viewport,

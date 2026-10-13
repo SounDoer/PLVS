@@ -332,7 +332,11 @@ function MultichannelMonitoringExample({ plan, fullShell }) {
 }
 
 export function SharesetsPreviewApp({ plan, asset }) {
-  if (asset.renderer === "preset-workspace") return <WorkspaceExample plan={plan} />;
+  if (asset.renderer === "preset-workspace") {
+    const fixture =
+      asset.fixtureKey === "5.1" ? (plan.multichannelFixture ?? plan.fixture) : plan.fixture;
+    return <WorkspaceExample plan={{ ...plan, fixture }} />;
+  }
   if (asset.renderer === "preset-dock") return <DockExample plan={plan} />;
   if (asset.renderer === "semantic-gallery") return <ThemeSemanticExample plan={plan} />;
   if (

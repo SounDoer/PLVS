@@ -206,6 +206,8 @@ describe("Sharesets static site generator", () => {
       "Snapshot",
       "Theme Colors",
     ]);
+    expect(previewLabel({ id: "preset-workspace-stereo" })).toBe("Stereo");
+    expect(previewLabel({ id: "preset-workspace-5-1" })).toBe("5.1");
   });
 
   it.each([false, true])(

@@ -153,6 +153,31 @@ describe("Sharesets preview command", () => {
     ).rejects.toThrow("Unknown built-in Preset");
   });
 
+  it("renders both declared workspace variants for Meter Bridge", async () => {
+    const root = temporaryRoot();
+    const preset = {
+      id: "meter-bridge",
+      name: "Meter Bridge",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const source = writeArtifact(root, "meter-bridge.plvspreset", buildPack("presets", [preset]));
+    const result = await generateSharesetsPreviews({
+      artifactPath: source,
+      outputDirectory: join(root, "rendered"),
+      createRuntime: async () => imageRuntime(),
+    });
+
+    expect(result.report.assets.map(({ id }) => id)).toEqual([
+      "preset-workspace-stereo",
+      "preset-workspace-5-1",
+    ]);
+    expect(result.report.assets[0].source.fixtureHash).not.toBe(
+      result.report.assets[1].source.fixtureHash
+    );
+  });
+
   it("refuses an existing output directory before rendering", async () => {
     const root = temporaryRoot();
     const source = artifact(root, "loudness");

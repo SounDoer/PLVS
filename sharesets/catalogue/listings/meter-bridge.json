@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "meter-bridge",
+  "slug": "meter-bridge",
+  "type": "presets",
+  "classification": "official",
+  "title": "Meter Bridge",
+  "summary": "Compare Peak, RMS, Momentary, and Short-term metering against programme structure.",
+  "descriptionMarkdown": "Compare four measurement time scales without unrelated analysis panels. A 60-second Waveform provides programme context above equal-width Peak, RMS, Momentary, and Short-term meters. Peak includes TP Max, while the loudness meters use floating values and remain profile-neutral. Stereo and 5.1 previews show how channel-aware Peak, RMS, and Waveform views adapt while programme-level loudness remains a single reading.",
+  "tags": ["Metering", "Peak", "RMS", "Loudness", "Multichannel"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-13",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/meter-bridge-v1.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace-stereo",
+          "path": "previews/meter-bridge/v1/preset-workspace-stereo.png"
+        },
+        {
+          "id": "preset-workspace-5-1",
+          "path": "previews/meter-bridge/v1/preset-workspace-5-1.png"
+        }
+      ]
+    }
+  ]
+}

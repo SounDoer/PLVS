@@ -8,8 +8,13 @@ import { SHARESETS_PREVIEW_MULTICHANNEL_V1 } from "./fixtures/sharesetsPreviewMu
 import { hashPortablePreset } from "./portablePreset.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "../sharesets-preview/multichannelMonitoringPreset.js";
 
-export const SHARESETS_PREVIEW_CONTRACT_VERSION = 4;
+export const SHARESETS_PREVIEW_CONTRACT_VERSION = 5;
 export const SHARESETS_PREVIEW_RENDERER_VERSION = 2;
+
+const LEGACY_PREVIEW_CONTRACT_VERSION = 4;
+const PRESET_WORKSPACE_VARIANTS_BY_ITEM_ID = Object.freeze({
+  "meter-bridge": Object.freeze(["stereo", "5.1"]),
+});
 
 const VIEWPORTS = Object.freeze({
   presetWorkspace: Object.freeze({ widthCssPx: 1280, heightCssPx: 720, deviceScaleFactor: 1 }),
@@ -42,20 +47,33 @@ export async function hashSharesetsPreviewFixture(value) {
 /**
  * @param {string} type
  */
-function previewAssets(type, portableItem, { multichannelMonitoring = false } = {}) {
+function previewAssets(type, portableItem, { itemId = null, multichannelMonitoring = false } = {}) {
   // Loudness Profile cards and detail pages are rendered from their structured rules. A screenshot
   // would duplicate that source of truth and is deliberately not part of the preview contract.
   if (type === "loudness") return [];
+  const variants = PRESET_WORKSPACE_VARIANTS_BY_ITEM_ID[itemId] ?? null;
+  const workspaceAssets = variants
+    ? variants.map((fixtureKey) => ({
+        id: `preset-workspace-${fixtureKey === "5.1" ? "5-1" : fixtureKey}`,
+        renderer: "preset-workspace",
+        fixtureKey,
+        surface: "workspace",
+        format: "png",
+        viewport: VIEWPORTS.presetWorkspace,
+      }))
+    : [
+        {
+          id: "preset-workspace",
+          renderer: multichannelMonitoring ? "multichannel-monitoring" : "preset-workspace",
+          surface: "workspace",
+          format: "png",
+          viewport: multichannelMonitoring
+            ? VIEWPORTS.multichannelPresetWorkspace
+            : VIEWPORTS.presetWorkspace,
+        },
+      ];
   return [
-    {
-      id: "preset-workspace",
-      renderer: multichannelMonitoring ? "multichannel-monitoring" : "preset-workspace",
-      surface: "workspace",
-      format: "png",
-      viewport: multichannelMonitoring
-        ? VIEWPORTS.multichannelPresetWorkspace
-        : VIEWPORTS.presetWorkspace,
-    },
+    ...workspaceAssets,
     ...(portableItem.dock.enabled
       ? [
           {
@@ -95,10 +113,17 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
   const multichannelMonitoring =
     type === "presets" &&
     contentHash === (await hashPortablePreset(MULTICHANNEL_MONITORING_PRESET));
+  const itemId = rawPack.items[0]?.id ?? null;
+  const workspaceVariants = PRESET_WORKSPACE_VARIANTS_BY_ITEM_ID[itemId] ?? null;
+  const usesMultichannelFixture =
+    multichannelMonitoring || workspaceVariants?.includes("5.1") === true;
   const fixture = multichannelMonitoring
     ? SHARESETS_PREVIEW_MULTICHANNEL_V1
     : SHARESETS_PREVIEW_FIXTURE_V5;
   const fixtureHash = await hashSharesetsPreviewFixture(fixture);
+  const multichannelFixtureHash = usesMultichannelFixture
+    ? await hashSharesetsPreviewFixture(SHARESETS_PREVIEW_MULTICHANNEL_V1)
+    : null;
   const dependencyItems = rawPack.dependencies?.flatMap((group) =>
     group.kind === "loudness-profile" ? group.items : []
   );
@@ -110,15 +135,28 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     }))
   );
 
+  const contractVersion = workspaceVariants
+    ? SHARESETS_PREVIEW_CONTRACT_VERSION
+    : LEGACY_PREVIEW_CONTRACT_VERSION;
   const source = {
     generator: "plvs-sharesets-preview",
-    contractVersion: SHARESETS_PREVIEW_CONTRACT_VERSION,
+    contractVersion,
     rendererVersion: SHARESETS_PREVIEW_RENDERER_VERSION,
     itemContentHash: contentHash,
     fixtureHash,
   };
+  const assets = previewAssets(type, publication.portableItem, {
+    itemId,
+    multichannelMonitoring,
+  }).map((asset) => {
+    const assetFixtureHash = asset.fixtureKey === "5.1" ? multichannelFixtureHash : fixtureHash;
+    return {
+      ...asset,
+      source: { ...source, fixtureHash: assetFixtureHash },
+    };
+  });
   return {
-    contractVersion: SHARESETS_PREVIEW_CONTRACT_VERSION,
+    contractVersion,
     renderer: {
       name: "plvs-sharesets-preview",
       version: SHARESETS_PREVIEW_RENDERER_VERSION,
@@ -134,6 +172,9 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
     },
     fixture: structuredClone(fixture),
     fixtureHash,
+    ...(workspaceVariants?.includes("5.1")
+      ? { multichannelFixture: structuredClone(SHARESETS_PREVIEW_MULTICHANNEL_V1) }
+      : {}),
     item: {
       type,
       contentHash,
@@ -141,8 +182,6 @@ export async function buildSharesetsPreviewPlan(rawPack, type) {
       compatibility: publication.assessment.compatibility,
     },
     dependencies,
-    assets: previewAssets(type, publication.portableItem, { multichannelMonitoring }).map(
-      (asset) => ({ ...asset, source })
-    ),
+    assets,
   };
 }

@@ -97,6 +97,33 @@ describe("Sharesets Catalogue metadata", () => {
     ]);
   });
 
+  it("records the fixture identity of each Meter Bridge workspace variant", async () => {
+    const preset = {
+      id: "meter-bridge",
+      name: "Meter Bridge",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const metadata = await deriveSharesetsCatalogueMetadata(artifact("presets", [preset]), {
+      fileName: "meter-bridge.plvspreset",
+    });
+
+    expect(metadata.preview.contractVersion).toBe(5);
+    expect(metadata.preview.assets).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace-stereo",
+        fixtureKey: "stereo",
+        fixtureHash: metadata.preview.fixture.sha256,
+      }),
+      expect.objectContaining({
+        id: "preset-workspace-5-1",
+        fixtureKey: "5.1",
+        fixtureHash: "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1",
+      }),
+    ]);
+  });
+
   it("derives the Theme scheme and existing Theme preview contract", async () => {
     const theme = {
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),

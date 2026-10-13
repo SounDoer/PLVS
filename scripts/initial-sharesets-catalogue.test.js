@@ -40,6 +40,7 @@ const INITIAL_LISTINGS = [
   "listings/spectral-inspection.json",
   "listings/dynamics-headroom.json",
   "listings/essential-monitoring.json",
+  "listings/meter-bridge.json",
 ];
 
 let launchSource;
@@ -77,6 +78,7 @@ describe("initial Sharesets Catalogue", () => {
       "graphite-monitor",
       "itu-t-h-872-game-audio",
       "itu-t-h-872-portable-game-audio",
+      "meter-bridge",
       "mono-dark",
       "mono-light",
       "multichannel-monitoring",
@@ -295,5 +297,32 @@ describe("initial Sharesets Catalogue", () => {
         source: expect.objectContaining({ contractVersion: 4 }),
       }),
     ]);
+  });
+
+  it("publishes Meter Bridge with Stereo and 5.1 previews", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(({ document }) => document.id === "meter-bridge").document;
+
+    expect(preset.title).toBe("Meter Bridge");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["levelMeter", "waveform"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace-stereo",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 5 }),
+      }),
+      expect.objectContaining({
+        id: "preset-workspace-5-1",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 5 }),
+      }),
+    ]);
+    expect(preset.releases[0].previews[0].source.fixtureHash).not.toBe(
+      preset.releases[0].previews[1].source.fixtureHash
+    );
   });
 });

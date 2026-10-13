@@ -85,6 +85,23 @@ describe("Sharesets preview browser harness", () => {
     expect(screen.getByTestId("stereo-map-chart")).toBeTruthy();
   });
 
+  it("renders a Preset 5.1 variant from its declared multichannel fixture", async () => {
+    const preset = {
+      id: "meter-bridge",
+      name: "Meter Bridge",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
+    const asset = plan.assets.find(({ id }) => id === "preset-workspace-5-1");
+
+    render(<SharesetsPreviewApp plan={plan} asset={asset} />);
+
+    expect(screen.getAllByText("LFE").length).toBeGreaterThan(0);
+    expect(screen.getByText("Waveform")).toBeTruthy();
+  });
+
   it("renders the official Multichannel Monitoring Preset with its 5.1 fixture", async () => {
     const plan = await buildSharesetsPreviewPlan(
       {

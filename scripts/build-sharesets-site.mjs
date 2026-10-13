@@ -33,6 +33,11 @@ const THEME_PREVIEW_LABELS = {
   "semantic-overview": "Theme Colors",
 };
 
+const PRESET_PREVIEW_LABELS = {
+  "preset-workspace-stereo": "Stereo",
+  "preset-workspace-5-1": "5.1",
+};
+
 const SHARESETS_SITE_ASSETS = [
   "sharesets.css",
   "sharesets.js",
@@ -52,6 +57,7 @@ export function detailGallery(type, previews) {
 
 export function previewLabel(preview) {
   return (
+    PRESET_PREVIEW_LABELS[preview.id] ??
     THEME_PREVIEW_LABELS[preview.id] ??
     preview.id
       .replace(/^product-/, "")
@@ -326,7 +332,7 @@ function detailPage(listing, profile = null) {
       ${metadata ? `<section class="detail-grid"><article><h2>Compatibility</h2>${renderCompatibility(metadata)}</article><article><h2>Dependencies</h2>${renderDependencies(metadata)}</article></section>` : ""}
       ${renderReferences(listing.references)}
       ${current ? `<section><h2>Install in PLVS</h2><ol class="steps"><li>Download the current Release file.</li><li>Open PLVS Settings and choose <strong>Import…</strong> in the <strong>Saved Items</strong> row.</li><li>Review what will be added, then confirm the import. Applying or activating the Item is a separate choice.</li></ol></section>` : ""}
-      ${previews.length > 0 ? `<section><h2>Previews</h2><div class="preview-grid">${previews.map((preview) => `<figure><img src="/sharesets/files/${listing.id}/v${current.number}/${preview.id}.png" alt="${escapeHtml(preview.id.replaceAll("-", " "))}" loading="lazy" /><figcaption>${escapeHtml(preview.id.replaceAll("-", " "))}</figcaption></figure>`).join("")}</div></section>` : ""}
+      ${previews.length > 0 ? `<section><h2>Previews</h2><div class="preview-grid">${previews.map((preview) => `<figure><img src="/sharesets/files/${listing.id}/v${current.number}/${preview.id}.png" alt="${escapeHtml(previewLabel(preview))}" loading="lazy" /><figcaption>${escapeHtml(previewLabel(preview))}</figcaption></figure>`).join("")}</div></section>` : ""}
       <section><h2>Release history</h2><div class="release-list">${releases}</div></section>
     </main>`
   );

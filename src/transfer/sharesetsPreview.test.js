@@ -95,6 +95,35 @@ describe("Sharesets preview input contract", () => {
     expect(plan.assets.map(({ id }) => id)).toEqual(["preset-workspace"]);
   });
 
+  it("declares explicit Stereo and 5.1 workspace variants for Meter Bridge", async () => {
+    const preset = {
+      id: "meter-bridge",
+      name: "Meter Bridge",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
+
+    expect(plan.contractVersion).toBe(5);
+    expect(plan.fixture).toEqual(SHARESETS_PREVIEW_FIXTURE_V5);
+    expect(plan.multichannelFixture).toEqual(SHARESETS_PREVIEW_MULTICHANNEL_V1);
+    expect(plan.assets).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace-stereo",
+        fixtureKey: "stereo",
+        source: expect.objectContaining({ fixtureHash: plan.fixtureHash }),
+      }),
+      expect.objectContaining({
+        id: "preset-workspace-5-1",
+        fixtureKey: "5.1",
+        source: expect.objectContaining({
+          fixtureHash: "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1",
+        }),
+      }),
+    ]);
+  });
+
   it("renders the official Multichannel Monitoring Preset with the 5.1 fixture at 1280×800", async () => {
     const pack = {
       app: "PLVS",

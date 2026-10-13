@@ -1,0 +1,153 @@
+{
+  "app": "PLVS",
+  "kind": "preset-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "meter-bridge",
+      "kind": "plvs-preset",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Meter Bridge",
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "vertical",
+          "weights": [
+            0.4,
+            0.6
+          ],
+          "children": [
+            {
+              "type": "panel",
+              "key": "programme-waveform"
+            },
+            {
+              "type": "split",
+              "direction": "horizontal",
+              "weights": [
+                0.25,
+                0.25,
+                0.25,
+                0.25
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "peak-meter"
+                },
+                {
+                  "type": "panel",
+                  "key": "rms-meter"
+                },
+                {
+                  "type": "panel",
+                  "key": "momentary-meter"
+                },
+                {
+                  "type": "panel",
+                  "key": "short-term-meter"
+                }
+              ]
+            }
+          ]
+        },
+        "panels": [
+          {
+            "key": "programme-waveform",
+            "moduleId": "waveform",
+            "controls": {
+              "frequencyColor": false,
+              "centroid": false
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 60
+              }
+            }
+          },
+          {
+            "key": "peak-meter",
+            "moduleId": "levelMeter",
+            "title": "Peak & TP Max",
+            "controls": {
+              "mode": "peak",
+              "tpMaxMarker": true,
+              "barColors": "gradient",
+              "levelRangeDbfs": {
+                "min": -60,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "rms-meter",
+            "moduleId": "levelMeter",
+            "title": "RMS",
+            "controls": {
+              "mode": "rms",
+              "playbackMax": false,
+              "barColors": "gradient",
+              "levelRangeDbfs": {
+                "min": -60,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "momentary-meter",
+            "moduleId": "levelMeter",
+            "title": "Momentary",
+            "controls": {
+              "mode": "momentary",
+              "playbackMax": false,
+              "floatingValue": true,
+              "barColors": "gradient",
+              "loudnessRangeLufs": {
+                "min": -48,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "short-term-meter",
+            "moduleId": "levelMeter",
+            "title": "Short-term",
+            "controls": {
+              "mode": "shortTerm",
+              "playbackMax": false,
+              "floatingValue": true,
+              "barColors": "gradient",
+              "loudnessRangeLufs": {
+                "min": -48,
+                "max": 0
+              }
+            },
+            "axes": {}
+          }
+        ]
+      },
+      "presentation": {
+        "alwaysOnTop": false,
+        "focusView": {
+          "autoHideControls": false,
+          "compactPanels": false,
+          "borderless": false
+        },
+        "panelOpacityPercent": 100,
+        "glassEnabled": false
+      },
+      "dock": {
+        "enabled": false
+      },
+      "loudnessProfile": {
+        "dependencyId": null
+      }
+    }
+  ],
+  "dependencies": []
+}
