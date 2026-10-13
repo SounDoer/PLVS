@@ -376,9 +376,9 @@ fast version / CHANGELOG / Theme compatibility / git / tag check.
 ### Theme Compatibility
 
 Portable Theme files carry a contract, `formatVersion:semanticsVersion` (for
-example `1:4`). `COMMUNITY_THEME_COMPATIBILITY` in
-`src/theme/communityThemePresentation.js` records, per contract, the first PLVS
-version able to read it; Community Theme pages print it as "Requires PLVS x.y.z
+example `1:4`). `SHARESETS_THEME_COMPATIBILITY` in
+`src/theme/sharesetsThemePresentation.js` records, per contract, the first PLVS
+version able to read it; Sharesets Theme pages print it as "Requires PLVS x.y.z
 or later". During development a new contract may sit in that table with
 `minimumAppVersion: null`, because nobody knows yet which version will ship it.
 

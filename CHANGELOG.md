@@ -9,13 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Sharesets launches with the PLVS-authored Signal Amber Theme, Stereo Overview Preset, and editable
-  `I −23 ±0.5 · TP ≤ −1` Loudness Profile, with previews regenerated for the current interface.
+- [Sharesets](https://plvs.soundoer.com/sharesets/) launches as the PLVS catalogue of curated
+  Themes, Presets, and Loudness Profiles. The first collection is authored by PLVS: ten Themes,
+  eight Presets, and twelve Loudness Profiles. Profiles based on EBU R 128, ATSC A/85, AES77,
+  ITU-T H.872, Spotify, or Apple Podcasts guidance list their sources.
+- **Sharesets** in the Settings footer opens the catalogue, and **Browse** in the Presets and
+  Loudness Profile popovers and under a Fixed Theme opens the matching category.
+- Presets and Loudness Profiles can be pasted into PLVS like Themes: copy one from its Sharesets
+  page and press Ctrl+V or Command+V outside a text field to open the import review.
+- Multichannel dialogue detection analyzes each non-LFE channel on its own. Centre-channel speech
+  takes priority, and substantially stronger speech routed elsewhere is still included.
+
+### Changed
+
+- Dialogue readouts follow the EBU R 128 S4 and ATSC A/85 dialogue relationship. **Dialogue
+  Integrated** is now **Dialogue Loudness (DL)**, measured with the −70 LUFS absolute gate and
+  without the programme-relative gate.
+- **Dialogue Offset** is replaced by **Loudness-to-Dialogue Ratio (LDR)**: Programme Loudness minus
+  Dialogue Loudness, the opposite sign. Saved Stats layouts, Presets, and Loudness Profile rules
+  that used Dialogue Offset are converted automatically.
+- Dialogue Coverage counts valid measurement time including silence, and Dialogue Range is the
+  weighted 10th–95th percentile of dialogue-masked three-second loudness.
+- The Silero detector is upgraded to Silero VAD v6.2.
+- Row actions in the Presets, Loudness Profile, Theme, module, and file history lists share one
+  spacing and appear together on hover or focus.
+- The Dock toolbar transport sits on the centre line.
 
 ### Fixed
 
-- Website releases and independent Sharesets updates now share publication-history validation,
-  preventing an older app release's Catalogue from replacing newer published content.
+- A dialogue detector that cannot start or stops producing valid results now shows an explicit
+  error and leaves dialogue values empty, instead of reporting them as a successful measurement.
+- Dialogue detection is aligned to the loudness blocks it gates.
+- The Dock Polar vectorscope is drawn in the active Theme's colours instead of the PLVS Dark ones.
+- The Polar vectorscope fills its height, and its pair labels sit under the ends of the baseline in
+  both the panel and the Dock.
+- Lissajous guides no longer run through the pair labels.
+- A select menu in the Dock settings editor opens at full size on the first click, including on a
+  bottom Dock.
 
 ## [0.19.2] - 2026-10-12
 
