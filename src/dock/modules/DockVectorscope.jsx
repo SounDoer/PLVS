@@ -18,7 +18,8 @@ const CONTENT_GAP_PX = 8;
 const EXPANDED_CORRELATION_HEIGHT_PX = 44;
 const CORRELATION_FULL_LABEL_MIN_WIDTH_PX = 184;
 const PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX = 44;
-const POLAR_LABEL_GAP_PX = 4;
+// Between the pair labels and the plot marks beside them, in both display modes.
+const PAIR_LABEL_GAP = "var(--ui-dock-gap-row)";
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -142,13 +143,14 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
       const rect = content.getBoundingClientRect();
       setContentWidth(rect.width);
       setContentHeight(rect.height);
-      // The label size follows Dock density.
-      const labelPx =
-        Number.parseFloat(getComputedStyle(content).getPropertyValue("--ui-dock-fs-label")) || 9;
+      // The label size and its gap follow Dock density.
+      const style = getComputedStyle(content);
+      const labelPx = Number.parseFloat(style.getPropertyValue("--ui-dock-fs-label")) || 9;
+      const labelGapPx = Number.parseFloat(style.getPropertyValue("--ui-dock-gap-row")) || 3;
       const availHeight = rect.height - (expanded ? EXPANDED_CORRELATION_HEIGHT_PX : 0);
       const labelStripPx =
         availHeight >= PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX
-          ? polarLabelStripPx(labelPx, POLAR_LABEL_GAP_PX)
+          ? polarLabelStripPx(labelPx, labelGapPx)
           : 0;
       setPlotBox(computePlotBox(rect.width, rect.height, expanded, !isLissajous, labelStripPx));
     };
@@ -179,7 +181,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
             <>
               <VectorscopeLissajousGrid
                 labelSize={showPairLabels ? "var(--ui-dock-fs-label)" : null}
-                labelGap="2px"
+                labelGap={PAIR_LABEL_GAP}
                 labelClassName="font-[family-name:var(--ui-font-sans)] font-medium text-muted-foreground"
                 firstLabel={firstLabel}
                 secondLabel={secondLabel}
@@ -208,7 +210,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           ) : (
             <VectorscopePolarStage
               labelSize={showPairLabels ? "var(--ui-dock-fs-label)" : null}
-              labelGap={`${POLAR_LABEL_GAP_PX}px`}
+              labelGap={PAIR_LABEL_GAP}
               labelClassName="font-[family-name:var(--ui-font-sans)] font-medium text-muted-foreground"
               firstLabel={firstLabel}
               secondLabel={secondLabel}

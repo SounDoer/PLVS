@@ -292,7 +292,7 @@ describe("DockVectorscope", () => {
 
     rect.mockReturnValue(box(72));
     const labelled = renderWith(null);
-    expect(gridInset()).toBe("calc(var(--ui-dock-fs-label) + 2px)");
+    expect(gridInset()).toBe("calc(var(--ui-dock-fs-label) + var(--ui-dock-gap-row))");
     labelled.unmount();
 
     rect.mockReturnValue(box(40));
@@ -333,10 +333,10 @@ describe("DockVectorscope", () => {
       vectorscopeMode: "polarLevel",
       vectorscopePolarLevelMaxHold: false,
     });
-    // Height fills to 80; the 11px label strip leaves a 69px radius, so the box is 2 * 69 wide.
+    // Height fills to 80; the 10px label strip leaves a 70px stage, so the box is 2 * 70 wide.
     const plot = screen.getByTestId("dock-vectorscope-plot");
     expect(plot.style.height).toBe("80px");
-    expect(plot.style.width).toBe("138px");
+    expect(plot.style.width).toBe("140px");
     rect.mockRestore();
   });
 
