@@ -103,6 +103,8 @@ struct WireFrame<'a> {
   dialogue_percent: f64,
   dialogue_lra: f64,
   dialogue_active_now: bool,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  dialogue_detection_error: &'a Option<String>,
   #[serde(skip_serializing_if = "<[MeterHistoryEntry]>::is_empty")]
   loudness_hist_batch: &'a [MeterHistoryEntry],
   #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -223,6 +225,7 @@ pub fn encode_audio_frame(frame: &AudioFramePayload) -> Result<Vec<u8>, serde_js
     dialogue_percent: frame.dialogue_percent,
     dialogue_lra: frame.dialogue_lra,
     dialogue_active_now: frame.dialogue_active_now,
+    dialogue_detection_error: &frame.dialogue_detection_error,
     loudness_hist_batch: &frame.loudness_hist_batch,
     visual_hist_batch,
   };
@@ -272,6 +275,7 @@ mod tests {
       dialogue_percent: 40.0,
       dialogue_lra: 5.0,
       dialogue_active_now: true,
+      dialogue_detection_error: None,
       loudness_hist_batch: Vec::new(),
       visual_hist_batch: Vec::new(),
     };

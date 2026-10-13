@@ -35,6 +35,9 @@ pub struct LoudnessMeter {
   /// or if model init fails).
   speech: Option<MultichannelSpeechDetector>,
   speech_kind: VadEngineKind,
+  /// Stable machine-readable failure for the current dialogue measurement, reported once by the
+  /// UI while programme loudness continues normally.
+  dialogue_detection_error: Option<&'static str>,
   /// Dialogue-gated loudness accumulator.
   dialogue: DialogueIntegrator,
   /// Whether the most recent 100ms block was classified as speech.
@@ -72,6 +75,7 @@ impl LoudnessMeter {
       pending_block: None,
       speech: None,
       speech_kind: VadEngineKind::default(),
+      dialogue_detection_error: None,
       dialogue: DialogueIntegrator::new(),
       speech_now: false,
     }
@@ -91,6 +95,7 @@ impl LoudnessMeter {
   /// Reset only the dialogue accumulators + speech detector buffers (gating toggle), not main loudness.
   pub fn reset_dialogue(&mut self) {
     self.dialogue.reset();
+    self.dialogue_detection_error = None;
     if let Some(det) = self.speech.as_mut() {
       det.reset();
     }
@@ -434,14 +439,18 @@ impl Meter for LoudnessMeter {
         self.speech = None;
         self.speech_kind = ctx.dialogue_vad_engine;
         self.speech_now = false;
+        self.dialogue_detection_error = None;
       }
-      if self.speech.is_none() {
+      if self.speech.is_none() && self.dialogue_detection_error.is_none() {
         self.speech = MultichannelSpeechDetector::new(
           self.sample_rate,
           self.speech_kind,
           ctx.channels,
           ctx.dialogue_channel_roles,
         );
+        if self.speech.is_none() {
+          self.dialogue_detection_error = Some("initializationFailed");
+        }
       }
       if let Some(det) = self.speech.as_mut() {
         det.push_interleaved(ctx.interleaved, ctx.channels);
@@ -476,6 +485,7 @@ impl Meter for LoudnessMeter {
             }
             None if detector.has_failed() => {
               self.speech_now = false;
+              self.dialogue_detection_error = Some("runtimeFailed");
             }
             None => {
               b.dialogue_integrated = self.dialogue.integrated();
@@ -502,6 +512,10 @@ impl Meter for LoudnessMeter {
 impl LoudnessMeter {
   pub fn speech_now(&self) -> bool {
     self.speech_now
+  }
+
+  pub fn dialogue_detection_error(&self) -> Option<&'static str> {
+    self.dialogue_detection_error
   }
 }
 
@@ -561,6 +575,25 @@ mod tests {
       dialogue_gating: true,
       dialogue_vad_engine: VadEngineKind::default(),
     }
+  }
+
+  #[test]
+  fn detector_initialization_failure_is_explicit_and_clears_with_dialogue_state() {
+    let pcm = vec![0.0_f32; 4_800];
+    let roles = ["LFE".to_string()];
+    let mut ctx = dialogue_ctx(&pcm, 1);
+    ctx.dialogue_channel_roles = Some(&roles);
+    let mut meter = LoudnessMeter::new(48_000.0);
+
+    meter.push_pcm(&ctx);
+
+    assert_eq!(
+      meter.dialogue_detection_error(),
+      Some("initializationFailed")
+    );
+    assert!(!meter.speech_now());
+    meter.reset_dialogue();
+    assert_eq!(meter.dialogue_detection_error(), None);
   }
 
   /// Pushes a second of a fs/4 sine at the given phase and amplitude, and reports the loudest

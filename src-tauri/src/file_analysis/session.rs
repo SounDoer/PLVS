@@ -461,6 +461,7 @@ pub(crate) fn analyze_file_core(
     dialogue_integrated: metrics.dialogue_integrated,
     dialogue_lra: metrics.dialogue_lra,
     dialogue_percent: metrics.dialogue_percent,
+    dialogue_detection_error: metrics.dialogue_detection_error,
   };
   Ok(Some((pcm_chunker.decoded_frames(), summary)))
 }
@@ -1123,6 +1124,7 @@ mod tests {
       dialogue_integrated: f64::NEG_INFINITY,
       dialogue_lra: f64::NEG_INFINITY,
       dialogue_percent: 0.0,
+      dialogue_detection_error: None,
     }
   }
 
@@ -1167,6 +1169,7 @@ mod tests {
       dialogue_integrated: metrics.dialogue_integrated,
       dialogue_lra: metrics.dialogue_lra,
       dialogue_percent: metrics.dialogue_percent,
+      dialogue_detection_error: metrics.dialogue_detection_error,
     }
   }
 

@@ -65,7 +65,7 @@
       are introduced.
 - [x] Lock File analysis inputs at start and prevent settings changes from mutating an in-progress
       run.
-- [ ] Surface initialization and runtime detector failures explicitly; never fall back silently to
+- [x] Surface initialization and runtime detector failures explicitly; never fall back silently to
       another engine.
 
 ## 6. Update Stats, Dock, Profiles, and reports

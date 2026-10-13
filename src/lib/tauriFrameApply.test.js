@@ -73,6 +73,31 @@ describe("buildTauriFrameApply", () => {
     });
   });
 
+  it("reports each dialogue detector failure episode once and keeps the code in audio state", () => {
+    const onDialogueDetectionError = vi.fn();
+    const latestAudioRef = makeOptions().latestAudioRef;
+    const { applyFrame } = buildTauriFrameApply(
+      standIn(makeOptions({ latestAudioRef, onDialogueDetectionError }))
+    );
+
+    applyFrame({ dialogueDetectionError: "initializationFailed" });
+    applyFrame({ dialogueDetectionError: "initializationFailed" });
+    expect(latestAudioRef.current.dialogueDetectionError).toBe("initializationFailed");
+    expect(onDialogueDetectionError).toHaveBeenCalledTimes(1);
+    expect(onDialogueDetectionError).toHaveBeenLastCalledWith(
+      "initializationFailed",
+      "Dialogue Detection could not start. Programme loudness is still available."
+    );
+
+    applyFrame({});
+    applyFrame({ dialogueDetectionError: "runtimeFailed" });
+    expect(onDialogueDetectionError).toHaveBeenCalledTimes(2);
+    expect(onDialogueDetectionError).toHaveBeenLastCalledWith(
+      "runtimeFailed",
+      "Dialogue Detection stopped. Programme loudness is still available."
+    );
+  });
+
   it("updates loudness maxima from the frame payload", () => {
     let audioState = {
       peakDb: [],

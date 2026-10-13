@@ -54,6 +54,7 @@ noSample
 notReady
 analysisInactive
 dialogueInactive
+detectorError
 noDialogue
 insufficientChannels
 belowSignalFloor

@@ -279,7 +279,10 @@ Dialogue collection is enabled independently of panel visibility. A detector or 
 uses the normal coherent Live Clear path so Programme Loudness and dialogue-derived metrics keep a
 common session scope. File analysis snapshots its dialogue settings at start. Reports carry a
 dialogue metric algorithm version; changing a meaning requires a new version rather than silently
-reinterpreting an old field.
+reinterpreting an old field. Detector initialization and runtime failures travel as stable error
+codes beside the frame and whole-file summary. The frontend emits one persistent notice per
+failure episode, keeps programme measurements running, and records the code in File and CLI
+reports; it never falls back to another detector silently.
 
 ### Orchestration layer (`src-tauri/src/engine/meter_pipeline.rs`)
 

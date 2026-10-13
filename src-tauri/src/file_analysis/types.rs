@@ -63,4 +63,7 @@ pub struct FileAnalysisSummaryMetrics {
   pub dialogue_lra: f64,
   /// Percentage of valid measurement time classified as dialogue.
   pub dialogue_percent: f64,
+  /// Stable detector failure code when dialogue analysis could not produce valid evidence.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub dialogue_detection_error: Option<String>,
 }

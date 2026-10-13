@@ -1,4 +1,5 @@
 import { SPECTRUM_SETTINGS } from "../config/scales.js";
+import { dialogueDetectionErrorMessage } from "./dialogueDetectionError.js";
 
 function currentValue(value) {
   return value && typeof value === "object" && "current" in value ? value.current : value;
@@ -57,6 +58,8 @@ export function reduceMeterAudioFrame(previous, frame) {
     dialogueLra: Number.isFinite(frame.dialogueLra) ? frame.dialogueLra : -Infinity,
     dialoguePercent: Number.isFinite(frame.dialoguePercent) ? frame.dialoguePercent : null,
     dialogueActiveNow: !!frame.dialogueActiveNow,
+    dialogueDetectionError:
+      typeof frame.dialogueDetectionError === "string" ? frame.dialogueDetectionError : null,
     loudnessLayoutKnown:
       typeof frame.loudnessLayoutKnown === "boolean"
         ? frame.loudnessLayoutKnown
@@ -124,6 +127,7 @@ export function applyBandGrid(frame, cache) {
  * @param {() => boolean} [opts.shouldDriveDisplay]
  * @param {() => boolean} [opts.shouldPublishDisplay]
  * @param {(frame: object, audio: object) => void} [opts.onReducedFrame]
+ * @param {(code: string, message: string) => void} [opts.onDialogueDetectionError]
  */
 export function buildTauriFrameApply({
   histMaxSamples,
@@ -140,13 +144,26 @@ export function buildTauriFrameApply({
   shouldDriveDisplay = () => true,
   shouldPublishDisplay = () => true,
   onReducedFrame,
+  onDialogueDetectionError,
 }) {
   // One cache per handler: a new capture session builds a new handler, and the grid cannot outlive
   // the sample rate that produced it.
   const bandGrid = { id: 0, centers: null };
+  let lastDialogueDetectionError = null;
   const applyFrame = (f) => {
     frameRef.current += 1;
     applyBandGrid(f, bandGrid);
+    const dialogueDetectionError =
+      typeof f.dialogueDetectionError === "string" ? f.dialogueDetectionError : null;
+    if (dialogueDetectionError !== lastDialogueDetectionError) {
+      lastDialogueDetectionError = dialogueDetectionError;
+      if (dialogueDetectionError) {
+        onDialogueDetectionError?.(
+          dialogueDetectionError,
+          dialogueDetectionErrorMessage(dialogueDetectionError)
+        );
+      }
+    }
     // Heartbeat the native engine ~10Hz with the latest processed seq so it can bound its send
     // backlog. Reaching this line proves the UI thread is draining frames; if it stalls, acks stop
     // and the bridge drops frames instead of letting the host process grow unboundedly.

@@ -94,6 +94,7 @@ describe("fileAnalysisReport", () => {
           metricAlgorithmVersion: 1,
           engineConfiguration: null,
           multichannelFusion: null,
+          error: null,
         },
       },
       summary: {
@@ -145,8 +146,25 @@ describe("fileAnalysisReport", () => {
       metricAlgorithmVersion: null,
       engineConfiguration: null,
       multichannelFusion: null,
+      error: null,
     });
     expect(JSON.parse(stringifyFileAnalysisReport(report)).summary.mMaxLufs).toBeNull();
+  });
+
+  it("records a dialogue detector failure while preserving programme results", () => {
+    const report = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      summary: {
+        ...COMPLETE_SESSION.summary,
+        dialogueIntegrated: -Infinity,
+        dialoguePercent: -Infinity,
+        dialogueDetectionError: "runtimeFailed",
+      },
+    });
+
+    expect(report.analysis.dialogue.error).toBe("runtimeFailed");
+    expect(report.summary.integratedLufs).toBe(-23.1);
+    expect(report.summary.dialogueLoudnessLufs).toBeNull();
   });
 
   it("requires a completed session with a summary", () => {

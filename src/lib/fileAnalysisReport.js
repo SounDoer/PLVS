@@ -154,6 +154,9 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
         metricAlgorithmVersion: dialogueEnabled ? 1 : null,
         engineConfiguration: dialogueEnabled ? stringOrNull(dialogue.engineConfiguration) : null,
         multichannelFusion: dialogueEnabled ? stringOrNull(dialogue.multichannelFusion) : null,
+        error: dialogueEnabled
+          ? stringOrNull(summary.dialogueDetectionError ?? fileSession.dialogueDetectionError)
+          : null,
       },
     },
     summary: reportSummary,

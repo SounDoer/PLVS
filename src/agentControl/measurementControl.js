@@ -8,6 +8,7 @@ export const MEASUREMENT_AVAILABILITY_REASONS = Object.freeze([
   "notReady",
   "analysisInactive",
   "dialogueInactive",
+  "detectorError",
   "noDialogue",
   "insufficientChannels",
   "belowSignalFloor",
@@ -238,6 +239,7 @@ export function buildMeasurementInspection({
   let dialogueReason = null;
   if (noSample) dialogueReason = "noSample";
   else if (!dialogueActive || !sampleDialogueActive) dialogueReason = "dialogueInactive";
+  else if (typeof audio.dialogueDetectionError === "string") dialogueReason = "detectorError";
   const dialogue = {
     active: dialogueActive === true,
     activeNow:

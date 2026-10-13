@@ -94,6 +94,7 @@ export function useFileAnalysisEngine({
           metadata,
           progress: 0,
           error: undefined,
+          dialogueDetectionError: undefined,
           summary: undefined,
         }));
 
@@ -116,6 +117,7 @@ export function useFileAnalysisEngine({
               progress: 1,
               decodedFrames: payload.decodedFrames,
               summary: payload.summary,
+              dialogueDetectionError: payload.summary?.dialogueDetectionError,
               analyzedAt: Date.now(),
             }));
             setAnalyzingFileId((current) => (current === sessionId ? null : current));
@@ -147,6 +149,13 @@ export function useFileAnalysisEngine({
           ackFrames: () => {},
           shouldDriveDisplay,
           shouldPublishDisplay: () => selectedOffsetRef.current < 0,
+          onDialogueDetectionError: (code, message) => {
+            updateFileSession(sessionId, (current) => ({
+              ...current,
+              dialogueDetectionError: code,
+            }));
+            raiseNotice("error", `Error: ${message}`, code);
+          },
         });
         stage = "start";
         const channel = await startFileAnalysis({

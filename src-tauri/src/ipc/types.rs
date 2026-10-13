@@ -318,6 +318,9 @@ pub struct AudioFramePayload {
   pub dialogue_lra: f64,
   /// Whether the current 100ms block was classified as active speech.
   pub dialogue_active_now: bool,
+  /// Stable dialogue detector failure code for this measurement, or absent while healthy.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub dialogue_detection_error: Option<String>,
   /// File-mode batch of loudness history ticks accumulated since the previous emitted frame.
   /// Empty in live mode (which uses `loudness_hist_tick`).
   #[serde(default, skip_serializing_if = "Vec::is_empty")]

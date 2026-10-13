@@ -194,6 +194,7 @@ pub fn analyze_file_track_to_summary_with_layout(
     dialogue_integrated: f64::NEG_INFINITY,
     dialogue_lra: f64::NEG_INFINITY,
     dialogue_percent: 0.0,
+    dialogue_detection_error: None,
   };
 
   Ok(FileAnalysisSummaryRun {

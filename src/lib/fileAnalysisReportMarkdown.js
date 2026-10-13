@@ -1,6 +1,7 @@
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { formatContainer, formatTrackLabel } from "./fileAnalysisDisplay.js";
 import { REPORT_PROFILE_METRIC_FIELDS } from "./fileAnalysisReport.js";
+import { dialogueDetectionErrorMessage } from "./dialogueDetectionError.js";
 import { STATS_META, statDecimals } from "./statsCatalog.js";
 
 /// Renders a `fileAnalysis` report as Markdown that also reads cleanly unrendered: headed lists for
@@ -180,6 +181,9 @@ export function renderFileAnalysisReportMarkdown(report) {
       item(STATS_META.dialogueCoverage.label, metricValue("dialogueCoverage", summary)),
       item(STATS_META.dialogueRange.label, metricValue("dialogueRange", summary))
     );
+    if (dialogue.error) {
+      lines.push(item("Detection Error", dialogueDetectionErrorMessage(dialogue.error)));
+    }
   }
   const profile = profileSection(report.loudnessProfile, summary);
   if (profile.length > 0) lines.push("", ...profile);

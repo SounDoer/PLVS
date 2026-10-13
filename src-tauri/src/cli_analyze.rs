@@ -136,6 +136,7 @@ pub struct CliAnalyzeDialogue {
   pub metric_algorithm_version: Option<u32>,
   pub engine_configuration: Option<String>,
   pub multichannel_fusion: Option<String>,
+  pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -254,6 +255,9 @@ fn success_report(
   } else {
     None
   };
+  let dialogue_error = dialogue_enabled
+    .then(|| result.summary.dialogue_detection_error.clone())
+    .flatten();
   let mut summary = summary_from_metrics(result.summary, dialogue_enabled);
   if let (Some(dialogue), Some(reference)) = (
     summary.dialogue_loudness_lufs,
@@ -276,6 +280,7 @@ fn success_report(
         metric_algorithm_version: dialogue_enabled.then_some(1),
         engine_configuration: dialogue_enabled.then(|| "default".to_string()),
         multichannel_fusion: dialogue_enabled.then(|| MULTICHANNEL_FUSION_POLICY.to_string()),
+        error: dialogue_error,
       },
       reference_lufs: options.dialogue.reference_lufs,
     },
@@ -472,6 +477,7 @@ mod tests {
       dialogue_integrated: f64::NEG_INFINITY,
       dialogue_lra: f64::NEG_INFINITY,
       dialogue_percent: 0.0,
+      dialogue_detection_error: None,
     }
   }
 
@@ -641,5 +647,46 @@ mod tests {
     assert_eq!(json["summary"]["dialogueLoudnessLufs"], -18.0);
     assert_eq!(json["summary"]["loudnessToDialogueRatioLu"], 2.0);
     assert_eq!(json["summary"]["dialogueOffsetFromReferenceLu"], -2.0);
+  }
+
+  #[test]
+  fn success_report_identifies_dialogue_detector_failure() {
+    let mut summary = summary_with_peaks(-3.0, -4.0);
+    summary.dialogue_detection_error = Some("runtimeFailed".to_string());
+    let result = FileAnalysisSummaryRun {
+      probe: FileAnalysisProbeResult {
+        path: "mix.wav".to_string(),
+        file_name: "mix.wav".to_string(),
+        container: Some("wav".to_string()),
+        duration_ms: Some(1000),
+        selected_track: FileAudioTrackMetadata {
+          index: 0,
+          codec: "pcm_f32le".to_string(),
+          sample_rate_hz: Some(48_000),
+          channels: Some(2),
+          language: None,
+        },
+      },
+      decoded_frames: 48_000,
+      summary,
+    };
+
+    let report = success_report(
+      result,
+      CliAnalyzeOptions {
+        dialogue: CliDialogueOptions {
+          enabled: true,
+          ..CliDialogueOptions::default()
+        },
+        ..CliAnalyzeOptions::default()
+      },
+    );
+    let json = serde_json::to_value(&report).expect("serialize");
+
+    assert_eq!(json["analysis"]["dialogue"]["error"], "runtimeFailed");
+    assert_eq!(
+      json["summary"]["dialogueLoudnessLufs"],
+      serde_json::Value::Null
+    );
   }
 }

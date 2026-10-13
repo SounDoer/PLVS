@@ -22,7 +22,8 @@ active [Loudness Profile](loudness-profiles.md).
 
 JSON report schema version 2 names Dialogue Loudness, LDR, Dialogue Coverage, and Dialogue Range
 explicitly and records the dialogue metric algorithm version, detector configuration, and
-multichannel fusion identity used for the run.
+multichannel fusion identity used for the run. If Dialogue Detection fails, the report records the
+failure code and keeps the affected dialogue values unavailable while retaining programme results.
 
 Integrated, Loudness Range, Max, and dialogue results in the report are calculated from the complete
 decoded audio track, independently of the display checkpoints used for scrubbing.

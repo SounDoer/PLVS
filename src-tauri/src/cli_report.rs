@@ -271,6 +271,7 @@ mod tests {
           metric_algorithm_version: None,
           engine_configuration: None,
           multichannel_fusion: None,
+          error: None,
         },
         reference_lufs: None,
       },

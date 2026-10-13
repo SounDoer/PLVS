@@ -168,6 +168,21 @@ describe("renderFileAnalysisReportMarkdown", () => {
     expect(markdown).not.toContain("## Dialogue");
   });
 
+  it("explains an explicit dialogue detector failure", () => {
+    const markdown = render({
+      ...SESSION,
+      summary: {
+        ...SESSION.summary,
+        dialogueIntegrated: -Infinity,
+        dialogueDetectionError: "initializationFailed",
+      },
+    });
+
+    expect(markdown).toContain(
+      "- Detection Error: Dialogue Detection could not start. Programme loudness is still available."
+    );
+  });
+
   it("names an unrecognized loudness layout", () => {
     const lines = render({
       ...SESSION,

@@ -202,6 +202,7 @@ pub struct PipelineSummary {
   pub dialogue_integrated: f64,
   pub dialogue_lra: f64,
   pub dialogue_percent: f64,
+  pub dialogue_detection_error: Option<String>,
   pub loudness_layout: String,
   pub loudness_layout_known: bool,
 }
@@ -369,6 +370,7 @@ impl MeterPipeline {
       dialogue_integrated,
       dialogue_lra,
       dialogue_percent,
+      dialogue_detection_error: self.loudness.dialogue_detection_error().map(str::to_string),
       loudness_layout: self.last_loudness_layout.0.clone(),
       loudness_layout_known: self.last_loudness_layout.1,
     }
@@ -1122,6 +1124,11 @@ impl MeterPipeline {
       dialogue_percent,
       dialogue_lra,
       dialogue_active_now: self.last_dialogue_gating && self.loudness.speech_now(),
+      dialogue_detection_error: self
+        .last_dialogue_gating
+        .then(|| self.loudness.dialogue_detection_error())
+        .flatten()
+        .map(str::to_string),
       loudness_hist_batch,
       visual_hist_batch,
     };

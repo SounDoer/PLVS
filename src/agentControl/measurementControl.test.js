@@ -169,6 +169,23 @@ describe("Measurement Control", () => {
     expect(result.unavailable["dialogue.rangeLu"]).toBe("noDialogue");
   });
 
+  it("reports detector failure instead of mislabeling it as no dialogue", () => {
+    const result = inspect({
+      dialogueActive: true,
+      record: record({
+        audio: {
+          dialogueDetectionError: "runtimeFailed",
+          dialogueActiveNow: false,
+        },
+      }),
+    });
+
+    expect(result.dialogue.active).toBe(true);
+    expect(result.dialogue.loudnessLufs).toBeNull();
+    expect(result.unavailable["dialogue.loudnessLufs"]).toBe("detectorError");
+    expect(result.unavailable["dialogue.coveragePercent"]).toBe("detectorError");
+  });
+
   it("does not expose the engine's LRA zero sentinel during integrated warm-up", () => {
     const result = inspect({
       record: record({ audio: { integrated: -Infinity, lra: 0 } }),

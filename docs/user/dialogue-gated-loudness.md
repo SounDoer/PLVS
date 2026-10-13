@@ -39,6 +39,11 @@ default) or Silero VAD. Changing the detector clears and restarts the complete L
 Programme Loudness and all dialogue values continue to cover the same time span. File Mode locks
 the selected engine when analysis starts.
 
+If the selected detector cannot start or stops producing valid results, PLVS shows one explicit
+error and leaves dialogue values as `—`; Programme Loudness and the other measurements continue.
+File reports record the detector error instead of presenting the missing dialogue values as a
+successful result. PLVS does not silently switch to the other detector.
+
 ## Limits
 
 These readouts are monitoring estimates, not certified dialogue measurements. Automatic detectors

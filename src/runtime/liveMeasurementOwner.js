@@ -16,6 +16,7 @@ const AUDIO_FIELDS = Object.freeze([
   "dialogueLra",
   "dialoguePercent",
   "dialogueActiveNow",
+  "dialogueDetectionError",
 ]);
 
 function freezeAudio(audio) {

@@ -40,6 +40,7 @@ const CLEARED_AUDIO_STATE = {
   dialogueLra: -Infinity,
   dialoguePercent: null,
   dialogueActiveNow: false,
+  dialogueDetectionError: null,
 };
 
 const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
@@ -220,6 +221,12 @@ export function useAudioEngine({
               measurementOwner?.capture(frame, nextAudio, {
                 dialogueActive: dialogueGatingRef?.current === true,
               }),
+            onDialogueDetectionError: (code, message) =>
+              raiseNotice(
+                "error",
+                `Error: ${message}`,
+                `Detector: ${dialogueVadEngineRef?.current ?? DEFAULT_DIALOGUE_VAD_ENGINE}; ${code}`
+              ),
           });
           const applyFrame = (f) => {
             if (!mounted) return;
