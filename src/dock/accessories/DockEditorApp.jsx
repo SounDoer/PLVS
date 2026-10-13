@@ -186,17 +186,30 @@ export function DockEditorApp() {
         }
         menuRoomRef.current = { trigger, pending: true };
         let settled = false;
-        const settle = () => {
-          if (settled) return;
-          settled = true;
-          window.removeEventListener("resize", settle);
-          clearTimeout(timer);
+        const open = () => {
+          window.removeEventListener("pointerup", open, true);
+          window.removeEventListener("pointercancel", open, true);
           resolve();
           // Release the room if the menu never came up after all.
           setTimeout(() => {
             menuRoomRef.current.pending = false;
             measureRef.current();
           }, SELECT_MENU_ROOM_TIMEOUT_MS * 2);
+        };
+        const settle = () => {
+          if (settled) return;
+          settled = true;
+          window.removeEventListener("resize", settle);
+          clearTimeout(timer);
+          // Growing above the editor moves the page origin under a pointer that is still down.
+          // The select would read that as a drag ending outside its menu and close again, so the
+          // menu waits for the press that asked for it to end.
+          if (pointerActiveRef.current) {
+            window.addEventListener("pointerup", open, true);
+            window.addEventListener("pointercancel", open, true);
+          } else {
+            open();
+          }
         };
         window.addEventListener("resize", settle);
         const timer = setTimeout(settle, SELECT_MENU_ROOM_TIMEOUT_MS);

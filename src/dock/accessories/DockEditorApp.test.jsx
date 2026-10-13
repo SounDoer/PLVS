@@ -181,6 +181,31 @@ describe("DockEditorApp window behavior", () => {
     await waitFor(() => expect(sizes().at(-1)).toBe(closedHeight));
   });
 
+  it("holds a select menu back until the press that asked for it is released", async () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      edge: "bottom",
+      view: "module:levelMeter",
+      panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+      panelOrder: ["levelMeter"],
+      controlsByPanelId: {
+        levelMeter: { levelMeterMode: "peak", readout: "live", showLabels: true },
+      },
+    };
+    render(<DockEditorApp />);
+    const trigger = screen.getByRole("combobox", { name: "level meter mode" });
+
+    // A press inside the editor is still down when the window has finished growing.
+    fireEvent.pointerDown(screen.getByTestId("dock-editor"));
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    fireEvent(window, new Event("resize"));
+    await act(async () => {});
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    fireEvent.pointerUp(window);
+    expect(await screen.findByRole("listbox")).toBeTruthy();
+  });
+
   it("publishes intrinsic size again when the same editor is reopened", async () => {
     const { rerender } = render(<DockEditorApp />);
     await waitFor(() =>
