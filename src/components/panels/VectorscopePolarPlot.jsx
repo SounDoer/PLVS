@@ -12,6 +12,7 @@ import {
 import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
+import { cn } from "../../lib/utils.js";
 
 // Only what the marks themselves overhang: half a stroke on the arc and baseline, a sample dot at
 // full scale. Room for pair labels belongs to whoever draws them, not to the plot.
@@ -271,6 +272,57 @@ export function VectorscopePolarPlot({
   return (
     <div data-vectorscope-polar={mode} className="absolute inset-0">
       <canvas ref={canvasRef} className="block h-full w-full" aria-hidden />
+    </div>
+  );
+}
+
+/**
+ * The area a polar plot draws in, with its pair labels hung under the ends of the semicircle's
+ * baseline. The plot is as large as the stage's width or height allows, whichever runs out first,
+ * so the labels follow the semicircle's own width instead of the stage's: they stay under the
+ * baseline ends however the surrounding layout is proportioned.
+ *
+ * @param {{
+ *   labelStrip?: string | null,
+ *   labelClassName?: string,
+ *   firstLabel?: string,
+ *   secondLabel?: string,
+ *   stageProps?: Record<string, any>,
+ *   labelProps?: Record<string, any>,
+ *   children?: import("react").ReactNode,
+ * }} props `labelStrip` is the CSS height kept free below the stage for the labels; leave it out
+ *   to show no labels.
+ */
+export function VectorscopePolarStage({
+  labelStrip = null,
+  labelClassName,
+  firstLabel,
+  secondLabel,
+  stageProps,
+  labelProps,
+  children,
+}) {
+  return (
+    <div
+      {...stageProps}
+      className="absolute inset-x-0 top-0"
+      style={{ bottom: labelStrip ?? 0, containerType: "size" }}
+    >
+      {children}
+      {labelStrip ? (
+        <div
+          {...labelProps}
+          className={cn(
+            "pointer-events-none absolute left-1/2 top-full flex -translate-x-1/2 justify-between leading-none",
+            labelClassName
+          )}
+          // The semicircle's diameter plus its padding on both sides; see plotGeometry.
+          style={{ width: `min(100cqw, calc(200cqh - ${2 * PLOT_PADDING_CSS_PX}px))` }}
+        >
+          <span className="max-w-[45%] truncate">{firstLabel}</span>
+          <span className="max-w-[45%] truncate text-right">{secondLabel}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

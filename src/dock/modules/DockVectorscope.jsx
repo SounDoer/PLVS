@@ -1,7 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
-import { VectorscopePolarPlot } from "../../components/panels/VectorscopePolarPlot.jsx";
+import {
+  VectorscopePolarPlot,
+  VectorscopePolarStage,
+} from "../../components/panels/VectorscopePolarPlot.jsx";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
@@ -136,7 +139,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
       const rect = content.getBoundingClientRect();
       setContentWidth(rect.width);
       setContentHeight(rect.height);
-      // Must equal the polar stage's bottom inset below; the label size follows Dock density.
+      // Must equal the labelStrip given to the polar stage below; the label size follows Dock density.
       const labelPx =
         Number.parseFloat(getComputedStyle(content).getPropertyValue("--ui-dock-fs-label")) || 9;
       const availHeight = rect.height - (expanded ? EXPANDED_CORRELATION_HEIGHT_PX : 0);
@@ -207,13 +210,13 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               ) : null}
             </svg>
           ) : (
-            <div
-              data-testid="dock-vectorscope-polar-stage"
-              className={
-                showPairLabels
-                  ? "absolute inset-x-0 top-0 bottom-[calc(var(--ui-dock-fs-label)_+_2px)]"
-                  : "absolute inset-0"
-              }
+            <VectorscopePolarStage
+              labelStrip={showPairLabels ? "calc(var(--ui-dock-fs-label) + 2px)" : null}
+              labelClassName="font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium text-muted-foreground"
+              firstLabel={firstLabel}
+              secondLabel={secondLabel}
+              stageProps={{ "data-testid": "dock-vectorscope-polar-stage" }}
+              labelProps={{ "data-testid": "dock-vectorscope-pair-labels" }}
             >
               <VectorscopePolarPlot
                 mode={mode}
@@ -224,14 +227,12 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
                 identityKey={key}
               />
-            </div>
+            </VectorscopePolarStage>
           )}
-          {showPairLabels ? (
+          {showPairLabels && isLissajous ? (
             <div
               data-testid="dock-vectorscope-pair-labels"
-              className={`pointer-events-none absolute inset-x-0 flex justify-between px-0.5 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground ${
-                isLissajous ? "top-0" : "bottom-0"
-              }`}
+              className="pointer-events-none absolute inset-x-0 top-0 flex justify-between px-0.5 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground"
             >
               <span className="max-w-[45%] truncate">{firstLabel}</span>
               <span className="max-w-[45%] truncate text-right">{secondLabel}</span>

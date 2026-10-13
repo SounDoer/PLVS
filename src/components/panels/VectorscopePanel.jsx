@@ -16,7 +16,7 @@ import {
   drawPersistenceWindow,
 } from "../../math/vectorscopePersistence.js";
 import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
-import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
+import { VectorscopePolarPlot, VectorscopePolarStage } from "./VectorscopePolarPlot.jsx";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
@@ -399,9 +399,13 @@ export function VectorscopePanel() {
               />
             )}
             {!isLissajous ? (
-              <div
-                data-vectorscope-polar-stage
-                className="absolute inset-x-0 top-0 bottom-[calc(var(--ui-fs-axis)_+_var(--ui-vector-corner-inset))]"
+              <VectorscopePolarStage
+                labelStrip="calc(var(--ui-fs-axis) + var(--ui-vector-corner-inset))"
+                labelClassName={CAPTION_TEXT}
+                firstLabel={axisXLabel}
+                secondLabel={axisYLabel}
+                stageProps={{ "data-vectorscope-polar-stage": true }}
+                labelProps={{ "data-vectorscope-pair-labels": true }}
               >
                 <VectorscopePolarPlot
                   mode={vectorscopeMode}
@@ -417,23 +421,21 @@ export function VectorscopePanel() {
                   colors={vectorscopeColors}
                   enabled={panelActive}
                 />
-              </div>
+              </VectorscopePolarStage>
             ) : null}
           </div>
-          <div
-            data-vectorscope-pair-labels
-            className={cn(
-              CAPTION_TEXT,
-              // One font-size tall, which is exactly what the polar stage leaves free below itself.
-              "pointer-events-none absolute inset-x-0 flex justify-between px-[var(--ui-vector-corner-inset)] leading-none",
-              isLissajous
-                ? "top-[var(--ui-vector-corner-inset)]"
-                : "bottom-[var(--ui-vector-corner-inset)]"
-            )}
-          >
-            <span className="max-w-[42%] truncate">{axisXLabel}</span>
-            <span className="max-w-[42%] truncate text-right">{axisYLabel}</span>
-          </div>
+          {isLissajous ? (
+            <div
+              data-vectorscope-pair-labels
+              className={cn(
+                CAPTION_TEXT,
+                "pointer-events-none absolute inset-x-0 top-[var(--ui-vector-corner-inset)] flex justify-between px-[var(--ui-vector-corner-inset)]"
+              )}
+            >
+              <span className="max-w-[42%] truncate">{axisXLabel}</span>
+              <span className="max-w-[42%] truncate text-right">{axisYLabel}</span>
+            </div>
+          ) : null}
         </div>
       </div>
       <div
