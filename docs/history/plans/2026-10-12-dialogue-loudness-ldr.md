@@ -14,16 +14,17 @@
 
 ## 2. Build the programme-dialogue evaluation harness
 
-- [ ] Define a versioned annotation format for valid measurement spans, dialogue spans, channel
+- [x] Define a versioned annotation format for valid measurement spans, dialogue spans, channel
       roles, singing/background-speech tags, and expected programme cases.
-- [ ] Add deterministic adapters that run FireRed, current Silero V5, candidate Silero V6.2, and the
+- [x] Add deterministic adapters that run FireRed, current Silero V5, candidate Silero V6.2, and the
       multichannel fusion candidates over the same decoded samples.
 - [ ] Report precision/recall, false-positive and false-negative duration, boundary error, downstream
       DL/LDR/Coverage error, runtime factor, latency, CPU, and peak memory.
-- [ ] Assemble redistributable synthetic fixtures in the repository and keep non-redistributable
-      programme material outside it with a reproducible manifest.
-- [ ] Record the model hashes, runtime versions, thresholds, and corpus revision in every result.
-- [ ] Select the Silero generation and fusion policy from the results; do not change the default from
+- [x] Assemble redistributable synthetic fixtures in the repository.
+- [ ] Add a reproducible local-manifest path for non-redistributable programme material kept
+      outside the repository.
+- [x] Record the model hashes, runtime versions, thresholds, and corpus revision in every result.
+- [x] Select the Silero generation and fusion policy from the results; do not change the default from
       FireRed without a reviewed result showing a better programme-monitoring trade-off.
 
 ## 3. Separate VAD evidence, fusion, and block alignment

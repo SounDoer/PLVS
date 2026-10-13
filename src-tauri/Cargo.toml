@@ -39,7 +39,7 @@ dev-identity = []
 # The feature also compiles the updater out of Preview builds.
 preview-identity = []
 # Repository-owned real capture verification. Production bundles never enable this.
-capture-harness = []
+capture-harness = ["dep:hound"]
 # Manual release-profile crash verification only. Shipping commands must never enable this.
 crash-test = []
 
@@ -81,6 +81,7 @@ getrandom = "0.4.3"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 subtle = "2.6.1"
 tauri-plugin-clipboard-manager = "2.3.3"
+hound = { version = "3.5.1", optional = true }
 
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.

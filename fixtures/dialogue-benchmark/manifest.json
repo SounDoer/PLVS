@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "plvs-dialogue-synthetic-v1",
+  "sampleRateHz": 48000,
+  "sources": [
+    {
+      "id": "clean-a",
+      "path": "sources/6930-75918-0000.flac",
+      "durationMs": 3505,
+      "sha256": "9ce35224156f071ab58eb7feb8a5ceae600f6f9f353da2a6cbf797b6b1ac8a23"
+    },
+    {
+      "id": "clean-b",
+      "path": "sources/1320-122617-0000.flac",
+      "durationMs": 7835,
+      "sha256": "8948a7773a0bf478d4aab72401532da7e5496eafd3c89d432ede3b599be6e0a9"
+    },
+    {
+      "id": "other-a",
+      "path": "sources/7902-96591-0000.flac",
+      "durationMs": 2095,
+      "sha256": "955d0cc57211f03986124307ade29fbab521e26133caa2d2831b9a1b38c7a9b6"
+    },
+    {
+      "id": "other-b",
+      "path": "sources/5764-299665-0095.flac",
+      "durationMs": 2040,
+      "sha256": "84fcade4a87b09be6bdbf95af8ccffaf73f6101c982fd47ca56ab878d13d2cdf"
+    }
+  ],
+  "cases": [
+    {
+      "id": "mono-levels",
+      "description": "Clean, noisy, and quiet speech separated by programme silence.",
+      "durationMs": 16000,
+      "channelLabels": ["M"],
+      "peakDbfs": -3,
+      "validSpansMs": [[0, 16000]],
+      "dialogueSpans": [
+        { "startMs": 1000, "endMs": 4505, "tags": ["clean-speech"] },
+        { "startMs": 6000, "endMs": 8095, "tags": ["other-speech", "noise"] },
+        { "startMs": 10500, "endMs": 12540, "tags": ["quiet-speech"] }
+      ],
+      "layers": [
+        { "kind": "noise", "startMs": 0, "endMs": 16000, "gainDb": -45, "channels": [1] },
+        { "kind": "source", "sourceId": "clean-a", "startMs": 1000, "gainDb": -6, "channels": [1] },
+        { "kind": "source", "sourceId": "other-a", "startMs": 6000, "gainDb": -10, "channels": [1] },
+        { "kind": "source", "sourceId": "other-b", "startMs": 10500, "gainDb": -18, "channels": [1] }
+      ]
+    },
+    {
+      "id": "stereo-antiphase",
+      "description": "Dialogue that cancels in an arithmetic stereo downmix, followed by off-centre dialogue over music.",
+      "durationMs": 16000,
+      "channelLabels": ["L", "R"],
+      "peakDbfs": -3,
+      "validSpansMs": [[0, 16000]],
+      "dialogueSpans": [
+        { "startMs": 1000, "endMs": 8835, "tags": ["antiphase-speech", "music"] },
+        { "startMs": 10000, "endMs": 13505, "tags": ["off-centre-speech", "music"] }
+      ],
+      "layers": [
+        { "kind": "music", "startMs": 0, "endMs": 16000, "gainDb": -25, "channels": [1, 0.85] },
+        { "kind": "source", "sourceId": "clean-b", "startMs": 1000, "gainDb": -9, "channels": [1, -1] },
+        { "kind": "source", "sourceId": "clean-a", "startMs": 10000, "gainDb": -12, "channels": [1, 0.3] }
+      ]
+    },
+    {
+      "id": "surround-dialogue",
+      "description": "5.1 programme with centre, off-centre, quiet, surround speech, music, and strong LFE interference.",
+      "durationMs": 20000,
+      "channelLabels": ["L", "R", "C", "LFE", "Ls", "Rs"],
+      "peakDbfs": -3,
+      "validSpansMs": [[0, 20000]],
+      "dialogueSpans": [
+        { "startMs": 1000, "endMs": 4505, "tags": ["centre-speech", "music"] },
+        { "startMs": 6000, "endMs": 8095, "tags": ["off-centre-speech", "noise"] },
+        { "startMs": 10000, "endMs": 18040, "tags": ["quiet-speech", "surround-speech", "music"] }
+      ],
+      "layers": [
+        { "kind": "music", "startMs": 0, "endMs": 20000, "gainDb": -28, "channels": [1, 0.9, 0, 0, 0.35, 0.3] },
+        { "kind": "noise", "startMs": 0, "endMs": 20000, "gainDb": -40, "channels": [0.5, 0.5, 0.2, 0, 1, 1] },
+        { "kind": "lfe", "startMs": 0, "endMs": 20000, "gainDb": -13, "channels": [0, 0, 0, 1, 0, 0] },
+        { "kind": "source", "sourceId": "clean-a", "startMs": 1000, "gainDb": -9, "channels": [0, 0, 1, 0, 0, 0] },
+        { "kind": "source", "sourceId": "other-a", "startMs": 6000, "gainDb": -12, "channels": [0.9, 0.45, 0, 0, 0, 0] },
+        { "kind": "source", "sourceId": "clean-b", "startMs": 10000, "gainDb": -16, "channels": [0, 0, 1, 0, 0, 0] },
+        { "kind": "source", "sourceId": "other-b", "startMs": 16000, "gainDb": -14, "channels": [0, 0, 0, 0, 1, 0.8] }
+      ]
+    },
+    {
+      "id": "surround-voice-like-music",
+      "description": "Centre dialogue followed by a non-dialogue synthetic vocal melody in the left surround over a centre music bed.",
+      "durationMs": 14000,
+      "channelLabels": ["L", "R", "C", "LFE", "Ls", "Rs"],
+      "peakDbfs": -3,
+      "validSpansMs": [[0, 14000]],
+      "dialogueSpans": [
+        { "startMs": 1000, "endMs": 4505, "tags": ["centre-speech", "music"] }
+      ],
+      "layers": [
+        { "kind": "music", "startMs": 0, "endMs": 14000, "gainDb": -27, "channels": [0.55, 0.5, 0.8, 0, 0.2, 0.2] },
+        { "kind": "voiceMusic", "startMs": 6500, "endMs": 12500, "gainDb": -10, "channels": [0, 0, 0, 0, 1, 0.25] },
+        { "kind": "source", "sourceId": "clean-a", "startMs": 1000, "gainDb": -9, "channels": [0, 0, 1, 0, 0, 0] }
+      ]
+    }
+  ]
+}

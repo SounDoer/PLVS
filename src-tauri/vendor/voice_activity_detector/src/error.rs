@@ -9,4 +9,7 @@ pub enum Error {
     /// The chunk size for the VAD.
     chunk_size: usize,
   },
+  /// An explicitly supplied ONNX model could not be loaded.
+  #[error("unable to load VAD model: {0}")]
+  ModelLoadError(String),
 }

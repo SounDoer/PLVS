@@ -11,6 +11,8 @@ pub struct VoiceActivityDetector {
   chunk_size: usize,
   sample_rate: i64,
   state: ndarray::ArrayD<f32>,
+  context: Vec<f32>,
+  context_size: usize,
 }
 
 /// The silero ONNX model as bytes.
@@ -45,6 +47,7 @@ impl VoiceActivityDetector {
   /// Resets the state of the voice activity detector session.
   pub fn reset(&mut self) {
     self.state = ndarray::Array3::<f32>::zeros((2, 1, 128)).into_dyn();
+    self.context.fill(0.0);
   }
 
   /// Predicts the existence of speech in a single iterable of audio.
@@ -56,9 +59,18 @@ impl VoiceActivityDetector {
     S: Sample,
     I: IntoIterator<Item = S>,
   {
-    let mut input = ndarray::Array2::<f32>::zeros((1, self.chunk_size));
-    for (i, sample) in samples.into_iter().take(self.chunk_size).enumerate() {
-      input[[0, i]] = sample.to_f32();
+    let mut input = ndarray::Array2::<f32>::zeros((1, self.context_size + self.chunk_size));
+    for (index, sample) in self.context.iter().copied().enumerate() {
+      input[[0, index]] = sample;
+    }
+    for (index, sample) in samples.into_iter().take(self.chunk_size).enumerate() {
+      input[[0, self.context_size + index]] = sample.to_f32();
+    }
+    if self.context_size > 0 {
+      let context_start = self.context_size + self.chunk_size - self.context_size;
+      for index in 0..self.context_size {
+        self.context[index] = input[[0, context_start + index]];
+      }
     }
 
     let sample_rate = ndarray::arr0::<i64>(self.sample_rate);
@@ -107,6 +119,14 @@ struct VoiceActivityDetectorConfig {
   sample_rate: i64,
   #[builder(default, setter(strip_option))]
   session: Option<Arc<Mutex<Session>>>,
+  /// Optional ONNX model bytes for evaluation tools that compare a candidate model without
+  /// replacing the model embedded in the production crate.
+  #[builder(default, setter(strip_option))]
+  model: Option<Vec<u8>>,
+  /// Number of previous samples prepended to each model input. Silero v6 uses 64 at 16 kHz;
+  /// the embedded v5 integration retains its established zero-context behaviour.
+  #[builder(default)]
+  context_size: usize,
 }
 
 impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> {
@@ -126,9 +146,26 @@ impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> 
       }
     };
 
-    let session = match value.session {
-      Some(s) => s,
-      None => DEFAULT_SESSION.clone(),
+    let session = match (value.session, value.model) {
+      (Some(session), None) => session,
+      (None, Some(model)) => Arc::new(Mutex::new(
+        Session::builder()
+          .map_err(|error| Error::ModelLoadError(error.to_string()))?
+          .with_optimization_level(GraphOptimizationLevel::Level3)
+          .map_err(|error| Error::ModelLoadError(error.to_string()))?
+          .with_intra_threads(1)
+          .map_err(|error| Error::ModelLoadError(error.to_string()))?
+          .with_inter_threads(1)
+          .map_err(|error| Error::ModelLoadError(error.to_string()))?
+          .commit_from_memory(&model)
+          .map_err(|error| Error::ModelLoadError(error.to_string()))?,
+      )),
+      (None, None) => DEFAULT_SESSION.clone(),
+      (Some(_), Some(_)) => {
+        return Err(Error::ModelLoadError(
+          "a shared session and model bytes cannot both be supplied".to_string(),
+        ));
+      }
     };
 
     Ok(VoiceActivityDetector {
@@ -136,6 +173,8 @@ impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> 
       chunk_size,
       sample_rate,
       state: ndarray::Array3::<f32>::zeros((2, 1, 128)).into_dyn(),
+      context: vec![0.0; value.context_size],
+      context_size: value.context_size,
     })
   }
 }

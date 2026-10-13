@@ -80,6 +80,18 @@ impl SileroVadEngine {
       .ok()?;
     Some(Self { vad })
   }
+
+  #[cfg(feature = "capture-harness")]
+  fn new_with_model(model: Vec<u8>) -> Option<Self> {
+    let vad = VoiceActivityDetector::builder()
+      .sample_rate(VAD_RATE as i64)
+      .chunk_size(VAD_CHUNK)
+      .model(model)
+      .context_size(64)
+      .build()
+      .ok()?;
+    Some(Self { vad })
+  }
 }
 
 impl DialogueVadEngine for SileroVadEngine {
@@ -181,6 +193,22 @@ impl SpeechDetector {
       VadEngineKind::Silero => Box::new(SileroVadEngine::new()?),
       VadEngineKind::FireRed => Box::new(FireRedVadEngine::new()?),
     };
+    let resampler = Self::build_resampler(source_rate)?;
+    Some(Self {
+      engine,
+      resampler,
+      in_buf: Vec::new(),
+      chunk_buf: Vec::new(),
+      aggregator: VadBlockAggregator::majority(),
+      failed: false,
+    })
+  }
+
+  /// Build a Silero detector from explicit model bytes for the repository evaluation harness.
+  /// Production always uses the audited embedded model through [`Self::new_with_engine`].
+  #[cfg(feature = "capture-harness")]
+  pub(crate) fn new_silero_candidate(source_rate: f64, model: Vec<u8>) -> Option<Self> {
+    let engine: Box<dyn DialogueVadEngine> = Box::new(SileroVadEngine::new_with_model(model)?);
     let resampler = Self::build_resampler(source_rate)?;
     Some(Self {
       engine,

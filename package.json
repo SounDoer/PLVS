@@ -48,6 +48,8 @@
     "benchmark:stereo-map-rust": "cargo bench --manifest-path src-tauri/Cargo.toml --bench stereo_map",
     "benchmark:stereo-map-render": "node scripts/stereo-map-render-benchmark.mjs",
     "benchmark:frame-wire": "node scripts/frame-wire-benchmark.mjs",
+    "benchmark:dialogue:fixtures": "node scripts/dialogue-benchmark-fixtures.mjs",
+    "benchmark:dialogue": "node scripts/dialogue-benchmark.mjs",
     "experiment:stereo-map-energy-codec": "node scripts/stereo-map-energy-codec-experiment.mjs",
     "experiment:stereo-map-opacity-codec": "node scripts/stereo-map-opacity-codec-experiment.mjs",
     "diagnose:surface-fallback": "node scripts/diagnose-surface-fallback.mjs",

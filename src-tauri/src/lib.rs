@@ -15,6 +15,8 @@ pub mod cli_profile;
 pub mod cli_report;
 pub mod coordinator;
 mod crash_report;
+#[cfg(feature = "capture-harness")]
+pub mod dialogue_benchmark;
 mod dock;
 mod dock_accessories;
 pub mod doctor;
