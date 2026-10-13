@@ -26,6 +26,7 @@
     "listings/default-preset.json",
     "listings/multichannel-monitoring.json",
     "listings/stereo-field-check.json",
-    "listings/spectral-inspection.json"
+    "listings/spectral-inspection.json",
+    "listings/dynamics-headroom.json"
   ]
 }

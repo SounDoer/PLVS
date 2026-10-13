@@ -38,6 +38,7 @@ const INITIAL_LISTINGS = [
   "listings/multichannel-monitoring.json",
   "listings/stereo-field-check.json",
   "listings/spectral-inspection.json",
+  "listings/dynamics-headroom.json",
 ];
 
 let launchSource;
@@ -67,6 +68,7 @@ describe("initial Sharesets Catalogue", () => {
       "control-room-amber",
       "default-loudness-profile",
       "default-preset",
+      "dynamics-headroom",
       "ebu-r-128-programme",
       "ebu-r-128-short-form",
       "ebu-r-128-streaming-monitor",
@@ -239,6 +241,27 @@ describe("initial Sharesets Catalogue", () => {
     expect(preset.title).toBe("Spectral Inspection");
     expect(preset.releases[0].metadata.facets).toMatchObject({
       moduleIds: ["spectrogram", "spectrum", "waveform"],
+      dependencyIds: [],
+      optionalCapabilities: [],
+    });
+    expect(preset.releases[0].previews).toEqual([
+      expect.objectContaining({
+        id: "preset-workspace",
+        mediaType: "image/png",
+        source: expect.objectContaining({ contractVersion: 4 }),
+      }),
+    ]);
+  });
+
+  it("publishes the focused Dynamics & Headroom Preset", async () => {
+    const source = await readLaunchSource();
+    const preset = source.listings.find(
+      ({ document }) => document.id === "dynamics-headroom"
+    ).document;
+
+    expect(preset.title).toBe("Dynamics & Headroom");
+    expect(preset.releases[0].metadata.facets).toMatchObject({
+      moduleIds: ["levelMeter", "loudness", "stats", "waveform"],
       dependencyIds: [],
       optionalCapabilities: [],
     });

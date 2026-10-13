@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "dynamics-headroom",
+  "slug": "dynamics-headroom",
+  "type": "presets",
+  "classification": "official",
+  "title": "Dynamics & Headroom",
+  "summary": "A focused workspace for loudness movement, peak safety, and programme dynamics.",
+  "descriptionMarkdown": "Review loudness movement and programme structure on a shared 60-second timeline, then compare Peak and RMS level behaviour side by side. Dynamics Summary keeps Integrated, True Peak Max, Loudness Range, PLR, PSR, Momentary Max, and Short-term Max visible without unrelated metrics. The Preset keeps Loudness Profile and Dock off, so it supports analysis without implying a delivery standard.",
+  "tags": ["Dynamics", "Headroom", "Loudness", "True Peak", "Analysis"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-10-13",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/dynamics-headroom-v1.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace",
+          "path": "previews/dynamics-headroom/v1/preset-workspace.png"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "resultVersion": 1,
+  "renderer": {
+    "name": "plvs-sharesets-preview",
+    "version": 2
+  },
+  "contentHash": "sha256:51e5c4ae4c8ad0aede3d2f9869c5516088fb541959ce52b51e295c66a4988bc4",
+  "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69",
+  "assets": [
+    {
+      "id": "preset-workspace",
+      "path": "preset-workspace.png",
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 720,
+      "byteLength": 126784,
+      "sha256": "sha256:26963273db22a13ff73ec55be9c79e81190c9b59d6092b8d25d4c1a9d6e5c530",
+      "source": {
+        "generator": "plvs-sharesets-preview",
+        "contractVersion": 4,
+        "rendererVersion": 2,
+        "itemContentHash": "sha256:51e5c4ae4c8ad0aede3d2f9869c5516088fb541959ce52b51e295c66a4988bc4",
+        "fixtureHash": "sha256:31fbbaa214f2fb49e23480b7967c2c24f588227f67641ca2976693e87892cf69"
+      }
+    }
+  ]
+}

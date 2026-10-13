@@ -1,0 +1,206 @@
+{
+  "app": "PLVS",
+  "kind": "preset-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "dynamics-headroom",
+      "kind": "plvs-preset",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Dynamics & Headroom",
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "horizontal",
+          "weights": [
+            0.62,
+            0.38
+          ],
+          "children": [
+            {
+              "type": "split",
+              "direction": "vertical",
+              "weights": [
+                0.6,
+                0.4
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "loudness-history"
+                },
+                {
+                  "type": "panel",
+                  "key": "programme-waveform"
+                }
+              ]
+            },
+            {
+              "type": "split",
+              "direction": "vertical",
+              "weights": [
+                0.6,
+                0.4
+              ],
+              "children": [
+                {
+                  "type": "split",
+                  "direction": "horizontal",
+                  "weights": [
+                    0.5,
+                    0.5
+                  ],
+                  "children": [
+                    {
+                      "type": "panel",
+                      "key": "peak-meter"
+                    },
+                    {
+                      "type": "panel",
+                      "key": "rms-meter"
+                    }
+                  ]
+                },
+                {
+                  "type": "panel",
+                  "key": "dynamics-summary"
+                }
+              ]
+            }
+          ]
+        },
+        "panels": [
+          {
+            "key": "loudness-history",
+            "moduleId": "loudness",
+            "title": "Loudness History",
+            "controls": {
+              "layers": [
+                "momentary",
+                "shortTerm"
+              ],
+              "grid": true,
+              "loudnessRangeLufs": {
+                "min": -48,
+                "max": -6
+              }
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 60
+              }
+            }
+          },
+          {
+            "key": "programme-waveform",
+            "moduleId": "waveform",
+            "title": "Programme Structure",
+            "controls": {
+              "frequencyColor": false,
+              "centroid": false
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 60
+              }
+            }
+          },
+          {
+            "key": "peak-meter",
+            "moduleId": "levelMeter",
+            "title": "Peak & TP Max",
+            "controls": {
+              "mode": "peak",
+              "tpMaxMarker": true,
+              "barColors": "levelZones",
+              "peakThresholdsDbfs": {
+                "warning": -6,
+                "critical": -1
+              },
+              "levelRangeDbfs": {
+                "min": -60,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "rms-meter",
+            "moduleId": "levelMeter",
+            "title": "RMS Body",
+            "controls": {
+              "mode": "rms",
+              "playbackMax": true,
+              "barColors": "levelZones",
+              "rmsThresholdsDbfs": {
+                "warning": -18,
+                "critical": -9
+              },
+              "levelRangeDbfs": {
+                "min": -60,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "dynamics-summary",
+            "moduleId": "stats",
+            "title": "Dynamics Summary",
+            "controls": {
+              "metrics": {
+                "visible": [
+                  "integrated",
+                  "truePeak",
+                  "lra",
+                  "plr",
+                  "psr",
+                  "momentaryMax",
+                  "shortTermMax"
+                ],
+                "order": [
+                  "integrated",
+                  "truePeak",
+                  "lra",
+                  "plr",
+                  "psr",
+                  "momentaryMax",
+                  "shortTermMax",
+                  "momentary",
+                  "shortTerm",
+                  "dialogueCoverage",
+                  "dialogueIntegrated",
+                  "dialogueRange",
+                  "dialogueOffset",
+                  "correlation",
+                  "sideToMid"
+                ]
+              }
+            },
+            "axes": {}
+          }
+        ]
+      },
+      "presentation": {
+        "alwaysOnTop": false,
+        "focusView": {
+          "autoHideControls": false,
+          "compactPanels": false,
+          "borderless": false
+        },
+        "panelOpacityPercent": 100,
+        "glassEnabled": false
+      },
+      "dock": {
+        "enabled": false
+      },
+      "loudnessProfile": {
+        "dependencyId": null
+      }
+    }
+  ],
+  "dependencies": []
+}
