@@ -9,7 +9,8 @@ import {
   updatePolarLevelEnvelope,
   updatePolarMaxHold,
 } from "../../math/vectorscopePolarMath.js";
-import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
+import { selectVectorscopeCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 import { cn } from "../../lib/utils.js";
@@ -164,9 +165,11 @@ export function VectorscopePolarPlot({
   persistenceMs = POLAR_SAMPLE_WINDOW_MS,
   resetEpoch = 0,
   identityKey = "",
-  colors = DEFAULT_VECTORSCOPE_CANVAS_COLORS,
+  colors: colorsOverride = null,
   enabled = true,
 }) {
+  const resolvedColors = useResolvedTheme(selectVectorscopeCanvasColors);
+  const colors = colorsOverride ?? resolvedColors;
   const canvasRef = useRef(null);
   const envelopeRef = useRef(null);
   const maxHoldRef = useRef(null);

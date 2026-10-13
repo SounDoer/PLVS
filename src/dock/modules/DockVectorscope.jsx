@@ -7,8 +7,6 @@ import {
   VectorscopePolarStage,
 } from "../../components/panels/VectorscopePolarPlot.jsx";
 import { VectorscopeLissajousGrid } from "../../components/panels/VectorscopeLissajousGrid.jsx";
-import { selectVectorscopeCanvasColors } from "../../theme/themeCanvasSelectors.js";
-import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
@@ -79,7 +77,6 @@ function computePlotBox(width, height, expanded, isPolar, labelStripPx) {
  * @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"correlation">, heightMode?: string }} props
  */
 export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
-  const vectorscopeColors = useResolvedTheme(selectVectorscopeCanvasColors);
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
   const historyData = useHistoryData();
   const contentRef = useRef(null);
@@ -228,7 +225,6 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 persistenceMs={normalizedControls.vectorscopePolarSamplePersistenceMs}
                 resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
                 identityKey={key}
-                colors={vectorscopeColors}
               />
             </VectorscopePolarStage>
           )}
