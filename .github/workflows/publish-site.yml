@@ -68,7 +68,8 @@ jobs:
         with:
           ref: ${{ steps.baseline.outputs.ref }}
           path: published-content-source
-          sparse-checkout: sharesets/catalogue
+          # A website ref older than the path output publishes from the current layout.
+          sparse-checkout: ${{ steps.baseline.outputs.path || 'sharesets/catalogue' }}
       - name: Check out candidate Sharesets content
         uses: actions/checkout@v7
         with:
@@ -79,7 +80,9 @@ jobs:
         working-directory: site-source
         run: npm ci
       - name: Validate immutable Sharesets history
-        run: node site-source/scripts/sharesets-catalogue-update.mjs published-content-source/sharesets/catalogue content-source/sharesets/catalogue
+        env:
+          PUBLISHED_CATALOGUE: ${{ steps.baseline.outputs.path || 'sharesets/catalogue' }}
+        run: node site-source/scripts/sharesets-catalogue-update.mjs "published-content-source/$PUBLISHED_CATALOGUE" content-source/sharesets/catalogue
       - name: Assemble the website and record its content identity
         run: |
           (cd site-source && node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site)

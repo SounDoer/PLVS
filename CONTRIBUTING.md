@@ -182,8 +182,9 @@ changes into the release tree, then retry. Never bypass validation by deleting t
 The first Sharesets launch needs one explicit initialization. After the app Release is published,
 dispatch `deploy-website.yml` with that released tag as `ref` and `bootstrap_sharesets=true`.
 Automatic release-triggered deployment uses the safe default (`false`) and stops if no marker exists.
-Bootstrap checks that the legacy live Catalogue is empty and uses the pinned empty commit above;
-it does not permit a populated markerless site. All later runs leave bootstrap off. An unreadable,
+Bootstrap checks that the legacy live Catalogue, still served at `/community/`, is empty and uses
+the pinned empty commit and its `community/catalogue` directory as the baseline; it does not permit
+a populated markerless site. All later runs leave bootstrap off. An unreadable,
 malformed, foreign-repository, or missing marker stops publication. Recover a lost marker from the
 last successful Pages artifact and its exact content commit before trying again. Older website
 tags without the publication helper cannot be deployed through this workflow.

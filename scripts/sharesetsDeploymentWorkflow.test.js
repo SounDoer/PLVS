@@ -26,7 +26,7 @@ describe("Sharesets content deployment", () => {
   it("resolves live history and validates it before uploading anything", () => {
     const resolve = workflow.indexOf("sharesets-publication.mjs resolve");
     const validate = workflow.indexOf(
-      "sharesets-catalogue-update.mjs published-content-source/sharesets/catalogue content-source/sharesets/catalogue"
+      'sharesets-catalogue-update.mjs "published-content-source/$PUBLISHED_CATALOGUE" content-source/sharesets/catalogue'
     );
     const marker = workflow.indexOf(
       "sharesets-publication.mjs write _site/sharesets/publication.json"
@@ -37,6 +37,10 @@ describe("Sharesets content deployment", () => {
     expect(marker).toBeGreaterThan(validate);
     expect(upload).toBeGreaterThan(marker);
     expect(workflow).toContain("ref: ${{ steps.baseline.outputs.ref }}");
+    // The bootstrap baseline predates the rename and keeps its Catalogue under community/.
+    const baselinePath = "${{ steps.baseline.outputs.path || 'sharesets/catalogue' }}";
+    expect(workflow).toContain(`sparse-checkout: ${baselinePath}`);
+    expect(workflow).toContain(`PUBLISHED_CATALOGUE: ${baselinePath}`);
     expect(workflow).toContain("candidate_sha=$(git -C content-source rev-parse HEAD)");
   });
 

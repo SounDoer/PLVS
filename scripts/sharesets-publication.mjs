@@ -2,8 +2,12 @@ import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// Last markerless public site: v0.19.0, whose Catalogue manifest is empty.
+// Last markerless public site: v0.19.0, whose Catalogue manifest is empty. It predates the rename
+// to Sharesets, so its Catalogue is served at /community/ and stored under community/.
 export const SHARESETS_BOOTSTRAP_COMMIT = "a953766217e6ebeceac264ba86e10f4b69eeabcd";
+export const SHARESETS_BOOTSTRAP_PAGE = "/community/";
+export const SHARESETS_BOOTSTRAP_CATALOGUE = "community/catalogue";
+export const SHARESETS_CATALOGUE = "sharesets/catalogue";
 
 export function publicationMarker(repository, commitSha) {
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "")) {
@@ -35,18 +39,22 @@ export async function resolvePublishedSharesets({
         "Sharesets publication marker is missing. Only the first empty-site publication may explicitly enable bootstrap."
       );
     // A missing marker on a populated Catalogue must never reset its history to empty.
-    const page = await request("/sharesets/");
+    const page = await request(SHARESETS_BOOTSTRAP_PAGE);
     if (page.status !== 200) throw new Error("Cannot verify the markerless Sharesets Catalogue.");
     const html = await page.text();
     if (
       !html.includes("Nothing published yet") ||
-      /data-catalogue-grid|\/sharesets\/files\//.test(html)
+      /data-catalogue-grid|\/(?:community|sharesets)\/files\//.test(html)
     ) {
       throw new Error(
         "Published Sharesets content has no version marker; recover its exact baseline before deploying."
       );
     }
-    return { ...publicationMarker(repository, SHARESETS_BOOTSTRAP_COMMIT), bootstrap: true };
+    return {
+      ...publicationMarker(repository, SHARESETS_BOOTSTRAP_COMMIT),
+      cataloguePath: SHARESETS_BOOTSTRAP_CATALOGUE,
+      bootstrap: true,
+    };
   }
   if (response.status !== 200)
     throw new Error(`Cannot read Sharesets publication marker (HTTP ${response.status}).`);
@@ -54,7 +62,11 @@ export async function resolvePublishedSharesets({
   if (raw?.schemaVersion !== 1 || raw.repository !== repository) {
     throw new Error("Sharesets publication marker has an unsupported schema or repository.");
   }
-  return { ...publicationMarker(raw.repository, raw.commitSha), bootstrap: false };
+  return {
+    ...publicationMarker(raw.repository, raw.commitSha),
+    cataloguePath: SHARESETS_CATALOGUE,
+    bootstrap: false,
+  };
 }
 
 async function main(args) {
@@ -66,7 +78,7 @@ async function main(args) {
     });
     await appendFile(
       process.env.GITHUB_OUTPUT,
-      `ref=${result.commitSha}\nbootstrap=${result.bootstrap}\n`
+      `ref=${result.commitSha}\npath=${result.cataloguePath}\nbootstrap=${result.bootstrap}\n`
     );
   } else if (args[0] === "write" && args.length === 3) {
     await writeFile(

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  SHARESETS_BOOTSTRAP_CATALOGUE,
   SHARESETS_BOOTSTRAP_COMMIT,
+  SHARESETS_CATALOGUE,
   publicationMarker,
   resolvePublishedSharesets,
 } from "./sharesets-publication.mjs";
@@ -17,6 +19,7 @@ describe("Sharesets publication identity", () => {
       schemaVersion: 1,
       repository,
       commitSha,
+      cataloguePath: SHARESETS_CATALOGUE,
       bootstrap: false,
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
@@ -57,14 +60,27 @@ describe("Sharesets publication identity", () => {
       resolvePublishedSharesets({ ...options, allowBootstrap: true, fetchImpl })
     ).resolves.toMatchObject({
       commitSha: SHARESETS_BOOTSTRAP_COMMIT,
+      cataloguePath: SHARESETS_BOOTSTRAP_CATALOGUE,
       bootstrap: true,
     });
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      expect.stringContaining("plvs.soundoer.com/community/?"),
+      expect.anything()
+    );
+  });
+
+  it("refuses bootstrap once the legacy Catalogue page is gone", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 404 }));
+    await expect(
+      resolvePublishedSharesets({ ...options, allowBootstrap: true, fetchImpl })
+    ).rejects.toThrow("Cannot verify");
   });
 
   it.each([
     "Unrelated page",
     "Nothing published yet <section data-catalogue-grid>",
     "Nothing published yet /sharesets/files/item",
+    "Nothing published yet /community/files/item",
   ])("refuses nonempty or unrecognized markerless sites: %s", async (html) => {
     const fetchImpl = vi
       .fn()
