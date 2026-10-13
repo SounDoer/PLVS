@@ -7,7 +7,6 @@ import {
   useMeterRuntimeAssembly,
 } from "./runtime/MeterRuntimeContext.jsx";
 import {} from "./runtime/appRuntimeDerivations.js";
-import { UI_PREFERENCES } from "./uiPreferences";
 import { normalizePanelControls } from "./lib/panelControls.js";
 import {
   useLoudnessHistory,
@@ -309,11 +308,6 @@ function AppContent() {
   });
 
   const hasTpMaxValue = Number.isFinite(displayAudio?.tpMax);
-  const vsGridDiagInset = useMemo(() => {
-    const pct = UI_PREFERENCES.modules.vectorscope.gridDiagInsetPct ?? 0;
-    return Math.max(0, Math.min(20, pct));
-  }, []);
-  const vsGridDiagFar = 100 - vsGridDiagInset;
   const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
   const {
     channelLabelRuntime,
@@ -443,8 +437,6 @@ function AppContent() {
     hasTpMaxValue,
     onResetTpMax: resetTpMax,
     // Vectorscope
-    vsGridDiagInset,
-    vsGridDiagFar,
     correlation,
     vectorscopePairX: vectorscopePairUi.x,
     vectorscopePairY: vectorscopePairUi.y,

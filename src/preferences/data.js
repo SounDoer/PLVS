@@ -140,7 +140,6 @@ export const UI_PREFERENCES = {
     },
     vectorscope: {
       strokeWidth: 1.2,
-      gridDiagInsetPct: 1.2,
       plotRadius: 240,
       gridDiagDash: "2.6 3.4",
     },

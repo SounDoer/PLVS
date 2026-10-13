@@ -142,8 +142,6 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
       vectorscopePairX: fixture.analysisRequests.vectorscope[0]?.x ?? 0,
       vectorscopePairY: fixture.analysisRequests.vectorscope[0]?.y ?? 1,
       spectrumChannelOptions: fixture.audio.channelLabels.map((label, value) => ({ label, value })),
-      vsGridDiagInset: 18,
-      vsGridDiagFar: 82,
     },
     metricsData: {
       statsMetrics: buildStatsMetrics(displayAudio),

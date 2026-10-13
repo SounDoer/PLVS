@@ -8,7 +8,7 @@ import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisReques
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
-import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
+import { ANNOTATION_TEXT, CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
   PERSISTENCE_WINDOW_MS,
@@ -16,6 +16,7 @@ import {
   drawPersistenceWindow,
 } from "../../math/vectorscopePersistence.js";
 import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
+import { VectorscopeLissajousGrid } from "./VectorscopeLissajousGrid.jsx";
 import { VectorscopePolarPlot, VectorscopePolarStage } from "./VectorscopePolarPlot.jsx";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
@@ -80,8 +81,6 @@ function smoothCorrelation(previous, next) {
 export function VectorscopePanel() {
   const vectorscopeColors = useResolvedTheme(selectVectorscopeColors);
   const {
-    vsGridDiagInset,
-    vsGridDiagFar,
     correlation,
     channelCount = 0,
     peakLabelContext,
@@ -340,34 +339,14 @@ export function VectorscopePanel() {
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             {isLissajous ? (
               <>
-                <svg
-                  data-vectorscope-lissajous-grid
-                  className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  aria-hidden
-                >
-                  <line
-                    x1={vsGridDiagInset}
-                    y1={vsGridDiagInset}
-                    x2={vsGridDiagFar}
-                    y2={vsGridDiagFar}
-                    stroke="var(--ui-vectorscope-guides-stroke)"
-                    strokeWidth="1"
-                    strokeDasharray="var(--ui-vectorscope-grid-dash)"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <line
-                    x1={vsGridDiagFar}
-                    y1={vsGridDiagInset}
-                    x2={vsGridDiagInset}
-                    y2={vsGridDiagFar}
-                    stroke="var(--ui-vectorscope-guides-stroke)"
-                    strokeWidth="1"
-                    strokeDasharray="var(--ui-vectorscope-grid-dash)"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
+                <VectorscopeLissajousGrid
+                  labelSize="var(--ui-fs-axis)"
+                  labelClassName={ANNOTATION_TEXT}
+                  firstLabel={axisXLabel}
+                  secondLabel={axisYLabel}
+                  gridProps={{ "data-vectorscope-lissajous-grid": true }}
+                  labelProps={{ "data-vectorscope-pair-labels": true }}
+                />
                 <svg
                   viewBox="0 0 260 260"
                   preserveAspectRatio="none"
@@ -424,18 +403,6 @@ export function VectorscopePanel() {
               </VectorscopePolarStage>
             ) : null}
           </div>
-          {isLissajous ? (
-            <div
-              data-vectorscope-pair-labels
-              className={cn(
-                CAPTION_TEXT,
-                "pointer-events-none absolute inset-x-0 top-[var(--ui-vector-corner-inset)] flex justify-between px-[var(--ui-vector-corner-inset)]"
-              )}
-            >
-              <span className="max-w-[42%] truncate">{axisXLabel}</span>
-              <span className="max-w-[42%] truncate text-right">{axisYLabel}</span>
-            </div>
-          ) : null}
         </div>
       </div>
       <div

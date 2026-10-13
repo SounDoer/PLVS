@@ -17,8 +17,6 @@ function renderPanel(audioData) {
 function vectorscopePanelTree(audioData) {
   const {
     panelControls,
-    vsGridDiagInset,
-    vsGridDiagFar,
     correlation,
     channelCount,
     peakLabelContext,
@@ -31,8 +29,6 @@ function vectorscopePanelTree(audioData) {
   return (
     <FrameDataProvider
       value={{
-        vsGridDiagInset,
-        vsGridDiagFar,
         correlation,
         channelCount,
         peakLabelContext,

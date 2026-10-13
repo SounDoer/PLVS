@@ -5,6 +5,7 @@ import {
   VectorscopePolarPlot,
   VectorscopePolarStage,
 } from "../../components/panels/VectorscopePolarPlot.jsx";
+import { VectorscopeLissajousGrid } from "../../components/panels/VectorscopeLissajousGrid.jsx";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
@@ -170,45 +171,34 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           onClick={canResetMaxHold ? () => setMaxHoldResetKey((k) => k + 1) : undefined}
         >
           {isLissajous ? (
-            <svg
-              data-testid="dock-vectorscope-lissajous-grid"
-              className="pointer-events-none absolute inset-0 block h-full w-full"
-              viewBox="0 0 260 260"
-              preserveAspectRatio="none"
-              aria-hidden
-            >
-              <line
-                x1="4"
-                y1="4"
-                x2="256"
-                y2="256"
-                stroke="var(--ui-vectorscope-guides-stroke)"
-                strokeWidth="1"
-                strokeDasharray="var(--ui-vectorscope-grid-dash)"
-                vectorEffect="non-scaling-stroke"
+            <>
+              <VectorscopeLissajousGrid
+                labelSize={showPairLabels ? "var(--ui-dock-fs-label)" : null}
+                labelClassName="font-[family-name:var(--ui-font-sans)] font-medium text-muted-foreground"
+                firstLabel={firstLabel}
+                secondLabel={secondLabel}
+                gridProps={{ "data-testid": "dock-vectorscope-lissajous-grid" }}
+                labelProps={{ "data-testid": "dock-vectorscope-pair-labels" }}
               />
-              <line
-                x1="256"
-                y1="4"
-                x2="4"
-                y2="256"
-                stroke="var(--ui-vectorscope-guides-stroke)"
-                strokeWidth="1"
-                strokeDasharray="var(--ui-vectorscope-grid-dash)"
-                vectorEffect="non-scaling-stroke"
-              />
-              {result?.path ? (
-                <path
-                  data-testid="dock-vectorscope-trace"
-                  d={result.path}
-                  fill="none"
-                  stroke="var(--ui-vectorscope-trace)"
-                  strokeWidth="var(--ui-vectorscope-stroke-width)"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ) : null}
-            </svg>
+              <svg
+                className="pointer-events-none absolute inset-0 block h-full w-full"
+                viewBox="0 0 260 260"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                {result?.path ? (
+                  <path
+                    data-testid="dock-vectorscope-trace"
+                    d={result.path}
+                    fill="none"
+                    stroke="var(--ui-vectorscope-trace)"
+                    strokeWidth="var(--ui-vectorscope-stroke-width)"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ) : null}
+              </svg>
+            </>
           ) : (
             <VectorscopePolarStage
               labelStrip={showPairLabels ? "calc(var(--ui-dock-fs-label) + 2px)" : null}
@@ -229,15 +219,6 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               />
             </VectorscopePolarStage>
           )}
-          {showPairLabels && isLissajous ? (
-            <div
-              data-testid="dock-vectorscope-pair-labels"
-              className="pointer-events-none absolute inset-x-0 top-0 flex justify-between px-0.5 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground"
-            >
-              <span className="max-w-[45%] truncate">{firstLabel}</span>
-              <span className="max-w-[45%] truncate text-right">{secondLabel}</span>
-            </div>
-          ) : null}
         </div>
 
         {expanded ? (

@@ -15,8 +15,6 @@ import { createContext, useContext } from "react";
  *   displayAudio: any,
  *   hasTpMaxValue: boolean,
  *   onResetTpMax: (...args: any[]) => any,
- *   vsGridDiagInset: number,
- *   vsGridDiagFar: number,
  *   correlation: any,
  *   vectorscopePairX: number,
  *   vectorscopePairY: number,

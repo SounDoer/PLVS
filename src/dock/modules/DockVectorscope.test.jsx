@@ -274,14 +274,31 @@ describe("DockVectorscope", () => {
     }
   );
 
-  it("insets the Lissajous grid away from the corner labels", () => {
-    renderWith(null);
-    const lines = screen.getByTestId("dock-vectorscope-lissajous-grid").querySelectorAll("line");
+  it("insets the Lissajous grid by the label size only while the labels show", () => {
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    const box = (height) => ({
+      width: 220,
+      height,
+      top: 0,
+      right: 220,
+      bottom: height,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const gridInset = () =>
+      screen.getByTestId("dock-vectorscope-lissajous-grid").parentElement.style.inset;
 
-    expect(lines[0].getAttribute("x1")).toBe("4");
-    expect(lines[0].getAttribute("y1")).toBe("4");
-    expect(lines[1].getAttribute("x1")).toBe("256");
-    expect(lines[1].getAttribute("y1")).toBe("4");
+    rect.mockReturnValue(box(72));
+    const labelled = renderWith(null);
+    expect(gridInset()).toBe("calc(var(--ui-dock-fs-label) + 2px)");
+    labelled.unmount();
+
+    rect.mockReturnValue(box(40));
+    renderWith(null);
+    expect(gridInset()).toBe("0");
+    rect.mockRestore();
   });
 
   it("offers click-to-reset without a plot hover tooltip", () => {
