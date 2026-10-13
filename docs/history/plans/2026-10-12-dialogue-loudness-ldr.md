@@ -99,7 +99,7 @@
       report, Agent Control, and File analysis tests during each phase.
 - [x] Run `npm test`, frontend format/lint/typecheck for frontend changes, and `npm run rust:check`
       before each commit.
-- [ ] Compare Agent Control screenshots before and after the Stats and Dock label changes at narrow
+- [x] Compare Agent Control screenshots before and after the Stats and Dock label changes at narrow
       and wide widths.
 - [x] Run `npm run smoke:capture` because the capture/DSP path changes; do not bypass a red result.
 - [ ] Run `npm run soak:capture` for four hours and compare drift and resource behaviour with the
