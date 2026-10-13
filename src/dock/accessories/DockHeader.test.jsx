@@ -19,7 +19,7 @@ const STATE = {
 };
 
 describe("DockHeader", () => {
-  it("puts transport at the start and the Dock tools in the trailing actions group", () => {
+  it("puts transport between a leading spacer and the trailing group holding the Dock tools", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     render(<DockHeader state={STATE} onAction={vi.fn()} />);
     const buttons = screen.getAllByRole("button");
@@ -36,7 +36,10 @@ describe("DockHeader", () => {
     const actions = screen.getByTestId("dock-header-actions");
     expect(actions.contains(buttons[0])).toBe(false);
     expect(buttons.slice(1).every((button) => actions.contains(button))).toBe(true);
-    expect(actions.parentElement).toBe(screen.getByTestId("dock-header"));
+    const [, transport, trailing] = screen.getByTestId("dock-header").children;
+    expect(transport.contains(buttons[0])).toBe(true);
+    expect(trailing).toBe(screen.getByTestId("dock-header-trailing"));
+    expect(actions.parentElement).toBe(trailing);
   });
 
   it("keeps an error notice beside the transport, outside the actions group", () => {

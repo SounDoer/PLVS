@@ -41,6 +41,8 @@ export function DockHeader({ state, onAction }) {
         "h-screen w-screen select-none px-[var(--ui-header-pad-x)] text-foreground"
       )}
     >
+      {/* Equal-width sides keep the transport on the window's centre line. */}
+      <div className="min-w-0 flex-1" />
       <SourceTransportCluster
         state={state.sourceTransportState}
         sourceMode="live"
@@ -48,94 +50,98 @@ export function DockHeader({ state, onAction }) {
         onSourceModeChange={() => {}}
         onPrimaryAction={(actionKind) => onAction("source-primary", { actionKind })}
       />
-      {state.notice ? (
-        <HoverTip
-          tip={state.notice.details ?? state.notice.text}
-          side="left"
-          align="center"
-          className="min-w-0 max-w-[40vw]"
-          tipClassName="w-max max-w-[calc(100vw-1rem)] overflow-hidden text-ellipsis whitespace-nowrap"
-        >
-          <span
-            className={cn(
-              "block truncate text-[length:var(--ui-fs-status)] font-medium",
-              state.notice.kind === "error"
-                ? "text-[color:var(--ui-feedback-danger)]"
-                : "text-muted-foreground"
-            )}
+      <div data-testid="dock-header-trailing" className="flex min-w-0 flex-1 items-center gap-3">
+        {state.notice ? (
+          <HoverTip
+            tip={state.notice.details ?? state.notice.text}
+            side="left"
+            align="center"
+            className="min-w-0 max-w-[40vw]"
+            tipClassName="w-max max-w-[calc(100vw-1rem)] overflow-hidden text-ellipsis whitespace-nowrap"
           >
-            {state.notice.text}
-          </span>
-        </HoverTip>
-      ) : null}
-      <div className="flex-1" />
-      <div data-testid="dock-header-actions" className={SHELL_HEADER_ACTIONS}>
-        <IconButton
-          icon={<Trash2 className={ACTION_ICON_CLASS} />}
-          tip="Clear"
-          {...toolTipProps}
-          disabled={state.clearDisabled}
-          onClick={() => onAction("clear")}
-        />
-        <IconButton
-          icon={<Gauge className={ACTION_ICON_CLASS} />}
-          tip="Loudness Profile"
-          {...toolTipProps}
-          aria-pressed={state.editorView === "loudness-profile"}
-          className={cn(
-            state.editorView === "loudness-profile" ? "bg-ui-hover text-foreground" : undefined
-          )}
-          onClick={(event) => toggleEditor("loudness-profile", event)}
-        />
-        <IconButton
-          icon={<LayoutGrid className={ACTION_ICON_CLASS} />}
-          tip="Edit modules"
-          {...toolTipProps}
-          aria-pressed={state.editorView === "modules"}
-          className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
-          onClick={(event) => toggleEditor("modules", event)}
-        />
-        {supportsReservation ? (
+            <span
+              className={cn(
+                "block truncate text-[length:var(--ui-fs-status)] font-medium",
+                state.notice.kind === "error"
+                  ? "text-[color:var(--ui-feedback-danger)]"
+                  : "text-muted-foreground"
+              )}
+            >
+              {state.notice.text}
+            </span>
+          </HoverTip>
+        ) : null}
+        <div className="flex-1" />
+        <div data-testid="dock-header-actions" className={cn(SHELL_HEADER_ACTIONS, "shrink-0")}>
+          <IconButton
+            icon={<Trash2 className={ACTION_ICON_CLASS} />}
+            tip="Clear"
+            {...toolTipProps}
+            disabled={state.clearDisabled}
+            onClick={() => onAction("clear")}
+          />
+          <IconButton
+            icon={<Gauge className={ACTION_ICON_CLASS} />}
+            tip="Loudness Profile"
+            {...toolTipProps}
+            aria-pressed={state.editorView === "loudness-profile"}
+            className={cn(
+              state.editorView === "loudness-profile" ? "bg-ui-hover text-foreground" : undefined
+            )}
+            onClick={(event) => toggleEditor("loudness-profile", event)}
+          />
+          <IconButton
+            icon={<LayoutGrid className={ACTION_ICON_CLASS} />}
+            tip="Edit modules"
+            {...toolTipProps}
+            aria-pressed={state.editorView === "modules"}
+            className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
+            onClick={(event) => toggleEditor("modules", event)}
+          />
+          {supportsReservation ? (
+            <IconButton
+              icon={
+                state.reserveSpace ? (
+                  <PanelTop className={ACTION_ICON_CLASS} />
+                ) : (
+                  <PanelTopDashed className={ACTION_ICON_CLASS} />
+                )
+              }
+              tip={state.reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
+              {...toolTipProps}
+              aria-pressed={state.reserveSpace}
+              onClick={() => onAction("toggle-reserve-space")}
+            />
+          ) : null}
           <IconButton
             icon={
-              state.reserveSpace ? (
-                <PanelTop className={ACTION_ICON_CLASS} />
+              state.edge === "top" ? (
+                <ArrowDownToLine className={ACTION_ICON_CLASS} />
               ) : (
-                <PanelTopDashed className={ACTION_ICON_CLASS} />
+                <ArrowUpToLine className={ACTION_ICON_CLASS} />
               )
             }
-            tip={state.reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
+            tip={state.edge === "top" ? "Dock to bottom" : "Dock to top"}
             {...toolTipProps}
-            aria-pressed={state.reserveSpace}
-            onClick={() => onAction("toggle-reserve-space")}
+            onClick={() => onAction("set-edge", { edge: state.edge === "top" ? "bottom" : "top" })}
           />
-        ) : null}
-        <IconButton
-          icon={
-            state.edge === "top" ? (
-              <ArrowDownToLine className={ACTION_ICON_CLASS} />
-            ) : (
-              <ArrowUpToLine className={ACTION_ICON_CLASS} />
-            )
-          }
-          tip={state.edge === "top" ? "Dock to bottom" : "Dock to top"}
-          {...toolTipProps}
-          onClick={() => onAction("set-edge", { edge: state.edge === "top" ? "bottom" : "top" })}
-        />
-        <IconButton
-          icon={<PictureInPicture2 className={ACTION_ICON_CLASS} />}
-          tip="Restore window"
-          {...toolTipProps}
-          onClick={() => onAction("restore-window")}
-        />
-        <IconButton
-          icon={<Bookmark className={ACTION_ICON_CLASS} />}
-          tip="Presets"
-          {...toolTipProps}
-          aria-pressed={state.editorView === "presets"}
-          className={cn(state.editorView === "presets" ? "bg-ui-hover text-foreground" : undefined)}
-          onClick={(event) => toggleEditor("presets", event)}
-        />
+          <IconButton
+            icon={<PictureInPicture2 className={ACTION_ICON_CLASS} />}
+            tip="Restore window"
+            {...toolTipProps}
+            onClick={() => onAction("restore-window")}
+          />
+          <IconButton
+            icon={<Bookmark className={ACTION_ICON_CLASS} />}
+            tip="Presets"
+            {...toolTipProps}
+            aria-pressed={state.editorView === "presets"}
+            className={cn(
+              state.editorView === "presets" ? "bg-ui-hover text-foreground" : undefined
+            )}
+            onClick={(event) => toggleEditor("presets", event)}
+          />
+        </div>
       </div>
     </div>
   );
