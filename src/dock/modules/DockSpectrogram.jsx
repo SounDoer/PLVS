@@ -2,7 +2,7 @@ import { useMemo, useRef } from "react";
 import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { resolveSpectrogramSampleMs } from "../../math/spectrogramTimeline.js";
+import { resolveStableSpectrogramSampleMs } from "../../math/spectrogramTimeline.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
@@ -28,7 +28,8 @@ export function DockSpectrogram({ controls }) {
   );
   const snaps = snapRef.current;
   const latest = snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
-  const sampleMs = resolveSpectrogramSampleMs(snaps, VISUAL_HIST_SAMPLE_SEC * 1000);
+  // Nominal, not the newest interval: the painter's gap test scales with it (spectrogramFrameEndMs).
+  const sampleMs = resolveStableSpectrogramSampleMs(snaps, VISUAL_HIST_SAMPLE_SEC * 1000);
   const newestMs = Number.isFinite(latest?.timestampMs) ? latest.timestampMs + sampleMs : NaN;
   const windowMs = (controls?.dockHistoryWindowSec ?? 60) * 1000;
   const oldestMs = Number.isFinite(newestMs) ? newestMs - windowMs : NaN;

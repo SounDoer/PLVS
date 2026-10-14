@@ -89,6 +89,15 @@ describe("DockSpectrogram", () => {
     );
   });
 
+  it("judges gaps against the nominal row cadence, not the newest interval", () => {
+    const snaps = makeSnaps(
+      [0, 40, 90, 130, 200].map((timestampMs) => ({ timestampMs, dbList: [-20] }))
+    );
+    renderWith({ controls: {}, snaps });
+
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0].sampleMs).toBe(40);
+  });
+
   it("renders an empty responsive canvas without history", () => {
     const controls = { spectrumChannel: { type: "pair", x: 0, y: 1 }, dockHistoryWindowSec: 60 };
     const { container } = renderWith({ controls, snaps: makeSnaps([]) });

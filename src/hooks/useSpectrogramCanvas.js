@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 import { buildYToBand, buildYTiltDb } from "../math/spectrogramMath.js";
-import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
+import { spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 import {
   beginPanelCpuSample,
@@ -133,8 +133,8 @@ function upperBoundTimestamp(view, target, startIdx, endIdx) {
 }
 
 /**
- * Rows a strip repaint draws: from the row already in progress at the strip's left edge through the
- * newest row at or before its right edge.
+ * Rows a repaint draws, whole or strip: from the row already in progress at its left edge through
+ * the newest row at or before its right edge.
  *
  * The row at the left edge is found by timestamp, not by reaching back one `sampleMs`. That period
  * is the newest interval only, and live rows tick at 40-48 ms around a 40 ms gate: a row longer
@@ -394,7 +394,8 @@ export function useSpectrogramCanvas({
         cache.paintedOldestMs = NaN;
       }
 
-      const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);
+      // Including the row already in progress at the left edge: it owns the leftmost columns.
+      const { startIdx, endIdx } = spectrogramStripRange(snaps, oldestMs, newestMs);
       if (endIdx < startIdx) {
         ctx.clearRect(0, 0, W, H);
         cache.paintedOldestMs = NaN;

@@ -305,8 +305,9 @@ export function SpectrogramPanel() {
   const sampleMs = resolveSpectrogramSampleMs(spectrogramSnaps, VISUAL_HIST_SAMPLE_SEC * 1000);
   // The 3D waterfall quantises its decimation stride by this period, so it needs the cadence to hold
   // still between updates and matched to a producer's nominal cadence rather than using a raw
-  // measurement -- see resolveStableSpectrogramSampleMs. The 2D path keeps the plain one: gap
-  // detection wants the local interval, and it is tolerant of the jitter that breaks quantisation.
+  // measurement -- see resolveStableSpectrogramSampleMs. The 2D painter needs it too: its gap test
+  // scales with this period, and against the newest interval the same late row was a gap on one
+  // repaint and not the next (see spectrogramFrameEndMs). Hover keeps the plain one.
   const stableSampleMs = resolveStableSpectrogramSampleMs(
     spectrogramSnaps,
     VISUAL_HIST_SAMPLE_SEC * 1000
@@ -340,7 +341,7 @@ export function SpectrogramPanel() {
     snapRef,
     oldestMs: paintOldestMs,
     newestMs: paintNewestMs,
-    sampleMs,
+    sampleMs: stableSampleMs,
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
     colormapLut,

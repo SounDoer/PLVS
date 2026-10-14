@@ -101,6 +101,16 @@ describe("spectrogramFrameEndMs", () => {
     expect(spectrogramFrameEndMs(f, 1, SAMPLE_MS)).toBe(1081);
   });
 
+  it("stitches a row the engine emitted one tick late", () => {
+    // Live rows are gated at ">= 40 ms since the last emit" and checked once per processed audio
+    // block, so a busy engine emits one 70-97 ms after the last with no audio missing in between.
+    // Measured 2026-10-14: at 1.8 x 40 ms those intervals rendered as 1-4 px dark seams.
+    const f = viewOf([{ timestampMs: 1000 }, { timestampMs: 1040 }, { timestampMs: 1122 }]);
+    expect(spectrogramFrameEndMs(f, 1, SAMPLE_MS)).toBe(1122);
+    const slowest = viewOf([{ timestampMs: 1000 }, { timestampMs: 1097 }]);
+    expect(spectrogramFrameEndMs(slowest, 0, SAMPLE_MS)).toBe(1097);
+  });
+
   it("keeps real gaps blank", () => {
     const f = viewOf([{ timestampMs: 1000 }, { timestampMs: 1120 }]);
     expect(spectrogramFrameEndMs(f, 0, SAMPLE_MS)).toBe(1040);

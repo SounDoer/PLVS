@@ -204,10 +204,19 @@ export function resolveStableSpectrogramSampleMs(view, fallbackMs) {
 }
 
 /**
+ * Where a frame's paint ends: at the next frame, unless the jump to it is a real gap in time.
+ *
+ * `sampleMs` should be the producer's nominal cadence (`resolveStableSpectrogramSampleMs`). Live
+ * rows are gated at ">= 40 ms since the last emit" and checked once per processed audio block, so
+ * a busy engine emits a row up to ~97 ms after the last with no audio missing in between. The
+ * factor stitches those; a real gap -- a request key that was not being computed, a capture that
+ * stopped -- is far longer. At 1.8 x the newest interval the same late row was a gap on one repaint
+ * and not the next: 1-4 px seams flickering in and out of the image, measured 2026-10-14.
+ *
  * @param {number} index
  * @param {number} sampleMs
  */
-export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {
+export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 2.5) {
   const ts = view?.timestampAt?.(index);
   if (!Number.isFinite(ts)) return NaN;
 

@@ -213,6 +213,15 @@ describe("SpectrogramPanel", () => {
     expect(frozen).toBe(mine);
   });
 
+  it("judges gaps against the nominal row cadence, not the newest interval", () => {
+    // The newest interval jitters between 40 and 80+ ms. Used as the gap scale it made the same late
+    // row a gap on one repaint and not the next, so seams flickered in and out of the image.
+    const rows = [0, 40, 90, 130, 200].map((timestampMs) => ({ timestampMs, dbList: [-20] }));
+    renderPanel({ getSpectrogramSnapsForKey: () => viewOf(rows) });
+
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].sampleMs).toBe(40);
+  });
+
   it("reads its own request key's live rolling history in live mode", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 2 } };
     const key = spectrumRequestKeyFromControls(panelControls);

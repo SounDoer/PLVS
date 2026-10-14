@@ -11,7 +11,6 @@ import {
   useSpectrogramCanvas,
 } from "./useSpectrogramCanvas.js";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
-import { inWindowRange } from "../math/spectrogramTimeline.js";
 
 import { standIn } from "../testing/standIn.js";
 const BANDS = [{ fCenter: 1000 }];
@@ -191,6 +190,23 @@ describe("useSpectrogramCanvas", () => {
     rafCallback();
 
     expect(oldestColumn()[3]).toBe(0);
+  });
+
+  it("paints the row already in progress at the window's left edge", () => {
+    // A row that began before the window and is still running owns its leftmost columns. A full
+    // paint that took only rows starting inside the window left them blank: a dark line at the
+    // left edge on every full repaint, measured 2026-10-14.
+    const rows = [-20, 20].map((timestampMs) => ({ timestampMs, bands: BANDS, dbList: [-20] }));
+    const snaps = {
+      length: 2,
+      version: 1,
+      timestampAt: (i) => rows[i]?.timestampMs ?? NaN,
+      rowAt: (i) => rows[i],
+    };
+    render(<Harness snaps={snaps} colormapLut={lutOf(255)} />);
+    rafCallback();
+
+    expect(oldestColumn()[3]).toBeGreaterThan(0);
   });
 
   it("bounds dense long-window painting by canvas width", () => {
@@ -489,7 +505,7 @@ describe("sliding versus repainting", () => {
   });
 
   // Live capture, as the hook sees it: the view grows one row at a time, rows tick at 40-48 ms
-  // around their 40 ms gate, `sampleMs` is the newest interval only, and the window's right edge
+  // around their 40 ms gate, `sampleMs` jitters with the newest interval, and the window's right edge
   // follows the master clock rather than the newest row, `leads[k]` ms past it. Slides the image
   // the way the hook does and returns the columns it left transparent where the same instant
   // drawn from scratch is painted. Seams only: a row boundary that rounds one column differently
@@ -512,11 +528,12 @@ describe("sliding versus repainting", () => {
       rowAt: (i) => rows[i],
     });
     const blank = () => ({ data: new Uint8ClampedArray(width * H * 4), width, height: H });
-    // `range` is the hook's: the window for a full paint, the strip's own rows for a slide. The
-    // reference instead takes every row reaching into the window, including the one in progress at
-    // its left edge that a full paint leaves out; that edge is not what these tests are about.
-    const paintFrom = (target, view, oldestMs, sampleMs, xFrom, range) => {
-      const { startIdx, endIdx } = range(view, oldestMs + (xFrom / width) * span, oldestMs + span);
+    const paintFrom = (target, view, oldestMs, sampleMs, xFrom) => {
+      const { startIdx, endIdx } = spectrogramStripRange(
+        view,
+        oldestMs + (xFrom / width) * span,
+        oldestMs + span
+      );
       if (endIdx < startIdx) return NaN;
       paintSpectrogramImageData(
         target,
@@ -541,7 +558,7 @@ describe("sliding versus repainting", () => {
     let view = viewUpTo(first);
     let sampleMs = times[first - 1] - times[first - 2];
     let paintedOldestMs = times[first - 1] - span;
-    let paintedNewestRowMs = paintFrom(slid, view, paintedOldestMs, sampleMs, 0, inWindowRange);
+    let paintedNewestRowMs = paintFrom(slid, view, paintedOldestMs, sampleMs, 0);
     for (let count = first + 1; count <= rows.length; count += 1) {
       view = viewUpTo(count);
       sampleMs = times[count - 1] - times[count - 2];
@@ -555,18 +572,11 @@ describe("sliding versus repainting", () => {
       );
       if (plan.xFrom > 0) scrollSpectrogramImageData(slid, plan.shiftPx);
       paintedOldestMs = plan.paintedOldestMs;
-      paintedNewestRowMs = paintFrom(
-        slid,
-        view,
-        paintedOldestMs,
-        sampleMs,
-        plan.xFrom,
-        plan.xFrom > 0 ? spectrogramStripRange : inWindowRange
-      );
+      paintedNewestRowMs = paintFrom(slid, view, paintedOldestMs, sampleMs, plan.xFrom);
     }
 
     const repainted = blank();
-    paintFrom(repainted, view, paintedOldestMs, sampleMs, 0, spectrogramStripRange);
+    paintFrom(repainted, view, paintedOldestMs, sampleMs, 0);
     const seams = [];
     for (let x = 0; x < width; x += 1) {
       const alpha = (image, y) => image.data[(y * width + x) * 4 + 3];
