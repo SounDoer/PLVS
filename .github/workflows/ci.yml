@@ -7,7 +7,38 @@ on:
     branches: [main]
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      scope: ${{ steps.changes.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Classify the complete push or pull request
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node scripts/check-changes.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --committed-only
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run website:verify
+
   frontend:
+    needs: scope
+    if: needs.scope.outputs.scope != 'website'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,6 +88,8 @@ jobs:
         run: npm run build
 
   rust:
+    needs: scope
+    if: needs.scope.outputs.scope != 'website'
     # ubuntu-24.04 (glibc 2.39) provides the __isoc23_* symbols the prebuilt ONNX Runtime (ort,
     # pulled in by the ten-vad/firered-vad adapters) is linked against; 22.04 (glibc 2.35) fails to
     # link them.
@@ -92,6 +125,8 @@ jobs:
         run: cargo test --workspace
 
   rust-windows:
+    needs: scope
+    if: needs.scope.outputs.scope != 'website'
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -118,6 +153,8 @@ jobs:
         run: cargo test --workspace
 
   rust-macos:
+    needs: scope
+    if: needs.scope.outputs.scope != 'website'
     runs-on: macos-latest
     steps:
       - name: Checkout

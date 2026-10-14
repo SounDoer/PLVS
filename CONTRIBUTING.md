@@ -137,6 +137,57 @@ Monitoring, Snapshot, and Theme Colors. All three application scenes are capture
 is optional while content lives at `sharesets/catalogue`; external Catalogue checkouts pass their
 own root without changing website code.
 
+### Website checks and independent publication
+
+Use `npm run check:changes` before committing or pushing. It refreshes `origin/main`, checks all
+pending commits plus staged, unstaged and untracked changes, and runs `website:verify` only when
+every changed path belongs to the explicit website allowlist. Reverted changes within the pending
+range still count. Shared code, dependencies, workflow configuration, unknown paths, empty ranges,
+and missing or divergent baselines use the full `npm run check`. After a rebase or further edits,
+check again. For an explicit range, use `-- --base <base-sha> --head <head-sha>`; only CI should
+normally add `--committed-only`. Do not narrow the base to skip earlier pending commits.
+
+`website:verify` assembles and validates the complete site and runs website, guide, and deployment
+contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
+widths; unit tests cannot verify alignment. CI uses the same classifier for the complete push/PR:
+the website job always runs, while website-only changes skip desktop frontend and Rust jobs.
+Desktop releases retain the full local preflight and exact-SHA CI gate.
+
+Website publication does not bump the desktop version or create a GitHub Release. After checking
+and committing the intended changes:
+
+```powershell
+$siteSha = git rev-parse HEAD
+npm run website:review -- $siteSha
+git push origin main
+gh run list --workflow ci.yml --commit $siteSha --event push
+# Wait for the matching CI run to finish successfully before dispatching.
+gh workflow run deploy-website.yml --ref main -f ref=$siteSha
+```
+
+The review command reads `/publication.json`, reports every changed file from the exact live
+website SHA, and separately lists guide differences from the latest stable desktop release. Read
+the actual diff, including website generator/shared inputs and generated guide output. Text
+corrections may ship independently; descriptions of unshipped app features must not silently go
+live. Resolve such differences before dispatch, or discuss a narrowly scoped hotfix checkout with
+the user (the normal rule requiring approval to move work off `main` still applies).
+
+The deployment workflow resolves the requested ref once, requires successful push CI for that
+exact SHA, then passes that SHA to the shared publication workflow. The existing live Sharesets
+history validation remains mandatory. Wait for the deployment conclusion, then verify the live
+`/publication.json` website SHA and the affected page in a browser. A dispatched run is not a
+completed publication. The root marker records `websiteSha` and `contentSha` separately; the
+existing `/sharesets/publication.json` continues to own immutable Catalogue history.
+
+On the first deployment of this workflow, the root marker will not yet exist. Recover the exact
+website SHA from the previous successful deployment's artifact and resolved checkout, then pass
+it explicitly: `npm run website:review -- <candidate-sha> <verified-live-website-sha>`. This bootstrap
+is accepted only for a missing (404) root marker, never for a malformed or unreadable marker, and
+never overrides an existing one. Do not substitute the Sharesets content SHA or assume the previous
+workflow's `headSha` is the deployed website ref. Later missing markers require the same evidence-
+based recovery rather than guessing a baseline. Re-run review if another deployment changes the
+live website while preparing a publication.
+
 ### Curating Sharesets content
 
 `sharesets:curate` is the maintainer path from a candidate content tree to a local review. The first

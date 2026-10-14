@@ -5,17 +5,34 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Released tag to deploy the website and Sharesets content from
+        description: Exact website commit SHA (or stable release tag); successful push CI required
         required: true
         default: main
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Require successful CI for the exact website commit
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEBSITE_REF: ${{ inputs.ref }}
+        run: node scripts/website-publication.mjs gate
   deploy:
+    needs: validate
     uses: ./.github/workflows/publish-site.yml
     with:
-      site_ref: ${{ inputs.ref }}
+      site_ref: ${{ needs.validate.outputs.sha }}

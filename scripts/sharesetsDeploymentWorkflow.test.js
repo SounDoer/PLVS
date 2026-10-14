@@ -10,7 +10,9 @@ describe("Sharesets content deployment", () => {
       expect(read(name)).toContain("uses: ./.github/workflows/publish-site.yml");
       expect(read(name)).not.toContain("actions/deploy-pages");
     }
-    expect(read("deploy-website")).toContain("site_ref: ${{ inputs.ref }}");
+    expect(read("deploy-website")).toContain("site_ref: ${{ needs.validate.outputs.sha }}");
+    expect(read("deploy-website")).toContain("node scripts/website-publication.mjs gate");
+    expect(read("deploy-website")).toContain("needs: validate");
     expect(read("deploy-sharesets")).toContain("content_ref: ${{ inputs.content_ref }}");
     expect(read("deploy-sharesets")).not.toContain("site_ref:");
   });
@@ -51,5 +53,19 @@ describe("Sharesets content deployment", () => {
       "node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site"
     );
     expect(workflow).not.toContain("cp -r site-source/website _site");
+  });
+
+  it("records both identities before upload and verifies the live artifact after deployment", () => {
+    expect(workflow.indexOf('"_site/publication.json"')).toBeLessThan(
+      workflow.indexOf("actions/upload-pages-artifact")
+    );
+    expect(workflow).toContain(
+      "websiteSha:process.env.WEBSITE_SHA,contentSha:process.env.CONTENT_SHA"
+    );
+    expect(workflow.indexOf("Verify the live website identity")).toBeGreaterThan(
+      workflow.indexOf("actions/deploy-pages@v5")
+    );
+    expect(workflow).toContain("marker.websiteSha !== process.env.WEBSITE_SHA");
+    expect(workflow).toContain("marker.contentSha !== process.env.CONTENT_SHA");
   });
 });

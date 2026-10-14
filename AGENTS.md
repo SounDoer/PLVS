@@ -29,7 +29,7 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run desktop:dev`                  | Run the dev app (Tauri). Audio capture only works here.                           |
 | `npm run desktop:control -- <command>` | Build and run the dev CLI against a running dev app.                              |
 | `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                         |
-| `npm run check`                        | The merge gate: version + format + lint + typecheck + test + build + Rust checks. |
+| `npm run check`                        | Full repository gate: version + format + lint + typecheck + test + build + Rust. |
 | `npm run typecheck`                    | `tsc` over `src/` (checkJs, JSDoc types). Zero errors, no baseline.               |
 | `npm test`                             | Vitest, single run.                                                               |
 | `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
@@ -38,6 +38,8 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run website:dev`                  | Build, watch and serve the complete website at `127.0.0.1:4173`.                  |
 | `npm run website:build`                | Assemble the complete static website under `artifacts/website/`.                  |
 | `npm run website:check`                | Assemble and validate all local website pages, links and assets.                  |
+| `npm run website:verify`               | Website build, link validation, and website / documentation contract tests.       |
+| `npm run check:changes`                | Refresh origin/main and check the complete pending range plus working changes.    |
 | `npm run docs:site`                    | Render `docs/user/` into an isolated ignored Docs artifact.                       |
 
 ## Agent Control
@@ -97,8 +99,9 @@ that. Source comments may cite a record as evidence ("measured in …"), because
 with the code beside them.
 
 **A change to user-visible behaviour updates the matching `docs/user/` chapter in the same
-commit.** The user guide is the single source for how PLVS behaves; the website renders it and is
-deployed only when a version is released, so writing it early publishes nothing. The `README.md`
+commit.** The user guide is the single source for how PLVS behaves. The website renders it and can
+deploy independently of desktop releases; review guide differences for unshipped features before
+an independent website deployment. The `README.md`
 highlights, the website homepage and its screenshots are summaries, reconciled at release by
 `.agents/skills/plvs-release` Step 4b. `docs/prd.md` states intent and boundaries; a new capability reaches
 it only when it changes a promise or a non-goal.
@@ -135,13 +138,22 @@ After capture-layer work, remind the user to run `npm run soak:capture` (4 hours
 `fix(cli): ...`.** Nothing lints this, but `.agents/skills/plvs-release` reads the types to pick the SemVer
 bump and group the CHANGELOG, so an unprefixed commit silently drops out of the release notes.
 
-**Checks run in two tiers.** CI runs on push, not on commit, so the full gate is owed once per push:
+**Checks follow the complete change scope.** CI runs on push and pull requests, not on commit:
 
-- Before each commit: `npm test`, plus the checks for the side you touched — `format:check`, `lint`
-  and `typecheck` for frontend changes, `rust:check` for Rust changes. `npm test` is never skipped,
-  even for Rust-only, config-only or docs-only commits: Vitest suites under `scripts/` guard
+- Website-only changes: use `npm run check:changes` before commit and push. Its shared classifier
+  examines every pending commit plus staged, unstaged, and untracked files; only known website
+  inputs qualify for `website:verify`. Inspect responsive screenshots for visual changes.
+- Other changes, before each commit: `npm test`, plus the checks for the side you touched — `format:check`, `lint`
+  and `typecheck` for frontend changes, `rust:check` for Rust changes. Outside the website-only
+  exception, `npm test` is never skipped, even for Rust-only, config-only or docs-only commits: Vitest suites under `scripts/` guard
   `src-tauri` config, installer files and the documentation structure.
-- Before each push or merge: the full `npm run check`.
+- Before each push or merge: `npm run check:changes`. Mixed or unknown changes and unavailable
+  baselines fall back to the full `npm run check`. Stable desktop releases always run the full gate.
+
+**Website publication:** use `.agents/skills/plvs-website-publish/SKILL.md` for independent website
+deployments; no desktop version bump is needed. Publish an exact reviewed SHA only after its push
+CI succeeds, review the full difference from the live website (including generated docs), and keep
+the Sharesets immutable-history gate. Commands and initial marker recovery are in `CONTRIBUTING.md`.
 
 The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `npm run version:check` verifies this.
 
@@ -165,8 +177,8 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 **Always**
 
-- Run `npm test` plus the touched side's checks before each commit, and `npm run check` before
-  each push or merge. See Git workflow.
+- Follow the scope-aware checks in Git workflow before each commit, push, or merge. Unknown or
+  mixed changes use the full gate; desktop release checks are never reduced.
 - Register every new editor with draft / preview / save / cancel semantics as a blocking editor
   (`useBlockingEditor`), and cover it with tests that the scene operations are refused and that
   nothing was mutated before the refusal. See Known pitfalls.

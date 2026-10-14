@@ -9,6 +9,9 @@ This skill guides the complete release workflow for PLVS, a Tauri-based desktop 
 
 ## When to Invoke
 
+For an independent website update without a desktop release, use
+`../plvs-website-publish/SKILL.md` instead. Website publication does not require a desktop version bump.
+
 - User wants to release a new version of PLVS
 - User asks about the release process or workflow
 - User needs help with version bumping or CHANGELOG updates

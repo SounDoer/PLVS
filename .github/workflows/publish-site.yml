@@ -80,9 +80,39 @@ jobs:
           (cd site-source && node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site)
           candidate_sha=$(git -C content-source rev-parse HEAD)
           node site-source/scripts/sharesets-publication.mjs write _site/sharesets/publication.json "$candidate_sha"
+          export WEBSITE_SHA=$(git -C site-source rev-parse HEAD)
+          export CONTENT_SHA="$candidate_sha"
+          node --input-type=module -e 'import { writeFileSync } from "node:fs"; writeFileSync("_site/publication.json", JSON.stringify({schemaVersion:1,repository:process.env.GITHUB_REPOSITORY,websiteSha:process.env.WEBSITE_SHA,contentSha:process.env.CONTENT_SHA}, null, 2) + "\n");'
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site/
       - id: deployment
         uses: actions/deploy-pages@v5
+      - name: Verify the live website identity
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          export WEBSITE_SHA=$(git -C site-source rev-parse HEAD)
+          export CONTENT_SHA=$(git -C content-source rev-parse HEAD)
+          node --input-type=module <<'NODE'
+          import { setTimeout } from 'node:timers/promises';
+          const url = new URL('publication.json', process.env.PAGE_URL);
+          let failure;
+          for (let attempt = 0; attempt < 6; attempt++) {
+            try {
+              url.searchParams.set('verify', `${Date.now()}`);
+              const response = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              const marker = await response.json();
+              if (marker.schemaVersion !== 1 || marker.repository !== process.env.GITHUB_REPOSITORY ||
+                  marker.websiteSha !== process.env.WEBSITE_SHA || marker.contentSha !== process.env.CONTENT_SHA) {
+                throw new Error('Live website identity does not match the deployed artifact');
+              }
+              console.log(`Verified live website ${marker.websiteSha}`);
+              process.exit(0);
+            } catch (error) { failure = error; }
+            if (attempt < 5) await setTimeout(5000);
+          }
+          throw failure;
+          NODE
