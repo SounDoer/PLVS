@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { buildDocsPage, readChapters, renderChapter } from "./build-user-docs.mj
 
 const page = buildDocsPage();
 const chapters = readChapters();
+const styles = readFileSync(join(cwd(), "website/assets/docs.css"), "utf8");
 
 describe("user guide site build", () => {
   it("renders every chapter listed in the guide index, in order, with a sidebar link", () => {
@@ -55,18 +56,22 @@ describe("user guide site build", () => {
     expect(html).toContain('href="#other-limits"');
   });
 
-  it("keeps the page chrome from the template", () => {
-    expect(page).toContain('<a class="brand" href="../index.html">');
-    expect(page).toContain('<a class="nav-download" href="../index.html#download">Download</a>');
-    expect(page).toMatch(/\.nav-links a:not\(\.nav-download\)\s*\{[\s\S]*display:\s*none/);
+  it("uses shared navigation and design assets with Docs as the current page", () => {
+    expect(page).toContain('href="../assets/site-chrome.css"');
+    expect(page).toContain('href="../assets/docs.css"');
+    expect(page).toContain('href="/docs/" aria-current="page"');
+    expect(page).toContain('href="/sharesets/"');
+    expect(page).toContain('href="/#download"');
+    expect(page).toContain("enhanceSiteNavigation");
+    expect(page).not.toContain("SITE_NAVIGATION");
     expect(page).not.toContain("USER_DOCS_");
   });
 
   it("keeps mobile chapter navigation contained without a system scrollbar", () => {
-    expect(page).toMatch(
+    expect(styles).toMatch(
       /@media \(max-width: 880px\)[\s\S]*?\.docs-sidebar\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?overscroll-behavior-x:\s*contain;[\s\S]*?scrollbar-width:\s*none;[\s\S]*?max-width:\s*100%;/
     );
-    expect(page).toMatch(/\.docs-sidebar::\-webkit-scrollbar\s*\{\s*display:\s*none;/);
-    expect(page).toMatch(/\.docs-sidebar a:focus-visible\s*\{[\s\S]*?outline:/);
+    expect(styles).toMatch(/\.docs-sidebar::\-webkit-scrollbar\s*\{\s*display:\s*none;/);
+    expect(styles).toMatch(/\.docs-sidebar a:focus-visible\s*\{[\s\S]*?outline:/);
   });
 });

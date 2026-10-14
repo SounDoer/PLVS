@@ -251,7 +251,13 @@ The **Browse** action beside the Presets or Loudness Profile popover title opens
 directly. In Settings, choose **Fixed Theme** to reveal **Browse Themes** below the Theme row;
 it opens the Themes category. Browsing does not change your current setup or discard an editor draft.
 
-On narrow screens, the PLVS homepage and Sharesets navigation show a three-line menu icon
+In Docs, the chapter navigation underlines the current chapter. Select a chapter to jump directly
+to it without a scrolling animation.
+Docs and Privacy show a **Back to Top** arrow beside the reading column after you scroll past the
+first screen. On narrow screens it sits at the bottom right. Select it to return immediately to
+the top navigation.
+
+On narrow screens, the PLVS homepage, Docs, Privacy, and Sharesets navigation show a three-line menu icon
 next to **Download**. Select it to reveal **Sharesets**, **Docs**, and **GitHub**. Select the
 close icon, click outside the navigation, or press Escape to close the menu.
 

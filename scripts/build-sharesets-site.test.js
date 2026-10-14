@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildPack } from "../src/transfer/packShape.js";
 import { buildSharesetsSite, detailGallery, previewLabel } from "./build-sharesets-site.mjs";
+import { buildDocsPage } from "./build-user-docs.mjs";
 
 const temporaryDirectories = [];
 const PNG = Buffer.from(
@@ -211,7 +212,7 @@ describe("Sharesets static site generator", () => {
   });
 
   it.each([false, true])(
-    "gates Sharesets links in the actual homepage and docs templates (published: %s)",
+    "gates Sharesets links on the homepage, docs and privacy pages (published: %s)",
     async (published) => {
       const source = temporaryDirectory("plvs-sharesets-real-nav-source-");
       const site = temporaryDirectory("plvs-sharesets-real-nav-site-");
@@ -223,8 +224,13 @@ describe("Sharesets static site generator", () => {
           JSON.stringify({ schemaVersion: 1, listings: [] })
         );
       mkdirSync(join(site, "docs"));
+      mkdirSync(join(site, "privacy"));
+      writeFileSync(
+        join(site, "privacy", "index.html"),
+        readFileSync("website/privacy/index.html")
+      );
       writeFileSync(join(site, "index.html"), readFileSync("website/index.html"));
-      writeFileSync(join(site, "docs", "index.html"), readFileSync("website/docs/template.html"));
+      writeFileSync(join(site, "docs", "index.html"), buildDocsPage());
       await buildSharesetsSite({
         contentDirectory: source,
         outputDirectory: output,
@@ -232,11 +238,13 @@ describe("Sharesets static site generator", () => {
       });
       const home = readFileSync(join(site, "index.html"), "utf8");
       const docs = readFileSync(join(site, "docs", "index.html"), "utf8");
+      const privacy = readFileSync(join(site, "privacy", "index.html"), "utf8");
       expect(readFileSync(join(site, "assets", "sharesets-detail.css"), "utf8")).toBe(
         readFileSync(join("website", "assets", "sharesets-detail.css"), "utf8")
       );
       expect(home.includes('href="sharesets/"')).toBe(published);
-      expect(docs.includes('href="../sharesets/"')).toBe(published);
+      expect(docs.includes('href="/sharesets/"')).toBe(published);
+      expect(privacy.includes('href="/sharesets/"')).toBe(published);
       expect(home.match(/<footer[\s\S]*?<\/footer>/)?.[0]).not.toContain('href="sharesets/"');
     }
   );

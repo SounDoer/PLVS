@@ -14,23 +14,27 @@ runtime Theme tokens described in `design-tokens.md`.
 
 The Sharesets root, category listing pages and all three resource detail families consume this
 shared source. Detail layouts remain in `sharesets-detail.css`; gallery and copy interactions remain
-in `sharesets-detail.js`. The homepage and documentation template retain their previous styles pending
-separate review. Do not change those pages implicitly while extending the shared components.
+in `sharesets-detail.js`. The homepage, documentation and Privacy pages also consume the shared tokens and site chrome.
+The documentation generator uses the shared navigation renderer with Docs marked as current;
+`website/assets/docs.css` owns only its reading layout, chapter navigation, tables and code blocks.
+Guide content and chapter anchors continue to come from `docs/user/`.
+The Privacy page uses shared typography and navigation, with its 760px reading column and policy
+callout in `website/assets/privacy.css`. Presentation changes do not change its effective date.
 
 ## Agreed foundation
 
 Use Inter throughout: 400 for reading, 500 for navigation, and 600 for headings and actions.
-Use 36px page titles (32px on mobile), 24px section headings, 18px introductions and card titles,
-16px body and control text, and 14px supporting labels. The homepage hero role is 44px, reducing
-to 36px on mobile when the homepage adopts the system. Body line height is 1.6.
+Use 36px page titles (32px on mobile), 32px section headings (28px on mobile), 20px card
+and subsection titles, 18px body and introduction text, and 16px supporting labels and navigation.
+The homepage hero role is 44px, reducing to 36px on mobile. Body line height is 1.6.
 
 Use near-black page backgrounds, dark surfaces, near-white primary text, and legible gray
 secondary text. Filled actions use homepage amber with dark text; links and keyboard focus use
 brighter amber. Components consume named tokens rather than repeating raw colors.
 
-Use the 4, 8, 12, 16, 24, 32 and 48px spacing scale, 4px preview-thumbnail corners, 8px control and
+Use the 4, 8, 12, 16, 24, 32 and 48px spacing scale, 8px preview-thumbnail, control and
 resource-card corners, 16px panel corners and a 44px minimum control height. The content width caps
-at 1180px with 24px outer gutters, reducing to 20px on mobile. Essential information must not depend
+at 1180px with 24px outer gutters. Essential information must not depend
 on hover or color alone.
 
 ## Browsing pattern
@@ -49,6 +53,18 @@ category URLs and resource links remain usable; search controls are revealed onl
 
 Mobile navigation retains Download and reveals other destinations through Menu. Without
 JavaScript, the links remain visible. Escape closes Menu and returns focus to its trigger.
+
+Docs use a sticky chapter sidebar on desktop and a horizontally scrollable chapter list below
+880px. The reading column caps at 760px; body text uses the primary text color, while secondary
+labels use muted text. Wide tables and code blocks scroll within the reading column.
+Chapter links use plain text with no filled background or side marker. The current chapter uses
+primary text and an amber underline, matching site navigation. Chapter links jump immediately
+to their anchors without animated scrolling.
+Docs and Privacy share a neutral, 48px circular Back to Top control with a clear primary-text arrow.
+On wide screens it sits 24px to the right of the reading column, near the bottom of the viewport;
+on narrow screens it uses the bottom-right safe inset. It appears after
+one viewport of scrolling, returns to the page top immediately and restores focus to the home
+link in the site navigation. It stays hidden at the top and is only added when JavaScript runs.
 
 ## Review workflow
 

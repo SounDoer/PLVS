@@ -28,13 +28,18 @@ describe("Privacy Policy", () => {
     expect(html).toContain("xichen@soundoer.com");
   });
 
-  it("resolves every local page and asset link", () => {
+  // Page routes include generated Docs and Sharesets pages; website:check validates those
+  // against the assembled site. Static assets can also be checked directly in the source tree.
+  it("resolves every local stylesheet and image asset", () => {
     const targets = [...html.matchAll(/(?:href|src)="([^"#]+)"/g)]
       .map(([, target]) => target)
-      .filter((target) => !/^[a-z]+:/.test(target));
+      .filter((target) => !/^[a-z]+:/.test(target) && target.includes("/assets/"));
+    expect(targets.length).toBeGreaterThan(0);
     const missing = targets.filter((target) => {
-      const path = join(currentDir, target);
-      return !existsSync(path) && !existsSync(join(path, "index.html"));
+      const path = target.startsWith("/")
+        ? join(currentDir, "..", target.slice(1))
+        : join(currentDir, target);
+      return !existsSync(path);
     });
 
     expect(missing).toEqual([]);

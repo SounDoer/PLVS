@@ -4,6 +4,8 @@ import { pathToFileURL } from "node:url";
 
 import { Marked } from "marked";
 
+import { siteNavigation } from "./site-components.mjs";
+
 /**
  * Renders the Markdown user guide in `docs/user/` into the website's docs page. The Markdown is the
  * source; `website/docs/template.html` only supplies the page around it. Chapter order comes from
@@ -86,6 +88,13 @@ export function buildDocsPage(root = process.cwd()) {
     .join("\n");
   const template = readFileSync(join(root, TEMPLATE), "utf8");
   return template
+    .replace(
+      "<!-- SITE_NAVIGATION -->",
+      siteNavigation("docs").replace(
+        '<a href="/sharesets/">Sharesets</a>',
+        '<!-- SHARESETS_NAV_START --><a href="/sharesets/">Sharesets</a><!-- SHARESETS_NAV_END -->'
+      )
+    )
     .replace("<!-- USER_DOCS_SIDEBAR -->", sidebar)
     .replace("<!-- USER_DOCS_CONTENT -->", content);
 }

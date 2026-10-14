@@ -354,7 +354,11 @@ const SHARESETS_NAVIGATION = /<!-- SHARESETS_NAV_START -->([\s\S]*?)<!-- SHARESE
 
 async function gateSharesetsNavigation(siteDirectory, visible) {
   if (!siteDirectory) return;
-  for (const relativePath of ["index.html", join("docs", "index.html")]) {
+  for (const relativePath of [
+    "index.html",
+    join("docs", "index.html"),
+    join("privacy", "index.html"),
+  ]) {
     const path = join(siteDirectory, relativePath);
     let html;
     try {

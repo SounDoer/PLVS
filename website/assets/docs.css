@@ -1,0 +1,203 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: auto;
+}
+body {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--color-link);
+  text-underline-offset: 3px;
+}
+body.site-background {
+  background-size: 100% 100vh;
+  background-repeat: no-repeat;
+  background-color: var(--color-page);
+}
+a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.docs-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-7);
+  width: min(calc(100% - 2 * var(--page-gutter)), var(--page-width));
+  margin: auto;
+  padding: var(--space-5) 0 var(--space-9);
+}
+.docs-sidebar {
+  flex: 0 0 248px;
+  position: sticky;
+  top: var(--space-5);
+  max-height: calc(100dvh - 2 * var(--space-5));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.docs-sidebar a {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-muted);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+.docs-sidebar a:hover {
+  color: var(--color-text);
+}
+.docs-sidebar a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.docs-sidebar a.active {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: var(--color-action);
+  text-underline-offset: 8px;
+}
+.docs-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 760px;
+  overflow-wrap: anywhere;
+}
+.docs-header {
+  padding-bottom: var(--space-6);
+}
+h1,
+h2,
+h3,
+h4 {
+  font-weight: var(--weight-heading);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+}
+.docs-header h1 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-page);
+}
+.docs-header p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-lead);
+}
+.docs-section {
+  padding: var(--space-7) 0;
+  border-top: 1px solid var(--color-divider);
+  scroll-margin-top: var(--space-5);
+}
+.docs-section h2 {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-section);
+}
+.docs-section h3 {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-title);
+}
+.docs-section h4 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--text-body);
+}
+.docs-section :is(h3, h4, h5, h6) {
+  scroll-margin-top: var(--space-5);
+}
+.docs-section p,
+.docs-section ul,
+.docs-section ol {
+  margin: 0 0 var(--space-4);
+}
+.docs-section ul,
+.docs-section ol {
+  padding-left: var(--space-5);
+}
+.docs-section li + li {
+  margin-top: var(--space-2);
+}
+.docs-section strong {
+  font-weight: var(--weight-heading);
+}
+.docs-section code {
+  padding: 2px var(--space-1);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+}
+.docs-section pre {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  overflow-x: auto;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+.docs-section pre code {
+  padding: 0;
+  background: none;
+}
+.docs-section table {
+  display: block;
+  max-width: 100%;
+  margin: 0 0 var(--space-5);
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+  overflow-wrap: normal;
+}
+.docs-section table code {
+  white-space: nowrap;
+}
+.docs-section th,
+.docs-section td {
+  padding: var(--space-3) var(--space-4) var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+  text-align: left;
+  vertical-align: top;
+}
+.docs-section th {
+  font-weight: var(--weight-heading);
+}
+@media (max-width: 880px) {
+  .docs-layout {
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .docs-sidebar {
+    position: static;
+    flex: 0 1 auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: none;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-divider);
+  }
+  .docs-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+  .docs-sidebar a {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+  .docs-content {
+    max-width: 100%;
+  }
+}
