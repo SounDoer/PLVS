@@ -95,6 +95,7 @@ Until then, ignore this section.
 │  - website/index.html selling points still hold                 │
 │  - website/assets screenshots: retake if the UI visibly changed │
 │  - A changed promise or non-goal also updates docs/prd.md       │
+│  - Review privacy impact and the policy's effective date       │
 │  The website deploys from the tag after the release publishes.  │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
@@ -337,6 +338,20 @@ All notable changes to this project are documented in this file.
 Insert new section after `## [Unreleased]`, before the latest released version.
 
 ---
+
+## Step 4b: Public documentation and privacy review
+
+Reconcile user-visible changes against `docs/user/`, README highlights and the website as described
+in the workflow overview. Also follow **Privacy policy review** in `CONTRIBUTING.md`: inspect the
+complete release range for changes to data collection, consent, payloads, recipients/providers,
+storage, retention and deletion, including related service changes. Record the baseline and
+candidate revisions, evidence and privacy-impact conclusion in the release review, even when no
+policy edit is needed. Resolve relevant live-configuration uncertainties before publication.
+
+If policy text, links or dates change, update `docs/privacy-review.json` with the reviewed fingerprint
+and explicit date decision in the same commit. Run `node scripts/privacy-review.mjs check`;
+the normal tests also enforce it. A matching fingerprint is not evidence that newly changed code
+still matches the policy. Do not auto-advance Effective for a release or cosmetic website change.
 
 ## Step 5: Commit Changes
 

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "reviewedOn": "2026-10-14",
+  "effectiveDate": "2026-09-20",
+  "contentSha256": "c5a813b6eef9564838dbb3c5469d88f6ef986f4e424675e55f8aedca3bde04cf",
+  "previousEffectiveDate": "2026-09-20",
+  "dateDecision": "retained",
+  "changeSummary": "Establish the first review baseline after the Docs and Privacy presentation update; no policy text or data-handling behavior is changed by this work.",
+  "dateRationale": "Retain the existing September 20, 2026 effective date. This baseline records a source review and adds an omission check; it does not introduce new processing or assign a new policy effective date.",
+  "scope": "Source review of update checks, optional feedback diagnostics, crash reporting, website requests and the connected newsletter service. Future releases must review their own complete change range.",
+  "evidence": [
+    {
+      "source": "PLVS: src/hooks/useUpdateCheck.js; src/lib/updateCheck.js; src-tauri/src/lib.rs",
+      "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
+      "notes": "Startup and twelve-hour coordinator checks; updater plugin excluded for preview identity. Native logging uses a 2 MB rotation threshold and KeepSome(3); pending crash enrichment requests 200 log lines."
+    },
+    {
+      "source": "PLVS: src/components/FeedbackDialog.jsx; src/components/CrashReportDialog.jsx; src/lib/feedback.js; src/lib/crashReporting.js; src/lib/feedbackDiagnostics.js; src-tauri/src/feedback_diagnostics.rs; src-tauri/src/crash_report.rs",
+      "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
+      "notes": "Feedback diagnostics default off and are included only when selected; reviewed payload submission is explicit. Crash reports remain local until submission, with combined pending/suppressed retention of five. Diagnostic journals are bounded by 100 records and 64 KiB; frontend fields are allowlisted."
+    },
+    {
+      "source": "PLVS: website/index.html; website/privacy/index.html",
+      "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
+      "notes": "Homepage requests public GitHub release metadata and submits the newsletter form to list.plvs.soundoer.com. Presentation work preserves policy prose and the existing effective date."
+    },
+    {
+      "source": "soundoer-newsletter: src/subscribe.js; src/db.js; src/feedback.js; src/server.js; src/start.js; README.md; .env.example",
+      "revision": "a0cddb1e7191135d130b7b503f90ce358c714dcc",
+      "notes": "Local clean service checkout: SQLite subscriber state; unsubscribe changes status without deleting the row; feedback/crash routes validate and email rather than insert into the subscriber DB. Origin/user-agent are included in messages. Application logging is disabled and rate limiting is five requests per minute. Documentation identifies SES and the example SMTP hostname uses us-east-1."
+    }
+  ],
+  "limitations": "This is a source baseline, not verification of deployed service configuration, mailbox retention, provider processing, or the historical correctness of the original effective date. SES region is supported by example configuration, not an inspection of live credentials or infrastructure. Release reviewers must resolve relevant deployment uncertainties before publishing affected claims."
+}

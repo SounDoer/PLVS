@@ -18,6 +18,14 @@ and marker recovery. This skill coordinates those commands; it does not replace 
 - For rendering changes, compare before/after browser screenshots at desktop, tablet and mobile
   widths. Use the local complete-site server, `npm run website:dev`. App Agent Control is for the
   desktop UI, not the website.
+- Follow **Privacy policy review** in `CONTRIBUTING.md`. Check the full live-to-candidate range
+  for changes to collection, consent, payloads, providers/recipients, retention and deletion,
+  including related service changes. Record the baseline/candidate SHAs, evidence and privacy
+  conclusion in the publication review even when the policy is unchanged. Resolve relevant
+  deployment uncertainties before publication. If policy wording, links or dates change, update
+  `docs/privacy-review.json` with an explicit date decision and run
+  `node scripts/privacy-review.mjs check` before committing the candidate. Cosmetic changes do
+  not advance Effective, and a matching fingerprint never replaces semantic review.
 - Commit only intended files using a scoped Conventional Commit after checks pass. Record the
   full candidate SHA. A user request to commit and publish already authorizes these operations;
   do not ask for the same approval again.

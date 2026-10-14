@@ -110,6 +110,12 @@ Facts the code owns — panels, auto-detected layouts, the macOS minimum version
 names, `plvs-cli` commands — are checked against the code by `scripts/documentationStructure.test.js`.
 Extend those checks instead of adding tests that assert sentences.
 
+Changes to data collection, transmission, retention, recipients or third-party services must
+review `website/privacy/index.html` in the same change. Policy text or link changes also update
+`docs/privacy-review.json` with evidence and an explicit effective-date decision. Presentation-only
+changes do not advance the date. Follow "Privacy policy review" in `CONTRIBUTING.md`; a matching
+fingerprint does not replace checking actual data handling before desktop or website publication.
+
 Write an ADR when someone could look at the code and reasonably ask "why not just do the obvious
 simpler thing?". ADRs are never edited; a changed decision gets a new ADR that supersedes the old.
 

@@ -459,6 +459,47 @@ npm run smoke:capture         # real capture smoke test; needs VB-Cable and VLC 
 npm run soak:capture          # long capture run, 4 hours by default; the only check that finds leaks and metric drift
 ```
 
+## Privacy policy review
+
+`website/privacy/index.html` is the policy source. `docs/privacy-review.json` is the latest
+review record; git preserves earlier records. Its fingerprint covers normalized text inside
+`main` and link destinations, excluding the Effective date (checked separately), comments,
+scripts, styles and surrounding navigation/footer. Cosmetic classes, inline emphasis and
+formatting whitespace do not require a new review. Keep the date in the marked `time` element;
+its displayed text, ISO `datetime`, and the review's `effectiveDate` must agree.
+
+For every desktop release and independent website publication, inspect the complete change range
+since the previous corresponding publication for changes to collection, upload triggers and
+consent, payloads, recipients/providers, storage, retention and deletion. Check the actual code
+and relevant service configuration, not only the policy diff. Record the release-specific outcome
+and baseline/candidate SHAs in the release or publication review report, including a no-impact
+conclusion when appropriate. A release with no policy change does not need a new JSON record.
+
+When policy wording, links or dates change:
+
+1. Review the diff and the affected implementation or service configuration. Update the policy
+   to describe behavior that is actually shipping. Resolve relevant unknowns before publication;
+   do not assert that a source checkout proves live configuration or mailbox retention.
+2. Set `dateDecision` to `updated` for a material policy/data-handling change and choose the actual
+   effective date. Set it to `retained` for a correction or clarification that does not change the
+   policy's effective date. Copy the prior record's `effectiveDate` into `previousEffectiveDate`.
+   Explain the decision in `dateRationale`; do not use today's build/deployment date automatically.
+3. Run `node scripts/privacy-review.mjs snapshot`. After review, copy its `contentSha256` and
+   `effectiveDate` into the JSON record. Update `reviewedOn`, `changeSummary`, `scope`, `evidence`
+   (source paths, inspected revision/configuration reference and findings), and `limitations`
+   (use an explicit statement if none). This read-only command never writes an approval or date.
+4. Run `node scripts/privacy-review.mjs check` and `npm run website:verify`. Commit the policy and
+   its review record together. For initial adoption only, the existing effective date is also
+   the previous date; the initial record documents the source-review scope and its limits.
+
+`website/privacy/index.test.js` runs this gate in both `npm test` and the existing website CI job.
+It rejects a stale fingerprint, missing review details, inconsistent dates and invalid date
+decisions. It does not judge whether prose is true, a change is material, or the declared previous
+date is historically correct. Reviewers must check the git diff and supporting evidence; editing
+the fingerprint alone is not review. Unchanged policy text cannot detect a newly added data flow,
+which is why the release-level semantic check above remains required. This is an omission guard,
+not legal certification or an automatic audit of deployed systems.
+
 ## Theme design review
 
 Capture a baseline before changing built-in colours or renderer composition:
