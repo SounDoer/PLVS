@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { releaseAssetNames } from "./release-assets.mjs";
+import { unwrapReleaseListProse } from "./release-markdown.mjs";
 
 const MAX_CUMULATIVE_SECTIONS = 20;
 
@@ -109,5 +110,5 @@ const installSection = [
   "",
 ].join("\n");
 
-const output = changelogOnly ? `${body}\n` : `${body}\n${installSection}\n`;
+const output = changelogOnly ? `${body}\n` : `${unwrapReleaseListProse(body)}\n${installSection}\n`;
 writeFileSync(outFile, output, "utf8");

@@ -17,6 +17,19 @@ function run(version, outFile, ...args) {
 }
 
 describe("changelog-release-body", () => {
+  it("unwraps GitHub release prose while preserving updater Markdown", () => {
+    const dir = mkdtempSync(join(tmpdir(), "release-wrap-"));
+    const outFile = join(dir, "notes.md");
+    run("v0.20.0", outFile);
+    const release = readFileSync(outFile, "utf8");
+    expect(release).toContain("catalogue of curated Themes, Presets");
+    expect(release).toContain("**Dialogue Integrated**");
+    for (const mode of ["--changelog-only", "--changelog-cumulative"]) {
+      run("v0.20.0", outFile, mode);
+      expect(readFileSync(outFile, "utf8")).toMatch(/catalogue of curated\r?\n  Themes/);
+    }
+  });
+
   it("keeps installation instructions in the default GitHub Release body", () => {
     const dir = mkdtempSync(join(tmpdir(), "release-body-"));
     const outFile = join(dir, "release.md");
