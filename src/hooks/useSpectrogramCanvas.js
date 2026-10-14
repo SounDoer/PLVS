@@ -253,6 +253,9 @@ export function useSpectrogramCanvas({
       paintedSnaps: null,
       // The newest row in that image: its end was a guess, so the next strip redraws from it.
       paintedNewestRowMs: NaN,
+      // The colour ramp and floor every painted pixel was mapped through.
+      paintedColormapLut: null,
+      paintedDbFloor: NaN,
     })
   );
   const lastPaintRef = useRef({
@@ -421,13 +424,15 @@ export function useSpectrogramCanvas({
             ? "frozen"
             : cache.paintedSnaps !== snaps
               ? "newView"
-              : !Number.isFinite(cache.paintedOldestMs)
-                ? "noPaintedImage"
-                : !(spanDriftPx < 0.5)
-                  ? "spanChanged"
-                  : !(oldestMs >= cache.paintedOldestMs)
-                    ? "wentBackwards"
-                    : null;
+              : cache.paintedColormapLut !== colormapLut || cache.paintedDbFloor !== dbFloor
+                ? "colourMapping"
+                : !Number.isFinite(cache.paintedOldestMs)
+                  ? "noPaintedImage"
+                  : !(spanDriftPx < 0.5)
+                    ? "spanChanged"
+                    : !(oldestMs >= cache.paintedOldestMs)
+                      ? "wentBackwards"
+                      : null;
       const slidable = blockedBy === null;
       if (blockedBy) recordPanelCpuEvent("spectrogram2d", `noSlide:${blockedBy}`);
 
@@ -482,6 +487,8 @@ export function useSpectrogramCanvas({
       cache.paintedOldestMs = paintedOldestMs;
       cache.paintedSpan = paintedSpan;
       cache.paintedSnaps = snaps;
+      cache.paintedColormapLut = colormapLut;
+      cache.paintedDbFloor = dbFloor;
       cache.paintedNewestRowMs =
         strip.endIdx >= strip.startIdx ? snaps.timestampAt(strip.endIdx) : NaN;
       ctx.putImageData(cache.imageData, 0, 0);

@@ -16,7 +16,13 @@ import { inWindowRange } from "../math/spectrogramTimeline.js";
 import { standIn } from "../testing/standIn.js";
 const BANDS = [{ fCenter: 1000 }];
 
-function Harness({ snaps, colormapLut, enabled = true, canvasSizeRevision = 0 }) {
+function Harness({
+  snaps,
+  colormapLut,
+  enabled = true,
+  canvasSizeRevision = 0,
+  dbFloor = SPECTROGRAM_DB_MIN,
+}) {
   const canvasRef = useRef(null);
   const snapRef = useMemo(() => ({ current: snaps }), [snaps]);
 
@@ -29,6 +35,7 @@ function Harness({ snaps, colormapLut, enabled = true, canvasSizeRevision = 0 })
     selectedOffset: -1,
     frozenSnaps: null,
     colormapLut,
+    dbFloor,
     sourceVersion: snaps.version,
     canvasSizeRevision,
     enabled,
@@ -132,6 +139,58 @@ describe("useSpectrogramCanvas", () => {
     rerender(<Harness snaps={snaps} colormapLut={colormapLut} canvasSizeRevision={1} />);
 
     expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
+  });
+
+  // The window does not move between these two paints, which is exactly what a stopped capture or
+  // a quiet frame looks like: the slide path would keep every column but the newest. A new colour
+  // ramp or floor changes what every painted pixel should be, so it has to redraw them all.
+  // Observed 2026-10-14: switching Theme kept the old ramp scrolling until the time axis changed.
+  function lutOf(value) {
+    const lut = new Uint8Array(256 * 3);
+    lut.fill(value);
+    return lut;
+  }
+
+  // Two rows, so the newest one owns only the right column and the left one is history.
+  function twoRowView() {
+    const rows = [0, 20].map((timestampMs) => ({ timestampMs, bands: BANDS, dbList: [-20] }));
+    return {
+      length: 2,
+      version: 1,
+      timestampAt: (i) => rows[i]?.timestampMs ?? NaN,
+      rowAt: (i) => rows[i],
+    };
+  }
+
+  function oldestColumn() {
+    const { data } = putImageData.mock.lastCall[0];
+    return Array.from(data.slice(0, 4));
+  }
+
+  it("redraws every column when the colour ramp changes", () => {
+    const snaps = twoRowView();
+    const { rerender } = render(<Harness snaps={snaps} colormapLut={lutOf(255)} />);
+    rafCallback();
+    expect(oldestColumn().slice(0, 3)).toEqual([255, 255, 255]);
+
+    rerender(<Harness snaps={snaps} colormapLut={lutOf(0)} />);
+    rafCallback();
+
+    expect(oldestColumn().slice(0, 3)).toEqual([0, 0, 0]);
+  });
+
+  it("redraws every column when the dB floor changes", () => {
+    const snaps = twoRowView();
+    const colormapLut = lutOf(255);
+    const { rerender } = render(<Harness snaps={snaps} colormapLut={colormapLut} />);
+    rafCallback();
+    expect(oldestColumn()[3]).toBeGreaterThan(0);
+
+    // -20 dB sits below a -10 dB floor, so the column must fade out entirely.
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} dbFloor={-10} />);
+    rafCallback();
+
+    expect(oldestColumn()[3]).toBe(0);
   });
 
   it("bounds dense long-window painting by canvas width", () => {
