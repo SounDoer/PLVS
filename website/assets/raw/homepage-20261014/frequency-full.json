@@ -1,0 +1,472 @@
+{
+  "state": {
+    "app": {
+      "identifier": "com.soundoer.plvs.dev",
+      "name": "PLVS Dev",
+      "platform": "windows",
+      "version": "0.20.0"
+    },
+    "appearance": {
+      "mode": "fixed",
+      "resolvedThemeId": "plvs-dark",
+      "selectedThemeId": "plvs-dark"
+    },
+    "device": {
+      "generation": 1,
+      "live": {
+        "running": false,
+        "transition": null,
+        "usingRequestedSelection": false
+      },
+      "observedAt": "2026-10-14T02:58:39.656Z",
+      "selection": {
+        "available": true,
+        "mode": "exact",
+        "requestedId": "cap-62f66c3297d809f7d6f2b582729aba26",
+        "resolved": {
+          "channelCount": 2,
+          "id": "cap-62f66c3297d809f7d6f2b582729aba26",
+          "kind": "input",
+          "label": "CABLE Output (VB-Audio Virtual Cable)",
+          "sampleRateHz": 48000
+        },
+        "transition": null
+      }
+    },
+    "dock": {
+      "edge": "top",
+      "enabled": false,
+      "height": 56,
+      "heightMode": "compact",
+      "monitor": null,
+      "panels": [
+        {
+          "analysis": {
+            "status": "notApplicable"
+          },
+          "controls": {},
+          "customTitle": null,
+          "id": "transport",
+          "moduleId": "transport",
+          "title": "Transport",
+          "width": 90
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "barColors": "gradient",
+            "mode": "peak",
+            "peakThresholdsDbfs": {
+              "critical": -1,
+              "warning": -6
+            },
+            "readout": "live",
+            "rmsThresholdsDbfs": {
+              "critical": -9,
+              "warning": -18
+            },
+            "showLabels": true
+          },
+          "customTitle": null,
+          "id": "level",
+          "moduleId": "levelMeter",
+          "title": "Level Meter",
+          "width": 150
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "layers": [
+              "momentary",
+              "shortTerm",
+              "reference"
+            ],
+            "loudnessRangeLufs": {
+              "max": -6,
+              "min": -48
+            },
+            "showReadouts": false
+          },
+          "customTitle": null,
+          "id": "loudness",
+          "moduleId": "loudness",
+          "title": "Loudness",
+          "width": 210
+        },
+        {
+          "analysis": {
+            "dialogueDetection": {
+              "requestedByPanel": true,
+              "runtime": "active"
+            }
+          },
+          "controls": {
+            "metrics": {
+              "order": [
+                "momentary",
+                "shortTerm",
+                "integrated",
+                "momentaryMax",
+                "shortTermMax",
+                "lra",
+                "psr",
+                "plr",
+                "dialogueCoverage",
+                "dialogueIntegrated",
+                "dialogueRange",
+                "loudnessToDialogueRatio",
+                "truePeak",
+                "correlation",
+                "sideToMid"
+              ],
+              "visible": [
+                "momentary",
+                "shortTerm",
+                "integrated",
+                "momentaryMax",
+                "shortTermMax",
+                "lra",
+                "psr",
+                "plr",
+                "dialogueCoverage",
+                "dialogueIntegrated",
+                "dialogueRange",
+                "loudnessToDialogueRatio",
+                "truePeak",
+                "correlation",
+                "sideToMid"
+              ]
+            }
+          },
+          "customTitle": null,
+          "id": "stats",
+          "moduleId": "stats",
+          "title": "Stats",
+          "width": 370
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "channelPair": {
+              "x": 0,
+              "y": 1
+            },
+            "maxHold": true,
+            "mode": "polarLevel",
+            "persistenceMs": 400
+          },
+          "customTitle": null,
+          "id": "correlation",
+          "moduleId": "vectorscope",
+          "title": "Vectorscope",
+          "width": 190
+        },
+        {
+          "analysis": {
+            "spectralWaveform": {
+              "requestedByPanel": true,
+              "runtime": "notRequested"
+            }
+          },
+          "controls": {
+            "centroid": true,
+            "frequencyBandsHz": {
+              "lowMid": 200,
+              "midHigh": 2000
+            },
+            "frequencyColor": true
+          },
+          "customTitle": null,
+          "id": "waveform",
+          "moduleId": "waveform",
+          "title": "Waveform",
+          "width": 260
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "channel": {
+              "type": "pair",
+              "x": 0,
+              "y": 1
+            },
+            "dbFloor": -84,
+            "frequencyRangeHz": {
+              "max": 20000,
+              "min": 20
+            },
+            "tiltDbPerOctave": 3
+          },
+          "customTitle": null,
+          "id": "spectrogram",
+          "moduleId": "spectrogram",
+          "title": "Spectrogram",
+          "width": 260
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "channel": {
+              "type": "pair",
+              "x": 0,
+              "y": 1
+            },
+            "frequencyRangeHz": {
+              "max": 20000,
+              "min": 20
+            },
+            "levelRangeDb": {
+              "max": -12,
+              "min": -84
+            },
+            "maxMode": "decay",
+            "octaveSmoothing": "off",
+            "speedPercent": 25,
+            "tiltDbPerOctave": 3,
+            "view": "ms"
+          },
+          "customTitle": null,
+          "id": "spectrum",
+          "moduleId": "spectrum",
+          "title": "Spectrum",
+          "width": 260
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "channelPair": {
+              "x": 0,
+              "y": 1
+            },
+            "colorBlendPercent": 50,
+            "energyFadePercent": 75,
+            "frequencyRangeHz": {
+              "max": 20000,
+              "min": 20
+            },
+            "maxHold": false,
+            "mode": "position",
+            "monoLossFloorDb": -24,
+            "msRatioRangeDb": {
+              "max": 24,
+              "min": -48
+            },
+            "octaveSmoothing": "1/12",
+            "speedPercent": 50
+          },
+          "customTitle": null,
+          "id": "stereoMap",
+          "moduleId": "stereo-map",
+          "title": "Stereo Map",
+          "width": 260
+        }
+      ],
+      "reserveSpace": true,
+      "supported": true,
+      "suspended": false
+    },
+    "loudnessProfile": {
+      "activeId": "8880290a-823e-4fe0-b5f7-f3706222485e"
+    },
+    "preset": {
+      "activeId": "preset-1791946719480",
+      "dirty": true
+    },
+    "protocolVersion": 1,
+    "revision": 8,
+    "runtime": {
+      "channelTopology": {
+        "channelCount": 2,
+        "status": "detected"
+      },
+      "dialogueDetection": "active",
+      "spectralWaveform": "notRequested"
+    },
+    "settings": {
+      "channelLabels": {
+        "channelCount": 2,
+        "layout": "stereo",
+        "mode": "auto",
+        "roles": [
+          "L",
+          "R"
+        ]
+      },
+      "clearShortcut": {
+        "accelerator": "CmdOrCtrl+K",
+        "global": false
+      },
+      "closeBehavior": "ask",
+      "dialogueVadEngine": "firered",
+      "historyRetentionSec": 3600,
+      "interfaceSize": "default",
+      "openAtLogin": false
+    },
+    "transport": {
+      "files": {
+        "activeId": null,
+        "analyzingId": null,
+        "sessions": []
+      },
+      "live": {
+        "atLiveEdge": false,
+        "error": null,
+        "requestedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
+        "resolvedDeviceId": null,
+        "startedAt": 1791946723269,
+        "state": "stopped"
+      },
+      "snapshot": {
+        "active": true,
+        "offsetSec": 5
+      },
+      "source": "live"
+    },
+    "view": {
+      "focusView": {
+        "autoHideControls": false,
+        "borderless": false,
+        "compactPanels": false
+      },
+      "glassEnabled": false,
+      "pinned": false,
+      "surfaceOpacity": 100
+    },
+    "workspace": {
+      "layout": {
+        "children": [
+          {
+            "panelId": "spectrum",
+            "type": "panel"
+          },
+          {
+            "panelId": "loudness",
+            "type": "panel"
+          }
+        ],
+        "direction": "vertical",
+        "type": "split"
+      },
+      "panels": [
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "axes": {
+            "frequency": {
+              "linked": true,
+              "range": {
+                "maxHz": 20000,
+                "minHz": 20
+              },
+              "source": "workspace",
+              "writable": true
+            }
+          },
+          "controls": {
+            "channel": {
+              "type": "pair",
+              "x": 0,
+              "y": 1
+            },
+            "grid": true,
+            "levelRangeDb": {
+              "max": -12,
+              "min": -84
+            },
+            "maxMode": "decay",
+            "octaveSmoothing": "off",
+            "peakLabels": true,
+            "speedPercent": 25,
+            "tiltDbPerOctave": 3,
+            "view": "ms"
+          },
+          "id": "spectrum",
+          "moduleId": "spectrum",
+          "title": "Spectrum"
+        },
+        {
+          "analysis": {},
+          "axes": {
+            "time": {
+              "linked": true,
+              "range": {
+                "offsetSec": 0,
+                "windowSec": 60
+              },
+              "source": "workspace",
+              "writable": true
+            }
+          },
+          "controls": {
+            "grid": false,
+            "layers": [
+              "momentary",
+              "shortTerm",
+              "reference"
+            ],
+            "loudnessRangeLufs": {
+              "max": -6,
+              "min": -48
+            }
+          },
+          "id": "loudness",
+          "moduleId": "loudness",
+          "title": "Loudness"
+        }
+      ]
+    }
+  },
+  "ui": {
+    "activeBlockingEditors": [],
+    "revision": 8,
+    "surfaces": [],
+    "topSurfaceId": null,
+    "uiGeneration": 0,
+    "window": {
+      "form": "normal",
+      "visible": true
+    },
+    "workbench": {
+      "displayName": "PLVS",
+      "instanceId": "80866fbe-acc7-4114-9ada-42beca0bee36",
+      "workspaceId": "default"
+    }
+  },
+  "capture": {
+    "artifact": {
+      "artifactId": "art-62232fdf74b4e6f9f1a14c25b225d50a",
+      "bytes": 213451,
+      "createdAt": "2026-10-14T02:59:11.7377344Z",
+      "expiresAt": "2026-10-15T02:59:11.7377344Z",
+      "height": 443,
+      "kind": "screenshot",
+      "mediaType": "image/png",
+      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1791946679385\\frequency-full.png",
+      "sha256": "bd9c2dfdefcd8b3db089530bae9d9c0936236f4d1bced82fc4add3499ac500a3",
+      "width": 1590
+    },
+    "measurement": {
+      "generation": 1,
+      "sequence": 983
+    },
+    "revision": 8,
+    "target": {
+      "kind": "panel",
+      "panelId": "spectrum"
+    },
+    "uiGeneration": 0
+  }
+}

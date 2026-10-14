@@ -311,187 +311,97 @@
         letter-spacing: 0;
       }
 
-      .feature.feature-live,
-      .feature.feature-history,
-      .feature.feature-workspace {
+      .feature {
         display: block;
       }
-
-      .feature-live .feature-copy p,
-      .feature-history .feature-copy p,
-      .feature-workspace .feature-copy p {
+      .feature h2 {
+        max-width: none;
+      }
+      .feature > .feature-copy > p {
         max-width: none;
         margin-top: 14px;
       }
-
-      .live-gallery {
-        display: grid;
-        grid-template-columns: 1fr 1.83fr 0.67fr;
-        align-items: start;
-        gap: 32px;
-        margin-top: 36px;
-      }
-
-      .live-detail {
-        min-width: 0;
-        margin: 0;
-      }
-
-      .live-detail-visual {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 360px;
-      }
-
-      .channel-pair {
-        display: grid;
-        grid-template-rows: repeat(2, auto);
-        align-content: center;
-        gap: 19px;
-        width: 100%;
-        height: 100%;
-        max-width: 420px;
-      }
-
-      .channel-pair img {
-        display: block;
-        width: 100%;
-        height: auto;
-        border-radius: 6px;
-      }
-
-      .frequency-stack {
-        display: grid;
-        align-content: center;
-        gap: 9px;
-        width: 100%;
-        height: 100%;
-      }
-
-      .frequency-stack img {
-        display: block;
-        width: 100%;
-        height: auto;
-        border-radius: 6px;
-      }
-
-      .stats-shot {
-        display: block;
-        width: auto;
-        max-width: 100%;
-        max-height: 360px;
-        height: auto;
-        border-radius: 6px;
-      }
-
-      .live-detail figcaption {
-        margin-top: 20px;
-        font-size: var(--text-body);
-        line-height: 1.6;
-        font-weight: 500;
-      }
-
-      @media (max-width: 920px) {
-        .live-gallery {
-          grid-template-columns: 1fr;
-          gap: 36px;
-        }
-
-        .live-detail-visual {
-          height: auto;
-          justify-content: flex-start;
-        }
-
-        .channel-pair,
-        .frequency-stack {
-          height: auto;
-        }
-      }
-
-      .history-gallery {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 24px;
-        margin: 32px 0 0;
-      }
-
-      .history-detail {
-        margin: 0;
-        min-width: 0;
-      }
-
-      .history-detail img {
-        display: block;
-        width: 100%;
-        height: auto;
-      }
-
-      .history-detail figcaption {
-        margin-top: 16px;
-        font-size: var(--text-body);
-        line-height: 1.6;
-        font-weight: 500;
-      }
-
-      .feature-workspace h2 {
-        max-width: none;
-      }
-
-      .workspace-gallery {
+      .feature-gallery {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 24px;
         margin-top: 32px;
       }
-
-      .workspace-gallery figure {
-        margin: 0;
+      .feature-gallery figure,
+      .feature-pair figure {
         min-width: 0;
+        margin: 0;
       }
-
-      .workspace-gallery img {
+      .feature-gallery img,
+      .feature-pair img {
         display: block;
         width: 100%;
         height: auto;
-        aspect-ratio: 1590 / 890;
-        object-fit: contain;
-        object-position: top;
+        border-radius: 6px;
       }
 
-      .workspace-gallery figcaption {
+      .feature-gallery figcaption,
+      .feature-pair figcaption,
+      .workspace-dock figcaption {
         margin-top: 16px;
-        font-size: var(--text-body);
-        line-height: 1.6;
-        font-weight: 500;
+        color: var(--muted);
+        font-size: var(--text-small);
       }
 
+      .feature-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px;
+        margin-top: 32px;
+      }
+      .feature-pair figure {
+        display: flex;
+        flex-direction: column;
+      }
+      .feature-visual {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        aspect-ratio: 1590 / 910;
+      }
+      .feature-pair .feature-visual img {
+        max-height: 100%;
+        object-fit: contain;
+      }
+      .monitoring-pair {
+        grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+        align-items: start;
+      }
+      .feature-pair .rules-image {
+        border-radius: 14px;
+      }
+      .monitoring-pair .feature-visual {
+        aspect-ratio: auto;
+      }
       .workspace-dock {
         margin: 32px 0 0;
       }
-
       .workspace-dock-visual {
-        overflow: hidden;
+        overflow-x: auto;
       }
-
       .workspace-dock img {
         display: block;
         width: 100%;
         height: auto;
       }
-
-      .workspace-dock figcaption {
-        margin-top: 16px;
-        font-size: var(--text-body);
-        line-height: 1.6;
-        font-weight: 500;
-      }
-
-      .live-detail figcaption,
-      .history-detail figcaption,
-      .workspace-gallery figcaption,
-      .workspace-dock figcaption {
-        color: var(--muted);
+      @media (max-width: 920px) {
+        .feature-gallery,
+        .feature-pair {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+        .feature-visual,
+        .monitoring-pair .feature-visual {
+          aspect-ratio: auto;
+        }
+        .feature-pair .rules-image {
+          max-width: 590px;
+        }
       }
 
       .download-section {
@@ -660,30 +570,8 @@
           padding: 32px 0;
         }
 
-        .workspace-gallery {
-          grid-template-columns: 1fr;
-          gap: 32px;
-        }
-
-        .history-gallery {
-          grid-template-columns: 1fr;
-          gap: 32px;
-        }
-
-        .history-detail img {
-          aspect-ratio: auto;
-        }
-
-        .workspace-gallery img {
-          aspect-ratio: auto;
-        }
-
         .workspace-dock img {
-          height: 96px;
-          width: auto;
-          max-width: none;
-          position: relative;
-          left: 0;
+          min-width: 1000px;
         }
       }
 
@@ -893,143 +781,165 @@
         </section>
 
         <section class="section features" aria-label="Core workflow">
-          <article class="feature feature-live">
-            <div class="feature-copy">
-              <h2>Watch the live signal</h2>
-              <p>See loudness, frequency balance, and stereo image together.</p>
-            </div>
-            <div class="live-gallery">
-              <figure class="live-detail">
-                <div class="live-detail-visual">
-                  <div class="channel-pair">
-                    <img
-                      src="assets/landing-channel-level-7-1-4.webp"
-                      alt="Twelve live level meters labeled for a 7.1.4 channel layout."
-                      loading="lazy"
-                    />
-                    <img
-                      src="assets/landing-channel-waveform-7-1-4.webp"
-                      alt="Twelve live waveforms labeled for the same 7.1.4 channel layout."
-                      loading="lazy"
-                    />
-                  </div>
-                </div>
-                <figcaption>Every channel, level and movement.</figcaption>
-              </figure>
-              <figure class="live-detail">
-                <div class="live-detail-visual">
-                  <div class="frequency-stack">
-                    <img
-                      src="assets/landing-frequency-spectrum.webp"
-                      alt="Live stereo spectrum showing the frequency balance of both channels."
-                      loading="lazy"
-                    />
-                    <img
-                      src="assets/landing-frequency-spectrogram.webp"
-                      alt="Live spectrogram showing one minute of frequency energy over time."
-                      loading="lazy"
-                    />
-                    <img
-                      src="assets/landing-frequency-stereo-map.webp"
-                      alt="Live Stereo Map showing left and right distribution across the frequency range."
-                      loading="lazy"
-                    />
-                  </div>
-                </div>
-                <figcaption>Frequency, energy, and stereo image.</figcaption>
-              </figure>
-              <figure class="live-detail">
-                <div class="live-detail-visual">
-                  <img
-                    class="stats-shot"
-                    src="assets/landing-stats.webp"
-                    alt="Live Stats with yellow integrated and short-term maximum warnings and a red true peak failure."
-                    loading="lazy"
-                  />
-                </div>
-                <figcaption>Limits, clearly marked.</figcaption>
-              </figure>
-            </div>
-          </article>
-
-          <article class="feature feature-history">
-            <div class="feature-copy">
-              <h2>Look back without losing context</h2>
-              <p>Explore up to four hours of visual history. Return to live anytime.</p>
-            </div>
-            <div class="history-gallery">
-              <figure class="history-detail">
-                <img
-                  src="assets/landing-history-loudness-hud-wide.webp"
-                  alt="Loudness history selected 22 seconds back, with a hover HUD showing momentary and short-term loudness."
-                  width="1590"
-                  height="443"
-                  loading="lazy"
-                />
-                <figcaption>Read the moment.</figcaption>
-              </figure>
-              <figure class="history-detail">
-                <img
-                  src="assets/landing-history-spectrogram-hud-wide.webp"
-                  alt="Spectrogram history selected at the same 22-second point, with a hover HUD showing frequency, level, and pitch."
-                  width="1590"
-                  height="443"
-                  loading="lazy"
-                />
-                <figcaption>Locate it in the signal.</figcaption>
-              </figure>
-            </div>
-          </article>
-
           <article class="feature feature-workspace">
             <div class="feature-copy">
-              <h2>Shape the view around the workspace</h2>
-              <p>Arrange your meters. Save your layout. Keep it in view.</p>
+              <h2>Arrange Your Meters</h2>
+              <p>
+                Arrange your panels. Save your layout. Start with a Preset that fits your workflow.
+              </p>
             </div>
-            <div class="workspace-gallery">
+            <div class="feature-gallery">
               <figure>
                 <img
-                  src="assets/landing-workspace-overview-compact.webp"
-                  alt="Compact PLVS workspace with a stereo level meter, Spectrum, Stereo Map, Stats, and Vectorscope."
-                  width="1590"
-                  height="890"
+                  src="assets/homepage/essential.webp"
+                  alt="Essential Monitoring preset with peak levels, loudness history, stereo image and core readouts."
+                  width="1280"
+                  height="720"
                   loading="lazy"
                 />
-                <figcaption>Balance at a glance.</figcaption>
+                <figcaption>Essential Monitoring</figcaption>
               </figure>
               <figure>
                 <img
-                  src="assets/landing-workspace-loudness-compact.webp"
-                  alt="Compact PLVS workspace with large Loudness and Waveform history panels beside Stats and a stereo Level Meter."
-                  width="1590"
-                  height="890"
+                  src="assets/homepage/spectral.webp"
+                  alt="Spectral Inspection preset with full spectrum, low-end detail, spectral history and waveform."
+                  width="1280"
+                  height="720"
                   loading="lazy"
                 />
-                <figcaption>Stay with the long take.</figcaption>
+                <figcaption>Spectral Inspection</figcaption>
               </figure>
               <figure>
                 <img
-                  src="assets/landing-workspace-frequency-compact.webp"
-                  alt="Compact PLVS workspace with a wide Spectrum above Spectrogram and Stereo Map panels."
-                  width="1590"
-                  height="890"
+                  src="assets/homepage/stereo.webp"
+                  alt="Stereo Field Check preset with mid/side spectrum, polar vectorscope, correlation and mono loss views."
+                  width="1280"
+                  height="720"
                   loading="lazy"
                 />
-                <figcaption>Make room for frequency detail.</figcaption>
+                <figcaption>Stereo Field Check</figcaption>
               </figure>
             </div>
+
             <figure class="workspace-dock">
               <div class="workspace-dock-visual">
                 <img
                   src="assets/landing-dock.webp"
-                  alt="Expanded PLVS Dock strip with live transport, stereo levels, loudness, spectrum, Stereo Map, and Stats."
+                  alt="PLVS Dock strip with transport, levels, loudness, spectrum, Stereo Map and Stats."
                   width="2560"
                   height="160"
                   loading="lazy"
                 />
               </div>
-              <figcaption>Dock your meters at the edge of the screen.</figcaption>
+              <figcaption>Keep your meters at the edge of the screen.</figcaption>
             </figure>
+          </article>
+          <article class="feature feature-history">
+            <div class="feature-copy">
+              <h2>Explore Every Detail</h2>
+              <p>
+                Zoom into the detail. Bring every meter to the same moment. Return to live anytime.
+              </p>
+            </div>
+            <div class="feature-pair">
+              <figure>
+                <div class="feature-visual">
+                  <img
+                    src="assets/homepage/frequency.webp"
+                    alt="The same selected signal shown across 20 Hz–20 kHz and zoomed into 20–250 Hz, with frequency peak labels."
+                    width="1590"
+                    height="902"
+                    loading="lazy"
+                  />
+                </div>
+                <figcaption>Zoom into frequency, level and time.</figcaption>
+              </figure>
+              <figure>
+                <div class="feature-visual">
+                  <img
+                    src="assets/homepage/history.webp"
+                    alt="Loudness and Waveform share a selected point 22 seconds back, while Spectrum displays that same moment."
+                    width="1590"
+                    height="890"
+                    loading="lazy"
+                  />
+                </div>
+                <figcaption>Inspect every meter at the same moment.</figcaption>
+              </figure>
+            </div>
+          </article>
+          <article class="feature feature-monitoring">
+            <div class="feature-copy">
+              <h2>Monitor What Matters</h2>
+              <p>Define your limits. See the results across your mix.</p>
+            </div>
+            <div class="feature-pair monitoring-pair">
+              <figure>
+                <div class="feature-visual">
+                  <img
+                    class="rules-image"
+                    src="assets/homepage/rules.webp"
+                    alt="My Delivery Profile with seven limits for Integrated, True Peak Max, Short-term Max, Momentary Max, Loudness Range and dynamics; the same Profile is applied in the adjacent multichannel workspace."
+                    width="560"
+                    height="500"
+                    loading="lazy"
+                  />
+                </div>
+                <figcaption>Set your reference and metric limits.</figcaption>
+              </figure>
+              <figure>
+                <div class="feature-visual">
+                  <img
+                    src="assets/homepage/multichannel.webp"
+                    alt="A 7.1.4 workspace with twelve level meters, waveforms and nine Stats metrics. Integrated and True Peak Max fail the adjacent Profile; Momentary Max, Short-term Max and Integrated Dynamics show warnings."
+                    width="1590"
+                    height="795"
+                    loading="lazy"
+                  />
+                </div>
+                <figcaption>
+                  See every channel and highlight readings beyond your limits.
+                </figcaption>
+              </figure>
+            </div>
+          </article>
+          <article class="feature feature-themes">
+            <div class="feature-copy">
+              <h2>Make It Your Own</h2>
+              <p>Choose a Theme for your workspace, or build your own.</p>
+            </div>
+            <div class="feature-gallery">
+              <figure>
+                <img
+                  src="assets/homepage/amber.webp"
+                  alt="Control Room Amber theme with graphite surfaces, brass meters and verdigris traces."
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                />
+                <figcaption>Control Room Amber</figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/homepage/daylight.webp"
+                  alt="Studio Daylight theme with ivory surfaces, blue traces and terracotta accents."
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                />
+                <figcaption>Studio Daylight</figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/homepage/night.webp"
+                  alt="Night Circuit theme with deep indigo surfaces, cyan traces and violet accents."
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                />
+                <figcaption>Night Circuit</figcaption>
+              </figure>
+            </div>
           </article>
         </section>
       </main>

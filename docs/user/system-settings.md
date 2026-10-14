@@ -255,6 +255,9 @@ On narrow screens, the PLVS homepage and Sharesets navigation show a three-line 
 next to **Download**. Select it to reveal **Sharesets**, **Docs**, and **GitHub**. Select the
 close icon, click outside the navigation, or press Escape to close the menu.
 
+The PLVS homepage showcases selected Presets and Themes. Use **Sharesets** in the top
+navigation to browse and download resources.
+
 The [Sharesets](https://plvs.soundoer.com/sharesets/) offers curated Themes, Presets, and
 Loudness Profiles. Choose a category, search by name or description, and optionally narrow the
 results by Tag under **Filters**. The selected tag remains visible when Filters is closed.
