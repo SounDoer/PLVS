@@ -71,6 +71,12 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-5);
 }
+.card-grid > .resource-card {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+}
 .card-body h2 {
   font-size: var(--text-title);
   margin: var(--space-3) 0;
