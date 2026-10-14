@@ -1,16 +1,16 @@
 .catalogue {
-  width: min(calc(100% - 48px), var(--page-width));
+  width: min(calc(100% - 2 * var(--page-gutter)), var(--page-width));
   margin: auto;
 }
 .catalogue {
-  padding: 24px 0 80px;
+  padding: var(--space-5) 0 var(--space-9);
 }
 .hero p {
   font-size: var(--text-lead);
   color: var(--color-muted);
 }
 .family-nav {
-  margin: 32px 0 24px;
+  margin: var(--space-6) 0 var(--space-5);
 }
 .family-nav a {
   display: inline-flex;
@@ -72,7 +72,7 @@
   gap: var(--space-5);
 }
 .card-body h2 {
-  font-size: var(--text-lead);
+  font-size: var(--text-title);
   margin: var(--space-3) 0;
 }
 .card-tags {
@@ -102,10 +102,10 @@
 }
 @media (max-width: 620px) {
   .catalogue {
-    width: calc(100% - 40px);
+    width: calc(100% - 2 * var(--page-gutter));
   }
   .catalogue {
-    padding-top: 20px;
+    padding-top: var(--space-5);
   }
   .browse-toolbar {
     flex-wrap: wrap;

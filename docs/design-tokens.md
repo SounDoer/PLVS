@@ -944,3 +944,22 @@ which fight the source strings and don't change DOM `textContent`.
 Minor words (a, an, the, and, or, at, to, of, on, for, in, by, vs, via…) stay lowercase in Title
 Case unless they are the first or last word. Screen-reader-only `aria-label`s are not "displayed
 text" and are exempt.
+
+## Public Website
+
+The homepage and Sharesets share `website/assets/site-tokens.css`, loaded by
+`site-chrome.css`. These website tokens are separate from the desktop application's theme
+contract. Page styles consume them without redefining the shared scale.
+
+Typography uses 18px body text, 16px supporting text, and 20px card/subsection titles.
+Section headings use 32px (28px at widths up to 620px), page headings 36px (32px), and
+homepage display headings 44px (36px). Introductory copy uses the body-sized lead role.
+
+Colors are semantic `--color-*` roles shared across pages, including text, surfaces,
+dividers, controls, interaction states, and focus. Decorative background and shadow recipes
+also live in the token file. Resource screenshots retain their original pixels and colors.
+
+Controls and small previews use the 8px radius; cards and large panels use 16px. Spacing
+uses `--space-*`; page gutters, content width, and minimum control height use named tokens.
+Image aspect ratios, content-specific layout constraints, and responsive breakpoints remain
+local layout geometry, rather than becoming one-off design tokens.

@@ -1,21 +1,20 @@
+@import url("./site-tokens.css");
+
 .site-background {
   min-height: 100dvh;
-  background:
-    linear-gradient(180deg, rgba(217, 119, 0, 0.08), rgba(217, 119, 0, 0) 480px),
-    radial-gradient(circle at 70% -20%, rgba(217, 119, 0, 0.16), transparent 38%),
-    radial-gradient(circle at 8% 8%, rgba(0, 138, 217, 0.08), transparent 28%), #070707;
+  background: var(--site-background);
 }
 .site-nav {
-  width: min(calc(100% - 48px), 1180px);
+  width: min(calc(100% - 2 * var(--page-gutter)), var(--page-width));
   margin: auto;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: var(--space-5);
   min-height: 76px;
 }
 .site-brand {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--control-height);
+  min-height: var(--control-height);
   display: flex;
   align-items: center;
 }
@@ -25,56 +24,56 @@
 }
 .site-nav-links {
   display: flex;
-  gap: 28px;
+  gap: var(--space-6);
   margin-left: auto;
 }
 .site-nav a {
   display: flex;
   align-items: center;
-  min-height: 44px;
-  font-size: 16px;
-  font-weight: 500;
+  min-height: var(--control-height);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
   text-decoration: none;
-  color: rgba(242, 242, 242, 0.62);
+  color: var(--color-muted);
 }
 .site-nav a:hover {
-  color: #d97700;
+  color: var(--color-action);
 }
 .site-nav a[aria-current] {
-  color: #f2f2f2;
+  color: var(--color-text);
   text-decoration: underline;
-  text-decoration-color: #d97700;
+  text-decoration-color: var(--color-action);
   text-underline-offset: 8px;
 }
 .site-nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .site-nav .site-download {
-  color: #f2f2f2;
+  color: var(--color-text);
 }
 .site-menu {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 10px;
-  border: 1px solid rgba(242, 242, 242, 0.22);
-  border-radius: 8px;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: var(--space-3);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
   background: transparent;
-  color: #f2f2f2;
+  color: var(--color-text);
   cursor: pointer;
 }
 .site-menu[hidden] {
   display: none;
 }
 .site-menu:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-surface);
 }
 .site-nav :is(a, button):focus-visible {
-  outline: 2px solid #fb923c;
+  outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
 .site-menu svg {
@@ -90,12 +89,12 @@
 }
 @media (max-width: 620px) {
   .site-nav {
-    width: calc(100% - 40px);
+    width: calc(100% - 2 * var(--page-gutter));
     min-height: 68px;
     flex-wrap: wrap;
-    column-gap: 12px;
+    column-gap: var(--space-3);
     row-gap: 0;
-    padding: 12px 0;
+    padding: var(--space-3) 0;
   }
   .site-nav-actions {
     margin-left: auto;
@@ -104,10 +103,10 @@
     order: 3;
     width: 100%;
     flex-direction: column;
-    gap: 8px;
-    margin: 12px 0 0;
-    padding-top: 8px;
-    border-top: 1px solid rgba(242, 242, 242, 0.11);
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-divider);
   }
   .site-nav[data-enhanced] .site-menu {
     display: flex;
