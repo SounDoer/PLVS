@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "notes": [
+    "ONNX Runtime 1.24.2 is statically linked through ort-sys 2.0.0-rc.12. The upstream MIT license and the complete matching upstream ThirdPartyNotices are reproduced below. The prebuilt archives are supplied by pyke.io; they are not Microsoft official binary packages.",
+    "Windows CPU archive: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.24.2/x86_64-pc-windows-msvc.tar.lzma2 ; SHA-256 b685bfc8d336e0ba95c066a7a982c03aa6dedd528a492eb99ca4ccb7f3af9e7a.",
+    "macOS CPU archive: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.24.2/aarch64-apple-darwin.tar.lzma2 ; SHA-256 612739f75438dc0a075461e1fb454226b4a1eb175e60a7271ba966bbbb972cd4.",
+    "The upstream runtime notice is a conservative superset, not a claim that every listed execution provider ships. PLVS selects the CPU backend; enabling another provider requires a fresh distribution review.",
+    "Silero VAD v6.2 model: SHA-256 1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3; original license reproduced below. FireRedVAD model and CMVN notices are preserved verbatim in COMPONENT-NOTICES.txt under firered-vad@0.1.0.",
+    "SQLite is compiled from libsqlite3-sys bundled sources. SQLite itself is public domain; its original source dedication is retained in the corresponding source package. Rust wrapper notices are in COMPONENT-NOTICES.txt.",
+    "FFmpeg 7.1 is an independent executable under LGPL-2.1-or-later. Complete corresponding source and build scripts are provided at the download below. Windows r2 was built from an unmodified upstream archive; macOS binaries retain their original workflow provenance (see BUILD-RECORD.json in the source bundle).",
+    "Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.",
+    "Rust standard library 1.99.0: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.",
+    "Windows installers use unmodified NSIS 3.11, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/kichik/nsis/tree/v311 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades."
+  ],
+  "bindings": {
+    "alsa-sys@0.4.0": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "atk-sys@0.18.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "defmt@1.1.1": "Cargo links namespace / integration code; package notices retained.",
+    "gdk-sys@0.18.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "gtk-sys@0.18.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "libdbus-sys@0.2.7": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "libsqlite3-sys@0.38.2": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
+    "objc2-exception-helper@0.1.1": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
+    "openssl-sys@0.9.117": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "ort-sys@2.0.0-rc.12": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
+    "rayon-core@1.13.0": "Cargo links namespace / integration code; package notices retained.",
+    "ring@0.17.14": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
+    "sqlite-wasm-rs@0.5.5": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "tauri@2.12.1": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-autostart@2.7.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-clipboard-manager@2.4.1": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-dialog@2.8.1": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-fs@2.6.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-global-shortcut@2.4.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-log@2.10.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-opener@2.7.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-process@2.4.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-store@2.5.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-updater@2.13.2": "Cargo links namespace / integration code; package notices retained.",
+    "wasm-bindgen-shared@0.2.127": "Cargo links namespace / integration code; package notices retained.",
+    "webkit2gtk-sys@2.0.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes."
+  },
+  "inputs": [
+    {
+      "path": "src-tauri/Cargo.toml",
+      "sha256": "21bdb67cc76de6aed74612972fd81cbd18184fe42458da5479ce942d4034ded6"
+    },
+    {
+      "path": "scripts/fetch-ffmpeg-sidecar.mjs",
+      "sha256": "5d0fa1a258228636822519b4b98e8edefa8625a0aee98e1c61da55612cfa994a"
+    },
+    {
+      "path": "scripts/build-ffmpeg-sidecars.sh",
+      "sha256": "ae8534e9b4df74726af8bd8ad062dce8577e76e8a4d8d6ca331a1028e000309f"
+    },
+    {
+      "path": "licenses/ffmpeg-builds.json",
+      "sha256": "71447d23e582ece9db8eb5b00b6d332ea4d48452cd7c6617b55061bf7975cb21"
+    },
+    {
+      "path": "src-tauri/vendor/voice_activity_detector/Cargo.toml",
+      "sha256": "e4d5768481cfb8b1a8e77f1d98e11b0bd9e060ce58ef404bc07b100d9779b076"
+    },
+    {
+      "path": "src-tauri/vendor/voice_activity_detector/src/silero_vad.onnx",
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+    },
+    {
+      "package": "ort-sys@2.0.0-rc.12",
+      "path": "build/download/dist.txt",
+      "sha256": "c006b99a018458d22dad0adb9d9755c62b723767fb0c8efcb6e028f613cb0d7c"
+    },
+    {
+      "package": "ort@2.0.0-rc.12",
+      "path": "Cargo.toml",
+      "sha256": "0a6c92ffbba1ffda416c01b64cb534c1704e5a1e68e75df2ea46e1393bf1006c"
+    },
+    {
+      "package": "firered-vad@0.1.0",
+      "path": "models/fireredvad_stream_vad_with_cache.onnx",
+      "sha256": "b3c97836130dc34fc32d56fab551e88cf9454511de2b3c250a5e6578dee74b93"
+    },
+    {
+      "package": "firered-vad@0.1.0",
+      "path": "models/cmvn.ark",
+      "sha256": "c87f6f13edf0f0ec7535ddfc9cc3387d9268cb234b70182d566c5e2edf3ca473"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "sha256": "065388cb682c606d7f02487e70f150afccd2326949c4c6247a9fc59f2334fe05"
+    }
+  ],
+  "documents": [
+    {
+      "name": "ONNX Runtime 1.24.2",
+      "license": "MIT",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/058787ceead760166e3c50a0a4cba8a833a6f53f/LICENSE",
+      "file": "licenses/upstream/2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c.txt",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "name": "ONNX Runtime 1.24.2 third-party code",
+      "license": "See original notice",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/058787ceead760166e3c50a0a4cba8a833a6f53f/ThirdPartyNotices.txt",
+      "file": "licenses/upstream/0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2.txt",
+      "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2"
+    },
+    {
+      "name": "Silero VAD v6.2",
+      "license": "MIT",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/be95df9152c0d7618fa1edfeb296fc3dae32376f/LICENSE",
+      "file": "licenses/upstream/2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b.txt",
+      "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"
+    },
+    {
+      "name": "MinGW-w64 14.0.0 runtime",
+      "license": "See original notice",
+      "url": "https://raw.githubusercontent.com/mingw-w64/mingw-w64/v14.0.0/COPYING.MinGW-w64-runtime/COPYING.MinGW-w64-runtime.txt",
+      "file": "licenses/upstream/1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f.txt",
+      "sha256": "1db8da07b436c68833c0673ffee3d9fcb2526047f3820b81661865dfedc79a1f"
+    },
+    {
+      "name": "GCC 16.2.0 runtime exception",
+      "license": "GCC-exception-3.1",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-16.2.0/COPYING.RUNTIME",
+      "file": "licenses/upstream/9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74.txt",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74"
+    },
+    {
+      "name": "GCC runtime base license",
+      "license": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-16.2.0/COPYING3",
+      "file": "licenses/upstream/8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "name": "NSIS 3.11 installer engine and compression modules",
+      "license": "Zlib; bzip2; CPL-1.0 with the NSIS LZMA exception",
+      "url": "https://github.com/kichik/nsis/blob/v311/COPYING",
+      "file": "licenses/upstream/e7dd514003ab96cb3ddccbc028fe5c795fccf57dc41f21cfb9d4dd16ead23bf5.txt",
+      "sha256": "e7dd514003ab96cb3ddccbc028fe5c795fccf57dc41f21cfb9d4dd16ead23bf5"
+    },
+    {
+      "name": "nsis-tauri-utils 0.5.3 LICENSE_MIT",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://raw.githubusercontent.com/tauri-apps/nsis-tauri-utils/13d9edd27b69310e108d6fbd49f90992f8a05390/LICENSE_MIT",
+      "file": "licenses/upstream/1c1020fa10a6bf318717e82c911bcc54ebdfb9bb280460ae332bcb2f82f57fbe.txt",
+      "sha256": "1c1020fa10a6bf318717e82c911bcc54ebdfb9bb280460ae332bcb2f82f57fbe"
+    },
+    {
+      "name": "nsis-tauri-utils 0.5.3 LICENSE_APACHE-2.0",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://raw.githubusercontent.com/tauri-apps/nsis-tauri-utils/13d9edd27b69310e108d6fbd49f90992f8a05390/LICENSE_APACHE-2.0",
+      "file": "licenses/upstream/0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594.txt",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    }
+  ],
+  "sources": [
+    {
+      "name": "FFmpeg 7.1 source and platform build recipes",
+      "url": "https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1-r2/ffmpeg-7.1-plvs-source.zip",
+      "sha256": "b539cc38b7804d202521ae5645f578a50f3a21280c313adba45136998dca00aa"
+    }
+  ],
+  "rustVersion": "1.99.0",
+  "npmVersions": {
+    "@tauri-apps/cli": "2.12.1"
+  }
+}

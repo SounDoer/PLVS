@@ -2,9 +2,10 @@
 
 import { readFile, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { LICENSE_ASSETS } from "./license-assets.mjs";
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export async function verifyLicenseAssets(packageRoot) {
   for (const asset of LICENSE_ASSETS) {
@@ -26,6 +27,10 @@ export async function verifyLicenseAssets(packageRoot) {
         throw new Error(`License asset ${path} is missing marker: ${marker}`);
       }
     }
+    // Marker checks alone accept truncated or edited notices. Verify the entire payload.
+    const expected = await readFile(join(repoRoot, asset.source));
+    if (!bytes.equals(expected))
+      throw new Error(`License asset differs from reviewed source: ${path}`);
   }
 }
 

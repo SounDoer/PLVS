@@ -1,0 +1,30 @@
+{
+  "version": "7.1",
+  "source": {
+    "url": "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz",
+    "sha256": "40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6",
+    "modifications": "None; clean extraction of the upstream release archive."
+  },
+  "windows": {
+    "toolchain": {
+      "url": "https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-14.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r2.zip",
+      "sha256": "d5dbafc4a170e762ca6143151ec918fb9e2c72736fb14cd704abebc6bdd5276a"
+    },
+    "recipe": "build-ffmpeg-sidecars.sh windows",
+    "recipeSha256": "ae8534e9b4df74726af8bd8ad062dce8577e76e8a4d8d6ca331a1028e000309f",
+    "binaries": {
+      "ffmpeg-x86_64-pc-windows-msvc.exe": "7f3d06039d891573d563f77d82f854617fd60e93d3cbdaad0a2923ee9c9a5b8e",
+      "ffprobe-x86_64-pc-windows-msvc.exe": "45766e789cb67e31664e9bdf1f2cf0a2634d34c9fc5c9ce2b8191f2862f2d15a"
+    }
+  },
+  "macos": {
+    "workflowCommit": "31835ca8f685cb55b8f524c1e31b0d3ebe58a46c",
+    "workflowRun": "https://github.com/SounDoer/PLVS/actions/runs/36089061860",
+    "recipe": "original-macos-workflow.yml",
+    "recipeSha256": "37f55242518f930725d69b2e5219d11ab3dd458ecef7ff697e8cd3f320378b5f",
+    "binaries": {
+      "ffmpeg-aarch64-apple-darwin": "ef3464777eaac4e6fac6aa5fd8c5a18baa8a3ca798d0c5168d9d71626b4f5bb9",
+      "ffprobe-aarch64-apple-darwin": "467267643ef8ef5a045fefb0a62b08f999b30f35637d9dbf2d681e19ac17d90c"
+    }
+  }
+}

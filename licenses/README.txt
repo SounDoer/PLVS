@@ -9,8 +9,19 @@ THIRD-PARTY-NOTICES.txt
 DEPENDENCY-INVENTORY.txt
   Current Rust runtime and JavaScript production packages with their upstream metadata.
 
+COMPONENT-NOTICES.txt
+  Original dependency licenses, copyright notices, and exact source-package download links.
+  Also includes Tailwind CSS, whose generated stylesheet is shipped despite its development label.
+
+NATIVE-NOTICES.txt
+  ONNX Runtime, model, and Windows compiler/runtime notices; corresponding-source downloads.
+
+rust/COPYRIGHT-library.html
+  Original notices for the Rust standard library, with its referenced texts in rust/licenses/.
+
 license-texts/
-  Complete, unmodified standard license texts obtained from the SPDX License List data set at
+  Supplementary standard license texts (not substitutes for original component notices), from
+  the SPDX License List data set at
   commit 31ba1a50e5397e00a304dbadc76531740e89ee48:
   https://github.com/spdx/license-list-data/tree/31ba1a50e5397e00a304dbadc76531740e89ee48/text
 

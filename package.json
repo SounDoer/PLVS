@@ -67,8 +67,8 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,css,json}\"",
     "lint": "eslint src",
     "typecheck": "tsc -p jsconfig.json",
-    "licenses:generate": "node scripts/generate-license-inventory.mjs --write",
-    "licenses:check": "node scripts/generate-license-inventory.mjs --check",
+    "licenses:generate": "node scripts/generate-license-inventory.mjs --write && node scripts/generate-component-notices.mjs --write && node scripts/generate-native-notices.mjs --write",
+    "licenses:check": "node scripts/generate-license-inventory.mjs --check && node scripts/generate-component-notices.mjs --check && node scripts/generate-native-notices.mjs --check",
     "version:check": "node scripts/verify-versions.mjs",
     "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
     "rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets -- -D warnings",
@@ -96,7 +96,9 @@
     "desktop:stable-dmg": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity stable --stage && tauri build --bundles dmg,app --config src-tauri/tauri.cli-sidecar.conf.json",
     "desktop:verify-stable-nsis": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-installer.ps1",
     "desktop:verify-preview-nsis": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-installer.ps1 -Identity preview",
-    "desktop:verify-stable-dmg": "bash scripts/verify-macos-dmg.sh"
+    "desktop:verify-stable-dmg": "bash scripts/verify-macos-dmg.sh",
+    "licenses:candidate": "node scripts/generate-component-notices.mjs --candidate",
+    "licenses:sources": "node scripts/generate-native-notices.mjs --sources"
   },
   "simple-git-hooks": {
     "pre-commit": "cargo fmt --manifest-path src-tauri/Cargo.toml --all && npx lint-staged && { git diff --cached --name-only | grep -q src-tauri/Cargo.toml && (cargo update --manifest-path src-tauri/Cargo.toml --workspace && git add src-tauri/Cargo.lock) || true; }"

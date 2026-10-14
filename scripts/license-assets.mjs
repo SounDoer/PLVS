@@ -1,8 +1,20 @@
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 export const LICENSE_DIRECTORY = "licenses";
 
 export const LICENSE_ASSETS = [
+  ...JSON.parse(readFileSync(new URL("../licenses/rust-materials.json", import.meta.url), "utf8")),
+  {
+    source: "licenses/COMPONENT-NOTICES.txt",
+    destination: "licenses/COMPONENT-NOTICES.txt",
+    markers: ["PLVS COMPONENT LICENSES AND NOTICES", "Copyright (c) 2013-present Cole Bemis"],
+  },
+  {
+    source: "licenses/NATIVE-NOTICES.txt",
+    destination: "licenses/NATIVE-NOTICES.txt",
+    markers: ["PLVS NATIVE COMPONENTS AND MODEL NOTICES", "ONNX Runtime", "Silero"],
+  },
   {
     source: "LICENSE",
     destination: "licenses/PLVS-LICENSE.txt",
@@ -79,8 +91,8 @@ export const LICENSE_ASSETS = [
     sha256: "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
   },
   {
-    source: "licenses/license-texts/LGPL-2.1-only.txt",
-    destination: "licenses/license-texts/LGPL-2.1-only.txt",
+    source: "licenses/license-texts/LGPL-2.1-or-later.txt",
+    destination: "licenses/license-texts/LGPL-2.1-or-later.txt",
     markers: ["GNU LESSER GENERAL PUBLIC LICENSE", "Version 2.1, February 1999"],
     sha256: "35312208d6b05fc255ed84abdf1ab0be2093caa91bee3d3c3ec6f1a0942ea3dc",
   },
@@ -111,6 +123,9 @@ export const LICENSE_ASSETS = [
 ];
 
 export const TAURI_LICENSE_RESOURCES = {
+  "../licenses/rust/": "licenses/rust/",
+  "../licenses/COMPONENT-NOTICES.txt": "licenses/COMPONENT-NOTICES.txt",
+  "../licenses/NATIVE-NOTICES.txt": "licenses/NATIVE-NOTICES.txt",
   "../LICENSE": "licenses/PLVS-LICENSE.txt",
   "../THIRD-PARTY-NOTICES.md": "licenses/THIRD-PARTY-NOTICES.txt",
   "../licenses/README.txt": "licenses/README.txt",

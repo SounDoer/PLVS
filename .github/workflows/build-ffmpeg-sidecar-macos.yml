@@ -7,13 +7,18 @@ name: Build FFmpeg sidecar (macOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "New sidecar release tag; existing binary assets are never overwritten"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 env:
   FFMPEG_VERSION: "7.1"
-  RELEASE_TAG: "ffmpeg-sidecar-7.1"
+  RELEASE_TAG: ${{ inputs.release_tag }}
   MIN_MACOS: "14.2"
 
 jobs:
@@ -25,30 +30,14 @@ jobs:
 
       - name: Download FFmpeg source
         run: |
-          curl -sL -o ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          curl -fL -o ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          echo "40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6  ffmpeg.tar.xz" | shasum -a 256 -c -
           tar -xf ffmpeg.tar.xz
 
       - name: Configure + build (trimmed, LGPL, audio-only)
         working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
         run: |
-          ./configure \
-            --disable-everything --disable-gpl --disable-nonfree \
-            --disable-doc --disable-avdevice --disable-postproc --disable-swscale \
-            --disable-network --disable-encoders --disable-muxers --disable-filters \
-            --disable-x86asm --disable-xlib --disable-libxcb --disable-libxcb-shm \
-            --disable-libxcb-xfixes --disable-libxcb-shape --disable-sdl2 \
-            --enable-small --enable-static --disable-shared \
-            --enable-ffmpeg --enable-ffprobe \
-            --extra-cflags="-mmacosx-version-min=${MIN_MACOS}" \
-            --extra-ldflags="-mmacosx-version-min=${MIN_MACOS}" \
-            --enable-filter=aresample \
-            --enable-protocol=file,pipe \
-            --enable-demuxer=mov,matroska,wav,aiff,flac,mp3,ogg,aac,ac3,eac3,dts,w64 \
-            --enable-decoder=aac,aac_latm,ac3,eac3,dca,opus,vorbis,flac,mp3,alac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_u8 \
-            --enable-encoder=pcm_f32le \
-            --enable-muxer=pcm_f32le
-          make -j"$(sysctl -n hw.ncpu)"
-          strip ffmpeg ffprobe
+          bash ../scripts/build-ffmpeg-sidecars.sh macos
 
       - name: Sanity-check decoders
         working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
@@ -97,10 +86,20 @@ jobs:
           echo "### SHA-256 (pin these in scripts/fetch-ffmpeg-sidecar.mjs)"
           shasum -a 256 ffmpeg-aarch64-apple-darwin ffprobe-aarch64-apple-darwin
 
+      - name: Package corresponding source and the actual recipe
+        run: |
+          mkdir corresponding-source
+          cp ffmpeg.tar.xz scripts/build-ffmpeg-sidecars.sh corresponding-source/
+          cp ffmpeg-7.1/ffbuild/config.mak corresponding-source/
+          ./ffmpeg-7.1/ffmpeg -version > corresponding-source/build-version.txt
+          shasum -a 256 ffmpeg-7.1/ffmpeg-aarch64-apple-darwin ffmpeg-7.1/ffprobe-aarch64-apple-darwin > corresponding-source/binary-sha256.txt
+          tar -cJf ffmpeg-source-aarch64-apple-darwin.tar.xz corresponding-source
+
       - name: Upload to release
         working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "${RELEASE_TAG}" \
-            ffmpeg-aarch64-apple-darwin ffprobe-aarch64-apple-darwin --clobber
+            ffmpeg-aarch64-apple-darwin ffprobe-aarch64-apple-darwin \
+            ../ffmpeg-source-aarch64-apple-darwin.tar.xz

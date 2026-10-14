@@ -91,6 +91,9 @@ jobs:
       - name: Run the full repository gate
         run: npm run check
 
+      - name: Verify corresponding-source downloads
+        run: npm run licenses:sources
+
   build-windows-preview:
     needs: validate
     runs-on: windows-latest

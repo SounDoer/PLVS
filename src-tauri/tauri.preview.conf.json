@@ -5,6 +5,7 @@
   "bundle": {
     "createUpdaterArtifacts": false,
     "resources": {
+      "../licenses/rust/": "licenses/rust/",
       "plvs-preview-agent.json": "plvs-agent.json",
       "icons/tray-dark.png": "icons/tray-dark.png",
       "icons/tray-light.png": "icons/tray-light.png",
@@ -12,7 +13,9 @@
       "../THIRD-PARTY-NOTICES.md": "licenses/THIRD-PARTY-NOTICES.txt",
       "../licenses/README.txt": "licenses/README.txt",
       "../licenses/DEPENDENCY-INVENTORY.txt": "licenses/DEPENDENCY-INVENTORY.txt",
-      "../licenses/license-texts/": "licenses/license-texts/"
+      "../licenses/license-texts/": "licenses/license-texts/",
+      "../licenses/COMPONENT-NOTICES.txt": "licenses/COMPONENT-NOTICES.txt",
+      "../licenses/NATIVE-NOTICES.txt": "licenses/NATIVE-NOTICES.txt"
     },
     "windows": {
       "nsis": {

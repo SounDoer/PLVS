@@ -7,6 +7,18 @@ on:
     branches: [main]
 
 jobs:
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: rustup toolchain install --no-self-update
+      - run: npm ci
+      - run: npm run licenses:check
+
   scope:
     runs-on: ubuntu-latest
     outputs:

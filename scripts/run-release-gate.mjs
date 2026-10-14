@@ -31,6 +31,7 @@ function run(label, command, args) {
 
 run("Release state", "node", ["scripts/check-release-state.mjs"]);
 run("Full repository check", npm, ["run", "check"]);
+run("Corresponding-source availability", npm, ["run", "licenses:sources"]);
 
 // The capture layer cannot be tested by `npm run check` — CI has no sound card —
 // so it is verified here when either that layer or its smoke harness changed.

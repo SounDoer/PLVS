@@ -10,20 +10,20 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TAG = "ffmpeg-sidecar-7.1";
+const TAG = "ffmpeg-sidecar-7.1-r2";
 const REPO = "SounDoer/PLVS";
 const BASE = `https://github.com/${REPO}/releases/download/${TAG}`;
 
-// Per-platform sidecar assets. Only Windows is published in this phase.
+// Immutable per-platform sidecar assets; corresponding source is pinned in licenses/native-components.json.
 const ASSETS = {
   win32: [
     {
       name: "ffmpeg-x86_64-pc-windows-msvc.exe",
-      sha256: "56687550c76f7c58843b513a859bc20bac23024d50f5f61262441a2972ff7a3f",
+      sha256: "7f3d06039d891573d563f77d82f854617fd60e93d3cbdaad0a2923ee9c9a5b8e",
     },
     {
       name: "ffprobe-x86_64-pc-windows-msvc.exe",
-      sha256: "411c157144e52430c189e3e30811b89fa4727befb67af27c868c055be206d21b",
+      sha256: "45766e789cb67e31664e9bdf1f2cf0a2634d34c9fc5c9ce2b8191f2862f2d15a",
     },
   ],
   darwin: [
@@ -70,6 +70,16 @@ function verifyRuntime(dest, name) {
     const detail =
       version.error?.message || (version.stderr ?? "").trim() || `exit status ${version.status}`;
     throw new Error(`${name} passed its checksum but cannot run: ${detail}`);
+  }
+  const license = spawnSync(dest, ["-L"], { encoding: "utf8", timeout: 10_000 });
+  const licenseOutput = `${license.stdout || ""}\n${license.stderr || ""}`;
+  if (
+    license.status !== 0 ||
+    !licenseOutput.includes("GNU Lesser General Public") ||
+    !licenseOutput.includes("version 2.1") ||
+    /--enable-(gpl|nonfree)/.test(licenseOutput)
+  ) {
+    throw new Error(`${name} does not report the reviewed LGPL-2.1-or-later configuration`);
   }
 }
 

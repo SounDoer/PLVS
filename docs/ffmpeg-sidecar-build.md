@@ -11,7 +11,7 @@ them into `src-tauri/binaries/`.
 ## Fetching the published binaries
 
 The binaries live on a dedicated, version-pinned release (named after the FFmpeg version, not the
-app version): <https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1>.
+app version): <https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1-r2>.
 
 `scripts/fetch-ffmpeg-sidecar.mjs` downloads them into `src-tauri/binaries/` and verifies each
 against a pinned SHA-256. It is idempotent — a file already present with the right hash is skipped —
@@ -59,6 +59,13 @@ satisfies the Tauri build during development.
 
 ## Building the trimmed binary (Windows)
 
+The current Windows r2 build uses the pinned GCC 16.2.0 / MinGW-w64 14.0.0 winlibs toolchain
+recorded in `licenses/ffmpeg-builds.json`. The authoritative recipe is
+`scripts/build-ffmpeg-sidecars.sh windows`, run inside a clean FFmpeg 7.1 source extraction.
+The source archive, toolchain download and built binaries have SHA-256 records there.
+The macOS binaries have not changed: their original successful workflow run and recipe are
+preserved in the corresponding-source bundle. Do not claim they were built by the newer script.
+
 > **We do NOT use the MSYS2 installer.** Its GUI installer reliably hangs on first-run GPG keyring
 > setup ("Updating trust database") in unattended environments. Instead we use the **winlibs**
 > standalone MinGW-w64 toolchain (a plain zip — no installer, no gpg, no pacman) and run FFmpeg's
@@ -92,7 +99,7 @@ cp -f /c/ffmpeg-build/mingw64/bin/mingw32-make.exe /c/ffmpeg-build/mingw64/bin/m
 export PATH="/c/ffmpeg-build/mingw64/bin:$PATH"
 cd ffmpeg-7.1
 ./configure \
-  --disable-everything --disable-gpl --disable-nonfree \
+  --disable-everything --disable-gpl --disable-nonfree --disable-autodetect \
   --disable-doc --disable-avdevice --disable-postproc --disable-swscale \
   --disable-network --disable-encoders --disable-muxers --disable-filters \
   --disable-x86asm \
@@ -147,8 +154,16 @@ The distributed binaries report an LGPL build because the recipe uses `--disable
 --disable-nonfree`. The DTS (`dca`), AC-3/E-AC-3, Opus, and AAC decoders used by PLVS are enabled
 without enabling FFmpeg's GPL components.
 
-Every PLVS package carries `licenses/THIRD-PARTY-NOTICES.txt` and the complete LGPL-2.1-only text.
-The notice pins FFmpeg 7.1, points to the corresponding upstream source and these build parameters,
-and explains where the independent `ffmpeg`/`ffprobe` executables can be replaced. Treat those
-materials as the engineering record; questions about legal obligations still require qualified
-review rather than inference from this build document.
+Every PLVS package carries `licenses/THIRD-PARTY-NOTICES.txt` and the complete LGPL-2.1-or-later text.
+The notice points to the corresponding source bundle hosted alongside the sidecars, including
+unmodified FFmpeg source, exact platform recipes and binary hashes. `licenses/native-components.json`
+pins that source download, and `npm run licenses:sources` verifies it before publication.
+Native compiler/runtime notices are included in `licenses/NATIVE-NOTICES.txt`.
+
+For future builds, keep source and build records before publishing, use a new sidecar release tag,
+and never overwrite existing binary assets. The macOS workflow now uploads its source and actual
+recipe alongside its binaries and refuses to clobber assets. Update the binary and source pins only
+after testing. `scripts/verify-ffmpeg-sidecars.mjs` compares real decoded PCM and probe metadata with
+the previous pair using AC-3, E-AC-3, DTS, Opus, AAC, FLAC, Vorbis, MP3 and PCM fixtures. It takes
+reference/candidate directories containing `ffmpeg` and `ffprobe`, plus a full FFmpeg fixture encoder.
+Also run `npm run smoke:file-analysis` with the newly pinned pair.

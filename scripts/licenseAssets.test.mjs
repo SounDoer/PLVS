@@ -26,7 +26,9 @@ describe("release license assets", () => {
     );
     expect(stagedNotice).toContain("FFmpeg 7.1 sidecars");
     expect(stagedNotice).toContain("Bundled fonts");
-    expect(LICENSE_ASSETS).toHaveLength(16);
+    expect(
+      LICENSE_ASSETS.some((asset) => asset.destination === "licenses/COMPONENT-NOTICES.txt")
+    ).toBe(true);
   });
 
   it("rejects a staged asset whose required identification was removed", async () => {
@@ -37,5 +39,14 @@ describe("release license assets", () => {
     await writeFile(join(destination, "licenses", "PLVS-LICENSE.txt"), "MIT License\n");
 
     await expect(verifyLicenseAssets(destination)).rejects.toThrow("Copyright (c) 2026 SounDoer");
+  });
+
+  it("rejects modified notices even when all identification markers survive", async () => {
+    const destination = await mkdtemp(join(tmpdir(), "plvs-license-assets-"));
+    temporaryDirectories.push(destination);
+    await stageLicenseAssets(destination);
+    const file = join(destination, "licenses", "COMPONENT-NOTICES.txt");
+    await writeFile(file, (await readFile(file, "utf8")) + "\nUnreviewed change\n");
+    await expect(verifyLicenseAssets(destination)).rejects.toThrow("differs from reviewed source");
   });
 });

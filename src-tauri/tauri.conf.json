@@ -33,6 +33,9 @@
       "icons/icon.ico"
     ],
     "resources": {
+      "../licenses/rust/": "licenses/rust/",
+      "../licenses/COMPONENT-NOTICES.txt": "licenses/COMPONENT-NOTICES.txt",
+      "../licenses/NATIVE-NOTICES.txt": "licenses/NATIVE-NOTICES.txt",
       "plvs-agent.json": "plvs-agent.json",
       "icons/tray-dark.png": "icons/tray-dark.png",
       "icons/tray-light.png": "icons/tray-light.png",

@@ -59,7 +59,9 @@ export function collectJavascriptProductionPackages(packageLock) {
 function renderRustPackage(pkg) {
   const authors = pkg.authors?.length ? pkg.authors.join("|") : "UNKNOWN";
   const repository = pkg.repository || pkg.homepage || "UNKNOWN";
-  return `${pkg.name} ${pkg.version} | ${pkg.license || "UNKNOWN"} | ${authors} | ${repository}`;
+  const license =
+    pkg.license || (pkg.license_file ? `SEE LICENSE FILE (${pkg.license_file})` : "UNKNOWN");
+  return `${pkg.name} ${pkg.version} | ${license} | ${authors} | ${repository}`;
 }
 
 function renderJavascriptPackage(pkg) {
@@ -72,14 +74,7 @@ export async function generateDependencyInventory() {
   const packageLock = JSON.parse(packageLockBytes.toString("utf8"));
   const cargo = spawnSync(
     "cargo",
-    [
-      "metadata",
-      "--format-version",
-      "1",
-      "--locked",
-      "--manifest-path",
-      "src-tauri/Cargo.toml",
-    ],
+    ["metadata", "--format-version", "1", "--locked", "--manifest-path", "src-tauri/Cargo.toml"],
     { cwd: repoRoot, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
   );
   if (cargo.status !== 0) {
@@ -129,9 +124,7 @@ async function main() {
 
   const current = (await readFile(inventoryPath, "utf8")).replace(/\r\n/g, "\n");
   if (current !== generated) {
-    console.error(
-      "licenses/DEPENDENCY-INVENTORY.txt is stale. Run: npm run licenses:generate"
-    );
+    console.error("licenses/DEPENDENCY-INVENTORY.txt is stale. Run: npm run licenses:generate");
     process.exit(1);
   }
   console.log("License dependency inventory is current");

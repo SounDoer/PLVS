@@ -1,0 +1,1647 @@
+{
+  "date": "2026-10-14",
+  "subject": "PLVS dependency license-material remediation",
+  "status": "Engineering remediation implemented locally; historical supplements published. This is not a blanket legal compliance certification.",
+  "delivery": {
+    "historicalMaterials": "https://github.com/SounDoer/PLVS/releases/tag/license-supplements-20261014",
+    "replacementFFmpeg": "https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1-r2",
+    "historicalFFmpeg": "https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1",
+    "desktopInstallerReleased": false,
+    "originalHistoricalAssets": "Retained. Asset identities, sizes and reported SHA-256 digests were compared before and after every release-note edit.",
+    "supplementPlacement": "Dedicated materials release because immutable desktop releases prohibit adding assets; original release notes link to each matching archive."
+  },
+  "currentEngineeringControls": [
+    "Exact locked runtime package versions, declared licenses and original notice fingerprints require explicit review.",
+    "Build and development tool versions and license declarations are reviewed separately.",
+    "Model/native input hashes, installer tool version and Rust standard-library notices are checked.",
+    "Original native/runtime and package notices are included in desktop distribution resources.",
+    "Complete packaged license bytes must match reviewed files; marker-only truncation is rejected.",
+    "Source downloads must exist and match recorded hashes before release/preview publication.",
+    "TEN VAD reintroduction is blocked by the restricted-package policy.",
+    "An independent CI license job runs even for website-only changes. These repository changes take effect in hosted CI after being committed and pushed."
+  ],
+  "ffmpeg": {
+    "current": "Windows r2 rebuilt from a clean unmodified upstream 7.1 archive. Source, recipe, toolchain and binary hashes are published together. Existing macOS binaries retained with original workflow provenance.",
+    "historical": "The exact old Windows source checkout/build provenance could not be recovered. The historical source supplement records this gap and must not be represented as verified corresponding source for that binary.",
+    "sourceSha256": "40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6",
+    "r2SourceBundleSha256": "b539cc38b7804d202521ae5645f578a50f3a21280c313adba45136998dca00aa"
+  },
+  "tenVad": {
+    "affectedReleases": 53,
+    "finding": "The Apache-2.0 wrapper declaration omitted additional upstream model restrictions, including competition with Agora and end-user use.",
+    "upstreamRevision": "1337ed92a500e486134b1d79ae07c02d483cb415",
+    "license": "https://github.com/TEN-framework/ten-vad/blob/1337ed92a500e486134b1d79ae07c02d483cb415/LICENSE",
+    "modelSha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4",
+    "removedIn": "v0.20.0",
+    "userDecision": "Keep historical downloads available; append corrected terms and an upgrade advisory. No installers were overwritten or hidden.",
+    "remaining": "Applicability of the additional terms to historical distribution/use remains unresolved. Disclosure and continued availability do not establish compliance.",
+    "verifiedVendoredModels": {
+      "v0.19.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.19.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "preview-8a56df5-37931122264": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "preview-c418ae2-37910559106": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.19.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.18.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.18.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.18.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "preview-b532021-36115604689": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.17.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.16.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.16.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.16.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.15.4": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.15.3": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.15.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "dev": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.15.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.15.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.6": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.5": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.4": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.3": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.14.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.13.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.13.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.12.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.12.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.12.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.11.3": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.11.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.11.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.11.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.10.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.9.4": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.9.3": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.9.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.9.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.8.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.8.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.7.5": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.7.4": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.7.3": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.7.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.7.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.7.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.6.4": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.6.3": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.6.2": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.6.1": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      },
+      "v0.6.0": {
+        "path": "src-tauri/vendor/ten-vad-rs/ten-vad.onnx",
+        "sha256": "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4"
+      }
+    }
+  },
+  "historicalCoverage": {
+    "desktopReleases": 95,
+    "distinctRegistryComponents": 1488,
+    "method": "Exact source commits and lockfiles; all registry Cargo packages as a conservative superset, npm production packages and Tailwind, plus original vendored/font notices and matching ONNX notices.",
+    "limitations": [
+      "Lockfiles are not binary-level bills of materials.",
+      "Historical installer/compiler runtime versions and every native binary feature were not fully reconstructed.",
+      "Some original package archives omit standalone license files; declarations and available source headers are retained without inventing attribution."
+    ],
+    "packagesWithNoticeLimitations": [
+      {
+        "id": "rust:selectors@0.36.1",
+        "license": "MPL-2.0",
+        "source": "https://static.crates.io/crates/selectors/selectors-0.36.1.crate",
+        "integrity": "sha256-xdnAySqS0z8IgXMRzz8sKaNTioJA6UpqPGIs5lLX4Aw=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:unic-char-property@0.9.0",
+        "license": "MIT/Apache-2.0",
+        "source": "https://static.crates.io/crates/unic-char-property/unic-char-property-0.9.0.crate",
+        "integrity": "sha256-qMV6QH2bb6ArR5XrgcW2ZSBgoVp5A+qYHz1yPmwL4iE=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:unic-char-range@0.9.0",
+        "license": "MIT/Apache-2.0",
+        "source": "https://static.crates.io/crates/unic-char-range/unic-char-range-0.9.0.crate",
+        "integrity": "sha256-A5gCLV9wBBT2uJnhC4NIIxq/kXP6kxRMvBpDuXk8H7w=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:unic-ucd-ident@0.9.0",
+        "license": "MIT/Apache-2.0",
+        "source": "https://static.crates.io/crates/unic-ucd-ident/unic-ucd-ident-0.9.0.crate",
+        "integrity": "sha256-4jCjfAOByqkhnWfPBjqjo3X/7Vv1QaRS2xbnRL2raYc=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:unic-common@0.9.0",
+        "license": "MIT/Apache-2.0",
+        "source": "https://static.crates.io/crates/unic-common/unic-common-0.9.0.crate",
+        "integrity": "sha256-gNf/glpqZU7oWmPoD5LwVPkE8h59EtpOIvmDSkqqNbw=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:unic-ucd-version@0.9.0",
+        "license": "MIT/Apache-2.0",
+        "source": "https://static.crates.io/crates/unic-ucd-version/unic-ucd-version-0.9.0.crate",
+        "integrity": "sha256-lr0vIjf+RQ/NCh0vX06RcREk94V7oulkJHd26+63sMQ=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:seahash@4.1.0",
+        "license": "MIT",
+        "source": "https://static.crates.io/crates/seahash/seahash-4.1.0.crate",
+        "integrity": "sha256-HBB7b0eAhUyLEm4ijqiGn017cSYPli/vtXuZa4lZums=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:tao-macros@0.1.3",
+        "license": "MIT OR Apache-2.0",
+        "source": "https://static.crates.io/crates/tao-macros/tao-macros-0.1.3.crate",
+        "integrity": "sha256-9OFr64sqwX2yjquLykDmLb+7NMD83G2YJrEbe10Eff0=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:wasm-metadata@0.244.0",
+        "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "source": "https://static.crates.io/crates/wasm-metadata/wasm-metadata-0.244.0.crate",
+        "integrity": "sha256-uw41PmovvcF2kyu6q0k3YusSVaeQD+D+oaL5bClsyQk=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:wasm-encoder@0.244.0",
+        "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "source": "https://static.crates.io/crates/wasm-encoder/wasm-encoder-0.244.0.crate",
+        "integrity": "sha256-mQBl8v5jAD/jN7kyz7XjuA4LTQ9f9lDmmFsQSPYsgxk=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:wasmparser@0.244.0",
+        "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "source": "https://static.crates.io/crates/wasmparser/wasmparser-0.244.0.crate",
+        "integrity": "sha256-R7gHxy4brGk4Kzpvs9vo6kwO2H/1YpuGha5rmmEQKP4=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:wit-parser@0.244.0",
+        "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "source": "https://static.crates.io/crates/wit-parser/wit-parser-0.244.0.crate",
+        "integrity": "sha256-7MisS8HcM4G39Zw08Atn4Y+RDCwPUAFWad3n3vZWpzY=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:wit-component@0.244.0",
+        "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "source": "https://static.crates.io/crates/wit-component/wit-component-0.244.0.crate",
+        "integrity": "sha256-nWbqIOlVOzAXK16DGZTjX73i0WUyW+yE/EPb9vTrnLI=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:convert_case@0.4.0",
+        "license": "MIT",
+        "source": "https://static.crates.io/crates/convert_case/convert_case-0.4.0.crate",
+        "integrity": "sha256-YkXVmj6Cp/whfFgopmktvG37Y6DIyQSVYh97nXlwSg4=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:fxhash@0.2.1",
+        "license": "Apache-2.0/MIT",
+        "source": "https://static.crates.io/crates/fxhash/fxhash-0.2.1.crate",
+        "integrity": "sha256-wxttdRrix/ETIEAtNOQTSd0QFvjV1F5IxDEryGJa9Qw=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:mac@0.1.1",
+        "license": "MIT/Apache-2.0",
+        "source": "https://static.crates.io/crates/mac/mac-0.1.1.crate",
+        "integrity": "sha256-xB4MT++GlhrG1vioJgn1XzGwXk/OFJrFcQ5Dnfdhm6Q=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:oboe@0.6.1",
+        "license": "Apache-2.0",
+        "source": "https://static.crates.io/crates/oboe/oboe-0.6.1.crate",
+        "integrity": "sha256-6LYb69SeXUP1+Mx+4okcFuD0HseVTTa8tsFMXg3oZ/s=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      },
+      {
+        "id": "rust:oboe-sys@0.6.1",
+        "license": "Apache-2.0",
+        "source": "https://static.crates.io/crates/oboe-sys/oboe-sys-0.6.1.crate",
+        "integrity": "sha256-bIuwmkorHWaBcM/gp9W8ED+JmfsxbJgJm2qZOcny550=",
+        "limitation": "The published crate omits a standalone license file. Original license/author metadata and available source attribution headers are retained here, with standard license terms supplied separately. This does not invent an upstream copyright statement."
+      }
+    ]
+  },
+  "verification": {
+    "fullRepositoryGate": "npm run check passed: 500 Vitest files, 5380 tests, frontend build and Rust format/clippy/test suites.",
+    "followingDocumentationEdit": "16 targeted notice/generator/documentation tests passed; git diff --check passed.",
+    "sourceDownloads": "npm run licenses:sources passed against public r2 source archive.",
+    "fileAnalysis": "File analysis smoke passed with replacement sidecars (20 checks).",
+    "codecComparison": "Nine codec fixture decodes matched old float PCM exactly, with matching probe metadata.",
+    "negativeControl": "An unreviewed ORT_LIB_PATH override was rejected.",
+    "publicDownloads": "All 96 supplement URLs were downloaded without authentication and verified against their SHA-256 values. The latest desktop release remained v0.20.0."
+  },
+  "publicationReceipts": [
+    {
+      "tag": "ffmpeg-sidecar-7.1",
+      "asset": "ffmpeg-7.1-historical-source-supplement-20261014.zip",
+      "sha256": "9e7eb4fbed9d22ebec5ef55c86a3f85312a257c50a853ec18bb1af7870424c4e",
+      "releaseId": 345885832,
+      "assetId": 640150323,
+      "assetTag": "ffmpeg-sidecar-7.1",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1",
+      "verified": true
+    },
+    {
+      "tag": "preview-8a56df5-37931122264",
+      "commit": "8a56df5420105299050d121bcb1274a5917ae7e6",
+      "tenVad": true,
+      "asset": "PLVS-preview-8a56df5-37931122264-license-supplement-20261014.zip",
+      "sha256": "cc43f3f2dfbc95c40d22d53f207a1da5e75f4adff2d1550ad6e4a361c35d94ad",
+      "componentCount": 857,
+      "releaseId": 407920576,
+      "assetId": 640155206,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/preview-8a56df5-37931122264",
+      "verified": true
+    },
+    {
+      "tag": "v0.19.2",
+      "commit": "6746a74792d6fe3243f0e7a17b48d7c98222a2cb",
+      "tenVad": true,
+      "asset": "PLVS-v0.19.2-license-supplement-20261014.zip",
+      "sha256": "60317fca37e28fe30b1eab67d3ed4640be0cf21e2c28b72b05fcf1b004466d11",
+      "componentCount": 857,
+      "releaseId": 410785735,
+      "assetId": 640154995,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.19.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.20.0",
+      "commit": "99d641f26f0abe3eac7b6c5c34b01b13a61c61e5",
+      "tenVad": false,
+      "asset": "PLVS-v0.20.0-license-supplement-20261014.zip",
+      "sha256": "dff7dfde2dc1e71083653a2dc281db0da5ac98678ed45f80b4fb2afc25fe34df",
+      "componentCount": 852,
+      "releaseId": 412196131,
+      "assetId": 640154903,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.20.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.19.1",
+      "commit": "a6f564e06de4c9c732b63132d76bba7c945f248d",
+      "tenVad": true,
+      "asset": "PLVS-v0.19.1-license-supplement-20261014.zip",
+      "sha256": "f9a6d327f11c0fd6b8880c16ee15024890648a835baa2f4176e6916a5506845a",
+      "componentCount": 857,
+      "releaseId": 408916192,
+      "assetId": 640155105,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.19.1",
+      "verified": true
+    },
+    {
+      "tag": "preview-c418ae2-37910559106",
+      "commit": "c418ae23f7558975cdf3994516b423021f6a5129",
+      "tenVad": true,
+      "asset": "PLVS-preview-c418ae2-37910559106-license-supplement-20261014.zip",
+      "sha256": "4db1ff5bb48561acd489ba21cae07390c38f30fd96a945901be1b4c0ec26673f",
+      "componentCount": 859,
+      "releaseId": 407776060,
+      "assetId": 640155309,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/preview-c418ae2-37910559106",
+      "verified": true
+    },
+    {
+      "tag": "v0.19.0",
+      "commit": "a953766217e6ebeceac264ba86e10f4b69eeabcd",
+      "tenVad": true,
+      "asset": "PLVS-v0.19.0-license-supplement-20261014.zip",
+      "sha256": "76c4d782158445cc7ed96e9342b9d63d66c2361de37f9899df723ab55089c020",
+      "componentCount": 857,
+      "releaseId": 406528477,
+      "assetId": 640155393,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.19.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.18.2",
+      "commit": "c0de3bc9c5f759fadb868fce0798c6a307663cd5",
+      "tenVad": true,
+      "asset": "PLVS-v0.18.2-license-supplement-20261014.zip",
+      "sha256": "9ef03f5744d474b97e1619a0d009dbee5f2ccfe3a462f53ed8dd735918941328",
+      "componentCount": 867,
+      "releaseId": 402816613,
+      "assetId": 640155457,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.18.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.18.1",
+      "commit": "253c3102caae8948bfd983eab9529bae4044510b",
+      "tenVad": true,
+      "asset": "PLVS-v0.18.1-license-supplement-20261014.zip",
+      "sha256": "dbfd62da66a164c24a92fc811aa9682d4752d5469bf1e74aa710c88cf10e5614",
+      "componentCount": 867,
+      "releaseId": 402006326,
+      "assetId": 640155638,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.18.1",
+      "verified": true
+    },
+    {
+      "tag": "preview-b532021-36115604689",
+      "commit": "b532021f8a70f99b97369edd6f085abab9df3a84",
+      "tenVad": true,
+      "asset": "PLVS-preview-b532021-36115604689-license-supplement-20261014.zip",
+      "sha256": "f9dd20c5b8773bb86fa6bf63dc43b780f7eb1a250f48c045bca0b3ab442619be",
+      "componentCount": 867,
+      "releaseId": 396474645,
+      "assetId": 640155784,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/preview-b532021-36115604689",
+      "verified": true
+    },
+    {
+      "tag": "v0.16.2",
+      "commit": "e549d92bbad1bc819b5a48efce30dec2a225f654",
+      "tenVad": true,
+      "asset": "PLVS-v0.16.2-license-supplement-20261014.zip",
+      "sha256": "1513d85fe0ad3b05d66386571c6884ddec85a4bc50aa4c30851aab6ff38f5013",
+      "componentCount": 825,
+      "releaseId": 394273749,
+      "assetId": 640156014,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.16.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.18.0",
+      "commit": "7bf57e053be934606453361a48352ff5f92e5c2f",
+      "tenVad": true,
+      "asset": "PLVS-v0.18.0-license-supplement-20261014.zip",
+      "sha256": "526e198569255979d0c24f34513dbd18163ecc73c6c538df87fb3a41839c8c01",
+      "componentCount": 867,
+      "releaseId": 401515898,
+      "assetId": 640155706,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.18.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.17.0",
+      "commit": "5ccbbd9c361a9305fd18a32aaddb6c025e48e86d",
+      "tenVad": true,
+      "asset": "PLVS-v0.17.0-license-supplement-20261014.zip",
+      "sha256": "c4f4e70918e27f7af6bdff1b95feff443f25f8b73824f5cfabe4ec8fb516484c",
+      "componentCount": 834,
+      "releaseId": 395339831,
+      "assetId": 640155871,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.17.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.16.1",
+      "commit": "67893997a8c5e59ee4949bab2f42b66329c9d4fc",
+      "tenVad": true,
+      "asset": "PLVS-v0.16.1-license-supplement-20261014.zip",
+      "sha256": "bfdf028342ca9e6f5f6d35871bdc8c73a626cd5dfd9ce3051d643881f1694fd0",
+      "componentCount": 825,
+      "releaseId": 392691542,
+      "assetId": 640156144,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.16.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.16.0",
+      "commit": "d9a9b0d13739bbf2252d638d9388dce9aec31ffd",
+      "tenVad": true,
+      "asset": "PLVS-v0.16.0-license-supplement-20261014.zip",
+      "sha256": "8e1abf86273a8477eb0fb9c641a14e62acf746aca3d048ceb21fe1a8ba0e9e19",
+      "componentCount": 825,
+      "releaseId": 390398322,
+      "assetId": 640156268,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.16.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.15.4",
+      "commit": "18f5e3b36073c0c47e30e462b6846229c7fdd0b4",
+      "tenVad": true,
+      "asset": "PLVS-v0.15.4-license-supplement-20261014.zip",
+      "sha256": "0d434b683b3d8c68940a8b8fd7b495a8b622b665a16c066f72bc4797a783aeea",
+      "componentCount": 821,
+      "releaseId": 387582868,
+      "assetId": 640156364,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.15.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.15.3",
+      "commit": "6a745f8d3ec323e53701ab4609a543bdf7b3aa22",
+      "tenVad": true,
+      "asset": "PLVS-v0.15.3-license-supplement-20261014.zip",
+      "sha256": "84e6fe7ce1adf5f70c27f33046c85a19ac9efcf50649cf0f2194be35adb3692e",
+      "componentCount": 821,
+      "releaseId": 385372929,
+      "assetId": 640156461,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.15.3",
+      "verified": true
+    },
+    {
+      "tag": "dev",
+      "commit": "695125c251279300bf4439d20b9534277c372e8e",
+      "tenVad": true,
+      "asset": "PLVS-dev-license-supplement-20261014.zip",
+      "sha256": "f69022f4e51979c6bfb99e62d7322f361c6803ce9e78c8822e0fede27b2d32eb",
+      "componentCount": 821,
+      "releaseId": 384652821,
+      "assetId": 640156698,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/dev",
+      "verified": true
+    },
+    {
+      "tag": "v0.15.2",
+      "commit": "c78915108e7484dd24d1b50d7e7b74e81b9bd80f",
+      "tenVad": true,
+      "asset": "PLVS-v0.15.2-license-supplement-20261014.zip",
+      "sha256": "4351bc3ed69070d605730cb27a8308a8023e975d0049b3a6b9d25678dd779796",
+      "componentCount": 821,
+      "releaseId": 384697406,
+      "assetId": 640156554,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.15.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.15.1",
+      "commit": "db16245c720a3903ea07f2fc029531baf4d865f6",
+      "tenVad": true,
+      "asset": "PLVS-v0.15.1-license-supplement-20261014.zip",
+      "sha256": "c11518b6b5f1b9bbb4e01ae5c7411159d83c5e53238513dd495a02e773b064ac",
+      "componentCount": 816,
+      "releaseId": 383596946,
+      "assetId": 640156818,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.15.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.15.0",
+      "commit": "3c987f07caf3dd8a91bcd13d398440d022cbd655",
+      "tenVad": true,
+      "asset": "PLVS-v0.15.0-license-supplement-20261014.zip",
+      "sha256": "69b127e33e224dea41fae891b62ee840761ca38ca7cdc2242889405a66d7867d",
+      "componentCount": 816,
+      "releaseId": 383317839,
+      "assetId": 640156958,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.15.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.4",
+      "commit": "dfa77906bf6b90884b52551e5954617f93abc063",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.4-license-supplement-20261014.zip",
+      "sha256": "58113598ccb99999ed91fa8215ba424b093f1e647f104e8865c19aa1a0fca5f6",
+      "componentCount": 810,
+      "releaseId": 379915839,
+      "assetId": 640157293,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.5",
+      "commit": "cc5b2da7ac3fcdc62868e66d414fbb603a0d1778",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.5-license-supplement-20261014.zip",
+      "sha256": "c462e8544b49ad1e1d41b62a0a15c13a598b8d2180cc5e7732a89e3158b6c9d4",
+      "componentCount": 810,
+      "releaseId": 380325659,
+      "assetId": 640157188,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.5",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.6",
+      "commit": "b95ce6de267f3f39a4545615f32168a0fb83b129",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.6-license-supplement-20261014.zip",
+      "sha256": "8aa08a405bd8efdec1cf3415df6c12f554f7883777f1e63559db71c351fa5344",
+      "componentCount": 810,
+      "releaseId": 382479650,
+      "assetId": 640157073,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.6",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.3",
+      "commit": "e6b7eb132145e0f9b402971e4f32fe844cdac3a8",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.3-license-supplement-20261014.zip",
+      "sha256": "98af58e3ccd6449d0a601969990771fc138ae4e32f5fba6dbd8c736f9cf91b4d",
+      "componentCount": 810,
+      "releaseId": 379390968,
+      "assetId": 640157493,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.2",
+      "commit": "853f26a23a5c59a37f37cd31dda5843fafa7678f",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.2-license-supplement-20261014.zip",
+      "sha256": "e2f4d484b7b2d546a76c1097f4f66b97cbc7e76346a94d381f08ca4d24875f0e",
+      "componentCount": 810,
+      "releaseId": 378460902,
+      "assetId": 640157664,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.0",
+      "commit": "aa8aa8675fafd76e08dd91ebd1d2f6ba683331c8",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.0-license-supplement-20261014.zip",
+      "sha256": "5da690ab0cc76c367661317f003ee5bef3fa82471cace09845083dc69e671365",
+      "componentCount": 808,
+      "releaseId": 374327285,
+      "assetId": 640157870,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.14.1",
+      "commit": "e82a6964d2b7c5787b583e224c0e6529530e2710",
+      "tenVad": true,
+      "asset": "PLVS-v0.14.1-license-supplement-20261014.zip",
+      "sha256": "238de2756ee89b12dbd5c897045f27e7ed82bdb40b57c75462cc6a10ea5d3314",
+      "componentCount": 808,
+      "releaseId": 377768878,
+      "assetId": 640157758,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.14.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.13.1",
+      "commit": "448874b94194ee9ab5fa8eeceae52e97cec14685",
+      "tenVad": true,
+      "asset": "PLVS-v0.13.1-license-supplement-20261014.zip",
+      "sha256": "03461d6a385961b4cbce5795eef077de02a01f0c96e8bdb703e0b19efba44136",
+      "componentCount": 802,
+      "releaseId": 367792645,
+      "assetId": 640157955,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.13.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.13.0",
+      "commit": "a901850310b2ea8f0a5f8623b2f2defd10a402e5",
+      "tenVad": true,
+      "asset": "PLVS-v0.13.0-license-supplement-20261014.zip",
+      "sha256": "6e2b30ed8f325c094954c53c9c4525ca55cc7fa26939bcd1331a8dcea382e7d5",
+      "componentCount": 792,
+      "releaseId": 365488643,
+      "assetId": 640158016,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.13.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.12.2",
+      "commit": "dcaf130ba56a620f47a70b656c538436d7308167",
+      "tenVad": true,
+      "asset": "PLVS-v0.12.2-license-supplement-20261014.zip",
+      "sha256": "bfbac1bbdde89c7c27660c951f69eda28e1ead63a18681bde8ad1a8a0c3e78a8",
+      "componentCount": 792,
+      "releaseId": 361806572,
+      "assetId": 640158112,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.12.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.12.0",
+      "commit": "ba5538191a17f6cf3b4e092fbc748e6889b9fa17",
+      "tenVad": true,
+      "asset": "PLVS-v0.12.0-license-supplement-20261014.zip",
+      "sha256": "359c1e52c48ea75b67ad48f05f5c95aa126c0a53757cb010055ed73eacfecf49",
+      "componentCount": 792,
+      "releaseId": 360855934,
+      "assetId": 640158281,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.12.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.12.1",
+      "commit": "30a4baf98b01c476ffe56fd116560f6da45a8846",
+      "tenVad": true,
+      "asset": "PLVS-v0.12.1-license-supplement-20261014.zip",
+      "sha256": "de374082f2d51e4163c82b16010b8ee13c896da3c6828535f984f054e7171696",
+      "componentCount": 792,
+      "releaseId": 361159652,
+      "assetId": 640158188,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.12.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.11.1",
+      "commit": "de0047af7c2c0e4b04f5d9ddfd6dac2663ab14be",
+      "tenVad": true,
+      "asset": "PLVS-v0.11.1-license-supplement-20261014.zip",
+      "sha256": "fe98862636e244896d156b4061d9928beae5ac290035bb4b8a261bd309741309",
+      "componentCount": 769,
+      "releaseId": 359349189,
+      "assetId": 640158557,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.11.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.11.3",
+      "commit": "d466d11f2ec1257d1961561019923bd8521b77f9",
+      "tenVad": true,
+      "asset": "PLVS-v0.11.3-license-supplement-20261014.zip",
+      "sha256": "1f423fd80cf740f6f9eb1d87886d460330c5f3249d697c4dccb8ac353604cdea",
+      "componentCount": 770,
+      "releaseId": 359967561,
+      "assetId": 640158362,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.11.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.11.2",
+      "commit": "8b153568e7f1625d7ed26e1da0c6a8db589afc62",
+      "tenVad": true,
+      "asset": "PLVS-v0.11.2-license-supplement-20261014.zip",
+      "sha256": "3a56c08e980a0b8994a2a6deb7aa25e37bfde4dd669faca873d2ae63bb3fb5ac",
+      "componentCount": 769,
+      "releaseId": 359376421,
+      "assetId": 640158477,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.11.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.11.0",
+      "commit": "128d1f50b8d089d3223fb567fccc21eaf6735334",
+      "tenVad": true,
+      "asset": "PLVS-v0.11.0-license-supplement-20261014.zip",
+      "sha256": "10b7387bcb4d159e8d3c4cd0da429da712db0bc10a0f95cb4251ca18815c93f4",
+      "componentCount": 769,
+      "releaseId": 358758631,
+      "assetId": 640158622,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.11.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.10.0",
+      "commit": "87301e2636d0c4ce7d32838217012b703d096323",
+      "tenVad": true,
+      "asset": "PLVS-v0.10.0-license-supplement-20261014.zip",
+      "sha256": "ecdd96dff52b56a354e94c52fdbe109487d7fe87b807a18e0b7072404051ddbd",
+      "componentCount": 769,
+      "releaseId": 357814358,
+      "assetId": 640158777,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.10.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.9.4",
+      "commit": "2900c368a92464891c1b1e476b93df2f9b10cc33",
+      "tenVad": true,
+      "asset": "PLVS-v0.9.4-license-supplement-20261014.zip",
+      "sha256": "286fba4b94eb005e8a85b23cddc0bd25af65ef59786e6b87cd5720f532c2e38e",
+      "componentCount": 685,
+      "releaseId": 356741641,
+      "assetId": 640158866,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.9.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.9.1",
+      "commit": "8b56060937d59450912a8a996372ec629291cbe6",
+      "tenVad": true,
+      "asset": "PLVS-v0.9.1-license-supplement-20261014.zip",
+      "sha256": "2ebbfc2df8950ddd22d340b19534a33519ccb659ff04dd631055c19ed524957d",
+      "componentCount": 685,
+      "releaseId": 355103859,
+      "assetId": 640159135,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.9.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.9.2",
+      "commit": "db3bd0c8a050305f6568effae9d9ddca3f7e4974",
+      "tenVad": true,
+      "asset": "PLVS-v0.9.2-license-supplement-20261014.zip",
+      "sha256": "b1e90d6a2e6ff73ce8f789186556845d6528963f1daebca4c95b4c3b62a028b7",
+      "componentCount": 684,
+      "releaseId": 355447529,
+      "assetId": 640159019,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.9.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.9.3",
+      "commit": "3e13a9d5128f7504635a8e0ccb278e1c0840e7a9",
+      "tenVad": true,
+      "asset": "PLVS-v0.9.3-license-supplement-20261014.zip",
+      "sha256": "ab70bc4c0fb6cf9c9c9a4f31f402f273ac3985467936d99678705fa9c5f37f64",
+      "componentCount": 684,
+      "releaseId": 355595890,
+      "assetId": 640158944,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.9.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.8.0",
+      "commit": "04617eee3fc1c690dde84dfe135c12291ea0f6b4",
+      "tenVad": true,
+      "asset": "PLVS-v0.8.0-license-supplement-20261014.zip",
+      "sha256": "c74611c84d10182469aabaab9db38457c327205e3a60b47af0deed42238acb9b",
+      "componentCount": 722,
+      "releaseId": 351971888,
+      "assetId": 640159357,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.8.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.7.5",
+      "commit": "e59d1e35e035c2f45bbf1017f3c2ea726b5e4f31",
+      "tenVad": true,
+      "asset": "PLVS-v0.7.5-license-supplement-20261014.zip",
+      "sha256": "737ab9f5a1cd125b96d5339db86768eafe6b61be8fa32fe30db56817b76a6416",
+      "componentCount": 722,
+      "releaseId": 351555091,
+      "assetId": 640159459,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.7.5",
+      "verified": true
+    },
+    {
+      "tag": "v0.7.4",
+      "commit": "b452c301c3ebd97ecf37c4b40870225de4143e9c",
+      "tenVad": true,
+      "asset": "PLVS-v0.7.4-license-supplement-20261014.zip",
+      "sha256": "ddc190062502a7a2c1c4f5616321d20c9c4dfe3d2eb9bf08bac231d4c005e6a5",
+      "componentCount": 722,
+      "releaseId": 351497033,
+      "assetId": 640159555,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.7.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.7.2",
+      "commit": "bd03dc819a5902a7fe50cb4d7292f15f10647190",
+      "tenVad": true,
+      "asset": "PLVS-v0.7.2-license-supplement-20261014.zip",
+      "sha256": "b2b3651fdad4b60dc875da6bb3a22bc7b6f214332a0612521fdd50618f7fdb3b",
+      "componentCount": 722,
+      "releaseId": 350975554,
+      "assetId": 640159833,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.7.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.7.3",
+      "commit": "b2598e9ec59968001932d0b9c16f5898e101aaac",
+      "tenVad": true,
+      "asset": "PLVS-v0.7.3-license-supplement-20261014.zip",
+      "sha256": "42fac6616bd1af4777bc519f013883ee74bb9d1de5d98b8e51ca7d81f314d47a",
+      "componentCount": 722,
+      "releaseId": 350988333,
+      "assetId": 640159676,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.7.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.7.0",
+      "commit": "2dd51d77b4b7fe567c011c70b8041202aa592665",
+      "tenVad": true,
+      "asset": "PLVS-v0.7.0-license-supplement-20261014.zip",
+      "sha256": "2a89a92f0909fbe53cef2b58ffa274a910c70a1fd5259e2f7410d2d0f734172c",
+      "componentCount": 723,
+      "releaseId": 350723440,
+      "assetId": 640160051,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.7.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.6.4",
+      "commit": "15956f82ce86efa8a993ca3a0f9917f47639c51b",
+      "tenVad": true,
+      "asset": "PLVS-v0.6.4-license-supplement-20261014.zip",
+      "sha256": "251d026b0687ea5d3054d4395bd1af05902406454a8cd85e663734d92ea8d64e",
+      "componentCount": 692,
+      "releaseId": 349120073,
+      "assetId": 640160307,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.6.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.7.1",
+      "commit": "60d410d0bcae97577da8f9616384051d72a34ddf",
+      "tenVad": true,
+      "asset": "PLVS-v0.7.1-license-supplement-20261014.zip",
+      "sha256": "25f36ed1ab9d6a2ebe4a9ba23aca2c0998d3321b9b9069fbdac2f6fd0fa077c7",
+      "componentCount": 723,
+      "releaseId": 350959662,
+      "assetId": 640159970,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.7.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.8.1",
+      "commit": "9fda0f5185872d5b2d1610cc06b858efb74de464",
+      "tenVad": true,
+      "asset": "PLVS-v0.8.1-license-supplement-20261014.zip",
+      "sha256": "2c736f06d910a8f0d5a40aea93b7644a66408729f4a26f4c9273fd2fc4e68f46",
+      "componentCount": 722,
+      "releaseId": 352187961,
+      "assetId": 640159226,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.8.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.6.3",
+      "commit": "b0bec35023e6ab3c0252ae0afba350456d7778db",
+      "tenVad": true,
+      "asset": "PLVS-v0.6.3-license-supplement-20261014.zip",
+      "sha256": "671755a2f7bd61a6d6a8445d57c3c0d041c592983a6b8cd52d25c25f3714dfaf",
+      "componentCount": 691,
+      "releaseId": 348555761,
+      "assetId": 640160435,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.6.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.6.2",
+      "commit": "03b392926a0dbfef76a8ba117892fcfbd53e782c",
+      "tenVad": true,
+      "asset": "PLVS-v0.6.2-license-supplement-20261014.zip",
+      "sha256": "3353ebdaf6214f4f99c9b177014b7de6de26122e015e6c3ad18f5d68eabda1b6",
+      "componentCount": 691,
+      "releaseId": 347951951,
+      "assetId": 640160554,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.6.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.6.1",
+      "commit": "474b58f729caed79834c37fa9b409aad8298c16f",
+      "tenVad": true,
+      "asset": "PLVS-v0.6.1-license-supplement-20261014.zip",
+      "sha256": "02bc335aacc72881da889058ff65772712ceb317a8f5161e900a582e0413b2ac",
+      "componentCount": 691,
+      "releaseId": 346923951,
+      "assetId": 640160663,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.6.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.6.0",
+      "commit": "cb6716cc88d5529b734c235c8fb7432aab23693c",
+      "tenVad": true,
+      "asset": "PLVS-v0.6.0-license-supplement-20261014.zip",
+      "sha256": "0aea43c0f43765b693668d161523ae23895bb05115cd78f85c8e4970312def39",
+      "componentCount": 691,
+      "releaseId": 346328840,
+      "assetId": 640160764,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.6.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.5.3",
+      "commit": "51e08a0a7fc2a94c42d86399fe99b89d61b5c1d5",
+      "tenVad": false,
+      "asset": "PLVS-v0.5.3-license-supplement-20261014.zip",
+      "sha256": "2568d28a3f648672b3e105f71f6176fa7bd7d7e5cc16316579145e2e82b94433",
+      "componentCount": 704,
+      "releaseId": 345665800,
+      "assetId": 640160875,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.5.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.5.1",
+      "commit": "1e402a740e50e03878ae096a633f8cb807f5bf09",
+      "tenVad": false,
+      "asset": "PLVS-v0.5.1-license-supplement-20261014.zip",
+      "sha256": "3743d0669711d6f2dbec08eaed46369671b738b2312feee095f08458a35995de",
+      "componentCount": 704,
+      "releaseId": 344703872,
+      "assetId": 640161152,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.5.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.5.2",
+      "commit": "ddadc28437b668a69d9b6eff9717a5279465419c",
+      "tenVad": false,
+      "asset": "PLVS-v0.5.2-license-supplement-20261014.zip",
+      "sha256": "c8a415259e674d1604475b06ebe12b42328d50ca64f738b16f553435d3529714",
+      "componentCount": 704,
+      "releaseId": 345264840,
+      "assetId": 640161013,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.5.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.5.0",
+      "commit": "834d86f7953a49ce399e4d0e0060c5be182b7870",
+      "tenVad": false,
+      "asset": "PLVS-v0.5.0-license-supplement-20261014.zip",
+      "sha256": "19216594122280e1a124df2b73bb0e8e20e54580f37c5f20f61b83512513d6b9",
+      "componentCount": 704,
+      "releaseId": 344513909,
+      "assetId": 640161243,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.5.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.7",
+      "commit": "775b684afcf6764eaf6a9df5f930a37cad171a9f",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.7-license-supplement-20261014.zip",
+      "sha256": "449659159a6630b215f0a511ef1c46df80a10d300eb103690ca3abc06f559fc0",
+      "componentCount": 661,
+      "releaseId": 341220480,
+      "assetId": 640161495,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.7",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.5",
+      "commit": "f3f84a5168612a5ad446b48f4e121b509e87a33b",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.5-license-supplement-20261014.zip",
+      "sha256": "c21b3a82319f4af17e20d2e2962643501087bc4a374c275526309742f17fa506",
+      "componentCount": 677,
+      "releaseId": 340175083,
+      "assetId": 640161683,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.5",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.6",
+      "commit": "6034101e3062f0fd9087beba5f7cc57e0c0732f6",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.6-license-supplement-20261014.zip",
+      "sha256": "e6e032aa594643a1cec07952fdf99cc3d35fd5ce80bb6068f3a0f24b15167933",
+      "componentCount": 677,
+      "releaseId": 340645193,
+      "assetId": 640161570,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.6",
+      "verified": true
+    },
+    {
+      "tag": "v0.4.0",
+      "commit": "5e417b415f38e0d887b8a854ead835470629f191",
+      "tenVad": false,
+      "asset": "PLVS-v0.4.0-license-supplement-20261014.zip",
+      "sha256": "abbc335aae3508ae110eac405c7818311061660fc9c9c57492cc5a5c675ee178",
+      "componentCount": 661,
+      "releaseId": 341382453,
+      "assetId": 640161393,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.4.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.4",
+      "commit": "d66b218c8334b6b6c198ae489f62b5458b032ebb",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.4-license-supplement-20261014.zip",
+      "sha256": "574d93b8e41962649d56bfa08aaa9d908dbc26cf117f028646e7292fa6fd65c7",
+      "componentCount": 677,
+      "releaseId": 339569246,
+      "assetId": 640161773,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.2",
+      "commit": "034fec031dac141a36fe16408064470751734256",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.2-license-supplement-20261014.zip",
+      "sha256": "06702f9596ba1390049fbd4ba5a02cd6e60df19f2e150a4a5ec3f3033e0fdb24",
+      "componentCount": 674,
+      "releaseId": 338981869,
+      "assetId": 640161983,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.1",
+      "commit": "3ca1207fe5133add3ff91e91be18b26210d99659",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.1-license-supplement-20261014.zip",
+      "sha256": "b8b0e69584b2d7eef8bf0412d3416eaea45cd1d692ba4149413da2c8929ab62f",
+      "componentCount": 674,
+      "releaseId": 338950938,
+      "assetId": 640162059,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.3",
+      "commit": "bdbb12cba66b2bc4750a61fa04f15163e32369a9",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.3-license-supplement-20261014.zip",
+      "sha256": "775bb42ca6cc7b03b60b2ee26150e543e8c8d2f3188dda981aac880c8653c770",
+      "componentCount": 677,
+      "releaseId": 339339895,
+      "assetId": 640161876,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.3.0",
+      "commit": "18fe0fcb051ad8ff125bc6daede67ad5a08fe279",
+      "tenVad": false,
+      "asset": "PLVS-v0.3.0-license-supplement-20261014.zip",
+      "sha256": "305523071cbfeea1048541ab4e242f09d559c99e4f8179b47dd48d05cee52a09",
+      "componentCount": 635,
+      "releaseId": 338386203,
+      "assetId": 640162150,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.3.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.2.2",
+      "commit": "54cece039a8aa7e259b6e0ebeb04baf03cfba170",
+      "tenVad": false,
+      "asset": "PLVS-v0.2.2-license-supplement-20261014.zip",
+      "sha256": "ae496d094cb94fd6938998e64fee97cacddfa0efa7f7332268174e06f6a5d7d8",
+      "componentCount": 611,
+      "releaseId": 336654878,
+      "assetId": 640162331,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.2.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.2.3",
+      "commit": "7586c3a4aaeca2b17f8300745a3d16c9bee76308",
+      "tenVad": false,
+      "asset": "PLVS-v0.2.3-license-supplement-20261014.zip",
+      "sha256": "71e0951b1b249e1bbd3a1675347e4b6ca03eeded144eeda87bb367dc36e5d85c",
+      "componentCount": 628,
+      "releaseId": 337081326,
+      "assetId": 640162251,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.2.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.2.1",
+      "commit": "45fa94fda9ca28b99a2bc64b5c94b6a677bbf299",
+      "tenVad": false,
+      "asset": "PLVS-v0.2.1-license-supplement-20261014.zip",
+      "sha256": "851f4f1e2c80dd682db80776341400a68bca4e07d8448604b7dc4915ec374db1",
+      "componentCount": 611,
+      "releaseId": 336477062,
+      "assetId": 640162436,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.2.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.2.0",
+      "commit": "44dff59f790a48c2d6cbad8e51fdcfa6f6472d67",
+      "tenVad": false,
+      "asset": "PLVS-v0.2.0-license-supplement-20261014.zip",
+      "sha256": "fede7f8314f204d01609b81c3f7ff27148b0c27b3d740f69f1d275a1bfdd5402",
+      "componentCount": 611,
+      "releaseId": 336332604,
+      "assetId": 640162542,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.2.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.5",
+      "commit": "1f89a410eddd34c09543ea9ee380d34cc753cea7",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.5-license-supplement-20261014.zip",
+      "sha256": "3fc0c33526d05d36dc5611deecd47aa7dc07891fd023129a5bb262d58ea30719",
+      "componentCount": 605,
+      "releaseId": 334735715,
+      "assetId": 640162799,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.5",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.4",
+      "commit": "7bbb427d430697a40866120711d898419c95753f",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.4-license-supplement-20261014.zip",
+      "sha256": "96412e311c9a99c0cb0286ba956a6861682a6d22c44f69d948c0310a52092cd7",
+      "componentCount": 605,
+      "releaseId": 334701998,
+      "assetId": 640162876,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.6",
+      "commit": "5ebcc363b649d0f93c056dafdc2d4f658e898b31",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.6-license-supplement-20261014.zip",
+      "sha256": "baf542fd0b02123684047e8ee0dbc3c454561cba623bcaf685aef23b3bf171ba",
+      "componentCount": 605,
+      "releaseId": 334891403,
+      "assetId": 640162672,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.6",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.3",
+      "commit": "185bdf96cccabe2c3bf005966682f50fa004ff26",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.3-license-supplement-20261014.zip",
+      "sha256": "d87a0fe5679339e3ae8d1d78b5af878aa9868417d55a3fcefb3014e6f370b162",
+      "componentCount": 564,
+      "releaseId": 334359190,
+      "assetId": 640162967,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.2",
+      "commit": "d41a47d31968ac48bb561fa166b41d968009966a",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.2-license-supplement-20261014.zip",
+      "sha256": "318f04bfaebfddd87e81ce201a3e98ce598f99ac32c78aa8bb28cf9a5687b9d6",
+      "componentCount": 564,
+      "releaseId": 334165578,
+      "assetId": 640163077,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.2",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.1",
+      "commit": "8821acb54158280e50a6bcddc1af1c71521611c9",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.1-license-supplement-20261014.zip",
+      "sha256": "6cdc1a02cc529cf9551f27c5cc9d51d59ad76e8bea1dd2becc2fd02294b1156a",
+      "componentCount": 564,
+      "releaseId": 333541111,
+      "assetId": 640163201,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.1",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.18",
+      "commit": "2540dba64cec15ad1000e0cc1f23f49f2795fccb",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.18-license-supplement-20261014.zip",
+      "sha256": "0a6587f9b40124d7163e425f8cd416cf911315dbbc9e642d837ab71313acc252",
+      "componentCount": 596,
+      "releaseId": 331466316,
+      "assetId": 640163469,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.18",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.17",
+      "commit": "9dac9d7a3bc2f9ce317c88facc4caa1c7f2a4a44",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.17-license-supplement-20261014.zip",
+      "sha256": "6e9b799a844c797a1c34efc17db653df20ce53c799b6f1764a28850e06fb6c6e",
+      "componentCount": 596,
+      "releaseId": 326821249,
+      "assetId": 640163605,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.17",
+      "verified": true
+    },
+    {
+      "tag": "v0.1.0",
+      "commit": "17d2a2a9e7b35cb034b504ede8f25c78e6d07991",
+      "tenVad": false,
+      "asset": "PLVS-v0.1.0-license-supplement-20261014.zip",
+      "sha256": "90ad523d43c6b24b29c3e7aad02c3f354ddedfe41754f7f654ed5ccd7c84a9e2",
+      "componentCount": 564,
+      "releaseId": 331588884,
+      "assetId": 640163350,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.1.0",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.16",
+      "commit": "3c8bd31f67e901003906e180539d8d2090624f18",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.16-license-supplement-20261014.zip",
+      "sha256": "32fc30c4bc4576f1076531fd7477815b6197786609e7b4aa877d7dcf9cd09099",
+      "componentCount": 596,
+      "releaseId": 324738981,
+      "assetId": 640163762,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.16",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.15",
+      "commit": "d2437e2fcbba050112a24e05164a1d0eefcd9e51",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.15-license-supplement-20261014.zip",
+      "sha256": "05d56c52e58ce54414ee1622cb829b1868424148374f6e1f63d6d2b1a2ac241a",
+      "componentCount": 596,
+      "releaseId": 323629472,
+      "assetId": 640163908,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.15",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.13",
+      "commit": "542c3d981de474d7c64302cbae64df52026f0d75",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.13-license-supplement-20261014.zip",
+      "sha256": "82df3f83e004b1b4141f7c26d0c18579df083d1eaf22bc6e6c8e960cd44d652e",
+      "componentCount": 596,
+      "releaseId": 322344338,
+      "assetId": 640164124,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.13",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.12",
+      "commit": "dc5716a6bed57a40d903c9c563d2490ad5e93f79",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.12-license-supplement-20261014.zip",
+      "sha256": "4c928dbf221f1a55d88c695ef01de1fee1987b9cd9f9cfde0aebc952c662ad53",
+      "componentCount": 596,
+      "releaseId": 320421430,
+      "assetId": 640164212,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.12",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.14",
+      "commit": "057c39d9acedeede559115b98a5038bbda644b67",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.14-license-supplement-20261014.zip",
+      "sha256": "bbdec53fe668818f130684ca936b47b565b420c783f43c4f8bcdcd0e1706924a",
+      "componentCount": 596,
+      "releaseId": 323096467,
+      "assetId": 640164038,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.14",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.11",
+      "commit": "2514068abae723963d3926670e85718e753ed2e0",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.11-license-supplement-20261014.zip",
+      "sha256": "74f3fcbbc5719a0fd214fdbe705aad050b6a8c4e5c3081aa7ed7139be2971b2b",
+      "componentCount": 542,
+      "releaseId": 319925223,
+      "assetId": 640164310,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.11",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.10",
+      "commit": "3e63744b0aa34fb143d7a8200c310125185903ee",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.10-license-supplement-20261014.zip",
+      "sha256": "aa639e67d51e79676349cf747c110dfc339d983539dd52d7ac81c932fedf7e4e",
+      "componentCount": 547,
+      "releaseId": 319432613,
+      "assetId": 640164486,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.10",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.9",
+      "commit": "168fd445ac53705cc5d9295859e003865fab274d",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.9-license-supplement-20261014.zip",
+      "sha256": "5a9aefc956059cc3f7d6f0fcbed3ffce83d39bb5e65625ca767a8412a53a764b",
+      "componentCount": 547,
+      "releaseId": 318857205,
+      "assetId": 640164608,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.9",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.8",
+      "commit": "9465afc46f71421cf21d1187925d8b3d4bd279be",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.8-license-supplement-20261014.zip",
+      "sha256": "4a787de485dd025ec49d90816cc9fdd9ee7435140d81b09d4f4cc8d8181cbb06",
+      "componentCount": 547,
+      "releaseId": 318809258,
+      "assetId": 640164720,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.8",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.6",
+      "commit": "e90eea467ca2a4f28317e03b1a1c1a24825f1cd7",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.6-license-supplement-20261014.zip",
+      "sha256": "52eae30c779d8ced115020ab4b82ef4cc4c0b322c049a63c7d700b371c03683d",
+      "componentCount": 547,
+      "releaseId": 315740269,
+      "assetId": 640165007,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.6",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.7",
+      "commit": "a760444cc8cfcf16a3414b3b6f6b461b41d7d53f",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.7-license-supplement-20261014.zip",
+      "sha256": "98ae0386c9d3a68e8065bd108ba01666ab1fd32b57a8a8ea8e883f17823de1b6",
+      "componentCount": 547,
+      "releaseId": 318279214,
+      "assetId": 640164866,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.7",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.5",
+      "commit": "304b38da3820cc0235794999f0b8daeaf71e4a28",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.5-license-supplement-20261014.zip",
+      "sha256": "11fb243f1fef1c28f09939ba90cced38e356378742b0f17d48eb454fe4a27693",
+      "componentCount": 547,
+      "releaseId": 315739066,
+      "assetId": 640165144,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.5",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.4",
+      "commit": "bd991549b4d2f1a7829667a84a0d628d20663931",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.4-license-supplement-20261014.zip",
+      "sha256": "c300ed07f4905d4ebae7d3424fa6e4ee22a7ce629bdeea7e9b16af7316aabf21",
+      "componentCount": 547,
+      "releaseId": 315643558,
+      "assetId": 640165239,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.4",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.3",
+      "commit": "2ab425456245f5462d307c0dd0075052cbb8d2db",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.3-license-supplement-20261014.zip",
+      "sha256": "8bdfaf410daf4d86dab2cdd8edf1df91fa0ac8b1f990a6ea14951780c95e9a29",
+      "componentCount": 543,
+      "releaseId": 312670618,
+      "assetId": 640165427,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.3",
+      "verified": true
+    },
+    {
+      "tag": "v0.0.2",
+      "commit": "2adb23b08821f87a39dc8cdba47dfcdd63ec6ba5",
+      "tenVad": false,
+      "asset": "PLVS-v0.0.2-license-supplement-20261014.zip",
+      "sha256": "c64f6739682516f3fb00ce864318d970c41452c6aa673393d36ac16a30c31d9c",
+      "componentCount": 543,
+      "releaseId": 312631359,
+      "assetId": 640165548,
+      "assetTag": "license-supplements-20261014",
+      "url": "https://github.com/SounDoer/PLVS/releases/tag/v0.0.2",
+      "verified": true
+    }
+  ]
+}

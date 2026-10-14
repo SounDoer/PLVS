@@ -108,6 +108,9 @@ jobs:
           fi
           node scripts/changelog-release-body.mjs "v${VERSION}" release-notes.md
 
+      - name: Verify corresponding-source downloads
+        run: node scripts/generate-native-notices.mjs --sources
+
   build-windows:
     needs: validate
     runs-on: windows-latest

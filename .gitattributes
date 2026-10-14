@@ -11,3 +11,8 @@
 *.woff2 binary
 *.wav binary
 *.webp binary
+# Preserve upstream notice bytes and whitespace, including generated verbatim collections.
+licenses/upstream/*.txt -text -whitespace
+licenses/rust/** -whitespace
+licenses/COMPONENT-NOTICES.txt -whitespace
+licenses/NATIVE-NOTICES.txt -whitespace

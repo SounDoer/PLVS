@@ -4,8 +4,15 @@ PLVS itself is licensed under the MIT License. The complete PLVS license is dist
 `licenses/PLVS-LICENSE.txt`. The complete standard license texts referenced below are distributed
 in `licenses/license-texts/`.
 
-This notice describes software and model artifacts included in PLVS release packages. It is an
-engineering inventory, not legal advice.
+This notice describes software and model artifacts included in PLVS release packages. Original
+component copyright notices and license grants are preserved in `licenses/COMPONENT-NOTICES.txt`;
+native runtime and model notices are in `licenses/NATIVE-NOTICES.txt`. Standard license templates
+are supplementary and do not replace these component-specific materials.
+
+This file describes the current source tree. For older installers, use the matching archive in
+the [historical license supplements](https://github.com/SounDoer/PLVS/releases/tag/license-supplements-20261014).
+Those supplements correct the earlier Apache-only description of TEN VAD and record unresolved
+historical provenance limitations. TEN VAD was removed in PLVS v0.20.0.
 
 ## Bundled fonts
 
@@ -30,15 +37,18 @@ files are in `licenses/license-texts/Inter-OFL-1.1.txt` and
 
 PLVS distributes `ffmpeg` and `ffprobe` from **FFmpeg 7.1** (upstream tag `n7.1`) as separate
 executables for File mode. The binaries are fetched from the PLVS
-[`ffmpeg-sidecar-7.1`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1)
+[`ffmpeg-sidecar-7.1-r2`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1-r2)
 release and are checksum-pinned by
 [`scripts/fetch-ffmpeg-sidecar.mjs`](https://github.com/SounDoer/PLVS/blob/main/scripts/fetch-ffmpeg-sidecar.mjs).
 
-- **License:** GNU Lesser General Public License, version 2.1 only (LGPL-2.1-only). The build uses
+- **License:** GNU Lesser General Public License, version 2.1 or later (LGPL-2.1-or-later). The build uses
   `--disable-gpl --disable-nonfree`; a complete copy is in
-  `licenses/license-texts/LGPL-2.1-only.txt`.
-- **Corresponding source:** <https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz> or the `n7.1` tag in
-  <https://git.ffmpeg.org/ffmpeg.git>.
+  `licenses/license-texts/LGPL-2.1-or-later.txt`.
+- **Corresponding source and build scripts:**
+  <https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1-r2/ffmpeg-7.1-plvs-source.zip>.
+  This contains the unmodified FFmpeg 7.1 source archive, Windows recipe and toolchain identity,
+  original macOS workflow, and exact distributed binary hashes. Windows r2 is a new build;
+  the macOS binaries retain the original workflow provenance recorded in that archive.
 - **Build parameters:** the Windows recipe and shared trimmed configuration are recorded in
   [`docs/ffmpeg-sidecar-build.md`](https://github.com/SounDoer/PLVS/blob/main/docs/ffmpeg-sidecar-build.md).
   The macOS job records its platform-specific flags in
@@ -50,6 +60,22 @@ release and are checksum-pinned by
   builds for the same platform.
 
 FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
+
+Windows sidecars also contain compiler/runtime support from MinGW-w64 and GCC. Their original
+notices, including the GCC Runtime Library Exception, are in `licenses/NATIVE-NOTICES.txt`.
+
+Rust standard-library notices are in `licenses/rust/COPYRIGHT-library.html` and its accompanying
+license files. Windows installer notices for NSIS and nsis-tauri-utils are reproduced in
+`licenses/NATIVE-NOTICES.txt`.
+
+## Native inference runtime
+
+The VAD integrations statically link **ONNX Runtime 1.24.2** through `ort-sys` 2.0.0-rc.12.
+The interface crate's license does not cover the entire native runtime. Its MIT license and
+matching upstream third-party notices are reproduced in `licenses/NATIVE-NOTICES.txt`, together
+with the platform archive URLs and hashes. These are CPU builds supplied by pyke.io. The retained
+upstream notices conservatively include optional components; listing one does not mean PLVS
+enables that execution provider.
 
 ## Voice activity detection
 
@@ -97,7 +123,13 @@ Complete texts are provided in `licenses/license-texts/BSD-3-Clause.txt`, `ISC.t
 review, including component versions, declared licenses, and available upstream author/repository
 metadata.
 
-Dependency metadata can change when either lockfile changes. Maintainers should re-run the
-production license inventory with `npm run licenses:generate` when updating dependencies and update
-this notice if a new license or attribution requirement appears. `npm run check` rejects a stale
-inventory.
+`licenses/COMPONENT-NOTICES.txt` preserves original license files and notices, including Lucide's
+Feather-derived icon attribution and embedded third-party notices in Rust packages such as `ring`.
+For MPL-2.0 components it provides the exact version's source-package download URL. Those sources
+are available under MPL-2.0. The inventory is a conservative cross-platform superset; some packages
+are used only during compilation or on targets PLVS does not distribute.
+
+Dependency changes require review of the version-specific license materials before running
+`npm run licenses:generate`. `npm run check` rejects unreviewed components, changed notices, stale
+generated materials, and changes to registered native inputs. Release checks also download and
+verify the published corresponding-source archives. See CONTRIBUTING.md for the review procedure.
