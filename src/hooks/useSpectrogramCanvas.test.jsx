@@ -7,9 +7,11 @@ import {
   paintSpectrogramImageData,
   scrollSpectrogramImageData,
   spectrogramScrollPlan,
+  spectrogramStripRange,
   useSpectrogramCanvas,
 } from "./useSpectrogramCanvas.js";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
+import { inWindowRange } from "../math/spectrogramTimeline.js";
 
 import { standIn } from "../testing/standIn.js";
 const BANDS = [{ fCenter: 1000 }];
@@ -425,6 +427,115 @@ describe("sliding versus repainting", () => {
     const repainted = image();
     paint(repainted, view, paintedOldestMs, 0);
     expect(Array.from(slid.data)).toEqual(Array.from(repainted.data));
+  });
+
+  // Live capture, as the hook sees it: the view grows one row at a time, rows tick at 40-48 ms
+  // around their 40 ms gate, `sampleMs` is the newest interval only, and the window's right edge
+  // follows the master clock rather than the newest row, `leads[k]` ms past it. Slides the image
+  // the way the hook does and returns the columns it left transparent where the same instant
+  // drawn from scratch is painted. Seams only: a row boundary that rounds one column differently
+  // from another origin is not a defect, and these timestamps land on exact half columns.
+  function seamsAfterSlidingLiveRows(leads) {
+    const width = 400;
+    const span = 1600; // 4 ms per column, so the jitter between rows spans whole columns.
+    const intervals = [40, 47, 41, 45, 39, 48, 42, 46];
+    const times = [0];
+    for (let k = 1; k < 160; k += 1) times.push(times[k - 1] + intervals[k % intervals.length]);
+    const rows = times.map((timestampMs, i) => ({
+      timestampMs,
+      bands,
+      dbAt: (band) => -20 - ((i * 3 + band * 5) % 60),
+    }));
+    const viewUpTo = (count) => ({
+      length: count,
+      version: count,
+      timestampAt: (i) => (i >= 0 && i < count ? rows[i].timestampMs : NaN),
+      rowAt: (i) => rows[i],
+    });
+    const blank = () => ({ data: new Uint8ClampedArray(width * H * 4), width, height: H });
+    // `range` is the hook's: the window for a full paint, the strip's own rows for a slide. The
+    // reference instead takes every row reaching into the window, including the one in progress at
+    // its left edge that a full paint leaves out; that edge is not what these tests are about.
+    const paintFrom = (target, view, oldestMs, sampleMs, xFrom, range) => {
+      const { startIdx, endIdx } = range(view, oldestMs + (xFrom / width) * span, oldestMs + span);
+      if (endIdx < startIdx) return NaN;
+      paintSpectrogramImageData(
+        target,
+        view,
+        startIdx,
+        endIdx,
+        oldestMs,
+        span,
+        sampleMs,
+        yToBand,
+        lut,
+        SPECTROGRAM_DB_MIN,
+        null,
+        xFrom,
+        width
+      );
+      return view.timestampAt(endIdx);
+    };
+
+    const first = 60;
+    const slid = blank();
+    let view = viewUpTo(first);
+    let sampleMs = times[first - 1] - times[first - 2];
+    let paintedOldestMs = times[first - 1] - span;
+    let paintedNewestRowMs = paintFrom(slid, view, paintedOldestMs, sampleMs, 0, inWindowRange);
+    for (let count = first + 1; count <= rows.length; count += 1) {
+      view = viewUpTo(count);
+      sampleMs = times[count - 1] - times[count - 2];
+      const oldestMs = times[count - 1] + leads[count % leads.length] - span;
+      const plan = spectrogramScrollPlan(
+        paintedOldestMs,
+        oldestMs,
+        span,
+        width,
+        paintedNewestRowMs
+      );
+      if (plan.xFrom > 0) scrollSpectrogramImageData(slid, plan.shiftPx);
+      paintedOldestMs = plan.paintedOldestMs;
+      paintedNewestRowMs = paintFrom(
+        slid,
+        view,
+        paintedOldestMs,
+        sampleMs,
+        plan.xFrom,
+        plan.xFrom > 0 ? spectrogramStripRange : inWindowRange
+      );
+    }
+
+    const repainted = blank();
+    paintFrom(repainted, view, paintedOldestMs, sampleMs, 0, spectrogramStripRange);
+    const seams = [];
+    for (let x = 0; x < width; x += 1) {
+      const alpha = (image, y) => image.data[(y * width + x) * 4 + 3];
+      let blankInSlid = true;
+      let paintedInRepaint = false;
+      for (let y = 0; y < H; y += 1) {
+        if (alpha(slid, y) !== 0) blankInSlid = false;
+        if (alpha(repainted, y) !== 0) paintedInRepaint = true;
+      }
+      if (blankInSlid && paintedInRepaint) seams.push(x);
+    }
+    return seams;
+  }
+
+  it("redraws the row in progress at a strip's left edge when it is longer than the newest", () => {
+    // A strip used to reach back one `sampleMs` for the row already in progress at its left edge. A
+    // row longer than the newest interval fell outside that reach and its columns were cleared but
+    // never painted: a 1 px seam that then slid across the image. Measured in the dev app on
+    // 2026-10-14 as seams born at the right edge and scrolling left until a full repaint.
+    expect(seamsAfterSlidingLiveRows([0, 6, 2, 9, 4, 0, 7, 3])).toEqual([]);
+  });
+
+  it("redraws the newest row once its successor replaces its guessed end", () => {
+    // When the window's edge stands more than one `sampleMs` past the newest row, the columns past
+    // that row's guessed end are cleared. The successor arrives a few ms later and moves the image
+    // by less than those columns, so a strip of only the columns that scrolled in leaves them
+    // behind. Measured as the rarer seam left once the first cause was fixed.
+    expect(seamsAfterSlidingLiveRows([0, 6, 55, 20, 4, 62, 30, 3])).toEqual([]);
   });
 
   it("leaves a gap in time transparent instead of smearing the pixels it slid over", () => {

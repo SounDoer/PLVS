@@ -91,24 +91,30 @@ export function scrollSpectrogramImageData(imageData, shiftPx) {
  * differ by up to one column. Returning the new origin rather than deriving it from the window is
  * what keeps that difference bounded instead of accumulating.
  *
+ * The strip also reaches back to the newest row the image was painted with. That row had no
+ * successor yet, so its end was a guess (`ts + sampleMs`). When the window's edge stood past that
+ * guess, the columns beyond it were cleared; the successor then moves the image by fewer columns
+ * than that, and a strip of only the columns that scrolled in would leave them as a seam.
+ *
  * @returns {{ shiftPx: number, paintedOldestMs: number, xFrom: number }}
  * @param {number} paintedOldestMs
  * @param {number} oldestMs
  * @param {number} span
  * @param {number} width
+ * @param {number} [paintedNewestRowMs] timestamp of the newest row in the painted image
  */
-export function spectrogramScrollPlan(paintedOldestMs, oldestMs, span, width) {
+export function spectrogramScrollPlan(paintedOldestMs, oldestMs, span, width, paintedNewestRowMs) {
   const shiftPx = Math.floor(((oldestMs - paintedOldestMs) / span) * width);
   if (!(shiftPx >= 0) || shiftPx >= width) {
     return { shiftPx: width, paintedOldestMs: oldestMs, xFrom: 0 };
   }
-  return {
-    shiftPx,
-    paintedOldestMs: paintedOldestMs + (shiftPx / width) * span,
-    // Even a frame that has not earned a whole column redraws the newest one: a row lands in it
-    // before it has a column of its own, and one column costs nothing.
-    xFrom: width - Math.max(1, shiftPx),
-  };
+  const nextOldestMs = paintedOldestMs + (shiftPx / width) * span;
+  // Even a frame that has not earned a whole column redraws the newest one: a row lands in it
+  // before it has a column of its own, and one column costs nothing.
+  let xFrom = width - Math.max(1, shiftPx);
+  const newestRowX = Math.floor(((paintedNewestRowMs - nextOldestMs) / span) * width);
+  if (newestRowX < xFrom) xFrom = Math.max(0, newestRowX);
+  return { shiftPx, paintedOldestMs: nextOldestMs, xFrom };
 }
 
 /**
@@ -124,6 +130,26 @@ function upperBoundTimestamp(view, target, startIdx, endIdx) {
     else hi = mid;
   }
   return lo;
+}
+
+/**
+ * Rows a strip repaint draws: from the row already in progress at the strip's left edge through the
+ * newest row at or before its right edge.
+ *
+ * The row at the left edge is found by timestamp, not by reaching back one `sampleMs`. That period
+ * is the newest interval only, and live rows tick at 40-48 ms around a 40 ms gate: a row longer
+ * than the newest interval fell outside the reach, and the columns it owned were cleared and left
+ * transparent -- a 1 px seam that then slid across the image. Measured in the dev app on 2026-10-14.
+ *
+ * @param {number} stripOldestMs time of the strip's leftmost column
+ * @param {number} newestMs time of the image's right edge
+ * @returns {{ startIdx: number, endIdx: number }} empty when `endIdx < startIdx`
+ */
+export function spectrogramStripRange(view, stripOldestMs, newestMs) {
+  const last = view.length - 1;
+  const endIdx = upperBoundTimestamp(view, newestMs, 0, last) - 1;
+  const startIdx = Math.max(0, upperBoundTimestamp(view, stripOldestMs, 0, last) - 1);
+  return { startIdx, endIdx };
 }
 
 /**
@@ -225,6 +251,8 @@ export function useSpectrogramCanvas({
       paintedOldestMs: NaN,
       paintedSpan: NaN,
       paintedSnaps: null,
+      // The newest row in that image: its end was a guess, so the next strip redraws from it.
+      paintedNewestRowMs: NaN,
     })
   );
   const lastPaintRef = useRef({
@@ -409,7 +437,13 @@ export function useSpectrogramCanvas({
       let paintedOldestMs = oldestMs;
       let xFrom = 0;
       if (slidable) {
-        const plan = spectrogramScrollPlan(cache.paintedOldestMs, oldestMs, cache.paintedSpan, W);
+        const plan = spectrogramScrollPlan(
+          cache.paintedOldestMs,
+          oldestMs,
+          cache.paintedSpan,
+          W,
+          cache.paintedNewestRowMs
+        );
         if (plan.xFrom > 0) {
           scrollSpectrogramImageData(cache.imageData, plan.shiftPx);
           paintedSpan = cache.paintedSpan;
@@ -425,7 +459,7 @@ export function useSpectrogramCanvas({
       const stripOldestMs = paintedOldestMs + (xFrom / W) * paintedSpan;
       const strip =
         xFrom > 0
-          ? inWindowRange(snaps, stripOldestMs - sampleMs, paintedOldestMs + paintedSpan)
+          ? spectrogramStripRange(snaps, stripOldestMs, paintedOldestMs + paintedSpan)
           : { startIdx, endIdx };
 
       if (strip.endIdx >= strip.startIdx) {
@@ -448,6 +482,8 @@ export function useSpectrogramCanvas({
       cache.paintedOldestMs = paintedOldestMs;
       cache.paintedSpan = paintedSpan;
       cache.paintedSnaps = snaps;
+      cache.paintedNewestRowMs =
+        strip.endIdx >= strip.startIdx ? snaps.timestampAt(strip.endIdx) : NaN;
       ctx.putImageData(cache.imageData, 0, 0);
     }
 
