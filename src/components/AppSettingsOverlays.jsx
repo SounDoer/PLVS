@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
@@ -24,6 +24,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 
 /**
  * @param {{
+ *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
  *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any },
@@ -37,6 +38,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  * }} props
  */
 export function AppSettingsOverlays({
+  ref,
   settings,
   channelSettings,
   updateControls,
@@ -234,6 +236,8 @@ export function AppSettingsOverlays({
   function openUpdateDialog() {
     openUpdateDialogFromInfo(updateInfo);
   }
+
+  useImperativeHandle(ref, () => ({ openUpdateDialog }));
 
   function closeUpdateDialog() {
     resetInstall();

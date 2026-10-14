@@ -48,6 +48,20 @@ const baseProps = standIn({
 });
 
 describe("AppShell footer", () => {
+  it("opens release notes directly when an update is available", () => {
+    const onOpenUpdate = vi.fn();
+    const onOpenSettings = vi.fn();
+    const footer = { ...baseFooter, hasUpdate: true, onOpenUpdate, onOpenSettings };
+    const { rerender } = render(<AppShell {...baseProps} footer={footer} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /view release notes/i }));
+    expect(onOpenUpdate).toHaveBeenCalledTimes(1);
+    expect(onOpenSettings).not.toHaveBeenCalled();
+
+    rerender(<AppShell {...baseProps} footer={{ ...footer, hasUpdate: false }} />);
+    expect(screen.queryByRole("button", { name: /view release notes/i })).toBeNull();
+  });
+
   it("marks only the main workspace as History while a snapshot is selected", () => {
     const { rerender } = render(
       <AppShell {...baseProps} historyData={{ selectedOffset: 2 }} footer={baseFooter} />

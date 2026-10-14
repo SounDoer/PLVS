@@ -154,6 +154,7 @@ export default function App() {
 }
 
 function AppContent() {
+  const settingsOverlaysRef = useRef(null);
   const meterRuntime = useMeterRuntime();
   const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
     useMeterDisplayState();
@@ -583,6 +584,7 @@ function AppContent() {
     hasUpdate: updateControls.updateInfo?.hasUpdate,
     layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
     onOpenSettings: () => setSettingsOpen(true),
+    onOpenUpdate: () => settingsOverlaysRef.current?.openUpdateDialog(),
   };
   const dockProps = docked
     ? {
@@ -631,6 +633,7 @@ function AppContent() {
         recordingState={visualRecordingState}
       >
         <AppSettingsOverlays
+          ref={settingsOverlaysRef}
           settings={settings}
           crashReportSetting={crashReportSetting}
           crashReporting={crashReporting}

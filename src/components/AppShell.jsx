@@ -39,7 +39,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   showFileAnalysisResult: boolean,
  *   fileSummaryProps: Parameters<typeof FileAnalysisSummary>[0] | null,
  *   panelChromeData: Partial<import("../workspace/AudioDataContext.jsx").PanelChromeData>,
- *   footer: { sourceLabel: string, audioDrop: any, loudnessProfileName: string | null, activePresetName: string | null, hasUpdate: boolean, layoutUnknown?: boolean, onOpenSettings?: (...args: any[]) => any },
+ *   footer: { sourceLabel: string, audioDrop: any, loudnessProfileName: string | null, activePresetName: string | null, hasUpdate: boolean, layoutUnknown?: boolean, onOpenSettings?: (...args: any[]) => any, onOpenUpdate?: () => void },
  *   docked?: boolean,
  *   dockProps?: Omit<Parameters<typeof DockStrip>[0], "recordingState"> | null,
  *   children?: import("react").ReactNode,
@@ -175,10 +175,10 @@ export function AppShell({
                       <>
                         <div className={FOOTER_DIVIDER} />
                         <LinkButton
-                          onClick={footer.onOpenSettings}
+                          onClick={footer.onOpenUpdate}
                           className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:text-primary hover:underline"
                         >
-                          Update available · Check in Settings
+                          Update Available · View Release Notes
                         </LinkButton>
                       </>
                     ) : null}

@@ -426,6 +426,33 @@ describe("AppSettingsOverlays", () => {
     expect(install).toHaveBeenCalledWith(update);
   });
 
+  it("opens release notes through the footer action with Settings closed", () => {
+    const ref = { current: null };
+    const settings = makeSettings({ settingsOpen: false });
+    const install = vi.fn();
+    const update = { downloadAndInstall: vi.fn() };
+    renderOverlays(
+      settings,
+      { updateInfo: { hasUpdate: true, releaseNotes: "Footer release notes", update }, install },
+      { ref }
+    );
+
+    act(() => ref.current.openUpdateDialog());
+    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
+    expect(screen.getByText("Footer release notes")).toBeTruthy();
+    expect(settings.setSettingsOpen).not.toHaveBeenCalled();
+    expect(install).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel update" }));
+    expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
+    expect(settings.setSettingsOpen).not.toHaveBeenCalled();
+    expect(install).not.toHaveBeenCalled();
+
+    act(() => ref.current.openUpdateDialog());
+    fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
+    expect(install).toHaveBeenCalledWith(update);
+  });
+
   it("establishes and resets only the exact update development fixture without installing", () => {
     const install = vi.fn();
     const resetInstall = vi.fn();
