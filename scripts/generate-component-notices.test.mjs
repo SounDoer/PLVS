@@ -6,9 +6,20 @@ import {
   assertReviewed,
   assertNoRestrictedComponent,
   collectNoticeFiles,
+  assertInstalledPackageVersion,
 } from "./generate-component-notices.mjs";
 
 describe("component notice review gate", () => {
+  it("rejects stale installed packages before their notices can be approved for a locked version", () => {
+    const expected = { name: "@tauri-apps/api", version: "2.12.1" };
+    expect(() =>
+      assertInstalledPackageVersion(expected, { ...expected, version: "2.11.0" })
+    ).toThrow("Run npm ci");
+    expect(() =>
+      assertInstalledPackageVersion(expected, { ...expected, name: "another-package" })
+    ).toThrow("does not match lockfile");
+    expect(() => assertInstalledPackageVersion(expected, expected)).not.toThrow();
+  });
   it("does not let wrapper metadata approve a separately restricted embedded model", () => {
     expect(() =>
       assertNoRestrictedComponent("rust:ten-vad-rs@0.1.7", {

@@ -3182,7 +3182,7 @@
     },
     "npm:@tauri-apps/api@2.12.1": {
       "license": "Apache-2.0 OR MIT",
-      "noticeSha256": "86cfe3259b4ce3596017f4ab06800de1f8a626da6a7709bb69eb658cf8658c5a"
+      "noticeSha256": "600ae7f78a8bd63d412051da4c13c33e7102f263db0e5d3c396f3d028d60ce26"
     },
     "npm:@tauri-apps/plugin-clipboard-manager@2.4.1": {
       "license": "MIT OR Apache-2.0",

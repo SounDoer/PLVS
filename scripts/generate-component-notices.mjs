@@ -37,6 +37,15 @@ export function assertReviewed(component, review) {
   }
 }
 
+export function assertInstalledPackageVersion(expected, installed) {
+  if (installed.name !== expected.name || installed.version !== expected.version) {
+    throw new Error(
+      `Installed package does not match lockfile: ${expected.name}@${expected.version}; ` +
+        `found ${installed.name}@${installed.version}. Run npm ci before reviewing notices.`
+    );
+  }
+}
+
 export function assertNoRestrictedComponent(id, restrictions) {
   for (const [name, reason] of Object.entries(restrictions || {})) {
     if (id.startsWith(`${name}@`)) throw new Error(`Restricted component ${id}: ${reason}`);
@@ -90,6 +99,10 @@ export async function generateComponentNotices({ candidate = false } = {}) {
         : "https://github.com/SounDoer/PLVS/tree/main/src-tauri/vendor/voice_activity_detector",
     }));
   for (const pkg of collectJavascriptProductionPackages(lock)) {
+    assertInstalledPackageVersion(
+      pkg,
+      JSON.parse(await readFile(join(root, pkg.path, "package.json"), "utf8"))
+    );
     components.push({
       id: `npm:${pkg.name}@${pkg.version}`,
       license: pkg.license,
@@ -100,6 +113,10 @@ export async function generateComponentNotices({ candidate = false } = {}) {
   // Tailwind generates CSS shipped in the application despite being a devDependency.
   for (const name of ["tailwindcss"]) {
     const pkg = lock.packages[`node_modules/${name}`];
+    assertInstalledPackageVersion(
+      { name, version: pkg.version },
+      JSON.parse(await readFile(join(root, "node_modules", name, "package.json"), "utf8"))
+    );
     components.push({
       id: `npm:${name}@${pkg.version}`,
       license: pkg.license,
