@@ -39,7 +39,10 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 **Reset PLVS to Default** brings them back. PLVS never starts capturing audio on its own: pick a
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
-PLVS checks for updates automatically and asks before installing one. Click **Update Available ·
-View Release Notes** in the footer to open the release notes directly, or open them from the
-**Update** button in Settings. Choose **Update and Restart** to install, or cancel to keep working.
-The confirmation dialog shows a progress bar while that download runs.
+PLVS checks for updates automatically and asks before installing one. In v0.20.0, the footer's
+**Update available · Check in Settings** link opens Settings; use its **Update** button to view
+the release notes. Choose **Update and Restart** to install, or cancel to keep working. The
+confirmation dialog shows a progress bar while that download runs.
+
+Development builds after v0.20.0 change the footer link to **Update Available · View Release Notes**
+and open the release notes directly. This shortcut is not included in v0.20.0.

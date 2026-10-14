@@ -365,9 +365,10 @@ Every package includes a `licenses` folder containing the third-party notices, t
 MIT License and the license texts referenced by the notices. Portable users can open that folder
 directly beside `plvs.exe`; in a macOS app bundle it is under `Contents/Resources/licenses`.
 
-`COMPONENT-NOTICES.txt` contains the original dependency notices and version-specific source links.
-`NATIVE-NOTICES.txt` covers native libraries and models, including the corresponding FFmpeg source
-and build-script download. These third-party components retain their own licenses.
+Development builds after v0.20.0 also include `COMPONENT-NOTICES.txt` with the original dependency
+notices and version-specific source links, and `NATIVE-NOTICES.txt` for native libraries and models,
+including the corresponding FFmpeg source and build-script download. These additional files are
+not included in v0.20.0 packages. Third-party components retain their own licenses.
 
 The retired Selected Surface theme setting is no longer shown or evaluated for contrast. Existing
 themes still import; obsolete selection-surface overrides are discarded without changing the
