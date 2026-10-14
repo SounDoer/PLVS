@@ -50,6 +50,7 @@ const SHARESETS_SITE_ASSETS = [
   "sharesets-detail.css",
   "sharesets-detail.js",
   "site-components.css",
+  "site-chrome.css",
   "site-navigation.js",
   "site-tokens.css",
 ];
@@ -82,9 +83,10 @@ function page(title, description, body, { browse = false } = {}) {
     <meta name="description" content="${escapeHtml(description)}" />
     <link rel="stylesheet" href="/assets/site-tokens.css" />
     <link rel="stylesheet" href="/assets/site-components.css" />
+    <link rel="stylesheet" href="/assets/site-chrome.css" />
     ${browse ? `<link rel="stylesheet" href="/assets/sharesets.css" /><script type="module" src="/assets/sharesets.js"></script>` : `<link rel="stylesheet" href="/assets/sharesets-detail.css" /><script type="module" src="/assets/sharesets-detail.js"></script>`}
   </head>
-  <body>
+  <body class="site-background">
     ${siteNavigation()}
     ${body}
     <footer><a href="/">Back to PLVS</a></footer>

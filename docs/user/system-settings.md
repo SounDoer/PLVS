@@ -251,6 +251,10 @@ The **Browse** action beside the Presets or Loudness Profile popover title opens
 directly. In Settings, choose **Fixed Theme** to reveal **Browse Themes** below the Theme row;
 it opens the Themes category. Browsing does not change your current setup or discard an editor draft.
 
+On narrow screens, the PLVS homepage and Sharesets navigation show a three-line menu icon
+next to **Download**. Select it to reveal **Sharesets**, **Docs**, and **GitHub**. Select the
+close icon, click outside the navigation, or press Escape to close the menu.
+
 The [Sharesets](https://plvs.soundoer.com/sharesets/) offers curated Themes, Presets, and
 Loudness Profiles. Choose a category, search by name or description, and optionally narrow the
 results by Tag under **Filters**. The selected tag remains visible when Filters is closed.

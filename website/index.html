@@ -8,6 +8,11 @@
       name="description"
       content="Free and open-source real-time audio metering for Windows and macOS."
     />
+    <link rel="stylesheet" href="assets/site-chrome.css" />
+    <script type="module">
+      import { enhanceSiteNavigation } from "./assets/site-navigation.js";
+      enhanceSiteNavigation(document.querySelector("[data-site-navigation]"));
+    </script>
     <style>
       @font-face {
         font-family: "Inter";
@@ -83,62 +88,12 @@
       }
 
       .site-shell {
-        min-height: 100dvh;
         overflow: hidden;
-        background:
-          linear-gradient(180deg, rgba(217, 119, 0, 0.08), rgba(217, 119, 0, 0) 480px),
-          radial-gradient(circle at 70% -20%, rgba(217, 119, 0, 0.16), transparent 38%),
-          radial-gradient(circle at 8% 8%, rgba(0, 138, 217, 0.08), transparent 28%), var(--page);
       }
 
-      .nav,
       .section {
         width: min(100% - 48px, 1180px);
         margin: 0 auto;
-      }
-
-      .nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 24px;
-        min-height: 76px;
-      }
-
-      .brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 11px;
-        font-size: var(--text-small);
-        font-weight: 600;
-        letter-spacing: 0.01em;
-      }
-
-      .brand-mark {
-        width: 29px;
-        height: 29px;
-        display: block;
-      }
-
-      .nav-links {
-        display: flex;
-        align-items: center;
-        gap: 28px;
-        color: rgba(242, 242, 242, 0.62);
-        font-size: var(--text-small);
-        font-weight: 500;
-      }
-
-      .nav-links a {
-        transition: color 160ms ease;
-      }
-
-      .nav-links a:hover {
-        color: var(--accent);
-      }
-
-      .nav-download {
-        color: var(--ink);
       }
 
       .hero {
@@ -678,18 +633,9 @@
       }
 
       @media (max-width: 920px) {
-        .nav,
         .section,
         .download-inner {
           width: min(100% - 28px, 1180px);
-        }
-
-        .nav {
-          min-height: 68px;
-        }
-
-        .nav-links {
-          gap: 16px;
         }
 
         .hero {
@@ -745,10 +691,6 @@
         :root {
           --text-hero: 36px;
           --text-section: 28px;
-        }
-
-        .nav-links a:not(.nav-download) {
-          display: none;
         }
 
         .hero {
@@ -893,16 +835,38 @@
     </style>
   </head>
   <body>
-    <div class="site-shell">
-      <nav class="nav" aria-label="Primary">
-        <a class="brand" href="#" aria-label="PLVS home">
-          <img class="brand-mark" src="assets/app-icon.svg" alt="" aria-hidden="true" />
+    <div class="site-shell site-background">
+      <nav class="site-nav" aria-label="Primary" data-site-navigation>
+        <a class="site-brand" href="/" aria-label="PLVS home">
+          <img src="assets/app-icon.svg" alt="" aria-hidden="true" />
         </a>
-        <div class="nav-links">
+        <div class="site-nav-links" id="site-nav-links">
           <!-- SHARESETS_NAV_START --><a href="sharesets/">Sharesets</a><!-- SHARESETS_NAV_END -->
           <a href="docs/">Docs</a>
           <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
-          <a class="nav-download" href="#download">Download</a>
+        </div>
+        <div class="site-nav-actions">
+          <a class="site-download" href="#download">Download</a
+          ><button
+            type="button"
+            class="site-menu"
+            aria-label="menu"
+            aria-controls="site-nav-links"
+            aria-expanded="false"
+            hidden
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path class="menu-bars" d="M4 6h16M4 12h16M4 18h16" />
+              <path class="menu-close" d="m6 6 12 12M6 18 18 6" />
+            </svg>
+          </button>
         </div>
       </nav>
 

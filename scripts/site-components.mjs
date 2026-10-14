@@ -16,7 +16,7 @@ export function siteNavigation(active = "sharesets") {
   return `<nav class="site-nav" aria-label="Primary" data-site-navigation>
     <a class="site-brand" href="/" aria-label="PLVS home"><img src="/assets/app-icon.svg" alt="" /></a>
     <div class="site-nav-links" id="site-nav-links">${links.map(([id, href, label]) => `<a href="${href}"${id === active ? ' aria-current="page"' : ""}${id === "github" ? ' target="_blank" rel="noopener"' : ""}>${label}</a>`).join("")}</div>
-    <div class="site-nav-actions"><a class="site-download" href="/#download">Download</a><button type="button" class="button secondary site-menu" aria-controls="site-nav-links" aria-expanded="false" hidden>Menu</button></div>
+    <div class="site-nav-actions"><a class="site-download" href="/#download">Download</a><button type="button" class="site-menu" aria-label="menu" aria-controls="site-nav-links" aria-expanded="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path class="menu-bars" d="M4 6h16M4 12h16M4 18h16"/><path class="menu-close" d="m6 6 12 12M6 18 18 6"/></svg></button></div>
   </nav>`;
 }
 
