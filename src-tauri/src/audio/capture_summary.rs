@@ -18,6 +18,10 @@ use crate::dsp::summary_meter::SummaryMeter;
 pub struct CaptureSample {
   pub t_seconds: u64,
   pub integrated_lufs: f64,
+  pub lra: f64,
+  pub m_max_lufs: f64,
+  pub st_max_lufs: f64,
+  pub true_peak_max_dbtp: f64,
   pub dropped_chunks: u64,
 }
 
@@ -88,6 +92,10 @@ pub fn capture_device_to_summary_with_layout(
             let _ = sample_tx.send(CaptureSample {
               t_seconds: due,
               integrated_lufs: metrics.integrated_lufs,
+              lra: metrics.lra,
+              m_max_lufs: metrics.m_max_lufs,
+              st_max_lufs: metrics.st_max_lufs,
+              true_peak_max_dbtp: metrics.true_peak_max_dbtp,
               dropped_chunks: consumer_dropped.load(Ordering::Relaxed),
             });
             // Stays on the requested grid; a late chunk only delays a reading to

@@ -265,3 +265,68 @@ describe("staleHarnessSources", () => {
     }
   });
 });
+
+describe("judgeSoak", () => {
+  const steady = {
+    integratedLufs: -22.03,
+    lra: 0,
+    mMaxLufs: -22.03,
+    stMaxLufs: -22.03,
+    truePeakMaxDbtp: -20,
+  };
+  const run = (seconds, at = () => ({})) =>
+    Array.from({ length: seconds / 10 }, (_, i) => {
+      const t = (i + 1) * 10;
+      return { t, ...steady, droppedChunks: 0, ...at(t) };
+    });
+
+  it("passes readings that hold still over the constant signal", () => {
+    const { failures, spreads } = captureRig.judgeSoak(run(600));
+    expect(failures).toEqual([]);
+    expect(Object.keys(spreads)).toEqual([
+      "integratedLufs",
+      "lra",
+      "mMaxLufs",
+      "stMaxLufs",
+      "truePeakMaxDbtp",
+    ]);
+  });
+
+  it("names a metric that drifts after warmup", () => {
+    const { failures } = captureRig.judgeSoak(
+      run(600, (t) => ({ integratedLufs: -22.03 - t * 1e-4 })),
+    );
+    expect(failures.join("\n")).toMatch(/integratedLufs drifted/);
+  });
+
+  it("lets a maximum settle through the first loop seam but not after it", () => {
+    const seam = captureRig.SOAK_MAX_WARMUP_SECONDS;
+    const settles = captureRig.judgeSoak(
+      run(600, (t) => (t >= seam - 10 ? { truePeakMaxDbtp: -19.9 } : {})),
+    );
+    expect(settles.failures).toEqual([]);
+    const late = captureRig.judgeSoak(
+      run(600, (t) => (t >= seam + 60 ? { truePeakMaxDbtp: -19.9 } : {})),
+    );
+    expect(late.failures.join("\n")).toMatch(/truePeakMaxDbtp drifted/);
+  });
+
+  it("catches a contaminant during warmup, which a maximum keeps for the rest of the run", () => {
+    // Something doubled the signal for the first 40 s: Integrated recovers toward the tone, the
+    // maxima do not, and neither one moves after its warmup.
+    const { failures } = captureRig.judgeSoak(
+      run(600, () => ({ mMaxLufs: -16.01, stMaxLufs: -16.01 })),
+    );
+    expect(failures.join("\n")).toMatch(/mMaxLufs sits 6\.0200 dB from integratedLufs/);
+  });
+
+  it("fails a null reading rather than skipping it", () => {
+    const { failures } = captureRig.judgeSoak(run(600, (t) => (t === 300 ? { lra: null } : {})));
+    expect(failures.join("\n")).toMatch(/lra is not a finite number at t=300s/);
+  });
+
+  it("fails a run too short to judge", () => {
+    const { failures } = captureRig.judgeSoak(run(50));
+    expect(failures.join("\n")).toMatch(/fewer than two readings/);
+  });
+});

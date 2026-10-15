@@ -228,6 +228,62 @@ export function assertSoakCaptureCompleted(status, finalReport) {
   }
 }
 
+/** Readings the soak holds still over its constant signal. Each is the whole capture's value so
+ *  far, so after warmup any movement is accumulation error or corrupted PCM. */
+export const SOAK_DRIFT_LIMIT_DB = 0.01;
+/** Early on, few blocks exist and BS.1770's relative gate has not settled. */
+export const SOAK_WARMUP_SECONDS = 60;
+/** A maximum keeps the largest value ever seen, so a one-off at the player's first loop seam
+ *  would read as drift if it landed just after the plain warmup. Wait out one more loop. */
+export const SOAK_MAX_WARMUP_SECONDS = SOAK_WARMUP_SECONDS + SIGNAL.seconds;
+/** Over a constant tone the loudest 400 ms and 3 s windows hold the programme itself, so Max M
+ *  and Max S equal Integrated. A gap means the signal was not constant: something else reached
+ *  the cable, which a maximum keeps for the rest of the run even if it happened in warmup. */
+export const SOAK_MAX_TO_INTEGRATED_DB = 0.05;
+
+const SOAK_DRIFT_METRICS = [
+  ["integratedLufs", SOAK_WARMUP_SECONDS],
+  ["lra", SOAK_WARMUP_SECONDS],
+  ["mMaxLufs", SOAK_MAX_WARMUP_SECONDS],
+  ["stMaxLufs", SOAK_MAX_WARMUP_SECONDS],
+  ["truePeakMaxDbtp", SOAK_MAX_WARMUP_SECONDS],
+];
+
+/** Judges a soak's periodic samples. `null` and missing readings fail rather than skip, for the
+ *  reason `compareMetrics` gives. Returns each metric's post-warmup spread and every failure. */
+export function judgeSoak(samples) {
+  const spreads = {};
+  const failures = [];
+  for (const [field, warmup] of SOAK_DRIFT_METRICS) {
+    const settled = samples.filter((s) => s.t >= warmup);
+    const missing = settled.find((s) => typeof s[field] !== "number" || !Number.isFinite(s[field]));
+    if (missing) {
+      failures.push(`${field} is not a finite number at t=${missing.t}s`);
+      continue;
+    }
+    if (settled.length < 2) {
+      failures.push(`${field} has fewer than two readings after its ${warmup}s warmup`);
+      continue;
+    }
+    const values = settled.map((s) => s[field]);
+    const spread = Math.max(...values) - Math.min(...values);
+    spreads[field] = spread;
+    if (spread > SOAK_DRIFT_LIMIT_DB) {
+      failures.push(`${field} drifted ${spread.toFixed(4)} dB over a constant signal`);
+    }
+  }
+  const last = samples.at(-1);
+  for (const field of ["mMaxLufs", "stMaxLufs"]) {
+    const gap = last ? Math.abs(last[field] - last.integratedLufs) : NaN;
+    if (!(gap <= SOAK_MAX_TO_INTEGRATED_DB)) {
+      failures.push(
+        `${field} sits ${gap.toFixed(4)} dB from integratedLufs; over a constant signal they agree`,
+      );
+    }
+  }
+  return { spreads, failures };
+}
+
 export function locateHarness() {
   const harness = harnessPath();
   if (!existsSync(harness)) {

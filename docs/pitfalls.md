@@ -111,8 +111,20 @@ to one machine.
 
 A `soak:capture` run that reached its full duration ends with a summary line carrying the app
 version. Keep those: the drift of the next run is judged against them. Delete interrupted runs —
-drift is `max - min` of integrated loudness, which is still converging early on, so a short run reads
-high and is not comparable with a four-hour one.
+drift is `max - min` of each reading after its warmup, which is still converging early on, so a short
+run reads high and is not comparable with a four-hour one.
+
+Each periodic line carries Integrated, LRA, Max M, Max S and True Peak Max, all whole-run values;
+runs recorded before 2026-10-15 carry Integrated only, so compare the other readings only between
+runs that have them. Beyond drift, the soak requires Max M and Max S to equal Integrated, as they
+must over a constant tone. A gap there means something else reached the cable at some point — a
+contaminant a maximum keeps for the rest of the run, even if Integrated has since recovered.
+
+The VB-Cable rig is one shared device. On 2026-10-15 a soak read exactly +6.02 dB for tens of
+seconds at a time: another agent's panel-verification scripts, in its own worktree, imported
+`synthesizeSignal` and `startPlayer` from `capture-rig.mjs` and played the identical test tone into
+`CABLE Input`. Two copies sum in phase, so a reading exactly 6.02 dB high means a second player, not a
+meter defect. Before a smoke or soak, make sure no other session is driving the rig.
 
 `soak:desktop` records UI frame drops and audio chunk drops, not loudness drift, and its verdict is
 self-contained, so its files play no baseline role and can be deleted once read.

@@ -101,12 +101,17 @@ pub struct CliCaptureError {
   pub message: String,
 }
 
-/// One periodic JSONL line. Distinguishable from the final report by `t`.
+/// One periodic JSONL line. Distinguishable from the final report by `t`. Every metric is the
+/// whole capture's so far, so over a constant signal each must hold still (the soak's drift check).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliCaptureSampleLine {
   pub t: u64,
   pub integrated_lufs: Option<f64>,
+  pub lra: Option<f64>,
+  pub m_max_lufs: Option<f64>,
+  pub st_max_lufs: Option<f64>,
+  pub true_peak_max_dbtp: Option<f64>,
   pub dropped_chunks: u64,
 }
 
@@ -130,6 +135,10 @@ pub fn sample_line(sample: &CaptureSample) -> CliCaptureSampleLine {
   CliCaptureSampleLine {
     t: sample.t_seconds,
     integrated_lufs: finite_or_none(sample.integrated_lufs),
+    lra: finite_or_none(sample.lra),
+    m_max_lufs: finite_or_none(sample.m_max_lufs),
+    st_max_lufs: finite_or_none(sample.st_max_lufs),
+    true_peak_max_dbtp: finite_or_none(sample.true_peak_max_dbtp),
     dropped_chunks: sample.dropped_chunks,
   }
 }
@@ -216,6 +225,28 @@ pub fn run_capture(
 mod tests {
   use super::*;
   use crate::audio::capture_summary::CaptureRun;
+
+  /// The soak judges drift from these keys; a renamed field would read as `undefined` there.
+  #[test]
+  fn sample_line_carries_every_drift_metric_with_null_for_non_finite() {
+    let line = sample_line(&CaptureSample {
+      t_seconds: 20,
+      integrated_lufs: -22.03,
+      lra: 0.0,
+      m_max_lufs: -22.02,
+      st_max_lufs: -22.025,
+      true_peak_max_dbtp: f64::NEG_INFINITY,
+      dropped_chunks: 0,
+    });
+    let json = serde_json::to_value(&line).unwrap();
+    assert_eq!(json["t"], 20);
+    assert_eq!(json["integratedLufs"], -22.03);
+    assert_eq!(json["lra"], 0.0);
+    assert_eq!(json["mMaxLufs"], -22.02);
+    assert_eq!(json["stMaxLufs"], -22.025);
+    assert!(json["truePeakMaxDbtp"].is_null());
+    assert_eq!(json["droppedChunks"], 0);
+  }
 
   fn run() -> CaptureRun {
     CaptureRun {

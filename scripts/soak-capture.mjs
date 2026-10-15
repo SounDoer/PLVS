@@ -16,8 +16,10 @@ import { tmpdir } from "node:os";
 import {
   CAPTURE_DEVICE,
   RigError,
+  SOAK_WARMUP_SECONDS,
   assertSoakCaptureCompleted,
   harnessArgs,
+  judgeSoak,
   locateHarness,
   resolveRenderEndpointId,
   startPlayer,
@@ -25,13 +27,6 @@ import {
   synthesizeSignal,
 } from "./capture-rig.mjs";
 
-/** Early on, few blocks exist and BS.1770's relative gate has not settled, so
- *  the first readings legitimately differ. */
-const WARMUP_SECONDS = 60;
-/** Integrated loudness is a gated mean: over a constant signal it is
- *  mathematically independent of block count, so it must stay flat. Any visible
- *  movement is accumulation error or corrupted PCM. */
-const DRIFT_LIMIT_DB = 0.01;
 const SETTLE_MS = 2000;
 
 function arg(name, fallback) {
@@ -150,17 +145,18 @@ try {
 
   assertSoakCaptureCompleted(status, finalReport);
 
-  const settled = samples.filter((s) => s.t >= WARMUP_SECONDS && Number.isFinite(s.integratedLufs));
-  const lufs = settled.map((s) => s.integratedLufs);
-  const spread = lufs.length > 1 ? Math.max(...lufs) - Math.min(...lufs) : 0;
+  const settled = samples.filter((s) => s.t >= SOAK_WARMUP_SECONDS);
+  const { spreads, failures } = judgeSoak(samples);
   const droppedFinal = samples.length ? samples[samples.length - 1].droppedChunks : 0;
   const rssFirst = rss.length ? rss[0].mb : null;
   const rssLast = rss.length ? rss[rss.length - 1].mb : null;
 
   console.log(
-    `\nSamples        : ${samples.length} (${settled.length} after ${WARMUP_SECONDS}s warmup)`,
+    `\nSamples        : ${samples.length} (${settled.length} after ${SOAK_WARMUP_SECONDS}s warmup)`,
   );
-  console.log(`integratedLufs : spread ${spread.toFixed(4)} dB after warmup`);
+  for (const [field, spread] of Object.entries(spreads)) {
+    console.log(`${field.padEnd(15)}: spread ${spread.toFixed(4)} dB after warmup`);
+  }
   console.log(`droppedChunks  : ${droppedFinal}`);
   if (rssFirst !== null) {
     console.log(`RSS            : ${rssFirst.toFixed(1)} MB -> ${rssLast.toFixed(1)} MB`);
@@ -174,10 +170,12 @@ try {
   if (settled.length < 2) {
     console.error("\nToo few settled samples to judge drift. Run longer than the warmup.");
     process.exitCode = 2;
-  } else if (spread > DRIFT_LIMIT_DB) {
-    console.error(`\nFAIL integrated loudness drifted ${spread.toFixed(4)} dB over a constant signal.`);
+  } else if (failures.length > 0) {
+    console.error(`\nFAIL ${failures.length} reading(s) moved over a constant signal:`);
+    for (const failure of failures) console.error(`  ${failure}`);
     console.error(
-      "A gated mean over identical blocks is independent of block count; this is a defect.",
+      "Each is the whole run's value over identical input; movement is a defect or a rig " +
+        "contaminant (anything else reaching the cable). Do not widen the limit.",
     );
     process.exitCode = 1;
   } else {
