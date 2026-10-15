@@ -5,6 +5,7 @@ use super::dialogue::DialogueIntegrator;
 use super::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use super::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
 use super::meter::{Meter, PcmContext};
+use super::sliding_window::{SlidingWindowMax, M_BLOCKS, S_BLOCKS};
 use super::speech::{MultichannelSpeechDetector, VadEngineKind};
 
 pub struct LoudnessMeter {
@@ -23,6 +24,8 @@ pub struct LoudnessMeter {
   last_mean_square: [f64; 2],
   tp_block: f64,
   tp_block_ch: [f64; 2],
+  /// Sample-accurate M/S maxima between the 100 ms readings.
+  sliding: SlidingWindowMax,
   tp_t: usize,
   tp_p: usize,
   tp_ph: Vec<Vec<f64>>,
@@ -67,6 +70,7 @@ impl LoudnessMeter {
       last_mean_square: [0.0, 0.0],
       tp_block: 0.0,
       tp_block_ch: [0.0, 0.0],
+      sliding: SlidingWindowMax::new(bsz.max(1)),
       tp_t,
       tp_p,
       tp_ph,
@@ -130,6 +134,19 @@ impl LoudnessMeter {
     }
   }
 
+  /// Loudness of the window of the last `blocks` blocks. A window is always its full length: before
+  /// the meter has seen that much input, the time before it started counts as silence.
+  fn window_lufs(&self, blocks: usize) -> f64 {
+    let mut a0 = 0.0;
+    let mut a1 = 0.0;
+    for b in 0..blocks.min(self.rc) {
+      let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+      a0 += self.ring[idx];
+      a1 += self.ring[idx + 1];
+    }
+    lufs_from_mean_squares(a0 / blocks as f64, a1 / blocks as f64)
+  }
+
   fn integrated(&self) -> f64 {
     self.integrated_accumulator.value()
   }
@@ -148,6 +165,7 @@ impl LoudnessMeter {
       let (kwl, kwr) = self.kf.tick_lr(xl, xr);
       self.ba[0] += kwl * kwl;
       self.ba[1] += kwr * kwr;
+      self.sliding.push(kwl * kwl + kwr * kwr);
       let tp0 = self.tp_sample(xl, 0);
       let tp1 = self.tp_sample(xr, 1);
       if tp0 > self.tp_block {
@@ -173,35 +191,11 @@ impl LoudnessMeter {
         self.rh = (self.rh + 1) % self.rn;
         self.rc = (self.rc + 1).min(self.rn);
         self.integrated_accumulator.push([m0, m1]);
-        let mut a0 = 0.0;
-        let mut a1 = 0.0;
-        let mut an = 0_usize;
-        for b in 0..4.min(self.rc) {
-          let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-          a0 += self.ring[idx];
-          a1 += self.ring[idx + 1];
-          an += 1;
-        }
-        let momentary = if an > 0 {
-          lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-        } else {
-          f64::NEG_INFINITY
-        };
-        a0 = 0.0;
-        a1 = 0.0;
-        an = 0;
-        for b in 0..30.min(self.rc) {
-          let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-          a0 += self.ring[idx];
-          a1 += self.ring[idx + 1];
-          an += 1;
-        }
-        let short_term = if an > 0 {
-          lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-        } else {
-          f64::NEG_INFINITY
-        };
-        if short_term.is_finite() {
+        let momentary = self.window_lufs(M_BLOCKS);
+        let short_term = self.window_lufs(S_BLOCKS);
+        // LRA takes only complete 3 s windows; the silence-padded readings before that would
+        // widen it.
+        if self.rc >= S_BLOCKS && short_term.is_finite() {
           self.lra_accumulator.push(short_term);
         }
         let tp_now = if self.tp_block > 0.0 {
@@ -219,9 +213,12 @@ impl LoudnessMeter {
         } else {
           f64::NEG_INFINITY
         };
+        let (momentary_max, short_term_max) = self.sliding.take_block_max();
         out = Some(LoudnessBlock {
           momentary,
           short_term,
+          momentary_max,
+          short_term_max,
           integrated: self.integrated(),
           lra: self.lra(),
           true_peak: tp_now,
@@ -278,6 +275,7 @@ impl LoudnessMeter {
       }
       self.ba[0] += sum_ms;
       self.ba[1] += 0.0;
+      self.sliding.push(sum_ms);
 
       // True Peak Max covers every channel; the L/R readouts stay Ch1/Ch2.
       for ci in 0..ch {
@@ -300,35 +298,11 @@ impl LoudnessMeter {
         self.rh = (self.rh + 1) % self.rn;
         self.rc = (self.rc + 1).min(self.rn);
         self.integrated_accumulator.push([m0, m1]);
-        let mut a0 = 0.0;
-        let mut a1 = 0.0;
-        let mut an = 0_usize;
-        for b in 0..4.min(self.rc) {
-          let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-          a0 += self.ring[idx];
-          a1 += self.ring[idx + 1];
-          an += 1;
-        }
-        let momentary = if an > 0 {
-          lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-        } else {
-          f64::NEG_INFINITY
-        };
-        a0 = 0.0;
-        a1 = 0.0;
-        an = 0;
-        for b in 0..30.min(self.rc) {
-          let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-          a0 += self.ring[idx];
-          a1 += self.ring[idx + 1];
-          an += 1;
-        }
-        let short_term = if an > 0 {
-          lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-        } else {
-          f64::NEG_INFINITY
-        };
-        if short_term.is_finite() {
+        let momentary = self.window_lufs(M_BLOCKS);
+        let short_term = self.window_lufs(S_BLOCKS);
+        // LRA takes only complete 3 s windows; the silence-padded readings before that would
+        // widen it.
+        if self.rc >= S_BLOCKS && short_term.is_finite() {
           self.lra_accumulator.push(short_term);
         }
         let tp_now = if self.tp_block > 0.0 {
@@ -346,9 +320,12 @@ impl LoudnessMeter {
         } else {
           f64::NEG_INFINITY
         };
+        let (momentary_max, short_term_max) = self.sliding.take_block_max();
         out = Some(LoudnessBlock {
           momentary,
           short_term,
+          momentary_max,
+          short_term_max,
           integrated: self.integrated(),
           lra: self.lra(),
           true_peak: tp_now,
@@ -411,6 +388,11 @@ impl LoudnessMeter {
 pub struct LoudnessBlock {
   pub momentary: f64,
   pub short_term: f64,
+  /// Largest M over every complete 400 ms window that ended within this block (sample-accurate,
+  /// unlike `momentary`, which is the window ending on the block boundary); `-inf` if none did.
+  pub momentary_max: f64,
+  /// As `momentary_max`, for the 3 s window.
+  pub short_term_max: f64,
   pub integrated: f64,
   pub lra: f64,
   pub true_peak: f64,
@@ -538,6 +520,12 @@ impl LoudnessMeter {
       self.speech_now = false;
     }
     self.pending_block = Some(block);
+  }
+
+  /// `(max M, max S)` over the windows that ended in the block still being filled, for a stream
+  /// that ends before that block completes.
+  pub fn partial_block_max(&self) -> (f64, f64) {
+    self.sliding.peek_block_max()
   }
 
   pub fn speech_now(&self) -> bool {

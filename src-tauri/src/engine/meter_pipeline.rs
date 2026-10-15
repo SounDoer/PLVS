@@ -709,7 +709,22 @@ impl MeterPipeline {
     )
   }
 
+  fn fold_loudness_max(&mut self, momentary_max: f64, short_term_max: f64) {
+    if momentary_max.is_finite() {
+      self.m_max = self.m_max.max(momentary_max);
+    }
+    if short_term_max.is_finite() {
+      self.st_max = self.st_max.max(short_term_max);
+    }
+  }
+
   fn queue_final_file_checkpoints(&mut self, analysis_requests: &AnalysisRequests) {
+    // A file rarely ends on a 100 ms boundary; windows ending in its last partial block are
+    // complete windows and count toward the maxima, as they do in `SummaryMeter::finish`.
+    if self.file_timeline.is_some() {
+      let (momentary_max, short_term_max) = self.loudness.partial_block_max();
+      self.fold_loudness_max(momentary_max, short_term_max);
+    }
     let Some(timeline) = self.file_timeline.as_mut() else {
       return;
     };
@@ -1136,12 +1151,9 @@ impl MeterPipeline {
   }
 
   fn apply_loudness_block(&mut self, lb: &LoudnessBlock) {
-    if lb.momentary.is_finite() {
-      self.m_max = self.m_max.max(lb.momentary);
-    }
-    if lb.short_term.is_finite() {
-      self.st_max = self.st_max.max(lb.short_term);
-    }
+    // The block's sample-accurate maxima, not its boundary readings: a burst between two 100 ms
+    // readings would otherwise read up to ~0.5 dB low (EBU Tech 3341 cases 13 and 14).
+    self.fold_loudness_max(lb.momentary_max, lb.short_term_max);
     if lb.true_peak.is_finite() {
       self.tp_max_db = self.tp_max_db.max(lb.true_peak);
     }
@@ -2351,11 +2363,12 @@ mod tests {
     let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
     let requests = AnalysisRequests::default();
 
-    for (timestamp_ms, amplitude) in [(100_u64, 0.02_f32), (200, 0.8)] {
+    // 500 ms each: Max M needs one complete 400 ms window before it has a value.
+    for (timestamp_ms, amplitude) in [(500_u64, 0.02_f32), (1_000, 0.8)] {
       pipeline.last_frame_emit = Instant::now()
         .checked_add(Duration::from_secs(60))
         .expect("future throttle instant");
-      let pcm = vec![amplitude; 4_800 * 2];
+      let pcm = vec![amplitude; 24_000 * 2];
       assert!(pipeline
         .push_pcm_f32_with_requests_at_media_time(
           &pcm,

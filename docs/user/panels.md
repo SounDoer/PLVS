@@ -61,6 +61,11 @@ Side/Mid, and the dialogue readouts described in
 [Dialogue-Gated Loudness](dialogue-gated-loudness.md). The active Loudness Profile colours readouts
 that breach its rules. Integrated, Loudness Range, the Max readouts, and dialogue accumulations cover
 the complete current Live measurement since Start or Clear; they are not limited by History Length.
+Momentary Max and Short-term Max consider every position of the 400 ms and 3 s windows, not only
+the ten readings per second, so a short burst that falls between two readings still counts in full.
+Momentary and Short-term always measure their full 400 ms and 3 s windows: for the first moments
+after Start or Clear, and for a file shorter than a window, the time before the measurement counts
+as silence. A one-second sound therefore reads lower on Short-term than on Momentary.
 
 ## Spectrum
 

@@ -338,19 +338,22 @@ fn check_live_max_of_offset_tones(
 fn tech3341_cases_10_and_11_max_s_finds_a_tone_off_the_update_grid() {
   let mut failures = Vec::new();
   check_file_max_of_offset_tones(&mut failures, "3341#10 file", 3.0, 0.15, |m| m.st_max_lufs);
-  check_live_max_of_offset_tones(&mut failures, "3341#11 live", 3.0, 0.15, |b| b.short_term);
+  check_live_max_of_offset_tones(&mut failures, "3341#11 live", 3.0, 0.15, |b| {
+    b.short_term_max
+  });
   report(failures);
 }
 
-/// Known failure: both meters evaluate M only every 100 ms, so a 400 ms tone that starts off that
-/// grid reads 0.22–0.45 dB low. FFmpeg's `ebur128` under-reads by the same amounts. Remove the
-/// `ignore` once Max M is tracked at a finer step.
+/// A 400 ms tone 20–380 ms off the 100 ms reading grid never fills a window that ends on a reading,
+/// so a maximum taken from the readings alone reads up to 0.45 dB low (as FFmpeg's `ebur128` does).
+/// The meters track the maximum over every window position instead.
 #[test]
-#[ignore = "known gap: Max M is evaluated on a 100 ms grid"]
 fn tech3341_cases_13_and_14_max_m_finds_a_tone_off_the_update_grid() {
   let mut failures = Vec::new();
   check_file_max_of_offset_tones(&mut failures, "3341#13 file", 0.4, 0.02, |m| m.m_max_lufs);
-  check_live_max_of_offset_tones(&mut failures, "3341#14 live", 0.4, 0.02, |b| b.momentary);
+  check_live_max_of_offset_tones(&mut failures, "3341#14 live", 0.4, 0.02, |b| {
+    b.momentary_max
+  });
   report(failures);
 }
 
@@ -546,5 +549,91 @@ fn tech3342_cases_1_to_4_loudness_range_of_stepped_tones() {
       );
     }
   }
+  report(failures);
+}
+
+// ---- Beyond the tables: input shorter than a window --------------------------------------------
+
+/// The tables say nothing about the first 0.4 s or 3 s, so PLVS keeps every window its full length
+/// and counts the time before the meter started as silence (libebur128 behaves the same way). A
+/// 1 s tone then has a 3 s loudness 10·log10(1/3) dB below its level, rather than no value or the
+/// tone's own level.
+#[test]
+fn input_shorter_than_a_window_reads_against_silence_before_the_start() {
+  let pcm = tone_segments(SR, &[Seg(1.0, Some(-23.0))]);
+  let one_in_three = -23.0 + 10.0 * (1.0_f64 / 3.0).log10();
+  let mut failures = Vec::new();
+
+  let live = live_blocks(SR, 2, &pcm);
+  let (_, last) = live.last().unwrap();
+  check(
+    &mut failures,
+    "live S at 1 s",
+    last.short_term,
+    one_in_three,
+    0.02,
+    0.02,
+  );
+  let live_m_max = live
+    .iter()
+    .map(|(_, b)| b.momentary_max)
+    .fold(f64::NEG_INFINITY, f64::max);
+  let live_s_max = live
+    .iter()
+    .map(|(_, b)| b.short_term_max)
+    .fold(f64::NEG_INFINITY, f64::max);
+  check(&mut failures, "live Max M", live_m_max, -23.0, 0.02, 0.02);
+  check(
+    &mut failures,
+    "live Max S",
+    live_s_max,
+    one_in_three,
+    0.02,
+    0.02,
+  );
+
+  let file = file_metrics(SR, 2, &pcm);
+  check(
+    &mut failures,
+    "file Max M",
+    file.m_max_lufs,
+    -23.0,
+    0.02,
+    0.02,
+  );
+  check(
+    &mut failures,
+    "file Max S",
+    file.st_max_lufs,
+    one_in_three,
+    0.02,
+    0.02,
+  );
+  report(failures);
+}
+
+/// The silence-padded S readings of the first 3 s are not LRA input: LRA is a distribution of 3 s
+/// loudness, and those readings would add a ramp the programme does not have.
+#[test]
+fn loudness_range_ignores_short_term_readings_before_the_first_complete_window() {
+  let pcm = tone_segments(SR, &[Seg(10.0, Some(-23.0))]);
+  let mut failures = Vec::new();
+  let live = live_blocks(SR, 2, &pcm);
+  check(
+    &mut failures,
+    "live LRA",
+    live.last().unwrap().1.lra,
+    0.0,
+    0.05,
+    0.05,
+  );
+  check(
+    &mut failures,
+    "file LRA",
+    file_metrics(SR, 2, &pcm).lra,
+    0.0,
+    0.05,
+    0.05,
+  );
   report(failures);
 }

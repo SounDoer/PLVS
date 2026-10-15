@@ -253,6 +253,7 @@ need it. When adding a top-level directory, add a row in the same commit.
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `peak.rs`            | Sample peak + True Peak (4× oversampling)                                                                                                                            |
 | `loudness.rs`        | K-weighting → gate → M / S / I / LRA (ITU-R BS.1770 / EBU R128); True Peak Max covers every channel                                                                  |
+| `sliding_window.rs`  | Momentary / Short-term maxima over every window position (per frame), shared by both loudness meters                                                                 |
 | `channel_layouts.rs` | Embeds `shared/channel-layouts.json` and provides layout order, roles and BS.1770-5 weights; shared by live, File and CLI                                            |
 | `channel_weights.rs` | Hot-path auto-detection by channel count for up to 8 channels; unknown layouts fall back to Ch1/Ch2 without allocating in the callback                               |
 | `spectrum.rs`        | rFFT + Hann window, hop=N/4, 4-frame incoherent averaging; in-band energy integrated over continuous Hz edges and fractional bin overlap (no integer-bin truncation) |
@@ -265,6 +266,16 @@ Live and File loudness. `speech.rs` owns detector-specific framing and resamplin
 valid duration without a loudness gate. Dialogue Range forms masked three-second observations at a
 one-second hop and computes an exact duration-weighted P95−P10 without the EBU LRA relative gate.
 The detector never replaces programme audio in the loudness path.
+
+M and S are reported on the 100 ms block grid, and LRA takes S at that rate, as EBU Tech 3342
+specifies; the Integrated gate uses 400 ms blocks at a 100 ms step, as BS.1770 specifies. Momentary
+Max and Short-term Max are sample-accurate instead: EBU Tech 3341 defines M and S as sliding
+windows, and a maximum read only at the 100 ms readings misses a burst between them by up to
+~0.5 dB (Tech 3341 cases 13 and 14); a file's final partial block is included. Every M and S
+window keeps its full length, counting the time before the meter started as silence (as libebur128
+does), so short inputs still read true 0.4 s and 3 s values; LRA takes only complete 3 s windows.
+`dsp/ebu_conformance.rs` runs every synthesizable Tech 3341 / 3342 case through both meters;
+`npm run verify:loudness-reference` compares them with FFmpeg's `ebur128`.
 
 `loudness.rs` splits every incoming PCM packet at exact sample-counted 100 ms boundaries before
 feeding either side of that path. The detector resampler consumes the same complete source-rate

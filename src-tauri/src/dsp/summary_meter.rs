@@ -2,6 +2,7 @@ use crate::dsp::channel_layouts::{layout_id_for_roles, roles_for_layout, weights
 use crate::dsp::channel_weights::{standard_layout_name, standard_loudness_weights};
 use crate::dsp::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use crate::dsp::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
+use crate::dsp::sliding_window::{SlidingWindowMax, S_BLOCKS};
 
 fn db_from_linear(value: f64) -> f64 {
   if value > 0.0 {
@@ -38,6 +39,8 @@ pub struct SummaryMeter {
   ring_count: usize,
   integrated_accumulator: IntegratedAccumulator,
   lra_accumulator: LraAccumulator,
+  /// Sample-accurate M/S maxima; `m_max_lufs`/`st_max_lufs` hold those of completed blocks.
+  sliding: SlidingWindowMax,
   m_max_lufs: f64,
   st_max_lufs: f64,
   true_peak_max: f64,
@@ -99,12 +102,13 @@ impl SummaryMeter {
         )
       }
     };
+    let block_size = (sample_rate * 0.1).round().max(1.0) as usize;
     Self {
       sample_rate,
       channels,
       kf: KWeightStereo::new(sample_rate),
       kf_mc: Vec::new(),
-      block_size: (sample_rate * 0.1).round().max(1.0) as usize,
+      block_size,
       block_sum: [0.0, 0.0],
       block_frames: 0,
       ring: vec![0.0_f64; 60 * 2],
@@ -112,6 +116,7 @@ impl SummaryMeter {
       ring_count: 0,
       integrated_accumulator: IntegratedAccumulator::new(),
       lra_accumulator: LraAccumulator::new(),
+      sliding: SlidingWindowMax::new(block_size),
       m_max_lufs: f64::NEG_INFINITY,
       st_max_lufs: f64::NEG_INFINITY,
       true_peak_max: 0.0,
@@ -159,6 +164,7 @@ impl SummaryMeter {
       };
 
       self.block_sum[0] += sum_ms;
+      self.sliding.push(sum_ms);
       self.update_peaks(&interleaved[base..base + channels]);
       self.block_frames += 1;
       if self.block_frames >= self.block_size {
@@ -169,11 +175,13 @@ impl SummaryMeter {
   }
 
   pub fn finish(&self) -> SummaryMetrics {
+    // Windows ending in the last, partial block are complete windows too.
+    let (tail_m, tail_s) = self.sliding.peek_block_max();
     SummaryMetrics {
       integrated_lufs: self.integrated_accumulator.value(),
       lra: self.lra_accumulator.value(),
-      m_max_lufs: self.m_max_lufs,
-      st_max_lufs: self.st_max_lufs,
+      m_max_lufs: self.m_max_lufs.max(tail_m),
+      st_max_lufs: self.st_max_lufs.max(tail_s),
       true_peak_max_dbtp: db_from_linear(self.true_peak_max),
       sample_peak_max_l_db: db_from_linear(self.sample_peak_max_l),
       sample_peak_max_r_db: db_from_linear(self.sample_peak_max_r),
@@ -243,13 +251,13 @@ impl SummaryMeter {
     self.ring_count = (self.ring_count + 1).min(60);
     self.integrated_accumulator.push(mean);
 
-    let momentary = self.window_lufs(4);
-    let short_term = self.window_lufs(30);
-    if momentary.is_finite() {
-      self.m_max_lufs = self.m_max_lufs.max(momentary);
-    }
-    if short_term.is_finite() {
-      self.st_max_lufs = self.st_max_lufs.max(short_term);
+    let (momentary_max, short_term_max) = self.sliding.take_block_max();
+    self.m_max_lufs = self.m_max_lufs.max(momentary_max);
+    self.st_max_lufs = self.st_max_lufs.max(short_term_max);
+    // LRA takes S at the 10 Hz block rate, as EBU Tech 3342 specifies, and only complete 3 s
+    // windows; the silence-padded readings before that would widen it.
+    let short_term = self.window_lufs(S_BLOCKS);
+    if self.ring_count >= S_BLOCKS && short_term.is_finite() {
       self.lra_accumulator.push(short_term);
     }
 
@@ -257,20 +265,15 @@ impl SummaryMeter {
     self.block_frames = 0;
   }
 
+  /// Loudness of the last `blocks` blocks, counting the time before the meter started as silence.
   fn window_lufs(&self, blocks: usize) -> f64 {
     let mut sum = [0.0_f64, 0.0_f64];
-    let mut count = 0_usize;
     for offset in 0..blocks.min(self.ring_count) {
       let index = ((self.ring_head + 60 - 1 - offset) % 60) * 2;
       sum[0] += self.ring[index];
       sum[1] += self.ring[index + 1];
-      count += 1;
     }
-    if count == 0 {
-      f64::NEG_INFINITY
-    } else {
-      lufs_from_mean_squares(sum[0] / count as f64, sum[1] / count as f64)
-    }
+    lufs_from_mean_squares(sum[0] / blocks as f64, sum[1] / blocks as f64)
   }
 }
 

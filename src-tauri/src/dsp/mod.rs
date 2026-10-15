@@ -14,6 +14,7 @@ pub mod loudness;
 pub mod meter;
 pub mod peak;
 pub mod shared_spectral_engine;
+mod sliding_window;
 pub mod spectral_transform;
 pub mod spectral_waveform;
 pub mod spectrum;
