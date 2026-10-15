@@ -8,6 +8,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import process from "node:process";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
+import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import { createStereoFixtureWav } from "./theme-gallery-lib.mjs";
 import {
   createRunJournalStore,
@@ -757,6 +758,7 @@ async function main(args) {
     return;
   }
   const createInvoke = () => {
+    scopeDevCliToWorktree();
     const { executable } = buildPlvsCli({ identity: "dev" });
     return async (commandArgs) => {
       const child = spawnSync(executable, commandArgs, {

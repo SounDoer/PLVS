@@ -205,7 +205,9 @@ rules below are the working set; the incident history and rationale live there.
 - **Capture rig:** verify the `device-enumeration` check from `plvs-cli doctor --json`. In detached
   RDP, expose remote machine audio, start the player after detaching, and reject runs whose loudness
   remains `null`. Build the current feature-gated `capture-harness` binary (`--profile harness`,
-  `target/harness/`) when smoke or soak reports exit 2.
+  `target/harness/`) when smoke or soak reports exit 2. Drive the rig only through the smoke, soak
+  and multi-instance scripts, which hold its lease; a busy lease means wait (`--wait`), never work
+  around it.
 - **Scene editors:** blocking is based on an editor being open, not dirty. Guard scene operations in
   the business function before mutation; never discard a draft to make an operation proceed.
 - **Analysis history:** changing a request key creates a history slab. Key-changing sliders commit

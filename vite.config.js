@@ -16,7 +16,8 @@ export default defineConfig({
   },
   clearScreen: false,
   server: {
-    port: 1420,
+    // A linked worktree's dev app gets its own port from scripts/run-tauri-dev.mjs (ADR 0028).
+    port: Number(process.env.PLVS_DEV_PORT ?? 1420),
     strictPort: true,
     host: host || false,
     hmr: host
@@ -29,7 +30,8 @@ export default defineConfig({
     watch: {
       // A watched directory cannot be renamed on Windows, and `website:build` replaces
       // `artifacts/website` by rename, so `npm run check` fails beside a running dev app.
-      ignored: ["**/src-tauri/**", "**/artifacts/**"],
+      // A linked worktree's dev app writes its app data into `.dev-data` continuously.
+      ignored: ["**/src-tauri/**", "**/artifacts/**", "**/.dev-data/**"],
     },
   },
   test: {

@@ -35,3 +35,6 @@ soak-*.jsonl
 .claude/
 .codex/
 .superpowers/
+
+# Dev app data of a linked worktree (ADR 0028)
+.dev-data/

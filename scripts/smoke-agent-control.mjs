@@ -6,6 +6,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
+import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import { assertWalkthroughStart } from "./ui-visual-walkthrough-lib.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -340,6 +341,7 @@ export async function runAgentControlSmoke({
 
 async function main() {
   const { outDir, instanceId } = parseArgs(process.argv.slice(2));
+  scopeDevCliToWorktree();
   const { executable } = buildPlvsCli({ identity: "dev" });
   const { report, reportPath } = await runAgentControlSmoke({ executable, outDir, instanceId });
   console.log(`OK Agent Control smoke passed on ${report.platform}.`);

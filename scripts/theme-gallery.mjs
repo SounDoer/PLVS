@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import process from "node:process";
 import sharp from "sharp";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
+import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import {
   createStereoFixtureWav,
   generateSemanticGallery,
@@ -463,6 +464,7 @@ export async function runThemeGallery(options) {
   if (options.semantic)
     result.semantic = await generateSemanticGallery({ manifest, outDir: options.outDir });
   if (options.product) {
+    scopeDevCliToWorktree();
     const { executable } = buildPlvsCli({ identity: "dev" });
     result.product = await runProductGallery({ manifest, outDir: options.outDir, executable });
   }

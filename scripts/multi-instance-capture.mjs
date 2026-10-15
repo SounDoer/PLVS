@@ -150,7 +150,12 @@ function parseTruth(result) {
   return report.summary;
 }
 
-export async function runConcurrentCapture({ count = 2, seconds = 15, every = null } = {}) {
+export async function runConcurrentCapture({
+  count = 2,
+  seconds = 15,
+  every = null,
+  wait = false,
+} = {}) {
   const harness = locateHarness();
   const endpoint = resolveRenderEndpointId();
   const wav = join(tmpdir(), `plvs-multi-capture-${process.pid}.wav`);
@@ -158,7 +163,7 @@ export async function runConcurrentCapture({ count = 2, seconds = 15, every = nu
   try {
     await synthesizeSignal(wav);
     const truth = parseTruth(runCli(harness, harnessArgs(["analyze", wav, "--json"])));
-    player = startPlayer(endpoint, wav);
+    player = await startPlayer(endpoint, wav, { wait });
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
     const args = ["capture", "--device", CAPTURE_DEVICE, "--seconds", String(seconds), "--json"];
@@ -222,7 +227,8 @@ async function main() {
     const seconds = parsePositive("seconds", 15);
     const every = process.argv.includes("--every") ? parsePositive("every", 10) : null;
     console.log(`Capturing ${CAPTURE_DEVICE} in ${count} independent processes for ${seconds}s.`);
-    const result = await runConcurrentCapture({ count, seconds, every });
+    const wait = process.argv.includes("--wait");
+    const result = await runConcurrentCapture({ count, seconds, every, wait });
     result.reports.forEach((report, index) => {
       console.log(
         `Instance ${index + 1}: ${report?.summary?.integratedLufs ?? "null"} LUFS, ` +

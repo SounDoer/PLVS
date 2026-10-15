@@ -70,7 +70,7 @@ try {
     runCli(harness, harnessArgs(["analyze", wav, "--json"])),
   ).summary;
 
-  player = startPlayer(endpoint, wav);
+  player = await startPlayer(endpoint, wav, { wait: process.argv.includes("--wait") });
   // Let the loop reach the device before measuring.
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 

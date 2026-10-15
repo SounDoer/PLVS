@@ -250,6 +250,8 @@ npm run desktop:dev
 
 `npm run desktop:dev` and `npm run desktop:dev-optimized` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The dev app therefore has its own `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` and its own webview data, and never overwrites the settings, window position or dock state of an installed stable PLVS. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. Dev-identity debug builds go to `src-tauri/target/dev-identity`, apart from the directory `cargo test` writes to, so `npm run check` can run while the dev app is open ([ADR 0024](docs/adr/0024-development-identity-target-directory.md)).
 
+In a linked worktree (for example under `.claude/worktrees/`), `npm run desktop:dev` runs a dev app that can sit beside the main checkout's and other worktrees' ([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)). It picks a Vite port in 1430–1499 instead of 1420 and keeps its app data in the worktree's ignored `.dev-data/`, which starts as a first run; delete the directory to start over. `desktop:control`, `smoke:agent-control`, `ui:walkthrough` and `theme:gallery` run from that worktree reach only that worktree's app. An optimized build from `npm run desktop:dev-optimized` in a worktree is launched by hand with `src-tauri/target/release/plvs --plvs-test-app-data-root <worktree>/.dev-data` to get the same isolation. The main checkout is unchanged.
+
 The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.soundoer.plvs.dev`) and `preview` (`com.soundoer.plvs.preview`). "Release" names only the Cargo profile and the act of publishing a version, never an identity. ADRs written before this naming keep the earlier names:
 
 | Earlier name                                                   | Current name                                              |
@@ -459,6 +461,8 @@ npm run smoke:capture         # real capture smoke test; needs VB-Cable and VLC 
 npm run soak:capture          # long capture run, 4 hours by default; the only check that finds leaks and metric drift
 npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; needs a full FFmpeg (PLVS_REFERENCE_FFMPEG or PATH)
 ```
+
+The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance runs take an exclusive lease, `plvs-capture-rig.lock` in the Git common directory, before starting the test tone. While another run holds it, a run fails with exit 2 and names the holder; add `--wait` to queue instead. A lease left by a killed run is removed automatically once its process is gone. There is no way to take a live lease ([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)).
 
 ## Privacy policy review
 

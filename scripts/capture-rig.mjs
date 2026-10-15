@@ -10,8 +10,18 @@
  */
 import { writeFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { spawnSync, spawn } from "node:child_process";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gitCommonDir } from "./dev-worktree.mjs";
+import {
+  LeaseBusyError,
+  acquireLease,
+  currentOwner,
+  describeHolder,
+  leasePath,
+  releaseLease,
+  waitForLease,
+} from "./rig-lease.mjs";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -308,12 +318,46 @@ export function locateHarness() {
   return harness;
 }
 
+let heldLease = null;
+
+function releaseRig() {
+  releaseLease(heldLease);
+  heldLease = null;
+}
+
+// A run that ends without reaching stopPlayer still gives the rig back. One killed outright
+// leaves its lease behind, and the next run removes it once its PID is gone.
+process.on("exit", releaseRig);
+
+/**
+ * Takes the rig lease (ADR 0028). Without `wait`, a busy rig is a RigError naming the run that
+ * holds it; with it, this waits until that run ends.
+ */
+async function takeRig({ wait }) {
+  if (heldLease) return;
+  const path = leasePath(gitCommonDir(ROOT));
+  const command = [basename(process.argv[1] ?? "node"), ...process.argv.slice(2)].join(" ");
+  const owner = currentOwner({ worktree: ROOT, command });
+  try {
+    heldLease = wait
+      ? await waitForLease(path, owner, {
+          onBusy: (holder) =>
+            console.log(`Waiting for the capture rig, in use by ${describeHolder(holder)}.`),
+        })
+      : acquireLease(path, owner);
+  } catch (error) {
+    if (!(error instanceof LeaseBusyError)) throw error;
+    throw new RigError(`${error.message}\nWait for it to finish, or rerun with --wait to queue.`);
+  }
+}
+
 /**
  * Loop `wavPath` into `endpointId` and nothing else. Deliberately does not touch
  * the system default playback device: that is intrusive, and 60s of 1 kHz sine
  * through real monitors is a scream.
  */
-export function startPlayer(endpointId, wavPath) {
+export async function startPlayer(endpointId, wavPath, { wait = false } = {}) {
+  await takeRig({ wait });
   const vlc = locateVlc();
   const child = spawn(
     vlc,
@@ -341,16 +385,20 @@ export function startPlayer(endpointId, wavPath) {
  * would have taken their media player with it.
  */
 export function stopPlayer(child) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) {
-    return;
-  }
-  // /T covers any helper processes VLC spawned; /F because it is looping and
-  // will not exit politely. Targeted by PID, never by image name.
-  spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
   try {
-    child.kill();
-  } catch {
-    // taskkill already got it.
+    if (!child || child.exitCode !== null || child.signalCode !== null) {
+      return;
+    }
+    // /T covers any helper processes VLC spawned; /F because it is looping and
+    // will not exit politely. Targeted by PID, never by image name.
+    spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+    try {
+      child.kill();
+    } catch {
+      // taskkill already got it.
+    }
+  } finally {
+    releaseRig();
   }
 }
 

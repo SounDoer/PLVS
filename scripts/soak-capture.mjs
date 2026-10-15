@@ -75,7 +75,7 @@ try {
   const harness = locateHarness();
   const endpoint = resolveRenderEndpointId();
   await synthesizeSignal(wav);
-  player = startPlayer(endpoint, wav);
+  player = await startPlayer(endpoint, wav, { wait: process.argv.includes("--wait") });
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
   console.log(`Soaking ${CAPTURE_DEVICE} for ${seconds}s, sampling every ${every}s.`);

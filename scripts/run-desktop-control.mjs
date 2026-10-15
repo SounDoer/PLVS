@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
+import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 
+scopeDevCliToWorktree();
 let executable;
 try {
   executable = buildPlvsCli({ identity: "dev" }).executable;
