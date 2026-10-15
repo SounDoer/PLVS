@@ -26,6 +26,7 @@ function makeWheelEvent(deltaY = -1) {
 
 function renderHistoryInteraction(overrides = {}) {
   const props = {
+    orientation: "right-to-left",
     enabled: true,
     sampleSec: 0.1,
     minWindowSec: 5,
@@ -67,6 +68,49 @@ describe("useHistoryInteraction", () => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["right-to-left", 250, 100, 350, 100],
+    ["left-to-right", 750, 100, 650, 100],
+    ["bottom-to-top", 500, 50, 500, 70],
+    ["top-to-bottom", 500, 150, 500, 130],
+  ])("selects and pans the same time in %s", (orientation, x, y, nextX, nextY) => {
+    const { result, props } = renderHistoryInteraction({ orientation });
+    const currentTarget = {
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 200 }),
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+    const event = { currentTarget, clientX: x, clientY: y, button: 0, pointerId: 1 };
+    act(() => result.current.onHistoryPointerDown(event));
+    expect(props.setSelectedOffset).toHaveBeenLastCalledWith(749 * 0.1);
+    act(() => result.current.onHistoryPointerUp(event));
+    act(() => result.current.onHistoryPointerDown({ ...event, ctrlKey: true }));
+    act(() => result.current.onHistoryPointerMove({ ...event, clientX: nextX, clientY: nextY }));
+    expect(props.setHistoryOffsetSec).toHaveBeenLastCalledWith(10);
+  });
+
+  it("ends a drag on direction change without selecting or moving the viewport", () => {
+    const { result, props, rerender } = renderHistoryInteraction({ orientation: "right-to-left" });
+    const event = {
+      button: 0,
+      ctrlKey: true,
+      clientX: 200,
+      clientY: 100,
+      pointerId: 1,
+      currentTarget: {
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 200 }),
+        setPointerCapture: vi.fn(),
+      },
+    };
+    act(() => result.current.onHistoryPointerDown(event));
+    props.orientation = "top-to-bottom";
+    act(() => rerender());
+    act(() => result.current.onHistoryPointerMove({ ...event, clientY: 180 }));
+    expect(props.setSelectedOffset).not.toHaveBeenCalled();
+    expect(props.setHistoryOffsetSec).not.toHaveBeenCalled();
+    expect(props.setHistoryWindowSec).not.toHaveBeenCalled();
   });
 
   it("zooms time from the time axis wheel without requiring ctrl", () => {

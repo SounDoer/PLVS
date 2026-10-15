@@ -133,7 +133,10 @@ describe("Dock Control", () => {
       {
         mode: { type: "string", options: ["peak", "rms", "momentary", "shortTerm"] },
         readout: { type: "string", options: ["live", "truePeakMax"] },
-        orientation: { type: "string", options: ["vertical", "horizontal"] },
+        orientation: {
+          type: "string",
+          options: ["left-to-right", "right-to-left", "top-to-bottom", "bottom-to-top"],
+        },
       }
     );
     expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").controls).toMatchObject({
@@ -159,19 +162,19 @@ describe("Dock Control", () => {
   it("plans shared Level controls and resets them", () => {
     const planned = planDockPanelPatch(dock, "level", {
       mode: "rms",
-      orientation: "horizontal",
+      orientation: "left-to-right",
       playbackMax: true,
     });
     expect(planned.issues).toEqual([]);
     expect(buildDockSnapshot(planned.dock).panels[0].controls).toMatchObject({
       mode: "rms",
-      orientation: "horizontal",
+      orientation: "left-to-right",
       playbackMax: true,
     });
     expect(planDockPanelReset(planned.dock, "level").changed.length).toBeGreaterThan(0);
     expect(buildDockPanelDescription(dock, "level").schema.orientation).toMatchObject({
       type: "string",
-      current: "vertical",
+      current: "bottom-to-top",
     });
     expect(planDockPanelPatch(dock, "level", { showLabels: true }).issues[0].code).toBe(
       "unknownControl"
@@ -199,7 +202,7 @@ describe("Dock Control", () => {
   });
 
   it("keeps other meter settings when orientation changes", () => {
-    const planned = planDockPanelPatch(dock, "level", { orientation: "horizontal" });
+    const planned = planDockPanelPatch(dock, "level", { orientation: "left-to-right" });
     expect(planned.issues).toEqual([]);
     expect(planned.changed).toEqual(["dock.panels.level.controls.orientation"]);
     expect(buildDockSnapshot(planned.dock).panels[0].controls.tpMaxMarker).toBe(true);

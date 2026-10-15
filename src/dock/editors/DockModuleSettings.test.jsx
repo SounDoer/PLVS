@@ -141,9 +141,9 @@ describe("DockModuleSettings", () => {
   it("offers the same orientation in every Level mode", () => {
     const onChange = renderSettings("level");
     fireEvent.click(screen.getByLabelText("level meter orientation"));
-    fireEvent.click(screen.getByRole("option", { name: "Horizontal" }));
+    fireEvent.click(screen.getByRole("option", { name: "→ Left to Right" }));
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ levelMeterOrientation: "horizontal" })
+      expect.objectContaining({ levelMeterOrientation: "left-to-right" })
     );
   });
 

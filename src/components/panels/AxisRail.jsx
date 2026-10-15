@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { useAxisSize } from "../../hooks/useAxisSize.js";
 
 const RAIL_HOVER = "hover:bg-ui-hover";
 
@@ -41,6 +42,7 @@ export function tickPosition(index, frac, count) {
  * @param {object} [props.railRef] Ref for a passive rail that still has to be measured. Ignored
  *   when `interaction` is given, which brings its own.
  * @param {string} [props.className]
+ * @param {import("react").CSSProperties} [props.style]
  * @param {import("react").ReactNode} [props.children]
  * @param {object} [props.scaleProps] Extra props for the tick track, for panels that hang test or
  *   layout hooks off it.
@@ -53,6 +55,7 @@ export function AxisRail({
   active = false,
   inset = false,
   className,
+  style,
   scaleProps,
   children,
   ...rest
@@ -64,7 +67,7 @@ export function AxisRail({
     <div
       ref={interaction?.axisRef ?? railRef}
       {...(interaction?.axisHandlers ?? {})}
-      style={interactive ? { cursor: interaction.cursorStyle } : undefined}
+      style={{ ...(interactive ? { cursor: interaction.cursorStyle } : {}), ...style }}
       data-active={highlighted ? "true" : "false"}
       className={cn(
         CAPTION_TEXT,
@@ -107,6 +110,36 @@ export function AxisRail({
 // Time axis rails are driven by useHistoryInteraction, which hands back bare handlers rather than a
 // useAxisInteraction result. Wrap them into the shape AxisRail expects. Their highlight is passed
 // separately as `active`, because a time axis also lights up when something else moves time.
-export function timeAxisInteraction(handlers) {
-  return handlers ? { axisHandlers: handlers, cursorStyle: "ew-resize" } : undefined;
+export function timeAxisInteraction(handlers, vertical = false) {
+  return handlers
+    ? { axisHandlers: handlers, cursorStyle: vertical ? "ns-resize" : "ew-resize" }
+    : undefined;
+}
+
+/** Keep time labels legible when the time dimension is a short Dock height. */
+export function fitTimeTicks(ticks, extent, spacing) {
+  if (ticks.length < 2) return ticks;
+  const latest = ticks[ticks.length - 1];
+  if (extent < spacing * 2) return [latest];
+  const kept = [ticks[0]];
+  for (const tick of ticks.slice(1, -1)) {
+    if (
+      Math.abs(tick.frac - kept[kept.length - 1].frac) * extent >= spacing &&
+      Math.abs(tick.frac - latest.frac) * extent >= spacing
+    )
+      kept.push(tick);
+  }
+  return [...kept, latest];
+}
+
+/** @param {Parameters<typeof AxisRail>[0]} props */
+export function TimeAxisRail(props) {
+  const { axisRef, axisPx } = useAxisSize(props.axis);
+  const spacing =
+    props.axis === "y"
+      ? 24
+      : Math.max(40, ...props.ticks.map((tick) => String(tick.label).length * 9));
+  return (
+    <AxisRail {...props} railRef={axisRef} ticks={fitTimeTicks(props.ticks, axisPx, spacing)} />
+  );
 }

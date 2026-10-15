@@ -79,7 +79,10 @@ describe("panelControls", () => {
   it("uses the agreed defaults", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       levelMeterMode: "peak",
-      levelMeterOrientation: "vertical",
+      levelMeterOrientation: "bottom-to-top",
+      loudnessOrientation: "right-to-left",
+      waveformOrientation: "right-to-left",
+      spectrogramOrientation: "right-to-left",
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
@@ -261,7 +264,10 @@ describe("panelControls", () => {
       })
     ).toEqual({
       levelMeterMode: "peak",
-      levelMeterOrientation: "vertical",
+      levelMeterOrientation: "bottom-to-top",
+      loudnessOrientation: "right-to-left",
+      waveformOrientation: "right-to-left",
+      spectrogramOrientation: "right-to-left",
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,

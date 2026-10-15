@@ -1,4 +1,5 @@
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { panelOrientation, orientationSvgTransform } from "../../math/panelOrientation.js";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 import { W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
@@ -8,7 +9,7 @@ import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
-import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { AxisRail, TimeAxisRail, fitTimeTicks, timeAxisInteraction } from "./AxisRail.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
@@ -31,6 +32,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
 
 /**
  * @param {{
+ *   orientation?: string,
  *   showAxes?: boolean,
  *   plotAreaRef: { current: any },
  *   historyYAxisTicks?: any[],
@@ -70,6 +72,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
  * }} props
  */
 export function LoudnessHistoryChart({
+  orientation = "right-to-left",
   showAxes = true,
   plotAreaRef,
   historyYAxisTicks: historyYAxisTicksProp,
@@ -107,6 +110,8 @@ export function LoudnessHistoryChart({
   onHistoryHoverLeave,
   loudnessLayoutKnown,
 }) {
+  const geometry = panelOrientation(orientation);
+  const vertical = geometry.vertical;
   const visibleLayerIds = Array.isArray(loudnessHistoryVisibleLayerIds)
     ? loudnessHistoryVisibleLayerIds
     : [];
@@ -121,7 +126,7 @@ export function LoudnessHistoryChart({
     [loudnessYMinDb, loudnessYMaxDb]
   );
   const loudnessYAxis = useAxisInteraction({
-    axis: "y",
+    axis: vertical ? "x" : "y",
     min: loudnessYMinDb,
     max: loudnessYMaxDb,
     ...LOUDNESS_Y_VIEWPORT,
@@ -150,7 +155,8 @@ export function LoudnessHistoryChart({
         anchor: anchorFromPointer({
           rect,
           clientY: e.clientY,
-          axis: "y",
+          clientX: e.clientX,
+          axis: vertical ? "x" : "y",
           scale: LOUDNESS_Y_VIEWPORT.scale,
           min: loudnessYMinDb,
           max: loudnessYMaxDb,
@@ -160,7 +166,14 @@ export function LoudnessHistoryChart({
       onLoudnessYRangeChange(next.min, next.max);
       pulseChartYAxis();
     },
-    [loudnessYMaxDb, loudnessYMinDb, onHistoryWheel, onLoudnessYRangeChange, pulseChartYAxis]
+    [
+      loudnessYMaxDb,
+      loudnessYMinDb,
+      onHistoryWheel,
+      onLoudnessYRangeChange,
+      pulseChartYAxis,
+      vertical,
+    ]
   );
   const adaptiveHistoryYAxisTicks = useMemo(
     () => buildAdaptiveDbTicks(loudnessYMinDb, loudnessYMaxDb, loudnessYAxis.axisPx),
@@ -215,23 +228,37 @@ export function LoudnessHistoryChart({
   const stGradId = useId().replace(/:/g, "");
 
   const chartYDragRef = useRef(null);
-  const [chartDragging, setChartDragging] = useState(false);
+  const [chartDragging, setChartDragging] = useState(null);
+  useEffect(
+    () => () => {
+      chartYDragRef.current = null;
+    },
+    [orientation]
+  );
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
 
   const onChartPointerDown = useCallback(
     (e) => {
       if (e.ctrlKey && e.button === 0 && typeof onLoudnessYRangeChange === "function") {
         chartYDragRef.current = {
-          startY: e.clientY,
+          startY: vertical ? e.clientX : e.clientY,
           min: loudnessYMinDb,
           max: loudnessYMaxDb,
         };
-        setChartDragging(true);
+        setChartDragging(orientation);
         holdChartYAxis();
       }
       onHistoryPointerDown?.(e);
     },
-    [holdChartYAxis, loudnessYMaxDb, loudnessYMinDb, onHistoryPointerDown, onLoudnessYRangeChange]
+    [
+      holdChartYAxis,
+      loudnessYMaxDb,
+      loudnessYMinDb,
+      onHistoryPointerDown,
+      onLoudnessYRangeChange,
+      vertical,
+      orientation,
+    ]
   );
 
   const onChartPointerMove = useCallback(
@@ -245,8 +272,8 @@ export function LoudnessHistoryChart({
           min: drag.min,
           max: drag.max,
           ...LOUDNESS_Y_VIEWPORT,
-          deltaPx: e.clientY - drag.startY,
-          axisPx: Math.max(1, rect.height),
+          deltaPx: vertical ? drag.startY - e.clientX : e.clientY - drag.startY,
+          axisPx: Math.max(1, vertical ? rect.width : rect.height),
         });
         onLoudnessYRangeChange(next.min, next.max);
         holdChartYAxis();
@@ -260,13 +287,14 @@ export function LoudnessHistoryChart({
       onHistoryHoverMove,
       onHistoryPointerMove,
       onLoudnessYRangeChange,
+      vertical,
     ]
   );
 
   const onChartPointerUp = useCallback(
     (e) => {
       chartYDragRef.current = null;
-      setChartDragging(false);
+      setChartDragging(null);
       releaseChartYAxis();
       onHistoryPointerUp?.(e);
     },
@@ -283,12 +311,21 @@ export function LoudnessHistoryChart({
       {/* Y-axis labels */}
       {showAxes && (
         <AxisRail
-          axis="y"
-          inset
-          className={cn(W_LOUDNESS_Y_AXIS, "min-h-0 shrink-0")}
+          axis={vertical ? "x" : "y"}
+          style={vertical ? { gridColumn: 2, gridRow: 2 } : undefined}
+          inset={!vertical}
+          className={cn(!vertical && W_LOUDNESS_Y_AXIS, "min-h-0 shrink-0")}
           interaction={loudnessYAxis}
           active={chartYAxisActive}
-          ticks={historyYAxisAxisTicks}
+          ticks={
+            vertical
+              ? fitTimeTicks(
+                  historyYAxisAxisTicks.map((tick) => ({ ...tick, frac: 1 - tick.frac })),
+                  loudnessYAxis.axisPx,
+                  40
+                )
+              : historyYAxisAxisTicks
+          }
         />
       )}
 
@@ -303,8 +340,10 @@ export function LoudnessHistoryChart({
           !historyChartInteractive && "pointer-events-none"
         )}
         style={{
+          gridColumn: showAxes ? 2 : 1,
+          gridRow: 1,
           cursor: historyChartInteractive
-            ? chartDragging
+            ? chartDragging === orientation
               ? "grabbing"
               : isCtrlHover
                 ? "grab"
@@ -332,83 +371,114 @@ export function LoudnessHistoryChart({
         <svg
           viewBox="0 0 600 220"
           preserveAspectRatio="none"
-          className="relative z-[1] h-full w-full pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
+          className={cn(
+            "relative z-[1] h-full w-full",
+            !vertical && "pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
+          )}
         >
-          <defs>
-            {mStops ? <RuleGradient id={mGradId} stops={mStops} /> : null}
-            {stStops ? <RuleGradient id={stGradId} stops={stStops} /> : null}
-          </defs>
-          <ChartGrid
-            visible={gridVisible}
-            yTicks={historyGridTicks}
-            width={600}
-            height={220}
-            stroke="var(--ui-loudness-grid)"
-            name="loudness"
-          />
-          {/* Reference guide line: the profile's target loudness, drawn only when the `ref` layer
+          <g transform={orientationSvgTransform(orientation, 600, 220)}>
+            <defs>
+              {mStops ? <RuleGradient id={mGradId} stops={mStops} /> : null}
+              {stStops ? <RuleGradient id={stGradId} stops={stStops} /> : null}
+            </defs>
+            <ChartGrid
+              visible={gridVisible}
+              yTicks={historyGridTicks}
+              width={600}
+              height={220}
+              stroke="var(--ui-loudness-grid)"
+              name="loudness"
+            />
+            {/* Reference guide line: the profile's target loudness, drawn only when the `ref` layer
               is on. It judges nothing -- it is a place to aim the eye. Keep it before both data
               traces so collisions preserve the M > ST > Reference visual priority. */}
-          {showReference && refTopFrac != null ? (
-            <line
-              data-testid="loudness-reference-line"
-              x1={0}
-              x2={600}
-              y1={refTopFrac * 220}
-              y2={refTopFrac * 220}
-              stroke="var(--ui-loudness-reference)"
-              strokeWidth="1"
-              strokeDasharray="4 4"
-              vectorEffect="non-scaling-stroke"
-            />
-          ) : null}
-          {showShortTerm && displayHistoryPathST && (
-            <path
-              data-testid="loudness-short-term-path"
-              d={displayHistoryPathST}
-              fill="none"
-              stroke={stStops ? `url(#${stGradId})` : stStrokeNormal}
-              strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-          {showMomentary && displayHistoryPathM && (
-            <path
-              data-testid="loudness-momentary-path"
-              d={displayHistoryPathM}
-              fill="none"
-              stroke={mStops ? `url(#${mGradId})` : mStrokeNormal}
-              strokeWidth="var(--ui-loudness-momentary-stroke-width)"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-          {selectedOffset >= 0 && showSelLine ? (
-            <line
-              x1={selLineX}
-              x2={selLineX}
-              y1={0}
-              y2={220}
-              stroke="var(--ui-loudness-selection)"
-              strokeWidth="var(--ui-loudness-selection-stroke-width)"
-              strokeDasharray="5 4"
-              vectorEffect="non-scaling-stroke"
-            />
-          ) : null}
+            {showReference && refTopFrac != null ? (
+              <line
+                data-testid="loudness-reference-line"
+                x1={0}
+                x2={600}
+                y1={refTopFrac * 220}
+                y2={refTopFrac * 220}
+                stroke="var(--ui-loudness-reference)"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+            {showShortTerm && displayHistoryPathST && (
+              <path
+                data-testid="loudness-short-term-path"
+                d={displayHistoryPathST}
+                fill="none"
+                stroke={stStops ? `url(#${stGradId})` : stStrokeNormal}
+                strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            {showMomentary && displayHistoryPathM && (
+              <path
+                data-testid="loudness-momentary-path"
+                d={displayHistoryPathM}
+                fill="none"
+                stroke={mStops ? `url(#${mGradId})` : mStrokeNormal}
+                strokeWidth="var(--ui-loudness-momentary-stroke-width)"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            {selectedOffset >= 0 && showSelLine ? (
+              <line
+                x1={selLineX}
+                x2={selLineX}
+                y1={0}
+                y2={220}
+                stroke="var(--ui-loudness-selection)"
+                strokeWidth="var(--ui-loudness-selection-stroke-width)"
+                strokeDasharray="5 4"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+          </g>
         </svg>
 
         {/* Overlays: hover crosshair and inspect HUD */}
         <div
           data-testid="loudness-chart-overlay"
-          className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10"
+          className={cn(
+            "pointer-events-none absolute inset-x-0 z-10",
+            vertical
+              ? "inset-y-0"
+              : "top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
+          )}
         >
-          <TimelineLatestEdgeHint active={showLatestEdgeHint} />
-          <TimelineSelectionEdgeHint direction={selectionEdge} />
+          <TimelineLatestEdgeHint active={showLatestEdgeHint} edge={geometry.newestEdge} />
+          <TimelineSelectionEdgeHint
+            direction={
+              selectionEdge === "left"
+                ? geometry.oldestEdge
+                : selectionEdge === "right"
+                  ? geometry.newestEdge
+                  : null
+            }
+          />
           {!hasSelectedLayer ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--ui-fs-axis)] text-muted-foreground">
               No layers selected
             </div>
           ) : null}
-          <ChartCrosshair leftPct={historyHover?.leftPct} topPct={historyHover?.topPct} />
+          <ChartCrosshair
+            leftPct={
+              historyHover
+                ? geometry.toScreen(historyHover.leftPct / 100, 1 - historyHover.topPct / 100).x *
+                  100
+                : undefined
+            }
+            topPct={
+              historyHover
+                ? geometry.toScreen(historyHover.leftPct / 100, 1 - historyHover.topPct / 100).y *
+                  100
+                : undefined
+            }
+          />
           {historyHover ? (
             <div
               className={cn(
@@ -446,11 +516,12 @@ export function LoudnessHistoryChart({
 
       {showAxes && (
         <>
-          <div />
-          <AxisRail
-            axis="x"
-            className="h-[var(--ui-chart-x-axis-row-h)]"
-            interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+          <div style={{ gridColumn: 1, gridRow: 2 }} />
+          <TimeAxisRail
+            axis={vertical ? "y" : "x"}
+            style={vertical ? { gridColumn: 1, gridRow: 1 } : { gridColumn: 2, gridRow: 2 }}
+            className={vertical ? "min-h-0" : "h-[var(--ui-chart-x-axis-row-h)]"}
+            interaction={timeAxisInteraction(historyTimeAxisHandlers, vertical)}
             active={isTimeAxisActive}
             ticks={historyTimeTicks.map((tick, i) => ({
               // Keyed by slot, not by text. A time label changes on almost every update, so a key
@@ -458,7 +529,7 @@ export function LoudnessHistoryChart({
               // measured at 77 node mutations a second per panel, in three panels.
               key: i,
               label: tick,
-              frac: i / historyTickSteps,
+              frac: geometry.timePosition(i / historyTickSteps),
             }))}
           />
         </>

@@ -1,7 +1,7 @@
 # Four-direction panel orientation
 
 Date: 2026-10-15
-Status: Approved product direction; implementation pending.
+Status: Implemented and user-tested; approved for merge.
 Branch: `codex/panel-orientation`, rebased onto local `main` at `8a50e0c2`.
 
 ## Scope
@@ -17,14 +17,15 @@ Keep the setting label `Orientation`. Use these options in this order:
 
 | Value | Label | Newest history edge | Level Meter growth |
 | --- | --- | --- | --- |
-| `left-to-right` | → Left to Right | Right | Low at left, high at right |
-| `right-to-left` | ← Right to Left | Left | Low at right, high at left |
-| `top-to-bottom` | ↓ Top to Bottom | Bottom | Low at top, high at bottom |
-| `bottom-to-top` | ↑ Bottom to Top | Top | Low at bottom, high at top |
+| `left-to-right` | → Left to Right | Left | Low at left, high at right |
+| `right-to-left` | ← Right to Left | Right | Low at right, high at left |
+| `top-to-bottom` | ↓ Top to Bottom | Top | Low at top, high at bottom |
+| `bottom-to-top` | ↑ Bottom to Top | Bottom | Low at bottom, high at top |
 
-For time plots, arrows describe progression from older to newer data. During live scrolling,
-existing content moves in the opposite direction. For Level Meter, arrows describe increasing
-level. Defaults are `left-to-right` for time plots and `bottom-to-top` for Level Meter.
+Following user testing, time-plot arrows describe live content motion. New data enters from the
+opposite edge: Top to Bottom introduces data at the top and moves it down. For Level Meter, arrows
+describe increasing level. Defaults are `right-to-left` for time plots (preserving newest-at-right
+behavior) and `bottom-to-top` for Level Meter.
 
 Do not migrate or alias Level Meter's old `vertical` and `horizontal` values: the control has not
 shipped publicly. Missing or invalid stored values use the ordinary control default. This does not
@@ -37,8 +38,8 @@ authorize deleting unrelated compatibility behavior.
   Range for Loudness, Frequency Range for Spectrogram, and Time Range for Waveform. Keep the
   remaining range rows and controls in their existing relative order.
 - Put the explanation in the existing Orientation label tooltip, not in an extra persistent row.
-  Time plots explain that the arrow runs from older to newer data and live history moves the other
-  way. Level Meter explains that the arrow runs from lower to higher level.
+  Time plots explain that the arrow follows live history motion and new data enters from the
+  opposite edge. Level Meter explains that the arrow runs from lower to higher level.
 - Keep labels readable and in Title Case; accessible names follow existing lowercase conventions.
 - Use identical option semantics and ordering in ordinary and Dock settings.
 
@@ -61,7 +62,8 @@ Existing Show Axes behavior remains available in every direction.
 
 Level Meter changes only its growth direction when reversed within an axis. Preserve channel order:
 horizontal bars keep the existing top-to-bottom channel order, and vertical bars keep the existing
-left-to-right order. Keep readout and channel-label placement stable within each layout. Threshold
+left-to-right order. Place readouts at the high-level end, following the growth direction. Channel labels remain
+outside the bars; vertical Waveform labels are centered below their respective lanes. Threshold
 colors, maxima, hold markers, and all existing meter modes follow the new growth direction.
 
 ## Interaction and state

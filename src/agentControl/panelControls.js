@@ -58,6 +58,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
 
   if (moduleId === "spectrogram") {
     return {
+      orientation: controls.spectrogramOrientation,
       channel: controls.spectrumChannel,
       mode: controls.spectrogramMode,
       tiltDbPerOctave: controls.spectrumTiltDbPerOctave,
@@ -93,6 +94,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
 
   if (moduleId === "waveform") {
     return {
+      orientation: controls.waveformOrientation,
       frequencyColor: controls.waveformFrequencyColor,
       frequencyBandsHz: {
         lowMid: controls.waveformLowMidSplitHz,
@@ -118,6 +120,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       .filter((id) => visible.has(id))
       .concat(context.hasLoudnessReference === true && visible.has("ref") ? ["reference"] : []);
     return {
+      orientation: controls.loudnessOrientation,
       layers,
       grid: controls.loudnessGrid,
       loudnessRangeLufs: { min: controls.loudnessYMinDb, max: controls.loudnessYMaxDb },

@@ -10,6 +10,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 ```json
 {
+  "orientation": "right-to-left",
   "layers": [
     "momentary",
     "shortTerm"
@@ -26,6 +27,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
+| `orientation` | string | - | `"right-to-left"` | "left-to-right", "right-to-left", "top-to-bottom", "bottom-to-top" | active |
 | `layers` | array | - | `["momentary","shortTerm"]` | "momentary", "shortTerm"; unique | active |
 | `grid` | boolean | - | `false` | - | active |
 | `loudnessRangeLufs` | object | LUFS | - | requires min, max; min < max; span >= 12 | active |

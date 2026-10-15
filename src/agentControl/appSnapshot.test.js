@@ -242,7 +242,7 @@ describe("agent-control app snapshots", () => {
       title: "Level Meter",
       controls: {
         mode: "peak",
-        orientation: "vertical",
+        orientation: "bottom-to-top",
         playbackMax: false,
         floatingValue: false,
         tpMaxMarker: true,

@@ -1,3 +1,4 @@
+import { PANEL_ORIENTATIONS } from "../math/panelOrientation.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
@@ -132,7 +133,7 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
     return root({
       orientation: field("string", "Orientation", "Direction of the meter bars.", {
         default: defaults.orientation,
-        options: ["vertical", "horizontal"],
+        options: [...PANEL_ORIENTATIONS],
         effective: true,
       }),
       mode: field("string", "Mode", "Measurement displayed by the meter.", {
@@ -197,6 +198,19 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
       ...(context.hasLoudnessReference === true ? ["reference"] : []),
     ];
     return root({
+      orientation: active(
+        field(
+          "string",
+          "Orientation",
+          "Direction of live history motion; new data enters from the opposite edge. Spectrogram orientation affects Heatmap only.",
+          {
+            default: defaults.orientation,
+            options: [...PANEL_ORIENTATIONS],
+          }
+        ),
+        true,
+        "threeDMode"
+      ),
       layers: field("array", "Layers", "Visible loudness history layers.", {
         default: defaults.layers,
         patchMode: "replace",
@@ -250,6 +264,19 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
 
   if (moduleId === "waveform") {
     return root({
+      orientation: active(
+        field(
+          "string",
+          "Orientation",
+          "Direction of live history motion; new data enters from the opposite edge. Spectrogram orientation affects Heatmap only.",
+          {
+            default: defaults.orientation,
+            options: [...PANEL_ORIENTATIONS],
+          }
+        ),
+        true,
+        "threeDMode"
+      ),
       frequencyColor: field("boolean", "Frequency Color", "Color the waveform by spectral band.", {
         default: defaults.frequencyColor,
         effective: true,
@@ -384,6 +411,19 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
     ) => active(field(type, title, description, additions), threeD, "heatmapMode");
     return root(
       {
+        orientation: active(
+          field(
+            "string",
+            "Orientation",
+            "Direction of live history motion; new data enters from the opposite edge. Spectrogram orientation affects Heatmap only.",
+            {
+              default: defaults.orientation,
+              options: [...PANEL_ORIENTATIONS],
+            }
+          ),
+          moduleId !== "spectrogram" || controls.spectrogramMode === "heatmap",
+          "threeDMode"
+        ),
         channel: channelSchema(defaults.channel, context),
         mode: field("string", "Mode", "Spectrogram rendering mode.", {
           default: defaults.mode,

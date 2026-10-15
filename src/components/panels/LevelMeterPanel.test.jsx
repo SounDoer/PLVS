@@ -111,10 +111,14 @@ describe("LevelMeterPanel", () => {
   });
 
   it.each([
-    ["vertical", true],
-    ["horizontal", true],
-    ["vertical", false],
-    ["horizontal", false],
+    ["bottom-to-top", true],
+    ["top-to-bottom", true],
+    ["left-to-right", true],
+    ["right-to-left", true],
+    ["bottom-to-top", false],
+    ["top-to-bottom", false],
+    ["left-to-right", false],
+    ["right-to-left", false],
   ])("keeps channel labels outside the bars in %s (axes %s)", (orientation, showAxes) => {
     const { container } = renderPanel({
       showAxes,
@@ -780,7 +784,7 @@ describe("horizontal Level Meter", () => {
     "renders %s with a horizontal gradient",
     (mode) => {
       const { container } = renderPanel({
-        panelControls: { levelMeterMode: mode, levelMeterOrientation: "horizontal" },
+        panelControls: { levelMeterMode: mode, levelMeterOrientation: "left-to-right" },
       });
       const gradients = container.querySelectorAll("[data-level-meter-gradient]");
       expect(gradients.length).toBe(mode === "peak" || mode === "rms" ? 2 : 1);
@@ -792,7 +796,7 @@ describe("horizontal Level Meter", () => {
     const { container } = renderPanel({
       onResetTpMax: reset,
       panelControls: {
-        levelMeterOrientation: "horizontal",
+        levelMeterOrientation: "left-to-right",
         levelMeterTpMaxMarker: true,
         levelMeterYMinDb: -48,
         levelMeterYMaxDb: -12,
@@ -805,7 +809,7 @@ describe("horizontal Level Meter", () => {
 });
 
 describe("Level Meter readout visibility", () => {
-  it.each(["vertical", "horizontal"])(
+  it.each(["bottom-to-top", "left-to-right", "top-to-bottom", "right-to-left"])(
     "keeps channel values alongside TP Max in %s",
     (orientation) => {
       const { container } = renderPanel({
@@ -833,7 +837,7 @@ describe("Level Meter readout visibility", () => {
       const { container } = renderPanel({
         displayAudio: { peakDb: [-4, -5], tpMax },
         panelControls: {
-          levelMeterOrientation: "horizontal",
+          levelMeterOrientation: "left-to-right",
           levelMeterTpMaxMarker: true,
           levelMeterYMinDb: -60,
           levelMeterYMaxDb: 0,

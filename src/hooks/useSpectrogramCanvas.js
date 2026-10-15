@@ -1,3 +1,4 @@
+import { panelOrientation } from "../math/panelOrientation.js";
 import { useEffect, useRef } from "react";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 import { buildYToBand, buildYTiltDb } from "../math/spectrogramMath.js";
@@ -219,6 +220,7 @@ export function paintSpectrogramImageData(
 }
 
 export function useSpectrogramCanvas({
+  orientation = "right-to-left",
   canvasRef,
   snapRef,
   oldestMs,
@@ -259,6 +261,7 @@ export function useSpectrogramCanvas({
     })
   );
   const lastPaintRef = useRef({
+    orientation: "",
     len: -1,
     version: -1,
     oldestMs: NaN,
@@ -306,8 +309,9 @@ export function useSpectrogramCanvas({
       rafRef.current = null;
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const W = canvas.width;
-      const H = canvas.height;
+      const geometry = panelOrientation(orientation);
+      const W = geometry.vertical ? canvas.height : canvas.width;
+      const H = geometry.vertical ? canvas.width : canvas.height;
       if (W === 0 || H === 0) return;
 
       const {
@@ -329,6 +333,7 @@ export function useSpectrogramCanvas({
       // Skip repaint when nothing changed.
       const last = lastPaintRef.current;
       if (
+        last.orientation === orientation &&
         last.len === len &&
         last.version === version &&
         last.oldestMs === oldestMs &&
@@ -347,6 +352,7 @@ export function useSpectrogramCanvas({
       }
       recordPanelCpuEvent("spectrogram2d", "dirtyPaint");
       lastPaintRef.current = {
+        orientation,
         len,
         version,
         oldestMs,
@@ -369,7 +375,7 @@ export function useSpectrogramCanvas({
       const firstSnap = snaps && snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
       const bands = firstSnap?.bands;
       if (!bands || bands.length === 0 || len === 0 || span <= 0) {
-        ctx.clearRect(0, 0, W, H);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         return;
       }
       if (
@@ -397,7 +403,7 @@ export function useSpectrogramCanvas({
       // Including the row already in progress at the left edge: it owns the leftmost columns.
       const { startIdx, endIdx } = spectrogramStripRange(snaps, oldestMs, newestMs);
       if (endIdx < startIdx) {
-        ctx.clearRect(0, 0, W, H);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         cache.paintedOldestMs = NaN;
         return;
       }
@@ -492,7 +498,25 @@ export function useSpectrogramCanvas({
       cache.paintedDbFloor = dbFloor;
       cache.paintedNewestRowMs =
         strip.endIdx >= strip.startIdx ? snaps.timestampAt(strip.endIdx) : NaN;
-      ctx.putImageData(cache.imageData, 0, 0);
+      if (orientation === "right-to-left") {
+        ctx.putImageData(cache.imageData, 0, 0);
+      } else {
+        // Keep the incremental cache in chronological coordinates. Only presentation is transformed.
+        const source =
+          cache.presentationCanvas ?? (cache.presentationCanvas = document.createElement("canvas"));
+        if (source.width !== W) source.width = W;
+        if (source.height !== H) source.height = H;
+        source.getContext("2d").putImageData(cache.imageData, 0, 0);
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (geometry.vertical) {
+          ctx.setTransform(0, geometry.reversed ? -1 : 1, -1, 0, H, geometry.reversed ? W : 0);
+        } else {
+          ctx.setTransform(-1, 0, 0, 1, W, 0);
+        }
+        ctx.drawImage(source, 0, 0);
+        ctx.restore();
+      }
     }
 
     recordPanelCpuEvent("spectrogram2d", "scheduled");
@@ -511,6 +535,7 @@ export function useSpectrogramCanvas({
       }
     };
   }, [
+    orientation,
     canvasRef,
     snapRef,
     sourceVersion,

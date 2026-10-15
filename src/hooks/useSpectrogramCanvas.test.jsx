@@ -16,6 +16,7 @@ import { standIn } from "../testing/standIn.js";
 const BANDS = [{ fCenter: 1000 }];
 
 function Harness({
+  orientation = "right-to-left",
   snaps,
   colormapLut,
   enabled = true,
@@ -26,6 +27,7 @@ function Harness({
   const snapRef = useMemo(() => ({ current: snaps }), [snaps]);
 
   useSpectrogramCanvas({
+    orientation,
     canvasRef,
     snapRef,
     oldestMs: 0,
@@ -67,6 +69,10 @@ describe("useSpectrogramCanvas", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() =>
       standIn({
         clearRect: vi.fn(),
+        save: vi.fn(),
+        restore: vi.fn(),
+        setTransform: vi.fn(),
+        drawImage: vi.fn(),
         putImageData,
       })
     );
@@ -105,6 +111,24 @@ describe("useSpectrogramCanvas", () => {
     expect(putImageData).toHaveBeenCalledTimes(2);
     expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
   });
+
+  it.each(["left-to-right", "bottom-to-top", "top-to-bottom"])(
+    "repaints unchanged history when direction becomes %s",
+    (orientation) => {
+      const snaps = viewOf({ timestampMs: 0, bands: BANDS, dbList: [-20] });
+      const colormapLut = new Uint8Array(256 * 3).fill(255);
+      const { rerender } = render(<Harness snaps={snaps} colormapLut={colormapLut} />);
+      rafCallback();
+      const original = putImageData.mock.calls[0][0];
+      rerender(<Harness snaps={snaps} colormapLut={colormapLut} orientation={orientation} />);
+      rafCallback();
+      expect(putImageData).toHaveBeenCalledTimes(2);
+      const presented = putImageData.mock.calls[1][0];
+      const vertical = orientation !== "left-to-right";
+      expect([presented.width, presented.height]).toEqual(vertical ? [1, 2] : [2, 1]);
+      expect([...presented.data]).toEqual([...original.data]);
+    }
+  );
 
   it("stays idle while hidden and paints once when revealed", () => {
     const snaps = viewOf({ timestampMs: 0, bands: BANDS, dbList: [-20] });

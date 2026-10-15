@@ -32,7 +32,11 @@ export function DockTimelinePanel({ moduleId, controls, component: Component }) 
     }),
     [linked, globalHistory, panelControls, controls]
   );
-  const historyData = usePanelHistoryData(dockSettingsTab(moduleId), axisViewportData);
+  const historyData = usePanelHistoryData(
+    dockSettingsTab(moduleId),
+    axisViewportData,
+    panelControls
+  );
   return (
     <div className="flex h-full min-h-0 min-w-0" data-testid={`dock-${moduleId}`}>
       <PanelInstanceProvider

@@ -30,7 +30,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "peakThresholdsDbfs",
     "rmsThresholdsDbfs",
   ]),
-  loudness: new Set(["layers", "loudnessRangeLufs", "grid"]),
+  loudness: new Set(["orientation", "layers", "loudnessRangeLufs", "grid"]),
   stats: new Set(["metrics"]),
   vectorscope: new Set(["channelPair", "mode", "persistenceMs", "maxHold"]),
   spectrum: new Set([
@@ -47,6 +47,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "linkFrequency",
   ]),
   spectrogram: new Set([
+    "orientation",
     "channel",
     "mode",
     "threeD",
@@ -56,7 +57,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "frequencyRangeHz",
     "linkFrequency",
   ]),
-  waveform: new Set(["frequencyColor", "frequencyBandsHz", "centroid"]),
+  waveform: new Set(["orientation", "frequencyColor", "frequencyBandsHz", "centroid"]),
   "stereo-map": new Set([
     "grid",
     "mode",

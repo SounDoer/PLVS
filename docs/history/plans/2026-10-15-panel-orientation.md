@@ -1,11 +1,37 @@
 # Four-direction panel orientation implementation plan
 
 Date: 2026-10-15
-Status: Planned; no feature implementation started.
+Status: User-tested and approved for merge; validation recorded below.
 Design: [Four-direction panel orientation](../specs/2026-10-15-panel-orientation-design.md).
 Worktree: `.codex/worktrees/panel-orientation`, branch `codex/panel-orientation`.
 Baseline: local `main` at `8a50e0c2`; the inherited Dock commits were already applied on main and
 were skipped by rebase. Remote `origin/main` was behind local main when fetched.
+
+## Validation record
+
+- Implemented shared direction geometry, history interaction, all four renderers, independent Dock
+  controls, persistence, Agent Control contracts, and matching living documentation.
+- Format, lint, typecheck, frontend build, and the full Vitest suite passed. Direction tests cover
+  geometry, pointer interaction, waveform strokes, spectrogram repainting, and control contracts.
+- Agent Control screenshots cover the original renderer baseline, all four directions with a
+  deterministic stereo file, aligned selection markers, and the native Dock layout. Captures and
+  benchmark output are retained locally under `artifacts/orientation/` (ignored).
+- Confirmed orientation persistence after a full app restart and inspected the isolated workspace
+  state file. Confirmed Heatmap orientation survives 3D mode without changing its camera.
+- Existing waveform and spectrogram CPU benchmarks were compared before/after. These do not
+  measure GPU upload cost or constitute exhaustive vertical-mode frame-performance coverage.
+- Visual verification used Windows. Dock screenshots used live mode without an active audio
+  fixture; macOS and an exhaustive DPI/axes/mode matrix remain unverified.
+
+### User-testing follow-up
+
+- Changed history orientation to mean content motion, with new data at the opposite edge.
+  The default is now Right to Left, preserving the original newest-at-right display.
+- Moved Level Meter readouts to the high-level edge in reversed layouts and centered vertical
+  Waveform channel labels beneath their lanes. Agent Control captures
+  `feedback-vertical.png` and `feedback-horizontal.png` verify both fixes on Windows.
+- Added aging-sample geometry coverage and updated interaction, canvas, and control expectations
+  for the corrected direction semantics.
 
 ## 1. Establish a reproducible baseline
 
@@ -72,7 +98,7 @@ were skipped by rebase. Remote `origin/main` was behind local main when fetched.
 - Extend `src/lib/panelControls.js` and `src/workspace/types.js` with shared option definitions and
   per-module controls: retain `levelMeterOrientation`; add `loudnessOrientation`,
   `waveformOrientation`, and `spectrogramOrientation`.
-- Default Level Meter to `bottom-to-top`, others to `left-to-right`. Use ordinary default handling
+- Default Level Meter to `bottom-to-top`, others to `right-to-left`. Use ordinary default handling
   for missing/invalid stored values, with no legacy orientation translation.
 - Keep Level Meter's row after Bar Colors. Insert Orientation immediately before Loudness Range,
   Frequency Range, or Time Range respectively. Add the agreed label tooltip through existing

@@ -1,3 +1,4 @@
+import { panelOrientation } from "../../math/panelOrientation.js";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import {
   useFrameData,
@@ -57,6 +58,8 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
     () => normalizePanelControls(panelControls),
     [panelControls]
   );
+  const orientation = normalizedPanelControls.loudnessOrientation;
+  const geometry = panelOrientation(orientation);
   const loudnessYMinDb = normalizedPanelControls.loudnessYMinDb;
   const loudnessYMaxDb = normalizedPanelControls.loudnessYMaxDb;
   // Owned by the active Loudness Profile and delivered through the history context; null when
@@ -77,7 +80,7 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
     let rafId = 0;
     const measure = () => {
       rafId = 0;
-      const w = Math.round(el.clientWidth);
+      const w = Math.round(geometry.vertical ? el.clientHeight : el.clientWidth);
       setPlotWidthPx((prev) => (prev === w ? prev : w));
     };
     const ro = new ResizeObserver(() => {
@@ -90,7 +93,7 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
       if (rafId) cancelAnimationFrame(rafId);
       ro.disconnect();
     };
-  }, []);
+  }, [geometry.vertical]);
   const targetColumns = plotWidthPx > 0 ? plotWidthPx : undefined;
   // histSourceList is a stable, mutated-in-place ring buffer, so its reference never changes between
   // frames even as samples are appended. totalSamples alone is not enough to key the memo: once the
@@ -169,10 +172,10 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
     onMove: onHistoryHoverMove,
     onLeave: onHistoryHoverLeave,
   } = useChartHover(
-    (xFrac) =>
+    (xFrac, yFrac) =>
       historyChartInteractive
         ? computeHistoryHoverPoint(
-            xFrac,
+            geometry.fromScreen(xFrac, yFrac).time,
             histSourceList,
             effectiveOffsetSamples,
             visibleSamples,
@@ -182,8 +185,8 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
           )
         : null,
     selectedOffset < 0
-      ? `${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}:${loudnessHistoryVisibleLayerIds.join(",")}`
-      : null
+      ? `${orientation}:${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}:${loudnessHistoryVisibleLayerIds.join(",")}`
+      : orientation
   );
 
   return (
@@ -196,6 +199,7 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <LoudnessHistoryChart
+          orientation={orientation}
           showAxes={showAxes}
           plotAreaRef={plotAreaRef}
           targetLufs={targetLufs}

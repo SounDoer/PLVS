@@ -1,3 +1,4 @@
+import { PANEL_ORIENTATIONS } from "../math/panelOrientation.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
 import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 import {
@@ -9,6 +10,13 @@ import {
 import { PEAK_DB_MAX, PEAK_DB_MIN, SPECTROGRAM_DB_MIN } from "../config/scales.js";
 import { AXIS_VIEWPORTS } from "../workspace/axisViewports.js";
 import { clampNumber, isNumber, normalizeRange, readStored } from "./rangeNormalization.js";
+
+export const ORIENTATION_OPTIONS = [
+  { id: "left-to-right", label: "→ Left to Right" },
+  { id: "right-to-left", label: "← Right to Left" },
+  { id: "top-to-bottom", label: "↓ Top to Bottom" },
+  { id: "bottom-to-top", label: "↑ Bottom to Top" },
+];
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -328,21 +336,41 @@ const CONTROLS = [
       options: LEVEL_METER_MODE_OPTIONS,
     },
   },
+  ...[
+    { tab: "loudness", order: 29 },
+    { tab: "waveform", order: 39 },
+    { tab: "spectrogram", order: 89 },
+  ].map(({ tab, order }) => ({
+    key: `${tab}Orientation`,
+    kind: "enum",
+    options: [...PANEL_ORIENTATIONS],
+    default: "right-to-left",
+    ui: {
+      tab,
+      label: "Orientation",
+      widget: "select",
+      ariaLabel: `${tab} orientation`,
+      order,
+      options: ORIENTATION_OPTIONS,
+      tooltip: "The arrow shows how live history moves. New data enters from the opposite edge.",
+      ...(tab === "spectrogram"
+        ? { showWhen: (controls) => controls.spectrogramMode === "heatmap" }
+        : {}),
+    },
+  })),
   {
     key: "levelMeterOrientation",
     kind: "enum",
-    options: ["vertical", "horizontal"],
-    default: "vertical",
+    options: [...PANEL_ORIENTATIONS],
+    default: "bottom-to-top",
     ui: {
       tab: "levelMeter",
       label: "Orientation",
       widget: "select",
       ariaLabel: "level meter orientation",
       order: 76,
-      options: [
-        { id: "vertical", label: "Vertical" },
-        { id: "horizontal", label: "Horizontal" },
-      ],
+      options: ORIENTATION_OPTIONS,
+      tooltip: "The arrow points from lower to higher level.",
     },
   },
   {

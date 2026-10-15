@@ -10,7 +10,12 @@ function Settings() {
 }
 it("keeps the orientation label and selected option in sync across both switches", () => {
   render(<Settings />);
-  for (const label of ["Horizontal", "Vertical", "Horizontal"]) {
+  for (const label of [
+    "→ Left to Right",
+    "← Right to Left",
+    "↓ Top to Bottom",
+    "↑ Bottom to Top",
+  ]) {
     fireEvent.click(screen.getByLabelText("level meter orientation"));
     fireEvent.click(screen.getByRole("option", { name: label }));
     expect(screen.getByLabelText("level meter orientation").textContent).toBe(label);

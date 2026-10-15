@@ -290,7 +290,7 @@ describe("LoudnessHistoryChart", () => {
   it("stacks Reference below Short-term below Momentary", () => {
     renderChart(["momentary", "shortTerm", "ref"]);
     const svg = screen.getByTestId("loudness-reference-line").closest("svg");
-    const paintedLayers = Array.from(svg.children)
+    const paintedLayers = Array.from(svg.querySelectorAll("[data-testid]"))
       .map((node) => node.getAttribute("data-testid"))
       .filter(Boolean);
 

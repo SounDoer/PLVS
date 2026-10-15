@@ -384,7 +384,7 @@ function FullscreenOverlay() {
     resetPanelControlsForPanel(fullscreenId);
   }, [fullscreenId, resetPanelControlsForPanel]);
   const axisViewportData = usePanelAxisViewports(fullscreenId);
-  const panelHistoryData = usePanelHistoryData(fullscreenModuleId, axisViewportData);
+  const panelHistoryData = usePanelHistoryData(fullscreenModuleId, axisViewportData, panelControls);
   const panelInstanceData = useMemo(
     () => ({
       panelControls,

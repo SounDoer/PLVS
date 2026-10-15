@@ -1,3 +1,4 @@
+import { PANEL_ORIENTATIONS } from "../math/panelOrientation.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
@@ -110,6 +111,24 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
   const panelControls = { ...current };
   const changed = [];
 
+  if (["loudness", "waveform", "spectrogram"].includes(moduleId) && hasOwn(patch, "orientation")) {
+    if (!PANEL_ORIENTATIONS.includes(patch.orientation)) {
+      return {
+        panelControls: current,
+        changed: [],
+        warnings: [],
+        issues: [issue("invalidEnum", "$.orientation", "Invalid time orientation.")],
+      };
+    }
+    const key = `${moduleId}Orientation`;
+    if (panelControls[key] !== patch.orientation) {
+      panelControls[key] = patch.orientation;
+      changed.push("controls.orientation");
+    }
+    patch = { ...patch };
+    delete patch.orientation;
+  }
+
   if (moduleId === "levelMeter") {
     const issues = [];
     for (const key of Object.keys(patch)) {
@@ -117,7 +136,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
         issues.push(issue("unknownControl", `$.${key}`, `Unknown Level Meter control: ${key}.`));
       }
     }
-    if (hasOwn(patch, "orientation") && !["vertical", "horizontal"].includes(patch.orientation))
+    if (hasOwn(patch, "orientation") && !PANEL_ORIENTATIONS.includes(patch.orientation))
       issues.push(issue("invalidEnum", "$.orientation", "Invalid meter orientation."));
     if (hasOwn(patch, "mode") && !LEVEL_METER_MODES.has(patch.mode)) {
       issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Level Meter mode."));

@@ -1,3 +1,4 @@
+import { panelOrientation, orientationSvgTransform } from "../../math/panelOrientation.js";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { WAVEFORM_FILL_OPACITY } from "@/lib/chartFill.js";
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
@@ -9,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
-import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { TimeAxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
@@ -88,6 +89,7 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
 export function drawWaveformCanvas(
   canvas,
   {
+    orientation = "right-to-left",
     mins,
     maxes,
     bucketCount,
@@ -109,8 +111,17 @@ export function drawWaveformCanvas(
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const W = canvas.width;
-  const H = canvas.height;
+  const geometry = panelOrientation(orientation);
+  const W = geometry.vertical ? canvas.height : canvas.width;
+  const H = geometry.vertical ? canvas.width : canvas.height;
+  const moveTo = (x, y) => {
+    const point = geometry.toScreen(x / W, 1 - y / H);
+    ctx.moveTo(point.x * canvas.width, point.y * canvas.height);
+  };
+  const lineTo = (x, y) => {
+    const point = geometry.toScreen(x / W, 1 - y / H);
+    ctx.lineTo(point.x * canvas.width, point.y * canvas.height);
+  };
   // Paths are built in backing pixels, whose width is capped at 1:1 while the height keeps full
   // DPR. Every line width below is CSS px and is stroked through strokeCssWidth for that reason.
   const cssScale = canvasCssScale(canvas);
@@ -130,7 +141,7 @@ export function drawWaveformCanvas(
   };
   const centroidColor = themeColors.centroid;
 
-  ctx.clearRect(0, 0, W, H);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // No line is drawn at zero; the trace is still measured from it.
   const cy = H / 2;
@@ -164,10 +175,10 @@ export function drawWaveformCanvas(
       const fillLeft = x - 0.5;
       const fillRight = nextX + 0.5;
       ctx.beginPath();
-      ctx.moveTo(fillLeft, yMax);
-      ctx.lineTo(fillRight, nextYMax);
-      ctx.lineTo(fillRight, nextYMin);
-      ctx.lineTo(fillLeft, yMin);
+      moveTo(fillLeft, yMax);
+      lineTo(fillRight, nextYMax);
+      lineTo(fillRight, nextYMin);
+      lineTo(fillLeft, yMin);
       ctx.closePath();
       // Frequency Color is the waveform body, not a translucent overlay on the classic trace.
       ctx.globalAlpha = 1;
@@ -177,10 +188,10 @@ export function drawWaveformCanvas(
       ctx.strokeStyle = colorCss;
       ctx.lineWidth = strokeWidth;
       ctx.beginPath();
-      ctx.moveTo(x, yMax);
-      ctx.lineTo(nextX, nextYMax);
-      ctx.moveTo(x, yMin);
-      ctx.lineTo(nextX, nextYMin);
+      moveTo(x, yMax);
+      lineTo(nextX, nextYMax);
+      moveTo(x, yMin);
+      lineTo(nextX, nextYMin);
       strokeCssWidth(ctx, cssScale);
     }
   } else {
@@ -188,13 +199,13 @@ export function drawWaveformCanvas(
     for (let j = firstBucket; j <= lastBucket; j++) {
       const x = xFor(j);
       const y = cy - maxes[j] * cy;
-      if (j === firstBucket) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      if (j === firstBucket) moveTo(x, y);
+      else lineTo(x, y);
     }
     for (let j = lastBucket; j >= firstBucket; j--) {
       const x = xFor(j);
       const y = cy - mins[j] * cy;
-      ctx.lineTo(x, y);
+      lineTo(x, y);
     }
     ctx.closePath();
 
@@ -220,8 +231,8 @@ export function drawWaveformCanvas(
       }
       const x = xFor(j);
       const y = yFraction * H;
-      if (drawing) ctx.lineTo(x, y);
-      else ctx.moveTo(x, y);
+      if (drawing) lineTo(x, y);
+      else moveTo(x, y);
       drawing = true;
     }
     strokeCssWidth(ctx, cssScale);
@@ -270,6 +281,12 @@ function WaveformPanelContent({
   fitContainer,
   className,
 }) {
+  const orientation = controls.waveformOrientation;
+  const geometry = panelOrientation(orientation);
+  const vertical = geometry.vertical;
+  const plotInsets = vertical
+    ? { bottom: showAxes ? "var(--ui-chart-x-axis-row-h)" : 0 }
+    : { left: showAxes ? WAVEFORM_CHART_LEFT : 0 };
   const {
     histSourceList,
     waveformHistoryIndex,
@@ -387,10 +404,10 @@ function WaveformPanelContent({
     onMove: onWaveformHoverMove,
     onLeave: onWaveformHoverLeave,
   } = useChartHover(
-    (xFrac) =>
+    (xFrac, yFrac) =>
       historyChartInteractive
         ? computeWaveformHoverPoint(
-            xFrac,
+            geometry.fromScreen(xFrac, yFrac).time,
             mins,
             maxes,
             bucketCount,
@@ -403,10 +420,10 @@ function WaveformPanelContent({
           )
         : null,
     selectedOffset < 0
-      ? `${waveformHistoryWindow.startIndex}:${waveformHistoryWindow.endIndex}:${waveformHistoryWindow.startRow?.timestampMs ?? ""}:${waveformHistoryWindow.endRow?.timestampMs ?? ""}:${effectiveOffsetSamples ?? 0}:${visibleSamples ?? 0}:${bucketCount}:${fracPhase}:${firstBucket}:${lastBucket}`
-      : null
+      ? `${orientation}:${waveformHistoryWindow.startIndex}:${waveformHistoryWindow.endIndex}:${waveformHistoryWindow.startRow?.timestampMs ?? ""}:${waveformHistoryWindow.endRow?.timestampMs ?? ""}:${effectiveOffsetSamples ?? 0}:${visibleSamples ?? 0}:${bucketCount}:${fracPhase}:${firstBucket}:${lastBucket}`
+      : orientation
   );
-  const [chartDragging, setChartDragging] = useState(false);
+  const [chartDragging, setChartDragging] = useState(null);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
 
   return (
@@ -419,10 +436,31 @@ function WaveformPanelContent({
       )}
     >
       {/* Channel lanes + interaction overlay */}
-      <div className="relative isolate flex min-h-0 flex-1 flex-col gap-0">
+      {showAxes && vertical && (
+        <TimeAxisRail
+          axis="y"
+          className="absolute left-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] w-[var(--ui-chart-y-axis-rail-w)]"
+          style={{ bottom: "calc(var(--ui-panel-pad-y) + var(--ui-chart-x-axis-row-h))" }}
+          interaction={timeAxisInteraction(historyTimeAxisHandlers, true)}
+          active={historyTimeAxisActive}
+          ticks={(historyTimeTicks ?? []).map((label, i) => ({
+            key: i,
+            label,
+            frac: geometry.timePosition(i / HISTORY_TIME_TICK_STEPS),
+          }))}
+        />
+      )}
+      <div
+        className={cn(
+          "relative isolate flex min-h-0 min-w-0 flex-1 gap-0",
+          vertical ? "flex-row" : "flex-col"
+        )}
+        style={{ marginLeft: vertical && showAxes ? WAVEFORM_CHART_LEFT : undefined }}
+      >
         {Array.from({ length: effectiveChannels }, (_, ch) => (
           <WaveformLane
             key={ch}
+            orientation={orientation}
             showLabels={showAxes}
             label={labels[ch] ?? `Ch${ch + 1}`}
             mins={mins[ch]}
@@ -444,31 +482,34 @@ function WaveformPanelContent({
           />
         ))}
 
-        <TimelineLatestEdgeHint
-          active={(effectiveOffsetSamples ?? 0) > 0}
-          className={
-            showAxes
-              ? "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))] w-auto"
-              : "left-0 w-auto"
-          }
-        />
-        <TimelineSelectionEdgeHint
-          direction={selectionEdge}
-          color={themeColors.selection}
-          className={
-            selectionEdge === "left" && showAxes
-              ? "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))]"
-              : undefined
-          }
-        />
+        <div className="pointer-events-none absolute inset-0" style={plotInsets}>
+          <TimelineLatestEdgeHint
+            active={(effectiveOffsetSamples ?? 0) > 0}
+            edge={geometry.newestEdge}
+          />
+          <TimelineSelectionEdgeHint
+            direction={
+              selectionEdge === "left"
+                ? geometry.oldestEdge
+                : selectionEdge === "right"
+                  ? geometry.newestEdge
+                  : null
+            }
+            color={themeColors.selection}
+          />
+        </div>
 
         {/* Hover crosshair + popover 鈥?pointer-events-none so interaction overlay stays active */}
         {waveformHover && (
-          <div
-            className="pointer-events-none absolute inset-0 z-[25]"
-            style={{ left: showAxes ? WAVEFORM_CHART_LEFT : 0 }}
-          >
-            <ChartCrosshair leftPct={waveformHover.leftPct} />
+          <div className="pointer-events-none absolute inset-0 z-[25]" style={plotInsets}>
+            <ChartCrosshair
+              leftPct={
+                vertical ? undefined : geometry.timePosition(waveformHover.leftPct / 100) * 100
+              }
+              topPct={
+                vertical ? geometry.timePosition(waveformHover.leftPct / 100) * 100 : undefined
+              }
+            />
             {/* Popover */}
             <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
               <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
@@ -488,12 +529,10 @@ function WaveformPanelContent({
 
         {/* Selection line 鈥?aligned with canvas area, not the label column */}
         {selectedOffset >= 0 && showSelLine && (
-          <div
-            className="pointer-events-none absolute inset-0 z-20"
-            style={{ left: showAxes ? WAVEFORM_CHART_LEFT : 0 }}
-          >
+          <div className="pointer-events-none absolute inset-0 z-20" style={plotInsets}>
             <svg viewBox="0 0 600 1" preserveAspectRatio="none" className="h-full w-full">
               <line
+                transform={orientationSvgTransform(orientation, 600, 1)}
                 x1={selLineX}
                 x2={selLineX}
                 y1={0}
@@ -512,9 +551,9 @@ function WaveformPanelContent({
           className="absolute inset-0 z-30"
           data-waveform-interaction-overlay
           style={{
-            left: showAxes ? WAVEFORM_CHART_LEFT : 0,
+            ...plotInsets,
             cursor: historyChartInteractive
-              ? chartDragging
+              ? chartDragging === orientation
                 ? "grabbing"
                 : isCtrlHover
                   ? "grab"
@@ -531,7 +570,7 @@ function WaveformPanelContent({
           }}
           onWheel={onHistoryWheel}
           onPointerDown={(e) => {
-            if (e.ctrlKey && e.button === 0) setChartDragging(true);
+            if (e.ctrlKey && e.button === 0) setChartDragging(orientation);
             onHistoryPointerDown(e);
           }}
           onPointerMove={(e) => {
@@ -544,20 +583,20 @@ function WaveformPanelContent({
             onWaveformHoverLeave();
           }}
           onPointerUp={(e) => {
-            setChartDragging(false);
+            setChartDragging(null);
             onHistoryPointerUp(e);
           }}
           onPointerCancel={(e) => {
-            setChartDragging(false);
+            setChartDragging(null);
             onHistoryPointerUp(e);
           }}
         />
       </div>
 
-      {showAxes && (
+      {showAxes && !vertical && (
         <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start gap-[var(--ui-chart-axis-gap)]">
           <div data-waveform-x-axis-spacer className={cn(W_LOUDNESS_Y_AXIS, "shrink-0")} />
-          <AxisRail
+          <TimeAxisRail
             axis="x"
             className="h-full flex-1"
             interaction={timeAxisInteraction(historyTimeAxisHandlers)}
@@ -568,7 +607,7 @@ function WaveformPanelContent({
               // measured at 77 node mutations a second per panel, in three panels.
               key: i,
               label: tick,
-              frac: i / HISTORY_TIME_TICK_STEPS,
+              frac: geometry.timePosition(i / HISTORY_TIME_TICK_STEPS),
             }))}
           />
         </div>
@@ -578,6 +617,7 @@ function WaveformPanelContent({
 }
 
 function WaveformLane({
+  orientation,
   showLabels,
   label,
   mins,
@@ -597,6 +637,7 @@ function WaveformLane({
   themeColors,
   onBackingWidth,
 }) {
+  const vertical = panelOrientation(orientation).vertical;
   const canvasRef = useRef(null);
   const drawParamsRef = useRef(null);
   const rafRef = useRef(0);
@@ -613,22 +654,24 @@ function WaveformLane({
   }, []);
 
   const onResize = useCallback(
-    ({ width }) => {
-      onBackingWidth(width);
+    ({ width, height }) => {
+      onBackingWidth(vertical ? height : width);
       scheduleDraw();
     },
-    [onBackingWidth, scheduleDraw]
+    [onBackingWidth, scheduleDraw, vertical]
   );
   useCanvasBackingStore(canvasRef, {
     onResize,
     // Cap width only: bucket count (decimation cost) tracks canvas width, so the fullscreen-perf
     // cap stays there. Height keeps full DPR so the near-zero envelope renders at real vertical
     // resolution instead of a sub-pixel hairline that flickers as it scrolls.
-    maxDevicePixelRatioX: WAVEFORM_MAX_DEVICE_PIXEL_RATIO,
+    maxDevicePixelRatioX: vertical ? undefined : WAVEFORM_MAX_DEVICE_PIXEL_RATIO,
+    maxDevicePixelRatioY: vertical ? WAVEFORM_MAX_DEVICE_PIXEL_RATIO : undefined,
   });
 
   useEffect(() => {
     drawParamsRef.current = {
+      orientation,
       mins,
       maxes,
       bucketCount,
@@ -663,6 +706,7 @@ function WaveformLane({
     centroid,
     themeColors,
     scheduleDraw,
+    orientation,
   ]);
 
   useEffect(
@@ -678,14 +722,18 @@ function WaveformLane({
   return (
     <div
       data-waveform-lane
-      className="flex min-h-0 min-w-0 flex-1 items-stretch gap-[var(--ui-chart-axis-gap)]"
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 items-stretch gap-[var(--ui-chart-axis-gap)]",
+        vertical && "flex-col-reverse"
+      )}
     >
       {showLabels && (
         <div
           data-waveform-label-rail
           className={cn(
-            W_LOUDNESS_Y_AXIS,
-            "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]"
+            vertical ? "h-[var(--ui-chart-x-axis-row-h)]" : W_LOUDNESS_Y_AXIS,
+            "flex shrink-0 items-center text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]",
+            vertical ? "justify-center" : "justify-end"
           )}
         >
           {label}

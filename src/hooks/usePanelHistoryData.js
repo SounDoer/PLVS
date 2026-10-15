@@ -20,7 +20,7 @@ const TIMELINE_MODULE_IDS = new Set(["loudness", "spectrogram", "waveform"]);
  * is introduced; keeping this boundary local means that change only has to replace the input.
  * @param {string} moduleId
  */
-export function usePanelHistoryData(moduleId, axisViewportData = null) {
+export function usePanelHistoryData(moduleId, axisViewportData = null, controls = {}) {
   const historyData = useHistoryData();
   const isTimelinePanel = TIMELINE_MODULE_IDS.has(moduleId);
   const timeViewport = axisViewportData?.axisViewports?.time ?? null;
@@ -166,6 +166,10 @@ export function usePanelHistoryData(moduleId, axisViewportData = null) {
   ]);
 
   const interaction = useHistoryInteraction({
+    orientation:
+      moduleId === "spectrogram" && controls?.spectrogramMode !== "heatmap"
+        ? "right-to-left"
+        : (controls?.[`${moduleId}Orientation`] ?? "right-to-left"),
     enabled: isTimelinePanel && (historyData?.running || historyData?.hasHistoryData),
     sampleSec: HIST_SAMPLE_SEC,
     minWindowSec: HISTORY_MIN_WINDOW_SEC,

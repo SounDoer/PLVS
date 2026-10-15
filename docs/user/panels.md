@@ -31,7 +31,9 @@ Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Shor
 a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles.md); click the
 readout to reset the maximum. Scale labels close to a marker fade out so the reading stays legible.
 
-**Orientation** selects Vertical (the default) or Horizontal bars in both the workspace and Dock.
+**Orientation** chooses the direction from lower to higher level: Left to Right, Right to Left,
+Top to Bottom, or Bottom to Top (the default), in both the workspace and Dock.
+Reversing growth keeps channel order unchanged and places readouts at the high-level end.
 Each panel saves its own choice. Channel names occupy a separate label rail below vertical bars or
 to the left of horizontal bars, using the shared annotation text size. Views **Hide Axes & Labels**
 controls this rail together with numeric axes in Workspace and Dock. Momentary and Short-term use
@@ -59,7 +61,21 @@ Momentary and Short-term LUFS curves over time, following ITU-R BS.1770 measurem
 gating conventions. The two curves use equal line weights and are distinguished by the Theme's
 Primary and Secondary Data colours. Where layers overlap, Momentary is drawn above Short-term,
 which is drawn above the reference line. The reference line comes from the active Loudness Profile.
-**Grid** adds horizontal guides at the visible loudness-axis ticks and is off by default.
+**Grid** adds guides at the visible loudness-axis ticks and is off by default.
+
+**Orientation**, above Loudness Range, chooses how live history moves: Left to Right,
+Right to Left (default), Top to Bottom, or Bottom to Top. New data enters from the opposite edge.
+For example, Top to Bottom introduces new data at the top and moves older data downward. Hover
+over Orientation for this explanation.
+
+Horizontal time puts the time axis below the plot and loudness on the left, increasing upward.
+Vertical time puts time on the left and loudness below, increasing to the right. Reversing time
+keeps these rails in place. Drag along the time axis to move history; zoom stays anchored at the
+pointer. Existing modifier gestures keep their meanings.
+
+Each panel saves its own direction in Workspace and Dock. Changing direction preserves history,
+the selected time, ranges, and running/paused state. Linked time views stay linked across mixed
+directions. Resizing never changes the chosen direction automatically.
 
 ## Stats
 
@@ -94,6 +110,11 @@ pair applies to Primary, Secondary, and Snapshot fills in Workspace and Dock.
 
 Frequency content over time, as a **2D Heatmap**, **3D Lines**, or **3D Surface**, coloured by your
 theme. Choose the channel, tilt, smoothing, and level floor.
+
+In Heatmap, **Orientation** appears above Frequency Range and offers the same four time directions
+as Loudness, defaulting to Right to Left. High frequencies stay at the top with horizontal time and
+at the right with vertical time. Lines and Surface hide this setting and keep their camera controls;
+returning to Heatmap restores its saved direction.
 
 In **3D Lines** and **3D Surface**, **Grid** shows the floor grid. The same setting is shared by both
 3D modes, is hidden in 2D Heatmap, and is off by default.
@@ -153,6 +174,11 @@ the area beneath the curve; the curve keeps the energy-adjusted opacity and Hold
 
 A DAW-style per-channel amplitude envelope over the session history. Optionally colour it by
 frequency content and show the spectral centroid.
+
+**Orientation**, above Time Range, offers the same four time directions as Loudness, defaulting to
+Right to Left. Horizontal time uses stacked channel lanes with positive amplitude upward; vertical
+time uses side-by-side lanes with positive amplitude to the right. Channel order is preserved when
+reversing time, and labels remain upright. Vertical lane labels are centered below each waveform.
 
 Waveform has no optional Grid and does not draw a centre reference line.
 

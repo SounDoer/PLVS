@@ -10,6 +10,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 ```json
 {
+  "orientation": "right-to-left",
   "frequencyColor": false,
   "frequencyBandsHz": {
     "lowMid": 200,
@@ -23,6 +24,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
+| `orientation` | string | - | `"right-to-left"` | "left-to-right", "right-to-left", "top-to-bottom", "bottom-to-top" | active |
 | `frequencyColor` | boolean | - | `false` | - | active |
 | `frequencyBandsHz` | object | Hz | - | requires lowMid, midHigh; lowMid < midHigh | inactive (frequencyColorOff) |
 | `frequencyBandsHz.lowMid` | integer | - | - | 20 to 20000 | - |

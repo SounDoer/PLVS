@@ -68,7 +68,15 @@ function levelMeterValueMarkerClass(position) {
 
 /// `background` is a CSS background-image laid over the whole bar; the fill reveals it from the
 /// bottom.
-function AnimatedLevelFill({ value, min, max, fromTopFrac, background, horizontal = false }) {
+function AnimatedLevelFill({
+  value,
+  min,
+  max,
+  fromTopFrac,
+  background,
+  horizontal = false,
+  reversed = false,
+}) {
   const reduceMotion = useReducedMotion();
   const clamped = Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : null;
   const clipTopFrac = clamped != null ? fromTopFrac(clamped) : 1;
@@ -79,7 +87,13 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac, background, horizonta
     mass: reduceMotion ? 0.08 : 0.35,
   });
   const clipPath = useTransform(spring, (scale) =>
-    horizontal ? `inset(0 ${(1 - scale) * 100}% 0 0)` : `inset(${(1 - scale) * 100}% 0 0 0)`
+    horizontal
+      ? reversed
+        ? `inset(0 0 0 ${(1 - scale) * 100}%)`
+        : `inset(0 ${(1 - scale) * 100}% 0 0)`
+      : reversed
+        ? `inset(0 0 ${(1 - scale) * 100}% 0)`
+        : `inset(${(1 - scale) * 100}% 0 0 0)`
   );
 
   useEffect(() => {
@@ -101,9 +115,10 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac, background, horizonta
   );
 }
 
-function AnimatedPeakFill({ dbValue, yRange, background }) {
+function AnimatedPeakFill({ dbValue, yRange, background, reversed }) {
   return (
     <AnimatedLevelFill
+      reversed={reversed}
       value={dbValue}
       min={yRange.min}
       max={yRange.max}
@@ -124,12 +139,13 @@ function formatLevelValue(value) {
 /// silence, or the out-of-range sentinel -- which has no position worth pinning. Everything else
 /// stays visible: a TP Max hidden because the user zoomed past it takes its reset click with it,
 /// and the reading most likely to leave the range is the hot one.
-function axisMarkerPlacement(value, yRange) {
+function axisMarkerPlacement(value, yRange, reversed = false) {
   if (!Number.isFinite(value) || formatLevelValue(value) === "-") return null;
   const clamped = Math.max(yRange.min, Math.min(yRange.max, value));
+  const frac = rangedFromTopFrac(clamped, yRange.min, yRange.max);
   return {
-    frac: rangedFromTopFrac(clamped, yRange.min, yRange.max),
-    position: clamped === value ? "middle" : value > yRange.max ? "start" : "end",
+    frac: reversed ? 1 - frac : frac,
+    position: clamped === value ? "middle" : value > yRange.max !== reversed ? "start" : "end",
   };
 }
 
@@ -177,13 +193,14 @@ function useAxisTrackMetrics(axis = "y", labels = "") {
 /// The marker shares the ticks' right-aligned column, so a tick near the reading would print
 /// underneath it. Those ticks fade by how far they clear the marker -- continuously, so a live
 /// reading drifting around a tick never makes it blink.
-function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
+function levelMeterAxisTicks(ticks, yRange, marker, metrics, reversed = false) {
   const markerCenterPx =
     marker && metrics
       ? axisLabelCenterPx(marker.position, marker.frac, metrics.trackPx, metrics.markerPx)
       : null;
   return ticks.map(({ v, lb }, index) => {
-    const frac = rangedFromTopFrac(v, yRange.min, yRange.max);
+    const topFrac = rangedFromTopFrac(v, yRange.min, yRange.max);
+    const frac = reversed ? 1 - topFrac : topFrac;
     const tick = { key: v, label: lb, frac };
     if (markerCenterPx == null) return tick;
     const tickCenterPx = axisLabelCenterPx(
@@ -205,6 +222,7 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
 /**
  * @param {{
  *   value: number,
+ *   reversed?: boolean,
  *   yRange: { min: number, max: number },
  *   dataAttribute?: string,
  *   className: string,
@@ -214,6 +232,7 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
  * }} props
  */
 function AxisValueMarker({
+  reversed = false,
   value,
   yRange,
   dataAttribute = "data-level-value-marker",
@@ -226,7 +245,7 @@ function AxisValueMarker({
     tip: onReset ? resetLabel : undefined,
     side: "bottom",
   });
-  const placement = axisMarkerPlacement(value, yRange);
+  const placement = axisMarkerPlacement(value, yRange, reversed);
   if (!placement) return null;
   const { frac, position } = placement;
   const outOfRange = position !== "middle";
@@ -271,7 +290,7 @@ function AxisValueMarker({
           data-marker-out-of-range={value > yRange.max ? "above" : "below"}
           className="absolute left-full ml-[0.3ch]"
         >
-          {value > yRange.max ? "▲" : "▼"}
+          {value > yRange.max !== reversed ? "▲" : "▼"}
         </span>
       ) : null}
       {onReset ? tipNode : null}
@@ -314,9 +333,11 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
         min: normalizedPanelControls.loudnessYMinDb,
         max: normalizedPanelControls.loudnessYMaxDb,
       };
-  const horizontal = normalizedPanelControls.levelMeterOrientation === "horizontal";
+  const direction = normalizedPanelControls.levelMeterOrientation;
+  const horizontal = direction === "left-to-right" || direction === "right-to-left";
+  const reversed = direction === "right-to-left" || direction === "top-to-bottom";
   const fillBackground = levelMeterBackground({
-    direction: horizontal ? "to right" : "to top",
+    direction: horizontal ? (reversed ? "to left" : "to right") : reversed ? "to bottom" : "to top",
     mode: levelMeterMode,
     controls: normalizedPanelControls,
     profileDocument: loudnessProfileDocument,
@@ -325,6 +346,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
   });
   const levelMeterYAxis = useAxisInteraction({
     axis: "y",
+    reversed,
     min: levelMeterYRange.min,
     max: levelMeterYRange.max,
     absMin: modeDefaults.min,
@@ -438,14 +460,18 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                   ? levelMeterAxisTicks(
                       levelMeterTicks,
                       levelMeterYRange,
-                      showMarker ? axisMarkerPlacement(readoutValue, levelMeterYRange) : null,
-                      levelMeterTrackMetrics
+                      showMarker
+                        ? axisMarkerPlacement(readoutValue, levelMeterYRange, reversed)
+                        : null,
+                      levelMeterTrackMetrics,
+                      reversed
                     )
                   : []
               }
             >
               {showMarker ? (
                 <AxisValueMarker
+                  reversed={reversed}
                   value={readoutValue}
                   yRange={levelMeterYRange}
                   className={loudnessMeterMarkerClass(markerStatus, profileActive)}
@@ -464,6 +490,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                   }}
                 >
                   <AnimatedLevelFill
+                    reversed={reversed}
                     value={liveLevelValue}
                     min={levelMeterYRange.min}
                     max={levelMeterYRange.max}
@@ -476,7 +503,10 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                 <div
                   data-level-value
                   className={cn(
-                    "@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] justify-center text-[length:var(--ui-fs-display)]",
+                    "@max-[48px]:hidden absolute inset-x-0 justify-center text-[length:var(--ui-fs-display)]",
+                    reversed
+                      ? "bottom-[var(--ui-meter-label-top-inset)]"
+                      : "top-[var(--ui-meter-label-top-inset)]",
                     showMarker ? "hidden" : "flex"
                   )}
                 >
@@ -545,15 +575,17 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                     levelMeterTicks,
                     levelMeterYRange,
                     showTpMaxMarker
-                      ? axisMarkerPlacement(displayAudio?.tpMax, levelMeterYRange)
+                      ? axisMarkerPlacement(displayAudio?.tpMax, levelMeterYRange, reversed)
                       : null,
-                    levelMeterTrackMetrics
+                    levelMeterTrackMetrics,
+                    reversed
                   )
                 : []
             }
           >
             {showTpMaxMarker ? (
               <AxisValueMarker
+                reversed={reversed}
                 value={displayAudio?.tpMax}
                 yRange={levelMeterYRange}
                 dataAttribute="data-level-tp-max-marker"
@@ -588,6 +620,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                     }}
                   >
                     <AnimatedPeakFill
+                      reversed={reversed}
                       dbValue={c.valueDb}
                       yRange={levelMeterYRange}
                       background={fillBackground}
@@ -596,7 +629,10 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                   <div
                     data-peak-value
                     className={cn(
-                      "absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center",
+                      "absolute inset-x-0 flex justify-center",
+                      reversed
+                        ? "bottom-[var(--ui-meter-label-top-inset)]"
+                        : "top-[var(--ui-meter-label-top-inset)]",
                       LEVEL_METER_READOUT_SIZE
                     )}
                   >
@@ -654,7 +690,9 @@ function HorizontalLevelMeter({
   loudnessProfileDocument,
   profileActive,
 }) {
+  const reversed = controls.levelMeterOrientation === "right-to-left";
   const axis = useAxisInteraction({
+    reversed,
     axis: "x",
     min: range.min,
     max: range.max,
@@ -677,7 +715,9 @@ function HorizontalLevelMeter({
   const candidates = buildAdaptiveDbTicks(range.min, range.max, axis.axisPx).map(({ v, lb }) => ({
     key: v,
     label: lb,
-    frac: (v - range.min) / (range.max - range.min),
+    frac: reversed
+      ? 1 - (v - range.min) / (range.max - range.min)
+      : (v - range.min) / (range.max - range.min),
   }));
   const { trackRef, metrics } = useAxisTrackMetrics(
     "x",
@@ -717,14 +757,14 @@ function HorizontalLevelMeter({
     observer.observe(element);
     return () => observer.disconnect();
   }, [anchorRef, markerVisible]);
-  const markerPercent = placement ? (1 - placement.frac) * 100 : 0;
+  const markerPercent = placement ? (reversed ? placement.frac : 1 - placement.frac) * 100 : 0;
   return (
     <div
       style={{
         "--level-label-rail": showAxes ? "var(--ui-chart-y-axis-rail-w)" : "0px",
         columnGap: showAxes ? undefined : 0,
       }}
-      data-level-meter-orientation="horizontal"
+      data-level-meter-orientation={controls.levelMeterOrientation}
       className={cn(
         "grid min-h-0 min-w-0 flex-1 grid-cols-[var(--level-label-rail)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-x-[var(--ui-chart-axis-gap)] overflow-hidden px-[var(--ui-panel-pad-x)] py-[var(--ui-panel-pad-y)]",
         className
@@ -753,13 +793,19 @@ function HorizontalLevelMeter({
             <div className="@container relative min-h-5 min-w-0" data-level-meter-bar-region>
               <AnimatedLevelFill
                 horizontal
+                reversed={reversed}
                 value={row.valueDb}
                 min={range.min}
                 max={range.max}
                 fromTopFrac={(v) => rangedFromTopFrac(v, range.min, range.max)}
                 background={fillBackground}
               />
-              <div className="relative flex h-full items-center justify-end px-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+              <div
+                className={cn(
+                  "relative flex h-full items-center px-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]",
+                  reversed ? "justify-start" : "justify-end"
+                )}
+              >
                 <span
                   className={cn(
                     "font-[family-name:var(--ui-font-mono)] tabular-nums",
@@ -817,13 +863,13 @@ function HorizontalLevelMeter({
           >
             {value < range.min && (
               <span aria-hidden="true" data-marker-out-of-range="below">
-                ◀
+                {reversed ? "▶" : "◀"}
               </span>
             )}
             {formatLevelValue(value)}
             {value > range.max && (
               <span aria-hidden="true" data-marker-out-of-range="above">
-                ▶
+                {reversed ? "◀" : "▶"}
               </span>
             )}
             {isPeak ? tipNode : null}

@@ -1,3 +1,4 @@
+import { panelOrientation, orientationSvgTransform } from "../../math/panelOrientation.js";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import {
@@ -10,7 +11,7 @@ import { PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
-import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { AxisRail, TimeAxisRail, fitTimeTicks, timeAxisInteraction } from "./AxisRail.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
@@ -97,6 +98,9 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
   );
   const spectrogramMode = normalizedPanelControls.spectrogramMode;
   const is3d = spectrogramMode !== "heatmap";
+  const orientation = is3d ? "right-to-left" : normalizedPanelControls.spectrogramOrientation;
+  const geometry = panelOrientation(orientation);
+  const vertical = geometry.vertical;
   // Only Surface moved to WebGL. Lines and the 2D heatmap keep the single 2D canvas, and no mode
   // may have two renderers live at once, so this canvas exists exactly while Surface is showing.
   const isGlSurface = spectrogramMode === "surface";
@@ -108,7 +112,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
   const yMaxFreq = frequencyViewport.max;
   const setFrequencyRange = frequencyViewport.setRange;
   const spectrogramYAxis = useAxisInteraction({
-    axis: "y",
+    axis: vertical ? "x" : "y",
     min: yMinFreq,
     max: yMaxFreq,
     ...FREQUENCY_VIEWPORT,
@@ -202,7 +206,8 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
         anchor = anchorFromPointer({
           rect: e.currentTarget.getBoundingClientRect(),
           clientY: e.clientY,
-          axis: "y",
+          clientX: e.clientX,
+          axis: vertical ? "x" : "y",
           scale: FREQUENCY_VIEWPORT.scale,
           min: yMinFreq,
           max: yMaxFreq,
@@ -228,6 +233,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       setFrequencyRange,
       yMaxFreq,
       yMinFreq,
+      vertical,
     ]
   );
   const spectrogramFreqTicks = buildAdaptiveFreqTicks(yMinFreq, yMaxFreq, spectrogramYAxis.axisPx);
@@ -241,6 +247,12 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       rotateDragRef.current = null;
     };
   }, [is3d]);
+  useEffect(
+    () => () => {
+      chartYDragRef.current = null;
+    },
+    [orientation]
+  );
   const canvasRef = useRef(null);
   // Surface mode only. The terrain and the floor grid are drawn here, UNDER the 2D canvas, which
   // keeps the axis labels and every pointer handler: labels are text and belong on top, and moving
@@ -248,7 +260,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
   // DOM order -- this canvas is rendered first -- so it must stay the first child of the chart box.
   const glCanvasRef = useRef(null);
   const [canvasSizeRevision, setCanvasSizeRevision] = useState(0);
-  const [chartDragging, setChartDragging] = useState(false);
+  const [chartDragging, setChartDragging] = useState(null);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
   useCanvasBackingStore(canvasRef, {
     onResize: () => setCanvasSizeRevision((revision) => revision + 1),
@@ -340,6 +352,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
   const paintOldestMs = paintTimeWindow?.oldestMs ?? NaN;
   const paintNewestMs = paintTimeWindow?.newestMs ?? NaN;
   useSpectrogramCanvas({
+    orientation,
     canvasRef,
     snapRef,
     oldestMs: paintOldestMs,
@@ -398,8 +411,8 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
         })),
       ];
       return computeSpectrogramHoverPoint(
-        xFrac,
-        yFrac,
+        geometry.fromScreen(xFrac, yFrac).time,
+        1 - geometry.fromScreen(xFrac, yFrac).value,
         spectrogramSnaps,
         oldestMs,
         newestMs,
@@ -410,8 +423,8 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       );
     },
     selectedOffset < 0
-      ? `${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`
-      : null
+      ? `${orientation}:${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`
+      : orientation
   );
   const onSpectrogramChartPointerDown = useCallback(
     (e) => {
@@ -430,14 +443,14 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       const floor = cursorToFloor(e);
       if (e.ctrlKey && e.button === 0) {
         chartYDragRef.current = {
-          startY: e.clientY,
+          startY: vertical ? e.clientX : e.clientY,
           // In 3D, floor.fFrac at drag start anchors the pan (see the pointer-move branch below);
           // in 2D this stays null and the branch there falls back to the plain pixel delta.
           startFFrac: floor ? floor.fFrac : null,
           min: yMinFreq,
           max: yMaxFreq,
         };
-        setChartDragging(true);
+        setChartDragging(orientation);
         holdChartYAxis();
       }
       onHistoryPointerDown?.(toTimeProxyEvent(e, floor));
@@ -452,6 +465,8 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       yMinFreq,
       onHistoryPointerDown,
       toTimeProxyEvent,
+      vertical,
+      orientation,
     ]
   );
   const onSpectrogramChartPointerMove = useCallback(
@@ -492,8 +507,8 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
             min: drag.min,
             max: drag.max,
             ...FREQUENCY_VIEWPORT,
-            deltaPx: e.clientY - drag.startY,
-            axisPx: Math.max(1, rect.height),
+            deltaPx: vertical ? drag.startY - e.clientX : e.clientY - drag.startY,
+            axisPx: Math.max(1, vertical ? rect.width : rect.height),
           });
         }
         setFrequencyRange(next.min, next.max);
@@ -513,6 +528,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       onSpectrogramHoverMove,
       setFrequencyRange,
       toTimeProxyEvent,
+      vertical,
     ]
   );
   const onSpectrogramChartPointerUp = useCallback(
@@ -520,7 +536,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       const rotate = rotateDragRef.current;
       rotateDragRef.current = null;
       chartYDragRef.current = null;
-      setChartDragging(false);
+      setChartDragging(null);
       releaseChartYAxis();
 
       if (is3d && e.button === 2) {
@@ -574,21 +590,29 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
               That is accepted, not an oversight; see the axes-and-gestures design. */}
           {showAxes && (
             <AxisRail
-              axis="y"
-              className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+              axis={vertical ? "x" : "y"}
+              style={vertical ? { gridColumn: 2, gridRow: 2 } : undefined}
+              className={cn(!vertical && W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
               interaction={spectrogramYAxis}
               active={chartYAxisActive}
-              ticks={spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
-                key: hz,
-                label,
-                frac: rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
-              }))}
+              ticks={fitTimeTicks(
+                spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
+                  key: hz,
+                  label,
+                  frac: vertical
+                    ? 1 - rangedFreqToYFrac(hz, yMinFreq, yMaxFreq)
+                    : rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
+                })),
+                spectrogramYAxis.axisPx,
+                vertical ? 40 : 0
+              )}
             />
           )}
 
           {/* Canvas chart */}
           <div
             className="relative min-h-0 min-w-0"
+            style={{ gridColumn: showAxes ? 2 : 1, gridRow: 1 }}
             ref={showAxes ? undefined : spectrogramYAxis.axisRef}
           >
             <div className="relative min-h-0 h-full">
@@ -603,7 +627,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
                 ref={canvasRef}
                 style={{
                   cursor: historyChartInteractive
-                    ? chartDragging
+                    ? chartDragging === orientation
                       ? "grabbing"
                       : isCtrlHover
                         ? "grab"
@@ -636,45 +660,66 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
                   preserveAspectRatio="none"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 >
-                  {visibleFrequencyMarkers.map(({ marker, x }) => (
-                    <line
-                      key={`${x}-${marker.from}-${marker.to}`}
-                      x1={x}
-                      x2={x}
-                      y1={0}
-                      y2={1000}
-                      stroke="var(--muted-foreground)"
-                      strokeWidth="1"
-                      strokeDasharray="2 4"
-                      vectorEffect="non-scaling-stroke"
-                    >
-                      <title>{`Frequency channel changed: ${marker.from} -> ${marker.to}`}</title>
-                    </line>
-                  ))}
-                  {selectedOffset >= 0 && showSelLine ? (
-                    <line
-                      x1={selLineSvgX}
-                      x2={selLineSvgX}
-                      y1={0}
-                      y2={1000}
-                      stroke={spectrogramTheme.selection}
-                      strokeWidth="var(--ui-loudness-selection-stroke-width)"
-                      strokeDasharray="5 4"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ) : null}
+                  <g transform={orientationSvgTransform(orientation, 1000, 1000)}>
+                    {visibleFrequencyMarkers.map(({ marker, x }) => (
+                      <line
+                        key={`${x}-${marker.from}-${marker.to}`}
+                        x1={x}
+                        x2={x}
+                        y1={0}
+                        y2={1000}
+                        stroke="var(--muted-foreground)"
+                        strokeWidth="1"
+                        strokeDasharray="2 4"
+                        vectorEffect="non-scaling-stroke"
+                      >
+                        <title>{`Frequency channel changed: ${marker.from} -> ${marker.to}`}</title>
+                      </line>
+                    ))}
+                    {selectedOffset >= 0 && showSelLine ? (
+                      <line
+                        x1={selLineSvgX}
+                        x2={selLineSvgX}
+                        y1={0}
+                        y2={1000}
+                        stroke={spectrogramTheme.selection}
+                        strokeWidth="var(--ui-loudness-selection-stroke-width)"
+                        strokeDasharray="5 4"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ) : null}
+                  </g>
                 </svg>
               ) : null}
-              <TimelineLatestEdgeHint active={(effectiveOffsetSamples ?? 0) > 0} />
+              <TimelineLatestEdgeHint
+                active={(effectiveOffsetSamples ?? 0) > 0}
+                edge={geometry.newestEdge}
+              />
               <TimelineSelectionEdgeHint
-                direction={selectionEdge}
+                direction={
+                  selectionEdge === "left"
+                    ? geometry.oldestEdge
+                    : selectionEdge === "right"
+                      ? geometry.newestEdge
+                      : null
+                }
                 color={spectrogramTheme.selection}
               />
               {spectrogramHover && (
                 <div className="pointer-events-none absolute inset-0">
                   <ChartCrosshair
-                    leftPct={spectrogramHover.leftPct}
-                    topPct={spectrogramHover.topPct}
+                    leftPct={
+                      geometry.toScreen(
+                        spectrogramHover.leftPct / 100,
+                        1 - spectrogramHover.topPct / 100
+                      ).x * 100
+                    }
+                    topPct={
+                      geometry.toScreen(
+                        spectrogramHover.leftPct / 100,
+                        1 - spectrogramHover.topPct / 100
+                      ).y * 100
+                    }
                   />
                   {/* Popover */}
                   <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
@@ -703,11 +748,12 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
 
           {showAxes && (
             <>
-              <div />
-              <AxisRail
-                axis="x"
-                className="h-[var(--ui-chart-x-axis-row-h)] w-full"
-                interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+              <div style={{ gridColumn: 1, gridRow: 2 }} />
+              <TimeAxisRail
+                axis={vertical ? "y" : "x"}
+                style={vertical ? { gridColumn: 1, gridRow: 1 } : { gridColumn: 2, gridRow: 2 }}
+                className={vertical ? "min-h-0" : "h-[var(--ui-chart-x-axis-row-h)] w-full"}
+                interaction={timeAxisInteraction(historyTimeAxisHandlers, vertical)}
                 active={historyTimeAxisActive}
                 ticks={(historyTimeTicks ?? []).map((tick, i) => ({
                   // Keyed by slot, not by text. A time label changes on almost every update, so a key
@@ -715,7 +761,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
                   // measured at 77 node mutations a second per panel, in three panels.
                   key: i,
                   label: tick,
-                  frac: i / HISTORY_TIME_TICK_STEPS,
+                  frac: geometry.timePosition(i / HISTORY_TIME_TICK_STEPS),
                 }))}
               />
             </>

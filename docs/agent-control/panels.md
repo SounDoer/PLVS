@@ -90,6 +90,14 @@ demand separately from the application-wide effect:
 Starting or stopping the shared runtime by editing a panel produces no warning, and a dry run
 previews both values without starting or stopping anything.
 
+## Orientation
+
+Level Meter orientation describes increasing level; Loudness, Waveform, and Spectrogram orientation
+describes live history motion, with new data entering from the opposite edge. It is stored per panel and does not change analysis
+requests, time/value ranges, or the selected timestamp. Spectrogram stores its Heatmap direction
+while Lines or Surface is active; the field is then ineffective and does not alter the 3D camera.
+Dock exposes the same semantics. Supported values and defaults are generated from the schema.
+
 ## Modules
 
 ### Level Meter

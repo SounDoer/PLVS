@@ -1,3 +1,4 @@
+import { panelOrientation } from "../math/panelOrientation.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   computeSelectionOffset,
@@ -9,6 +10,7 @@ import { ACTIVE_PULSE_MS, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from "../math/axisIn
 export function useHistoryInteraction({
   /** When false, history pointer/wheel handlers and HUD helpers from this hook are no-ops (App: `historyChartInteractive`). */
   enabled,
+  orientation = "right-to-left",
   sampleSec,
   minWindowSec,
   maxWindowSec,
@@ -25,6 +27,28 @@ export function useHistoryInteraction({
   setHistoryHudUntilTs,
   setHistoryHudHold,
 }) {
+  const geometry = panelOrientation(orientation);
+  const timeCoordinate = useCallback(
+    (event) => {
+      const pixel = geometry.vertical ? event.clientY : event.clientX;
+      return geometry.reversed ? -pixel : pixel;
+    },
+    [geometry.vertical, geometry.reversed]
+  );
+  const timeRect = useCallback(
+    (rect) => ({
+      ...rect,
+      left: geometry.vertical
+        ? geometry.reversed
+          ? -rect.top - rect.height
+          : rect.top
+        : geometry.reversed
+          ? -rect.left - rect.width
+          : rect.left,
+      width: geometry.vertical ? rect.height : rect.width,
+    }),
+    [geometry.vertical, geometry.reversed]
+  );
   const dragModeRef = useRef(null);
   const panStartRef = useRef({ x: 0, offset: 0 });
   const timeAxisPanStartRef = useRef(null);
@@ -71,6 +95,22 @@ export function useHistoryInteraction({
     [enabled, setHistoryHudHold, showHistoryHud]
   );
 
+  const previousOrientationRef = useRef(orientation);
+  useEffect(() => {
+    if (previousOrientationRef.current === orientation) return;
+    previousOrientationRef.current = orientation;
+    dragModeRef.current = null;
+    timeAxisPanStartRef.current = null;
+    pendingWheelZoomRef.current = null;
+    if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+    wheelRafRef.current = 0;
+    const frame = requestAnimationFrame(() => {
+      holdHistoryHud(false);
+      setIsTimeAxisActive(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [orientation, holdHistoryHud]);
+
   const updateSelectionFromClientX = useCallback(
     (/** @type {number} */ clientX, rect) => {
       selectSnapshot(
@@ -91,12 +131,12 @@ export function useHistoryInteraction({
     (ev) => {
       if (!enabled) return;
       if (totalSamples <= 0) return;
-      const rect = ev.currentTarget.getBoundingClientRect();
+      const rect = timeRect(ev.currentTarget.getBoundingClientRect());
       if (ev.button === 0) {
         if (ev.ctrlKey) {
           if (totalSamples <= visibleSamples) return;
           dragModeRef.current = "pan";
-          panStartRef.current = { x: ev.clientX, offset: effectiveOffsetSec };
+          panStartRef.current = { x: timeCoordinate(ev), offset: effectiveOffsetSec };
           if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
           setIsTimeAxisActive(true);
           holdHistoryHud(true);
@@ -109,7 +149,7 @@ export function useHistoryInteraction({
         dragModeRef.current = "select";
         holdHistoryHud(true);
         showHistoryHud(1600);
-        updateSelectionFromClientX(ev.clientX, rect);
+        updateSelectionFromClientX(timeCoordinate(ev), rect);
       } else if (ev.button === 2) {
         const nowTs =
           typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
@@ -124,7 +164,7 @@ export function useHistoryInteraction({
         lastRightDownTsRef.current = nowTs;
         if (totalSamples <= visibleSamples) return;
         dragModeRef.current = "pan";
-        panStartRef.current = { x: ev.clientX, offset: effectiveOffsetSec };
+        panStartRef.current = { x: timeCoordinate(ev), offset: effectiveOffsetSec };
         if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
         setIsTimeAxisActive(true);
         holdHistoryHud(true);
@@ -145,6 +185,8 @@ export function useHistoryInteraction({
       visibleSamples,
       effectiveOffsetSec,
       enabled,
+      timeCoordinate,
+      timeRect,
     ]
   );
 
@@ -153,13 +195,13 @@ export function useHistoryInteraction({
       if (!enabled) return;
       const mode = dragModeRef.current;
       if (!mode) return;
-      const rect = ev.currentTarget.getBoundingClientRect();
+      const rect = timeRect(ev.currentTarget.getBoundingClientRect());
       if (mode === "select") {
         showHistoryHud(1600);
-        updateSelectionFromClientX(ev.clientX, rect);
+        updateSelectionFromClientX(timeCoordinate(ev), rect);
         return;
       }
-      const dx = ev.clientX - panStartRef.current.x;
+      const dx = timeCoordinate(ev) - panStartRef.current.x;
       const next = computePanOffset(
         panStartRef.current.offset,
         dx,
@@ -173,6 +215,8 @@ export function useHistoryInteraction({
     },
     [
       enabled,
+      timeCoordinate,
+      timeRect,
       showHistoryHud,
       updateSelectionFromClientX,
       visibleSamples,
@@ -204,9 +248,9 @@ export function useHistoryInteraction({
       ev.preventDefault();
       showHistoryHud(1600);
       const factor = ev.deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
-      const rect = ev.currentTarget.getBoundingClientRect();
+      const rect = timeRect(ev.currentTarget.getBoundingClientRect());
       const width = Math.max(1, rect.width);
-      const x = Math.max(0, Math.min(width, ev.clientX - rect.left));
+      const x = Math.max(0, Math.min(width, timeCoordinate(ev) - rect.left));
       const norm = 1 - x / width;
       const pending = pendingWheelZoomRef.current;
       pendingWheelZoomRef.current = {
@@ -236,6 +280,8 @@ export function useHistoryInteraction({
     },
     [
       enabled,
+      timeCoordinate,
+      timeRect,
       showHistoryHud,
       effectiveOffsetSamples,
       visibleSamples,
@@ -253,9 +299,9 @@ export function useHistoryInteraction({
     (ev) => {
       showHistoryHud(1600);
       const factor = ev.deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
-      const rect = ev.currentTarget.getBoundingClientRect();
+      const rect = timeRect(ev.currentTarget.getBoundingClientRect());
       const width = Math.max(1, rect.width);
-      const x = Math.max(0, Math.min(width, ev.clientX - rect.left));
+      const x = Math.max(0, Math.min(width, timeCoordinate(ev) - rect.left));
       const norm = 1 - x / width;
       const { nextWindowSec, nextOffsetSec } = computeWheelZoom({
         factor,
@@ -272,6 +318,8 @@ export function useHistoryInteraction({
       pulseTimeAxis();
     },
     [
+      timeCoordinate,
+      timeRect,
       effectiveOffsetSamples,
       maxWindowSec,
       minWindowSec,
@@ -298,7 +346,7 @@ export function useHistoryInteraction({
     (ev) => {
       if (!enabled || totalSamples <= visibleSamples || ev.button !== 0) return;
       ev.preventDefault();
-      timeAxisPanStartRef.current = { x: ev.clientX, offset: effectiveOffsetSec };
+      timeAxisPanStartRef.current = { x: timeCoordinate(ev), offset: effectiveOffsetSec };
       if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
       setIsTimeAxisActive(true);
       holdHistoryHud(true);
@@ -307,17 +355,25 @@ export function useHistoryInteraction({
         ev.currentTarget.setPointerCapture(ev.pointerId);
       } catch (_) {}
     },
-    [effectiveOffsetSec, enabled, holdHistoryHud, showHistoryHud, totalSamples, visibleSamples]
+    [
+      effectiveOffsetSec,
+      enabled,
+      holdHistoryHud,
+      showHistoryHud,
+      totalSamples,
+      visibleSamples,
+      timeCoordinate,
+    ]
   );
 
   const onHistoryTimeAxisPointerMove = useCallback(
     (ev) => {
       const start = timeAxisPanStartRef.current;
       if (!enabled || !start) return;
-      const rect = ev.currentTarget.getBoundingClientRect();
+      const rect = timeRect(ev.currentTarget.getBoundingClientRect());
       const next = computePanOffset(
         start.offset,
-        ev.clientX - start.x,
+        timeCoordinate(ev) - start.x,
         visibleSamples,
         sampleSec,
         rect.width,
@@ -326,7 +382,16 @@ export function useHistoryInteraction({
       setHistoryOffsetSec(next);
       showHistoryHud(1600);
     },
-    [enabled, maxOffsetSamples, sampleSec, setHistoryOffsetSec, showHistoryHud, visibleSamples]
+    [
+      enabled,
+      maxOffsetSamples,
+      sampleSec,
+      setHistoryOffsetSec,
+      showHistoryHud,
+      visibleSamples,
+      timeCoordinate,
+      timeRect,
+    ]
   );
 
   const onHistoryTimeAxisPointerUp = useCallback(

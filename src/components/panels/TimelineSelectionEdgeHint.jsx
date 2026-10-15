@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SELECTION_EDGE_FADE_PERCENT = 22;
@@ -11,10 +11,18 @@ export function TimelineSelectionEdgeHint({
   className,
   color = "var(--ui-loudness-selection)",
 }) {
-  if (direction !== "left" && direction !== "right") return null;
+  if (!["left", "right", "top", "bottom"].includes(direction)) return null;
 
   const pointsLeft = direction === "left";
-  const Icon = pointsLeft ? ChevronLeft : ChevronRight;
+  const vertical = direction === "top" || direction === "bottom";
+  const Icon =
+    direction === "top"
+      ? ChevronUp
+      : direction === "bottom"
+        ? ChevronDown
+        : pointsLeft
+          ? ChevronLeft
+          : ChevronRight;
 
   return (
     <div
@@ -22,8 +30,9 @@ export function TimelineSelectionEdgeHint({
       data-direction={direction}
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-y-0 z-20 w-4",
-        pointsLeft ? "left-0" : "right-0",
+        "pointer-events-none absolute z-20",
+        vertical ? "inset-x-0 h-4" : "inset-y-0 w-4",
+        vertical ? (direction === "top" ? "top-0" : "bottom-0") : pointsLeft ? "left-0" : "right-0",
         className
       )}
       style={{ color }}
@@ -31,16 +40,25 @@ export function TimelineSelectionEdgeHint({
       <div
         className="absolute inset-0"
         style={{
-          background: pointsLeft
-            ? `linear-gradient(to right, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`
-            : `linear-gradient(to left, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`,
+          background: vertical
+            ? `linear-gradient(to ${direction === "top" ? "bottom" : "top"}, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`
+            : pointsLeft
+              ? `linear-gradient(to right, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`
+              : `linear-gradient(to left, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`,
         }}
       />
       <div
         className={cn(
-          "absolute inset-y-0 border-dashed",
+          "absolute border-dashed",
+          vertical ? "inset-x-0" : "inset-y-0",
           SELECTION_EDGE_LINE_CLASS,
-          pointsLeft ? "left-0 border-l" : "right-0 border-r"
+          vertical
+            ? direction === "top"
+              ? "top-0 border-t"
+              : "bottom-0 border-b"
+            : pointsLeft
+              ? "left-0 border-l"
+              : "right-0 border-r"
         )}
       />
       <Icon className="absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2" />

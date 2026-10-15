@@ -35,6 +35,9 @@
  * @typedef {{
  *   levelMeterMode: string,
  *   levelMeterOrientation: string,
+ *   loudnessOrientation: string,
+ *   waveformOrientation: string,
+ *   spectrogramOrientation: string,
  *   levelMeterPlaybackMax: boolean,
  *   levelMeterValueMarker: boolean,
  *   levelMeterTpMaxMarker: boolean,

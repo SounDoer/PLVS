@@ -13,6 +13,7 @@ import { useAxisSize } from "./useAxisSize";
 /**
  * @param {{
  *   axis: string,
+ *   reversed?: boolean,
  *   min: number,
  *   max: number,
  *   absMin: number,
@@ -28,6 +29,7 @@ import { useAxisSize } from "./useAxisSize";
  */
 export function useAxisInteraction({
   axis,
+  reversed = false,
   min,
   max,
   absMin,
@@ -55,7 +57,7 @@ export function useAxisInteraction({
   } = useAxisActivePulse();
   const cursorStyle = axis === "y" ? "ns-resize" : "ew-resize";
 
-  useEffect(() => () => moveCleanupRef.current?.(), []);
+  useEffect(() => () => moveCleanupRef.current?.(), [axis, reversed]);
 
   const onWheel = useCallback(
     (e) => {
@@ -74,8 +76,8 @@ export function useAxisInteraction({
           ? max
           : anchorFromPointer({
               rect,
-              clientX: e.clientX,
-              clientY: e.clientY,
+              clientX: reversed ? 2 * rect.left + rect.width - e.clientX : e.clientX,
+              clientY: reversed ? 2 * rect.top + rect.height - e.clientY : e.clientY,
               axis,
               scale,
               min,
@@ -98,6 +100,7 @@ export function useAxisInteraction({
       absMax,
       absMin,
       axis,
+      reversed,
       axisRef,
       max,
       min,
@@ -131,7 +134,7 @@ export function useAxisInteraction({
         const size = Math.max(1, isY ? rect.height : rect.width);
         const currentPx = isY ? moveEvent.clientY : moveEvent.clientX;
         const rawDelta = currentPx - drag.startPx;
-        const deltaPx = isY ? rawDelta : -rawDelta;
+        const deltaPx = (isY ? rawDelta : -rawDelta) * (reversed ? -1 : 1);
         // A pinned-max axis cannot be panned: panRange shifts both ends and then clamps the whole
         // window back inside the bounds, which on this axis is a no-op. Move the floor instead, by
         // the same dB the drag covered -- dragging down raises it, as dragging down anywhere else
@@ -180,6 +183,7 @@ export function useAxisInteraction({
       absMax,
       absMin,
       axis,
+      reversed,
       axisRef,
       holdActive,
       max,

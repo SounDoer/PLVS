@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { AxisRail, tickPosition } from "./AxisRail.jsx";
+import { AxisRail, tickPosition, fitTimeTicks } from "./AxisRail.jsx";
 
 const TICKS = [
   { key: "top", label: "0", frac: 0 },
@@ -114,4 +114,12 @@ describe("AxisRail", () => {
     expect(after[0]).toBe(before[0]);
     expect(after[1]).toBe(before[1]);
   });
+});
+
+it("reduces time labels on short and reversed rails without moving their values", () => {
+  const ticks = Array.from({ length: 5 }, (_, i) => ({ key: i, label: `${i}s`, frac: i / 4 }));
+  expect(fitTimeTicks(ticks, 30, 24)).toEqual([ticks[4]]);
+  expect(fitTimeTicks(ticks, 60, 24)).toEqual([ticks[0], ticks[2], ticks[4]]);
+  const reversed = ticks.map((tick) => ({ ...tick, frac: 1 - tick.frac }));
+  expect(fitTimeTicks(reversed, 60, 24)).toEqual([reversed[0], reversed[2], reversed[4]]);
 });

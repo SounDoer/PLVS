@@ -459,6 +459,20 @@ group. Dependencies are validated before primary Presets, then normal library me
 allocates or reuses local Profile IDs and rewrites each imported Preset reference to that result.
 Pack V1 remains readable through the legacy normalization path.
 
+### Panel orientation
+
+`math/panelOrientation.js` maps normalized chronological time and increasing value to screen
+coordinates. The public direction describes content motion, so chronological time increases in
+the opposite screen direction. Right to Left preserves the default newest-at-right layout.
+Loudness, Waveform, and Spectrogram Heatmap share this boundary for rendering and
+pointer interpretation. Each panel mount supplies its own direction to history interaction;
+linked viewports share quantities and timestamps, never screen coordinates or direction.
+
+Loudness decimation and Waveform bucket budgets follow the time-axis extent. Waveform caps backing
+resolution along time, retaining full resolution across amplitude. Spectrogram keeps an incremental
+cache in chronological coordinates and transforms its presentation to the chosen direction. The
+3D renderer keeps its own floor unprojection and does not consume Heatmap orientation.
+
 ### Screen-space sizes (CSS px vs device px)
 
 Every visual size PLVS specifies (stroke-width tokens such as `--ui-spectrum-stroke-width`, grid
@@ -474,7 +488,7 @@ How each renderer meets the rule:
 | SVG in a stretched viewBox (`preserveAspectRatio="none"`)            | every stroke sets `vector-effect="non-scaling-stroke"`; `stroke-width` and `stroke-dasharray` are then CSS px                                                                                                                            |
 | CSS borders                                                          | CSS px. At fractional DPR, Chromium floors border widths to whole device pixels, so a 1px border and a 1px SVG stroke can differ very slightly                                                                                           |
 | Canvas 2D                                                            | draws in backing-store (device) pixels under the identity transform and multiplies each length by the canvas's own scale; `ctx.scale(dpr)` is not used                                                                                   |
-| Canvas 2D with per-axis scales (Waveform: width capped, height full) | paths in backing pixels, strokes through `strokeCssWidth` (`src/lib/canvasCssScale.js`), which scales only the pen so it stays round on screen                                                                                           |
+| Canvas 2D with per-axis scales (Waveform: time axis capped, amplitude axis full) | paths in backing pixels, strokes through `strokeCssWidth` (`src/lib/canvasCssScale.js`), which scales only the pen so it stays round on screen                                                                                           |
 | WebGL (Spectrogram 3D Surface)                                       | framebuffer and viewport in device pixels; a CSS-px width arrives as a device-px uniform. `gl.LINES` is always one device pixel, so lines with a specified width are extruded into quads (see the floor in `spectrogram3dGlRenderer.js`) |
 
 Rules:

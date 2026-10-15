@@ -21,7 +21,7 @@ function mount(controls, onResetTpMax = vi.fn()) {
   );
 }
 describe("DockLevel shared renderer", () => {
-  it.each(["vertical", "horizontal"])(
+  it.each(["bottom-to-top", "left-to-right", "top-to-bottom", "right-to-left"])(
     "supports %s orientation and keeps channel readouts",
     (orientation) => {
       const { container } = mount({
@@ -37,7 +37,7 @@ describe("DockLevel shared renderer", () => {
   it("migrates legacy TP Max readout to the shared resettable marker", () => {
     const reset = vi.fn();
     const { container } = mount(
-      { readout: "truePeakMax", levelMeterOrientation: "horizontal" },
+      { readout: "truePeakMax", levelMeterOrientation: "left-to-right" },
       reset
     );
     fireEvent.click(container.querySelector("[data-level-tp-max-marker]"));

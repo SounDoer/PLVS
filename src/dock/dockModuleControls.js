@@ -45,6 +45,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "levelMeterRmsCriticalDb",
     ],
     loudness: [
+      "loudnessOrientation",
       "loudnessHistoryVisibleLayerIds",
       "loudnessYMinDb",
       "loudnessYMaxDb",
@@ -76,6 +77,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
     ],
     stats: ["statsVisibleIds", "statsOrder"],
     spectrogram: [
+      "spectrogramOrientation",
       "spectrogramMode",
       "spectrogram3dColorize",
       "spectrogram3dHeightGain",
@@ -110,6 +112,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "stereoMapMsRatioYMaxDb",
     ],
     waveform: [
+      "waveformOrientation",
       "linkTimeViewport",
       "historyWindowSec",
       "historyOffsetSec",

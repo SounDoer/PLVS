@@ -10,6 +10,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 ```json
 {
+  "orientation": "right-to-left",
   "channel": {
     "type": "pair",
     "x": 0,
@@ -33,6 +34,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
+| `orientation` | string | - | `"right-to-left"` | "left-to-right", "right-to-left", "top-to-bottom", "bottom-to-top" | active |
 | `channel` | object | - | `{"type":"pair","x":0,"y":1}` | {"type":"pair","x":0,"y":1} | active |
 | `mode` | string | - | `"heatmap"` | "heatmap", "lines", "surface" | active |
 | `tiltDbPerOctave` | number | dB/oct | `3` | 0 to 6; step 0.25 (UI hint) | active |

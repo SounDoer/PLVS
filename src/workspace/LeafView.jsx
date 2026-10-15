@@ -232,7 +232,7 @@ export function LeafView({ node, path, style }) {
   const slotPinnedTitle = slotPinnedId ? resolvePanelDisplayName(state, slotPinnedId) : "";
   const pathAttr = JSON.stringify(path);
   const axisViewportData = usePanelAxisViewports(activeTab);
-  const panelHistoryData = usePanelHistoryData(activeModuleId, axisViewportData);
+  const panelHistoryData = usePanelHistoryData(activeModuleId, axisViewportData, panelControls);
   const panelInstanceData = useMemo(
     () => ({
       panelControls,

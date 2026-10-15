@@ -19,7 +19,7 @@ describe("readPublicPanelControls", () => {
       })
     ).toEqual({
       mode: "shortTerm",
-      orientation: "vertical",
+      orientation: "bottom-to-top",
       playbackMax: true,
       floatingValue: true,
       tpMaxMarker: false,
@@ -90,6 +90,7 @@ describe("readPublicPanelControls", () => {
     ).toEqual({
       channel: { type: "pair", x: 2, y: 3 },
       mode: "surface",
+      orientation: "right-to-left",
       tiltDbPerOctave: 2.25,
       octaveSmoothing: "1/3",
       dbFloor: -66,
@@ -140,6 +141,7 @@ describe("readPublicPanelControls", () => {
         waveformCentroid: true,
       })
     ).toEqual({
+      orientation: "right-to-left",
       frequencyColor: true,
       frequencyBandsHz: { lowMid: 300, midHigh: 3000 },
       centroid: true,
@@ -200,11 +202,13 @@ describe("readPublicPanelControls", () => {
     };
 
     expect(readPublicPanelControls("loudness", controls, { hasLoudnessReference: true })).toEqual({
+      orientation: "right-to-left",
       layers: ["momentary", "shortTerm", "reference"],
       grid: false,
       loudnessRangeLufs: { min: -48, max: -6 },
     });
     expect(readPublicPanelControls("loudness", controls, { hasLoudnessReference: false })).toEqual({
+      orientation: "right-to-left",
       layers: ["momentary", "shortTerm"],
       grid: false,
       loudnessRangeLufs: { min: -48, max: -6 },
