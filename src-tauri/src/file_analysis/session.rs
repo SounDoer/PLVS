@@ -1270,6 +1270,35 @@ mod tests {
   /// The weight table and True Peak are shared by name, not by code path: `SummaryMeter` and
   /// `LoudnessMeter` each implement the sum. Pin them together for every standard multichannel
   /// count and for an unknown one.
+  /// A file rarely ends on a 100 ms boundary. Its loudest moment here sits in the final, partial
+  /// block, which closes no meter block: True Peak Max must still see it, on both paths.
+  #[test]
+  fn true_peak_in_the_final_partial_block_counts_on_both_paths() {
+    const FFMPEG_READ_SAMPLES: usize = (64 * 1024) / 4;
+    let sr = 48_000_u32;
+    let frames = 50_400; // 1.05 s: the last 50 ms belong to no complete block
+    let burst_from = 49_200;
+    let pcm: Vec<f32> = (0..frames)
+      .flat_map(|n| {
+        let amplitude = if n >= burst_from { 0.9 } else { 0.1 };
+        let value = (amplitude * (2.0 * PI * 1_000.0 * n as f64 / sr as f64).sin()) as f32;
+        [value, value]
+      })
+      .collect();
+    let cli = run_summary_path(&pcm, sr, 2, FFMPEG_READ_SAMPLES);
+    let gui = run_session_path(&pcm, sr, 2, FFMPEG_READ_SAMPLES);
+    let burst_db = 20.0 * 0.9_f64.log10();
+    for (path, tp) in [
+      ("cli", cli.true_peak_max_dbtp),
+      ("gui", gui.true_peak_max_dbtp),
+    ] {
+      assert!(
+        (tp - burst_db).abs() < 0.1,
+        "{path} True Peak Max {tp} should reach the final burst at {burst_db}"
+      );
+    }
+  }
+
   #[test]
   fn summary_and_session_paths_agree_for_multichannel_layouts() {
     const FFMPEG_READ_SAMPLES: usize = (64 * 1024) / 4;

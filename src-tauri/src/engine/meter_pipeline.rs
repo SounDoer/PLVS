@@ -720,10 +720,12 @@ impl MeterPipeline {
 
   fn queue_final_file_checkpoints(&mut self, analysis_requests: &AnalysisRequests) {
     // A file rarely ends on a 100 ms boundary; windows ending in its last partial block are
-    // complete windows and count toward the maxima, as they do in `SummaryMeter::finish`.
+    // complete windows and count toward the maxima, and its samples toward True Peak Max, as they
+    // do in `SummaryMeter::finish`.
     if self.file_timeline.is_some() {
       let (momentary_max, short_term_max) = self.loudness.partial_block_max();
       self.fold_loudness_max(momentary_max, short_term_max);
+      self.tp_max_db = self.tp_max_db.max(self.loudness.partial_block_true_peak());
     }
     let Some(timeline) = self.file_timeline.as_mut() else {
       return;

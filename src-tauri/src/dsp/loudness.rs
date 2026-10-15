@@ -528,6 +528,15 @@ impl LoudnessMeter {
     self.sliding.peek_block_max()
   }
 
+  /// True Peak (dBTP, every channel) of the block still being filled, for the same case.
+  pub fn partial_block_true_peak(&self) -> f64 {
+    if self.tp_block > 0.0 {
+      20.0 * self.tp_block.log10()
+    } else {
+      f64::NEG_INFINITY
+    }
+  }
+
   pub fn speech_now(&self) -> bool {
     self.speech_now
   }
