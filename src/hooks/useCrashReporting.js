@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { logFrontendError, readPendingCrashReport } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { useCoordinatorRole } from "../lib/runtimeRole.js";
 
 function describeReason(reason) {
   try {
@@ -34,9 +35,14 @@ function forwardOrdinaryError(kind, reason) {
 export function useCrashReporting({ promptEnabled = true } = {}) {
   const [pendingReport, setPendingReport] = useState(null);
   const [developmentFixtureId, setDevelopmentFixtureId] = useState(null);
+  // Every workbench of an identity shares one pending-report directory, so only the coordinator
+  // asks; otherwise each restored workbench would show the same blocking dialog. A workbench that
+  // becomes coordinator re-reads, which offers a report left pending by the previous one.
+  const isCoordinator = useCoordinatorRole();
+  const asking = promptEnabled && isCoordinator;
 
   useEffect(() => {
-    if (!promptEnabled || !isTauri()) {
+    if (!asking || !isTauri()) {
       return undefined;
     }
     let cancelled = false;
@@ -53,7 +59,7 @@ export function useCrashReporting({ promptEnabled = true } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [promptEnabled]);
+  }, [asking]);
 
   useEffect(() => {
     const onError = (event) => {
@@ -89,7 +95,7 @@ export function useCrashReporting({ promptEnabled = true } = {}) {
     },
   };
   return {
-    pendingReport: promptEnabled || developmentFixtureId ? pendingReport : null,
+    pendingReport: asking || developmentFixtureId ? pendingReport : null,
     dismissPending,
     developmentFixture,
   };

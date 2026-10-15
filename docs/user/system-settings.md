@@ -329,7 +329,10 @@ If the terminal that launched PLVS disconnects its output, PLVS continues runnin
 writing its local log files.
 
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
-one after a crash. Feedback diagnostics are attached only when you choose to include them. Audio
+one after a crash. With several workbenches open, only the current coordinator asks; choosing
+**Later** keeps the report saved, and PLVS asks again at the next launch or when another workbench
+becomes coordinator.
+Feedback diagnostics are attached only when you choose to include them. Audio
 samples are never attached. In a multi-workbench run, local crash records include random instance
 and workspace identifiers so the matching per-process log can be diagnosed. See the
 [Privacy Policy](https://plvs.soundoer.com/privacy/) for the exact contents, retention and

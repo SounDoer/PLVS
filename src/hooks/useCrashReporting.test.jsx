@@ -11,6 +11,7 @@ const { logFrontendError, readPendingCrashReport } = vi.hoisted(() => ({
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../ipc/commands.js", () => ({ logFrontendError, readPendingCrashReport }));
 
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 import { useCrashReporting } from "./useCrashReporting.js";
 
 function Harness({ promptEnabled = true }) {
@@ -27,6 +28,7 @@ beforeEach(() => {
   logFrontendError.mockResolvedValue(undefined);
   readPendingCrashReport.mockReset();
   readPendingCrashReport.mockResolvedValue(null);
+  setCoordinatorRole(true);
 });
 
 describe("useCrashReporting ordinary error logging", () => {
@@ -99,5 +101,43 @@ describe("useCrashReporting ordinary error logging", () => {
   it("does not load a pending prompt when asking is disabled", () => {
     render(<Harness promptEnabled={false} />);
     expect(readPendingCrashReport).not.toHaveBeenCalled();
+  });
+
+  it("leaves the shared pending report to the coordinator workbench", async () => {
+    setCoordinatorRole(false);
+    readPendingCrashReport.mockResolvedValue({ id: "report-1" });
+    render(<Harness />);
+
+    await act(async () => {});
+    expect(readPendingCrashReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "report-1" })).toBeNull();
+  });
+
+  it("offers a still-pending report after this workbench becomes the coordinator", async () => {
+    setCoordinatorRole(false);
+    readPendingCrashReport.mockResolvedValue({ id: "report-1" });
+    render(<Harness />);
+
+    act(() => setCoordinatorRole(true));
+    expect(await screen.findByRole("button", { name: "report-1" })).toBeTruthy();
+    expect(readPendingCrashReport).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops offering the report when this workbench is no longer the coordinator", async () => {
+    readPendingCrashReport.mockResolvedValue({ id: "report-1" });
+    render(<Harness />);
+    await screen.findByRole("button", { name: "report-1" });
+
+    act(() => setCoordinatorRole(false));
+    expect(screen.queryByRole("button", { name: "report-1" })).toBeNull();
+  });
+
+  it("still shows a development fixture in a participant workbench", () => {
+    setCoordinatorRole(false);
+    const report = { id: "development-crash-report" };
+    const { result } = renderHook(() => useCrashReporting());
+
+    act(() => result.current.developmentFixture.establish("fixture-aaaaaaaaaaaaaaaa", report));
+    expect(result.current.pendingReport).toEqual(report);
   });
 });
