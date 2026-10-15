@@ -242,18 +242,16 @@ impl IntegratedAccumulator {
     self.recent[self.recent_head] = block;
     self.recent_head = (self.recent_head + 1) % 4;
     self.block_count += 1;
-    let gating_block = if self.block_count < 4 {
-      block
-    } else {
-      if self.block_count == 4 {
-        self.tree = ExactOrderTree::default();
-      }
-      let sum = self
-        .recent
-        .iter()
-        .fold([0.0, 0.0], |acc, item| [acc[0] + item[0], acc[1] + item[1]]);
-      [sum[0] / 4.0, sum[1] / 4.0]
-    };
+    // BS.1770 discards an incomplete gating block, so there is no Integrated before the first
+    // complete 400 ms block (EBU Tech 3341 §2.3).
+    if self.block_count < 4 {
+      return;
+    }
+    let sum = self
+      .recent
+      .iter()
+      .fold([0.0, 0.0], |acc, item| [acc[0] + item[0], acc[1] + item[1]]);
+    let gating_block = [sum[0] / 4.0, sum[1] / 4.0];
     let loudness = lufs_from_mean_squares(gating_block[0], gating_block[1]);
     if loudness > -70.0 {
       self.tree.insert(loudness, gating_block[0], gating_block[1]);
@@ -391,15 +389,9 @@ pub(crate) fn gated_lra(short_terms: &[f64]) -> f64 {
 }
 
 /// Visit BS.1770 gating blocks (400 ms, 75% overlap → one per 100 ms step) without allocating a
-/// second whole-session vector. Inputs shorter than 400 ms pass through as partial startup blocks.
+/// second whole-session vector. Inputs shorter than 400 ms hold no complete block, so none.
 #[cfg(test)]
 fn for_each_gating_block(sub: &[[f64; 2]], mut visit: impl FnMut([f64; 2])) {
-  if sub.len() < 4 {
-    for block in sub {
-      visit(*block);
-    }
-    return;
-  }
   for j in 3..sub.len() {
     let mut s0 = 0.0;
     let mut s1 = 0.0;
@@ -467,11 +459,18 @@ mod tests {
   }
 
   #[test]
-  fn gating_blocks_passthrough_when_shorter_than_400ms() {
-    let sub = [[1.0, 1.0], [2.0, 2.0]];
+  fn no_gating_block_and_no_integrated_before_400ms() {
+    let sub = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]];
     let mut blocks = Vec::new();
     for_each_gating_block(&sub, |block| blocks.push(block));
-    assert_eq!(blocks, sub.to_vec());
+    assert!(blocks.is_empty());
+    let mut integrated = IntegratedAccumulator::new();
+    for block in sub {
+      integrated.push(block);
+    }
+    assert_eq!(integrated.value(), f64::NEG_INFINITY);
+    integrated.push([4.0, 4.0]);
+    assert!((integrated.value() - lufs_from_mean_squares(2.5, 2.5)).abs() < 1e-12);
   }
 
   #[test]
@@ -529,9 +528,11 @@ mod tests {
     for index in 0..blocks.len() {
       integrated.push(blocks[index]);
       lra.push(short_terms[index]);
+      // Both are -inf until the first complete 400 ms gating block.
+      let (got, expected) = (integrated.value(), gated_integrated_lufs(&blocks[..=index]));
       assert!(
-        (integrated.value() - gated_integrated_lufs(&blocks[..=index])).abs() < 1e-10,
-        "Integrated diverged at prefix {index}"
+        got == expected || (got - expected).abs() < 1e-10,
+        "Integrated diverged at prefix {index}: {got} vs {expected}"
       );
       assert!(
         (lra.value() - gated_lra(&short_terms[..=index])).abs() < 1e-10,

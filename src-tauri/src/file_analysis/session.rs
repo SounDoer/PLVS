@@ -1299,6 +1299,17 @@ mod tests {
     }
   }
 
+  /// BS.1770 discards an incomplete gating block, so a file shorter than 400 ms has no Integrated.
+  #[test]
+  fn a_file_shorter_than_one_gating_block_has_no_integrated_loudness() {
+    let sr = 48_000_u32;
+    let pcm = sine_stereo_f32(sr, 14_400, 0.5, 1_000.0); // 300 ms
+    let cli = run_summary_path(&pcm, sr, 2, 16_384);
+    let gui = run_session_path(&pcm, sr, 2, 16_384);
+    assert_eq!(cli.integrated_lufs, f64::NEG_INFINITY);
+    assert_eq!(gui.integrated_lufs, f64::NEG_INFINITY);
+  }
+
   #[test]
   fn summary_and_session_paths_agree_for_multichannel_layouts() {
     const FFMPEG_READ_SAMPLES: usize = (64 * 1024) / 4;

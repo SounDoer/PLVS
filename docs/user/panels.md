@@ -65,7 +65,9 @@ Momentary Max and Short-term Max consider every position of the 400 ms and 3 s w
 the ten readings per second, so a short burst that falls between two readings still counts in full.
 Momentary and Short-term always measure their full 400 ms and 3 s windows: for the first moments
 after Start or Clear, and for a file shorter than a window, the time before the measurement counts
-as silence. A one-second sound therefore reads lower on Short-term than on Momentary.
+as silence. A one-second sound therefore reads lower on Short-term than on Momentary. Integrated
+follows BS.1770, which discards an incomplete 400 ms gating block: it has no value until 400 ms have
+been measured, so a file shorter than that has no Integrated reading.
 
 ## Spectrum
 

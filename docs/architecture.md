@@ -268,15 +268,15 @@ one-second hop and computes an exact duration-weighted P95−P10 without the EBU
 The detector never replaces programme audio in the loudness path.
 
 M and S are reported on the 100 ms block grid, and LRA takes S at that rate, as EBU Tech 3342
-specifies; the Integrated gate uses 400 ms blocks at a 100 ms step, as BS.1770 specifies. Momentary
-Max and Short-term Max are sample-accurate instead: EBU Tech 3341 defines M and S as sliding
-windows, and a maximum read only at the 100 ms readings misses a burst between them by up to ~0.5 dB
-(Tech 3341 cases 13 and 14). A file's final partial block counts toward these maxima and True Peak
-Max on both the GUI and CLI paths. Every M and S window keeps its full length, counting the time
-before the meter started as silence (as libebur128 does), so short inputs still read true 0.4 s and
-3 s values; LRA takes only complete 3 s windows. `dsp/ebu_conformance.rs` runs every synthesizable
-Tech 3341 / 3342 case through both meters; `npm run verify:loudness-reference` compares them with
-FFmpeg's `ebur128`.
+specifies; the Integrated gate uses 400 ms blocks at a 100 ms step and discards an incomplete block,
+as BS.1770 specifies, so there is no Integrated before 400 ms of input. Momentary Max and Short-term
+Max are sample-accurate instead: EBU Tech 3341 defines M and S as sliding windows, and a maximum
+read only at the 100 ms readings misses a burst between them by up to ~0.5 dB (Tech 3341 cases 13
+and 14). A file's final partial block counts toward these maxima and True Peak Max on both the GUI
+and CLI paths. Every M and S window keeps its full length, counting the time before the meter
+started as silence (as libebur128 does), so short inputs still read true 0.4 s and 3 s values; LRA
+takes only complete 3 s windows. `dsp/ebu_conformance.rs` runs every synthesizable Tech 3341 / 3342
+case through both meters; `npm run verify:loudness-reference` compares them with FFmpeg's `ebur128`.
 
 `loudness.rs` splits every incoming PCM packet at exact sample-counted 100 ms boundaries before
 feeding either side of that path. The detector resampler consumes the same complete source-rate
