@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useFrameData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -52,8 +52,10 @@ const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[calc(var(--ui-fs-display)*3)]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
 const LEVEL_METER_READOUT_SIZE = "text-[length:min(var(--ui-fs-display),28cqw)]";
+const LEVEL_METER_CHANNEL_LABEL =
+  "min-w-0 truncate font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-axis)] leading-none text-[color:var(--ui-text-annotation)]";
 const LEVEL_METER_GRID =
-  "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
+  "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-[var(--ui-chart-axis-gap)]";
 
 /**
  * @param {string} position
@@ -463,12 +465,11 @@ export function LevelMeterPanel({ showAxes = true, className } = {}) {
                     {formatLevelValue(readoutValue)}
                   </span>
                 </div>
-                <div
-                  data-level-mode-label
-                  className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-[color:var(--ui-text-annotation)]"
-                >
-                  {modeMeta.meterLabel ?? modeMeta.label}
-                </div>
+              </div>
+            </div>
+            <div data-level-meter-channel-axis className="col-start-2">
+              <div data-level-mode-label className={cn(LEVEL_METER_CHANNEL_LABEL, "text-center")}>
+                {modeMeta.meterLabel ?? modeMeta.label}
               </div>
             </div>
           </div>
@@ -571,15 +572,25 @@ export function LevelMeterPanel({ showAxes = true, className } = {}) {
                       {formatLevelValue(readoutValue)}
                     </span>
                   </div>
-                  <div
-                    data-peak-channel-label
-                    className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-[color:var(--ui-text-annotation)]"
-                  >
-                    {c.label}
-                  </div>
                 </div>
               );
             })}
+          </div>
+          <div
+            data-level-meter-channel-axis
+            className="col-start-2 grid grid-cols-[repeat(auto-fit,minmax(0,1fr))]"
+            style={{ gap: LEVEL_METER_CHANNEL_GAP }}
+          >
+            {channels.map((channel, index) => (
+              <div
+                key={index}
+                data-peak-channel-label
+                title={channel.label}
+                className={cn(LEVEL_METER_CHANNEL_LABEL, "text-center")}
+              >
+                {channel.label}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -670,51 +681,61 @@ function HorizontalLevelMeter({
     <div
       data-level-meter-orientation="horizontal"
       className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-[var(--ui-panel-pad-x)] py-[var(--ui-panel-pad-y)]",
+        "grid min-h-0 min-w-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-x-[var(--ui-chart-axis-gap)] overflow-hidden px-[var(--ui-panel-pad-x)] py-[var(--ui-panel-pad-y)]",
         className
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-[var(--ui-chart-axis-gap)] overflow-y-auto">
+      <div
+        data-level-meter-horizontal-rows
+        className="col-span-2 grid min-h-0 grid-cols-subgrid auto-rows-[minmax(1.25rem,1fr)] gap-y-[var(--ui-chart-axis-gap)] overflow-y-auto"
+      >
         {rows.map((row, i) => (
-          <div
-            key={i}
-            className="@container relative min-h-5 min-w-0 flex-1"
-            data-level-meter-bar-region
-          >
-            <AnimatedLevelFill
-              horizontal
-              value={row.valueDb}
-              min={range.min}
-              max={range.max}
-              fromTopFrac={(v) => rangedFromTopFrac(v, range.min, range.max)}
-              background={fillBackground}
-            />
-            <div className="relative flex h-full items-center justify-between px-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
-              <span>{row.label}</span>
+          <Fragment key={i}>
+            <div data-level-meter-channel-axis className="flex min-w-0 items-center justify-end">
               <span
-                className={cn(
-                  "font-[family-name:var(--ui-font-mono)] tabular-nums",
-                  LEVEL_METER_READOUT_SIZE
-                )}
-                data-level-value
+                data-peak-channel-label={isPeakFamily ? "" : undefined}
+                data-level-mode-label={!isPeakFamily ? "" : undefined}
+                title={row.label}
+                className={LEVEL_METER_CHANNEL_LABEL}
               >
-                {formatLevelValue(
-                  isRms &&
-                    controls.levelMeterPlaybackMax &&
-                    Number.isFinite(rmsPlaybackMaxValues[i])
-                    ? rmsPlaybackMaxValues[i]
-                    : !isPeakFamily && controls.levelMeterPlaybackMax
-                      ? playbackMaxValue
-                      : row.valueDb
-                )}
+                {row.label}
               </span>
             </div>
-          </div>
+            <div className="@container relative min-h-5 min-w-0" data-level-meter-bar-region>
+              <AnimatedLevelFill
+                horizontal
+                value={row.valueDb}
+                min={range.min}
+                max={range.max}
+                fromTopFrac={(v) => rangedFromTopFrac(v, range.min, range.max)}
+                background={fillBackground}
+              />
+              <div className="relative flex h-full items-center justify-end px-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+                <span
+                  className={cn(
+                    "font-[family-name:var(--ui-font-mono)] tabular-nums",
+                    LEVEL_METER_READOUT_SIZE
+                  )}
+                  data-level-value
+                >
+                  {formatLevelValue(
+                    isRms &&
+                      controls.levelMeterPlaybackMax &&
+                      Number.isFinite(rmsPlaybackMaxValues[i])
+                      ? rmsPlaybackMaxValues[i]
+                      : !isPeakFamily && controls.levelMeterPlaybackMax
+                        ? playbackMaxValue
+                        : row.valueDb
+                  )}
+                </span>
+              </div>
+            </div>
+          </Fragment>
         ))}
       </div>
       {placement && (
         <div
-          className="@container relative h-[var(--ui-fs-display)] shrink-0"
+          className="@container relative col-start-2 h-[var(--ui-fs-display)] shrink-0"
           data-level-meter-horizontal-marker
         >
           <span
@@ -763,7 +784,7 @@ function HorizontalLevelMeter({
       {showAxes && (
         <AxisRail
           axis="x"
-          className="h-[var(--ui-chart-x-axis-row-h)] shrink-0"
+          className="col-start-2 h-[var(--ui-chart-x-axis-row-h)] shrink-0"
           interaction={axis}
           ticks={ticks}
         />

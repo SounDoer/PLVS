@@ -23,7 +23,12 @@ function selectProfile(selection) {
 }
 
 function panel(value = {}) {
-  const { panelControls = { levelMeterMode: "peak" }, onPanelControlsChange, ...shared } = value;
+  const {
+    panelControls = { levelMeterMode: "peak" },
+    onPanelControlsChange,
+    showAxes = true,
+    ...shared
+  } = value;
   return (
     <FrameDataProvider
       value={{
@@ -40,7 +45,7 @@ function panel(value = {}) {
       }}
     >
       <PanelInstanceProvider value={{ panelControls, onPanelControlsChange }}>
-        <LevelMeterPanel />
+        <LevelMeterPanel showAxes={showAxes} />
       </PanelInstanceProvider>
     </FrameDataProvider>
   );
@@ -100,10 +105,33 @@ describe("LevelMeterPanel", () => {
 
     const footer = container.querySelector("[data-level-meter-footer]");
 
-    // The grid is a single 1fr row, so y-axis + bars fill the panel without
-    // reserving a footer row.
+    // The remaining height belongs to the bars; the separate label row is not a metric footer.
 
     expect(footer).toBeNull();
+  });
+
+  it.each([
+    ["vertical", true],
+    ["horizontal", true],
+    ["vertical", false],
+    ["horizontal", false],
+  ])("keeps channel labels outside the bars in %s (axes %s)", (orientation, showAxes) => {
+    const { container } = renderPanel({
+      showAxes,
+      panelControls: {
+        levelMeterMode: "peak",
+        levelMeterOrientation: orientation,
+        levelMeterTpMaxMarker: true,
+      },
+    });
+    const labels = [...container.querySelectorAll("[data-peak-channel-label]")];
+    expect(labels.map((node) => node.textContent)).toEqual(["L", "R"]);
+    for (const label of labels) {
+      expect(label.closest("[data-level-meter-channel-axis]")).toBeTruthy();
+      expect(label.closest("[data-level-meter-bar-region]")).toBeNull();
+    }
+    expect(container.querySelector("[data-level-tp-max-marker]")).toBeTruthy();
+    expect(screen.getByText("-9.9")).toBeTruthy();
   });
 
   it("renders Momentary LUFS in Level Meter mode", () => {
