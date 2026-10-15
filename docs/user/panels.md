@@ -105,6 +105,11 @@ opacity gradient. Adjacent angles and 3D Surface are unaffected.
 Phase and correlation between a pair of channels, defaulting to Front L/R. Display it as
 **Lissajous**, **Polar Sample**, or **Polar Level**, with an optional max hold.
 
+The plot and correlation rail form one centered instrument in both the workspace and Dock.
+Lissajous fits a square; Polar fits a semicircle with a 2:1 plot area and labels below it. The
+correlation rail follows the plot width. The group uses the largest size that fits while retaining
+space for labels and the rail; top and bottom Dock positions use the same centered alignment.
+
 The axes, diagonals, rings, and other orientation marks are always-visible measurement guides, not
 an optional Grid setting.
 
