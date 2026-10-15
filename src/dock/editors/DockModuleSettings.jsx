@@ -1,5 +1,7 @@
 import { LevelMeterSettings } from "../../components/panel-settings/LevelMeterSettings.jsx";
 import { DockTimeRangeSettings } from "./DockTimeRangeSettings.jsx";
+import { PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import { dockFrequencyViewport } from "../dockFrequencyViewport.js";
 import { useState } from "react";
 import { LoudnessLayersControl } from "../../components/panel-settings/LoudnessSettings.jsx";
 import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
@@ -198,6 +200,8 @@ function dockSlots({
  *   channelCount: number,
  *   onChange: (...args: any[]) => any,
  *   sharedTimeViewport?: any,
+ *   sharedFrequencyViewport?: { min: number, max: number },
+ *   onSharedFrequencyChange?: (...args: any[]) => any,
  *   onSharedTimeChange?: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,
  *   onBack: (...args: any[]) => any,
@@ -211,6 +215,8 @@ export function DockModuleSettings({
   spectrumOptions,
   channelCount,
   onChange,
+  sharedFrequencyViewport,
+  onSharedFrequencyChange,
   sharedTimeViewport,
   onSharedTimeChange,
   onReset,
@@ -242,22 +248,32 @@ export function DockModuleSettings({
             onPanelControlsChange={(next) => onChange(normalizeDockModuleControls("level", next))}
           />
         ) : (
-          <SettingsGroup>
-            <ControlRows
-              rows={dockSettingsRows(dockModuleId)}
-              tab={dockSettingsTab(dockModuleId)}
-              controls={controls}
-              onChange={patch}
-              slots={dockSlots({
-                moduleId: dockModuleId,
-                controls,
-                vectorscopeOptions,
-                spectrumOptions,
-                channelCount,
-                patch,
-              })}
-            />
-          </SettingsGroup>
+          <PanelInstanceProvider
+            value={dockFrequencyViewport(
+              dockSettingsTab(dockModuleId),
+              controls,
+              sharedFrequencyViewport,
+              onSharedFrequencyChange,
+              onChange
+            )}
+          >
+            <SettingsGroup>
+              <ControlRows
+                rows={dockSettingsRows(dockModuleId)}
+                tab={dockSettingsTab(dockModuleId)}
+                controls={controls}
+                onChange={patch}
+                slots={dockSlots({
+                  moduleId: dockModuleId,
+                  controls,
+                  vectorscopeOptions,
+                  spectrumOptions,
+                  channelCount,
+                  patch,
+                })}
+              />
+            </SettingsGroup>
+          </PanelInstanceProvider>
         )}
         {["loudness", "waveform", "spectrogram"].includes(dockModuleId) && (
           <DockTimeRangeSettings

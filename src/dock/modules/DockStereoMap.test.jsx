@@ -272,9 +272,9 @@ describe("DockStereoMap", () => {
     expect(ctx.fill).toHaveBeenCalled();
   });
 
-  it("shows top/bottom pair labels only in Position mode", () => {
+  it("omits pair labels in every Dock mode by default", () => {
     renderWith(/** @type {Parameters<typeof renderWith>[0]} */ ({ result: primitiveRow() }));
-    expect(screen.getByTestId("dock-stereo-map-pair-labels")).toBeTruthy();
+    expect(screen.queryByTestId("dock-stereo-map-pair-labels")).toBeNull();
 
     const { container } = renderWith({
       result: primitiveRow(),

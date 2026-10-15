@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { useEffect, useState } from "react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import {
@@ -7,6 +8,10 @@ import {
 } from "../settings/defaults.js";
 
 export function useViewSettings() {
+  const [panelPresentation, setPanelPresentationState] = useState(() => {
+    const settings = settingsStore.read();
+    return normalizePanelPresentation(settings.panelPresentation, settings.focusView);
+  });
   const [focusView, setFocusViewState] = useState(() =>
     normalizeSettingsFocusView(settingsStore.read().focusView)
   );
@@ -23,9 +28,23 @@ export function useViewSettings() {
 
   function setFocusView(nextFocusView) {
     const next = normalizeSettingsFocusView(nextFocusView);
-    settingsStore.patch({ focusView: next });
+    const stored = settingsStore.read();
+    const presentation = normalizePanelPresentation(stored.panelPresentation, stored.focusView);
+    presentation.workspace.hidePanelHeaders = next.compactPanels;
+    settingsStore.patch({ focusView: next, panelPresentation: presentation });
+    setPanelPresentationState(presentation);
     markPresetDirty();
     setFocusViewState(next);
+  }
+
+  function setPanelPresentation(raw) {
+    const next = normalizePanelPresentation(raw);
+    const focus = normalizeSettingsFocusView(settingsStore.read().focusView);
+    focus.compactPanels = next.workspace.hidePanelHeaders;
+    settingsStore.patch({ panelPresentation: next, focusView: focus });
+    markPresetDirty();
+    setPanelPresentationState(next);
+    setFocusViewState(focus);
   }
 
   /**
@@ -68,7 +87,12 @@ export function useViewSettings() {
     () =>
       settingsStore.subscribe(() => {
         const settings = settingsStore.read();
-        setFocusViewState(normalizeSettingsFocusView(settings.focusView));
+        const next = normalizePanelPresentation(settings.panelPresentation, settings.focusView);
+        setPanelPresentationState(next);
+        setFocusViewState({
+          ...normalizeSettingsFocusView(settings.focusView),
+          compactPanels: next.workspace.hidePanelHeaders,
+        });
         setSurfaceOpacityState(normalizeSurfaceOpacity(settings.surfaceOpacity));
         setGlassEnabledState(normalizeGlassEnabled(settings.glassEnabled));
       }),
@@ -76,8 +100,10 @@ export function useViewSettings() {
   );
 
   return {
-    focusView,
+    focusView: { ...focusView, compactPanels: panelPresentation.workspace.hidePanelHeaders },
     setFocusView,
+    panelPresentation,
+    setPanelPresentation,
     setAutoHideControls,
     setCompactPanels,
     setBorderless,

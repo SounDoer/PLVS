@@ -570,11 +570,25 @@ without mounting audio intake or a persistence store owner. Dock panel display c
 old `controlsByModuleId` is kept only as a compatibility field. The measurement runtime and channel
 label semantics are still shared.
 
+### Panel presentation and Dock controls
+
+`panelPresentation` stores Workspace header/annotation visibility and Dock annotation visibility
+through the settings owner. Workspace defaults to showing both; Dock defaults to showing annotations
+and has no panel headers or header preference. `focusView.compactPanels` remains a legacy Workspace
+header alias. New canonical fields win when loading saved state; conflicting alias/canonical API
+patches are rejected. Rendering policy and container size constraints are independent.
+
+The Dock toolbar exposes Device and Views through the existing accessory editor window. Device
+reuses the normal source selector and Source owner. Views routes Off/Top/Bottom and reservation
+through the existing Dock actions, and annotation changes through the View owner. Accessory roots
+receive state snapshots and send actions; they do not own capture or presentation persistence.
+Workspace presets preserve inactive Dock presentation; Dock-enabled presets restore both surfaces.
+
 ### Dock panel interactions and shared snapshots
 
 Dock Spectrum reuses `SpectrumPanel` with Dock-owned instance controls and the application's shared
 history context. Range gestures, hold smoothing, Max Hold, Grid, Peak Labels and hover readouts work
-at every height. X/Y axis rails and their layout space are never rendered in Dock; grid density is
+at every height. X/Y axis rails and labels follow the active surface presentation preference; grid density is
 measured from the plot itself. The short-strip hover HUD wraps its values horizontally.
 
 Clicking Spectrum selects the current snapshot; double-clicking it or using the toolbar Transport action returns to
@@ -589,14 +603,14 @@ a generation; the accessory acknowledges that generation after committing its co
 show is allowed. Late acknowledgements cannot reveal a newer presentation. On hide, the accessory
 retains its last visible content until the next reveal so stopped Transport does not flash Start.
 
-Dock Stereo Map embeds `StereoMapPanel` without axis rails, sharing hover, frequency gestures,
+Dock Stereo Map embeds `StereoMapPanel` with shared annotation visibility, sharing hover, frequency gestures,
 Snapshot selection and all control definitions, including Grid. Vectorscope embeds `VectorscopePanel` with Dock spacing and no panel minimum height. Its
 `useVectorscopeDisplay` controller provides keyed live/frozen data, correlation smoothing,
 Lissajous Hold Slow persistence and Polar Level Max Hold all use one controller. The plot and correlation rail use the same vertical layout at every height.
 
 Dock Level Meter embeds the normal panel, including its independently persisted orientation,
 readouts, colour policy and reset actions. Dock Loudness, Spectrogram and Waveform embed their normal
-panels through `DockTimelinePanel` and `usePanelHistoryData`. They omit numeric axis rails but retain
+panels through `DockTimelinePanel` and `usePanelHistoryData`. They share annotation visibility and retain
 the full rendering and gesture model. Spectrogram 3D is available at every height; Loudness has no
 Dock-specific scalar readouts. Stats keeps a compact grid whose columns account for both available
 width and height; rows are never truncated, and vertical overflow scrolls.
@@ -656,3 +670,10 @@ reports and older clients retain their v1 contracts. The receiver lives in `soun
 | macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                  |
 
 Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User installation guidance, including Windows SmartScreen and macOS Gatekeeper verification, is in `docs/user/getting-started.md`.
+
+
+Dock frequency viewports use the same `AXIS_VIEWPORTS.frequency` descriptor and Workspace state
+as ordinary panels. `dockFrequencyViewport` supplies the normal panel-instance contract to the
+shared renderers and range settings. Accessory edits route to the Workspace owner; the accessory
+window does not keep a second frequency range. Each Dock instance persists `linkFrequencyViewport`
+and its dormant local range. Presentation visibility does not alter membership.

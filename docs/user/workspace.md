@@ -37,7 +37,7 @@ Toolbar configuration entries such as Loudness Profile, Views, and Presets remai
 closed, even when their configuration is active. Hover and an open menu use the same neutral
 background and brighter icon. Inspect the menu for the selected configuration and modified state.
 The same convention applies in Dock. Direct feature toggles retain their on/off indication;
-Reserve Screen Space uses a solid top divider when enabled and a dashed top divider when disabled.
+Dock window placement and screen reservation are configured in Views.
 Both states use the same neutral icon color at rest, without a persistent highlight.
 
 ## Snapshot
@@ -47,7 +47,7 @@ click. Useful for inspecting a peak you only heard go by.
 
 ## Views
 
-The Views menu pares the window down for monitoring: **Always on Top**, **Compact Panels**,
+The Views menu pares the window down for monitoring: **Always on Top**, **Hide Panel Headers**, **Hide Axes & Labels**,
 **Hide Chrome**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. The **Dock** selector
 below these controls offers **Off**, **Top**, and **Bottom** on Windows and macOS. Surface Opacity changes
 the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
@@ -61,7 +61,19 @@ On Windows 11, **Hide Chrome** also hides the outer system window outline; turni
 the system outline. **Auto-hide Controls** also uses a chromeless window, so the outline stays hidden
 while that mode is enabled. Normal windows retain their native shadow in either mode.
 
+**Hide Panel Headers** hides each Workspace panel's title, tabs and action row. **Hide Axes & Labels**
+hides chart scales and channel/mode labels, including L/R, M/ST and Vector correlation tick numbers.
+Readings, Stats metric names, hover information and graph reference geometry remain visible. Both
+switches default to Off in Workspace. Dock has no Panel Headers and offers only Hide Axes & Labels,
+defaulting to Off. Each surface remembers its annotation choice; switching surfaces does not copy
+or reset it. Hidden labels give their space back to the plot.
+
 ## Dock
+
+The Dock toolbar offers **Device** for the same live device/application selection as the normal
+window. **Views** groups **Hide Axes & Labels**, **Dock: Off / Top / Bottom**, and **Reserve Space**
+where supported. Select **Off** to restore the normal window. Device and Views open beside the strip;
+opening either does not restart capture. Panel settings remain accessible through the panel editor.
 
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of
 the screen, so the meters stay visible while you work in another app. Click the arrow at the right
@@ -73,7 +85,7 @@ stays open until the error clears. On macOS, controls respond to the first click
 between the strip, toolbar, and editor windows, including the arrow that closes the toolbar.
 On Windows, the strip can also reserve its screen space so
 maximised windows do not cover it. On macOS, it starts as an overlay within the monitor work area,
-leaving room for the menu bar and system Dock. Enable **Reserve Screen Space** in the Dock toolbar
+leaving room for the menu bar and system Dock. Enable **Reserve Space** in Dock **Views**
 to automatically move or shrink the active application's window away from the strip. Grant PLVS
 **Accessibility** access in System Settings → Privacy & Security, then enable the action again.
 Without permission, Dock remains an overlay.
@@ -88,10 +100,10 @@ recovery when Accessibility permission is available; unresolved windows retain l
 
 On Windows, the strip steps aside for full-screen windows the way the taskbar does. A full-screen
 video or a borderless full-screen game on the Dock's display covers the strip, with or without
-**Reserve Screen Space**; the strip returns when that window leaves full screen or another window
+**Reserve Space**; the strip returns when that window leaves full screen or another window
 takes the foreground. A full-screen window uses the whole display, so it cannot be made to leave
 room for the strip. To watch the meters next to a video, keep the player in a maximised window —
-with **Reserve Screen Space** on, it stops at the strip.
+with **Reserve Space** on, it stops at the strip.
 
 Hover a Stats
 readout or an icon-only Dock action for the same themed explanation shown in the normal workspace.
@@ -109,13 +121,12 @@ The toolbar and panel settings also follow the selected text size. Stats adapts 
 rows to the available space and text size, with scrolling when all selected readings cannot fit.
 
 Spectrum shares the normal panel's range zoom/pan, press-and-hold smoothing, and Max Hold
-contour-click reset. Grid, Peak Labels and hover readouts remain available at every Dock height. X/Y axes stay hidden.
+contour-click reset. Grid, Peak Labels and hover readouts remain available at every Dock height. X/Y axes follow **Hide Axes & Labels** in Views.
 
 Stereo Map also shares the normal panel's Grid, hover readout, frequency zoom and pan, and
-click-to-Snapshot / double-click-to-Live gestures. Its X/Y axes stay hidden; Position retains
-compact channel labels. Mono input shows the same explanatory message as the normal panel.
+click-to-Snapshot / double-click-to-Live gestures. Its axes and Position channel labels follow **Hide Axes & Labels**. Mono input shows the same explanatory message as the normal panel.
 Vectorscope can be narrowed to a minimum based on **Interface Size**, reserving readable correlation
-ticks and padding rather than a fixed 160px. Changing Dock height does not change this minimum.
+ticks when labels are shown, or reference markers and spacing when hidden. Changing Dock height does not change this minimum.
 Existing preferred widths are preserved; drag a divider to reclaim unused side space.
 Vectorscope uses the normal panel layout at every Dock height: the plot above the correlation
 rail, without a separate numeric readout. It shares Lissajous Hold Slow,
@@ -134,7 +145,7 @@ you had already opened before Snapshot stays open. The snapshot is shared by all
 background. Switching between Dock and the normal window preserves the selected snapshot. A view
 without retained data at that time shows an empty state instead of falling back to live data.
 Loudness, Spectrogram and Waveform share the normal panels' renderers, settings and history
-interactions, with X/Y axes hidden. Loudness has no extra Dock readouts. Spectrogram offers 2D
+interactions, with X/Y axes controlled by Views. Loudness has no extra Dock readouts. Spectrogram offers 2D
 and 3D at every height. Their Time Range is linked to the workspace by default, so switching forms
 preserves the window and offset. Unlink Time Range to keep that Dock panel's own range; normal
 panels with an unlinked range remain independent. Snapshot selection is shared regardless of linking.
@@ -151,6 +162,13 @@ A second Dock on that same edge remains visible as an overlay and does not distu
 reservation.
 Top and bottom edges are independent on Windows. macOS allows one avoidance owner per display,
 so two workbenches cannot resize and restore the same application window in competing orders.
+
+### Frequency Linking
+
+Dock Spectrum, Spectrogram and Stereo Map share the Workspace frequency range by default.
+Their Frequency Range rows offer the same link toggle as ordinary panels. Changes from a linked
+panel affect the group even when axes and labels are hidden. Unlinking keeps the visible range;
+linking again adopts the shared range. Level and correlation ranges remain independent.
 
 ## Persistence
 

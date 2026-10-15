@@ -1,14 +1,4 @@
-import {
-  ArrowDownToLine,
-  ArrowUpToLine,
-  Bookmark,
-  Gauge,
-  LayoutGrid,
-  PanelTop,
-  PanelTopDashed,
-  PictureInPicture2,
-  Trash2,
-} from "lucide-react";
+import { Bookmark, Focus, Volume2, Gauge, LayoutGrid, Trash2 } from "lucide-react";
 import { IconButton } from "../../components/IconButton.jsx";
 import { SourceTransportCluster } from "../../components/SourceTransportCluster.jsx";
 import { HoverTip } from "../../components/HoverTip.jsx";
@@ -19,7 +9,6 @@ const ACTION_ICON_CLASS = "size-[length:var(--ui-icon-shell-action)]";
 
 /** @param {{ state: any, onAction: (...args: any[]) => any }} props */
 export function DockHeader({ state, onAction }) {
-  const supportsReservation = /Win|Mac/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;
   const toolTipProps = /** @type {const} */ ({ tipSide: "left", tipAlign: "center" });
   const toggleEditor = (/** @type {string} */ view, event) => {
@@ -81,6 +70,14 @@ export function DockHeader({ state, onAction }) {
             onClick={() => onAction("clear")}
           />
           <IconButton
+            icon={<Volume2 className={ACTION_ICON_CLASS} />}
+            tip="Device"
+            {...toolTipProps}
+            aria-pressed={state.editorView === "device"}
+            className={state.editorView === "device" ? "bg-ui-hover text-foreground" : undefined}
+            onClick={(event) => toggleEditor("device", event)}
+          />
+          <IconButton
             icon={<Gauge className={ACTION_ICON_CLASS} />}
             tip="Loudness Profile"
             {...toolTipProps}
@@ -98,38 +95,13 @@ export function DockHeader({ state, onAction }) {
             className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
             onClick={(event) => toggleEditor("modules", event)}
           />
-          {supportsReservation ? (
-            <IconButton
-              icon={
-                state.reserveSpace ? (
-                  <PanelTop className={ACTION_ICON_CLASS} />
-                ) : (
-                  <PanelTopDashed className={ACTION_ICON_CLASS} />
-                )
-              }
-              tip={state.reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
-              {...toolTipProps}
-              aria-pressed={state.reserveSpace}
-              onClick={() => onAction("toggle-reserve-space")}
-            />
-          ) : null}
           <IconButton
-            icon={
-              state.edge === "top" ? (
-                <ArrowDownToLine className={ACTION_ICON_CLASS} />
-              ) : (
-                <ArrowUpToLine className={ACTION_ICON_CLASS} />
-              )
-            }
-            tip={state.edge === "top" ? "Dock to bottom" : "Dock to top"}
+            icon={<Focus className={ACTION_ICON_CLASS} />}
+            tip="Views"
             {...toolTipProps}
-            onClick={() => onAction("set-edge", { edge: state.edge === "top" ? "bottom" : "top" })}
-          />
-          <IconButton
-            icon={<PictureInPicture2 className={ACTION_ICON_CLASS} />}
-            tip="Restore window"
-            {...toolTipProps}
-            onClick={() => onAction("restore-window")}
+            aria-pressed={state.editorView === "views"}
+            className={state.editorView === "views" ? "bg-ui-hover text-foreground" : undefined}
+            onClick={(event) => toggleEditor("views", event)}
           />
           <IconButton
             icon={<Bookmark className={ACTION_ICON_CLASS} />}

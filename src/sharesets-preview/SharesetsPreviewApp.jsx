@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { useMemo } from "react";
 import { AppShell } from "../components/AppShell.jsx";
 import { ThemePreview } from "../components/theme-editor/ThemePreview.jsx";
@@ -23,7 +24,14 @@ import { MULTICHANNEL_MONITORING_PRESET } from "./multichannelMonitoringPreset.j
 
 const noop = () => {};
 
-function FixedProviders({ fixture, profile, snapshot = false, children }) {
+function FixedProviders({
+  fixture,
+  profile,
+  snapshot = false,
+  presentation = undefined,
+  docked = false,
+  children,
+}) {
   const values = useMemo(
     () => buildSharesetsPreviewFixtureValues(fixture, { snapshot }),
     [fixture, snapshot]
@@ -37,7 +45,14 @@ function FixedProviders({ fixture, profile, snapshot = false, children }) {
       <FrameDataProvider value={values.frameData}>
         <HistoryDataProvider value={historyData}>
           <MetricsDataProvider value={values.metricsData}>
-            <PanelChromeProvider value={{ compactPanels: false }}>{children}</PanelChromeProvider>
+            <PanelChromeProvider
+              value={{
+                ...normalizePanelPresentation(presentation)[docked ? "dock" : "workspace"],
+                docked,
+              }}
+            >
+              {children}
+            </PanelChromeProvider>
           </MetricsDataProvider>
         </HistoryDataProvider>
       </FrameDataProvider>
@@ -181,7 +196,9 @@ function FullWorkspaceExample({ fixture, profile, snapshot, state, presetName = 
           headerProps={headerProps}
           showFileAnalysisResult={false}
           fileSummaryProps={null}
-          panelChromeData={{ compactPanels: false }}
+          panelChromeData={
+            normalizePanelPresentation(state?.panelPresentation, state?.focusView).workspace
+          }
           footer={{
             sourceLabel: "Preview Audio",
             audioDrop: null,
@@ -219,7 +236,12 @@ function WorkspaceExample({
     );
   }
   return (
-    <FixedProviders fixture={plan.fixture} profile={profile} snapshot={snapshot}>
+    <FixedProviders
+      fixture={plan.fixture}
+      profile={profile}
+      snapshot={snapshot}
+      presentation={normalizePanelPresentation(state?.panelPresentation, state?.focusView)}
+    >
       <WorkspacePreviewProvider state={state}>
         <DragProvider onDrop={noop}>
           <div className="flex h-screen w-screen bg-background text-foreground">
@@ -242,10 +264,16 @@ function DockExample({ plan }) {
     elapsedMs: plan.fixture.clock.durationMs,
   });
   return (
-    <FixedProviders fixture={plan.fixture} profile={profile}>
+    <FixedProviders
+      fixture={plan.fixture}
+      profile={profile}
+      presentation={preset.panelPresentation}
+      docked
+    >
       <DockStrip
         panels={panels}
         controls={{
+          sharedFrequencyViewport: preset.axisViewports?.frequency,
           controlsByPanelId: dock.controlsByPanelId,
           sourceTransportState,
         }}

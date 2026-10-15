@@ -457,3 +457,14 @@ describe("DockModuleSettings", () => {
     expect(screen.getByRole("button", { name: "Cancel reset Level Meter settings" })).toBeTruthy();
   });
 });
+
+it.each(["spectrum", "spectrogram", "stereoMap"])(
+  "shows the shared frequency link in %s settings",
+  (moduleId) => {
+    const onChange = renderSettings(moduleId, { sharedFrequencyViewport: { min: 80, max: 8000 } });
+    const toggle = screen.getByRole("button", { name: /link frequency/i });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(toggle);
+    expect(onChange.mock.calls[0][0].linkFrequencyViewport).toBe(false);
+  }
+);

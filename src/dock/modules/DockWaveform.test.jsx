@@ -32,9 +32,9 @@ function mount(controls) {
   );
 }
 describe("DockWaveform", () => {
-  it("uses the shared panel without axes and retains snapshot state", () => {
+  it("uses the shared panel with axes by default and retains snapshot state", () => {
     mount({});
-    expect(screen.getByTestId("shared").dataset.axes).toBe("false");
+    expect(screen.getByTestId("shared").dataset.axes).toBe("true");
     expect(JSON.parse(screen.getByTestId("shared").textContent).selectedOffset).toBe(2);
   });
   it("uses the shared time window by default and keeps an unlinked local window", () => {

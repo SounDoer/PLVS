@@ -78,7 +78,10 @@ import { createContext, useContext } from "react";
  * What a panel's header and settings popover need that is not the panel's own.
  *
  * @typedef {{
- *   compactPanels: boolean,
+ *   hidePanelHeaders?: boolean,
+ *   hideAxesAndLabels?: boolean,
+ *   docked?: boolean,
+ *   compactPanels?: boolean,
  *   channelCount: any,
  *   vectorscopePairOptions: { x: number; y: number; label: string; key: string; }[],
  *   stereoMapPairOptions: { x: number; y: number; label: string; key: string; }[],
@@ -192,4 +195,13 @@ export function PanelInstanceProvider({ value, children }) {
 
 export function usePanelInstanceData() {
   return useContext(PanelInstanceContext);
+}
+
+/** Shared rendering policy; explicit props remain useful for isolated previews. */
+export function usePanelPresentation(showAxes) {
+  const chrome = usePanelChromeData();
+  return {
+    showAxes: showAxes ?? !chrome?.hideAxesAndLabels,
+    fitContainer: chrome?.docked === true,
+  };
 }

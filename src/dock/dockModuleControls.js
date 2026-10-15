@@ -24,7 +24,7 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
 /**
  * Which panel controls each Dock module carries. The Dock stores them under the panel's own keys
  * and repairs them with the panel's rows, so a control has one name and one rule across both
- * surfaces. Timeline membership is shared; frequency ranges remain local to each Dock instance.
+ * surfaces. Time and frequency membership use the shared Workspace viewports.
  */
 const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
   /** @type {const} */ ({
@@ -62,6 +62,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "spectrumMaxMode",
       "spectrumPeakLabels",
       "spectrumGrid",
+      "linkFrequencyViewport",
       "spectrumXMinFreq",
       "spectrumXMaxFreq",
       "spectrumYMinDb",
@@ -88,6 +89,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "spectrumChannel",
       "spectrumTiltDbPerOctave",
       "spectrogramDbFloor",
+      "linkFrequencyViewport",
       "spectrogramYMinFreq",
       "spectrogramYMaxFreq",
     ],
@@ -100,6 +102,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "stereoMapOctaveSmoothing",
       "stereoMapEnergyFadePercent",
       "stereoMapColorBlendPercent",
+      "linkFrequencyViewport",
       "stereoMapXMinFreq",
       "stereoMapXMaxFreq",
       "stereoMapMonoLossYMinDb",
@@ -324,6 +327,8 @@ function withPanelKeys(moduleId, raw) {
  *   controlsByPanelId?: Record<string, object>,
  *   sourceTransportState?: any,
  *   panelId?: string,
+ *   sharedFrequencyViewport?: { min: number, max: number },
+ *   onSharedFrequencyChange?: (range: { min: number, max: number }) => void,
  *   onDockPanelControlsChange?: (panelId: string, controls: any) => void,
  * }} DockStripControls
  */

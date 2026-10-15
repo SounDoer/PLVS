@@ -1,3 +1,4 @@
+import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { WAVEFORM_FILL_OPACITY } from "@/lib/chartFill.js";
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import {
@@ -228,7 +229,8 @@ export function drawWaveformCanvas(
 }
 
 /** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
-export function WaveformPanel({ showAxes = true, className } = {}) {
+export function WaveformPanel({ showAxes: axesOverride, className } = {}) {
+  const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
   const themeColors = useResolvedTheme(selectWaveformCanvasColors);
   const frameData = useFrameData();
   const historyData = useHistoryData();
@@ -239,7 +241,7 @@ export function WaveformPanel({ showAxes = true, className } = {}) {
     return (
       <div
         className={cn(
-          showAxes && PANEL_MIN_WAVEFORM,
+          !fitContainer && PANEL_MIN_WAVEFORM,
           "@container relative flex min-h-0 flex-1 flex-col overflow-hidden",
           "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
           className
@@ -250,6 +252,7 @@ export function WaveformPanel({ showAxes = true, className } = {}) {
 
   return (
     <WaveformPanelContent
+      fitContainer={fitContainer}
       showAxes={showAxes}
       className={className}
       audioData={panelData}
@@ -259,7 +262,14 @@ export function WaveformPanel({ showAxes = true, className } = {}) {
   );
 }
 
-function WaveformPanelContent({ audioData, controls, themeColors, showAxes, className }) {
+function WaveformPanelContent({
+  audioData,
+  controls,
+  themeColors,
+  showAxes,
+  fitContainer,
+  className,
+}) {
   const {
     histSourceList,
     waveformHistoryIndex,
@@ -402,7 +412,7 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
   return (
     <div
       className={cn(
-        showAxes && PANEL_MIN_WAVEFORM,
+        !fitContainer && PANEL_MIN_WAVEFORM,
         "@container relative flex min-h-0 flex-1 flex-col gap-[var(--ui-chart-axis-gap)] overflow-hidden",
         "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
         className
@@ -413,6 +423,7 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
         {Array.from({ length: effectiveChannels }, (_, ch) => (
           <WaveformLane
             key={ch}
+            showLabels={showAxes}
             label={labels[ch] ?? `Ch${ch + 1}`}
             mins={mins[ch]}
             maxes={maxes[ch]}
@@ -435,13 +446,17 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
 
         <TimelineLatestEdgeHint
           active={(effectiveOffsetSamples ?? 0) > 0}
-          className="left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))] w-auto"
+          className={
+            showAxes
+              ? "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))] w-auto"
+              : "left-0 w-auto"
+          }
         />
         <TimelineSelectionEdgeHint
           direction={selectionEdge}
           color={themeColors.selection}
           className={
-            selectionEdge === "left"
+            selectionEdge === "left" && showAxes
               ? "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))]"
               : undefined
           }
@@ -451,7 +466,7 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
         {waveformHover && (
           <div
             className="pointer-events-none absolute inset-0 z-[25]"
-            style={{ left: WAVEFORM_CHART_LEFT }}
+            style={{ left: showAxes ? WAVEFORM_CHART_LEFT : 0 }}
           >
             <ChartCrosshair leftPct={waveformHover.leftPct} />
             {/* Popover */}
@@ -475,7 +490,7 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
         {selectedOffset >= 0 && showSelLine && (
           <div
             className="pointer-events-none absolute inset-0 z-20"
-            style={{ left: WAVEFORM_CHART_LEFT }}
+            style={{ left: showAxes ? WAVEFORM_CHART_LEFT : 0 }}
           >
             <svg viewBox="0 0 600 1" preserveAspectRatio="none" className="h-full w-full">
               <line
@@ -497,7 +512,7 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
           className="absolute inset-0 z-30"
           data-waveform-interaction-overlay
           style={{
-            left: WAVEFORM_CHART_LEFT,
+            left: showAxes ? WAVEFORM_CHART_LEFT : 0,
             cursor: historyChartInteractive
               ? chartDragging
                 ? "grabbing"
@@ -563,6 +578,7 @@ function WaveformPanelContent({ audioData, controls, themeColors, showAxes, clas
 }
 
 function WaveformLane({
+  showLabels,
   label,
   mins,
   maxes,
@@ -664,15 +680,17 @@ function WaveformLane({
       data-waveform-lane
       className="flex min-h-0 min-w-0 flex-1 items-stretch gap-[var(--ui-chart-axis-gap)]"
     >
-      <div
-        data-waveform-label-rail
-        className={cn(
-          W_LOUDNESS_Y_AXIS,
-          "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]"
-        )}
-      >
-        {label}
-      </div>
+      {showLabels && (
+        <div
+          data-waveform-label-rail
+          className={cn(
+            W_LOUDNESS_Y_AXIS,
+            "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]"
+          )}
+        >
+          {label}
+        </div>
+      )}
       <div className="relative min-h-0 min-w-0 flex-1">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       </div>

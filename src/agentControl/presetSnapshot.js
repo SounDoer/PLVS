@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { normalizeDockControlsByPanelId } from "../dock/dockModuleControls.js";
 import { normalizeDockLayout } from "../dock/dockLayout.js";
@@ -98,6 +99,7 @@ export function buildPublicPresetSnapshot(preset, context = {}) {
       bounds: preset.windowBounds ?? null,
       pinned: preset.windowPinned === true,
       focusView,
+      panelPresentation: normalizePanelPresentation(preset.panelPresentation, focusView),
       surfaceOpacity: Number.isFinite(preset.surfaceOpacity) ? preset.surfaceOpacity : 100,
       glassEnabled: preset.glassEnabled === true,
     },

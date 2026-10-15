@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "./lib/panelPresentation.js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
@@ -158,7 +159,7 @@ function AppContent() {
   const meterRuntime = useMeterRuntime();
   const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
     useMeterDisplayState();
-  const { state: workspaceState } = useWorkspaceStore();
+  const { state: workspaceState, setAxisViewport } = useWorkspaceStore();
   const { visibility: dockAccessoryVisibility, hoveredDockPanelId } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
@@ -217,6 +218,8 @@ function AppContent() {
     setPinned,
     setAutoHideControls,
     setCompactPanels,
+    setPanelPresentation,
+    view: chromeView,
     setBorderless,
     setSurfaceOpacity,
     setGlassEnabled,
@@ -411,9 +414,15 @@ function AppContent() {
     () => spectrumViewLegend(spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels),
     [spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels]
   );
+  const panelPresentation = useMemo(
+    () => normalizePanelPresentation(chromeView?.panelPresentation, focusView),
+    [chromeView?.panelPresentation, focusView]
+  );
   const panelChromeData = useMemo(
     () => ({
-      compactPanels: focusView.compactPanels,
+      hidePanelHeaders: panelPresentation.workspace.hidePanelHeaders,
+      hideAxesAndLabels: panelPresentation[docked ? "dock" : "workspace"].hideAxesAndLabels,
+      docked,
       channelCount,
       vectorscopePairOptions,
       stereoMapPairOptions: vectorscopePairOptions,
@@ -422,7 +431,8 @@ function AppContent() {
       spectrumViewLegend: spectrumViewLegendValue,
     }),
     [
-      focusView.compactPanels,
+      panelPresentation,
+      docked,
       channelCount,
       vectorscopePairOptions,
       vectorscopeDisplayLabel,
@@ -542,6 +552,8 @@ function AppContent() {
     setPinned,
     setAutoHideControls,
     setCompactPanels,
+    panelPresentation,
+    setPanelPresentation,
     setBorderless,
     surfaceOpacity,
     setSurfaceOpacity,
@@ -602,6 +614,8 @@ function AppContent() {
         onPanelResize: dockLayout.resizePanelPair,
         onPanelResizeReset: dockLayout.resetPanelPair,
         controls: {
+          sharedFrequencyViewport: workspaceState.axisViewports.frequency,
+          onSharedFrequencyChange: (range) => setAxisViewport("frequency", range),
           controlsByPanelId: dockLayout.controlsByPanelId,
           onDockPanelControlsChange: dockLayout.setPanelControls,
           sourceTransportState,

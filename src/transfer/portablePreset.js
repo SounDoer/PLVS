@@ -1,3 +1,5 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
+import { validatePanelPresentationPatch } from "../agentControl/viewControl.js";
 import { buildPublicPresetSnapshot } from "../agentControl/presetSnapshot.js";
 import { compileWorkspaceLayout, WorkspaceLayoutError } from "../agentControl/workspaceLayout.js";
 import { planPublicPanelControlPatch } from "../agentControl/panelControlPatch.js";
@@ -35,6 +37,7 @@ const TOP_FIELDS = new Set([
 const WORKSPACE_FIELDS = new Set(["layout", "panels"]);
 const PANEL_FIELDS = new Set(["key", "moduleId", "title", "controls", "axes", "pinnedSize"]);
 const PRESENTATION_FIELDS = new Set([
+  "panelPresentation",
   "alwaysOnTop",
   "focusView",
   "panelOpacityPercent",
@@ -236,6 +239,7 @@ export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
     presentation: {
       alwaysOnTop: snapshot.window.pinned,
       focusView: snapshot.window.focusView,
+      ...portablePanelPresentation(snapshot.window.panelPresentation, snapshot.window.focusView),
       panelOpacityPercent: snapshot.window.surfaceOpacity,
       glassEnabled: snapshot.window.glassEnabled,
     },
@@ -547,6 +551,10 @@ function compilePresentation(raw, issues) {
     return null;
   }
   collectUnknownFields(raw, PRESENTATION_FIELDS, path, issues);
+  if ("panelPresentation" in raw)
+    issues.push(
+      ...validatePanelPresentationPatch(raw.panelPresentation, `${path}.panelPresentation`)
+    );
   booleanField(raw, "alwaysOnTop", path, issues);
   booleanField(raw, "glassEnabled", path, issues);
   if (!isPlainObject(raw.focusView)) {
@@ -571,6 +579,7 @@ function compilePresentation(raw, issues) {
   return {
     windowPinned: raw.alwaysOnTop === true,
     focusView: normalizeFocusView(raw.focusView ?? DEFAULT_FOCUS_VIEW),
+    panelPresentation: normalizePanelPresentation(raw.panelPresentation, raw.focusView),
     surfaceOpacity: raw.panelOpacityPercent,
     glassEnabled: raw.glassEnabled === true,
   };
@@ -733,6 +742,7 @@ function compilePortablePreset(raw, { resolveDependencyId = (id) => id } = {}) {
     presentation: {
       alwaysOnTop: raw.presentation.alwaysOnTop,
       focusView: normalizeFocusView(raw.presentation.focusView),
+      ...portablePanelPresentation(raw.presentation.panelPresentation, raw.presentation.focusView),
       panelOpacityPercent: raw.presentation.panelOpacityPercent,
       glassEnabled: raw.presentation.glassEnabled,
     },
@@ -817,4 +827,18 @@ export async function hashPortablePreset(raw) {
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("");
   return `sha256:${hex}`;
+}
+
+// Omit defaults so unchanged presets remain readable by builds predating these controls.
+function portablePanelPresentation(raw, focusView) {
+  const current = normalizePanelPresentation(raw, focusView);
+  const defaults = normalizePanelPresentation(null, focusView);
+  const difference = {};
+  for (const surface of ["workspace", "dock"]) {
+    const fields = Object.fromEntries(
+      Object.entries(current[surface]).filter(([key, value]) => value !== defaults[surface][key])
+    );
+    if (Object.keys(fields).length) difference[surface] = fields;
+  }
+  return Object.keys(difference).length ? { panelPresentation: difference } : {};
 }

@@ -1,3 +1,4 @@
+import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import {
   useFrameData,
@@ -54,7 +55,8 @@ import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelC
 const RIGHT_DOUBLE_CLICK_MS = 400;
 const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
 /** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
-export function SpectrogramPanel({ showAxes = true, className } = {}) {
+export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
+  const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
   const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
   const { channelCount, spectrumChannelOptions } = useFrameData();
   const {
@@ -554,7 +556,7 @@ export function SpectrogramPanel({ showAxes = true, className } = {}) {
   return (
     <div
       className={cn(
-        showAxes && PANEL_MIN_SPECTROGRAM,
+        !fitContainer && PANEL_MIN_SPECTROGRAM,
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
         className
       )}

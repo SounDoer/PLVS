@@ -1,3 +1,4 @@
+import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import {
   useFrameData,
   useHistoryData,
@@ -19,7 +20,8 @@ import { loudnessHistY } from "../../config/scales";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 
 /** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
-export function LoudnessPanel({ showAxes = true, className } = {}) {
+export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
+  const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
   const historyTickSteps = HISTORY_TIME_TICK_STEPS;
   const {
     hasHistoryData,
@@ -187,7 +189,7 @@ export function LoudnessPanel({ showAxes = true, className } = {}) {
   return (
     <div
       className={cn(
-        showAxes && PANEL_MIN_HISTORY,
+        !fitContainer && PANEL_MIN_HISTORY,
         "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
         className
       )}

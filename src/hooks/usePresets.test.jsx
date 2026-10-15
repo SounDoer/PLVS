@@ -175,6 +175,42 @@ describe("usePresets", () => {
     expect(presetsStore.read().activeId).toBe("preset-123");
   });
 
+  it.each([false, true])(
+    "restores presentation with Dock enabled=%s without overwriting inactive Dock",
+    async (enabled) => {
+      const storedPresentation = {
+        workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+        dock: { hideAxesAndLabels: true },
+      };
+      presetsStore.patch({
+        list: [
+          {
+            id: "presentation",
+            name: "Presentation",
+            ...DEFAULT_WORKSPACE_STATE,
+            panelPresentation: storedPresentation,
+            dock: { enabled },
+          },
+        ],
+      });
+      const setPanelPresentation = vi.fn();
+      const { result } = renderPresetHook({
+        panelPresentation: {
+          workspace: { hidePanelHeaders: false, hideAxesAndLabels: false },
+          dock: { hideAxesAndLabels: false },
+        },
+        setPanelPresentation,
+      });
+      await act(async () => {
+        await result.current.presets.apply("presentation");
+      });
+      expect(setPanelPresentation).toHaveBeenCalledWith({
+        workspace: storedPresentation.workspace,
+        dock: { hideAxesAndLabels: enabled },
+      });
+    }
+  );
+
   it("saves pinned panel sizes in snapshots", async () => {
     const { result } = renderPresetHook();
     act(() => {

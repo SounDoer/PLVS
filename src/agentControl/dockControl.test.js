@@ -362,3 +362,29 @@ describe("Dock Control", () => {
     ]);
   });
 });
+
+it("round-trips Dock frequency membership and preserves the visible range on unlink", () => {
+  const current = {
+    ...dock,
+    panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+    panelOrder: ["spectrum"],
+    controlsByPanelId: {},
+  };
+  const context = { sharedFrequencyViewport: { min: 80, max: 8000 } };
+  const result = planDockPanelPatch(current, "spectrum", { linkFrequency: false }, context);
+  expect(result.issues).toEqual([]);
+  expect(buildDockSnapshot(result.dock, context).panels[0]).toMatchObject({
+    controls: { linkFrequency: false, frequencyRangeHz: { min: 80, max: 8000 } },
+    axes: { frequency: { linked: false, range: { min: 80, max: 8000 } } },
+  });
+  const unrelated = planDockPanelPatch(result.dock, "spectrum", { grid: false }, context);
+  expect(buildDockSnapshot(unrelated.dock, context).panels[0].controls.linkFrequency).toBe(false);
+  const invalid = planDockPanelPatch(
+    current,
+    "spectrum",
+    { linkFrequency: "false", grid: false },
+    context
+  );
+  expect(invalid.issues[0].code).toBe("invalidType");
+  expect(invalid.dock).toBe(current);
+});

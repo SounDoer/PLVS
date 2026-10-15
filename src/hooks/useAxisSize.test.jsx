@@ -3,10 +3,10 @@ import { render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAxisSize } from "./useAxisSize";
 
-function Probe({ axis, onMeasure }) {
+function Probe({ axis, onMeasure, visible = true }) {
   const { axisRef, axisPx } = useAxisSize(axis);
   onMeasure(axisPx);
-  return <div ref={axisRef} />;
+  return visible ? <div ref={axisRef} /> : null;
 }
 
 describe("useAxisSize", () => {
@@ -59,4 +59,17 @@ describe("useAxisSize", () => {
     render(<Probe axis="y" onMeasure={onMeasure} />);
     expect(onMeasure).toHaveBeenLastCalledWith(300);
   });
+});
+
+it("measures rails that are mounted after annotations were hidden", () => {
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 100, 24));
+  const onMeasure = vi.fn();
+  const view = render(<Probe axis="y" onMeasure={onMeasure} visible={false} />);
+  view.rerender(<Probe axis="y" onMeasure={onMeasure} visible />);
+  expect(onMeasure).toHaveBeenLastCalledWith(24);
+  view.rerender(<Probe axis="y" onMeasure={onMeasure} visible={false} />);
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 100, 80));
+  view.rerender(<Probe axis="y" onMeasure={onMeasure} visible />);
+  expect(onMeasure).toHaveBeenLastCalledWith(80);
+  vi.restoreAllMocks();
 });

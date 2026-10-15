@@ -61,13 +61,13 @@ const LEGACY_MODULE_ID = Object.freeze({
 /**
  * @param {string} moduleId
  */
-export function getDockPanelSizing(moduleId, interfaceSize = "small") {
+export function getDockPanelSizing(moduleId, interfaceSize = "small", showAxes = true) {
   const normalized = LEGACY_MODULE_ID[moduleId] ?? moduleId;
   if (normalized === "vectorscope") {
     const { typography } = resolveInterfacePreferences(UI_PREFERENCES, interfaceSize);
     return {
       ...DOCK_PANEL_SIZING_BY_MODULE_ID.vectorscope,
-      minWidth: vectorDockMinWidth(typography.sizesPx.axis),
+      minWidth: vectorDockMinWidth(typography.sizesPx.axis, showAxes),
     };
   }
   return (
@@ -94,7 +94,7 @@ export function normalizeDockPanelSizes(panelsById, raw) {
   const normalized = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return normalized;
   for (const [panelId, panel] of Object.entries(panelsById ?? {})) {
-    const sizing = getDockPanelSizing(panel?.moduleId);
+    const sizing = getDockPanelSizing(panel?.moduleId, "small", false);
     const width = clampDockPanelWidth(raw[panelId], sizing.minWidth, sizing.maxPreferredWidth);
     if (width !== null) normalized[panelId] = width;
   }
@@ -109,10 +109,11 @@ export function resizeDockPanelPair({
   rightWidth,
   delta,
   interfaceSize = "small",
+  showAxes = true,
 }) {
   if (!leftPanel || !rightPanel) return panelSizesById;
-  const leftSizing = getDockPanelSizing(leftPanel.moduleId, interfaceSize);
-  const rightSizing = getDockPanelSizing(rightPanel.moduleId, interfaceSize);
+  const leftSizing = getDockPanelSizing(leftPanel.moduleId, interfaceSize, showAxes);
+  const rightSizing = getDockPanelSizing(rightPanel.moduleId, interfaceSize, showAxes);
   const safeLeft = clampDockPanelWidth(
     Number(leftWidth) || leftSizing.defaultWidth,
     leftSizing.minWidth,

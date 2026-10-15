@@ -78,6 +78,27 @@ describe("DockEditorApp window behavior", () => {
     expect(action).toHaveBeenCalledWith("close-editor");
   });
 
+  it.each([
+    ["Top", "set-edge", { edge: "top" }],
+    ["Off", "restore-window", undefined],
+  ])(
+    "dispatches Dock %s on pointer selection without closing the editor first",
+    (label, type, payload) => {
+      client.payload = { ...PRESETS_PAYLOAD, view: "views", edge: "bottom" };
+      render(<DockEditorApp />);
+      fireEvent.keyDown(screen.getByRole("combobox", { name: "Dock position" }), {
+        key: "ArrowDown",
+      });
+      const option = screen.getByRole("option", { name: label });
+      fireEvent.pointerDown(option);
+      fireEvent.pointerUp(option);
+      fireEvent.click(option);
+      expect(action).not.toHaveBeenCalledWith("close-editor");
+      if (payload) expect(action).toHaveBeenCalledWith(type, payload);
+      else expect(action).toHaveBeenCalledWith(type);
+    }
+  );
+
   it("does not close on focus loss during an active editor drag", () => {
     render(<DockEditorApp />);
     const editor = screen.getByTestId("dock-editor");

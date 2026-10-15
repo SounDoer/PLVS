@@ -69,3 +69,27 @@ describe("useViewSettings", () => {
     });
   });
 });
+
+describe("panel presentation persistence", () => {
+  beforeEach(() => localStorage.clear());
+  it("persists independent surfaces and resolves legacy header writes", () => {
+    const { result, unmount } = renderHook(() => useViewSettings());
+    act(() =>
+      result.current.setPanelPresentation({
+        workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+        dock: { hideAxesAndLabels: false },
+      })
+    );
+    act(() => result.current.setCompactPanels(false));
+    expect(result.current.panelPresentation).toEqual({
+      workspace: { hidePanelHeaders: false, hideAxesAndLabels: true },
+      dock: { hideAxesAndLabels: false },
+    });
+    unmount();
+    const restored = renderHook(() => useViewSettings());
+    expect(restored.result.current.panelPresentation).toEqual({
+      workspace: { hidePanelHeaders: false, hideAxesAndLabels: true },
+      dock: { hideAxesAndLabels: false },
+    });
+  });
+});

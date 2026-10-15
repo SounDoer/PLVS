@@ -451,7 +451,8 @@ export function workspaceReducer(state, action) {
       // A group that already exists keeps its range and the joiner adopts it; the first panel in
       // seeds it from its own. Reading the count with the joiner excluded is what makes re-forming
       // a group after everyone left start from a live value rather than the dormant one.
-      const hasGroup = countLinkedParticipants(state, kindId, panelId) > 0;
+      const hasGroup =
+        countLinkedParticipants({ ...state, dock: action.payload.dock }, kindId, panelId) > 0;
       const controls = state.panelControlsById[panelId];
       const seed = hasGroup
         ? state.axisViewports?.[kindId]

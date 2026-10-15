@@ -87,15 +87,24 @@ export function AgentControlBridge() {
   );
 
   const { view, applyViewState } = useWindowChrome();
-  const { pinned, focusView, surfaceOpacity, glassEnabled } = view;
+  const { pinned, focusView, panelPresentation, surfaceOpacity, glassEnabled } = view;
   const agentControlViewContext = useMemo(
     () => ({
-      view: { pinned, focusView, surfaceOpacity, glassEnabled },
+      view: { pinned, focusView, panelPresentation, surfaceOpacity, glassEnabled },
       platform: runtime.platform,
       docked,
       applyView: applyViewState,
     }),
-    [runtime.platform, applyViewState, docked, focusView, glassEnabled, surfaceOpacity, pinned]
+    [
+      runtime.platform,
+      applyViewState,
+      docked,
+      focusView,
+      panelPresentation,
+      glassEnabled,
+      surfaceOpacity,
+      pinned,
+    ]
   );
 
   const presets = usePresetLibrary();
@@ -525,6 +534,7 @@ export function AgentControlBridge() {
     viewContext: agentControlViewContext,
     dock: agentControlDock,
     dockContext: {
+      sharedFrequencyViewport: workspaceState.axisViewports.frequency,
       platform: runtime.platform,
       ...agentControlAnalysisContext,
       sourceMode,

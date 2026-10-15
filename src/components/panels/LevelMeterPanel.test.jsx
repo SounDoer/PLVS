@@ -125,7 +125,7 @@ describe("LevelMeterPanel", () => {
       },
     });
     const labels = [...container.querySelectorAll("[data-peak-channel-label]")];
-    expect(labels.map((node) => node.textContent)).toEqual(["L", "R"]);
+    expect(labels.map((node) => node.textContent)).toEqual(showAxes ? ["L", "R"] : []);
     for (const label of labels) {
       expect(label.closest("[data-level-meter-channel-axis]")).toBeTruthy();
       expect(label.closest("[data-level-meter-bar-region]")).toBeNull();

@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { DockViews } from "../editors/DockViews.jsx";
 import { DockHeader } from "./DockHeader.jsx";
 
 const STATE = {
@@ -26,11 +27,10 @@ describe("DockHeader", () => {
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       null,
       "Clear",
+      "Device",
       "Loudness Profile",
       "Edit modules",
-      "Stop reserving screen space",
-      "Dock to top",
-      "Restore window",
+      "Views",
       "Presets",
     ]);
     const actions = screen.getByTestId("dock-header-actions");
@@ -109,9 +109,9 @@ describe("DockHeader", () => {
   it("emits a reserve toggle instead of a stale target value", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     const onAction = vi.fn();
-    render(<DockHeader state={STATE} onAction={onAction} />);
+    render(<DockViews state={STATE} onAction={onAction} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Stop reserving screen space" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Reserve Space" }));
 
     expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
   });
@@ -119,8 +119,8 @@ describe("DockHeader", () => {
   it("offers the opt-in reserve action on macOS", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     const onAction = vi.fn();
-    render(<DockHeader state={{ ...STATE, reserveSpace: false }} onAction={onAction} />);
-    fireEvent.click(screen.getByRole("button", { name: "Reserve screen space" }));
+    render(<DockViews state={{ ...STATE, reserveSpace: false }} onAction={onAction} />);
+    fireEvent.click(screen.getByRole("switch", { name: "Reserve Space" }));
     expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
   });
 

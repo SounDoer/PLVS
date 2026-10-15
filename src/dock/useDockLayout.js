@@ -1,3 +1,5 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
+import { settingsStore } from "../persistence/index.js";
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { useCallback, useMemo, useState } from "react";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
@@ -237,6 +239,8 @@ export function useDockLayout() {
         ...current.layout,
         panelSizesById: resizeDockPanelPair({
           interfaceSize: readPersistedInterfaceSize(),
+          showAxes: !normalizePanelPresentation(settingsStore.read().panelPresentation).dock
+            .hideAxesAndLabels,
           panelSizesById: current.layout.panelSizesById,
           leftPanel: current.layout.panelsById[leftPanelId],
           rightPanel: current.layout.panelsById[rightPanelId],

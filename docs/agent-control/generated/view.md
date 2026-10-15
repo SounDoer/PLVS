@@ -13,5 +13,11 @@ Current values, platform writability, and Dock ownership are runtime state and a
 | `focusView.autoHideControls` | boolean | - | `false` | - | - |
 | `focusView.compactPanels` | boolean | - | `false` | - | - |
 | `focusView.borderless` | boolean | - | `false` | - | - |
+| `panelPresentation` | object | - | - | - | - |
+| `panelPresentation.workspace` | object | - | - | - | - |
+| `panelPresentation.workspace.hidePanelHeaders` | boolean | - | `false` | - | - |
+| `panelPresentation.workspace.hideAxesAndLabels` | boolean | - | `false` | - | - |
+| `panelPresentation.dock` | object | - | - | - | - |
+| `panelPresentation.dock.hideAxesAndLabels` | boolean | - | `false` | - | - |
 | `surfaceOpacity` | integer | percent | `100` | 0 to 100 | - |
 | `glassEnabled` | boolean | - | `false` | - | - |

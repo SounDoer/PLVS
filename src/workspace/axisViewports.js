@@ -190,12 +190,18 @@ export function normalizeAxisViewportsState(raw) {
 export function countLinkedParticipants(state, kindId, excludePanelId) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   if (!descriptor) return 0;
-  return Object.keys(state?.panelsById ?? {}).filter((panelId) => {
+  const workspaceCount = Object.keys(state?.panelsById ?? {}).filter((panelId) => {
     if (panelId === excludePanelId) return false;
     const moduleId = state.panelsById[panelId]?.moduleId;
     if (!descriptor.members[moduleId]) return false;
     return state.panelControlsById?.[panelId]?.[descriptor.linkKey] === true;
   }).length;
+  const dockCount = Object.values(state?.dock?.panelsById ?? {}).filter(
+    (panel) =>
+      descriptor.members[panel.moduleId] &&
+      state.dock.controlsByPanelId?.[panel.id]?.[descriptor.linkKey] !== false
+  ).length;
+  return workspaceCount + dockCount;
 }
 
 /**

@@ -80,6 +80,7 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  *   timeMaxWindowSec: number,
  *   timeMaxOffsetSec: number,
  *   platform: any,
+ *   sharedFrequencyViewport?: { min: number, max: number },
  * }} AgentControlDockContext
  *
  * @typedef {{

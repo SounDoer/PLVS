@@ -1,3 +1,4 @@
+import { usePanelChromeData } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "../../components/panels/LevelMeterPanel.jsx";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
 import { PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
@@ -18,7 +19,7 @@ export function DockLevel({ controls }) {
         }}
       >
         <LevelMeterPanel
-          showAxes={false}
+          showAxes={usePanelChromeData()?.hideAxesAndLabels !== true}
           className="px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)] [--ui-meter-label-top-inset:0px] [--ui-chart-inset-top:0px] [--ui-chart-inset-bottom:0px]"
         />
       </PanelInstanceProvider>

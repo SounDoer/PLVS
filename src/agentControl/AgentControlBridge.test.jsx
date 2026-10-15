@@ -81,7 +81,11 @@ vi.mock("../runtime/SourceActionsContext.jsx", () => ({
 }));
 vi.mock("../workspace/WorkspaceContext.jsx", () => ({
   useWorkspaceStore: () => ({
-    state: { panelsById: {}, panelOrder: [] },
+    state: {
+      panelsById: {},
+      panelOrder: [],
+      axisViewports: { frequency: { min: 20, max: 20000 } },
+    },
     replaceWorkspace: () => {},
     setPanelControlsForPanel: () => {},
     waitForWorkspacePersistenceEnqueue: async () => {},
@@ -187,7 +191,11 @@ describe("AgentControlBridge", () => {
     });
     expect(passed.measurementContext.liveState).toBe("stopped");
     expect(typeof passed.measurementContext.getChannelLabels).toBe("function");
-    expect(passed.workspace).toEqual({ panelsById: {}, panelOrder: [] });
+    expect(passed.workspace).toEqual({
+      panelsById: {},
+      panelOrder: [],
+      axisViewports: { frequency: { min: 20, max: 20000 } },
+    });
     expect(typeof passed.replaceWorkspace).toBe("function");
     expect(passed.settings).toEqual({ fromContext: 2 });
     expect(passed.settingsContext).toMatchObject({

@@ -27,7 +27,10 @@ describe("View Control", () => {
         surfaceOpacity: { type: "integer", minimum: 0, maximum: 100, current: 100 },
       },
     });
-    expect(buildViewInspection(current, { platform: "macos" }).view).toEqual(current);
+    expect(buildViewInspection(current, { platform: "macos" }).view).toEqual({
+      ...current,
+      panelPresentation: DEFAULT_VIEW.panelPresentation,
+    });
   });
 
   it("strictly validates and merge-patches Focus View atomically", () => {
@@ -42,8 +45,13 @@ describe("View Control", () => {
         focusView: { autoHideControls: false, compactPanels: true, borderless: false },
         surfaceOpacity: 85,
       },
-      changed: ["view.pinned", "view.focusView.compactPanels", "view.surfaceOpacity"],
-      effects: ["alwaysOnTop", "compactPanels", "surfaceOpacity"],
+      changed: [
+        "view.panelPresentation.workspace.hidePanelHeaders",
+        "view.pinned",
+        "view.focusView.compactPanels",
+        "view.surfaceOpacity",
+      ],
+      effects: ["panelPresentation", "alwaysOnTop", "compactPanels", "surfaceOpacity"],
       issues: [],
     });
     expect(

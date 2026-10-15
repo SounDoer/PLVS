@@ -1,14 +1,25 @@
+import {
+  normalizePanelPresentation,
+  DEFAULT_PANEL_PRESENTATION,
+} from "../lib/panelPresentation.js";
 import { DEFAULT_FOCUS_VIEW } from "../lib/focusView.js";
 import { DEFAULT_GLASS_ENABLED, DEFAULT_SURFACE_OPACITY } from "../settings/defaults.js";
 
 export const DEFAULT_VIEW = Object.freeze({
+  panelPresentation: DEFAULT_PANEL_PRESENTATION,
   pinned: false,
   focusView: Object.freeze({ ...DEFAULT_FOCUS_VIEW }),
   surfaceOpacity: DEFAULT_SURFACE_OPACITY,
   glassEnabled: DEFAULT_GLASS_ENABLED,
 });
 
-const VIEW_FIELDS = new Set(["pinned", "focusView", "surfaceOpacity", "glassEnabled"]);
+const VIEW_FIELDS = new Set([
+  "panelPresentation",
+  "pinned",
+  "focusView",
+  "surfaceOpacity",
+  "glassEnabled",
+]);
 const FOCUS_FIELDS = new Set(["autoHideControls", "compactPanels", "borderless"]);
 
 function isObject(value) {
@@ -29,11 +40,13 @@ export function viewStateSignature(view) {
 }
 
 export function buildPublicView(view) {
+  const panelPresentation = normalizePanelPresentation(view?.panelPresentation, view?.focusView);
   return {
+    panelPresentation,
     pinned: view?.pinned === true,
     focusView: {
       autoHideControls: view?.focusView?.autoHideControls === true,
-      compactPanels: view?.focusView?.compactPanels === true,
+      compactPanels: panelPresentation.workspace.hidePanelHeaders,
       borderless: view?.focusView?.borderless === true,
     },
     surfaceOpacity: view?.surfaceOpacity ?? DEFAULT_SURFACE_OPACITY,
@@ -56,13 +69,23 @@ function availability(context) {
         active: !docked,
         reason: docked ? "dockOwnsWindowPresentation" : null,
       },
-      compactPanels: { writable: true, active: true, reason: null },
+      compactPanels: { writable: true, active: !docked, reason: docked ? "workspaceOnly" : null },
       borderless: {
         writable: true,
         active: !docked,
         reason: docked ? "dockOwnsWindowPresentation" : null,
       },
     },
+    panelPresentation: Object.fromEntries(
+      ["workspace", "dock"].map((surface) => [
+        surface,
+        {
+          writable: true,
+          active: (surface === "dock") === docked,
+          reason: (surface === "dock") === docked ? null : "inactiveSurface",
+        },
+      ])
+    ),
     surfaceOpacity: { writable: true, active: true, reason: null },
     glassEnabled: {
       writable: glassWritable,
@@ -98,6 +121,27 @@ export function buildViewDescription(view, context = {}) {
           [...FOCUS_FIELDS].map((field) => [
             field,
             { type: "boolean", default: false, current: inspection.view.focusView[field] },
+          ])
+        ),
+      },
+      panelPresentation: {
+        type: "object",
+        properties: Object.fromEntries(
+          Object.entries(DEFAULT_PANEL_PRESENTATION).map(([surface, defaults]) => [
+            surface,
+            {
+              type: "object",
+              properties: Object.fromEntries(
+                Object.entries(defaults).map(([key, value]) => [
+                  key,
+                  {
+                    type: "boolean",
+                    default: value,
+                    current: inspection.view.panelPresentation[surface][key],
+                  },
+                ])
+              ),
+            },
           ])
         ),
       },
@@ -149,6 +193,29 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
       nextFocus = { ...current.focusView, ...patch.focusView };
     }
   }
+  const nextPresentation = structuredClone(current.panelPresentation);
+  if ("panelPresentation" in patch) {
+    issues.push(...validatePanelPresentationPatch(patch.panelPresentation));
+    if (isObject(patch.panelPresentation)) {
+      for (const surface of ["workspace", "dock"]) {
+        if (isObject(patch.panelPresentation[surface]))
+          Object.assign(nextPresentation[surface], patch.panelPresentation[surface]);
+      }
+    }
+  }
+  if (typeof patch.focusView?.compactPanels === "boolean") {
+    const canonical = patch.panelPresentation?.workspace?.hidePanelHeaders;
+    if (typeof canonical === "boolean" && canonical !== patch.focusView.compactPanels) {
+      issues.push(
+        issue(
+          "conflictingControls",
+          "$.panelPresentation.workspace.hidePanelHeaders",
+          "Panel header visibility conflicts with compactPanels."
+        )
+      );
+    } else nextPresentation.workspace.hidePanelHeaders = patch.focusView.compactPanels;
+  }
+  nextFocus = { ...nextFocus, compactPanels: nextPresentation.workspace.hidePanelHeaders };
   if (
     "surfaceOpacity" in patch &&
     (!Number.isInteger(patch.surfaceOpacity) ||
@@ -181,12 +248,19 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
   }
 
   const view = {
+    panelPresentation: nextPresentation,
     pinned: "pinned" in patch ? patch.pinned : current.pinned,
     focusView: nextFocus,
     surfaceOpacity: "surfaceOpacity" in patch ? patch.surfaceOpacity : current.surfaceOpacity,
     glassEnabled: "glassEnabled" in patch ? patch.glassEnabled : current.glassEnabled,
   };
   const changed = [];
+  for (const surface of ["workspace", "dock"]) {
+    for (const key of Object.keys(DEFAULT_PANEL_PRESENTATION[surface])) {
+      if (view.panelPresentation[surface][key] !== current.panelPresentation[surface][key])
+        changed.push(`view.panelPresentation.${surface}.${key}`);
+    }
+  }
   if (view.pinned !== current.pinned) changed.push("view.pinned");
   for (const field of FOCUS_FIELDS) {
     if (view.focusView[field] !== current.focusView[field]) changed.push(`view.focusView.${field}`);
@@ -195,6 +269,8 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
   if (view.glassEnabled !== current.glassEnabled) changed.push("view.glassEnabled");
 
   const effects = [];
+  if (changed.some((path) => path.startsWith("view.panelPresentation.")))
+    effects.push("panelPresentation");
   if (changed.includes("view.pinned")) effects.push("alwaysOnTop");
   if (
     changed.includes("view.focusView.autoHideControls") ||
@@ -226,4 +302,33 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
 
 export function planViewReset(current, context = {}) {
   return planViewUpdate(current, DEFAULT_VIEW, context, { allowUnavailableGlassReset: true });
+}
+
+export function validatePanelPresentationPatch(raw, path = "$.panelPresentation") {
+  const issues = [];
+  if (!isObject(raw)) return [issue("invalidType", path, "panelPresentation must be an object.")];
+  for (const [surface, values] of Object.entries(raw)) {
+    if (!Object.hasOwn(DEFAULT_PANEL_PRESENTATION, surface)) {
+      issues.push(issue("unknownControl", `${path}.${surface}`, "Unknown presentation surface."));
+    } else if (!isObject(values)) {
+      issues.push(
+        issue("invalidType", `${path}.${surface}`, "Surface presentation must be an object.")
+      );
+    } else
+      for (const [key, value] of Object.entries(values)) {
+        if (!Object.hasOwn(DEFAULT_PANEL_PRESENTATION[surface], key))
+          issues.push(
+            issue("unknownControl", `${path}.${surface}.${key}`, "Unknown presentation control.")
+          );
+        else if (typeof value !== "boolean")
+          issues.push(
+            issue(
+              "invalidType",
+              `${path}.${surface}.${key}`,
+              "Presentation control must be a boolean."
+            )
+          );
+      }
+  }
+  return issues;
 }

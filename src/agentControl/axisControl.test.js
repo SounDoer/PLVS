@@ -197,3 +197,22 @@ describe("panel Axis Control planning", () => {
     });
   });
 });
+
+it("joining an ordinary panel preserves a group already used by Dock", () => {
+  const workspace = workspaceWith(
+    Object.fromEntries(
+      DEFAULT_WORKSPACE_STATE.panelOrder.map((id) => [id, { linkFrequencyViewport: false }])
+    )
+  );
+  workspace.axisViewports = { ...workspace.axisViewports, frequency: { min: 100, max: 10000 } };
+  const withDock = {
+    ...workspace,
+    dock: {
+      panelsById: { plot: { id: "plot", moduleId: "spectrum" } },
+      controlsByPanelId: { plot: { linkFrequencyViewport: true } },
+    },
+  };
+  const result = planPanelAxisUpdate(withDock, "spectrum", "frequency", { linked: true });
+  expect(result.issues).toEqual([]);
+  expect(result.workspace.axisViewports.frequency).toEqual({ min: 100, max: 10000 });
+});

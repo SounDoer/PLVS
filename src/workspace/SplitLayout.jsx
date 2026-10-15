@@ -410,54 +410,56 @@ function FullscreenOverlay() {
       onKeyDown={(e) => e.key === "Escape" && setFullscreen(null)}
       tabIndex={-1}
     >
-      <div className={PANEL_HEADER_BAR}>
-        <PanelTitleGroup icon={def.Icon} title={resolvePanelDisplayName(state, fullscreenId)} />
-        <div className={PANEL_HEADER_ACTIONS}>
-          <PanelInstanceProvider value={panelInstanceData}>
-            <PanelSettingsMenu
-              panelId={fullscreenId}
-              presentation="fullscreen"
-              activeTab={fullscreenModuleId}
-              panelTitle={resolvePanelDisplayName(state, fullscreenId)}
-              channelCount={chromeData?.channelCount ?? 0}
-              vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
-              stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
-              stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
-              spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
-              spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
-              panelControls={panelControls}
-              onPanelControlsChange={onPanelControlsChange}
-              onPanelControlsReset={onPanelControlsReset}
-            />
-          </PanelInstanceProvider>
-          {helpItems ? <HelpPopover items={helpItems} /> : null}
-          <HoverTip
-            tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
-          >
-            <IconAction
-              className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary")}
-              onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
-              aria-label={
-                isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"
-              }
-              aria-pressed={isPinned}
-              disabled={!isPinned}
+      {!(chromeData?.hidePanelHeaders ?? chromeData?.compactPanels) && (
+        <div className={PANEL_HEADER_BAR}>
+          <PanelTitleGroup icon={def.Icon} title={resolvePanelDisplayName(state, fullscreenId)} />
+          <div className={PANEL_HEADER_ACTIONS}>
+            <PanelInstanceProvider value={panelInstanceData}>
+              <PanelSettingsMenu
+                panelId={fullscreenId}
+                presentation="fullscreen"
+                activeTab={fullscreenModuleId}
+                panelTitle={resolvePanelDisplayName(state, fullscreenId)}
+                channelCount={chromeData?.channelCount ?? 0}
+                vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
+                stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
+                stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
+                spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
+                spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
+                panelControls={panelControls}
+                onPanelControlsChange={onPanelControlsChange}
+                onPanelControlsReset={onPanelControlsReset}
+              />
+            </PanelInstanceProvider>
+            {helpItems ? <HelpPopover items={helpItems} /> : null}
+            <HoverTip
+              tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
             >
-              <Pin className={PANEL_HEADER_PIN_ICON} fill={isPinned ? "currentColor" : "none"} />
+              <IconAction
+                className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary")}
+                onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
+                aria-label={
+                  isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"
+                }
+                aria-pressed={isPinned}
+                disabled={!isPinned}
+              >
+                <Pin className={PANEL_HEADER_PIN_ICON} fill={isPinned ? "currentColor" : "none"} />
+              </IconAction>
+            </HoverTip>
+            <IconAction
+              className={PANEL_HEADER_ACTION_BUTTON}
+              onClick={() => setFullscreen(null)}
+              aria-label="Exit fullscreen"
+            >
+              <Minimize2 className="size-[length:var(--ui-icon-panel-action)]" />
             </IconAction>
-          </HoverTip>
-          <IconAction
-            className={PANEL_HEADER_ACTION_BUTTON}
-            onClick={() => setFullscreen(null)}
-            aria-label="Exit fullscreen"
-          >
-            <Minimize2 className="size-[length:var(--ui-icon-panel-action)]" />
-          </IconAction>
+          </div>
         </div>
-      </div>
+      )}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <PanelInstanceProvider value={panelInstanceData}>
-          <Component compact={chromeData?.compactPanels === true} />
+          <Component />
         </PanelInstanceProvider>
       </div>
     </div>

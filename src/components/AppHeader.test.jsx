@@ -335,7 +335,7 @@ describe("AppHeader", () => {
 
     expect(screen.getByRole("switch", { name: "Always on Top" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Auto-hide Controls" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Compact Panels" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide Panel Headers" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Chrome" })).toBeTruthy();
   });
 

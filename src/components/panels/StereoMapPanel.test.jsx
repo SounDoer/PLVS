@@ -338,8 +338,10 @@ describe("StereoMapPanel", () => {
     // Two valid bands (0 and 1) with an invalid band (2) between them and the grid edge means the
     // curve cannot be one unbroken run: it must render as a single segment (band0-band1), not a
     // curve spanning all three bands. Grid defaults off, so there is one segment stroke/fill.
-    expect(ctx.stroke).toHaveBeenCalledTimes(1);
-    expect(ctx.fill).toHaveBeenCalledTimes(1);
+    // Axis measurement may schedule another paint; each paint still contains only one segment.
+    expect(ctx.clearRect.mock.calls.length).toBeGreaterThan(0);
+    expect(ctx.stroke).toHaveBeenCalledTimes(ctx.clearRect.mock.calls.length);
+    expect(ctx.fill).toHaveBeenCalledTimes(ctx.clearRect.mock.calls.length);
   });
 
   it("shows Hold outlines only when toggled, while accumulation continues underneath", () => {

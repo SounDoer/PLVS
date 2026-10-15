@@ -202,7 +202,7 @@ export function LeafView({ node, path, style }) {
   const leafRef = useRef(null);
   const { dragState, dragLabel, hoverDrop } = useDrag();
   const chromeData = usePanelChromeData();
-  const compactPanels = chromeData?.compactPanels === true;
+  const hidePanelHeaders = (chromeData?.hidePanelHeaders ?? chromeData?.compactPanels) === true;
 
   const visibleTabs = node.tabs.filter((id) => state.panelsById[id]);
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
@@ -339,8 +339,8 @@ export function LeafView({ node, path, style }) {
         <DropPlacementPreview zone={zoneHint} panelTitle={dragLabel} />
       ) : null}
 
-      {/* Slot header: tab bar + action buttons */}
-      {!compactPanels && (
+      {/* Panel Header: tabs and actions */}
+      {!hidePanelHeaders && (
         <div data-leaf-tabs className={PANEL_HEADER_BAR}>
           {/* Tab placement hint */}
           {isDragging && zoneHint === "tabs" && (
@@ -428,7 +428,7 @@ export function LeafView({ node, path, style }) {
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
         {ActiveComponent && (
           <PanelInstanceProvider value={panelInstanceData}>
-            <ActiveComponent compact={compactPanels} />
+            <ActiveComponent />
           </PanelInstanceProvider>
         )}
       </div>

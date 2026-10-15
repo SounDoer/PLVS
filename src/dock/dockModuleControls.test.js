@@ -320,6 +320,7 @@ describe("normalizeDockModuleControls", () => {
       stereoMapEnergyFadePercent: 75,
       stereoMapColorBlendPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
+      linkFrequencyViewport: true,
       stereoMapXMinFreq: 20,
       stereoMapXMaxFreq: 20000,
       stereoMapMonoLossYMinDb: -24,
@@ -343,6 +344,7 @@ describe("normalizeDockModuleControls", () => {
         stereoMapMsRatioYMaxDb: 10,
       })
     ).toEqual({
+      linkFrequencyViewport: true,
       stereoMapPair: { x: 2, y: 3 },
       stereoMapMode: "correlation",
       stereoMapHold: true,
@@ -421,6 +423,8 @@ describe("dockSettingsRows", () => {
         !covered.has(key) &&
         ![
           "linkTimeViewport",
+          "linkFrequencyViewport",
+          "linkFrequencyViewport",
           "historyOffsetSec",
           "loudnessYMinDb",
           "loudnessYMaxDb",

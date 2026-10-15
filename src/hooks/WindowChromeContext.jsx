@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
@@ -16,6 +17,7 @@ import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
 /**
  * @typedef {{
  *   view: {
+ *     panelPresentation?: import("../lib/panelPresentation.js").PanelPresentation,
  *     pinned: boolean,
  *     focusView: import("../lib/focusView.js").FocusView,
  *     surfaceOpacity: number,
@@ -24,6 +26,7 @@ import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
  *   applyViewState: (next: any, options?: { changed?: string[] }) => Promise<void>,
  *   setPinned: (value: boolean) => void,
  *   setAutoHideControls: (value: boolean) => void,
+ *   setPanelPresentation: (value: import("../lib/panelPresentation.js").PanelPresentation) => void,
  *   setCompactPanels: (value: boolean) => void,
  *   setBorderless: (value: boolean) => void,
  *   setSurfaceOpacity: (value: number) => void,
@@ -50,6 +53,8 @@ export function WindowChromeProvider({ children }) {
     setWindowPinned: setPinnedStored,
     focusView,
     setFocusView,
+    panelPresentation: storedPanelPresentation,
+    setPanelPresentation: setPanelPresentationStored,
     surfaceOpacity,
     setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
@@ -57,6 +62,7 @@ export function WindowChromeProvider({ children }) {
     resolvedTheme,
   } = useAppSettings();
   const { docked } = useDock();
+  const panelPresentation = normalizePanelPresentation(storedPanelPresentation, focusView);
 
   // Suspended while docked: a preset apply may flip the stored pin to false
   // while the strip must stay topmost; when docked flips false the effect
@@ -127,6 +133,9 @@ export function WindowChromeProvider({ children }) {
       if (changed.some((path) => path.startsWith("view.focusView."))) {
         setFocusView(next.focusView);
       }
+      if (changed.some((path) => path.startsWith("view.panelPresentation."))) {
+        setPanelPresentationStored(next.panelPresentation);
+      }
       if (changed.includes("view.surfaceOpacity")) {
         setSurfaceOpacityStored(next.surfaceOpacity);
       }
@@ -140,11 +149,17 @@ export function WindowChromeProvider({ children }) {
       resolvedTheme.colorScheme,
       surfaceOpacity,
       setFocusView,
+      setPanelPresentationStored,
       setGlassEnabledStored,
       setSurfaceOpacityStored,
       setPinnedStored,
     ]
   );
+  const setPanelPresentation = (next) =>
+    void applyViewState(
+      { pinned, focusView, surfaceOpacity, glassEnabled, panelPresentation: next },
+      { changed: ["view.panelPresentation.workspace", "view.panelPresentation.dock"] }
+    ).catch(() => {});
   const setPinned = useCallback(
     (/** @type {boolean} */ value) =>
       void applyViewState(
@@ -202,7 +217,8 @@ export function WindowChromeProvider({ children }) {
   const focusViewActive =
     pinned ||
     focusView.autoHideControls ||
-    focusView.compactPanels ||
+    panelPresentation.workspace.hidePanelHeaders ||
+    panelPresentation.workspace.hideAxesAndLabels ||
     focusView.borderless ||
     surfaceOpacity < 100;
   const frameless = focusView.autoHideControls || focusView.borderless;
@@ -214,7 +230,8 @@ export function WindowChromeProvider({ children }) {
   return (
     <WindowChromeContext.Provider
       value={{
-        view: { pinned, focusView, surfaceOpacity, glassEnabled },
+        view: { pinned, focusView, surfaceOpacity, glassEnabled, panelPresentation },
+        setPanelPresentation,
         applyViewState,
         setPinned,
         setAutoHideControls,

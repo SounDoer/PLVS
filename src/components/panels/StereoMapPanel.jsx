@@ -1,3 +1,4 @@
+import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useMemo, useRef } from "react";
 import {
   useFrameData,
@@ -142,7 +143,8 @@ function formatPositionHoldLabel(holdValues, index, range, firstLabel, secondLab
 }
 
 /** @param {{ compact?: boolean, showAxes?: boolean, className?: string }} props */
-export function StereoMapPanel({ showAxes = true, className } = {}) {
+export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
+  const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
   const { channelCount = 0, peakLabelContext, displayAudio } = useFrameData();
   const {
     selectedOffset,
@@ -458,7 +460,7 @@ export function StereoMapPanel({ showAxes = true, className } = {}) {
     return (
       <div
         className={cn(
-          showAxes && PANEL_MIN_SPECTRUM,
+          !fitContainer && PANEL_MIN_SPECTRUM,
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
           className
         )}
@@ -472,7 +474,7 @@ export function StereoMapPanel({ showAxes = true, className } = {}) {
     return (
       <div
         className={cn(
-          showAxes && PANEL_MIN_SPECTRUM,
+          !fitContainer && PANEL_MIN_SPECTRUM,
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
           className
         )}
@@ -485,7 +487,7 @@ export function StereoMapPanel({ showAxes = true, className } = {}) {
   return (
     <div
       className={cn(
-        showAxes && PANEL_MIN_SPECTRUM,
+        !fitContainer && PANEL_MIN_SPECTRUM,
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
         className
       )}
@@ -518,8 +520,8 @@ export function StereoMapPanel({ showAxes = true, className } = {}) {
                 showAxes
                   ? undefined
                   : (node) => {
-                      passiveYAxis.axisRef.current = node;
-                      editableYAxis.axisRef.current = node;
+                      passiveYAxis.axisRef(node);
+                      editableYAxis.axisRef(node);
                     }
               }
               className="relative min-h-0 h-full"
@@ -567,15 +569,6 @@ export function StereoMapPanel({ showAxes = true, className } = {}) {
                   yTicks={yAxisTicks}
                 />
               </div>
-              {!showAxes && mode === STEREO_MAP_MODES.POSITION && (
-                <div
-                  data-testid="dock-stereo-map-pair-labels"
-                  className="pointer-events-none absolute inset-0 flex flex-col justify-between px-1 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-axis)] font-medium leading-none text-muted-foreground"
-                >
-                  <span className="truncate">{firstLabel}</span>
-                  <span className="truncate">{secondLabel}</span>
-                </div>
-              )}
               {stereoMapHover ? (
                 <div className="pointer-events-none absolute inset-0 z-10">
                   <ChartCrosshair leftPct={stereoMapHover.leftPct} />

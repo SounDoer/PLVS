@@ -1,3 +1,6 @@
+import { DockViews } from "../editors/DockViews.jsx";
+import { DockEditorShell } from "../editors/DockEditorShell.jsx";
+import { DeviceSelectionContent } from "../../components/DeviceSelectionContent.jsx";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { POPOVER_SURFACE_CLASS } from "../../components/ui/surfaceStyles.js";
 import { cn } from "../../lib/utils.js";
@@ -225,6 +228,15 @@ export function DockEditorApp() {
         <DockPresetsRow presets={presetController} />
       ) : payload.view === "loudness-profile" ? (
         <DockLoudnessProfileRow profile={loudnessProfileController} />
+      ) : payload.view === "views" ? (
+        <DockViews state={payload} onAction={action} />
+      ) : payload.view === "device" ? (
+        <DockEditorShell title="Device">
+          <DeviceSelectionContent
+            {...payload.device}
+            onSelect={(deviceId) => action("select-device", { deviceId })}
+          />
+        </DockEditorShell>
       ) : panel ? (
         // LoudnessSettingsRows (inside DockModuleSettings for the loudness module) calls
         // useLoudnessProfile(), which throws outside a provider. This accessory boots its own React
@@ -239,6 +251,10 @@ export function DockEditorApp() {
               panel.id
             )}
             controls={payload.controlsByPanelId?.[panel.id]}
+            sharedFrequencyViewport={payload.sharedFrequencyViewport}
+            onSharedFrequencyChange={(viewport) =>
+              action("update-frequency-viewport", { panelId: panel.id, viewport })
+            }
             sharedTimeViewport={payload.sharedTimeViewport}
             onSharedTimeChange={(viewport) =>
               action("update-time-viewport", { panelId: panel.id, viewport })

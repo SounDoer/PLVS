@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { RangeInput } from "@/components/ui/range-input.jsx";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
 import { DEFAULT_SURFACE_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
@@ -14,7 +15,7 @@ import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/u
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { isMacOS } from "@/lib/platform.js";
 
-function FocusSwitch({ id, label, checked, onCheckedChange }) {
+export function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1">
       <Label
@@ -36,6 +37,8 @@ function FocusSwitch({ id, label, checked, onCheckedChange }) {
 
 /**
  * @param {{
+ *   panelPresentation?: import("../lib/panelPresentation.js").PanelPresentation,
+ *   setPanelPresentation?: (value: import("../lib/panelPresentation.js").PanelPresentation) => void,
  *   pinned?: boolean,
  *   setPinned?: (...args: any[]) => any,
  *   focusView?: import("../lib/focusView.js").FocusView,
@@ -53,6 +56,8 @@ function FocusSwitch({ id, label, checked, onCheckedChange }) {
  * }} props
  */
 export function FocusViewPopoverContent({
+  panelPresentation,
+  setPanelPresentation,
   pinned = false,
   setPinned = () => {},
   focusView = DEFAULT_FOCUS_VIEW,
@@ -70,6 +75,7 @@ export function FocusViewPopoverContent({
 }) {
   const normalized = normalizeFocusView(focusView);
   const isMac = isMacOS();
+  const presentation = normalizePanelPresentation(panelPresentation, normalized);
 
   return (
     <div className="grid gap-1">
@@ -82,9 +88,27 @@ export function FocusViewPopoverContent({
       />
       <FocusSwitch
         id="focus-view-compact-panels"
-        label="Compact Panels"
-        checked={normalized.compactPanels}
-        onCheckedChange={setCompactPanels}
+        label="Hide Panel Headers"
+        checked={presentation.workspace.hidePanelHeaders}
+        onCheckedChange={(value) =>
+          setPanelPresentation
+            ? setPanelPresentation({
+                ...presentation,
+                workspace: { ...presentation.workspace, hidePanelHeaders: value },
+              })
+            : setCompactPanels(value)
+        }
+      />
+      <FocusSwitch
+        id="focus-view-hide-axes-labels"
+        label="Hide Axes & Labels"
+        checked={presentation.workspace.hideAxesAndLabels}
+        onCheckedChange={(value) =>
+          setPanelPresentation?.({
+            ...presentation,
+            workspace: { ...presentation.workspace, hideAxesAndLabels: value },
+          })
+        }
       />
       <FocusSwitch
         id="focus-view-borderless"

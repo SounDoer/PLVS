@@ -296,7 +296,7 @@ export function LoudnessHistoryChart({
       <div
         ref={(node) => {
           if (plotAreaRef) plotAreaRef.current = node;
-          if (!showAxes) loudnessYAxis.axisRef.current = node;
+          if (!showAxes) loudnessYAxis.axisRef(node);
         }}
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1",

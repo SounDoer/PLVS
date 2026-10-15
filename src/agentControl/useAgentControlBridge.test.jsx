@@ -1,3 +1,4 @@
+import { DEFAULT_PANEL_PRESENTATION } from "../lib/panelPresentation.js";
 /** @vitest-environment jsdom */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -2207,7 +2208,10 @@ describe("useAgentControlBridge", () => {
       resolvedThemeId: "plvs-dark",
     });
     expect(first.result.loudnessProfile).toEqual({ activeId: null });
-    expect(first.result.view).toEqual(defaultView);
+    expect(first.result.view).toEqual({
+      ...defaultView,
+      panelPresentation: DEFAULT_PANEL_PRESENTATION,
+    });
     expect(first.result).not.toHaveProperty("revisions");
     expect(view.store.state.tree).toBe(initialTree);
 
@@ -2775,7 +2779,7 @@ describe("useAgentControlBridge", () => {
       dryRun: true,
       revision: 0,
       changed: true,
-      effects: ["alwaysOnTop", "compactPanels"],
+      effects: ["panelPresentation", "alwaysOnTop", "compactPanels"],
       state: {
         view: { pinned: true, focusView: { compactPanels: true } },
         preset: { activeId: "preset-1", dirty: true },

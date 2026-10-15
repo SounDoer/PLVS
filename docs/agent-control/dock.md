@@ -207,3 +207,13 @@ Dock analysis requests share and deduplicate matching keys with Workspace panels
 instances. There is no request-count cap or priority eviction. Layout/panel changes may be prepared
 outside Dock and may be made while Dock is active; changing analysis controls does not restart LIVE
 capture or retroactively reanalyze completed FILE sessions.
+
+
+### Frequency linking
+
+Spectrum, Spectrogram and Stereo Map expose `linkFrequency` (default true). Linked Dock panels
+use the same group edited by `axis.shared.update frequency`. `frequencyRangeHz` continues to name
+the stored local range, which is dormant while linked. `panels[].axes.frequency` reports current
+membership and the effective range. Unlinking copies the visible shared range to local controls;
+an explicit `frequencyRangeHz` in the same patch overrides that copy. Re-linking adopts the group.
+These fields round-trip through Dock-enabled Presets and portable Presets.

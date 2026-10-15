@@ -1,3 +1,6 @@
+import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
+import { useSource } from "../runtime/SourceContext.jsx";
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
@@ -39,6 +42,16 @@ const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} 
 export function DockAccessoriesProvider({ children }) {
   const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
   const { historyRetentionSec, interfaceSize } = useAppSettings();
+  const { view, setPanelPresentation } = useWindowChrome();
+  const presentation = normalizePanelPresentation(view.panelPresentation, view.focusView);
+  const {
+    audioOutputs,
+    audioInputs,
+    captureApplications,
+    safeAudioDeviceId,
+    refreshInventory,
+    onSelectCaptureDevice,
+  } = useSource();
   const { sourceMode, running } = useMeterRuntime();
   const { notice, raiseNotice, clearNotice, showClock } = useMeterDisplayState();
   const { sourceTransportState, histSourceList } = useDisplaySnapshot();
@@ -189,10 +202,14 @@ export function DockAccessoriesProvider({ children }) {
       interfaceSize,
       view: dockAccessoryVisibility.editorView,
       edge: dockEdge,
+      reserveSpace,
+      hideAxesAndLabels: presentation.dock.hideAxesAndLabels,
+      device: { audioOutputs, audioInputs, captureApplications, safeAudioDeviceId },
       panels: dockLayout.panels,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
       controlsByPanelId: dockLayout.controlsByPanelId,
+      sharedFrequencyViewport: workspaceState.axisViewports.frequency,
       sharedTimeViewport: {
         ...workspaceState.axisViewports.time,
         maxWindowSec: historyRetentionSec,
@@ -218,8 +235,15 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       interfaceSize,
+      reserveSpace,
+      presentation.dock.hideAxesAndLabels,
+      audioOutputs,
+      audioInputs,
+      captureApplications,
+      safeAudioDeviceId,
       dockAccessoryVisibility.editorView,
       dockEdge,
+      workspaceState.axisViewports.frequency,
       workspaceState.axisViewports.time,
       historyRetentionSec,
       historyTotalSamples,
@@ -248,6 +272,7 @@ export function DockAccessoriesProvider({ children }) {
       else if (type === "clear") clearAll();
       else if (type === "open-editor") {
         setHoveredDockPanelId(null);
+        if (payload.view === "device") void refreshInventory();
         dockAccessoryVisibility.openEditor(payload.view, payload.anchorX);
       } else if (type === "close-editor") {
         setHoveredDockPanelId(null);
@@ -256,7 +281,12 @@ export function DockAccessoriesProvider({ children }) {
         setHoveredDockPanelId(null);
         dockAccessoryVisibility.dismiss();
       } else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
-      else if (type === "set-edge") void onDockChange(payload.edge);
+      else if (type === "set-hide-axes-labels" && typeof payload.value === "boolean") {
+        setPanelPresentation({ ...presentation, dock: { hideAxesAndLabels: payload.value } });
+      } else if (type === "select-device" && typeof payload.deviceId === "string") {
+        void onSelectCaptureDevice(payload.deviceId);
+        dockAccessoryVisibility.closeEditor("device");
+      } else if (type === "set-edge") void onDockChange(payload.edge);
       else if (type === "toggle-reserve-space") {
         clearNotice();
         void toggleReserveSpace().catch((error) =>
@@ -287,6 +317,13 @@ export function DockAccessoriesProvider({ children }) {
         setHoveredDockPanelId(typeof payload.panelId === "string" ? payload.panelId : null);
       } else if (type === "open-module-settings") {
         dockAccessoryVisibility.openEditor(`module:${payload.panelId}`);
+      } else if (type === "update-frequency-viewport") {
+        if (
+          ["spectrum", "spectrogram", "stereo-map"].includes(
+            dockLayout.panelsById[payload.panelId]?.moduleId
+          )
+        )
+          setAxisViewport("frequency", payload.viewport);
       } else if (type === "update-time-viewport") {
         if (
           dockLayout.panelsById[payload.panelId] &&
@@ -332,6 +369,10 @@ export function DockAccessoriesProvider({ children }) {
     },
     [
       setAxisViewport,
+      presentation,
+      setPanelPresentation,
+      refreshInventory,
+      onSelectCaptureDevice,
       clearAll,
       clearNotice,
       dockAccessoryVisibility,

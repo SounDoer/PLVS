@@ -51,20 +51,26 @@ async function updateOrReset(ctx) {
       }
     );
   }
+  const planningWorkspace = { ...workspace, dock: ctx.snap.dock };
   const planned =
     request.method === "axis.shared.update"
-      ? planSharedAxisUpdate(workspace, request.params.kind, request.params.range, analysisContext)
+      ? planSharedAxisUpdate(
+          planningWorkspace,
+          request.params.kind,
+          request.params.range,
+          analysisContext
+        )
       : request.method === "axis.shared.reset"
-        ? planSharedAxisReset(workspace, request.params.kind)
+        ? planSharedAxisReset(planningWorkspace, request.params.kind)
         : request.method === "axis.panel.update"
           ? planPanelAxisUpdate(
-              workspace,
+              planningWorkspace,
               request.params.panelId,
               request.params.kind,
               request.params.patch,
               analysisContext
             )
-          : planPanelAxisReset(workspace, request.params.panelId, request.params.kind);
+          : planPanelAxisReset(planningWorkspace, request.params.panelId, request.params.kind);
   if (planned.issues.length > 0) {
     const target = planned.issues.find(({ code }) =>
       ["panelNotFound", "axisNotFound", "axisUnavailable"].includes(code)

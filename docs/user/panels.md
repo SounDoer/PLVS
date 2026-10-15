@@ -33,8 +33,9 @@ readout to reset the maximum. Scale labels close to a marker fade out so the rea
 
 **Orientation** selects Vertical (the default) or Horizontal bars in both the workspace and Dock.
 Each panel saves its own choice. Channel names occupy a separate label rail below vertical bars or
-to the left of horizontal bars, using the shared annotation text size. The rail remains visible
-in Dock even when numeric axes are hidden. Momentary and Short-term use the same rail for M/ST. Enabling TP Max keeps the per-channel readings visible in both
+to the left of horizontal bars, using the shared annotation text size. Views **Hide Axes & Labels**
+controls this rail together with numeric axes in Workspace and Dock. Momentary and Short-term use
+the same rail for M/ST and follow the same visibility choice. Enabling TP Max keeps the per-channel readings visible in both
 orientations, using the same readout font size; readings shrink to fit narrow bars. Horizontal markers stay inside the
 panel at either end of the range.
 

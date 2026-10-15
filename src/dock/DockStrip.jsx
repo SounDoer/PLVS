@@ -1,6 +1,6 @@
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { getDockPanelSizing } from "./dockPanelSizing.js";
-import { useHistoryData } from "../workspace/AudioDataContext.jsx";
+import { usePanelChromeData, useHistoryData } from "../workspace/AudioDataContext.jsx";
 import { DOCK_MODULE_REGISTRY } from "./registry.jsx";
 import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ export function DockStrip({
   onToolbarToggle,
   recordingState = null,
 }) {
+  const showAxes = usePanelChromeData()?.hideAxesAndLabels !== true;
   const heightMode = dockHeightMode(height);
   const history = useHistoryData();
   const isSnapshot = history?.selectedOffset >= 0;
@@ -95,7 +96,7 @@ export function DockStrip({
                   hoveredPanelId === panel.id && "relative z-10 ring-2 ring-inset ring-primary"
                 )}
                 style={{
-                  minWidth: getDockPanelSizing(panel.moduleId, interfaceSize).minWidth,
+                  minWidth: getDockPanelSizing(panel.moduleId, interfaceSize, showAxes).minWidth,
                   maxWidth: entry.maxPreferredWidth,
                   flex: `${entry.growthPolicy === "flexible" ? 1 : 0} 1 ${basis}px`,
                 }}

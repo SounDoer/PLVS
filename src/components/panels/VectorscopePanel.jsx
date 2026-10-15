@@ -1,3 +1,4 @@
+import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { VECTOR_CORRELATION_MIN_EM } from "../../lib/vectorscopeSizing.js";
 import { cn } from "@/lib/utils";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
@@ -25,8 +26,9 @@ function correlationMarkerClass(value) {
   return "bg-[color:var(--ui-vectorscope-correlation-safe)]";
 }
 
-/** @param {{ compact?: boolean, className?: string }} props */
-export function VectorscopePanel({ compact = false, className } = {}) {
+/** @param {{ compact?: boolean, showAxes?: boolean, className?: string }} props */
+export function VectorscopePanel({ compact = false, showAxes: axesOverride, className } = {}) {
+  const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
   const {
     snapshotMissing,
     isLissajous,
@@ -60,7 +62,7 @@ export function VectorscopePanel({ compact = false, className } = {}) {
     return (
       <div
         className={cn(
-          !compact && PANEL_MIN_SPECTRUM,
+          !fitContainer && !compact && PANEL_MIN_SPECTRUM,
           "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
           className
         )}
@@ -72,7 +74,7 @@ export function VectorscopePanel({ compact = false, className } = {}) {
   return (
     <div
       className={cn(
-        !compact && PANEL_MIN_SPECTRUM,
+        !fitContainer && !compact && PANEL_MIN_SPECTRUM,
         "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
         className
       )}
@@ -84,10 +86,14 @@ export function VectorscopePanel({ compact = false, className } = {}) {
           style={{
             // Reserve the correlation rail, its labels and gaps before fitting the plot.
             // Polar needs a separate pair-label strip; Lissajous labels sit inside its square.
-            width: `min(100cqw, max(var(--vector-plot-width), calc(var(--ui-fs-axis) * ${VECTOR_CORRELATION_MIN_EM})))`,
-            "--vector-plot-width": isLissajous
-              ? "min(100cqw, max(0px, calc(100cqh - 0.75rem - var(--ui-chart-x-axis-row-h) - 2 * var(--ui-chart-axis-gap))))"
-              : "min(100cqw, max(0px, calc(2 * (100cqh - 0.75rem - var(--ui-chart-x-axis-row-h) - var(--ui-fs-axis) - 3 * var(--ui-chart-axis-gap)))))",
+            width: showAxes
+              ? `min(100cqw, max(var(--vector-plot-width), calc(var(--ui-fs-axis) * ${VECTOR_CORRELATION_MIN_EM})))`
+              : "var(--vector-plot-width)",
+            "--vector-plot-width": !showAxes
+              ? `min(100cqw, max(0px, calc(${isLissajous ? 1 : 2} * (100cqh - 0.75rem - var(--ui-chart-axis-gap)))))`
+              : isLissajous
+                ? "min(100cqw, max(0px, calc(100cqh - 0.75rem - var(--ui-chart-x-axis-row-h) - 2 * var(--ui-chart-axis-gap))))"
+                : "min(100cqw, max(0px, calc(2 * (100cqh - 0.75rem - var(--ui-chart-x-axis-row-h) - var(--ui-fs-axis) - 3 * var(--ui-chart-axis-gap)))))",
           }}
         >
           <div
@@ -96,7 +102,8 @@ export function VectorscopePanel({ compact = false, className } = {}) {
             style={{
               width: "var(--vector-plot-width)",
               aspectRatio: isLissajous ? "1 / 1" : "2 / 1",
-              paddingBottom: isLissajous ? 0 : "calc(var(--ui-fs-axis) + var(--ui-chart-axis-gap))",
+              paddingBottom:
+                isLissajous || !showAxes ? 0 : "calc(var(--ui-fs-axis) + var(--ui-chart-axis-gap))",
             }}
           >
             <div
@@ -114,7 +121,7 @@ export function VectorscopePanel({ compact = false, className } = {}) {
                 {isLissajous ? (
                   <>
                     <VectorscopeLissajousGrid
-                      labelSize="var(--ui-fs-axis)"
+                      labelSize={showAxes ? "var(--ui-fs-axis)" : null}
                       labelGap="var(--ui-chart-axis-gap)"
                       labelClassName={ANNOTATION_TEXT}
                       firstLabel={axisXLabel}
@@ -154,7 +161,7 @@ export function VectorscopePanel({ compact = false, className } = {}) {
                 )}
                 {!isLissajous ? (
                   <VectorscopePolarStage
-                    labelSize="var(--ui-fs-axis)"
+                    labelSize={showAxes ? "var(--ui-fs-axis)" : null}
                     labelGap="var(--ui-chart-axis-gap)"
                     labelClassName={ANNOTATION_TEXT}
                     firstLabel={axisXLabel}
@@ -205,22 +212,24 @@ export function VectorscopePanel({ compact = false, className } = {}) {
               )}
             </div>
           </div>
-          <div
-            data-vectorscope-correlation-axis
-            className={cn(
-              CAPTION_TEXT,
-              "font-[family-name:var(--ui-font-mono)] tabular-nums",
-              "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0"
-            )}
-          >
-            <div className="relative h-full w-full" aria-hidden>
-              <span className={axisLabelClass("x", "start")}>-1</span>
-              <span className={axisLabelClass("x", "middle")} style={{ left: "50%" }}>
-                0
-              </span>
-              <span className={axisLabelClass("x", "end")}>+1</span>
+          {showAxes && (
+            <div
+              data-vectorscope-correlation-axis
+              className={cn(
+                CAPTION_TEXT,
+                "font-[family-name:var(--ui-font-mono)] tabular-nums",
+                "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0"
+              )}
+            >
+              <div className="relative h-full w-full" aria-hidden>
+                <span className={axisLabelClass("x", "start")}>-1</span>
+                <span className={axisLabelClass("x", "middle")} style={{ left: "50%" }}>
+                  0
+                </span>
+                <span className={axisLabelClass("x", "end")}>+1</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

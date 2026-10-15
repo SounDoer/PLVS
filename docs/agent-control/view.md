@@ -2,7 +2,7 @@
 
 View Control exposes the persistent working-view state shown in the GUI's Views popover. These
 values are part of the scene captured by Presets, but they are not ordinary global Settings and
-currently have no focused Agent Control surface.
+are managed through this focused Agent Control surface.
 
 ## Commands
 
@@ -25,6 +25,10 @@ View Control uses the same public names already returned by `preset describe`:
     "compactPanels": false,
     "borderless": false
   },
+  "panelPresentation": {
+    "workspace": { "hidePanelHeaders": false, "hideAxesAndLabels": false },
+    "dock": { "hideAxesAndLabels": false }
+  },
   "surfaceOpacity": 100,
   "glassEnabled": false
 }
@@ -34,6 +38,10 @@ View Control uses the same public names already returned by `preset describe`:
   one scene concept does not acquire two public names.
 - `focusView` is merge-patched. Omitted members retain their current values. Each member is a
   boolean.
+- `panelPresentation` is merge-patched per surface and field. Workspace supports headers and
+  annotations; Dock supports annotations only. The target is explicit, independent of active surface.
+  `focusView.compactPanels` is a compatibility alias for Workspace `hidePanelHeaders`; conflicting
+  alias/canonical writes fail atomically.
 - `surfaceOpacity` is an integer percentage from 0 through 100. It changes structural surface
   fills while text, measurement data, state, focus, and borders stay opaque. Strict writes reject fractions,
   numeric strings, and out-of-range values instead of using the persistence loader's rounding and
@@ -60,8 +68,8 @@ While Dock is active, Rust owns topmost state and window chrome. Updates to `pin
 `focusView.autoHideControls`, or `focusView.borderless` remain valid stored-scene changes but do not
 fight the Dock window form. A changed touched field that is dormant for this reason returns a
 `currentlyInactive` warning with reason `dockOwnsWindowPresentation`. The stored values are
-reasserted through the existing Dock exit path. `focusView.compactPanels` and `surfaceOpacity` remain
-ordinary frontend presentation values.
+reasserted through the existing Dock exit path. Workspace header changes remain stored while Dock
+is active. Dock annotations use their own preference. `surfaceOpacity` applies to both surfaces.
 
 View Control does not enter, exit, or reconfigure Dock; that remains exclusively
 [Dock Control](dock.md).

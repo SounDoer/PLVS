@@ -1,3 +1,4 @@
+import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { SPECTRUM_FILL_TOP, SPECTRUM_FILL_BOTTOM } from "@/lib/chartFill.js";
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -108,7 +109,8 @@ function smoothSpectrumResult(previous, next) {
 }
 
 /** @param {{ showAxes?: boolean, className?: string, compact?: boolean }} [props] */
-export function SpectrumPanel({ showAxes = true, className } = {}) {
+export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
+  const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
   const { displayAudio } = useFrameData();
   const {
     selectedOffset,
@@ -765,7 +767,7 @@ export function SpectrumPanel({ showAxes = true, className } = {}) {
           if (historyChartInteractive) setSelectedOffset?.(-1);
         }}
         className={cn(
-          showAxes && PANEL_MIN_SPECTRUM,
+          !fitContainer && PANEL_MIN_SPECTRUM,
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
@@ -777,7 +779,7 @@ export function SpectrumPanel({ showAxes = true, className } = {}) {
   return (
     <div
       className={cn(
-        showAxes && PANEL_MIN_SPECTRUM,
+        !fitContainer && PANEL_MIN_SPECTRUM,
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
         className
       )}
@@ -807,8 +809,8 @@ export function SpectrumPanel({ showAxes = true, className } = {}) {
                 showAxes
                   ? undefined
                   : (element) => {
-                      spectrumXAxis.axisRef.current = element;
-                      spectrumYAxis.axisRef.current = element;
+                      spectrumXAxis.axisRef(element);
+                      spectrumYAxis.axisRef(element);
                     }
               }
               data-testid="spectrum-chart"

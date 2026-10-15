@@ -1,3 +1,4 @@
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
@@ -98,6 +99,8 @@ async function readWindowBounds() {
  * @param {{
  *   windowPinned?: boolean,
  *   setWindowPinned?: (...args: any[]) => any,
+ *   panelPresentation?: import("../lib/panelPresentation.js").PanelPresentation,
+ *   setPanelPresentation?: (...args: any[]) => any,
  *   focusView?: import("../lib/focusView.js").FocusView,
  *   setFocusView?: (...args: any[]) => any,
  *   surfaceOpacity?: number,
@@ -118,6 +121,8 @@ async function readWindowBounds() {
 export function usePresets({
   windowPinned = false,
   setWindowPinned = () => {},
+  panelPresentation,
+  setPanelPresentation = () => {},
   focusView = DEFAULT_FOCUS_VIEW,
   setFocusView = () => {},
   surfaceOpacity = 100,
@@ -222,6 +227,7 @@ export function usePresets({
       axisViewports: normalizeAxisViewportsState(workspaceState.axisViewports),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
+      panelPresentation: normalizePanelPresentation(panelPresentation, focusView),
       surfaceOpacity,
       glassEnabled,
       dock: {
@@ -242,6 +248,7 @@ export function usePresets({
     snapshotLoudnessProfile,
     windowPinned,
     focusView,
+    panelPresentation,
     surfaceOpacity,
     glassEnabled,
     dock,
@@ -408,6 +415,10 @@ export function usePresets({
       if (presetFocusView) {
         setFocusView(presetFocusView);
       }
+      const presentation = normalizePanelPresentation(preset.panelPresentation, presetFocusView);
+      if (!presetDock.enabled)
+        presentation.dock = normalizePanelPresentation(panelPresentation, focusView).dock;
+      setPanelPresentation(presentation);
       if (typeof preset.surfaceOpacity === "number") {
         setSurfaceOpacity(preset.surfaceOpacity);
       }
@@ -422,6 +433,9 @@ export function usePresets({
       setView,
       setWindowPinned,
       setFocusView,
+      setPanelPresentation,
+      panelPresentation,
+      focusView,
       setSurfaceOpacity,
       setGlassEnabled,
       applyDockPreset,

@@ -28,8 +28,8 @@ describe("DockLevel shared renderer", () => {
         levelMeterOrientation: orientation,
         levelMeterTpMaxMarker: false,
       });
-      expect(screen.getByText("L")).toBeTruthy();
-      expect(screen.getByText("R")).toBeTruthy();
+      expect(screen.queryByText("L")).toBeTruthy();
+      expect(screen.queryByText("R")).toBeTruthy();
       expect(screen.getByText("-12.0")).toBeTruthy();
       expect(container.querySelectorAll("[data-level-meter-gradient]")).toHaveLength(2);
     }

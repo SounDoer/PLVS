@@ -148,7 +148,10 @@ export function WorkspaceProvider({ children }) {
       },
       joinAxisViewport: (/** @type {any} */ ...args) => {
         markPresetDirty();
-        bound.joinAxisViewport(...args);
+        dispatch({
+          type: "JOIN_AXIS_VIEWPORT",
+          payload: { kindId: args[0], panelId: args[1], dock: workspaceStore.read().dock },
+        });
       },
       leaveAxisViewport: (/** @type {any} */ ...args) => {
         markPresetDirty();

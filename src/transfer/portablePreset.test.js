@@ -31,7 +31,7 @@ function storedPreset(overrides = {}) {
   };
 }
 
-describe("Portable Preset V1", () => {
+describe("Portable Preset", () => {
   it("exports public semantic content without local identities or host geometry", () => {
     const portable = presetToPortable(storedPreset());
     expect(portable).toMatchObject({
@@ -460,5 +460,52 @@ describe("Portable Preset V1", () => {
       sharesetsPublication: { eligible: true, blockers: [] },
     });
     expect(await hashPortablePreset(portable)).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+});
+
+it("preserves annotation choices and accepts legacy V1 documents", () => {
+  const panelPresentation = {
+    workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+    dock: { hideAxesAndLabels: true },
+  };
+  const portable = presetToPortable(storedPreset({ panelPresentation }));
+  expect(portable.presentation.panelPresentation).toMatchObject({
+    workspace: { hideAxesAndLabels: true },
+    dock: { hideAxesAndLabels: true },
+  });
+  const legacy = structuredClone(portable);
+  legacy.formatVersion = 1;
+  delete legacy.presentation.panelPresentation;
+  expect(
+    portableToStoredPreset(validatePortablePreset(legacy), "legacy").panelPresentation
+  ).toEqual({
+    workspace: { hidePanelHeaders: false, hideAxesAndLabels: false },
+    dock: { hideAxesAndLabels: false },
+  });
+  expect(portableToStoredPreset(portable, "round-trip").panelPresentation).toEqual(
+    panelPresentation
+  );
+});
+
+it("retains Dock frequency membership and local ranges through portable Presets", () => {
+  const raw = storedPreset({
+    dock: {
+      enabled: true,
+      edge: "bottom",
+      height: 128,
+      panelsById: { plot: { id: "plot", moduleId: "spectrum" } },
+      panelOrder: ["plot"],
+      panelSizesById: { plot: 300 },
+      controlsByPanelId: {
+        plot: { linkFrequencyViewport: false, spectrumXMinFreq: 80, spectrumXMaxFreq: 8000 },
+      },
+    },
+  });
+  const portable = presetToPortable(raw);
+  const restored = portableToStoredPreset(portable, "roundtrip");
+  expect(restored.dock.controlsByPanelId[restored.dock.panelOrder[0]]).toMatchObject({
+    linkFrequencyViewport: false,
+    spectrumXMinFreq: 80,
+    spectrumXMaxFreq: 8000,
   });
 });

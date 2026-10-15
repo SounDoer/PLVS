@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AXIS_VIEWPORTS,
+  countLinkedParticipants,
   axisKindsForModule,
   localRangeKeys,
   normalizeAxisViewport,
@@ -140,4 +141,19 @@ describe("local range access", () => {
     expect(readLocalRange("frequency", "waveform", DEFAULT_PANEL_CONTROLS)).toBeNull();
     expect(writeLocalRange("frequency", "waveform", { min: 200, max: 5000 })).toEqual({});
   });
+});
+
+it("counts linked Dock members when deciding whether a shared frequency group exists", () => {
+  expect(
+    countLinkedParticipants(
+      {
+        panelsById: {},
+        dock: {
+          panelsById: { plot: { id: "plot", moduleId: "spectrum" } },
+          controlsByPanelId: { plot: { linkFrequencyViewport: true } },
+        },
+      },
+      "frequency"
+    )
+  ).toBe(1);
 });

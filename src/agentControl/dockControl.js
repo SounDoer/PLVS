@@ -1,3 +1,4 @@
+import { readLocalRange, writeLocalRange } from "../workspace/axisViewports.js";
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { dockHeightMode, DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
 import { createDockPanelId, DOCK_PANEL_MODULE_IDS } from "../dock/dockLayout.js";
@@ -43,6 +44,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "octaveSmoothing",
     "levelRangeDb",
     "frequencyRangeHz",
+    "linkFrequency",
   ]),
   spectrogram: new Set([
     "channel",
@@ -52,6 +54,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "tiltDbPerOctave",
     "dbFloor",
     "frequencyRangeHz",
+    "linkFrequency",
   ]),
   waveform: new Set(["frequencyColor", "frequencyBandsHz", "centroid"]),
   "stereo-map": new Set([
@@ -66,6 +69,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "monoLossFloorDb",
     "msRatioRangeDb",
     "frequencyRangeHz",
+    "linkFrequency",
   ]),
 });
 
@@ -115,6 +119,7 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   const corePatch = { ...patch };
   delete corePatch.readout;
   delete corePatch.frequencyRangeHz;
+  delete corePatch.linkFrequency;
   const planned = planPublicPanelControlPatch(panel.moduleId, current, corePatch, context);
   if (planned.issues.length > 0) return { dock, changed: [], warnings: [], issues: planned.issues };
   // `planned.panelControls` holds only the core panel controls, so the Dock-only ones have to be
@@ -126,6 +131,8 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
     showLabels: current.showLabels,
   });
   const extraIssues = [];
+  if (hasOwn(patch, "linkFrequency") && typeof patch.linkFrequency !== "boolean")
+    extraIssues.push(issue("invalidType", "$.linkFrequency", "linkFrequency must be a boolean."));
   if (hasOwn(patch, "readout")) {
     if (!["live", "truePeakMax", "playbackMax"].includes(patch.readout))
       extraIssues.push(issue("invalidEnum", "$.readout", "readout is invalid."));
@@ -172,6 +179,14 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
     next.levelMeterTpMaxMarker = patch.readout === "truePeakMax";
     next.levelMeterPlaybackMax = patch.readout === "playbackMax";
     next.levelMeterValueMarker = patch.readout === "playbackMax";
+  }
+  if (hasOwn(patch, "linkFrequency")) {
+    next.linkFrequencyViewport = patch.linkFrequency;
+    if (current.linkFrequencyViewport && !patch.linkFrequency && context.sharedFrequencyViewport)
+      Object.assign(
+        next,
+        writeLocalRange("frequency", panel.moduleId, context.sharedFrequencyViewport)
+      );
   }
   if (hasOwn(patch, "frequencyRangeHz")) {
     const prefix =
@@ -402,12 +417,14 @@ function publicControls(panel, raw, context) {
       tiltDbPerOctave: all.tiltDbPerOctave,
       octaveSmoothing: all.octaveSmoothing,
       levelRangeDb: all.levelRangeDb,
+      linkFrequency: normalized.linkFrequencyViewport,
       frequencyRangeHz: { min: normalized.spectrumXMinFreq, max: normalized.spectrumXMaxFreq },
     };
   }
   if (panel.moduleId === "spectrogram") {
     return {
       ...all,
+      linkFrequency: normalized.linkFrequencyViewport,
       frequencyRangeHz: {
         min: normalized.spectrogramYMinFreq,
         max: normalized.spectrogramYMaxFreq,
@@ -426,6 +443,7 @@ function publicControls(panel, raw, context) {
       colorBlendPercent: all.colorBlendPercent,
       monoLossFloorDb: all.monoLossFloorDb,
       msRatioRangeDb: all.msRatioRangeDb,
+      linkFrequency: normalized.linkFrequencyViewport,
       frequencyRangeHz: { min: normalized.stereoMapXMinFreq, max: normalized.stereoMapXMaxFreq },
     };
   }
@@ -452,10 +470,17 @@ function dockControlSchema(panel, raw, context, includeCurrent = false) {
         normalized.levelMeterMode === "peak" ? ["live", "truePeakMax"] : ["live", "playbackMax"],
       effective: true,
     },
+    linkFrequency: {
+      type: "boolean",
+      title: "Link Frequency",
+      description: "Use the shared Workspace frequency viewport.",
+      default: true,
+      effective: true,
+    },
     frequencyRangeHz: {
       type: "object",
       title: "Frequency Range",
-      description: "Stored frequency minimum and maximum.",
+      description: "Stored local frequency range; dormant while Link Frequency is enabled.",
       unit: "Hz",
       default: defaultControls.frequencyRangeHz,
       patchMode: "replace",
@@ -503,6 +528,19 @@ export function buildDockSnapshot(dock, context = {}) {
       if (!panel) return [];
       const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
       const customTitle = panel.customTitle ?? null;
+      const controls = normalizeDockModuleControls(
+        dockControlModuleIdForPanel(panel),
+        dock.controlsByPanelId?.[panel.id]
+      );
+      const localFrequency = readLocalRange("frequency", panel.moduleId, controls);
+      const frequencyAxis = localFrequency
+        ? {
+            linked: controls.linkFrequencyViewport,
+            range: controls.linkFrequencyViewport
+              ? (context.sharedFrequencyViewport ?? localFrequency)
+              : localFrequency,
+          }
+        : null;
       return [
         {
           id: panel.id,
@@ -511,6 +549,7 @@ export function buildDockSnapshot(dock, context = {}) {
           customTitle,
           width: dock.panelSizesById?.[panel.id] ?? sizing.defaultWidth,
           controls: publicControls(panel, dock.controlsByPanelId?.[panel.id], context),
+          ...(frequencyAxis ? { axes: { frequency: frequencyAxis } } : {}),
           analysis: panelAnalysis(dock, panel, context),
         },
       ];

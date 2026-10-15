@@ -25,7 +25,7 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getByText("Views")).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Always on Top" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Auto-hide Controls" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Compact Panels" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide Panel Headers" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Chrome" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Glass" })).toBeTruthy();
   });
@@ -36,6 +36,7 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getAllByRole("switch").map((node) => node.id)).toEqual([
       "focus-view-always-on-top",
       "focus-view-compact-panels",
+      "focus-view-hide-axes-labels",
       "focus-view-borderless",
       "focus-view-auto-hide-controls",
       "focus-view-glass",
@@ -50,6 +51,7 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getAllByRole("switch").map((node) => node.id)).toEqual([
       "focus-view-always-on-top",
       "focus-view-compact-panels",
+      "focus-view-hide-axes-labels",
       "focus-view-borderless",
       "focus-view-auto-hide-controls",
     ]);
@@ -69,9 +71,9 @@ describe("FocusViewPopoverContent", () => {
     expect(
       screen.getByRole("switch", { name: "Auto-hide Controls" }).getAttribute("data-state")
     ).toBe("checked");
-    expect(screen.getByRole("switch", { name: "Compact Panels" }).getAttribute("data-state")).toBe(
-      "unchecked"
-    );
+    expect(
+      screen.getByRole("switch", { name: "Hide Panel Headers" }).getAttribute("data-state")
+    ).toBe("unchecked");
     expect(screen.getByRole("switch", { name: "Hide Chrome" }).getAttribute("data-state")).toBe(
       "unchecked"
     );
@@ -108,7 +110,7 @@ describe("FocusViewPopoverContent", () => {
 
     fireEvent.click(screen.getByRole("switch", { name: "Always on Top" }));
     fireEvent.click(screen.getByRole("switch", { name: "Auto-hide Controls" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Compact Panels" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Hide Panel Headers" }));
     fireEvent.click(screen.getByRole("switch", { name: "Hide Chrome" }));
     fireEvent.click(screen.getByRole("switch", { name: "Glass" }));
 
