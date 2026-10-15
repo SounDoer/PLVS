@@ -83,6 +83,7 @@
     "spike:capture:process": "node scripts/spike-process-capture.mjs",
     "soak:capture": "node scripts/soak-capture.mjs",
     "soak:capture:multi": "node scripts/multi-instance-capture.mjs --instances 2 --seconds 14400 --every 10",
+    "verify:loudness-reference": "cargo test --manifest-path src-tauri/Cargo.toml --lib ffmpeg_reference -- --ignored --nocapture",
     "verify:ui-backpressure": "node scripts/verify-ui-frame-backpressure.mjs",
     "soak:desktop": "node scripts/soak-desktop.mjs",
     "tauri": "tauri",

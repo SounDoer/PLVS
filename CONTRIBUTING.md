@@ -457,6 +457,7 @@ Real-machine verification outside `check`, run manually as needed:
 npm run smoke:file-analysis   # File mode analysis smoke test
 npm run smoke:capture         # real capture smoke test; needs VB-Cable and VLC on the machine
 npm run soak:capture          # long capture run, 4 hours by default; the only check that finds leaks and metric drift
+npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; needs a full FFmpeg (PLVS_REFERENCE_FFMPEG or PATH)
 ```
 
 ## Privacy policy review

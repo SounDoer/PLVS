@@ -4,6 +4,10 @@ pub(crate) mod channel_layouts;
 pub mod channel_sel;
 pub(crate) mod channel_weights;
 pub mod dialogue;
+#[cfg(test)]
+mod ebu_conformance;
+#[cfg(test)]
+mod ffmpeg_reference;
 pub mod filters;
 pub mod gating;
 pub mod loudness;

@@ -35,6 +35,7 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
 | `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the dev app running.         |
 | `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                    |
+| `npm run verify:loudness-reference`    | Loudness meters against FFmpeg `ebur128`. Needs a full FFmpeg, not the sidecar.   |
 | `npm run website:dev`                  | Build, watch and serve the complete website at `127.0.0.1:4173`.                  |
 | `npm run website:build`                | Assemble the complete static website under `artifacts/website/`.                  |
 | `npm run website:check`                | Assemble and validate all local website pages, links and assets.                  |
