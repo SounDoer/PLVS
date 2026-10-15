@@ -76,7 +76,7 @@ function runProbe(processId, { seconds = CAPTURE_SECONDS, sampleRate = 48000, ch
 async function probeFormatMatrix(endpoint, wav) {
   let target = null;
   try {
-    target = startPlayer(endpoint, wav);
+    target = await startPlayer(endpoint, wav);
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
     assertPlayerAlive("Format-matrix target", target);
 
@@ -135,8 +135,8 @@ async function measure(endpoint, wav, withInterference) {
   let target = null;
   let interference = null;
   try {
-    target = startPlayer(endpoint, wav);
-    if (withInterference) interference = startPlayer(endpoint, wav);
+    target = await startPlayer(endpoint, wav);
+    if (withInterference) interference = await startPlayer(endpoint, wav);
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
     assertPlayerAlive("Target", target);
     if (interference) assertPlayerAlive("Interference", interference);

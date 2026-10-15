@@ -74,7 +74,7 @@ export async function launchDesktopPerfRig(options) {
   const userDataFolder = await mkdtemp(join(tmpdir(), "plvs-desktop-perf-"));
   const wav = join(userDataFolder, "signal.wav");
   await synthesizeSignal(wav);
-  const player = startPlayer(resolveRenderEndpointId(), wav);
+  const player = await startPlayer(resolveRenderEndpointId(), wav);
   const app = spawn(options.exe, [], {
     env: {
       ...process.env,

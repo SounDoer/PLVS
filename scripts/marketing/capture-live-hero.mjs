@@ -309,7 +309,7 @@ try {
   await mutate(["transport", "live", "clear"]);
   await mutate(["transport", "live", "start"]);
   capturedState = true;
-  player = startPlayer(endpoint, contained(ROOT, recipe.audio.path));
+  player = await startPlayer(endpoint, contained(ROOT, recipe.audio.path));
   const started = Date.now();
   player.on("error", (error) => {
     report.playerError = error.message;
