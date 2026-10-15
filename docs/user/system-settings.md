@@ -54,8 +54,10 @@ barrier stopped.
 PLVS also keeps one system Tray. Left-clicking its icon shows or hides the main window, while
 right-clicking opens the menu. On macOS, **Show Window** or **Hide Window** in that menu provides the
 same control. Its **Workbenches** submenu uses Source-derived names and can show, start, stop or
-quit a specific running workbench. **Quit PLVS** flushes and closes the complete workbench set;
-quitting one workbench does not close its peers.
+quit a specific running workbench. **Show** brings that workbench to the front, restoring it if
+minimized. A workbench with an open editor or dialog refuses to quit and comes to the front instead,
+so you can finish or close what is open first. **Quit PLVS** flushes and closes the complete
+workbench set; quitting one workbench does not close its peers.
 
 ## Global shortcut
 

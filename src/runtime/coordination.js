@@ -74,6 +74,8 @@ async function handleRuntimeCommand(command, prepared) {
     }
     if (command.action === "quitInstance") {
       if (current.blockingEditors.length) {
+        // The tray has nowhere to explain the refusal, so bring forward the editor that caused it.
+        await Promise.resolve(current.show()).catch(() => {});
         await acknowledge(command, "blocked", current.blockingEditors.join(", "));
         return;
       }

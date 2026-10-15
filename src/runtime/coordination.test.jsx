@@ -143,6 +143,42 @@ describe("runtime coordination", () => {
     unmount();
   });
 
+  it("shows a workbench whose open editor refuses a quit request", async () => {
+    const stop = vi.fn().mockResolvedValue();
+    const show = vi.fn().mockResolvedValue();
+    const command = {
+      commandId: "command-a",
+      operationId: "quit-a",
+      instanceId: "instance-a",
+      action: "quitInstance",
+    };
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_poll_command") return Promise.resolve(command);
+      return Promise.resolve();
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: ["crash-report"],
+        running: true,
+        stop,
+        start: vi.fn(),
+        show,
+      })
+    );
+
+    await act(async () => {});
+
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
+    expect(mocks.exit).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "command-a",
+      outcome: "blocked",
+      detail: "crash-report",
+    });
+    unmount();
+  });
+
   it("restores capture when retiring a quitting workbench fails", async () => {
     const stop = vi.fn().mockResolvedValue();
     const start = vi.fn().mockResolvedValue();

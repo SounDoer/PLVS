@@ -9,7 +9,7 @@ import { useRuntimeCoordination } from "../runtime/coordination.js";
 import { useUiNavigationEnvironment } from "../uiNavigation/UiNavigationContext.jsx";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { DEVELOPMENT_CRASH_REPORT } from "../dev/developmentEventFixtureData.js";
-import { hideAppWindow, toggleAppWindow } from "../lib/windowVisibility.js";
+import { hideAppWindow, showAppWindow, toggleAppWindow } from "../lib/windowVisibility.js";
 import { isTauri } from "../ipc/env.js";
 import { useSceneGuard } from "./SceneGuardContext.jsx";
 import { useWindowChrome } from "./WindowChromeContext.jsx";
@@ -122,18 +122,9 @@ export function AppLifecycleProvider({ children }) {
   const onShowWindow = useCallback(async () => {
     if (!isTauri()) return;
     const window = getCurrentWindow();
-    if (await window.isVisible()) {
-      setWindowVisible(true);
-      return;
-    }
-    await toggleAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-      resumeDock: resumeDockMode,
-    });
+    await showAppWindow({ docked, window, resumeDock: resumeDockMode });
     setWindowVisible(await window.isVisible());
-  }, [docked, resumeDockMode, suspendDockMode]);
+  }, [docked, resumeDockMode]);
 
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
   const { installStatus, downloadProgress, install, restartToApply, resetInstall } =
