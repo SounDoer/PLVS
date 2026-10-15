@@ -10,6 +10,7 @@ const arraysEqual = (left, right) =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
 const LEVEL_METER_FIELDS = new Set([
+  "orientation",
   "mode",
   "playbackMax",
   "floatingValue",
@@ -116,6 +117,8 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
         issues.push(issue("unknownControl", `$.${key}`, `Unknown Level Meter control: ${key}.`));
       }
     }
+    if (hasOwn(patch, "orientation") && !["vertical", "horizontal"].includes(patch.orientation))
+      issues.push(issue("invalidEnum", "$.orientation", "Invalid meter orientation."));
     if (hasOwn(patch, "mode") && !LEVEL_METER_MODES.has(patch.mode)) {
       issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Level Meter mode."));
     }
@@ -149,6 +152,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       changed.push("controls.barColors");
     }
     for (const [publicKey, internalKey] of [
+      ["orientation", "levelMeterOrientation"],
       ["playbackMax", "levelMeterPlaybackMax"],
       ["floatingValue", "levelMeterValueMarker"],
       ["tpMaxMarker", "levelMeterTpMaxMarker"],

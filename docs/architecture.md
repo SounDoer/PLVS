@@ -589,12 +589,25 @@ a generation; the accessory acknowledges that generation after committing its co
 show is allowed. Late acknowledgements cannot reveal a newer presentation. On hide, the accessory
 retains its last visible content until the next reveal so stopped Transport does not flash Start.
 
-Other Dock interactions currently include TP-max reset, live Vectorscope peak-hold reset, and
-Time-window zoom (Waveform / Loudness / Spectrogram: wheel zoom, right double-click reset and a
-window-seconds HUD). Timeline zoom uses `useDockHistoryViewport`, with window width only, no time
-offset, and zoom not anchored at the cursor. Timeline panels display a selection marker over frozen
-history. Value-axis gestures in other panels, timeline panning/scrubbing, and Vectorscope hold-slow
-trails remain follow-up work; their compact layouts remain distinct from the normal workspace.
+Dock Stereo Map embeds `StereoMapPanel` without axis rails, sharing hover, frequency gestures,
+Snapshot selection and all control definitions, including Grid. Vectorscope embeds `VectorscopePanel` with Dock spacing and no panel minimum height. Its
+`useVectorscopeDisplay` controller provides keyed live/frozen data, correlation smoothing,
+Lissajous Hold Slow persistence and Polar Level Max Hold all use one controller. The plot and correlation rail use the same vertical layout at every height.
+
+Dock Level Meter embeds the normal panel, including its independently persisted orientation,
+readouts, colour policy and reset actions. Dock Loudness, Spectrogram and Waveform embed their normal
+panels through `DockTimelinePanel` and `usePanelHistoryData`. They omit numeric axis rails but retain
+the full rendering and gesture model. Spectrogram 3D is available at every height; Loudness has no
+Dock-specific scalar readouts. Stats keeps a compact grid whose columns account for both available
+width and height; rows are never truncated, and vertical overflow scrolls.
+
+Dock timeline controls carry the same `linkTimeViewport`, `historyWindowSec` and `historyOffsetSec`
+fields as normal instances. Linked panels read and write the workspace time viewport. Unlinked
+panels keep their own range, independently of global snapshot selection. The accessory receives a
+serializable shared viewport and routes edits through the workspace owner's `setAxisViewport`;
+unlinking copies the visible range to the Dock instance. No form switch copies ranges into normal
+panel records. Legacy standalone Dock Transport instances are discarded during layout normalization;
+the toolbar remains the transport surface.
 
 ---
 

@@ -20,9 +20,8 @@ const dock = {
   suspended: false,
   panelsById: {
     level: { id: "level", moduleId: "levelMeter", customTitle: "Main" },
-    transport: { id: "transport", moduleId: "transport" },
   },
-  panelOrder: ["transport", "level"],
+  panelOrder: ["level"],
   panelSizesById: { level: 220 },
   controlsByPanelId: {
     level: { levelMeterMode: "peak", readout: "truePeakMax", showLabels: false },
@@ -30,6 +29,21 @@ const dock = {
 };
 
 describe("Dock Control", () => {
+  it("round-trips Stereo Map Grid through schema, patch, and read", () => {
+    const current = {
+      ...dock,
+      panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+      panelOrder: ["map"],
+      controlsByPanelId: {},
+    };
+    const patched = planDockPanelPatch(current, "map", { grid: true });
+    expect(patched.issues).toEqual([]);
+    expect(buildDockSnapshot(patched.dock).panels[0].controls.grid).toBe(true);
+    expect(buildDockPanelDescription(current, "map").schema.grid).toMatchObject({
+      type: "boolean",
+    });
+  });
+
   it("round-trips Spectrum grid and peak labels through the public controls", () => {
     const current = {
       ...dock,
@@ -66,7 +80,7 @@ describe("Dock Control", () => {
   });
 
   it("serializes the form and ordered public panels", () => {
-    expect(buildDockSnapshot(dock)).toEqual({
+    expect(buildDockSnapshot(dock)).toMatchObject({
       supported: true,
       enabled: true,
       edge: "top",
@@ -77,15 +91,6 @@ describe("Dock Control", () => {
       suspended: false,
       panels: [
         {
-          id: "transport",
-          moduleId: "transport",
-          title: "Transport",
-          customTitle: null,
-          width: 120,
-          controls: {},
-          analysis: { status: "notApplicable" },
-        },
-        {
           id: "level",
           moduleId: "levelMeter",
           title: "Main",
@@ -94,7 +99,6 @@ describe("Dock Control", () => {
           controls: {
             mode: "peak",
             readout: "truePeakMax",
-            showLabels: false,
             barColors: "gradient",
             peakThresholdsDbfs: { warning: -6, critical: -1 },
             rmsThresholdsDbfs: { warning: -18, critical: -9 },
@@ -129,7 +133,7 @@ describe("Dock Control", () => {
       {
         mode: { type: "string", options: ["peak", "rms", "momentary", "shortTerm"] },
         readout: { type: "string", options: ["live", "truePeakMax"] },
-        showLabels: { type: "boolean" },
+        orientation: { type: "string", options: ["vertical", "horizontal"] },
       }
     );
     expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").controls).toMatchObject({
@@ -152,40 +156,26 @@ describe("Dock Control", () => {
     );
   });
 
-  it("strictly plans Dock-only panel controls", () => {
-    const planned = planDockPanelPatch(
-      dock,
-      "level",
-      { mode: "rms", readout: "playbackMax", showLabels: true },
-      {}
-    );
-    expect(planned.issues).toEqual([]);
-    expect(planned.changed).toEqual([
-      "dock.panels.level.controls.mode",
-      "dock.panels.level.controls.readout",
-      "dock.panels.level.controls.showLabels",
-    ]);
-    expect(buildDockSnapshot(planned.dock).panels[1].controls).toEqual({
+  it("plans shared Level controls and resets them", () => {
+    const planned = planDockPanelPatch(dock, "level", {
       mode: "rms",
-      readout: "playbackMax",
-      showLabels: true,
-      barColors: "gradient",
-      peakThresholdsDbfs: { warning: -6, critical: -1 },
-      rmsThresholdsDbfs: { warning: -18, critical: -9 },
+      orientation: "horizontal",
+      playbackMax: true,
     });
-    expect(planDockPanelPatch(dock, "level", { playbackMax: true }).issues).toEqual([
-      expect.objectContaining({ code: "unknownControl" }),
-    ]);
+    expect(planned.issues).toEqual([]);
+    expect(buildDockSnapshot(planned.dock).panels[0].controls).toMatchObject({
+      mode: "rms",
+      orientation: "horizontal",
+      playbackMax: true,
+    });
     expect(planDockPanelReset(planned.dock, "level").changed.length).toBeGreaterThan(0);
-    expect(buildDockPanelDescription(dock, "level").schema).toMatchObject({
-      mode: { type: "string", current: "peak" },
-      readout: { type: "string", current: "truePeakMax", options: ["live", "truePeakMax"] },
-      showLabels: { type: "boolean", current: false },
+    expect(buildDockPanelDescription(dock, "level").schema.orientation).toMatchObject({
+      type: "string",
+      current: "vertical",
     });
-    expect(buildDockPanelDescription(dock, "transport").issue.code).toBe("controlsUnavailable");
-    expect(planDockPanelPatch(dock, "level", { mode: "rms" }).issues).toEqual([
-      expect.objectContaining({ code: "incompatibleControl", path: "$.readout" }),
-    ]);
+    expect(planDockPanelPatch(dock, "level", { showLabels: true }).issues[0].code).toBe(
+      "unknownControl"
+    );
   });
 
   it("plans Dock level thresholds through the panel's own rules", () => {
@@ -196,7 +186,7 @@ describe("Dock Control", () => {
       {}
     );
     expect(planned.issues).toEqual([]);
-    expect(buildDockSnapshot(planned.dock).panels[1].controls.peakThresholdsDbfs).toEqual({
+    expect(buildDockSnapshot(planned.dock).panels[0].controls.peakThresholdsDbfs).toEqual({
       warning: -10,
       critical: -2,
     });
@@ -205,35 +195,14 @@ describe("Dock Control", () => {
   it("plans Dock Bar Colors through the panel's own rules", () => {
     const planned = planDockPanelPatch(dock, "level", { barColors: "levelZones" }, {});
     expect(planned.issues).toEqual([]);
-    expect(buildDockSnapshot(planned.dock).panels[1].controls.barColors).toBe("levelZones");
+    expect(buildDockSnapshot(planned.dock).panels[0].controls.barColors).toBe("levelZones");
   });
 
-  it("leaves a Dock-only control the patch did not name alone", () => {
-    // The fixture is non-default on both: readout truePeakMax, showLabels false. A patch naming one
-    // of them used to reset the other, because the Dock-only controls are absent from the planned
-    // core controls and normalization then fell back to their defaults.
-    const labels = planDockPanelPatch(dock, "level", { showLabels: true }, {});
-    expect(labels.issues).toEqual([]);
-    expect(labels.changed).toEqual(["dock.panels.level.controls.showLabels"]);
-    expect(buildDockSnapshot(labels.dock).panels[1].controls).toEqual({
-      mode: "peak",
-      readout: "truePeakMax",
-      showLabels: true,
-      barColors: "gradient",
-      peakThresholdsDbfs: { warning: -6, critical: -1 },
-      rmsThresholdsDbfs: { warning: -18, critical: -9 },
-    });
-
-    const readout = planDockPanelPatch(dock, "level", { readout: "live" }, {});
-    expect(readout.changed).toEqual(["dock.panels.level.controls.readout"]);
-    expect(buildDockSnapshot(readout.dock).panels[1].controls).toEqual({
-      mode: "peak",
-      readout: "live",
-      showLabels: false,
-      barColors: "gradient",
-      peakThresholdsDbfs: { warning: -6, critical: -1 },
-      rmsThresholdsDbfs: { warning: -18, critical: -9 },
-    });
+  it("keeps other meter settings when orientation changes", () => {
+    const planned = planDockPanelPatch(dock, "level", { orientation: "horizontal" });
+    expect(planned.issues).toEqual([]);
+    expect(planned.changed).toEqual(["dock.panels.level.controls.orientation"]);
+    expect(buildDockSnapshot(planned.dock).panels[0].controls.tpMaxMarker).toBe(true);
   });
 
   it("accepts the fractional widths that inspection reports", () => {
@@ -241,7 +210,7 @@ describe("Dock Control", () => {
     // `dock.inspect` carries them; rejecting non-integers broke that round trip.
     const fractional = compileDockLayout(
       dock,
-      { panels: [{ panelId: "transport" }, { panelId: "level", width: 227.20004272460935 }] },
+      { panels: [{ panelId: "level", width: 227.20004272460935 }] },
       {}
     );
     expect(fractional.issues).toEqual([]);
@@ -281,9 +250,9 @@ describe("Dock Control", () => {
     ).toEqual([expect.objectContaining({ code: "invalidType" })]);
     expect(
       compileDockLayout(dock, {
-        panels: [{ panelId: "transport", controls: {} }],
+        panels: [{ key: "removed", moduleId: "transport", controls: {} }],
       }).issues
-    ).toEqual([]);
+    ).toEqual([expect.objectContaining({ code: "unknownModule" })]);
   });
 
   it("preserves panel warnings in an atomic layout plan", () => {

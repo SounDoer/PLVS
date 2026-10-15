@@ -1,3 +1,5 @@
+import { LevelMeterSettings } from "../../components/panel-settings/LevelMeterSettings.jsx";
+import { DockTimeRangeSettings } from "./DockTimeRangeSettings.jsx";
 import { useState } from "react";
 import { LoudnessLayersControl } from "../../components/panel-settings/LoudnessSettings.jsx";
 import { ControlRows } from "../../components/panel-settings/PanelControlRows.jsx";
@@ -9,6 +11,7 @@ import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import {
+  normalizeDockModuleControls,
   dockSettingsRows,
   dockSettingsTab,
   isDefaultDockModuleControls,
@@ -92,28 +95,6 @@ function dockSlots({
   channelCount,
   patch,
 }) {
-  if (moduleId === "level") {
-    const readoutOptions =
-      controls.levelMeterMode === "peak"
-        ? [
-            { value: "live", label: "Live" },
-            { value: "truePeakMax", label: "TP Max" },
-          ]
-        : [
-            { value: "live", label: "Live" },
-            { value: "playbackMax", label: "Playback Max" },
-          ];
-    return {
-      readout: (
-        <SelectField
-          label="level readout"
-          value={controls.readout}
-          options={readoutOptions}
-          onChange={(readout) => patch({ readout })}
-        />
-      ),
-    };
-  }
   if (moduleId === "loudness") {
     return {
       loudnessHistoryVisibleLayerIds: (
@@ -216,6 +197,8 @@ function dockSlots({
  *   spectrumOptions: any[],
  *   channelCount: number,
  *   onChange: (...args: any[]) => any,
+ *   sharedTimeViewport?: any,
+ *   onSharedTimeChange?: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,
  *   onBack: (...args: any[]) => any,
  * }} props
@@ -228,6 +211,8 @@ export function DockModuleSettings({
   spectrumOptions,
   channelCount,
   onChange,
+  sharedTimeViewport,
+  onSharedTimeChange,
   onReset,
   onBack,
 }) {
@@ -251,22 +236,37 @@ export function DockModuleSettings({
       resetIsDefault={isDefaultDockModuleControls(dockModuleId, controls)}
     >
       <div>
-        <SettingsGroup>
-          <ControlRows
-            rows={dockSettingsRows(dockModuleId)}
-            tab={dockSettingsTab(dockModuleId)}
-            controls={controls}
-            onChange={patch}
-            slots={dockSlots({
-              moduleId: dockModuleId,
-              controls,
-              vectorscopeOptions,
-              spectrumOptions,
-              channelCount,
-              patch,
-            })}
+        {dockModuleId === "level" ? (
+          <LevelMeterSettings
+            panelControls={controls}
+            onPanelControlsChange={(next) => onChange(normalizeDockModuleControls("level", next))}
           />
-        </SettingsGroup>
+        ) : (
+          <SettingsGroup>
+            <ControlRows
+              rows={dockSettingsRows(dockModuleId)}
+              tab={dockSettingsTab(dockModuleId)}
+              controls={controls}
+              onChange={patch}
+              slots={dockSlots({
+                moduleId: dockModuleId,
+                controls,
+                vectorscopeOptions,
+                spectrumOptions,
+                channelCount,
+                patch,
+              })}
+            />
+          </SettingsGroup>
+        )}
+        {["loudness", "waveform", "spectrogram"].includes(dockModuleId) && (
+          <DockTimeRangeSettings
+            controls={controls}
+            sharedTimeViewport={sharedTimeViewport}
+            onSharedTimeChange={onSharedTimeChange}
+            onChange={onChange}
+          />
+        )}
       </div>
     </DockEditorShell>
   );

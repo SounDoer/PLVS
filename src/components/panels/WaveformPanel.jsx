@@ -227,7 +227,8 @@ export function drawWaveformCanvas(
   }
 }
 
-export function WaveformPanel() {
+/** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
+export function WaveformPanel({ showAxes = true, className } = {}) {
   const themeColors = useResolvedTheme(selectWaveformCanvasColors);
   const frameData = useFrameData();
   const historyData = useHistoryData();
@@ -238,9 +239,10 @@ export function WaveformPanel() {
     return (
       <div
         className={cn(
-          PANEL_MIN_WAVEFORM,
+          showAxes && PANEL_MIN_WAVEFORM,
           "@container relative flex min-h-0 flex-1 flex-col overflow-hidden",
-          "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+          "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+          className
         )}
       />
     );
@@ -248,6 +250,8 @@ export function WaveformPanel() {
 
   return (
     <WaveformPanelContent
+      showAxes={showAxes}
+      className={className}
       audioData={panelData}
       controls={waveformControls}
       themeColors={themeColors}
@@ -255,7 +259,7 @@ export function WaveformPanel() {
   );
 }
 
-function WaveformPanelContent({ audioData, controls, themeColors }) {
+function WaveformPanelContent({ audioData, controls, themeColors, showAxes, className }) {
   const {
     histSourceList,
     waveformHistoryIndex,
@@ -398,9 +402,10 @@ function WaveformPanelContent({ audioData, controls, themeColors }) {
   return (
     <div
       className={cn(
-        PANEL_MIN_WAVEFORM,
+        showAxes && PANEL_MIN_WAVEFORM,
         "@container relative flex min-h-0 flex-1 flex-col gap-[var(--ui-chart-axis-gap)] overflow-hidden",
-        "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+        className
       )}
     >
       {/* Channel lanes + interaction overlay */}
@@ -534,23 +539,25 @@ function WaveformPanelContent({ audioData, controls, themeColors }) {
         />
       </div>
 
-      <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start gap-[var(--ui-chart-axis-gap)]">
-        <div data-waveform-x-axis-spacer className={cn(W_LOUDNESS_Y_AXIS, "shrink-0")} />
-        <AxisRail
-          axis="x"
-          className="h-full flex-1"
-          interaction={timeAxisInteraction(historyTimeAxisHandlers)}
-          active={historyTimeAxisActive}
-          ticks={(historyTimeTicks ?? []).map((tick, i) => ({
-            // Keyed by slot, not by text. A time label changes on almost every update, so a key
-            // carrying it made React unmount and remount the tick instead of writing its text --
-            // measured at 77 node mutations a second per panel, in three panels.
-            key: i,
-            label: tick,
-            frac: i / HISTORY_TIME_TICK_STEPS,
-          }))}
-        />
-      </div>
+      {showAxes && (
+        <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start gap-[var(--ui-chart-axis-gap)]">
+          <div data-waveform-x-axis-spacer className={cn(W_LOUDNESS_Y_AXIS, "shrink-0")} />
+          <AxisRail
+            axis="x"
+            className="h-full flex-1"
+            interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+            active={historyTimeAxisActive}
+            ticks={(historyTimeTicks ?? []).map((tick, i) => ({
+              // Keyed by slot, not by text. A time label changes on almost every update, so a key
+              // carrying it made React unmount and remount the tick instead of writing its text --
+              // measured at 77 node mutations a second per panel, in three panels.
+              key: i,
+              label: tick,
+              frac: i / HISTORY_TIME_TICK_STEPS,
+            }))}
+          />
+        </div>
+      )}
     </div>
   );
 }

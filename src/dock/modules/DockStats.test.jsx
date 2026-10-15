@@ -90,8 +90,12 @@ describe("DockStats", () => {
   it("renders the normal Stats defaults in canonical order", () => {
     renderWith(METRICS);
     const stats = screen.getAllByTestId("dock-stat");
-    expect(stats).toHaveLength(3);
-    expect(stats.map((row) => row.textContent)).toEqual(["M-18.1", "ST-19.2", "I-20.1"]);
+    expect(stats).toHaveLength(8);
+    expect(stats.slice(0, 3).map((row) => row.textContent)).toEqual([
+      "M-18.1",
+      "ST-19.2",
+      "I-20.1",
+    ]);
     expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 72px)");
 
     expect(stats[0].style.gap).toBe("2px");
@@ -158,7 +162,7 @@ describe("DockStats", () => {
     expect(screen.getByTestId("dock-dialogue-active-dot").getAttribute("data-active")).toBe("true");
   });
 
-  it("shows only three rows worth of metrics and reveals more as width grows", () => {
+  it("retains all metrics as the available width changes", () => {
     const ids = STATS_CANONICAL_ORDER.slice(0, 10);
     const metrics = ids.map((id, index) => ({
       id,
@@ -167,16 +171,24 @@ describe("DockStats", () => {
     }));
     renderWith(metrics, statsControls(ids));
 
-    act(() => triggerResize([{ contentRect: { width: 132 } }]));
+    act(() =>
+      triggerResize([
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 132 } },
+      ])
+    );
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("2");
-    expect(screen.getAllByTestId("dock-stat")).toHaveLength(6);
-    expect(screen.queryByText("6")).toBeNull();
+    expect(screen.getAllByTestId("dock-stat")).toHaveLength(10);
+    expect(screen.queryByText("6")).toBeTruthy();
 
-    act(() => triggerResize([{ contentRect: { width: 204 } }]));
+    act(() =>
+      triggerResize([
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 204 } },
+      ])
+    );
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("3");
-    expect(screen.getAllByTestId("dock-stat")).toHaveLength(9);
+    expect(screen.getAllByTestId("dock-stat")).toHaveLength(10);
     expect(screen.getByText("8")).toBeTruthy();
-    expect(screen.queryByText("9")).toBeNull();
+    expect(screen.queryByText("9")).toBeTruthy();
     const lastVisibleStat = screen.getByText("8").closest("[data-testid='dock-stat']");
     expect(/** @type {HTMLElement} */ (lastVisibleStat)?.style.gridRow).toBe("3");
     expect(/** @type {HTMLElement} */ (lastVisibleStat)?.style.gridColumn).toBe("5");
@@ -191,7 +203,11 @@ describe("DockStats", () => {
     }));
     renderWith(metrics, statsControls(ids));
 
-    act(() => triggerResize([{ contentRect: { width: 420 } }]));
+    act(() =>
+      triggerResize([
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 420 } },
+      ])
+    );
 
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("6");
     expect(screen.getAllByTestId("dock-stat")).toHaveLength(15);
@@ -227,10 +243,36 @@ describe("DockStats", () => {
     }));
     renderWith(metrics, statsControls(ids), {}, "expanded");
 
-    act(() => triggerResize([{ contentRect: { width: 404 } }]));
+    act(() =>
+      triggerResize([
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 404 } },
+      ])
+    );
 
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("5");
     expect(screen.getAllByTestId("dock-stat")).toHaveLength(15);
+  });
+
+  it("refits columns when a cell grows after a text-size change without a window resize", () => {
+    const ids = STATS_CANONICAL_ORDER;
+    renderWith(
+      ids.map((id) => ({ id, shortLabel: STATS_META[id].shortLabel, value: "-18.1" })),
+      statsControls(ids)
+    );
+    const grid = screen.getByTestId("dock-stats-grid");
+    Object.defineProperty(grid, "clientWidth", { value: 420 });
+    Object.defineProperty(grid, "clientHeight", { value: 40 });
+    grid.style.fontSize = "13px";
+    act(() => triggerResize([{ target: grid, contentRect: { width: 420, height: 40 } }]));
+    const before = Number(grid.getAttribute("data-column-count"));
+    grid.style.fontSize = "24px";
+    act(() =>
+      triggerResize([
+        { target: screen.getAllByTestId("dock-stat")[0], contentRect: { width: 100, height: 24 } },
+      ])
+    );
+    expect(Number(grid.getAttribute("data-column-count"))).toBeLessThan(before);
+    expect(screen.getAllByTestId("dock-stat")).toHaveLength(ids.length);
   });
 
   it("renders the empty state when no metrics are selected", () => {

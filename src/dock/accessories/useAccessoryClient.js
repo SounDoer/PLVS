@@ -8,8 +8,15 @@ import {
 import { acceptAccessorySnapshot } from "../accessoryProtocol.js";
 import { applyResolvedThemeToDocument, isThemePublication } from "../../theme/themeRuntime.js";
 
+import {
+  UI_PREFERENCES,
+  applyLayoutToDocument,
+  resolveInterfacePreferencesForSurface,
+} from "../../uiPreferences.js";
+
 export function useAccessoryClient(surface) {
   const revisionRef = useRef(-1);
+  const interfaceSizeRef = useRef(null);
   const [payload, setPayload] = useState(null);
 
   useEffect(() => {
@@ -21,6 +28,19 @@ export function useAccessoryClient(surface) {
       revisionRef.current = accepted.revision;
       if (isThemePublication(accepted.payload.theme)) {
         applyResolvedThemeToDocument(accepted.payload.theme);
+      }
+      if (
+        accepted.payload.interfaceSize !== undefined &&
+        accepted.payload.interfaceSize !== interfaceSizeRef.current
+      ) {
+        interfaceSizeRef.current = accepted.payload.interfaceSize;
+        applyLayoutToDocument(
+          resolveInterfacePreferencesForSurface(
+            UI_PREFERENCES,
+            accepted.payload.interfaceSize,
+            surface
+          )
+        );
       }
       setPayload(accepted.payload);
     }).then((fn) => {

@@ -201,7 +201,7 @@ describe("theme color contract", () => {
     expect(stereoMap).not.toContain("--ui-stereo-map-fill-opacity");
   });
 
-  it("uses fixed classic Waveform fill in both renderers", () => {
+  it("uses fixed classic Waveform fill in the shared renderer", () => {
     const waveform = readFileSync(new URL("../panels/WaveformPanel.jsx", import.meta.url), "utf8");
     const dockWaveform = readFileSync(
       new URL("../../dock/modules/DockWaveform.jsx", import.meta.url),
@@ -213,7 +213,7 @@ describe("theme color contract", () => {
     );
 
     expect(waveform).toContain("WAVEFORM_FILL_OPACITY");
-    expect(dockWaveform).toContain("WAVEFORM_FILL_OPACITY");
+    expect(dockWaveform).toContain("component={WaveformPanel}");
     expect(waveform).not.toContain("--ui-waveform-fill-opacity");
     expect(dockWaveform).not.toContain("--ui-waveform-fill-opacity");
     expect(layoutPublisher).not.toContain("--ui-waveform-fill-opacity");

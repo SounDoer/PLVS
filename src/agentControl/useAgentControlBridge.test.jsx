@@ -105,8 +105,8 @@ const dock = {
   reserveSpace: true,
   height: 72,
   suspended: false,
-  panelsById: { transport: { id: "transport", moduleId: "transport" } },
-  panelOrder: ["transport"],
+  panelsById: { waveform: { id: "waveform", moduleId: "waveform" } },
+  panelOrder: ["waveform"],
   panelSizesById: {},
   controlsByPanelId: {},
 };
@@ -2938,7 +2938,7 @@ describe("useAgentControlBridge", () => {
       revision: 0,
       supported: true,
       enabled: false,
-      panels: [{ id: "transport", moduleId: "transport" }],
+      panels: [{ id: "waveform", moduleId: "waveform" }],
     });
     expect(inspected.result).not.toHaveProperty("presetsRevision");
     expect(described.result).toMatchObject({

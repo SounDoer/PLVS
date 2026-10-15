@@ -329,6 +329,23 @@ const CONTROLS = [
     },
   },
   {
+    key: "levelMeterOrientation",
+    kind: "enum",
+    options: ["vertical", "horizontal"],
+    default: "vertical",
+    ui: {
+      tab: "levelMeter",
+      label: "Orientation",
+      widget: "select",
+      ariaLabel: "level meter orientation",
+      order: 76,
+      options: [
+        { id: "vertical", label: "Vertical" },
+        { id: "horizontal", label: "Horizontal" },
+      ],
+    },
+  },
+  {
     key: "levelMeterPlaybackMax",
     kind: "boolean",
     default: false,

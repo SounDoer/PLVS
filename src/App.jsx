@@ -210,7 +210,6 @@ function AppContent() {
     dockHeight,
     dockPreviewHeight,
     layout: dockLayout,
-    historyViewport: dockHistoryViewport,
     onDockChange,
     onDockHeightChange,
   } = useDock();
@@ -604,7 +603,6 @@ function AppContent() {
         controls: {
           controlsByPanelId: dockLayout.controlsByPanelId,
           onDockPanelControlsChange: dockLayout.setPanelControls,
-          ...dockHistoryViewport,
           sourceTransportState,
           onSourceTransportAction,
           notice,

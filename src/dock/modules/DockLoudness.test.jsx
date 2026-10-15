@@ -1,264 +1,47 @@
 /** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
-import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
+import {
+  HistoryDataProvider,
+  useHistoryData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
 import { DockLoudness } from "./DockLoudness.jsx";
-import { LoudnessHistoryIndex } from "../../math/loudnessHistoryIndex.js";
-
-/**
- * @param {{
- *   displayAudio: any,
- *   histSourceList?: any,
- *   loudnessDisplayIndex?: any,
- *   controls?: any,
- *   heightMode?: string,
- *   referenceLufs?: number,
- *   momentaryRules?: any,
- *   shortTermRules?: any,
- * }} options
- */
-function renderWith({
-  displayAudio,
-  histSourceList = [],
-  loudnessDisplayIndex = null,
-  controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
-  heightMode = "standard",
-  // Null is the Off default: the reference comes from the active Loudness Profile.
-  referenceLufs = null,
-  momentaryRules,
-  shortTermRules,
-}) {
+vi.mock("../../components/panels/LoudnessPanel.jsx", () => ({
+  LoudnessPanel: ({ showAxes }) => {
+    const history = useHistoryData();
+    const { panelControls } = usePanelInstanceData();
+    return (
+      <output data-testid="shared" data-axes={String(showAxes)}>
+        {JSON.stringify({
+          windowSec: history.clampedWindowSec,
+          controls: panelControls,
+          selectedOffset: history.selectedOffset,
+        })}
+      </output>
+    );
+  },
+}));
+function mount(controls) {
   return render(
-    <FrameDataProvider value={{ displayAudio }}>
-      <HistoryDataProvider
-        value={{
-          histSourceList,
-          loudnessDisplayIndex,
-          referenceLufs,
-          momentaryRules,
-          shortTermRules,
-        }}
-      >
-        <DockLoudness controls={controls} heightMode={heightMode} />
-      </HistoryDataProvider>
-    </FrameDataProvider>
+    <HistoryDataProvider
+      value={{ historyWindowSec: 30, historyOffsetSec: 0, selectedOffset: 2, histSourceList: [] }}
+    >
+      <DockLoudness controls={controls} />
+    </HistoryDataProvider>
   );
 }
-
 describe("DockLoudness", () => {
-  it("shows M, ST, and I readouts to the right of history", () => {
-    renderWith({ displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 } });
-
-    const readoutRows = screen.getAllByTestId("dock-loudness-readout");
-    expect(readoutRows.map((node) => node.textContent)).toEqual(["M-18.2", "ST-19.4", "I-20.1"]);
-    const readouts = screen.getByTestId("dock-loudness-readouts");
-
-    expect(readouts.style.gridTemplateColumns).toBe("max-content max-content");
-    expect(readouts.style.columnGap).toBe("var(--ui-dock-gap-column)");
-
-    const history = screen.getByTestId("dock-loudness-history");
-    expect(
-      history.compareDocumentPosition(readouts) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+  it("uses the shared panel without axes and retains snapshot state", () => {
+    mount({});
+    expect(screen.getByTestId("shared").dataset.axes).toBe("false");
+    expect(JSON.parse(screen.getByTestId("shared").textContent).selectedOffset).toBe(2);
   });
-
-  it("lets the history fill the panel when readouts are hidden", () => {
-    renderWith({
-      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
-      controls: {
-        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
-        showReadouts: false,
-      },
-    });
-
-    expect(screen.queryByTestId("dock-loudness-readouts")).toBeNull();
-  });
-
-  it("moves two-line readouts below the history in Expanded mode", () => {
-    renderWith({
-      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
-      heightMode: "expanded",
-    });
-
-    const history = screen.getByTestId("dock-loudness-history");
-    const readouts = screen.getByTestId("dock-loudness-readouts");
-
-    expect(
-      history.compareDocumentPosition(readouts) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(
-      screen.getAllByTestId("dock-expanded-metric-unit").map((node) => node.textContent)
-    ).toEqual(["LUFS", "LUFS", "LUFS"]);
-    expect(screen.getAllByTestId("dock-loudness-readout").map((node) => node.textContent)).toEqual([
-      "M-18.2LUFS",
-      "ST-19.4LUFS",
-      "I-20.1LUFS",
-    ]);
-  });
-
-  it("uses the normal panel's Momentary, Short-term, and Reference layer semantics", () => {
-    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
-    renderWith({
-      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
-      histSourceList: rows,
-      referenceLufs: -23,
-    });
-
-    const momentary = screen.getByTestId("dock-loudness-momentary");
-    const shortTerm = screen.getByTestId("dock-loudness-short-term");
-    expect(momentary.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
-    expect(shortTerm.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
-    // The reference now shows as a guide line rather than tinting the traces.
-    const reference = screen.getByTestId("dock-loudness-reference-line");
-    expect(reference).toBeTruthy();
-    expect(reference.getAttribute("opacity")).toBeNull();
-    expect(
-      Array.from(reference.closest("svg").children)
-        .map((node) => node.getAttribute("data-testid"))
-        .filter(Boolean)
-    ).toEqual([
-      "dock-loudness-reference-line",
-      "dock-loudness-short-term",
-      "dock-loudness-momentary",
-    ]);
-  });
-
-  it("tints the momentary trace with a gradient when its own rule breaches", () => {
-    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
-    renderWith({
-      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
-      histSourceList: rows,
-      momentaryRules: [{ metricId: "momentary", op: ">", value: -10, severity: "fail" }],
-    });
-
-    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("stroke")).toMatch(/^url\(#/);
-  });
-
-  it("keeps the history paths advancing after the live ring fills", () => {
-    const histSourceList = [
-      { m: -20, st: -21, timestampMs: 1000 },
-      { m: -20, st: -21, timestampMs: 1100 },
-      { m: -20, st: -21, timestampMs: 1200 },
-      { m: -20, st: -21, timestampMs: 1300 },
-    ];
-    const displayAudio = { momentary: -20, shortTerm: -21, integrated: -22 };
-    const view = renderWith({ displayAudio, histSourceList });
-    const firstMomentaryPath = screen.getByTestId("dock-loudness-momentary").getAttribute("d");
-    const firstShortTermPath = screen.getByTestId("dock-loudness-short-term").getAttribute("d");
-
-    histSourceList.shift();
-    histSourceList.push({ m: -6, st: -8, timestampMs: 1400 });
-    view.rerender(
-      <FrameDataProvider value={{ displayAudio }}>
-        <HistoryDataProvider value={{ histSourceList }}>
-          <DockLoudness controls={DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness} />
-        </HistoryDataProvider>
-      </FrameDataProvider>
-    );
-
-    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("d")).not.toBe(
-      firstMomentaryPath
-    );
-    expect(screen.getByTestId("dock-loudness-short-term").getAttribute("d")).not.toBe(
-      firstShortTermPath
-    );
-  });
-
-  it("uses output-bounded indexed reads with a full retained history", () => {
-    const capacity = 144_000;
-    const rows = Array.from({ length: capacity }, (_, sequence) => ({
-      m: -30 + (sequence % 17),
-      st: -32 + (sequence % 19),
-      timestampMs: sequence * 100,
-    }));
-    const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
-    rows.forEach((row) => loudnessDisplayIndex.append(row));
-    const vectorQuery = vi.spyOn(loudnessDisplayIndex._index, "queryRange");
-    let rowReads = 0;
-    const histSourceList = {
-      length: rows.length,
-      rowAt(index) {
-        rowReads += 1;
-        return rows[index];
-      },
-    };
-
-    renderWith({
-      displayAudio: { momentary: -20, shortTerm: -21, integrated: -22 },
-      histSourceList,
-      loudnessDisplayIndex,
-    });
-
-    expect(rowReads).toBeLessThanOrEqual(4 * 120 + 2);
-    expect(loudnessDisplayIndex.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
-      120 * (2 * Math.ceil(Math.log2(capacity)) + 2)
-    );
-    expect(vectorQuery).toHaveBeenCalledTimes(120);
-  });
-
-  it("hides unselected history layers and disables the reference gradient", () => {
-    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
-    renderWith({
-      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
-      histSourceList: rows,
-      referenceLufs: -23,
-      controls: {
-        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
-        loudnessHistoryVisibleLayerIds: ["momentary"],
-      },
-    });
-
-    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("stroke")).toBe(
-      "var(--ui-loudness-momentary)"
-    );
-    expect(screen.queryByTestId("dock-loudness-short-term")).toBeNull();
-  });
-
-  it("drops the reference gradient when no profile is active, whatever the layer ids say", () => {
-    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
-    renderWith({
-      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
-      histSourceList: rows,
-      referenceLufs: null,
-    });
-
-    // `ref` is still in the default layer ids; the null reference is what silences it.
-    expect(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness.loudnessHistoryVisibleLayerIds).toContain(
-      "ref"
-    );
-    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("stroke")).toBe(
-      "var(--ui-loudness-momentary)"
-    );
-  });
-
-  it("uses the configured Y range and renders dashes for non-finite readouts", () => {
-    const rows = [
-      { m: -48, st: -40 },
-      { m: -24, st: -20 },
-    ];
-    const controls = {
-      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
-      loudnessYMinDb: -48,
-      loudnessYMaxDb: -12,
-    };
-    renderWith({
-      displayAudio: { momentary: -Infinity, shortTerm: -Infinity, integrated: -Infinity },
-      histSourceList: rows,
-      controls,
-    });
-
-    expect(screen.getAllByText("-")).toHaveLength(3);
-    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("d")).toContain("60");
-  });
-
-  it("marks Ch1/Ch2 loudness when the layout is not recognized", () => {
-    renderWith({ displayAudio: { integrated: -20, loudnessLayoutKnown: false } });
-    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
-  });
-
-  it("does not mark loudness while the layout is known", () => {
-    renderWith({ displayAudio: { integrated: -20, loudnessLayoutKnown: true } });
-    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
+  it("uses the shared time window by default and keeps an unlinked local window", () => {
+    const view = mount({ linkTimeViewport: false, historyWindowSec: 12, historyOffsetSec: 0 });
+    expect(JSON.parse(screen.getByTestId("shared").textContent).windowSec).toBe(12);
+    view.unmount();
+    mount({ historyWindowSec: 12 });
+    expect(JSON.parse(screen.getByTestId("shared").textContent).windowSec).toBe(30);
   });
 });

@@ -9,7 +9,7 @@ const WARN_CHIP_BORDER = "border border-transparent";
 /**
  * Shown wherever loudness is read out while the engine measured Ch1/Ch2 of an unrecognized
  * channel layout. `known` is `loudnessLayoutKnown`; only an explicit `false` shows the marker.
- * `dense` swaps to Dock caption typography for Dock surfaces.
+ * `dense` uses a sans-serif caption for compact surfaces.
  */
 /** @param {{ known: boolean, dense?: boolean, className?: string }} props */
 export function LoudnessLayoutMarker({ known, dense = false, className }) {
@@ -29,7 +29,7 @@ export function LoudnessLayoutMarker({ known, dense = false, className }) {
           WARN_CHIP_BG,
           WARN_CHIP_BORDER,
           dense
-            ? "px-1 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium"
+            ? "px-1 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-caption)] font-medium"
             : "px-1 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)]"
         )}
       >

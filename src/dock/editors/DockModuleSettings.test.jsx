@@ -40,7 +40,14 @@ describe("DockModuleSettings", () => {
     expect(screen.getByLabelText(label)).toBeTruthy();
   });
 
-  it.each(["loudness", "spectrogram", "stereoMap", "waveform"])(
+  it("exposes Stereo Map Grid using the shared control row", () => {
+    const controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap;
+    const onChange = renderSettings("stereoMap", { controls });
+    fireEvent.click(screen.getByLabelText("stereo map grid"));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, stereoMapGrid: true });
+  });
+
+  it.each(["spectrogram", "waveform"])(
     "keeps optional Grid out of compact %s settings",
     (moduleId) => {
       renderSettings(moduleId);
@@ -131,17 +138,13 @@ describe("DockModuleSettings", () => {
     });
   });
 
-  it("uses the shared Live and Labels controls for scalar Level modes", () => {
-    const controls = { levelMeterMode: "shortTerm", readout: "live", showLabels: true };
-    const onChange = renderSettings("level", { controls });
-
-    fireEvent.click(screen.getByLabelText("level readout"));
-    expect(screen.getByRole("option", { name: "Live" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Playback Max" })).toBeTruthy();
-    expect(screen.queryByRole("option", { name: "Live Peak" })).toBeNull();
-
-    fireEvent.click(screen.getByLabelText("show level labels"));
-    expect(onChange).toHaveBeenCalledWith({ ...controls, showLabels: false });
+  it("offers the same orientation in every Level mode", () => {
+    const onChange = renderSettings("level");
+    fireEvent.click(screen.getByLabelText("level meter orientation"));
+    fireEvent.click(screen.getByRole("option", { name: "Horizontal" }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ levelMeterOrientation: "horizontal" })
+    );
   });
 
   it("reuses the normal Loudness Layers and Loudness Range settings", () => {
@@ -159,11 +162,7 @@ describe("DockModuleSettings", () => {
     expect(
       /** @type {HTMLInputElement} */ (screen.getByLabelText("loudness range max")).value
     ).toBe("0");
-    const settingsRows = screen.getByText("Readouts").closest("div")?.parentElement?.children;
-    expect(settingsRows?.[settingsRows.length - 1]?.textContent).toContain("Readouts");
-
-    fireEvent.click(screen.getByLabelText("show loudness readouts"));
-    expect(onChange).toHaveBeenCalledWith({ ...controls, showReadouts: false });
+    expect(screen.queryByText("Readouts")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Edit layers" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));

@@ -1,7 +1,4 @@
 .dock-strip {
-  --ui-dock-fs-label: 9px;
-  --ui-dock-fs-caption: 9px;
-  --ui-dock-fs-value: 13px;
   --ui-dock-pad-x: 6px;
   --ui-dock-pad-y: 4px;
   --ui-dock-gap-region: 5px;
@@ -14,9 +11,6 @@
 
 @media (max-height: 63px) {
   .dock-strip {
-    --ui-dock-fs-label: 8px;
-    --ui-dock-fs-caption: 8px;
-    --ui-dock-fs-value: 11px;
     --ui-dock-pad-x: 5px;
     --ui-dock-pad-y: 3px;
     --ui-dock-gap-region: 4px;
@@ -28,9 +22,6 @@
 
 @media (min-height: 120px) {
   .dock-strip {
-    --ui-dock-fs-label: 10px;
-    --ui-dock-fs-caption: 10px;
-    --ui-dock-fs-value: 15px;
     --ui-dock-pad-x: 8px;
     --ui-dock-pad-y: 6px;
     --ui-dock-gap-region: 7px;

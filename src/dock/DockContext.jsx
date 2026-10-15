@@ -8,13 +8,11 @@ import { isTauri } from "../ipc/env.js";
 import { errorDetails } from "../lib/errorDetails.js";
 import { reportSceneOperationError } from "../lib/sceneOperationNotice.js";
 import { useDockLayout } from "./useDockLayout.js";
-import { useDockHistoryViewport } from "./useDockHistoryViewport.js";
 
 /**
  * @typedef {ReturnType<typeof useDockMode> & {
  *   docked: boolean,
  *   layout: ReturnType<typeof useDockLayout>,
- *   historyViewport: ReturnType<typeof useDockHistoryViewport>,
  *   exitDockRestoringAttributes: (options?: {
  *     reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any, origin?: string,
  *   }) => Promise<{ ok: boolean, error: any }>,
@@ -34,7 +32,7 @@ const DockContext = createContext(/** @type {DockOwner | null} */ (null));
  */
 export function DockProvider({ children }) {
   const { assertSceneOperationAllowed } = useSceneGuard();
-  const { focusView, windowPinned: pinned, historyRetentionSec } = useAppSettings();
+  const { focusView, windowPinned: pinned } = useAppSettings();
   const { clearNotice, raiseNotice } = useMeterDisplayState();
 
   useEffect(() => {
@@ -156,7 +154,6 @@ export function DockProvider({ children }) {
     [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice]
   );
 
-  const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
   const executeDockForControl = useCallback(
     async (/** @type {string} */ method, projected) => {
       if (method === "dock.enter") {
@@ -217,7 +214,6 @@ export function DockProvider({ children }) {
         resumeDockMode,
         docked,
         layout: dockLayout,
-        historyViewport: dockHistoryViewport,
         exitDockRestoringAttributes,
         onDockChange,
         onDockHeightChange,

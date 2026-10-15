@@ -83,8 +83,8 @@ registration errors currently swallowed by the GUI-oriented shortcut hook.
 ## Interface size
 
 `interfaceSize` accepts exactly `small`, `default`, `large`, or `extra-large`, with `default` as the
-default. It immediately changes text and related icon sizing in the normal UI but does not affect
-Dock. It is global Settings state, is not captured by Presets, does not dirty a Preset, has no dynamic
+default. It immediately changes text in normal and Dock surfaces, plus related icon sizing in the
+normal UI. Dock accessory windows retain compact geometry and icons. It is global Settings state, is not captured by Presets, does not dirty a Preset, has no dynamic
 availability, and remains writable while either current draft editor is open. A no-op does not
 reapply document sizing, and successful mutation waits for persistence.
 

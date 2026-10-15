@@ -1,4 +1,3 @@
-export const DOCK_STATS_MAX_ROWS = 3;
 export const DOCK_STATS_MIN_CELL_WIDTH_PX = 60;
 export const DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX = 72;
 export const DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX = 64;
@@ -24,11 +23,10 @@ export function computeDockStatsColumnCount(
 }
 
 /**
- * @param {number} columnCount
+ * @param {number} _columnCount
  */
-export function visibleDockStats(metrics, columnCount) {
-  const columns = Math.max(1, Math.floor(Number(columnCount) || 1));
-  return metrics.slice(0, columns * DOCK_STATS_MAX_ROWS);
+export function visibleDockStats(metrics, _columnCount) {
+  return metrics;
 }
 
 /**
@@ -61,4 +59,11 @@ export function dockStatsGridTemplate(
   return Array.from({ length: columns }, (_, columnIndex) =>
     columnIndex < columns - 1 ? `${metricTrack} ${groupGap}` : metricTrack
   ).join(" ");
+}
+
+/** Choose readable columns using both dimensions; overflow is handled by the scroll container. */
+export function fitDockStatsColumns(width, height, count, minCellWidth, minRowHeight) {
+  const maxColumns = computeDockStatsColumnCount(width, undefined, minCellWidth);
+  const rows = Math.max(1, Math.floor(height / minRowHeight));
+  return Math.min(maxColumns, Math.max(1, Math.ceil(count / rows)));
 }

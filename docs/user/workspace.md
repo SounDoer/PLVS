@@ -103,8 +103,23 @@ and the new height is saved when you release the pointer. Height starts at 56 pi
 beyond 160 pixels, up to the current display's available space minus room for the toolbar and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 
+Dock text follows **Interface Size**, using the same readout and label sizes as the normal
+workspace. Resizing the strip changes the available chart space and spacing, not the font size.
+The toolbar and panel settings also follow the selected text size. Stats adapts its columns and
+rows to the available space and text size, with scrolling when all selected readings cannot fit.
+
 Spectrum shares the normal panel's range zoom/pan, press-and-hold smoothing, and Max Hold
 contour-click reset. Grid, Peak Labels and hover readouts remain available at every Dock height. X/Y axes stay hidden.
+
+Stereo Map also shares the normal panel's Grid, hover readout, frequency zoom and pan, and
+click-to-Snapshot / double-click-to-Live gestures. Its X/Y axes stay hidden; Position retains
+compact channel labels. Mono input shows the same explanatory message as the normal panel.
+Vectorscope uses the normal panel layout at every Dock height: the plot above the correlation
+rail, without a separate numeric readout. It shares Lissajous Hold Slow,
+Polar Sample persistence, and Polar Level Max Hold with the normal panel. Hold the Lissajous
+plot to slow its display; click Polar Level to clear Max Hold. These gestures do not enter Snapshot.
+Both panels display the shared Snapshot selection, and their settings remain independent of
+normal workspace instances.
 Dock keeps its own layout and panel settings, using the same Spectrum chart and interactions as
 the workspace.
 
@@ -115,7 +130,17 @@ opened automatically for Snapshot, even if you hide and reopen it during the sna
 you had already opened before Snapshot stays open. The snapshot is shared by all Dock panels, and capture continues in the
 background. Switching between Dock and the normal window preserves the selected snapshot. A view
 without retained data at that time shows an empty state instead of falling back to live data.
-Time-based panels keep their Dock window layout and show the selection against frozen history.
+Loudness, Spectrogram and Waveform share the normal panels' renderers, settings and history
+interactions, with X/Y axes hidden. Loudness has no extra Dock readouts. Spectrogram offers 2D
+and 3D at every height. Their Time Range is linked to the workspace by default, so switching forms
+preserves the window and offset. Unlink Time Range to keep that Dock panel's own range; normal
+panels with an unlinked range remain independent. Snapshot selection is shared regardless of linking.
+
+Level Meter uses the same settings and layout in both forms, including Vertical or Horizontal
+Orientation. Stats adjusts its column and row counts to the available width and height; when all
+selected metrics cannot fit legibly, scroll within Stats to see the remaining rows. No selected
+metric is dropped. The separate Timecode module has been removed; use the toolbar's Transport
+readout and actions. Saved layouts automatically discard old Timecode instances.
 
 When several PLVS workbenches use Dock, only one can reserve a particular monitor edge on Windows,
 or a particular monitor on macOS.

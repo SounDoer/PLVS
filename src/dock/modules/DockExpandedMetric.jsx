@@ -50,7 +50,7 @@ export function DockExpandedMetric({
     >
       <span
         data-loudness-watched={loudnessWatched == null ? undefined : String(loudnessWatched)}
-        className={`flex max-w-full items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${labelClassName}`}
+        className={`flex max-w-full items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-none ${labelClassName}`}
       >
         {indicator}
         <span className="min-w-0 truncate">{label}</span>
@@ -59,14 +59,14 @@ export function DockExpandedMetric({
         <span
           data-stat-value={statId}
           data-loudness-status={loudnessStatus}
-          className={`shrink-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold tabular-nums ${valueClassName}`}
+          className={`shrink-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-value)] font-semibold tabular-nums ${valueClassName}`}
         >
           {value}
         </span>
         {showUnit ? (
           <span
             data-testid="dock-expanded-metric-unit"
-            className={`shrink-0 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium text-muted-foreground ${unitVisibilityClass}`}
+            className={`shrink-0 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium text-muted-foreground ${unitVisibilityClass}`}
           >
             {unit}
           </span>

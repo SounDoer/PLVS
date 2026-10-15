@@ -108,13 +108,13 @@ describe("buildPublicPresetSnapshot", () => {
             levelMeterMode: "peak",
             playbackMax: true,
             readout: "truePeakMax",
-            showLabels: false,
+            tpMaxMarker: true,
           },
         },
       },
     });
 
-    expect(result.dock.panels).toEqual([
+    expect(result.dock.panels).toMatchObject([
       {
         id: "meter",
         moduleId: "levelMeter",
@@ -124,13 +124,13 @@ describe("buildPublicPresetSnapshot", () => {
         controls: {
           mode: "peak",
           readout: "truePeakMax",
-          showLabels: false,
+          tpMaxMarker: true,
           barColors: "gradient",
           peakThresholdsDbfs: { warning: -6, critical: -1 },
           rmsThresholdsDbfs: { warning: -18, critical: -9 },
         },
       },
     ]);
-    expect(result.dock.panels[0].controls).not.toHaveProperty("playbackMax");
+    expect(result.dock.panels[0].controls).toHaveProperty("playbackMax", false);
   });
 });

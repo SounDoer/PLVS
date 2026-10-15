@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Settings2, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "../../components/InlineConfirm.jsx";
 import {
   MANAGEMENT_ROW_ACTIONS_CLASS,
@@ -23,12 +23,7 @@ import { ResetAction } from "../../components/ResetAction.jsx";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { MenuRow } from "@/components/ui/row";
 
-const DOCK_ONLY_PANEL_META = {
-  transport: {
-    title: "Timecode",
-    Icon: Timer,
-  },
-};
+const DOCK_ONLY_PANEL_META = {};
 
 export const reorderDockModulesAtPointer = reorderIdsAtPointer;
 
@@ -155,23 +150,7 @@ function buildDisplayState(panels) {
 /**
  * @param {string} panelId
  */
-function resolveDockPanelDisplayName(state, panelId) {
-  const panel = state.panelsById[panelId];
-  if (panel?.moduleId !== "transport") return resolvePanelDisplayName(state, panelId);
-
-  const customTitle = String(panel.customTitle ?? "").trim();
-  if (customTitle) return customTitle;
-
-  const unnamedIds = state.panelOrder.filter((id) => {
-    const candidate = state.panelsById[id];
-    return candidate?.moduleId === "transport" && !String(candidate.customTitle ?? "").trim();
-  });
-  if (unnamedIds.length <= 1) return DOCK_ONLY_PANEL_META.transport.title;
-  const index = unnamedIds.indexOf(panelId);
-  return index >= 0
-    ? `${DOCK_ONLY_PANEL_META.transport.title} ${index + 1}`
-    : DOCK_ONLY_PANEL_META.transport.title;
-}
+const resolveDockPanelDisplayName = resolvePanelDisplayName;
 
 /**
  * @param {{

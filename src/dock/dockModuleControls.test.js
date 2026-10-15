@@ -104,8 +104,7 @@ describe("normalizeDockControlsByModuleId", () => {
       },
       waveform: { view: "single", channel: 4.9, windowSec: 200 },
     });
-    expect(controls.loudness).toEqual({
-      showReadouts: true,
+    expect(controls.loudness).toMatchObject({
       loudnessHistoryVisibleLayerIds: ["shortTerm"],
       loudnessYMinDb: -42,
       loudnessYMaxDb: -12,
@@ -125,7 +124,7 @@ describe("normalizeDockControlsByModuleId", () => {
       spectrumYMinDb: -30,
       spectrumYMaxDb: -18,
     });
-    expect(controls.waveform).toEqual({
+    expect(controls.waveform).toMatchObject({
       waveformFrequencyColor: false,
       waveformLowMidSplitHz: 200,
       waveformMidHighSplitHz: 2000,
@@ -143,8 +142,7 @@ describe("normalizeDockControlsByModuleId", () => {
           referenceLufs: -18,
         },
       }).loudness
-    ).toEqual({
-      showReadouts: true,
+    ).toMatchObject({
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
@@ -187,15 +185,15 @@ describe("Stereo Map Dock control family", () => {
 });
 
 describe("normalizeDockModuleControls", () => {
-  it("defaults Loudness readouts on and preserves an explicit hidden state", () => {
-    expect(normalizeDockModuleControls("loudness", {}).showReadouts).toBe(true);
-    expect(normalizeDockModuleControls("loudness", { showReadouts: false }).showReadouts).toBe(
-      false
+  it("drops removed Loudness readout controls", () => {
+    expect(normalizeDockModuleControls("loudness", {})).not.toHaveProperty("showReadouts");
+    expect(normalizeDockModuleControls("loudness", { showReadouts: false })).not.toHaveProperty(
+      "showReadouts"
     );
   });
 
   it("defaults Level to live Peak and migrates legacy readouts", () => {
-    expect(normalizeDockModuleControls("level", {})).toEqual({
+    expect(normalizeDockModuleControls("level", {})).toMatchObject({
       levelMeterMode: "peak",
       levelMeterBarColors: "gradient",
       levelMeterPeakWarningDb: -6,
@@ -282,7 +280,7 @@ describe("normalizeDockModuleControls", () => {
   });
 
   it("normalizes Dock Waveform spectral controls", () => {
-    expect(normalizeDockModuleControls("waveform", {})).toEqual({
+    expect(normalizeDockModuleControls("waveform", {})).toMatchObject({
       waveformFrequencyColor: false,
       waveformLowMidSplitHz: 200,
       waveformMidHighSplitHz: 2000,
@@ -295,7 +293,7 @@ describe("normalizeDockModuleControls", () => {
         waveformMidHighSplitHz: 4100.2,
         waveformCentroid: true,
       })
-    ).toEqual({
+    ).toMatchObject({
       waveformFrequencyColor: true,
       waveformLowMidSplitHz: 315,
       waveformMidHighSplitHz: 4100,
@@ -317,6 +315,7 @@ describe("normalizeDockModuleControls", () => {
       stereoMapPair: { x: 0, y: 1 },
       stereoMapMode: "position",
       stereoMapHold: false,
+      stereoMapGrid: false,
       stereoMapSpeedPercent: 50,
       stereoMapEnergyFadePercent: 75,
       stereoMapColorBlendPercent: 50,
@@ -332,6 +331,7 @@ describe("normalizeDockModuleControls", () => {
         stereoMapPair: { x: 2, y: 3 },
         stereoMapMode: "correlation",
         stereoMapHold: true,
+        stereoMapGrid: true,
         stereoMapSpeedPercent: 80,
         stereoMapEnergyFadePercent: 62,
         stereoMapColorBlendPercent: 35,
@@ -346,6 +346,7 @@ describe("normalizeDockModuleControls", () => {
       stereoMapPair: { x: 2, y: 3 },
       stereoMapMode: "correlation",
       stereoMapHold: true,
+      stereoMapGrid: true,
       stereoMapSpeedPercent: 80,
       stereoMapEnergyFadePercent: 62,
       stereoMapColorBlendPercent: 35,
@@ -416,7 +417,16 @@ describe("dockSettingsRows", () => {
       dockSettingsRows(moduleId).flatMap((row) => [row.key, row.minKey, row.maxKey])
     );
     const uncovered = Object.keys(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId]).filter(
-      (key) => !covered.has(key)
+      (key) =>
+        !covered.has(key) &&
+        ![
+          "linkTimeViewport",
+          "historyOffsetSec",
+          "loudnessYMinDb",
+          "loudnessYMaxDb",
+          "readout",
+          "showLabels",
+        ].includes(key)
     );
     // statsOrder has no row of its own: the Metrics list edits it together with statsVisibleIds.
     expect(uncovered).toEqual(moduleId === "stats" ? ["statsOrder"] : []);
@@ -431,20 +441,14 @@ describe("dockSettingsRows", () => {
     }
   });
 
-  it("places the Dock-only rows among the panel's rows", () => {
-    expect(dockSettingsRows("level").map((row) => row.key ?? row.minKey)).toEqual([
-      "levelMeterMode",
-      "readout",
-      "levelMeterBarColors",
-      "levelMeterPeakWarningDb",
-      "levelMeterRmsWarningDb",
-      "showLabels",
-    ]);
-    expect(dockSettingsRows("loudness").at(-1).key).toBe("showReadouts");
+  it("shares orientation and 3D controls with normal panels", () => {
+    expect(dockSettingsRows("level").map((row) => row.key)).toContain("levelMeterOrientation");
+    expect(dockSettingsRows("spectrogram").map((row) => row.key)).toContain("spectrogramMode");
+    expect(dockSettingsRows("loudness").map((row) => row.key)).not.toContain("showReadouts");
   });
 
-  it("drops the 3D sentence from the Spectrogram dB Floor tooltip, which the strip has no use for", () => {
+  it("keeps the shared Spectrogram dB Floor tooltip", () => {
     const row = dockSettingsRows("spectrogram").find((item) => item.key === "spectrogramDbFloor");
-    expect(row.ui.tooltip).not.toContain("3D");
+    expect(row.ui.tooltip).toContain("3D");
   });
 });

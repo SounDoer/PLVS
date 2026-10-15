@@ -6,7 +6,6 @@ import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { useDockLayout } from "./useDockLayout.js";
 
 const FIRST_RUN_MODULES = [
-  "transport",
   "level",
   "loudness",
   "stats",
@@ -18,7 +17,6 @@ const FIRST_RUN_MODULES = [
 ];
 
 const FIRST_RUN_SIZES = {
-  transport: 90,
   level: 150,
   loudness: 210,
   stats: 370,
@@ -39,11 +37,10 @@ describe("useDockLayout", () => {
     const { result } = renderHook(() => useDockLayout());
     expect(result.current.modules).toEqual(FIRST_RUN_MODULES);
     expect(result.current.panelSizesById).toEqual(FIRST_RUN_SIZES);
-    expect(Object.keys(result.current.controlsByPanelId)).toEqual(FIRST_RUN_MODULES.slice(1));
+    expect(Object.keys(result.current.controlsByPanelId)).toEqual(FIRST_RUN_MODULES);
     expect(result.current.controlsByPanelId).toMatchObject({
       level: { levelMeterMode: "peak", readout: "live", showLabels: true },
       loudness: {
-        showReadouts: false,
         loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
         loudnessYMinDb: -48,
         loudnessYMaxDb: -6,
@@ -83,15 +80,15 @@ describe("useDockLayout", () => {
     const withoutSpectrum = FIRST_RUN_MODULES.filter((id) => id !== "spectrum");
     expect(result.current.modules).toEqual(withoutSpectrum);
     expect(workspaceStore.read().dock.panelOrder).toEqual(withoutSpectrum);
-    expect(workspaceStore.read().dock.controlsByPanelId.loudness.showReadouts).toBe(false);
+    expect(workspaceStore.read().dock.controlsByPanelId.loudness.showReadouts).toBeUndefined();
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
   it("reorders and persists", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.reorder(0, 3));
-    expect(result.current.modules[3]).toBe("transport");
-    expect(workspaceStore.read().dock.panelOrder[3]).toBe("transport");
+    expect(result.current.modules[3]).toBe("level");
+    expect(workspaceStore.read().dock.panelOrder[3]).toBe("level");
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
@@ -118,7 +115,6 @@ describe("useDockLayout", () => {
     expect(result.current.modules).toEqual(FIRST_RUN_MODULES);
     expect(result.current.panelSizesById).toEqual(FIRST_RUN_SIZES);
     expect(result.current.controlsByModuleId.loudness).toMatchObject({
-      showReadouts: false,
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
     });
     expect(workspaceStore.read().dock.controlsByPanelId.stats.statsVisibleIds).toEqual(
@@ -222,7 +218,7 @@ describe("useDockLayout", () => {
     act(() => result.current.setPanels({ enabled: true }));
     expect(result.current.panelSizesById).toEqual({});
     expect(result.current.controlsByPanelId).toMatchObject({
-      loudness: { showReadouts: true },
+      loudness: { linkTimeViewport: true },
       spectrum: { spectrumMaxMode: "off" },
     });
   });

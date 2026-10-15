@@ -9,6 +9,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
   if (moduleId === "levelMeter") {
     return {
       mode: controls.levelMeterMode,
+      orientation: controls.levelMeterOrientation,
       playbackMax: controls.levelMeterPlaybackMax,
       floatingValue: controls.levelMeterValueMarker,
       tpMaxMarker: controls.levelMeterTpMaxMarker,

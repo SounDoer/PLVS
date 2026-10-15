@@ -1,3 +1,5 @@
+import { LoudnessLayoutMarker } from "../../components/LoudnessLayoutMarker.jsx";
+import { LAYOUT_DEPENDENT_STAT_IDS } from "../../components/panels/StatsPanel.jsx";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
 import { STATS_META, buildStatsValues } from "../../lib/statsCatalog.js";
@@ -11,10 +13,11 @@ import {
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
 import {
-  computeDockStatsColumnCount,
+  fitDockStatsColumns,
   dockStatsGridPosition,
   dockStatsGridTemplate,
   DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX,
+  DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
   DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX,
   DOCK_STATS_INNER_GAP_PX,
   DOCK_STATS_MIN_CELL_WIDTH_PX,
@@ -25,28 +28,47 @@ import { useHoverTip } from "../../components/HoverTip.jsx";
 
 const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
-function useDockStatsColumnCount(containerRef, enabled, minCellWidth) {
-  const [columnCount, setColumnCount] = useState(1);
+function useDockStatsColumnCount(containerRef, count, minCellWidth, expanded) {
+  const [layout, setLayout] = useState({ columnCount: 1, fontScale: 1 });
 
   useLayoutEffect(() => {
     const element = containerRef.current;
-    if (!element || !enabled) return undefined;
+    if (!element || !count) return undefined;
 
-    const measure = (width = element.clientWidth) => {
-      const next = computeDockStatsColumnCount(width, undefined, minCellWidth);
-      setColumnCount((current) => (current === next ? current : next));
+    const measure = (width = element.clientWidth, height = element.clientHeight) => {
+      const cellHeight = element
+        .querySelector("[data-testid='dock-stat']")
+        ?.getBoundingClientRect().height;
+      const rowGap = parseFloat(getComputedStyle(element).rowGap) || 0;
+      const minRowHeight = cellHeight > 0 ? cellHeight + rowGap : expanded ? 38 : 18;
+      const fontScale = (parseFloat(getComputedStyle(element).fontSize) || 13) / 13;
+      const columnCount = fitDockStatsColumns(
+        width,
+        height,
+        count,
+        minCellWidth * fontScale,
+        minRowHeight
+      );
+      setLayout((current) =>
+        current.columnCount === columnCount && current.fontScale === fontScale
+          ? current
+          : { columnCount, fontScale }
+      );
     };
 
     measure();
     if (typeof ResizeObserver !== "function") return undefined;
     const observer = new ResizeObserver((entries) => {
-      measure(entries[0]?.contentRect?.width);
+      const containerEntry = entries.find((entry) => entry.target === element);
+      measure(containerEntry?.contentRect?.width, containerEntry?.contentRect?.height);
     });
     observer.observe(element);
+    const cell = element.querySelector("[data-testid='dock-stat']");
+    if (cell) observer.observe(cell);
     return () => observer.disconnect();
-  }, [containerRef, enabled, minCellWidth]);
+  }, [containerRef, count, minCellWidth, expanded]);
 
-  return columnCount;
+  return layout;
 }
 
 function DockStatCell({
@@ -112,7 +134,7 @@ function DockStatCell({
           <span
             data-testid="dock-stat-label"
             data-loudness-watched={watched ? "true" : "false"}
-            className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessLabelClass(watched)}`}
+            className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-none ${loudnessLabelClass(watched)}`}
           >
             {id === "dialogueCoverage" ? (
               <span
@@ -130,7 +152,7 @@ function DockStatCell({
           <span
             data-stat-value={id}
             data-loudness-status={status ?? "off"}
-            className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(status)}`}
+            className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(status)}`}
           >
             {value}
           </span>
@@ -170,16 +192,17 @@ export function DockStats({ controls, heightMode = "standard" }) {
   const minCellWidth = expanded
     ? DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX
     : DOCK_STATS_MIN_CELL_WIDTH_PX;
-  const columnCount = useDockStatsColumnCount(
+  const { columnCount, fontScale } = useDockStatsColumnCount(
     containerRef,
-    orderedMetrics.length > 0,
-    minCellWidth
+    orderedMetrics.length,
+    minCellWidth,
+    expanded
   );
   const visibleMetrics = visibleDockStats(orderedMetrics, columnCount);
 
   if (orderedMetrics.length === 0) {
     return (
-      <div className="flex h-full min-w-0 items-center px-[var(--ui-dock-pad-x)] text-[length:var(--ui-dock-fs-label)] font-medium text-muted-foreground">
+      <div className="flex h-full min-w-0 items-center px-[var(--ui-dock-pad-x)] text-[length:var(--ui-fs-metric-meta)] font-medium text-muted-foreground">
         No stats selected
       </div>
     );
@@ -187,21 +210,30 @@ export function DockStats({ controls, heightMode = "standard" }) {
 
   return (
     <div
-      className="flex h-full min-w-0"
+      className="flex h-full min-h-0 min-w-0 flex-col"
       style={{ padding: "var(--ui-dock-pad-y) var(--ui-dock-pad-x)" }}
     >
+      {orderedMetrics.some(({ id }) => LAYOUT_DEPENDENT_STAT_IDS.has(id)) && (
+        <LoudnessLayoutMarker
+          known={displayAudio?.loudnessLayoutKnown}
+          dense
+          className="self-end"
+        />
+      )}
       <div
         ref={containerRef}
         data-testid="dock-stats-grid"
         data-column-count={columnCount}
-        className="grid min-h-0 min-w-0 flex-1 overflow-hidden"
+        className="grid min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden text-[length:var(--ui-fs-metric-value)]"
         style={{
           gridTemplateColumns: dockStatsGridTemplate(
             columnCount,
-            expanded ? DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX : undefined
+            (expanded
+              ? DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX
+              : DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX) * fontScale
           ),
-          gridTemplateRows: "repeat(3, max-content)",
-          alignContent: "space-around",
+          gridTemplateRows: `repeat(${Math.ceil(visibleMetrics.length / columnCount)}, max-content)`,
+          alignContent: "safe center",
           justifyContent: "center",
           rowGap: "var(--ui-dock-gap-row)",
         }}

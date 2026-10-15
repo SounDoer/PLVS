@@ -22,7 +22,7 @@ const METRIC_ROW_LAYOUT =
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
 /** Stats whose value depends on how channels are summed into loudness. */
-const LAYOUT_DEPENDENT_STAT_IDS = new Set([
+export const LAYOUT_DEPENDENT_STAT_IDS = new Set([
   "momentary",
   "shortTerm",
   "integrated",

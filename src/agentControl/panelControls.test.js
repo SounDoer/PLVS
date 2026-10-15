@@ -19,6 +19,7 @@ describe("readPublicPanelControls", () => {
       })
     ).toEqual({
       mode: "shortTerm",
+      orientation: "vertical",
       playbackMax: true,
       floatingValue: true,
       tpMaxMarker: false,

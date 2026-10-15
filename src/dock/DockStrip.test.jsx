@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataContext.jsx";
@@ -131,37 +131,6 @@ describe("DockStrip", () => {
     for (const module of screen.getAllByTestId("dock-module")) {
       expect(module.contains(entry)).toBe(false);
     }
-  });
-
-  it("passes controls down to the timer-only transport module", () => {
-    renderStrip({ panels: [{ id: "transport", moduleId: "transport" }] });
-    expect(screen.getByTestId("dock-transport-timer").textContent).toBe("00:00");
-    expect(within(screen.getByTestId("dock-module")).queryByRole("button")).toBeNull();
-  });
-
-  it("routes time-window gestures through the shared Dock viewport", () => {
-    const onDockHistoryWheel = vi.fn();
-    const onDockHistoryPointerDown = vi.fn();
-    renderStrip({
-      panels: [
-        { id: "loudness-1", moduleId: "loudness" },
-        { id: "waveform-1", moduleId: "waveform" },
-      ],
-      controls: {
-        ...BASE_PROPS.controls,
-        dockHistoryWindowSec: 60,
-        dockHistoryHud: { panelId: "waveform-1", windowSec: 60 },
-        onDockHistoryWheel,
-        onDockHistoryPointerDown,
-      },
-    });
-
-    fireEvent.wheel(screen.getByTestId("dock-loudness-history"), { deltaY: -1 });
-    expect(onDockHistoryWheel).toHaveBeenCalledWith("loudness-1", -1);
-    const waveformCanvas = screen.getByTestId("dock-waveform-canvas");
-    fireEvent(waveformCanvas, new MouseEvent("pointerdown", { bubbles: true, button: 2 }));
-    expect(onDockHistoryPointerDown).toHaveBeenCalledWith("waveform-1", 2, expect.any(Number));
-    expect(screen.getByRole("status").textContent).toBe("1m");
   });
 
   it("caps a flexible module's auto-grow at its preferred max width", () => {

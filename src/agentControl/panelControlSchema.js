@@ -130,6 +130,11 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
     const thresholdsReason = (/** @type {string} */ mode, /** @type {string} */ modeReason) =>
       controls.levelMeterMode !== mode ? modeReason : "gradientBarColors";
     return root({
+      orientation: field("string", "Orientation", "Direction of the meter bars.", {
+        default: defaults.orientation,
+        options: ["vertical", "horizontal"],
+        effective: true,
+      }),
       mode: field("string", "Mode", "Measurement displayed by the meter.", {
         default: defaults.mode,
         options: ["peak", "rms", "momentary", "shortTerm"],

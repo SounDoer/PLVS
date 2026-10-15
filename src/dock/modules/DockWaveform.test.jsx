@@ -1,304 +1,47 @@
 /** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
-import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
+import { describe, expect, it, vi } from "vitest";
 import {
-  dockWaveformAggregationStride,
-  DockWaveform,
-  paintDockWaveformCanvas,
-  sliceDockWaveformHistory,
-} from "./DockWaveform.jsx";
-import { WaveformHistoryIndex } from "../../math/waveformHistoryIndex.js";
-import { DEFAULT_WAVEFORM_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
-
-import { standIn } from "../../testing/standIn.js";
-beforeAll(() => {
-  class ResizeObserverStub {
-    observe() {}
-    disconnect() {}
-    unobserve() {}
-  }
-  window.ResizeObserver = ResizeObserverStub;
-  globalThis.ResizeObserver = ResizeObserverStub;
-});
-
-// Extrema are rounded to f32 the way real ones already are: they reach the frontend as Rust f32
-// and the waveform index stores them in Float32 columns, so an unrounded fixture would make the
-// indexed path and the direct-read reference path disagree in the last bits.
-function rows(values, channelCount = 2) {
-  return values.map((value, index) => ({
-    waveformMin: Array.from({ length: channelCount }, (_, channel) =>
-      Math.fround(-value * (1 - channel * 0.1))
-    ),
-    waveformMax: Array.from({ length: channelCount }, (_, channel) =>
-      Math.fround(value * (1 - channel * 0.2))
-    ),
-    timestampMs: index * 100,
-  }));
-}
-
-function renderWith(histSourceList, frameData = {}) {
+  HistoryDataProvider,
+  useHistoryData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
+import { DockWaveform } from "./DockWaveform.jsx";
+vi.mock("../../components/panels/WaveformPanel.jsx", () => ({
+  WaveformPanel: ({ showAxes }) => {
+    const history = useHistoryData();
+    const { panelControls } = usePanelInstanceData();
+    return (
+      <output data-testid="shared" data-axes={String(showAxes)}>
+        {JSON.stringify({
+          windowSec: history.clampedWindowSec,
+          controls: panelControls,
+          selectedOffset: history.selectedOffset,
+        })}
+      </output>
+    );
+  },
+}));
+function mount(controls) {
   return render(
-    <FrameDataProvider
-      value={{
-        displayAudio: { peakDb: [-12, -10] },
-        channelCount: 2,
-        peakLabelContext: { resolvedLayout: "stereo" },
-        ...frameData,
-      }}
+    <HistoryDataProvider
+      value={{ historyWindowSec: 30, historyOffsetSec: 0, selectedOffset: 2, histSourceList: [] }}
     >
-      <HistoryDataProvider value={{ histSourceList }}>
-        <DockWaveform controls={undefined} />
-      </HistoryDataProvider>
-    </FrameDataProvider>
+      <DockWaveform controls={controls} />
+    </HistoryDataProvider>
   );
 }
-
-function mockCanvas(width = 100, height = 40) {
-  const context = {
-    beginPath: vi.fn(),
-    clearRect: vi.fn(),
-    closePath: vi.fn(),
-    setTransform: vi.fn(),
-    fill: vi.fn(),
-    lineTo: vi.fn(),
-    moveTo: vi.fn(),
-    stroke: vi.fn(),
-  };
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext = standIn(vi.fn(() => context));
-  return { canvas, context };
-}
-
 describe("DockWaveform", () => {
-  it("renders one Level-style label row per available channel", () => {
-    renderWith(rows([0.1, 0.2]));
-
-    expect(screen.getByText("L")).toBeTruthy();
-    expect(screen.getByText("R")).toBeTruthy();
-    expect(screen.getByTestId("dock-waveform-labels").style.gridTemplateRows).toContain("2");
-    expect(screen.getByTestId("dock-waveform-canvas")).toBeTruthy();
+  it("uses the shared panel without axes and retains snapshot state", () => {
+    mount({});
+    expect(screen.getByTestId("shared").dataset.axes).toBe("false");
+    expect(JSON.parse(screen.getByTestId("shared").textContent).selectedOffset).toBe(2);
   });
-
-  it("uses runtime channel labels without a single-channel view", () => {
-    renderWith(rows([0.1], 3), {
-      displayAudio: { peakDb: [-12, -10, -8] },
-      channelCount: 3,
-      peakLabelContext: { overrideLabels: ["Left", "Right", "Center"] },
-    });
-
-    expect(screen.getByText("Left")).toBeTruthy();
-    expect(screen.getByText("Right")).toBeTruthy();
-    expect(screen.getByText("Center")).toBeTruthy();
-  });
-
-  it("paints asymmetric min and max envelopes with stroke and token fill", () => {
-    const { canvas, context } = mockCanvas();
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[-0.75, -0.75]],
-        maxes: [[0.25, 0.25]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-      })
-    );
-
-    expect(context.lineTo).toHaveBeenCalledWith(1, 15);
-    expect(context.lineTo).toHaveBeenCalledWith(1, 35);
-    expect(context.fill).toHaveBeenCalledOnce();
-    expect(context.stroke).toHaveBeenCalledTimes(1);
-  });
-
-  it("strokes the envelope at the token width", () => {
-    const { canvas, context } = mockCanvas();
-    canvas.style.setProperty("--ui-waveform-stroke-width", "2.5");
-    const lineWidths = [];
-    context.stroke = vi.fn(() => lineWidths.push(context.lineWidth));
-
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[-0.75, -0.75]],
-        maxes: [[0.25, 0.25]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-      })
-    );
-
-    expect(lineWidths).toEqual([2.5]);
-  });
-
-  it("keeps the stroke round in CSS px when only the height uses full DPR", () => {
-    const { canvas, context } = mockCanvas(100, 80);
-    Object.defineProperty(canvas, "clientWidth", { value: 100 });
-    Object.defineProperty(canvas, "clientHeight", { value: 40 });
-    canvas.style.setProperty("--ui-waveform-stroke-width", "1.5");
-    const strokes = [];
-    let transform = [1, 0, 0, 1, 0, 0];
-    context.setTransform = vi.fn((...args) => {
-      transform = args;
-    });
-    context.stroke = vi.fn(() => strokes.push({ lineWidth: context.lineWidth, transform }));
-
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[-0.75, -0.75]],
-        maxes: [[0.25, 0.25]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-      })
-    );
-
-    expect(strokes).toEqual([{ lineWidth: 1.5, transform: [1, 0, 0, 2, 0, 0] }]);
-    expect(transform).toEqual([1, 0, 0, 1, 0, 0]);
-  });
-
-  it("uses the fixed classic fill opacity", () => {
-    const { canvas, context } = mockCanvas();
-    const fillAlphas = [];
-    context.globalAlpha = 1;
-    context.fill = vi.fn(() => fillAlphas.push(context.globalAlpha));
-
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[-0.75, -0.75]],
-        maxes: [[0.25, 0.25]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-        themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
-      })
-    );
-
-    expect(fillAlphas).toEqual([0.12]);
-    expect(context.globalAlpha).toBe(1);
-  });
-
-  it("fills the complete Frequency Color body at full opacity", () => {
-    const { canvas, context } = mockCanvas();
-    const fillAlphas = [];
-    context.globalAlpha = 1;
-    context.fill = vi.fn(() => fillAlphas.push(context.globalAlpha));
-
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[-0.75, -0.75]],
-        maxes: [[0.25, 0.25]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-        frequencyColor: true,
-        lowMidSplitHz: 200,
-        midHighSplitHz: 2000,
-        dominantFrequencyHz: [[100, 1000]],
-        tonality: [[0.2, 0.2]],
-      })
-    );
-
-    expect(fillAlphas).toEqual([1, 1]);
-  });
-
-  it("overlaps adjacent Frequency Color bodies to avoid sub-pixel seams", () => {
-    const { canvas, context } = mockCanvas();
-
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[-0.5, -0.5]],
-        maxes: [[0.5, 0.5]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-        frequencyColor: true,
-        lowMidSplitHz: 200,
-        midHighSplitHz: 2000,
-        dominantFrequencyHz: [[100, 1000]],
-        tonality: [[0.8, 0.8]],
-      })
-    );
-
-    expect(context.moveTo).toHaveBeenCalledWith(-0.5, 10);
-    expect(context.lineTo).toHaveBeenCalledWith(1.5, 10);
-  });
-
-  it("fills a one-sided positive Frequency Color bucket back to the zero line", () => {
-    const { canvas, context } = mockCanvas();
-
-    paintDockWaveformCanvas(
-      canvas,
-      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
-        mins: [[0.25, 0.25]],
-        maxes: [[0.5, 0.5]],
-        bucketCount: 2,
-        fracPhase: 0,
-        firstBucket: 0,
-        lastBucket: 1,
-        channelCount: 1,
-        frequencyColor: true,
-        lowMidSplitHz: 200,
-        midHighSplitHz: 2000,
-        dominantFrequencyHz: [[100, 100]],
-        tonality: [[0.8, 0.8]],
-      })
-    );
-
-    expect(context.lineTo).toHaveBeenCalledWith(1, 20);
-  });
-
-  it("bounds the rendered envelope buckets by horizontal resolution for long history", () => {
-    const history = rows(Array.from({ length: 150_000 }, (_, index) => (index % 100) / 100));
-    const envelope = sliceWaveformSubHistory(history, history.length, 0, 2, 300);
-
-    expect(envelope.bucketCount).toBeLessThanOrEqual(302);
-    expect(envelope.mins).toHaveLength(2);
-    expect(envelope.maxes).toHaveLength(2);
-  });
-
-  it("uses indexed full-window values without reading retained history rows", () => {
-    const history = rows(Array.from({ length: 4_097 }, (_, index) => ((index * 17) % 100) / 100));
-    const index = new WaveformHistoryIndex(history.length);
-    history.forEach((row) => index.append(row));
-    let reads = 0;
-    const source = {
-      length: history.length,
-      rowAt(entry) {
-        reads += 1;
-        return history[entry];
-      },
-    };
-
-    const expected = sliceWaveformSubHistory(history, history.length, 0, 2, 600);
-    const actual = sliceDockWaveformHistory(source, index, history.length, 2, 600);
-
-    expect(actual).toEqual(expected);
-    expect(reads).toBe(0);
-  });
-
-  it("keeps short windows at full cadence and throttles sub-pixel long-window rebuilds", () => {
-    expect(dockWaveformAggregationStride(600, 300)).toBe(1);
-    expect(dockWaveformAggregationStride(18_000, 300)).toBe(10);
-    expect(dockWaveformAggregationStride(72_000, 300)).toBe(10);
+  it("uses the shared time window by default and keeps an unlinked local window", () => {
+    const view = mount({ linkTimeViewport: false, historyWindowSec: 12, historyOffsetSec: 0 });
+    expect(JSON.parse(screen.getByTestId("shared").textContent).windowSec).toBe(12);
+    view.unmount();
+    mount({ historyWindowSec: 12 });
+    expect(JSON.parse(screen.getByTestId("shared").textContent).windowSec).toBe(30);
   });
 });

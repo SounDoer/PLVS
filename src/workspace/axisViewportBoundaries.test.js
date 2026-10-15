@@ -94,15 +94,11 @@ describe("the viewport is display-only", () => {
   });
 });
 
-describe("the dock keeps its own viewports", () => {
+describe("Dock keeps frequency ranges local while sharing time explicitly", () => {
   it("has no module in common with an axis kind by accident", () => {
     // Dock renders its own components against dock-owned ranges. The guard is that no dock source
     // file reaches the workspace viewport at all -- if one ever does, this is where it shows up.
-    const dockSources = [
-      "src/dock/registry.jsx",
-      "src/dock/editors/DockModuleSettings.jsx",
-      "src/dock/useDockHistoryViewport.js",
-    ];
+    const dockSources = ["src/dock/registry.jsx", "src/dock/editors/DockModuleSettings.jsx"];
 
     for (const path of dockSources) {
       const source = readFileSync(path, "utf8");

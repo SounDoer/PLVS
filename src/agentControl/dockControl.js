@@ -18,12 +18,17 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
   levelMeter: new Set([
     "mode",
     "readout",
-    "showLabels",
+    "orientation",
+    "playbackMax",
+    "floatingValue",
+    "tpMaxMarker",
+    "levelRangeDbfs",
+    "loudnessRangeLufs",
     "barColors",
     "peakThresholdsDbfs",
     "rmsThresholdsDbfs",
   ]),
-  loudness: new Set(["layers", "loudnessRangeLufs", "showReadouts"]),
+  loudness: new Set(["layers", "loudnessRangeLufs", "grid"]),
   stats: new Set(["metrics"]),
   vectorscope: new Set(["channelPair", "mode", "persistenceMs", "maxHold"]),
   spectrum: new Set([
@@ -38,9 +43,18 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "levelRangeDb",
     "frequencyRangeHz",
   ]),
-  spectrogram: new Set(["channel", "tiltDbPerOctave", "dbFloor", "frequencyRangeHz"]),
+  spectrogram: new Set([
+    "channel",
+    "mode",
+    "threeD",
+    "octaveSmoothing",
+    "tiltDbPerOctave",
+    "dbFloor",
+    "frequencyRangeHz",
+  ]),
   waveform: new Set(["frequencyColor", "frequencyBandsHz", "centroid"]),
   "stereo-map": new Set([
+    "grid",
     "mode",
     "channelPair",
     "maxHold",
@@ -99,8 +113,6 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   const current = normalizeDockModuleControls(dockModuleId, dock.controlsByPanelId?.[panelId]);
   const corePatch = { ...patch };
   delete corePatch.readout;
-  delete corePatch.showLabels;
-  delete corePatch.showReadouts;
   delete corePatch.frequencyRangeHz;
   const planned = planPublicPanelControlPatch(panel.moduleId, current, corePatch, context);
   if (planned.issues.length > 0) return { dock, changed: [], warnings: [], issues: planned.issues };
@@ -111,18 +123,13 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
     ...planned.panelControls,
     readout: current.readout,
     showLabels: current.showLabels,
-    showReadouts: current.showReadouts,
   });
   const extraIssues = [];
-  if (hasOwn(patch, "showLabels") && typeof patch.showLabels !== "boolean")
-    extraIssues.push(issue("invalidType", "$.showLabels", "showLabels must be a boolean."));
-  if (hasOwn(patch, "showReadouts") && typeof patch.showReadouts !== "boolean")
-    extraIssues.push(issue("invalidType", "$.showReadouts", "showReadouts must be a boolean."));
   if (hasOwn(patch, "readout")) {
     if (!["live", "truePeakMax", "playbackMax"].includes(patch.readout))
       extraIssues.push(issue("invalidEnum", "$.readout", "readout is invalid."));
   }
-  if (hasOwn(patch, "readout") || hasOwn(patch, "mode")) {
+  if (hasOwn(patch, "readout")) {
     const mode = planned.panelControls.levelMeterMode;
     const readout = hasOwn(patch, "readout") ? patch.readout : current.readout;
     if (
@@ -159,9 +166,12 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
       );
   }
   if (extraIssues.length > 0) return { dock, changed: [], warnings: [], issues: extraIssues };
-  if (hasOwn(patch, "readout")) next.readout = patch.readout;
-  if (hasOwn(patch, "showLabels")) next.showLabels = patch.showLabels;
-  if (hasOwn(patch, "showReadouts")) next.showReadouts = patch.showReadouts;
+  if (hasOwn(patch, "readout")) {
+    next.readout = patch.readout;
+    next.levelMeterTpMaxMarker = patch.readout === "truePeakMax";
+    next.levelMeterPlaybackMax = patch.readout === "playbackMax";
+    next.levelMeterValueMarker = patch.readout === "playbackMax";
+  }
   if (hasOwn(patch, "frequencyRangeHz")) {
     const prefix =
       panel.moduleId === "spectrogram"
@@ -332,13 +342,9 @@ export function compileDockLayout(dock, document, context = {}) {
       panelsById: { ...dock.panelsById, [panel.id]: panel },
       controlsByPanelId: { ...dock.controlsByPanelId, [panel.id]: baseControls },
     };
-    const emptyControlLessPanel =
-      panel.moduleId === "transport" && Object.keys(entry.controls ?? {}).length === 0;
-    const planned = emptyControlLessPanel
-      ? { dock: staged, issues: [], warnings: [] }
-      : controlsValid
-        ? planDockPanelPatch(staged, panel.id, entry.controls ?? {}, context)
-        : { dock: staged, issues: [] };
+    const planned = controlsValid
+      ? planDockPanelPatch(staged, panel.id, entry.controls ?? {}, context)
+      : { dock: staged, issues: [] };
     for (const problem of planned.issues)
       issues.push({ ...problem, path: `${path}.controls${problem.path.slice(1)}` });
     for (const warning of planned.warnings ?? []) {
@@ -349,7 +355,7 @@ export function compileDockLayout(dock, document, context = {}) {
     }
     panelsById[panel.id] = panel;
     panelOrder.push(panel.id);
-    if (planned.issues.length === 0 && panel.moduleId !== "transport")
+    if (planned.issues.length === 0)
       controlsByPanelId[panel.id] = planned.dock.controlsByPanelId[panel.id];
   });
   if (issues.length > 0) return { dock, createdPanels: {}, changed: [], warnings: [], issues };
@@ -368,27 +374,22 @@ export function compileDockLayout(dock, document, context = {}) {
 }
 
 function publicControls(panel, raw, context) {
-  if (panel.moduleId === "transport") return {};
   const dockModuleId = dockControlModuleIdForPanel(panel);
   const normalized = normalizeDockModuleControls(dockModuleId, raw);
   const all = readPublicPanelControls(panel.moduleId, normalized, context);
-  if (panel.moduleId === "levelMeter") {
+  if (panel.moduleId === "levelMeter")
     return {
-      mode: all.mode,
-      readout: normalized.readout,
-      showLabels: normalized.showLabels,
-      barColors: all.barColors,
-      peakThresholdsDbfs: all.peakThresholdsDbfs,
-      rmsThresholdsDbfs: all.rmsThresholdsDbfs,
+      ...all,
+      readout:
+        normalized.levelMeterMode === "peak"
+          ? normalized.levelMeterTpMaxMarker
+            ? "truePeakMax"
+            : "live"
+          : normalized.levelMeterPlaybackMax
+            ? "playbackMax"
+            : "live",
     };
-  }
-  if (panel.moduleId === "loudness") {
-    return {
-      layers: all.layers,
-      loudnessRangeLufs: all.loudnessRangeLufs,
-      showReadouts: normalized.showReadouts,
-    };
-  }
+  if (panel.moduleId === "loudness") return all;
   if (panel.moduleId === "spectrum") {
     return {
       channel: all.channel,
@@ -405,9 +406,7 @@ function publicControls(panel, raw, context) {
   }
   if (panel.moduleId === "spectrogram") {
     return {
-      channel: all.channel,
-      tiltDbPerOctave: all.tiltDbPerOctave,
-      dbFloor: all.dbFloor,
+      ...all,
       frequencyRangeHz: {
         min: normalized.spectrogramYMinFreq,
         max: normalized.spectrogramYMaxFreq,
@@ -416,6 +415,7 @@ function publicControls(panel, raw, context) {
   }
   if (panel.moduleId === "stereo-map") {
     return {
+      grid: all.grid,
       mode: all.mode,
       channelPair: all.channelPair,
       maxHold: all.maxHold,
@@ -432,7 +432,6 @@ function publicControls(panel, raw, context) {
 }
 
 function dockControlSchema(panel, raw, context, includeCurrent = false) {
-  if (panel.moduleId === "transport") return {};
   const dockModuleId = dockControlModuleIdForPanel(panel);
   const normalized = normalizeDockModuleControls(dockModuleId, raw);
   const current = publicControls(panel, normalized, context);
@@ -450,20 +449,6 @@ function dockControlSchema(panel, raw, context, includeCurrent = false) {
       default: defaultControls.readout,
       options:
         normalized.levelMeterMode === "peak" ? ["live", "truePeakMax"] : ["live", "playbackMax"],
-      effective: true,
-    },
-    showLabels: {
-      type: "boolean",
-      title: "Show Labels",
-      description: "Show meter scale labels.",
-      default: defaultControls.showLabels,
-      effective: true,
-    },
-    showReadouts: {
-      type: "boolean",
-      title: "Show Readouts",
-      description: "Show loudness value readouts.",
-      default: defaultControls.showReadouts,
       effective: true,
     },
     frequencyRangeHz: {
@@ -494,7 +479,6 @@ function dockControlSchema(panel, raw, context, includeCurrent = false) {
 }
 
 function panelAnalysis(dock, panel, context) {
-  if (panel.moduleId === "transport") return { status: "notApplicable" };
   const workspace = {
     panelsById: { [panel.id]: panel },
     panelControlsById: { [panel.id]: dock.controlsByPanelId?.[panel.id] },

@@ -746,3 +746,75 @@ describe("LevelMeterPanel", () => {
     expect(marker.getAttribute("data-loudness-status")).toBe("fail");
   });
 });
+
+describe("horizontal Level Meter", () => {
+  it.each(["peak", "rms", "momentary", "shortTerm"])(
+    "renders %s with a horizontal gradient",
+    (mode) => {
+      const { container } = renderPanel({
+        panelControls: { levelMeterMode: mode, levelMeterOrientation: "horizontal" },
+      });
+      const gradients = container.querySelectorAll("[data-level-meter-gradient]");
+      expect(gradients.length).toBe(mode === "peak" || mode === "rms" ? 2 : 1);
+      expect(gradients[0].getAttribute("data-level-meter-gradient")).toContain("to right");
+    }
+  );
+  it("pins and resets an out-of-range TP Max", () => {
+    const reset = vi.fn();
+    const { container } = renderPanel({
+      onResetTpMax: reset,
+      panelControls: {
+        levelMeterOrientation: "horizontal",
+        levelMeterTpMaxMarker: true,
+        levelMeterYMinDb: -48,
+        levelMeterYMaxDb: -12,
+      },
+    });
+    expect(container.querySelector('[data-marker-out-of-range="above"]')).toBeTruthy();
+    fireEvent.click(container.querySelector("[data-level-tp-max-marker]"));
+    expect(reset).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Level Meter readout visibility", () => {
+  it.each(["vertical", "horizontal"])(
+    "keeps channel values alongside TP Max in %s",
+    (orientation) => {
+      const { container } = renderPanel({
+        panelControls: { levelMeterOrientation: orientation, levelMeterTpMaxMarker: true },
+      });
+      expect(screen.getByText("-9.9")).toBeTruthy();
+      expect(screen.getByText("-10.0")).toBeTruthy();
+      expect(container.querySelector("[data-level-tp-max-marker]")).toBeTruthy();
+    }
+  );
+  it.each([-59.9, -0.1, 0.5])(
+    "reserves the measured full marker width near either edge (%s)",
+    (tpMax) => {
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+        width: 40,
+        height: 14,
+        top: 0,
+        left: 0,
+        right: 40,
+        bottom: 14,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+      const { container } = renderPanel({
+        displayAudio: { peakDb: [-4, -5], tpMax },
+        panelControls: {
+          levelMeterOrientation: "horizontal",
+          levelMeterTpMaxMarker: true,
+          levelMeterYMinDb: -60,
+          levelMeterYMaxDb: 0,
+        },
+      });
+      const marker = container.querySelector("[data-level-tp-max-marker]");
+      expect(marker.getAttribute("style")).toContain("clamp(0px");
+      expect(marker.getAttribute("style")).toContain("calc(100% - 40px)");
+      expect(marker.textContent).toContain(tpMax.toFixed(1));
+    }
+  );
+});

@@ -4,13 +4,11 @@ import {
   normalizePanelControlValue,
   normalizePanelControls,
   panelControlUiRows,
-  SPECTROGRAM_DB_FLOOR_TOOLTIP,
 } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
-/// The Dock's own readout selector: three states where the Workspace panel has two independent
-/// toggles, because the strip has room for one control, not two. No Workspace equivalent, so no
-/// row in the control table.
+/// Legacy persisted readouts and the Agent Control compatibility alias. The UI now uses the
+/// normal panel's independent Max/marker switches; old values migrate to those shared controls.
 const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
 const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
@@ -20,26 +18,41 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   spectrum: "spectrum",
   spectrogram: "spectrogram",
   waveform: "waveform",
-  transport: "transport",
   "stereo-map": "stereoMap",
 });
 
 /**
  * Which panel controls each Dock module carries. The Dock stores them under the panel's own keys
  * and repairs them with the panel's rows, so a control has one name and one rule across both
- * surfaces; only the subset differs, because the strip shows less than the panel does.
+ * surfaces. Timeline membership is shared; frequency ranges remain local to each Dock instance.
  */
 const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
   /** @type {const} */ ({
     level: [
       "levelMeterMode",
+      "levelMeterOrientation",
+      "levelMeterPlaybackMax",
+      "levelMeterValueMarker",
+      "levelMeterTpMaxMarker",
+      "levelMeterYMinDb",
+      "levelMeterYMaxDb",
+      "loudnessYMinDb",
+      "loudnessYMaxDb",
       "levelMeterBarColors",
       "levelMeterPeakWarningDb",
       "levelMeterPeakCriticalDb",
       "levelMeterRmsWarningDb",
       "levelMeterRmsCriticalDb",
     ],
-    loudness: ["loudnessHistoryVisibleLayerIds", "loudnessYMinDb", "loudnessYMaxDb"],
+    loudness: [
+      "loudnessHistoryVisibleLayerIds",
+      "loudnessYMinDb",
+      "loudnessYMaxDb",
+      "loudnessGrid",
+      "linkTimeViewport",
+      "historyWindowSec",
+      "historyOffsetSec",
+    ],
     spectrum: [
       "spectrumChannel",
       "spectrumView",
@@ -62,6 +75,16 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
     ],
     stats: ["statsVisibleIds", "statsOrder"],
     spectrogram: [
+      "spectrogramMode",
+      "spectrogram3dColorize",
+      "spectrogram3dHeightGain",
+      "spectrogram3dAzimuthDeg",
+      "spectrogram3dElevationDeg",
+      "spectrogram3dFloor",
+      "spectrumOctaveSmoothing",
+      "linkTimeViewport",
+      "historyWindowSec",
+      "historyOffsetSec",
       "spectrumChannel",
       "spectrumTiltDbPerOctave",
       "spectrogramDbFloor",
@@ -72,6 +95,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "stereoMapPair",
       "stereoMapMode",
       "stereoMapHold",
+      "stereoMapGrid",
       "stereoMapSpeedPercent",
       "stereoMapOctaveSmoothing",
       "stereoMapEnergyFadePercent",
@@ -83,6 +107,9 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "stereoMapMsRatioYMaxDb",
     ],
     waveform: [
+      "linkTimeViewport",
+      "historyWindowSec",
+      "historyOffsetSec",
       "waveformFrequencyColor",
       "waveformLowMidSplitHz",
       "waveformMidHighSplitHz",
@@ -149,40 +176,8 @@ const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze(
 
 /// The settings rows of the controls only the strip has, in the table's row shape so one renderer
 /// draws both. `order` places each among the panel's rows; their defaults are DOCK_ONLY_DEFAULTS.
-const DOCK_ONLY_ROWS = Object.freeze({
-  level: [
-    // `custom`: which readouts exist depends on the meter mode.
-    { key: "readout", ui: { tab: "levelMeter", label: "Readout", widget: "custom", order: 10 } },
-    {
-      key: "showLabels",
-      ui: {
-        tab: "levelMeter",
-        label: "Labels",
-        widget: "switch",
-        ariaLabel: "show level labels",
-        order: 85,
-      },
-    },
-  ],
-  loudness: [
-    {
-      key: "showReadouts",
-      ui: {
-        tab: "loudness",
-        label: "Readouts",
-        widget: "switch",
-        ariaLabel: "show loudness readouts",
-        order: 50,
-      },
-    },
-  ],
-});
-
-/// Where a row must read differently on the strip. The Spectrogram has no 3D mode here, so the
-/// panel's "applies in both 2D and 3D" would describe something the Dock does not have.
-const DOCK_ROW_UI_OVERRIDES = Object.freeze({
-  spectrogram: { spectrogramDbFloor: { tooltip: SPECTROGRAM_DB_FLOOR_TOOLTIP } },
-});
+const DOCK_ONLY_ROWS = Object.freeze({});
+const DOCK_ROW_UI_OVERRIDES = Object.freeze({});
 
 /** The panel settings tab a Dock module's rows come from. */
 export function dockSettingsTab(moduleId) {
@@ -213,7 +208,6 @@ export function dockSettingsRows(moduleId) {
 /// Controls the strip has and the panels do not, so they have no row to read.
 const DOCK_ONLY_DEFAULTS = Object.freeze({
   level: Object.freeze({ readout: "live", showLabels: true }),
-  loudness: Object.freeze({ showReadouts: true }),
 });
 
 /**
@@ -300,6 +294,11 @@ function normalizeDockLevelReadout(raw, mode, fallback) {
  */
 function withPanelKeys(moduleId, raw) {
   const source = { ...raw };
+  if (moduleId === "level") {
+    source.levelMeterTpMaxMarker ??= raw?.readout === "truePeakMax";
+    source.levelMeterPlaybackMax ??= raw?.readout === "playbackMax";
+    source.levelMeterValueMarker ??= raw?.readout === "playbackMax";
+  }
   for (const [key, legacyKeys] of Object.entries(LEGACY_DOCK_KEYS[moduleId] ?? {})) {
     for (const legacyKey of legacyKeys) source[key] = source[key] ?? raw?.[legacyKey];
   }
@@ -315,19 +314,15 @@ function withPanelKeys(moduleId, raw) {
  * @template {DockModuleId} M
  * @typedef {Pick<PanelControls, (typeof DOCK_MODULE_CONTROL_KEYS)[M][number]> &
  *   (M extends "level" ? { readout: string, showLabels: boolean } : {}) &
- *   (M extends "loudness" ? { showReadouts: boolean } : {})} DockModuleControls
+ *   {}} DockModuleControls
  */
 
 /**
  * What the strip gives every module alongside that module's own stored controls: the shared
- * history viewport and its gesture handlers, the transport state, and which panel this is.
+ * transport state, instance identity and the owner callback for persisted control edits.
  * @typedef {{
  *   controlsByPanelId?: Record<string, object>,
  *   sourceTransportState?: any,
- *   dockHistoryWindowSec?: number,
- *   dockHistoryHud?: any,
- *   onDockHistoryWheel?: (...args: any[]) => any,
- *   onDockHistoryPointerDown?: (...args: any[]) => any,
  *   panelId?: string,
  *   onDockPanelControlsChange?: (panelId: string, controls: any) => void,
  * }} DockStripControls
@@ -373,9 +368,6 @@ export function normalizeDockModuleControls(moduleId, raw) {
     controls.readout = normalizeDockLevelReadout(raw, controls.levelMeterMode, defaults.readout);
     controls.showLabels = bool(raw?.showLabels, bool(raw?.showChannelLabels, defaults.showLabels));
   }
-  if (moduleId === "loudness") {
-    controls.showReadouts = bool(raw?.showReadouts, defaults.showReadouts);
-  }
   return controls;
 }
 
@@ -406,7 +398,7 @@ export function normalizeDockControlsByModuleId(raw) {
 /// Where a control exists on both sides, the value matches the first-run workspace panel
 /// (`FIRST_RUN_PANEL_CONTROLS`), so entering Dock shows the same reading.
 const FIRST_RUN_DOCK_CONTROLS = Object.freeze({
-  loudness: { showReadouts: false, loudnessYMinDb: -48, loudnessYMaxDb: -6 },
+  loudness: { loudnessYMinDb: -48, loudnessYMaxDb: -6 },
   stats: { statsVisibleIds: [...STATS_CANONICAL_ORDER] },
   correlation: { vectorscopeMode: "polarLevel", vectorscopePolarLevelMaxHold: true },
   spectrum: { spectrumView: "ms", spectrumMaxMode: "decay", spectrumYMinDb: -84 },

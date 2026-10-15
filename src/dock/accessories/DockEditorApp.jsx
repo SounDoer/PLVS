@@ -239,6 +239,10 @@ export function DockEditorApp() {
               panel.id
             )}
             controls={payload.controlsByPanelId?.[panel.id]}
+            sharedTimeViewport={payload.sharedTimeViewport}
+            onSharedTimeChange={(viewport) =>
+              action("update-time-viewport", { panelId: panel.id, viewport })
+            }
             vectorscopeOptions={payload.vectorscopeOptions}
             spectrumOptions={payload.spectrumOptions}
             channelCount={payload.channelCount}

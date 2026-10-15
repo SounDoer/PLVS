@@ -6,7 +6,7 @@ import {
   DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
   DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX,
   DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX,
-  DOCK_STATS_MAX_ROWS,
+  fitDockStatsColumns,
   DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
 } from "./dockStatsLayout.js";
@@ -43,10 +43,9 @@ describe("computeDockStatsColumnCount", () => {
 });
 
 describe("visibleDockStats", () => {
-  it("caps row-major output at three rows without limiting the selection", () => {
+  it("keeps every selected metric regardless of column count", () => {
     const metrics = Array.from({ length: 15 }, (_, id) => id);
-    expect(DOCK_STATS_MAX_ROWS).toBe(3);
-    expect(visibleDockStats(metrics, 2)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(visibleDockStats(metrics, 2)).toEqual(metrics);
     expect(visibleDockStats(metrics, 5)).toEqual(metrics);
   });
 });
@@ -72,4 +71,10 @@ describe("dockStatsGridTemplate", () => {
       "minmax(0, 84px)"
     );
   });
+});
+
+it("uses both width and height without forcing a fixed row count", () => {
+  expect(fitDockStatsColumns(300, 36, 12, 60, 18)).toBe(4);
+  expect(fitDockStatsColumns(300, 108, 12, 60, 18)).toBe(2);
+  expect(fitDockStatsColumns(60, 36, 12, 60, 18)).toBe(1);
 });

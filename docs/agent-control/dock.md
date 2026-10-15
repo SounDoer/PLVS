@@ -148,9 +148,11 @@ Vectorscope's `persistenceMs` is also display-only and request-key neutral. It c
 ms trail only while the Dock instance is in Polar Sample mode; other modes retain the stored value
 without applying it.
 
-Two Dock-only groups are public: Level Meter adds `readout` (`live`, `truePeakMax`, or
-`playbackMax`) and `showLabels`; Loudness adds `showReadouts`. The Level Meter readout must be
-compatible with its meter mode. Transport has no public Dock controls.
+Level Meter exposes the normal panel controls, including `orientation`, independent Max/marker
+switches and ranges. Its legacy `readout` field remains a compatibility alias for those switches;
+`showLabels` is no longer accepted because Dock axes stay hidden. Loudness exposes Grid and no longer
+has `showReadouts`. Spectrogram exposes every mode and 3D setting at every Dock height. The separate
+Transport/Timecode module is no longer offered; toolbar transport commands remain available.
 
 The complete document is validated before one state commit. Unknown fields, duplicate existing
 panel references or request keys, unknown modules, invalid controls, invalid channel selections,
@@ -159,7 +161,7 @@ normalize, drop, clamp, or silently repair them.
 
 ## Individual panel control
 
-`dock panel describe` returns the selected instance, its Dock-only control schema, current values,
+`dock panel describe` returns the selected instance, its control schema, current values,
 width constraints, and analysis state. `dock panel update` accepts a direct public-control patch,
 without a `controls` wrapper. It does not rename, resize, reorder, add, or remove the panel.
 

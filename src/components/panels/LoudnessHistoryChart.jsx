@@ -31,6 +31,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
 
 /**
  * @param {{
+ *   showAxes?: boolean,
  *   plotAreaRef: { current: any },
  *   historyYAxisTicks?: any[],
  *   targetLufs: number,
@@ -69,6 +70,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
  * }} props
  */
 export function LoudnessHistoryChart({
+  showAxes = true,
   plotAreaRef,
   historyYAxisTicks: historyYAxisTicksProp,
   targetLufs,
@@ -272,20 +274,30 @@ export function LoudnessHistoryChart({
   );
 
   return (
-    <div className="grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
+    <div
+      className={cn(
+        !showAxes && "!grid-cols-1 !grid-rows-[minmax(0,1fr)]",
+        "grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
+      )}
+    >
       {/* Y-axis labels */}
-      <AxisRail
-        axis="y"
-        inset
-        className={cn(W_LOUDNESS_Y_AXIS, "min-h-0 shrink-0")}
-        interaction={loudnessYAxis}
-        active={chartYAxisActive}
-        ticks={historyYAxisAxisTicks}
-      />
+      {showAxes && (
+        <AxisRail
+          axis="y"
+          inset
+          className={cn(W_LOUDNESS_Y_AXIS, "min-h-0 shrink-0")}
+          interaction={loudnessYAxis}
+          active={chartYAxisActive}
+          ticks={historyYAxisAxisTicks}
+        />
+      )}
 
       {/* Chart area */}
       <div
-        ref={plotAreaRef}
+        ref={(node) => {
+          if (plotAreaRef) plotAreaRef.current = node;
+          if (!showAxes) loudnessYAxis.axisRef.current = node;
+        }}
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1",
           !historyChartInteractive && "pointer-events-none"
@@ -432,21 +444,25 @@ export function LoudnessHistoryChart({
         </div>
       </div>
 
-      <div />
-      <AxisRail
-        axis="x"
-        className="h-[var(--ui-chart-x-axis-row-h)]"
-        interaction={timeAxisInteraction(historyTimeAxisHandlers)}
-        active={isTimeAxisActive}
-        ticks={historyTimeTicks.map((tick, i) => ({
-          // Keyed by slot, not by text. A time label changes on almost every update, so a key
-          // carrying it made React unmount and remount the tick instead of writing its text --
-          // measured at 77 node mutations a second per panel, in three panels.
-          key: i,
-          label: tick,
-          frac: i / historyTickSteps,
-        }))}
-      />
+      {showAxes && (
+        <>
+          <div />
+          <AxisRail
+            axis="x"
+            className="h-[var(--ui-chart-x-axis-row-h)]"
+            interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+            active={isTimeAxisActive}
+            ticks={historyTimeTicks.map((tick, i) => ({
+              // Keyed by slot, not by text. A time label changes on almost every update, so a key
+              // carrying it made React unmount and remount the tick instead of writing its text --
+              // measured at 77 node mutations a second per panel, in three panels.
+              key: i,
+              label: tick,
+              frac: i / historyTickSteps,
+            }))}
+          />
+        </>
+      )}
     </div>
   );
 }

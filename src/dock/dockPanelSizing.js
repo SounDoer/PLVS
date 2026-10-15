@@ -47,12 +47,6 @@ export const DOCK_PANEL_SIZING_BY_MODULE_ID = Object.freeze({
     maxPreferredWidth: 960,
     growthPolicy: "flexible",
   },
-  transport: {
-    minWidth: 90,
-    defaultWidth: 120,
-    maxPreferredWidth: 180,
-    growthPolicy: "fixed",
-  },
 });
 
 const LEGACY_MODULE_ID = Object.freeze({

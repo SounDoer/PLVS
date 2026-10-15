@@ -1,133 +1,47 @@
 /** @vitest-environment jsdom */
-import { render } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
-import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
-import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
-import { dockSpectrumKey } from "../dockAnalysisRequest.js";
-import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import {
+  HistoryDataProvider,
+  useHistoryData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
 import { DockSpectrogram } from "./DockSpectrogram.jsx";
-
-vi.mock("../../hooks/useCanvasBackingStore.js", () => ({ useCanvasBackingStore: vi.fn() }));
-vi.mock("../../hooks/useSpectrogramCanvas.js", () => ({ useSpectrogramCanvas: vi.fn() }));
-
-function makeSnaps(list) {
-  return {
-    length: list.length,
-    version: list.length,
-    rowAt: (index) => list[index],
-    timestampAt: (index) => list[index]?.timestampMs ?? NaN,
-  };
-}
-
-function renderWith({ controls, snaps }) {
-  const getSpectrogramSnapsForKey = vi.fn(() => snaps);
-  const utils = render(
-    <FrameDataProvider value={{ resolvedThemeId: "dark" }}>
-      <HistoryDataProvider value={{ getSpectrogramSnapsForKey }}>
-        <DockSpectrogram controls={controls} />
-      </HistoryDataProvider>
-    </FrameDataProvider>
+vi.mock("../../components/panels/SpectrogramPanel.jsx", () => ({
+  SpectrogramPanel: ({ showAxes }) => {
+    const history = useHistoryData();
+    const { panelControls } = usePanelInstanceData();
+    return (
+      <output data-testid="shared" data-axes={String(showAxes)}>
+        {JSON.stringify({
+          windowSec: history.clampedWindowSec,
+          controls: panelControls,
+          selectedOffset: history.selectedOffset,
+        })}
+      </output>
+    );
+  },
+}));
+function mount(controls) {
+  return render(
+    <HistoryDataProvider
+      value={{ historyWindowSec: 30, historyOffsetSec: 0, selectedOffset: 2, histSourceList: [] }}
+    >
+      <DockSpectrogram controls={controls} />
+    </HistoryDataProvider>
   );
-  return { ...utils, getSpectrogramSnapsForKey };
 }
-
 describe("DockSpectrogram", () => {
-  it("freezes its painter and timeline on the selected keyed history", () => {
-    const controls = {};
-    const frozen = makeSnaps([{ timestampMs: 1000, dbList: [-30] }]);
-    const getSpectrogramSnapsForKey = vi.fn(() =>
-      makeSnaps([{ timestampMs: 5000, dbList: [-10] }])
-    );
-    render(
-      <HistoryDataProvider
-        value={{
-          selectedOffset: 0,
-          snapshotSpectrumByKey: { [dockSpectrumKey(controls)]: frozen },
-          getSpectrogramSnapsForKey,
-        }}
-      >
-        <DockSpectrogram controls={controls} />
-      </HistoryDataProvider>
-    );
-    expect(useSpectrogramCanvas).toHaveBeenLastCalledWith(
-      expect.objectContaining({ selectedOffset: 0, frozenSnaps: frozen, newestMs: 1040 })
-    );
-    expect(getSpectrogramSnapsForKey).not.toHaveBeenCalled();
+  it("uses the shared panel without axes and retains snapshot state", () => {
+    mount({});
+    expect(screen.getByTestId("shared").dataset.axes).toBe("false");
+    expect(JSON.parse(screen.getByTestId("shared").textContent).selectedOffset).toBe(2);
   });
-
-  beforeEach(() => {
-    vi.mocked(useCanvasBackingStore).mockClear();
-    vi.mocked(useSpectrogramCanvas).mockClear();
-  });
-
-  it("passes the colour-mapping controls to the painter, defaulting when the record has none", () => {
-    // The engine sends untilted rows, so the strip has to apply the slope itself; without this
-    // the top of the strip goes dark. The floor decides how much of the ramp the signal gets.
-    // A stored layout from before either key existed still gets the panel default.
-    renderWith({
-      controls: { spectrumTiltDbPerOctave: 4.5, spectrogramDbFloor: -60 },
-      snaps: makeSnaps([]),
-    });
-    const tuned = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0];
-    expect(tuned.tiltDbPerOctave).toBe(4.5);
-    expect(tuned.dbFloor).toBe(-60);
-
-    renderWith({ controls: {}, snaps: makeSnaps([]) });
-    const bare = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0];
-    expect(bare.tiltDbPerOctave).toBe(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave);
-    expect(bare.dbFloor).toBe(DEFAULT_PANEL_CONTROLS.spectrogramDbFloor);
-  });
-
-  it("uses a responsive 1x canvas and the shared normal-panel painter", () => {
-    const controls = {
-      panelId: "spectrogram-1",
-      spectrumChannel: { type: "pair", x: 0, y: 1 },
-      spectrogramYMinFreq: 100,
-      spectrogramYMaxFreq: 8000,
-      dockHistoryWindowSec: 60,
-    };
-    const snaps = makeSnaps([
-      {
-        timestampMs: 1000,
-        dbList: [-40, -50, -60],
-        bands: [{ fCenter: 40 }, { fCenter: 400 }, { fCenter: 4000 }],
-      },
-    ]);
-    const { container, getSpectrogramSnapsForKey } = renderWith({ controls, snaps });
-
-    expect(container.querySelector("canvas")).not.toBeNull();
-    expect(useCanvasBackingStore).toHaveBeenCalledWith(expect.anything(), {
-      maxDevicePixelRatio: 1,
-    });
-    expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(dockSpectrumKey(controls));
-    expect(useSpectrogramCanvas).toHaveBeenCalledWith(
-      expect.objectContaining({
-        oldestMs: 1040 - 60_000,
-        newestMs: 1040,
-        minHz: 100,
-        maxHz: 8000,
-        selectedOffset: -1,
-      })
-    );
-  });
-
-  it("judges gaps against the nominal row cadence, not the newest interval", () => {
-    const snaps = makeSnaps(
-      [0, 40, 90, 130, 200].map((timestampMs) => ({ timestampMs, dbList: [-20] }))
-    );
-    renderWith({ controls: {}, snaps });
-
-    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0].sampleMs).toBe(40);
-  });
-
-  it("renders an empty responsive canvas without history", () => {
-    const controls = { spectrumChannel: { type: "pair", x: 0, y: 1 }, dockHistoryWindowSec: 60 };
-    const { container } = renderWith({ controls, snaps: makeSnaps([]) });
-    const args = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0];
-
-    expect(container.querySelector("canvas")).not.toBeNull();
-    expect(args.oldestMs).toBeNaN();
-    expect(args.newestMs).toBeNaN();
+  it("uses the shared time window by default and keeps an unlinked local window", () => {
+    const view = mount({ linkTimeViewport: false, historyWindowSec: 12, historyOffsetSec: 0 });
+    expect(JSON.parse(screen.getByTestId("shared").textContent).windowSec).toBe(12);
+    view.unmount();
+    mount({ historyWindowSec: 12 });
+    expect(JSON.parse(screen.getByTestId("shared").textContent).windowSec).toBe(30);
   });
 });

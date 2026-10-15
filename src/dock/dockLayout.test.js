@@ -32,9 +32,8 @@ describe("normalizeDockLayout", () => {
 });
 
 describe("DEFAULT_DOCK_PANEL_SIZES", () => {
-  it("pins the nine tuned first-run widths", () => {
+  it("pins the eight tuned first-run widths", () => {
     expect(DEFAULT_DOCK_PANEL_SIZES).toEqual({
-      transport: 90,
       level: 150,
       loudness: 210,
       stats: 370,
@@ -103,13 +102,11 @@ describe("dock module catalog v1.5/v2", () => {
       "waveform",
       "spectrogram",
       "stereoMap",
-      "transport",
     ]);
   });
 
   it("enables the tuned first-run panels in order", () => {
     expect(DEFAULT_DOCK_MODULES).toEqual([
-      "transport",
       "level",
       "loudness",
       "stats",
@@ -120,4 +117,17 @@ describe("dock module catalog v1.5/v2", () => {
       "stereoMap",
     ]);
   });
+});
+
+it("discards legacy Timecode instances while retaining other panel ids and widths", () => {
+  const layout = normalizeDockLayout({
+    panelsById: {
+      clock: { id: "clock", moduleId: "transport" },
+      meter: { id: "meter", moduleId: "levelMeter" },
+    },
+    panelOrder: ["clock", "meter"],
+    panelSizesById: { clock: 90, meter: 220 },
+  });
+  expect(layout.panelOrder).toEqual(["meter"]);
+  expect(layout.panelSizesById).toEqual({ meter: 220 });
 });

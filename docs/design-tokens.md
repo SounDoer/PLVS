@@ -529,9 +529,8 @@ font installation does not determine normal rendering.
 
 ### Normal-mode Text Roles and Sizes
 
-Normal application surfaces use semantic typography roles instead of fixed Tailwind font-size
-utilities or component-local pixel values. Dock is excluded and owns its responsive typography
-under `src/dock/dockTokens.css`. The sizes in this table are the **Small** profile baseline; the
+Application surfaces, including Dock, use semantic typography roles instead of fixed Tailwind
+font-size utilities or component-local pixel values. The sizes in this table are the **Small** profile baseline; the
 Default profile is generally 1px larger (Metric Value is 2px larger). The complete profile matrix
 appears below.
 
@@ -591,9 +590,9 @@ write final integer pixel values rather than applying browser zoom or one unifor
 | List Row Height            |  32px |    32px |  36px |        40px |
 | Switch Height              |  16px |    16px |  18px |        22px |
 
-The normal application document applies the selected profile before first render. Dock header and
-editor accessory documents always apply the compact Small baseline, while the Dock strip continues to use only its
-responsive `--ui-dock-*` typography.
+Every document applies the selected typography profile before first render. Dock header and
+editor accessory documents retain compact Small geometry and icons to fit their native windows,
+but receive the selected typography profile at startup and through accessory state publications.
 
 ---
 
@@ -703,26 +702,20 @@ so the two bars match although the footer holds only a line of status text.
 
 ## Dock Tokens
 
-Dock is a separate high-density instrument surface with a supported height of `56–160px` and a
-default height of `56px` (the compact density tier). It shares the global font families, semantic colors, and instrument
-colors, but it does not reuse normal-panel typography or spacing dimensions. Normal panels have
-minimum heights measured in `rem`; applying those dimensions to Dock would either overflow or
-waste its limited data area.
+Dock shares normal-panel semantic typography and follows **Interface Size**. Window height never
+selects a font size. Live chart readouts use `--ui-fs-display`; Stats values use
+`--ui-fs-metric-value`, with metric names and units using `--ui-fs-metric-meta`, just as in the
+normal Stats panel. Orientation does not change a readout's role. Narrow chart readouts retain
+the shared panel's local fit fallback.
 
-Dock typography is self-contained and does not inherit user-configurable text-size preferences.
-Its font sizes respond only to the Dock height tiers below.
-
-Responsive Dock component tokens are owned by `src/dock/dockTokens.css` and scoped to
-`.dock-strip`. Height media queries update them directly while the native Dock window is being
-resized, without waiting for React state or persisted geometry.
+Dock keeps compact spacing and axis visibility appropriate to its window shape. Its minimum and
+default height is 56px; native display fitting determines the upper bound. Responsive spacing
+is owned by `src/dock/dockTokens.css` and scoped to `.dock-strip`.
 
 ### Responsive density tiers
 
-| Role / token           | Compact `56–63px` | Standard `64–119px` | Expanded `120–160px` |
+| Role / token           | Compact `56–63px` | Standard `64–119px` | Expanded `120px+` |
 | ---------------------- | ----------------: | ------------------: | -------------------: |
-| `--ui-dock-fs-label`   |               8px |                 9px |                 10px |
-| `--ui-dock-fs-caption` |               8px |                 9px |                 10px |
-| `--ui-dock-fs-value`   |              11px |                13px |                 15px |
 | `--ui-dock-pad-x`      |               5px |                 6px |                  8px |
 | `--ui-dock-pad-y`      |               3px |                 4px |                  6px |
 | `--ui-dock-gap-region` |               4px |                 5px |                  7px |
@@ -731,28 +724,17 @@ resized, without waiting for React state or persisted geometry.
 | `--ui-dock-bar-min-h`  |               4px |                 5px |                  6px |
 | `--ui-dock-readout-w`  |               5ch |                 5ch |                  5ch |
 
-The tiers are intentionally discrete. Typography must remain stable while the user adjusts height;
-the additional space at larger heights primarily benefits bars, plots, and row separation rather
-than continuously magnifying every label.
-
-Dock Stats keeps `2px` between each label and its fixed-width value and reserves at least `12px`
-between metric groups. Each metric cell compresses from a comfortable `72px` to `60px`, with the
-label absorbing that reduction before the responsive grid drops a column from view.
+Height tiers change spacing, not typography. Additional space benefits bars, plots and row
+separation. Stats keeps its adaptive multi-column layout; column widths follow the selected
+metric font size, and row fitting measures actual cell height. A font-size change recalculates
+the grid even if the window dimensions stay unchanged. Overflow remains scrollable.
 
 ### Typography roles
 
-Within one density tier, the same typography role has the same size in every Dock module. Modules
-must use these shared tokens rather than hard-coded font sizes or module-specific emphasis sizes.
-
-- `Label`: detector names, channel names, and compact metric names (`PK`, `RMS`, `M`, `ST`, `L`,
-  `R`, `LFE`). Static labels use `--ui-font-sans`, medium weight, and muted foreground.
-- `Caption`: compact source-rail annotations such as `PB Max` and `TP Max`. Captions use
-  `--ui-font-sans`, medium weight, muted foreground, and the repository Title Case convention. The
-  full source name remains available through settings, `title`, and accessible text.
-- `Value`: all dynamic numeric displays, including per-channel values, global values such as TP Max
-  and correlation, and transport timecode. Values use `--ui-font-mono`, `tabular-nums`, and semibold
-  weight. Modules express emphasis through color, weight, position, or interaction rather than a
-  larger font size.
+Use the same semantic role in Dock and normal mode. Do not override normal tokens with Dock-only
+font sizes. Channel readouts and TP Max share Dynamic Display; labels and metric annotations
+retain their semantic roles. Live numbers use the shared mono family and tabular numerals.
+Emphasis comes from color, weight, position or interaction rather than a module-local font size.
 
 Do not append detector names or readout sources after a number. A trailing `M Max` or `RMS Max`
 looks like a unit or a different metric. Detector identity belongs on the leading side of the
@@ -761,7 +743,8 @@ normal state and needs no caption.
 
 ### Responsive rules
 
-- Height selects the density tier. Width does not scale font sizes.
+- Height selects the spacing tier. Interface Size selects typography; constrained chart readouts
+  may use the same local fit fallback as the normal panel.
 - Additional width belongs to bars, plots, waveforms, and spectra; gaps do not grow with container
   width. Do not use `vw`, `cqw`, or percentage-based spacing for Dock layout gaps.
 - Multi-row metric grids may reserve the configured `ch` capacity in their visible mono value

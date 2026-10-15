@@ -141,7 +141,8 @@ function formatPositionHoldLabel(holdValues, index, range, firstLabel, secondLab
   return parts.length ? parts.join(" / ") : null;
 }
 
-export function StereoMapPanel() {
+/** @param {{ compact?: boolean, showAxes?: boolean, className?: string }} props */
+export function StereoMapPanel({ showAxes = true, className } = {}) {
   const { channelCount = 0, peakLabelContext, displayAudio } = useFrameData();
   const {
     selectedOffset,
@@ -457,8 +458,9 @@ export function StereoMapPanel() {
     return (
       <div
         className={cn(
-          PANEL_MIN_SPECTRUM,
-          "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+          showAxes && PANEL_MIN_SPECTRUM,
+          "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+          className
         )}
       >
         <SnapshotEmptyState message={STEREO_MAP_MONO_MESSAGE} />
@@ -470,8 +472,9 @@ export function StereoMapPanel() {
     return (
       <div
         className={cn(
-          PANEL_MIN_SPECTRUM,
-          "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+          showAxes && PANEL_MIN_SPECTRUM,
+          "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+          className
         )}
       >
         <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
@@ -482,22 +485,43 @@ export function StereoMapPanel() {
   return (
     <div
       className={cn(
-        PANEL_MIN_SPECTRUM,
-        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        showAxes && PANEL_MIN_SPECTRUM,
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+        className
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
-        <div className="grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
-          <AxisRail
-            axis="y"
-            className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
-            interaction={yViewport ? editableYAxis : undefined}
-            railRef={passiveYAxis.axisRef}
-            ticks={yAxisTicks}
-          />
-          <div className="relative min-h-0 min-w-0">
+        <div
+          className={cn(
+            "grid min-h-0 flex-1 items-stretch",
+            showAxes
+              ? "grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)]"
+              : "grid-cols-1 grid-rows-[minmax(0,1fr)]"
+          )}
+        >
+          {showAxes && (
+            <AxisRail
+              axis="y"
+              className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+              interaction={yViewport ? editableYAxis : undefined}
+              railRef={passiveYAxis.axisRef}
+              ticks={yAxisTicks}
+            />
+          )}
+          <div
+            className="relative min-h-0 min-w-0"
+            ref={showAxes ? undefined : stereoMapXAxis.axisRef}
+          >
             <div
               data-testid="stereo-map-chart"
+              ref={
+                showAxes
+                  ? undefined
+                  : (node) => {
+                      passiveYAxis.axisRef.current = node;
+                      editableYAxis.axisRef.current = node;
+                    }
+              }
               className="relative min-h-0 h-full"
               onPointerLeave={() => {
                 onLeave();
@@ -543,6 +567,15 @@ export function StereoMapPanel() {
                   yTicks={yAxisTicks}
                 />
               </div>
+              {!showAxes && mode === STEREO_MAP_MODES.POSITION && (
+                <div
+                  data-testid="dock-stereo-map-pair-labels"
+                  className="pointer-events-none absolute inset-0 flex flex-col justify-between px-1 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-axis)] font-medium leading-none text-muted-foreground"
+                >
+                  <span className="truncate">{firstLabel}</span>
+                  <span className="truncate">{secondLabel}</span>
+                </div>
+              )}
               {stereoMapHover ? (
                 <div className="pointer-events-none absolute inset-0 z-10">
                   <ChartCrosshair leftPct={stereoMapHover.leftPct} />
@@ -550,7 +583,12 @@ export function StereoMapPanel() {
                     className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-stereo-map-primary)]"
                     style={{ left: `${stereoMapHover.leftPct}%`, top: `${stereoMapHover.topPct}%` }}
                   />
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+                  <div
+                    className={cn(
+                      "absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] max-w-full rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]",
+                      !showAxes && "flex flex-wrap gap-x-2 text-[length:var(--ui-fs-axis)]"
+                    )}
+                  >
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {stereoMapHover.freqLabel}
                     </div>
@@ -567,14 +605,18 @@ export function StereoMapPanel() {
               ) : null}
             </div>
           </div>
-          <div />
-          <AxisRail
-            axis="x"
-            className="h-[var(--ui-chart-x-axis-row-h)] w-full"
-            interaction={stereoMapXAxis}
-            active={chartXAxisActive}
-            ticks={xAxisTicks}
-          />
+          {showAxes && (
+            <>
+              <div />
+              <AxisRail
+                axis="x"
+                className="h-[var(--ui-chart-x-axis-row-h)] w-full"
+                interaction={stereoMapXAxis}
+                active={chartXAxisActive}
+                ticks={xAxisTicks}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

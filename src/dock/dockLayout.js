@@ -2,7 +2,6 @@ import { normalizeDockPanelSizes } from "./dockPanelSizing.js";
 
 /** Workspace panel module ids that Dock can render, in the normal app catalog order. */
 export const DOCK_PANEL_MODULE_IDS = [
-  "transport",
   "levelMeter",
   "loudness",
   "stats",
@@ -23,12 +22,10 @@ export const DOCK_MODULE_IDS = [
   "waveform",
   "spectrogram",
   "stereoMap",
-  "transport",
 ];
 
 /** Complete first-run Dock layout, as tuned (see the first-run defaults design doc). */
 export const DEFAULT_DOCK_MODULES = [
-  "transport",
   "level",
   "loudness",
   "stats",
@@ -42,7 +39,6 @@ export const DEFAULT_DOCK_MODULES = [
 /// First-run preferred widths (CSS px) by first-run panel id: what the tuned strip showed on a
 /// 2048 px wide display, rounded to tens with the four history views equal.
 export const DEFAULT_DOCK_PANEL_SIZES = Object.freeze({
-  transport: 90,
   level: 150,
   loudness: 210,
   stats: 370,
@@ -61,7 +57,6 @@ export const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   spectrum: "spectrum",
   spectrogram: "spectrogram",
   waveform: "waveform",
-  transport: "transport",
   "stereo-map": "stereoMap",
 });
 
@@ -73,7 +68,6 @@ export const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze({
   spectrum: "spectrum",
   spectrogram: "spectrogram",
   waveform: "waveform",
-  transport: "transport",
   stereoMap: "stereo-map",
 });
 
@@ -94,7 +88,7 @@ export function panelModuleIdForDockModuleId(moduleId) {
  * @param {string} moduleId
  */
 export function isKnownDockPanelModuleId(moduleId) {
-  return DOCK_PANEL_MODULE_IDS.includes(moduleId) || moduleId === "transport";
+  return DOCK_PANEL_MODULE_IDS.includes(moduleId);
 }
 
 export function createDockPanelId(moduleId, panelsById = {}) {

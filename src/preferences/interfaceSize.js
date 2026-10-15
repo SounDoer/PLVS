@@ -122,5 +122,7 @@ export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
  * @param {string} surface
  */
 export function resolveInterfacePreferencesForSurface(prefs, rawSize, surface) {
-  return resolveInterfacePreferences(prefs, isDockAccessorySurface(surface) ? "small" : rawSize);
+  const resolved = resolveInterfacePreferences(prefs, rawSize);
+  // Native accessory geometry stays compact; text uses the same roles as the main window.
+  return isDockAccessorySurface(surface) ? { ...prefs, typography: resolved.typography } : resolved;
 }

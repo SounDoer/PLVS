@@ -79,6 +79,7 @@ describe("panelControls", () => {
   it("uses the agreed defaults", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       levelMeterMode: "peak",
+      levelMeterOrientation: "vertical",
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
@@ -260,6 +261,7 @@ describe("panelControls", () => {
       })
     ).toEqual({
       levelMeterMode: "peak",
+      levelMeterOrientation: "vertical",
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,

@@ -27,6 +27,7 @@ const ACTION_TYPES = new Set([
   "hover-module",
   "open-module-settings",
   "update-module-controls",
+  "update-time-viewport",
   "reset-module-controls",
   "apply-preset",
   "save-preset",

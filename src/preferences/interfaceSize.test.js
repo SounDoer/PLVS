@@ -133,14 +133,16 @@ describe("interface size profiles", () => {
     expect(resolved.layout.drawer.preferredWidthPx).toBe(400);
   });
 
-  it("keeps Dock accessory documents on the compact baseline", () => {
+  it("shares text profiles with Dock accessories while preserving compact native geometry", () => {
     for (const surface of ["dock-header", "dock-editor"]) {
       const resolved = resolveInterfacePreferencesForSurface(
         UI_PREFERENCES,
         "extra-large",
         surface
       );
-      expect(resolved.typography.sizesPx).toEqual(UI_PREFERENCES.typography.sizesPx);
+      expect(resolved.typography.sizesPx).toEqual(
+        resolveInterfacePreferences(UI_PREFERENCES, "extra-large").typography.sizesPx
+      );
       expect(resolved.iconography.sizesPx).toEqual(UI_PREFERENCES.iconography.sizesPx);
       expect(resolved.layout.drawer.preferredWidthPx).toBe(320);
     }

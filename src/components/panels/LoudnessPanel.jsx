@@ -18,7 +18,8 @@ import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { loudnessHistY } from "../../config/scales";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 
-export function LoudnessPanel() {
+/** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
+export function LoudnessPanel({ showAxes = true, className } = {}) {
   const historyTickSteps = HISTORY_TIME_TICK_STEPS;
   const {
     hasHistoryData,
@@ -186,12 +187,14 @@ export function LoudnessPanel() {
   return (
     <div
       className={cn(
-        PANEL_MIN_HISTORY,
-        "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        showAxes && PANEL_MIN_HISTORY,
+        "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+        className
       )}
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <LoudnessHistoryChart
+          showAxes={showAxes}
           plotAreaRef={plotAreaRef}
           targetLufs={targetLufs}
           loudnessYMinDb={normalizedPanelControls.loudnessYMinDb}

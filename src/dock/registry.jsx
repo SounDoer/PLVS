@@ -5,7 +5,6 @@ import { DockSpectrogram } from "./modules/DockSpectrogram.jsx";
 import { DockSpectrum } from "./modules/DockSpectrum.jsx";
 import { DockStats } from "./modules/DockStats.jsx";
 import { DockStereoMap } from "./modules/DockStereoMap.jsx";
-import { DockTransport } from "./modules/DockTransport.jsx";
 import { DockWaveform } from "./modules/DockWaveform.jsx";
 import { getDockPanelSizing } from "./dockPanelSizing.js";
 
@@ -70,12 +69,5 @@ export const DOCK_MODULE_REGISTRY = {
     Component: DockStereoMap,
     ...getDockPanelSizing("stereo-map"),
     settingsFamily: "stereoMap",
-  },
-  transport: {
-    id: "transport",
-    label: "Timecode",
-    Component: DockTransport,
-    ...getDockPanelSizing("transport"),
-    settingsFamily: null,
   },
 };

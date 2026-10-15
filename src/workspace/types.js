@@ -34,6 +34,7 @@
  *
  * @typedef {{
  *   levelMeterMode: string,
+ *   levelMeterOrientation: string,
  *   levelMeterPlaybackMax: boolean,
  *   levelMeterValueMarker: boolean,
  *   levelMeterTpMaxMarker: boolean,

@@ -276,7 +276,7 @@ describe("Portable Preset V1", () => {
           moduleId: "levelMeter",
           title: "Peaks",
           preferredWidthCssPx: 180,
-          controls: { readout: "truePeakMax", showLabels: false },
+          controls: { readout: "truePeakMax", tpMaxMarker: true },
         },
       ],
     });

@@ -11,6 +11,7 @@ import { preparePanelSettingsNavigation } from "../uiNavigation/panelSettingsNav
 import { LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
 import { errorDetails } from "../lib/errorDetails.js";
 import { reportSceneOperationError } from "../lib/sceneOperationNotice.js";
+import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "./DockContext.jsx";
 import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
@@ -36,10 +37,12 @@ const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} 
  * then the bridge that publishes to the accessories.
  */
 export function DockAccessoriesProvider({ children }) {
-  const { state: workspaceState, setActiveTab } = useWorkspaceStore();
+  const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
+  const { historyRetentionSec, interfaceSize } = useAppSettings();
   const { sourceMode, running } = useMeterRuntime();
   const { notice, raiseNotice, clearNotice, showClock } = useMeterDisplayState();
-  const { sourceTransportState } = useDisplaySnapshot();
+  const { sourceTransportState, histSourceList } = useDisplaySnapshot();
+  const historyTotalSamples = histSourceList?.length ?? 0;
   const { channelCount, vectorscopePairOptions, spectrumChannelOptions } = useAnalysisSession();
   const { clearAll, onSourceTransportAction } = useSourceActions();
   const presets = usePresetLibrary();
@@ -152,6 +155,7 @@ export function DockAccessoriesProvider({ children }) {
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
   const dockHeaderState = useMemo(
     () => ({
+      interfaceSize,
       visible: dockAccessoryVisibility.headerVisible,
       presentationId: dockAccessoryVisibility.headerPresentationId,
       sourceTransportState,
@@ -165,6 +169,7 @@ export function DockAccessoriesProvider({ children }) {
       loudnessProfileActive: loudnessProfile.active !== LOUDNESS_PROFILE_OFF,
     }),
     [
+      interfaceSize,
       dockAccessoryVisibility.editorView,
       dockAccessoryVisibility.headerVisible,
       dockAccessoryVisibility.headerPresentationId,
@@ -181,12 +186,18 @@ export function DockAccessoriesProvider({ children }) {
   );
   const dockEditorState = useMemo(
     () => ({
+      interfaceSize,
       view: dockAccessoryVisibility.editorView,
       edge: dockEdge,
       panels: dockLayout.panels,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
       controlsByPanelId: dockLayout.controlsByPanelId,
+      sharedTimeViewport: {
+        ...workspaceState.axisViewports.time,
+        maxWindowSec: historyRetentionSec,
+        totalSamples: historyTotalSamples,
+      },
       isDefault: dockLayout.isDefault,
       vectorscopeOptions: vectorscopePairOptions,
       spectrumOptions: spectrumChannelOptions,
@@ -206,8 +217,12 @@ export function DockAccessoriesProvider({ children }) {
       },
     }),
     [
+      interfaceSize,
       dockAccessoryVisibility.editorView,
       dockEdge,
+      workspaceState.axisViewports.time,
+      historyRetentionSec,
+      historyTotalSamples,
       dockLayout.controlsByPanelId,
       dockLayout.isDefault,
       dockLayout.panelOrder,
@@ -272,6 +287,14 @@ export function DockAccessoriesProvider({ children }) {
         setHoveredDockPanelId(typeof payload.panelId === "string" ? payload.panelId : null);
       } else if (type === "open-module-settings") {
         dockAccessoryVisibility.openEditor(`module:${payload.panelId}`);
+      } else if (type === "update-time-viewport") {
+        if (
+          dockLayout.panelsById[payload.panelId] &&
+          ["loudness", "waveform", "spectrogram"].includes(
+            dockLayout.panelsById[payload.panelId].moduleId
+          )
+        )
+          setAxisViewport("time", payload.viewport);
       } else if (type === "update-module-controls") {
         dockLayout.setPanelControls(payload.panelId, payload.controls);
       } else if (type === "reset-module-controls") {
@@ -308,6 +331,7 @@ export function DockAccessoriesProvider({ children }) {
       else if (type === "reorder-preset") presets.reorder(payload.presetIds);
     },
     [
+      setAxisViewport,
       clearAll,
       clearNotice,
       dockAccessoryVisibility,

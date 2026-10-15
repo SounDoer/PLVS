@@ -56,3 +56,16 @@ Apply these principles to each subsequent panel:
 
 Review the remaining panels one at a time before implementation; timeline navigation and
 Vectorscope hold-slow behavior remain explicit follow-up items, not completed Spectrum work.
+
+
+## Remaining-panel decisions and implementation
+
+Approved on 2026-10-15: reuse normal Stereo Map and Vectorscope layout; remove Dock Loudness
+readouts; enable Spectrogram 3D at all heights; share Level Meter rendering/settings and add an
+explicit per-instance Vertical/Horizontal orientation. Stats adapts both rows and columns, retaining
+all metrics with scroll overflow. Remove standalone Timecode, preserving toolbar Transport.
+
+Dock timelines now participate in the workspace time viewport by default, with per-instance unlinking
+and local window/offset storage. They reuse normal history renderers and interactions. Snapshot
+selection remains global and independent of viewport membership. X/Y axes remain hidden in Dock.
+Native screenshots cover 56, 144 and 400 CSS px, both meter orientations and all Spectrogram modes.

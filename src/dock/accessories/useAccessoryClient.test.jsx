@@ -64,6 +64,29 @@ describe("useAccessoryClient", () => {
     unmount();
   });
 
+  it("updates accessory text size and ignores stale size publications", async () => {
+    mocks.listenState.mockImplementation((handler) => {
+      stateHandler = handler;
+      return Promise.resolve(() => {});
+    });
+    const { unmount } = renderHook(() => useAccessoryClient("dock-editor"));
+    await act(async () => {});
+    act(() => {
+      stateHandler({ surface: "dock-editor", revision: 1, payload: { interfaceSize: "small" } });
+    });
+    expect(document.documentElement.style.getPropertyValue("--ui-fs-display")).toBe("13px");
+    act(() => {
+      stateHandler({
+        surface: "dock-editor",
+        revision: 3,
+        payload: { interfaceSize: "extra-large" },
+      });
+      stateHandler({ surface: "dock-editor", revision: 2, payload: { interfaceSize: "small" } });
+    });
+    expect(document.documentElement.style.getPropertyValue("--ui-fs-display")).toBe("18px");
+    unmount();
+  });
+
   it("applies the latest theme publication and rejects a stale accessory revision", async () => {
     mocks.listenState.mockImplementation((handler) => {
       stateHandler = handler;

@@ -57,12 +57,11 @@ describe("DockModulesEditor", () => {
     expect(screen.getByRole("button", { name: "Add Module" })).toBeTruthy();
   });
 
-  it("offers the dock-only Timecode module in the add list", () => {
+  it("omits the removed Timecode module from the add list", () => {
     const onAdd = vi.fn();
     render(<DockModulesEditor {...BASE_PROPS} onAdd={onAdd} />);
     fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
-    fireEvent.click(screen.getByRole("button", { name: "Timecode" }));
-    expect(onAdd).toHaveBeenCalledWith("transport");
+    expect(screen.queryByRole("button", { name: "Timecode" })).toBeNull();
   });
 
   it("provides a dedicated drag handle for every added module", () => {
@@ -95,13 +94,13 @@ describe("DockModulesEditor", () => {
     render(
       <DockModulesEditor
         {...BASE_PROPS}
-        modules={["level", "transport"]}
+        modules={["level", "waveform"]}
         onOpenSettings={onOpenSettings}
       />
     );
     fireEvent.click(screen.getByRole("button", { name: "Level Meter settings" }));
     expect(onOpenSettings).toHaveBeenCalledWith("level");
-    expect(screen.getByText("Timecode")).toBeTruthy();
+    expect(screen.getByText("Waveform")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Timecode settings" })).toBeNull();
   });
 

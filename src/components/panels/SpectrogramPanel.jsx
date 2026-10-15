@@ -53,7 +53,8 @@ import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelC
 // visible, so the looser rule costs nothing.
 const RIGHT_DOUBLE_CLICK_MS = 400;
 const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
-export function SpectrogramPanel() {
+/** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
+export function SpectrogramPanel({ showAxes = true, className } = {}) {
   const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
   const { channelCount, spectrumChannelOptions } = useFrameData();
   const {
@@ -553,13 +554,15 @@ export function SpectrogramPanel() {
   return (
     <div
       className={cn(
-        PANEL_MIN_SPECTROGRAM,
-        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        showAxes && PANEL_MIN_SPECTROGRAM,
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+        className
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
+            !showAxes && "!grid-cols-1 !grid-rows-[minmax(0,1fr)]",
             "grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
           )}
         >
@@ -567,20 +570,25 @@ export function SpectrogramPanel() {
               not a position -- the floor covers only part of the canvas height and sits at whatever
               azimuth the user has rotated to, so a tick's vertical position means nothing there.
               That is accepted, not an oversight; see the axes-and-gestures design. */}
-          <AxisRail
-            axis="y"
-            className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
-            interaction={spectrogramYAxis}
-            active={chartYAxisActive}
-            ticks={spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
-              key: hz,
-              label,
-              frac: rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
-            }))}
-          />
+          {showAxes && (
+            <AxisRail
+              axis="y"
+              className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+              interaction={spectrogramYAxis}
+              active={chartYAxisActive}
+              ticks={spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
+                key: hz,
+                label,
+                frac: rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
+              }))}
+            />
+          )}
 
           {/* Canvas chart */}
-          <div className="relative min-h-0 min-w-0">
+          <div
+            className="relative min-h-0 min-w-0"
+            ref={showAxes ? undefined : spectrogramYAxis.axisRef}
+          >
             <div className="relative min-h-0 h-full">
               {isGlSurface ? (
                 <canvas
@@ -691,21 +699,25 @@ export function SpectrogramPanel() {
             </div>
           </div>
 
-          <div />
-          <AxisRail
-            axis="x"
-            className="h-[var(--ui-chart-x-axis-row-h)] w-full"
-            interaction={timeAxisInteraction(historyTimeAxisHandlers)}
-            active={historyTimeAxisActive}
-            ticks={(historyTimeTicks ?? []).map((tick, i) => ({
-              // Keyed by slot, not by text. A time label changes on almost every update, so a key
-              // carrying it made React unmount and remount the tick instead of writing its text --
-              // measured at 77 node mutations a second per panel, in three panels.
-              key: i,
-              label: tick,
-              frac: i / HISTORY_TIME_TICK_STEPS,
-            }))}
-          />
+          {showAxes && (
+            <>
+              <div />
+              <AxisRail
+                axis="x"
+                className="h-[var(--ui-chart-x-axis-row-h)] w-full"
+                interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+                active={historyTimeAxisActive}
+                ticks={(historyTimeTicks ?? []).map((tick, i) => ({
+                  // Keyed by slot, not by text. A time label changes on almost every update, so a key
+                  // carrying it made React unmount and remount the tick instead of writing its text --
+                  // measured at 77 node mutations a second per panel, in three panels.
+                  key: i,
+                  label: tick,
+                  frac: i / HISTORY_TIME_TICK_STEPS,
+                }))}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

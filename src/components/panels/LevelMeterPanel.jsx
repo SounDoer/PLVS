@@ -51,6 +51,7 @@ const LEVEL_METER_VALUE_MARKER_BASE =
 const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[calc(var(--ui-fs-display)*3)]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
+const LEVEL_METER_READOUT_SIZE = "text-[length:min(var(--ui-fs-display),28cqw)]";
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
 
@@ -63,7 +64,7 @@ function levelMeterValueMarkerClass(position) {
 
 /// `background` is a CSS background-image laid over the whole bar; the fill reveals it from the
 /// bottom.
-function AnimatedLevelFill({ value, min, max, fromTopFrac, background }) {
+function AnimatedLevelFill({ value, min, max, fromTopFrac, background, horizontal = false }) {
   const reduceMotion = useReducedMotion();
   const clamped = Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : null;
   const clipTopFrac = clamped != null ? fromTopFrac(clamped) : 1;
@@ -73,7 +74,9 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac, background }) {
     damping: reduceMotion ? 120 : 42,
     mass: reduceMotion ? 0.08 : 0.35,
   });
-  const clipPath = useTransform(spring, (scale) => `inset(${(1 - scale) * 100}% 0 0 0)`);
+  const clipPath = useTransform(spring, (scale) =>
+    horizontal ? `inset(0 ${(1 - scale) * 100}% 0 0)` : `inset(${(1 - scale) * 100}% 0 0 0)`
+  );
 
   useEffect(() => {
     spring.set(targetScaleY);
@@ -263,7 +266,8 @@ function AxisValueMarker({
   );
 }
 
-export function LevelMeterPanel() {
+/** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
+export function LevelMeterPanel({ showAxes = true, className } = {}) {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const { document: loudnessProfileDocument } = useLoudnessProfile();
@@ -296,7 +300,9 @@ export function LevelMeterPanel() {
         min: normalizedPanelControls.loudnessYMinDb,
         max: normalizedPanelControls.loudnessYMaxDb,
       };
+  const horizontal = normalizedPanelControls.levelMeterOrientation === "horizontal";
   const fillBackground = levelMeterBackground({
+    direction: horizontal ? "to right" : "to top",
     mode: levelMeterMode,
     controls: normalizedPanelControls,
     profileDocument: loudnessProfileDocument,
@@ -346,6 +352,34 @@ export function LevelMeterPanel() {
     values: channelValues,
   });
 
+  if (horizontal)
+    return (
+      <HorizontalLevelMeter
+        {...{
+          showAxes,
+          className,
+          displayAudio,
+          hasTpMaxValue,
+          onResetTpMax,
+          normalizedPanelControls,
+          onPanelControlsChange,
+          channels,
+          rmsPlaybackMaxValues,
+          playbackMaxValue,
+          liveLevelValue,
+          modeMeta,
+          isPeak,
+          isRms,
+          isPeakFamily,
+          levelMeterYRange,
+          modeDefaults,
+          fillBackground,
+          loudnessProfileDocument,
+          profileActive,
+        }}
+      />
+    );
+
   if (!isPeakFamily) {
     const readoutValue = showPlaybackMax ? playbackMaxValue : liveLevelValue;
     const showMarker = showLevelValueMarker && Number.isFinite(readoutValue);
@@ -356,29 +390,38 @@ export function LevelMeterPanel() {
       levelMeterMode,
       readoutValue
     );
-    const yAxisWidthClass = showMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
+    const yAxisWidthClass = showMarker
+      ? LEVEL_METER_Y_AXIS_WITH_MARKER
+      : showAxes
+        ? W_PEAK_TICKS
+        : "w-0";
     return (
       <div
         className={cn(
-          PANEL_MIN_PEAK,
-          "@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+          showAxes && PANEL_MIN_PEAK,
+          "@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+          className
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-0">
-          <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
+          <div data-level-meter-grid className={cn(LEVEL_METER_GRID, showAxes && PANEL_MIN_PEAK)}>
             <AxisRail
               axis="y"
               inset
               data-level-meter-y-axis
               scaleProps={{ "data-level-meter-y-axis-scale": true, ref: levelMeterTrackRef }}
               className={cn(yAxisWidthClass, "min-h-0 h-full shrink-0 overflow-visible text-right")}
-              interaction={levelMeterYAxis}
-              ticks={levelMeterAxisTicks(
-                levelMeterTicks,
-                levelMeterYRange,
-                showMarker ? axisMarkerPlacement(readoutValue, levelMeterYRange) : null,
-                levelMeterTrackMetrics
-              )}
+              interaction={showAxes ? levelMeterYAxis : undefined}
+              ticks={
+                showAxes
+                  ? levelMeterAxisTicks(
+                      levelMeterTicks,
+                      levelMeterYRange,
+                      showMarker ? axisMarkerPlacement(readoutValue, levelMeterYRange) : null,
+                      levelMeterTrackMetrics
+                    )
+                  : []
+              }
             >
               {showMarker ? (
                 <AxisValueMarker
@@ -446,12 +489,13 @@ export function LevelMeterPanel() {
   return (
     <div
       className={cn(
-        PANEL_MIN_PEAK,
-        "@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        showAxes && PANEL_MIN_PEAK,
+        "@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+        className
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
-        <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
+        <div data-level-meter-grid className={cn(LEVEL_METER_GRID, showAxes && PANEL_MIN_PEAK)}>
           <AxisRail
             axis="y"
             inset
@@ -461,13 +505,19 @@ export function LevelMeterPanel() {
               peakYAxisWidthClass,
               "min-h-0 h-full shrink-0 overflow-visible text-right"
             )}
-            interaction={levelMeterYAxis}
-            ticks={levelMeterAxisTicks(
-              levelMeterTicks,
-              levelMeterYRange,
-              showTpMaxMarker ? axisMarkerPlacement(displayAudio?.tpMax, levelMeterYRange) : null,
-              levelMeterTrackMetrics
-            )}
+            interaction={showAxes ? levelMeterYAxis : undefined}
+            ticks={
+              showAxes
+                ? levelMeterAxisTicks(
+                    levelMeterTicks,
+                    levelMeterYRange,
+                    showTpMaxMarker
+                      ? axisMarkerPlacement(displayAudio?.tpMax, levelMeterYRange)
+                      : null,
+                    levelMeterTrackMetrics
+                  )
+                : []
+            }
           >
             {showTpMaxMarker ? (
               <AxisValueMarker
@@ -512,7 +562,10 @@ export function LevelMeterPanel() {
                   </div>
                   <div
                     data-peak-value
-                    className="@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
+                    className={cn(
+                      "absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center",
+                      LEVEL_METER_READOUT_SIZE
+                    )}
                   >
                     <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-[color:var(--ui-text-annotation)]">
                       {formatLevelValue(readoutValue)}
@@ -530,6 +583,191 @@ export function LevelMeterPanel() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function HorizontalLevelMeter({
+  showAxes,
+  className,
+  displayAudio,
+  hasTpMaxValue,
+  onResetTpMax,
+  normalizedPanelControls: controls,
+  onPanelControlsChange,
+  channels,
+  rmsPlaybackMaxValues,
+  playbackMaxValue,
+  liveLevelValue,
+  modeMeta,
+  isPeak,
+  isRms,
+  isPeakFamily,
+  levelMeterYRange: range,
+  modeDefaults,
+  fillBackground,
+  loudnessProfileDocument,
+  profileActive,
+}) {
+  const axis = useAxisInteraction({
+    axis: "x",
+    min: range.min,
+    max: range.max,
+    absMin: modeDefaults.min,
+    absMax: modeDefaults.max,
+    defaultMin: modeDefaults.min,
+    defaultMax: modeDefaults.max,
+    minSpan: 12,
+    scale: "linear",
+    onRangeChange: (min, max) =>
+      onPanelControlsChange?.(
+        normalizePanelControls({
+          ...controls,
+          ...(isPeakFamily
+            ? { levelMeterYMinDb: min, levelMeterYMaxDb: max }
+            : { loudnessYMinDb: min, loudnessYMaxDb: max }),
+        })
+      ),
+  });
+  const ticks = buildAdaptiveDbTicks(range.min, range.max, axis.axisPx).map(({ v, lb }) => ({
+    key: v,
+    label: lb,
+    frac: (v - range.min) / (range.max - range.min),
+  }));
+  const rows = isPeakFamily ? channels : [{ label: modeMeta.meterLabel, valueDb: liveLevelValue }];
+  const value = isPeak
+    ? displayAudio?.tpMax
+    : controls.levelMeterPlaybackMax
+      ? playbackMaxValue
+      : liveLevelValue;
+  const marker = isPeak
+    ? controls.levelMeterTpMaxMarker && hasTpMaxValue
+    : !isRms && controls.levelMeterValueMarker;
+  const placement = marker ? axisMarkerPlacement(value, range) : null;
+  const status = levelMeterMarkerStatus(
+    loudnessProfileDocument,
+    isPeak ? "truePeak" : controls.levelMeterMode,
+    value
+  );
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: isPeak && marker ? "Click to reset TP Max" : undefined,
+    side: "top",
+  });
+  const [markerWidth, setMarkerWidth] = useState(0);
+  const markerVisible = placement != null;
+  useLayoutEffect(() => {
+    const element = anchorRef.current;
+    if (!element) return;
+    const measure = () => setMarkerWidth(Math.ceil(element.getBoundingClientRect().width));
+    measure();
+    if (typeof ResizeObserver !== "function") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [anchorRef, markerVisible]);
+  const markerPercent = placement ? (1 - placement.frac) * 100 : 0;
+  return (
+    <div
+      data-level-meter-orientation="horizontal"
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-[var(--ui-panel-pad-x)] py-[var(--ui-panel-pad-y)]",
+        className
+      )}
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-[var(--ui-chart-axis-gap)] overflow-y-auto">
+        {rows.map((row, i) => (
+          <div
+            key={i}
+            className="@container relative min-h-5 min-w-0 flex-1"
+            data-level-meter-bar-region
+          >
+            <AnimatedLevelFill
+              horizontal
+              value={row.valueDb}
+              min={range.min}
+              max={range.max}
+              fromTopFrac={(v) => rangedFromTopFrac(v, range.min, range.max)}
+              background={fillBackground}
+            />
+            <div className="relative flex h-full items-center justify-between px-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+              <span>{row.label}</span>
+              <span
+                className={cn(
+                  "font-[family-name:var(--ui-font-mono)] tabular-nums",
+                  LEVEL_METER_READOUT_SIZE
+                )}
+                data-level-value
+              >
+                {formatLevelValue(
+                  isRms &&
+                    controls.levelMeterPlaybackMax &&
+                    Number.isFinite(rmsPlaybackMaxValues[i])
+                    ? rmsPlaybackMaxValues[i]
+                    : !isPeakFamily && controls.levelMeterPlaybackMax
+                      ? playbackMaxValue
+                      : row.valueDb
+                )}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {placement && (
+        <div
+          className="@container relative h-[var(--ui-fs-display)] shrink-0"
+          data-level-meter-horizontal-marker
+        >
+          <span
+            role={isPeak ? "button" : undefined}
+            tabIndex={isPeak ? 0 : undefined}
+            onKeyDown={(event) => {
+              if (isPeak && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                onResetTpMax?.();
+              }
+            }}
+            onClick={isPeak ? onResetTpMax : undefined}
+            ref={anchorRef}
+            onMouseEnter={isPeak ? showTip : undefined}
+            onMouseLeave={isPeak ? hideTip : undefined}
+            data-level-tp-max-marker={isPeak ? "" : undefined}
+            data-loudness-status={profileActive ? (status ?? "neutral") : "off"}
+            className={cn(
+              "absolute whitespace-nowrap font-[family-name:var(--ui-font-mono)] text-[length:min(var(--ui-fs-display),20cqw)] leading-none tabular-nums",
+              loudnessMeterMarkerClass(status, profileActive)
+            )}
+            style={{
+              // Clamp the entire label, including an out-of-range arrow, before either edge.
+              // The proportional transform is an in-bounds fallback before the first measurement.
+              left: markerWidth
+                ? `clamp(0px, calc(${markerPercent}% - ${markerWidth / 2}px), calc(100% - ${markerWidth}px))`
+                : `${markerPercent}%`,
+              transform: markerWidth ? undefined : `translateX(-${markerPercent}%)`,
+            }}
+          >
+            {value < range.min && (
+              <span aria-hidden="true" data-marker-out-of-range="below">
+                ◀
+              </span>
+            )}
+            {formatLevelValue(value)}
+            {value > range.max && (
+              <span aria-hidden="true" data-marker-out-of-range="above">
+                ▶
+              </span>
+            )}
+            {isPeak ? tipNode : null}
+          </span>
+        </div>
+      )}
+      {showAxes && (
+        <AxisRail
+          axis="x"
+          className="h-[var(--ui-chart-x-axis-row-h)] shrink-0"
+          interaction={axis}
+          ticks={ticks}
+        />
+      )}
     </div>
   );
 }

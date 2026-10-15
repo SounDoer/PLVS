@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { StereoMapHistorySlab } from "../../lib/StereoMapHistorySlab.js";
@@ -176,6 +176,59 @@ describe("dock module registration", () => {
 });
 
 describe("DockStereoMap", () => {
+  it("uses shared snapshot and frequency gestures while keeping axis rails hidden", () => {
+    const captureCurrentSnapshot = vi.fn();
+    const setSelectedOffset = vi.fn();
+    const onDockPanelControlsChange = vi.fn();
+    const { container } = renderWith({
+      result: primitiveRow(),
+      selectedControls: { ...controls, panelId: "map-2", onDockPanelControlsChange },
+      historyData: {
+        selectedOffset: -1,
+        historyChartInteractive: true,
+        totalSamples: 100,
+        captureCurrentSnapshot,
+        setSelectedOffset,
+      },
+    });
+    const chart = screen.getByTestId("stereo-map-chart");
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
+      standIn({ width: 300, height: 40, left: 0, top: 0 })
+    );
+    expect(container.querySelector("[data-axis]")).toBeNull();
+    fireEvent.click(chart);
+    expect(captureCurrentSnapshot).toHaveBeenCalledOnce();
+    fireEvent.doubleClick(chart);
+    expect(setSelectedOffset).toHaveBeenCalledWith(-1);
+    fireEvent.wheel(chart, { deltaY: -100, clientX: 150 });
+    expect(onDockPanelControlsChange).toHaveBeenCalledWith(
+      "map-2",
+      expect.objectContaining({ stereoMapXMinFreq: expect.any(Number) })
+    );
+    const next = onDockPanelControlsChange.mock.calls.at(-1)[1];
+    expect(next.stereoMapXMaxFreq - next.stereoMapXMinFreq).toBeLessThan(19980);
+  });
+
+  it("shows the shared hover probe at compact height", () => {
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        cb();
+        return 1;
+      })
+    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      standIn({ width: 300, height: 40, left: 0, top: 0 })
+    );
+    const { container } = renderWith({
+      result: primitiveRow(),
+      historyData: { selectedOffset: -1, historyChartInteractive: true },
+    });
+    fireEvent.pointerMove(screen.getByTestId("stereo-map-chart"), { clientX: 10, clientY: 20 });
+    expect(container.textContent).toContain("0%");
+    expect(container.textContent).toMatch(/Hz/);
+  });
+
   it("resolves snapshot holds from the selected key without reading live history", () => {
     const getStereoMapHistoryForKey = vi.fn();
     const resolveStereoMapSnapshotForKey = vi.fn(() => ({ missing: true }));
@@ -304,22 +357,22 @@ describe("DockStereoMap", () => {
     expect(expectedHold.maximum.some((v) => v !== null)).toBe(true);
   });
 
-  it("renders no hover, wheel, pan, axis, or snapshot chrome", () => {
+  it("keeps axis labels and snapshot chrome out of the strip", () => {
     const { container } = renderWith(
       /** @type {Parameters<typeof renderWith>[0]} */ ({ result: primitiveRow() })
     );
-    expect(container.querySelector('[data-testid="stereo-map-chart"]')).toBeNull();
+    expect(container.querySelector('[data-testid="stereo-map-chart"]')).toBeTruthy();
     expect(container.querySelector("[data-stereo-map-hover]")).toBeNull();
     expect(container.textContent).not.toMatch(/Hz/);
   });
 
-  it("renders compact placeholders (no curve) for mono input", () => {
+  it("explains mono input without rendering a curve", () => {
     const { container } = renderWith(
       /** @type {Parameters<typeof renderWith>[0]} */ ({ result: primitiveRow(), channelCount: 1 })
     );
     const plot = container.querySelector('[data-stereo-map-plot="position"]');
-    expect(plot).toBeTruthy();
-    expect(plot.querySelectorAll("[data-stereo-map-segment]").length).toBe(0);
+    expect(plot).toBeNull();
+    expect(screen.getByText("Mono input — Stereo Map requires a channel pair.")).toBeTruthy();
   });
 
   it("does not treat channelCount 0 (not started yet) as mono", () => {
@@ -338,6 +391,6 @@ describe("DockStereoMap", () => {
     );
     const plot = container.querySelector('[data-stereo-map-plot="position"]');
     expect(plot).toBeTruthy();
-    expect(plot.querySelectorAll("[data-stereo-map-segment]").length).toBe(0);
+    expect(screen.queryByText("Mono input — Stereo Map requires a channel pair.")).toBeNull();
   });
 });

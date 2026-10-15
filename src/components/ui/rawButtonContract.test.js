@@ -28,7 +28,6 @@ const KNOWN_RAW_BUTTONS = {
   "components/panel-settings/SettingsWidgets.jsx": 1, // disclosure value field
   "components/ThemeEditor.jsx": 1, // Dark / Light segmented choice
   "components/ThemePicker.jsx": 1, // picker trigger styled as a Settings select
-  "dock/modules/DockLevel.jsx": 1, // readout that resets the true-peak maximum
 };
 
 const SRC = fileURLToPath(new URL("../..", import.meta.url));

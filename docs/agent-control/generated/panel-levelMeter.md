@@ -11,6 +11,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 ```json
 {
   "mode": "peak",
+  "orientation": "vertical",
   "playbackMax": false,
   "floatingValue": false,
   "tpMaxMarker": false,
@@ -38,6 +39,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
+| `orientation` | string | - | `"vertical"` | "vertical", "horizontal" | active |
 | `mode` | string | - | `"peak"` | "peak", "rms", "momentary", "shortTerm" | active |
 | `playbackMax` | boolean | - | `false` | - | inactive (peakMode) |
 | `floatingValue` | boolean | - | `false` | - | inactive (nonLoudnessMode) |
