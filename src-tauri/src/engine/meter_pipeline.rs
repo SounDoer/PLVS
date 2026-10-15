@@ -2365,7 +2365,7 @@ mod tests {
     let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
     let requests = AnalysisRequests::default();
 
-    // 500 ms each: Max M needs one complete 400 ms window before it has a value.
+    // 500 ms each: Integrated has no value before the first complete 400 ms gating block.
     for (timestamp_ms, amplitude) in [(500_u64, 0.02_f32), (1_000, 0.8)] {
       pipeline.last_frame_emit = Instant::now()
         .checked_add(Duration::from_secs(60))

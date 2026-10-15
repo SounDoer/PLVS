@@ -388,8 +388,9 @@ impl LoudnessMeter {
 pub struct LoudnessBlock {
   pub momentary: f64,
   pub short_term: f64,
-  /// Largest M over every complete 400 ms window that ended within this block (sample-accurate,
-  /// unlike `momentary`, which is the window ending on the block boundary); `-inf` if none did.
+  /// Largest M over the 400 ms windows ending at every frame of this block (sample-accurate,
+  /// unlike `momentary`, which is only the window ending on the block boundary); `-inf` for
+  /// silence.
   pub momentary_max: f64,
   /// As `momentary_max`, for the 3 s window.
   pub short_term_max: f64,
