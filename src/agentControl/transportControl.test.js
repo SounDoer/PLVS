@@ -117,7 +117,7 @@ describe("Transport Control", () => {
     });
   });
 
-  it("rejects unavailable, out-of-range, and Dock snapshot selection without clamping", () => {
+  it("rejects unavailable and out-of-range selection but allows retained Dock snapshots", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     expect(
       planTransportMutation(
@@ -148,7 +148,7 @@ describe("Transport Control", () => {
           docked: true,
         }
       ).refusal
-    ).toEqual({ code: "dockActive" });
+    ).toBeNull();
   });
 
   it("plans explicit source and LIVE actions with confirmation and no-op semantics", () => {

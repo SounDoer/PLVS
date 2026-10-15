@@ -1,10 +1,25 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
+import { describe, expect, it, vi } from "vitest";
+import {
+  FrameDataProvider as BaseFrameDataProvider,
+  HistoryDataProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
 import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { DockSpectrum } from "./DockSpectrum.jsx";
+
+function FrameDataProvider({ value, children }) {
+  return (
+    <BaseFrameDataProvider value={value}>
+      <HistoryDataProvider
+        value={{ selectedOffset: -1, historyChartInteractive: true, totalSamples: 0 }}
+      >
+        {children}
+      </HistoryDataProvider>
+    </BaseFrameDataProvider>
+  );
+}
 
 // Rows, not paths: the engine sends untilted dB rows and the dock builds every path itself.
 // Tilt off unless a test is about tilt, so a coordinate assertion stays about the thing it names.
@@ -31,6 +46,70 @@ function renderSpectrum(controls, result) {
 }
 
 describe("DockSpectrum", () => {
+  it("uses shared snapshot selection and exits on double-click at compact height", () => {
+    const captureCurrentSnapshot = vi.fn();
+    const setSelectedOffset = vi.fn();
+    const resolveSpectrumSnapshotForKey = vi.fn(() => ({ missing: true }));
+    const controls = flatControls({});
+    const tree = (selectedOffset) => (
+      <FrameDataProvider value={{ displayAudio: {} }}>
+        <HistoryDataProvider
+          value={{
+            selectedOffset,
+            totalSamples: 10,
+            historyChartInteractive: true,
+            captureCurrentSnapshot,
+            setSelectedOffset,
+            resolveSpectrumSnapshotForKey,
+          }}
+        >
+          <DockSpectrum controls={controls} heightMode="compact" />
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    );
+    const { getByTestId, rerender, container } = render(tree(-1));
+    fireEvent.click(getByTestId("spectrum-chart"));
+    expect(captureCurrentSnapshot).toHaveBeenCalledOnce();
+    rerender(tree(0));
+    expect(resolveSpectrumSnapshotForKey).toHaveBeenCalledWith(
+      dockSpectrumKey(controls),
+      expect.anything()
+    );
+    expect(container.querySelector("[data-spectrum-live]")).toBeNull();
+    fireEvent.doubleClick(container.firstElementChild.firstElementChild);
+    expect(setSelectedOffset).toHaveBeenCalledWith(-1);
+  });
+
+  it("uses the shared chart and writes range gestures only to its Dock panel", () => {
+    const onDockPanelControlsChange = vi.fn();
+    const controls = flatControls({
+      panelId: "dock-spectrum",
+      spectrumGrid: true,
+      spectrumPeakLabels: true,
+      onDockPanelControlsChange,
+    });
+    const tree = (heightMode) => (
+      <FrameDataProvider value={{ displayAudio: {} }}>
+        <DockSpectrum controls={controls} heightMode={heightMode} />
+      </FrameDataProvider>
+    );
+    const { container, getByTestId, rerender } = render(tree("expanded"));
+    expect(container.querySelector("[data-spectrum-grid]")).toBeTruthy();
+    expect(container.querySelector("svg text")).toBeNull();
+    fireEvent.wheel(getByTestId("spectrum-chart"), { deltaY: -100, clientX: 100 });
+    expect(onDockPanelControlsChange).toHaveBeenCalledWith(
+      "dock-spectrum",
+      expect.objectContaining({ spectrumGrid: true, spectrumPeakLabels: true })
+    );
+    const changed = onDockPanelControlsChange.mock.calls[0][1];
+    expect(changed.spectrumXMaxFreq - changed.spectrumXMinFreq).toBeLessThan(19980);
+    rerender(tree("compact"));
+    expect(container.querySelector("[data-spectrum-grid]")).toBeTruthy();
+    rerender(tree("expanded"));
+    expect(container.querySelector("[data-spectrum-grid]")).toBeTruthy();
+    expect(controls.spectrumGrid).toBe(true);
+  });
+
   it("renders a themed live fill and both live outlines", () => {
     const controls = flatControls({ spectrumView: "lr" });
     const { container } = renderSpectrum(controls, {
@@ -38,13 +117,17 @@ describe("DockSpectrum", () => {
       smoothDb: [-30, -50],
       smoothDbB: [-40, -20],
     });
-    const paths = [...container.querySelectorAll("svg > path")];
+    const paths = [...container.querySelectorAll("svg path")];
 
     expect(paths).toHaveLength(3);
     expect(paths[0].getAttribute("d")).toContain("L 1000 260 L 0 260 Z");
-    expect(paths[0].getAttribute("fill")).toMatch(/^url\(#dock-spectrum-primary-/);
-    expect(paths[1].getAttribute("stroke")).toBe("var(--ui-spectrum-primary)");
-    expect(paths[2].getAttribute("stroke")).toBe("var(--ui-spectrum-secondary)");
+    expect(paths[0].getAttribute("fill")).toMatch(/^url\(#spectrum-live-/);
+    expect(container.querySelector('[data-spectrum-live="primary"]').getAttribute("stroke")).toBe(
+      "var(--ui-spectrum-primary)"
+    );
+    expect(container.querySelector('[data-spectrum-live="secondary"]').getAttribute("stroke")).toBe(
+      "var(--ui-spectrum-secondary)"
+    );
     expect(paths[2].getAttribute("d")).toMatch(/^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+$/);
   });
 
@@ -55,7 +138,7 @@ describe("DockSpectrum", () => {
       smoothDb: [-30, -50],
       smoothDbB: [-40, -20],
     });
-    const outlines = [...container.querySelectorAll('svg > path[fill="none"]')];
+    const outlines = [...container.querySelectorAll('svg path[fill="none"]')];
 
     expect(outlines).toHaveLength(2);
     expect(outlines[0].getAttribute("vector-effect")).toBe("non-scaling-stroke");
@@ -68,7 +151,7 @@ describe("DockSpectrum", () => {
     return flatControls({ spectrumMaxMode: mode });
   }
 
-  function frame(controls, smoothDb) {
+  function frame(controls, smoothDb, heightMode = "standard") {
     return (
       <FrameDataProvider
         value={{
@@ -79,13 +162,13 @@ describe("DockSpectrum", () => {
           },
         }}
       >
-        <DockSpectrum controls={controls} />
+        <DockSpectrum controls={controls} heightMode={heightMode} />
       </FrameDataProvider>
     );
   }
 
   function fillEdge(container) {
-    return container.querySelector("svg > path[fill^='url']")?.getAttribute("d");
+    return container.querySelector("svg path[fill^='url']")?.getAttribute("d");
   }
 
   it("fills to the cumulative hold in Hold mode", () => {
@@ -98,31 +181,41 @@ describe("DockSpectrum", () => {
     expect(held).not.toBe(fillEdge(render(frame(controls, [-40, -20])).container));
   });
 
+  it("retains cumulative Max Hold while resizing across compact and expanded heights", () => {
+    const controls = holdControls("hold");
+    const { container, rerender } = render(frame(controls, [-20, -20], "compact"));
+    const held = fillEdge(container);
+    rerender(frame(controls, [-60, -60], "expanded"));
+    expect(fillEdge(container)).toBe(held);
+    rerender(frame(controls, [-60, -60], "compact"));
+    expect(fillEdge(container)).toBe(held);
+  });
+
   it("offers the clear target only in Hold mode", () => {
     expect(
       render(frame(holdControls("hold"), [-30, -50])).container.querySelector(
-        "[data-max-hold-reset]"
+        "[data-spectrum-max-hold-hit]"
       )
     ).toBeTruthy();
     expect(
       render(frame(holdControls("decay"), [-30, -50])).container.querySelector(
-        "[data-max-hold-reset]"
+        "[data-spectrum-max-hold-hit]"
       )
     ).toBeNull();
     expect(
       render(frame(holdControls("off"), [-30, -50])).container.querySelector(
-        "[data-max-hold-reset]"
+        "[data-spectrum-max-hold-hit]"
       )
     ).toBeNull();
   });
 
-  it("clears the hold when the module is clicked", () => {
+  it("clears the hold when its contour is clicked", () => {
     const controls = holdControls("hold");
     const { container, rerender } = render(frame(controls, [-30, -50]));
     rerender(frame(controls, [-40, -20]));
     const heldAfterTwoFrames = fillEdge(container);
 
-    fireEvent.click(container.querySelector("[data-max-hold-reset]"));
+    fireEvent.click(container.querySelector("[data-spectrum-max-hold-hit]"));
     rerender(frame(controls, [-40, -20]));
 
     expect(fillEdge(container)).not.toBe(heldAfterTwoFrames);
@@ -144,7 +237,7 @@ describe("DockSpectrum", () => {
       peakDb: [0, -30],
       peakDbB: [0, -30],
     });
-    const paths = [...container.querySelectorAll("svg > path")];
+    const paths = [...container.querySelectorAll("svg path")];
 
     // Two fills up to the peak contours, then the two live outlines on top of them.
     expect(paths).toHaveLength(4);
@@ -165,7 +258,7 @@ describe("DockSpectrum", () => {
       bandCentersHz: [100, 1000],
       smoothDb: [0, -60],
     });
-    const outline = container.querySelector('svg > path[fill="none"]');
+    const outline = container.querySelector('svg path[fill="none"]');
 
     expect(outline.getAttribute("d")).toBe("M 0.00 10.00 L 1000.00 256.00");
   });
@@ -183,8 +276,7 @@ describe("DockSpectrum", () => {
     const flat = renderSpectrum(flatControls(range), result);
     const tilted = renderSpectrum(flatControls({ ...range, spectrumTiltDbPerOctave: 3 }), result);
 
-    const edge = (view) =>
-      view.container.querySelector('svg > path[fill="none"]').getAttribute("d");
+    const edge = (view) => view.container.querySelector('svg path[fill="none"]').getAttribute("d");
     const [flatStart, flatEnd] = edge(flat).match(/[\d.]+(?= L|$)/g) ?? [];
     const [tiltedStart, tiltedEnd] = edge(tilted).match(/[\d.]+(?= L|$)/g) ?? [];
 
@@ -200,6 +292,6 @@ describe("DockSpectrum", () => {
       </FrameDataProvider>
     );
     expect(container.querySelector("svg")).not.toBeNull();
-    expect(container.querySelector("svg > path")).toBeNull();
+    expect(container.querySelector("svg path")).toBeNull();
   });
 });

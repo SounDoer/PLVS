@@ -176,6 +176,25 @@ describe("dock module registration", () => {
 });
 
 describe("DockStereoMap", () => {
+  it("resolves snapshot holds from the selected key without reading live history", () => {
+    const getStereoMapHistoryForKey = vi.fn();
+    const resolveStereoMapSnapshotForKey = vi.fn(() => ({ missing: true }));
+    renderWith({
+      result: primitiveRow(),
+      selectedControls: { ...controls, stereoMapHold: true },
+      historyData: { selectedOffset: 1, getStereoMapHistoryForKey, resolveStereoMapSnapshotForKey },
+    });
+    expect(resolveStereoMapSnapshotForKey).toHaveBeenCalledWith(
+      key,
+      controls.stereoMapMode,
+      { lowerBound: -1, upperBound: 1 },
+      { withHold: true }
+    );
+    expect(getStereoMapHistoryForKey).not.toHaveBeenCalled();
+    expect(screen.getByText("No data for this view at selected time")).toBeTruthy();
+    expect(document.querySelector("canvas")).toBeNull();
+  });
+
   beforeEach(() => {
     // Canvas sizing reads clientWidth/clientHeight, which jsdom does not implement.
     Object.defineProperty(HTMLCanvasElement.prototype, "clientWidth", {

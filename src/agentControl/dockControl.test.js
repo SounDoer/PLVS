@@ -30,6 +30,25 @@ const dock = {
 };
 
 describe("Dock Control", () => {
+  it("round-trips Spectrum grid and peak labels through the public controls", () => {
+    const current = {
+      ...dock,
+      panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+      panelOrder: ["spectrum"],
+      controlsByPanelId: {},
+    };
+    const patched = planDockPanelPatch(current, "spectrum", { grid: true, peakLabels: true });
+    expect(patched.issues).toEqual([]);
+    expect(buildDockSnapshot(patched.dock).panels[0].controls).toMatchObject({
+      grid: true,
+      peakLabels: true,
+    });
+    expect(buildDockPanelDescription(current, "spectrum").schema).toMatchObject({
+      grid: { type: "boolean" },
+      peakLabels: { type: "boolean" },
+    });
+  });
+
   it("allows macOS overlay entry and explicit opt-in reservation", () => {
     const current = { ...dock, enabled: false, reserveSpace: false };
     const context = { platform: "macos", sourceMode: "live" };
@@ -94,7 +113,7 @@ describe("Dock Control", () => {
     expect(result).toMatchObject({
       supported: true,
       reserveSpace: { writable: true },
-      height: { min: 56, max: 160 },
+      height: { min: 56, max: 4294967295 },
       monitors: [{ id: "monitor-1", name: "Display 1" }],
     });
     expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").width).toEqual({
@@ -128,9 +147,9 @@ describe("Dock Control", () => {
         colorBlendPercent: { type: "integer", unit: "%", default: 50 },
       }
     );
-    expect(
-      result.modules.find(({ moduleId }) => moduleId === "spectrum").controls
-    ).not.toHaveProperty("peakLabels");
+    expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").controls).toHaveProperty(
+      "peakLabels"
+    );
   });
 
   it("strictly plans Dock-only panel controls", () => {
@@ -333,6 +352,22 @@ describe("Dock Control", () => {
         effective: "monitor-2",
       },
     ]);
+  });
+
+  it("reports the applied height when native geometry fits a large request", () => {
+    const planned = planDockFormMutation(
+      dock,
+      "dock.enter",
+      { height: 2000 },
+      { platform: "windows" }
+    );
+    const resolved = reconcileDockExecution(planned, { ...planned.dock, height: 700 });
+    expect(resolved.dock.height).toBe(700);
+    expect(resolved.warnings).toContainEqual({
+      code: "dockHeightFitted",
+      requested: 2000,
+      effective: 700,
+    });
   });
 
   it("reports a reservation conflict as a successful overlay fallback", () => {

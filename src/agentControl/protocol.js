@@ -1,3 +1,4 @@
+import { DOCK_MIN_HEIGHT, DOCK_MAX_HEIGHT } from "../dock/dockSizing.js";
 import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
@@ -1422,10 +1423,13 @@ export function normalizeAgentControlRequest(input) {
     if (
       input.params.height !== undefined &&
       (!Number.isInteger(input.params.height) ||
-        input.params.height < 56 ||
-        input.params.height > 160)
+        input.params.height < DOCK_MIN_HEIGHT ||
+        input.params.height > DOCK_MAX_HEIGHT)
     ) {
-      return invalidParams("$.params.height", "height must be an integer from 56 to 160.");
+      return invalidParams(
+        "$.params.height",
+        `height must be an integer from ${DOCK_MIN_HEIGHT} to ${DOCK_MAX_HEIGHT}.`
+      );
     }
     if (
       input.params.expectedRevision !== undefined &&

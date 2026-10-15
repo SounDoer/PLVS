@@ -185,7 +185,6 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
   }
 
   if (method === "transport.snapshot.select") {
-    if (context.docked === true) return result({ refusal: { code: "dockActive" } });
     if (context.historyAvailable !== true) {
       return result({ refusal: { code: "historyUnavailable" } });
     }

@@ -22,6 +22,40 @@ describe("DockHeaderApp", () => {
     expect(client.action.mock.calls).toEqual([["dismiss-toolbar"]]);
   });
 
+  it("acknowledges committed Snapshot content and retains it while the native window hides", () => {
+    const snapshot = {
+      chromeState: "snapshot",
+      sourceLabel: "LIVE",
+      statusLabel: "00:12",
+      actionLabel: "LIVE",
+      actionKind: "returnToLive",
+      primaryActionDisabled: false,
+    };
+    client.action.mockClear();
+    client.payload = { visible: true, presentationId: 7, sourceTransportState: snapshot };
+    const { rerender, container } = render(<DockHeaderApp />);
+    expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 7 });
+    const before = container.innerHTML;
+    client.payload = {
+      visible: false,
+      presentationId: 8,
+      sourceTransportState: {
+        ...snapshot,
+        chromeState: "ready",
+        actionLabel: "START",
+        actionKind: "start",
+      },
+    };
+    rerender(<DockHeaderApp />);
+    expect(container.innerHTML).toBe(before);
+    expect(client.action).not.toHaveBeenCalledWith("header-ready", { presentationId: 8 });
+    client.payload = { ...client.payload, visible: true, presentationId: 9 };
+    rerender(<DockHeaderApp />);
+    expect(container.textContent).toContain("START");
+    expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 9 });
+    client.payload = null;
+  });
+
   it("drops keyboard focus when its window loses focus, so no focus tip returns with it", () => {
     client.payload = {
       sourceTransportState: {

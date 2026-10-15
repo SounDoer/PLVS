@@ -24,7 +24,8 @@ use crate::window_state::{
 /// frontend strip simply fills the viewport, so no JS copy of this number.
 pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 56;
 pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 56;
-pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = 160;
+// Transport bound only. The actual limit is derived from the destination work area.
+pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = u32::MAX;
 pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 36.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_WIDTH: f64 = 176.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_WIDTH: f64 = 400.0;
@@ -85,6 +86,28 @@ fn default_dock_height() -> u32 {
 
 pub fn clamp_dock_height(height: u32) -> u32 {
   height.clamp(DOCK_MIN_LOGICAL_HEIGHT, DOCK_MAX_LOGICAL_HEIGHT)
+}
+
+/// Leave enough adjacent space for the toolbar, an editor viewport and its inset.
+pub(crate) fn fit_dock_height(height: u32, available_height: u32, scale: f64) -> u32 {
+  let available = (available_height as f64 / scale.max(0.1)).floor() as u32;
+  let accessory_space = (DOCK_HEADER_LOGICAL_HEIGHT
+    + DOCK_EDITOR_MIN_LOGICAL_HEIGHT
+    + 2.0 * DOCK_EDITOR_LOGICAL_INSET) as u32;
+  clamp_dock_height(height).min(
+    available
+      .saturating_sub(accessory_space)
+      .max(DOCK_MIN_LOGICAL_HEIGHT),
+  )
+}
+
+pub(crate) fn fitted_height<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  monitor: Option<&str>,
+  height: u32,
+) -> Result<u32, String> {
+  let (area, scale, _) = work_area_and_scale(window, monitor)?;
+  Ok(fit_dock_height(height, area.height, scale))
 }
 
 /// Compute the docked strip rect (physical px) inside a monitor work area.
@@ -352,12 +375,17 @@ fn work_area_and_scale<R: tauri::Runtime>(
     .or_else(|| window.primary_monitor().ok().flatten())
     .ok_or_else(|| "no monitor available".to_string())?;
   let wa = monitor.work_area();
+  #[cfg(target_os = "windows")]
+  let (restored_height, restored_top) =
+    crate::appbar::own_reserved_height(window, monitor.name().map(String::as_str));
+  #[cfg(not(target_os = "windows"))]
+  let (restored_height, restored_top) = (0, 0);
   Ok((
     MonitorRect {
       x: wa.position.x,
-      y: wa.position.y,
+      y: wa.position.y - restored_top,
       width: wa.size.width,
-      height: wa.size.height,
+      height: wa.size.height.saturating_add(restored_height),
     },
     monitor.scale_factor(),
     monitor.name().cloned(),
@@ -444,8 +472,8 @@ pub fn apply_dock_form<R: tauri::Runtime>(
   previous_shadow: bool,
 ) -> Result<Option<String>, String> {
   let previous_form = capture_window_form(window, previous_shadow)?;
-  let logical_height = clamp_dock_height(logical_height);
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
+  let logical_height = fit_dock_height(logical_height, wa.height, scale);
   #[cfg(target_os = "windows")]
   let _ = (wa, scale);
   #[cfg(not(target_os = "windows"))]
@@ -517,12 +545,16 @@ pub fn enter_dock<R: tauri::Runtime>(
         }),
         cfg!(any(target_os = "windows", target_os = "macos")),
       );
-      let height = clamp_dock_height(height.unwrap_or_else(|| {
-        previous
-          .as_ref()
-          .map(|state| state.height)
-          .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
-      }));
+      let height = fitted_height(
+        &window,
+        monitor.as_deref(),
+        height.unwrap_or_else(|| {
+          previous
+            .as_ref()
+            .map(|state| state.height)
+            .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
+        }),
+      )?;
       let transition = (|| -> Result<(Option<String>, bool), String> {
         #[cfg(target_os = "windows")]
         crate::appbar::set_reserved(&window, false, edge, height)?;
@@ -732,6 +764,13 @@ pub fn get_dock_state<R: tauri::Runtime>(
   let state = ready.then(|| {
     read_dock_state(&app).map(|mut state| {
       state.enabled = flag.0.load(Ordering::Relaxed);
+      if state.enabled {
+        if let Some(window) = app.get_webview_window("main") {
+          if let Ok(height) = fitted_height(&window, state.monitor.as_deref(), state.height) {
+            state.height = height;
+          }
+        }
+      }
       state
     })
   });
@@ -887,6 +926,7 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
 
       // Resuming a suspended Dock: the guard above already rejected a window that
       // is not docked, so the form to roll back to is the strip.
+      state.height = fitted_height(&window, state.monitor.as_deref(), state.height)?;
       state.monitor = apply_dock_form(
         &window,
         state.edge,
@@ -918,6 +958,7 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         .unwrap_or(false);
         write_dock_state(window.app_handle(), &state);
       }
+      write_dock_state(window.app_handle(), &state);
       window
         .set_skip_taskbar(false)
         .map_err(|e| format!("resume dock taskbar: {e}"))?;
@@ -962,6 +1003,7 @@ pub fn set_dock_height<R: tauri::Runtime>(
       });
       let (work_area, scale, resolved_monitor) =
         work_area_and_scale(&window, previous.monitor.as_deref())?;
+      let height = fit_dock_height(height, work_area.height, scale);
 
       #[cfg(target_os = "windows")]
       if previous.reserve_space {
@@ -1163,7 +1205,11 @@ mod tests {
   fn dock_height_clamps_to_supported_range() {
     assert_eq!(clamp_dock_height(1), DOCK_MIN_LOGICAL_HEIGHT);
     assert_eq!(clamp_dock_height(72), 72);
-    assert_eq!(clamp_dock_height(999), DOCK_MAX_LOGICAL_HEIGHT);
+    assert_eq!(clamp_dock_height(999), 999);
+    assert_eq!(fit_dock_height(900, 1080, 1.0), 900);
+    assert_eq!(fit_dock_height(u32::MAX, 1080, 1.0), 948);
+    assert_eq!(fit_dock_height(999, 1080, 1.5), 588);
+    assert_eq!(fit_dock_height(56, 100, 1.0), 56);
   }
 
   #[test]

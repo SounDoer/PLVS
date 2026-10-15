@@ -1667,9 +1667,9 @@ fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
           .ok_or_else(|| "Missing value for --height.".to_string())?;
         let parsed = value
           .parse::<u64>()
-          .map_err(|_| "The --height value must be an integer from 56 to 160.".to_string())?;
-        if !(56..=160).contains(&parsed) {
-          return Err("The --height value must be an integer from 56 to 160.".to_string());
+          .map_err(|_| "The --height value must be an integer from 56 to 4294967295; the display limits the applied height.".to_string())?;
+        if !(56..=u64::from(u32::MAX)).contains(&parsed) {
+          return Err("The --height value must be an integer from 56 to 4294967295; the display limits the applied height.".to_string());
         }
         height = Some(parsed);
         index += 2;

@@ -603,6 +603,7 @@ function AppContent() {
         onPanelResizeReset: dockLayout.resetPanelPair,
         controls: {
           controlsByPanelId: dockLayout.controlsByPanelId,
+          onDockPanelControlsChange: dockLayout.setPanelControls,
           ...dockHistoryViewport,
           sourceTransportState,
           onSourceTransportAction,

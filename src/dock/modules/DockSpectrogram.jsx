@@ -12,10 +12,14 @@ import { useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
 
-/** Scrolling live spectrogram using the normal panel's canvas painter and theme mapping. */
+/** Scrolling spectrogram using the normal panel's canvas painter and theme mapping. */
 export function DockSpectrogram({ controls }) {
   const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
-  const { getSpectrogramSnapsForKey } = useHistoryData() ?? {};
+  const {
+    getSpectrogramSnapsForKey,
+    selectedOffset = -1,
+    snapshotSpectrumByKey,
+  } = useHistoryData() ?? {};
   const canvasRef = useRef(null);
   const requestKey = dockSpectrumKey(controls);
   const snapRef = useMemo(
@@ -26,7 +30,9 @@ export function DockSpectrogram({ controls }) {
     }),
     [getSpectrogramSnapsForKey, requestKey]
   );
-  const snaps = snapRef.current;
+  const frozenSnaps =
+    selectedOffset >= 0 ? (snapshotSpectrumByKey?.[requestKey] ?? EMPTY_SPECTRUM_VIEW) : null;
+  const snaps = frozenSnaps ?? snapRef.current;
   const latest = snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
   // Nominal, not the newest interval: the painter's gap test scales with it (spectrogramFrameEndMs).
   const sampleMs = resolveStableSpectrogramSampleMs(snaps, VISUAL_HIST_SAMPLE_SEC * 1000);
@@ -45,8 +51,8 @@ export function DockSpectrogram({ controls }) {
     oldestMs,
     newestMs,
     sampleMs,
-    selectedOffset: -1,
-    frozenSnaps: null,
+    selectedOffset,
+    frozenSnaps,
     colormapLut,
     minHz: controls?.spectrogramYMinFreq ?? 20,
     maxHz: controls?.spectrogramYMaxFreq ?? 20_000,

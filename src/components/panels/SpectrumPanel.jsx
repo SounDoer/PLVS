@@ -1,5 +1,5 @@
 import { SPECTRUM_FILL_TOP, SPECTRUM_FILL_BOTTOM } from "@/lib/chartFill.js";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   useFrameData,
   useHistoryData,
@@ -107,7 +107,8 @@ function smoothSpectrumResult(previous, next) {
   };
 }
 
-export function SpectrumPanel() {
+/** @param {{ showAxes?: boolean, className?: string, compact?: boolean }} [props] */
+export function SpectrumPanel({ showAxes = true, className } = {}) {
   const { displayAudio } = useFrameData();
   const {
     selectedOffset,
@@ -378,6 +379,18 @@ export function SpectrumPanel() {
       freqLabel: formatSpectrumFreq(peak.freq),
     }));
   }, [spectrumPeakLabels, panelSpectrumData, spectrumRange]);
+  // Keep labels readable using the measured plot budget, independent of Dock height tiers.
+  // The dots retain their exact data positions even when a label must move inward.
+  const visiblePeakLabels = spectrumPeakLabelList.filter(
+    (peak, index, all) =>
+      !all
+        .slice(0, index)
+        .some(
+          (previous) =>
+            (Math.abs(previous.leftPct - peak.leftPct) * spectrumXAxis.axisPx) / 100 < 72 &&
+            (Math.abs(previous.topPct - peak.topPct) * spectrumYAxis.axisPx) / 100 < 24
+        )
+  );
   const spectrumSvgRef = useRef(null);
   const chartDragRef = useRef(null);
   const holdSmoothingTimerRef = useRef(null);
@@ -748,8 +761,11 @@ export function SpectrumPanel() {
   if (snapshotMissing) {
     return (
       <div
+        onDoubleClick={() => {
+          if (historyChartInteractive) setSelectedOffset?.(-1);
+        }}
         className={cn(
-          PANEL_MIN_SPECTRUM,
+          showAxes && PANEL_MIN_SPECTRUM,
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
@@ -761,26 +777,40 @@ export function SpectrumPanel() {
   return (
     <div
       className={cn(
-        PANEL_MIN_SPECTRUM,
-        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        showAxes && PANEL_MIN_SPECTRUM,
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
+        className
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
+            "grid min-h-0 flex-1 items-stretch",
+            showAxes
+              ? "grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)]"
+              : "grid-cols-1 grid-rows-[minmax(0,1fr)]"
           )}
         >
-          <AxisRail
-            axis="y"
-            inset
-            className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
-            interaction={spectrumYAxis}
-            active={chartAxisActive.y}
-            ticks={spectrumYAxisTicks}
-          />
+          {showAxes && (
+            <AxisRail
+              axis="y"
+              inset
+              className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+              interaction={spectrumYAxis}
+              active={chartAxisActive.y}
+              ticks={spectrumYAxisTicks}
+            />
+          )}
           <div className="relative min-h-0 min-w-0">
             <div
+              ref={
+                showAxes
+                  ? undefined
+                  : (element) => {
+                      spectrumXAxis.axisRef.current = element;
+                      spectrumYAxis.axisRef.current = element;
+                    }
+              }
               data-testid="spectrum-chart"
               className="relative min-h-0 h-full"
               style={{
@@ -965,25 +995,30 @@ export function SpectrumPanel() {
               </div>
               {spectrumPeakLabelList.length ? (
                 <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-[9]">
-                  {spectrumPeakLabelList.map((peak) => (
-                    <div
-                      key={peak.key}
-                      className="absolute -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: `${peak.leftPct}%`, top: `${peak.topPct}%` }}
-                    >
+                  {visiblePeakLabels.map((peak) => (
+                    <Fragment key={peak.key}>
                       <div
-                        className="mx-auto size-1.5 rounded-full"
+                        className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
                         style={{
+                          left: `${peak.leftPct}%`,
+                          top: `${peak.topPct}%`,
                           backgroundColor:
                             selectedOffset >= 0
                               ? "var(--ui-spectrum-primary-snap)"
                               : "var(--ui-spectrum-primary)",
                         }}
                       />
-                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-[color:var(--ui-text-annotation)]">
+                      <div
+                        data-spectrum-peak-label
+                        className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-[color:var(--ui-text-annotation)]"
+                        style={{
+                          left: `clamp(4ch, ${peak.leftPct}%, calc(100% - 4ch))`,
+                          top: `max(1.6em, calc(${peak.topPct}% - 7px))`,
+                        }}
+                      >
                         {peak.freqLabel}
                       </div>
-                    </div>
+                    </Fragment>
                   ))}
                 </div>
               ) : null}
@@ -1003,7 +1038,12 @@ export function SpectrumPanel() {
                       }}
                     />
                   ) : null}
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+                  <div
+                    className={cn(
+                      "absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]",
+                      !showAxes && "right-[var(--ui-chart-hud-inset)] flex flex-wrap gap-x-2"
+                    )}
+                  >
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}
                     </div>
@@ -1044,14 +1084,18 @@ export function SpectrumPanel() {
             </div>
           </div>
 
-          <div />
-          <AxisRail
-            axis="x"
-            className="h-[var(--ui-chart-x-axis-row-h)] w-full"
-            interaction={spectrumXAxis}
-            active={chartAxisActive.x}
-            ticks={spectrumXAxisTicks}
-          />
+          {showAxes && (
+            <>
+              <div />
+              <AxisRail
+                axis="x"
+                className="h-[var(--ui-chart-x-axis-row-h)] w-full"
+                interaction={spectrumXAxis}
+                active={chartAxisActive.x}
+                ticks={spectrumXAxisTicks}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

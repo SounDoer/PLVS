@@ -783,6 +783,31 @@ describe("App smoke", () => {
       });
     });
 
+    /** @type {any} */
+    let headerSnapshot;
+    await waitFor(() => {
+      headerSnapshot = vi
+        .mocked(emitTo)
+        .mock.calls.filter(
+          ([surface, eventName]) =>
+            surface === "dock-header" && eventName === "dock-accessory://state"
+        )
+        .at(-1)?.[2];
+      expect(headerSnapshot?.payload?.visible).toBe(true);
+    });
+    expect(setDockAccessories).not.toHaveBeenCalledWith(
+      expect.objectContaining({ headerVisible: true })
+    );
+    act(() => {
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: {
+          surface: "dock-header",
+          type: "header-ready",
+          revision: headerSnapshot.revision,
+          payload: { presentationId: headerSnapshot.payload.presentationId },
+        },
+      });
+    });
     await waitFor(() =>
       expect(setDockAccessories).toHaveBeenCalledWith(
         expect.objectContaining({ headerVisible: true })

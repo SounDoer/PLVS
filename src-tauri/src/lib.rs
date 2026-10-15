@@ -484,7 +484,7 @@ pub fn run() {
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
       let saved_bounds: Option<WindowBounds> = clean_active_preset_window_bounds(&presets)
         .or_else(|| serde_json::from_value(hydrated.window_bounds).ok());
-      let boot_dock = dock_state;
+      let mut boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
       let normal_shadow = window_chrome::normal_window_shadow_for_surface_opacity(
@@ -527,7 +527,11 @@ pub fn run() {
       // the window grows + drifts on every relaunch. set_size/set_position take physical,
       // matching the save path and the (physical) monitor rects used for clamping.
       if boot_docked {
-        let d = boot_dock.as_ref().expect("boot_docked requires dock state");
+        let d = boot_dock.as_mut().expect("boot_docked requires dock state");
+        if let Ok(height) = dock::fitted_height(&window, d.monitor.as_deref(), d.height) {
+          d.height = height;
+          dock::write_dock_state(app.handle(), d);
+        }
         app
           .state::<dock::DockedFlag>()
           .0

@@ -243,6 +243,9 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
             ...(cancelled ? { cancelled } : {}),
             ...(origin ? { origin } : {}),
           });
+          if (!persist && request === heightRequestRef.current) {
+            setDockPreviewHeight(clampDockHeight(resolved));
+          }
           if (persist && request === heightRequestRef.current) {
             commitDock((latest) => ({ ...latest, height: clampDockHeight(resolved) }));
             setDockPreviewHeight(null);

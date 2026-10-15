@@ -546,7 +546,11 @@ function Harness({
     editorDraft: agentEditorDraft,
     developmentFixtures: agentDevelopmentFixtures,
     transport: transportState,
-    transportContext: { docked: false, historyAvailable: true, historyMaxOffsetSec: 90 },
+    transportContext: {
+      docked: dockState.enabled,
+      historyAvailable: true,
+      historyMaxOffsetSec: 90,
+    },
     executeTransport,
     device: {
       snapshot: deviceState,
@@ -2940,7 +2944,7 @@ describe("useAgentControlBridge", () => {
     expect(described.result).toMatchObject({
       revision: 0,
       supported: true,
-      height: { min: 56, max: 160 },
+      height: { min: 56, max: 4294967295 },
     });
   });
 
@@ -3214,43 +3218,46 @@ describe("useAgentControlBridge", () => {
     expect(executeTransport).not.toHaveBeenCalled();
   });
 
-  it("selects and clears a retained snapshot through Transport", async () => {
-    mount();
-    await waitUntilReady();
+  it.each([false, true])(
+    "selects and clears a retained snapshot through Transport (Dock: %s)",
+    async (enabled) => {
+      mount({ agentDock: { ...dock, enabled } });
+      await waitUntilReady();
 
-    const selected = await send(
-      request(
-        "transport.snapshot.select",
-        { offsetSec: 12.5, expectedRevision: 0 },
-        "snapshot-select"
-      )
-    );
-    expect(selected.result).toMatchObject({
-      changed: true,
-      revision: 1,
-      state: {
-        transport: {
-          snapshot: { active: true, offsetSec: 12.5 },
-          live: { atLiveEdge: false },
+      const selected = await send(
+        request(
+          "transport.snapshot.select",
+          { offsetSec: 12.5, expectedRevision: 0 },
+          "snapshot-select"
+        )
+      );
+      expect(selected.result).toMatchObject({
+        changed: true,
+        revision: 1,
+        state: {
+          transport: {
+            snapshot: { active: true, offsetSec: 12.5 },
+            live: { atLiveEdge: false },
+          },
         },
-      },
-    });
+      });
 
-    const inspected = await send(request("transport.inspect", {}, "snapshot-inspect"));
-    expect(inspected.result).toMatchObject({
-      revision: 1,
-      snapshot: { active: true, offsetSec: 12.5 },
-    });
+      const inspected = await send(request("transport.inspect", {}, "snapshot-inspect"));
+      expect(inspected.result).toMatchObject({
+        revision: 1,
+        snapshot: { active: true, offsetSec: 12.5 },
+      });
 
-    const cleared = await send(
-      request("transport.snapshot.clear", { expectedRevision: 1 }, "snapshot-clear")
-    );
-    expect(cleared.result).toMatchObject({
-      changed: true,
-      revision: 2,
-      state: { transport: { snapshot: { active: false, offsetSec: null } } },
-    });
-  });
+      const cleared = await send(
+        request("transport.snapshot.clear", { expectedRevision: 1 }, "snapshot-clear")
+      );
+      expect(cleared.result).toMatchObject({
+        changed: true,
+        revision: 2,
+        state: { transport: { snapshot: { active: false, offsetSec: null } } },
+      });
+    }
+  );
 
   it("rejects a snapshot beyond retained history without executing", async () => {
     const executeTransport = vi.fn(async () => {});

@@ -1,3 +1,7 @@
+import {
+  SnapshotEmptyState,
+  SNAPSHOT_NO_DATA_MESSAGE,
+} from "../../components/panels/SnapshotEmptyState.jsx";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
@@ -73,7 +77,7 @@ function computePlotBox(width, height, expanded, isPolar, labelStripPx) {
 }
 
 /**
- * Compact live Vectorscope with a dedicated correlation readout.
+ * Compact Vectorscope with a dedicated correlation readout.
  * @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"correlation">, heightMode?: string }} props
  */
 export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
@@ -89,19 +93,27 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const mode = normalizedControls.vectorscopeMode;
   const isLissajous = mode === "lissajous";
   const [maxHoldResetKey, setMaxHoldResetKey] = useState(0);
-  const canResetMaxHold = mode === "polarLevel" && normalizedControls.vectorscopePolarLevelMaxHold;
+  const isSnapshot = historyData?.selectedOffset >= 0;
+  const canResetMaxHold =
+    !isSnapshot && mode === "polarLevel" && normalizedControls.vectorscopePolarLevelMaxHold;
   const key = dockVectorscopeKey(normalizedControls);
-  const result = displayAudio?.vectorscopeResultsByKey?.[key];
+  const snapshot = isSnapshot
+    ? historyData?.resolveVectorscopeSnapshotForKey?.(key, {
+        withMaxHold: mode === "polarLevel" && normalizedControls.vectorscopePolarLevelMaxHold,
+      })
+    : null;
+  const result = isSnapshot ? snapshot : displayAudio?.vectorscopeResultsByKey?.[key];
   const pairX = Number.isFinite(result?.pairX) ? result.pairX : pair.x;
   const pairY = Number.isFinite(result?.pairY) ? result.pairY : pair.y;
   const rawCorrelation =
-    hasPairSignal(displayAudio?.peakDb, pairX, pairY) && Number.isFinite(result?.correlation)
+    (isSnapshot ? snapshot?.hasSignal : hasPairSignal(displayAudio?.peakDb, pairX, pairY)) &&
+    Number.isFinite(result?.correlation)
       ? clampCorrelation(result.correlation)
       : null;
   const displayCorrelation = useMemo(() => {
-    if (rawCorrelation === null) {
-      displayCorrelationRef.current = null;
-      return null;
+    if (isSnapshot || rawCorrelation === null) {
+      displayCorrelationRef.current = rawCorrelation;
+      return rawCorrelation;
     }
     const previous = displayCorrelationRef.current;
     const next =
@@ -110,12 +122,13 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
         : previous + (rawCorrelation - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;
     displayCorrelationRef.current = next;
     return next;
-  }, [rawCorrelation]);
+  }, [rawCorrelation, isSnapshot]);
   const labelCount = Number.isFinite(channelCount) && channelCount >= 2 ? channelCount : 2;
   const labels = getPeakMeterChannelLabels(labelCount, peakLabelContext || {});
   const firstLabel = labels[pairX] ?? `Ch ${pairX + 1}`;
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
-  const polarSlab = isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
+  const polarSlab =
+    isSnapshot || isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
   const polarVersion = polarSlab?.version ?? 0;
   const polarWindowMs =
     mode === "polarLevel"
@@ -161,6 +174,8 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
     return () => observer.disconnect();
   }, [expanded, isLissajous]);
 
+  if (snapshot?.missing) return <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />;
+
   return (
     <div className="h-full min-w-0 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]">
       <div
@@ -199,7 +214,11 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                     data-testid="dock-vectorscope-trace"
                     d={result.path}
                     fill="none"
-                    stroke="var(--ui-vectorscope-trace)"
+                    stroke={
+                      isSnapshot
+                        ? "var(--ui-vectorscope-trace-snap)"
+                        : "var(--ui-vectorscope-trace)"
+                    }
                     strokeWidth="var(--ui-vectorscope-stroke-width)"
                     strokeLinecap="round"
                     vectorEffect="non-scaling-stroke"
@@ -220,6 +239,8 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               <VectorscopePolarPlot
                 mode={mode}
                 rows={polarRows}
+                snapshotPairs={isSnapshot ? snapshot?.pairs : null}
+                snapshotMaxHold={isSnapshot ? snapshot?.maxHold : null}
                 maxHoldEnabled={normalizedControls.vectorscopePolarLevelMaxHold}
                 maxHoldResetKey={maxHoldResetKey}
                 persistenceMs={normalizedControls.vectorscopePolarSamplePersistenceMs}

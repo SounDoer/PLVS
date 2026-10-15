@@ -8,6 +8,7 @@ export const DOCK_ACCESSORY_EVENTS = Object.freeze({
 export const DOCK_ACCESSORY_SURFACES = Object.freeze(["dock-header", "dock-editor"]);
 
 const ACTION_TYPES = new Set([
+  "header-ready",
   "source-primary",
   "clear",
   "open-editor",

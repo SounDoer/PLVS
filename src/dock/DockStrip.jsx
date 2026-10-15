@@ -1,3 +1,4 @@
+import { useHistoryData } from "../workspace/AudioDataContext.jsx";
 import { DOCK_MODULE_REGISTRY } from "./registry.jsx";
 import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 import { cn } from "@/lib/utils";
@@ -44,12 +45,15 @@ export function DockStrip({
   recordingState = null,
 }) {
   const heightMode = dockHeightMode(height);
+  const history = useHistoryData();
+  const isSnapshot = history?.selectedOffset >= 0;
   return (
     <div
       data-testid="dock-strip"
       data-visual-capture-surface="main"
       data-visual-capture-ready="true"
       data-height-mode={heightMode}
+      data-history={isSnapshot ? "" : undefined}
       className={cn(
         "dock-strip relative h-screen w-screen select-none overflow-hidden text-foreground",
         DOCK_SURFACE_CLASS

@@ -35,7 +35,7 @@ const DockContext = createContext(/** @type {DockOwner | null} */ (null));
 export function DockProvider({ children }) {
   const { assertSceneOperationAllowed } = useSceneGuard();
   const { focusView, windowPinned: pinned, historyRetentionSec } = useAppSettings();
-  const { clearNotice, raiseNotice, setSelectedOffset } = useMeterDisplayState();
+  const { clearNotice, raiseNotice } = useMeterDisplayState();
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -143,7 +143,6 @@ export function DockProvider({ children }) {
       try {
         if (edgeOrNull) {
           await enterDockMode(edgeOrNull);
-          setSelectedOffset(-1);
         } else await exitDockRestoringAttributes();
       } catch (error) {
         reportSceneOperationError(
@@ -154,7 +153,7 @@ export function DockProvider({ children }) {
         );
       }
     },
-    [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice, setSelectedOffset]
+    [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice]
   );
 
   const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
@@ -168,7 +167,6 @@ export function DockProvider({ children }) {
           projected.height,
           "agentControl"
         );
-        setSelectedOffset(-1);
         return effective;
       }
       if (method === "dock.exit") {
@@ -181,7 +179,7 @@ export function DockProvider({ children }) {
       }
       dockLayout.setPanels(projected);
     },
-    [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
+    [dockLayout, enterDockMode, exitDockRestoringAttributes]
   );
   const onDockHeightChange = useCallback(
     async (height, options) => {

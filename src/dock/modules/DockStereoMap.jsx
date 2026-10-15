@@ -1,6 +1,10 @@
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
+import {
+  SnapshotEmptyState,
+  SNAPSHOT_NO_DATA_MESSAGE,
+} from "../../components/panels/SnapshotEmptyState.jsx";
 import { StereoMapPlot } from "../../components/panels/StereoMapPlot.jsx";
 import { dockStereoMapKey } from "../dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
@@ -24,8 +28,8 @@ function rangeForMode(mode, controls) {
 }
 
 /**
- * Compact live Stereo Map: current curve, zero baseline, fill, and an optional Hold outline only.
- * No axes, hover marker, wheel zoom, pan, or snapshot interaction — Dock never browses history.
+ * Compact Stereo Map: current curve, zero baseline, fill, and an optional Hold outline only.
+ * No axes, hover marker, wheel zoom or pan; snapshot data comes from the shared selection.
  * `StereoMapPlot` is already pure presentation (the Workspace panel wraps it with the
  * interactive chrome separately), so it is reused here as-is for the compact render.
  * @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"stereoMap"> }} props
@@ -42,7 +46,13 @@ export function DockStereoMap({ controls = {} }) {
   const key = dockStereoMapKey(normalizedControls);
   const range = rangeForMode(mode, normalizedControls);
 
-  const result = !isMono ? displayAudio?.stereoMapResultsByKey?.[key] : null;
+  const isSnapshot = historyData?.selectedOffset >= 0;
+  const snapshot = isSnapshot
+    ? historyData?.resolveStereoMapSnapshotForKey?.(key, mode, range, {
+        withHold: normalizedControls.stereoMapHold,
+      })
+    : null;
+  const result = !isMono && !isSnapshot ? displayAudio?.stereoMapResultsByKey?.[key] : null;
   let bandCentersHz = [];
   let points = [];
   if (result) {
@@ -54,8 +64,13 @@ export function DockStereoMap({ controls = {} }) {
   // FrameIntake instance owns (StereoMapModeHistorySlab#liveHoldValues) — the same object every
   // Workspace/Dock instance on this key reads via getStereoMapHistoryForKey, so this never
   // accumulates a private per-instance copy.
-  const holdValues =
-    historyData?.getStereoMapHistoryForKey?.(key)?.liveHoldValues?.()?.[mode] ?? null;
+  const holdValues = isSnapshot
+    ? (snapshot?.hold ?? null)
+    : (historyData?.getStereoMapHistoryForKey?.(key)?.liveHoldValues?.()?.[mode] ?? null);
+  if (isSnapshot) {
+    bandCentersHz = snapshot?.derived?.bandCentersHz ?? [];
+    points = snapshot?.derived?.points ?? [];
+  }
 
   const labelCount = Number.isFinite(channelCount) && channelCount >= 2 ? channelCount : 2;
   const labels = getPeakMeterChannelLabels(labelCount, peakLabelContext || {});
@@ -65,6 +80,8 @@ export function DockStereoMap({ controls = {} }) {
   // channel at the top, -1 = second channel at the bottom); other modes keep only the zero
   // baseline `StereoMapPlot` already draws.
   const showPairLabels = !isMono && mode === STEREO_MAP_MODES.POSITION;
+
+  if (snapshot?.missing) return <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />;
 
   return (
     <div className="relative h-full min-w-0 flex-1 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]">
@@ -78,7 +95,7 @@ export function DockStereoMap({ controls = {} }) {
           range={range}
           xMinHz={normalizedControls.stereoMapXMinFreq}
           xMaxHz={normalizedControls.stereoMapXMaxFreq}
-          paletteKey="live"
+          paletteKey={isSnapshot ? "snap" : "live"}
           energyFadePercent={normalizedControls.stereoMapEnergyFadePercent}
           colorBlendPercent={normalizedControls.stereoMapColorBlendPercent}
         />

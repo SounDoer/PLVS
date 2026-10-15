@@ -99,7 +99,23 @@ readout or an icon-only Dock action for the same themed explanation shown in the
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
-and the new height is saved when you release the pointer.
+and the new height is saved when you release the pointer. Height starts at 56 pixels and can grow
+beyond 160 pixels, up to the current display's available space minus room for the toolbar and editor.
+Oversized heights are fitted again when entering Dock on another display or restoring it.
+
+Spectrum shares the normal panel's range zoom/pan, press-and-hold smoothing, and Max Hold
+contour-click reset. Grid, Peak Labels and hover readouts remain available at every Dock height. X/Y axes stay hidden.
+Dock keeps its own layout and panel settings, using the same Spectrum chart and interactions as
+the workspace.
+
+Click the Spectrum plot to enter Snapshot. The toolbar opens automatically with its existing
+return-to-Live action, without changing panel widths. Double-click the plot or use that action to
+return to live readings. You can still hide the toolbar manually. Returning Live closes a toolbar
+opened automatically for Snapshot, even if you hide and reopen it during the snapshot; a toolbar
+you had already opened before Snapshot stays open. The snapshot is shared by all Dock panels, and capture continues in the
+background. Switching between Dock and the normal window preserves the selected snapshot. A view
+without retained data at that time shows an empty state instead of falling back to live data.
+Time-based panels keep their Dock window layout and show the selection against frozen history.
 
 When several PLVS workbenches use Dock, only one can reserve a particular monitor edge on Windows,
 or a particular monitor on macOS.

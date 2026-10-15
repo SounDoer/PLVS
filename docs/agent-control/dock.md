@@ -54,8 +54,9 @@ entry resolves to an overlay and reports the ordinary reservation fallback warni
 independent top and bottom edge ownership.
 
 `dock enter` uses saved values for omitted options. Submitted edge is exactly `top` or `bottom`.
-Height is an integer from 56 through 160 CSS pixels; Agent Control rejects values outside this range
-instead of applying the GUI drag handle's clamp. If a monitor ID is explicitly submitted and no
+Height accepts integers from 56 through 4294967295 (the unsigned transport bound). Native geometry
+fits the request to the display work area, leaving room for the toolbar and editor; the returned
+state reports the applied height with a `dockHeightFitted` warning when it differs. There is no fixed 160-pixel product ceiling. If a monitor ID is explicitly submitted and no
 longer exists, entry fails with `monitorNotFound`. When it is omitted, PLVS deliberately resolves
 the saved monitor, then the current/primary monitor, and reports any fallback as a warning.
 
@@ -102,6 +103,9 @@ enabled. Its document has one ordered `panels` array:
   ]
 }
 ```
+
+Spectrum exposes `grid` and `peakLabels` with the same meaning as Panel Control. They are
+rendered in expanded Dock and retained while compact.
 
 The public module IDs are `transport`, `levelMeter`, `loudness`, `stats`, `vectorscope`, `spectrum`,
 `spectrogram`, `waveform`, and `stereo-map`. Legacy storage names such as `level`, `correlation`, or

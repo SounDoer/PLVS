@@ -14,10 +14,10 @@ import {
 } from "./dockSizing.js";
 
 describe("dock sizing", () => {
-  it("clamps height to 56-160 logical pixels", () => {
+  it("keeps large requested heights until native display fitting", () => {
     expect(clampDockHeight(20)).toBe(56);
     expect(clampDockHeight(96.4)).toBe(96);
-    expect(clampDockHeight(999)).toBe(160);
+    expect(clampDockHeight(999)).toBe(999);
   });
 
   it("falls back to the compact first-run height", () => {

@@ -46,6 +46,20 @@ function renderStrip(props = {}) {
 }
 
 describe("DockStrip", () => {
+  it("does not add layout space when entering Snapshot", () => {
+    const tree = (selectedOffset) => (
+      <HistoryDataProvider value={{ selectedOffset }}>
+        <DockStrip panels={[]} controls={{}} />
+      </HistoryDataProvider>
+    );
+    const { rerender } = render(tree(-1));
+    const before = screen.getByTestId("dock-strip").innerHTML;
+    rerender(tree(0));
+    expect(screen.getByTestId("dock-strip").innerHTML).toBe(before);
+    expect(screen.getByTestId("dock-strip").hasAttribute("data-history")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Go Live" })).toBeNull();
+  });
+
   it("applies surface opacity once to the Dock shell", () => {
     renderStrip();
 

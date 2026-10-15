@@ -40,7 +40,7 @@ describe("DockModuleSettings", () => {
     expect(screen.getByLabelText(label)).toBeTruthy();
   });
 
-  it.each(["loudness", "spectrum", "spectrogram", "stereoMap", "waveform"])(
+  it.each(["loudness", "spectrogram", "stereoMap", "waveform"])(
     "keeps optional Grid out of compact %s settings",
     (moduleId) => {
       renderSettings(moduleId);
@@ -361,7 +361,8 @@ describe("DockModuleSettings", () => {
     const smoothingRow = screen.getByText("Smoothing").closest("div.grid");
     expect(peakRow.compareDocumentPosition(speedRow) & 4).toBeTruthy();
     expect(speedRow.compareDocumentPosition(smoothingRow) & 4).toBeTruthy();
-    expect(screen.queryByText("Peak Labels")).toBeNull();
+    expect(screen.getByText("Peak Labels")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum grid")).toBeTruthy();
   });
 
   it("uses a themed floating selector instead of a native select", () => {

@@ -75,6 +75,8 @@ export function createLatestDockAccessoryUpdater({ command = setDockAccessoriesW
  *   edge: string,
  *   geometryVersion: number,
  *   forceHeaderVisible?: boolean,
+ *   snapshotActive?: boolean,
+ *   waitForHeaderReady?: boolean,
  *   onError: (...args: any[]) => any,
  * }} options
  */
@@ -83,9 +85,22 @@ export function useDockAccessoryVisibility({
   edge,
   geometryVersion,
   forceHeaderVisible = false,
+  snapshotActive = false,
+  waitForHeaderReady = false,
   onError,
 }) {
   const [toolbarOpen, setToolbarOpenState] = useState(false);
+  const snapshotSession = active && snapshotActive;
+  const [snapshotToolbar, setSnapshotToolbar] = useState({
+    session: snapshotSession,
+    dismissed: false,
+  });
+  // A new snapshot (or entry into Dock with one selected) gets one automatic reveal.
+  // Keep this separate from the user's open state so returning Live restores that state.
+  if (snapshotToolbar.session !== snapshotSession) {
+    setSnapshotToolbar({ session: snapshotSession, dismissed: false });
+  }
+  const snapshotOpen = snapshotSession && !snapshotToolbar.dismissed;
   const [editorView, setEditorView] = useState(null);
   const [editorSize, setEditorSize] = useState(() => initialEditorSize(null));
   const [editorAnchorX, setEditorAnchorX] = useState(null);
@@ -103,15 +118,36 @@ export function useDockAccessoryVisibility({
   const headerVisible =
     active &&
     shouldShowDockHeader({
-      userOpen: toolbarOpen,
+      userOpen: toolbarOpen || snapshotOpen,
       editorOpen: editorView !== null,
       forceVisible: forceHeaderVisible,
     });
 
-  const setToolbarOpen = useCallback((open) => {
-    toolbarOpenRef.current = open;
-    setToolbarOpenState(open);
+  const presentationKey = `${headerVisible}:${snapshotActive}`;
+  const [presentation, setPresentation] = useState({ key: presentationKey, id: 0 });
+  if (presentation.key !== presentationKey) {
+    setPresentation({ key: presentationKey, id: presentation.id + 1 });
+  }
+  const [preparedHeaderId, setPreparedHeaderId] = useState(-1);
+  const confirmHeaderReady = useCallback((id) => {
+    if (Number.isSafeInteger(id)) setPreparedHeaderId((current) => Math.max(current, id));
   }, []);
+  const nativeHeaderVisible =
+    headerVisible && (!waitForHeaderReady || preparedHeaderId === presentation.id);
+
+  const setToolbarOpen = useCallback(
+    (open) => {
+      if (snapshotSession && open) {
+        // Reopening a dismissed snapshot toolbar is still a temporary reveal, not a user pin.
+        setSnapshotToolbar((current) => ({ ...current, dismissed: false }));
+        return;
+      }
+      toolbarOpenRef.current = open;
+      setToolbarOpenState(open);
+      if (!open) setSnapshotToolbar((current) => ({ ...current, dismissed: true }));
+    },
+    [snapshotSession]
+  );
 
   const openEditor = useCallback((view, anchorX) => {
     const hasVisibleEditor =
@@ -151,13 +187,18 @@ export function useDockAccessoryVisibility({
 
   const toggleToolbar = useCallback(() => {
     // The entry reads as pressed whenever the header shows, so a click then always means Hide.
-    if (toolbarOpenRef.current || editorViewRef.current !== null || forceHeaderVisible) {
+    if (
+      toolbarOpenRef.current ||
+      snapshotOpen ||
+      editorViewRef.current !== null ||
+      forceHeaderVisible
+    ) {
       closeEditor();
       setToolbarOpen(false);
     } else {
       setToolbarOpen(true);
     }
-  }, [closeEditor, forceHeaderVisible, setToolbarOpen]);
+  }, [closeEditor, forceHeaderVisible, setToolbarOpen, snapshotOpen]);
   const dismiss = useCallback(() => {
     if (editorViewRef.current !== null) closeEditor();
     else setToolbarOpen(false);
@@ -233,7 +274,7 @@ export function useDockAccessoryVisibility({
     accessoryUpdaterRef.current.update(
       {
         edge,
-        headerVisible,
+        headerVisible: nativeHeaderVisible,
         editorVisible: active && editorView !== null && measuredEditorView !== null,
         editorWidth: editorSize.width,
         editorHeight: editorSize.height,
@@ -250,11 +291,14 @@ export function useDockAccessoryVisibility({
     geometryVersion,
     headerVisible,
     measuredEditorView,
+    nativeHeaderVisible,
     onError,
   ]);
 
   return {
     headerVisible,
+    headerPresentationId: presentation.id,
+    confirmHeaderReady,
     editorView,
     editorVisible: editorView !== null && measuredEditorView === editorView,
     editorSize,

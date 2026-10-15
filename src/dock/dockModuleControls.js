@@ -47,6 +47,8 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
       "spectrumOctaveSmoothing",
       "spectrumTiltDbPerOctave",
       "spectrumMaxMode",
+      "spectrumPeakLabels",
+      "spectrumGrid",
       "spectrumXMinFreq",
       "spectrumXMaxFreq",
       "spectrumYMinDb",
@@ -327,6 +329,7 @@ function withPanelKeys(moduleId, raw) {
  *   onDockHistoryWheel?: (...args: any[]) => any,
  *   onDockHistoryPointerDown?: (...args: any[]) => any,
  *   panelId?: string,
+ *   onDockPanelControlsChange?: (panelId: string, controls: any) => void,
  * }} DockStripControls
  */
 /**

@@ -39,6 +39,89 @@ describe("useDockAccessoryVisibility", () => {
     vi.clearAllMocks();
   });
 
+  it.each([false, true])(
+    "restores the toolbar's prior open state after Snapshot (%s)",
+    (wasOpen) => {
+      const { result, rerender } = renderVisibility({ snapshotActive: false });
+      if (wasOpen) act(() => result.current.toggleToolbar());
+      rerender({ snapshotActive: true });
+      expect(result.current.headerVisible).toBe(true);
+      rerender({ snapshotActive: false });
+      expect(result.current.headerVisible).toBe(wasOpen);
+    }
+  );
+
+  it("allows dismissing Snapshot's toolbar and reveals it again only on the next snapshot", () => {
+    const { result, rerender } = renderVisibility({ snapshotActive: true });
+    expect(result.current.headerVisible).toBe(true);
+    act(() => result.current.toggleToolbar());
+    expect(result.current.headerVisible).toBe(false);
+    rerender({ snapshotActive: true });
+    expect(result.current.headerVisible).toBe(false);
+    rerender({ snapshotActive: false });
+    rerender({ snapshotActive: true });
+    expect(result.current.headerVisible).toBe(true);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("does not pin the toolbar when it is reopened repeatedly during Snapshot", () => {
+    const { result, rerender } = renderVisibility({ snapshotActive: false });
+    for (let cycle = 0; cycle < 5; cycle++) {
+      rerender({ snapshotActive: true });
+      act(() => result.current.toggleToolbar());
+      act(() => result.current.toggleToolbar());
+      expect(result.current.headerVisible).toBe(true);
+      rerender({ snapshotActive: false });
+      expect(result.current.headerVisible).toBe(false);
+    }
+  });
+
+  it("waits for the current header render and ignores late acknowledgements", async () => {
+    const flush = async () => {
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+    const { result, rerender } = renderVisibility({
+      snapshotActive: false,
+      waitForHeaderReady: true,
+    });
+    rerender({ snapshotActive: true, waitForHeaderReady: true });
+    const first = result.current.headerPresentationId;
+    await flush();
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ headerVisible: false })
+    );
+    act(() => result.current.confirmHeaderReady(first));
+    await flush();
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ headerVisible: true })
+    );
+    rerender({ snapshotActive: false, waitForHeaderReady: true });
+    await flush();
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ headerVisible: false })
+    );
+    rerender({ snapshotActive: true, waitForHeaderReady: true });
+    act(() => result.current.confirmHeaderReady(first));
+    await flush();
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ headerVisible: false })
+    );
+    act(() => result.current.confirmHeaderReady(result.current.headerPresentationId));
+    await flush();
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ headerVisible: true })
+    );
+    act(() => result.current.confirmHeaderReady(first));
+    await flush();
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ headerVisible: true })
+    );
+  });
+
   it("stays closed until the entry is toggled, and publishes the change", async () => {
     const { result } = renderVisibility();
     expect(result.current.headerVisible).toBe(false);

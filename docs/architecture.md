@@ -534,8 +534,8 @@ Declared exceptions (device px on purpose):
 
 ### Dock three-window boundary
 
-The Dock form consists of three native windows: `main` is the meter strip, 56-160 logical px and 56
-px by default; `dock-header` is a full-width 36 logical px toolbar, shown when the user opens it
+The Dock form consists of three native windows: `main` is the meter strip, at least 56 logical px
+and 56 px by default, limited by the display work area with accessory space reserved; `dock-header` is a full-width 36 logical px toolbar, shown when the user opens it
 from the strip's entry, while an editor is open, or while an error notice stands; `dock-editor` is a
 right-aligned single-column editor. On Windows only `main` registers as an AppBar; with Reserve
 screen space enabled only the meter strip is reserved, and header/editor always overlay the adjacent
@@ -570,21 +570,31 @@ without mounting audio intake or a persistence store owner. Dock panel display c
 old `controlsByModuleId` is kept only as a compatibility field. The measurement runtime and channel
 label semantics are still shared.
 
-### Dock live interaction boundary (deliberately minimal)
+### Dock panel interactions and shared snapshots
 
-Dock reuses only a subset of the normal panels' live interactions; the rest is **deliberately left out**, not missing — for finer adjustment or browsing history, switch to normal mode / snapshot. Do not keep re-checking this against the code; the current state is:
+Dock Spectrum reuses `SpectrumPanel` with Dock-owned instance controls and the application's shared
+history context. Range gestures, hold smoothing, Max Hold, Grid, Peak Labels and hover readouts work
+at every height. X/Y axis rails and their layout space are never rendered in Dock; grid density is
+measured from the plot itself. The short-strip hover HUD wraps its values horizontally.
 
-Dock has:
+Clicking Spectrum selects the current snapshot; double-clicking it or using the toolbar Transport action returns to
+the live edge. Dock entry and exit preserve that selection. Scalar readings, frozen timeline views,
+and keyed Spectrum/Vectorscope/Stereo Map results use the same snapshot as the normal workspace.
+Spectrogram reads the frozen spectrum history for its own analysis key. Missing keyed history never
+falls back to live data. Capture keeps running while a snapshot is selected. Snapshot entry automatically reveals the separate toolbar window and its existing Transport action,
+without adding strip layout space. Automatic visibility is separate from user-open state: returning
+Live removes the automatic reveal, including a toolbar reopened during that snapshot, while manual
+toggle, Escape and focus dismissal remain available. The main window assigns each header presentation
+a generation; the accessory acknowledges that generation after committing its content before native
+show is allowed. Late acknowledgements cannot reveal a newer presentation. On hide, the accessory
+retains its last visible content until the next reveal so stopped Transport does not flash Start.
 
-- **TP-max reset** (`DockLevel`: click the readout to reset the true-peak maximum)
-- **Vectorscope peak-hold reset** (`DockVectorscope` polarLevel: click the plot to reset peak hold)
-- **Time-window zoom** (`DockWaveform` / `DockLoudness` / `DockSpectrogram`: wheel zoom + right double-click reset + window-seconds HUD). It is a reduced subset of the normal `useHistoryInteraction`, implemented separately in `useDockHistoryViewport`, with window width only, no time offset, and zoom not anchored at the cursor.
-
-Dock deliberately lacks:
-
-- **Value-axis zoom/pan** (normal mode's `useAxisInteraction` provides axis zoom for Level/Spectrum/Spectrogram/Loudness) — the dock strip is too narrow to have a grabbable axis.
-- **Panning the time axis into history / scrub selection** — the dock is a live-only viewport; history belongs to snapshot.
-- **Spectrum press-and-hold curve freeze** and **Vectorscope hold-slow trails** — both "hold" gestures; the first is feasible but low value, and half of the second is already covered by the dock's always-on correlation smoothing while the other half (Lissajous phosphor) is costly for little return. Both were evaluated and dropped.
+Other Dock interactions currently include TP-max reset, live Vectorscope peak-hold reset, and
+Time-window zoom (Waveform / Loudness / Spectrogram: wheel zoom, right double-click reset and a
+window-seconds HUD). Timeline zoom uses `useDockHistoryViewport`, with window width only, no time
+offset, and zoom not anchored at the cursor. Timeline panels display a selection marker over frozen
+history. Value-axis gestures in other panels, timeline panning/scrubbing, and Vectorscope hold-slow
+trails remain follow-up work; their compact layouts remain distinct from the normal workspace.
 
 ---
 

@@ -65,6 +65,39 @@ function dockVectorscopeTree(
 }
 
 describe("DockVectorscope", () => {
+  it("uses frozen keyed data and exact correlation instead of live smoothing", () => {
+    const getVectorscopeHistoryForKey = vi.fn();
+    const resolveVectorscopeSnapshotForKey = vi.fn(() => ({
+      missing: false,
+      path: "M 1 2 L 3 4",
+      hasSignal: true,
+      correlation: -0.75,
+    }));
+    const { getByTestId, rerender } = renderWith(
+      { path: "M 5 6 L 7 8", correlation: 1 },
+      [-12, -10],
+      "standard",
+      controls,
+      { selectedOffset: 0, resolveVectorscopeSnapshotForKey, getVectorscopeHistoryForKey }
+    );
+    expect(getByTestId("dock-vectorscope-trace").getAttribute("d")).toBe("M 1 2 L 3 4");
+    expect(getByTestId("dock-vectorscope-trace").getAttribute("stroke")).toBe(
+      "var(--ui-vectorscope-trace-snap)"
+    );
+    expect(getByTestId("dock-vectorscope-correlation-readout").textContent).toContain("-0.75");
+    rerender(
+      dockVectorscopeTree(
+        {},
+        [],
+        "standard",
+        { ...controls, vectorscopeMode: "polarLevel", vectorscopePolarLevelMaxHold: true },
+        { selectedOffset: 1, resolveVectorscopeSnapshotForKey, getVectorscopeHistoryForKey }
+      )
+    );
+    expect(getByTestId("dock-vectorscope-plot").hasAttribute("data-max-hold-reset")).toBe(false);
+    expect(getVectorscopeHistoryForKey).not.toHaveBeenCalled();
+  });
+
   it("renders the keyed vector path and correlation readout", () => {
     const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       width: 220,

@@ -175,6 +175,36 @@ fn work_area_without_self(mut work_area: RECT, edge: DockEdge, height: i32) -> R
   work_area
 }
 
+/// The OS work area excludes our reservation. Only restore it on the same display.
+pub(crate) fn own_reserved_height<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  monitor_name: Option<&str>,
+) -> (u32, i32) {
+  let current_monitor = window.current_monitor().ok().flatten();
+  if current_monitor
+    .as_ref()
+    .and_then(|monitor| monitor.name().map(String::as_str))
+    != monitor_name
+  {
+    return (0, 0);
+  }
+  state()
+    .lock()
+    .ok()
+    .filter(|state| state.registered)
+    .map(|state| {
+      (
+        state.height.max(0) as u32,
+        if state.edge == DockEdge::Top {
+          state.height
+        } else {
+          0
+        },
+      )
+    })
+    .unwrap_or((0, 0))
+}
+
 fn appbar_rect_from_work_area(
   work_area: RECT,
   edge: DockEdge,
@@ -496,7 +526,6 @@ fn set_reserved_inner<R: tauri::Runtime>(
   logical_height: u32,
 ) -> Result<(), String> {
   let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
-  let height = (logical_height as f64 * window.scale_factor().unwrap_or(1.0)).round() as i32;
   let (previous_registration, watching) = {
     let mut current = state().lock().map_err(|_| "appbar state poisoned")?;
     let registration = current.registered.then_some((current.edge, current.height));
@@ -515,6 +544,14 @@ fn set_reserved_inner<R: tauri::Runtime>(
       }
       None => work_area,
     };
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let height = (crate::dock::fit_dock_height(
+      logical_height,
+      (available_work_area.bottom - available_work_area.top).max(0) as u32,
+      scale,
+    ) as f64
+      * scale)
+      .round() as i32;
     if previous_registration.is_some() || watching {
       let mut data = appbar_data(hwnd);
       SHAppBarMessage(ABM_REMOVE, &mut data);

@@ -15,7 +15,7 @@ export function clampDockHistoryWindow(value, maxWindowSec) {
   return Math.max(HISTORY_MIN_WINDOW_SEC, Math.min(safeMax, safeValue));
 }
 
-/** Shared live-only viewport for all time-based Dock panels. */
+/** Shared window width for live and frozen time-based Dock panels. */
 export function useDockHistoryViewport({ maxWindowSec }) {
   const initialWindowSec = clampDockHistoryWindow(DOCK_HISTORY_DEFAULT_WINDOW_SEC, maxWindowSec);
   const maxRef = useRef(maxWindowSec);

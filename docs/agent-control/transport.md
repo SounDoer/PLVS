@@ -25,7 +25,8 @@ the current retained range; it is never clamped to the oldest sample. No history
 refusal `historyUnavailable`; an excessive offset is the invalid-input issue `outOfRange`.
 `snapshot clear` leaves the snapshot and returns to the current LIVE edge or FILE result. Both
 commands use the same React display operations as clicking a history chart and the GUI's Return
-button.
+button. Snapshot selection is available in Dock and normal mode, does not stop LIVE capture, and
+survives Dock entry and exit. FILE source entry remains unavailable while docked.
 
 FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and starts a new
 session; reanalyze retains the session identity; stop retains partial results; select chooses an

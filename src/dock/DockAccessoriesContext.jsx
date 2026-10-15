@@ -88,6 +88,8 @@ export function DockAccessoriesProvider({ children }) {
     edge: dockEdge,
     geometryVersion: dockHeight,
     forceHeaderVisible: notice?.kind === "error",
+    snapshotActive: sourceTransportState.chromeState === "snapshot",
+    waitForHeaderReady: true,
     onError: onDockAccessoryError,
   });
   const preparePanelSettings = useCallback(
@@ -150,6 +152,8 @@ export function DockAccessoriesProvider({ children }) {
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
   const dockHeaderState = useMemo(
     () => ({
+      visible: dockAccessoryVisibility.headerVisible,
+      presentationId: dockAccessoryVisibility.headerPresentationId,
       sourceTransportState,
       clearDisabled: !running && !showClock,
       notice,
@@ -162,6 +166,8 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       dockAccessoryVisibility.editorView,
+      dockAccessoryVisibility.headerVisible,
+      dockAccessoryVisibility.headerPresentationId,
       dockEdge,
       loudnessProfile.active,
       notice,
@@ -221,7 +227,9 @@ export function DockAccessoriesProvider({ children }) {
   );
   const onDockAccessoryAction = useCallback(
     ({ type, payload }) => {
-      if (type === "source-primary") onSourceTransportAction(payload.actionKind);
+      if (type === "header-ready")
+        dockAccessoryVisibility.confirmHeaderReady(payload.presentationId);
+      else if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
       else if (type === "open-editor") {
         setHoveredDockPanelId(null);

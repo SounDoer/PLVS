@@ -33,6 +33,29 @@ function renderWith({ controls, snaps }) {
 }
 
 describe("DockSpectrogram", () => {
+  it("freezes its painter and timeline on the selected keyed history", () => {
+    const controls = {};
+    const frozen = makeSnaps([{ timestampMs: 1000, dbList: [-30] }]);
+    const getSpectrogramSnapsForKey = vi.fn(() =>
+      makeSnaps([{ timestampMs: 5000, dbList: [-10] }])
+    );
+    render(
+      <HistoryDataProvider
+        value={{
+          selectedOffset: 0,
+          snapshotSpectrumByKey: { [dockSpectrumKey(controls)]: frozen },
+          getSpectrogramSnapsForKey,
+        }}
+      >
+        <DockSpectrogram controls={controls} />
+      </HistoryDataProvider>
+    );
+    expect(useSpectrogramCanvas).toHaveBeenLastCalledWith(
+      expect.objectContaining({ selectedOffset: 0, frozenSnaps: frozen, newestMs: 1040 })
+    );
+    expect(getSpectrogramSnapsForKey).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.mocked(useCanvasBackingStore).mockClear();
     vi.mocked(useSpectrogramCanvas).mockClear();

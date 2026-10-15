@@ -332,7 +332,7 @@ describe("useDockMode", () => {
     expect(result.current.dockHeight).toBe(56);
 
     await act(() => result.current.resizeDockHeight(999, { persist: false }));
-    expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 160, persist: false });
+    expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 999, persist: false });
     expect(result.current.dockHeight).toBe(56);
   });
 

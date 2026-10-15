@@ -30,6 +30,8 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "channel",
     "view",
     "maxMode",
+    "grid",
+    "peakLabels",
     "speedPercent",
     "tiltDbPerOctave",
     "octaveSmoothing",
@@ -392,6 +394,8 @@ function publicControls(panel, raw, context) {
       channel: all.channel,
       view: all.view,
       maxMode: all.maxMode,
+      grid: all.grid,
+      peakLabels: all.peakLabels,
       speedPercent: all.speedPercent,
       tiltDbPerOctave: all.tiltDbPerOctave,
       octaveSmoothing: all.octaveSmoothing,
@@ -698,6 +702,13 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
 export function reconcileDockExecution(planned, effectiveDock) {
   if (!effectiveDock || typeof effectiveDock !== "object") return planned;
   const warnings = [...planned.warnings];
+  if (planned.dock.height !== effectiveDock.height) {
+    warnings.push({
+      code: "dockHeightFitted",
+      requested: planned.dock.height,
+      effective: effectiveDock.height,
+    });
+  }
   if (planned.dock.reserveSpace === true && effectiveDock.reserveSpace === false) {
     warnings.push({
       code: "dockReservationConflict",

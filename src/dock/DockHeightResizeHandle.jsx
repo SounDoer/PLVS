@@ -2,7 +2,6 @@ import { RESIZE_HANDLE_LINE_CLASS } from "../lib/shellLayout.js";
 import { useRef } from "react";
 import {
   DOCK_DEFAULT_HEIGHT,
-  DOCK_MAX_HEIGHT,
   DOCK_MIN_HEIGHT,
   clampDockHeight,
   dockHeightFromPointer,
@@ -43,7 +42,6 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
       aria-label="Resize Dock height"
       aria-orientation="horizontal"
       aria-valuemin={DOCK_MIN_HEIGHT}
-      aria-valuemax={DOCK_MAX_HEIGHT}
       aria-valuenow={currentHeight}
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
