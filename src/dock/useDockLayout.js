@@ -1,3 +1,4 @@
+import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { useCallback, useMemo, useState } from "react";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
 import {
@@ -235,6 +236,7 @@ export function useDockLayout() {
       const layout = {
         ...current.layout,
         panelSizesById: resizeDockPanelPair({
+          interfaceSize: readPersistedInterfaceSize(),
           panelSizesById: current.layout.panelSizesById,
           leftPanel: current.layout.panelsById[leftPanelId],
           rightPanel: current.layout.panelsById[rightPanelId],

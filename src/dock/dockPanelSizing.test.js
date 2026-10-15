@@ -12,6 +12,38 @@ const panelsById = {
 };
 
 describe("dock panel sizing", () => {
+  it.each([
+    ["small", 71],
+    ["default", 76],
+    ["large", 86],
+    ["extra-large", 96],
+  ])(
+    "uses readable Vector widths for %s without changing the preferred width",
+    (interfaceSize, minWidth) => {
+      expect(getDockPanelSizing("vectorscope", interfaceSize)).toMatchObject({
+        minWidth,
+        defaultWidth: 220,
+      });
+      const next = resizeDockPanelPair({
+        panelSizesById: {},
+        leftPanel: { id: "v", moduleId: "vectorscope" },
+        rightPanel: { id: "s", moduleId: "spectrum" },
+        leftWidth: 220,
+        rightWidth: 360,
+        delta: -1000,
+        interfaceSize,
+      });
+      expect(next.v).toBe(minWidth);
+      expect(next.v + next.s).toBe(580);
+    }
+  );
+
+  it("preserves narrow saved widths independently of the active text profile", () => {
+    expect(normalizeDockPanelSizes({ v: { moduleId: "vectorscope" } }, { v: 71 })).toEqual({
+      v: 71,
+    });
+  });
+
   it("keeps Loudness compact while protecting three Expanded values", () => {
     expect(getDockPanelSizing("loudness").minWidth).toBe(154);
   });

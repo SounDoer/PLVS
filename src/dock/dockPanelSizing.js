@@ -1,3 +1,7 @@
+import { UI_PREFERENCES } from "../preferences/data.js";
+import { resolveInterfacePreferences } from "../preferences/interfaceSize.js";
+import { vectorDockMinWidth } from "../lib/vectorscopeSizing.js";
+
 export const DOCK_PANEL_SIZING_BY_MODULE_ID = Object.freeze({
   levelMeter: {
     minWidth: 140,
@@ -18,7 +22,7 @@ export const DOCK_PANEL_SIZING_BY_MODULE_ID = Object.freeze({
     growthPolicy: "flexible",
   },
   vectorscope: {
-    minWidth: 160,
+    minWidth: vectorDockMinWidth(UI_PREFERENCES.typography.sizesPx.axis),
     defaultWidth: 220,
     maxPreferredWidth: 360,
     growthPolicy: "fixed",
@@ -57,8 +61,15 @@ const LEGACY_MODULE_ID = Object.freeze({
 /**
  * @param {string} moduleId
  */
-export function getDockPanelSizing(moduleId) {
+export function getDockPanelSizing(moduleId, interfaceSize = "small") {
   const normalized = LEGACY_MODULE_ID[moduleId] ?? moduleId;
+  if (normalized === "vectorscope") {
+    const { typography } = resolveInterfacePreferences(UI_PREFERENCES, interfaceSize);
+    return {
+      ...DOCK_PANEL_SIZING_BY_MODULE_ID.vectorscope,
+      minWidth: vectorDockMinWidth(typography.sizesPx.axis),
+    };
+  }
   return (
     DOCK_PANEL_SIZING_BY_MODULE_ID[normalized] ?? {
       minWidth: 100,
@@ -97,10 +108,11 @@ export function resizeDockPanelPair({
   leftWidth,
   rightWidth,
   delta,
+  interfaceSize = "small",
 }) {
   if (!leftPanel || !rightPanel) return panelSizesById;
-  const leftSizing = getDockPanelSizing(leftPanel.moduleId);
-  const rightSizing = getDockPanelSizing(rightPanel.moduleId);
+  const leftSizing = getDockPanelSizing(leftPanel.moduleId, interfaceSize);
+  const rightSizing = getDockPanelSizing(rightPanel.moduleId, interfaceSize);
   const safeLeft = clampDockPanelWidth(
     Number(leftWidth) || leftSizing.defaultWidth,
     leftSizing.minWidth,

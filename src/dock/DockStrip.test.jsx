@@ -46,6 +46,31 @@ function renderStrip(props = {}) {
 }
 
 describe("DockStrip", () => {
+  it("updates the Vector minimum with Interface Size without replacing its preferred width", () => {
+    const tree = (interfaceSize) => (
+      <LoudnessProfileProvider>
+        <FrameDataProvider value={{}}>
+          <HistoryDataProvider value={{}}>
+            <DockStrip
+              panels={[{ id: "vectorscope", moduleId: "vectorscope" }]}
+              controls={{}}
+              interfaceSize={interfaceSize}
+              panelSizesById={{ vectorscope: 190 }}
+            />
+          </HistoryDataProvider>
+        </FrameDataProvider>
+      </LoudnessProfileProvider>
+    );
+    const { container, rerender } = render(tree("small"));
+    const panel = /** @type {HTMLElement} */ (
+      container.querySelector('[data-panel-id="vectorscope"]')
+    );
+    expect(panel.style.minWidth).toBe("71px");
+    rerender(tree("extra-large"));
+    expect(panel.style.minWidth).toBe("96px");
+    expect(panel.style.flexBasis).toBe("190px");
+  });
+
   it("does not add layout space when entering Snapshot", () => {
     const tree = (selectedOffset) => (
       <HistoryDataProvider value={{ selectedOffset }}>

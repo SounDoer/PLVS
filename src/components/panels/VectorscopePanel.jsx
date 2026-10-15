@@ -1,3 +1,4 @@
+import { VECTOR_CORRELATION_MIN_EM } from "../../lib/vectorscopeSizing.js";
 import { cn } from "@/lib/utils";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { ANNOTATION_TEXT, CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
@@ -83,15 +84,17 @@ export function VectorscopePanel({ compact = false, className } = {}) {
           style={{
             // Reserve the correlation rail, its labels and gaps before fitting the plot.
             // Polar needs a separate pair-label strip; Lissajous labels sit inside its square.
-            width: isLissajous
+            width: `min(100cqw, max(var(--vector-plot-width), calc(var(--ui-fs-axis) * ${VECTOR_CORRELATION_MIN_EM})))`,
+            "--vector-plot-width": isLissajous
               ? "min(100cqw, max(0px, calc(100cqh - 0.75rem - var(--ui-chart-x-axis-row-h) - 2 * var(--ui-chart-axis-gap))))"
               : "min(100cqw, max(0px, calc(2 * (100cqh - 0.75rem - var(--ui-chart-x-axis-row-h) - var(--ui-fs-axis) - 3 * var(--ui-chart-axis-gap)))))",
           }}
         >
           <div
             data-vectorscope-plot-stage
-            className="relative box-content w-full shrink-0"
+            className="relative mx-auto box-content shrink-0"
             style={{
+              width: "var(--vector-plot-width)",
               aspectRatio: isLissajous ? "1 / 1" : "2 / 1",
               paddingBottom: isLissajous ? 0 : "calc(var(--ui-fs-axis) + var(--ui-chart-axis-gap))",
             }}
@@ -206,6 +209,7 @@ export function VectorscopePanel({ compact = false, className } = {}) {
             data-vectorscope-correlation-axis
             className={cn(
               CAPTION_TEXT,
+              "font-[family-name:var(--ui-font-mono)] tabular-nums",
               "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0"
             )}
           >

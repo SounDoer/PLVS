@@ -107,7 +107,8 @@ Phase and correlation between a pair of channels, defaulting to Front L/R. Displ
 
 The plot and correlation rail form one centered instrument in both the workspace and Dock.
 Lissajous fits a square; Polar fits a semicircle with a 2:1 plot area and labels below it. The
-correlation rail follows the plot width. The group uses the largest size that fits while retaining
+correlation rail follows the plot width, with a minimum readable width for its three ticks when
+the plot is small. The group uses the largest size that fits while retaining
 space for labels and the rail; top and bottom Dock positions use the same centered alignment.
 
 The axes, diagonals, rings, and other orientation marks are always-visible measurement guides, not

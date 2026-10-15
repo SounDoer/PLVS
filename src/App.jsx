@@ -589,6 +589,7 @@ function AppContent() {
     ? {
         panels: dockLayout.panels,
         panelSizesById: dockLayout.panelSizesById,
+        interfaceSize: settings.interfaceSize,
         hoveredPanelId:
           dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
         toolbarOpen: dockAccessoryVisibility.headerVisible,

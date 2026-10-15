@@ -114,6 +114,9 @@ contour-click reset. Grid, Peak Labels and hover readouts remain available at ev
 Stereo Map also shares the normal panel's Grid, hover readout, frequency zoom and pan, and
 click-to-Snapshot / double-click-to-Live gestures. Its X/Y axes stay hidden; Position retains
 compact channel labels. Mono input shows the same explanatory message as the normal panel.
+Vectorscope can be narrowed to a minimum based on **Interface Size**, reserving readable correlation
+ticks and padding rather than a fixed 160px. Changing Dock height does not change this minimum.
+Existing preferred widths are preserved; drag a divider to reclaim unused side space.
 Vectorscope uses the normal panel layout at every Dock height: the plot above the correlation
 rail, without a separate numeric readout. It shares Lissajous Hold Slow,
 Polar Sample persistence, and Polar Level Max Hold with the normal panel. Hold the Lissajous

@@ -1,3 +1,4 @@
+import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { dockHeightMode, DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
 import { createDockPanelId, DOCK_PANEL_MODULE_IDS } from "../dock/dockLayout.js";
 import {
@@ -314,7 +315,7 @@ export function compileDockLayout(dock, document, context = {}) {
       else if (entry.customTitle === null) delete panel.customTitle;
       else panel.customTitle = entry.customTitle.trim();
     }
-    const sizing = getDockPanelSizing(panel.moduleId);
+    const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
     if (hasOwn(entry, "width")) {
       // Any finite width in range, not just an integer: dragging the strip stores fractional CSS
       // pixels, so requiring integers here rejected the very document `dock.inspect` reports.
@@ -500,7 +501,7 @@ export function buildDockSnapshot(dock, context = {}) {
     panels: (dock.panelOrder ?? []).flatMap((panelId) => {
       const panel = dock.panelsById?.[panelId];
       if (!panel) return [];
-      const sizing = getDockPanelSizing(panel.moduleId);
+      const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
       const customTitle = panel.customTitle ?? null;
       return [
         {
@@ -528,7 +529,7 @@ export function buildDockDescription(dock, context = {}) {
     edges: ["top", "bottom"],
     monitors: Array.isArray(context.monitors) ? context.monitors : [],
     modules: DOCK_PANEL_MODULE_IDS.map((moduleId) => {
-      const sizing = getDockPanelSizing(moduleId);
+      const sizing = getDockPanelSizing(moduleId, readPersistedInterfaceSize());
       const panel = { id: moduleId, moduleId };
       const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[dockControlModuleIdForPanel(panel)];
       return {
@@ -716,7 +717,7 @@ export function buildDockPanelDescription(dock, panelId, context = {}) {
       issue: issue("controlsUnavailable", "$.panelId", "This Dock panel has no controls."),
     };
   }
-  const sizing = getDockPanelSizing(panel.moduleId);
+  const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
   return {
     panel,
     width: {

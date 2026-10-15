@@ -741,6 +741,15 @@ looks like a unit or a different metric. Detector identity belongs on the leadin
 instrument; a non-live source belongs in a caption aligned with the readout column. Live is the
 normal state and needs no caption.
 
+### Vectorscope readable width
+
+Correlation ticks use the bundled mono font and Axis Annotation size. Reserve five character
+advances (`-1`, `0`, `+1`) plus two 1em gaps. JetBrains Mono 2.304 advances 0.6em per character,
+so the readable rail floor is 5em. Dock adds 16px for the maximum horizontal insets across height
+tiers. The resulting panel minimum follows Interface Size, not Dock height. The rail may be wider
+than a height-limited plot; both stay centered. Saved preferred widths are not rewritten on a
+profile change; runtime layout and resize constraints enforce the active profile's floor.
+
 ### Responsive rules
 
 - Height selects the spacing tier. Interface Size selects typography; constrained chart readouts
