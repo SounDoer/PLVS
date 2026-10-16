@@ -69,4 +69,21 @@ describe("assembled website validation", () => {
     writeFileSync(join(root, "docs", "template.html"), "template");
     await expect(validateWebsite(root)).rejects.toThrow(/source-only files/);
   });
+
+  it("rejects screenshot originals under assets/raw", async () => {
+    const root = fixture();
+    mkdirSync(join(root, "assets", "raw"));
+    writeFileSync(join(root, "assets", "raw", "hero.json"), "{}");
+    await expect(validateWebsite(root)).rejects.toThrow(/source-only files/);
+  });
+
+  it("rejects images that no page, stylesheet or script names", async () => {
+    const root = fixture();
+    writeFileSync(join(root, "assets", "used.webp"), "");
+    writeFileSync(join(root, "assets", "styled.png"), "");
+    writeFileSync(join(root, "assets", "orphan.webp"), "");
+    writeFileSync(join(root, "index.html"), '<img src="/assets/used.webp">');
+    writeFileSync(join(root, "assets", "site-tokens.css"), "body { background: url(styled.png); }");
+    await expect(validateWebsite(root)).rejects.toThrow(/unreferenced images:\n.*orphan\.webp$/);
+  });
 });

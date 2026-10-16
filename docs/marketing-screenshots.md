@@ -16,23 +16,17 @@ documented in the adjacent provenance JSON; they must not replace or reshape the
 - `scripts/marketing/capture-live-hero.mjs`: capture and validation.
 - `scripts/marketing/select-hero.mjs`: explicit selection, lossless export and optional publication.
 - `website/assets/raw/landing-hero.png` and `.json`: the published original and its provenance.
-- `website/assets/raw/landing-channel-*.png` and `landing-channel-group.json`: the LIVE 7.1.4
-  Level Meter and Waveform originals, including the deterministic routing from the approved stereo
-  master.
-- `website/assets/raw/landing-frequency-*.png` and `landing-frequency-group.json`: the LIVE stereo
-  Spectrum, Spectrogram and Stereo Map originals captured at the same elapsed time.
-- `website/assets/raw/landing-stats.png` and `.json`: the LIVE Stats panel with the default profile's
-  warning and failure colors recorded in its provenance.
-- `website/assets/raw/landing-history-*-hud*.png` and `landing-history-hud-pair.json`: focused LIVE
-  Loudness and Spectrogram originals in wide and narrow layouts, with hover HUDs pinned to the same
-  historical moment.
-- `website/assets/raw/landing-workspace-*-compact.png` and `landing-workspace-compact-group.json`:
-  three task-focused LIVE workspace layouts with Compact Panels enabled and application chrome
-  excluded by the Agent Control workspace target.
-- `website/assets/raw/landing-dock.png` and `.json`: the expanded LIVE Dock strip captured from the
-  complete main WebView in Dock form, without native window chrome or another application's UI.
+- `website/assets/raw/landing-dock.png`, `landing-dock-custom.png` and their `.json`: the default
+  and custom LIVE Dock strips captured from the complete main WebView in Dock form, without native
+  window chrome or another application's UI.
+- `website/assets/raw/homepage-YYYYMMDD/`: originals and provenance for the feature images under
+  `website/assets/homepage/`, exported by `scripts/marketing/prepare-homepage-assets.mjs`.
 - Matching lossless WebP files under `website/assets/`: the website exports. Verify decoded pixels
   against each PNG before publication.
+
+`website/assets/raw/` stays in Git but is not published. `npm run website:check` fails when the
+assembled site contains an image that no page, stylesheet or script names; when an image leaves the
+website, delete its export and its original together.
 
 Temporary profiles, screenshots, comparisons and reports stay under ignored `artifacts/marketing/`.
 The recipe follows the defaults in application code; it does not preserve an obsolete layout.

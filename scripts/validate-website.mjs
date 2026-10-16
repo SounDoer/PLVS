@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { dirname, extname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
 
@@ -97,7 +97,9 @@ export async function validateWebsite(directory) {
   const files = await walkFiles(root);
   const leaked = files
     .map((path) => relative(root, path))
-    .filter((path) => /(^|[\\/])template\.html$|\.test\.[^\\/]+$/i.test(path));
+    .filter((path) =>
+      /(^|[\\/])template\.html$|\.test\.[^\\/]+$|^assets[\\/]raw[\\/]/i.test(path)
+    );
   if (leaked.length > 0) {
     throw new Error(`Website output contains source-only files: ${leaked.join(", ")}`);
   }
@@ -119,6 +121,20 @@ export async function validateWebsite(directory) {
   }
   if (missing.length > 0) {
     throw new Error(`Website output has missing local references:\n${missing.join("\n")}`);
+  }
+
+  // A published image that nothing names is a leftover from an earlier page: delete it, and its
+  // original under website/assets/raw/, instead of shipping it.
+  let corpus = "";
+  for (const path of files.filter((path) => /\.(html|css|js|json|webmanifest)$/i.test(path))) {
+    corpus += await readFile(path, "utf8");
+  }
+  const unreferenced = files
+    .filter((path) => /\.(png|webp|jpe?g|gif|svg|avif|ico)$/i.test(path))
+    .filter((path) => !corpus.includes(basename(path)))
+    .map((path) => relative(root, path));
+  if (unreferenced.length > 0) {
+    throw new Error(`Website output has unreferenced images:\n${unreferenced.join("\n")}`);
   }
 
   return { root, fileCount: files.length, htmlPageCount: htmlFiles.length };

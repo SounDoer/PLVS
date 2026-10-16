@@ -66,6 +66,7 @@ export async function buildWebsite({ rootDirectory, contentDirectory, outputDire
   try {
     await cp(website, staging, { recursive: true });
     await removeSourceOnlyFiles(staging);
+    await rm(join(staging, "assets", "raw"), { recursive: true, force: true });
     await mkdir(join(staging, "docs"), { recursive: true });
     await writeFile(join(staging, "docs", "index.html"), buildDocsPage(root));
     await buildSharesetsSite({
