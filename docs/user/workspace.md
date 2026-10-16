@@ -79,8 +79,8 @@ On Windows and macOS, Dock parks a slim, always-on-top meter strip against the t
 the screen, so the meters stay visible while you work in another app. Click the arrow at the right
 end of the strip to show the Dock toolbar, where you can clear the session, switch the Loudness
 Profile, edit which modules the strip shows, and manage Presets. The fixed-width right control area
-stacks the timecode above the transport button, followed by the toolbar toggle and Return to Normal
-Window. Start/stop and Return to Live remain available with the toolbar closed. Returning to the
+stacks the transport button, toolbar toggle, and Return to Normal Window in a narrow icon column.
+Dock omits the timecode and Ready label. Start/stop and Return to Live remain available with the toolbar closed. Returning to the
 normal window preserves capture and history. The
 toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
 the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
@@ -185,8 +185,9 @@ panels with an unlinked range remain independent. Snapshot selection is shared r
 Level Meter uses the same settings and layout in both forms, including Vertical or Horizontal
 Orientation. Stats adjusts its column and row counts to the available width and height; when all
 selected metrics cannot fit legibly, scroll within Stats to see the remaining rows. No selected
-metric is dropped. The separate Timecode module has been removed; use the right control area's Transport
-readout and actions. Saved layouts automatically discard old Timecode instances.
+metric is dropped. The separate Timecode module has been removed; transport actions remain in the
+right control area, and the timecode is available in the normal window. Saved layouts automatically
+discard old Timecode instances.
 
 When several PLVS workbenches use Dock, only one can reserve a particular monitor edge on Windows,
 or a particular monitor on macOS.

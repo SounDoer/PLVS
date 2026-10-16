@@ -6,7 +6,7 @@
   --ui-dock-gap-row: 3px;
   --ui-dock-bar-min-h: 5px;
   --ui-dock-readout-w: 5ch;
-  --ui-dock-toolbar-toggle-w: 72px;
+  --ui-dock-toolbar-toggle-w: 32px;
 }
 
 .dock-control-area {
@@ -16,33 +16,23 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 2px;
-  padding: 4px;
+  gap: 4px;
+  padding: 4px 1px;
   border-left: 1px solid var(--border);
 }
 
 .dock-control-area .dock-control-button {
-  width: 32px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
-.dock-transport .dock-transport-status {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-  line-height: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  font-size: min(var(--ui-fs-status), 11px);
-  letter-spacing: -0.02em;
+.dock-control-area .dock-transport {
+  width: 28px;
+  height: 28px;
 }
 
 .dock-transport .dock-transport-action {
-  height: 28px;
+  height: 100%;
 }
 
 .dock-panel-viewport {

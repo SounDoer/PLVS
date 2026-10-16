@@ -1,4 +1,4 @@
-import { Download, Check, LoaderCircle, PanelTop, CircleAlert } from "lucide-react";
+import { Download, Check, LoaderCircle, AppWindow, CircleAlert } from "lucide-react";
 import { IconButton } from "../components/IconButton.jsx";
 import { SourceTransportCluster } from "../components/SourceTransportCluster.jsx";
 import { DockToolbarToggle } from "./DockToolbarToggle.jsx";
@@ -38,7 +38,7 @@ export function DockControlArea({
       ) : null}
       <DockToolbarToggle edge={edge} open={toolbarOpen} onToggle={onToolbarToggle} compact />
       <IconButton
-        icon={<PanelTop className="size-4" />}
+        icon={<AppWindow className="size-4" />}
         tip="Return to Normal Window"
         aria-label="return to normal window"
         tipSide="left"

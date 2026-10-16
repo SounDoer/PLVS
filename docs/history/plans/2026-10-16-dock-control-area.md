@@ -9,6 +9,13 @@ Related plan: [Update preferences](2026-10-16-update-preferences.md)
 
 ## Current acceptance status
 
+The latest user review removes the timecode/Ready row from Dock. The revised control area is
+32 CSS px wide with 28 by 28 CSS px buttons and uniform 16 CSS px icons. Outlined panel
+open/close icons replace the toolbar chevron and the rejected filled triangle. AppWindow replaces
+PanelTop for Return to Normal Window. The 136 CSS px minimum remains unchanged. Earlier
+timecode-layout tasks and long-clock acceptance below describe the superseded prototype;
+they no longer apply to Dock's icon-only control area. Normal transport is unchanged.
+
 This summary supersedes earlier execution checkpoints below. Windows signed, isolated offline
 upgrades, two-workbench restoration, Dock startup/skip/reopen, and 125%/200% display-scale checks
 have passed. A signed installer returning exit code 42 also restored the old app/settings and

@@ -1,7 +1,7 @@
 # Dock Control Area
 
 Date: 2026-10-16
-Status: Implemented at 72 CSS px width and 136 CSS px minimum height; final design and platform acceptance pending
+Status: Icon-only review at 32 CSS px width and 136 CSS px minimum height; platform acceptance pending
 Branch: `codex/update-preferences`
 
 ## Problem
@@ -18,11 +18,15 @@ components and business actions, adapting presentation rather than creating para
 The control area has a fixed narrow width and a top-aligned vertical layout. In order from top to
 bottom:
 
-1. Timecode.
-2. Transport primary action: Start, Stop, or the existing return-to-Live action as appropriate.
-3. Show/Hide Toolbar.
-4. Return to Normal Window.
-5. Update status, only when an update or associated download/ready state needs to be shown.
+1. Transport primary action: Start, Stop, or the existing return-to-Live action as appropriate.
+2. Show/Hide Toolbar.
+3. Return to Normal Window, using the AppWindow icon.
+4. Update status, only when an update or associated download/ready state needs to be shown.
+
+The later design review removes the timecode/Ready row entirely to reduce width. All icons are
+16 CSS px, with 28 by 28 CSS px click targets in a fixed 32 CSS px control area.
+The toolbar toggle uses the outlined PanelTop/BottomOpen/Close icons: a panel boundary and
+directional arrow distinguish it from the normal-window action while matching the icon family.
 
 The same order applies to both top-edge and bottom-edge Dock. The toolbar arrow still reflects
 the direction in which the toolbar opens and whether it is currently open.
@@ -31,26 +35,26 @@ Toolbar, return, and update controls are icon buttons with accessible names and 
 The transport action uses the existing action semantics; its compact presentation may omit a text
 label if the icon, tooltip, and accessible name unambiguously identify the action.
 
-The update control is last. Its appearance or disappearance must not move the timecode or other
+The update control is last. Its appearance or disappearance must not move the other
 buttons. Do not vertically center or redistribute the group when its contents change. Do not
 reserve an empty slot between the permanent controls, and do not show an always-present update
 button merely to fill space. Manual checking remains available through the existing Settings path.
 
 ## Width and minimum height
 
-Keep the control area as narrow as practical while showing the complete timecode and usable click
+Keep the control area as narrow as practical while providing usable click
 targets. Its width must not change with Dock height, transport state, update availability, download
 progress, or toolbar visibility. Do not grow it horizontally as a fallback when vertical space is
 insufficient: that would unexpectedly resize the user's panel area.
 
 Use vertical space first. Reduce unnecessary padding and use icons before hiding functionality.
-The approved design keeps timecode, transport, toolbar, and normal-window return accessible, with
-room for the optional update control at the minimum supported height. Do not introduce a second
-layout that moves controls beside transport or hides timecode at low heights.
+The approved design keeps transport, toolbar, and normal-window return accessible, with
+room for the optional update control at the minimum supported height. Controls remain vertical
+at all supported heights; there is no timecode row.
 
 The current 56 CSS px minimum may be raised. Exact width, button dimensions, spacing, and minimum
 height must be selected from visual validation, not fixed speculatively in this document. Validate
-the worst-case supported timecode, interface sizes, and text/display scaling. Width may be defined
+all transport states, interface sizes, and text/display scaling. Width may be defined
 through the existing interface-size system, but must remain stable within the selected size.
 
 Review the effect of a new minimum on every Dock panel and on compact/standard/expanded height
@@ -60,9 +64,9 @@ preferred widths, or unrelated geometry as part of that adjustment.
 
 ## Transport reuse
 
-Extend the existing transport component with an explicit Dock presentation, placing timecode and
-primary action on separate rows. Preserve its shared state model, timecode meaning and formatting,
-Live/Stopped/Snapshot visual meaning, disabled states, and business callbacks.
+Extend the existing transport component with an explicit icon-only Dock presentation. Preserve
+its shared state model, Live/Stopped/Snapshot visual meaning, disabled states, and business callbacks.
+The normal presentation retains its timecode meaning and formatting.
 
 Omit the redundant fixed LIVE source label in Dock. This does not change Dock's supported source
 mode or introduce a source selector. Do not reduce the component to an independent Start/Stop
@@ -147,8 +151,8 @@ that has already begun. Exact window geometry is an implementation validation it
    and usable targets. Transport is understandable in its compact presentation.
 6. The chosen minimum height accommodates the complete control stack when an update is present.
    Existing shorter saved heights restore consistently with native bounds.
-7. Check all relevant panels, longest supported timecodes, interface sizes, Windows text scaling,
-   display DPI, top/bottom Dock, and macOS geometry. Controls and timecode must not clip.
+7. Check all relevant panels, interface sizes, Windows text scaling, display DPI, top/bottom Dock,
+   and macOS geometry. Controls must not clip.
 8. Returning to normal mode restores geometry and attributes while capture and history continue.
 9. Available/downloading/ready/error states use shared update data; ordinary background changes
    do not open details or interrupt work.

@@ -13,7 +13,7 @@ const state = {
 };
 
 describe("Dock persistent controls", () => {
-  it("keeps status above the action and utilities in order without a duplicate source label", () => {
+  it("keeps action and utilities in order without a status or source label", () => {
     const onTransport = vi.fn();
     const onRestore = vi.fn();
     const onToolbarToggle = vi.fn();
@@ -27,7 +27,7 @@ describe("Dock persistent controls", () => {
         onToolbarToggle={onToolbarToggle}
       />
     );
-    expect(screen.getByText("100:12:34")).toBeTruthy();
+    expect(screen.queryByText("100:12:34")).toBeNull();
     expect(screen.queryByText("Live")).toBeNull();
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([

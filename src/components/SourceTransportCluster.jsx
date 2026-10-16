@@ -137,15 +137,11 @@ export function SourceTransportCluster({
           </PopoverContent>
         </Popover>
       )}
-      <span
-        className={cn(
-          "min-w-0 text-[length:var(--ui-fs-status)] font-semibold tabular-nums",
-          vertical ? "dock-transport-status" : "flex-1 truncate pl-1.2 pr-1"
-        )}
-        title={vertical ? state.statusLabel : undefined}
-      >
-        {state.statusLabel}
-      </span>
+      {!vertical ? (
+        <span className="min-w-0 flex-1 truncate pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
+          {state.statusLabel}
+        </span>
+      ) : null}
 
       <button
         type="button"
@@ -160,7 +156,7 @@ export function SourceTransportCluster({
           chrome.action
         )}
       >
-        <ActionIcon className="size-[1em]" />
+        <ActionIcon className={vertical ? "size-4" : "size-[1em]"} />
         <span className={cn("transport-cap-label", vertical && "sr-only")}>
           {state.actionLabel}
         </span>
