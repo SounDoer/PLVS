@@ -49,12 +49,37 @@ pub fn create<R: tauri::Runtime>(app: &tauri::App<R>, init_script: &str) -> Resu
       .build()
       .map_err(|e| format!("dock editor window: {e}"))?;
   }
-  if app.get_webview_window(DOCK_UPDATE_LABEL).is_none() {
-    accessory_builder(app, DOCK_UPDATE_LABEL, "dock-update", init_script)
-      .build()
-      .map_err(|e| format!("dock update window: {e}"))?;
-  }
   Ok(())
+}
+
+/// The boot initialization script, kept for accessories created after setup.
+pub struct AccessoryInitScript(pub String);
+
+/// Create the update accessory only when Dock may need it. It costs a WebView renderer (about
+/// 50 MB measured on Windows) that most sessions never show. The main window calls this as soon
+/// as an update or first-launch setup exists, so the window is normally ready before a click.
+/// Async: building a window from a synchronous command can deadlock on Windows.
+#[tauri::command]
+pub async fn prepare_dock_update_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+) -> Result<(), String> {
+  if window.label() != "main" {
+    return Err("Only the main window owns update presentation.".into());
+  }
+  if cfg!(feature = "preview-identity") {
+    return Err("Updates are unavailable in Preview.".into());
+  }
+  let app = window.app_handle();
+  if app.get_webview_window(DOCK_UPDATE_LABEL).is_some() {
+    return Ok(());
+  }
+  let init_script = app.state::<AccessoryInitScript>().0.clone();
+  match accessory_builder(app, DOCK_UPDATE_LABEL, "dock-update", &init_script).build() {
+    Ok(_) => Ok(()),
+    // A concurrent request may have created it between the check and the build.
+    Err(_) if app.get_webview_window(DOCK_UPDATE_LABEL).is_some() => Ok(()),
+    Err(error) => Err(format!("dock update window: {error}")),
+  }
 }
 
 fn set_rect<R: tauri::Runtime>(

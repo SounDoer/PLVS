@@ -62,6 +62,7 @@ export function UpdateSurfaces({ currentVersion }) {
   const dockWindow = useDockUpdateWindow({
     onGeometry: setUpdateGeometry,
     active: docked && !dockSuspended && Boolean(payload.key),
+    prepare: docked && (Boolean(payload.key) || updates.updateInfo.hasUpdate === true),
     edge: dockEdge,
     payload,
     onAction: ({ type, payload }) => {

@@ -272,6 +272,7 @@ pub fn run() {
       coordinator::runtime_finish_operation,
       update_runtime::update_status,
       dock_accessories::set_dock_update_window,
+      dock_accessories::prepare_dock_update_window,
       update_runtime::update_check,
       update_runtime::update_download,
       update_runtime::update_cancel,
@@ -559,6 +560,7 @@ pub fn run() {
       if let Err(error) = dock_accessories::create(app, &init_script) {
         log::warn!("dock accessories unavailable; normal mode will continue: {error}");
       }
+      app.manage(dock_accessories::AccessoryInitScript(init_script));
 
       // Saved bounds are PHYSICAL pixels (saved from inner_size + outer_position). Restore
       // them with physical setters: the builder's inner_size/position take LOGICAL pixels,

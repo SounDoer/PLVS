@@ -101,3 +101,35 @@ it("resizes current content and ignores stale or invalid height reports", async 
   });
   expect(mock.invoke.mock.calls).toHaveLength(count);
 });
+
+it("creates the native window only once it may be needed, and only once", async () => {
+  const { rerender } = renderHook((props) => useDockUpdateWindow(props), { initialProps: options });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenCalledWith("set_dock_update_window", expect.anything())
+  );
+  expect(mock.invoke).not.toHaveBeenCalledWith("prepare_dock_update_window");
+  rerender({ ...options, prepare: true });
+  await waitFor(() => expect(mock.invoke).toHaveBeenCalledWith("prepare_dock_update_window"));
+  rerender({ ...options, prepare: true, active: true, payload: { key: "details:a" } });
+  rerender({ ...options, prepare: false });
+  await act(async () => {});
+  expect(
+    mock.invoke.mock.calls.filter(([command]) => command === "prepare_dock_update_window")
+  ).toHaveLength(1);
+});
+
+it("creates the window when details open before an update was announced", async () => {
+  renderHook(() =>
+    useDockUpdateWindow({ ...options, active: true, payload: { key: "details:a" } })
+  );
+  await waitFor(() => expect(mock.invoke).toHaveBeenCalledWith("prepare_dock_update_window"));
+});
+
+it("reports a failed on-demand creation to the owner fallback", async () => {
+  mock.invoke.mockImplementation(async (command) => {
+    if (command === "prepare_dock_update_window") throw new Error("WebView unavailable");
+    return null;
+  });
+  const { result } = renderHook(() => useDockUpdateWindow({ ...options, prepare: true }));
+  await waitFor(() => expect(result.current.error).toContain("WebView unavailable"));
+});

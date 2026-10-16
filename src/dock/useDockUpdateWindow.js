@@ -9,12 +9,24 @@ import {
 import { createAccessorySnapshot, normalizeAccessoryAction } from "./accessoryProtocol.js";
 import { createThemePublication, themeRuntime } from "../theme/themeRuntime.js";
 
-export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometry }) {
+/**
+ * The native window is created on demand (`prepare`): before a click whenever an update or setup
+ * exists, so opening it normally does not wait for a new WebView.
+ */
+export function useDockUpdateWindow({
+  active,
+  prepare = false,
+  edge,
+  payload,
+  onAction,
+  onGeometry,
+}) {
   const latest = useRef({ payload, onAction });
   const revision = useRef(0);
   const [contentSize, setContentSize] = useState({ key: null, height: 240 });
   const [readyKey, setReadyKey] = useState(null);
   const [error, setError] = useState(null);
+  const [prepared, setPrepared] = useState(false);
   const serializedPayload = JSON.stringify(payload);
   useLayoutEffect(() => {
     latest.current = { payload, onAction };
@@ -81,6 +93,22 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
       })
     ).catch((error) => setError(String(error)));
   }, [serializedPayload]);
+  const needed = prepare || active;
+  useEffect(() => {
+    if (!isTauri() || !needed || prepared) return;
+    let cancelled = false;
+    // A new accessory announces readiness, which publishes the current state to it.
+    void invoke("prepare_dock_update_window")
+      .then(() => {
+        if (!cancelled) setPrepared(true);
+      })
+      .catch((error) => {
+        if (!cancelled) setError(String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needed, prepared]);
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;

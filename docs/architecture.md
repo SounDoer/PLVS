@@ -118,7 +118,10 @@ commands are not exposed to webviews; only the native update commands can instal
 [ADR 0030](adr/0030-verify-cached-updates-through-updater-adapter.md).
 
 Dock update/setup presentation is an independent `dock-update` accessory with event permissions
-only. It consumes the main owner's serialized state and semantic actions; it has no updater
+only. Unlike the toolbar and editor accessories it is not created at startup: its WebView renderer
+costs about 50 MB, and most sessions never show it. While docked, the main window creates it as soon
+as an update, details or first-launch setup exists, so it is normally ready before a click; Preview
+never creates it. It consumes the main owner's serialized state and semantic actions; it has no updater
 authority or settings store writer. The same setup and changelog content renders in normal form.
 The selected target and setup draft survive host changes. Dock toolbar/editor windows remain
 independent, and update detail visibility never changes strip geometry.
