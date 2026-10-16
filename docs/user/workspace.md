@@ -124,8 +124,9 @@ Stats automatically requests enough width for its selected readings at the curre
 text size. At the default text size and 180-pixel height, all 15 readings use a 440-pixel preference.
 Dragging a divider beside Stats sets a manual preference; double-click that divider to restore
 automatic sizing. A narrow display can still require vertical scrolling inside Stats.
-The initial layout places Level Meter, Loudness, Stats, Vectorscope, Waveform, Spectrogram,
-Spectrum and Stereo Map from left to right. Timeline and frequency plots share extra width equally;
+The initial layout places Stats, Level Meter, Loudness, Waveform, Spectrogram, Spectrum,
+Stereo Map and Vectorscope from left to right. All five timeline and frequency plots start with
+the same 260-pixel preferred width and share extra width equally;
 Level Meter joins them when its bars run horizontally. Vertical Level Meter and Vectorscope retain
 their preferred widths. There is no fixed 360-, 420-, or 960-pixel limit on widening a panel.
 

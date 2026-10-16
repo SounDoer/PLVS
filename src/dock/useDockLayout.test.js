@@ -6,19 +6,19 @@ import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { useDockLayout } from "./useDockLayout.js";
 
 const FIRST_RUN_MODULES = [
+  "stats",
   "level",
   "loudness",
-  "stats",
-  "correlation",
   "waveform",
   "spectrogram",
   "spectrum",
   "stereoMap",
+  "correlation",
 ];
 
 const FIRST_RUN_SIZES = {
   level: 150,
-  loudness: 210,
+  loudness: 260,
   correlation: 190,
   waveform: 260,
   spectrogram: 260,
@@ -86,8 +86,8 @@ describe("useDockLayout", () => {
   it("reorders and persists", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.reorder(0, 3));
-    expect(result.current.modules[3]).toBe("level");
-    expect(workspaceStore.read().dock.panelOrder[3]).toBe("level");
+    expect(result.current.modules[3]).toBe("stats");
+    expect(workspaceStore.read().dock.panelOrder[3]).toBe("stats");
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 

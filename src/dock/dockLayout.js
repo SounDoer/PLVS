@@ -26,21 +26,21 @@ export const DOCK_MODULE_IDS = [
 
 /** Complete first-run Dock layout, as tuned (see the first-run defaults design doc). */
 export const DEFAULT_DOCK_MODULES = [
+  "stats",
   "level",
   "loudness",
-  "stats",
-  "correlation",
   "waveform",
   "spectrogram",
   "spectrum",
   "stereoMap",
+  "correlation",
 ];
 
 /// First-run preferred widths (CSS px). Reserve four readable Stats columns at the default
 /// Interface Size; timeline and frequency plots share the remaining strip width.
 export const DEFAULT_DOCK_PANEL_SIZES = Object.freeze({
   level: 150,
-  loudness: 210,
+  loudness: 260,
   // Stats has no saved width until resized; its readable width follows height and text size.
   correlation: 190,
   waveform: 260,

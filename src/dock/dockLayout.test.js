@@ -35,7 +35,7 @@ describe("DEFAULT_DOCK_PANEL_SIZES", () => {
   it("pins the eight tuned first-run widths", () => {
     expect(DEFAULT_DOCK_PANEL_SIZES).toEqual({
       level: 150,
-      loudness: 210,
+      loudness: 260,
       correlation: 190,
       waveform: 260,
       spectrogram: 260,
@@ -106,14 +106,14 @@ describe("dock module catalog v1.5/v2", () => {
 
   it("enables the tuned first-run panels in order", () => {
     expect(DEFAULT_DOCK_MODULES).toEqual([
+      "stats",
       "level",
       "loudness",
-      "stats",
-      "correlation",
       "waveform",
       "spectrogram",
       "spectrum",
       "stereoMap",
+      "correlation",
     ]);
   });
 });
