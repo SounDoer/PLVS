@@ -142,6 +142,7 @@ pub fn set_dock_update_window<R: tauri::Runtime>(
   visible: bool,
   edge: DockEdge,
   webview_scale: f64,
+  content_height: f64,
 ) -> Result<Option<WindowBounds>, String> {
   if window.label() != "main" {
     return Err("Only the main window owns update presentation.".into());
@@ -163,7 +164,18 @@ pub fn set_dock_update_window<R: tauri::Runtime>(
     return Err("Invalid update window scale.".into());
   }
   let (monitor, strip, _) = main_geometry(&window)?;
-  let rects = dock_accessory_rects(monitor, strip, edge, webview_scale, 480.0, 480.0, None);
+  if !content_height.is_finite() || content_height <= 0.0 {
+    return Err("Invalid update content height.".into());
+  }
+  let rects = dock_accessory_rects(
+    monitor,
+    strip,
+    edge,
+    webview_scale,
+    480.0,
+    content_height.min(2000.0),
+    None,
+  );
   set_rect(&update, rects.editor)?;
   show_or_hide(&update, true, true)?;
   Ok(Some(rects.editor))

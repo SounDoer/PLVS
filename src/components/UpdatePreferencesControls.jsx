@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { CircleHelp } from "lucide-react";
+import { HoverTip } from "./HoverTip.jsx";
+import { IconAction } from "./ui/icon-action";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "./ui/controlStyles.js";
@@ -9,10 +12,13 @@ export function UpdatePreferencesControls({
   installationSupported = false,
   disabled = false,
 }) {
+  const downloadHelp = installationSupported
+    ? "Download updates in the background. PLVS asks before installing on the next launch."
+    : "Automatic downloads require the installed version of PLVS. Download updates manually from Releases.";
   return (
-    <div className="flex flex-col gap-3 text-[length:var(--ui-fs-control)]">
-      <label className="flex items-center justify-between gap-4">
-        <span>Automatically Check for Updates</span>
+    <div className="flex flex-col gap-[var(--ui-drawer-row-gap)] text-[length:var(--ui-fs-control)]">
+      <label className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
+        <span>Auto Check</span>
         <Switch
           className={COMPACT_SWITCH_CLASS}
           thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
@@ -24,8 +30,21 @@ export function UpdatePreferencesControls({
           }
         />
       </label>
-      <label className="flex items-center justify-between gap-4">
-        <span>Automatically Download Updates</span>
+      <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <span>Auto Download</span>
+          <HoverTip
+            tip={downloadHelp}
+            side="top"
+            align="start"
+            className="inline-flex shrink-0"
+            tipClassName="w-max max-w-[18rem] whitespace-normal"
+          >
+            <IconAction aria-label={`auto download help: ${downloadHelp}`} className="p-1">
+              <CircleHelp className="size-[1em]" aria-hidden />
+            </IconAction>
+          </HoverTip>
+        </div>
         <Switch
           className={COMPACT_SWITCH_CLASS}
           thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
@@ -34,12 +53,7 @@ export function UpdatePreferencesControls({
           disabled={disabled || !preferences.autoCheck || !installationSupported}
           onCheckedChange={(autoDownload) => onChange({ autoDownload })}
         />
-      </label>
-      <p className="text-muted-foreground">
-        {installationSupported
-          ? "Downloaded updates are offered on your next launch. Installation always asks for confirmation."
-          : "This copy requires a manual download from the release page. Automatic installation is unavailable."}
-      </p>
+      </div>
     </div>
   );
 }
@@ -60,7 +74,7 @@ export function UpdatePreferencesSettings({ preferences, onChange, installationS
     }
   }
   return (
-    <div className="px-2 py-2">
+    <div className="px-2">
       <UpdatePreferencesControls
         preferences={preferences}
         onChange={change}
@@ -87,8 +101,8 @@ export function UpdateSetupContent({
 }) {
   return (
     <>
-      <p className="mb-4 text-muted-foreground">
-        Choose how PLVS checks for updates. You can change this in Settings.
+      <p className="mb-3 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+        Change anytime in Settings.
       </p>
       <UpdatePreferencesControls
         preferences={preferences}
@@ -97,7 +111,7 @@ export function UpdateSetupContent({
         disabled={busy}
       />
       {error ? (
-        <p role="alert" className="mt-2 text-destructive">
+        <p role="alert" className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">
           {error}
         </p>
       ) : null}
@@ -106,7 +120,7 @@ export function UpdateSetupContent({
           Skip
         </Button>
         <Button disabled={busy} onClick={onSave}>
-          Save Preferences
+          Save
         </Button>
       </div>
     </>

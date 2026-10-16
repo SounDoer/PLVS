@@ -131,6 +131,8 @@ export function UpdateSurfaces({ currentVersion }) {
     <>
       <Dialog open={setup}>
         <DialogContent
+          size="custom"
+          className="w-max max-w-[min(24rem,calc(100vw-2rem))]"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >

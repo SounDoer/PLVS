@@ -61,8 +61,9 @@ workbench set; quitting one workbench does not close its peers.
 
 ## Updates
 
-**Automatically Check for Updates** controls startup and twelve-hour checks. **Automatically
-Download Updates** requires checking to be enabled. Turning checking off also turns downloading
+Update preferences are grouped at the bottom of Settings, above version information.
+The question-mark icon beside **Auto Download** explains download availability and installation confirmation on hover or keyboard focus.
+**Auto Check** controls startup and twelve-hour checks. **Auto Download** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. **Check** remains an explicit action when
 automatic checking is off. Preferences are shared across workbenches and are not imported from a
 configuration profile.

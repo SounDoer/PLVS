@@ -46,7 +46,7 @@ export function UpdateDialog({
           event.preventDefault();
         }}
       >
-        <DialogTitle>{ready ? "Update Ready" : "Update available"}</DialogTitle>
+        <DialogTitle>{ready ? "Update Ready" : "Update Available"}</DialogTitle>
         <DialogDescription>
           {currentVersion ? `What's new since v${currentVersion}` : "What's new"}
         </DialogDescription>

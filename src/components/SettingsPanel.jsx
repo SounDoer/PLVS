@@ -480,13 +480,6 @@ export function SettingsPanel({
               <SettingsBody>
                 {/* Behavior */}
                 <SettingsSection sectionId="behavior" sectionRef={bindSection("behavior")}>
-                  {updatePreferences ? (
-                    <UpdatePreferencesSettings
-                      preferences={updatePreferences}
-                      onChange={setUpdatePreferences}
-                      installationSupported={updateInstallationSupported}
-                    />
-                  ) : null}
                   <SettingsRow label="Open at Login">
                     <SettingsSwitch
                       aria-label="Open at Login"
@@ -926,6 +919,19 @@ export function SettingsPanel({
                         </div>
                       ) : null}
                     </SettingsSection>
+                  </>
+                ) : null}
+
+                {updatePreferences ? (
+                  <>
+                    <SettingsDivider />
+                    <section aria-label="updates" className={SECTION_CLASS}>
+                      <UpdatePreferencesSettings
+                        preferences={updatePreferences}
+                        onChange={setUpdatePreferences}
+                        installationSupported={updateInstallationSupported}
+                      />
+                    </section>
                   </>
                 ) : null}
 

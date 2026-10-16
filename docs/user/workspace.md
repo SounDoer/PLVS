@@ -195,6 +195,8 @@ reservation.
 Top and bottom edges are independent on Windows. macOS allows one avoidance owner per display,
 so two workbenches cannot resize and restore the same application window in competing orders.
 
+The separate update window fits its content height; long release notes scroll.
+
 An update icon appears last in the right control area only when an update is available, downloading,
 or ready. Its details open in a separate window, reusing the normal release notes and confirmation
 actions. Closing details keeps Dock active. The toolbar and any open settings editor retain their

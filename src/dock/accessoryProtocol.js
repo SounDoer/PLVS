@@ -9,6 +9,7 @@ export const DOCK_ACCESSORY_SURFACES = Object.freeze(["dock-header", "dock-edito
 
 const ACTION_TYPES = new Set([
   "update-ready",
+  "update-resize",
   "update-confirm",
   "update-dismiss",
   "update-link",

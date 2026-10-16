@@ -59,3 +59,45 @@ it("reports native creation failures to the owner fallback", async () => {
   const { result } = renderHook(() => useDockUpdateWindow(options));
   await waitFor(() => expect(result.current.error).toContain("Window unavailable"));
 });
+
+it("resizes current content and ignores stale or invalid height reports", async () => {
+  let dispatch;
+  mock.action.mockImplementation(async (listener) => {
+    dispatch = listener;
+    return vi.fn();
+  });
+  renderHook(() =>
+    useDockUpdateWindow({ ...options, active: true, payload: { key: "details:a" } })
+  );
+  await waitFor(() => expect(dispatch).toBeTypeOf("function"));
+  const send = (key, height) =>
+    dispatch({
+      surface: "dock-update",
+      type: "update-resize",
+      payload: { key, height },
+    });
+  act(() => {
+    dispatch({ surface: "dock-update", type: "update-ready", payload: { key: "details:a" } });
+    send("details:a", 178);
+  });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenLastCalledWith(
+      "set_dock_update_window",
+      expect.objectContaining({ visible: true, contentHeight: 178 })
+    )
+  );
+  act(() => send("details:a", 410));
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenLastCalledWith(
+      "set_dock_update_window",
+      expect.objectContaining({ contentHeight: 410 })
+    )
+  );
+  const count = mock.invoke.mock.calls.length;
+  act(() => {
+    send("details:old", 999);
+    send("details:a", NaN);
+    send("details:a", -1);
+  });
+  expect(mock.invoke.mock.calls).toHaveLength(count);
+});

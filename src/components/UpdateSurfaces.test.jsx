@@ -99,7 +99,7 @@ describe("first-launch update choice", () => {
         <Harness />
       </BlockingEditorsProvider>
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save Preferences" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(mock.settings.setUpdatePreferences).toHaveBeenCalledWith({
       autoCheck: true,
       autoDownload: false,

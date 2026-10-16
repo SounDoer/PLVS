@@ -12,6 +12,7 @@ import { createThemePublication, themeRuntime } from "../theme/themeRuntime.js";
 export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometry }) {
   const latest = useRef({ payload, onAction });
   const revision = useRef(0);
+  const [contentSize, setContentSize] = useState({ key: null, height: 240 });
   const [readyKey, setReadyKey] = useState(null);
   const [error, setError] = useState(null);
   const serializedPayload = JSON.stringify(payload);
@@ -41,7 +42,12 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
         if (!action || action.surface !== "dock-update") return;
         if (action.payload.key !== latest.current.payload.key) return;
         if (action.type === "update-ready") setReadyKey(action.payload.key);
-        else latest.current.onAction(action);
+        else if (action.type === "update-resize") {
+          const { key, height } = action.payload;
+          if (Number.isFinite(height) && height > 0) {
+            setContentSize({ key, height: Math.min(2000, Math.ceil(height)) });
+          }
+        } else latest.current.onAction(action);
       }),
     ]).then((results) => {
       const listeners = [];
@@ -82,6 +88,7 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
       visible: active && readyKey === payload.key,
       edge,
       webviewScale: window.devicePixelRatio,
+      contentHeight: contentSize.key === payload.key ? contentSize.height : 240,
     })
       .then((rect) => {
         if (!cancelled)
@@ -101,6 +108,6 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
     return () => {
       cancelled = true;
     };
-  }, [active, edge, payload.key, readyKey, onGeometry]);
+  }, [active, edge, payload.key, readyKey, contentSize, onGeometry]);
   return { error };
 }
