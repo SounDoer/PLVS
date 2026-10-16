@@ -42,6 +42,7 @@ pub fn hydrate_workspace(
     "askToSendCrashReports",
     "openAtLogin",
     "starterItemsSeeded",
+    "updatePreferences",
   ] {
     if let Some(preference) = repository
       .read_global_preference(key)
@@ -63,6 +64,9 @@ pub fn hydrate_workspace(
     .map_err(|error| error.to_string())?;
 
   let mut settings = object_at(state, "plvs:settings");
+  if let Some(preferences) = global_preferences.get("updatePreferences") {
+    settings.insert("updatePreferences".to_string(), preferences.clone());
+  }
   if let Some(consent) = global_preferences.get("askToSendCrashReports") {
     settings.insert("askToSendCrashReports".to_string(), consent.clone());
   }

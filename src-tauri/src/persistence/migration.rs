@@ -165,7 +165,14 @@ pub(super) fn initialize_empty_store(new_root: &Path) -> Result<(), String> {
   fs::create_dir(&staging_root)
     .map_err(|error| format!("Unable to create identity storage staging directory: {error}"))?;
   let result = (|| {
-    LibraryRepository::open(&staging_root).map_err(|error| error.to_string())?;
+    LibraryRepository::open(&staging_root)
+      .map_err(|error| error.to_string())?
+      .set_global_preference(
+        "updatePreferences",
+        0,
+        &serde_json::json!({"choiceMade": false, "autoCheck": false, "autoDownload": false}),
+      )
+      .map_err(|error| error.to_string())?;
     WorkspaceStore::open(&staging_root, "default")?.save(&serde_json::json!({}))?;
     write_atomic_json(
       &staging_root.join(MIGRATION_MARKER),

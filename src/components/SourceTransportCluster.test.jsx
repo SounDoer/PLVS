@@ -98,7 +98,10 @@ describe("SourceTransportCluster", () => {
   });
 
   it("renders source, status, and action as one continuous pill", () => {
-    expect(source).toContain("overflow-hidden rounded-full");
+    expect(source).toContain(
+      "relative inline-flex max-w-full shrink-0 items-center overflow-hidden"
+    );
+    expect(source).toContain("h-[var(--ui-control-h)] rounded-full");
     expect(source).toContain("p-1");
     expect(source).toContain("rounded-full px-3");
     expect(source).not.toContain("relative inline-flex items-center gap-1.5");

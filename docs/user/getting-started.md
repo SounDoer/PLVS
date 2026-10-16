@@ -39,7 +39,9 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 **Reset PLVS to Default** brings them back. PLVS never starts capturing audio on its own: pick a
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
-PLVS checks for updates automatically and asks before installing one. When an update is available,
+When automatic checking is enabled, PLVS checks at startup and every 12 hours. Existing users retain
+automatic checking; automatic downloads are off by default. Manual checks remain available in
+Settings. PLVS asks before installing an update. When an update is available,
 the footer's **Update Available · View Release Notes** link opens the release notes directly.
 Choose **Update and Restart** to install, or cancel to keep working. The confirmation dialog shows
 a progress bar while that download runs.

@@ -321,7 +321,7 @@ describe("Portable Preset", () => {
       edge: "top",
       monitor: null,
       reserveSpace: true,
-      height: 84,
+      height: 136,
     });
     expect(stored.dock.panelOrder).toHaveLength(1);
   });

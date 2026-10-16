@@ -49,7 +49,8 @@ const AppLifecycleContext = createContext(/** @type {AppLifecycle | null} */ (nu
  * dialog, crash reports, and the global shortcuts. Mounts inside every domain those need.
  */
 export function AppLifecycleProvider({ children }) {
-  const { setSettingsOpen, clearShortcut, focusView, resolvedTheme } = useAppSettings();
+  const { setSettingsOpen, clearShortcut, focusView, resolvedTheme, updatePreferences } =
+    useAppSettings();
   const { docked, suspendDockMode, resumeDockMode, exitDockRestoringAttributes } = useDock();
   const { reveal } = useWindowChrome();
   const toggleFocusControls = reveal.toggleControls;
@@ -126,7 +127,10 @@ export function AppLifecycleProvider({ children }) {
     setWindowVisible(await window.isVisible());
   }, [docked, resumeDockMode]);
 
-  const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
+  const { updateInfo, refreshUpdateCheck } = useUpdateCheck(
+    undefined,
+    updatePreferences?.choiceMade === true && updatePreferences.autoCheck
+  );
   const { installStatus, downloadProgress, install, restartToApply, resetInstall } =
     useApplyUpdate();
   const updateBusy = installStatus === "installing" || installStatus === "restarting";

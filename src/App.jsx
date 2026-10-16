@@ -212,6 +212,7 @@ function AppContent() {
     dockPreviewHeight,
     layout: dockLayout,
     onDockChange,
+    exitDockRestoringAttributes,
     onDockHeightChange,
   } = useDock();
   const {
@@ -606,6 +607,9 @@ function AppContent() {
           dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
         toolbarOpen: dockAccessoryVisibility.headerVisible,
         onToolbarToggle: dockAccessoryVisibility.toggleToolbar,
+        onRestoreWindow: () => {
+          void exitDockRestoringAttributes();
+        },
         edge: dockEdge,
         height: dockPreviewHeight ?? dockHeight,
         heightResizeDisabled: dockAccessoryVisibility.editorView !== null,

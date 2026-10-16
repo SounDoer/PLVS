@@ -107,7 +107,7 @@ describe("DockStrip", () => {
 
   it("exposes the resolved height presentation tier", () => {
     const { rerender } = renderStrip({ height: 119 });
-    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("standard");
+    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("expanded");
 
     rerender(
       <LoudnessProfileProvider>
@@ -185,13 +185,13 @@ describe("DockStrip", () => {
 
   it("exposes an edge-aware keyboard height resize handle", () => {
     const onHeightChange = vi.fn();
-    renderStrip({ edge: "bottom", height: 72, onHeightChange });
+    renderStrip({ edge: "bottom", height: 172, onHeightChange });
     const handle = screen.getByRole("separator", { name: /resize dock height/i });
     fireEvent.keyDown(handle, { key: "ArrowUp" });
     fireEvent.keyDown(handle, { key: "ArrowDown", shiftKey: true });
     fireEvent.doubleClick(handle);
-    expect(onHeightChange).toHaveBeenNthCalledWith(1, 76, { persist: true });
-    expect(onHeightChange).toHaveBeenNthCalledWith(2, 56, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(1, 176, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(2, 156, { persist: true });
     expect(onHeightChange).toHaveBeenNthCalledWith(3, 180, { persist: true });
   });
 

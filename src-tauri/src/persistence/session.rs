@@ -97,6 +97,7 @@ impl WorkspacePersistenceSession {
     match domain {
       WorkspaceDomain::Settings => {
         domain_value.remove("askToSendCrashReports");
+        domain_value.remove("updatePreferences");
         if let Some(profiles) = domain_value
           .get_mut("loudnessProfiles")
           .and_then(Value::as_object_mut)

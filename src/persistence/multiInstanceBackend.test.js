@@ -37,6 +37,40 @@ function seed() {
 }
 
 describe("multiInstanceBackend", () => {
+  it("applies peer update preferences without overwriting local workspace settings", async () => {
+    const updatePreferences = { choiceMade: true, autoCheck: false, autoDownload: false };
+    invoke.mockResolvedValueOnce({
+      presets: {
+        list: [
+          { id: "one", name: "One" },
+          { id: "two", name: "Two" },
+        ],
+      },
+      themes: { themes: {}, order: [] },
+      settings: {
+        referenceLufs: -10,
+        loudnessProfiles: { profiles: [{ id: "broadcast", name: "Broadcast" }] },
+      },
+      globalPreferences: { askToSendCrashReports: true, updatePreferences },
+      globalPreferenceRevisions: { askToSendCrashReports: 5, updatePreferences: 2 },
+      libraryItemRevisions: {
+        preset: { one: 3, two: 4 },
+        theme: {},
+        loudnessProfile: { broadcast: 2 },
+      },
+      libraryCollectionRevisions: { preset: 7, theme: 0, loudnessProfile: 2 },
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const changed = vi.fn();
+    const unsubscribe = backend.subscribe("plvs:settings", changed);
+    await backend.refresh();
+    expect(backend.get("plvs:settings")).toMatchObject({ referenceLufs: -23, updatePreferences });
+    expect(changed).toHaveBeenCalledWith({ origin: "remote" });
+    expect(invoke).not.toHaveBeenCalledWith("persistence_save_domain", expect.anything());
+    unsubscribe();
+  });
+
   beforeEach(() => {
     vi.resetModules();
     invoke.mockReset();

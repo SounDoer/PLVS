@@ -6,6 +6,7 @@ import { UI_PREFERENCES } from "../preferences/data.js";
 import { resolveInterfacePreferencesForSurface } from "../preferences/interfaceSize.js";
 import {
   DOCK_DEFAULT_HEIGHT,
+  DOCK_MIN_HEIGHT,
   DOCK_HEADER_HEIGHT,
   clampDockHeight,
   dockHeightFromPointer,
@@ -15,8 +16,8 @@ import {
 
 describe("dock sizing", () => {
   it("keeps large requested heights until native display fitting", () => {
-    expect(clampDockHeight(20)).toBe(56);
-    expect(clampDockHeight(96.4)).toBe(96);
+    expect(clampDockHeight(20)).toBe(DOCK_MIN_HEIGHT);
+    expect(clampDockHeight(196.4)).toBe(196);
     expect(clampDockHeight(999)).toBe(999);
   });
 
@@ -37,11 +38,11 @@ describe("dock sizing", () => {
 
   it("grows toward the inside edge for top and bottom docks", () => {
     expect(
-      dockHeightFromPointer({ edge: "bottom", startHeight: 72, startY: 100, currentY: 80 })
-    ).toBe(92);
+      dockHeightFromPointer({ edge: "bottom", startHeight: 172, startY: 100, currentY: 80 })
+    ).toBe(192);
     expect(
-      dockHeightFromPointer({ edge: "top", startHeight: 72, startY: 100, currentY: 120 })
-    ).toBe(92);
+      dockHeightFromPointer({ edge: "top", startHeight: 172, startY: 100, currentY: 120 })
+    ).toBe(192);
   });
 
   it("maps keyboard motion to the physical divider direction", () => {
@@ -51,10 +52,10 @@ describe("dock sizing", () => {
   });
 
   it("uses compact, standard, and expanded presentation tiers", () => {
-    expect(dockHeightMode(56)).toBe("compact");
-    expect(dockHeightMode(63)).toBe("compact");
-    expect(dockHeightMode(64)).toBe("standard");
-    expect(dockHeightMode(119)).toBe("standard");
+    expect(dockHeightMode(56)).toBe("expanded");
+    expect(dockHeightMode(63)).toBe("expanded");
+    expect(dockHeightMode(64)).toBe("expanded");
+    expect(dockHeightMode(119)).toBe("expanded");
     expect(dockHeightMode(120)).toBe("expanded");
     expect(dockHeightMode(160)).toBe("expanded");
   });

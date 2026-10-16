@@ -6,7 +6,38 @@
   --ui-dock-gap-row: 3px;
   --ui-dock-bar-min-h: 5px;
   --ui-dock-readout-w: 5ch;
-  --ui-dock-toolbar-toggle-w: 20px;
+  --ui-dock-toolbar-toggle-w: 72px;
+}
+
+.dock-control-area {
+  display: flex;
+  flex: 0 0 var(--ui-dock-toolbar-toggle-w);
+  width: var(--ui-dock-toolbar-toggle-w);
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 4px;
+  border-left: 1px solid var(--border);
+}
+
+.dock-control-area .dock-control-button {
+  width: 32px;
+  height: 24px;
+}
+
+.dock-transport .dock-transport-status {
+  display: flex;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: min(var(--ui-fs-status), 11px);
+  letter-spacing: -0.02em;
+}
+
+.dock-transport .dock-transport-action {
+  height: 28px;
 }
 
 .dock-panel-viewport {

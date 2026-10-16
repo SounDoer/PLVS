@@ -329,6 +329,7 @@ function withPanelKeys(moduleId, raw) {
  * @typedef {{
  *   controlsByPanelId?: Record<string, object>,
  *   sourceTransportState?: any,
+ *   onSourceTransportAction?: (action: string) => void,
  *   panelId?: string,
  *   sharedFrequencyViewport?: { min: number, max: number },
  *   onSharedFrequencyChange?: (range: { min: number, max: number }) => void,

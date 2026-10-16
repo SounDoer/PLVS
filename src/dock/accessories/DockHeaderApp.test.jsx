@@ -22,7 +22,7 @@ describe("DockHeaderApp", () => {
     expect(client.action.mock.calls).toEqual([["dismiss-toolbar"]]);
   });
 
-  it("acknowledges committed Snapshot content and retains it while the native window hides", () => {
+  it("acknowledges committed content and retains it while the native window hides", () => {
     const snapshot = {
       chromeState: "snapshot",
       sourceLabel: "LIVE",
@@ -32,13 +32,19 @@ describe("DockHeaderApp", () => {
       primaryActionDisabled: false,
     };
     client.action.mockClear();
-    client.payload = { visible: true, presentationId: 7, sourceTransportState: snapshot };
+    client.payload = {
+      visible: true,
+      presentationId: 7,
+      sourceTransportState: snapshot,
+      notice: { kind: "error", text: "Existing notice" },
+    };
     const { rerender, container } = render(<DockHeaderApp />);
     expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 7 });
     const before = container.innerHTML;
     client.payload = {
       visible: false,
       presentationId: 8,
+      notice: { kind: "error", text: "New notice" },
       sourceTransportState: {
         ...snapshot,
         chromeState: "ready",
@@ -51,7 +57,7 @@ describe("DockHeaderApp", () => {
     expect(client.action).not.toHaveBeenCalledWith("header-ready", { presentationId: 8 });
     client.payload = { ...client.payload, visible: true, presentationId: 9 };
     rerender(<DockHeaderApp />);
-    expect(container.textContent).toContain("START");
+    expect(container.textContent).toContain("New notice");
     expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 9 });
     client.payload = null;
   });

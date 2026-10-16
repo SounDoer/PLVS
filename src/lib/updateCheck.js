@@ -1,6 +1,7 @@
 /**
- * Update check backed by tauri-plugin-updater, comparing against the signed
- * latest.json manifest published with each GitHub Release.
+ * Update check backed by tauri-plugin-updater, comparing against the
+ * latest.json manifest published with each GitHub Release. Package signatures are verified
+ * by the native updater before installation; the manifest itself is not signed.
  */
 import { check } from "@tauri-apps/plugin-updater";
 

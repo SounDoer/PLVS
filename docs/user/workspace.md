@@ -77,8 +77,11 @@ opening either does not restart capture. Panel settings remain accessible throug
 
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of
 the screen, so the meters stay visible while you work in another app. Click the arrow at the right
-end of the strip to show the Dock toolbar, where you can start and stop measuring, clear the
-session, switch the Loudness Profile, edit which modules the strip shows, and manage Presets. The
+end of the strip to show the Dock toolbar, where you can clear the session, switch the Loudness
+Profile, edit which modules the strip shows, and manage Presets. The fixed-width right control area
+stacks the timecode above the transport button, followed by the toolbar toggle and Return to Normal
+Window. Start/stop and Return to Live remain available with the toolbar closed. Returning to the
+normal window preserves capture and history. The
 toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
 the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
 stays open until the error clears. On macOS, controls respond to the first click when switching
@@ -112,7 +115,7 @@ Dock's module-width and height resize lines stay hidden while idle, appear in Bo
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer. Height starts at 180 CSS pixels, with
-room for four rows of expanded Stats. It can shrink to 56 pixels or grow up to the current display's
+room for four rows of expanded Stats. It can shrink to 136 CSS pixels or grow up to the current display's
 available space minus room for the toolbar and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 
@@ -169,12 +172,9 @@ normal workspace instances.
 Dock keeps its own layout and panel settings, using the same Spectrum chart and interactions as
 the workspace.
 
-Click the Spectrum plot to enter Snapshot. The toolbar opens automatically with its existing
-return-to-Live action, without changing panel widths. Double-click the plot or use that action to
-return to live readings. You can still hide the toolbar manually. Returning Live closes a toolbar
-opened automatically for Snapshot, even if you hide and reopen it during the snapshot; a toolbar
-you had already opened before Snapshot stays open. The snapshot is shared by all Dock panels, and capture continues in the
-background. Switching between Dock and the normal window preserves the selected snapshot. A view
+Click the Spectrum plot to enter Snapshot. Double-click the plot or use the right control area's
+Return to Live action to return to live readings. Snapshot does not open the toolbar automatically.
+The snapshot is shared by all Dock panels, and capture continues in the background. Switching between Dock and the normal window preserves the selected snapshot. A view
 without retained data at that time shows an empty state instead of falling back to live data.
 Loudness, Spectrogram and Waveform share the normal panels' renderers, settings and history
 interactions, with X/Y axes controlled by Views. Loudness has no extra Dock readouts. Spectrogram offers 2D
@@ -185,7 +185,7 @@ panels with an unlinked range remain independent. Snapshot selection is shared r
 Level Meter uses the same settings and layout in both forms, including Vertical or Horizontal
 Orientation. Stats adjusts its column and row counts to the available width and height; when all
 selected metrics cannot fit legibly, scroll within Stats to see the remaining rows. No selected
-metric is dropped. The separate Timecode module has been removed; use the toolbar's Transport
+metric is dropped. The separate Timecode module has been removed; use the right control area's Transport
 readout and actions. Saved layouts automatically discard old Timecode instances.
 
 When several PLVS workbenches use Dock, only one can reserve a particular monitor edge on Windows,

@@ -20,12 +20,11 @@ const STATE = {
 };
 
 describe("DockHeader", () => {
-  it("puts transport between a leading spacer and the trailing group holding the Dock tools", () => {
+  it("keeps the settings tools without a duplicate transport or central spacer", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     render(<DockHeader state={STATE} onAction={vi.fn()} />);
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      null,
       "Clear",
       "Device",
       "Loudness Profile",
@@ -34,10 +33,9 @@ describe("DockHeader", () => {
       "Presets",
     ]);
     const actions = screen.getByTestId("dock-header-actions");
-    expect(actions.contains(buttons[0])).toBe(false);
-    expect(buttons.slice(1).every((button) => actions.contains(button))).toBe(true);
-    const [, transport, trailing] = screen.getByTestId("dock-header").children;
-    expect(transport.contains(buttons[0])).toBe(true);
+    expect(buttons.every((button) => actions.contains(button))).toBe(true);
+    const [trailing] = screen.getByTestId("dock-header").children;
+    expect(screen.getByTestId("dock-header").children).toHaveLength(1);
     expect(trailing).toBe(screen.getByTestId("dock-header-trailing"));
     expect(actions.parentElement).toBe(trailing);
   });
@@ -166,8 +164,7 @@ describe("DockHeader", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: actionLabel }));
-
-    expect(onAction).toHaveBeenCalledWith("source-primary", { actionKind });
+    expect(screen.queryByRole("button", { name: actionLabel })).toBeNull();
+    expect(onAction).not.toHaveBeenCalled();
   });
 });

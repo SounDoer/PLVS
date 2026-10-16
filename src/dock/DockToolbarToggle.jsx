@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
  * The strip's persistent entry to the Dock toolbar. Sized in Dock's own px, not the shell control
  * tokens: the strip's WebView follows Interface Size and the meters beside this do not.
  *
- * @param {{ edge: string, open: boolean, onToggle?: () => void }} props
+ * @param {{ edge: string, open: boolean, onToggle?: () => void, compact?: boolean }} props
  */
-export function DockToolbarToggle({ edge, open, onToggle }) {
+export function DockToolbarToggle({ edge, open, onToggle, compact = false }) {
   // Towards where the toolbar will appear while closed, back at the strip while open.
   const direction = (edge === "bottom") !== open ? "up" : "down";
   const Icon = direction === "up" ? ChevronUp : ChevronDown;
@@ -22,7 +22,7 @@ export function DockToolbarToggle({ edge, open, onToggle }) {
       aria-pressed={open}
       onClick={onToggle}
       className={cn(
-        "h-full w-[var(--ui-dock-toolbar-toggle-w)]",
+        compact ? "dock-control-button" : "h-full w-[var(--ui-dock-toolbar-toggle-w)]",
         open && "bg-ui-hover text-foreground"
       )}
     />

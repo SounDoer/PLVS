@@ -623,14 +623,14 @@ function compileDock(raw, hasLoudnessReference, issues) {
   booleanField(raw, "reserveSpace", path, issues);
   if (
     !Number.isInteger(raw.heightCssPx) ||
-    raw.heightCssPx < DOCK_MIN_HEIGHT ||
+    raw.heightCssPx < 56 ||
     raw.heightCssPx > DOCK_MAX_HEIGHT
   ) {
     issues.push(
       packIssue(
         "invalidDockHeight",
         `${path}.heightCssPx`,
-        `heightCssPx must be an integer from ${DOCK_MIN_HEIGHT} through ${DOCK_MAX_HEIGHT}.`
+        `heightCssPx must be an integer from 56 through ${DOCK_MAX_HEIGHT}.`
       )
     );
   }
@@ -674,7 +674,8 @@ function compileDock(raw, hasLoudnessReference, issues) {
     edge: raw.edge,
     monitor: null,
     reserveSpace: raw.reserveSpace,
-    height: raw.heightCssPx,
+    // Format v1 permits the old 56px minimum; normalize it for the current controls.
+    height: Math.max(DOCK_MIN_HEIGHT, raw.heightCssPx),
     panelsById: planned.dock.panelsById,
     panelOrder: planned.dock.panelOrder,
     panelSizesById: planned.dock.panelSizesById,

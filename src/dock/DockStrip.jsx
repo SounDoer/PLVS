@@ -7,7 +7,7 @@ import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 import { cn } from "@/lib/utils";
 import { DockHeightResizeHandle } from "./DockHeightResizeHandle.jsx";
 import { DockPanelResizeHandle } from "./DockPanelResizeHandle.jsx";
-import { DockToolbarToggle } from "./DockToolbarToggle.jsx";
+import { DockControlArea } from "./DockControlArea.jsx";
 import { dockHeightMode } from "./dockSizing.js";
 import { RecordingIndicator } from "../components/RecordingIndicator.jsx";
 import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
@@ -29,6 +29,9 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
  *   onPanelResizeReset?: (...args: any[]) => any,
  *   toolbarOpen?: boolean,
  *   onToolbarToggle?: () => void,
+ *   onRestoreWindow?: () => void,
+ *   updateStatus?: { phase: string, label: string } | null,
+ *   onOpenUpdate?: () => void,
  *   recordingState?: string | null,
  * }} props
  */
@@ -47,6 +50,9 @@ export function DockStrip({
   onPanelResizeReset,
   toolbarOpen = false,
   onToolbarToggle,
+  onRestoreWindow,
+  updateStatus = null,
+  onOpenUpdate,
   recordingState = null,
 }) {
   const chrome = usePanelChromeData();
@@ -166,7 +172,16 @@ export function DockStrip({
             );
           })}
         </div>
-        <DockToolbarToggle edge={edge} open={toolbarOpen} onToggle={onToolbarToggle} />
+        <DockControlArea
+          edge={edge}
+          toolbarOpen={toolbarOpen}
+          onToolbarToggle={onToolbarToggle}
+          onRestore={onRestoreWindow}
+          transport={controls.sourceTransportState}
+          onTransport={controls.onSourceTransportAction}
+          update={updateStatus}
+          onUpdate={onOpenUpdate}
+        />
       </div>
       <RecordingIndicator
         state={recordingState}

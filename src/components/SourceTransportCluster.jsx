@@ -53,12 +53,14 @@ export function SourceTransportCluster({
   sourceLocked = false,
   onSourceModeChange,
   onPrimaryAction,
+  presentation = "horizontal",
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const contentRef = useRef(null);
   const chrome = CHROME[state.chromeState] ?? CHROME.ready;
   const ActionIcon = chrome.Icon;
+  const vertical = presentation === "dock";
 
   useEffect(() => {
     if (!open) return undefined;
@@ -75,12 +77,15 @@ export function SourceTransportCluster({
     <div
       style={{ fontSize: "var(--ui-fs-status)" }}
       className={cn(
-        "relative inline-flex h-[var(--ui-control-h)] max-w-full shrink-0 items-center overflow-hidden rounded-full",
-        TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live,
+        "relative inline-flex max-w-full shrink-0 items-center overflow-hidden",
+        vertical
+          ? "dock-transport w-full flex-col rounded-md"
+          : "h-[var(--ui-control-h)] rounded-full",
+        !vertical && (TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live),
         chrome.shell
       )}
     >
-      {sourceLocked ? (
+      {vertical ? null : sourceLocked ? (
         <span className="flex h-full shrink-0 items-center rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
           <span className="transport-cap-label">{state.sourceLabel}</span>
         </span>
@@ -132,22 +137,33 @@ export function SourceTransportCluster({
           </PopoverContent>
         </Popover>
       )}
-      <span className="min-w-0 flex-1 truncate pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
+      <span
+        className={cn(
+          "min-w-0 text-[length:var(--ui-fs-status)] font-semibold tabular-nums",
+          vertical ? "dock-transport-status" : "flex-1 truncate pl-1.2 pr-1"
+        )}
+        title={vertical ? state.statusLabel : undefined}
+      >
         {state.statusLabel}
       </span>
 
       <button
         type="button"
         disabled={state.primaryActionDisabled}
+        title={vertical ? state.actionLabel : undefined}
+        aria-label={vertical ? state.actionLabel.toLowerCase() : undefined}
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "ml-1 flex h-full shrink-0 items-center justify-center gap-1 rounded-full px-3 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
-          ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live,
+          "flex shrink-0 items-center justify-center gap-1 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
+          vertical ? "dock-transport-action w-full" : "ml-1 h-full rounded-full px-3",
+          !vertical && (ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live),
           chrome.action
         )}
       >
         <ActionIcon className="size-[1em]" />
-        <span className="transport-cap-label">{state.actionLabel}</span>
+        <span className={cn("transport-cap-label", vertical && "sr-only")}>
+          {state.actionLabel}
+        </span>
       </button>
     </div>
   );

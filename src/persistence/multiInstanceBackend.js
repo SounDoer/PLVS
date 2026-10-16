@@ -242,6 +242,9 @@ export function createMultiInstanceBackend() {
     if (key === "plvs:settings" && Object.hasOwn(value, "askToSendCrashReports")) {
       await persistGlobalPreferences({ askToSendCrashReports: value.askToSendCrashReports });
     }
+    if (key === "plvs:settings" && Object.hasOwn(value, "updatePreferences")) {
+      await persistGlobalPreferences({ updatePreferences: value.updatePreferences });
+    }
     const kind = kindFor(key);
     if (kind) await persistCollection(kind, documentsFor(key, value));
     const domain = domainFor(key);
@@ -358,6 +361,14 @@ export function createMultiInstanceBackend() {
             globalPreferenceRevisions.set(key, revision);
           seed.globalPreferences = clone(nextGlobals);
           metadata.globalPreferenceRevisions = clone(hydrated.globalPreferenceRevisions || {});
+          const settings = cache.get("plvs:settings") || {};
+          if (signature(settings.updatePreferences) !== signature(nextGlobals.updatePreferences)) {
+            cache.set("plvs:settings", {
+              ...settings,
+              updatePreferences: clone(nextGlobals.updatePreferences),
+            });
+            notify("plvs:settings", { origin: "remote" });
+          }
           window.dispatchEvent(new CustomEvent("plvs-global-preferences-changed"));
         }
       })

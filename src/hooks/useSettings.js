@@ -10,6 +10,7 @@ import { useInterfaceSizeSetting } from "./useInterfaceSizeSetting.js";
 import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
 import { useWindowPinnedSetting } from "./useWindowPinnedSetting.js";
+import { useUpdatePreferences } from "./useUpdatePreferences.js";
 
 /** @param {{ onClearRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
 export function useSettings({ onClearRef, onHistoryRetentionChangeRef } = {}) {
@@ -28,6 +29,7 @@ export function useSettings({ onClearRef, onHistoryRetentionChangeRef } = {}) {
   const meterSettings = useMeterSettings();
   const viewSettings = useViewSettings();
   const windowPinnedSetting = useWindowPinnedSetting();
+  const updatePreferences = useUpdatePreferences();
 
   return {
     settingsOpen,
@@ -49,6 +51,7 @@ export function useSettings({ onClearRef, onHistoryRetentionChangeRef } = {}) {
     ...interfaceSizeSetting,
     ...viewSettings,
     ...windowPinnedSetting,
+    ...updatePreferences,
     autostartEnabled,
     setAutostartEnabled,
     setAutostartEnabledForControl,

@@ -24,7 +24,7 @@ describe("Dock height drag coordinates", () => {
       vi.stubGlobal("cancelAnimationFrame", vi.fn());
       const commit = vi.fn();
       const view = render(
-        <DockHeightResizeHandle edge="bottom" height={100} onHeightChange={commit} />
+        <DockHeightResizeHandle edge="bottom" height={200} onHeightChange={commit} />
       );
       const handle = view.getByRole("separator");
       const flushFrame = () => act(() => frame());
@@ -32,19 +32,19 @@ describe("Dock height drag coordinates", () => {
       pointer(handle, "pointerdown", { screenY: offset + 900, clientY: 2 });
       pointer(handle, "pointermove", { screenY: offset + 880, clientY: -18 });
       flushFrame();
-      expect(commit).toHaveBeenLastCalledWith(120, { persist: false });
+      expect(commit).toHaveBeenLastCalledWith(220, { persist: false });
 
       // Native resize moves the top of a bottom Dock up by 20 px. The pointer
       // stays in place, but clientY is now 2 again; this must not undo the resize.
-      view.rerender(<DockHeightResizeHandle edge="bottom" height={120} onHeightChange={commit} />);
+      view.rerender(<DockHeightResizeHandle edge="bottom" height={220} onHeightChange={commit} />);
       pointer(handle, "pointermove", { screenY: offset + 880, clientY: 2 });
       expect(commit).toHaveBeenCalledTimes(1);
 
       pointer(handle, "pointermove", { screenY: offset + 870, clientY: -8 });
       flushFrame();
-      expect(commit).toHaveBeenLastCalledWith(130, { persist: false });
+      expect(commit).toHaveBeenLastCalledWith(230, { persist: false });
       pointer(handle, "pointerup", { screenY: offset + 870, clientY: 2 });
-      expect(commit).toHaveBeenLastCalledWith(130, { persist: true });
+      expect(commit).toHaveBeenLastCalledWith(230, { persist: true });
     }
   );
 });

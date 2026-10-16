@@ -39,6 +39,8 @@ pub mod sharesets_preview_fixture;
 mod sidecar;
 mod state;
 mod taskbar_theme;
+pub mod update_cache;
+mod update_runtime;
 pub mod vad;
 pub mod visual_capture;
 mod window_chrome;
@@ -266,6 +268,10 @@ pub fn run() {
       coordinator::runtime_ack_command,
       coordinator::runtime_wait_commands,
       coordinator::runtime_finish_operation,
+      update_runtime::update_status,
+      update_runtime::update_check,
+      update_runtime::update_download,
+      update_runtime::update_cancel,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
@@ -315,6 +321,9 @@ pub fn run() {
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(&app_data_dir)
         .map_err(|error| format!("agent artifact storage: {error}"))?;
       app.manage(artifact_store);
+      app.manage(update_runtime::UpdateRuntime::new(
+        update_cache::UpdateCache::open(&app_data_dir, &std::env::current_exe()?)?,
+      ));
 
       // --- Persistence: migrate once, hydrate the selected Workspace, restore pre-paint state. ---
       let legacy_store_path = app_data_dir.join("plvs-settings.json");

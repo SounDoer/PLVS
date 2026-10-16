@@ -1,6 +1,5 @@
 import { Bookmark, Focus, Volume2, Gauge, LayoutGrid, Trash2 } from "lucide-react";
 import { IconButton } from "../../components/IconButton.jsx";
-import { SourceTransportCluster } from "../../components/SourceTransportCluster.jsx";
 import { HoverTip } from "../../components/HoverTip.jsx";
 import { cn } from "../../lib/utils.js";
 import { SHELL_HEADER_ACTIONS, SHELL_HEADER_BAR } from "../../lib/shellLayout.js";
@@ -30,15 +29,6 @@ export function DockHeader({ state, onAction }) {
         "h-screen w-screen select-none px-[var(--ui-header-pad-x)] text-foreground"
       )}
     >
-      {/* Equal-width sides keep the transport on the window's centre line. */}
-      <div className="min-w-0 flex-1" />
-      <SourceTransportCluster
-        state={state.sourceTransportState}
-        sourceMode="live"
-        sourceLocked
-        onSourceModeChange={() => {}}
-        onPrimaryAction={(actionKind) => onAction("source-primary", { actionKind })}
-      />
       <div data-testid="dock-header-trailing" className="flex min-w-0 flex-1 items-center gap-3">
         {state.notice ? (
           <HoverTip

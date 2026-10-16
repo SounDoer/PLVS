@@ -104,7 +104,8 @@ export function DockAccessoriesProvider({ children }) {
     edge: dockEdge,
     geometryVersion: dockHeight,
     forceHeaderVisible: notice?.kind === "error",
-    snapshotActive: sourceTransportState.chromeState === "snapshot",
+    // Snapshot transport is now always available in the strip; no automatic toolbar reveal.
+    snapshotActive: false,
     waitForHeaderReady: true,
     onError: onDockAccessoryError,
   });

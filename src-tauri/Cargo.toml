@@ -1,6 +1,6 @@
 [workspace]
 members = ["plvs-cli"]
-exclude = ["vendor/voice_activity_detector"]
+exclude = ["vendor/voice_activity_detector", "vendor/tauri-plugin-updater"]
 resolver = "2"
 
 [workspace.package]
@@ -72,8 +72,9 @@ rubato = "5.0"
 # otherwise keep re-bumping time to the broken release. The `=` constraint makes the pin stick.
 time = { version = "=0.3.55", features = ["formatting"] }
 tauri-plugin-dialog = "2.7.1"
-tauri-plugin-updater = "2"
+tauri-plugin-updater = { path = "vendor/tauri-plugin-updater" }
 firered-vad = "0.1.0"
+futures-util = "0.3"
 fs4 = { version = "1.1.0", features = ["sync"] }
 crossbeam-queue = "0.3.13"
 atomic-write-file = "0.3.1"
@@ -137,6 +138,7 @@ panic = "abort"
 inherits = "release"
 
 [dev-dependencies]
+tempfile = "3"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 
 [[bench]]

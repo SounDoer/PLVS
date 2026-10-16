@@ -3672,6 +3672,7 @@ dependencies = [
  "crossbeam-queue",
  "firered-vad",
  "fs4",
+ "futures-util",
  "getrandom 0.4.3",
  "hound",
  "image",
@@ -3696,6 +3697,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "tempfile",
  "time",
  "voice_activity_detector",
  "webview2-com",
@@ -5227,8 +5229,6 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-updater"
 version = "2.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cb463cd1f26c9562a01718fe9adf6927795f764c3576e509f27cf567307ddef"
 dependencies = [
  "base64 0.22.1",
  "dirs 7.0.0",
