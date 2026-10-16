@@ -7,30 +7,53 @@ import { normalizeDockModuleControls, dockSettingsTab } from "../dockModuleContr
 
 export function DockTimelinePanel({ moduleId, controls, component: Component }) {
   const globalHistory = useHistoryData();
-  const panelControls = normalizeDockModuleControls(moduleId, controls);
+  // The strip hands every module a freshly merged `controls` object each render; key the
+  // normalized controls on the stored instance so the viewport and handlers below stay stable.
+  const panelId = controls?.panelId;
+  const storedControls = controls?.controlsByPanelId?.[panelId] ?? controls;
+  const panelControls = useMemo(
+    () => normalizeDockModuleControls(moduleId, storedControls),
+    [moduleId, storedControls]
+  );
+  const onDockPanelControlsChange = controls?.onDockPanelControlsChange;
   const linked = panelControls.linkTimeViewport;
+  const {
+    historyWindowSec: globalWindowSec,
+    historyOffsetSec: globalOffsetSec,
+    setHistoryWindowSec: setGlobalWindowSec,
+    setHistoryOffsetSec: setGlobalOffsetSec,
+  } = globalHistory ?? {};
   const axisViewportData = useMemo(
     () => ({
       axisViewports: {
         time: {
           linked,
-          windowSec: linked ? globalHistory.historyWindowSec : panelControls.historyWindowSec,
-          offsetSec: linked ? globalHistory.historyOffsetSec : panelControls.historyOffsetSec,
+          windowSec: linked ? globalWindowSec : panelControls.historyWindowSec,
+          offsetSec: linked ? globalOffsetSec : panelControls.historyOffsetSec,
         },
       },
       setAxisViewportValue: (_kind, next) => {
         if (linked) {
-          globalHistory.setHistoryWindowSec?.(next.windowSec);
-          globalHistory.setHistoryOffsetSec?.(next.offsetSec);
+          setGlobalWindowSec?.(next.windowSec);
+          setGlobalOffsetSec?.(next.offsetSec);
         } else
-          controls?.onDockPanelControlsChange?.(controls.panelId, {
+          onDockPanelControlsChange?.(panelId, {
             ...panelControls,
             historyWindowSec: next.windowSec,
             historyOffsetSec: next.offsetSec,
           });
       },
     }),
-    [linked, globalHistory, panelControls, controls]
+    [
+      linked,
+      globalWindowSec,
+      globalOffsetSec,
+      setGlobalWindowSec,
+      setGlobalOffsetSec,
+      panelControls,
+      onDockPanelControlsChange,
+      panelId,
+    ]
   );
   const historyData = usePanelHistoryData(
     dockSettingsTab(moduleId),
@@ -46,12 +69,11 @@ export function DockTimelinePanel({ moduleId, controls, component: Component }) 
             panelControls,
             controls?.sharedFrequencyViewport,
             controls?.onSharedFrequencyChange,
-            (next) => controls?.onDockPanelControlsChange?.(controls.panelId, next)
+            (next) => onDockPanelControlsChange?.(panelId, next)
           ),
           panelControls,
           historyData,
-          onPanelControlsChange: (next) =>
-            controls?.onDockPanelControlsChange?.(controls.panelId, next),
+          onPanelControlsChange: (next) => onDockPanelControlsChange?.(panelId, next),
         }}
       >
         <Component

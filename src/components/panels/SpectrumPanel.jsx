@@ -188,6 +188,17 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
       [setFrequencyRange]
     ),
   });
+  // Without rails the chart itself is measured for both axes. A stable ref keeps React from
+  // detaching and re-measuring it on every frame.
+  const xAxisRef = spectrumXAxis.axisRef;
+  const yAxisRef = spectrumYAxis.axisRef;
+  const chartAxesRef = useCallback(
+    (element) => {
+      xAxisRef(element);
+      yAxisRef(element);
+    },
+    [xAxisRef, yAxisRef]
+  );
   const spectrumYTicks = buildAdaptiveDbTicks(
     normalizedPanelControls.spectrumYMinDb,
     normalizedPanelControls.spectrumYMaxDb,
@@ -805,14 +816,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
           )}
           <div className="relative min-h-0 min-w-0">
             <div
-              ref={
-                showAxes
-                  ? undefined
-                  : (element) => {
-                      spectrumXAxis.axisRef(element);
-                      spectrumYAxis.axisRef(element);
-                    }
-              }
+              ref={showAxes ? undefined : chartAxesRef}
               data-testid="spectrum-chart"
               className="relative min-h-0 h-full"
               style={{
