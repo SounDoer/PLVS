@@ -83,7 +83,9 @@ Numeric readouts you choose and reorder: Momentary, Short-term, Integrated, Mome
 Short-term Max, Loudness Range, Short-term Dynamics, Integrated Dynamics, True Peak Max, Correlation,
 Side/Mid, and the dialogue readouts described in
 [Dialogue-Gated Loudness](dialogue-gated-loudness.md). The active Loudness Profile colours readouts
-that breach its rules. Integrated, Loudness Range, the Max readouts, and dialogue accumulations cover
+that breach its rules. Correlation and Side/Mid measure the channel pair of the first open
+Vectorscope, or channels 1 and 2 when no Vectorscope is open; a mono source shows `-`.
+Integrated, Loudness Range, the Max readouts, and dialogue accumulations cover
 the complete current Live measurement since Start or Clear; they are not limited by History Length.
 Momentary Max and Short-term Max consider every position of the 400 ms and 3 s windows, not only
 the ten readings per second, so a short burst that falls between two readings still counts in full.

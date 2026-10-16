@@ -156,6 +156,9 @@ pub struct MeterPipeline {
   loudness: LoudnessMeter,
   shared_spectral_runtime: SharedSpectralRuntime,
   vectorscope_by_key: HashMap<String, VectorscopeMeter>,
+  /// Measures the top-level Correlation and Side/Mid on channels 1/2 when no Vectorscope request
+  /// supplies them, so Stats and the scalar history read a real value in any layout.
+  scalar_vectorscope: VectorscopeMeter,
   last_channel_selection: Option<ChannelSelection>,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
@@ -220,6 +223,7 @@ impl MeterPipeline {
       loudness: LoudnessMeter::new(sr),
       shared_spectral_runtime: SharedSpectralRuntime::new(sr),
       vectorscope_by_key: HashMap::new(),
+      scalar_vectorscope: VectorscopeMeter::new(),
       last_channel_selection: None,
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
@@ -266,6 +270,7 @@ impl MeterPipeline {
     for meter in self.vectorscope_by_key.values_mut() {
       meter.reset();
     }
+    self.scalar_vectorscope.reset();
     self.last_loudness = None;
     self.waveform.reset();
     self.last_visual_emit = instant_ago(Duration::from_millis(200));
@@ -494,11 +499,9 @@ impl MeterPipeline {
       );
     }
 
-    let vectorscope_pair = analysis_requests
-      .vectorscope
-      .first()
-      .map(|request| (request.x, request.y));
-    let primary_vectorscope_summary = analysis_requests.vectorscope.first().and_then(|request| {
+    let primary_vectorscope_summary = if let Some(request) = analysis_requests.vectorscope.first() {
+      // Dropped so it never resumes on stale samples once the last Vectorscope request goes.
+      self.scalar_vectorscope.reset();
       vectorscope_results_by_key.get(&request.key).map(|result| {
         (
           result.pair_x,
@@ -507,12 +510,30 @@ impl MeterPipeline {
           result.side_to_mid_db,
         )
       })
-    });
+    } else if ch >= 2 {
+      let ctx = PcmContext {
+        interleaved,
+        channels: ch,
+        now_sec,
+        loudness_weights: selected_weights.clone(),
+        dialogue_channel_roles: None,
+        vectorscope_pair: (0, 1),
+        spectrum_channel: SpectrumChannelSel::default(),
+        spectrum_view: SpectrumView::default(),
+        dialogue_gating,
+        dialogue_vad_engine,
+      };
+      self.scalar_vectorscope.push_pcm(&ctx);
+      let (metrics, _) = self.scalar_vectorscope.get_output();
+      Some((0, 1, metrics.correlation, metrics.side_to_mid_db))
+    } else {
+      // A mono stream has no pair to correlate; its reading stays absent.
+      None
+    };
     let mut frame = self.push_pcm_f32_optional(
       interleaved,
       analysis_requests,
-      primary_vectorscope_summary
-        .or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0, f64::NEG_INFINITY))),
+      primary_vectorscope_summary,
       channel_selection,
       selected_weights,
       dialogue_gating,
@@ -938,7 +959,7 @@ impl MeterPipeline {
     // is derived from the first vectorscope request instead of recomputing a legacy vectorscope.
     let corr = vectorscope_summary
       .map(|(_, _, correlation, _)| correlation)
-      .unwrap_or(0.0);
+      .unwrap_or(f64::NEG_INFINITY);
     let side_to_mid_db = vectorscope_summary
       .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
       .unwrap_or(f64::NEG_INFINITY);
@@ -1015,7 +1036,7 @@ impl MeterPipeline {
 
         let visual_corr = vectorscope_summary
           .map(|(_, _, correlation, _)| correlation)
-          .unwrap_or(0.0);
+          .unwrap_or(f64::NEG_INFINITY);
         let visual_side_to_mid_db = vectorscope_summary
           .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
           .unwrap_or(f64::NEG_INFINITY);
@@ -1080,7 +1101,7 @@ impl MeterPipeline {
 
         let visual_corr = vectorscope_summary
           .map(|(_, _, correlation, _)| correlation)
-          .unwrap_or(0.0);
+          .unwrap_or(f64::NEG_INFINITY);
         let visual_side_to_mid_db = vectorscope_summary
           .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
           .unwrap_or(f64::NEG_INFINITY);
@@ -2661,11 +2682,61 @@ mod tests {
 
     assert!(frame.spectrum_results_by_key.is_empty());
     assert!(frame.vectorscope_results_by_key.is_empty());
-    assert_eq!(frame.correlation, 0.0);
     assert_eq!(
       pipeline.shared_runtime_lifecycle_for_test().total_fft_count,
       0
     );
+  }
+
+  fn push_without_requests(pipeline: &mut MeterPipeline, pcm: &[f32]) -> AudioFramePayload {
+    pipeline
+      .push_pcm_f32_with_requests(
+        pcm,
+        &AnalysisRequests::default(),
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("100ms chunk should emit a frame")
+  }
+
+  #[test]
+  fn correlation_and_side_to_mid_are_measured_without_a_vectorscope_request() {
+    let sr = 48_000_u32;
+    let frames = sr as usize / 10;
+    let tone = |i: usize| (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr as f64).sin() as f32;
+
+    let mut pipeline = MeterPipeline::new(sr, 2);
+    let in_phase: Vec<f32> = (0..frames).flat_map(|i| [tone(i), tone(i)]).collect();
+    let frame = push_without_requests(&mut pipeline, &in_phase);
+    assert!(
+      (frame.correlation - 1.0).abs() < 1e-6,
+      "{}",
+      frame.correlation
+    );
+    assert_eq!(frame.side_to_mid_db, -48.0);
+
+    let mut pipeline = MeterPipeline::new(sr, 2);
+    let anti_phase: Vec<f32> = (0..frames).flat_map(|i| [tone(i), -tone(i)]).collect();
+    let frame = push_without_requests(&mut pipeline, &anti_phase);
+    assert!(
+      (frame.correlation + 1.0).abs() < 1e-6,
+      "{}",
+      frame.correlation
+    );
+    assert_eq!(frame.side_to_mid_db, 48.0);
+  }
+
+  #[test]
+  fn mono_stream_reports_no_correlation_instead_of_zero() {
+    let sr = 48_000_u32;
+    let mut pipeline = MeterPipeline::new(sr, 1);
+    let pcm: Vec<f32> = (0..sr as usize / 10)
+      .map(|i| (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr as f64).sin() as f32)
+      .collect();
+    let frame = push_without_requests(&mut pipeline, &pcm);
+    assert_eq!(frame.correlation, f64::NEG_INFINITY);
+    assert_eq!(frame.side_to_mid_db, f64::NEG_INFINITY);
   }
 
   #[test]
