@@ -415,10 +415,13 @@ export function usePresets({
       if (presetFocusView) {
         setFocusView(presetFocusView);
       }
-      const presentation = normalizePanelPresentation(preset.panelPresentation, presetFocusView);
-      if (!presetDock.enabled)
-        presentation.dock = normalizePanelPresentation(panelPresentation, focusView).dock;
-      setPanelPresentation(presentation);
+      // A preset that captured neither leaves presentation alone, as it always left Focus View.
+      if (preset.panelPresentation || presetFocusView) {
+        const presentation = normalizePanelPresentation(preset.panelPresentation, presetFocusView);
+        if (!presetDock.enabled)
+          presentation.dock = normalizePanelPresentation(panelPresentation, focusView).dock;
+        setPanelPresentation(presentation);
+      }
       if (typeof preset.surfaceOpacity === "number") {
         setSurfaceOpacity(preset.surfaceOpacity);
       }

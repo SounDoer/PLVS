@@ -211,6 +211,26 @@ describe("usePresets", () => {
     }
   );
 
+  it("leaves presentation alone for a preset that captured neither it nor Focus View", async () => {
+    presetsStore.patch({
+      list: [
+        { id: "legacy", name: "Legacy", ...DEFAULT_WORKSPACE_STATE, dock: { enabled: false } },
+      ],
+    });
+    const setPanelPresentation = vi.fn();
+    const { result } = renderPresetHook({
+      panelPresentation: {
+        workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+        dock: { hideAxesAndLabels: false },
+      },
+      setPanelPresentation,
+    });
+    await act(async () => {
+      await result.current.presets.apply("legacy");
+    });
+    expect(setPanelPresentation).not.toHaveBeenCalled();
+  });
+
   it("saves pinned panel sizes in snapshots", async () => {
     const { result } = renderPresetHook();
     act(() => {
