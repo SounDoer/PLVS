@@ -42,7 +42,31 @@ showing a missing window. All 5,655 Vitest tests, Rust checks/tests, frontend
 format/lint/typecheck passed before that commit. Logs are under
 `artifacts/update-controls/acceptance-*.log`.
 
-## Reproduction
+## Final delivery verification
+
+Source `3dc7daa318176cbb136ec7d11c0f821eff051bde` was rebuilt as both signed test
+versions and installed into its own identity. The complete offline Dock startup
+upgrade passed again. Agent Control connected on that fresh launch without
+toggling it, and the cached offer contained no feed-error alert. After explicit
+startup confirmation, the CLI reported 0.21.1, the helper attempt was `finished`
+with no error, and serialized Dock/settings were unchanged. Evidence:
+`artifacts/update-controls/delivery-result.json`, `delivery-offline-launch-ui.json`,
+`delivery-offline-clean-offer.png`, `delivery-after-upgrade.json`, and
+`delivery-restored-dock.png`.
+
+The final code gate passed 5,656 Vitest tests across 527 files; Rust passed 779
+library tests (3 intentionally ignored), workspace/CLI tests, formatting and
+Clippy. Frontend formatting, lint and typecheck passed. Logs are named
+`offline-fixes-*.log`. Standard debug binaries were rebuilt after the isolated
+package builds so their signing configuration is not left in the default target.
+
+Manual delivery is under `artifacts/update-acceptance/3dc7daa3/Manual Acceptance/`.
+It contains two installers, signatures, the source/hash receipt, local feed runner,
+launch shortcuts and instructions; it excludes the private key. The feed is
+stopped after testing. The prepared installation is restored to 0.21.0 with fresh
+test settings; validated app data is archived beside it. No packages were published.
+
+## Additional Dock run
 
 The `79d117d4` package run additionally verified the corrected first-launch setup,
 the dependent switches, and a complete quit/reopen into a 136 CSS px bottom Dock
@@ -57,6 +81,8 @@ bottom Dock. Serialized Dock configuration and system settings were exactly equa
 before quit and after upgrade. Evidence: `dock-upgrade-comparison.json`,
 `final-dock-before-restart.json`, `final-dock-after-upgrade.json`, and
 `final-installed-dock-after-upgrade.png` under `artifacts/update-controls/`.
+
+## Reproduction
 
 From the feature worktree on Windows:
 
