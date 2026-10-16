@@ -146,10 +146,15 @@ pub fn set_dock_update_window<R: tauri::Runtime>(
   if window.label() != "main" {
     return Err("Only the main window owns update presentation.".into());
   }
-  let update = window
-    .app_handle()
-    .get_webview_window(DOCK_UPDATE_LABEL)
-    .ok_or("Dock update window unavailable.")?;
+  // The main webview can hydrate before setup finishes creating its accessories.
+  // Hiding a window that does not exist yet is already satisfied; showing it is not.
+  let Some(update) = window.app_handle().get_webview_window(DOCK_UPDATE_LABEL) else {
+    return if visible {
+      Err("Dock update window unavailable.".into())
+    } else {
+      Ok(None)
+    };
+  };
   if !visible {
     show_or_hide(&update, false, false)?;
     return Ok(None);
