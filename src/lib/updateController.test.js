@@ -250,3 +250,19 @@ describe("shared update controller", () => {
     await first;
   });
 });
+
+it("keeps a failed replacement download separate from a usable cached update", async () => {
+  const { controller, invoke } = setup();
+  await controller.setPreferences(prefs);
+  invoke.mockResolvedValueOnce({ enabled: true, installationSupported: true, ready: a });
+  await controller.initialize({ eligible: false });
+  invoke.mockResolvedValueOnce(b).mockRejectedValueOnce(new Error("Disk full"));
+  await controller.check(true);
+  expect(controller.getSnapshot()).toMatchObject({
+    ready: a,
+    downloadError: "Error: Disk full",
+    downloading: false,
+  });
+  await controller.setPreferences({ ...prefs, autoDownload: false });
+  expect(controller.getSnapshot()).toMatchObject({ ready: null, downloadError: null });
+});

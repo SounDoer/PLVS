@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useAccessoryClient } from "./useAccessoryClient.js";
 import { UpdateDetailsContent } from "../../components/UpdateDetailsContent.jsx";
+import { PRIVACY_POLICY_URL } from "../../ipc/openExternal.js";
 import { UpdateSetupContent } from "../../components/UpdatePreferencesControls.jsx";
 
 export function DockUpdateApp() {
@@ -51,9 +52,16 @@ export function DockUpdateApp() {
               ? "Update Ready"
               : "Update Available"}
         </h1>
+        {payload.kind !== "setup" && payload.targetVersion ? (
+          <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+            v{payload.targetVersion}
+          </p>
+        ) : null}
         {payload.kind === "setup" ? (
           <UpdateSetupContent
             preferences={payload.preferences}
+            installationUnavailableReason={payload.installationUnavailableReason}
+            onPrivacy={() => send("update-link", { url: PRIVACY_POLICY_URL })}
             installationSupported={payload.installationSupported}
             busy={payload.busy}
             error={payload.error}

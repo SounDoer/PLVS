@@ -715,3 +715,12 @@ as ordinary panels. `dockFrequencyViewport` supplies the normal panel-instance c
 shared renderers and range settings. Accessory edits route to the Workspace owner; the accessory
 window does not keep a second frequency range. Each Dock instance persists `linkFrequencyViewport`
 and its dormant local range. Presentation visibility does not alter membership.
+
+
+### Update installation location
+
+On macOS, updater capability checks the executable's volume with `statvfs`. A read-only volume
+(or an unreadable volume status) disables automatic staging and installation and supplies an
+explanation to the shared update controls. This differs from a protected directory on a writable
+volume, where the updater may request system authorization. Native download and installation
+preparation recheck the volume rather than relying only on startup classification.

@@ -169,6 +169,8 @@ function IconButton({ children, className, ...props }) {
  *   releaseUrl: string,
  *   hasUpdate?: boolean,
  *   updateStatus?: string,
+ *   updateActivity?: any,
+ *   updateInstallationUnavailableReason?: string | null,
  *   updatePreferences?: any,
  *   setUpdatePreferences?: (...args: any[]) => any,
  *   updateInstallationSupported?: boolean,
@@ -239,6 +241,8 @@ export function SettingsPanel({
   releaseUrl,
   hasUpdate = false,
   updateStatus = latestVersion ? "ok" : "checking",
+  updateActivity = null,
+  updateInstallationUnavailableReason = null,
   updatePreferences = null,
   setUpdatePreferences = () => {},
   updateInstallationSupported = false,
@@ -316,6 +320,19 @@ export function SettingsPanel({
     updateStatusText = "Update unavailable";
   } else if (updateStatus === "ok") {
     updateStatusText = hasUpdate && latestVersion ? `v${latestVersion} available` : "Up to date";
+  }
+  if (updateActivity?.downloading) {
+    const progress = updateActivity.progress;
+    updateStatusText =
+      typeof progress === "number" && Number.isFinite(progress)
+        ? `Downloading ${Math.round(Math.max(0, Math.min(1, progress)) * 100)}%`
+        : "Downloading…";
+  } else if (updateActivity?.downloadError) {
+    updateStatusText = updateActivity.readyVersion
+      ? "Update Ready · Download Failed"
+      : "Download Failed";
+  } else if (updateActivity?.readyVersion) {
+    updateStatusText = `v${updateActivity.readyVersion} Ready`;
   }
   const showAgentControl = agentControlStatus !== undefined;
   const agentControlSupported = !!agentControlStatus?.supported;
@@ -907,6 +924,7 @@ export function SettingsPanel({
                       preferences={updatePreferences}
                       onChange={setUpdatePreferences}
                       installationSupported={updateInstallationSupported}
+                      installationUnavailableReason={updateInstallationUnavailableReason}
                     />
                   ) : null}
                   <SettingsRow
@@ -953,6 +971,7 @@ export function SettingsPanel({
                         </span>
                         <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <span
+                          title={updateActivity?.downloadError ?? undefined}
                           className={cn(
                             "truncate",
                             hasUpdate ? "text-primary" : "text-muted-foreground"

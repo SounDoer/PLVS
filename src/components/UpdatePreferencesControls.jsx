@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { CircleHelp } from "lucide-react";
 import { HoverTip } from "./HoverTip.jsx";
+import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
+import { LinkButton } from "./ui/link-button";
 import { IconAction } from "./ui/icon-action";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
@@ -10,11 +12,15 @@ export function UpdatePreferencesControls({
   preferences,
   onChange,
   installationSupported = false,
+  installationUnavailableReason = null,
   disabled = false,
 }) {
-  const downloadHelp = installationSupported
-    ? "Download updates in the background. PLVS asks before installing on the next launch."
-    : "Automatic downloads require the installed version of PLVS. Download updates manually from Releases.";
+  const downloadHelp = !installationSupported
+    ? (installationUnavailableReason ??
+      "Automatic downloads require the installed version of PLVS. Download updates manually from Releases.")
+    : !preferences.autoCheck
+      ? "Turn on Auto Check to enable automatic downloads."
+      : "Download updates in the background. PLVS asks before installing on the next launch.";
   return (
     <div className="flex flex-col gap-[var(--ui-drawer-row-gap)] text-[length:var(--ui-fs-control)]">
       <label className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
@@ -58,7 +64,12 @@ export function UpdatePreferencesControls({
   );
 }
 
-export function UpdatePreferencesSettings({ preferences, onChange, installationSupported }) {
+export function UpdatePreferencesSettings({
+  preferences,
+  onChange,
+  installationSupported,
+  installationUnavailableReason = null,
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   async function change(patch) {
@@ -79,6 +90,7 @@ export function UpdatePreferencesSettings({ preferences, onChange, installationS
         preferences={preferences}
         onChange={change}
         installationSupported={installationSupported}
+        installationUnavailableReason={installationUnavailableReason}
         disabled={busy}
       />
       {error ? (
@@ -96,6 +108,8 @@ export function UpdateSetupContent({
   onSave,
   onSkip,
   installationSupported,
+  installationUnavailableReason = null,
+  onPrivacy = () => openExternalUrl(PRIVACY_POLICY_URL),
   busy,
   error,
 }) {
@@ -108,6 +122,7 @@ export function UpdateSetupContent({
         preferences={preferences}
         onChange={onChange}
         installationSupported={installationSupported}
+        installationUnavailableReason={installationUnavailableReason}
         disabled={busy}
       />
       {error ? (
@@ -115,7 +130,13 @@ export function UpdateSetupContent({
           {error}
         </p>
       ) : null}
-      <div className="mt-4 flex justify-end gap-2">
+      <p className="mt-3 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+        Updates connect to GitHub.{" "}
+        <LinkButton className="underline underline-offset-2" onClick={onPrivacy}>
+          Privacy Policy
+        </LinkButton>
+      </p>
+      <div className="mt-3 flex justify-end gap-2">
         <Button variant="ghost" disabled={busy} onClick={onSkip}>
           Skip
         </Button>

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   UpdatePreferencesControls,
   UpdatePreferencesSettings,
+  UpdateSetupContent,
 } from "./UpdatePreferencesControls.jsx";
 
 describe("update preference controls", () => {
@@ -59,4 +60,48 @@ describe("update preference controls", () => {
     fireEvent.click(screen.getByRole("switch", { name: "automatically download updates" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Disk full");
   });
+});
+
+it("explains the check dependency and read-only installation separately", () => {
+  const { rerender } = render(
+    <UpdatePreferencesControls
+      preferences={{ autoCheck: false, autoDownload: false }}
+      onChange={vi.fn()}
+      installationSupported
+    />
+  );
+  expect(screen.getByRole("button", { name: /Turn on Auto Check/ })).toBeTruthy();
+  rerender(
+    <UpdatePreferencesControls
+      preferences={{ autoCheck: true, autoDownload: false }}
+      onChange={vi.fn()}
+      installationUnavailableReason="Move PLVS to Applications."
+    />
+  );
+  expect(screen.getByRole("button", { name: /Move PLVS to Applications/ })).toBeTruthy();
+  expect(
+    screen.getByRole("switch", { name: "automatically download updates" }).hasAttribute("disabled")
+  ).toBe(true);
+});
+it("opens privacy only on an explicit action without saving update preferences", () => {
+  const onPrivacy = vi.fn(),
+    onSave = vi.fn(),
+    onChange = vi.fn();
+  render(
+    <UpdateSetupContent
+      preferences={{ autoCheck: true, autoDownload: false }}
+      onChange={onChange}
+      onSave={onSave}
+      onSkip={vi.fn()}
+      onPrivacy={onPrivacy}
+      installationSupported
+      busy={false}
+      error={null}
+    />
+  );
+  expect(onPrivacy).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Privacy Policy" }));
+  expect(onPrivacy).toHaveBeenCalledOnce();
+  expect(onSave).not.toHaveBeenCalled();
+  expect(onChange).not.toHaveBeenCalled();
 });

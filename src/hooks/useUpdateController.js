@@ -66,6 +66,12 @@ export function useUpdateController({ preferences, startupEligible }) {
         : state.initialized && !state.enabled
           ? "disabled"
           : state.checkStatus,
+      activity: {
+        downloading: state.downloading,
+        progress: state.downloadProgress,
+        readyVersion: state.ready?.version ?? null,
+        downloadError: state.downloadError,
+      },
       hasUpdate: Boolean(target),
       latestVersion: target?.version,
       releaseNotes: target?.manifest?.notes ?? "",

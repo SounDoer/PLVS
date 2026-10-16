@@ -1,7 +1,7 @@
 # Update Preferences and Deferred Installation
 
 Date: 2026-10-16
-Status: Agreed product design; implementation pending
+Status: Implemented; final UI review and platform acceptance in progress
 Branch: `codex/update-preferences`
 Investigation baseline: `10176bb4`, updater plugin 2.13.2
 
@@ -16,12 +16,13 @@ There is no countdown, automatic acceptance, or installation merely because PLVS
 
 ## Preferences
 
-Settings exposes these controls in its Updates area:
+Settings groups these controls at the bottom, without a visible section heading, followed by
+Ask To Send Crash Reports:
 
 | Control                         | Behavior                                                                                                 |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Automatically Check for Updates | Check at launch and every 12 hours while running.                                                        |
-| Automatically Download Updates  | Download and verify available updates in the background; offer installation on the next eligible launch. |
+| Auto Check                      | Check at launch and every 12 hours while running.                                                        |
+| Auto Download                   | Download and verify available updates in the background; offer installation on the next eligible launch. |
 
 The second control explains: "Downloaded updates are offered for installation the next time you start PLVS."
 

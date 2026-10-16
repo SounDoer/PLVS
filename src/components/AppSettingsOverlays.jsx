@@ -27,7 +27,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
- *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean },
+ *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
  *   appVersion: string,
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
@@ -311,11 +311,13 @@ export function AppSettingsOverlays({
         releaseUrl={updateInfo?.releaseUrl}
         hasUpdate={updateInfo?.hasUpdate}
         updateStatus={updateInfo?.status}
+        updateActivity={updateInfo?.activity}
         onCheckForUpdate={refreshUpdateCheck}
         onInstallUpdate={openUpdateDialog}
         updatePreferences={updateControls.enabled ? settings.updatePreferences : null}
         setUpdatePreferences={settings.setUpdatePreferences}
         updateInstallationSupported={updateControls.installationSupported}
+        updateInstallationUnavailableReason={updateControls.installationUnavailableReason}
         openExternalUrl={openExternalUrl}
         autostartEnabled={settings.autostartEnabled}
         setAutostartEnabled={settings.setAutostartEnabled}
@@ -366,6 +368,7 @@ export function AppSettingsOverlays({
       <UpdateDialog
         open={updateDialogOpen}
         currentVersion={appVersion}
+        targetVersion={selectedUpdate?.update?.version}
         releaseNotes={selectedUpdate?.releaseNotes}
         installStatus={installStatus}
         downloadProgress={downloadProgress}

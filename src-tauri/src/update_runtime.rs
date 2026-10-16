@@ -24,6 +24,7 @@ pub struct UpdateRuntime {
 pub struct UpdateStatus {
   enabled: bool,
   installation_supported: bool,
+  installation_unavailable_reason: Option<String>,
   ready: Option<ReadyUpdate>,
   fresh_session: bool,
   attempt: Option<crate::update_worker::Attempt>,
@@ -39,7 +40,7 @@ impl UpdateRuntime {
       cache,
       candidates: Mutex::new(HashMap::new()),
       transfers: Mutex::new(None),
-      installation_supported: installed_distribution(),
+      installation_supported: installed_distribution() && installation_location_error().is_none(),
       app_data,
       running,
       pending_worker: Mutex::new(None),
@@ -87,6 +88,34 @@ fn installed_distribution() -> bool {
   }
   #[cfg(not(any(windows, target_os = "macos")))]
   false
+}
+
+/// A read-only volume cannot become writable through an authorization prompt. Do not
+/// confuse it with an application directory that merely needs elevated permission.
+fn installation_location_error() -> Option<String> {
+  #[cfg(target_os = "macos")]
+  {
+    use std::os::unix::ffi::OsStrExt;
+    let result = (|| -> Result<bool, String> {
+      let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+      let path = std::ffi::CString::new(exe.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
+      let mut volume = std::mem::MaybeUninit::<libc::statvfs>::uninit();
+      // SAFETY: path is NUL-terminated and volume points to writable storage. The
+      // output is initialized only after statvfs reports success.
+      if unsafe { libc::statvfs(path.as_ptr(), volume.as_mut_ptr()) } != 0 {
+        return Err(std::io::Error::last_os_error().to_string());
+      }
+      let volume = unsafe { volume.assume_init() };
+      Ok(volume.f_flag & libc::ST_RDONLY != 0)
+    })();
+    match result {
+      Ok(false) => None,
+      Ok(true) => Some("Move PLVS to Applications and reopen it to enable automatic updates. The current volume is read-only.".into()),
+      Err(_) => Some("PLVS could not verify its installation location. Move it to Applications and reopen it.".into()),
+    }
+  }
+  #[cfg(not(target_os = "macos"))]
+  None
 }
 
 fn authorize(window: &WebviewWindow, app: &tauri::AppHandle) -> Result<(), String> {
@@ -173,7 +202,9 @@ pub fn update_status(
   }
   Ok(UpdateStatus {
     enabled: !cfg!(feature = "preview-identity"),
-    installation_supported: runtime.installation_supported,
+    installation_supported: runtime.installation_supported
+      && installation_location_error().is_none(),
+    installation_unavailable_reason: installation_location_error(),
     ready,
     fresh_session: runtime.running.fresh_session,
     attempt,
@@ -253,6 +284,9 @@ pub async fn update_download(
     automatic_allowed(&app, true)?;
   }
   let runtime = app.state::<UpdateRuntime>();
+  if let Some(reason) = installation_location_error() {
+    return Err(reason);
+  }
   if !runtime.installation_supported {
     return Err("This distribution requires a manual download.".into());
   }
@@ -351,6 +385,9 @@ pub async fn update_prepare_install(
   authorize(&window, &app)?;
   tauri::async_runtime::spawn_blocking(move || {
     let runtime = app.state::<UpdateRuntime>();
+    if let Some(reason) = installation_location_error() {
+      return Err(reason);
+    }
     if !runtime.installation_supported {
       return Err("This distribution requires a manual download.".into());
     }

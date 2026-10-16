@@ -17,6 +17,8 @@ export function createUpdateController({
     initialized: false,
     enabled: false,
     installationSupported: false,
+    installationUnavailableReason: null,
+    downloadError: null,
     candidate: null,
     ready: null,
     details: null,
@@ -52,6 +54,7 @@ export function createUpdateController({
         initialized: true,
         enabled: available,
         installationSupported: status.installationSupported,
+        installationUnavailableReason: status.installationUnavailableReason ?? null,
         ready: status.ready,
         error: status.error ?? (status.attempt?.phase === "failed" ? status.attempt.error : null),
       });
@@ -90,7 +93,7 @@ export function createUpdateController({
     if (confirming || transfer?.automatic === false) return;
     try {
       await invoke("update_cancel");
-      emit({ ready: null, downloading: false, checkStatus: "idle" });
+      emit({ ready: null, downloading: false, downloadError: null, checkStatus: "idle" });
     } catch (error) {
       emit({ error: String(error) });
     }
@@ -101,14 +104,15 @@ export function createUpdateController({
     if (automatic && !preferences.autoDownload) return null;
     const job = { automatic, generation };
     transfer = job;
-    emit({ downloading: true, downloadProgress: null, error: null });
+    emit({ downloading: true, downloadProgress: null, downloadError: null, error: null });
     try {
       const ready = await invoke("update_download", { candidateId: target.id, automatic });
       if (automatic && (job.generation !== generation || !preferences.autoDownload)) return null;
       if (ready) emit({ ready });
       return ready;
     } catch (error) {
-      if (!automatic || job.generation === generation) emit({ error: String(error) });
+      if (!automatic || job.generation === generation)
+        emit({ error: String(error), downloadError: String(error) });
       if (!automatic) throw error;
       return null;
     } finally {

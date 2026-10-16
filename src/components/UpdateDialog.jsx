@@ -5,6 +5,7 @@ import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 export function UpdateDialog({
   open,
   currentVersion,
+  targetVersion = null,
   releaseNotes = "",
   ready = false,
   installationSupported = true,
@@ -48,6 +49,7 @@ export function UpdateDialog({
       >
         <DialogTitle>{ready ? "Update Ready" : "Update Available"}</DialogTitle>
         <DialogDescription>
+          {targetVersion ? `v${targetVersion} · ` : ""}
           {currentVersion ? `What's new since v${currentVersion}` : "What's new"}
         </DialogDescription>
 

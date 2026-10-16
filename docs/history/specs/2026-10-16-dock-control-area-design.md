@@ -1,7 +1,7 @@
 # Dock Control Area
 
 Date: 2026-10-16
-Status: Agreed product design; dimensions and implementation validation pending
+Status: Implemented at 72 CSS px width and 136 CSS px minimum height; final design and platform acceptance pending
 Branch: `codex/update-preferences`
 
 ## Problem

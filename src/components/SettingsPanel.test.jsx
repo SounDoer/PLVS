@@ -1122,3 +1122,26 @@ describe("SettingsPanel — Delete theme", () => {
     expect(deleteCustomTheme).toHaveBeenCalledWith("custom-1");
   });
 });
+
+it("shows transfer progress, cached readiness and replacement failure in the existing status row", () => {
+  const props = {
+    ...BASE_PROPS,
+    appVersion: "1.0.0",
+    latestVersion: "2.0.0",
+    hasUpdate: true,
+    updateStatus: "ok",
+  };
+  const { rerender } = render(
+    <SettingsPanel {...props} updateActivity={{ downloading: true, progress: 0.42 }} />
+  );
+  expect(screen.getByText("Downloading 42%")).toBeTruthy();
+  rerender(<SettingsPanel {...props} updateActivity={{ readyVersion: "2.0.0" }} />);
+  expect(screen.getByText("v2.0.0 Ready")).toBeTruthy();
+  rerender(
+    <SettingsPanel
+      {...props}
+      updateActivity={{ readyVersion: "2.0.0", downloadError: "Disk full" }}
+    />
+  );
+  expect(screen.getByText("Update Ready · Download Failed").title).toBe("Disk full");
+});

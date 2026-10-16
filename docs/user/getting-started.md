@@ -40,6 +40,7 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
 On a fresh first launch, **Update Preferences** offers automatic checking and automatic downloading.
+The prompt identifies GitHub as the update service and links to the privacy policy.
 Checking starts selected; downloading starts off. No automatic request is made before you save a
 choice. **Skip** turns both off. Existing users retain checking on and downloading off without a
 first-launch prompt. These preferences can be changed in Settings.

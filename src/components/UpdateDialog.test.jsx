@@ -166,3 +166,8 @@ describe("UpdateDialog", () => {
     expect(onRestart).toHaveBeenCalledTimes(1);
   });
 });
+
+it("shows the selected target version even when release notes have no version heading", () => {
+  render(<UpdateDialog {...BASE_PROPS} targetVersion="1.2.3" releaseNotes="Bug fixes." />);
+  expect(screen.getByText("v1.2.3 · What's new since v0.9.4")).toBeTruthy();
+});

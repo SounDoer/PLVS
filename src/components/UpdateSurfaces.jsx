@@ -51,6 +51,8 @@ export function UpdateSurfaces({ currentVersion }) {
     busy: busy || ["installing", "restarting"].includes(updates.installStatus),
     error: setup ? error : updates.error,
     targetId: updates.details?.target.id,
+    targetVersion: updates.details?.target.version,
+    installationUnavailableReason: updates.installationUnavailableReason,
     ready: updates.details?.staged === true,
     releaseNotes,
     installStatus: updates.installStatus,
@@ -143,6 +145,7 @@ export function UpdateSurfaces({ currentVersion }) {
             onSave={() => void save()}
             onSkip={() => void save(true)}
             installationSupported={updates.installationSupported}
+            installationUnavailableReason={updates.installationUnavailableReason}
             busy={busy}
             error={error ?? dockWindow.error}
           />
@@ -151,6 +154,7 @@ export function UpdateSurfaces({ currentVersion }) {
       <UpdateDialog
         open={Boolean(updates.details)}
         currentVersion={currentVersion}
+        targetVersion={updates.details?.target.version}
         releaseNotes={releaseNotes}
         ready={updates.details?.staged === true}
         installStatus={updates.installStatus}

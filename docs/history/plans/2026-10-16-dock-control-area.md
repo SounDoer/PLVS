@@ -7,6 +7,20 @@ Worktree: `.codex/worktrees/update-preferences`
 Branch: `codex/update-preferences`
 Related plan: [Update preferences](2026-10-16-update-preferences.md)
 
+## Current acceptance status
+
+This summary supersedes earlier execution checkpoints below. Windows signed, isolated offline
+upgrades, two-workbench restoration, Dock startup/skip/reopen, and 125%/200% display-scale checks
+have passed. Those results do not certify macOS, independent Windows text-size scaling, long-session
+clocks, or packaged installation failure/interruption recovery. Earlier unchecked items combine
+multiple scenarios; do not treat the whole item as either unimplemented or fully accepted.
+
+The later design review keeps update preferences at the bottom of Settings without a heading,
+followed by Ask To Send Crash Reports. First-launch setup uses the shared dialog with content-based
+width, standard typography, and compact text. Details fit their content and display the frozen
+target version separately from release notes. Dock control-area design review remains open.
+
+
 ## Delivery order
 
 D1 establishes geometry and visual evidence; D2 adds the fixed-width vertical controls and removes

@@ -1,11 +1,25 @@
 # Update preferences implementation plan
 
 Date: 2026-10-16
-Status: Implementation integrated; Windows probes passed; full packaged upgrade and macOS acceptance remain open
+Status: Windows packaged success path verified; failure recovery and macOS acceptance remain open
 Design: [Update Preferences and Deferred Installation](../specs/2026-10-16-update-preferences-design.md)
 Worktree: `.codex/worktrees/update-preferences`
 Branch: `codex/update-preferences`
 Starting point: `74f6f0df` (update spec committed; Dock spec and plans are pending documents)
+
+## Current acceptance status
+
+This summary supersedes earlier execution checkpoints below. Windows signed, isolated offline
+upgrades, two-workbench restoration, Dock startup/skip/reopen, and 125%/200% display-scale checks
+have passed. Those results do not certify macOS, independent Windows text-size scaling, long-session
+clocks, or packaged installation failure/interruption recovery. Earlier unchecked items combine
+multiple scenarios; do not treat the whole item as either unimplemented or fully accepted.
+
+The later design review keeps update preferences at the bottom of Settings without a heading,
+followed by Ask To Send Crash Reports. First-launch setup uses the shared dialog with content-based
+width, standard typography, and compact text. Details fit their content and display the frozen
+target version separately from release notes. Dock control-area design review remains open.
+
 
 ## Delivery order and shared ownership
 

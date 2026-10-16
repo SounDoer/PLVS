@@ -62,7 +62,11 @@ workbench set; quitting one workbench does not close its peers.
 ## Updates
 
 Update preferences are grouped at the bottom of Settings, above version information.
-The question-mark icon beside **Auto Download** explains download availability and installation confirmation on hover or keyboard focus.
+The question-mark icon beside **Auto Download** explains download availability, the **Auto Check**
+dependency, and installation confirmation on hover or keyboard focus. The version status row shows
+background download progress, a ready package, or a failed download. A failed replacement download
+does not erase an older verified ready package. Update details identify the selected target version
+independently of the release notes.
 **Auto Check** controls startup and twelve-hour checks. **Auto Download** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. **Check** remains an explicit action when
 automatic checking is off. Preferences are shared across workbenches and are not imported from a
@@ -71,7 +75,9 @@ configuration profile.
 Turning automatic downloading off cancels background work and removes the staged update. A manual
 update you have explicitly confirmed is separate from this preference. Installed Windows and macOS
 copies support verified local staging; Portable copies use the release-page download instead.
-Preview does not offer the updater.
+Preview does not offer the updater. On macOS, automatic updates are unavailable on a read-only
+volume such as a mounted DMG; move PLVS to Applications and reopen it. A protected directory on a
+writable volume can still use the system authorization flow.
 
 Downloaded updates are offered on a later fresh launch. **Skip This Time** or closing details keeps
 the package without installing it. Details keep their selected version even if another check
