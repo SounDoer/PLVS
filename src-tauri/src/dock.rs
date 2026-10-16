@@ -956,7 +956,6 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
           false,
         )
         .unwrap_or(false);
-        write_dock_state(window.app_handle(), &state);
       }
       write_dock_state(window.app_handle(), &state);
       window
