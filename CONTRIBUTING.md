@@ -139,6 +139,16 @@ own root without changing website code.
 
 ### Website checks and independent publication
 
+After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepare-homepage-assets.mjs`
+to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
+published resource and its latest preview revision from the validated Catalogue; they do not read
+fixed `v1` screenshot paths. This is an explicit preparation step, not part of every website build.
+The script also exports the dated raw feature screenshots named in it. Refresh those through Agent
+Control when their UI changes, retain their capture metadata, and review the resulting homepage.
+The shared homepage/README hero uses `scripts/marketing/capture-live-hero.mjs` and
+`scripts/marketing/select-hero.mjs`; its local `--publish` flag updates tracked image files, not the
+deployed website.
+
 Use `npm run check:changes` before committing or pushing. It refreshes `origin/main`, checks all
 pending commits plus staged, unstaged and untracked changes, and runs `website:verify` only when
 every changed path belongs to the explicit website allowlist. Reverted changes within the pending

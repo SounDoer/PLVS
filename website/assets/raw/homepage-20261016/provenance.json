@@ -1,0 +1,111 @@
+{
+  "capturedAt": "2026-10-16",
+  "appVersion": "0.20.0",
+  "identity": "dev",
+  "captureMethod": "Agent Control visual screenshot in disposable workbenches",
+  "history": {
+    "sourceAudio": "assets/marketing/audio/discovery-hero.wav",
+    "source": "live",
+    "snapshotOffsetSec": 22
+  },
+  "frequency": {
+    "sourceAudio": "assets/marketing/audio/discovery-hero.wav",
+    "source": "live",
+    "snapshotOffsetSec": 5,
+    "view": "ms",
+    "rangesHz": [
+      [
+        20,
+        20000
+      ],
+      [
+        20,
+        250
+      ]
+    ]
+  },
+  "rules": {
+    "name": "My Delivery Profile",
+    "source": "same saved Profile and 7.1.4 file Snapshot as the adjacent workspace",
+    "referenceLufs": -16,
+    "rules": [
+      {
+        "metricId": "integrated",
+        "op": ">",
+        "value": -16,
+        "severity": "fail"
+      },
+      {
+        "metricId": "truePeak",
+        "op": ">",
+        "value": -6,
+        "severity": "fail"
+      },
+      {
+        "metricId": "shortTermMax",
+        "op": ">",
+        "value": -14,
+        "severity": "warn"
+      },
+      {
+        "metricId": "momentaryMax",
+        "op": ">",
+        "value": -12,
+        "severity": "warn"
+      },
+      {
+        "metricId": "lra",
+        "op": ">",
+        "value": 6,
+        "severity": "warn"
+      },
+      {
+        "metricId": "plr",
+        "op": "<",
+        "value": 10,
+        "severity": "warn"
+      },
+      {
+        "metricId": "psr",
+        "op": "<",
+        "value": 8,
+        "severity": "warn"
+      }
+    ],
+    "image": "../homepage-20261014/rules-editor.png",
+    "captureDate": "2026-10-14",
+    "note": "Unchanged editor and saved rules; paired with the refreshed multichannel screenshot."
+  },
+  "multichannel": {
+    "sourceAudio": "PLVS_Promo_v10_Archive_2026-10-09/capture/mixes/future-funk-714.wav",
+    "source": "file",
+    "provenance": "7.1.4 demonstration bed assembled from promo music stems; not a native immersive production",
+    "channelRoles": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lb",
+      "Rb",
+      "Ls",
+      "Rs",
+      "Ltf",
+      "Rtf",
+      "Ltr",
+      "Rtr"
+    ],
+    "snapshotOffsetSec": 8,
+    "clip": {
+      "requestedStartSec": 20,
+      "requestedDurationSec": 24,
+      "actualDurationMs": 24064
+    },
+    "layout": "Level Meter beside Stats above a full-width Waveform",
+    "loudnessLayoutVerified": "7.1.4",
+    "interfaceSize": "large"
+  },
+  "deliveryScript": "scripts/marketing/prepare-homepage-assets.mjs",
+  "editing": "WebP encoding and explicitly defined crops/composites only; chart data and UI labels unretouched",
+  "sourceCommit": "50fe23087c16d5558d4c7ac08f311f66fde9b98d",
+  "captureRun": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792123687096"
+}

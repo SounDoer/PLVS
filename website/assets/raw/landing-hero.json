@@ -1,107 +1,218 @@
 {
   "version": 1,
-  "workflowRecipe": "scripts/marketing/recipes/homepage-hero.json",
-  "audioMaster": "assets/marketing/audio/discovery-hero.wav",
   "image": "../landing-hero.webp",
   "rawImage": "landing-hero.png",
   "width": 1600,
   "height": 1000,
-  "sha256": "aef239840275f56b913efdb5cc09dad38575fd5f193f71772ee3c7f06e825920",
-  "rawSha256": "783ace78f2ff31debb9bd0292b1ef286d5b9c973e8322bc54b321aeb97db0a58",
-  "appVersion": "0.18.2",
+  "sha256": "e48d49c948a4404a667252b2c09e38135212fc04d828aa67c2e8898bc1bfb3d9",
+  "rawSha256": "799ebd04f2be7f714b95cd290aa37185a38fa26218a74205d3a2e4dce4078214",
+  "appVersion": "0.20.0",
+  "recipe": "scripts/marketing/recipes/homepage-hero.json",
+  "audio": {
+    "path": "assets/marketing/audio/discovery-hero.wav",
+    "provenancePath": "assets/marketing/audio/discovery-hero.source.json",
+    "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988"
+  },
   "capture": {
     "mode": "LIVE",
-    "layout": "Default",
-    "panelSettings": "Default",
-    "loudnessProfile": {
-      "name": "Default",
-      "referenceLufs": -23,
-      "rules": [
-        {
-          "metricId": "integrated",
-          "op": ">",
-          "severity": "warn",
-          "value": -16
-        },
-        {
-          "metricId": "integrated",
-          "op": "<",
-          "severity": "warn",
-          "value": -30
-        },
-        {
-          "metricId": "shortTermMax",
-          "op": ">",
-          "severity": "warn",
-          "value": -12
-        },
-        {
-          "metricId": "momentaryMax",
-          "op": ">",
-          "severity": "warn",
-          "value": -9
-        },
-        {
-          "metricId": "lra",
-          "op": ">",
-          "severity": "warn",
-          "value": 18
-        },
-        {
-          "metricId": "lra",
-          "op": "<",
-          "severity": "warn",
-          "value": 6
-        },
-        {
-          "metricId": "truePeak",
-          "op": ">",
-          "severity": "fail",
-          "value": -1
-        }
-      ]
+    "layout": "Current First-Run Default",
+    "second": 74,
+    "capturedAt": "2026-10-16T04:06:17.599Z",
+    "commit": "50fe23087c16d5558d4c7ac08f311f66fde9b98d",
+    "sourceFingerprint": "66deff05b45dfaa74d6e549964a39e134af9f1dfe0d3df2b0e5249c895f2d6f1",
+    "nativeBinarySha256": "bc49e1a0065db0faee25ef4c85b3e6feea7eeca75ce95e8d774f916c5531ae9f",
+    "geometry": {
+      "width": 1600,
+      "height": 1000,
+      "windowDpi": 120,
+      "textScalePercent": 100
     },
-    "playbackSeconds": 78,
-    "frame": {
+    "measurement": {
       "generation": 2,
-      "sequence": 3999
+      "sequence": 3010
+    },
+    "before": {
+      "dialogue": {
+        "active": true,
+        "activeNow": false,
+        "coveragePercent": 1.2129380053908356,
+        "loudnessLufs": -17.684803417346682,
+        "loudnessToDialogueRatioLu": 2.1083885765010315,
+        "rangeLu": 10.501909741400208
+      },
+      "levels": {
+        "channels": [
+          {
+            "index": 0,
+            "label": "L",
+            "peakDbfs": -6.303825032866175,
+            "rmsDbfs": -11.724960665249542
+          },
+          {
+            "index": 1,
+            "label": "R",
+            "peakDbfs": -5.964783114845585,
+            "rmsDbfs": -13.905560549703605
+          }
+        ],
+        "truePeak": {
+          "leftDbtp": -2.741631268119469,
+          "maxDbtp": -0.7994311829790063,
+          "rightDbtp": -4.345562570186669
+        }
+      },
+      "loudness": {
+        "integratedLufs": -15.57641484084565,
+        "momentaryLufs": -10.346541318368871,
+        "momentaryMaxLufs": -10.337739140058254,
+        "plrDb": 14.776983657866644,
+        "psrDb": 10.892632747866498,
+        "rangeLu": 8.956670145076638,
+        "shortTermLufs": -11.692063930845505,
+        "shortTermMaxLufs": -10.861039671321263
+      },
+      "observedAt": "2026-10-16T04:07:46.985Z",
+      "profile": {
+        "byMetric": {
+          "integrated": "warn",
+          "lra": "ok",
+          "momentary": "ok",
+          "shortTerm": "warn",
+          "truePeak": "fail"
+        },
+        "id": "5c270b1e-0e48-43b6-bbf6-6f6b86535c8e",
+        "mode": "saved",
+        "name": "PLVS Default",
+        "overall": "fail"
+      },
+      "revision": 5,
+      "sample": {
+        "ageMs": 4,
+        "elapsedMs": 74285,
+        "freshness": "fresh",
+        "receivedAt": "2026-10-16T04:07:46.981Z",
+        "sequence": 2973
+      },
+      "schemaVersion": 2,
+      "source": {
+        "kind": "live",
+        "sessionGeneration": 2,
+        "state": "running"
+      },
+      "stereo": {
+        "correlation": 0.3446181232076252,
+        "pair": {
+          "labels": [
+            "L",
+            "R"
+          ],
+          "x": 0,
+          "y": 1
+        },
+        "sideToMidDb": -3.0515944733311406
+      },
+      "topology": {
+        "channelCount": 2,
+        "channelLabels": [
+          "L",
+          "R"
+        ],
+        "loudnessLayout": "stereo",
+        "loudnessLayoutKnown": true
+      },
+      "unavailable": {}
+    },
+    "after": {
+      "dialogue": {
+        "active": true,
+        "activeNow": false,
+        "coveragePercent": 1.1857707509881423,
+        "loudnessLufs": -17.684803417346682,
+        "loudnessToDialogueRatioLu": 2.2583654249376615,
+        "rangeLu": 10.501909741400208
+      },
+      "levels": {
+        "channels": [
+          {
+            "index": 0,
+            "label": "L",
+            "peakDbfs": -5.883127024635106,
+            "rmsDbfs": -14.684765379426615
+          },
+          {
+            "index": 1,
+            "label": "R",
+            "peakDbfs": -4.41069531581035,
+            "rmsDbfs": -15.174312110807165
+          }
+        ],
+        "truePeak": {
+          "leftDbtp": -3.2021468627723575,
+          "maxDbtp": -0.7994311829790063,
+          "rightDbtp": -3.703736310604522
+        }
+      },
+      "loudness": {
+        "integratedLufs": -15.42643799240902,
+        "momentaryLufs": -12.086158337726017,
+        "momentaryMaxLufs": -10.302427994787601,
+        "plrDb": 14.627006809430014,
+        "psrDb": 10.6326723766247,
+        "rangeLu": 9.179487317739094,
+        "shortTermLufs": -11.432103559603707,
+        "shortTermMaxLufs": -10.861039671321263
+      },
+      "observedAt": "2026-10-16T04:07:48.609Z",
+      "profile": {
+        "byMetric": {
+          "integrated": "warn",
+          "lra": "ok",
+          "momentary": "ok",
+          "shortTerm": "warn",
+          "truePeak": "fail"
+        },
+        "id": "5c270b1e-0e48-43b6-bbf6-6f6b86535c8e",
+        "mode": "saved",
+        "name": "PLVS Default",
+        "overall": "fail"
+      },
+      "revision": 5,
+      "sample": {
+        "ageMs": 0,
+        "elapsedMs": 75936,
+        "freshness": "fresh",
+        "receivedAt": "2026-10-16T04:07:48.609Z",
+        "sequence": 3039
+      },
+      "schemaVersion": 2,
+      "source": {
+        "kind": "live",
+        "sessionGeneration": 2,
+        "state": "running"
+      },
+      "stereo": {
+        "correlation": 0.28931320899297197,
+        "pair": {
+          "labels": [
+            "L",
+            "R"
+          ],
+          "x": 0,
+          "y": 1
+        },
+        "sideToMidDb": -2.568009183571269
+      },
+      "topology": {
+        "channelCount": 2,
+        "channelLabels": [
+          "L",
+          "R"
+        ],
+        "loudnessLayout": "stereo",
+        "loudnessLayoutKnown": true
+      },
+      "unavailable": {}
     }
   },
-  "audio": {
-    "version": 1,
-    "source": {
-      "title": "Discovery",
-      "artist": "Scott Buckley",
-      "page": "https://www.scottbuckley.com.au/library/discovery/",
-      "download": "https://www.scottbuckley.com.au/library/wp-content/uploads/2020/01/sb_discovery.mp3",
-      "sha256": "e4629422bd18a927950167dabfbe7c77c061595329da367f2407a8b4021fb832",
-      "license": "CC BY 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-      "attribution": "'Discovery' by Scott Buckley — released under CC BY 4.0. www.scottbuckley.com.au"
-    },
-    "excerpt": {
-      "startSeconds": 80,
-      "endSeconds": 170,
-      "durationSeconds": 90,
-      "linearGain": 1.07,
-      "modifications": "Excerpt and constant gain only; no compression, EQ, time stretching, or synthetic additions.",
-      "fileName": "Discovery - 80-170s.wav",
-      "sampleRateHz": 48000,
-      "channels": 2,
-      "bits": 24,
-      "peakDbfs": -0.43749573267017383,
-      "sha256": "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988"
-    },
-    "capture": {
-      "mode": "LIVE",
-      "layout": "Unmodified first-run default",
-      "panelSettings": "Unmodified defaults",
-      "device": "CABLE Output (VB-Audio Virtual Cable)",
-      "playback": "VLC to CABLE Input; no system output changes",
-      "candidatesSecondsAfterPlayerLaunch": [62, 66, 70, 74, 78, 82],
-      "determinism": "Audio bytes and layout are fixed. LIVE scheduling and render frames can vary; inspect candidates before publishing."
-    }
-  },
-  "preparationCommand": "node scripts/marketing/prepare-live-hero-audio.mjs",
-  "captureScript": "scripts/marketing/capture-live-hero.mjs"
+  "reviewedAt": "2026-10-16T04:08:28.042Z"
 }

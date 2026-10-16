@@ -135,6 +135,10 @@ export function assertDefaultScene(state, profile, recipe) {
     !isDeepStrictEqual(state.view, {
       pinned: false,
       focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+      panelPresentation: {
+        workspace: { hideAxesAndLabels: false, hidePanelHeaders: false },
+        dock: { hideAxesAndLabels: false },
+      },
       surfaceOpacity: 100,
       glassEnabled: false,
     })

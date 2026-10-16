@@ -49,6 +49,10 @@ function scene() {
     view: {
       pinned: false,
       focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+      panelPresentation: {
+        workspace: { hideAxesAndLabels: false, hidePanelHeaders: false },
+        dock: { hideAxesAndLabels: false },
+      },
       surfaceOpacity: 100,
       glassEnabled: false,
     },
@@ -106,5 +110,8 @@ describe("marketing capture safeguards", () => {
     controls.workspace.panels[0].controls = {};
     expect(() => assertDefaultScene(controls, profile, recipe)).toThrow("controls");
     expect(() => assertDefaultScene(scene(), { ...profile, rules: [] }, recipe)).toThrow("profile");
+    const hidden = scene();
+    hidden.view.panelPresentation.workspace.hideAxesAndLabels = true;
+    expect(() => assertDefaultScene(hidden, profile, recipe)).toThrow("View");
   });
 });

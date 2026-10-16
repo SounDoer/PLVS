@@ -1,22 +1,32 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
+import { readSharesetsSource } from "../sharesets-catalogue-source.mjs";
 const output = resolve("website/assets/homepage");
-const raw = resolve("website/assets/raw/homepage-20261014");
+const raw = resolve("website/assets/raw/homepage-20261016");
+const rulesRaw = resolve("website/assets/raw/homepage-20261014");
 await mkdir(output, { recursive: true });
 const previews = {
-  essential: "essential-monitoring/v1/preset-workspace.png",
-  spectral: "spectral-inspection/v1/preset-workspace.png",
-  stereo: "stereo-field-check/v1/preset-workspace.png",
-  amber: "control-room-amber/v1/product-workspace-file.png",
-  daylight: "studio-daylight/v1/product-workspace-file.png",
-  night: "night-circuit/v1/product-workspace-file.png",
+  essential: ["essential-monitoring", "preset-workspace"],
+  spectral: ["spectral-inspection", "preset-workspace"],
+  stereo: ["stereo-field-check", "preset-workspace"],
+  amber: ["control-room-amber", "product-workspace-file"],
+  daylight: ["studio-daylight", "product-workspace-file"],
+  night: ["night-circuit", "product-workspace-file"],
 };
+const catalogue = await readSharesetsSource(resolve("sharesets/catalogue"));
 // Preserve the real preview pixels and proportions; only change delivery encoding.
-for (const [name, source] of Object.entries(previews))
-  await sharp(resolve("sharesets/catalogue/previews", source))
+for (const [name, [listingId, previewId]] of Object.entries(previews)) {
+  const listing = catalogue.listings.find(({ document }) => document.id === listingId)?.document;
+  const content =
+    listing?.included ?? listing?.releases.filter((r) => r.status === "published").at(-1);
+  const current = content?.previewRevisions?.at(-1) ?? content;
+  const preview = current?.previews.find(({ id }) => id === previewId);
+  if (!preview) throw new Error(`Missing current homepage preview: ${listingId}/${previewId}`);
+  await sharp(resolve(catalogue.root, preview.path))
     .webp({ quality: 90, effort: 6 })
     .toFile(resolve(output, name + ".webp"));
+}
 await sharp(resolve(raw, "history.png"))
   .webp({ quality: 90, effort: 6 })
   .toFile(resolve(output, "history.webp"));
@@ -36,9 +46,9 @@ await sharp({
   ])
   .webp({ quality: 90, effort: 6 })
   .toFile(resolve(output, "frequency.webp"));
-// Crop the complete Profile editor from the same workbench as the multichannel result.
-// The saved seven-rule Profile is active in both captures; UI and data are unretouched.
-await sharp(resolve(raw, "rules-editor.png"))
+// Retain the unchanged Profile editor; the refreshed multichannel capture uses the same
+// seven rules and reference. UI and data are unretouched.
+await sharp(resolve(rulesRaw, "rules-editor.png"))
   .extract({ left: 150, top: 150, width: 560, height: 500 })
   .webp({ quality: 95, effort: 6 })
   .toFile(resolve(output, "rules.webp"));
