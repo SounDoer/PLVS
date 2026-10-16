@@ -148,6 +148,15 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
       extraIssues.push(
         issue("incompatibleControl", "$.readout", "readout is incompatible with mode.")
       );
+    // `readout` aliases exactly one public switch per mode; naming both must agree.
+    const [aliasKey, aliasValue] =
+      mode === "peak"
+        ? ["tpMaxMarker", readout === "truePeakMax"]
+        : ["playbackMax", readout === "playbackMax"];
+    if (hasOwn(patch, aliasKey) && patch[aliasKey] !== aliasValue)
+      extraIssues.push(
+        issue("conflictingControls", "$.readout", `readout conflicts with ${aliasKey}.`)
+      );
   }
   if (hasOwn(patch, "frequencyRangeHz")) {
     const range = patch.frequencyRangeHz;
@@ -177,9 +186,9 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   if (extraIssues.length > 0) return { dock, changed: [], warnings: [], issues: extraIssues };
   if (hasOwn(patch, "readout")) {
     next.readout = patch.readout;
-    next.levelMeterTpMaxMarker = patch.readout === "truePeakMax";
-    next.levelMeterPlaybackMax = patch.readout === "playbackMax";
-    next.levelMeterValueMarker = patch.readout === "playbackMax";
+    if (next.levelMeterMode === "peak")
+      next.levelMeterTpMaxMarker = patch.readout === "truePeakMax";
+    else next.levelMeterPlaybackMax = patch.readout === "playbackMax";
   }
   if (hasOwn(patch, "linkFrequency")) {
     next.linkFrequencyViewport = patch.linkFrequency;

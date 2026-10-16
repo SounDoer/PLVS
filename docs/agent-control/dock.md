@@ -151,7 +151,9 @@ ms trail only while the Dock instance is in Polar Sample mode; other modes retai
 without applying it.
 
 Level Meter exposes the normal panel controls, including `orientation`, independent Max/marker
-switches and ranges. Its legacy `readout` field remains a compatibility alias for those switches;
+switches and ranges. Its legacy `readout` field remains a compatibility alias for one switch: `tpMaxMarker` in Peak
+mode, `playbackMax` in the other modes. It never changes `floatingValue`, and a patch that names
+both `readout` and its switch with different values is refused as `conflictingControls`;
 `showLabels` is no longer accepted because Dock axes stay hidden. Loudness exposes Grid and no longer
 has `showReadouts`. Spectrogram exposes every mode and 3D setting at every Dock height. The separate
 Transport/Timecode module is no longer offered; toolbar transport commands remain available.
@@ -207,7 +209,6 @@ Dock analysis requests share and deduplicate matching keys with Workspace panels
 instances. There is no request-count cap or priority eviction. Layout/panel changes may be prepared
 outside Dock and may be made while Dock is active; changing analysis controls does not restart LIVE
 capture or retroactively reanalyze completed FILE sessions.
-
 
 ### Frequency linking
 

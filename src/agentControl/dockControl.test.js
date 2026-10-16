@@ -44,6 +44,36 @@ describe("Dock Control", () => {
     });
   });
 
+  it("treats readout as an alias of one switch and leaves Floating Value alone", () => {
+    const momentary = {
+      ...dock,
+      controlsByPanelId: {
+        level: { levelMeterMode: "momentary", levelMeterValueMarker: true },
+      },
+    };
+    const live = planDockPanelPatch(momentary, "level", { readout: "live" });
+    expect(live.issues).toEqual([]);
+    expect(buildDockSnapshot(live.dock).panels[0].controls).toMatchObject({
+      readout: "live",
+      floatingValue: true,
+    });
+
+    const both = planDockPanelPatch(momentary, "level", {
+      readout: "playbackMax",
+      floatingValue: false,
+    });
+    expect(both.issues).toEqual([]);
+    expect(buildDockSnapshot(both.dock).panels[0].controls).toMatchObject({
+      readout: "playbackMax",
+      playbackMax: true,
+      floatingValue: false,
+    });
+
+    expect(
+      planDockPanelPatch(dock, "level", { readout: "truePeakMax", tpMaxMarker: false }).issues
+    ).toEqual([expect.objectContaining({ code: "conflictingControls", path: "$.readout" })]);
+  });
+
   it("round-trips Spectrum grid and peak labels through the public controls", () => {
     const current = {
       ...dock,
