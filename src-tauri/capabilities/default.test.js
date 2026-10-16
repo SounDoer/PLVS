@@ -29,8 +29,11 @@ describe("default Tauri capabilities", () => {
     expect(clipboard).toEqual(["clipboard-manager:allow-read-text"]);
   });
 
-  it("allows the updater plugin to check and install updates", () => {
-    expect(capability.permissions).toContain("updater:default");
+  it("keeps updater commands native so installation cannot bypass the update gate", () => {
+    const updater = capability.permissions.filter((permission) =>
+      (typeof permission === "string" ? permission : permission.identifier).startsWith("updater:")
+    );
+    expect(updater).toEqual([]);
   });
 
   it("keeps agent-control frontend commands scoped to the main window", () => {

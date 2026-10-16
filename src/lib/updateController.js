@@ -1,6 +1,8 @@
 import { normalizeUpdatePreferences } from "./updatePreferences.js";
-import { RELEASES_URL } from "./updateCheck.js";
 import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
+
+export const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases/latest";
+export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 /** One owner for update decisions. Dependencies keep native handoff and race tests deterministic. */
 export function createUpdateController({

@@ -2,8 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { createUpdateController } from "../lib/updateController.js";
-import { RELEASES_URL } from "../lib/updateCheck.js";
+import {
+  createUpdateController,
+  RELEASES_URL,
+  UPDATE_CHECK_INTERVAL_MS,
+} from "../lib/updateController.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { openExternalUrl } from "../ipc/openExternal.js";
 import { isTauri } from "../ipc/env.js";
@@ -12,7 +15,6 @@ import {
   commitGlobalOperation,
   prepareGlobalOperation,
 } from "../runtime/coordination.js";
-import { UPDATE_CHECK_INTERVAL_MS } from "./useUpdateCheck.js";
 
 export function useUpdateController({ preferences, startupEligible }) {
   const coordinator = useCoordinatorRole();
@@ -55,7 +57,15 @@ export function useUpdateController({ preferences, startupEligible }) {
     void controller.check(true);
     const timer = window.setInterval(() => void controller.check(true), UPDATE_CHECK_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [controller, coordinator, state.enabled, preferences?.autoCheck, preferences?.autoDownload]);
+  }, [controller, coordinator, state.enabled, preferences?.autoCheck]);
+  // Turning downloads on checks now so an available update can be staged; turning them off must
+  // not issue a request.
+  const autoDownloadWas = useRef(preferences?.autoDownload);
+  useEffect(() => {
+    const enabledNow = preferences?.autoDownload && !autoDownloadWas.current;
+    autoDownloadWas.current = preferences?.autoDownload;
+    if (enabledNow && coordinator && state.enabled) void controller.check(true);
+  }, [controller, coordinator, state.enabled, preferences?.autoDownload]);
 
   const target = state.ready ?? state.candidate ?? state.details?.target;
   return {

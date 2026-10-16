@@ -3208,10 +3208,6 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
-    "npm:@tauri-apps/plugin-updater@2.13.2": {
-      "license": "MIT OR Apache-2.0",
-      "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
-    },
     "npm:@types/debug@4.1.13": {
       "license": "MIT",
       "noticeSha256": "8469624993b251875348362d60b3b2a443d658de533b5ff438728dfa6101ef64"
