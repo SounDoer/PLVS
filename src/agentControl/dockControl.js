@@ -7,7 +7,9 @@ import {
   normalizeDockModuleControls,
   dockControlModuleIdForPanel,
 } from "../dock/dockModuleControls.js";
-import { getDockPanelSizing } from "../dock/dockPanelSizing.js";
+import { getDockPanelSizing, DOCK_MAX_PREFERRED_WIDTH } from "../dock/dockPanelSizing.js";
+import { settingsStore } from "../persistence/index.js";
+import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 import { readPublicPanelAnalysis } from "./panelAnalysis.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
@@ -16,6 +18,19 @@ import { planPublicPanelControlPatch } from "./panelControlPatch.js";
 
 const hasOwn = (value, /** @type {string} */ key) =>
   Object.prototype.hasOwnProperty.call(value, key);
+
+function panelSizing(dock, panel, context) {
+  return getDockPanelSizing(
+    panel.moduleId,
+    readPersistedInterfaceSize(),
+    !normalizePanelPresentation(settingsStore.read().panelPresentation).dock.hideAxesAndLabels,
+    {
+      controls: dock.controlsByPanelId?.[panel.id],
+      channelCount: context.channelCount,
+      height: dock.height,
+    }
+  );
+}
 const PUBLIC_DOCK_CONTROLS = Object.freeze({
   levelMeter: new Set([
     "mode",
@@ -340,14 +355,13 @@ export function compileDockLayout(dock, document, context = {}) {
       else if (entry.customTitle === null) delete panel.customTitle;
       else panel.customTitle = entry.customTitle.trim();
     }
-    const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
     if (hasOwn(entry, "width")) {
       // Any finite width in range, not just an integer: dragging the strip stores fractional CSS
       // pixels, so requiring integers here rejected the very document `dock.inspect` reports.
       if (
         !Number.isFinite(entry.width) ||
-        entry.width < sizing.minWidth ||
-        entry.width > sizing.maxPreferredWidth
+        entry.width < 1 ||
+        entry.width > DOCK_MAX_PREFERRED_WIDTH
       )
         issues.push(
           issue("outOfRange", `${path}.width`, "width is outside the module constraints.")
@@ -536,7 +550,7 @@ export function buildDockSnapshot(dock, context = {}) {
     panels: (dock.panelOrder ?? []).flatMap((panelId) => {
       const panel = dock.panelsById?.[panelId];
       if (!panel) return [];
-      const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
+      const sizing = panelSizing(dock, panel, context);
       const customTitle = panel.customTitle ?? null;
       const controls = normalizeDockModuleControls(
         dockControlModuleIdForPanel(panel),
@@ -558,6 +572,7 @@ export function buildDockSnapshot(dock, context = {}) {
           title: customTitle || MODULE_CATALOG[panel.moduleId]?.title || "Transport",
           customTitle,
           width: dock.panelSizesById?.[panel.id] ?? sizing.defaultWidth,
+          widthMode: dock.panelSizesById?.[panel.id] == null ? "automatic" : "preferred",
           controls: publicControls(panel, dock.controlsByPanelId?.[panel.id], context),
           ...(frequencyAxis ? { axes: { frequency: frequencyAxis } } : {}),
           analysis: panelAnalysis(dock, panel, context),
@@ -578,14 +593,15 @@ export function buildDockDescription(dock, context = {}) {
     edges: ["top", "bottom"],
     monitors: Array.isArray(context.monitors) ? context.monitors : [],
     modules: DOCK_PANEL_MODULE_IDS.map((moduleId) => {
-      const sizing = getDockPanelSizing(moduleId, readPersistedInterfaceSize());
       const panel = { id: moduleId, moduleId };
+      const sizing = panelSizing({ ...dock, controlsByPanelId: {} }, panel, context);
       const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[dockControlModuleIdForPanel(panel)];
       return {
         moduleId,
         title: MODULE_CATALOG[moduleId]?.title || "Transport",
         width: {
           min: sizing.minWidth,
+          preferredMin: 1,
           default: sizing.defaultWidth,
           maxPreferred: sizing.maxPreferredWidth,
           growth: sizing.growthPolicy,
@@ -766,11 +782,12 @@ export function buildDockPanelDescription(dock, panelId, context = {}) {
       issue: issue("controlsUnavailable", "$.panelId", "This Dock panel has no controls."),
     };
   }
-  const sizing = getDockPanelSizing(panel.moduleId, readPersistedInterfaceSize());
+  const sizing = panelSizing(dock, panel, context);
   return {
     panel,
     width: {
       min: sizing.minWidth,
+      preferredMin: 1,
       default: sizing.defaultWidth,
       maxPreferred: sizing.maxPreferredWidth,
       growth: sizing.growthPolicy,

@@ -20,9 +20,9 @@ describe("dock sizing", () => {
     expect(clampDockHeight(999)).toBe(999);
   });
 
-  it("falls back to the compact first-run height", () => {
-    expect(clampDockHeight(undefined)).toBe(56);
-    expect(clampDockHeight("tall")).toBe(56);
+  it("falls back to the expanded first-run height", () => {
+    expect(clampDockHeight(undefined)).toBe(180);
+    expect(clampDockHeight("tall")).toBe(180);
   });
 
   it("matches Rust's default Dock height", () => {

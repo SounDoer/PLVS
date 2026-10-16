@@ -9,6 +9,10 @@
   --ui-dock-toolbar-toggle-w: 20px;
 }
 
+.dock-panel-viewport {
+  scrollbar-width: thin;
+}
+
 @media (max-height: 63px) {
   .dock-strip {
     --ui-dock-pad-x: 5px;

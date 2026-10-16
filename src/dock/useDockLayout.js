@@ -233,21 +233,40 @@ export function useDockLayout() {
     [resetPanelControls]
   );
   const resizePanelPair = useCallback(
-    ({ leftPanelId, rightPanelId, leftWidth, rightWidth, delta, persist = true }) => {
+    ({
+      leftPanelId,
+      rightPanelId,
+      leftWidth,
+      rightWidth,
+      delta,
+      persist = true,
+      renderedWidths = null,
+      channelCount = 2,
+      automaticPanelIds = [],
+    }) => {
       const current = readDockState();
+      const bases = renderedWidths
+        ? normalizeDockPanelSizes(current.layout.panelsById, renderedWidths)
+        : current.layout.panelSizesById;
+      const resized = resizeDockPanelPair({
+        interfaceSize: readPersistedInterfaceSize(),
+        showAxes: !normalizePanelPresentation(settingsStore.read().panelPresentation).dock
+          .hideAxesAndLabels,
+        controlsByPanelId: current.controlsByPanelId,
+        channelCount,
+        panelSizesById: bases,
+        leftPanel: current.layout.panelsById[leftPanelId],
+        rightPanel: current.layout.panelsById[rightPanelId],
+        leftWidth,
+        rightWidth,
+        delta,
+      });
+      for (const id of automaticPanelIds) {
+        if (id !== leftPanelId && id !== rightPanelId) delete resized[id];
+      }
       const layout = {
         ...current.layout,
-        panelSizesById: resizeDockPanelPair({
-          interfaceSize: readPersistedInterfaceSize(),
-          showAxes: !normalizePanelPresentation(settingsStore.read().panelPresentation).dock
-            .hideAxesAndLabels,
-          panelSizesById: current.layout.panelSizesById,
-          leftPanel: current.layout.panelsById[leftPanelId],
-          rightPanel: current.layout.panelsById[rightPanelId],
-          leftWidth,
-          rightWidth,
-          delta,
-        }),
+        panelSizesById: resized,
       };
       if (persist) write({ ...current, layout });
       else setState({ ...current, layout });

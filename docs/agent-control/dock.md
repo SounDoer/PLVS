@@ -20,9 +20,13 @@ prepare the strip while the normal window is visible, but never enters or exits 
 
 `dock.describe` returns platform support, current option availability, the dynamic monitor choices,
 height constraints, the canonical module catalog, per-module width constraints, and the input
-schema for layout apply. Vectorscope width bounds follow the current Interface Size and match
-the strip resize constraints. Saved preferred widths are retained across text-size changes; the
-rendered strip still enforces the current readable minimum. It does not expose legacy persisted module IDs or React component details.
+schema for layout apply. Rendered minimum widths follow Interface Size, axis visibility, and
+for Level Meter the orientation and channel count. Per-panel descriptions use that panel's controls;
+the module catalog uses module defaults. Horizontal Level Meter has flexible growth.
+`width.min` describes the rendered minimum; `preferredMin` and `maxPreferred` bound accepted saved
+preferences. The upper bound is for serialization, not a screen-space cap. Preferences smaller
+than the current rendered minimum are accepted so a layout can round-trip across text sizes and
+channel configurations. It does not expose legacy persisted module IDs or React component details.
 Monitor inventory is read again for every describe, enter (including dry-run), and Preset apply
 request. A failed read returns `commandFailed` before mutation and is retried on the next request;
 a previous inventory is never used as a fallback. Monitor changes alone do not advance revision.
@@ -33,7 +37,7 @@ a previous inventory is never used as a fallback. Monitor changes alone do not a
 - `supported`, `enabled`, `edge`, resolved monitor, reserve-space setting, height, and read-only
   height mode (`compact`, `standard`, or `expanded`);
 - ordered Dock panels with ID, canonical module ID, resolved title, optional custom title, effective
-  width, complete public Dock controls, and compact analysis status;
+  preferred width, `widthMode` (`automatic` or `preferred`), complete public Dock controls, and compact analysis status;
 - read-only runtime state such as temporary suspension while the application window is hidden.
 
 Suspension, resize previews, accessory-window state, raw geometry, native window handles, and
@@ -84,6 +88,11 @@ current form and the caller should inspect before retrying.
 
 `dock layout apply` atomically replaces the ordered strip layout without changing whether Dock is
 enabled. Its document has one ordered `panels` array:
+
+Omitting a panel's `width` restores automatic sizing. Automatic Stats derives its preference from
+the selected readings, text size and Dock height; an explicit width selects manual sizing.
+Inspection reports the preference, not a viewport pixel measurement. The strip fits preferences
+without persisting those adjustments, and scrolls horizontally when its readable minimums cannot fit.
 
 ```json
 {

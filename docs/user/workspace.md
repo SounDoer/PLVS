@@ -111,14 +111,34 @@ readout or an icon-only Dock action for the same themed explanation shown in the
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
-and the new height is saved when you release the pointer. Height starts at 56 pixels and can grow
-beyond 160 pixels, up to the current display's available space minus room for the toolbar and editor.
+and the new height is saved when you release the pointer. Height starts at 180 CSS pixels, with
+room for four rows of expanded Stats. It can shrink to 56 pixels or grow up to the current display's
+available space minus room for the toolbar and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 
 Dock text follows **Interface Size**, using the same readout and label sizes as the normal
 workspace. Resizing the strip changes the available chart space and spacing, not the font size.
 The toolbar and panel settings also follow the selected text size. Stats adapts its columns and
 rows to the available space and text size, with scrolling when all selected readings cannot fit.
+Stats automatically requests enough width for its selected readings at the current height and
+text size. At the default text size and 180-pixel height, all 15 readings use a 440-pixel preference.
+Dragging a divider beside Stats sets a manual preference; double-click that divider to restore
+automatic sizing. A narrow display can still require vertical scrolling inside Stats.
+The initial layout places Level Meter, Loudness, Stats, Vectorscope, Waveform, Spectrogram,
+Spectrum and Stereo Map from left to right. Timeline and frequency plots share extra width equally;
+Level Meter joins them when its bars run horizontally. Vertical Level Meter and Vectorscope retain
+their preferred widths. There is no fixed 360-, 420-, or 960-pixel limit on widening a panel.
+
+The five time/frequency plots and horizontal Level Meter start with a 180-pixel minimum, increased
+for larger axis text. Vertical Level Meter reserves space for each channel's reading, and
+Vectorscope reserves its correlation ticks. Automatic Stats has priority when space is tight,
+but can shrink once other panels reach their minimums. If all minimums exceed the display width,
+the panel row scrolls horizontally; the toolbar button stays visible outside that row.
+
+Dragging a divider starts from the displayed widths and changes only the adjacent pair on screen.
+Double-clicking restores the pair's module defaults. Display and text-size changes fit saved
+preferences without overwriting them, so returning to a wider display restores the preferred
+layout. Saved layouts and heights keep their existing values; Reset Layout adopts the new defaults.
 
 Spectrum shares the normal panel's range zoom/pan, press-and-hold smoothing, and Max Hold
 contour-click reset. Grid, Peak Labels and hover readouts remain available at every Dock height. X/Y axes follow **Hide Axes & Labels** in Views.

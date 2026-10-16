@@ -8,6 +8,7 @@ import { getDockPanelSizing } from "./dockPanelSizing.js";
  *   rightPanel: any,
  *   leftBasis: number,
  *   rightBasis: number,
+ *   getResizeContext?: () => any,
  *   disabled?: boolean,
  *   onResize: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,
@@ -18,6 +19,7 @@ export function DockPanelResizeHandle({
   rightPanel,
   leftBasis,
   rightBasis,
+  getResizeContext,
   disabled = false,
   onResize,
   onReset,
@@ -29,6 +31,7 @@ export function DockPanelResizeHandle({
 
   const preferredWidths = () => {
     return {
+      ...getResizeContext?.(),
       leftWidth: leftBasis || leftSizing.defaultWidth,
       rightWidth: rightBasis || rightSizing.defaultWidth,
     };
@@ -50,7 +53,7 @@ export function DockPanelResizeHandle({
     const drag = dragRef.current;
     dragRef.current = null;
     if (handleRef.current) delete handleRef.current.dataset.dragging;
-    if (drag) emit(drag.latestDelta, true, drag.widths);
+    if (drag?.latestDelta) emit(drag.latestDelta, true, drag.widths);
   }
 
   return (
@@ -94,7 +97,7 @@ export function DockPanelResizeHandle({
         dragRef.current = null;
         if (handleRef.current) delete handleRef.current.dataset.dragging;
         event.currentTarget.releasePointerCapture?.(event.pointerId);
-        emit(drag.latestDelta, true, drag.widths);
+        if (drag.latestDelta) emit(drag.latestDelta, true, drag.widths);
       }}
       onPointerCancel={finishDrag}
       onLostPointerCapture={finishDrag}

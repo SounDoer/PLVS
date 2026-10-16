@@ -36,7 +36,6 @@ describe("DEFAULT_DOCK_PANEL_SIZES", () => {
     expect(DEFAULT_DOCK_PANEL_SIZES).toEqual({
       level: 150,
       loudness: 210,
-      stats: 370,
       correlation: 190,
       waveform: 260,
       spectrogram: 260,

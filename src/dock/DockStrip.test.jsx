@@ -1,13 +1,19 @@
 /** @vitest-environment jsdom */
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataContext.jsx";
 import { DockStrip } from "./DockStrip.jsx";
 
+let resizeStrip;
 beforeAll(() => {
   class ResizeObserverStub {
-    observe() {}
+    constructor(callback) {
+      this.callback = callback;
+    }
+    observe(element) {
+      if (element.getAttribute?.("aria-label") === "dock panels") resizeStrip = this.callback;
+    }
     disconnect() {}
     unobserve() {}
   }
@@ -158,9 +164,8 @@ describe("DockStrip", () => {
     }
   });
 
-  it("caps a flexible module's auto-grow at its preferred max width", () => {
-    // A lone flexible module (no persisted panelSizesById entry) among otherwise-fixed modules
-    // used to flex-grow unbounded to fill the whole strip; it must stop at maxPreferredWidth.
+  it("does not cap a flexible module at an arbitrary maximum", () => {
+    // Flexible plots can use a wide display even when only a few modules remain.
     renderStrip({
       panels: [
         { id: "levelMeter", moduleId: "levelMeter" },
@@ -168,7 +173,7 @@ describe("DockStrip", () => {
       ],
     });
     const [, spectrum] = screen.getAllByTestId("dock-module");
-    expect(spectrum.style.maxWidth).toBe("960px");
+    expect(spectrum.style.maxWidth).toBe("");
   });
 
   it("draws an accent frame around the module hovered in the editor", () => {
@@ -187,7 +192,7 @@ describe("DockStrip", () => {
     fireEvent.doubleClick(handle);
     expect(onHeightChange).toHaveBeenNthCalledWith(1, 76, { persist: true });
     expect(onHeightChange).toHaveBeenNthCalledWith(2, 56, { persist: true });
-    expect(onHeightChange).toHaveBeenNthCalledWith(3, 56, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(3, 180, { persist: true });
   });
 
   it("disables height resizing while an accessory editor is open", () => {
@@ -206,18 +211,20 @@ describe("DockStrip", () => {
     });
     fireEvent.keyDown(divider, { key: "ArrowRight" });
     fireEvent.doubleClick(divider);
-    expect(onPanelResize).toHaveBeenCalledWith({
-      leftPanelId: "levelMeter",
-      rightPanelId: "vectorscope",
-      leftWidth: 180,
-      rightWidth: 220,
-      delta: 4,
-      persist: true,
-    });
+    expect(onPanelResize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leftPanelId: "levelMeter",
+        rightPanelId: "vectorscope",
+        leftWidth: 180,
+        rightWidth: 220,
+        delta: 4,
+        persist: true,
+      })
+    );
     expect(onPanelResizeReset).toHaveBeenCalledWith("levelMeter", "vectorscope");
   });
 
-  it("resizes from preferred bases instead of flexible rendered widths", () => {
+  it("resizes from displayed widths after automatic expansion", () => {
     const onPanelResize = vi.fn();
     renderStrip({
       panels: [
@@ -228,6 +235,10 @@ describe("DockStrip", () => {
       onPanelResize,
     });
     const [spectrum, level] = screen.getAllByTestId("dock-module");
+    const viewport = screen.getByRole("region", { name: "dock panels" });
+    Object.defineProperty(viewport, "clientWidth", { value: 1400 });
+    act(() => resizeStrip());
+    expect(spectrum.style.flexBasis).toBe("1200px");
     vi.spyOn(spectrum, "getBoundingClientRect").mockReturnValue(
       /** @type {ReturnType<typeof spectrum.getBoundingClientRect>} */ ({ width: 1200 })
     );
@@ -249,21 +260,27 @@ describe("DockStrip", () => {
     fireEvent(divider, pointerEvent("pointermove", { pointerId: 1, clientX: 112 }));
     fireEvent(divider, pointerEvent("pointerup", { pointerId: 1, clientX: 112 }));
 
-    expect(onPanelResize).toHaveBeenNthCalledWith(1, {
-      leftPanelId: "spectrum",
-      rightPanelId: "levelMeter",
-      leftWidth: 600,
-      rightWidth: 200,
-      delta: 12,
-      persist: false,
-    });
-    expect(onPanelResize).toHaveBeenNthCalledWith(2, {
-      leftPanelId: "spectrum",
-      rightPanelId: "levelMeter",
-      leftWidth: 600,
-      rightWidth: 200,
-      delta: 12,
-      persist: true,
-    });
+    expect(onPanelResize).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        leftPanelId: "spectrum",
+        rightPanelId: "levelMeter",
+        leftWidth: 1200,
+        rightWidth: 200,
+        delta: 12,
+        persist: false,
+      })
+    );
+    expect(onPanelResize).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        leftPanelId: "spectrum",
+        rightPanelId: "levelMeter",
+        leftWidth: 1200,
+        rightWidth: 200,
+        delta: 12,
+        persist: true,
+      })
+    );
   });
 });

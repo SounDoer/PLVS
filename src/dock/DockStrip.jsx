@@ -1,5 +1,6 @@
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
-import { getDockPanelSizing } from "./dockPanelSizing.js";
+import { getDockPanelSizing, fitDockPanelWidths } from "./dockPanelSizing.js";
+import { useLayoutEffect, useRef, useState } from "react";
 import { usePanelChromeData, useHistoryData } from "../workspace/AudioDataContext.jsx";
 import { DOCK_MODULE_REGISTRY } from "./registry.jsx";
 import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
@@ -48,7 +49,43 @@ export function DockStrip({
   onToolbarToggle,
   recordingState = null,
 }) {
-  const showAxes = usePanelChromeData()?.hideAxesAndLabels !== true;
+  const chrome = usePanelChromeData();
+  const showAxes = chrome?.hideAxesAndLabels !== true;
+  const channelCount = chrome?.channelCount ?? 2;
+  const viewportRef = useRef(null);
+  const [availableWidth, setAvailableWidth] = useState(0);
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+    const measure = () => setAvailableWidth(viewport.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
+  const entries = panels.map((panel) => {
+    const sizing = getDockPanelSizing(panel.moduleId, interfaceSize, showAxes, {
+      controls: controls.controlsByPanelId?.[panel.id],
+      channelCount,
+      height,
+    });
+    return {
+      id: panel.id,
+      ...sizing,
+      preferredWidth: panelSizesById[panel.id] ?? sizing.defaultWidth,
+      autoStats: panel.moduleId === "stats" && panelSizesById[panel.id] == null,
+    };
+  });
+  const renderedWidths = fitDockPanelWidths(
+    entries,
+    availableWidth || entries.reduce((sum, entry) => sum + entry.preferredWidth, 0)
+  );
+  const resizeContext = () => ({
+    // Freeze current display geometry for the gesture, so untouched panels do not jump.
+    renderedWidths,
+    channelCount,
+    automaticPanelIds: entries.filter((entry) => entry.autoStats).map((entry) => entry.id),
+  });
   const heightMode = dockHeightMode(height);
   const history = useHistoryData();
   const isSnapshot = history?.selectedOffset >= 0;
@@ -71,14 +108,19 @@ export function DockStrip({
         onHeightChange={onHeightChange}
       />
       <div className="flex h-full min-w-0 items-stretch">
-        {/* Clipped so modules that cannot shrink further never cover the toolbar entry. */}
-        <div className="flex h-full min-w-0 flex-1 items-stretch overflow-hidden">
+        <div
+          ref={viewportRef}
+          tabIndex={0}
+          role="region"
+          aria-label="dock panels"
+          className="dock-panel-viewport flex h-full min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden"
+        >
           {panels.map((panel, index) => {
             const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
             const entry = DOCK_MODULE_REGISTRY[dockModuleId];
             if (!entry) return null;
             const { Component } = entry;
-            const basis = panelSizesById[panel.id] ?? entry.defaultWidth;
+            const basis = renderedWidths[panel.id];
             const nextPanel = panels[index + 1];
             const nextDockModuleId = nextPanel
               ? (dockModuleIdForPanelModuleId(nextPanel.moduleId) ?? nextPanel.moduleId)
@@ -96,9 +138,8 @@ export function DockStrip({
                   hoveredPanelId === panel.id && "relative z-10 ring-2 ring-inset ring-primary"
                 )}
                 style={{
-                  minWidth: getDockPanelSizing(panel.moduleId, interfaceSize, showAxes).minWidth,
-                  maxWidth: entry.maxPreferredWidth,
-                  flex: `${entry.growthPolicy === "flexible" ? 1 : 0} 1 ${basis}px`,
+                  minWidth: entries[index].minWidth,
+                  flex: `0 0 ${basis}px`,
                 }}
               >
                 <Component
@@ -114,7 +155,8 @@ export function DockStrip({
                     leftPanel={panel}
                     rightPanel={nextPanel}
                     leftBasis={basis}
-                    rightBasis={panelSizesById[nextPanel.id] ?? nextEntry.defaultWidth}
+                    rightBasis={renderedWidths[nextPanel.id]}
+                    getResizeContext={resizeContext}
                     disabled={panelResizeDisabled}
                     onResize={onPanelResize}
                     onReset={onPanelResizeReset}

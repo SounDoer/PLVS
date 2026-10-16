@@ -19,7 +19,6 @@ const FIRST_RUN_MODULES = [
 const FIRST_RUN_SIZES = {
   level: 150,
   loudness: 210,
-  stats: 370,
   correlation: 190,
   waveform: 260,
   spectrogram: 260,
@@ -200,13 +199,13 @@ describe("useDockLayout", () => {
     };
 
     act(() => result.current.resizePanelPair({ ...resize, persist: false }));
-    expect(result.current.panelSizesById).toMatchObject({ level: 204, loudness: 176 });
+    expect(result.current.panelSizesById).toMatchObject({ level: 200, loudness: 180 });
     expect(workspaceStore.read().dock).toBeUndefined();
 
     act(() => result.current.resizePanelPair({ ...resize, persist: true }));
     expect(workspaceStore.read().dock.panelSizesById).toMatchObject({
-      level: 204,
-      loudness: 176,
+      level: 200,
+      loudness: 180,
     });
   });
 

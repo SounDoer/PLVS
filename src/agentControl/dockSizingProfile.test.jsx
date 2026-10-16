@@ -11,7 +11,7 @@ const dock = {
 };
 
 describe("Dock Vector profile constraints", () => {
-  it("describes and validates the same active text-size bound", () => {
+  it("describes the rendered minimum while preserving smaller saved preferences", () => {
     try {
       settingsStore.patch({ interfaceSize: "small" });
       expect(buildDockPanelDescription(dock, "v").width.min).toBe(71);
@@ -21,7 +21,7 @@ describe("Dock Vector profile constraints", () => {
       settingsStore.patch({ interfaceSize: "extra-large" });
       expect(buildDockPanelDescription(dock, "v").width.min).toBe(96);
       expect(compileDockLayout(dock, { panels: [{ panelId: "v", width: 71 }] }, {}).issues).toEqual(
-        [expect.objectContaining({ code: "outOfRange" })]
+        []
       );
       expect(compileDockLayout(dock, { panels: [{ panelId: "v", width: 96 }] }, {}).issues).toEqual(
         []

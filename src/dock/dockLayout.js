@@ -36,12 +36,12 @@ export const DEFAULT_DOCK_MODULES = [
   "stereoMap",
 ];
 
-/// First-run preferred widths (CSS px) by first-run panel id: what the tuned strip showed on a
-/// 2048 px wide display, rounded to tens with the four history views equal.
+/// First-run preferred widths (CSS px). Reserve four readable Stats columns at the default
+/// Interface Size; timeline and frequency plots share the remaining strip width.
 export const DEFAULT_DOCK_PANEL_SIZES = Object.freeze({
   level: 150,
   loudness: 210,
-  stats: 370,
+  // Stats has no saved width until resized; its readable width follows height and text size.
   correlation: 190,
   waveform: 260,
   spectrogram: 260,

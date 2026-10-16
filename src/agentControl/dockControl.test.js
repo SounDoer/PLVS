@@ -29,6 +29,34 @@ const dock = {
 };
 
 describe("Dock Control", () => {
+  it("describes Level growth from its orientation and preserves width preferences", () => {
+    const context = { channelCount: 8 };
+    expect(buildDockPanelDescription(dock, "level", context).width.min).toBeGreaterThan(400);
+    const horizontal = planDockPanelPatch(dock, "level", { orientation: "left-to-right" }, context);
+    expect(horizontal.issues).toEqual([]);
+    expect(buildDockPanelDescription(horizontal.dock, "level", context).width).toMatchObject({
+      min: 180,
+      growth: "flexible",
+      preferredMin: 1,
+    });
+    expect(buildDockSnapshot(horizontal.dock).panels[0]).toMatchObject({
+      width: 220,
+      widthMode: "preferred",
+    });
+  });
+
+  it("distinguishes automatic widths and accepts wide preferences beyond the old caps", () => {
+    const manual = compileDockLayout(dock, { panels: [{ panelId: "level", width: 1400 }] });
+    expect(manual.issues).toEqual([]);
+    expect(buildDockSnapshot(manual.dock).panels[0]).toMatchObject({
+      width: 1400,
+      widthMode: "preferred",
+    });
+    const automatic = compileDockLayout(manual.dock, { panels: [{ panelId: "level" }] });
+    expect(automatic.issues).toEqual([]);
+    expect(buildDockSnapshot(automatic.dock).panels[0].widthMode).toBe("automatic");
+  });
+
   it("round-trips Stereo Map Grid through schema, patch, and read", () => {
     const current = {
       ...dock,
@@ -153,7 +181,8 @@ describe("Dock Control", () => {
     expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").width).toEqual({
       min: 180,
       default: 360,
-      maxPreferred: 960,
+      maxPreferred: 4294967295,
+      preferredMin: 1,
       growth: "flexible",
     });
     expect(
@@ -251,7 +280,7 @@ describe("Dock Control", () => {
 
     // Out of range is still out of range.
     expect(
-      compileDockLayout(dock, { panels: [{ panelId: "level", width: 139.5 }] }, {}).issues
+      compileDockLayout(dock, { panels: [{ panelId: "level", width: 0 }] }, {}).issues
     ).toEqual([expect.objectContaining({ code: "outOfRange", path: "$.panels[0].width" })]);
   });
 
