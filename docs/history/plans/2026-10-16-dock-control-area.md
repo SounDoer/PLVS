@@ -11,8 +11,10 @@ Related plan: [Update preferences](2026-10-16-update-preferences.md)
 
 This summary supersedes earlier execution checkpoints below. Windows signed, isolated offline
 upgrades, two-workbench restoration, Dock startup/skip/reopen, and 125%/200% display-scale checks
-have passed. Those results do not certify macOS, independent Windows text-size scaling, long-session
-clocks, or packaged installation failure/interruption recovery. Earlier unchecked items combine
+have passed. A signed installer returning exit code 42 also restored the old app/settings and
+suppressed automatic retry; current installed UI screenshots were captured from `aee74d40`.
+Those results do not certify macOS, independent Windows text-size scaling, long-session
+clocks, or recovery after partial replacement/forced interruption. Earlier unchecked items combine
 multiple scenarios; do not treat the whole item as either unimplemented or fully accepted.
 
 The later design review keeps update preferences at the bottom of Settings without a heading,

@@ -37,6 +37,7 @@ export function createUpdateController({
   let available = false;
   let lifetime = 0;
   let presentation = 0;
+  let failedAttempt = null;
   const emit = (patch) => {
     state = { ...state, ...patch, revision: state.revision + 1 };
     listeners.forEach((listener) => listener());
@@ -50,6 +51,7 @@ export function createUpdateController({
       const status = await invoke("update_status");
       if (requestLifetime !== lifetime) return;
       available = status.enabled === true;
+      failedAttempt = status.attempt?.phase === "failed" ? status.attempt : null;
       emit({
         initialized: true,
         enabled: available,
@@ -175,7 +177,10 @@ export function createUpdateController({
         presentation: ++presentation,
       },
       installStatus: "idle",
-      error: null,
+      error:
+        failedAttempt && (!failedAttempt.version || failedAttempt.version === target.version)
+          ? failedAttempt.error
+          : null,
     });
   }
 

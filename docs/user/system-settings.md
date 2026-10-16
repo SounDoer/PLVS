@@ -90,6 +90,7 @@ The startup offer never stops another workbench to gain permission: if a peer st
 confirm, installation is deferred. A manual update still uses the workbench-wide save and editor
 guards described above. New workbenches are prevented from opening while the confirmed installer
 owns the installation. Failed attempts do not automatically retry on the next launch.
+Reopening the failed version's update details shows the previous installation error.
 
 ## Global shortcut
 

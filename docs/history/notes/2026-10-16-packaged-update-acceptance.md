@@ -100,6 +100,34 @@ packages are acceptance tools, not stable or Preview releases; do not publish th
 
 ## Platform boundaries
 
+### Preference review and packaged failure probe
+
+Source `aee74d402b5ee98a2d44c86f9139944cb04379a4` was rebuilt as signed isolated
+0.21.0/0.21.1 installers. Actual installed first-launch, Settings, normal update details,
+and content-sized Dock details screenshots are `audit-first-launch.png`,
+`audit-settings-ready.png`, `audit-update-ready.png`, and `audit-dock-ready.png` under
+`artifacts/update-controls/`. The local feed recorded no request before preferences were saved.
+
+A separately signed NSIS fixture returned exit code 42 before replacing files. With the
+feed stopped after staging, the real application/helper handoff recorded a failed attempt,
+relaunched 0.21.0, retained the staged package, and suppressed the automatic startup offer.
+Settings and Dock state compare equal before/after. Evidence is
+`artifacts/update-controls/audit-failure-result.json` and the before/after inspections beside it.
+This does not certify recovery after partial filesystem replacement or forced interruption.
+
+The probe exposed a presentation defect: manually reopening details erased the previous
+installation error. A follow-up controller regression preserves that error for its target
+version, including after a background feed failure or dismissal, without attaching it to
+a different target. The installed screenshots above predate this small follow-up.
+
+The source gate passed 5,662 tests across 527 files and the complete repository check,
+including Rust. Standard debug binaries were restored after the isolated builds.
+The failure-explanation follow-up passed 5,663 tests across 527 files, frontend formatting,
+lint, and typecheck. The test app quit through its normal confirmation and the local feed
+was stopped; no owned acceptance window was left running.
+
+### Remaining platform evidence
+
 Windows evidence does not certify macOS bundle replacement, authorization
 cancellation, read-only installations, or native Dock focus/work-area behavior.
 Those require a Mac run before release. Automated recovery/peer/editor tests and

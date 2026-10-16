@@ -92,6 +92,33 @@ describe("shared update controller", () => {
     expect(controller.getSnapshot().details).toBeNull();
   });
 
+  it("retains the failed target's recovery explanation when manually reopened offline", async () => {
+    const { controller, invoke } = setup();
+    await controller.setPreferences(prefs);
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      freshSession: true,
+      ready: a,
+      attempt: {
+        version: a.version,
+        phase: "failed",
+        error: "Installer exited with exit code: 42.",
+      },
+    });
+    await controller.initialize({ eligible: true });
+    invoke.mockRejectedValueOnce(new Error("Feed offline"));
+    await controller.check(true);
+    controller.openDetails();
+    expect(controller.getSnapshot().error).toBe("Installer exited with exit code: 42.");
+    controller.dismissDetails();
+    controller.openDetails();
+    expect(controller.getSnapshot().error).toBe("Installer exited with exit code: 42.");
+    controller.dismissDetails();
+    controller.openDetails(b);
+    expect(controller.getSnapshot().error).toBeNull();
+  });
+
   it("refocuses existing details without replacing their target", async () => {
     const { controller, invoke } = setup();
     await controller.initialize();
