@@ -8,7 +8,7 @@ export const SHARESETS_MINIMUM_APP_VERSION = "0.20.0";
 // Record the FIRST stable release supporting a feature; never track the latest app version.
 // null is allowed during development, but blocks a stable release.
 export const SHARESETS_APP_FEATURES = {
-  panelOrientation: { minimumAppVersion: null, introducedAfter: "0.20.0" },
+  panelOrientation: { minimumAppVersion: "0.21.0", introducedAfter: "0.20.0" },
 };
 
 const validVersion = (value) =>

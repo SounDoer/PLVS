@@ -304,8 +304,9 @@ On narrow screens, **Menu** exposes the website navigation on both listing and d
 **Download** remains visible.
 
 Sharesets Items require PLVS 0.20.0 or later. The line beside the resource Release number shows its
-minimum app version. **Requires upcoming PLVS** means the saved content needs a feature that has
-not yet been assigned a stable release, such as the new panel orientation controls.
+minimum app version. Items that use panel orientation controls require PLVS 0.21.0 or later.
+**Requires upcoming PLVS** means the saved content needs a feature that has not yet been assigned a
+stable release.
 For **Meter Bridge**, Release 2 pairs horizontal Peak and RMS meters with vertical Momentary and
 Short-term meters. PLVS 0.20.0 users can download Release 1 from **Release History**.
 Resource releases track changes to the saved content. Refreshing screenshots for the current
@@ -376,8 +377,8 @@ Every package includes a `licenses` folder containing the third-party notices, t
 MIT License and the license texts referenced by the notices. Portable users can open that folder
 directly beside `plvs.exe`; in a macOS app bundle it is under `Contents/Resources/licenses`.
 
-Development builds after v0.20.0 also include `COMPONENT-NOTICES.txt` with the original dependency
-notices and version-specific source links, and `NATIVE-NOTICES.txt` for native libraries and models,
+From v0.21.0, packages also include `COMPONENT-NOTICES.txt` with the original dependency notices
+and version-specific source links, and `NATIVE-NOTICES.txt` for native libraries and models,
 including the corresponding FFmpeg source and build-script download. These additional files are
 not included in v0.20.0 packages. Third-party components retain their own licenses.
 

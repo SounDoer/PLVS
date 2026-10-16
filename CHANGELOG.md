@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-16
+
+### Added
+
+- Level Meter, Loudness, Spectrogram (Heatmap), and Waveform have a four-direction **Orientation**
+  setting. Level Meter chooses which way levels grow; the history panels choose which way time
+  moves. Each panel keeps its own choice in the workspace and Dock, and changing it preserves
+  history, the selected time, and linked time views.
+- **Views** adds **Hide Panel Headers** and **Hide Axes & Labels**, replacing Compact Panels. Dock
+  offers Hide Axes & Labels and remembers its own choice.
+- The Dock toolbar adds **Device** and **Views** menus. Views holds Dock Off / Top / Bottom and
+  **Reserve Space**.
+- Dock panels share the workspace charts and interactions: Spectrum range zoom and Max Hold reset,
+  Stereo Map gestures, Vectorscope Hold Slow and Polar Level Max Hold, and 2D and 3D Spectrogram at
+  every height. Time and Frequency Range link to the workspace by default.
+- Clicking a Dock plot enters a Snapshot shared by every Dock panel and opens the toolbar with its
+  return-to-Live action.
+- The footer's update link opens the release notes directly.
+- Packages include `COMPONENT-NOTICES.txt` and `NATIVE-NOTICES.txt` with the original third-party
+  notices and source links.
+
+### Changed
+
+- Dock text follows **Interface Size**. The strip starts at 180 px and can grow to the available
+  screen height; panels size to their content, and the default order is Stats, Level Meter,
+  Loudness, Waveform, Spectrogram, Spectrum, Stereo Map, Vectorscope. Reset Layout adopts these
+  defaults; saved layouts are kept.
+- The separate Dock Timecode module is removed; use the toolbar's Transport readout.
+- Level Meter channel labels sit in a shared axis rail. Vectorscope centres its plot and
+  correlation rail as one instrument.
+- Hover readouts share one layout in the workspace and Dock, and Loudness and Stereo Map readings
+  use the matching trace colours.
+- The **Meter Bridge** Preset on Sharesets moves to Release 2, which requires PLVS 0.21.0; PLVS
+  0.20.0 users can still download Release 1.
+
+### Fixed
+
+- Momentary Max and Short-term Max consider every window position, so a burst between two readings
+  counts in full (EBU Tech 3341 cases 13 and 14). Momentary and Short-term always measure their full
+  window, and LRA uses only complete 3 s windows.
+- Integrated has no value until 400 ms have been measured, as BS.1770 requires.
+- File analysis includes the samples after the last complete block in True Peak Max.
+- Spectrogram no longer shows flickering or transparent seams, and redraws in full when the Theme or
+  dB floor changes.
+- Presets exported from 0.20.0 import again when they contain removed Dock content, and Presets
+  that never captured panel presentation leave the current one unchanged.
+- With several workbenches open, only the coordinator offers a pending crash report. A workbench
+  that refuses Quit from the Tray comes to the front.
+- A pinned Dock toolbar stays on screen while Snapshot starts and ends.
+
 ## [0.20.0] - 2026-10-14
 
 ### Added
