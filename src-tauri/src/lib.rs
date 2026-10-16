@@ -511,6 +511,14 @@ pub fn run() {
         development_event_fixtures: cfg!(feature = "dev-identity"),
       });
 
+      // Install the broker before any webview can announce its frontend listener.
+      // Creating accessories can yield long enough for the main frontend to hydrate.
+      if cfg!(any(target_os = "windows", target_os = "macos"))
+        && (agent_control_enabled || !is_coordinator)
+      {
+        agent_control::toggle::start_at_launch(app.handle());
+      }
+
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
       let saved_bounds: Option<WindowBounds> = clean_active_preset_window_bounds(&presets)
@@ -664,12 +672,6 @@ pub fn run() {
           &app.state::<coordinator::InstanceRegistry>(),
           isolated_app_data.as_deref(),
         );
-      }
-
-      if cfg!(any(target_os = "windows", target_os = "macos"))
-        && (agent_control_enabled || !is_coordinator)
-      {
-        agent_control::toggle::start_at_launch(app.handle());
       }
 
       {

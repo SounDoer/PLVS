@@ -141,7 +141,12 @@ export function createUpdateController({
       }
     } catch (error) {
       if (!automatic || requestGeneration === generation) {
-        emit({ checkStatus: "unavailable", error: String(error) });
+        // A cached package remains installable offline. Background feed availability
+        // must not overwrite the frozen dialog's install/recovery error state.
+        emit({
+          checkStatus: "unavailable",
+          ...(!automatic || !state.details?.staged ? { error: String(error) } : {}),
+        });
       }
     } finally {
       checking = false;

@@ -39,6 +39,28 @@ function setup(overrides = {}) {
 }
 
 describe("shared update controller", () => {
+  it("keeps a staged startup offer installable when the background feed is offline", async () => {
+    const { controller, invoke } = setup();
+    await controller.setPreferences(prefs);
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      freshSession: true,
+      ready: a,
+    });
+    await controller.initialize({ eligible: true });
+    invoke.mockRejectedValueOnce(new Error("Feed offline"));
+    await controller.check(true);
+    expect(controller.getSnapshot()).toMatchObject({
+      checkStatus: "unavailable",
+      error: null,
+      details: { target: a, staged: true, origin: "startup" },
+    });
+    await controller.confirmInstall();
+    expect(invoke).not.toHaveBeenCalledWith("update_download", expect.anything());
+    expect(invoke).toHaveBeenCalledWith("update_commit_install", { token: "token" });
+  });
+
   it.each(["2.0.0", "1.9.0"])(
     "suppresses only the failed target's startup offer (%s)",
     async (version) => {

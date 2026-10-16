@@ -76,6 +76,8 @@ Downloaded updates are offered on a later fresh launch. **Skip This Time** or cl
 the package without installing it. Details keep their selected version even if another check
 finishes. If that package has been replaced or removed, confirmation fails safely and asks you to
 reopen details. A previously downloaded package can be installed without another network check.
+If a background check fails while those cached details are open, the offline installation remains
+available; the check failure does not replace the installation status in the dialog.
 
 The startup offer never stops another workbench to gain permission: if a peer starts before you
 confirm, installation is deferred. A manual update still uses the workbench-wide save and editor

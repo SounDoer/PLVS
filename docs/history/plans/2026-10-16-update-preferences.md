@@ -302,7 +302,7 @@ relaunched the isolated executable with its expected argument. Evidence is
 small relaunch-marker executable, not a packaged PLVS workspace. The first probe configuration
 with an empty endpoint list was rejected by updater construction before installation; a valid
 but unreachable endpoint proves the offline seam without bypassing config validation.
-No production signing key or installed stable app was used. This Windows end-to-end acceptance and
+No production signing key or installed stable app was used. At that checkpoint, Windows end-to-end acceptance and
 macOS bundle replacement, authorization cancellation, read-only installation, and native Dock checks
 remain open. This task's executable environment is Windows; no Mac execution surface is available.
 A release must keep those gates visible rather than infer success from unit tests.
@@ -317,3 +317,13 @@ local dependency's repository path instead of labeling all local crates as the V
 
 Final follow-up regression: 5,655 Vitest tests passed across 527 files, including late-listener
 cleanup and native-window fallback. Frontend format, lint and typecheck passed again.
+
+### Packaged Windows follow-up
+
+Real signed, isolated PLVS 0.21.0 → 0.21.1 NSIS upgrades now pass with the feed offline,
+including a path containing spaces, two-workbench restoration, and a separate Dock startup/skip/
+reopen/install run. Dock configuration and settings compare equal before and after the upgrade.
+The installed stable app remained untouched. See
+`../notes/2026-10-16-packaged-update-acceptance.md` for exact source identities, evidence, and
+startup defects found during this acceptance. macOS acceptance and packaged installer-failure
+injection remain outside this Windows success-path evidence.

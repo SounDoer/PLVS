@@ -273,3 +273,12 @@ in `final-regression.log` beside it.
 
 Final follow-up regression: 5,655 Vitest tests passed across 527 files, including late-listener
 cleanup and native-window fallback. Frontend format, lint and typecheck passed again.
+
+### Packaged Windows follow-up
+
+The combined real-package path now passes: stage in normal mode, quit from a 136 CSS px bottom
+Dock, reopen offline, skip the startup offer, reopen via the Dock icon, confirm installation,
+and restore the same Dock/settings in 0.21.1. The real installed build also fits at Windows
+200% scaling. Agent Control captures and before/after JSON comparisons are recorded in
+`../notes/2026-10-16-packaged-update-acceptance.md`. Native macOS behavior and a real long-session
+clock remain unverified; previous fixture checks are not substituted for those scenarios.
