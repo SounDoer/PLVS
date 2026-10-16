@@ -244,10 +244,11 @@ describe("LoudnessHistoryChart", () => {
     expect(container.querySelector("[data-timeline-latest-edge-hint]")).toBeNull();
   });
 
-  it("keeps the hover HUD compact without trace swatches", () => {
+  it.each([-1, 0])("colors the compact hover HUD for selected offset %s", (selectedOffset) => {
     render(
       <LoudnessHistoryChart
         {...baseProps}
+        selectedOffset={selectedOffset}
         loudnessHistoryVisibleLayerIds={["momentary", "shortTerm", "ref"]}
         historyHover={{
           leftPct: 30,
@@ -261,6 +262,9 @@ describe("LoudnessHistoryChart", () => {
 
     expect(screen.getByText("M")).toBeTruthy();
     expect(screen.getByText("ST")).toBeTruthy();
+    const suffix = selectedOffset >= 0 ? "-snap" : "";
+    expect(screen.getByText("M").style.color).toBe(`var(--ui-loudness-momentary${suffix})`);
+    expect(screen.getByText("ST").style.color).toBe(`var(--ui-loudness-shortterm${suffix})`);
     expect(screen.queryByLabelText("Momentary trace")).toBeNull();
     expect(screen.queryByLabelText("Short-term trace")).toBeNull();
   });

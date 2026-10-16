@@ -1,3 +1,7 @@
+import { ChartHoverHud } from "./ChartHoverHud.jsx";
+import { resolveColors, segmentColor } from "../../lib/stereoMapColors.js";
+import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useMemo, useRef } from "react";
 import {
@@ -164,6 +168,11 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
   const holdVisible = normalizedPanelControls.stereoMapHold;
   const stereoMapKey = stereoMapRequestKeyFromControls(panelControls);
   const isSnapshot = selectedOffset >= 0;
+  const themeColors = useResolvedTheme(selectStereoMapCanvasColors);
+  const hoverColors = useMemo(
+    () => resolveColors(themeColors, isSnapshot ? "snap" : "live"),
+    [themeColors, isSnapshot]
+  );
   // channelCount is 0 before capture has reported real device info (see appRuntimeDerivations.js) —
   // that's "not started yet", not a mono device, so it must fall through to the normal empty chart
   // rather than the mono message.
@@ -328,13 +337,8 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
             })
         : null;
       return {
+        index,
         leftPct: rangedFreqToXFrac(hz, xMinHz, xMaxHz) * 100,
-        topPct:
-          rangedFromTopFrac(
-            point.state === "invalid" ? 0 : point.value,
-            range.lowerBound,
-            range.upperBound
-          ) * 100,
         freqLabel: formatSpectrumFreq(hz),
         valueLabel: formatStereoMapValue(mode, point, { firstLabel, secondLabel }),
         holdLabel,
@@ -486,6 +490,7 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
 
   return (
     <div
+      data-chart-hud-boundary
       className={cn(
         !fitContainer && PANEL_MIN_SPECTRUM,
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
@@ -572,28 +577,40 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
               {stereoMapHover ? (
                 <div className="pointer-events-none absolute inset-0 z-10">
                   <ChartCrosshair leftPct={stereoMapHover.leftPct} />
-                  <div
-                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-stereo-map-primary)]"
-                    style={{ left: `${stereoMapHover.leftPct}%`, top: `${stereoMapHover.topPct}%` }}
-                  />
-                  <div
-                    className={cn(
-                      "absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] max-w-full rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]",
-                      !showAxes && "flex flex-wrap gap-x-2 text-[length:var(--ui-fs-axis)]"
-                    )}
-                  >
+                  <ChartHoverHud>
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {stereoMapHover.freqLabel}
                     </div>
-                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                    <div
+                      className="font-[family-name:var(--ui-font-mono)] tabular-nums"
+                      style={{
+                        color:
+                          points[stereoMapHover.index]?.state === "invalid" ||
+                          !Number.isFinite(points[stereoMapHover.index]?.value)
+                            ? undefined
+                            : segmentColor(
+                                mode,
+                                points[stereoMapHover.index].value,
+                                range,
+                                hoverColors,
+                                normalizedPanelControls.stereoMapColorBlendPercent
+                              ),
+                      }}
+                    >
                       {stereoMapHover.valueLabel}
                     </div>
                     {stereoMapHover.holdLabel ? (
-                      <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      <div
+                        className="font-[family-name:var(--ui-font-mono)] tabular-nums"
+                        style={{
+                          color:
+                            stereoMapHover.holdLabel === "-" ? undefined : hoverColors.primaryCss,
+                        }}
+                      >
                         Max hold: {stereoMapHover.holdLabel}
                       </div>
                     ) : null}
-                  </div>
+                  </ChartHoverHud>
                 </div>
               ) : null}
             </div>

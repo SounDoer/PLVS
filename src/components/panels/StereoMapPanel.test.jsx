@@ -472,6 +472,11 @@ describe("StereoMapPanel", () => {
 
     // Band 0 (100 Hz) is near the left edge; Position there is 0% (equal energy).
     expect(container.textContent).toContain("0%");
+    expect(
+      container
+        .querySelector("[data-chart-hover-hud]")
+        .parentElement.hasAttribute("data-chart-hud-boundary")
+    ).toBe(true);
     // The energy readout is gone on purpose: history stores how visible a band is, not how much
     // energy it carries, so there is no dB value left to report here. Spectrum's HUD is where a
     // band's level is read now.

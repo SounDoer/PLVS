@@ -1,3 +1,4 @@
+import { ChartHoverHud } from "./ChartHoverHud.jsx";
 import { panelOrientation, orientationSvgTransform } from "../../math/panelOrientation.js";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
@@ -571,6 +572,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
 
   return (
     <div
+      data-chart-hud-boundary
       className={cn(
         !fitContainer && PANEL_MIN_SPECTROGRAM,
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
@@ -722,7 +724,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
                     }
                   />
                   {/* Popover */}
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+                  <ChartHoverHud>
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrogramHover.timeLabel}
                     </div>
@@ -740,7 +742,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
                         {spectrogramHover.markerNoteLabel}
                       </div>
                     ) : null}
-                  </div>
+                  </ChartHoverHud>
                 </div>
               )}
             </div>

@@ -1,3 +1,4 @@
+import { ChartHoverHud } from "./ChartHoverHud.jsx";
 import { panelOrientation, orientationSvgTransform } from "../../math/panelOrientation.js";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { WAVEFORM_FILL_OPACITY } from "@/lib/chartFill.js";
@@ -428,6 +429,7 @@ function WaveformPanelContent({
 
   return (
     <div
+      data-chart-hud-boundary
       className={cn(
         !fitContainer && PANEL_MIN_WAVEFORM,
         "@container relative flex min-h-0 flex-1 flex-col gap-[var(--ui-chart-axis-gap)] overflow-hidden",
@@ -511,7 +513,7 @@ function WaveformPanelContent({
               }
             />
             {/* Popover */}
-            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
+            <ChartHoverHud channelOverflow>
               <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                 {waveformHover.timeLabel}
               </div>
@@ -523,7 +525,7 @@ function WaveformPanelContent({
                   </span>
                 </div>
               ))}
-            </div>
+            </ChartHoverHud>
           </div>
         )}
 

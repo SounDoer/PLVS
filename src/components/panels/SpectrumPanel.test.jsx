@@ -440,6 +440,8 @@ describe("SpectrumPanel", () => {
     );
 
     expect(screen.getByText("0.0 dB")).toBeTruthy();
+    const hud = screen.getByText("0.0 dB").closest("[data-chart-hover-hud]");
+    expect(hud.parentElement.hasAttribute("data-chart-hud-boundary")).toBe(true);
   });
 
   it("captures the current snapshot when left-clicking the chart with history data", () => {

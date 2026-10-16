@@ -1,3 +1,4 @@
+import { ChartHoverHud } from "./ChartHoverHud.jsx";
 import { panelOrientation, orientationSvgTransform } from "../../math/panelOrientation.js";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -26,9 +27,6 @@ import {
 const LOUDNESS_Y_VIEWPORT = { absMin: -64, absMax: 0, minSpan: 12, scale: "linear" };
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
-
-const LOUDNESS_HUD_BOX_POPOVER =
-  "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]";
 
 /**
  * @param {{
@@ -303,9 +301,10 @@ export function LoudnessHistoryChart({
 
   return (
     <div
+      data-chart-hud-boundary
       className={cn(
         !showAxes && "!grid-cols-1 !grid-rows-[minmax(0,1fr)]",
-        "grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
+        "relative grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
       )}
     >
       {/* Y-axis labels */}
@@ -480,16 +479,11 @@ export function LoudnessHistoryChart({
             }
           />
           {historyHover ? (
-            <div
-              className={cn(
-                "absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)]",
-                LOUDNESS_HUD_BOX_POPOVER
-              )}
-            >
+            <ChartHoverHud>
               <div>
                 <span className={METRIC_NUMERIC}>{historyHover.offsetLabel}</span>
               </div>
-              <div>
+              <div style={{ color: mStrokeNormal }}>
                 M{" "}
                 <span className={METRIC_NUMERIC}>
                   {historyHover.momentary != null
@@ -497,7 +491,7 @@ export function LoudnessHistoryChart({
                     : "-"}
                 </span>
               </div>
-              <div>
+              <div style={{ color: stStrokeNormal }}>
                 ST{" "}
                 <span className={METRIC_NUMERIC}>
                   {historyHover.shortTerm != null
@@ -505,7 +499,7 @@ export function LoudnessHistoryChart({
                     : "-"}
                 </span>
               </div>
-            </div>
+            </ChartHoverHud>
           ) : null}
           <LoudnessLayoutMarker
             known={loudnessLayoutKnown}

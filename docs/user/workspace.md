@@ -136,6 +136,17 @@ Vectorscope reserves its correlation ticks. Automatic Stats has priority when sp
 but can shrink once other panels reach their minimums. If all minimums exceed the display width,
 the panel row scrolls horizontally; the toolbar button stays visible outside that row.
 
+Hover readouts use the same layout rules in Dock and the workspace. They appear above axes with
+an opaque background. Short panels arrange fields horizontally and wrap whole readings when
+needed. If space is still insufficient, lower-priority details are omitted with an ellipsis;
+Waveform reports the number of omitted channels. Text size stays unchanged, and hover readouts
+do not introduce their own scrollbar or intercept chart gestures.
+Loudness hover readings use the matching Momentary and Short-term trace colors, including their
+snapshot colors when inspecting a snapshot.
+Stereo Map hover values follow the curve's mode-specific colors, while Max Hold follows the
+hold line's primary color. Frequency and unavailable readings stay neutral. Spectrum and Stereo
+Map use crosshairs and readouts without an extra hover dot.
+
 Dragging a divider starts from the displayed widths and changes only the adjacent pair on screen.
 Double-clicking restores the pair's module defaults. Display and text-size changes fit saved
 preferences without overwriting them, so returning to a wider display restores the preferred

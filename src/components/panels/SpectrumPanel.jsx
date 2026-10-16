@@ -1,3 +1,4 @@
+import { ChartHoverHud } from "./ChartHoverHud.jsx";
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { SPECTRUM_FILL_TOP, SPECTRUM_FILL_BOTTOM } from "@/lib/chartFill.js";
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -789,6 +790,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
 
   return (
     <div
+      data-chart-hud-boundary
       className={cn(
         !fitContainer && PANEL_MIN_SPECTRUM,
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]",
@@ -1031,25 +1033,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
               {spectrumHover && !chartDragging ? (
                 <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
                   <ChartCrosshair leftPct={spectrumHover.leftPct} topPct={spectrumHover.topPct} />
-                  {spectrumHover.topPct != null ? (
-                    <div
-                      className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-spectrum-primary)]"
-                      style={{
-                        left: `${spectrumHover.leftPct}%`,
-                        top: `${spectrumHover.topPct}%`,
-                        backgroundColor:
-                          selectedOffset >= 0
-                            ? "var(--ui-spectrum-primary-snap)"
-                            : "var(--ui-spectrum-primary)",
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className={cn(
-                      "absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]",
-                      !showAxes && "right-[var(--ui-chart-hud-inset)] flex flex-wrap gap-x-2"
-                    )}
-                  >
+                  <ChartHoverHud>
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}
                     </div>
@@ -1084,7 +1068,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.noteLabel}
                     </div>
-                  </div>
+                  </ChartHoverHud>
                 </div>
               ) : null}
             </div>

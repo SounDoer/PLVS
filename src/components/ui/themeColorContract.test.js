@@ -67,10 +67,8 @@ describe("theme color contract", () => {
       "utf8"
     );
     const consumers = [
-      "../panels/LoudnessHistoryChart.jsx",
-      "../panels/SpectrogramPanel.jsx",
+      "../panels/ChartHoverHud.jsx",
       "../panels/SpectrumPanel.jsx",
-      "../panels/StereoMapPanel.jsx",
       "../panels/WaveformPanel.jsx",
       "../panels/LevelMeterPanel.jsx",
       "../../lib/shellLayout.js",
@@ -81,6 +79,11 @@ describe("theme color contract", () => {
     for (const path of consumers) {
       expect(readFileSync(new URL(path, import.meta.url), "utf8"), path).toContain(
         "--ui-text-annotation"
+      );
+    }
+    for (const panel of ["LoudnessHistoryChart", "SpectrogramPanel", "StereoMapPanel"]) {
+      expect(readFileSync(new URL(`../panels/${panel}.jsx`, import.meta.url), "utf8")).toContain(
+        "<ChartHoverHud>"
       );
     }
   });
@@ -177,7 +180,10 @@ describe("theme color contract", () => {
     const stereoMap = readFileSync(new URL("../panels/StereoMapPlot.jsx", import.meta.url), "utf8");
     expect(loudness).toContain("var(--ui-loudness-grid)");
     expect(spectrum).toContain("var(--ui-spectrum-grid)");
-    expect(stereoMap).toContain("themeColors.grid");
+    expect(stereoMap).toContain("resolveColors(themeColors, paletteKey)");
+    expect(
+      readFileSync(new URL("../../lib/stereoMapColors.js", import.meta.url), "utf8")
+    ).toContain("themeColors.grid");
   });
 
   it("keeps timeline Selection ownership local to each module", () => {

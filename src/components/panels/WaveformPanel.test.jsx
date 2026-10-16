@@ -691,6 +691,8 @@ describe("WaveformPanel", () => {
       })
     );
     expect(screen.getByText("-6.0 dBFS")).toBeTruthy();
+    const hud = screen.getByText("-6.0 dBFS").closest("[data-chart-hover-hud]");
+    expect(hud.parentElement.hasAttribute("data-chart-hud-boundary")).toBe(true);
 
     rerender(
       waveformPanelTree({
