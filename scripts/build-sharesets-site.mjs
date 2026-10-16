@@ -1,8 +1,4 @@
-import {
-  presetExtraDetails,
-  presetPanels,
-  presetUsesPanelOrientation,
-} from "./preset-presentation.mjs";
+import { presetExtraDetails, presetPanels } from "./preset-presentation.mjs";
 import { MODULE_CATALOG } from "../src/workspace/moduleCatalog.js";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
@@ -16,6 +12,7 @@ import {
   profileDetails,
 } from "./site-components.mjs";
 import { readSharesetsSource } from "./sharesets-catalogue-source.mjs";
+import { sharesetsAppRequirement } from "./sharesets-app-compatibility.mjs";
 
 const FAMILIES = {
   loudness: { label: "Loudness Profiles", singular: "Loudness Profile" },
@@ -24,10 +21,6 @@ const FAMILIES = {
 };
 
 const COPY_NOUNS = { loudness: "Profile", presets: "Preset", themes: "Theme" };
-// Sharesets launched with 0.20.0 and supports no earlier app: some Items need its metric ids, and
-// earlier apps answer a pasted Preset or Profile with a Theme error. Newer saved controls may
-// require a newer build; do not present this launch floor as sufficient for those Presets.
-const SHARESETS_MINIMUM_APP_VERSION = "0.20.0";
 
 const THEME_GALLERY_ORDER = [
   "product-workspace-file",
@@ -271,10 +264,7 @@ function detailPage(listing, profile = null) {
       ? `/sharesets/files/${listing.id}/v${current.number}/${basename(current.artifact)}`
       : null;
   const copyNoun = COPY_NOUNS[listing.type];
-  const appRequirement =
-    isPreset && presetUsesPanelOrientation(listing.presetPack)
-      ? "Requires a PLVS build with panel orientation controls, introduced after 0.20.0."
-      : `Requires PLVS ${SHARESETS_MINIMUM_APP_VERSION}+`;
+  const appRequirement = sharesetsAppRequirement(isPreset ? listing.presetPack : null);
   const primaryAction = isIncluded
     ? `<div class="actions"><span class="included-label">Included with PLVS</span></div>`
     : current

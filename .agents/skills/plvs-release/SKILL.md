@@ -396,9 +396,9 @@ fast version / CHANGELOG / Theme compatibility / git / tag check.
 Portable Theme files carry a contract, `formatVersion:semanticsVersion` (for
 example `1:4`). `SHARESETS_THEME_COMPATIBILITY` in
 `src/theme/sharesetsThemePresentation.js` records, per contract, the first PLVS
-version able to read it. Sharesets pages do not print it: every page states the one
-Sharesets floor, `SHARESETS_MINIMUM_APP_VERSION` in `scripts/build-sharesets-site.mjs`.
-Raise that floor when a release ships a contract older apps cannot read. During development a new contract may sit in that table with
+version able to read it. Sharesets pages use the launch floor and feature-specific requirements
+in `scripts/sharesets-app-compatibility.mjs`. Review those when shipping a contract older apps cannot
+read. During development a new contract may sit in the Theme table with
 `minimumAppVersion: null`, because nobody knows yet which version will ship it.
 
 The release-state check fails when the contract the app currently writes has no
@@ -415,6 +415,19 @@ When it fails:
 
 The check only proves that a plausible version is on record, not that it is the
 right one. Never fill in a guess to get past it.
+
+### Sharesets Feature Requirements
+
+`SHARESETS_APP_FEATURES` in `scripts/sharesets-app-compatibility.mjs` records the first stable version
+that supports each tracked saved-content feature. A `null` minimum is allowed during development:
+affected pages display `Requires upcoming PLVS`. Both the local release-state check and the Release
+workflow refuse publication until each feature has a valid minimum version no newer than the release.
+Set the version only after verifying which release first includes the feature. Keep that minimum
+unchanged in subsequent releases; do not replace it with the latest app version.
+
+After registration, the site builder renders `Requires PLVS x.y.z+` automatically. The release
+workflow dispatches website deployment after publishing the desktop release; verify that deployment
+succeeds. Existing static pages do not update merely because a GitHub Release was published.
 
 ### Capture Smoke
 

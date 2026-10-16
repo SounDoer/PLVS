@@ -101,6 +101,7 @@ jobs:
       - name: Verify version and changelog
         run: |
           node scripts/verify-versions.mjs
+          node scripts/sharesets-app-compatibility.mjs
           actual=$(node -p "require('./package.json').version")
           if [[ "$actual" != "$VERSION" ]]; then
             echo "package version ${actual} does not match requested version ${VERSION}" >&2

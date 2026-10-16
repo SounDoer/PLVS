@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { checkThemeCompatibilityRegistered } from "./theme-compatibility-registered.mjs";
+import { checkSharesetsAppCompatibility } from "./sharesets-app-compatibility.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 let ok = true;
@@ -65,6 +66,10 @@ if (idx === -1) {
 console.log("\nChecking theme compatibility...");
 const themeCompatibility = checkThemeCompatibilityRegistered({ appVersion: version });
 (themeCompatibility.ok ? pass : fail)(themeCompatibility.message);
+
+console.log("\nChecking Sharesets app compatibility...");
+const sharesetsCompatibility = checkSharesetsAppCompatibility({ appVersion: version });
+(sharesetsCompatibility.ok ? pass : fail)(sharesetsCompatibility.message);
 
 console.log("\nChecking git status...");
 try {

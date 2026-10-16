@@ -303,8 +303,9 @@ detail page, release history appears last, after all resource information and se
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
 **Download** remains visible.
 
-Sharesets Items require PLVS 0.20.0 or later. Presets that save panel orientation controls require
-a newer build with those controls; their **How to Use** section states that requirement instead.
+Sharesets Items require PLVS 0.20.0 or later. The line beside the resource Release number shows its
+minimum app version. **Requires upcoming PLVS** means the saved content needs a feature that has
+not yet been assigned a stable release, such as the new panel orientation controls.
 For **Meter Bridge**, Release 2 pairs horizontal Peak and RMS meters with vertical Momentary and
 Short-term meters. PLVS 0.20.0 users can download Release 1 from **Release History**.
 Resource releases track changes to the saved content. Refreshing screenshots for the current
