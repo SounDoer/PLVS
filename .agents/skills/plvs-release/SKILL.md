@@ -341,6 +341,14 @@ Insert new section after `## [Unreleased]`, before the latest released version.
 
 ## Step 4b: Public documentation and privacy review
 
+Follow **Release public-content review** in `CONTRIBUTING.md`. Review all four surfaces against
+the complete stable-release range and collect concrete evidence. After committing the finished
+candidate in Step 5, run `npm run release:content:snapshot`, complete the pending decisions in
+`docs/release-content-review.json`, run `npm run release:content:check` and the required pre-commit
+checks, then commit the record before Step 6. Both local preflight and remote Release validation
+reject missing, incomplete or stale records. Any candidate change other than the record itself
+requires renewed review; never refresh its fingerprint without reviewing the change.
+
 Reconcile user-visible changes against `docs/user/`, README highlights and the website as described
 in the workflow overview. Also follow **Privacy policy review** in `CONTRIBUTING.md`: inspect the
 complete release range for changes to data collection, consent, payloads, recipients/providers,

@@ -30,6 +30,7 @@ function run(label, command, args) {
 }
 
 run("Release state", "node", ["scripts/check-release-state.mjs"]);
+run("Public content review", "node", ["scripts/release-content-review.mjs", "check"]);
 run("Full repository check", npm, ["run", "check"]);
 run("Corresponding-source availability", npm, ["run", "licenses:sources"]);
 

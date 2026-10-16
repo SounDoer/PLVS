@@ -488,6 +488,37 @@ npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; nee
 
 The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance runs take an exclusive lease, `plvs-capture-rig.lock` in the Git common directory, before starting the test tone. While another run holds it, a run fails with exit 2 and names the holder; add `--wait` to queue instead. A lease left by a killed run is removed automatically once its process is gone. There is no way to take a live lease ([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)).
 
+## Release public-content review
+
+Every stable desktop release requires `docs/release-content-review.json`. This is the latest
+review record; git retains previous records. Ordinary development CI does not require a fresh
+record. Both `release:preflight` and the remote Release validation job enforce it before builds.
+
+1. Fetch full history and tags. Review the complete range from the latest reachable stable
+   `vX.Y.Z` tag to the candidate, including implementation changes, not just documentation diffs.
+   Reconcile `docs/user/`, README highlights, website copy and screenshots. Inspect the current
+   images against the shipping UI and retake affected screenshots when appearance changes.
+2. Finish the version bump, CHANGELOG and content changes, run the required pre-commit checks,
+   and commit the candidate. Run `npm run release:content:snapshot`. This read-only command prints
+   a template with pending decisions; it never approves anything or overwrites an existing review.
+3. Save the template as `docs/release-content-review.json`. For each of `userGuide`, `readme`,
+   `website` and `screenshots`, set `status` to `updated` or `unchanged`, explain `rationale`, and
+   supply a nonempty `evidence` array identifying the paths, comparisons or screenshots inspected.
+   An unchanged surface still needs a concrete reason. Do not merely replace a stale fingerprint.
+4. Run `npm run release:content:check`, then the required pre-commit checks and commit the record.
+   Run the full `npm run release:preflight` before pushing and dispatching the exact final SHA.
+
+The record binds the version, baseline tag and commit, reviewed candidate commit and a fingerprint
+of the entire tracked candidate tree, including file modes and asset bytes. Only the review record
+itself is excluded to avoid a circular fingerprint when committing it. Any other tracked change
+requires renewed review; this deliberately includes implementation changes that can make unchanged
+screenshots or prose obsolete. Uncommitted candidate changes, shallow history and missing stable
+baselines fail closed. The remote checkout fetches full history and tags.
+
+This gate ensures review decisions are present and current; it cannot prove prose is accurate or
+that someone actually inspected an image. It does not replace the privacy review below, real-device
+smoke tests, or verification that the subsequent website deployment succeeded.
+
 ## Privacy policy review
 
 `website/privacy/index.html` is the policy source. `docs/privacy-review.json` is the latest

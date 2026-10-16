@@ -107,6 +107,11 @@ highlights, the website homepage and its screenshots are summaries, reconciled a
 `.agents/skills/plvs-release` Step 4b. `docs/prd.md` states intent and boundaries; a new capability reaches
 it only when it changes a promise or a non-goal.
 
+Stable releases require a current `docs/release-content-review.json` covering the guide, README,
+website and screenshots. Follow "Release public-content review" in `CONTRIBUTING.md`; local
+preflight and remote Release validation reject absent, incomplete or stale records. Snapshotting
+content does not perform or approve the review.
+
 Facts the code owns — panels, auto-detected layouts, the macOS minimum version, release package
 names, `plvs-cli` commands — are checked against the code by `scripts/documentationStructure.test.js`.
 Extend those checks instead of adding tests that assert sentences.

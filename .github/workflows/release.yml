@@ -96,7 +96,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Require current public content review
+        run: node scripts/release-content-review.mjs check
 
       - name: Verify version and changelog
         run: |
