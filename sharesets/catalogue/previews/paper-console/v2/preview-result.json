@@ -1,0 +1,71 @@
+{
+  "resultVersion": 1,
+  "renderer": {
+    "name": "plvs-theme-gallery",
+    "version": 1
+  },
+  "contentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
+  "fixtureHash": "sha256:4d5825c4504bb0017c0ad978767aae7af40b9e694422093e70223d2c2af76b91",
+  "assets": [
+    {
+      "id": "product-workspace-file",
+      "path": "product-workspace-file.png",
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 800,
+      "byteLength": 328418,
+      "sha256": "sha256:90d74076e90187d5f30849ce0f71193bb60fb58dcd2de3b3040b16676ef1eb45",
+      "source": {
+        "generator": "plvs-theme-gallery",
+        "contractVersion": 1,
+        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
+        "fixtureHash": "sha256:4d5825c4504bb0017c0ad978767aae7af40b9e694422093e70223d2c2af76b91"
+      }
+    },
+    {
+      "id": "product-multichannel-monitoring",
+      "path": "product-multichannel-monitoring.png",
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 800,
+      "byteLength": 174211,
+      "sha256": "sha256:9d87c82dadbe678df00b9ec3c653af636e89d20c19c31b387160495b320612f5",
+      "source": {
+        "generator": "plvs-theme-gallery",
+        "contractVersion": 1,
+        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
+        "fixtureHash": "sha256:4d5825c4504bb0017c0ad978767aae7af40b9e694422093e70223d2c2af76b91"
+      }
+    },
+    {
+      "id": "product-workspace-snapshot",
+      "path": "product-workspace-snapshot.png",
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 800,
+      "byteLength": 318541,
+      "sha256": "sha256:57c61b98d4cf0e89505b65d3f5f4dd5fd9a5937faefc5fc19996fecedd91de84",
+      "source": {
+        "generator": "plvs-theme-gallery",
+        "contractVersion": 1,
+        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
+        "fixtureHash": "sha256:4d5825c4504bb0017c0ad978767aae7af40b9e694422093e70223d2c2af76b91"
+      }
+    },
+    {
+      "id": "semantic-overview",
+      "path": "semantic-overview.png",
+      "mediaType": "image/png",
+      "width": 1392,
+      "height": 523,
+      "byteLength": 55980,
+      "sha256": "sha256:eced7563581838d1bd04dad3013e3e6ea0f0e524049f3ae87c06adf99eac949d",
+      "source": {
+        "generator": "plvs-theme-gallery",
+        "contractVersion": 1,
+        "themeContentHash": "sha256:f8c629db79a82981d217b5b3dc0d0f350670a355d43edd90e9e624c45abe5b2b",
+        "fixtureHash": "sha256:4d5825c4504bb0017c0ad978767aae7af40b9e694422093e70223d2c2af76b91"
+      }
+    }
+  ]
+}

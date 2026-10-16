@@ -7,7 +7,12 @@
   "title": "Paper Console",
   "summary": "A warm paper theme with graphite structure, field green data, and red-pencil annotations.",
   "descriptionMarkdown": "Paper Console gives PLVS the character of a precisely printed control surface. Warm paper tones and graphite structure keep the workspace calm, field green carries primary measurements, and red-pencil accents separate secondary data and critical marks. Its olive-to-ochre-to-red level meter and natural spectrogram palette make the entire workspace feel deliberately drawn from one material system.",
-  "tags": ["Light", "Editorial", "Paper", "Green"],
+  "tags": [
+    "Light",
+    "Editorial",
+    "Paper",
+    "Green"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -35,6 +40,31 @@
         {
           "id": "semantic-overview",
           "path": "previews/paper-console/v1/semantic-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/paper-console-v2.plvstheme",
+      "previews": [
+        {
+          "id": "product-workspace-file",
+          "path": "previews/paper-console/v2/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/paper-console/v2/product-multichannel-monitoring.png"
+        },
+        {
+          "id": "product-workspace-snapshot",
+          "path": "previews/paper-console/v2/product-workspace-snapshot.png"
+        },
+        {
+          "id": "semantic-overview",
+          "path": "previews/paper-console/v2/semantic-overview.png"
         }
       ]
     }

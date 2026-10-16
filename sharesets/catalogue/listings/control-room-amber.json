@@ -7,7 +7,12 @@
   "title": "Control Room Amber",
   "summary": "A dark control-room theme combining brass metering, verdigris signals, and graphite hardware surfaces.",
   "descriptionMarkdown": "Control Room Amber draws from classic recording consoles and professional rack gear. Warm brass readouts anchor the primary signal, verdigris traces separate secondary information, and copper intensity steps add depth without turning the workspace orange. The same material palette carries through the level meter, waveform, spectrum, and status readouts for a unified hardware-console feel.",
-  "tags": ["Dark", "Studio", "Amber", "Verdigris"],
+  "tags": [
+    "Dark",
+    "Studio",
+    "Amber",
+    "Verdigris"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -35,6 +40,31 @@
         {
           "id": "semantic-overview",
           "path": "previews/control-room-amber/v1/semantic-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/control-room-amber-v2.plvstheme",
+      "previews": [
+        {
+          "id": "product-workspace-file",
+          "path": "previews/control-room-amber/v2/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/control-room-amber/v2/product-multichannel-monitoring.png"
+        },
+        {
+          "id": "product-workspace-snapshot",
+          "path": "previews/control-room-amber/v2/product-workspace-snapshot.png"
+        },
+        {
+          "id": "semantic-overview",
+          "path": "previews/control-room-amber/v2/semantic-overview.png"
         }
       ]
     }

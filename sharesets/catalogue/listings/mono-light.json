@@ -7,7 +7,12 @@
   "title": "Mono Light",
   "summary": "A strict grayscale light theme with clean paper-white surfaces and precise tonal hierarchy.",
   "descriptionMarkdown": "Mono Light is the photographic inverse of Mono Dark. Paper-white surfaces, black primary data, and controlled grey snapshots form a calm measurement workspace without relying on hue. Its level meter becomes darker as signals approach the limit, while every analysis view preserves the same shared tonal hierarchy.",
-  "tags": ["Light", "Monochrome", "Minimal", "Contrast"],
+  "tags": [
+    "Light",
+    "Monochrome",
+    "Minimal",
+    "Contrast"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -35,6 +40,31 @@
         {
           "id": "semantic-overview",
           "path": "previews/mono-light/v1/semantic-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/mono-light-v2.plvstheme",
+      "previews": [
+        {
+          "id": "product-workspace-file",
+          "path": "previews/mono-light/v2/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/mono-light/v2/product-multichannel-monitoring.png"
+        },
+        {
+          "id": "product-workspace-snapshot",
+          "path": "previews/mono-light/v2/product-workspace-snapshot.png"
+        },
+        {
+          "id": "semantic-overview",
+          "path": "previews/mono-light/v2/semantic-overview.png"
         }
       ]
     }

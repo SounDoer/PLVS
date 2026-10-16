@@ -1,0 +1,119 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "sharesets-control-room-amber",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 5,
+      "name": "Control Room Amber",
+      "colorScheme": "dark",
+      "core": {
+        "workspace": "#0c0f0d",
+        "surface": "#22241f",
+        "text": "#f0e6cf",
+        "interfaceAccent": "#8c581d",
+        "primaryData": "#efbf5e",
+        "secondaryData": "#58a18a"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#4f917a",
+          "warning": "#c48a28",
+          "critical": "#c65a43"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#080907"
+            },
+            {
+              "position": 0.14,
+              "color": "#1d1810"
+            },
+            {
+              "position": 0.32,
+              "color": "#53351c"
+            },
+            {
+              "position": 0.5,
+              "color": "#96602b"
+            },
+            {
+              "position": 0.68,
+              "color": "#c89538"
+            },
+            {
+              "position": 0.84,
+              "color": "#e9c875"
+            },
+            {
+              "position": 1,
+              "color": "#fff0be"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#c26449",
+          "mid": "#c99a38",
+          "high": "#58a18a"
+        },
+        "interface": {
+          "success": "#46674b",
+          "warning": "#805a25",
+          "danger": "#813a33"
+        }
+      },
+      "overrides": {
+        "interface.content.onAccent": {
+          "kind": "color",
+          "value": "#fff7e4"
+        },
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#dc705e"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#7ea26e"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#d0a24b"
+        },
+        "level.critical": {
+          "kind": "color",
+          "value": "#cb654d"
+        },
+        "level.safe": {
+          "kind": "color",
+          "value": "#5c9580"
+        },
+        "level.warning": {
+          "kind": "color",
+          "value": "#c89538"
+        },
+        "stats.criticalValue": {
+          "kind": "color",
+          "value": "#e47a62"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#d2a13e"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#bf6249"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#58a18a"
+        }
+      }
+    }
+  ],
+  "dependencies": []
+}

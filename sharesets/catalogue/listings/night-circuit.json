@@ -7,7 +7,12 @@
   "title": "Night Circuit",
   "summary": "A dark electronic theme with electric cyan metering, vivid violet accents, and a luminous magenta-blue intensity scale.",
   "descriptionMarkdown": "Night Circuit is designed for late-night electronic production and sound design. Deep indigo surfaces create a focused backdrop for electric cyan primary data, vivid magenta secondary traces, and violet accents. A cyan-to-violet-to-magenta metering scale ties the analytical views together, giving the workspace a luminous digital character without overwhelming the measurements.",
-  "tags": ["Dark", "Electronic", "Futuristic", "Cyan"],
+  "tags": [
+    "Dark",
+    "Electronic",
+    "Futuristic",
+    "Cyan"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -35,6 +40,31 @@
         {
           "id": "semantic-overview",
           "path": "previews/night-circuit/v1/semantic-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/night-circuit-v2.plvstheme",
+      "previews": [
+        {
+          "id": "product-workspace-file",
+          "path": "previews/night-circuit/v2/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/night-circuit/v2/product-multichannel-monitoring.png"
+        },
+        {
+          "id": "product-workspace-snapshot",
+          "path": "previews/night-circuit/v2/product-workspace-snapshot.png"
+        },
+        {
+          "id": "semantic-overview",
+          "path": "previews/night-circuit/v2/semantic-overview.png"
         }
       ]
     }

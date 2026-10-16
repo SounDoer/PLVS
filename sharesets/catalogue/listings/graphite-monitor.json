@@ -7,7 +7,12 @@
   "title": "Graphite Monitor",
   "summary": "A disciplined dark theme built from graphite surfaces, warm white traces, and precise signal-red accents.",
   "descriptionMarkdown": "Graphite Monitor strips the workspace back to graphite, warm white, and signal red. Neutral primary traces keep dense measurements calm, while red secondary data and overload states create a precise visual hierarchy. Its level meter, waveform, spectrum, and spectrogram share the same restrained monitoring-instrument language.",
-  "tags": ["Dark", "Monitoring", "Monochrome", "Red"],
+  "tags": [
+    "Dark",
+    "Monitoring",
+    "Monochrome",
+    "Red"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -35,6 +40,31 @@
         {
           "id": "semantic-overview",
           "path": "previews/graphite-monitor/v1/semantic-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/graphite-monitor-v2.plvstheme",
+      "previews": [
+        {
+          "id": "product-workspace-file",
+          "path": "previews/graphite-monitor/v2/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/graphite-monitor/v2/product-multichannel-monitoring.png"
+        },
+        {
+          "id": "product-workspace-snapshot",
+          "path": "previews/graphite-monitor/v2/product-workspace-snapshot.png"
+        },
+        {
+          "id": "semantic-overview",
+          "path": "previews/graphite-monitor/v2/semantic-overview.png"
         }
       ]
     }

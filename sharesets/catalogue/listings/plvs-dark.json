@@ -7,7 +7,12 @@
   "title": "PLVS Dark",
   "summary": "The built-in dark theme for PLVS, with neutral surfaces, balanced contrast, and the original orange-and-blue metering palette.",
   "descriptionMarkdown": "PLVS Dark is the built-in dark theme for everyday monitoring. Neutral charcoal surfaces keep the workspace quiet, while balanced contrast and the original orange-and-blue data palette preserve clear distinctions across every meter. Its restrained character makes it a dependable starting point and a visual reference for other PLVS themes.",
-  "tags": ["Dark", "Built-in", "Neutral", "Balanced"],
+  "tags": [
+    "Dark",
+    "Built-in",
+    "Neutral",
+    "Balanced"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -17,19 +22,19 @@
     "previews": [
       {
         "id": "product-workspace-file",
-        "path": "previews/plvs-dark/product-workspace-file.png"
+        "path": "previews/plvs-dark/current-interface/product-workspace-file.png"
       },
       {
         "id": "product-multichannel-monitoring",
-        "path": "previews/plvs-dark/product-multichannel-monitoring.png"
+        "path": "previews/plvs-dark/current-interface/product-multichannel-monitoring.png"
       },
       {
         "id": "product-workspace-snapshot",
-        "path": "previews/plvs-dark/product-workspace-snapshot.png"
+        "path": "previews/plvs-dark/current-interface/product-workspace-snapshot.png"
       },
       {
         "id": "semantic-overview",
-        "path": "previews/plvs-dark/semantic-overview.png"
+        "path": "previews/plvs-dark/current-interface/semantic-overview.png"
       }
     ]
   }

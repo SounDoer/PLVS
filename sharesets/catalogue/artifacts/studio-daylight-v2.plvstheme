@@ -1,0 +1,163 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "sharesets-studio-daylight",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 5,
+      "name": "Studio Daylight",
+      "colorScheme": "light",
+      "core": {
+        "workspace": "#d9e3e5",
+        "surface": "#fbf7ef",
+        "text": "#17272d",
+        "interfaceAccent": "#2e7089",
+        "primaryData": "#147a9a",
+        "secondaryData": "#bd6a58"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#277984",
+          "warning": "#87651f",
+          "critical": "#aa4d43"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#081820"
+            },
+            {
+              "position": 0.16,
+              "color": "#123d51"
+            },
+            {
+              "position": 0.34,
+              "color": "#147a9a"
+            },
+            {
+              "position": 0.52,
+              "color": "#57a6b2"
+            },
+            {
+              "position": 0.7,
+              "color": "#e4d29d"
+            },
+            {
+              "position": 0.86,
+              "color": "#d89562"
+            },
+            {
+              "position": 1,
+              "color": "#bd5f52"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#c56654",
+          "mid": "#b78a31",
+          "high": "#187b9b"
+        },
+        "interface": {
+          "success": "#86ad92",
+          "warning": "#d0a45c",
+          "danger": "#d58a84"
+        }
+      },
+      "overrides": {
+        "interface.content.onAccent": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#aa4d43"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#277984"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#87651f"
+        },
+        "interface.surface.control": {
+          "kind": "color",
+          "value": "#e5e4e0"
+        },
+        "interface.text.secondary": {
+          "kind": "color",
+          "value": "#606766"
+        },
+        "level.critical": {
+          "kind": "color",
+          "value": "#c75f52"
+        },
+        "level.safe": {
+          "kind": "color",
+          "value": "#2c8795"
+        },
+        "level.warning": {
+          "kind": "color",
+          "value": "#b98c32"
+        },
+        "loudness.momentarySnapshot": {
+          "kind": "color",
+          "value": "#718a91"
+        },
+        "loudness.shortTermSnapshot": {
+          "kind": "color",
+          "value": "#777b7a"
+        },
+        "spectrum.primarySnapshot": {
+          "kind": "color",
+          "value": "#718a91"
+        },
+        "spectrum.secondarySnapshot": {
+          "kind": "color",
+          "value": "#777b7a"
+        },
+        "stats.criticalValue": {
+          "kind": "color",
+          "value": "#aa4d43"
+        },
+        "stats.warningValue": {
+          "kind": "color",
+          "value": "#87651f"
+        },
+        "stereoMap.primarySnapshot": {
+          "kind": "color",
+          "value": "#718a91"
+        },
+        "stereoMap.secondarySnapshot": {
+          "kind": "color",
+          "value": "#777b7a"
+        },
+        "vectorscope.snapshot": {
+          "kind": "color",
+          "value": "#718a91"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#4da0ad"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#c16050"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#147a9a"
+        },
+        "waveform.snapshot": {
+          "kind": "color",
+          "value": "#718a91"
+        }
+      }
+    }
+  ],
+  "dependencies": []
+}

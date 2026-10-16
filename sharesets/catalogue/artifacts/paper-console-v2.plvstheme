@@ -1,0 +1,163 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "sharesets-paper-console",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 5,
+      "name": "Paper Console",
+      "colorScheme": "light",
+      "core": {
+        "workspace": "#d6cdbb",
+        "surface": "#f5f0e2",
+        "text": "#293027",
+        "interfaceAccent": "#69784e",
+        "primaryData": "#315640",
+        "secondaryData": "#b64e3f"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#668653",
+          "warning": "#b88932",
+          "critical": "#b64e3f"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#f7f1df"
+            },
+            {
+              "position": 0.14,
+              "color": "#e3d6ae"
+            },
+            {
+              "position": 0.3,
+              "color": "#c7b56d"
+            },
+            {
+              "position": 0.48,
+              "color": "#8e9955"
+            },
+            {
+              "position": 0.66,
+              "color": "#58734f"
+            },
+            {
+              "position": 0.84,
+              "color": "#365345"
+            },
+            {
+              "position": 1,
+              "color": "#213432"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#b64e3f",
+          "mid": "#788049",
+          "high": "#496b6a"
+        },
+        "interface": {
+          "success": "#526c43",
+          "warning": "#8a6423",
+          "danger": "#853a31"
+        }
+      },
+      "overrides": {
+        "interface.content.onAccent": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onDanger": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onSuccess": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.content.onWarning": {
+          "kind": "color",
+          "value": "#ffffff"
+        },
+        "interface.feedback.danger": {
+          "kind": "color",
+          "value": "#b64e3f"
+        },
+        "interface.feedback.success": {
+          "kind": "color",
+          "value": "#668653"
+        },
+        "interface.feedback.warning": {
+          "kind": "color",
+          "value": "#78551b"
+        },
+        "interface.surface.muted": {
+          "kind": "color",
+          "value": "#d9d0bd"
+        },
+        "interface.text.secondary": {
+          "kind": "color",
+          "value": "#67685c"
+        },
+        "loudness.momentarySnapshot": {
+          "kind": "color",
+          "value": "#858577"
+        },
+        "loudness.shortTermSnapshot": {
+          "kind": "color",
+          "value": "#9d7466"
+        },
+        "spectrum.primarySnapshot": {
+          "kind": "color",
+          "value": "#858577"
+        },
+        "spectrum.secondarySnapshot": {
+          "kind": "color",
+          "value": "#9d7466"
+        },
+        "stats.criticalValue": {
+          "kind": "color",
+          "value": "#963f34"
+        },
+        "stats.warningValue": {
+          "kind": "color",
+          "value": "#8a6423"
+        },
+        "stereoMap.primarySnapshot": {
+          "kind": "color",
+          "value": "#858577"
+        },
+        "stereoMap.secondarySnapshot": {
+          "kind": "color",
+          "value": "#9d7466"
+        },
+        "vectorscope.snapshot": {
+          "kind": "color",
+          "value": "#858577"
+        },
+        "waveform.frequencyHigh": {
+          "kind": "color",
+          "value": "#496b6a"
+        },
+        "waveform.frequencyLow": {
+          "kind": "color",
+          "value": "#b64e3f"
+        },
+        "waveform.frequencyMid": {
+          "kind": "color",
+          "value": "#788049"
+        },
+        "waveform.snapshot": {
+          "kind": "color",
+          "value": "#858577"
+        }
+      }
+    }
+  ],
+  "dependencies": []
+}

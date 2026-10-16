@@ -7,7 +7,12 @@
   "title": "PLVS Light",
   "summary": "The built-in light theme for PLVS, with soft neutral surfaces, clear dark text, and the original orange-and-blue metering palette.",
   "descriptionMarkdown": "PLVS Light is the built-in light theme for bright rooms and daytime work. Soft neutral surfaces keep the workspace comfortable, while clear dark text and the original orange-and-blue data palette preserve strong distinctions across every meter. It carries the same restrained visual language as PLVS Dark into a calm, dependable light workspace.",
-  "tags": ["Light", "Built-in", "Neutral", "Balanced"],
+  "tags": [
+    "Light",
+    "Built-in",
+    "Neutral",
+    "Balanced"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -17,19 +22,19 @@
     "previews": [
       {
         "id": "product-workspace-file",
-        "path": "previews/plvs-light/product-workspace-file.png"
+        "path": "previews/plvs-light/current-interface/product-workspace-file.png"
       },
       {
         "id": "product-multichannel-monitoring",
-        "path": "previews/plvs-light/product-multichannel-monitoring.png"
+        "path": "previews/plvs-light/current-interface/product-multichannel-monitoring.png"
       },
       {
         "id": "product-workspace-snapshot",
-        "path": "previews/plvs-light/product-workspace-snapshot.png"
+        "path": "previews/plvs-light/current-interface/product-workspace-snapshot.png"
       },
       {
         "id": "semantic-overview",
-        "path": "previews/plvs-light/semantic-overview.png"
+        "path": "previews/plvs-light/current-interface/semantic-overview.png"
       }
     ]
   }

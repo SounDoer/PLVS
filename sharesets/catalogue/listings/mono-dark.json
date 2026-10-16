@@ -7,7 +7,12 @@
   "title": "Mono Dark",
   "summary": "A strict grayscale dark theme where brightness alone defines signal hierarchy and urgency.",
   "descriptionMarkdown": "Mono Dark reduces PLVS to near-black surfaces, silver traces, and white peak states. Brightness rather than hue separates primary data, secondary signals, retained snapshots, and critical values. The level meter, waveform, spectrum, and spectrogram all follow the same dark-to-light measurement scale.",
-  "tags": ["Dark", "Monochrome", "Minimal", "Contrast"],
+  "tags": [
+    "Dark",
+    "Monochrome",
+    "Minimal",
+    "Contrast"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -35,6 +40,31 @@
         {
           "id": "semantic-overview",
           "path": "previews/mono-dark/v1/semantic-overview.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/mono-dark-v2.plvstheme",
+      "previews": [
+        {
+          "id": "product-workspace-file",
+          "path": "previews/mono-dark/v2/product-workspace-file.png"
+        },
+        {
+          "id": "product-multichannel-monitoring",
+          "path": "previews/mono-dark/v2/product-multichannel-monitoring.png"
+        },
+        {
+          "id": "product-workspace-snapshot",
+          "path": "previews/mono-dark/v2/product-workspace-snapshot.png"
+        },
+        {
+          "id": "semantic-overview",
+          "path": "previews/mono-dark/v2/semantic-overview.png"
         }
       ]
     }

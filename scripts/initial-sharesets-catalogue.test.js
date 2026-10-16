@@ -47,8 +47,9 @@ const INITIAL_LISTINGS = [
 let launchSource;
 
 beforeAll(async () => {
+  // Validate every historical Release too; the catalogue grows beyond its launch contents.
   launchSource = await readSharesetsSource("sharesets/catalogue");
-});
+}, 30_000);
 
 const readLaunchSource = () => launchSource;
 
