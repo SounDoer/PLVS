@@ -7,9 +7,9 @@ const raw = resolve("website/assets/raw/homepage-20261016");
 const rulesRaw = resolve("website/assets/raw/homepage-20261014");
 await mkdir(output, { recursive: true });
 const previews = {
-  essential: ["essential-monitoring", "preset-workspace"],
   spectral: ["spectral-inspection", "preset-workspace"],
   stereo: ["stereo-field-check", "preset-workspace"],
+  "meter-bridge": ["meter-bridge", "preset-workspace-5-1"],
   amber: ["control-room-amber", "product-workspace-file"],
   daylight: ["studio-daylight", "product-workspace-file"],
   night: ["night-circuit", "product-workspace-file"],
