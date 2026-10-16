@@ -198,18 +198,11 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
       ...(context.hasLoudnessReference === true ? ["reference"] : []),
     ];
     return root({
-      orientation: active(
-        field(
-          "string",
-          "Orientation",
-          "Direction of live history motion; new data enters from the opposite edge. Spectrogram orientation affects Heatmap only.",
-          {
-            default: defaults.orientation,
-            options: [...PANEL_ORIENTATIONS],
-          }
-        ),
-        true,
-        "threeDMode"
+      orientation: field(
+        "string",
+        "Orientation",
+        "Direction of live history motion; new data enters from the opposite edge.",
+        { default: defaults.orientation, options: [...PANEL_ORIENTATIONS], effective: true }
       ),
       layers: field("array", "Layers", "Visible loudness history layers.", {
         default: defaults.layers,
@@ -264,18 +257,11 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
 
   if (moduleId === "waveform") {
     return root({
-      orientation: active(
-        field(
-          "string",
-          "Orientation",
-          "Direction of live history motion; new data enters from the opposite edge. Spectrogram orientation affects Heatmap only.",
-          {
-            default: defaults.orientation,
-            options: [...PANEL_ORIENTATIONS],
-          }
-        ),
-        true,
-        "threeDMode"
+      orientation: field(
+        "string",
+        "Orientation",
+        "Direction of live history motion; new data enters from the opposite edge.",
+        { default: defaults.orientation, options: [...PANEL_ORIENTATIONS], effective: true }
       ),
       frequencyColor: field("boolean", "Frequency Color", "Color the waveform by spectral band.", {
         default: defaults.frequencyColor,
