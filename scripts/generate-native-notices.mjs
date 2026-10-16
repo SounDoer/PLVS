@@ -7,6 +7,14 @@ import { digest } from "./generate-component-notices.mjs";
 import { collectRustRuntimePackages } from "./generate-license-inventory.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+// The app version lives in the reviewed manifest, so a release bump would otherwise demand a
+// license review. Blank exactly that one line; every other byte stays under review.
+const workspaceVersion = /^(\[workspace\.package\]\nversion = )"\d+\.\d+\.\d+"$/m;
+export function reviewedInputDigest(path, bytes) {
+  if (path !== "src-tauri/Cargo.toml") return digest(bytes);
+  return digest(bytes.toString("utf8").replace(workspaceVersion, '$1""'));
+}
+
 export async function generateNativeNotices() {
   for (const variable of [
     "ORT_LIB_PATH",
@@ -62,7 +70,8 @@ export async function generateNativeNotices() {
       : root;
     if (input.package && !packages.has(input.package))
       throw new Error(`Native dependency changed: ${input.package}`);
-    if (digest(await readFile(join(directory, input.path))) !== input.sha256)
+    const bytes = await readFile(join(directory, input.path));
+    if (reviewedInputDigest(input.package ? "" : input.path, bytes) !== input.sha256)
       throw new Error(
         `Native license review required: ${input.package || "repository"}/${input.path}`
       );
