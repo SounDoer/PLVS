@@ -307,8 +307,9 @@ Sharesets Items require PLVS 0.20.0 or later. Presets that save panel orientatio
 a newer build with those controls; their **How to Use** section states that requirement instead.
 For **Meter Bridge**, Release 2 pairs horizontal Peak and RMS meters with vertical Momentary and
 Short-term meters. PLVS 0.20.0 users can download Release 1 from **Release History**.
-Some resource releases only refresh previews for the current interface: their release notes say
-when the saved settings are unchanged, so an existing Library item does not need to be imported again.
+Resource releases track changes to the saved content. Refreshing screenshots for the current
+interface does not change the resource's release number or download, and does not require importing
+an existing Library item again.
 
 For an Item that is not already included with PLVS, download its `.plvstheme`, `.plvspreset`, or
 `.plvsloudness` file, then open **Settings → Saved Items → Import…**. Review what will be added and

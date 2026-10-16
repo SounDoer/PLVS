@@ -22,19 +22,43 @@
     "previews": [
       {
         "id": "product-workspace-file",
-        "path": "previews/plvs-light/current-interface/product-workspace-file.png"
+        "path": "previews/plvs-light/product-workspace-file.png"
       },
       {
         "id": "product-multichannel-monitoring",
-        "path": "previews/plvs-light/current-interface/product-multichannel-monitoring.png"
+        "path": "previews/plvs-light/product-multichannel-monitoring.png"
       },
       {
         "id": "product-workspace-snapshot",
-        "path": "previews/plvs-light/current-interface/product-workspace-snapshot.png"
+        "path": "previews/plvs-light/product-workspace-snapshot.png"
       },
       {
         "id": "semantic-overview",
-        "path": "previews/plvs-light/current-interface/semantic-overview.png"
+        "path": "previews/plvs-light/semantic-overview.png"
+      }
+    ],
+    "previewRevisions": [
+      {
+        "number": 1,
+        "publishedAt": "2026-10-16",
+        "previews": [
+          {
+            "id": "product-workspace-file",
+            "path": "previews/plvs-light/revisions/r1/product-workspace-file.png"
+          },
+          {
+            "id": "product-multichannel-monitoring",
+            "path": "previews/plvs-light/revisions/r1/product-multichannel-monitoring.png"
+          },
+          {
+            "id": "product-workspace-snapshot",
+            "path": "previews/plvs-light/revisions/r1/product-workspace-snapshot.png"
+          },
+          {
+            "id": "semantic-overview",
+            "path": "previews/plvs-light/revisions/r1/semantic-overview.png"
+          }
+        ]
       }
     ]
   }

@@ -30,18 +30,17 @@
           "id": "preset-workspace",
           "path": "previews/multichannel-monitoring/v1/preset-workspace.png"
         }
-      ]
-    },
-    {
-      "number": 2,
-      "publishedAt": "2026-10-16",
-      "status": "published",
-      "notesMarkdown": "Refresh previews for the current PLVS interface. Preset settings are unchanged from Release 1; existing Library items do not need to be imported again.",
-      "artifact": "artifacts/multichannel-monitoring-v2.plvspreset",
-      "previews": [
+      ],
+      "previewRevisions": [
         {
-          "id": "preset-workspace",
-          "path": "previews/multichannel-monitoring/v2/preset-workspace.png"
+          "number": 1,
+          "publishedAt": "2026-10-16",
+          "previews": [
+            {
+              "id": "preset-workspace",
+              "path": "previews/multichannel-monitoring/v1/revisions/r1/preset-workspace.png"
+            }
+          ]
         }
       ]
     }

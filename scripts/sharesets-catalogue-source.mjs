@@ -178,9 +178,7 @@ async function sealPreviews(root, owner, metadata, ownerPath) {
   }
 
   const previewsById = new Map(owner.previews.map((preview) => [preview.id, preview]));
-  const metadataAssetsById = new Map(
-    metadata.preview.assets.map((asset) => [asset.id, asset])
-  );
+  const metadataAssetsById = new Map(metadata.preview.assets.map((asset) => [asset.id, asset]));
   const sealed = [];
   for (const id of expectedIds) {
     const preview = previewsById.get(id);
@@ -280,7 +278,13 @@ async function resolveReleases(root, listing, listingIndex) {
       metadata,
       `$.listings[${listingIndex}].releases[${releaseIndex}]`
     );
-    releases.push({ ...release, previews, metadata });
+    const revisions = await sealPreviewRevisions(
+      root,
+      release,
+      metadata,
+      `$.listings[${listingIndex}].releases[${releaseIndex}]`
+    );
+    releases.push({ ...release, previews, metadata, ...revisions });
   }
   return releases;
 }
@@ -323,10 +327,28 @@ async function resolveIncluded(root, listing, listingIndex) {
   return {
     ...listing.included,
     previews,
+    ...(await sealPreviewRevisions(
+      root,
+      listing.included,
+      metadata,
+      `$.listings[${listingIndex}].included`
+    )),
     metadata,
     item: structuredClone(pack.items[0]),
     pack: structuredClone(pack),
   };
+}
+
+async function sealPreviewRevisions(root, owner, metadata, path) {
+  if (!owner.previewRevisions) return {};
+  const previewRevisions = [];
+  for (const [index, revision] of owner.previewRevisions.entries()) {
+    previewRevisions.push({
+      ...revision,
+      previews: await sealPreviews(root, revision, metadata, `${path}.previewRevisions[${index}]`),
+    });
+  }
+  return { previewRevisions };
 }
 
 export async function readSharesetsSourceRecords(contentDirectory) {
@@ -412,6 +434,25 @@ export async function readSharesetsSourceRecords(contentDirectory) {
             ]);
           }
           identities.preview.set(previewKey, relativePath);
+        }
+      }
+      for (const owner of [
+        ...document.releases,
+        ...(document.included ? [document.included] : []),
+      ]) {
+        for (const revision of owner.previewRevisions ?? []) {
+          for (const preview of revision.previews) {
+            const key = preview.path.toLocaleLowerCase("en-US");
+            if (identities.preview.has(key))
+              throw new SharesetsSourceError([
+                issue(
+                  "duplicatePreviewPath",
+                  `$.listings[${index}].previewRevisions`,
+                  `Each generated preview must have a distinct path: ${preview.path}.`
+                ),
+              ]);
+            identities.preview.set(key, relativePath);
+          }
         }
       }
       listings.push({ sourcePath: relativePath, document });

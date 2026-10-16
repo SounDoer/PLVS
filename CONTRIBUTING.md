@@ -193,7 +193,7 @@ live website while preparing a publication.
 `sharesets:curate` is the maintainer path from a candidate content tree to a local review. The first
 form above is always a dry run: it validates the candidate records and new canonical artifacts,
 compares all existing Release records and bytes with the published baseline, and prints a concise
-JSON summary of additions, one-way withdrawals, and Listing copy edits. It writes nothing.
+JSON summary of additions, preview revisions, one-way withdrawals, and Listing copy edits. It writes nothing.
 
 The complete local website has one ordinary entry point: `npm run website:dev`. It assembles the
 homepage, generated user guide, Privacy Policy, and current Sharesets Catalogue in versioned
@@ -205,10 +205,10 @@ last successful site after a build error, and reloads the browser after a succes
 `sharesets:site` remain focused generator commands, not standalone complete-site previews.
 
 After reading that summary, repeat the same command with `--write`. This generates previews only for
-new Releases, validates the now-complete candidate and its immutable history, then creates a new
+new Releases and preview revisions, validates the now-complete candidate and its immutable history, then creates a new
 review directory containing `site/`, `report.json`, and `report.md`. Preview IDs and paths belong in
-the new Release record; dimensions, hashes, Pack-derived metadata, and site copies are generated.
-The command refuses an existing review directory or existing new-Release preview target, and it
+the new Release or preview revision record; dimensions, hashes, Pack-derived metadata, and site copies are generated.
+The command refuses an existing review directory or existing new preview target, and it
 does not commit or deploy. Serve the review directory's `site/` as a static website when browser
 review is useful; for example, `npx vite preview --outDir path/to/review/site`.
 
@@ -234,6 +234,13 @@ workflow.
 
 Before publishing a new Release, confirm its date and regenerate any previews affected by UI changes
 made since they were generated. Once published, the date and preview bytes are immutable.
+
+Create a new resource Release only when its downloadable content changes. For screenshot-only
+updates, append `previewRevisions` to its existing Release (or `included` source), with an increasing
+`number`, a `publishedAt` date, and the complete required `previews` set at new paths. Keep all older
+records and PNGs unchanged. These revisions update the gallery without changing downloads or the
+displayed Release number. Catalogue tooling and the selected site renderer must support this field;
+publish the supporting website code before using it with a content-only deployment.
 
 To withdraw a bad Release, leave its artifact, previews, paths, notes, and date untouched; change
 only `status` to `withdrawn` and add `withdrawalReason`, then run the dry run and `--write` review

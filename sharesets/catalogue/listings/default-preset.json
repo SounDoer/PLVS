@@ -22,7 +22,19 @@
     "previews": [
       {
         "id": "preset-workspace",
-        "path": "previews/default-preset/current-interface/preset-workspace.png"
+        "path": "previews/default-preset/preset-workspace.png"
+      }
+    ],
+    "previewRevisions": [
+      {
+        "number": 1,
+        "publishedAt": "2026-10-16",
+        "previews": [
+          {
+            "id": "preset-workspace",
+            "path": "previews/default-preset/revisions/r1/preset-workspace.png"
+          }
+        ]
       }
     ]
   }

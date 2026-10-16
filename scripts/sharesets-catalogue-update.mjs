@@ -31,6 +31,48 @@ function stableRelease(release) {
   };
 }
 
+export function validatePreviewRevisionHistory(
+  previous,
+  candidate,
+  path,
+  issues,
+  compareHashes = true
+) {
+  const old = previous?.previewRevisions ?? [];
+  const next = candidate?.previewRevisions ?? [];
+  const stable = (revision) => ({
+    number: revision.number,
+    publishedAt: revision.publishedAt,
+    previews: revision.previews.map(({ id, path, sha256 }) => ({
+      id,
+      path,
+      ...(compareHashes ? { sha256 } : {}),
+    })),
+  });
+  for (const revision of old) {
+    const match = next.find((r) => r.number === revision.number);
+    if (!match || !same(stable(revision), stable(match))) {
+      issues.push(
+        issue(
+          "previewRevisionHistoryChanged",
+          path,
+          "Published preview revisions and their image bytes cannot be removed or rewritten."
+        )
+      );
+    }
+  }
+  const maximum = Math.max(0, ...old.map((r) => r.number));
+  if (next.some((r) => r.number <= maximum && !old.some((p) => p.number === r.number))) {
+    issues.push(
+      issue(
+        "previewRevisionInserted",
+        path,
+        "Preview revisions must be appended above the previous highest number."
+      )
+    );
+  }
+}
+
 function validateReleaseHistory(previous, candidate, listingId, issues) {
   const candidateByNumber = new Map(candidate.releases.map((release) => [release.number, release]));
   const previousMaximum = Math.max(...previous.releases.map(({ number }) => number));
@@ -53,6 +95,12 @@ function validateReleaseHistory(previous, candidate, listingId, issues) {
         )
       );
     }
+    validatePreviewRevisionHistory(
+      previousRelease,
+      candidateRelease,
+      `${path}.previewRevisions`,
+      issues
+    );
     if (previousRelease.status === "withdrawn") {
       if (
         candidateRelease.status !== "withdrawn" ||
@@ -135,6 +183,24 @@ export async function validateSharesetsSourceUpdate(previousDirectory, candidate
       }
     }
     validateReleaseHistory(previousListing, candidateListing, previousListing.id, issues);
+    if (previousListing.included) {
+      const before = previousListing.included;
+      const after = candidateListing.included;
+      const stable = (owner) =>
+        owner && {
+          sourceId: owner.sourceId,
+          previews: owner.previews.map(({ id, path, sha256 }) => ({ id, path, sha256 })),
+        };
+      if (!same(stable(before), stable(after)))
+        issues.push(
+          issue(
+            "includedPreviewHistoryChanged",
+            `${path}.included`,
+            "Included source and original preview bytes cannot be rewritten; append a preview revision."
+          )
+        );
+      validatePreviewRevisionHistory(before, after, `${path}.included.previewRevisions`, issues);
+    }
   }
 
   if (issues.length > 0) throw new SharesetsUpdateError(issues);

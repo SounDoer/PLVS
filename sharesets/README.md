@@ -49,6 +49,14 @@ slots, checks the PNG structure, and seals each image's exact byte length and SH
 generation remains a PLVS-owned curator/CI operation; the Listing format has no publisher-selected
 cover image or screenshot field.
 
+Screenshot-only updates append `previewRevisions` to the existing Release or `included` source;
+they do not create a resource Release. Each revision contains a positive, increasing `number`,
+an ISO `publishedAt` date, and a complete `previews` array using new paths. The latest revision
+supplies the gallery, while the original download, Release number, and all original image URLs
+remain unchanged. Published revisions and original previews are immutable, including image bytes.
+The source validator applies the same artifact-derived preview contract to every revision.
+See [ADR 0029](../docs/adr/0029-sharesets-preview-revisions.md) for the versioning decision.
+
 The static-site command generates the Sharesets root, all three family pages, stable Listing detail
 URLs, and an isolated copy of each validated download and preview. Its default output is the ignored
 `artifacts/sharesets-site/` directory; deployment passes an explicit assembled-site destination.

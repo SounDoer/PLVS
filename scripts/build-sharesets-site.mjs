@@ -116,11 +116,15 @@ function latestPublished(listing) {
 }
 
 function currentContent(listing) {
-  return listing.included ?? latestPublished(listing);
+  const content = listing.included ?? latestPublished(listing);
+  const revision = content?.previewRevisions?.at(-1);
+  return revision
+    ? { ...content, previews: revision.previews, previewRevision: revision.number }
+    : content;
 }
 
 function contentFilesPath(listing, content) {
-  return `/sharesets/files/${listing.id}/${listing.included ? "included" : `v${content.number}`}`;
+  return `/sharesets/files/${listing.id}/${listing.included ? "included" : `v${content.number}`}${content.previewRevision ? `/previews/r${content.previewRevision}` : ""}`;
 }
 
 function card(listing, activeType) {
@@ -392,6 +396,14 @@ async function syncSharesetsSiteAssets(siteDirectory, websiteDirectory) {
 }
 
 async function copyReleaseFiles(source, output, listing) {
+  const copyRevisions = async (owner, target) => {
+    for (const revision of owner.previewRevisions ?? []) {
+      const destination = join(target, "previews", `r${revision.number}`);
+      await mkdir(destination, { recursive: true });
+      for (const preview of revision.previews)
+        await copyFile(join(source.root, preview.path), join(destination, `${preview.id}.png`));
+    }
+  };
   for (const release of listing.releases) {
     const target = join(output, "files", listing.id, `v${release.number}`);
     await mkdir(target, { recursive: true });
@@ -399,6 +411,7 @@ async function copyReleaseFiles(source, output, listing) {
     for (const preview of release.previews) {
       await copyFile(join(source.root, preview.path), join(target, `${preview.id}.png`));
     }
+    await copyRevisions(release, target);
   }
   if (listing.included) {
     const target = join(output, "files", listing.id, "included");
@@ -406,6 +419,7 @@ async function copyReleaseFiles(source, output, listing) {
     for (const preview of listing.included.previews) {
       await copyFile(join(source.root, preview.path), join(target, `${preview.id}.png`));
     }
+    await copyRevisions(listing.included, target);
   }
 }
 

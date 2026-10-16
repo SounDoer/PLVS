@@ -16,9 +16,14 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildSharesetsSite } from "./build-sharesets-site.mjs";
 import { readSharesetsSource, readSharesetsSourceRecords } from "./sharesets-catalogue-source.mjs";
-import { validateSharesetsSourceUpdate } from "./sharesets-catalogue-update.mjs";
+import {
+  validateSharesetsSourceUpdate,
+  validatePreviewRevisionHistory,
+} from "./sharesets-catalogue-update.mjs";
 import {
   buildPreviewPlanForArtifact,
+  buildPreviewPlanForBuiltinTheme,
+  buildPreviewPlanForBuiltinPreset,
   generateSharesetsPreviews,
 } from "./generate-sharesets-previews.mjs";
 
@@ -100,6 +105,7 @@ async function inspectCandidate(previous, candidate) {
   const additions = [];
   const withdrawals = [];
   const copyChanges = [];
+  const previewUpdates = [];
   const candidateById = new Map(
     candidate.listings.map((listing) => [listing.document.id, listing])
   );
@@ -199,16 +205,99 @@ async function inspectCandidate(previous, candidate) {
     }
   }
 
-  for (const addition of additions) {
+  for (const { document: listing } of candidate.listings) {
+    const old = previousById.get(listing.id)?.document;
+    const owners = [
+      ...listing.releases.map((owner) => ({
+        owner,
+        previousOwner: old?.releases.find((r) => r.number === owner.number),
+      })),
+      ...(listing.included ? [{ owner: listing.included, previousOwner: old?.included }] : []),
+    ];
+    for (const { owner, previousOwner } of owners) {
+      const path = `$.listings[${listing.id}].${owner.sourceId ? "included" : `releases[${owner.number}]`}`;
+      validatePreviewRevisionHistory(
+        previousOwner,
+        owner,
+        `${path}.previewRevisions`,
+        issues,
+        false
+      );
+      if (previousOwner?.sourceId) {
+        if (
+          owner.sourceId !== previousOwner.sourceId ||
+          !same(
+            owner.previews,
+            previousOwner.previews.map(({ id, path }) => ({ id, path }))
+          )
+        ) {
+          issues.push(
+            issue(
+              "includedPreviewHistoryChanged",
+              path,
+              "Append a preview revision instead of rewriting included previews."
+            )
+          );
+        }
+        for (const preview of previousOwner.previews) {
+          if (
+            !(await bytesEqual(
+              resolve(previous.root, preview.path),
+              resolve(candidate.root, preview.path)
+            ))
+          )
+            issues.push(
+              issue(
+                "includedPreviewHistoryChanged",
+                path,
+                "Original included preview bytes changed."
+              )
+            );
+        }
+      }
+      for (const revision of previousOwner?.previewRevisions ?? []) {
+        for (const preview of revision.previews) {
+          if (
+            !(await bytesEqual(
+              resolve(previous.root, preview.path),
+              resolve(candidate.root, preview.path)
+            ))
+          )
+            issues.push(
+              issue(
+                "previewRevisionHistoryChanged",
+                path,
+                "Published preview revision bytes changed."
+              )
+            );
+        }
+      }
+      for (const revision of owner.previewRevisions ?? []) {
+        if (previousOwner?.previewRevisions?.some((r) => r.number === revision.number)) continue;
+        previewUpdates.push({
+          listingId: listing.id,
+          listingType: listing.type,
+          ownerNumber: owner.number ?? null,
+          previewRevision: revision.number,
+          ...(owner.sourceId ? { sourceId: owner.sourceId } : {}),
+          release: { ...owner, ...revision, status: "published" },
+        });
+      }
+    }
+  }
+
+  for (const addition of [...additions, ...previewUpdates]) {
     const path = `$.listings[${addition.listingId}].releases[${addition.release.number}]`;
     if (addition.release.status !== "published") {
       issues.push(issue("newReleaseWithdrawn", path, "A new Release must begin as published."));
       continue;
     }
     try {
-      const { type, plan } = await buildPreviewPlanForArtifact(
-        resolve(candidate.root, addition.release.artifact)
-      );
+      const { type, plan } = addition.sourceId
+        ? await (addition.listingType === "themes"
+            ? buildPreviewPlanForBuiltinTheme(addition.sourceId)
+            : buildPreviewPlanForBuiltinPreset(addition.sourceId))
+        : await buildPreviewPlanForArtifact(resolve(candidate.root, addition.release.artifact));
       if (type !== addition.listingType) {
         issues.push(
           issue("artifactTypeMismatch", `${path}.artifact`, "Artifact and Listing types differ.")
@@ -243,7 +332,7 @@ async function inspectCandidate(previous, candidate) {
   }
 
   if (issues.length > 0) throw new SharesetsCurationError(issues);
-  return { additions, withdrawals, copyChanges };
+  return { additions, withdrawals, copyChanges, previewUpdates };
 }
 
 async function assertNewOutput(path, label) {
@@ -288,6 +377,18 @@ function publicReport(mode, previous, candidate, changes, reviewDirectory = null
     })),
     withdrawals: changes.withdrawals,
     copyChanges: changes.copyChanges,
+    ...(changes.previewUpdates.length
+      ? {
+          previewUpdates: changes.previewUpdates.map(
+            ({ listingId, ownerNumber, previewRevision, release }) => ({
+              listingId,
+              releaseNumber: ownerNumber,
+              previewRevision,
+              previews: release.previews,
+            })
+          ),
+        }
+      : {}),
     ...(reviewDirectory ? { reviewDirectory } : {}),
   };
 }
@@ -299,6 +400,12 @@ function markdownReport(report) {
       "Additions",
       report.additions,
       (item) => `${item.listingId} Release ${item.releaseNumber} (${item.type})`,
+    ],
+    [
+      "Preview Revisions",
+      report.previewUpdates ?? [],
+      (item) =>
+        `${item.listingId}: preview revision ${item.previewRevision} (${item.releaseNumber === null ? "included" : `Release ${item.releaseNumber}`})`,
     ],
     [
       "Withdrawals",
@@ -338,7 +445,7 @@ export async function curateSharesetsCatalogue({
     throw new Error("The candidate root must be a non-symlink directory.");
   }
   const previewTargets = [];
-  for (const addition of changes.additions) {
+  for (const addition of [...changes.additions, ...changes.previewUpdates]) {
     for (const preview of addition.release.previews) {
       previewTargets.push({
         addition,
@@ -351,13 +458,17 @@ export async function curateSharesetsCatalogue({
   const staging = await mkdtemp(join(dirname(output), ".plvs-sharesets-review-"));
   const generatedFiles = [];
   try {
-    for (const addition of changes.additions) {
+    for (const addition of [...changes.additions, ...changes.previewUpdates]) {
       if (addition.release.previews.length === 0) continue;
       const generatedRoot = await mkdtemp(join(tmpdir(), "plvs-sharesets-curation-"));
       const generatedOutput = join(generatedRoot, "previews");
       try {
         await generatePreviews({
-          artifactPath: resolve(candidate.root, addition.release.artifact),
+          ...(addition.sourceId
+            ? addition.listingType === "themes"
+              ? { builtinThemeId: addition.sourceId }
+              : { builtinPresetId: addition.sourceId }
+            : { artifactPath: resolve(candidate.root, addition.release.artifact) }),
           outputDirectory: generatedOutput,
         });
         for (const preview of addition.release.previews) {

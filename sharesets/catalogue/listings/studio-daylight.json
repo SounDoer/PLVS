@@ -41,30 +41,29 @@
           "id": "semantic-overview",
           "path": "previews/studio-daylight/v1/semantic-overview.png"
         }
-      ]
-    },
-    {
-      "number": 2,
-      "publishedAt": "2026-10-16",
-      "status": "published",
-      "notesMarkdown": "Refresh previews for the current PLVS interface. Theme colors and settings are unchanged from Release 1; existing Library items do not need to be imported again.",
-      "artifact": "artifacts/studio-daylight-v2.plvstheme",
-      "previews": [
+      ],
+      "previewRevisions": [
         {
-          "id": "product-workspace-file",
-          "path": "previews/studio-daylight/v2/product-workspace-file.png"
-        },
-        {
-          "id": "product-multichannel-monitoring",
-          "path": "previews/studio-daylight/v2/product-multichannel-monitoring.png"
-        },
-        {
-          "id": "product-workspace-snapshot",
-          "path": "previews/studio-daylight/v2/product-workspace-snapshot.png"
-        },
-        {
-          "id": "semantic-overview",
-          "path": "previews/studio-daylight/v2/semantic-overview.png"
+          "number": 1,
+          "publishedAt": "2026-10-16",
+          "previews": [
+            {
+              "id": "product-workspace-file",
+              "path": "previews/studio-daylight/v1/revisions/r1/product-workspace-file.png"
+            },
+            {
+              "id": "product-multichannel-monitoring",
+              "path": "previews/studio-daylight/v1/revisions/r1/product-multichannel-monitoring.png"
+            },
+            {
+              "id": "product-workspace-snapshot",
+              "path": "previews/studio-daylight/v1/revisions/r1/product-workspace-snapshot.png"
+            },
+            {
+              "id": "semantic-overview",
+              "path": "previews/studio-daylight/v1/revisions/r1/semantic-overview.png"
+            }
+          ]
         }
       ]
     }

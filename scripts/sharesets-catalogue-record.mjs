@@ -28,7 +28,7 @@ const LISTING_FIELDS = new Set([
 ]);
 const AUTHOR_FIELDS = new Set(["name", "url"]);
 const REFERENCE_FIELDS = new Set(["publisher", "title", "edition", "url", "relevanceMarkdown"]);
-const INCLUDED_FIELDS = new Set(["sourceId", "previews"]);
+const INCLUDED_FIELDS = new Set(["sourceId", "previews", "previewRevisions"]);
 const RELEASE_FIELDS = new Set([
   "number",
   "publishedAt",
@@ -37,6 +37,7 @@ const RELEASE_FIELDS = new Set([
   "artifact",
   "previews",
   "withdrawalReason",
+  "previewRevisions",
 ]);
 const PREVIEW_FIELDS = new Set(["id", "path"]);
 
@@ -299,7 +300,69 @@ function validateIncluded(raw, issues) {
       )
     );
   }
-  return { sourceId, previews: validatePreviews(raw.previews, path, issues) };
+  return {
+    sourceId,
+    previews: validatePreviews(raw.previews, path, issues),
+    ...validatePreviewRevisions(raw, path, issues),
+  };
+}
+
+function validatePreviewRevisions(owner, path, issues) {
+  if (owner.previewRevisions === undefined) return {};
+  if (!Array.isArray(owner.previewRevisions)) {
+    issues.push(
+      issue(
+        "invalidPreviewRevisions",
+        `${path}.previewRevisions`,
+        "Preview revisions must be an array."
+      )
+    );
+    return {};
+  }
+  let previous = 0;
+  const previewRevisions = owner.previewRevisions
+    .map((raw, index) => {
+      const revisionPath = `${path}.previewRevisions[${index}]`;
+      if (!isPlainObject(raw)) {
+        issues.push(
+          issue("invalidPreviewRevision", revisionPath, "Each preview revision must be an object.")
+        );
+        return null;
+      }
+      unknownFields(raw, new Set(["number", "publishedAt", "previews"]), revisionPath, issues);
+      if (!Number.isSafeInteger(raw.number) || raw.number <= previous) {
+        issues.push(
+          issue(
+            "invalidPreviewRevisionNumber",
+            revisionPath,
+            "Preview revisions must have increasing positive integer numbers."
+          )
+        );
+      }
+      previous = raw.number;
+      if (
+        typeof raw.publishedAt !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(raw.publishedAt) ||
+        Number.isNaN(Date.parse(`${raw.publishedAt}T00:00:00Z`)) ||
+        new Date(`${raw.publishedAt}T00:00:00Z`).toISOString().slice(0, 10) !== raw.publishedAt
+      ) {
+        issues.push(
+          issue(
+            "invalidPreviewRevisionDate",
+            revisionPath,
+            "Preview revision date must use a real YYYY-MM-DD date."
+          )
+        );
+      }
+      const previews = validatePreviews(raw.previews, revisionPath, issues);
+      if (previews.length === 0)
+        issues.push(
+          issue("emptyPreviewRevision", revisionPath, "A preview revision must contain images.")
+        );
+      return { number: raw.number, publishedAt: raw.publishedAt, previews };
+    })
+    .filter(Boolean);
+  return { previewRevisions };
 }
 
 function validateRelease(raw, index, type, issues) {
@@ -368,6 +431,7 @@ function validateRelease(raw, index, type, issues) {
     artifact: typeof raw.artifact === "string" ? raw.artifact.replaceAll("\\", "/") : "",
     previews,
     withdrawalReason,
+    ...validatePreviewRevisions(raw, path, issues),
   };
 }
 
