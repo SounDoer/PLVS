@@ -11,8 +11,9 @@ const previews = {
   stereo: ["stereo-field-check", "preset-workspace"],
   "meter-bridge": ["meter-bridge", "preset-workspace-5-1"],
   amber: ["control-room-amber", "product-workspace-file"],
-  daylight: ["studio-daylight", "product-workspace-file"],
   night: ["night-circuit", "product-workspace-file"],
+  graphite: ["graphite-monitor", "product-workspace-file"],
+  paper: ["paper-console", "product-workspace-file"],
 };
 const catalogue = await readSharesetsSource(resolve("sharesets/catalogue"));
 // Preserve the real preview pixels and proportions; only change delivery encoding.

@@ -197,12 +197,16 @@
         font-weight: var(--weight-medium);
       }
 
+      .shot,
+      .features img {
+        border-radius: var(--radius-preview);
+      }
+
       .shot {
         position: relative;
         overflow: hidden;
         margin: 0;
         border: 1px solid var(--color-divider);
-        border-radius: var(--radius-panel);
         background: var(--color-surface);
         box-shadow: var(--shadow-preview);
         isolation: isolate;
@@ -220,7 +224,6 @@
         min-width: 0;
         margin: 0;
         aspect-ratio: 1600 / 1000;
-        border-radius: var(--radius-panel);
       }
 
       .hero-shot img {
@@ -274,6 +277,9 @@
         gap: var(--space-5);
         margin-top: var(--space-6);
       }
+      .feature-themes .feature-gallery {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
       .feature-gallery figure,
       .feature-pair figure {
         min-width: 0;
@@ -284,7 +290,6 @@
         display: block;
         width: 100%;
         height: auto;
-        border-radius: var(--radius-control);
       }
 
       .feature-gallery figcaption,
@@ -319,9 +324,6 @@
         grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
         align-items: start;
       }
-      .feature-pair .rules-image {
-        border-radius: var(--radius-panel);
-      }
       .monitoring-pair .feature-visual {
         aspect-ratio: auto;
       }
@@ -337,6 +339,9 @@
         height: auto;
       }
       @media (max-width: 920px) {
+        .feature-themes .feature-gallery {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
         .feature-gallery,
         .feature-pair {
           grid-template-columns: 1fr;
@@ -512,6 +517,9 @@
       }
 
       @media (max-width: 620px) {
+        .feature-themes .feature-gallery {
+          grid-template-columns: 1fr;
+        }
         .hero {
           padding-top: var(--space-5);
         }
@@ -545,7 +553,6 @@
         .hero-shot {
           margin-top: 0;
           aspect-ratio: 1600 / 1000;
-          border-radius: var(--radius-panel);
         }
 
         .feature h2 {
@@ -865,16 +872,6 @@
               </figure>
               <figure>
                 <img
-                  src="assets/homepage/daylight.webp"
-                  alt="Studio Daylight theme with ivory surfaces, blue traces and terracotta accents."
-                  width="1280"
-                  height="800"
-                  loading="lazy"
-                />
-                <figcaption>Studio Daylight</figcaption>
-              </figure>
-              <figure>
-                <img
                   src="assets/homepage/night.webp"
                   alt="Night Circuit theme with deep indigo surfaces, cyan traces and violet accents."
                   width="1280"
@@ -882,6 +879,26 @@
                   loading="lazy"
                 />
                 <figcaption>Night Circuit</figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/homepage/graphite.webp"
+                  alt="Graphite Monitor theme with graphite surfaces, warm white traces and signal-red accents."
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                />
+                <figcaption>Graphite Monitor</figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="assets/homepage/paper.webp"
+                  alt="Paper Console theme with warm paper surfaces, field green data and red-pencil accents."
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                />
+                <figcaption>Paper Console</figcaption>
               </figure>
             </div>
           </article>

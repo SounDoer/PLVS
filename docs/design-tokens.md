@@ -951,7 +951,10 @@ Colors are semantic `--color-*` roles shared across pages, including text, surfa
 dividers, controls, interaction states, and focus. Decorative background and shadow recipes
 also live in the token file. Resource screenshots retain their original pixels and colors.
 
-Controls and small previews use the 8px radius; cards and large panels use 16px. Spacing
+Controls use the 8px radius; cards and large panels use 16px. Product screenshots use
+`--radius-preview` (8px), including the homepage hero, galleries, Dock strips, and editor
+screenshots. Screenshot size does not change the radius. Apply it once to the image or its
+clipping frame, preserve the source aspect ratio, and avoid cover-cropping interface content. Spacing
 uses `--space-*`; page gutters, content width, and minimum control height use named tokens.
 Image aspect ratios, content-specific layout constraints, and responsive breakpoints remain
 local layout geometry, rather than becoming one-off design tokens.
