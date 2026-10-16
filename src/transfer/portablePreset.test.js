@@ -129,6 +129,41 @@ describe("Portable Preset", () => {
     );
   });
 
+  it("imports a 0.20.0 Dock with the removed Timecode module and strip-only switches", () => {
+    const portable = presetToPortable(
+      storedPreset({
+        dock: {
+          enabled: true,
+          edge: "bottom",
+          monitor: null,
+          reserveSpace: false,
+          height: 72,
+          panelsById: {
+            meter: { id: "meter", moduleId: "levelMeter" },
+            loudness: { id: "loudness", moduleId: "loudness" },
+          },
+          panelOrder: ["meter", "loudness"],
+          panelSizesById: {},
+          controlsByPanelId: {},
+        },
+      })
+    );
+    portable.dock.panels.unshift({
+      key: "dock-timecode",
+      moduleId: "transport",
+      preferredWidthCssPx: 90,
+      controls: {},
+    });
+    portable.dock.panels[1].controls = { ...portable.dock.panels[1].controls, showLabels: false };
+    portable.dock.panels[2].controls = { ...portable.dock.panels[2].controls, showReadouts: true };
+
+    const stored = portableToStoredPreset(validatePortablePreset(portable), "legacy-dock");
+    expect(stored.dock.panelOrder.map((id) => stored.dock.panelsById[id].moduleId)).toEqual([
+      "levelMeter",
+      "loudness",
+    ]);
+  });
+
   it("allocates fresh panel identities and resets transient history offsets on import", () => {
     const source = storedPreset();
     source.panelControlsById.loudness.historyOffsetSec = 12;

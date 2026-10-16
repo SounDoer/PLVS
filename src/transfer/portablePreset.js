@@ -81,6 +81,27 @@ function migrateLegacyStatsMetricIds(raw) {
   return migrated;
 }
 
+/// 0.20.0 Dock content that later builds removed: the Timecode (`transport`) module and the
+/// strip-only Labels / Readouts switches. Drop them so those exports still import.
+const LEGACY_DOCK_CONTROL_KEYS = Object.freeze({
+  levelMeter: ["showLabels"],
+  loudness: ["showReadouts"],
+});
+
+function migrateLegacyDockContent(raw) {
+  const panels = raw.dock?.panels;
+  if (!Array.isArray(panels)) return raw;
+  const migrated = structuredClone(raw);
+  migrated.dock.panels = migrated.dock.panels.filter(
+    (panel) => !(isPlainObject(panel) && panel.moduleId === "transport")
+  );
+  for (const panel of migrated.dock.panels) {
+    if (!isPlainObject(panel?.controls)) continue;
+    for (const key of LEGACY_DOCK_CONTROL_KEYS[panel.moduleId] ?? []) delete panel.controls[key];
+  }
+  return migrated;
+}
+
 /**
  * @param {string} path
  */
@@ -667,7 +688,7 @@ function compilePortablePreset(raw, { resolveDependencyId = (id) => id } = {}) {
       packIssue("invalidDocument", "$", "A portable Preset must be a plain object."),
     ]);
   }
-  raw = migrateLegacyStatsMetricIds(raw);
+  raw = migrateLegacyDockContent(migrateLegacyStatsMetricIds(raw));
   const issues = [];
   collectUnknownFields(raw, TOP_FIELDS, "$", issues);
   if (raw.kind !== PORTABLE_PRESET_KIND) {
