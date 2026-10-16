@@ -52,6 +52,7 @@ export function UpdateSurfaces({ currentVersion }) {
     error: setup ? error : updates.error,
     targetId: updates.details?.target.id,
     targetVersion: updates.details?.target.version,
+    currentVersion,
     installationUnavailableReason: updates.installationUnavailableReason,
     ready: updates.details?.staged === true,
     releaseNotes,

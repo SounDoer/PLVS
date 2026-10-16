@@ -1,5 +1,5 @@
-import { UpdateDetailsContent } from "./UpdateDetailsContent.jsx";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { UpdateDetailsContent, UpdateDetailsHeader } from "./UpdateDetailsContent.jsx";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 export function UpdateDialog({
@@ -47,11 +47,11 @@ export function UpdateDialog({
           event.preventDefault();
         }}
       >
-        <DialogTitle>{ready ? "Update Ready" : "Update Available"}</DialogTitle>
-        <DialogDescription>
-          {targetVersion ? `v${targetVersion} · ` : ""}
-          {currentVersion ? `What's new since v${currentVersion}` : "What's new"}
-        </DialogDescription>
+        <UpdateDetailsHeader
+          ready={ready}
+          targetVersion={targetVersion}
+          currentVersion={currentVersion}
+        />
 
         <UpdateDetailsContent
           releaseNotes={releaseNotes}

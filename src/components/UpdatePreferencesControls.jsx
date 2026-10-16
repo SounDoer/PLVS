@@ -131,7 +131,6 @@ export function UpdateSetupContent({
         </p>
       ) : null}
       <p className="mt-3 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-        Updates connect to GitHub.{" "}
         <LinkButton className="underline underline-offset-2" onClick={onPrivacy}>
           Privacy Policy
         </LinkButton>

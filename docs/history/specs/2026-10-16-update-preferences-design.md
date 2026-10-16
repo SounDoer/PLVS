@@ -44,7 +44,7 @@ Use one lightweight first-launch setup in the application for Windows and macOS.
 installer pages or website download checkboxes.
 
 - Before a new user makes a choice, do not issue update requests.
-- Explain that update checks connect to GitHub and link the privacy policy.
+- Show a Privacy Policy link without an additional service-description sentence.
 - Offer explicit choices to enable automatic checking or use manual checks only.
 - Automatic downloading is initially off and can be selected only when checking is enabled.
 - Skipping setup records both options as off; Settings remains available later.

@@ -1,6 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useAccessoryClient } from "./useAccessoryClient.js";
-import { UpdateDetailsContent } from "../../components/UpdateDetailsContent.jsx";
+import {
+  UpdateDetailsContent,
+  UpdateDetailsHeader,
+} from "../../components/UpdateDetailsContent.jsx";
 import { PRIVACY_POLICY_URL } from "../../ipc/openExternal.js";
 import { UpdateSetupContent } from "../../components/UpdatePreferencesControls.jsx";
 
@@ -45,18 +48,16 @@ export function DockUpdateApp() {
         className="rounded-xl border border-border bg-card p-3 text-[length:var(--ui-fs-control)] text-foreground"
         data-dock-update
       >
-        <h1 className="font-semibold">
-          {payload.kind === "setup"
-            ? "Update Preferences"
-            : payload.ready
-              ? "Update Ready"
-              : "Update Available"}
-        </h1>
-        {payload.kind !== "setup" && payload.targetVersion ? (
-          <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-            v{payload.targetVersion}
-          </p>
-        ) : null}
+        {payload.kind === "setup" ? (
+          <h1 className="font-semibold">Update Preferences</h1>
+        ) : (
+          <UpdateDetailsHeader
+            accessory
+            ready={payload.ready}
+            targetVersion={payload.targetVersion}
+            currentVersion={payload.currentVersion}
+          />
+        )}
         {payload.kind === "setup" ? (
           <UpdateSetupContent
             preferences={payload.preferences}

@@ -1,6 +1,23 @@
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
-import { DialogFooter } from "@/components/ui/dialog";
+import { DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+
+/** The same heading and version context in both native hosts. */
+export function UpdateDetailsHeader({ ready, targetVersion, currentVersion, accessory = false }) {
+  const Title = accessory ? "h1" : DialogTitle;
+  const Description = accessory ? "p" : DialogDescription;
+  return (
+    <>
+      <Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
+        {ready ? "Update Ready" : "Update Available"}
+      </Title>
+      <Description className="mt-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+        {targetVersion ? `v${targetVersion} · ` : ""}
+        {currentVersion ? `What's new since v${currentVersion}` : "What's new"}
+      </Description>
+    </>
+  );
+}
 
 /** Shared content for the normal dialog and the Dock accessory; owns no update or window state. */
 export function UpdateDetailsContent({

@@ -11,6 +11,8 @@ beforeEach(() => {
     key: "details:a",
     kind: "details",
     targetId: "a",
+    targetVersion: "2.0.0",
+    currentVersion: "1.0.0",
     ready: true,
     installationSupported: true,
     installStatus: "idle",
@@ -20,6 +22,7 @@ beforeEach(() => {
 describe("Dock update details", () => {
   it("acknowledges rendered content and confirms only its frozen target", () => {
     render(<DockUpdateApp />);
+    expect(screen.getByText("v2.0.0 · What's new since v1.0.0")).toBeTruthy();
     expect(client.action).toHaveBeenCalledWith("update-ready", { key: "details:a" });
     fireEvent.click(screen.getByRole("button", { name: "Update and Restart" }));
     expect(client.action).toHaveBeenCalledWith("update-confirm", {
