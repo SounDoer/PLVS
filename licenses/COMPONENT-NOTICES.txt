@@ -83810,7 +83810,7 @@ SOFTWARE.
 ========================================================================
 rust:tauri-plugin-updater@2.13.2
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-updater/2.13.2/download
+Source: https://github.com/SounDoer/PLVS/tree/main/src-tauri/vendor/tauri-plugin-updater
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1

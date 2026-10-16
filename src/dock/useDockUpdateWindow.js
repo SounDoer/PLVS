@@ -21,6 +21,7 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
   useEffect(() => {
     if (!isTauri()) return;
     let disposed = false;
+    let unlisteners = [];
     const publish = () =>
       emitDockAccessoryState(
         "dock-update",
@@ -28,8 +29,10 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
           ...latest.current.payload,
           theme: createThemePublication(themeRuntime.getSnapshot()),
         })
-      );
-    const listeners = Promise.all([
+      ).catch((error) => {
+        if (!disposed) setError(String(error));
+      });
+    void Promise.allSettled([
       listenDockAccessoryReady((event) => {
         if (event?.surface === "dock-update") void publish();
       }),
@@ -40,10 +43,17 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
         if (action.type === "update-ready") setReadyKey(action.payload.key);
         else latest.current.onAction(action);
       }),
-    ]).then((listeners) => {
+    ]).then((results) => {
+      const listeners = [];
+      for (const result of results) {
+        if (result.status === "fulfilled") listeners.push(result.value);
+        else if (!disposed) setError(String(result.reason));
+      }
       if (disposed) listeners.forEach((dispose) => dispose());
-      else void publish();
-      return listeners;
+      else {
+        unlisteners = listeners;
+        void publish();
+      }
     });
     const stopTheme = themeRuntime.subscribe(
       (resolved) => resolved,
@@ -52,7 +62,7 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
     return () => {
       disposed = true;
       stopTheme();
-      void listeners.then((listeners) => listeners.forEach((dispose) => dispose()));
+      unlisteners.forEach((dispose) => dispose());
     };
   }, []);
   useEffect(() => {
@@ -63,7 +73,7 @@ export function useDockUpdateWindow({ active, edge, payload, onAction, onGeometr
         ...JSON.parse(serializedPayload),
         theme: createThemePublication(themeRuntime.getSnapshot()),
       })
-    );
+    ).catch((error) => setError(String(error)));
   }, [serializedPayload]);
   useEffect(() => {
     if (!isTauri()) return;

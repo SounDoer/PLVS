@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
@@ -17,7 +17,7 @@ import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixtur
 export function UpdateSurfaces({ currentVersion }) {
   const { updateControls: updates } = useAppLifecycle();
   const settings = useAppSettings();
-  const { docked, dockEdge, dockSuspended } = useDock();
+  const { docked, dockEdge, dockSuspended, exitDockRestoringAttributes } = useDock();
   const coordinator = useCoordinatorRole();
   const { setUpdateGeometry } = useDockAccessories();
   const [draft, setDraft] = useState({ autoCheck: true, autoDownload: false });
@@ -85,6 +85,13 @@ export function UpdateSurfaces({ currentVersion }) {
       if (type === "update-preferences-skip") void save(true);
     },
   });
+  useEffect(() => {
+    if (docked && payload.key && dockWindow.error) {
+      // Preserve the owner's draft/target and expose it through the normal host if the
+      // native accessory cannot open. Returning from Dock does not discard an editor.
+      void exitDockRestoringAttributes();
+    }
+  }, [docked, payload.key, dockWindow.error, exitDockRestoringAttributes]);
   useUiSurface({
     active: setup,
     kind: "update",

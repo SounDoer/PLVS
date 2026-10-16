@@ -1,7 +1,7 @@
 # Update preferences implementation plan
 
 Date: 2026-10-16
-Status: In progress; feasibility probes and initial implementation exist, but U1 platform exit criteria remain open
+Status: Implementation integrated; Windows probes passed; full packaged upgrade and macOS acceptance remain open
 Design: [Update Preferences and Deferred Installation](../specs/2026-10-16-update-preferences-design.md)
 Worktree: `.codex/worktrees/update-preferences`
 Branch: `codex/update-preferences`
@@ -20,23 +20,23 @@ No unattended installation on launch, countdown, or automatic downgrade is inclu
 
 ## U1. Prove the platform seams before building the feature
 
-- [ ] Read persistence, coordinator, Dock geometry, and Agent Control contracts. Prepare this
+- [x] Read persistence, coordinator, Dock geometry, and Agent Control contracts. Prepare this
       worktree with locked dependencies (`npm ci`) and verified sidecars (`npm run ffmpeg:fetch`).
-- [ ] Inspect the pinned updater 2.13.2 Rust API and build a bounded probe for installing verified
+- [x] Inspect the pinned updater 2.13.2 Rust API and build a bounded probe for installing verified
       cached bytes without a live network check. The Update object includes private fields: do not
       assume it can be deserialized or reconstructed from saved JavaScript metadata.
-- [ ] Select and record the smallest supported adapter: public updater APIs where possible; a
+- [x] Select and record the smallest supported adapter: public updater APIs where possible; a
       narrowly scoped native adapter or maintained dependency change only if required. Do not fake a
       remote update response or bypass signature verification to manufacture an Update object.
-- [ ] Prove Windows installer destination, relaunch arguments, and handoff behavior in an isolated
+- [x] Prove Windows installer destination, relaunch arguments, and handoff behavior in an isolated
       test installation. Specify how exclusive installation survives the old app's exit and how a
       launch during installation waits or defers safely. A process-local lock is insufficient.
 - [ ] Prove macOS cached archive replacement/relaunch, read-only bundle handling, authorization
       cancellation, and failure recovery on a Mac. Record unavailable platform testing honestly.
-- [ ] Define installed/Portable detection using current executable location plus installation
+- [x] Define installed/Portable detection using current executable location plus installation
       evidence, including side-by-side copies and unknown classification. Examine release workflow
       staging and installer registry hooks; preserve generated sections.
-- [ ] Record adapter decisions and evidence in a dated investigation note; write an ADR if the
+- [x] Record adapter decisions and evidence in a dated investigation note; write an ADR if the
       selected approach has a durable non-obvious constraint. Do not expose auto-download before
       offline installation, verification, and the startup gate have a viable design.
 
@@ -45,23 +45,23 @@ Primary files: `src-tauri/src/lib.rs`, `coordinator/{mod,registry,commands}.rs`,
 
 ## U2. Persist preferences and gate all automatic requests
 
-- [ ] Add normalized identity-wide checking/downloading/setup-choice fields through
+- [x] Add normalized identity-wide checking/downloading/setup-choice fields through
       `src/settings/{defaults.js,SettingsContext.jsx}` and the settings persistence domain.
-- [ ] In `src-tauri/src/persistence/{bootstrap,migration,hydration}.rs` and frontend hydration,
+- [x] In `src-tauri/src/persistence/{bootstrap,migration,hydration}.rs` and frontend hydration,
       distinguish preexisting user data from fresh initialization before defaults erase that distinction.
       Existing users get checking on/downloading off; fresh users make no request before a choice.
-- [ ] Add first-launch choices and Settings toggles through `SettingsPanel.jsx` and the existing
+- [x] Add first-launch choices and Settings toggles through `SettingsPanel.jsx` and the existing
       overlay composition. Skip records both off. A first launch restored into Dock must still have
       an accessible choice surface; coordinate its window hosting with the Dock work.
-- [ ] Separate manual checking from scheduled checking in `useUpdateCheck.js`; manual remains
+- [x] Separate manual checking from scheduled checking in `useUpdateCheck.js`; manual remains
       available with checking off. Clear timers on disable and prevent duplicate coordinator checks.
-- [ ] Make toggle changes cancel in-flight background jobs and invalidate their completion tokens.
+- [x] Make toggle changes cancel in-flight background jobs and invalidate their completion tokens.
       Disabling checking also disables downloading; re-enabling checking does not restore downloading.
-- [ ] Expose appropriate availability for Portable and Preview without writing a global preference
+- [x] Expose appropriate availability for Portable and Preview without writing a global preference
       off merely because the current copy cannot install. Treat browser/test behavior explicitly.
-- [ ] Review reset/import/export behavior so importing configuration cannot accidentally count as
+- [x] Review reset/import/export behavior so importing configuration cannot accidentally count as
       first-run consent or silently enable new downloads. Document the chosen settings-domain policy.
-- [ ] Synchronize Agent Control settings schema/read/patch/capabilities and contract tests if these
+- [x] Synchronize Agent Control settings schema/read/patch/capabilities and contract tests if these
       settings are exposed, or explicitly classify them as unavailable/internal under existing rules.
       Never add CLI installation as an incidental extension of this feature.
 
@@ -71,19 +71,19 @@ durability through a Vite reload.
 
 ## U3. Implement native staging and cancellation
 
-- [ ] Introduce a focused Rust updater service/module (final module name chosen in U1), with
+- [x] Introduce a focused Rust updater service/module (final module name chosen in U1), with
       commands for capability/state inspection, download, cancellation, and confirmed installation.
-- [ ] Store partial files, verified ready packages, and atomic metadata under application-managed
+- [x] Store partial files, verified ready packages, and atomic metadata under application-managed
       storage. Bind state to identity, installation, architecture, and version; never trust a caller's
       arbitrary path or executable arguments as an installation target.
-- [ ] Verify signatures on download and immediately before installation using the trusted key.
+- [x] Verify signatures on download and immediately before installation using the trusted key.
       Bind displayed metadata/version to the verified package; assess the plugin's signed-version
       support against existing artifacts rather than assuming latest.json itself is signed.
-- [ ] Keep one ready candidate while downloading its replacement, atomically replace it after
+- [x] Keep one ready candidate while downloading its replacement, atomically replace it after
       verification, clean obsolete data, and discard incomplete/corrupt state after interruption.
-- [ ] Enforce one owner per installation, bounded retry/backoff, and cancellation generations that
+- [x] Enforce one owner per installation, bounded retry/backoff, and cancellation generations that
       prevent late results from recreating canceled offers. Serialize cleanup with installation entry.
-- [ ] Retain enough data for offline details and installation; cached resource IDs are not durable.
+- [x] Retain enough data for offline details and installation; cached resource IDs are not durable.
 
 Use isolated temporary directories and injected download/install boundaries for tests covering
 tampering, wrong target/version, partial writes, low-space/write failures, cancellation races,
@@ -91,18 +91,18 @@ candidate replacement, and stale state. No test should invoke the user's install
 
 ## U4. Share controller state and details content
 
-- [ ] Refactor `useUpdateCheck.js`, `useApplyUpdate.js`, and update composition into one authoritative
+- [x] Refactor `useUpdateCheck.js`, `useApplyUpdate.js`, and update composition into one authoritative
       controller with serializable view state and guarded actions. Define available/downloading/ready/
       failed/installing states and manual versus automatic request reasons.
-- [ ] Refactor `UpdateDialog.jsx` only as needed to share details content between its normal-window
+- [x] Refactor `UpdateDialog.jsx` only as needed to share details content between its normal-window
       host and Dock accessory host. Keep changelog rendering and action selection in one implementation.
-- [ ] Preserve the frozen version/target behavior in `AppSettingsOverlays.jsx`; checks completing
+- [x] Preserve the frozen version/target behavior in `AppSettingsOverlays.jsx`; checks completing
       while details are open cannot change what confirmation installs.
-- [ ] Add ready state, explicit Update and Restart, and startup Skip This Time. Dismissal consumes
+- [x] Add ready state, explicit Update and Restart, and startup Skip This Time. Dismissal consumes
       the offer for this process session without deleting the package. No countdown or automatic accept.
-- [ ] Publish view data to Dock through its bridge; retain native handles in the owner. Provide an
+- [x] Publish view data to Dock through its bridge; retain native handles in the owner. Provide an
       explicit availability response for secondary instances rather than creating a second updater.
-- [ ] Manual downloads and ready-package installs share the same controller; background completion
+- [x] Manual downloads and ready-package installs share the same controller; background completion
       never opens details in an already working session.
 
 Test state transitions, stale actions, duplicate clicks, target freezing, and skip/dismiss behavior.
@@ -110,26 +110,26 @@ Coordinate the serializable state/action contract with D3 in the Dock plan.
 
 ## U5. Integrate startup offers and confirmed installation
 
-- [ ] Detect eligible launches before normal workspace activity can race installation, using the
+- [x] Detect eligible launches before normal workspace activity can race installation, using the
       registry and native startup gate. Do not call prepareGlobalOperation merely to discover peers:
       it stops capture. Existing peers mean defer the automatic offer.
-- [ ] Load preferences and reconcile package/attempt state before deciding to offer; never install
+- [x] Load preferences and reconcile package/attempt state before deciding to offer; never install
       before confirmation. Offer through the correct normal or Dock details host.
-- [ ] Recheck peers and target state under the installation gate when the user confirms. A peer
+- [x] Recheck peers and target state under the installation gate when the user confirms. A peer
       launched while the offer was open must cause safe deferral, not automatic interruption.
-- [ ] Preserve explicit in-session update safeguards: blocking editors refuse before mutation,
+- [x] Preserve explicit in-session update safeguards: blocking editors refuse before mutation,
       persistence flush succeeds before handoff, and workspace restoration remains intact.
-- [ ] Persist attempt state before Windows handoff; use U1's mechanism across process exit. On
+- [x] Persist attempt state before Windows handoff; use U1's mechanism across process exit. On
       relaunch reconcile actual running version, clear successful pending state, and avoid retry loops.
 - [ ] Integrate macOS replacement/relaunch and system authorization; cancel/failure returns a useful
       state without repeated prompts. Do not claim guaranteed rollback from partial filesystem damage.
-- [ ] Route every Portable update entry to the ZIP path and never to NSIS. Leave Preview disabled.
+- [x] Route every Portable update entry to the ZIP path and never to NSIS. Leave Preview disabled.
 
 ## U6. Documentation, integration checks, and completion
 
-- [ ] Update `docs/user/{getting-started,system-settings}.md`, durable architecture details, and
+- [x] Update `docs/user/{getting-started,system-settings}.md`, durable architecture details, and
       relevant CLI documentation in the same commits that introduce behavior.
-- [ ] Review `website/privacy/index.html` and `docs/privacy-review.json` for background downloads,
+- [x] Review `website/privacy/index.html` and `docs/privacy-review.json` for background downloads,
       local retention, cancellation, recipients, and effective-date decision. Do not just regenerate
       a fingerprint. Update documentation contract checks for code-owned facts where needed.
 - [ ] Validate new-user, existing-user, disabled, manual-only, staged-offline, corrupted-cache,
@@ -139,7 +139,7 @@ Coordinate the serializable state/action contract with D3 in the Dock plan.
       Use isolated fixtures and test signing keys; do not alter the user's stable installation.
 - [ ] Capture the new settings/setup/details states and verify UI using Agent Control. Include Dock
       launch offers after D3 lands. Record evidence and remaining platform limitations in this plan.
-- [ ] Before each implementation commit: `npm test`, frontend format/lint/typecheck when touched,
+- [x] Before each implementation commit: `npm test`, frontend format/lint/typecheck when touched,
       and `npm run rust:check` for Rust. Run relevant native tests for new non-audio modules. Before
       push/merge use `npm run check:changes`; this mixed feature requires the full gate.
 
@@ -261,3 +261,59 @@ expected/observed result, and artifact path. Keep generated logs/screenshots/pac
 `artifacts/`; never place signing keys in tracked evidence. Use an isolated update test identity or
 harness with production-equivalent installer behavior; Preview cannot serve as the updater test
 vehicle because its updater is compiled out.
+
+## Execution evidence — 2026-10-16
+
+Implementation commits: `5b92a15a`, `7670212d`, and `1e3f9b41`, followed by the final
+recovery/validation changes on this branch. Runtime ownership now lives in
+`updateController.js` / `useUpdateController.js`; the old hook names above describe the
+refactoring inputs, not a second active updater.
+
+- U2–U5 are integrated: identity-wide preferences, first-launch blocking choice, native staging,
+  frozen details, explicit startup acceptance, peer fencing before workspace preparation, and
+  offline helper handoff. macOS code is integrated but its platform acceptance remains unchecked.
+- Full process restart persistence was observed between dev instances `e8de4460…` and `9a372dfb…`.
+  The shared SQLite row retained `choiceMade: true, autoCheck: false, autoDownload: false` after
+  Skip; no Vite reload was used as durability evidence.
+- `scripts/probe-cached-updater.mjs` successfully installed the signed 2.0.0 NSIS fixture offline
+  into a nondefault directory containing spaces. It proved destination handling, waited exit,
+  signature/tamper rejection, and waiting even when the spawn callback fails. The canonical
+  Windows `\\?\` path case initially failed and passed after adapter normalization.
+  Evidence: `artifacts/update-controls/installer-probe-1792153599749/result.log`.
+- Native tests cover corrupt metadata, orphan cleanup, cancellation generations, independent-process
+  startup exclusion, abandoned attempts, and one-use restoration argument removal. Controller tests
+  cover revoked consent, no background modal, frozen/repeated targets, active-peer refusal before
+  preparation, editor refusal, failed-target suppression, late activity, and partial-commit recovery.
+- Setup/settings and normal/Dock details were captured through Agent Control under
+  `artifacts/update-controls/`. Development fixtures cannot install and do not prove a native upgrade.
+- The semver dependency was already in the runtime closure; making it direct adds no new native
+  component or license. Inventory fingerprints and the reviewed Cargo manifest input were refreshed.
+
+### Remaining acceptance boundaries
+
+Do not interpret checked implementation items as release certification. The standalone NSIS probe
+is not a complete packaged PLVS upgrade: the copied helper, real application replacement, coordinator
+restoration, and installer failure must still be exercised together with an isolated signed app.
+The follow-up copied-helper probe also passed: a dev-identity binary compiled with the isolated
+public key acknowledged its ticket, waited for the commit nonce, installed the signed fixture with
+an unreachable endpoint, persisted the installer PID/start identity and finished result, then
+relaunched the isolated executable with its expected argument. Evidence is
+`artifacts/update-controls/installer-probe-1792153599749/handoff-result.log`; the target is a
+small relaunch-marker executable, not a packaged PLVS workspace. The first probe configuration
+with an empty endpoint list was rejected by updater construction before installation; a valid
+but unreachable endpoint proves the offline seam without bypassing config validation.
+No production signing key or installed stable app was used. This Windows end-to-end acceptance and
+macOS bundle replacement, authorization cancellation, read-only installation, and native Dock checks
+remain open. This task's executable environment is Windows; no Mac execution surface is available.
+A release must keep those gates visible rather than infer success from unit tests.
+
+
+Final local gates: `npm run check` passed (5,653 Vitest tests across 526 files; Rust library
+779 passed, 3 intentionally ignored, plus workspace integration/CLI tests; format, lint,
+typecheck, version, licenses, website, build and Clippy). The final regression run after
+documentation/license-source updates is recorded in `artifacts/update-controls/final-regression.log`.
+The new vendored updater exposed a hardcoded license source URL; the generator now derives each
+local dependency's repository path instead of labeling all local crates as the VAD dependency.
+
+Final follow-up regression: 5,655 Vitest tests passed across 527 files, including late-listener
+cleanup and native-window fallback. Frontend format, lint and typecheck passed again.

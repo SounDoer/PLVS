@@ -1,7 +1,7 @@
 # Dock control area implementation plan
 
 Date: 2026-10-16
-Status: In progress; initial vertical controls implemented, update accessory and final validation pending
+Status: Implementation integrated and Windows UI reviewed; remaining platform acceptance recorded below
 Design: [Dock Control Area](../specs/2026-10-16-dock-control-area-design.md)
 Worktree: `.codex/worktrees/update-preferences`
 Branch: `codex/update-preferences`
@@ -16,19 +16,19 @@ for those dependencies. Keep work on the authorized worktree and branch.
 
 ## D1. Measure and select the fixed layout
 
-- [ ] Read `docs/pitfalls.md` Dock geometry/rendering sections and the architecture screen-space
+- [x] Read `docs/pitfalls.md` Dock geometry/rendering sections and the architecture screen-space
       rules. Start the isolated dev app with the worktree's configured identity/data paths.
-- [ ] Discover Agent Control capabilities and capture baseline Dock strip, toolbar, normal window,
+- [x] Discover Agent Control capabilities and capture baseline Dock strip, toolbar, normal window,
       and representative panel screenshots before modifying rendering.
-- [ ] Inspect `SourceTransportCluster.jsx` and `sourceTransportState.js` for real timecode lengths,
+- [x] Inspect `SourceTransportCluster.jsx` and `sourceTransportState.js` for real timecode lengths,
       labels, unavailable states, and Snapshot actions. Do not infer formats from a mockup.
-- [ ] Prototype a presentation variant of the actual component: timecode above primary action,
+- [x] Prototype a presentation variant of the actual component: timecode above primary action,
       then toolbar icon, return icon, and optional update icon. Keep the group top-aligned.
 - [ ] Compare the narrowest usable fixed widths with supported interface sizes, large text/DPI,
       long timecodes, all transport states, and the full update-present stack. Use real click targets.
-- [ ] Select and record width, row sizes, spacing, and minimum height with screenshot evidence.
+- [x] Select and record width, row sizes, spacing, and minimum height with screenshot evidence.
       Width must remain stable across height/state changes. No sideways fallback or hidden timecode.
-- [ ] Check all panel families at the proposed minimum. Reconcile compact/standard/expanded
+- [x] Check all panel families at the proposed minimum. Reconcile compact/standard/expanded
       thresholds and document saved-height clamping; do not simply change the frontend constant.
 
 Files to inspect: `src/dock/{dockSizing.js,dockTokens.css,dockPanelSizing.js}`,
@@ -38,24 +38,24 @@ editing; do not hand-edit generated theme assets.
 
 ## D2. Implement persistent controls and shared transport presentation
 
-- [ ] Add the Dock layout variant to `src/components/SourceTransportCluster.jsx`, retaining the
+- [x] Add the Dock layout variant to `src/components/SourceTransportCluster.jsx`, retaining the
       current normal-window layout and shared status/action/disabled logic. Omit only the redundant
       fixed source label; retain timecode and the primary action at every supported height.
-- [ ] Replace `DockToolbarToggle.jsx`'s full-height 20px strip with a composed control-area component
+- [x] Replace `DockToolbarToggle.jsx`'s full-height 20px strip with a composed control-area component
       in `DockStrip.jsx`. Reuse IconButton, tooltips, and existing toolbar/return callbacks.
-- [ ] Keep the exact order: timecode, transport, toolbar, normal return, optional update. Update
+- [x] Keep the exact order: timecode, transport, toolbar, normal return, optional update. Update
       absence must not redistribute the permanent controls or show a placeholder button.
-- [ ] Wire transport to the existing business function and normal return to
+- [x] Wire transport to the existing business function and normal return to
       exitDockRestoringAttributes; do not mutate capture/window state directly.
-- [ ] Remove SourceTransportCluster from `accessories/DockHeader.jsx` and simplify the equal-width
+- [x] Remove SourceTransportCluster from `accessories/DockHeader.jsx` and simplify the equal-width
       center layout. Preserve the toolbar tools, notices, editor anchors, and dismissal behavior.
-- [ ] Audit automatic toolbar visibility rules that existed to expose transport/Snapshot. Retain
+- [x] Audit automatic toolbar visibility rules that existed to expose transport/Snapshot. Retain
       behavior needed for editors/notices, and eliminate dependencies on the removed pill without
       making the persistent transport disappear.
-- [ ] Update width tokens, panel viewport calculations, recording-indicator placement, native
+- [x] Update width tokens, panel viewport calculations, recording-indicator placement, native
       minimum height, startup restore/clamping, resize bounds, and Agent Control Dock limits together.
       Preserve user panel sizes/order and normal-window geometry.
-- [ ] Synchronize schema/read/patch/capabilities/docs/tests for changed Dock bounds, regenerating
+- [x] Synchronize schema/read/patch/capabilities/docs/tests for changed Dock bounds, regenerating
       generated command documentation only through its supported generator.
 
 Tests: transport presentation/action parity, Dock order and visibility, stable control width,
@@ -67,26 +67,26 @@ sentences instead of behavior. Pixel evidence remains necessary for dimensions a
 
 Depends on U4's serializable update view state and U5's confirmed-install contract.
 
-- [ ] Extend `DockAccessoriesContext.jsx`, `accessoryProtocol.js`, and the bridge/client surface
+- [x] Extend `DockAccessoriesContext.jsx`, `accessoryProtocol.js`, and the bridge/client surface
       with the necessary update snapshot/actions. Keep native resource handles and package ownership
       in the controller. Reject stale/duplicate confirmation requests at the owner.
-- [ ] Show the optional trailing icon for available/downloading/ready/actionable-error states,
+- [x] Show the optional trailing icon for available/downloading/ready/actionable-error states,
       with useful tooltip/accessibility text. No blinking, focus stealing, or background modal opening.
-- [ ] Host the shared UpdateDialog content in an independent accessory surface, integrating native
+- [x] Host the shared UpdateDialog content in an independent accessory surface, integrating native
       creation/lifecycle in `src-tauri/src/dock_accessories.rs` and frontend accessory routing. Do not
       squeeze a normal modal into the Dock strip or rebuild changelog rendering in a separate component.
-- [ ] Reuse existing accessory creation where suitable; ensure the update view cannot discard an
+- [x] Reuse existing accessory creation where suitable; ensure the update view cannot discard an
       open editor draft. Record the chosen toolbar/editor coexistence and focus policy before wiring
       dismissal. Repeated clicks focus the existing details surface rather than spawning duplicates.
 - [ ] Place details inside the correct monitor work area for both Dock edges and scaling settings.
       Closing/Escape returns focus appropriately without exiting Dock or changing capture/history.
       While installation has begun, dismissal cannot cancel or duplicate the native operation.
-- [ ] Support the startup offer with Update and Restart / Skip This Time in this surface when a
+- [x] Support the startup offer with Update and Restart / Skip This Time in this surface when a
       saved Dock session opens. The first-launch preference choice must also be accessible in Dock,
       using the shared setup content; do not allow hidden UI to trigger requests before choice.
-- [ ] Keep displayed release notes and confirmation target frozen together. Reflect owner progress,
+- [x] Keep displayed release notes and confirmation target frozen together. Reflect owner progress,
       failures, and platform capability; Portable offers a ZIP route and Preview has no updater UI.
-- [ ] Extend visual-capture readiness and surface metadata for the new window so Agent Control can
+- [x] Extend visual-capture readiness and surface metadata for the new window so Agent Control can
       verify it. Follow existing capabilities/permissions and surface synchronization conventions.
 
 Test stale accessory snapshots, repeated open, shared controller ownership, frozen update target,
@@ -100,16 +100,16 @@ Exercise real native focus, clipping, placement, and installation handoff separa
       downloading/ready/error, interface sizes, and Windows display/text scaling.
 - [ ] Verify native Windows and macOS layout, restoration, accessory focus, and work-area reservation.
       If a platform is unavailable, record the gap rather than claiming cross-platform completion.
-- [ ] Verify height changes and update arrival do not move permanent controls horizontally or
+- [x] Verify height changes and update arrival do not move permanent controls horizontally or
       resize the panel viewport. Confirm a new minimum only clamps out-of-range saved heights.
-- [ ] Verify normal-window transport remains unchanged, toolbar tools still work, and returning to
+- [x] Verify normal-window transport remains unchanged, toolbar tools still work, and returning to
       normal mode leaves measurement running. Check recording indicator placement and resize handles.
 - [ ] Run U6's shared update scenarios through Dock, especially offline staged offers, skip,
       Portable routing, active peers, blocked editors, and failure recovery.
-- [ ] Update `docs/user/workspace.md` and/or `system-settings.md` according to their existing Dock
+- [x] Update `docs/user/workspace.md` and/or `system-settings.md` according to their existing Dock
       sections, plus update guidance, architecture, and CLI bounds where affected. Explain any minimum
       height change and remove obsolete instructions about the centered toolbar transport.
-- [ ] Before implementation commits run `npm test` plus frontend format/lint/typecheck and
+- [x] Before implementation commits run `npm test` plus frontend format/lint/typecheck and
       `npm run rust:check` when touching Rust. Run relevant native geometry tests. Before push/merge,
       run `npm run check:changes` and its full mixed-change gate.
 
@@ -147,12 +147,12 @@ Fill this table during D1 with measured values and screenshot paths, not guessed
 
 | Quantity                         | Constraint                                                                    | Recorded result     |
 | -------------------------------- | ----------------------------------------------------------------------------- | ------------------- |
-| Control width per interface size | Full status/time display and usable action target; independent of Dock height | Pending measurement |
-| Status row height                | Legible text with no clipping under supported text scale                      | Pending measurement |
-| Transport target height          | Easily clickable without overlapping neighboring controls                     | Pending measurement |
-| Three utility target heights     | Toolbar, return, and update all fit when update is visible                    | Pending measurement |
-| Padding/gaps/resize clearance    | No collisions with the Dock resize handle or recording indicator              | Pending measurement |
-| Dock minimum height              | Status + transport + three utility targets + gaps/padding/clearance           | Pending measurement |
+| Control width per interface size | Full status/time display and usable action target; independent of Dock height | 72 CSS px at every interface size |
+| Status row height                | Legible text with no clipping under supported text scale                      | 20 CSS px |
+| Transport target height          | Easily clickable without overlapping neighboring controls                     | 28 CSS px |
+| Three utility target heights     | Toolbar, return, and update all fit when update is visible                    | 24 CSS px each; 32 CSS px wide |
+| Padding/gaps/resize clearance    | No collisions with the Dock resize handle or recording indicator              | 4 CSS px padding; 2 CSS px gaps |
+| Dock minimum height              | Status + transport + three utility targets + gaps/padding/clearance           | 136 CSS px (170 physical px at 1.25 scale) |
 
 Measure the whole stack with the update visible; its absence must not lower the supported minimum
 and allow a later update to grow the Dock. Inspect top/bottom screenshots and panel viewport widths
@@ -235,3 +235,41 @@ Final combined review should trace one staged package from download in normal mo
 quit, to a Dock startup offer, skip, manual reopening, and explicit installation. Also trace a
 manual-only Portable copy through the same Dock entry to its ZIP download. These two paths catch
 cross-feature gaps that separate transport and updater unit suites cannot reveal.
+
+## Execution evidence — 2026-10-16
+
+D2/D3 are integrated with the shared update controller. The optional update icon follows the
+permanent controls; absent updates do not leave an empty button. Toolbar transport was removed,
+normal transport keeps its horizontal implementation, and native/frontend/CLI minimums agree.
+Legacy compact rendering thresholds remain available to isolated panel renderers; supported live
+Dock heights now use expanded presentation. Long clocks use an explicit ellipsis and full-value
+hover text, never wider controls or a changed time value.
+
+Agent Control artifacts in `artifacts/update-controls/`:
+
+- `normal-before.png`, `dock-before.png`: baseline captures.
+- `dock-update-controls.png`, `dock-top-final.png`: the full control stack at 136 CSS px.
+- `dock-xl-final.png`: extra-large interface size, Windows scale 1.25; controls still fit.
+- `dock-update-top-final.png`, `dock-bottom-final.png`: separate update details at both edges.
+- `dock-editor-before-update.png`, `dock-editor-coexist-final.png`: the same Level Meter settings
+  before/after opening update details. Inspection retains both surfaces. This exposed and fixed
+  the old editor blur-close behavior; explicit editor dismissal still works.
+- `dock-tall-no-update.png`, `dock-tall-update.png`: 240 CSS px, identical panel/control geometry.
+- `host-transfer-final.png`: the same fixture target transferred to the normal dialog.
+
+Accessory creation/event failure now restores the normal host with the owner's draft/target intact.
+Unit tests cover this without silently saving/consuming the first-launch choice. Real screenshots
+use the closed `update.available` development fixture; they do not claim a real staged install.
+Live and Snapshot were additionally captured in `dock-live-final.png` and
+`dock-snapshot-final.png`. After Dock exit, transport inspection still reported live running
+and the same selected snapshot; test capture was then explicitly stopped. Long-session and
+multi-DPI visual checks, native macOS focus/work-area
+behavior, and the combined real packaged upgrade remain unverified. See the update plan's remaining
+acceptance boundaries; these are intentionally unchecked rather than reported as passed.
+
+Final repository gate: `npm run check` passed with 5,653 frontend tests and all Rust workspace
+checks. Logs are in `artifacts/update-controls/final-check.log`; follow-up regression logs are
+in `final-regression.log` beside it.
+
+Final follow-up regression: 5,655 Vitest tests passed across 527 files, including late-listener
+cleanup and native-window fallback. Frontend format, lint and typecheck passed again.

@@ -27,6 +27,17 @@ function renderVisibility(initialProps = {}) {
   );
 }
 
+it("preserves an existing editor while update details takes focus, but allows explicit dismissal", () => {
+  const { result, rerender } = renderVisibility({ preserveOnBlur: false });
+  act(() => result.current.openEditor("module:level"));
+  act(() => result.current.resizeEditor({ view: "module:level", width: 400, height: 400 }));
+  rerender({ preserveOnBlur: true });
+  act(() => result.current.closeEditor("module:level", "blur"));
+  expect(result.current.editorView).toBe("module:level");
+  act(() => result.current.closeEditor("module:level", "close"));
+  expect(result.current.editorView).toBeNull();
+});
+
 const blurStrip = () => act(() => void window.dispatchEvent(new Event("blur")));
 const focusStrip = () => act(() => void window.dispatchEvent(new Event("focus")));
 

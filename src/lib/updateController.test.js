@@ -12,19 +12,21 @@ function deferred() {
   return { promise, resolve };
 }
 function setup(overrides = {}) {
-  const invoke = vi.fn(async (command) => {
-    if (command === "update_status")
-      return {
-        enabled: true,
-        installationSupported: true,
-        freshSession: true,
-        ready: null,
-      };
-    if (command === "update_check") return a;
-    if (command === "update_download") return { ...a, id: "staged-a" };
-    if (command === "update_prepare_install") return "token";
-    return null;
-  });
+  const invoke = vi.fn(
+    /** @returns {Promise<any>} */ async (command) => {
+      if (command === "update_status")
+        return {
+          enabled: true,
+          installationSupported: true,
+          freshSession: true,
+          ready: null,
+        };
+      if (command === "update_check") return a;
+      if (command === "update_download") return { ...a, id: "staged-a" };
+      if (command === "update_prepare_install") return "token";
+      return null;
+    }
+  );
   const deps = {
     invoke,
     prepare: vi.fn(async () => ({ id: "operation" })),
@@ -37,6 +39,68 @@ function setup(overrides = {}) {
 }
 
 describe("shared update controller", () => {
+  it.each(["2.0.0", "1.9.0"])(
+    "suppresses only the failed target's startup offer (%s)",
+    async (version) => {
+      const { controller, invoke } = setup();
+      await controller.setPreferences(prefs);
+      invoke.mockResolvedValueOnce({
+        enabled: true,
+        installationSupported: true,
+        freshSession: true,
+        ready: a,
+        attempt: { version, phase: "failed", error: "Installer failed" },
+      });
+      await controller.initialize({ eligible: true });
+      expect(Boolean(controller.getSnapshot().details)).toBe(version !== a.version);
+      expect(controller.getSnapshot().ready).toEqual(a);
+    }
+  );
+
+  it("rechecks activity after asynchronous cache reconciliation", async () => {
+    const pending = deferred();
+    const { controller, invoke } = setup();
+    await controller.setPreferences(prefs);
+    invoke.mockImplementationOnce(() => pending.promise);
+    let eligible = true;
+    const initializing = controller.initialize({ eligible: () => eligible });
+    eligible = false;
+    pending.resolve({ enabled: true, installationSupported: true, freshSession: true, ready: a });
+    await initializing;
+    expect(controller.getSnapshot().details).toBeNull();
+  });
+
+  it("refocuses existing details without replacing their target", async () => {
+    const { controller, invoke } = setup();
+    await controller.initialize();
+    await controller.check();
+    controller.openDetails();
+    const first = controller.getSnapshot().details;
+    invoke.mockResolvedValueOnce(b);
+    await controller.check();
+    controller.openDetails();
+    expect(controller.getSnapshot().details.target).toEqual(first.target);
+    expect(controller.getSnapshot().details.presentation).toBeGreaterThan(first.presentation);
+  });
+
+  it("aborts the helper and restores workbenches after a partial global commit", async () => {
+    const relaunch = vi.fn(async () => {});
+    const { controller, invoke, abort } = setup({
+      relaunch,
+      commit: vi.fn(async () => {
+        throw new Error("Peer commit failed");
+      }),
+    });
+    await controller.initialize();
+    await controller.check();
+    controller.openDetails();
+    await controller.confirmInstall();
+    expect(invoke).toHaveBeenCalledWith("update_abort_install", { token: "token" });
+    expect(invoke).not.toHaveBeenCalledWith("update_commit_install", expect.anything());
+    expect(abort).toHaveBeenCalledOnce();
+    expect(relaunch).toHaveBeenCalledOnce();
+    expect(controller.getSnapshot().installStatus).toBe("install-error");
+  });
   it("makes no automatic request before consent but allows an explicit check", async () => {
     const { controller, invoke } = setup();
     await controller.initialize();

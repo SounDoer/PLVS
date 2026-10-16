@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFile, readdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   collectRustRuntimePackages,
@@ -96,7 +96,7 @@ export async function generateComponentNotices({ candidate = false } = {}) {
       directory: dirname(pkg.manifest_path),
       source: pkg.source?.startsWith("registry+")
         ? `https://crates.io/api/v1/crates/${pkg.name}/${pkg.version}/download`
-        : "https://github.com/SounDoer/PLVS/tree/main/src-tauri/vendor/voice_activity_detector",
+        : `https://github.com/SounDoer/PLVS/tree/main/${relative(root, dirname(pkg.manifest_path)).replaceAll("\\", "/")}`,
     }));
   for (const pkg of collectJavascriptProductionPackages(lock)) {
     assertInstalledPackageVersion(

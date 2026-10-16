@@ -7,6 +7,8 @@ import { UpdateSurfaces } from "./UpdateSurfaces.jsx";
 const mock = vi.hoisted(() => ({
   settings: { updatePreferences: { choiceMade: false }, setUpdatePreferences: vi.fn() },
   docked: false,
+  windowError: null,
+  exitDock: vi.fn(async () => ({ ok: true })),
   registry: null,
 }));
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
@@ -23,12 +25,18 @@ vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
 }));
 vi.mock("../settings/SettingsContext.jsx", () => ({ useAppSettings: () => mock.settings }));
 vi.mock("../dock/DockContext.jsx", () => ({
-  useDock: () => ({ docked: mock.docked, dockEdge: "bottom" }),
+  useDock: () => ({
+    docked: mock.docked,
+    dockEdge: "bottom",
+    exitDockRestoringAttributes: mock.exitDock,
+  }),
 }));
 vi.mock("../dock/DockAccessoriesContext.jsx", () => ({
   useDockAccessories: () => ({ setUpdateGeometry: vi.fn() }),
 }));
-vi.mock("../dock/useDockUpdateWindow.js", () => ({ useDockUpdateWindow: () => ({ error: null }) }));
+vi.mock("../dock/useDockUpdateWindow.js", () => ({
+  useDockUpdateWindow: () => ({ error: mock.windowError }),
+}));
 function Harness() {
   mock.registry = useBlockingEditors();
   return <UpdateSurfaces currentVersion="0.21.0" />;
@@ -36,8 +44,22 @@ function Harness() {
 beforeEach(() => {
   mock.settings.setUpdatePreferences.mockReset();
   mock.docked = false;
+  mock.windowError = null;
+  mock.exitDock.mockClear();
 });
 describe("first-launch update choice", () => {
+  it("restores the normal host without saving or skipping when the Dock accessory fails", () => {
+    mock.docked = true;
+    mock.windowError = "Window unavailable";
+    render(
+      <BlockingEditorsProvider>
+        <Harness />
+      </BlockingEditorsProvider>
+    );
+    expect(mock.exitDock).toHaveBeenCalledOnce();
+    expect(mock.settings.setUpdatePreferences).not.toHaveBeenCalled();
+    expect(mock.registry.activeBlockingEditors).toContain("updatePreferences");
+  });
   it.each([false, true])(
     "blocks scene mutations while the untouched choice is open (Dock=%s)",
     (docked) => {

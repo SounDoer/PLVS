@@ -75,6 +75,7 @@ export function createLatestDockAccessoryUpdater({ command = setDockAccessoriesW
  *   edge: string,
  *   geometryVersion: number,
  *   forceHeaderVisible?: boolean,
+ *   preserveOnBlur?: boolean,
  *   snapshotActive?: boolean,
  *   waitForHeaderReady?: boolean,
  *   onError: (...args: any[]) => any,
@@ -85,6 +86,7 @@ export function useDockAccessoryVisibility({
   edge,
   geometryVersion,
   forceHeaderVisible = false,
+  preserveOnBlur = false,
   snapshotActive = false,
   waitForHeaderReady = false,
   onError,
@@ -163,16 +165,20 @@ export function useDockAccessoryVisibility({
     if (Number.isFinite(anchorX)) setEditorAnchorX(anchorX);
     setEditorView(view);
   }, []);
-  const closeEditor = useCallback((expectedView, reason) => {
-    if (expectedView && editorViewRef.current !== expectedView) return;
-    if (reason === "blur" && measuredEditorViewRef.current !== editorViewRef.current) return;
-    editorViewRef.current = null;
-    measuredEditorViewRef.current = null;
-    // The editor is hidden while it may still hold focus, and may never report the blur.
-    focusRef.current["dock-editor"] = false;
-    setMeasuredEditorView(null);
-    setEditorView(null);
-  }, []);
+  const closeEditor = useCallback(
+    (expectedView, reason) => {
+      if (reason === "blur" && preserveOnBlur) return;
+      if (expectedView && editorViewRef.current !== expectedView) return;
+      if (reason === "blur" && measuredEditorViewRef.current !== editorViewRef.current) return;
+      editorViewRef.current = null;
+      measuredEditorViewRef.current = null;
+      // The editor is hidden while it may still hold focus, and may never report the blur.
+      focusRef.current["dock-editor"] = false;
+      setMeasuredEditorView(null);
+      setEditorView(null);
+    },
+    [preserveOnBlur]
+  );
   const resizeEditor = useCallback(({ view, width, height }) => {
     if (!view || editorViewRef.current !== view) return;
     if (!Number.isFinite(width) || !Number.isFinite(height)) return;

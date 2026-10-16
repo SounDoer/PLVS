@@ -1,4 +1,5 @@
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
+import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 import { useSource } from "../runtime/SourceContext.jsx";
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
@@ -41,6 +42,7 @@ const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} 
  * then the bridge that publishes to the accessories.
  */
 export function DockAccessoriesProvider({ children }) {
+  const { updateControls } = useAppLifecycle();
   const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
   const { historyRetentionSec, interfaceSize } = useAppSettings();
   const { view, setPanelPresentation } = useWindowChrome();
@@ -102,6 +104,7 @@ export function DockAccessoriesProvider({ children }) {
     [docked, exitDockRestoringAttributes, raiseNotice]
   );
   const dockAccessoryVisibility = useDockAccessoryVisibility({
+    preserveOnBlur: Boolean(updateControls.details),
     active: docked && !dockSuspended,
     edge: dockEdge,
     geometryVersion: dockHeight,
