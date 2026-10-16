@@ -1,8 +1,24 @@
 # Dock Control Area
 
 Date: 2026-10-16
-Status: Icon-only review at 32 CSS px width and 136 CSS px minimum height; platform acceptance pending
+Status: Revised 2026-10-17 to 24 CSS px width and 60 CSS px minimum height; platform acceptance pending
 Branch: `codex/update-preferences`
+
+## Revision 2026-10-17
+
+Review found the 136 CSS px minimum too tall for a slim strip and the panel-shaped toolbar icon too
+easy to confuse with the window-shaped return icon. The following supersedes the conflicting parts
+below:
+
+- Minimum height 60 CSS px (frontend and native); the control column is 24 CSS px with three fixed
+  20 by 18 CSS px buttons and 16 CSS px icons. Panels use their existing compact tier again.
+- Toolbar toggle: a single chevron pointing to where the toolbar opens, flipped while open. Return to
+  Normal Window: outward diagonal arrows (Maximize2). Transport keeps its shared state icons; its
+  tip uses the same PLVS hover tip as the neighbouring buttons and reads Return to Live in Snapshot.
+- Updates no longer take a fourth button. A dot on the toolbar toggle marks any update state (red
+  after a failure), and the toolbar shows a text entry before its tools: Update Available or Ready
+  with the version, Downloading Update with progress, or Update Failed. It opens the shared details.
+- No migration handling for heights saved during internal development.
 
 ## Problem
 

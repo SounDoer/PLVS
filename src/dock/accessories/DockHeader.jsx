@@ -1,10 +1,28 @@
-import { Bookmark, Focus, Volume2, Gauge, LayoutGrid, Trash2 } from "lucide-react";
+import {
+  Bookmark,
+  Check,
+  CircleAlert,
+  Download,
+  Focus,
+  Gauge,
+  LayoutGrid,
+  LoaderCircle,
+  Trash2,
+  Volume2,
+} from "lucide-react";
 import { IconButton } from "../../components/IconButton.jsx";
 import { HoverTip } from "../../components/HoverTip.jsx";
+import { LinkButton } from "../../components/ui/link-button.jsx";
 import { cn } from "../../lib/utils.js";
 import { SHELL_HEADER_ACTIONS, SHELL_HEADER_BAR } from "../../lib/shellLayout.js";
 
 const ACTION_ICON_CLASS = "size-[length:var(--ui-icon-shell-action)]";
+const UPDATE_ICONS = {
+  available: Download,
+  downloading: LoaderCircle,
+  ready: Check,
+  error: CircleAlert,
+};
 
 /** @param {{ state: any, onAction: (...args: any[]) => any }} props */
 export function DockHeader({ state, onAction }) {
@@ -51,6 +69,7 @@ export function DockHeader({ state, onAction }) {
           </HoverTip>
         ) : null}
         <div className="flex-1" />
+        {state.update ? <DockHeaderUpdate update={state.update} onAction={onAction} /> : null}
         <div data-testid="dock-header-actions" className={cn(SHELL_HEADER_ACTIONS, "shrink-0")}>
           <IconButton
             icon={<Trash2 className={ACTION_ICON_CLASS} />}
@@ -106,5 +125,33 @@ export function DockHeader({ state, onAction }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Dock's update entry: the strip shows only a badge, so the toolbar names the state in words,
+ * like the normal window's footer link, with the same LinkButton. It opens the shared update details.
+ *
+ * @param {{ update: { phase: string, text: string }, onAction: (...args: any[]) => any }} props
+ */
+function DockHeaderUpdate({ update, onAction }) {
+  const Icon = UPDATE_ICONS[update.phase] ?? Download;
+  return (
+    <LinkButton
+      data-testid="dock-header-update"
+      data-phase={update.phase}
+      onClick={() => onAction("open-update")}
+      className={cn(
+        "flex shrink-0 items-center gap-1 text-[length:var(--ui-fs-status)] font-medium hover:underline",
+        update.phase === "error"
+          ? "text-[color:var(--ui-feedback-danger)] hover:text-[color:var(--ui-feedback-danger)]"
+          : update.phase === "downloading"
+            ? "text-muted-foreground"
+            : "text-primary hover:text-primary"
+      )}
+    >
+      <Icon aria-hidden="true" className="size-[1.1em]" />
+      <span className="tabular-nums">{update.text}</span>
+    </LinkButton>
   );
 }

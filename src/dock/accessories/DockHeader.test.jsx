@@ -40,6 +40,23 @@ describe("DockHeader", () => {
     expect(actions.parentElement).toBe(trailing);
   });
 
+  it("names the update state in words just before the tools and opens details", () => {
+    const onAction = vi.fn();
+    render(
+      <DockHeader
+        state={{
+          ...STATE,
+          update: { phase: "ready", label: "Update Ready", text: "Update Ready · v0.22.0" },
+        }}
+        onAction={onAction}
+      />
+    );
+    const entry = screen.getByTestId("dock-header-update");
+    expect(entry.textContent).toBe("Update Ready · v0.22.0");
+    expect(entry.nextElementSibling).toBe(screen.getByTestId("dock-header-actions"));
+    fireEvent.click(entry);
+    expect(onAction).toHaveBeenCalledWith("open-update");
+  });
   it("keeps an error notice beside the transport, outside the actions group", () => {
     render(
       <DockHeader

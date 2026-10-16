@@ -19,6 +19,7 @@ const ACTION_TYPES = new Set([
   "header-ready",
   "source-primary",
   "clear",
+  "open-update",
   "open-editor",
   "close-editor",
   "dismiss-toolbar",

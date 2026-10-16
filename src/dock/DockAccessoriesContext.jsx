@@ -1,5 +1,6 @@
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
+import { dockUpdateStatus } from "./dockUpdateStatus.js";
 import { useSource } from "../runtime/SourceContext.jsx";
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
@@ -174,6 +175,9 @@ export function DockAccessoriesProvider({ children }) {
     },
   };
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
+  const openUpdateDetails = updateControls.openDetails;
+  const dockUpdate = dockUpdateStatus(updateControls);
+  const dockUpdateKey = JSON.stringify(dockUpdate);
   const dockHeaderState = useMemo(
     () => ({
       interfaceSize,
@@ -182,6 +186,7 @@ export function DockAccessoriesProvider({ children }) {
       sourceTransportState,
       clearDisabled: !running && !showClock,
       notice,
+      update: JSON.parse(dockUpdateKey),
       edge: dockEdge,
       reserveSpace,
       editorView: dockAccessoryVisibility.editorView,
@@ -195,6 +200,7 @@ export function DockAccessoriesProvider({ children }) {
       dockAccessoryVisibility.headerVisible,
       dockAccessoryVisibility.headerPresentationId,
       dockEdge,
+      dockUpdateKey,
       loudnessProfile.active,
       notice,
       presets.activeId,
@@ -278,6 +284,7 @@ export function DockAccessoriesProvider({ children }) {
         dockAccessoryVisibility.confirmHeaderReady(payload.presentationId);
       else if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
+      else if (type === "open-update") openUpdateDetails();
       else if (type === "open-editor") {
         setHoveredDockPanelId(null);
         if (payload.view === "device") void refreshInventory();
@@ -393,6 +400,7 @@ export function DockAccessoriesProvider({ children }) {
       raiseNotice,
       reserveSpace,
       toggleReserveSpace,
+      openUpdateDetails,
     ]
   );
   useDockAccessoryBridge({

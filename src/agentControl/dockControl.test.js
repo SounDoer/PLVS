@@ -16,7 +16,7 @@ const dock = {
   edge: "top",
   monitor: "monitor-1",
   reserveSpace: true,
-  height: 136,
+  height: 72,
   suspended: false,
   panelsById: {
     level: { id: "level", moduleId: "levelMeter", customTitle: "Main" },
@@ -144,8 +144,8 @@ describe("Dock Control", () => {
       edge: "top",
       monitor: "monitor-1",
       reserveSpace: true,
-      height: 136,
-      heightMode: "expanded",
+      height: 72,
+      heightMode: "standard",
       suspended: false,
       panels: [
         {
@@ -175,7 +175,7 @@ describe("Dock Control", () => {
     expect(result).toMatchObject({
       supported: true,
       reserveSpace: { writable: true },
-      height: { min: 136, max: 4294967295 },
+      height: { min: 60, max: 4294967295 },
       monitors: [{ id: "monitor-1", name: "Display 1" }],
     });
     expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").width).toEqual({

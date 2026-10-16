@@ -42,6 +42,7 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { UpdateSurfaces } from "./components/UpdateSurfaces.jsx";
+import { dockUpdateStatus } from "./dock/dockUpdateStatus.js";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { isTauri } from "./ipc/env.js";
@@ -608,25 +609,7 @@ function AppContent() {
           dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
         toolbarOpen: dockAccessoryVisibility.headerVisible,
         onToolbarToggle: dockAccessoryVisibility.toggleToolbar,
-        updateStatus: updateControls.updateInfo.hasUpdate
-          ? {
-              phase: updateControls.error
-                ? "error"
-                : updateControls.downloading
-                  ? "downloading"
-                  : updateControls.ready
-                    ? "ready"
-                    : "available",
-              label: updateControls.error
-                ? "Update Failed"
-                : updateControls.downloading
-                  ? "Downloading Update"
-                  : updateControls.ready
-                    ? "Update Ready"
-                    : "Update Available",
-            }
-          : null,
-        onOpenUpdate: () => updateControls.openDetails(),
+        updateStatus: dockUpdateStatus(updateControls),
         onRestoreWindow: () => {
           void exitDockRestoringAttributes();
         },

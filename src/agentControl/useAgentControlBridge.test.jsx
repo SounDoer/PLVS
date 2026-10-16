@@ -104,7 +104,7 @@ const dock = {
   edge: "bottom",
   monitor: null,
   reserveSpace: true,
-  height: 136,
+  height: 72,
   suspended: false,
   panelsById: { waveform: { id: "waveform", moduleId: "waveform" } },
   panelOrder: ["waveform"],
@@ -2952,7 +2952,7 @@ describe("useAgentControlBridge", () => {
     expect(described.result).toMatchObject({
       revision: 0,
       supported: true,
-      height: { min: 136, max: 4294967295 },
+      height: { min: 60, max: 4294967295 },
     });
   });
 

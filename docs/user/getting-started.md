@@ -47,7 +47,7 @@ first-launch prompt. These preferences can be changed in Settings.
 
 When checking is enabled, PLVS checks at startup and every 12 hours. Manual checks remain available
 with automatic checking off. The footer's **Update Available · View Release Notes** link opens the
-shared update details; Dock shows an update icon in its right-hand controls when an update exists.
+shared update details; in Dock, a dot on the toolbar arrow marks an update and the toolbar names it.
 
 With automatic downloading enabled, PLVS verifies and keeps an update locally without interrupting
 your work. On a later fresh launch, it offers **Update and Restart** or **Skip This Time**. Skipping

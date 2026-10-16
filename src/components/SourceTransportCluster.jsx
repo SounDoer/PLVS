@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Play, Radio, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HoverTip } from "@/components/HoverTip";
 
 const CHROME = {
   ready: {
@@ -47,6 +48,12 @@ const ACTION_WIDTH_CLASS = {
   file: "w-[calc(7.5em+1.875rem)]",
 };
 
+/** Dock has no visible label, so its tip spells out the Snapshot action. */
+const dockActionTip = ({ actionKind, actionLabel }) =>
+  actionKind === "returnToLive"
+    ? "Return to Live"
+    : actionLabel.charAt(0) + actionLabel.slice(1).toLowerCase();
+
 export function SourceTransportCluster({
   state,
   sourceMode,
@@ -72,6 +79,24 @@ export function SourceTransportCluster({
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [open]);
+
+  const actionButton = (
+    <button
+      type="button"
+      disabled={state.primaryActionDisabled}
+      aria-label={vertical ? state.actionLabel.toLowerCase() : undefined}
+      onClick={() => onPrimaryAction(state.actionKind)}
+      className={cn(
+        "flex shrink-0 items-center justify-center gap-1 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
+        vertical ? "dock-transport-action w-full" : "ml-1 h-full rounded-full px-3",
+        !vertical && (ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live),
+        chrome.action
+      )}
+    >
+      <ActionIcon className={vertical ? "size-4" : "size-[1em]"} />
+      <span className={cn("transport-cap-label", vertical && "sr-only")}>{state.actionLabel}</span>
+    </button>
+  );
 
   return (
     <div
@@ -143,24 +168,14 @@ export function SourceTransportCluster({
         </span>
       ) : null}
 
-      <button
-        type="button"
-        disabled={state.primaryActionDisabled}
-        title={vertical ? state.actionLabel : undefined}
-        aria-label={vertical ? state.actionLabel.toLowerCase() : undefined}
-        onClick={() => onPrimaryAction(state.actionKind)}
-        className={cn(
-          "flex shrink-0 items-center justify-center gap-1 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
-          vertical ? "dock-transport-action w-full" : "ml-1 h-full rounded-full px-3",
-          !vertical && (ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live),
-          chrome.action
-        )}
-      >
-        <ActionIcon className={vertical ? "size-4" : "size-[1em]"} />
-        <span className={cn("transport-cap-label", vertical && "sr-only")}>
-          {state.actionLabel}
-        </span>
-      </button>
+      {vertical ? (
+        // Dock shows no label; match the hover tips of the neighbouring Dock controls.
+        <HoverTip tip={dockActionTip(state)} side="left" align="center" className="size-full">
+          {actionButton}
+        </HoverTip>
+      ) : (
+        actionButton
+      )}
     </div>
   );
 }

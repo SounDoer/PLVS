@@ -31,7 +31,6 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
  *   onToolbarToggle?: () => void,
  *   onRestoreWindow?: () => void,
  *   updateStatus?: { phase: string, label: string } | null,
- *   onOpenUpdate?: () => void,
  *   recordingState?: string | null,
  * }} props
  */
@@ -52,7 +51,6 @@ export function DockStrip({
   onToolbarToggle,
   onRestoreWindow,
   updateStatus = null,
-  onOpenUpdate,
   recordingState = null,
 }) {
   const chrome = usePanelChromeData();
@@ -180,7 +178,6 @@ export function DockStrip({
           transport={controls.sourceTransportState}
           onTransport={controls.onSourceTransportAction}
           update={updateStatus}
-          onUpdate={onOpenUpdate}
         />
       </div>
       <RecordingIndicator

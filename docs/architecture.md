@@ -578,8 +578,8 @@ Declared exceptions (device px on purpose):
 
 ### Dock three-window boundary
 
-The Dock form consists of three native windows: `main` is the meter strip, at least 56 logical px
-and 56 px by default, limited by the display work area with accessory space reserved; `dock-header` is a full-width 36 logical px toolbar, shown when the user opens it
+The Dock form consists of three native windows: `main` is the meter strip, at least 60 logical px
+and 180 px by default, limited by the display work area with accessory space reserved; `dock-header` is a full-width 36 logical px toolbar, shown when the user opens it
 from the strip's entry, while an editor is open, or while an error notice stands; `dock-editor` is a
 right-aligned single-column editor. On Windows only `main` registers as an AppBar; with Reserve
 screen space enabled only the meter strip is reserved, and header/editor always overlay the adjacent

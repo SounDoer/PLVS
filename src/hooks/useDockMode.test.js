@@ -128,7 +128,7 @@ describe("useDockMode", () => {
 
   it("returns the native Dock form after a reservation fallback", async () => {
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: false, edge: "top", reserveSpace: true, height: 136 },
+      dockState: { enabled: false, edge: "top", reserveSpace: true, height: 60 },
     };
     mocks.enterDock.mockResolvedValueOnce(
       standIn({
@@ -136,14 +136,14 @@ describe("useDockMode", () => {
         edge: "top",
         monitor: "monitor-1",
         reserveSpace: false,
-        height: 136,
+        height: 60,
       })
     );
     const { result } = renderHook(() => useDockMode());
 
     let effective;
     await act(async () => {
-      effective = await result.current.enterDockMode("top", true, "monitor-1", 56);
+      effective = await result.current.enterDockMode("top", true, "monitor-1", 60);
     });
 
     expect(effective).toMatchObject({
@@ -151,7 +151,7 @@ describe("useDockMode", () => {
       edge: "top",
       monitor: "monitor-1",
       reserveSpace: false,
-      height: 136,
+      height: 60,
     });
     expect(result.current.reserveSpace).toBe(false);
   });
@@ -213,11 +213,11 @@ describe("useDockMode", () => {
 
   it("keeps a stored bottom edge and height instead of the first-run defaults", () => {
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: false, edge: "bottom", reserveSpace: true, height: 160 },
+      dockState: { enabled: false, edge: "bottom", reserveSpace: true, height: 72 },
     };
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEdge).toBe("bottom");
-    expect(result.current.dockHeight).toBe(160);
+    expect(result.current.dockHeight).toBe(72);
   });
 
   it("starts docked from injected boot state", () => {
@@ -313,14 +313,14 @@ describe("useDockMode", () => {
 
   it("resizes and persists dock height through IPC", async () => {
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: true, edge: "bottom", height: 160 },
+      dockState: { enabled: true, edge: "bottom", height: 72 },
     };
     const { result } = renderHook(() => useDockMode());
 
-    await act(() => result.current.resizeDockHeight(172, { persist: true }));
+    await act(() => result.current.resizeDockHeight(110, { persist: true }));
 
-    expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 172, persist: true });
-    expect(result.current.dockHeight).toBe(172);
+    expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 110, persist: true });
+    expect(result.current.dockHeight).toBe(110);
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
@@ -329,27 +329,27 @@ describe("useDockMode", () => {
       dockState: { enabled: true, edge: "bottom", height: 10 },
     };
     const { result } = renderHook(() => useDockMode());
-    expect(result.current.dockHeight).toBe(136);
+    expect(result.current.dockHeight).toBe(60);
 
     await act(() => result.current.resizeDockHeight(999, { persist: false }));
     expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 999, persist: false });
-    expect(result.current.dockHeight).toBe(136);
+    expect(result.current.dockHeight).toBe(60);
   });
 
   it("exposes a render-only preview height until the resize is committed", async () => {
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: true, edge: "bottom", height: 160 },
+      dockState: { enabled: true, edge: "bottom", height: 72 },
     };
     const { result } = renderHook(() => useDockMode());
 
-    await act(() => result.current.resizeDockHeight(184, { persist: false }));
-    expect(result.current.dockPreviewHeight).toBe(184);
-    expect(result.current.dockHeight).toBe(160);
+    await act(() => result.current.resizeDockHeight(124, { persist: false }));
+    expect(result.current.dockPreviewHeight).toBe(124);
+    expect(result.current.dockHeight).toBe(72);
     expect(mocks.patchPresets).not.toHaveBeenCalled();
 
-    await act(() => result.current.resizeDockHeight(184, { persist: true }));
+    await act(() => result.current.resizeDockHeight(124, { persist: true }));
     expect(result.current.dockPreviewHeight).toBeNull();
-    expect(result.current.dockHeight).toBe(184);
+    expect(result.current.dockHeight).toBe(124);
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 

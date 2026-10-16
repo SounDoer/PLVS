@@ -889,7 +889,7 @@ describe("normalizeAgentControlRequest", () => {
         edge: "top",
         monitor: "monitor-1",
         reserveSpace: false,
-        height: 136,
+        height: 72,
         expectedRevision: 2,
         dryRun: true,
       },

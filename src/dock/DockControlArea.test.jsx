@@ -40,13 +40,24 @@ describe("Dock persistent controls", () => {
     expect(onRestore).toHaveBeenCalledOnce();
     expect(onToolbarToggle).toHaveBeenCalledOnce();
   });
-  it("adds updates last without replacing permanent controls", () => {
-    const props = { edge: "top", toolbarOpen: false, transport: state };
+  it("shows updates as a toolbar badge without adding or moving buttons", () => {
+    const props = { edge: "bottom", toolbarOpen: false, transport: state };
     const { rerender } = render(<DockControlArea {...props} />);
     const permanent = screen.getAllByRole("button");
-    rerender(<DockControlArea {...props} update={{ phase: "ready", label: "Update Ready" }} />);
-    expect(screen.getAllByRole("button").slice(0, 3)).toEqual(permanent);
-    expect(screen.getAllByRole("button").at(-1).getAttribute("aria-label")).toBe("update ready");
+    expect(screen.queryByTestId("dock-update-badge")).toBeNull();
+    rerender(<DockControlArea {...props} update={{ phase: "error", label: "Update Failed" }} />);
+    expect(screen.getAllByRole("button")).toEqual(permanent);
+    expect(screen.getByTestId("dock-update-badge").dataset.phase).toBe("error");
+    expect(permanent[1].getAttribute("aria-label")).toBe("show toolbar · update failed");
+  });
+  it("points the toolbar arrow toward where the toolbar opens", () => {
+    const { rerender } = render(<DockControlArea edge="bottom" toolbarOpen={false} />);
+    const arrow = () => screen.getByRole("button", { name: /toolbar/ }).querySelector("svg");
+    expect(arrow().dataset.direction).toBe("up");
+    rerender(<DockControlArea edge="bottom" toolbarOpen />);
+    expect(arrow().dataset.direction).toBe("down");
+    rerender(<DockControlArea edge="top" toolbarOpen={false} />);
+    expect(arrow().dataset.direction).toBe("down");
   });
   it("preserves Snapshot and disabled primary action semantics", () => {
     const onTransport = vi.fn();

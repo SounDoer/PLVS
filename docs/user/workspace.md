@@ -76,12 +76,12 @@ where supported. Select **Off** to restore the normal window. Device and Views o
 opening either does not restart capture. Panel settings remain accessible through the panel editor.
 
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of
-the screen, so the meters stay visible while you work in another app. Click the arrow at the right
-end of the strip to show the Dock toolbar, where you can clear the session, switch the Loudness
-Profile, edit which modules the strip shows, and manage Presets. The fixed-width right control area
-stacks the transport button, toolbar toggle, and Return to Normal Window in a narrow icon column.
-Dock omits the timecode and Ready label. Start/stop and Return to Live remain available with the toolbar closed. Returning to the
-normal window preserves capture and history. The
+the screen, so the meters stay visible while you work in another app. A narrow column at the right
+end of the strip holds three buttons, top to bottom: Start/Stop (Return to Live during a Snapshot),
+the toolbar arrow, and Return to Normal Window (two outward arrows). The arrow points to where the
+toolbar opens and flips once it is open. The Dock toolbar lets you clear the session, switch the
+Loudness Profile, edit which modules the strip shows, and manage Presets. Dock omits the timecode
+and Ready label. Returning to the normal window preserves capture and history. The
 toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
 the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
 stays open until the error clears. On macOS, controls respond to the first click when switching
@@ -115,7 +115,7 @@ Dock's module-width and height resize lines stay hidden while idle, appear in Bo
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer. Height starts at 180 CSS pixels, with
-room for four rows of expanded Stats. It can shrink to 136 CSS pixels or grow up to the current display's
+room for four rows of expanded Stats. It can shrink to 60 CSS pixels or grow up to the current display's
 available space minus room for the toolbar and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 
@@ -198,8 +198,10 @@ so two workbenches cannot resize and restore the same application window in comp
 
 The separate update window fits its content height; long release notes scroll.
 
-An update icon appears last in the right control area only when an update is available, downloading,
-or ready. Its details open in a separate window, reusing the normal release notes and confirmation
+When an update is available, downloading, ready, or has failed, a dot appears on the toolbar arrow
+(red after a failure), and the toolbar shows the state in words beside its tools, for example
+**Update Ready · v0.22.0** or **Downloading Update · 45%**. Clicking it opens the details in a
+separate window, reusing the normal release notes and confirmation
 actions. Closing details keeps Dock active. The toolbar and any open settings editor retain their
 state, and the strip keeps its width and height. Returning to the normal window transfers the same
 selected update to its normal dialog. If the update window cannot open,
