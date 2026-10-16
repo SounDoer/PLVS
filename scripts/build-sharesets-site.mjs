@@ -270,11 +270,11 @@ function detailPage(listing, profile = null) {
   const appRequirement =
     isPreset && presetUsesPanelOrientation(listing.presetPack)
       ? "Requires a PLVS build with panel orientation controls, introduced after 0.20.0."
-      : `Requires PLVS ${SHARESETS_MINIMUM_APP_VERSION} or later.`;
+      : `Requires PLVS ${SHARESETS_MINIMUM_APP_VERSION}+`;
   const primaryAction = isIncluded
     ? `<div class="actions"><span class="included-label">Included with PLVS</span></div>`
     : current
-      ? `<div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}" data-copy-noun="${copyNoun}">Copy ${copyNoun}</button><a class="button secondary" href="${currentDownload}" download>Download ${extname(current.artifact)}</a><span class="copy-status" data-copy-status aria-live="polite"></span></div>`
+      ? `<div class="theme-download"><p class="theme-version"><a href="#release-history">Release ${current.number}</a><span aria-hidden="true">·</span><span>${escapeHtml(appRequirement)}</span></p><div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}" data-copy-noun="${copyNoun}">Copy ${copyNoun}</button><a class="button secondary" href="${currentDownload}" download>Download ${extname(current.artifact)}</a><span class="copy-status" data-copy-status aria-live="polite"></span></div></div>`
       : "";
   const releases = [...listing.releases]
     .reverse()
@@ -323,16 +323,17 @@ function detailPage(listing, profile = null) {
                 : ""
           }
           <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<p class="lede">${escapeHtml(listing.summary)}</p>` : isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace(/Download \.\w+</, "Download<")}
-            ${isIncluded ? "" : current ? `<div class="theme-how"><h2>How to Use</h2><p>${escapeHtml(appRequirement)}</p><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></div>` : `<p class="withdrawn">No current release is available.</p>`}
+            ${!isIncluded && !current ? `<p class="withdrawn">No current release is available.</p>` : ""}
             ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
           </header>
         </div>
         <div class="theme-more">
+          ${!isIncluded && current ? `<section class="theme-how"><h2>How to Use</h2><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></section>` : ""}
           <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${isProfile ? `<div class="markdown profile-guidance">${marked.parse(listing.descriptionMarkdown)}</div>` : ""}${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isIncluded ? "<div><dt>Availability</dt><dd>Included with PLVS</dd></div>" : ""}${isProfile ? "" : isPreset ? renderPresetDetails(metadata) : renderSummary(metadata.content.summary)}${isPreset && listing.presetPack ? presetExtraDetails(listing.presetPack) : ""}${isIncluded ? "" : `<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div>`}</dl></div>${isIncluded ? "" : `<details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>`}` : `<p class="muted">No current release is available.</p>`}</section>
         </div>
         ${renderReferences(listing.references)}
         ${isPreset && listing.presetPack ? presetPanels(listing.presetPack) : ""}
-        ${isIncluded ? "" : `<section class="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>`}
+        ${isIncluded ? "" : `<section class="release-history" id="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>`}
         ${gallery.length ? `<dialog class="preview-dialog" aria-label="${FAMILIES[listing.type].singular} preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous${gallery.length === 1 ? " hidden" : ""} aria-label="Previous image">←</button><span data-preview-position${gallery.length === 1 ? " hidden" : ""} aria-live="polite"></span><button class="button secondary" type="button" data-preview-next${gallery.length === 1 ? " hidden" : ""} aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
       </main>`
     );

@@ -296,7 +296,6 @@ figcaption {
   border-top: 1px solid var(--color-divider);
 }
 .theme-how {
-  margin-top: var(--space-6);
   color: var(--color-muted);
   font-size: var(--text-body);
 }
@@ -541,4 +540,26 @@ body:has(.preview-dialog[open]) {
   margin-top: var(--space-6);
   padding-top: var(--space-5);
   border-top: 1px solid var(--color-divider);
+}
+
+.theme-download {
+  margin-top: var(--space-5);
+}
+.theme-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--color-text);
+  font-size: var(--text-small);
+}
+.theme-version a {
+  color: var(--color-muted);
+}
+.theme-download .actions {
+  margin-top: 0;
+}
+#release-history {
+  scroll-margin-top: var(--space-6);
 }

@@ -226,7 +226,7 @@ describe("Sharesets static site generator", () => {
       await buildSharesetsSite({ contentDirectory: source, outputDirectory: output });
       const detail = readFileSync(join(output, "presets", "default-preset", "index.html"), "utf8");
       expect(detail.includes("introduced after 0.20.0")).toBe(Boolean(orientation));
-      expect(detail.includes("Requires PLVS 0.20.0 or later.")).toBe(!orientation);
+      expect(detail.includes("Requires PLVS 0.20.0+")).toBe(!orientation);
       expect(detail).toContain(
         'data-copy-artifact="/sharesets/files/default-preset/v1/preset.plvspreset"'
       );
@@ -371,7 +371,8 @@ describe("Sharesets static site generator", () => {
     expect(detail).toContain(
       'data-copy-artifact="/sharesets/files/broadcast/v1/broadcast.plvsloudness" data-copy-noun="Profile">Copy Profile</button>'
     );
-    expect(detail).toContain("<p>Requires PLVS 0.20.0 or later.</p>");
+    expect(detail).toContain('<span>Requires PLVS 0.20.0+</span>');
+    expect(detail).toContain('<a href="#release-history">Release 1</a>');
     expect(detail).toContain("<h2>Sources</h2>");
     expect(detail).toContain("Example Loudness Recommendation");
     expect(detail).toContain("Version 2.0 (2026)");
