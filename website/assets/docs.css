@@ -16,7 +16,7 @@ body {
 }
 a {
   color: var(--color-link);
-  text-underline-offset: 3px;
+  text-underline-offset: var(--link-underline-offset);
 }
 body.site-background {
   background-size: 100% 100vh;
@@ -24,8 +24,8 @@ body.site-background {
   background-color: var(--color-page);
 }
 a:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 3px;
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: var(--focus-offset);
 }
 .docs-layout {
   display: flex;
@@ -59,14 +59,14 @@ a:focus-visible {
   color: var(--color-text);
 }
 .docs-sidebar a:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: -2px;
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: calc(-1 * var(--focus-width));
 }
 .docs-sidebar a.active {
   color: var(--color-text);
   text-decoration: underline;
   text-decoration-color: var(--color-action);
-  text-underline-offset: 8px;
+  text-underline-offset: var(--space-2);
 }
 .docs-content {
   flex: 1 1 auto;
@@ -96,7 +96,7 @@ h4 {
 }
 .docs-section {
   padding: var(--space-7) 0;
-  border-top: 1px solid var(--color-divider);
+  border-top: var(--border-width) solid var(--color-divider);
   scroll-margin-top: var(--space-5);
 }
 .docs-section h2 {
@@ -130,7 +130,7 @@ h4 {
   font-weight: var(--weight-heading);
 }
 .docs-section code {
-  padding: 2px var(--space-1);
+  padding: var(--code-padding-block) var(--space-1);
   border-radius: var(--radius-control);
   background: var(--color-surface);
   font-family: var(--font-mono);
@@ -162,7 +162,7 @@ h4 {
 .docs-section th,
 .docs-section td {
   padding: var(--space-3) var(--space-4) var(--space-3) 0;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--border-width) solid var(--color-divider);
   text-align: left;
   vertical-align: top;
 }
@@ -187,7 +187,7 @@ h4 {
     max-width: 100%;
     max-height: none;
     padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--color-divider);
+    border-bottom: var(--border-width) solid var(--color-divider);
   }
   .docs-sidebar::-webkit-scrollbar {
     display: none;

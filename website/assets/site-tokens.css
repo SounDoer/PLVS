@@ -44,7 +44,14 @@
   --space-7: 48px;
   --radius-preview: var(--radius-control);
   --radius-control: 8px;
-  --radius-panel: 16px;
+  --radius-panel: var(--radius-control);
+  --border-width: 1px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+  --code-padding-block: 2px;
+  --link-underline-offset: 3px;
+  --motion-fast: 150ms;
+  --opacity-disabled: 0.45;
   --control-height: 44px;
   --page-width: 1180px;
   --page-gutter: var(--space-5);

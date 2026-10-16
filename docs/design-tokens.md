@@ -939,7 +939,7 @@ text" and are exempt.
 
 ## Public Website
 
-The homepage and Sharesets share `website/assets/site-tokens.css`, loaded by
+The homepage, Sharesets, Docs, and Privacy pages share `website/assets/site-tokens.css`, loaded by
 `site-chrome.css`. These website tokens are separate from the desktop application's theme
 contract. Page styles consume them without redefining the shared scale.
 
@@ -951,10 +951,89 @@ Colors are semantic `--color-*` roles shared across pages, including text, surfa
 dividers, controls, interaction states, and focus. Decorative background and shadow recipes
 also live in the token file. Resource screenshots retain their original pixels and colors.
 
-Controls use the 8px radius; cards and large panels use 16px. Product screenshots use
-`--radius-preview` (8px), including the homepage hero, galleries, Dock strips, and editor
-screenshots. Screenshot size does not change the radius. Apply it once to the image or its
-clipping frame, preserve the source aspect ratio, and avoid cover-cropping interface content. Spacing
-uses `--space-*`; page gutters, content width, and minimum control height use named tokens.
+### Surfaces and Screenshots
+
+All rounded website surfaces use 8px at every viewport size. Controls, panels, and previews
+retain semantic token names, but share the same value; larger elements do not get larger corners.
+Choose the token by the element's role:
+
+| Role | Token / radius | Application |
+| --- | --- | --- |
+| Controls, tags, code surfaces, thumbnail selectors | `--radius-control` / 8px | The interactive or containing surface owns the radius. |
+| Cards, information panels, dialogs | `--radius-panel` / 8px | The outer surface owns the radius. |
+| Standalone product screenshots | `--radius-preview` / 8px | Homepage hero, galleries, Dock strips, editor screenshots, and Sharesets detail previews, at every viewport size. |
+| Images inside a card or thumbnail selector | 0 additional radius | A flush card image follows its clipping card's outer corners; an inset thumbnail stays rectangular inside its padded selector. |
+| Enlarged image viewer | 0 on the image | Keep the full source rectangle visible inside the padded dialog; the dialog keeps its own 8px radius. |
+
+Apply screenshot rounding once, to the image or its clipping frame. Do not add a second
+rounded frame around it. Logos and artwork retain their authored shape; circular icon controls
+may use 50%. These exceptions do not create additional radius steps.
+
+Preserve source proportions and interface content. Use automatic image height or `object-fit:
+contain` in a fixed preview slot, never `cover`. Empty space in a fixed slot is acceptable.
+Keep compact Dock screenshots horizontally scrollable when shrinking them would make the
+readings unusable. Rounded corners must not hide labels or controls: inspect the source and
+rendered corners, and use a padded frame if important content reaches the corners. CSS cannot
+undo corners or crops already baked into a source image.
+
+Borders, shadows, and backgrounds belong to the containing surface and use shared tokens;
+do not stack the same decoration on both the frame and its image. The homepage hero uses
+`--shadow-preview`; adding that shadow to other screenshots is not implied by their size.
+
+### Layout and Enforcement
+
+Repeated visual details also have shared roles: `--border-width` (1px), `--focus-width` (2px),
+`--focus-offset` (3px), and `--code-padding-block` (2px). Focus rings inside scrollable containers
+may use the negative focus width to avoid clipping. Ordinary links use `--link-underline-offset`
+(3px); navigation selection underlines use `--space-2` (8px). Interaction transitions use
+`--motion-fast` (150ms), and disabled controls use `--opacity-disabled` (0.45).
+Headings use the shared tracking value; introductory labels use normal tracking.
+
+Spacing uses `--space-*`; page gutters, content width, and minimum control height use named tokens.
+Use the following defaults for the visible separation between related elements:
+
+| Relationship | Spacing | Examples |
+| --- | --- | --- |
+| Closely related details | 8px / `--space-2` | Tags, icon and text, field label and input, thumbnail selectors. |
+| Controls in one group | 12px / `--space-3` | Action buttons, category selectors, search controls, subscription input and button. |
+| Content groups inside a card; image and caption | 16px / `--space-4` | Metadata, title, description, and tags; screenshot captions. |
+| Peer images or cards | 24px / `--space-5` | Homepage galleries and image pairs, catalogue cards, download cards; keep this when wrapping into rows. |
+| Introduction and its visual content | 32px / `--space-6` | Section heading/description to gallery; stacked detail preview and summary. |
+| Separate major content groups | 48px / `--space-7`, reduced to 32px in the compact layout | Detail sections and large layout columns. |
+
+Reserve 4px for tight internal details and 64/80px for page-level breathing room. Card padding
+and page gutters remain 24px; do not confuse container padding with the gap between its children.
+Sections with a divider may have padding on both sides of that divider: those are separate
+insets, not an additional gap to stack on the same boundary. Related heading/subtitle text can
+use 8px; paragraph rhythm uses 16px. Aligned card tags may consume remaining height with an auto
+margin, but retain at least the 16px content-group gap.
+
+Give each separation one owner: prefer parent `gap` for repeated children and clear their
+competing margins. For an image caption or section transition, use one adjacent margin instead.
+Review the rendered separation, including margin collapse, flex/grid gaps, and padding; simply
+using a token does not prevent accidentally doubling the space. Responsive layouts may change
+columns and major-group spacing, but must not arbitrarily change button or peer-card gaps.
+
 Image aspect ratios, content-specific layout constraints, and responsive breakpoints remain
 local layout geometry, rather than becoming one-off design tokens.
+This also includes icon artwork/view boxes, image slot sizes, content-driven grid tracks, and
+the Back to Top button's measured position (which reads its inset from the spacing token).
+Zero resets, `auto`, `inherit`, unit line-height for centered controls, and the near-zero
+reduced-motion override are intentional CSS mechanics, not extra design scale values.
+
+Shared tokens are defined only in `site-tokens.css`, including their responsive values. Pages
+may define scoped composition variables, but must not override the shared scale or reference
+undefined tokens behind fallbacks. Typography, colors, and radii consume their semantic roles;
+matching a token's current number is not a substitute for using that token. Source screenshots
+are exempt from the website palette and typography scale.
+
+`website/design-contract.test.js`, included in `npm run website:verify`, checks shared-token
+ownership, reference validity, and typography, radius, spacing, color, stroke, shadow, and
+interaction-detail usage across website CSS, embedded style blocks, and HTML style attributes.
+The contract includes negative examples so that accidental literal values are proven to fail.
+It does not inspect SVG artwork, dynamically generated JavaScript styles, or prove that a
+locally scoped custom property is available on every matching element.
+These static checks do not prove that the browser's final cascade or image pixels look right.
+For visual changes, also review the affected homepage, Sharesets catalogue/detail/viewer, Docs,
+and Privacy surfaces at desktop, tablet, and mobile widths as applicable. Check computed radii,
+image proportions, corner content, and page overflow; scrollable images must stay usable.

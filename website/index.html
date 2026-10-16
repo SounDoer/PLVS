@@ -104,7 +104,7 @@
         font-size: var(--text-body);
         line-height: var(--leading-body);
         font-weight: var(--weight-medium);
-        letter-spacing: 0.01em;
+        letter-spacing: normal;
       }
 
       .hero-title {
@@ -130,7 +130,7 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: var(--space-4);
+        gap: var(--space-3);
         margin-top: var(--space-7);
       }
 
@@ -140,22 +140,22 @@
         justify-content: center;
         min-height: var(--control-height);
         padding: 0 var(--space-5);
-        border: 1px solid transparent;
+        border: var(--border-width) solid transparent;
         border-radius: var(--radius-control);
         font-size: var(--text-body);
         font-weight: var(--weight-heading);
         line-height: 1;
         white-space: nowrap;
         transition:
-          transform 150ms ease,
-          border-color 150ms ease,
-          background 150ms ease,
-          color 150ms ease;
+          transform var(--motion-fast) ease,
+          border-color var(--motion-fast) ease,
+          background var(--motion-fast) ease,
+          color var(--motion-fast) ease;
       }
 
       :is(a, button, input):focus-visible {
-        outline: 2px solid var(--color-focus);
-        outline-offset: 3px;
+        outline: var(--focus-width) solid var(--color-focus);
+        outline-offset: var(--focus-offset);
       }
       .subscribe-form button:hover {
         background: var(--color-action-hover);
@@ -206,7 +206,7 @@
         position: relative;
         overflow: hidden;
         margin: 0;
-        border: 1px solid var(--color-divider);
+        border: var(--border-width) solid var(--color-divider);
         background: var(--color-surface);
         box-shadow: var(--shadow-preview);
         isolation: isolate;
@@ -216,7 +216,7 @@
         display: block;
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
       }
 
       .hero-shot {
@@ -224,10 +224,6 @@
         min-width: 0;
         margin: 0;
         aspect-ratio: 1600 / 1000;
-      }
-
-      .hero-shot img {
-        object-fit: contain;
       }
 
       .features {
@@ -240,7 +236,7 @@
         gap: var(--space-7);
         align-items: center;
         padding: var(--space-7) 0;
-        border-top: 1px solid var(--color-divider);
+        border-top: var(--border-width) solid var(--color-divider);
       }
 
       .feature h2 {
@@ -303,7 +299,7 @@
       .feature-pair {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--space-6);
+        gap: var(--space-5);
         margin-top: var(--space-6);
       }
       .feature-pair figure {
@@ -330,6 +326,9 @@
       .workspace-dock {
         margin: var(--space-6) 0 0;
       }
+      .workspace-dock + .workspace-dock {
+        margin-top: var(--space-5);
+      }
       .workspace-dock-visual {
         overflow-x: auto;
       }
@@ -345,7 +344,6 @@
         .feature-gallery,
         .feature-pair {
           grid-template-columns: 1fr;
-          gap: var(--space-6);
         }
         .feature-visual,
         .monitoring-pair .feature-visual {
@@ -384,7 +382,7 @@
       .download-version:hover {
         color: var(--color-text);
         text-decoration: underline;
-        text-underline-offset: 3px;
+        text-underline-offset: var(--link-underline-offset);
       }
 
       .download-header h2 {
@@ -398,7 +396,7 @@
       .platform-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--space-6);
+        gap: var(--space-5);
         align-items: stretch;
       }
 
@@ -407,21 +405,21 @@
         flex-direction: column;
         min-height: 0;
         padding: var(--space-5);
-        border: 1px solid var(--color-divider);
+        border: var(--border-width) solid var(--color-divider);
         border-radius: var(--radius-panel);
       }
 
       .platform-header {
         display: grid;
         gap: var(--space-2);
-        margin-bottom: var(--space-5);
+        margin-bottom: var(--space-4);
       }
 
       .platform-name {
         display: block;
         font-size: var(--text-title);
         line-height: var(--leading-compact);
-        letter-spacing: -0.02em;
+        letter-spacing: var(--tracking-heading);
         font-weight: var(--weight-heading);
       }
 
@@ -434,7 +432,7 @@
       .platform-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: var(--space-4);
+        gap: var(--space-3);
       }
 
       .portable-link {
@@ -444,7 +442,7 @@
         color: var(--color-muted);
         font-size: var(--text-small);
         font-weight: var(--weight-heading);
-        transition: color 150ms ease;
+        transition: color var(--motion-fast) ease;
       }
 
       .portable-link:hover {
@@ -600,7 +598,7 @@
         gap: var(--space-5);
         margin-top: var(--space-6);
         padding: 0 0 var(--space-5);
-        border-bottom: 1px solid var(--color-divider);
+        border-bottom: var(--border-width) solid var(--color-divider);
       }
 
       .subscribe-copy {
@@ -622,14 +620,14 @@
       }
       .subscribe-form {
         display: flex;
-        gap: var(--space-2);
+        gap: var(--space-3);
       }
       .subscribe-form input[type="email"] {
         flex: 1;
         min-width: 0;
         padding: var(--space-3) var(--space-4);
         border-radius: var(--radius-control);
-        border: 1px solid var(--color-control-border);
+        border: var(--border-width) solid var(--color-control-border);
         background: var(--color-surface);
         color: var(--color-text);
         font-size: var(--text-body);
