@@ -62,10 +62,19 @@ impl InstallGate {
     })
   }
 
-  /// Hold the returned lease until the native installer has actually finished.
-  pub fn wait_until_closed(&self) -> Result<File, String> {
+  /// Hold the returned lease until the native installer has actually finished. A workbench that
+  /// never exits must not hold the entry gate, and with it every later launch, indefinitely.
+  pub fn wait_until_closed(&self, timeout: std::time::Duration) -> Result<File, String> {
     let running = open(&self.root, "running.lock")?;
-    FileExt::lock(&running).map_err(|e| e.to_string())?;
+    let deadline = std::time::Instant::now() + timeout;
+    while FileExt::try_lock(&running).is_err() {
+      if std::time::Instant::now() >= deadline {
+        return Err(
+          "Another PLVS workbench did not close, so the update was not installed.".into(),
+        );
+      }
+      std::thread::sleep(std::time::Duration::from_millis(100));
+    }
     Ok(running)
   }
 }
@@ -109,7 +118,9 @@ mod tests {
     let helper = InstallGate::claim(root.path()).unwrap();
     child("blocked");
     drop(app);
-    let installing = helper.wait_until_closed().unwrap();
+    let installing = helper
+      .wait_until_closed(std::time::Duration::from_secs(5))
+      .unwrap();
     child("blocked");
     drop(installing);
     drop(helper);
@@ -143,7 +154,9 @@ mod tests {
     assert!(RunningInstallation::enter(root.path()).is_err());
     assert!(InstallGate::claim(root.path()).is_err());
     drop(app);
-    let replacement = helper.wait_until_closed().unwrap();
+    let replacement = helper
+      .wait_until_closed(std::time::Duration::from_secs(5))
+      .unwrap();
     assert!(RunningInstallation::enter(root.path()).is_err());
     drop(replacement);
     drop(helper);
@@ -152,5 +165,16 @@ mod tests {
         .unwrap()
         .fresh_session
     );
+  }
+  #[test]
+  fn a_workbench_that_never_exits_releases_the_gate_after_the_deadline() {
+    let root = tempfile::tempdir().unwrap();
+    let _stuck = RunningInstallation::enter(root.path()).unwrap();
+    let helper = InstallGate::claim(root.path()).unwrap();
+    assert!(helper
+      .wait_until_closed(std::time::Duration::from_millis(200))
+      .is_err());
+    drop(helper);
+    assert!(RunningInstallation::enter(root.path()).is_ok());
   }
 }

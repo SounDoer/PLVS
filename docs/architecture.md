@@ -108,11 +108,13 @@ installation. Manifest notes are display data, not authenticated authority.
 A fresh-session probe and installation entry gate use file leases, not process-local flags. After
 explicit confirmation a copied helper verifies cached bytes and acquires the entry gate before the
 workbench save barrier. Startup confirmations inspect peers without stopping them; in-session manual
-updates use the existing global prepare/commit protocol. The helper waits for the old processes to
-exit, records the attempt, waits for Windows NSIS to finish (or macOS replacement to return), then
-releases the gate and relaunches the application. An interrupted attempt with a live installer or
-unknown spawn outcome prevents a new workspace from starting. A completed or failed attempt is not
-automatically retried. The offline adapter and its trust boundary are described in
+updates use the existing global prepare/commit protocol. The helper waits up to five minutes for the
+old processes to exit, records the attempt with its own process identity, waits for Windows NSIS to
+finish (or macOS replacement to return), then releases the gate and relaunches the application.
+While the recorded helper or installer is alive, a new workspace cannot start. Once neither is alive,
+an unfinished attempt is recorded as failed and the installed version starts. A completed or failed
+attempt is not automatically retried. A fresh session removes the previous helper copy. Updater
+commands are not exposed to webviews; only the native update commands can install. The offline adapter and its trust boundary are described in
 [ADR 0030](adr/0030-verify-cached-updates-through-updater-adapter.md).
 
 Dock update/setup presentation is an independent `dock-update` accessory with event permissions
@@ -715,7 +717,6 @@ as ordinary panels. `dockFrequencyViewport` supplies the normal panel-instance c
 shared renderers and range settings. Accessory edits route to the Workspace owner; the accessory
 window does not keep a second frequency range. Each Dock instance persists `linkFrequencyViewport`
 and its dormant local range. Presentation visibility does not alter membership.
-
 
 ### Update installation location
 

@@ -89,7 +89,10 @@ available; the check failure does not replace the installation status in the dia
 The startup offer never stops another workbench to gain permission: if a peer starts before you
 confirm, installation is deferred. A manual update still uses the workbench-wide save and editor
 guards described above. New workbenches are prevented from opening while the confirmed installer
-owns the installation. Failed attempts do not automatically retry on the next launch.
+owns the installation. If another workbench has not closed within five minutes, the update is
+not installed and PLVS reopens. If an installation is interrupted, for example by a power loss,
+the next launch opens the version that is still installed and reports the interrupted attempt.
+Failed attempts do not automatically retry on the next launch.
 Reopening the failed version's update details shows the previous installation error.
 
 ## Global shortcut

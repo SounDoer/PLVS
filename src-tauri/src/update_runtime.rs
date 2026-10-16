@@ -5,13 +5,14 @@ use crate::{
   update_cache::{ReadyUpdate, UpdateCache},
 };
 use serde::Serialize;
-use std::{collections::HashMap, sync::Mutex, time::Duration};
+use std::{sync::Mutex, time::Duration};
 use tauri::{Emitter, Manager, State, WebviewWindow};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 pub struct UpdateRuntime {
   cache: UpdateCache,
-  candidates: Mutex<HashMap<String, Update>>,
+  /// Oldest first, so the bound evicts the stalest selection rather than an arbitrary one.
+  candidates: Mutex<Vec<(String, Update)>>,
   transfers: Mutex<Option<(u64, futures_util::future::AbortHandle)>>,
   pub installation_supported: bool,
   app_data: std::path::PathBuf,
@@ -35,10 +36,13 @@ impl UpdateRuntime {
   pub fn new(cache: UpdateCache, app_data: std::path::PathBuf) -> Result<Self, String> {
     crate::update_worker::check_abandoned_attempt(cache.root())?;
     let running = crate::update_gate::RunningInstallation::enter(cache.root())?;
+    if running.fresh_session {
+      crate::update_worker::remove_helper_files(cache.root());
+    }
     cache.reconcile()?;
     Ok(Self {
       cache,
-      candidates: Mutex::new(HashMap::new()),
+      candidates: Mutex::new(Vec::new()),
       transfers: Mutex::new(None),
       installation_supported: installed_distribution() && installation_location_error().is_none(),
       app_data,
@@ -257,11 +261,9 @@ pub async fn update_check(
     .lock()
     .map_err(|_| "Update state unavailable.")?;
   if candidates.len() >= 8 {
-    if let Some(expired) = candidates.keys().next().cloned() {
-      candidates.remove(&expired);
-    }
+    candidates.remove(0);
   }
-  candidates.insert(id, candidate);
+  candidates.push((id, candidate));
   Ok(Some(descriptor))
 }
 
@@ -296,8 +298,9 @@ pub async fn update_download(
     .candidates
     .lock()
     .map_err(|_| "Update state unavailable.")?
-    .get(&candidate_id)
-    .cloned()
+    .iter()
+    .find(|(id, _)| *id == candidate_id)
+    .map(|(_, update)| update.clone())
     .ok_or("The update selection has expired. Check again.")?;
   candidate.timeout = Some(Duration::from_secs(600));
   let cache = runtime.cache.clone();

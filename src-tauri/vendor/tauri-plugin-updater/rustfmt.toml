@@ -1,0 +1,2 @@
+# Keep upstream tauri-plugin-updater formatting so the PLVS patch stays reviewable against it.
+edition = "2024"

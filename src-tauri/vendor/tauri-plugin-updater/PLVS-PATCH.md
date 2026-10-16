@@ -20,3 +20,7 @@ Local changes in `src/updater.rs`:
 No JavaScript API additions. The application owns cache persistence, cancellation, startup
 coordination, and the user-confirmation boundary. Keep this patch small and replace it with an
 upstream API when an equivalent supported interface becomes available.
+
+`rustfmt.toml` keeps upstream's default formatting (4-space indentation). `cargo fmt --all` also
+formats path dependencies, so without it the repository's 2-space style would rewrite every file
+and bury the patch. Compare against upstream with a plain `diff`; only the changes above remain.

@@ -29,6 +29,12 @@ pub struct Attempt {
   pub error: Option<String>,
   pub installer_pid: Option<u32>,
   pub installer_start: Option<u64>,
+  /// The helper is recorded before `installing`, so an interruption before the installer starts
+  /// still leaves a process whose liveness can be checked.
+  #[serde(default)]
+  pub helper_pid: Option<u32>,
+  #[serde(default)]
+  pub helper_start: Option<u64>,
 }
 
 pub struct PendingWorker {
@@ -73,19 +79,24 @@ pub fn read_attempt(root: &Path) -> Result<Option<Attempt>, String> {
   }
 }
 
-/// A dead helper is not evidence that its installer stopped. Preserve the startup fence until
-/// the observed installer process is gone; an ambiguous spawn interruption requires recovery.
+fn process_alive(pid: Option<u32>, start: Option<u64>) -> bool {
+  pid.zip(start).is_some_and(|(pid, start)| {
+    crate::coordinator::registry::process_start_identity(pid) == Some(start)
+  })
+}
+
+/// A live helper or installer keeps the startup fence. Once neither process remains, the attempt
+/// can no longer change files: record it as failed and open the installed version rather than
+/// refusing every later launch.
 pub fn check_abandoned_attempt(root: &Path) -> Result<(), String> {
-  let Some(attempt) = read_attempt(root)? else {
+  let Some(mut attempt) = read_attempt(root)? else {
     return Ok(());
   };
-  if attempt.phase == "installing"
-    && attempt
-      .installer_pid
-      .zip(attempt.installer_start)
-      .is_some_and(|(pid, start)| {
-        crate::coordinator::registry::process_start_identity(pid) == Some(start)
-      })
+  if attempt.phase != "installing" {
+    return Ok(());
+  }
+  if process_alive(attempt.installer_pid, attempt.installer_start)
+    || process_alive(attempt.helper_pid, attempt.helper_start)
   {
     return Err(
       "An update installer is still running. Wait for it to finish before starting PLVS.".into(),
@@ -98,12 +109,24 @@ pub fn check_abandoned_attempt(root: &Path) -> Result<(), String> {
   {
     return Ok(());
   }
-  if attempt.phase != "installing" {
-    return Ok(());
-  }
-  match (attempt.installer_pid, attempt.installer_start) {
-    (Some(pid), Some(start)) if crate::coordinator::registry::process_start_identity(pid) != Some(start) => Ok(()),
-    _ => Err("An update installation is still active or was interrupted before its outcome could be confirmed. Finish or repair the installation before starting PLVS.".into()),
+  attempt.phase = "failed".into();
+  attempt.error = Some(
+    "The previous installation was interrupted before it finished. If PLVS behaves unexpectedly, reinstall it from the release page.".into(),
+  );
+  save_attempt(root, &attempt)
+}
+
+/// Remove the previous helper copy and handshake files. Only a fresh session may do this: while
+/// any workbench runs, a helper may be between spawn and claiming the installation gate.
+pub fn remove_helper_files(root: &Path) {
+  for name in [
+    "plvs-update-worker.exe",
+    "plvs-update-worker",
+    "worker-ticket.json",
+    "worker-ready",
+    "worker-commit",
+  ] {
+    let _ = fs::remove_file(root.join(name));
   }
 }
 
@@ -247,13 +270,17 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
     }
     std::thread::sleep(Duration::from_millis(25));
   }
+  let version = ready.version.clone();
   let result = (|| -> Result<(), String> {
-    let _running = gate.wait_until_closed()?;
+    let _running = gate.wait_until_closed(Duration::from_secs(300))?;
     // Recheck after all workbenches have exited. Cancellation cannot revive a removed candidate.
     let (_, bytes) = cache.load(&ticket.package_id)?;
+    let helper_pid = std::process::id();
     let mut attempt = Attempt {
       version: ready.version,
       phase: "installing".into(),
+      helper_pid: Some(helper_pid),
+      helper_start: crate::coordinator::registry::process_start_identity(helper_pid),
       ..Default::default()
     };
     save_attempt(cache.root(), &attempt)?;
@@ -276,6 +303,7 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
       .ok()
       .flatten()
       .unwrap_or_default();
+    attempt.version = version;
     attempt.phase = "failed".into();
     attempt.error = Some(error.clone());
     let _ = save_attempt(cache.root(), &attempt);
@@ -316,7 +344,7 @@ mod tests {
   }
 
   #[test]
-  fn abandoned_attempts_fail_closed_but_completed_versions_can_start() {
+  fn interrupted_attempts_block_only_while_a_recorded_process_lives() {
     let root = tempfile::tempdir().unwrap();
     assert!(check_abandoned_attempt(root.path()).is_ok());
     let mut attempt = Attempt {
@@ -325,7 +353,18 @@ mod tests {
       ..Default::default()
     };
     save_attempt(root.path(), &attempt).unwrap();
+    // No recorded process remains: the launch proceeds and the attempt is reported as failed.
+    assert!(check_abandoned_attempt(root.path()).is_ok());
+    let recorded = read_attempt(root.path()).unwrap().unwrap();
+    assert_eq!(recorded.phase, "failed");
+    assert!(recorded.error.is_some());
+    // A live helper keeps the fence even before an installer process exists.
+    attempt.helper_pid = Some(std::process::id());
+    attempt.helper_start = crate::coordinator::registry::process_start_identity(std::process::id());
+    save_attempt(root.path(), &attempt).unwrap();
     assert!(check_abandoned_attempt(root.path()).is_err());
+    attempt.helper_pid = None;
+    attempt.helper_start = None;
     attempt.version = "0.0.1".into();
     save_attempt(root.path(), &attempt).unwrap();
     assert!(check_abandoned_attempt(root.path()).is_ok());
