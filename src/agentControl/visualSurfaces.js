@@ -11,6 +11,7 @@ const WINDOW_LABELS = Object.freeze({
   panel: "main",
   dockHeader: "dock-header",
   dockEditor: "dock-editor",
+  dockUpdate: "dock-update",
 });
 
 /**

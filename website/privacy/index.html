@@ -57,7 +57,7 @@
 
     <main>
       <p class="eyebrow">
-        Effective <time data-policy-effective-date datetime="2026-09-20">September 20, 2026</time>
+        Effective <time data-policy-effective-date datetime="2026-10-16">October 16, 2026</time>
       </p>
       <h1>Privacy Policy</h1>
       <p class="lede">
@@ -71,12 +71,14 @@
       </p>
 
       <section>
-        <h2>Automatic Update Checks</h2>
+        <h2>Update Checks and Downloads</h2>
         <p>
-          A standard PLVS build checks for updates when the app starts and every 12 hours while it
-          remains open. You can also start a check from Settings. The request retrieves the signed
-          <code>latest.json</code> manifest from GitHub Releases. Preview builds compile the updater
-          out.
+          When automatic checking is enabled, PLVS checks when the app starts and every 12 hours
+          while it remains open. Fresh users choose their preferences before automatic requests
+          begin; existing users keep automatic checking enabled and automatic downloading disabled.
+          You can disable checking or start a manual check from Settings. Checks retrieve the
+          <code>latest.json</code> manifest from GitHub Releases. Packages are signature-verified;
+          the manifest itself is not signed. Preview builds compile the updater out.
         </p>
         <p>
           The request does not contain audio, measurements, feedback, or a PLVS user identifier.
@@ -86,6 +88,16 @@
             href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
             >GitHub Privacy Statement</a
           >. PLVS does not keep a separate update-check history.
+        </p>
+        <p>
+          If you enable automatic downloading, PLVS also requests update packages from GitHub
+          Releases and its download infrastructure. These requests expose the same types of network
+          information, not your audio or measurements. Verified packages, release notes, and local
+          installation-attempt records are kept in application-managed storage for offline use. A
+          newer verified package replaces the previous package. Disabling automatic downloading
+          cancels background work and removes the staged package; it cannot recall a request already
+          sent. Installation still requires your confirmation. Manually requested updates remain
+          available independently of automatic preferences.
         </p>
       </section>
 

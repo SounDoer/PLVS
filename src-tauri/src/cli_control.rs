@@ -970,9 +970,10 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
     Some("panel") => "panel",
     Some("dock-header") => "dockHeader",
     Some("dock-editor") => "dockEditor",
+    Some("dock-update") => "dockUpdate",
     Some(value) => {
       return Err(format!(
-        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, or dock-editor."
+        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, dock-editor, or dock-update."
       ))
     }
     None => return Err("The visual screenshot command requires --target.".to_string()),
@@ -5101,7 +5102,9 @@ mod tests {
       "theme|loudness-profile" => "theme".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
-      "main|workspace" | "main|workspace|panel|dock-header|dock-editor" => "main".to_string(),
+      "main|workspace" | "main|workspace|panel|dock-header|dock-editor|dock-update" => {
+        "main".to_string()
+      }
       "n" => "0".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
     }
@@ -8037,6 +8040,7 @@ mod tests {
       ("workspace", "workspace"),
       ("dock-header", "dockHeader"),
       ("dock-editor", "dockEditor"),
+      ("dock-update", "dockUpdate"),
     ] {
       let command = parse_control_args(&args(&[
         "visual",

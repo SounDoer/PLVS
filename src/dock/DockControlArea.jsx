@@ -1,4 +1,4 @@
-import { Download, Check, LoaderCircle, PanelTop } from "lucide-react";
+import { Download, Check, LoaderCircle, PanelTop, CircleAlert } from "lucide-react";
 import { IconButton } from "../components/IconButton.jsx";
 import { SourceTransportCluster } from "../components/SourceTransportCluster.jsx";
 import { DockToolbarToggle } from "./DockToolbarToggle.jsx";
@@ -17,7 +17,13 @@ export function DockControlArea({
   onUpdate,
 }) {
   const UpdateIcon =
-    update?.phase === "ready" ? Check : update?.phase === "downloading" ? LoaderCircle : Download;
+    update?.phase === "error"
+      ? CircleAlert
+      : update?.phase === "ready"
+        ? Check
+        : update?.phase === "downloading"
+          ? LoaderCircle
+          : Download;
   return (
     <div className="dock-control-area" data-testid="dock-control-area">
       {transport ? (

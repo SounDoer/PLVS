@@ -41,6 +41,7 @@ import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
+import { UpdateSurfaces } from "./components/UpdateSurfaces.jsx";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { isTauri } from "./ipc/env.js";
@@ -596,7 +597,7 @@ function AppContent() {
     hasUpdate: updateControls.updateInfo?.hasUpdate,
     layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
     onOpenSettings: () => setSettingsOpen(true),
-    onOpenUpdate: () => settingsOverlaysRef.current?.openUpdateDialog(),
+    onOpenUpdate: () => updateControls.openDetails(),
   };
   const dockProps = docked
     ? {
@@ -607,6 +608,25 @@ function AppContent() {
           dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
         toolbarOpen: dockAccessoryVisibility.headerVisible,
         onToolbarToggle: dockAccessoryVisibility.toggleToolbar,
+        updateStatus: updateControls.updateInfo.hasUpdate
+          ? {
+              phase: updateControls.error
+                ? "error"
+                : updateControls.downloading
+                  ? "downloading"
+                  : updateControls.ready
+                    ? "ready"
+                    : "available",
+              label: updateControls.error
+                ? "Update Failed"
+                : updateControls.downloading
+                  ? "Downloading Update"
+                  : updateControls.ready
+                    ? "Update Ready"
+                    : "Update Available",
+            }
+          : null,
+        onOpenUpdate: () => updateControls.openDetails(),
         onRestoreWindow: () => {
           void exitDockRestoringAttributes();
         },
@@ -632,6 +652,7 @@ function AppContent() {
   return (
     <>
       <AgentControlBridge />
+      <UpdateSurfaces currentVersion={APP_VERSION} />
       <AppShell
         docked={docked}
         dockProps={dockProps}

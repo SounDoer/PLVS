@@ -195,6 +195,13 @@ reservation.
 Top and bottom edges are independent on Windows. macOS allows one avoidance owner per display,
 so two workbenches cannot resize and restore the same application window in competing orders.
 
+An update icon appears last in the right control area only when an update is available, downloading,
+or ready. Its details open in a separate window, reusing the normal release notes and confirmation
+actions. Closing details keeps Dock active. The toolbar and any open settings editor retain their
+state, and the strip keeps its width and height. Returning to the normal window transfers the same
+selected update to its normal dialog. At short heights the control area stays narrow; a long time
+readout is truncated, with the full value available on hover.
+
 ### Frequency Linking
 
 Dock Spectrum, Spectrogram and Stereo Map share the Workspace frequency range by default.

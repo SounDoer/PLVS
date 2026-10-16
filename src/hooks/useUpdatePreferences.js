@@ -8,10 +8,16 @@ export function useUpdatePreferences() {
   const [updatePreferences, setState] = useState(read);
   useEffect(() => settingsStore.subscribe(() => setState(read())), []);
   const setUpdatePreferences = useCallback(async (patch) => {
-    const next = changeUpdatePreferences(read(), patch);
+    const previous = read();
+    const next = changeUpdatePreferences(previous, patch);
     settingsStore.patch({ updatePreferences: next });
+    try {
+      await flushPersistence();
+    } catch (error) {
+      settingsStore.patch({ updatePreferences: previous });
+      throw error;
+    }
     setState(next);
-    await flushPersistence();
     return next;
   }, []);
   return { updatePreferences, setUpdatePreferences };

@@ -4,6 +4,7 @@ export const VISUAL_TARGET_KINDS = Object.freeze([
   "panel",
   "dockHeader",
   "dockEditor",
+  "dockUpdate",
 ]);
 
 export const VISUAL_SCREENSHOT_TARGET_KINDS = VISUAL_TARGET_KINDS;

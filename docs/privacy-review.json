@@ -1,14 +1,19 @@
 {
   "schemaVersion": 1,
-  "reviewedOn": "2026-10-14",
-  "effectiveDate": "2026-09-20",
-  "contentSha256": "c5a813b6eef9564838dbb3c5469d88f6ef986f4e424675e55f8aedca3bde04cf",
+  "reviewedOn": "2026-10-16",
+  "effectiveDate": "2026-10-16",
+  "contentSha256": "4a4e7394fab142f5c8a95750b3a41ced897749c94c6eda51478be3e6a76a9374",
   "previousEffectiveDate": "2026-09-20",
-  "dateDecision": "retained",
-  "changeSummary": "Establish the first review baseline after the Docs and Privacy presentation update; no policy text or data-handling behavior is changed by this work.",
-  "dateRationale": "Retain the existing September 20, 2026 effective date. This baseline records a source review and adds an omission check; it does not introduce new processing or assign a new policy effective date.",
-  "scope": "Source review of update checks, optional feedback diagnostics, crash reporting, website requests and the connected newsletter service. Future releases must review their own complete change range.",
+  "dateDecision": "updated",
+  "changeSummary": "Add first-launch update choice, optional background downloads, local verified package retention and cancellation; correct the distinction between signed packages and unsigned manifests.",
+  "dateRationale": "This policy revision adds an opt-in automatic package request trigger and durable local package storage. October 16, 2026 identifies this new policy revision, not an unchanged-policy deployment. Reconfirm the effective date when publishing this pending feature.",
+  "scope": "Review of the update-preferences feature relative to 7670212d. Other service processing remains covered by the prior source baseline; this change introduces no additional recipient beyond GitHub release/download infrastructure.",
   "evidence": [
+    {
+      "source": "PLVS: src/lib/updateController.js; src/hooks/useUpdateController.js; src-tauri/src/update_runtime.rs; src-tauri/src/update_cache.rs; src-tauri/src/update_worker.rs; src/components/UpdateSurfaces.jsx",
+      "revision": "update-preferences working changes based on 7670212d",
+      "notes": "Reviewed request gates and native preference rechecks; manual requests are separate. Fresh users make no automatic request before saving a choice. Existing users retain checking only. Packages are signature and signed-version checked, kept installation-locally, replaced atomically, and removed when automatic downloading is revoked. No audio, measurements, feedback payload or PLVS user identifier is added to update requests. Helper installation uses cached bytes without a new network request."
+    },
     {
       "source": "PLVS: src/hooks/useUpdateCheck.js; src/lib/updateCheck.js; src-tauri/src/lib.rs",
       "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
@@ -30,5 +35,5 @@
       "notes": "Local clean service checkout: SQLite subscriber state; unsubscribe changes status without deleting the row; feedback/crash routes validate and email rather than insert into the subscriber DB. Origin/user-agent are included in messages. Application logging is disabled and rate limiting is five requests per minute. Documentation identifies SES and the example SMTP hostname uses us-east-1."
     }
   ],
-  "limitations": "This is a source baseline, not verification of deployed service configuration, mailbox retention, provider processing, or the historical correctness of the original effective date. SES region is supported by example configuration, not an inspection of live credentials or infrastructure. Release reviewers must resolve relevant deployment uncertainties before publishing affected claims."
+  "limitations": "Source review of a pending feature, not a publication approval or verification of GitHub provider retention. Confirm final feature behavior and this policy effective date before website or desktop publication. Earlier service deployment and mailbox-retention limitations still apply."
 }

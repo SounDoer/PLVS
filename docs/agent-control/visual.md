@@ -21,7 +21,7 @@ artifact.
 - `main` is the complete PLVS main WebView client area, excluding native window chrome.
 - `workspace` is the rendered workspace inside the main WebView. It is unavailable in Dock form.
 - `panel` is one currently rendered Panel body selected by `--panel-id`; hidden inactive tabs fail.
-- `dock-header` and `dock-editor` are the complete client areas of those accessory WebViews. They
+- `dock-header`, `dock-editor`, and `dock-update` are the complete client areas of those accessory WebViews. They
   are screenshot-only and must currently exist, be ready, and be visible.
 
 Capture preserves actual rendered pixels. Open menus, PLVS-rendered cursors, hover state, selection

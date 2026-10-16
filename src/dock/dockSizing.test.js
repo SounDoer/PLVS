@@ -51,7 +51,7 @@ describe("dock sizing", () => {
     expect(dockHeightKeyboardDelta("top", "ArrowDown", 16)).toBe(16);
   });
 
-  it("uses compact, standard, and expanded presentation tiers", () => {
+  it("clamps legacy compact/standard heights into the supported expanded tier", () => {
     expect(dockHeightMode(56)).toBe("expanded");
     expect(dockHeightMode(63)).toBe("expanded");
     expect(dockHeightMode(64)).toBe("expanded");

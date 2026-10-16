@@ -266,7 +266,7 @@ fn unix_time_ms() -> Result<u128, String> {
 }
 
 #[cfg(target_os = "windows")]
-fn process_start_identity(pid: u32) -> Option<u64> {
+pub(crate) fn process_start_identity(pid: u32) -> Option<u64> {
   use windows_sys::Win32::{
     Foundation::{CloseHandle, FILETIME},
     System::Threading::{GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
@@ -287,7 +287,7 @@ fn process_start_identity(pid: u32) -> Option<u64> {
 }
 
 #[cfg(target_os = "macos")]
-fn process_start_identity(pid: u32) -> Option<u64> {
+pub(crate) fn process_start_identity(pid: u32) -> Option<u64> {
   let mut info = unsafe { std::mem::zeroed::<libc::proc_bsdinfo>() };
   let size = std::mem::size_of::<libc::proc_bsdinfo>() as libc::c_int;
   let read = unsafe {
@@ -308,7 +308,7 @@ fn process_start_identity(pid: u32) -> Option<u64> {
 }
 
 #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-fn process_start_identity(pid: u32) -> Option<u64> {
+pub(crate) fn process_start_identity(pid: u32) -> Option<u64> {
   let stat = fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
   let after_name = stat.rsplit_once(')')?.1;
   after_name.split_whitespace().nth(19)?.parse().ok()

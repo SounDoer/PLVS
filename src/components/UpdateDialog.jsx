@@ -7,6 +7,8 @@ export function UpdateDialog({
   currentVersion,
   releaseNotes = "",
   ready = false,
+  installationSupported = true,
+  error = null,
   installStatus = "idle",
   downloadProgress = null,
   onConfirm,
@@ -54,6 +56,8 @@ export function UpdateDialog({
           installStatus={installStatus}
           downloadProgress={downloadProgress}
           ready={ready}
+          installationSupported={installationSupported}
+          error={error}
           onConfirm={onConfirm}
           onCancel={onCancel}
           onRestart={onRestart}

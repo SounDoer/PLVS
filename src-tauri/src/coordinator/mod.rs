@@ -13,7 +13,7 @@ use tauri::State;
 use crate::runtime_identity::RuntimeIdentity;
 
 mod commands;
-mod registry;
+pub(crate) mod registry;
 mod restore_grant;
 
 pub use commands::{

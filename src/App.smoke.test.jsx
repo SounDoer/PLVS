@@ -27,6 +27,7 @@ import { emitTo } from "@tauri-apps/api/event";
 
 import { standIn } from "./testing/standIn.js";
 const tauriEventHandlers = vi.hoisted(() => new Map());
+const tauriEventSubscribers = vi.hoisted(() => new Map());
 
 const TEST_PROFILE = {
   id: "test-profile",
@@ -150,8 +151,19 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: vi.fn().mockResolvedValue(undefined),
   listen: vi.fn((eventName, handler) => {
-    tauriEventHandlers.set(eventName, handler);
-    return Promise.resolve(() => tauriEventHandlers.delete(eventName));
+    const subscribers = tauriEventSubscribers.get(eventName) ?? new Set();
+    subscribers.add(handler);
+    tauriEventSubscribers.set(eventName, subscribers);
+    tauriEventHandlers.set(eventName, (event) =>
+      subscribers.forEach((listener) => listener(event))
+    );
+    return Promise.resolve(() => {
+      subscribers.delete(handler);
+      if (!subscribers.size) {
+        tauriEventSubscribers.delete(eventName);
+        tauriEventHandlers.delete(eventName);
+      }
+    });
   }),
 }));
 
@@ -163,6 +175,7 @@ vi.mock("@tauri-apps/api/webview", () => ({
 
 vi.mock("@tauri-apps/plugin-process", () => ({
   exit: vi.fn().mockResolvedValue(undefined),
+  relaunch: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/plugin-store", () => ({
@@ -186,6 +199,7 @@ beforeEach(() => {
   cleanup();
   localStorage.clear();
   tauriEventHandlers.clear();
+  tauriEventSubscribers.clear();
   delete window.__PLVS_INITIAL_STATE__;
   // AppBar reserve-space scenarios are Windows-only. Pin the mocked Tauri
   // surface to that platform so these smoke tests do not inherit the CI host.

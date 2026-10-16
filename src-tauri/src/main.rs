@@ -13,6 +13,19 @@ fn main() -> ExitCode {
   let mut args = std::env::args();
   args.next(); // executable path
   match args.next().as_deref() {
+    Some("--plvs-update-worker") => {
+      return match args
+        .next()
+        .ok_or_else(|| "Missing update ticket.".to_string())
+        .and_then(|path| app_lib::update_worker::run(std::path::Path::new(&path)))
+      {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+          eprintln!("{error}");
+          ExitCode::from(1)
+        }
+      };
+    }
     Some("--cli") => {
       let expected_app_identifier = args.next().unwrap_or_default();
       let rest: Vec<String> = args.collect();

@@ -59,6 +59,29 @@ minimized. A workbench with an open editor or dialog refuses to quit and comes t
 so you can finish or close what is open first. **Quit PLVS** flushes and closes the complete
 workbench set; quitting one workbench does not close its peers.
 
+## Updates
+
+**Automatically Check for Updates** controls startup and twelve-hour checks. **Automatically
+Download Updates** requires checking to be enabled. Turning checking off also turns downloading
+off; turning checking back on leaves downloading off. **Check** remains an explicit action when
+automatic checking is off. Preferences are shared across workbenches and are not imported from a
+configuration profile.
+
+Turning automatic downloading off cancels background work and removes the staged update. A manual
+update you have explicitly confirmed is separate from this preference. Installed Windows and macOS
+copies support verified local staging; Portable copies use the release-page download instead.
+Preview does not offer the updater.
+
+Downloaded updates are offered on a later fresh launch. **Skip This Time** or closing details keeps
+the package without installing it. Details keep their selected version even if another check
+finishes. If that package has been replaced or removed, confirmation fails safely and asks you to
+reopen details. A previously downloaded package can be installed without another network check.
+
+The startup offer never stops another workbench to gain permission: if a peer starts before you
+confirm, installation is deferred. A manual update still uses the workbench-wide save and editor
+guards described above. New workbenches are prevented from opening while the confirmed installer
+owns the installation. Failed attempts do not automatically retry on the next launch.
+
 ## Global shortcut
 
 Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS

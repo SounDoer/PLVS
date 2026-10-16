@@ -96,6 +96,31 @@ commit phase to close peers; timeout or refusal aborts. A debug-only absolute ap
 allows real multi-process desktop tests to keep persistence, restore metadata, artifacts and logs
 inside a disposable root; packaged builds reject it.
 
+Update preferences belong to the identity-wide settings domain, independently of imported
+workspaces/configuration profiles. Fresh initialization leaves consent unresolved; migration of
+existing data enables checking only. The React update controller owns the scheduled/manual reason,
+frozen details target, progress, and presentation; Rust owns distribution eligibility, transfer
+leases, verified installation-scoped cache, and installer handoff. Native automatic requests recheck
+persisted preferences, including after download. Cancellation generations reject late completion.
+Packages are checked against the trusted updater key and signed version on staging and again before
+installation. Manifest notes are display data, not authenticated authority.
+
+A fresh-session probe and installation entry gate use file leases, not process-local flags. After
+explicit confirmation a copied helper verifies cached bytes and acquires the entry gate before the
+workbench save barrier. Startup confirmations inspect peers without stopping them; in-session manual
+updates use the existing global prepare/commit protocol. The helper waits for the old processes to
+exit, records the attempt, waits for Windows NSIS to finish (or macOS replacement to return), then
+releases the gate and relaunches the application. An interrupted attempt with a live installer or
+unknown spawn outcome prevents a new workspace from starting. A completed or failed attempt is not
+automatically retried. The offline adapter and its trust boundary are described in
+[ADR 0030](adr/0030-verify-cached-updates-through-updater-adapter.md).
+
+Dock update/setup presentation is an independent `dock-update` accessory with event permissions
+only. It consumes the main owner's serialized state and semantic actions; it has no updater
+authority or settings store writer. The same setup and changelog content renders in normal form.
+The selected target and setup draft survive host changes. Dock toolbar/editor windows remain
+independent, and update detail visibility never changes strip geometry.
+
 Dev-identity builds also enable a closed Agent Control event-fixture layer for deterministic
 screenshots of interfaces normally opened by updater, crash, close, or persistence-conflict events.
 The layer is not part of the public CLI: it asks the same React owner that handles the real event to
@@ -483,13 +508,13 @@ changes neither DPR nor line widths.
 
 How each renderer meets the rule:
 
-| Renderer                                                             | How a CSS-px length reaches the screen                                                                                                                                                                                                   |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SVG in a stretched viewBox (`preserveAspectRatio="none"`)            | every stroke sets `vector-effect="non-scaling-stroke"`; `stroke-width` and `stroke-dasharray` are then CSS px                                                                                                                            |
-| CSS borders                                                          | CSS px. At fractional DPR, Chromium floors border widths to whole device pixels, so a 1px border and a 1px SVG stroke can differ very slightly                                                                                           |
-| Canvas 2D                                                            | draws in backing-store (device) pixels under the identity transform and multiplies each length by the canvas's own scale; `ctx.scale(dpr)` is not used                                                                                   |
+| Renderer                                                                         | How a CSS-px length reaches the screen                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SVG in a stretched viewBox (`preserveAspectRatio="none"`)                        | every stroke sets `vector-effect="non-scaling-stroke"`; `stroke-width` and `stroke-dasharray` are then CSS px                                                                                                                            |
+| CSS borders                                                                      | CSS px. At fractional DPR, Chromium floors border widths to whole device pixels, so a 1px border and a 1px SVG stroke can differ very slightly                                                                                           |
+| Canvas 2D                                                                        | draws in backing-store (device) pixels under the identity transform and multiplies each length by the canvas's own scale; `ctx.scale(dpr)` is not used                                                                                   |
 | Canvas 2D with per-axis scales (Waveform: time axis capped, amplitude axis full) | paths in backing pixels, strokes through `strokeCssWidth` (`src/lib/canvasCssScale.js`), which scales only the pen so it stays round on screen                                                                                           |
-| WebGL (Spectrogram 3D Surface)                                       | framebuffer and viewport in device pixels; a CSS-px width arrives as a device-px uniform. `gl.LINES` is always one device pixel, so lines with a specified width are extruded into quads (see the floor in `spectrogram3dGlRenderer.js`) |
+| WebGL (Spectrogram 3D Surface)                                                   | framebuffer and viewport in device pixels; a CSS-px width arrives as a device-px uniform. `gl.LINES` is always one device pixel, so lines with a specified width are extruded into quads (see the floor in `spectrogram3dGlRenderer.js`) |
 
 Rules:
 
@@ -684,7 +709,6 @@ reports and older clients retain their v1 contracts. The receiver lives in `soun
 | macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                  |
 
 Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User installation guidance, including Windows SmartScreen and macOS Gatekeeper verification, is in `docs/user/getting-started.md`.
-
 
 Dock frequency viewports use the same `AXIS_VIEWPORTS.frequency` descriptor and Workspace state
 as ordinary panels. `dockFrequencyViewport` supplies the normal panel-instance contract to the

@@ -5,9 +5,16 @@ export const DOCK_ACCESSORY_EVENTS = Object.freeze({
   ready: "dock-accessory://ready",
 });
 
-export const DOCK_ACCESSORY_SURFACES = Object.freeze(["dock-header", "dock-editor"]);
+export const DOCK_ACCESSORY_SURFACES = Object.freeze(["dock-header", "dock-editor", "dock-update"]);
 
 const ACTION_TYPES = new Set([
+  "update-ready",
+  "update-confirm",
+  "update-dismiss",
+  "update-link",
+  "update-preferences-change",
+  "update-preferences-save",
+  "update-preferences-skip",
   "header-ready",
   "source-primary",
   "clear",

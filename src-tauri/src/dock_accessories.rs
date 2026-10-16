@@ -5,6 +5,7 @@ use crate::window_state::{MonitorRect, WindowBounds};
 
 pub const DOCK_HEADER_LABEL: &str = "dock-header";
 pub const DOCK_EDITOR_LABEL: &str = "dock-editor";
+pub const DOCK_UPDATE_LABEL: &str = "dock-update";
 
 fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   manager: &'a M,
@@ -47,6 +48,11 @@ pub fn create<R: tauri::Runtime>(app: &tauri::App<R>, init_script: &str) -> Resu
     accessory_builder(app, DOCK_EDITOR_LABEL, "dock-editor", init_script)
       .build()
       .map_err(|e| format!("dock editor window: {e}"))?;
+  }
+  if app.get_webview_window(DOCK_UPDATE_LABEL).is_none() {
+    accessory_builder(app, DOCK_UPDATE_LABEL, "dock-update", init_script)
+      .build()
+      .map_err(|e| format!("dock update window: {e}"))?;
   }
   Ok(())
 }
@@ -122,11 +128,40 @@ fn main_geometry<R: tauri::Runtime>(
 }
 
 pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-  for label in [DOCK_HEADER_LABEL, DOCK_EDITOR_LABEL] {
+  for label in [DOCK_HEADER_LABEL, DOCK_EDITOR_LABEL, DOCK_UPDATE_LABEL] {
     if let Some(window) = app.get_webview_window(label) {
       let _ = window.hide();
     }
   }
+}
+
+/// Independent from the toolbar/editor so opening update details cannot replace an editor draft.
+#[tauri::command]
+pub fn set_dock_update_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+  visible: bool,
+  edge: DockEdge,
+  webview_scale: f64,
+) -> Result<Option<WindowBounds>, String> {
+  if window.label() != "main" {
+    return Err("Only the main window owns update presentation.".into());
+  }
+  let update = window
+    .app_handle()
+    .get_webview_window(DOCK_UPDATE_LABEL)
+    .ok_or("Dock update window unavailable.")?;
+  if !visible {
+    show_or_hide(&update, false, false)?;
+    return Ok(None);
+  }
+  if !webview_scale.is_finite() || webview_scale <= 0.0 {
+    return Err("Invalid update window scale.".into());
+  }
+  let (monitor, strip, _) = main_geometry(&window)?;
+  let rects = dock_accessory_rects(monitor, strip, edge, webview_scale, 480.0, 480.0, None);
+  set_rect(&update, rects.editor)?;
+  show_or_hide(&update, true, true)?;
+  Ok(Some(rects.editor))
 }
 
 #[tauri::command]

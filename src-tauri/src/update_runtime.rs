@@ -14,6 +14,9 @@ pub struct UpdateRuntime {
   candidates: Mutex<HashMap<String, Update>>,
   transfers: Mutex<Option<(u64, futures_util::future::AbortHandle)>>,
   pub installation_supported: bool,
+  app_data: std::path::PathBuf,
+  running: crate::update_gate::RunningInstallation,
+  pending_worker: Mutex<Option<crate::update_worker::PendingWorker>>,
 }
 
 #[derive(Clone, Serialize)]
@@ -22,16 +25,25 @@ pub struct UpdateStatus {
   enabled: bool,
   installation_supported: bool,
   ready: Option<ReadyUpdate>,
+  fresh_session: bool,
+  attempt: Option<crate::update_worker::Attempt>,
+  error: Option<String>,
 }
 
 impl UpdateRuntime {
-  pub fn new(cache: UpdateCache) -> Self {
-    Self {
+  pub fn new(cache: UpdateCache, app_data: std::path::PathBuf) -> Result<Self, String> {
+    crate::update_worker::check_abandoned_attempt(cache.root())?;
+    let running = crate::update_gate::RunningInstallation::enter(cache.root())?;
+    cache.reconcile()?;
+    Ok(Self {
       cache,
       candidates: Mutex::new(HashMap::new()),
       transfers: Mutex::new(None),
       installation_supported: installed_distribution(),
-    }
+      app_data,
+      running,
+      pending_worker: Mutex::new(None),
+    })
   }
 }
 
@@ -42,6 +54,17 @@ fn installed_distribution() -> bool {
   #[cfg(windows)]
   {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+    if !std::env::current_exe()
+      .ok()
+      .and_then(|path| {
+        path
+          .file_name()
+          .map(|name| name.to_string_lossy().eq_ignore_ascii_case("plvs.exe"))
+      })
+      .unwrap_or(false)
+    {
+      return false;
+    }
     let installed = RegKey::predef(HKEY_CURRENT_USER)
       .open_subkey(r"Software\SounDoer\PLVS")
       .and_then(|key| key.get_value::<String, _>("InstallDir"))
@@ -98,14 +121,63 @@ fn automatic_allowed(app: &tauri::AppHandle, download: bool) -> Result<(), Strin
 pub fn update_status(
   window: WebviewWindow,
   runtime: State<'_, UpdateRuntime>,
+  app: tauri::AppHandle,
 ) -> Result<UpdateStatus, String> {
   if window.label() != "main" {
     return Err("Updates are owned by the main window.".into());
   }
+  let mut ready = if cfg!(feature = "preview-identity") {
+    None
+  } else {
+    runtime.cache.ready()?
+  };
+  let mut error = None;
+  if let Some(candidate) = ready.as_ref() {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    match updater.from_manifest(candidate.manifest.clone()) {
+      Ok(Some(update)) => {
+        let verified = runtime.cache.load(&candidate.id).and_then(|(_, bytes)| {
+          if candidate.version != update.version {
+            return Err("Cached update version metadata is inconsistent.".into());
+          }
+          update.verify_cached(&bytes).map_err(|e| e.to_string())
+        });
+        if let Err(problem) = verified {
+          runtime.cache.cancel()?;
+          ready = None;
+          error = Some(problem);
+        }
+      }
+      Ok(None) => {
+        runtime.cache.cancel()?;
+        ready = None;
+      }
+      Err(problem) => {
+        runtime.cache.cancel()?;
+        ready = None;
+        error = Some(problem.to_string());
+      }
+    }
+  }
+  let mut attempt = crate::update_worker::read_attempt(runtime.cache.root())?;
+  if let Some(previous) = attempt.as_mut() {
+    if ready
+      .as_ref()
+      .is_some_and(|ready| ready.version == previous.version)
+      && matches!(previous.phase.as_str(), "finished" | "installing")
+    {
+      previous.phase = "failed".into();
+      previous.error = Some("The previous installation did not replace this running version. You can retry from update details.".into());
+      crate::update_worker::save_attempt(runtime.cache.root(), previous)?;
+    }
+  }
   Ok(UpdateStatus {
     enabled: !cfg!(feature = "preview-identity"),
     installation_supported: runtime.installation_supported,
-    ready: runtime.cache.ready()?,
+    ready,
+    fresh_session: runtime.running.fresh_session,
+    attempt,
+    error,
   })
 }
 
@@ -149,11 +221,16 @@ pub async fn update_check(
     version: candidate.version.clone(),
     manifest: candidate.raw_json.clone(),
   };
-  runtime
+  let mut candidates = runtime
     .candidates
     .lock()
-    .map_err(|_| "Update state unavailable.")?
-    .insert(id, candidate);
+    .map_err(|_| "Update state unavailable.")?;
+  if candidates.len() >= 8 {
+    if let Some(expired) = candidates.keys().next().cloned() {
+      candidates.remove(&expired);
+    }
+  }
+  candidates.insert(id, candidate);
   Ok(Some(descriptor))
 }
 
@@ -226,7 +303,7 @@ pub async fn update_download(
   );
   let result = task
     .await
-    .map_err(|_| "Update download canceled.".to_string())?;
+    .unwrap_or_else(|_| Err("Update download canceled.".to_string()));
   let mut transfer = runtime
     .transfers
     .lock()
@@ -244,6 +321,14 @@ pub async fn update_download(
 pub fn update_cancel(window: WebviewWindow, app: tauri::AppHandle) -> Result<(), String> {
   authorize(&window, &app)?;
   let runtime = app.state::<UpdateRuntime>();
+  if runtime
+    .pending_worker
+    .lock()
+    .map_err(|_| "Update state unavailable.")?
+    .is_some()
+  {
+    return Err("Installation has been confirmed.".into());
+  }
   runtime.cache.cancel()?;
   if let Some((_, task)) = runtime
     .transfers
@@ -253,5 +338,117 @@ pub fn update_cancel(window: WebviewWindow, app: tauri::AppHandle) -> Result<(),
   {
     task.abort();
   }
+  Ok(())
+}
+
+#[tauri::command]
+pub async fn update_prepare_install(
+  window: WebviewWindow,
+  app: tauri::AppHandle,
+  package_id: String,
+  startup: bool,
+) -> Result<String, String> {
+  authorize(&window, &app)?;
+  tauri::async_runtime::spawn_blocking(move || {
+    let runtime = app.state::<UpdateRuntime>();
+    if !runtime.installation_supported {
+      return Err("This distribution requires a manual download.".into());
+    }
+    let mut pending = runtime
+      .pending_worker
+      .lock()
+      .map_err(|_| "Update state unavailable.")?;
+    if pending.is_some() {
+      return Err("Installation is already being prepared.".into());
+    }
+    let (ready, bytes) = runtime.cache.load(&package_id)?;
+    let update = app
+      .updater()
+      .map_err(|e| e.to_string())?
+      .from_manifest(ready.manifest)
+      .map_err(|e| e.to_string())?
+      .ok_or("The update is no longer newer.")?;
+    update.verify_cached(&bytes).map_err(|e| e.to_string())?;
+    if ready.version != update.version {
+      return Err("Cached update version metadata is inconsistent.".into());
+    }
+    let mut nonce = [0; 16];
+    getrandom::fill(&mut nonce).map_err(|e| e.to_string())?;
+    let nonce = nonce
+      .iter()
+      .map(|byte| format!("{byte:02x}"))
+      .collect::<String>();
+    let ticket = crate::update_worker::Ticket {
+      nonce: nonce.clone(),
+      package_id,
+      app_data: runtime.app_data.clone(),
+      target: std::env::current_exe()
+        .map_err(|e| e.to_string())?
+        .canonicalize()
+        .map_err(|e| e.to_string())?,
+      args: crate::update_worker::relaunch_args(std::env::args().skip(1)),
+      identity: env!("PLVS_APP_ID").into(),
+    };
+    let mut worker = crate::update_worker::spawn(runtime.cache.root(), ticket)?;
+    // The helper now owns the entry gate, so this registry snapshot cannot race a new launch.
+    if startup {
+      let registry = app.state::<crate::coordinator::InstanceRegistry>();
+      let eligibility = registry.remove_stale().and_then(|_| registry.list());
+      if !runtime.running.fresh_session || !matches!(&eligibility, Ok(peers) if peers.len() == 1) {
+        crate::update_worker::abort(&mut worker);
+        eligibility?;
+        return Err(
+          "Another workbench is active. Reopen update details when it has closed.".into(),
+        );
+      }
+    }
+    *pending = Some(worker);
+    Ok(nonce)
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub fn update_abort_install(
+  window: WebviewWindow,
+  app: tauri::AppHandle,
+  token: String,
+) -> Result<(), String> {
+  authorize(&window, &app)?;
+  let runtime = app.state::<UpdateRuntime>();
+  let mut pending = runtime
+    .pending_worker
+    .lock()
+    .map_err(|_| "Update state unavailable.")?;
+  if pending
+    .as_ref()
+    .is_some_and(|worker| worker.ticket.nonce == token)
+  {
+    if let Some(mut worker) = pending.take() {
+      crate::update_worker::abort(&mut worker);
+    }
+  }
+  Ok(())
+}
+
+#[tauri::command]
+pub fn update_commit_install(
+  window: WebviewWindow,
+  app: tauri::AppHandle,
+  token: String,
+) -> Result<(), String> {
+  authorize(&window, &app)?;
+  let runtime = app.state::<UpdateRuntime>();
+  let mut pending = runtime
+    .pending_worker
+    .lock()
+    .map_err(|_| "Update state unavailable.")?;
+  let worker = pending
+    .as_mut()
+    .filter(|worker| worker.ticket.nonce == token)
+    .ok_or("Installation confirmation expired.")?;
+  crate::update_worker::commit(runtime.cache.root(), worker)?;
+  app.exit(0);
   Ok(())
 }

@@ -16,8 +16,7 @@ import { useWindowChrome } from "./WindowChromeContext.jsx";
 import { usePresetLibrary } from "./PresetsContext.jsx";
 import { useCrashReportSetting } from "./useCrashReportSetting.js";
 import { useCrashReporting } from "./useCrashReporting.js";
-import { useUpdateCheck } from "./useUpdateCheck.js";
-import { useApplyUpdate } from "./useApplyUpdate.js";
+import { useUpdateController } from "./useUpdateController.js";
 import { useCloseConfirm } from "./useCloseConfirm.js";
 import { useInstanceIdentity } from "./useInstanceIdentity.js";
 import { useTray } from "./useTray.js";
@@ -30,8 +29,7 @@ import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts.js";
  *   windowVisible: boolean,
  *   onShowWindow: () => Promise<void>,
  *   updateBusy: boolean,
- *   updateControls: Pick<ReturnType<typeof useUpdateCheck>, "updateInfo" | "refreshUpdateCheck"> &
- *     ReturnType<typeof useApplyUpdate>,
+ *   updateControls: ReturnType<typeof useUpdateController>,
  *   closeConfirm: {
  *     dialogOpen: boolean,
  *     closeError: any,
@@ -127,12 +125,11 @@ export function AppLifecycleProvider({ children }) {
     setWindowVisible(await window.isVisible());
   }, [docked, resumeDockMode]);
 
-  const { updateInfo, refreshUpdateCheck } = useUpdateCheck(
-    undefined,
-    updatePreferences?.choiceMade === true && updatePreferences.autoCheck
-  );
-  const { installStatus, downloadProgress, install, restartToApply, resetInstall } =
-    useApplyUpdate();
+  const updateControls = useUpdateController({
+    preferences: updatePreferences,
+    startupEligible: !running && !analyzingFileId && activeBlockingEditors.length === 0,
+  });
+  const { installStatus } = updateControls;
   const updateBusy = installStatus === "installing" || installStatus === "restarting";
 
   const closeConfirm = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
@@ -230,15 +227,7 @@ export function AppLifecycleProvider({ children }) {
         windowVisible,
         onShowWindow,
         updateBusy,
-        updateControls: {
-          updateInfo,
-          refreshUpdateCheck,
-          installStatus,
-          downloadProgress,
-          install,
-          restartToApply,
-          resetInstall,
-        },
+        updateControls,
         closeConfirm: {
           dialogOpen: closeDialogOpen,
           closeError,

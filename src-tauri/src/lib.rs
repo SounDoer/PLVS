@@ -40,7 +40,9 @@ mod sidecar;
 mod state;
 mod taskbar_theme;
 pub mod update_cache;
+pub mod update_gate;
 mod update_runtime;
+pub mod update_worker;
 pub mod vad;
 pub mod visual_capture;
 mod window_chrome;
@@ -269,9 +271,13 @@ pub fn run() {
       coordinator::runtime_wait_commands,
       coordinator::runtime_finish_operation,
       update_runtime::update_status,
+      dock_accessories::set_dock_update_window,
       update_runtime::update_check,
       update_runtime::update_download,
       update_runtime::update_cancel,
+      update_runtime::update_prepare_install,
+      update_runtime::update_abort_install,
+      update_runtime::update_commit_install,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
@@ -321,9 +327,25 @@ pub fn run() {
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(&app_data_dir)
         .map_err(|error| format!("agent artifact storage: {error}"))?;
       app.manage(artifact_store);
-      app.manage(update_runtime::UpdateRuntime::new(
+      let updates = update_runtime::UpdateRuntime::new(
         update_cache::UpdateCache::open(&app_data_dir, &std::env::current_exe()?)?,
-      ));
+        app_data_dir.clone(),
+      );
+      match updates {
+        Ok(updates) => {
+          app.manage(updates);
+        }
+        Err(error) => {
+          use tauri_plugin_dialog::DialogExt;
+          app
+            .dialog()
+            .message(error)
+            .title("PLVS Update")
+            .blocking_show();
+          app.handle().exit(0);
+          return Ok(());
+        }
+      }
 
       // --- Persistence: migrate once, hydrate the selected Workspace, restore pre-paint state. ---
       let legacy_store_path = app_data_dir.join("plvs-settings.json");

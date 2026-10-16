@@ -205,3 +205,6 @@ the focused command avoids returning Workspace and panel state. Public CLI consu
 Settings support through `app.capabilities` result fields `methods` and `features`; current values
 and dynamic option lists are not capability data. The frontend/RPC `methods` list may remain as
 internal compatibility data, but public consumers must not use it for capability selection.
+
+- Update preferences, first-launch update consent, package downloads, and installation. These
+  remain explicit GUI actions; configuration import does not grant update consent.

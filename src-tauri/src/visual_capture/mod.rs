@@ -116,7 +116,7 @@ pub async fn visual_capture_screenshot(
   let _permit = capture_state.acquire()?;
   if !matches!(
     request.window_label.as_str(),
-    "main" | "dock-header" | "dock-editor"
+    "main" | "dock-header" | "dock-editor" | "dock-update"
   ) {
     return Err(NativeCaptureError::new(
       "targetUnavailable",

@@ -49,12 +49,64 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 impl UpdateCache {
+  pub fn root(&self) -> &Path {
+    &self.root
+  }
+
+  /// Recover interrupted metadata/package writes under the publication lock. Only our hex-named
+  /// packages are eligible for cleanup; leases and installer attempt records are never removed.
+  pub fn reconcile(&self) -> Result<(), String> {
+    let _lock = self.lock()?;
+    let mut state = match fs::read(self.root.join("state.json")) {
+      Ok(bytes) => match serde_json::from_slice::<CacheState>(&bytes) {
+        Ok(state) => state,
+        Err(_) => {
+          let mut nonce = [0; 8];
+          getrandom::fill(&mut nonce).map_err(io_error)?;
+          CacheState {
+            generation: u64::from_le_bytes(nonce) / 2,
+            ready: None,
+          }
+        }
+      },
+      Err(error) if error.kind() == std::io::ErrorKind::NotFound => CacheState::default(),
+      Err(error) => return Err(io_error(error)),
+    };
+    if let Some(ready) = &state.ready {
+      let intact = self
+        .package_path(&ready.id)
+        .ok()
+        .and_then(|path| fs::read(path).ok())
+        .is_some_and(|bytes| digest(&bytes) == ready.id);
+      if !intact {
+        state.ready = None;
+        state.generation = state
+          .generation
+          .checked_add(1)
+          .ok_or("Update generation exhausted.")?;
+      }
+    }
+    self.save(&state)?;
+    for entry in fs::read_dir(&self.root).map_err(io_error)? {
+      let entry = entry.map_err(io_error)?;
+      let name = entry.file_name();
+      let name = name.to_string_lossy();
+      if let Some(id) = name.strip_suffix(".package") {
+        if self.package_path(id).is_ok() && state.ready.as_ref().is_none_or(|ready| ready.id != id)
+        {
+          let _ = fs::remove_file(entry.path());
+        }
+      }
+    }
+    Ok(())
+  }
   /// Installation-scoped even when multiple installed/Portable copies share app preferences.
   pub fn open(app_data: &Path, executable: &Path) -> Result<Self, String> {
     let executable = executable.canonicalize().map_err(io_error)?;
     let installation = digest(executable.to_string_lossy().as_bytes());
     let root = app_data.join("updates").join(installation);
     fs::create_dir_all(&root).map_err(io_error)?;
+    let root = root.canonicalize().map_err(io_error)?;
     Ok(Self { root })
   }
 
@@ -193,6 +245,25 @@ mod tests {
     fs::write(&executable, b"application").unwrap();
     let cache = UpdateCache::open(temp.path(), &executable).unwrap();
     (temp, cache)
+  }
+
+  #[test]
+  fn startup_discards_corrupt_metadata_and_orphaned_packages_without_touching_leases() {
+    let (_temp, cache) = cache();
+    let ready = cache
+      .publish_verified(0, "2.0.0".into(), Value::Null, b"first")
+      .unwrap()
+      .unwrap();
+    fs::write(cache.root.join("state.json"), b"interrupted").unwrap();
+    fs::write(cache.root.join("entry.lock"), b"keep").unwrap();
+    cache.reconcile().unwrap();
+    assert!(cache.ready().unwrap().is_none());
+    assert!(!cache.package_path(&ready.id).unwrap().exists());
+    assert_eq!(fs::read(cache.root.join("entry.lock")).unwrap(), b"keep");
+    assert!(cache
+      .publish_verified(0, "2.0.0".into(), Value::Null, b"late")
+      .unwrap()
+      .is_none());
   }
 
   #[test]

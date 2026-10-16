@@ -251,5 +251,8 @@ export function useDevelopmentEventFixtureAdapter(name, adapter) {
   const registry = useContext(DevelopmentEventFixtureRegistryContext);
   const adapterRef = useRef(adapter);
   adapterRef.current = adapter;
-  useEffect(() => registry?.registerAdapter(name, adapterRef), [name, registry]);
+  useEffect(
+    () => (name ? registry?.registerAdapter(name, adapterRef) : undefined),
+    [name, registry]
+  );
 }

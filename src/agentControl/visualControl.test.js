@@ -19,6 +19,7 @@ describe("visual control contract", () => {
       "panel",
       "dockHeader",
       "dockEditor",
+      "dockUpdate",
     ]);
     expect(VISUAL_RECORDING_TARGET_KINDS).toEqual(["main", "workspace"]);
     expect(VISUAL_AUDIO_SOURCES).toEqual(["none", "measuredSource"]);

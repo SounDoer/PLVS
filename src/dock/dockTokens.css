@@ -27,7 +27,12 @@
 }
 
 .dock-transport .dock-transport-status {
-  display: flex;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 20px;
   height: 20px;
   align-items: center;
   justify-content: center;

@@ -27,7 +27,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
- *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any },
+ *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean },
  *   appVersion: string,
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
@@ -234,6 +234,10 @@ export function AppSettingsOverlays({
   }
 
   function openUpdateDialog() {
+    if (updateControls.openDetails) {
+      updateControls.openDetails();
+      return;
+    }
     openUpdateDialogFromInfo(updateInfo);
   }
 
@@ -246,7 +250,7 @@ export function AppSettingsOverlays({
     setSelectedUpdate(null);
   }
 
-  useDevelopmentEventFixtureAdapter("update.available", {
+  useDevelopmentEventFixtureAdapter(updateControls.openDetails ? null : "update.available", {
     establish: (fixtureId) => openUpdateDialogFromInfo(DEVELOPMENT_UPDATE, fixtureId),
     reset: (fixtureId) => {
       if (updateDevelopmentFixtureIdRef.current === fixtureId) closeUpdateDialog();
@@ -309,6 +313,9 @@ export function AppSettingsOverlays({
         updateStatus={updateInfo?.status}
         onCheckForUpdate={refreshUpdateCheck}
         onInstallUpdate={openUpdateDialog}
+        updatePreferences={updateControls.enabled ? settings.updatePreferences : null}
+        setUpdatePreferences={settings.setUpdatePreferences}
+        updateInstallationSupported={updateControls.installationSupported}
         openExternalUrl={openExternalUrl}
         autostartEnabled={settings.autostartEnabled}
         setAutostartEnabled={settings.setAutostartEnabled}

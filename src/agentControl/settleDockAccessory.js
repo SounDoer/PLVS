@@ -46,7 +46,12 @@ export async function settleDockAccessory(target, runtime, options) {
   const viewport = { width: geometry.width, height: geometry.height };
   return {
     target,
-    windowLabel: target.kind === "dockHeader" ? "dock-header" : "dock-editor",
+    windowLabel:
+      target.kind === "dockHeader"
+        ? "dock-header"
+        : target.kind === "dockUpdate"
+          ? "dock-update"
+          : "dock-editor",
     rect: { x: 0, y: 0, ...viewport },
     viewport,
     devicePixelRatio: window.devicePixelRatio || 1,

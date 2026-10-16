@@ -25,7 +25,14 @@ impl VisualCapturePlatform for WindowsPlatform {
       platform: "windows".to_owned(),
       screenshot: ScreenshotCapabilities {
         available: true,
-        targets: vec!["main", "workspace", "panel", "dockHeader", "dockEditor"],
+        targets: vec![
+          "main",
+          "workspace",
+          "panel",
+          "dockHeader",
+          "dockEditor",
+          "dockUpdate",
+        ],
       },
       recording: RecordingCapabilities {
         available: true,

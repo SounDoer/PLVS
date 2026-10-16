@@ -40,6 +40,17 @@ const CONTEXT = {
 const publicSettings = () => buildPublicSettings(RAW_SETTINGS, CONTEXT);
 
 describe("the public Settings surface agrees with itself", () => {
+  it("does not turn update consent or installation into an implicit CLI setting", () => {
+    const { issues } = planSettingsUpdate(
+      publicSettings(),
+      {
+        updatePreferences: { choiceMade: true, autoCheck: true, autoDownload: true },
+      },
+      CONTEXT
+    );
+    expect(issues.length).toBeGreaterThan(0);
+    expect(PUBLIC_FIELDS).not.toContain("updatePreferences");
+  });
   // Read, describe and patch are three hand-written field lists, exactly as Panel Control is. A
   // field present in one and missing from another either advertises what it refuses or accepts
   // what it never mentions.

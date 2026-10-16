@@ -27,6 +27,7 @@ import { ThemePicker } from "./ThemePicker.jsx";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
 import { SHARESETS_URL } from "../ipc/openExternal.js";
 import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
+import { UpdatePreferencesSettings } from "./UpdatePreferencesControls.jsx";
 import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
   DEFAULT_DIALOGUE_VAD_ENGINE,
@@ -168,6 +169,9 @@ function IconButton({ children, className, ...props }) {
  *   releaseUrl: string,
  *   hasUpdate?: boolean,
  *   updateStatus?: string,
+ *   updatePreferences?: any,
+ *   setUpdatePreferences?: (...args: any[]) => any,
+ *   updateInstallationSupported?: boolean,
  *   onCheckForUpdate?: (...args: any[]) => any,
  *   onInstallUpdate?: (...args: any[]) => any,
  *   openExternalUrl?: (...args: any[]) => any,
@@ -235,6 +239,9 @@ export function SettingsPanel({
   releaseUrl,
   hasUpdate = false,
   updateStatus = latestVersion ? "ok" : "checking",
+  updatePreferences = null,
+  setUpdatePreferences = () => {},
+  updateInstallationSupported = false,
   onCheckForUpdate = () => {},
   onInstallUpdate = () => {},
   openExternalUrl = () => {},
@@ -300,8 +307,11 @@ export function SettingsPanel({
   const pendingSectionRef = useRef(null);
   const [activeSection, setActiveSection] = useState("behavior");
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
-  const updateCheckDisabled = updateStatus === "checking";
+  const updateCheckDisabled = ["checking", "disabled", "managed"].includes(updateStatus);
   let updateStatusText = "Checking...";
+  if (updateStatus === "idle") updateStatusText = "Not Checked";
+  if (updateStatus === "disabled") updateStatusText = "Updates Unavailable";
+  if (updateStatus === "managed") updateStatusText = "Managed by Main Workbench";
   if (updateStatus === "unavailable") {
     updateStatusText = "Update unavailable";
   } else if (updateStatus === "ok") {
@@ -470,6 +480,13 @@ export function SettingsPanel({
               <SettingsBody>
                 {/* Behavior */}
                 <SettingsSection sectionId="behavior" sectionRef={bindSection("behavior")}>
+                  {updatePreferences ? (
+                    <UpdatePreferencesSettings
+                      preferences={updatePreferences}
+                      onChange={setUpdatePreferences}
+                      installationSupported={updateInstallationSupported}
+                    />
+                  ) : null}
                   <SettingsRow label="Open at Login">
                     <SettingsSwitch
                       aria-label="Open at Login"

@@ -261,7 +261,7 @@ available on Windows and macOS:
 
 ```powershell
 plvs-cli visual describe --json
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
+plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
 plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json

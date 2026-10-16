@@ -8,6 +8,8 @@ export function UpdateDetailsContent({
   installStatus = "idle",
   downloadProgress = null,
   ready = false,
+  installationSupported = true,
+  error = null,
   onConfirm,
   onCancel,
   onRestart,
@@ -27,7 +29,9 @@ export function UpdateDetailsContent({
         ? "Restart"
         : installFailed
           ? "Retry"
-          : "Update and Restart";
+          : installationSupported
+            ? "Update and Restart"
+            : "Download Manually";
 
   function handlePrimary() {
     if (busy) return;
@@ -65,6 +69,11 @@ export function UpdateDetailsContent({
         </ReactMarkdown>
       </div>
       {installing ? <UpdateDownloadBar progress={downloadProgress} /> : null}
+      {error ? (
+        <p role="alert" className="mb-2 text-destructive">
+          {error}
+        </p>
+      ) : null}
       {installFailed ? (
         <p className="mb-2 text-[length:var(--ui-fs-control)] text-destructive">
           Update failed. Please try again.

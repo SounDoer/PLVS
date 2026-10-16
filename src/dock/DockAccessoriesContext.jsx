@@ -25,6 +25,7 @@ import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
  *   visibility: ReturnType<typeof useDockAccessoryVisibility>,
  *   hoveredDockPanelId: string | null,
  *   visualRuntimeRef: import("react").MutableRefObject<any>,
+ *   setUpdateGeometry: (value: any) => void,
  * }} DockAccessories
  */
 const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} */ (null));
@@ -75,6 +76,7 @@ export function DockAccessoriesProvider({ children }) {
   // What Visual Capture may target right now. Written during render and read lazily when a capture
   // request arrives.
   const visualRuntimeRef = useRef(null);
+  const [updateGeometry, setUpdateGeometry] = useState(null);
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {
@@ -150,10 +152,12 @@ export function DockAccessoriesProvider({ children }) {
           "main",
           ...(dockAccessoryVisibility.headerVisible ? ["dockHeader"] : []),
           ...(dockAccessoryVisibility.editorVisible ? ["dockEditor"] : []),
+          ...(updateGeometry?.visible ? ["dockUpdate"] : []),
         ]
       : ["main", "workspace", "panel"],
     availableAudioSources: sourceMode === "live" ? ["none", "measuredSource"] : ["none"],
     accessoryGeometry: {
+      dockUpdate: updateGeometry,
       dockHeader: {
         visible: docked && !dockSuspended && dockAccessoryVisibility.headerVisible,
         width: window.innerWidth,
@@ -398,7 +402,12 @@ export function DockAccessoriesProvider({ children }) {
 
   return (
     <DockAccessoriesContext.Provider
-      value={{ visibility: dockAccessoryVisibility, hoveredDockPanelId, visualRuntimeRef }}
+      value={{
+        visibility: dockAccessoryVisibility,
+        hoveredDockPanelId,
+        visualRuntimeRef,
+        setUpdateGeometry,
+      }}
     >
       {children}
     </DockAccessoriesContext.Provider>

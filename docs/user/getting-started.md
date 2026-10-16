@@ -39,12 +39,18 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 **Reset PLVS to Default** brings them back. PLVS never starts capturing audio on its own: pick a
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
-When automatic checking is enabled, PLVS checks at startup and every 12 hours. Existing users retain
-automatic checking; automatic downloads are off by default. Manual checks remain available in
-Settings. PLVS asks before installing an update. When an update is available,
-the footer's **Update Available · View Release Notes** link opens the release notes directly.
-Choose **Update and Restart** to install, or cancel to keep working. The confirmation dialog shows
-a progress bar while that download runs.
+On a fresh first launch, **Update Preferences** offers automatic checking and automatic downloading.
+Checking starts selected; downloading starts off. No automatic request is made before you save a
+choice. **Skip** turns both off. Existing users retain checking on and downloading off without a
+first-launch prompt. These preferences can be changed in Settings.
 
-In v0.20.0, the footer link reads **Update available · Check in Settings** and opens Settings; use
-its **Update** button to view the release notes.
+When checking is enabled, PLVS checks at startup and every 12 hours. Manual checks remain available
+with automatic checking off. The footer's **Update Available · View Release Notes** link opens the
+shared update details; Dock shows an update icon in its right-hand controls when an update exists.
+
+With automatic downloading enabled, PLVS verifies and keeps an update locally without interrupting
+your work. On a later fresh launch, it offers **Update and Restart** or **Skip This Time**. Skipping
+keeps the downloaded package. Installation always needs confirmation; there is no countdown. An
+already active workbench defers the startup offer. Download completion does not open a dialog in
+your current working session. Windows Portable copies use **Download Manually** on the release page;
+they never run the installed-app updater. Preview builds do not check for updates.

@@ -1008,6 +1008,50 @@ impl Update {
     std::process::exit(0);
   }
 
+  /// PLVS helper-only entry: never exits this process or asks NSIS to relaunch the app.
+  /// The caller holds the installation gate until this method returns.
+  pub fn install_waited_verified<F: FnOnce(u32) -> std::io::Result<()>>(
+    &self,
+    bytes: &[u8],
+    on_spawn: F,
+  ) -> Result<()> {
+    use std::os::windows::process::CommandExt;
+    self.verify_cached(bytes)?;
+    let updater_type = self.extract(bytes)?;
+    let WindowsUpdaterType::Nsis { ref path, .. } = updater_type else {
+      return Err(Error::InvalidUpdaterFormat);
+    };
+    let update = self.clone().restart_after_install(false);
+    let destination = self.extract_path.to_str().ok_or_else(|| {
+      Error::Io(std::io::Error::other(
+        "Installer destination is not valid Unicode.",
+      ))
+    })?;
+    // Rust canonicalization uses extended-length paths; NSIS expects a DOS/UNC destination.
+    let destination = if let Some(unc) = destination.strip_prefix(r"\\?\UNC\") {
+      format!(r"\\{unc}")
+    } else {
+      destination
+        .strip_prefix(r"\\?\")
+        .unwrap_or(destination)
+        .to_owned()
+    };
+    let mut child = std::process::Command::new(path)
+      .raw_arg(update.updater_parameters(&updater_type))
+      // NSIS requires /D to be last and unquoted, including paths with spaces.
+      .raw_arg(format!("/D={destination}"))
+      .creation_flags(0x08000000)
+      .spawn()?;
+    let recorded = on_spawn(child.id());
+    let status = child.wait()?;
+    recorded?;
+    if !status.success() {
+      return Err(Error::Io(std::io::Error::other(format!(
+        "Installer exited with {status}."
+      ))));
+    }
+    Ok(())
+  }
   fn updater_parameters(&self, updater_type: &WindowsUpdaterType) -> OsString {
     let install_mode = self.context.config.install_mode();
     let current_args = &self.context.current_exe_args[1..];
@@ -2112,6 +2156,65 @@ mod tests {
     ));
   }
   const CURRENT: &str = "timestamp:1700000000\tfile:app_1.2.3_x64.msi.zip\tversion:1.2.3";
+  #[cfg(windows)]
+  #[test]
+  #[ignore = "Runs only the isolated NSIS fixture built by scripts/probe-cached-updater.mjs"]
+  fn windows_cached_installer_probe() {
+    use std::{fs, path::PathBuf, time::Instant};
+    let root =
+      PathBuf::from(std::env::var_os("PLVS_UPDATER_PROBE_ROOT").expect("isolated probe root"));
+    assert!(root.join("isolated-probe.marker").is_file());
+    let target = root.join("nondefault installation with spaces");
+    fs::create_dir_all(&target).unwrap();
+    let mut updater = offline_updater();
+    updater.extract_path = target.canonicalize().unwrap();
+    updater.context.config.pubkey = fs::read_to_string(root.join("probe.key.pub"))
+      .unwrap()
+      .trim()
+      .into();
+    updater.context.config.require_signed_version = true;
+    let mut manifest = cached_manifest("2.0.0");
+    manifest["platforms"]["test-platform"]["signature"] =
+      fs::read_to_string(root.join("probe.exe.sig"))
+        .unwrap()
+        .trim()
+        .into();
+    let update = updater.from_manifest(manifest).unwrap().unwrap();
+    let bytes = fs::read(root.join("probe.exe")).unwrap();
+    let started = Instant::now();
+    let mut pid = None;
+    update
+      .install_waited_verified(&bytes, |child| {
+        pid = Some(child);
+        Ok(())
+      })
+      .unwrap();
+    assert!(pid.is_some());
+    assert!(started.elapsed().as_millis() >= 600);
+    assert_eq!(
+      fs::read_to_string(target.join("installed-version.txt")).unwrap(),
+      "2.0.0"
+    );
+    let args = fs::read_to_string(target.join("installer-arguments.txt")).unwrap();
+    assert!(args.contains("/UPDATE"), "{args}");
+    assert!(!args.contains("/R "), "{args}");
+    // NSIS consumes /D before exposing $CMDLINE; the marker location proves its destination.
+    let mut damaged = bytes.clone();
+    damaged[0] ^= 1;
+    assert!(
+      update
+        .install_waited_verified(&damaged, |_| panic!("tampered installer spawned"))
+        .is_err()
+    );
+    // A recording failure still cannot return while the installer is alive.
+    let started = Instant::now();
+    assert!(
+      update
+        .install_waited_verified(&bytes, |_| Err(std::io::Error::other("recording failed")))
+        .is_err()
+    );
+    assert!(started.elapsed().as_millis() >= 600);
+  }
   // signatures produced before the CLI started embedding the version
   const LEGACY: &str = "timestamp:1600000000\tfile:app_1.0.0_x64.msi.zip";
 

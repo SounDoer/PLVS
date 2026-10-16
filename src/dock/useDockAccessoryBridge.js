@@ -59,14 +59,14 @@ export function useDockAccessoryBridge({ active, headerState, editorState, onAct
     Promise.all([
       listenDockAccessoryAction((raw) => {
         const action = normalizeAccessoryAction(raw);
-        if (action) onActionRef.current?.(action);
+        if (action && action.surface !== "dock-update") onActionRef.current?.(action);
       }),
       listenDockAccessoryFocus((raw) => {
         const focus = normalizeAccessoryFocus(raw);
-        if (focus) onFocusRef.current?.(focus);
+        if (focus && focus.surface !== "dock-update") onFocusRef.current?.(focus);
       }),
       listenDockAccessoryReady((raw) => {
-        if (!isDockAccessorySurface(raw?.surface)) return;
+        if (!isDockAccessorySurface(raw?.surface) || raw.surface === "dock-update") return;
         const payload =
           raw.surface === "dock-header"
             ? latestRef.current.headerState

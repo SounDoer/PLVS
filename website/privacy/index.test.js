@@ -26,7 +26,7 @@ describe("Privacy Policy", () => {
 
   it("protects the core privacy promises from accidental removal", () => {
     expect(html).toContain("never uploads audio samples, audio files, or measurement data");
-    expect(html).toContain("checks for updates when the app starts and every 12 hours");
+    expect(html).toContain("When automatic checking is enabled");
     expect(html).toContain("Subscriber records remain until you request deletion");
     expect(html).toContain("Diagnostics are off by default");
     expect(html).toContain("Nothing is sent until you select <strong>Send</strong>");
