@@ -361,7 +361,8 @@ while its detail page remains available.
 If the terminal that launched PLVS disconnects its output, PLVS continues running and keeps
 writing its local log files.
 
-PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
+**Ask To Send Crash Reports** is at the bottom of Settings, below **Auto Download** when update
+preferences are available. PLVS saves crash reports locally. With this option enabled, it asks before sending
 one after a crash. With several workbenches open, only the current coordinator asks; choosing
 **Later** keeps the report saved, and PLVS asks again at the next launch or when another workbench
 becomes coordinator.

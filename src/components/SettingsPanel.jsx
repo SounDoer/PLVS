@@ -500,28 +500,6 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   </SettingsRow>
-                  <SettingsRow
-                    labelNode={
-                      <SettingsLabelWithTip
-                        label="Ask To Send Crash Reports"
-                        tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
-                      />
-                    }
-                  >
-                    <SettingsSwitch
-                      aria-label="ask to send crash reports"
-                      checked={askToSendCrashReports}
-                      disabled={crashReportSettingBusy}
-                      onCheckedChange={(next) => {
-                        void Promise.resolve(onAskToSendCrashReports(next)).catch(() => {});
-                      }}
-                    />
-                  </SettingsRow>
-                  {crashReportSettingError ? (
-                    <span className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
-                      Could not update crash-report settings.
-                    </span>
-                  ) : null}
                 </SettingsSection>
 
                 <SettingsDivider />
@@ -922,18 +900,38 @@ export function SettingsPanel({
                   </>
                 ) : null}
 
-                {updatePreferences ? (
-                  <>
-                    <SettingsDivider />
-                    <section aria-label="updates" className={SECTION_CLASS}>
-                      <UpdatePreferencesSettings
-                        preferences={updatePreferences}
-                        onChange={setUpdatePreferences}
-                        installationSupported={updateInstallationSupported}
+                <SettingsDivider />
+                <section aria-label="updates and crash reports" className={SECTION_CLASS}>
+                  {updatePreferences ? (
+                    <UpdatePreferencesSettings
+                      preferences={updatePreferences}
+                      onChange={setUpdatePreferences}
+                      installationSupported={updateInstallationSupported}
+                    />
+                  ) : null}
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Ask To Send Crash Reports"
+                        tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
                       />
-                    </section>
-                  </>
-                ) : null}
+                    }
+                  >
+                    <SettingsSwitch
+                      aria-label="ask to send crash reports"
+                      checked={askToSendCrashReports}
+                      disabled={crashReportSettingBusy}
+                      onCheckedChange={(next) => {
+                        void Promise.resolve(onAskToSendCrashReports(next)).catch(() => {});
+                      }}
+                    />
+                  </SettingsRow>
+                  {crashReportSettingError ? (
+                    <span className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                      Could not update crash-report settings.
+                    </span>
+                  ) : null}
+                </section>
 
                 {/* Footer */}
                 {appVersion ? (
