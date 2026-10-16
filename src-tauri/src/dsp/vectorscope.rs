@@ -82,6 +82,33 @@ impl VectorscopeMeter {
     self.process(&self.vs_flat_l.clone(), &self.vs_flat_r.clone())
   }
 
+  /// The metrics `get_output` would report, without building the SVG path.
+  pub fn metrics(&self) -> VectorscopeMetrics {
+    let inv_sqrt2 = std::f64::consts::FRAC_1_SQRT_2;
+    let mut sum_l = 0.0_f64;
+    let mut sum_r = 0.0_f64;
+    let mut sum_lr = 0.0_f64;
+    let mut sum_mid = 0.0_f64;
+    let mut sum_side = 0.0_f64;
+    let mut point_count = 0usize;
+    for (&l, &r) in self.vs_l.iter().zip(self.vs_r.iter()).step_by(6) {
+      let lf = l.clamp(-1.0, 1.0) as f64;
+      let rf = r.clamp(-1.0, 1.0) as f64;
+      sum_l += lf * lf;
+      sum_r += rf * rf;
+      sum_lr += lf * rf;
+      let side = (rf - lf) * inv_sqrt2;
+      let mid = (lf + rf) * inv_sqrt2;
+      sum_mid += mid * mid;
+      sum_side += side * side;
+      point_count += 1;
+    }
+    if point_count == 0 {
+      return VectorscopeMetrics::default();
+    }
+    metrics_from_sums(sum_l, sum_r, sum_lr, sum_mid, sum_side, point_count)
+  }
+
   /// Returns interleaved [L0, R0, L1, R1, …] subsampled to `n` points,
   /// and the Pearson correlation coefficient.
   /// Used for visual history storage (no SVG allocation).
@@ -362,6 +389,26 @@ mod tests {
     vm.feed_interleaved(&interleaved, 2, 0, 1);
     let (_metrics, pairs) = vm.get_history_pairs(200);
     assert_eq!(pairs.len(), 400, "200 pairs = 400 f32 values");
+  }
+
+  #[test]
+  fn metrics_match_get_output_without_building_a_path() {
+    let interleaved: Vec<f32> = (0..5000)
+      .flat_map(|i| {
+        let t = i as f32 * 0.013;
+        [t.sin() * 0.7, (t * 1.3).sin() * 0.4 + t.sin() * 0.3]
+      })
+      .collect();
+    let mut vm = VectorscopeMeter::new();
+    vm.feed_interleaved(&interleaved, 2, 0, 1);
+
+    let direct = vm.metrics();
+    let (expected, _) = vm.get_output();
+
+    assert_eq!(direct.correlation, expected.correlation);
+    assert_eq!(direct.side_to_mid_db, expected.side_to_mid_db);
+    assert_eq!(direct.mid_energy, expected.mid_energy);
+    assert_eq!(direct.side_energy, expected.side_energy);
   }
 
   #[test]

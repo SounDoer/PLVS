@@ -6,7 +6,6 @@ export const MEASUREMENT_FRESHNESS_THRESHOLD_MS = 2000;
 export const MEASUREMENT_AVAILABILITY_REASONS = Object.freeze([
   "noSample",
   "notReady",
-  "analysisInactive",
   "dialogueInactive",
   "detectorError",
   "noDialogue",
@@ -193,33 +192,30 @@ export function buildMeasurementInspection({
     plrDb: scalar(stats.plr, "loudness.plrDb"),
   };
 
+  // With no Vectorscope open, the engine measures Ch1/Ch2 for Stats.
+  const pair = vectorscopeRequest ?? { x: 0, y: 1 };
   const validPair =
-    vectorscopeRequest &&
-    Number.isInteger(vectorscopeRequest.x) &&
-    Number.isInteger(vectorscopeRequest.y) &&
-    vectorscopeRequest.x >= 0 &&
-    vectorscopeRequest.y >= 0 &&
-    vectorscopeRequest.x < channelCount &&
-    vectorscopeRequest.y < channelCount &&
-    vectorscopeRequest.x !== vectorscopeRequest.y;
+    Number.isInteger(pair.x) &&
+    Number.isInteger(pair.y) &&
+    pair.x >= 0 &&
+    pair.y >= 0 &&
+    pair.x < channelCount &&
+    pair.y < channelCount &&
+    pair.x !== pair.y;
   let stereoReason = null;
   if (noSample) stereoReason = "noSample";
   else if (channelCount < 2) stereoReason = "insufficientChannels";
-  else if (!vectorscopeRequest) stereoReason = "analysisInactive";
   else if (!validPair) stereoReason = "insufficientChannels";
-  else if (
-    audio.vectorscopePairX !== vectorscopeRequest.x ||
-    audio.vectorscopePairY !== vectorscopeRequest.y
-  ) {
+  else if (audio.vectorscopePairX !== pair.x || audio.vectorscopePairY !== pair.y) {
     stereoReason = "notReady";
   } else if (!hasCorrelationSignal(audio)) stereoReason = "belowSignalFloor";
   const stereoPair = validPair
     ? {
-        x: vectorscopeRequest.x,
-        y: vectorscopeRequest.y,
+        x: pair.x,
+        y: pair.y,
         labels: [
-          String(labels[vectorscopeRequest.x] ?? `Ch ${vectorscopeRequest.x + 1}`),
-          String(labels[vectorscopeRequest.y] ?? `Ch ${vectorscopeRequest.y + 1}`),
+          String(labels[pair.x] ?? `Ch ${pair.x + 1}`),
+          String(labels[pair.y] ?? `Ch ${pair.y + 1}`),
         ],
       }
     : null;

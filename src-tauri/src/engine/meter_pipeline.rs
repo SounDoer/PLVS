@@ -524,7 +524,7 @@ impl MeterPipeline {
         dialogue_vad_engine,
       };
       self.scalar_vectorscope.push_pcm(&ctx);
-      let (metrics, _) = self.scalar_vectorscope.get_output();
+      let metrics = self.scalar_vectorscope.metrics();
       Some((0, 1, metrics.correlation, metrics.side_to_mid_db))
     } else {
       // A mono stream has no pair to correlate; its reading stays absent.
@@ -955,8 +955,8 @@ impl MeterPipeline {
       ),
     };
 
-    // Top-level correlation is the shared scalar read by stats/snapshots. In request-keyed mode it
-    // is derived from the first vectorscope request instead of recomputing a legacy vectorscope.
+    // Top-level correlation is the shared scalar read by stats/snapshots: the first vectorscope
+    // request's reading, or the Ch1/Ch2 scalar meter's when no request exists.
     let corr = vectorscope_summary
       .map(|(_, _, correlation, _)| correlation)
       .unwrap_or(f64::NEG_INFINITY);

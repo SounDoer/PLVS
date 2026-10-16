@@ -2509,10 +2509,14 @@ describe("useAgentControlBridge", () => {
       sample: { sequence: 7, elapsedMs: 1200, freshness: "fresh" },
       topology: { channelLabels: ["Left", "Right"] },
       levels: { channels: [{ peakDbfs: -4 }, { peakDbfs: -5 }] },
-      stereo: { pair: null, correlation: null, sideToMidDb: null },
+      stereo: {
+        pair: { x: 0, y: 1, labels: ["Left", "Right"] },
+        correlation: null,
+        sideToMidDb: null,
+      },
       dialogue: { active: false },
     });
-    expect(first.result.unavailable["stereo.correlation"]).toBe("analysisInactive");
+    expect(first.result.unavailable["stereo.correlation"]).toBe("notReady");
     expect(second.result.revision).toBe(0);
     expect(getLiveMeasurement).toHaveBeenCalledTimes(2);
   });

@@ -137,8 +137,6 @@ describe("Measurement Control", () => {
 
   it("reports passive optional-analysis states without manufacturing values", () => {
     const inactive = inspect({ vectorscopeRequest: null, dialogueActive: false });
-    expect(inactive.stereo.pair).toBeNull();
-    expect(inactive.unavailable["stereo.correlation"]).toBe("analysisInactive");
     expect(inactive.dialogue.active).toBe(false);
     expect(inactive.unavailable["dialogue.coveragePercent"]).toBe("dialogueInactive");
 
@@ -151,6 +149,23 @@ describe("Measurement Control", () => {
       record: record({ audio: { peakDb: [-10], rmsDb: [-20] } }),
     });
     expect(mono.unavailable["stereo.correlation"]).toBe("insufficientChannels");
+  });
+
+  it("reads the engine's Ch1/Ch2 stereo values when no Vectorscope is open", () => {
+    const result = inspect({ vectorscopeRequest: null });
+    expect(result.stereo).toEqual({
+      pair: { x: 0, y: 1, labels: ["L", "R"] },
+      correlation: 0.875,
+      sideToMidDb: -12.25,
+    });
+    expect(result.unavailable["stereo.correlation"]).toBeUndefined();
+
+    // A frame still describing the pair of a Vectorscope that has just closed is not yet Ch1/Ch2.
+    const switching = inspect({
+      vectorscopeRequest: null,
+      record: record({ audio: { vectorscopePairX: 2, vectorscopePairY: 3 } }),
+    });
+    expect(switching.unavailable["stereo.correlation"]).toBe("notReady");
   });
 
   it("distinguishes dialogue with no gated result from a real zero coverage", () => {

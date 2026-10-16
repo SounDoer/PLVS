@@ -52,7 +52,6 @@ present when values are unavailable. `unavailable` maps each null metric path to
 ```text
 noSample
 notReady
-analysisInactive
 dialogueInactive
 detectorError
 noDialogue
@@ -61,8 +60,9 @@ belowSignalFloor
 ```
 
 Channel peak and RMS rows use the same resolved auto/custom labels as the GUI. Loudness, dynamics,
-Dialogue, and True Peak Max use the same canonical Stats mapping. Stereo values describe only the
-first Vectorscope request already active in the engine; Measurement Control never creates one.
+Dialogue, and True Peak Max use the same canonical Stats mapping. Stereo values describe the same
+pair as Stats: the first Vectorscope request already active in the engine, or Ch1/Ch2 when none is.
+Measurement Control never creates a Vectorscope request.
 
 `levels.truePeak.maxDbtp` is the maximum True Peak across every channel. `leftDbtp` and `rightDbtp`
 report Ch1 and Ch2 only, whatever the channel count.
