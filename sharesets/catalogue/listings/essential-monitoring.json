@@ -7,7 +7,13 @@
   "title": "Essential Monitoring",
   "summary": "A low-clutter workspace for peak level, loudness, stereo image, and core readouts.",
   "descriptionMarkdown": "Keep the monitoring essentials visible without the full analysis workspace. A full-height Peak Level Meter with TP Max sits beside a 60-second Loudness history, while Polar Level Stereo Image and a six-metric Monitoring Summary provide compact spatial and numeric context. The Preset keeps Loudness Profile and Dock off, so it remains a source-neutral everyday workspace rather than a delivery target or alternate window mode.",
-  "tags": ["Monitoring", "Loudness", "Peak Level", "Stereo", "Compact"],
+  "tags": [
+    "Monitoring",
+    "Loudness",
+    "Peak Level",
+    "Stereo",
+    "Compact"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -23,6 +29,19 @@
         {
           "id": "preset-workspace",
           "path": "previews/essential-monitoring/v1/preset-workspace.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Refresh previews for the current PLVS interface. Preset settings are unchanged from Release 1; existing Library items do not need to be imported again.",
+      "artifact": "artifacts/essential-monitoring-v2.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace",
+          "path": "previews/essential-monitoring/v2/preset-workspace.png"
         }
       ]
     }

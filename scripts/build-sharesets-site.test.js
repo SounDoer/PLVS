@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildPack } from "../src/transfer/packShape.js";
 import { buildSharesetsSite, detailGallery, previewLabel } from "./build-sharesets-site.mjs";
 import { buildDocsPage } from "./build-user-docs.mjs";
+import { DEFAULT_WORKSPACE_STATE } from "../src/workspace/constants.js";
 
 const temporaryDirectories = [];
 const PNG = Buffer.from(
@@ -186,6 +187,52 @@ function writeBuiltinPresetSource(directory) {
 }
 
 describe("Sharesets static site generator", () => {
+  it.each([undefined, "left-to-right"])(
+    "derives the Preset build requirement from saved orientation (%s)",
+    async (orientation) => {
+      const source = temporaryDirectory("plvs-sharesets-preset-orientation-");
+      const output = temporaryDirectory("plvs-sharesets-output-");
+      writeBuiltinPresetSource(source);
+      const listingPath = join(source, "default-preset.json");
+      const listing = JSON.parse(readFileSync(listingPath, "utf8"));
+      const previews = listing.included.previews;
+      delete listing.included;
+      listing.releases = [
+        {
+          number: 1,
+          publishedAt: "2026-10-16",
+          status: "published",
+          notesMarkdown: "Preview release.",
+          artifact: "preset.plvspreset",
+          previews,
+        },
+      ];
+      const pack = buildPack("presets", [
+        {
+          id: "monitoring",
+          name: "Monitoring",
+          ...structuredClone(DEFAULT_WORKSPACE_STATE),
+          dock: { enabled: false },
+          loudnessProfileActive: "off",
+        },
+      ]);
+      if (orientation) {
+        pack.items[0].workspace.panels.find(
+          (panel) => panel.moduleId === "levelMeter"
+        ).controls.orientation = orientation;
+      }
+      writeFileSync(listingPath, JSON.stringify(listing));
+      writeFileSync(join(source, "preset.plvspreset"), `${JSON.stringify(pack, null, 2)}\n`);
+      await buildSharesetsSite({ contentDirectory: source, outputDirectory: output });
+      const detail = readFileSync(join(output, "presets", "default-preset", "index.html"), "utf8");
+      expect(detail.includes("introduced after 0.20.0")).toBe(Boolean(orientation));
+      expect(detail.includes("Requires PLVS 0.20.0 or later.")).toBe(!orientation);
+      expect(detail).toContain(
+        'data-copy-artifact="/sharesets/files/default-preset/v1/preset.plvspreset"'
+      );
+    }
+  );
+
   it("uses the fixed four-image Theme gallery order and plain-language labels", () => {
     const previews = [
       "semantic-overview",

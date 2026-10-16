@@ -1,0 +1,213 @@
+{
+  "app": "PLVS",
+  "kind": "preset-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "stereo-field-check",
+      "kind": "plvs-preset",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Stereo Field Check",
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "vertical",
+          "weights": [
+            0.62,
+            0.38
+          ],
+          "children": [
+            {
+              "type": "split",
+              "direction": "horizontal",
+              "weights": [
+                0.58,
+                0.42
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "mid-side-spectrum"
+                },
+                {
+                  "type": "panel",
+                  "key": "polar-vectorscope"
+                }
+              ]
+            },
+            {
+              "type": "split",
+              "direction": "horizontal",
+              "weights": [
+                0.36,
+                0.36,
+                0.28
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "correlation-map"
+                },
+                {
+                  "type": "panel",
+                  "key": "mono-loss-map"
+                },
+                {
+                  "type": "panel",
+                  "key": "stereo-stats"
+                }
+              ]
+            }
+          ]
+        },
+        "panels": [
+          {
+            "key": "mid-side-spectrum",
+            "moduleId": "spectrum",
+            "title": "Mid / Side Spectrum",
+            "controls": {
+              "channel": {
+                "type": "pair",
+                "x": 0,
+                "y": 1
+              },
+              "view": "ms",
+              "maxMode": "decay",
+              "peakLabels": false,
+              "grid": true,
+              "speedPercent": 25,
+              "tiltDbPerOctave": 3,
+              "octaveSmoothing": "off",
+              "levelRangeDb": {
+                "min": -84,
+                "max": 0
+              }
+            },
+            "axes": {
+              "frequency": {
+                "linked": true,
+                "minHz": 20,
+                "maxHz": 20000
+              }
+            }
+          },
+          {
+            "key": "polar-vectorscope",
+            "moduleId": "vectorscope",
+            "title": "Polar Vectorscope",
+            "controls": {
+              "channelPair": {
+                "x": 0,
+                "y": 1
+              },
+              "mode": "polarLevel",
+              "maxHold": true
+            },
+            "axes": {}
+          },
+          {
+            "key": "correlation-map",
+            "moduleId": "stereo-map",
+            "title": "Correlation Map",
+            "controls": {
+              "mode": "correlation",
+              "channelPair": {
+                "x": 0,
+                "y": 1
+              },
+              "grid": true,
+              "maxHold": false,
+              "speedPercent": 50,
+              "octaveSmoothing": "1/12",
+              "energyFadePercent": 60
+            },
+            "axes": {
+              "frequency": {
+                "linked": true,
+                "minHz": 20,
+                "maxHz": 20000
+              }
+            }
+          },
+          {
+            "key": "mono-loss-map",
+            "moduleId": "stereo-map",
+            "title": "Mono Loss Map",
+            "controls": {
+              "mode": "monoLossDb",
+              "channelPair": {
+                "x": 0,
+                "y": 1
+              },
+              "grid": true,
+              "maxHold": false,
+              "speedPercent": 50,
+              "octaveSmoothing": "1/12",
+              "energyFadePercent": 60,
+              "monoLossFloorDb": -24
+            },
+            "axes": {
+              "frequency": {
+                "linked": true,
+                "minHz": 20,
+                "maxHz": 20000
+              }
+            }
+          },
+          {
+            "key": "stereo-stats",
+            "moduleId": "stats",
+            "title": "Stereo Summary",
+            "controls": {
+              "metrics": {
+                "visible": [
+                  "correlation",
+                  "sideToMid",
+                  "truePeak",
+                  "plr",
+                  "integrated"
+                ],
+                "order": [
+                  "correlation",
+                  "sideToMid",
+                  "truePeak",
+                  "plr",
+                  "integrated",
+                  "momentary",
+                  "shortTerm",
+                  "momentaryMax",
+                  "shortTermMax",
+                  "lra",
+                  "psr",
+                  "dialogueCoverage",
+                  "dialogueIntegrated",
+                  "dialogueRange",
+                  "dialogueOffset"
+                ]
+              }
+            },
+            "axes": {}
+          }
+        ]
+      },
+      "presentation": {
+        "alwaysOnTop": false,
+        "focusView": {
+          "autoHideControls": false,
+          "compactPanels": false,
+          "borderless": false
+        },
+        "panelOpacityPercent": 100,
+        "glassEnabled": false
+      },
+      "dock": {
+        "enabled": false
+      },
+      "loudnessProfile": {
+        "dependencyId": null
+      }
+    }
+  ],
+  "dependencies": []
+}

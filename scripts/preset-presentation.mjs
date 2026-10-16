@@ -35,6 +35,15 @@ const names = {
   off: "Off",
   shortTerm: "Short-term",
 };
+
+// Workspace panel orientation first appeared after the Sharesets launch release. Keep the
+// requirement tied to the saved controls instead of a Listing ID or an unassigned app version.
+export function presetUsesPanelOrientation(pack) {
+  return (pack?.items?.[0]?.workspace?.panels ?? []).some(
+    (panel) => panel.controls?.orientation !== undefined
+  );
+}
+
 const words = (key) =>
   labels[key] ??
   key

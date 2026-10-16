@@ -100,7 +100,7 @@ describe("initial Sharesets Catalogue", () => {
     expect(listings.every(({ classification }) => classification === "official")).toBe(true);
     expect(listings.every(({ author }) => author?.name === "PLVS")).toBe(true);
     expect(
-      listings.every(({ included, releases }) => Boolean(included) !== (releases.length === 1))
+      listings.every(({ included, releases }) => Boolean(included) !== (releases.length > 0))
     ).toBe(true);
   });
 

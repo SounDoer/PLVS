@@ -6,8 +6,14 @@
   "classification": "official",
   "title": "Meter Bridge",
   "summary": "Compare Peak, RMS, Momentary, and Short-term metering against programme structure.",
-  "descriptionMarkdown": "Compare four measurement time scales without unrelated analysis panels. A 60-second Waveform provides programme context above equal-width Peak, RMS, Momentary, and Short-term meters. Peak includes TP Max, while the loudness meters use floating values and remain profile-neutral. Stereo and 5.1 previews show how channel-aware Peak, RMS, and Waveform views adapt while programme-level loudness remains a single reading.",
-  "tags": ["Metering", "Peak", "RMS", "Loudness", "Multichannel"],
+  "descriptionMarkdown": "Compare four measurement time scales without unrelated analysis panels. A 60-second Waveform provides programme context above horizontal Peak and RMS meters on the left and vertical Momentary and Short-term meters on the right. Peak includes TP Max, while the loudness meters use floating values and remain profile-neutral. Stereo and 5.1 previews show how channel-aware Peak, RMS, and Waveform views adapt while programme-level loudness remains a single reading. Release 2 requires a PLVS build with panel orientation controls, introduced after 0.20.0. For PLVS 0.20.0, download Release 1 from Release History.",
+  "tags": [
+    "Metering",
+    "Peak",
+    "RMS",
+    "Loudness",
+    "Multichannel"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -27,6 +33,23 @@
         {
           "id": "preset-workspace-5-1",
           "path": "previews/meter-bridge/v1/preset-workspace-5-1.png"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "publishedAt": "2026-10-16",
+      "status": "published",
+      "notesMarkdown": "Arrange horizontal Peak and RMS meters beside vertical Momentary and Short-term meters, with a 60-second Waveform above. Refresh Stereo and 5.1 previews. Requires a PLVS build with panel orientation controls, introduced after 0.20.0; use Release 1 with PLVS 0.20.0.",
+      "artifact": "artifacts/meter-bridge-v2.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace-stereo",
+          "path": "previews/meter-bridge/v2/preset-workspace-stereo.png"
+        },
+        {
+          "id": "preset-workspace-5-1",
+          "path": "previews/meter-bridge/v2/preset-workspace-5-1.png"
         }
       ]
     }
