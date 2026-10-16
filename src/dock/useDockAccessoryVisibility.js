@@ -123,7 +123,9 @@ export function useDockAccessoryVisibility({
       forceVisible: forceHeaderVisible,
     });
 
-  const presentationKey = `${headerVisible}:${snapshotActive}`;
+  // Only a hidden header waits for a fresh render before it shows. One already on screen updates
+  // in place, so entering or leaving Snapshot with the toolbar pinned never blinks it.
+  const presentationKey = String(headerVisible);
   const [presentation, setPresentation] = useState({ key: presentationKey, id: 0 });
   if (presentation.key !== presentationKey) {
     setPresentation({ key: presentationKey, id: presentation.id + 1 });

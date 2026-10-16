@@ -122,6 +122,30 @@ describe("useDockAccessoryVisibility", () => {
     );
   });
 
+  it("keeps a pinned toolbar on screen while Snapshot starts and ends", async () => {
+    const flush = async () => {
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+    const { result, rerender } = renderVisibility({
+      snapshotActive: false,
+      waitForHeaderReady: true,
+    });
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.confirmHeaderReady(result.current.headerPresentationId));
+    await flush();
+    vi.mocked(setDockAccessories).mockClear();
+    rerender({ snapshotActive: true, waitForHeaderReady: true });
+    await flush();
+    rerender({ snapshotActive: false, waitForHeaderReady: true });
+    await flush();
+    expect(setDockAccessories).not.toHaveBeenCalledWith(
+      expect.objectContaining({ headerVisible: false })
+    );
+  });
+
   it("stays closed until the entry is toggled, and publishes the change", async () => {
     const { result } = renderVisibility();
     expect(result.current.headerVisible).toBe(false);
