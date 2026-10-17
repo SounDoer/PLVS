@@ -12,6 +12,10 @@ export const UPDATE_REQUIRED_SCENARIOS = [
   "dock-restored",
   "helper-finished",
   "cache-cleared",
+  "apfs-bundle-swap",
+  "read-only-dmg-refusal",
+  "stale-signature-rejected",
+  "truncated-package-rejected",
 ];
 export const UPDATE_MANUAL_SCENARIOS = [
   "privileged-applications-replacement",

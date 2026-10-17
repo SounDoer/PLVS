@@ -12,10 +12,15 @@ same `.app` bundle while the loopback feed was stopped, relaunched, and reported
 the application and bundled CLI. The helper recorded `finished`, the ready cache was cleared, and
 the bottom Dock returned at 160 CSS px with the same eight panels.
 
+Three additional packaged checks passed. From the mounted read-only DMG, automatic download was
+disabled with guidance to move PLVS to Applications and no package was staged. A stale signature
+and a deliberately truncated updater archive were both rejected before Ready state; the UI showed
+an actionable failure and the cache retained `ready: null`.
+
 Evidence is under the ignored directory
 `artifacts/update-acceptance/32fb38ba/runs/launchservices-offline/`. The verifier reports the routine
-run as complete while listing the unrun DMG, privileged-install, authorization-cancellation, and
-notarization scenarios separately.
+run as complete while listing privileged install, authorization cancellation, and notarization as
+the remaining explicit gaps.
 
 ## Defects found and fixed
 
@@ -43,7 +48,8 @@ notarization scenarios separately.
 
 ## Remaining work
 
-- Automate and record read-only DMG refusal and deterministic helper interruption.
+- Fold the proven read-only DMG, stale-signature, and truncated-package checks into runner-owned
+  scenarios, and add deterministic helper interruption.
 - Add manual `/Applications` approval and cancellation evidence without storing credentials.
 - Migrate the Windows operator flow onto the same guided runner and result schema; only then add the
   common npm command aliases.

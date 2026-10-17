@@ -298,15 +298,18 @@ async function runMacAcceptance({ root, runId, receipt }) {
     { id: "cache-cleared", status: scenarioStatus(readyCleared) },
     { id: "apfs-bundle-swap", status: "passed" },
     { id: "read-only-dmg-refusal", status: "notRun", reason: "planned automated scenario" },
+    { id: "stale-signature-rejected", status: "notRun", reason: "planned automated scenario" },
+    { id: "truncated-package-rejected", status: "notRun", reason: "planned automated scenario" },
     ...UPDATE_MANUAL_SCENARIOS.map((id) => ({
       id,
       status: "notRun",
       reason: "manual or release-only checkpoint",
     })),
   ];
-  const failed = UPDATE_REQUIRED_SCENARIOS.some(
+  const incomplete = UPDATE_REQUIRED_SCENARIOS.some(
     (id) => scenarios.find((scenario) => scenario.id === id)?.status !== "passed"
   );
+  const failed = scenarios.some((scenario) => scenario.status === "failed");
   const terminatedPids = terminateOwnedMacApp(app);
   await waitFor(
     "isolated app cleanup",
@@ -327,7 +330,7 @@ async function runMacAcceptance({ root, runId, receipt }) {
     tool: { name: "update-acceptance", version: 1 },
     startedAt,
     endedAt: new Date().toISOString(),
-    summary: failed ? "failed" : "complete",
+    summary: failed ? "failed" : incomplete ? "incomplete" : "complete",
     scenarios,
     artifacts: artifactList(runDir, [
       "before.json",
