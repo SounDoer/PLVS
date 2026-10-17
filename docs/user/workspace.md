@@ -116,8 +116,8 @@ hover or keyboard focus, and use Accent while you hold and drag them, matching W
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer. Height starts at 180 CSS pixels. The
 minimum fits three rows of Stats at the current **Interface Size**: 68 CSS pixels at the default
-size, more at larger sizes. Choosing a larger Interface Size raises a shorter strip to the new
-minimum. The strip can grow up to the current display's available space minus room for the toolbar
+size, more at larger sizes. When the panels are wider than the screen, the minimum also leaves
+room for the horizontal scrollbar. A strip shorter than the new minimum grows to it. The strip can grow up to the current display's available space minus room for the toolbar
 and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 

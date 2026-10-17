@@ -58,10 +58,15 @@ export function DockStrip({
   const channelCount = chrome?.channelCount ?? 2;
   const viewportRef = useRef(null);
   const [availableWidth, setAvailableWidth] = useState(0);
+  // Height of the horizontal scrollbar that appears when the panels are wider than the screen.
+  const [scrollbarHeight, setScrollbarHeight] = useState(0);
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return undefined;
-    const measure = () => setAvailableWidth(viewport.clientWidth);
+    const measure = () => {
+      setAvailableWidth(viewport.clientWidth);
+      setScrollbarHeight(Math.max(0, viewport.offsetHeight - viewport.clientHeight));
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
@@ -90,8 +95,9 @@ export function DockStrip({
     channelCount,
     automaticPanelIds: entries.filter((entry) => entry.autoStats).map((entry) => entry.id),
   });
-  const minHeight = dockMinHeight(interfaceSize);
-  // A larger interface size raises the minimum; grow a shorter strip to keep three Stats rows.
+  // The scrollbar takes its height from the panels, so reserve it to keep three Stats rows visible.
+  const minHeight = dockMinHeight(interfaceSize) + scrollbarHeight;
+  // A larger interface size or an overflowing panel row raises the minimum; grow a shorter strip.
   useEffect(() => {
     if (Number.isFinite(height) && height < minHeight && !heightResizeDisabled)
       void Promise.resolve(onHeightChange?.(minHeight, { persist: true })).catch(() => {});

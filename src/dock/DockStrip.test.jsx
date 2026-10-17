@@ -114,6 +114,33 @@ describe("DockStrip", () => {
     );
   });
 
+  it("reserves the horizontal scrollbar when the panels overflow the screen", () => {
+    const viewportHeight = (/** @type {HTMLElement} */ element, value) =>
+      element.matches?.("[aria-label='dock panels']") ? value : 0;
+    const offset = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    const client = Object.getOwnPropertyDescriptor(Element.prototype, "clientHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get() {
+        return viewportHeight(this, 68);
+      },
+    });
+    Object.defineProperty(Element.prototype, "clientHeight", {
+      configurable: true,
+      get() {
+        return viewportHeight(this, 56);
+      },
+    });
+    try {
+      const onHeightChange = vi.fn();
+      renderStrip({ height: 68, interfaceSize: "default", onHeightChange });
+      expect(onHeightChange).toHaveBeenCalledWith(80, { persist: true });
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, "offsetHeight", offset);
+      Object.defineProperty(Element.prototype, "clientHeight", client);
+    }
+  });
+
   it("leaves a strip at or above the minimum and never reports a height tier", () => {
     const onHeightChange = vi.fn();
     renderStrip({ height: 68, interfaceSize: "default", onHeightChange });
