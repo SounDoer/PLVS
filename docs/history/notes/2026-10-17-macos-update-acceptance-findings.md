@@ -54,5 +54,6 @@ the remaining explicit gaps.
 - Run the migrated Windows NSIS adapter on a Windows acceptance host. Its install, launch, helper,
   cleanup, result-schema, and common npm-command contracts are implemented, but macOS code tests do
   not count as Windows execution evidence.
-- Add advisory exact-SHA evidence reporting to stable release review after both platform runners
-  have produced comparable evidence.
+- Produce the first real Windows-host evidence. Stable release preflight now reports exact-SHA
+  evidence for both platforms as an advisory, including missing, invalid, incomplete, and stale
+  states; it can become blocking only after comparable Windows and macOS runs are routine.

@@ -650,6 +650,11 @@ all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. A
 valid only after this runner produces real evidence on that platform; contract tests on another OS
 do not substitute for it.
 
+Stable release preflight also prints a non-blocking report for both platforms. It accepts only
+evidence for the exact release commit, marks evidence older than 14 days as stale, and says plainly
+when a platform is missing, invalid, incomplete, or stale. This is advisory during the initial
+rollout: the release continues, but the missing cross-platform evidence remains visible in its log.
+
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).

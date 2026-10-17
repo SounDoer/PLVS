@@ -8,6 +8,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { captureSmokeChangesSinceLastTag } from "./audio-code-changed.mjs";
 import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
@@ -33,6 +34,7 @@ run("Release state", "node", ["scripts/check-release-state.mjs"]);
 run("Public content review", "node", ["scripts/release-content-review.mjs", "check"]);
 run("Full repository check", npm, ["run", "check"]);
 run("Corresponding-source availability", npm, ["run", "licenses:sources"]);
+run("Update acceptance evidence (advisory)", "node", ["scripts/report-update-acceptance.mjs"]);
 
 // The capture layer cannot be tested by `npm run check` — CI has no sound card —
 // so it is verified here when either that layer or its smoke harness changed.
