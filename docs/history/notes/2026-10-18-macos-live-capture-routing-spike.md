@@ -6,8 +6,8 @@
 
 **Host:** macOS 15.6.1, Apple Silicon
 
-**Status:** Native application capture proved; fixed-format rig setup still requires an
-administrator-authorized virtual-device install and reboot
+**Status:** Complete; both native application isolation and the preferred BlackHole rig route were
+proved on real hardware
 
 ## Question
 
@@ -95,8 +95,9 @@ installed by the product.
 The UI can discover, select, persist, and capture a macOS application source. The current Agent
 Control `device list` omits application sources, `device select` rejects `app-*` ids, and
 `device inspect` reports a persisted application selection as unavailable even while transport can
-start it successfully. A reliable acceptance runner must close this contract gap rather than use
-UI clicks or edit persistence directly.
+start it successfully. Any future application-source acceptance runner must close this contract
+gap rather than use UI clicks or edit persistence directly. The final BlackHole adapter below does
+not depend on application-source control.
 
 ### Player loops affect true-peak maxima
 
@@ -120,25 +121,58 @@ The runner must snapshot numeric output volume and mute state independently, and
 an explicit numeric command. Cleanup must verify the final values instead of assuming that clearing
 mute preserves volume.
 
-## Adapter decision
+## Preliminary adapter decision
 
-Use the native macOS application tap for source isolation, backed by a dedicated 2-channel virtual
-Core Audio device for deterministic topology. Keep VLC as the shared controllable player unless the
-remaining route test proves that a repository-owned player is necessary.
+The pre-reboot result suggested combining the native macOS application tap with a dedicated
+two-channel virtual Core Audio device. The post-reboot continuation below superseded that direction
+with the simpler direct VLC-to-BlackHole route.
 
 The preferred rig device is BlackHole 2ch. Homebrew currently offers version 0.7.1 and states that
 a reboot is required after installation. An installation attempt reached the administrator
 password prompt and was cancelled; the partial Homebrew cask registration was then removed, and no
 package or HAL plug-in remains installed.
 
-The spike is complete enough to choose the adapter, but not enough to claim a runnable rig. After
-administrator-authorized installation and reboot, the continuation must prove:
+## Post-reboot BlackHole continuation
 
-1. BlackHole discovery as exactly 2 channels at 48 kHz;
-2. direct or safely temporary VLC routing into BlackHole;
-3. application capture through the real product path without UI clicks;
-4. source recovery after PLVS and player restart;
-5. restoration of the previous output, system-output, volume, mute, and sample-rate state;
-6. no remaining player, capture process, virtual-device route, lease, or temporary file.
+BlackHole 2ch 0.7.1 was installed with administrator authorization and the host was rebooted. Core
+Audio then exposed exactly one two-channel input and one two-channel output named `BlackHole 2ch`,
+both at 48 kHz. The host's K4 device remained the default output throughout the continuation.
 
-Only then should the final live-capture acceptance spec and implementation plan be written.
+Passing VLC the BlackHole display name did not route audio reliably. Resolving BlackHole's numeric
+Core Audio `AudioObjectID` and launching VLC's AUHAL output with that id did. The current capture
+harness selected PLVS's `lb-*` system-output-monitor row for BlackHole and measured:
+
+| Metric                    | File truth | 10 s live capture | Difference |
+| ------------------------- | ---------: | ----------------: | ---------: |
+| Integrated loudness       | -22.0306 LUFS | -22.0305 LUFS | 0.0000 LU |
+| Left sample peak maximum  | -19.9995 dBFS | -19.9995 dBFS | 0.0000 dB |
+| Right sample peak maximum | -26.0015 dBFS | -26.0013 dBFS | 0.0002 dB |
+
+The capture was stereo at 48 kHz with zero dropped chunks. After VLC was stopped, a two-second
+capture returned all-null loudness and peak metrics, proving that no other route was feeding the
+device. VLC was then restarted and a second five-second capture again returned -22.0305 LUFS with
+the expected asymmetric channel peaks and zero dropped chunks.
+
+Cleanup stopped the exact VLC and PLVS processes created by the spike and moved the temporary WAV
+to Trash. No player or app process remained. Because the route never changed the default output,
+system output, volume, mute, or sample rate, there was no host audio state to restore.
+
+## Final adapter decision
+
+Use direct VLC-to-BlackHole routing and capture PLVS's BlackHole system-output-monitor row. This is
+the macOS equivalent of the existing Windows VLC-to-VB-Cable route:
+
+- both use a dedicated two-channel virtual audio device at 48 kHz;
+- both route only the repository-owned player process into that device;
+- both compare live capture against file analysis of the same asymmetric signal;
+- neither changes the user's default output or plays the tone through physical speakers.
+
+The native application-tap result remains useful product evidence, but it is not required by the
+acceptance adapter. Avoiding it removes the arbitrary default-output channel topology and means the
+Agent Control application-source gap is a separate product/tooling improvement rather than a
+prerequisite for cross-platform capture acceptance.
+
+The reusable runner must resolve the PLVS capture row and VLC render target independently. On
+macOS that means a stable `lb-*` capture id plus the numeric Core Audio `AudioObjectID`; on Windows
+it means `CABLE Output` plus the MMDevice render endpoint id. It must validate the expected stereo,
+48 kHz topology before interpreting any measurement as a code signal.
