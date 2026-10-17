@@ -3059,7 +3059,10 @@ impl ControlClient for LocalControlClient {
     if let Some(error) = self.selection_error.as_ref() {
       return Err(error.clone());
     }
-    let enabled = crate::agent_control::toggle::read_enabled_from_disk();
+    let enabled = test_identity_root()
+      .as_deref()
+      .map(crate::agent_control::toggle::read_enabled_from_identity_root)
+      .unwrap_or_else(crate::agent_control::toggle::read_enabled_from_disk);
     if !enabled {
       return Err(discovery_failure(
         &DiscoveryError::new(DiscoveryErrorKind::Missing, "Agent Control is disabled."),

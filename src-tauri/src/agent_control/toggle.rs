@@ -54,6 +54,19 @@ pub fn read_enabled_from_disk() -> bool {
   enabled_from_store_map(&map)
 }
 
+pub fn read_enabled_from_identity_root(identity_root: &std::path::Path) -> bool {
+  crate::persistence::LibraryRepository::open(identity_root)
+    .ok()
+    .and_then(|repository| {
+      repository
+        .read_global_preference(ENABLED_KEY)
+        .ok()
+        .flatten()
+    })
+    .and_then(|preference| preference.value.as_bool())
+    .unwrap_or_else(default_enabled)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentControlStatus {
@@ -301,6 +314,21 @@ mod tests {
 
     map.insert(ENABLED_KEY.into(), json!(false));
     assert!(!enabled_from_store_map(&map));
+  }
+
+  #[test]
+  fn isolated_cli_reads_the_permission_from_its_selected_identity() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = crate::persistence::LibraryRepository::open(directory.path()).unwrap();
+    repository
+      .set_global_preference(ENABLED_KEY, 0, &json!(true))
+      .unwrap();
+    assert!(read_enabled_from_identity_root(directory.path()));
+
+    repository
+      .set_global_preference(ENABLED_KEY, 1, &json!(false))
+      .unwrap();
+    assert!(!read_enabled_from_identity_root(directory.path()));
   }
 
   #[test]
