@@ -1,143 +1,272 @@
-// Build two real NSIS packages from an exact source snapshot. Test identity/key/endpoint
-// substitutions occur only in the ignored snapshot, never in shipping sources or config.
+#!/usr/bin/env node
+// Build two real packages from one exact source snapshot. Identity, version, key, and endpoint
+// substitutions occur only below ignored artifacts/update-acceptance/, never in shipping sources.
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import {
+  chmodSync,
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-if (process.platform !== "win32") throw new Error("Windows acceptance build only");
-const repository = process.cwd();
-const run = (command, args, cwd = repository, env = {}, log) => {
+import {
+  acceptanceNames,
+  acceptanceRoot,
+  acceptanceVersions,
+  createAcceptanceReceipt,
+  platformDescriptor,
+  sha256File,
+  validateAcceptanceReceipt,
+  writeJsonAtomic,
+} from "./update-acceptance-lib.mjs";
+
+export function run(command, args, { cwd, env = {}, log, quiet = false } = {}) {
   const result = spawnSync(command, args, {
     cwd,
     env: { ...process.env, ...env },
     encoding: "utf8",
+    stdio: quiet ? "pipe" : ["ignore", "pipe", "pipe"],
     windowsHide: true,
     maxBuffer: 32 * 1024 * 1024,
   });
-  if (log) writeFileSync(log, result.stdout + result.stderr);
-  if (result.status !== 0) throw new Error(`${command} failed; ${log ?? result.stderr}`);
-  return result.stdout.trim();
-};
-const sha = run("git", ["rev-parse", "HEAD"]);
-const short = sha.slice(0, 8);
-const root = path.join(repository, "artifacts", "update-acceptance", short);
-const snapshot = path.join(root, "source");
-const identity = `com.soundoer.plvs.updatetest.h${short}`;
-const productName = `PLVS Update Test ${short}`;
-const registryName = productName;
-const port = 18765;
-const target = path.join(repository, "src-tauri", "target");
-const tauri = path.join(repository, "node_modules", "@tauri-apps", "cli", "tauri.js");
-mkdirSync(snapshot, { recursive: true });
-if (!existsSync(path.join(snapshot, "package.json"))) {
-  run("git", ["archive", "--format=tar", `--output=${path.join(root, "source.tar")}`, sha]);
-  run("tar", ["-xf", path.join(root, "source.tar"), "-C", snapshot]);
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  if (log) writeFileSync(log, output);
+  if (result.error) throw new Error(`${command} could not start: ${result.error.message}`);
+  if (result.status !== 0) {
+    throw new Error(`${command} failed with status ${result.status}; ${log ?? output.trim()}`);
+  }
+  return (result.stdout ?? "").trim();
+}
+
+export function assertCommittedSource(repository, invoke = run) {
+  const status = invoke("git", ["status", "--porcelain", "--untracked-files=all"], {
+    cwd: repository,
+    quiet: true,
+  });
+  if (status) {
+    throw new Error(
+      "Update acceptance requires a clean worktree so every package matches the recorded HEAD."
+    );
+  }
+  return invoke("git", ["rev-parse", "HEAD"], { cwd: repository, quiet: true });
+}
+
+export function acceptanceBuildLayout({ repository, sourceSha, platform, arch }) {
+  const descriptor = platformDescriptor(platform, arch);
+  const names = acceptanceNames(sourceSha);
+  const root = acceptanceRoot(repository, sourceSha);
+  return {
+    descriptor,
+    names,
+    root,
+    snapshot: path.join(root, "source"),
+    target: path.join(root, "target"),
+    key: path.join(root, "acceptance.key"),
+    receipt: path.join(root, "acceptance.json"),
+  };
+}
+
+function replaceExactlyOnce(source, needle, replacement, label) {
+  if (source.split(needle).length !== 2) throw new Error(`${label} seam changed`);
+  return source.replace(needle, replacement);
+}
+
+function prepareSnapshot(
+  { repository, sourceSha, root, snapshot, names, descriptor },
+  invoke = run
+) {
+  const marker = path.join(root, "snapshot.json");
+  if (existsSync(path.join(snapshot, "package.json"))) {
+    if (!existsSync(marker))
+      throw new Error(`Existing acceptance snapshot has no marker: ${snapshot}`);
+    const saved = JSON.parse(readFileSync(marker, "utf8"));
+    if (
+      saved.sourceSha !== sourceSha ||
+      saved.platformKey !== descriptor.key ||
+      saved.identity !== names.identity
+    ) {
+      throw new Error(`Existing acceptance snapshot does not match ${sourceSha}/${descriptor.key}`);
+    }
+    return;
+  }
+
+  mkdirSync(snapshot, { recursive: true });
+  const archive = path.join(root, "source.tar");
+  invoke("git", ["archive", "--format=tar", `--output=${archive}`, sourceSha], {
+    cwd: repository,
+    quiet: true,
+  });
+  invoke("tar", ["-xf", archive, "-C", snapshot], { cwd: repository, quiet: true });
   symlinkSync(
     path.join(repository, "node_modules"),
     path.join(snapshot, "node_modules"),
-    "junction"
+    process.platform === "win32" ? "junction" : "dir"
   );
-  // The runtime uses the same installed-directory evidence, scoped to this disposable app.
-  const runtime = path.join(snapshot, "src-tauri/src/update_runtime.rs");
-  const source = readFileSync(runtime, "utf8");
-  const needle = 'r"Software\\SounDoer\\PLVS"';
-  if (source.split(needle).length !== 2) throw new Error("Installation identity seam changed");
-  writeFileSync(runtime, source.replace(needle, `r"Software\\SounDoer\\${registryName}"`));
-  const generator = path.join(snapshot, "scripts/generate-agent-discovery.mjs");
-  writeFileSync(
-    generator,
-    readFileSync(generator, "utf8").replace(
-      'nsisDefinesFor(tauriConfig, "PLVS")',
-      `nsisDefinesFor(tauriConfig, ${JSON.stringify(registryName)})`
-    )
-  );
-}
-const key = path.join(root, "acceptance.key");
-if (!existsSync(key)) {
-  // Signer generation can print private material: deliberately capture and discard its output.
-  run(process.execPath, [
-    tauri,
-    "signer",
-    "generate",
-    "--ci",
-    "--password",
-    "",
-    "--write-keys",
-    key,
-  ]);
-}
-const baseVersion = JSON.parse(readFileSync(path.join(repository, "package.json"), "utf8")).version;
-const parts = baseVersion.split(".").map(Number);
-const versions = [baseVersion, `${parts[0]}.${parts[1]}.${parts[2] + 1}`];
-const artifacts = [];
-for (const version of versions) {
-  const out = path.join(root, version);
-  mkdirSync(out, { recursive: true });
-  const installer = path.join(out, `PLVS-Update-Test_${version}_x64-setup.exe`);
-  if (!existsSync(installer)) {
-    const pkg = JSON.parse(readFileSync(path.join(snapshot, "package.json"), "utf8"));
-    pkg.version = version;
-    writeFileSync(path.join(snapshot, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
-    const cargo = path.join(snapshot, "src-tauri/Cargo.toml");
+
+  if (descriptor.os === "windows") {
+    const runtime = path.join(snapshot, "src-tauri/src/update_runtime.rs");
+    const registryName = names.productName;
     writeFileSync(
-      cargo,
-      readFileSync(cargo, "utf8").replace(
-        /(\[workspace\.package\]\s+version = )"[^"]+"/,
-        `$1"${version}"`
+      runtime,
+      replaceExactlyOnce(
+        readFileSync(runtime, "utf8"),
+        'r"Software\\SounDoer\\PLVS"',
+        `r"Software\\SounDoer\\${registryName}"`,
+        "Windows installation identity"
       )
     );
-    const configPath = path.join(snapshot, "src-tauri/tauri.conf.json");
-    const config = JSON.parse(readFileSync(configPath, "utf8"));
-    Object.assign(config, { productName, identifier: identity, version });
-    config.bundle.createUpdaterArtifacts = false;
-    config.build.beforeBuildCommand = "";
-    config.plugins.updater = {
-      requireSignedVersion: true,
-      dangerousInsecureTransportProtocol: true,
-      pubkey: readFileSync(key + ".pub", "utf8").trim(),
-      endpoints: [`http://127.0.0.1:${port}/latest.json`],
-    };
-    writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+    const generator = path.join(snapshot, "scripts/generate-agent-discovery.mjs");
+    writeFileSync(
+      generator,
+      replaceExactlyOnce(
+        readFileSync(generator, "utf8"),
+        'nsisDefinesFor(tauriConfig, "PLVS")',
+        `nsisDefinesFor(tauriConfig, ${JSON.stringify(registryName)})`,
+        "Windows Agent discovery identity"
+      )
+    );
+  }
+  writeJsonAtomic(marker, {
+    schemaVersion: 1,
+    sourceSha,
+    platformKey: descriptor.key,
+    identity: names.identity,
+  });
+}
+
+function generateKey({ repository, root, key }, invoke = run) {
+  if (existsSync(key) && existsSync(`${key}.pub`)) return;
+  const tauri = path.join(repository, "node_modules", "@tauri-apps", "cli", "tauri.js");
+  mkdirSync(root, { recursive: true });
+  // The signer can print private material. Capture and discard it rather than forwarding to logs.
+  invoke(
+    process.execPath,
+    [tauri, "signer", "generate", "--ci", "--password", "", "--write-keys", key],
+    { cwd: repository, quiet: true }
+  );
+}
+
+function writeVersion(snapshot, version, names, key, descriptor) {
+  const packagePath = path.join(snapshot, "package.json");
+  const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
+  packageJson.version = version;
+  writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+
+  const cargoPath = path.join(snapshot, "src-tauri/Cargo.toml");
+  const cargo = readFileSync(cargoPath, "utf8");
+  const nextCargo = cargo.replace(/(\[workspace\.package\]\s+version = )"[^"]+"/, `$1"${version}"`);
+  if (nextCargo === cargo) throw new Error("Cargo workspace version seam changed");
+  writeFileSync(cargoPath, nextCargo);
+
+  const configPath = path.join(snapshot, "src-tauri/tauri.conf.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  Object.assign(config, {
+    productName: names.productName,
+    identifier: names.identity,
+    version,
+  });
+  config.bundle.createUpdaterArtifacts = false;
+  config.build.beforeBuildCommand = "";
+  config.plugins.updater = {
+    requireSignedVersion: true,
+    dangerousInsecureTransportProtocol: true,
+    pubkey: readFileSync(`${key}.pub`, "utf8").trim(),
+    endpoints: ["http://127.0.0.1:18765/latest.json"],
+  };
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+  if (descriptor.os === "windows") {
     const windowsPath = path.join(snapshot, "src-tauri/tauri.windows.conf.json");
     const windows = JSON.parse(readFileSync(windowsPath, "utf8"));
     windows.bundle.windows.nsis.compression = "zlib";
-    writeFileSync(windowsPath, JSON.stringify(windows, null, 2) + "\n");
-    const binaries = path.join(snapshot, "src-tauri/binaries");
-    mkdirSync(binaries, { recursive: true });
-    for (const name of readdirSync(path.join(repository, "src-tauri/binaries"))) {
-      if (/^(ffmpeg|ffprobe)-.*\.exe$/.test(name))
-        copyFileSync(path.join(repository, "src-tauri/binaries", name), path.join(binaries, name));
-    }
-    console.log(`Building ${version} from ${sha} with isolated identity ${identity}`);
-    run(
-      process.execPath,
-      [path.join(repository, "node_modules/vite/bin/vite.js"), "build"],
-      snapshot,
-      { TAURI_ENV_PLATFORM: "windows" },
-      path.join(out, "frontend.log")
-    );
-    run(process.execPath, ["scripts/generate-agent-discovery.mjs"], snapshot);
-    run(
-      "cargo",
-      ["build", "--manifest-path", "src-tauri/plvs-cli/Cargo.toml", "--target-dir", target],
-      snapshot,
-      {},
-      path.join(out, "cli.log")
-    );
-    copyFileSync(
-      path.join(target, "debug/plvs-cli.exe"),
-      path.join(binaries, "plvs-cli-x86_64-pc-windows-msvc.exe")
-    );
-    run(
+    writeFileSync(windowsPath, `${JSON.stringify(windows, null, 2)}\n`);
+  }
+}
+
+function copyPlatformSidecars(repository, snapshot, descriptor) {
+  const source = path.join(repository, "src-tauri/binaries");
+  const destination = path.join(snapshot, "src-tauri/binaries");
+  mkdirSync(destination, { recursive: true });
+  const suffix = platformTargetTriple(descriptor);
+  const extension = descriptor.os === "windows" ? ".exe" : "";
+  for (const tool of ["ffmpeg", "ffprobe"]) {
+    const name = `${tool}-${suffix}${extension}`;
+    const from = path.join(source, name);
+    if (!existsSync(from)) throw new Error(`Missing acceptance sidecar: ${from}`);
+    copyFileSync(from, path.join(destination, name));
+    if (descriptor.os !== "windows") chmodSync(path.join(destination, name), 0o755);
+  }
+}
+
+export function platformTargetTriple(descriptor) {
+  if (descriptor.os === "windows" && descriptor.arch === "x86_64") {
+    return "x86_64-pc-windows-msvc";
+  }
+  if (descriptor.os === "macos" && descriptor.arch === "aarch64") {
+    return "aarch64-apple-darwin";
+  }
+  if (descriptor.os === "macos" && descriptor.arch === "x86_64") {
+    return "x86_64-apple-darwin";
+  }
+  throw new Error(`Unsupported acceptance target: ${descriptor.os}/${descriptor.arch}`);
+}
+
+function buildFrontend({ repository, snapshot, descriptor, out }, invoke = run) {
+  invoke(process.execPath, [path.join(repository, "node_modules/vite/bin/vite.js"), "build"], {
+    cwd: snapshot,
+    env: { TAURI_ENV_PLATFORM: descriptor.os === "windows" ? "windows" : "macos" },
+    log: path.join(out, "frontend.log"),
+  });
+  invoke(process.execPath, ["scripts/generate-agent-discovery.mjs"], { cwd: snapshot });
+}
+
+function buildCli({ snapshot, target, descriptor, out }, invoke = run) {
+  invoke(
+    "cargo",
+    ["build", "--manifest-path", "src-tauri/plvs-cli/Cargo.toml", "--target-dir", target],
+    { cwd: snapshot, log: path.join(out, "cli.log") }
+  );
+  const extension = descriptor.os === "windows" ? ".exe" : "";
+  const triple = platformTargetTriple(descriptor);
+  const destination = path.join(snapshot, "src-tauri/binaries", `plvs-cli-${triple}${extension}`);
+  copyFileSync(path.join(target, "debug", `plvs-cli${extension}`), destination);
+  if (descriptor.os !== "windows") chmodSync(destination, 0o755);
+}
+
+function signUpdater({ repository, key, version, file }, invoke = run) {
+  const tauri = path.join(repository, "node_modules", "@tauri-apps", "cli", "tauri.js");
+  invoke(
+    process.execPath,
+    [
+      tauri,
+      "signer",
+      "sign",
+      "--private-key-path",
+      key,
+      "--password",
+      "",
+      "--app-version",
+      version,
+      file,
+    ],
+    { cwd: repository, quiet: true }
+  );
+}
+
+function buildWindowsPackage(context, version, out, invoke = run) {
+  const { repository, snapshot, target, names, key } = context;
+  const installer = path.join(out, `PLVS-Update-Test_${version}_x64-setup.exe`);
+  if (!existsSync(installer)) {
+    buildFrontend({ ...context, out }, invoke);
+    buildCli({ ...context, out }, invoke);
+    const tauri = path.join(repository, "node_modules", "@tauri-apps", "cli", "tauri.js");
+    invoke(
       process.execPath,
       [
         tauri,
@@ -148,54 +277,151 @@ for (const version of versions) {
         "--config",
         "src-tauri/tauri.cli-sidecar.conf.json",
       ],
-      snapshot,
-      { CARGO_TARGET_DIR: target },
-      path.join(out, "bundle.log")
+      { cwd: snapshot, env: { CARGO_TARGET_DIR: target }, log: path.join(out, "bundle.log") }
     );
     copyFileSync(
-      path.join(target, "debug/bundle/nsis", `${productName}_${version}_x64-setup.exe`),
+      path.join(target, "debug/bundle/nsis", `${names.productName}_${version}_x64-setup.exe`),
       installer
     );
-    run(process.execPath, [
-      tauri,
-      "signer",
-      "sign",
-      "--private-key-path",
-      key,
-      "--password",
-      "",
-      "--app-version",
-      version,
-      installer,
-    ]);
+    signUpdater({ repository, key, version, file: installer }, invoke);
   }
-  artifacts.push({
-    version,
-    file: path.relative(root, installer).replaceAll("\\", "/"),
-    sha256: createHash("sha256").update(readFileSync(installer)).digest("hex"),
-    signature: readFileSync(installer + ".sig", "utf8").trim(),
-  });
-  writeFileSync(
-    path.join(root, "acceptance.json"),
-    JSON.stringify(
-      {
-        sha,
-        identity,
-        productName,
-        registryName,
-        port,
-        artifacts,
-        substitutions: [
-          "application identity and registry namespace",
-          "version",
-          "ephemeral signing key and loopback-only HTTP feed",
-          "debug profile with embedded frontend; zlib installer compression",
-        ],
-        warning: "Isolated acceptance packages; not a stable or Preview release. Do not publish.",
-      },
-      null,
-      2
-    ) + "\n"
-  );
+  return { file: installer, bundleSigning: "unsigned-test-nsis" };
 }
-console.log(`Acceptance installers ready: ${root}`);
+
+function buildMacPackage(context, version, out, invoke = run) {
+  const { repository, snapshot, target, names, key } = context;
+  const app = path.join(out, `${names.productName}.app`);
+  const updater = path.join(
+    out,
+    `${names.productName}_${version}_${context.descriptor.arch}.app.tar.gz`
+  );
+  const dmg = path.join(out, `${names.productName}_${version}_${context.descriptor.arch}.dmg`);
+  const signingIdentity = process.env.PLVS_UPDATE_ACCEPTANCE_MACOS_SIGNING_IDENTITY || "-";
+  if (!existsSync(updater)) {
+    buildFrontend({ ...context, out }, invoke);
+    buildCli({ ...context, out }, invoke);
+    const tauri = path.join(repository, "node_modules", "@tauri-apps", "cli", "tauri.js");
+    invoke(
+      process.execPath,
+      [
+        tauri,
+        "build",
+        "--debug",
+        "--bundles",
+        "app",
+        "--config",
+        "src-tauri/tauri.cli-sidecar.conf.json",
+      ],
+      { cwd: snapshot, env: { CARGO_TARGET_DIR: target }, log: path.join(out, "bundle.log") }
+    );
+    cpSync(path.join(target, "debug/bundle/macos", `${names.productName}.app`), app, {
+      recursive: true,
+    });
+    invoke("codesign", ["--force", "--deep", "--sign", signingIdentity, app], {
+      cwd: repository,
+      log: path.join(out, "codesign.log"),
+    });
+    invoke("codesign", ["--verify", "--deep", "--strict", "--verbose=2", app], {
+      cwd: repository,
+      log: path.join(out, "codesign-verify.log"),
+    });
+    invoke("tar", ["-czf", updater, "-C", out, path.basename(app)], {
+      cwd: repository,
+      quiet: true,
+    });
+    invoke(
+      "hdiutil",
+      ["create", "-volname", names.productName, "-srcfolder", app, "-ov", "-format", "UDZO", dmg],
+      { cwd: repository, log: path.join(out, "dmg.log") }
+    );
+    signUpdater({ repository, key, version, file: updater }, invoke);
+  }
+  return {
+    file: updater,
+    app,
+    dmg,
+    bundleSigning: signingIdentity === "-" ? "ad-hoc" : "test-certificate",
+  };
+}
+
+export function buildUpdateAcceptance({ repository = process.cwd(), invoke = run } = {}) {
+  const sourceSha = assertCommittedSource(repository, invoke);
+  const layout = acceptanceBuildLayout({
+    repository,
+    sourceSha,
+    platform: process.platform,
+    arch: process.arch,
+  });
+  const context = { repository, sourceSha, ...layout };
+  mkdirSync(context.root, { recursive: true });
+  generateKey(context, invoke);
+  prepareSnapshot(context, invoke);
+  copyPlatformSidecars(repository, context.snapshot, context.descriptor);
+
+  const baseVersion = JSON.parse(
+    readFileSync(path.join(repository, "package.json"), "utf8")
+  ).version;
+  const versions = [];
+  let bundleSigning = null;
+  for (const version of acceptanceVersions(baseVersion)) {
+    const out = path.join(context.root, version);
+    mkdirSync(out, { recursive: true });
+    writeVersion(context.snapshot, version, context.names, context.key, context.descriptor);
+    console.log(
+      `Building ${version} from ${sourceSha} for ${context.descriptor.key} with ${context.names.identity}`
+    );
+    const built =
+      context.descriptor.os === "windows"
+        ? buildWindowsPackage(context, version, out, invoke)
+        : buildMacPackage(context, version, out, invoke);
+    bundleSigning ??= built.bundleSigning;
+    if (bundleSigning !== built.bundleSigning)
+      throw new Error("Bundle signing mode changed mid-build");
+    const entry = {
+      version,
+      file: path.relative(context.root, built.file).replaceAll("\\", "/"),
+      sha256: sha256File(built.file),
+      signature: readFileSync(`${built.file}.sig`, "utf8").trim(),
+    };
+    if (built.app) entry.app = path.relative(context.root, built.app).replaceAll("\\", "/");
+    if (built.dmg) {
+      entry.dmg = path.relative(context.root, built.dmg).replaceAll("\\", "/");
+      entry.dmgSha256 = sha256File(built.dmg);
+    }
+    versions.push(entry);
+  }
+
+  const receipt = createAcceptanceReceipt({
+    sourceSha,
+    platform: context.descriptor,
+    versions,
+    substitutions:
+      context.descriptor.os === "windows"
+        ? [
+            "application identity and registry namespace",
+            "version",
+            "ephemeral signing key and loopback-only HTTP feed",
+            "debug profile with embedded frontend; zlib installer compression",
+          ]
+        : [
+            "application identity and bundle identifier",
+            "version",
+            "ephemeral signing key and loopback-only HTTP feed",
+            "debug profile with embedded frontend; isolated app, DMG, and updater archive",
+          ],
+    bundleSigning,
+  });
+  validateAcceptanceReceipt(receipt, context.root);
+  writeJsonAtomic(context.receipt, receipt);
+  console.log(`Acceptance packages ready: ${context.root}`);
+  return { root: context.root, receipt };
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  try {
+    buildUpdateAcceptance();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}

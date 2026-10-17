@@ -1,0 +1,47 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  acceptanceBuildLayout,
+  assertCommittedSource,
+  platformTargetTriple,
+} from "./build-update-acceptance.mjs";
+
+const sha = "0123456789abcdef0123456789abcdef01234567";
+
+describe("update acceptance builder", () => {
+  it("uses a source- and platform-scoped artifact layout", () => {
+    const mac = acceptanceBuildLayout({
+      repository: "/repo",
+      sourceSha: sha,
+      platform: "darwin",
+      arch: "arm64",
+    });
+    expect(mac.root).toBe("/repo/artifacts/update-acceptance/01234567");
+    expect(mac.snapshot).toBe("/repo/artifacts/update-acceptance/01234567/source");
+    expect(mac.descriptor.key).toBe("darwin-aarch64");
+    expect(mac.names.identity).toBe("com.soundoer.plvs.updatetest.h01234567");
+  });
+
+  it("refuses to build a receipt from a dirty source tree", () => {
+    const calls = [];
+    const invoke = (command, args) => {
+      calls.push([command, args]);
+      return args[0] === "status" ? " M src/main.js" : sha;
+    };
+    expect(() => assertCommittedSource("/repo", invoke)).toThrow(/clean worktree/);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("records the exact committed SHA only after the clean check", () => {
+    const invoke = (_command, args) => (args[0] === "status" ? "" : sha);
+    expect(assertCommittedSource("/repo", invoke)).toBe(sha);
+  });
+
+  it.each([
+    [{ os: "windows", arch: "x86_64" }, "x86_64-pc-windows-msvc"],
+    [{ os: "macos", arch: "aarch64" }, "aarch64-apple-darwin"],
+    [{ os: "macos", arch: "x86_64" }, "x86_64-apple-darwin"],
+  ])("derives the native target triple from %o", (descriptor, expected) => {
+    expect(platformTargetTriple(descriptor)).toBe(expected);
+  });
+});
