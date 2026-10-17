@@ -36,23 +36,30 @@ export function UpdatePreferencesControls({
           }
         />
       </label>
-      <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <span>Auto Download</span>
-          <HoverTip
-            tip={downloadHelp}
-            side="top"
-            align="start"
-            className="inline-flex shrink-0"
-            tipClassName="w-max max-w-[18rem] whitespace-normal"
-          >
-            <IconAction aria-label={`auto download help: ${downloadHelp}`} className="p-1">
-              <CircleHelp className="size-[1em]" aria-hidden />
-            </IconAction>
-          </HoverTip>
+      <div className="flex min-h-[var(--ui-shell-h)] items-start justify-between gap-4 text-muted-foreground">
+        <div className="flex max-w-[28rem] flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <span>Auto Download</span>
+            <HoverTip
+              tip={downloadHelp}
+              side="top"
+              align="start"
+              className="inline-flex shrink-0"
+              tipClassName="w-max max-w-[18rem] whitespace-normal"
+            >
+              <IconAction aria-label={`auto download help: ${downloadHelp}`} className="p-1">
+                <CircleHelp className="size-[1em]" aria-hidden />
+              </IconAction>
+            </HoverTip>
+          </div>
+          {!installationSupported && installationUnavailableReason ? (
+            <p className="text-[length:var(--ui-fs-metric-meta)]">
+              {installationUnavailableReason}
+            </p>
+          ) : null}
         </div>
         <Switch
-          className={COMPACT_SWITCH_CLASS}
+          className={`${COMPACT_SWITCH_CLASS} mt-1`}
           thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
           aria-label="automatically download updates"
           checked={preferences.autoDownload}
@@ -60,11 +67,6 @@ export function UpdatePreferencesControls({
           onCheckedChange={(autoDownload) => onChange({ autoDownload })}
         />
       </div>
-      {!installationSupported && installationUnavailableReason ? (
-        <p className="max-w-[28rem] text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-          {installationUnavailableReason}
-        </p>
-      ) : null}
     </div>
   );
 }

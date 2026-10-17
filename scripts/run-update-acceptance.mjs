@@ -111,7 +111,9 @@ function run(command, args, options = {}) {
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
   });
-  if (result.status !== 0) throw new Error(result.stderr.trim() || `${command} failed`);
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || result.stdout.trim() || `${command} failed`);
+  }
   return result.stdout.trim();
 }
 
@@ -623,7 +625,7 @@ async function runGuidedAcceptance({
   }
 }
 
-async function runMacReadOnlyDmg({ root, runDir, receipt }) {
+export async function runMacReadOnlyDmg({ root, runDir, receipt }) {
   const layout = macReadOnlyDmgLayout(root, runDir, receipt);
   mkdirSync(layout.mountRoot, { recursive: true });
   seedAcceptanceSettings(layout.dataRoot, false);
@@ -662,18 +664,34 @@ async function runMacReadOnlyDmg({ root, runDir, receipt }) {
     if (capabilities.result.runtime?.identifier !== receipt.identity) {
       throw new Error("Read-only DMG app identity does not match the acceptance receipt");
     }
-    const inspected = cliJson(cli, layout.dataRoot, ["ui", "inspect"]);
-    const shown = cliJson(cli, layout.dataRoot, [
-      "ui",
-      "show",
-      "settings",
-      "--section",
-      "about",
-      "--expected-revision",
-      String(inspected.result.revision),
-      "--expected-ui-generation",
-      String(inspected.result.uiGeneration),
-    ]);
+    const inspected = await waitFor(
+      "read-only DMG UI bridge",
+      () => cliJson(cli, layout.dataRoot, ["ui", "inspect"]),
+      (value) =>
+        Number.isSafeInteger(value.result?.revision) &&
+        Number.isSafeInteger(value.result?.uiGeneration) &&
+        value.result?.window?.visible === true,
+      60_000
+    );
+    const shown = await waitFor(
+      "read-only DMG About settings",
+      () =>
+        cliJson(cli, layout.dataRoot, [
+          "ui",
+          "show",
+          "settings",
+          "--section",
+          "about",
+          "--expected-revision",
+          String(inspected.result.revision),
+          "--expected-ui-generation",
+          String(inspected.result.uiGeneration),
+        ]),
+      (value) =>
+        value.result?.surface?.kind === "settings" &&
+        value.result?.surface?.target?.section === "about",
+      60_000
+    );
     if (
       shown.result.surface?.kind !== "settings" ||
       shown.result.surface?.target?.section !== "about"
