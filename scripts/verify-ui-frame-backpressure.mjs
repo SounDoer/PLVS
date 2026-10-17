@@ -15,7 +15,11 @@ import {
 export async function runAcceptance(options, log = console.log) {
   const rig = await launchDesktopPerfRig(options);
   try {
-    log(`Attached to ${rig.session.url}`);
+    log(
+      rig.session.url
+        ? `Attached to ${rig.session.url}`
+        : `Attached to isolated ${rig.session.platform} Agent Control`
+    );
     const device = await startLiveCapture(rig.session, options.device);
     log(`Live signal: ${device}`);
 
@@ -23,8 +27,11 @@ export async function runAcceptance(options, log = console.log) {
     await wait(1_500);
     const normalEnd = await readUiFrameDiagnostics(rig.session);
 
-    await rig.session.evaluate(`(()=>{const end=performance.now()+${options.stallMs};
-      while(performance.now()<end){};return true;})()`);
+    if (rig.session.stall) await rig.session.stall(options.stallMs);
+    else {
+      await rig.session.evaluate(`(()=>{const end=performance.now()+${options.stallMs};
+        while(performance.now()<end){};return true;})()`);
+    }
     const stalled = await readUiFrameDiagnostics(rig.session);
 
     await wait(2_000);

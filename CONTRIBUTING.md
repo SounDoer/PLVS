@@ -483,6 +483,8 @@ Real-machine verification outside `check`, run manually as needed:
 npm run smoke:file-analysis   # File mode analysis smoke test
 npm run smoke:capture         # real capture smoke; VLC + VB-Cable (Windows) or BlackHole 2ch (macOS)
 npm run soak:capture          # long capture run, 4 hours by default; the only check that finds leaks and metric drift
+npm run verify:ui-backpressure # optimized desktop normal/stalled/recovered acceptance
+npm run soak:desktop -- --scenario heavy # desktop UI/audio/resource soak; 30 minutes by default
 npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; needs a full FFmpeg (PLVS_REFERENCE_FFMPEG or PATH)
 ```
 
@@ -494,6 +496,19 @@ is gone. There is no way to take a live lease
 ([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)). The rig routes VLC directly to the
 virtual device and never changes the system default output. Install and reboot after the platform
 driver setup before running it; PLVS does not install or manage that driver.
+
+The desktop-performance commands use that same leased signal route and the optimized dev identity.
+Windows keeps its WebView2/CDP and PowerShell process observations. macOS launches the exact bundled
+dev executable with isolated application data, activates that PID, and uses private fixed-shape dev
+controls for UI-frame diagnostics and a bounded renderer stall. Close other PLVS Dev processes
+first; the macOS runner refuses ambiguous process attribution. WKWebView does not expose the
+Windows JavaScript-heap or long-task metrics, and its shared GPU/WebContent processes cannot always
+be attributed safely, so unavailable fields remain `null` instead of being reported as zero.
+
+`verify:ui-backpressure` is the short pass/fail check. `soak:desktop` writes periodic JSONL and a
+summary under `artifacts/soak/`; its hard verdict is zero UI-frame and audio-chunk drops. Resource
+slopes are diagnostic because retained history grows during its configured window. Use
+`--seconds 14400` for the four-hour run and keep the Mac awake, foregrounded and otherwise idle.
 
 Update, Dock, capture and Agent Control acceptance results can be indexed in one local report without rerunning
 their scenarios:

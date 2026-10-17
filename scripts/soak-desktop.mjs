@@ -26,8 +26,8 @@ export async function runDesktopSoak(options, log = console.log) {
   try {
     const layout = await configureScenario(rig.session, options.scenario);
     const device = await startLiveCapture(rig.session, options.device);
-    await rig.session.send("Performance.enable");
-    await rig.session.evaluate(INSTALL_RUNTIME_PROBE);
+    if (rig.session.send) await rig.session.send("Performance.enable");
+    if (rig.session.evaluate) await rig.session.evaluate(INSTALL_RUNTIME_PROBE);
     output.write(
       `${JSON.stringify({ type: "meta", startedAt: new Date().toISOString(), scenario: options.scenario, seconds: options.seconds, every: options.every, device, layout: layout ?? null, appPid: rig.app.pid })}\n`
     );
@@ -40,7 +40,7 @@ export async function runDesktopSoak(options, log = console.log) {
       const sampleStarted = Date.now();
       const [web, processes] = await Promise.all([
         readWebViewSample(rig.session),
-        readProcessTree(rig.app.pid),
+        readProcessTree(rig.app.pid, rig.session.platform ?? process.platform),
       ]);
       const sample = {
         type: "sample",

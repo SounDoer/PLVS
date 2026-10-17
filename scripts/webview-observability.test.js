@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   classifyWebViewProcess,
+  parseMacProcessRows,
+  selectMacPlvsProcesses,
   summarizeDesktopSoak,
   verifyBackpressurePhases,
 } from "./webview-observability.mjs";
@@ -57,6 +59,25 @@ describe("process classification", () => {
     expect(classifyWebViewProcess("x --type=utility --foo")).toBe("utility");
     expect(classifyWebViewProcess("x --webview-exe-name=plvs.exe")).toBe("browser");
   });
+
+  it("attributes only the host tree and WebKit processes with PLVS-owned paths on macOS", () => {
+    const rows = parseMacProcessRows(`
+      100 1 102400 00:01.50 /tmp/plvs
+      101 100 1024 00:00.25 /tmp/helper
+      200 1 204800 00:02.00 /System/Library/com.apple.WebKit.WebContent
+      201 1 204800 00:03.00 /System/Library/com.apple.WebKit.WebContent
+      202 1 51200 00:01.00 /System/Library/com.apple.WebKit.GPU
+    `);
+    const selected = selectMacPlvsProcesses(rows, 100, (pid) =>
+      pid === 200 ? "/Users/test/Library/Caches/com.soundoer.plvs.dev/WebKit/NetworkCache" : ""
+    );
+    expect(selected).toEqual([
+      expect.objectContaining({ pid: 100, kind: "host", workingSetMb: 100, cpuMs: 1500 }),
+      expect.objectContaining({ pid: 101, kind: "child", workingSetMb: 1, cpuMs: 250 }),
+      expect.objectContaining({ pid: 200, kind: "renderer", workingSetMb: 200, cpuMs: 2000 }),
+    ]);
+    expect(selected.some(({ pid }) => pid === 201 || pid === 202)).toBe(false);
+  });
 });
 
 describe("summarizeDesktopSoak", () => {
@@ -105,5 +126,32 @@ describe("summarizeDesktopSoak", () => {
     expect(summary.workingSetSlopeAfterWarmupMbPerMin).toBeCloseTo(72);
     expect(summary.processGrowthMbByKind).toEqual({ renderer: 12 });
     expect(summary.worstLongAnimationFrames[0].scripts[0].sourceFunctionName).toBe("commit");
+  });
+
+  it("keeps unavailable WKWebView metrics null instead of manufacturing zeroes", () => {
+    const sample = (t, sent) => ({
+      t,
+      ui: diagnostics({ sentFrames: sent }),
+      processes: [{ kind: "host", workingSetMb: 100 + t, cpuMs: sent }],
+      webview: { jsHeapUsedMb: null },
+      runtime: {
+        longTasks: null,
+        longTaskMaxMs: null,
+        rafGaps: null,
+        rafGapMaxMs: 20 + t,
+        longAnimationFrameSupported: false,
+        longAnimationFrames: [],
+      },
+    });
+    expect(summarizeDesktopSoak([sample(0, 1), sample(10, 2)])).toMatchObject({
+      jsHeapStartMb: null,
+      jsHeapEndMb: null,
+      jsHeapMaxMb: null,
+      jsHeapSlopeAfterWarmupMbPerMin: null,
+      longTasks: null,
+      longTaskMaxMs: null,
+      rafGaps: null,
+      rafGapMaxMs: 30,
+    });
   });
 });

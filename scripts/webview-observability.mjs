@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 import { pickTarget } from "./webview-cpu-profile.mjs";
 
@@ -65,6 +65,9 @@ async function openCdpSession(target) {
 }
 
 export async function readUiFrameDiagnostics(session) {
+  if (session.readPerformanceSnapshot) {
+    return (await session.readPerformanceSnapshot()).native;
+  }
   return session.evaluate('window.__TAURI_INTERNALS__.invoke("get_ui_frame_diagnostics")');
 }
 
@@ -116,6 +119,31 @@ export const INSTALL_RUNTIME_PROBE = `(()=>{
 })()`;
 
 export async function readWebViewSample(session) {
+  if (session.readPerformanceSnapshot) {
+    const snapshot = await session.readPerformanceSnapshot();
+    const animationFrame = snapshot.renderer.animationFrame;
+    return {
+      ui: snapshot.native,
+      runtime: {
+        longTasks: null,
+        longTaskTotalMs: null,
+        longTaskMaxMs: null,
+        rafGaps: null,
+        rafGapMaxMs: animationFrame.maxGapMs,
+        latestRafAgeMs: animationFrame.latestAgeMs,
+        longAnimationFrameSupported: false,
+        longAnimationFrames: [],
+      },
+      webview: {
+        jsHeapUsedMb: null,
+        jsHeapTotalMb: null,
+        nodes: snapshot.renderer.domNodeCount,
+        layoutCount: null,
+        recalcStyleCount: null,
+      },
+      capabilities: snapshot.renderer.capabilities,
+    };
+  }
   const [runtime, performanceMetrics, ui] = await Promise.all([
     session.evaluate("window.__PLVS_DESKTOP_SOAK__.snapshot()"),
     session.send("Performance.getMetrics"),
@@ -163,7 +191,7 @@ export function classifyWebViewProcess(commandLine = "") {
   return "browser";
 }
 
-export async function readProcessTree(appPid) {
+async function readWindowsProcessTree(appPid) {
   if (!Number.isInteger(appPid) || appPid <= 0) throw new Error("appPid must be a process id");
   const script = [
     "$rows=Get-CimInstance Win32_Process -Filter \"Name='plvs.exe' OR Name='msedgewebview2.exe'\"",
@@ -186,12 +214,100 @@ export async function readProcessTree(appPid) {
   }));
 }
 
+function parseCpuTime(value) {
+  const match = String(value).match(/^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  const [, days = "0", hours = "0", minutes, seconds] = match;
+  return (
+    (Number(days) * 86_400 + Number(hours) * 3_600 + Number(minutes) * 60 + Number(seconds)) * 1_000
+  );
+}
+
+export function parseMacProcessRows(output) {
+  return String(output)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)$/);
+      if (!match) return null;
+      return {
+        pid: Number(match[1]),
+        parentPid: Number(match[2]),
+        workingSetMb: Number(match[3]) / 1024,
+        cpuMs: parseCpuTime(match[4]),
+        commandLine: match[5],
+      };
+    })
+    .filter(Boolean);
+}
+
+function macWebKitKind(commandLine) {
+  if (commandLine.includes("com.apple.WebKit.WebContent")) return "renderer";
+  if (commandLine.includes("com.apple.WebKit.Networking")) return "network";
+  return null;
+}
+
+export function selectMacPlvsProcesses(rows, appPid, readOpenFiles) {
+  const selected = new Map();
+  const descendants = new Set([appPid]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const row of rows) {
+      if (!descendants.has(row.parentPid) || descendants.has(row.pid)) continue;
+      descendants.add(row.pid);
+      changed = true;
+    }
+  }
+  for (const row of rows) {
+    if (row.pid === appPid || descendants.has(row.pid)) {
+      selected.set(row.pid, { ...row, kind: row.pid === appPid ? "host" : "child" });
+      continue;
+    }
+    const kind = macWebKitKind(row.commandLine);
+    if (!kind) continue;
+    const files = readOpenFiles(row.pid);
+    if (
+      files.includes("/Library/Caches/com.soundoer.plvs.dev/WebKit/") ||
+      files.includes("/Library/WebKit/com.soundoer.plvs.dev/WebsiteData/")
+    ) {
+      selected.set(row.pid, { ...row, kind });
+    }
+  }
+  return [...selected.values()].map(({ commandLine: _commandLine, ...row }) => ({
+    ...row,
+    privateMb: null,
+  }));
+}
+
+async function readMacProcessTree(appPid) {
+  const processList = spawnSync("ps", ["-axo", "pid=,ppid=,rss=,time=,command="], {
+    encoding: "utf8",
+  });
+  if (processList.status !== 0) {
+    throw new Error(processList.stderr?.trim() || "ps failed");
+  }
+  const rows = parseMacProcessRows(processList.stdout);
+  return selectMacPlvsProcesses(rows, appPid, (pid) => {
+    const openFiles = spawnSync("lsof", ["-Fn", "-p", String(pid)], { encoding: "utf8" });
+    return openFiles.status === 0 ? openFiles.stdout : "";
+  });
+}
+
+export async function readProcessTree(appPid, platform = process.platform) {
+  if (!Number.isInteger(appPid) || appPid <= 0) throw new Error("appPid must be a process id");
+  if (platform === "darwin") return readMacProcessTree(appPid);
+  if (platform === "win32") return readWindowsProcessTree(appPid);
+  throw new Error(`desktop process observation is unsupported on ${platform}`);
+}
+
 export function summarizeDesktopSoak(samples) {
   if (samples.length === 0) return { sampleCount: 0 };
   const first = samples[0];
   const last = samples.at(-1);
   const total = (sample) => sample.processes.reduce((sum, row) => sum + row.workingSetMb, 0);
-  const heap = samples.map((sample) => sample.webview.jsHeapUsedMb);
+  const heap = samples.map((sample) => sample.webview.jsHeapUsedMb).filter(Number.isFinite);
   const duration = Math.max(1, last.t - first.t);
   const afterWarmup = samples.filter((sample) => sample.t >= (last.t >= 600 ? 300 : 0));
   const secondHalf = samples.filter((sample) => sample.t >= last.t / 2);
@@ -235,16 +351,19 @@ export function summarizeDesktopSoak(samples) {
     workingSetSecondHalfSlopeMbPerMin: slopePerMinute(secondHalf, total),
     processGrowthMbByKind,
     processCpuMsPerSecByKind,
-    jsHeapStartMb: heap[0],
-    jsHeapEndMb: heap.at(-1),
-    jsHeapMaxMb: Math.max(...heap),
-    jsHeapSlopeAfterWarmupMbPerMin: slopePerMinute(
-      afterWarmup,
-      (sample) => sample.webview.jsHeapUsedMb
-    ),
+    jsHeapStartMb: heap[0] ?? null,
+    jsHeapEndMb: heap.at(-1) ?? null,
+    jsHeapMaxMb: heap.length ? Math.max(...heap) : null,
+    jsHeapSlopeAfterWarmupMbPerMin:
+      heap.length === samples.length
+        ? slopePerMinute(afterWarmup, (sample) => sample.webview.jsHeapUsedMb)
+        : null,
     currentInflightP95: inflight[Math.floor((inflight.length - 1) * 0.95)],
-    longTasks: last.runtime.longTasks - first.runtime.longTasks,
-    longTaskMaxMs: Math.max(...samples.map((sample) => sample.runtime.longTaskMaxMs)),
+    longTasks:
+      Number.isFinite(last.runtime.longTasks) && Number.isFinite(first.runtime.longTasks)
+        ? last.runtime.longTasks - first.runtime.longTasks
+        : null,
+    longTaskMaxMs: finiteMax(samples.map((sample) => sample.runtime.longTaskMaxMs)),
     longAnimationFrameSupported: samples.some(
       (sample) => sample.runtime.longAnimationFrameSupported === true
     ),
@@ -256,7 +375,15 @@ export function summarizeDesktopSoak(samples) {
       ? Math.max(...longAnimationFrames.map((frame) => frame.blockingDuration))
       : 0,
     worstLongAnimationFrames,
-    rafGaps: last.runtime.rafGaps - first.runtime.rafGaps,
-    rafGapMaxMs: Math.max(...samples.map((sample) => sample.runtime.rafGapMaxMs)),
+    rafGaps:
+      Number.isFinite(last.runtime.rafGaps) && Number.isFinite(first.runtime.rafGaps)
+        ? last.runtime.rafGaps - first.runtime.rafGaps
+        : null,
+    rafGapMaxMs: finiteMax(samples.map((sample) => sample.runtime.rafGapMaxMs)),
   };
+}
+
+function finiteMax(values) {
+  const finite = values.filter(Number.isFinite);
+  return finite.length ? Math.max(...finite) : null;
 }
