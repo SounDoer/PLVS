@@ -623,6 +623,30 @@ Use **English only** for commit messages, PR titles/descriptions, and any text t
 
 **Changelist (CL) descriptions**—the full narrative in a pull request body (or any equivalent review “description” field)—must also be **English** (what changed, why, risks or follow-ups in clear technical prose).
 
+## Packaged update acceptance
+
+Packaged update acceptance builds two real versions from one clean commit under an isolated test
+identity. It never uses the stable, dev, or Preview identity, data directory, updater key, or feed.
+
+```bash
+node scripts/build-update-acceptance.mjs
+node scripts/serve-update-acceptance.mjs artifacts/update-acceptance/<short-sha>
+node scripts/run-update-acceptance.mjs artifacts/update-acceptance/<short-sha>
+node scripts/verify-update-acceptance.mjs artifacts/update-acceptance/<short-sha>
+```
+
+The macOS runner stages the older app in a writable path containing spaces, launches it through
+LaunchServices, stops the loopback feed after the signed package is cached, and records the offline
+replacement and restored Dock. It prints checkpoints for the two actions that must remain visible
+in the real product UI: enabling Auto Download and confirming Update and Restart. Do not grant
+Accessibility, administrator access, or other system permissions merely to make an acceptance row
+green; the result must record that boundary explicitly.
+
+`verify-update-acceptance.mjs` checks package and evidence hashes, the exact source SHA and identity,
+all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. The shared Windows
+builder and feed use the same receipt; migration of the existing Windows operator flow into the
+guided runner is still required before adding the four `update:acceptance:*` package aliases.
+
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).
