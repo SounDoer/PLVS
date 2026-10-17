@@ -279,6 +279,7 @@ pub fn run() {
       update_runtime::update_status,
       dock_accessories::set_dock_update_window,
       dock_accessories::prepare_dock_update_window,
+      dock_accessories::prepare_dock_accessories,
       update_runtime::update_check,
       update_runtime::update_download,
       update_runtime::update_cancel,
@@ -563,9 +564,6 @@ pub fn run() {
       #[cfg(target_os = "windows")]
       window_chrome::set_native_border(&window, initial_decorations);
 
-      if let Err(error) = dock_accessories::create(app, &init_script) {
-        log::warn!("dock accessories unavailable; normal mode will continue: {error}");
-      }
       app.manage(dock_accessories::AccessoryInitScript(init_script));
 
       // Saved bounds are PHYSICAL pixels (saved from inner_size + outer_position). Restore

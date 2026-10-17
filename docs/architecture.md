@@ -118,7 +118,7 @@ commands are not exposed to webviews; only the native update commands can instal
 [ADR 0030](adr/0030-verify-cached-updates-through-updater-adapter.md).
 
 Dock update/setup presentation is an independent `dock-update` accessory with event permissions
-only. Unlike the toolbar and editor accessories it is not created at startup: its WebView renderer
+only. Like the toolbar and editor accessories it is not created at startup: its WebView renderer
 costs about 50 MB, and most sessions never show it. While docked, the main window creates it as soon
 as an update, details or first-launch setup exists, so it is normally ready before a click; Preview
 never creates it. It consumes the main owner's serialized state and semantic actions; it has no updater
@@ -592,6 +592,14 @@ strip to the bottom of the z-order, which drops its topmost style, and restores 
 full-screen window goes away. Nothing raises the header meanwhile: it is opened only from the
 strip's entry, and the full-screen window taking the foreground closes a toolbar that was already
 open, through the same focus rule that closes it when the user clicks another application.
+
+None of the accessory windows exists at startup; each WebView renderer costs about 33 MB private and
+70 MB working set on Windows. `useDockAccessoryVisibility` creates `dock-header` and `dock-editor`
+through `prepare_dock_accessories` the first time Dock becomes active, including a docked boot, and
+they are kept after Dock exits so an editor draft survives and re-entry does not wait for new
+WebViews. A new accessory announces readiness and receives the current state before it can show:
+the header only after acknowledging its render, the editor only after reporting its measured size.
+Hiding an accessory that does not exist yet is a no-op; a failed creation exits Dock with a notice.
 
 Toolbar visibility is owned by `useDockAccessoryVisibility`: an explicit open flag, or an open
 editor, or an error notice. Each of the three WebViews reports its own window focus — the strip

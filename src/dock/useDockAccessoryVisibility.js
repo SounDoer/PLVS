@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { setDockAccessories } from "../ipc/commands.js";
+import { prepareDockAccessories, setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
@@ -116,6 +116,30 @@ export function useDockAccessoryVisibility({
   if (accessoryUpdaterRef.current === null) {
     accessoryUpdaterRef.current = createLatestDockAccessoryUpdater();
   }
+  const accessoriesPreparedRef = useRef(false);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  // The windows are created on the first entry into Dock (or a docked boot) and kept afterwards.
+  // Neither shows before it exists: the header waits for its ready acknowledgement and the editor
+  // for its measured size, both of which only a running window sends.
+  useEffect(() => {
+    if (!isTauri() || !active || accessoriesPreparedRef.current) return;
+    let cancelled = false;
+    prepareDockAccessories().then(
+      () => {
+        accessoriesPreparedRef.current = true;
+      },
+      (error) => {
+        if (!cancelled) onErrorRef.current?.(error);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [active]);
 
   const headerVisible =
     active &&

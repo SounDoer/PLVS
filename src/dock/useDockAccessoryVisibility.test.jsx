@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setDockAccessories } from "../ipc/commands.js";
+import { prepareDockAccessories, setDockAccessories } from "../ipc/commands.js";
 import {
   createLatestDockAccessoryUpdater,
   setDockAccessoriesWhenReady,
@@ -11,6 +11,7 @@ import {
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../ipc/commands.js", () => ({
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
+  prepareDockAccessories: vi.fn().mockResolvedValue(undefined),
 }));
 
 function renderVisibility(initialProps = {}) {
@@ -325,6 +326,35 @@ describe("useDockAccessoryVisibility", () => {
 
     act(() => result.current.closeEditor());
     expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("creates the accessory windows only once Dock is active, and only once", async () => {
+    const { rerender } = renderVisibility({ active: false });
+    expect(prepareDockAccessories).not.toHaveBeenCalled();
+
+    rerender({ active: true });
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(1);
+
+    rerender({ active: false });
+    rerender({ active: true });
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a failed creation and tries again on the next activation", async () => {
+    const onError = vi.fn();
+    const failure = new Error("WebView unavailable");
+    vi.mocked(prepareDockAccessories).mockRejectedValueOnce(failure);
+    const { rerender } = renderVisibility({ onError });
+    await act(async () => {});
+    expect(onError).toHaveBeenCalledWith(failure);
+
+    rerender({ onError, active: false });
+    rerender({ onError, active: true });
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(2);
+    expect(onError).toHaveBeenCalledTimes(1);
   });
 
   it("starts closed again after Dock was inactive", () => {

@@ -148,6 +148,11 @@ export function setDockSuspended(suspended, origin = "lifecycle") {
   return invoke("set_dock_suspended", { suspended, origin });
 }
 
+/** Create the Dock toolbar and editor windows if they do not exist yet. Idempotent. */
+export function prepareDockAccessories() {
+  return invoke("prepare_dock_accessories");
+}
+
 /**
  * Position and show/hide the two Dock accessory windows atomically.
  *

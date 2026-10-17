@@ -16,6 +16,7 @@ import {
   exitDock,
   getDockState,
   listAudioDevices,
+  prepareDockAccessories,
   previewAudioDevice,
   readPendingCrashReport,
   setDockAccessories,
@@ -75,6 +76,7 @@ vi.mock("./ipc/commands.js", () => ({
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
+  prepareDockAccessories: vi.fn().mockResolvedValue(undefined),
   getVisualCaptureCapabilities: vi.fn().mockResolvedValue({
     platform: "windows",
     screenshot: { available: true, targets: ["main", "workspace", "panel"] },
@@ -217,6 +219,7 @@ beforeEach(() => {
   vi.mocked(exitDock).mockClear().mockResolvedValue(undefined);
   vi.mocked(getDockState).mockClear().mockResolvedValue(undefined);
   vi.mocked(setDockAccessories).mockClear().mockResolvedValue(undefined);
+  vi.mocked(prepareDockAccessories).mockClear().mockResolvedValue(undefined);
   vi.mocked(setDockReserveSpace).mockClear().mockResolvedValue(undefined);
   vi.mocked(setDockSuspended).mockClear().mockResolvedValue(undefined);
   vi.mocked(invoke).mockClear().mockResolvedValue(undefined);
@@ -861,11 +864,41 @@ describe("App smoke", () => {
     expect(screen.queryByTestId("dock-strip")).toBeNull();
   });
 
+  it("restores the main window when the Dock accessory windows cannot be created", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    vi.mocked(prepareDockAccessories).mockRejectedValueOnce(
+      new Error("dock-header window: WebView2 unavailable")
+    );
+    render(<App />);
+
+    await waitFor(() => expect(exitDock).toHaveBeenCalledOnce());
+    expect(
+      await screen.findByText("Dock controls could not open. The main window was restored.")
+    ).toBeTruthy();
+  });
+
   it("renders the normal shell (no dock strip) without dock boot state", async () => {
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
     expect(screen.queryByTestId("dock-strip")).toBeNull();
+  });
+
+  it("creates the Dock accessory windows only for a docked session", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    const { unmount } = render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+    expect(prepareDockAccessories).not.toHaveBeenCalled();
+    unmount();
+
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    render(<App />);
+    await waitFor(() => expect(prepareDockAccessories).toHaveBeenCalled());
   });
 
   it("lists Stereo Map immediately after Waveform in Add Module, and adds it independently", async () => {
