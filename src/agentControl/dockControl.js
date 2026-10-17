@@ -1,6 +1,6 @@
 import { readLocalRange, writeLocalRange } from "../workspace/axisViewports.js";
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
-import { dockHeightMode, DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
+import { DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
 import { createDockPanelId, DOCK_PANEL_MODULE_IDS } from "../dock/dockLayout.js";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
@@ -545,7 +545,6 @@ export function buildDockSnapshot(dock, context = {}) {
     monitor: typeof dock.monitor === "string" ? dock.monitor : null,
     reserveSpace: dock.reserveSpace === true,
     height: dock.height,
-    heightMode: dockHeightMode(dock.height),
     suspended: dock.suspended === true,
     panels: (dock.panelOrder ?? []).flatMap((panelId) => {
       const panel = dock.panelsById?.[panelId];

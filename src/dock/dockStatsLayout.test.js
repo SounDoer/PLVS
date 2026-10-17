@@ -4,8 +4,6 @@ import {
   dockStatsGridPosition,
   dockStatsGridTemplate,
   DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
-  DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX,
-  DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX,
   fitDockStatsColumns,
   DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
@@ -21,18 +19,9 @@ describe("computeDockStatsColumnCount", () => {
     expect(computeDockStatsColumnCount(204)).toBe(3);
   });
 
-  it("supports wider Expanded metric cells", () => {
-    expect(DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX).toBe(84);
-    expect(DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX).toBe(64);
-    expect(computeDockStatsColumnCount(139, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
-      1
-    );
-    expect(computeDockStatsColumnCount(140, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
-      2
-    );
-    expect(computeDockStatsColumnCount(404, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
-      5
-    );
+  it("accepts a font-scaled minimum cell width", () => {
+    expect(computeDockStatsColumnCount(139, undefined, 64)).toBe(1);
+    expect(computeDockStatsColumnCount(140, undefined, 64)).toBe(2);
   });
 
   it("keeps at least one column for missing or invalid measurements", () => {
@@ -66,10 +55,8 @@ describe("dockStatsGridTemplate", () => {
     expect(dockStatsGridTemplate(2)).toBe("minmax(0, 72px) minmax(12px, 1fr) minmax(0, 72px)");
   });
 
-  it("accepts a tier-specific comfortable cell width", () => {
-    expect(dockStatsGridTemplate(1, DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX)).toBe(
-      "minmax(0, 84px)"
-    );
+  it("accepts a font-scaled comfortable cell width", () => {
+    expect(dockStatsGridTemplate(1, 84)).toBe("minmax(0, 84px)");
   });
 });
 

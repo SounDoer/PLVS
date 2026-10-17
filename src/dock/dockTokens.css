@@ -1,10 +1,9 @@
 .dock-strip {
+  /* One set at every strip height; DOCK_PAD_X/Y and DOCK_STATS_ROW_GAP in dockSizing.js match. */
   --ui-dock-pad-x: 6px;
   --ui-dock-pad-y: 4px;
-  --ui-dock-gap-region: 5px;
   --ui-dock-gap-column: 4px;
   --ui-dock-gap-row: 3px;
-  --ui-dock-bar-min-h: 5px;
   --ui-dock-readout-w: 5ch;
   --ui-dock-toolbar-toggle-w: 24px;
 }
@@ -55,26 +54,4 @@
 
 .dock-panel-viewport {
   scrollbar-width: thin;
-}
-
-@media (max-height: 63px) {
-  .dock-strip {
-    --ui-dock-pad-x: 5px;
-    --ui-dock-pad-y: 3px;
-    --ui-dock-gap-region: 4px;
-    --ui-dock-gap-column: 3px;
-    --ui-dock-gap-row: 2px;
-    --ui-dock-bar-min-h: 4px;
-  }
-}
-
-@media (min-height: 120px) {
-  .dock-strip {
-    --ui-dock-pad-x: 8px;
-    --ui-dock-pad-y: 6px;
-    --ui-dock-gap-region: 7px;
-    --ui-dock-gap-column: 5px;
-    --ui-dock-gap-row: 5px;
-    --ui-dock-bar-min-h: 6px;
-  }
 }

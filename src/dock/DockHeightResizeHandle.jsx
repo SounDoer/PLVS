@@ -9,11 +9,17 @@ import {
 } from "./dockSizing.js";
 import { cn } from "@/lib/utils";
 
-export function DockHeightResizeHandle({ edge, height, disabled = false, onHeightChange }) {
+export function DockHeightResizeHandle({
+  edge,
+  height,
+  minHeight = DOCK_MIN_HEIGHT,
+  disabled = false,
+  onHeightChange,
+}) {
   const dragRef = useRef(null);
   const handleRef = useRef(null);
   const frameRef = useRef(null);
-  const currentHeight = clampDockHeight(height);
+  const currentHeight = clampDockHeight(height, minHeight);
 
   const commit = (
     /** @type {number} */ nextHeight,
@@ -22,7 +28,10 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
   ) => {
     if (disabled || !onHeightChange) return;
     void Promise.resolve(
-      onHeightChange(clampDockHeight(nextHeight), { persist, ...(cancelled ? { cancelled } : {}) })
+      onHeightChange(clampDockHeight(nextHeight, minHeight), {
+        persist,
+        ...(cancelled ? { cancelled } : {}),
+      })
     ).catch(() => {});
   };
 
@@ -41,7 +50,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
       role="separator"
       aria-label="Resize Dock height"
       aria-orientation="horizontal"
-      aria-valuemin={DOCK_MIN_HEIGHT}
+      aria-valuemin={minHeight}
       aria-valuenow={currentHeight}
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
@@ -73,6 +82,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
           startHeight: drag.startHeight,
           startY: drag.startY,
           currentY: event.screenY,
+          minHeight,
         });
         if (nextHeight === drag.latestHeight) return;
         drag.latestHeight = nextHeight;

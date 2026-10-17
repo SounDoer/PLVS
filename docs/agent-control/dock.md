@@ -34,8 +34,7 @@ a previous inventory is never used as a fallback. Monitor changes alone do not a
 `dock.inspect` remains available even when Dock is unsupported and returns:
 
 - top-level revision and compact active-Preset relationship;
-- `supported`, `enabled`, `edge`, resolved monitor, reserve-space setting, height, and read-only
-  height mode (`compact`, `standard`, or `expanded`);
+- `supported`, `enabled`, `edge`, resolved monitor, reserve-space setting, and height;
 - ordered Dock panels with ID, canonical module ID, resolved title, optional custom title, effective
   preferred width, `widthMode` (`automatic` or `preferred`), complete public Dock controls, and compact analysis status;
 - read-only runtime state such as temporary suspension while the application window is hidden.
@@ -116,7 +115,7 @@ without persisting those adjustments, and scrolls horizontally when its readable
 ```
 
 Spectrum exposes `grid` and `peakLabels` with the same meaning as Panel Control. They are
-rendered in expanded Dock and retained while compact.
+rendered at every Dock height.
 
 The public module IDs are `transport`, `levelMeter`, `loudness`, `stats`, `vectorscope`, `spectrum`,
 `spectrogram`, `waveform`, and `stereo-map`. Legacy storage names such as `level`, `correlation`, or

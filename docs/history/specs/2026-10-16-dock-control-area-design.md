@@ -25,6 +25,12 @@ below:
   state mixes the theme accent like the Live and Snapshot tints). Icons use one absolute stroke
   width, and the chevron is drawn larger so it reads as large as the other glyphs. The update dot
   sits in the toolbar chip's corner.
+- Third review: Dock text already follows the global Interface Size, so the strip's height tiers
+  (compact, standard, expanded) are removed. One padding set applies at every height, Stats is
+  always single-line (the two-line expanded cell is gone), Agent Control no longer reports
+  `heightMode`, and the minimum is three Stats rows at the current Interface Size: 68 CSS px at the
+  default size, 77 at Large and 86 at Extra Large. The native floor stays 68; the frontend raises a
+  shorter strip when a larger Interface Size is chosen. Default height stays 180 CSS px.
 
 ## Problem
 

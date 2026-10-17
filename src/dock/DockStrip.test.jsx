@@ -105,20 +105,20 @@ describe("DockStrip", () => {
     expect(screen.getAllByTestId("dock-module")).toHaveLength(2);
   });
 
-  it("exposes the resolved height presentation tier", () => {
-    const { rerender } = renderStrip({ height: 119 });
-    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("standard");
-
-    rerender(
-      <LoudnessProfileProvider>
-        <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
-          <HistoryDataProvider value={{ histSourceList: [] }}>
-            <DockStrip {...BASE_PROPS} height={120} />
-          </HistoryDataProvider>
-        </FrameDataProvider>
-      </LoudnessProfileProvider>
+  it("raises a strip below the interface size's three-row minimum", () => {
+    const onHeightChange = vi.fn();
+    renderStrip({ height: 70, interfaceSize: "large", onHeightChange });
+    expect(onHeightChange).toHaveBeenCalledWith(77, { persist: true });
+    expect(screen.getByTestId("dock-height-resize-handle").getAttribute("aria-valuemin")).toBe(
+      "77"
     );
-    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("expanded");
+  });
+
+  it("leaves a strip at or above the minimum and never reports a height tier", () => {
+    const onHeightChange = vi.fn();
+    renderStrip({ height: 68, interfaceSize: "default", onHeightChange });
+    expect(onHeightChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBeUndefined();
   });
 
   it("offers the toolbar entry and no accessory controls", () => {

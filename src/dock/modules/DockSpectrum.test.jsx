@@ -63,7 +63,7 @@ describe("DockSpectrum", () => {
             resolveSpectrumSnapshotForKey,
           }}
         >
-          <DockSpectrum controls={controls} heightMode="compact" />
+          <DockSpectrum controls={controls} />
         </HistoryDataProvider>
       </FrameDataProvider>
     );
@@ -88,12 +88,12 @@ describe("DockSpectrum", () => {
       spectrumPeakLabels: true,
       onDockPanelControlsChange,
     });
-    const tree = (heightMode) => (
+    const tree = () => (
       <FrameDataProvider value={{ displayAudio: {} }}>
-        <DockSpectrum controls={controls} heightMode={heightMode} />
+        <DockSpectrum controls={controls} />
       </FrameDataProvider>
     );
-    const { container, getByTestId, rerender } = render(tree("expanded"));
+    const { container, getByTestId, rerender } = render(tree());
     expect(container.querySelector("[data-spectrum-grid]")).toBeTruthy();
     expect(container.querySelector("svg text")).toBeNull();
     fireEvent.wheel(getByTestId("spectrum-chart"), { deltaY: -100, clientX: 100 });
@@ -103,9 +103,9 @@ describe("DockSpectrum", () => {
     );
     const changed = onDockPanelControlsChange.mock.calls[0][1];
     expect(changed.spectrumXMaxFreq - changed.spectrumXMinFreq).toBeLessThan(19980);
-    rerender(tree("compact"));
+    rerender(tree());
     expect(container.querySelector("[data-spectrum-grid]")).toBeTruthy();
-    rerender(tree("expanded"));
+    rerender(tree());
     expect(container.querySelector("[data-spectrum-grid]")).toBeTruthy();
     expect(controls.spectrumGrid).toBe(true);
   });
@@ -151,7 +151,7 @@ describe("DockSpectrum", () => {
     return flatControls({ spectrumMaxMode: mode });
   }
 
-  function frame(controls, smoothDb, heightMode = "standard") {
+  function frame(controls, smoothDb) {
     return (
       <FrameDataProvider
         value={{
@@ -162,7 +162,7 @@ describe("DockSpectrum", () => {
           },
         }}
       >
-        <DockSpectrum controls={controls} heightMode={heightMode} />
+        <DockSpectrum controls={controls} />
       </FrameDataProvider>
     );
   }
@@ -181,13 +181,13 @@ describe("DockSpectrum", () => {
     expect(held).not.toBe(fillEdge(render(frame(controls, [-40, -20])).container));
   });
 
-  it("retains cumulative Max Hold while resizing across compact and expanded heights", () => {
+  it("retains cumulative Max Hold across later frames", () => {
     const controls = holdControls("hold");
-    const { container, rerender } = render(frame(controls, [-20, -20], "compact"));
+    const { container, rerender } = render(frame(controls, [-20, -20]));
     const held = fillEdge(container);
-    rerender(frame(controls, [-60, -60], "expanded"));
+    rerender(frame(controls, [-60, -60]));
     expect(fillEdge(container)).toBe(held);
-    rerender(frame(controls, [-60, -60], "compact"));
+    rerender(frame(controls, [-60, -60]));
     expect(fillEdge(container)).toBe(held);
   });
 

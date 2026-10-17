@@ -74,12 +74,12 @@ function statsControls(statsVisibleIds, statsOrder = statsVisibleIds) {
   };
 }
 
-function renderWith(statsMetrics, controls, shared = {}, heightMode = "standard", displayAudio) {
+function renderWith(statsMetrics, controls, shared = {}, displayAudio) {
   return render(
     <LoudnessProfileProvider>
       <FrameDataProvider value={{ displayAudio }}>
         <MetricsDataProvider value={{ statsMetrics, ...shared }}>
-          <DockStats controls={controls} heightMode={heightMode} />
+          <DockStats controls={controls} />
         </MetricsDataProvider>
       </FrameDataProvider>
     </LoudnessProfileProvider>
@@ -105,19 +105,16 @@ describe("DockStats", () => {
     ).toBe("");
   });
 
-  it.each(["standard", "expanded"])(
-    "shows the catalog hint in a themed tooltip without changing the %s cell layout",
-    (heightMode) => {
-      renderWith(METRICS, statsControls(["momentary"]), {}, heightMode);
+  it("shows the catalog hint in a themed tooltip without changing the cell layout", () => {
+    renderWith(METRICS, statsControls(["momentary"]));
 
-      const stat = screen.getByTestId("dock-stat");
-      expect(stat.title).toBe("");
-      fireEvent.mouseEnter(stat);
+    const stat = screen.getByTestId("dock-stat");
+    expect(stat.title).toBe("");
+    fireEvent.mouseEnter(stat);
 
-      const tooltip = screen.getByRole("tooltip");
-      expect(tooltip.textContent).toBe(STATS_META.momentary.hint);
-    }
-  );
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.textContent).toBe(STATS_META.momentary.hint);
+  });
 
   it("respects independent visibility and ordering controls", () => {
     renderWith(METRICS, statsControls(["psr", "integrated"], ["integrated", "psr"]));
@@ -131,21 +128,6 @@ describe("DockStats", () => {
     renderWith(METRICS, statsControls(["integrated"]));
 
     expect(screen.queryByText("LUFS")).toBeNull();
-  });
-
-  it("uses two-line metrics with units in Expanded mode", () => {
-    renderWith(METRICS, statsControls(["integrated", "truePeak", "correlation"]), {}, "expanded");
-
-    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 84px)");
-    expect(screen.getAllByTestId("dock-expanded-metric")).toHaveLength(3);
-    expect(
-      screen.getAllByTestId("dock-expanded-metric-unit").map((node) => node.textContent)
-    ).toEqual(["LUFS", "dBTP"]);
-    expect(screen.getAllByTestId("dock-stat").map((node) => node.textContent)).toEqual([
-      "I-20.1LUFS",
-      "TP Max-3.2dBTP",
-      "Corr-",
-    ]);
   });
 
   it("renders a dash when a selected metric is missing from the feed", () => {
@@ -234,14 +216,14 @@ describe("DockStats", () => {
     });
   });
 
-  it("uses five Expanded columns at the Stats maximum content width", () => {
+  it("uses five columns at the Stats maximum content width", () => {
     const ids = STATS_CANONICAL_ORDER;
     const metrics = ids.map((id, index) => ({
       id,
       shortLabel: STATS_META[id].shortLabel,
       value: `v${index}`,
     }));
-    renderWith(metrics, statsControls(ids), {}, "expanded");
+    renderWith(metrics, statsControls(ids));
 
     act(() =>
       triggerResize([
@@ -293,7 +275,7 @@ describe("DockStats profile status colours", () => {
 
   it("leaves values uncoloured while the profile is Off", () => {
     settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
-    renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
+    renderWith(METRICS, visible, {}, { integrated: -23 });
     expect(valueStatus()).toBe("off");
   });
 
@@ -301,13 +283,13 @@ describe("DockStats profile status colours", () => {
     // The dock is a second implementation; the same metric under the same profile must not
     // read as a breach in one panel and neutral in the other.
     selectTestProfile();
-    renderWith(METRICS, visible, {}, "standard", { integrated: -18 });
+    renderWith(METRICS, visible, {}, { integrated: -18 });
     expect(valueStatus()).toBe("fail");
   });
 
   it("keeps an in-range watched value at foreground", () => {
     selectTestProfile();
-    renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
+    renderWith(METRICS, visible, {}, { integrated: -23 });
     expect(valueStatus()).toBe("ok");
   });
 });
@@ -319,9 +301,9 @@ describe("Dock Stats and the main window under one provider", () => {
   // the same profile must not read as a breach in one surface and neutral in the other.
   /**
    * @param {any} displayAudio
-   * @param {{ heightMode?: string, onProfile?: (...args: any[]) => any }} [options]
+   * @param {{ onProfile?: (...args: any[]) => any }} [options]
    */
-  function renderBothSurfaces(displayAudio, { heightMode = "standard", onProfile } = {}) {
+  function renderBothSurfaces(displayAudio, { onProfile } = {}) {
     function ProfileHandle() {
       const profile = useLoudnessProfile();
       onProfile?.(profile);
@@ -338,7 +320,7 @@ describe("Dock Stats and the main window under one provider", () => {
             >
               <StatsPanel />
             </PanelInstanceProvider>
-            <DockStats controls={statsControls(["truePeak"])} heightMode={heightMode} />
+            <DockStats controls={statsControls(["truePeak"])} />
           </MetricsDataProvider>
         </FrameDataProvider>
       </LoudnessProfileProvider>
@@ -368,30 +350,27 @@ describe("Dock Stats and the main window under one provider", () => {
   // A persisted selection cannot diverge between two providers -- both would read the same store.
   // A preview draft never reaches the store, so this is the case that actually fails if the two
   // surfaces ever stop sharing one provider.
-  for (const heightMode of ["standard", "expanded"]) {
-    it(`follows an unsaved draft in both surfaces (${heightMode} dock)`, () => {
-      selectTestProfile();
-      let profile;
-      const { container } = renderBothSurfaces(
-        { tpMax: -5 },
-        /** @type {Parameters<typeof renderBothSurfaces>[1]} */ ({
-          heightMode,
-          onProfile: (p) => (profile = p),
-        })
-      );
+  it("follows an unsaved draft in both surfaces", () => {
+    selectTestProfile();
+    let profile;
+    const { container } = renderBothSurfaces(
+      { tpMax: -5 },
+      /** @type {Parameters<typeof renderBothSurfaces>[1]} */ ({
+        onProfile: (p) => (profile = p),
+      })
+    );
 
-      // -5 dBTP clears the test profile's -1 limit, so both surfaces start neutral.
-      expect(truePeakStatuses(container)).toEqual(["ok", "ok"]);
+    // -5 dBTP clears the test profile's -1 limit, so both surfaces start neutral.
+    expect(truePeakStatuses(container)).toEqual(["ok", "ok"]);
 
-      act(() => profile.beginCreate());
-      act(() =>
-        profile.editDraft((d) => ({
-          ...d,
-          rules: [{ metricId: "truePeak", op: ">", value: -12, severity: "fail" }],
-        }))
-      );
+    act(() => profile.beginCreate());
+    act(() =>
+      profile.editDraft((d) => ({
+        ...d,
+        rules: [{ metricId: "truePeak", op: ">", value: -12, severity: "fail" }],
+      }))
+    );
 
-      expect(truePeakStatuses(container)).toEqual(["fail", "fail"]);
-    });
-  }
+    expect(truePeakStatuses(container)).toEqual(["fail", "fail"]);
+  });
 });

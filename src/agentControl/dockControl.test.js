@@ -138,6 +138,7 @@ describe("Dock Control", () => {
   });
 
   it("serializes the form and ordered public panels", () => {
+    expect(buildDockSnapshot(dock)).not.toHaveProperty("heightMode");
     expect(buildDockSnapshot(dock)).toMatchObject({
       supported: true,
       enabled: true,
@@ -145,7 +146,6 @@ describe("Dock Control", () => {
       monitor: "monitor-1",
       reserveSpace: true,
       height: 72,
-      heightMode: "standard",
       suspended: false,
       panels: [
         {

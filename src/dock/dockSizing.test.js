@@ -11,7 +11,7 @@ import {
   clampDockHeight,
   dockHeightFromPointer,
   dockHeightKeyboardDelta,
-  dockHeightMode,
+  dockMinHeight,
 } from "./dockSizing.js";
 
 describe("dock sizing", () => {
@@ -51,12 +51,21 @@ describe("dock sizing", () => {
     expect(dockHeightKeyboardDelta("top", "ArrowDown", 16)).toBe(16);
   });
 
-  it("starts at the standard tier because the minimum height is above the compact tier", () => {
-    expect(dockHeightMode(56)).toBe("standard");
-    expect(dockHeightMode(DOCK_MIN_HEIGHT)).toBe("standard");
-    expect(dockHeightMode(119)).toBe("standard");
-    expect(dockHeightMode(120)).toBe("expanded");
-    expect(dockHeightMode(160)).toBe("expanded");
+  it("derives the minimum from three single-line Stats rows at the interface size", () => {
+    expect(dockMinHeight("small")).toBe(DOCK_MIN_HEIGHT);
+    expect(dockMinHeight("default")).toBe(68);
+    expect(dockMinHeight("large")).toBe(77);
+    expect(dockMinHeight("extra-large")).toBe(86);
+    expect(clampDockHeight(70, dockMinHeight("large"))).toBe(77);
+    expect(
+      dockHeightFromPointer({
+        edge: "bottom",
+        startHeight: 90,
+        startY: 0,
+        currentY: 40,
+        minHeight: 86,
+      })
+    ).toBe(86);
   });
 });
 

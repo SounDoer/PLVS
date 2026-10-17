@@ -16,19 +16,16 @@ import {
   fitDockStatsColumns,
   dockStatsGridPosition,
   dockStatsGridTemplate,
-  DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX,
   DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
-  DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX,
   DOCK_STATS_INNER_GAP_PX,
   DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
 } from "../dockStatsLayout.js";
-import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
 import { useHoverTip } from "../../components/HoverTip.jsx";
 
 const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
-function useDockStatsColumnCount(containerRef, count, minCellWidth, expanded) {
+function useDockStatsColumnCount(containerRef, count) {
   const [layout, setLayout] = useState({ columnCount: 1, fontScale: 1 });
 
   useLayoutEffect(() => {
@@ -40,13 +37,13 @@ function useDockStatsColumnCount(containerRef, count, minCellWidth, expanded) {
         .querySelector("[data-testid='dock-stat']")
         ?.getBoundingClientRect().height;
       const rowGap = parseFloat(getComputedStyle(element).rowGap) || 0;
-      const minRowHeight = cellHeight > 0 ? cellHeight + rowGap : expanded ? 38 : 18;
+      const minRowHeight = cellHeight > 0 ? cellHeight + rowGap : 18;
       const fontScale = (parseFloat(getComputedStyle(element).fontSize) || 13) / 13;
       const columnCount = fitDockStatsColumns(
         width,
         height,
         count,
-        minCellWidth * fontScale,
+        DOCK_STATS_MIN_CELL_WIDTH_PX * fontScale,
         minRowHeight
       );
       setLayout((current) =>
@@ -66,7 +63,7 @@ function useDockStatsColumnCount(containerRef, count, minCellWidth, expanded) {
     const cell = element.querySelector("[data-testid='dock-stat']");
     if (cell) observer.observe(cell);
     return () => observer.disconnect();
-  }, [containerRef, count, minCellWidth, expanded]);
+  }, [containerRef, count]);
 
   return layout;
 }
@@ -76,11 +73,9 @@ function DockStatCell({
   label,
   accessibleLabel,
   value,
-  unit,
   hint,
   dialogueActive,
   position,
-  expanded,
   watched,
   status,
 }) {
@@ -94,7 +89,7 @@ function DockStatCell({
     <div
       ref={anchorRef}
       data-testid="dock-stat"
-      className={expanded ? "min-w-0" : "flex min-w-0 items-baseline"}
+      className="flex min-w-0 items-baseline"
       style={{
         gridColumn: position.cellColumn,
         gridRow: position.row,
@@ -104,60 +99,31 @@ function DockStatCell({
       onMouseEnter={hint ? showTip : undefined}
       onMouseLeave={hint ? hideTip : undefined}
     >
-      {expanded ? (
-        <DockExpandedMetric
-          label={label}
-          value={value}
-          unit={unit}
-          unitVisibility="tight"
-          statId={id}
-          loudnessStatus={status ?? "off"}
-          loudnessWatched={watched}
-          labelClassName={loudnessLabelClass(watched)}
-          valueClassName={loudnessStatusValueClass(status)}
-          indicator={
-            id === "dialogueCoverage" ? (
-              <span
-                data-testid="dock-dialogue-active-dot"
-                data-active={dialogueActive ? "true" : "false"}
-                className={`size-1.5 shrink-0 rounded-full border ${
-                  dialogueActive
-                    ? "border-foreground bg-foreground"
-                    : "border-muted-foreground bg-transparent"
-                }`}
-              />
-            ) : null
-          }
-        />
-      ) : (
-        <>
+      <span
+        data-testid="dock-stat-label"
+        data-loudness-watched={watched ? "true" : "false"}
+        className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-none ${loudnessLabelClass(watched)}`}
+      >
+        {id === "dialogueCoverage" ? (
           <span
-            data-testid="dock-stat-label"
-            data-loudness-watched={watched ? "true" : "false"}
-            className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-none ${loudnessLabelClass(watched)}`}
-          >
-            {id === "dialogueCoverage" ? (
-              <span
-                data-testid="dock-dialogue-active-dot"
-                data-active={dialogueActive ? "true" : "false"}
-                className={`size-1.5 shrink-0 rounded-full border ${
-                  dialogueActive
-                    ? "border-foreground bg-foreground"
-                    : "border-muted-foreground bg-transparent"
-                }`}
-              />
-            ) : null}
-            <span className="min-w-0 truncate">{label}</span>
-          </span>
-          <span
-            data-stat-value={id}
-            data-loudness-status={status ?? "off"}
-            className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(status)}`}
-          >
-            {value}
-          </span>
-        </>
-      )}
+            data-testid="dock-dialogue-active-dot"
+            data-active={dialogueActive ? "true" : "false"}
+            className={`size-1.5 shrink-0 rounded-full border ${
+              dialogueActive
+                ? "border-foreground bg-foreground"
+                : "border-muted-foreground bg-transparent"
+            }`}
+          />
+        ) : null}
+        <span className="min-w-0 truncate">{label}</span>
+      </span>
+      <span
+        data-stat-value={id}
+        data-loudness-status={status ?? "off"}
+        className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(status)}`}
+      >
+        {value}
+      </span>
       {tipNode}
     </div>
   );
@@ -169,7 +135,7 @@ function DockStatCell({
  * frame rate anyway (metrics context), so no dedicated subscription is
  * needed, and the picker (modules editor) writes through useDockLayout.
  */
-export function DockStats({ controls, heightMode = "standard" }) {
+export function DockStats({ controls }) {
   const { statsMetrics, dialogueActiveNow } = useMetricsData() ?? {};
   const { displayAudio } = useFrameData() ?? {};
   const { document: loudnessProfileDocument } = useLoudnessProfile();
@@ -188,16 +154,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
     .filter((id) => selected.has(id))
     .map((id) => ({ id, metric: byId.get(id), meta: STATS_META[id] }));
   const containerRef = useRef(null);
-  const expanded = heightMode === "expanded";
-  const minCellWidth = expanded
-    ? DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX
-    : DOCK_STATS_MIN_CELL_WIDTH_PX;
-  const { columnCount, fontScale } = useDockStatsColumnCount(
-    containerRef,
-    orderedMetrics.length,
-    minCellWidth,
-    expanded
-  );
+  const { columnCount, fontScale } = useDockStatsColumnCount(containerRef, orderedMetrics.length);
   const visibleMetrics = visibleDockStats(orderedMetrics, columnCount);
 
   if (orderedMetrics.length === 0) {
@@ -228,9 +185,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
         style={{
           gridTemplateColumns: dockStatsGridTemplate(
             columnCount,
-            (expanded
-              ? DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX
-              : DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX) * fontScale
+            DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX * fontScale
           ),
           gridTemplateRows: `repeat(${Math.ceil(visibleMetrics.length / columnCount)}, max-content)`,
           alignContent: "safe center",
@@ -241,7 +196,6 @@ export function DockStats({ controls, heightMode = "standard" }) {
         {visibleMetrics.map(({ id, metric, meta }, metricIndex) => {
           const label = metric?.shortLabel ?? meta?.shortLabel ?? id;
           const value = metric?.value ?? "-";
-          const unit = metric?.unit ?? meta?.unit ?? "";
           const dialogueActive = id === "dialogueCoverage" && dialogueActiveNow;
           const position = dockStatsGridPosition(metricIndex, columnCount);
           return (
@@ -251,11 +205,9 @@ export function DockStats({ controls, heightMode = "standard" }) {
               label={label}
               accessibleLabel={meta?.label ?? label}
               value={value}
-              unit={unit}
               hint={meta?.hint}
               dialogueActive={dialogueActive}
               position={position}
-              expanded={expanded}
               watched={watchedIds.has(id)}
               status={statuses[id]}
             />

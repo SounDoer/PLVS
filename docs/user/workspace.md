@@ -114,9 +114,11 @@ readout or an icon-only Dock action for the same themed explanation shown in the
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
-and the new height is saved when you release the pointer. Height starts at 180 CSS pixels, with
-room for four rows of expanded Stats. It can shrink to 68 CSS pixels or grow up to the current display's
-available space minus room for the toolbar and editor.
+and the new height is saved when you release the pointer. Height starts at 180 CSS pixels. The
+minimum fits three rows of Stats at the current **Interface Size**: 68 CSS pixels at the default
+size, more at larger sizes. Choosing a larger Interface Size raises a shorter strip to the new
+minimum. The strip can grow up to the current display's available space minus room for the toolbar
+and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 
 Dock text follows **Interface Size**, using the same readout and label sizes as the normal
@@ -183,7 +185,7 @@ preserves the window and offset. Unlink Time Range to keep that Dock panel's own
 panels with an unlinked range remain independent. Snapshot selection is shared regardless of linking.
 
 Level Meter uses the same settings and layout in both forms, including Vertical or Horizontal
-Orientation. Stats adjusts its column and row counts to the available width and height; when all
+Orientation. Stats shows each reading on one line, label beside value, at every height. It adjusts its column and row counts to the available width and height; when all
 selected metrics cannot fit legibly, scroll within Stats to see the remaining rows. No selected
 metric is dropped. The separate Timecode module has been removed; transport actions remain in the
 right control area, and the timecode is available in the normal window. Saved layouts automatically

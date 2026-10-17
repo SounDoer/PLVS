@@ -20,20 +20,13 @@ function slab(rows) {
   };
 }
 
-function renderWith(
-  result,
-  peakDb = [-12, -10],
-  heightMode = "standard",
-  selectedControls = controls,
-  historyData = {}
-) {
-  return render(dockVectorscopeTree(result, peakDb, heightMode, selectedControls, historyData));
+function renderWith(result, peakDb = [-12, -10], selectedControls = controls, historyData = {}) {
+  return render(dockVectorscopeTree(result, peakDb, selectedControls, historyData));
 }
 
 function dockVectorscopeTree(
   result,
   peakDb = [-12, -10],
-  heightMode = "standard",
   selectedControls = controls,
   historyData = {}
 ) {
@@ -54,7 +47,6 @@ function dockVectorscopeTree(
               selectedControls
             )
           }
-          heightMode={heightMode}
         />
       </HistoryDataProvider>
     </FrameDataProvider>
@@ -62,27 +54,20 @@ function dockVectorscopeTree(
 }
 
 describe("DockVectorscope shared panel", () => {
-  it.each(["standard", "expanded"])(
-    "uses the normal vertical layout at %s height",
-    (heightMode) => {
-      const { container } = renderWith(
-        { path: "M 0 0 L 2 2", correlation: 0.5 },
-        undefined,
-        heightMode
-      );
-      const stage = container.querySelector("[data-vectorscope-plot-stage]");
-      const rail = container.querySelector("[data-vectorscope-correlation-rail]");
-      expect(stage).toBeTruthy();
-      expect(rail.parentElement).toBe(stage.parentElement);
-      expect(stage.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(container.querySelector("[data-vectorscope-correlation-axis]")).toBeTruthy();
-      expect(container.textContent).not.toMatch(/Corr/);
-      expect(
-        container.querySelector("[data-vectorscope-correlation-marker]").getAttribute("style")
-      ).toContain("75%");
-      expect(container.querySelector("svg path[d='M 0 0 L 2 2']")).toBeTruthy();
-    }
-  );
+  it("uses the normal vertical layout", () => {
+    const { container } = renderWith({ path: "M 0 0 L 2 2", correlation: 0.5 });
+    const stage = container.querySelector("[data-vectorscope-plot-stage]");
+    const rail = container.querySelector("[data-vectorscope-correlation-rail]");
+    expect(stage).toBeTruthy();
+    expect(rail.parentElement).toBe(stage.parentElement);
+    expect(stage.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector("[data-vectorscope-correlation-axis]")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/Corr/);
+    expect(
+      container.querySelector("[data-vectorscope-correlation-marker]").getAttribute("style")
+    ).toContain("75%");
+    expect(container.querySelector("svg path[d='M 0 0 L 2 2']")).toBeTruthy();
+  });
 
   it.each(["polarSample", "polarLevel"])("uses the shared %s plot", (mode) => {
     const getVectorscopeHistoryForKey = vi.fn(() =>
@@ -91,7 +76,6 @@ describe("DockVectorscope shared panel", () => {
     const { container } = renderWith(
       { correlation: 0.5 },
       undefined,
-      "standard",
       { ...controls, vectorscopeMode: mode },
       { getVectorscopeHistoryForKey }
     );
@@ -110,7 +94,6 @@ describe("DockVectorscope shared panel", () => {
       const { container } = renderWith(
         { path: "M 0 0 L 2 2", correlation: 0.5 },
         undefined,
-        "standard",
         controls,
         { selectedOffset: -1, historyChartInteractive: true, getVectorscopeHistoryForKey }
       );
@@ -130,7 +113,7 @@ describe("DockVectorscope shared panel", () => {
 
   it("uses exact frozen correlation without reading live history", () => {
     const getVectorscopeHistoryForKey = vi.fn();
-    const { container } = renderWith({ correlation: 1 }, undefined, "standard", controls, {
+    const { container } = renderWith({ correlation: 1 }, undefined, controls, {
       selectedOffset: 0,
       getVectorscopeHistoryForKey,
       resolveVectorscopeSnapshotForKey: () => ({

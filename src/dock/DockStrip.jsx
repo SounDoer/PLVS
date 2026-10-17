@@ -1,6 +1,6 @@
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { getDockPanelSizing, fitDockPanelWidths } from "./dockPanelSizing.js";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePanelChromeData, useHistoryData } from "../workspace/AudioDataContext.jsx";
 import { DOCK_MODULE_REGISTRY } from "./registry.jsx";
 import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { DockHeightResizeHandle } from "./DockHeightResizeHandle.jsx";
 import { DockPanelResizeHandle } from "./DockPanelResizeHandle.jsx";
 import { DockControlArea } from "./DockControlArea.jsx";
-import { dockHeightMode } from "./dockSizing.js";
+import { dockMinHeight } from "./dockSizing.js";
 import { RecordingIndicator } from "../components/RecordingIndicator.jsx";
 import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 
@@ -90,7 +90,12 @@ export function DockStrip({
     channelCount,
     automaticPanelIds: entries.filter((entry) => entry.autoStats).map((entry) => entry.id),
   });
-  const heightMode = dockHeightMode(height);
+  const minHeight = dockMinHeight(interfaceSize);
+  // A larger interface size raises the minimum; grow a shorter strip to keep three Stats rows.
+  useEffect(() => {
+    if (Number.isFinite(height) && height < minHeight && !heightResizeDisabled)
+      void Promise.resolve(onHeightChange?.(minHeight, { persist: true })).catch(() => {});
+  }, [height, minHeight, heightResizeDisabled, onHeightChange]);
   const history = useHistoryData();
   const isSnapshot = history?.selectedOffset >= 0;
   return (
@@ -98,7 +103,6 @@ export function DockStrip({
       data-testid="dock-strip"
       data-visual-capture-surface="main"
       data-visual-capture-ready="true"
-      data-height-mode={heightMode}
       data-history={isSnapshot ? "" : undefined}
       className={cn(
         "dock-strip relative h-screen w-screen select-none overflow-hidden text-foreground",
@@ -108,6 +112,7 @@ export function DockStrip({
       <DockHeightResizeHandle
         edge={edge}
         height={height}
+        minHeight={minHeight}
         disabled={heightResizeDisabled}
         onHeightChange={onHeightChange}
       />
@@ -147,7 +152,6 @@ export function DockStrip({
                 }}
               >
                 <Component
-                  heightMode={heightMode}
                   controls={{
                     ...controls,
                     ...controls.controlsByPanelId?.[panel.id],

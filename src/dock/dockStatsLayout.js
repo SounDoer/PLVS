@@ -1,24 +1,21 @@
+import { DOCK_PAD_X, DOCK_PAD_Y, DOCK_STATS_ROW_GAP } from "./dockSizing.js";
+
 export const DOCK_STATS_MIN_CELL_WIDTH_PX = 60;
 export const DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX = 72;
-export const DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX = 64;
-export const DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX = 84;
 export const DOCK_STATS_INNER_GAP_PX = 2;
 export const DOCK_STATS_GROUP_GAP_PX = 12;
 
 /** Include scrollbar clearance so an initially overflowing grid can reach the fitted column count. */
 export function recommendedDockStatsWidth(height, count, font) {
-  const expanded = height >= 120;
-  const padX = expanded ? 8 : height <= 63 ? 5 : 6;
-  const padY = expanded ? 6 : height <= 63 ? 3 : 4;
-  const gap = expanded ? 5 : height <= 63 ? 2 : 3;
-  const cellHeight = expanded ? font.metricMeta + 4 + font.metricValue : font.metricValue;
-  const rows = Math.max(1, Math.floor((height - 2 * padY + gap) / (cellHeight + gap)));
+  const rows = Math.max(
+    1,
+    Math.floor(
+      (height - 2 * DOCK_PAD_Y + DOCK_STATS_ROW_GAP) / (font.metricValue + DOCK_STATS_ROW_GAP)
+    )
+  );
   const columns = Math.max(1, Math.ceil(count / rows));
-  const cellWidth =
-    ((expanded ? DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX : DOCK_STATS_MIN_CELL_WIDTH_PX) *
-      font.metricValue) /
-    13;
-  const width = columns * cellWidth + (columns - 1) * DOCK_STATS_GROUP_GAP_PX + 2 * padX + 24;
+  const cellWidth = (DOCK_STATS_MIN_CELL_WIDTH_PX * font.metricValue) / 13;
+  const width = columns * cellWidth + (columns - 1) * DOCK_STATS_GROUP_GAP_PX + 2 * DOCK_PAD_X + 24;
   return Math.max(Math.ceil((160 * font.metricValue) / 16), Math.ceil(width / 20) * 20);
 }
 

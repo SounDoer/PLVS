@@ -3,7 +3,7 @@ import { VectorscopePanel } from "../../components/panels/VectorscopePanel.jsx";
 import { PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
 
-/** @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"correlation">, heightMode?: string }} props */
+/** @param {{ controls?: import("../dockModuleControls.js").DockModuleProps<"correlation"> }} props */
 export function DockVectorscope({ controls = {} }) {
   const panelControls = normalizeDockModuleControls("correlation", controls);
   return (

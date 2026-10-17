@@ -656,8 +656,10 @@ Dock Level Meter embeds the normal panel, including its independently persisted 
 readouts, colour policy and reset actions. Dock Loudness, Spectrogram and Waveform embed their normal
 panels through `DockTimelinePanel` and `usePanelHistoryData`. They share annotation visibility and retain
 the full rendering and gesture model. Spectrogram 3D is available at every height; Loudness has no
-Dock-specific scalar readouts. Stats keeps a compact grid whose columns account for both available
-width and height; rows are never truncated, and vertical overflow scrolls.
+Dock-specific scalar readouts. Stats uses single-line cells in a grid whose columns account for
+both available width and height; rows are never truncated, and vertical overflow scrolls. Dock has
+no height tiers: one padding set applies at every height, and the strip minimum is three Stats rows
+at the current Interface Size (`dockMinHeight`), never below the native 68 logical px floor.
 
 Dock timeline controls carry the same `linkTimeViewport`, `historyWindowSec` and `historyOffsetSec`
 fields as normal instances. Linked panels read and write the workspace time viewport. Unlinked

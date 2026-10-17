@@ -5,7 +5,7 @@ import { PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 
 /**
  * The shared chart keeps its interactions and snapshot state at every Dock height.
- * @param {{ controls?: any, heightMode?: string }} props
+ * @param {{ controls?: any }} props
  */
 export function DockLevel({ controls }) {
   const panelControls = normalizeDockModuleControls("level", controls);

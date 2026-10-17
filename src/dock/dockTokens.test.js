@@ -2,13 +2,16 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DOCK_EXPANDED_MIN_HEIGHT } from "./dockSizing.js";
+import { DOCK_PAD_X, DOCK_PAD_Y, DOCK_STATS_ROW_GAP } from "./dockSizing.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const dockTokensCss = readFileSync(join(currentDir, "dockTokens.css"), "utf8");
 
-describe("Dock spacing density tokens", () => {
-  it("enters the expanded spacing tier at the shared expanded height", () => {
-    expect(dockTokensCss).toContain(`@media (min-height: ${DOCK_EXPANDED_MIN_HEIGHT}px)`);
+describe("Dock spacing tokens", () => {
+  it("uses one spacing set that the minimum-height calculation shares", () => {
+    expect(dockTokensCss).toContain(`--ui-dock-pad-x: ${DOCK_PAD_X}px;`);
+    expect(dockTokensCss).toContain(`--ui-dock-pad-y: ${DOCK_PAD_Y}px;`);
+    expect(dockTokensCss).toContain(`--ui-dock-gap-row: ${DOCK_STATS_ROW_GAP}px;`);
+    expect(dockTokensCss).not.toMatch(/@media \((min|max)-height/);
   });
 });
