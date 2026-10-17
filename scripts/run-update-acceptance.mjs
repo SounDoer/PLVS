@@ -540,7 +540,8 @@ async function runGuidedAcceptance({
       console.warn(`Update-details screenshot was unavailable: ${error.message}`);
     }
     console.log(
-      "CHECKPOINT helper-interruption: Confirm Update Ready and click Update and Restart. The isolated helper will pause before replacement and be terminated."
+      "CHECKPOINT helper-interruption: Confirm Update Ready and click Update and Restart. " +
+        "After the isolated helper is terminated and the old app relaunches, open the failed update details from the Dock update indicator and leave the interrupted-install error visible."
     );
     const pauseMarker = await waitFor(
       "acceptance helper pause",
@@ -577,10 +578,12 @@ async function runGuidedAcceptance({
     if (!readReady(dataRoot)?.value.ready) {
       throw new Error("Interrupted helper recovery removed the verified ready package");
     }
+    // The public UI contract deliberately reports update details as phase `idle`; the recorded
+    // attempt above owns the error verdict while this check proves that the real details are open.
     const interruptedUi = await waitFor(
-      "interrupted helper visible error",
+      "interrupted helper update details",
       () => cliJson(cli, dataRoot, ["ui", "inspect"]),
-      (value) => findUpdateSurface(value.result)?.target?.phase === "install-error",
+      (value) => Boolean(findUpdateSurface(value.result)),
       60_000
     );
     const interruptedSurface = findUpdateSurface(interruptedUi.result);
