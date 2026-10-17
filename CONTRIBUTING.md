@@ -330,7 +330,7 @@ npm run smoke:agent-control
 
 Use `npm run cli:build` to build only the CLI package without starting the GUI. With no arguments it builds the stable-identity debug CLI; `desktop:control` is what builds the dev CLI.
 
-`desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the dev app must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed stable PLVS. The stable CLI uses the same flat commands but talks to the installed app through the stable identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` requires the current dev app in a visible normal window with no open surfaces or blocking editors. It verifies capabilities, inspect, Settings navigation, a screenshot and a 3-second silent recording, and writes artifacts plus the selected instance ID to `artifacts/agent-control-smoke/`. Use `npm run smoke:agent-control -- --instance <id>` or `PLVS_INSTANCE_ID` with multiple workbenches. Without either, it discovers and pins the sole instance for the whole run, including cleanup.
+`desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the dev app must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed stable PLVS. The stable CLI uses the same flat commands but talks to the installed app through the stable identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` requires the current dev app in a visible normal window with no open surfaces or blocking editors. It verifies capabilities, inspect, Settings navigation, a screenshot and a 3-second silent recording, and writes artifacts plus the selected instance ID to `artifacts/agent-control-smoke/`. A successful run keeps the compatibility `smoke-report.json`; success or a caught product/cleanup failure writes the shared `result.json`. Formal evidence requires a clean worktree so its source SHA identifies the code that ran. Use `npm run smoke:agent-control -- --instance <id>` or `PLVS_INSTANCE_ID` with multiple workbenches. Without either, it discovers and pins the sole instance for the whole run, including cleanup.
 
 `release:preflight` requires this real-desktop smoke whenever frontend, native, shared-contract,
 build dependency or smoke tooling paths changed since the last stable release tag. A missing
@@ -495,7 +495,7 @@ is gone. There is no way to take a live lease
 virtual device and never changes the system default output. Install and reboot after the platform
 driver setup before running it; PLVS does not install or manage that driver.
 
-Update, Dock and capture acceptance results can be indexed in one local report without rerunning
+Update, Dock, capture and Agent Control acceptance results can be indexed in one local report without rerunning
 their scenarios:
 
 ```bash
@@ -503,7 +503,8 @@ npm run acceptance:report -- \
   --target HEAD \
   --evidence artifacts/update-acceptance/<sha>/runs/<run>/result.json \
   --evidence artifacts/macos-dock-reservation/<run>/result.json \
-  --evidence artifacts/capture-smoke/<sha>/<run>/result.json
+  --evidence artifacts/capture-smoke/<sha>/<run>/result.json \
+  --evidence artifacts/agent-control-smoke/<run>/result.json
 ```
 
 Evidence selection is explicit; the command never guesses which run is latest. It writes JSON and

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -11,6 +11,9 @@ import {
   selectSmokeInstance,
   runAgentControlSmoke,
 } from "./smoke-agent-control.mjs";
+import { validateAcceptanceEvidence } from "./acceptance-evidence.mjs";
+
+const SOURCE_SHA = "a".repeat(40);
 
 describe("Agent Control smoke helpers", () => {
   it("accepts only successful JSON envelopes", () => {
@@ -68,7 +71,12 @@ describe("desktop smoke orchestration", () => {
       rmSync(directory, { recursive: true, force: true });
     vi.unstubAllEnvs();
   });
-  function rig({ initialUi = {}, failScreenshot = false, showChanged = true } = {}) {
+  function rig({
+    initialUi = {},
+    failScreenshot = false,
+    showChanged = true,
+    failCleanup = false,
+  } = {}) {
     const outDir = mkdtempSync(join(tmpdir(), "plvs-smoke-test-"));
     directories.push(outDir);
     const methods = [
@@ -113,7 +121,10 @@ describe("desktop smoke orchestration", () => {
           result = { revision: 4, uiGeneration: 1, changed: showChanged, surface };
           break;
         case "ui close":
+          result = {};
+          break;
         case "ui close cleanup":
+          if (failCleanup) return null;
           result = {};
           break;
         case "ui inspect cleanup":
@@ -148,7 +159,7 @@ describe("desktop smoke orchestration", () => {
       }
       return { ok: true, result };
     });
-    return { outDir, invoke };
+    return { outDir, invoke, sourceSha: SOURCE_SHA };
   }
 
   it("parses explicit selectors and refuses ambiguous or missing instances", () => {
@@ -182,8 +193,19 @@ describe("desktop smoke orchestration", () => {
   it("pins explicit instance over environment for every command and records it", async () => {
     vi.stubEnv("PLVS_INSTANCE_ID", "one");
     const options = rig();
-    const { report } = await runAgentControlSmoke({ ...options, instanceId: "two" });
+    const { report, evidence, evidencePath } = await runAgentControlSmoke({
+      ...options,
+      instanceId: "two",
+    });
     expect(report.instanceId).toBe("two");
+    expect(evidence).toMatchObject({
+      domain: "agent-control",
+      sourceSha: SOURCE_SHA,
+      summary: "complete",
+      cleanup: { status: "passed" },
+    });
+    expect(evidence.scenarios.map(({ status }) => status)).toEqual(Array(6).fill("passed"));
+    expect(validateAcceptanceEvidence(JSON.parse(readFileSync(evidencePath, "utf8")))).toBeTruthy();
     for (const [, args] of options.invoke.mock.calls.slice(1))
       expect(args.slice(-2)).toEqual(["--instance", "two"]);
     const start = options.invoke.mock.calls.find(
@@ -199,6 +221,28 @@ describe("desktop smoke orchestration", () => {
     const cleanup = options.invoke.mock.calls.find(([label]) => label === "ui close cleanup")[1];
     expect(cleanup.slice(0, 3)).toEqual(["ui", "close", "owned-settings"]);
     expect(cleanup.slice(-2)).toEqual(["--instance", "two"]);
+    const evidence = JSON.parse(readFileSync(join(options.outDir, "result.json"), "utf8"));
+    expect(evidence.summary).toBe("failed");
+    expect(evidence.cleanup.status).toBe("passed");
+    expect(evidence.scenarios).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "screenshot", status: "failed" }),
+        expect.objectContaining({ id: "silent-recording", status: "notRun" }),
+      ])
+    );
+  });
+
+  it("records cleanup failure without hiding the original product failure", async () => {
+    const options = rig({ failScreenshot: true, failCleanup: true });
+    await expect(runAgentControlSmoke({ ...options, instanceId: "one" })).rejects.toThrow(
+      "capture failed"
+    );
+    const evidence = JSON.parse(readFileSync(join(options.outDir, "result.json"), "utf8"));
+    expect(evidence.summary).toBe("failed");
+    expect(evidence.cleanup).toMatchObject({
+      status: "failed",
+      observations: [expect.stringContaining("Settings cleanup failed")],
+    });
   });
 
   it("never closes a reused surface", async () => {

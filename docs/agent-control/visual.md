@@ -144,8 +144,11 @@ and `ui inspect`; opens Settings at Appearance, takes a generation-correlated re
 closes the exact surface, then records three silent seconds to MP4. It independently checks both
 files' length and SHA-256 against the returned artifact metadata. Results are retained under
 `artifacts/agent-control-smoke/` by default; use `-- --out-dir <directory>` to choose another
-location. Run it on both Windows and macOS before treating native transport or Visual Capture work
-as accepted.
+location. A successful run writes the compatibility `smoke-report.json`. Success or a caught
+product/cleanup failure also writes the shared acceptance envelope as `result.json`, including the
+exact clean source SHA, completed and skipped scenarios, artifact hashes, and cleanup outcome. Run
+it on both Windows and macOS before treating native transport or Visual Capture work as accepted;
+one platform's contract tests or evidence do not certify the other.
 
 Stable Visual Capture errors are:
 

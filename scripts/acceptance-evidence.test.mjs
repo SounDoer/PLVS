@@ -94,7 +94,7 @@ describe("acceptance evidence", () => {
 
     const value = report([]);
     expect(value.platforms).toEqual(["windows", "macos"]);
-    expect(value.matrix).toHaveLength(6);
+    expect(value.matrix).toHaveLength(8);
   });
 
   it("rejects duplicate scenarios and false complete evidence", () => {
@@ -142,7 +142,7 @@ describe("acceptance evidence", () => {
     ]);
     expect(value.ready).toBe(true);
     expect(value.verdict).toBe("incomplete");
-    expect(value.matrix).toHaveLength(6);
+    expect(value.matrix).toHaveLength(8);
     expect(
       value.matrix.find((cell) => cell.domain === "capture" && cell.platform === "macos")
     ).toMatchObject({ state: "passed" });
@@ -204,7 +204,7 @@ describe("acceptance evidence", () => {
       ),
     ]);
     expect(value.platforms).toEqual(["windows", "macos", "linux"]);
-    expect(value.matrix).toHaveLength(9);
+    expect(value.matrix).toHaveLength(12);
     expect(
       value.matrix.find((cell) => cell.domain === "capture" && cell.platform === "linux")
     ).toMatchObject({ state: "passed" });
@@ -221,5 +221,6 @@ describe("acceptance evidence", () => {
       "| capture | missing | missing | [passed](../linux-capture/result.json) |"
     );
     expect(markdown).toContain("dock/linux: missing");
+    expect(markdown).toContain("agent-control/linux: missing");
   });
 });

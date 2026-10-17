@@ -6,7 +6,7 @@ import { dirname, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 export const ACCEPTANCE_SCHEMA_VERSION = 1;
-export const ACCEPTANCE_DOMAINS = ["update", "dock", "capture"];
+export const ACCEPTANCE_DOMAINS = ["update", "dock", "capture", "agent-control"];
 export const ACCEPTANCE_BASE_PLATFORMS = ["windows", "macos"];
 export const ACCEPTANCE_KNOWN_PLATFORMS = [...ACCEPTANCE_BASE_PLATFORMS, "linux"];
 const ACCEPTANCE_PLATFORM_LABELS = {

@@ -2,10 +2,17 @@
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildPlvsCli } from "./build-plvs-cli.mjs";
+import {
+  acceptanceRunId,
+  completeScenarioCoverage,
+  hostPlatform,
+  resolveEvidenceSourceSha,
+  writeJsonAtomic,
+} from "./acceptance-evidence.mjs";
 import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import { assertWalkthroughStart } from "./ui-visual-walkthrough-lib.mjs";
 
@@ -19,6 +26,14 @@ const REQUIRED_METHODS = [
   "visual.screenshot",
   "visual.recording.start",
   "visual.recording.wait",
+];
+const REQUIRED_SCENARIOS = [
+  "discovery-and-capabilities",
+  "inspect-and-safe-start",
+  "settings-navigation",
+  "screenshot",
+  "settings-cleanup",
+  "silent-recording",
 ];
 
 export function parseJsonEnvelope(label, output) {
@@ -149,29 +164,56 @@ export async function runAgentControlSmoke({
   executable,
   outDir,
   instanceId,
+  sourceSha,
+  platform = hostPlatform(),
   invoke = createRunner(executable),
 }) {
+  if (!/^[0-9a-f]{40}$/.test(sourceSha)) {
+    throw new Error("Agent Control smoke requires an exact lowercase source SHA.");
+  }
+  const startedAt = new Date();
   await mkdir(outDir, { recursive: true });
-  const discovered = invoke("instances", ["instances", "--json"]);
-  const selectedInstance = selectSmokeInstance(
-    discovered.result.instances,
-    instanceId ?? process.env.PLVS_INSTANCE_ID
-  );
-  const run = (label, args, options) =>
-    invoke(label, [...args, "--instance", selectedInstance], options);
+  const completedScenarios = [];
+  const evidenceArtifacts = [];
+  const cleanupObservations = [];
+  let currentScenario = "discovery-and-capabilities";
+  let selectedInstance = null;
   let activeRecordingId = null;
   let activeUiSurface = null;
+  let capabilities = null;
+  let revision = null;
+  let legacyReport = null;
+  let failure = null;
+  let cleanupStatus = "passed";
+  const pass = (id, observations = []) => {
+    completedScenarios.push({ id, status: "passed", observations });
+    currentScenario = null;
+  };
+  const begin = (id) => {
+    currentScenario = id;
+  };
+  const run = (label, args, options) => {
+    if (!selectedInstance) throw new Error("Agent Control smoke has no selected instance.");
+    return invoke(label, [...args, "--instance", selectedInstance], options);
+  };
   try {
-    const capabilities = run("capabilities", ["capabilities", "--json"]);
+    const discovered = invoke("instances", ["instances", "--json"]);
+    selectedInstance = selectSmokeInstance(
+      discovered.result.instances,
+      instanceId ?? process.env.PLVS_INSTANCE_ID
+    );
+    capabilities = run("capabilities", ["capabilities", "--json"]);
     const methods = capabilities.result.methods;
     if (!Array.isArray(methods)) throw new Error("capabilities returned no method list.");
     const missing = REQUIRED_METHODS.filter((method) => !methods.includes(method));
     if (missing.length > 0) {
       throw new Error(`This desktop does not advertise required methods: ${missing.join(", ")}.`);
     }
+    pass("discovery-and-capabilities", [`Pinned instance ${selectedInstance}.`]);
 
+    begin("inspect-and-safe-start");
     const inspected = run("inspect", ["inspect", "--json"]);
-    const revision = inspected.result.revision;
+    revision = inspected.result.revision;
     if (!Number.isSafeInteger(revision) || revision < 0) {
       throw new Error("inspect returned an invalid global revision.");
     }
@@ -179,6 +221,9 @@ export async function runAgentControlSmoke({
     assertWalkthroughStart({ scenarios: [] }, capabilities.result, uiInspected.result);
     if (uiInspected.result.window?.form !== "normal" || uiInspected.result.window?.visible !== true)
       throw new Error("Smoke requires a visible normal window; restore it before running.");
+    pass("inspect-and-safe-start");
+
+    begin("settings-navigation");
     const shown = run("ui show settings", [
       "ui",
       "show",
@@ -200,7 +245,9 @@ export async function runAgentControlSmoke({
       kind: "settings",
       target: { section: "appearance" },
     });
+    pass("settings-navigation");
 
+    begin("screenshot");
     const screenshotPath = join(outDir, "main.png");
     const screenshot = run("visual screenshot", [
       "visual",
@@ -220,6 +267,17 @@ export async function runAgentControlSmoke({
       await readFile(screenshotPath),
       screenshot.result.artifact
     );
+    evidenceArtifacts.push({
+      id: "main-screenshot",
+      kind: "image/png",
+      file: screenshotPath,
+      ...screenshotCheck,
+    });
+    pass("screenshot", [
+      `Captured ${screenshotCheck.bytes} bytes with SHA-256 ${screenshotCheck.sha256}.`,
+    ]);
+
+    begin("settings-cleanup");
     run("ui close", [
       "ui",
       "close",
@@ -235,7 +293,9 @@ export async function runAgentControlSmoke({
       throw new Error("UI close left the Settings surface mounted.");
     }
     activeUiSurface = null;
+    pass("settings-cleanup");
 
+    begin("silent-recording");
     const started = run("visual recording start", [
       "visual",
       "recording",
@@ -281,9 +341,18 @@ export async function runAgentControlSmoke({
       await readFile(recordingPath),
       recording?.artifact
     );
+    evidenceArtifacts.push({
+      id: "main-silent-recording",
+      kind: "video/mp4",
+      file: recordingPath,
+      ...recordingCheck,
+    });
     activeRecordingId = null;
+    pass("silent-recording", [
+      `Captured ${recordingCheck.bytes} bytes with SHA-256 ${recordingCheck.sha256}.`,
+    ]);
 
-    const report = {
+    legacyReport = {
       ok: true,
       createdAt: new Date().toISOString(),
       platform: process.platform,
@@ -299,14 +368,20 @@ export async function runAgentControlSmoke({
         recording: { path: recordingPath, ...recordingCheck, metadata: recording.artifact },
       },
     };
-    const reportPath = join(outDir, "smoke-report.json");
-    await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-    return { report, reportPath };
   } catch (error) {
+    failure = error;
+    if (currentScenario) {
+      completedScenarios.push({
+        id: currentScenario,
+        status: "failed",
+        observations: [error.message],
+      });
+      currentScenario = null;
+    }
     if (activeUiSurface) {
       try {
         const current = run("ui inspect cleanup", ["ui", "inspect", "--json"]);
-        run(
+        const cleaned = run(
           "ui close cleanup",
           [
             "ui",
@@ -320,39 +395,87 @@ export async function runAgentControlSmoke({
           ],
           { allowFailure: true }
         );
-      } catch {
-        // Preserve the original smoke failure; cleanup is best-effort only.
+        if (!cleaned) throw new Error("Settings cleanup command failed.");
+        activeUiSurface = null;
+        cleanupObservations.push("Closed the Settings surface created by this smoke.");
+      } catch (cleanupError) {
+        cleanupStatus = "failed";
+        cleanupObservations.push(`Settings cleanup failed: ${cleanupError.message}`);
       }
     }
     if (activeRecordingId) {
       try {
-        run(
+        const cleaned = run(
           "visual recording cleanup",
           ["visual", "recording", "stop", activeRecordingId, "--json"],
           { allowFailure: true }
         );
-      } catch {
-        // Preserve the original smoke failure; cleanup is best-effort only.
+        if (!cleaned) throw new Error("Recording cleanup command failed.");
+        activeRecordingId = null;
+        cleanupObservations.push("Stopped the recording created by this smoke.");
+      } catch (cleanupError) {
+        cleanupStatus = "failed";
+        cleanupObservations.push(`Recording cleanup failed: ${cleanupError.message}`);
       }
     }
-    throw error;
   }
+
+  if (cleanupObservations.length === 0) {
+    cleanupObservations.push("No owned UI surface or recording remained after the smoke.");
+  }
+  const coverage = completeScenarioCoverage(REQUIRED_SCENARIOS, completedScenarios);
+  const summary = cleanupStatus === "failed" ? "failed" : coverage.summary;
+  const evidence = {
+    schemaVersion: 1,
+    domain: "agent-control",
+    runId: acceptanceRunId(startedAt),
+    sourceSha,
+    platform,
+    tool: { name: "agent-control-smoke", version: 1 },
+    startedAt: startedAt.toISOString(),
+    endedAt: new Date().toISOString(),
+    summary,
+    scenarios: coverage.scenarios,
+    artifacts: evidenceArtifacts,
+    cleanup: { status: cleanupStatus, observations: cleanupObservations },
+    warnings: [],
+    instanceId: selectedInstance,
+    revision,
+    runtime: capabilities?.result.runtime ?? null,
+  };
+  const evidencePath = join(outDir, "result.json");
+  await writeJsonAtomic(evidencePath, evidence);
+  if (failure) {
+    failure.evidencePath = evidencePath;
+    throw failure;
+  }
+  const reportPath = join(outDir, "smoke-report.json");
+  await writeJsonAtomic(reportPath, legacyReport);
+  return { report: legacyReport, reportPath, evidence, evidencePath };
 }
 
 async function main() {
   const { outDir, instanceId } = parseArgs(process.argv.slice(2));
+  const sourceSha = resolveEvidenceSourceSha(root);
   scopeDevCliToWorktree();
   const { executable } = buildPlvsCli({ identity: "dev" });
-  const { report, reportPath } = await runAgentControlSmoke({ executable, outDir, instanceId });
+  const { report, reportPath, evidencePath } = await runAgentControlSmoke({
+    executable,
+    outDir,
+    instanceId,
+    sourceSha,
+  });
   console.log(`OK Agent Control smoke passed on ${report.platform}.`);
   console.log(`Screenshot: ${report.artifacts.screenshot.path}`);
   console.log(`Recording : ${report.artifacts.recording.path}`);
   console.log(`Report    : ${reportPath}`);
+  console.log(`Evidence  : ${evidencePath}`);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
   main().catch((error) => {
     console.error(`Agent Control smoke failed: ${error.message}`);
+    if (error.evidencePath) console.error(`Evidence: ${error.evidencePath}`);
     console.error(
       "Start the dev app with `npm run desktop:dev`, keep Agent Control enabled, and retry."
     );
