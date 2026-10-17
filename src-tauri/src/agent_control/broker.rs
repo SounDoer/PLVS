@@ -5,7 +5,7 @@ use std::fmt;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 use super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
@@ -556,8 +556,22 @@ impl TauriFrontendEmitter {
   }
 }
 
+fn request_reveals_main_window(request: &JsonRpcRequest) -> bool {
+  request.method.starts_with("ui.show.")
+}
+
 impl FrontendEmitter for TauriFrontendEmitter {
   fn emit(&self, request: &JsonRpcRequest) -> Result<(), String> {
+    if request_reveals_main_window(request) {
+      if let Some(window) = self.app.get_webview_window("main") {
+        // UI navigation promises best-effort reveal and focus. Besides matching that public
+        // contract, activating a background macOS WebView lets its render barrier receive the
+        // animation frames required before an Agent Control screenshot.
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+      }
+    }
     self
       .app
       .emit_to("main", AGENT_CONTROL_REQUEST_EVENT, request.clone())
@@ -1015,5 +1029,20 @@ mod tests {
       BrokerErrorReason::ClientDisconnected
     );
     assert_eq!(broker.pending_count(), 0);
+  }
+
+  #[test]
+  fn only_ui_show_requests_reveal_the_main_window() {
+    let request = |method: &str| JsonRpcRequest {
+      id: "request-1".to_string(),
+      method: method.to_string(),
+      params: serde_json::json!({}),
+    };
+    assert!(request_reveals_main_window(&request("ui.show.settings")));
+    assert!(request_reveals_main_window(&request(
+      "ui.show.panelSettings"
+    )));
+    assert!(!request_reveals_main_window(&request("ui.inspect")));
+    assert!(!request_reveals_main_window(&request("visual.screenshot")));
   }
 }
