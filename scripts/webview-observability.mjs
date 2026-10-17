@@ -82,17 +82,26 @@ export function verifyBackpressurePhases({ normalStart, normalEnd, stalled, reco
   if (normalEnd.droppedFrames !== normalStart.droppedFrames) {
     phases.normal.failures.push("normal phase dropped UI frames");
   }
+  if (normalEnd.audioDroppedChunks !== normalStart.audioDroppedChunks) {
+    phases.normal.failures.push("normal phase dropped audio chunks");
+  }
   if (stalled.droppedFrames <= normalEnd.droppedFrames) {
     phases.stalled.failures.push("stall did not trigger an observable UI frame drop");
   }
   if (stalled.maxInflightFrames !== stalled.inflightLimit) {
     phases.stalled.failures.push("stall did not reach the configured in-flight limit");
   }
+  if (stalled.audioDroppedChunks !== normalEnd.audioDroppedChunks) {
+    phases.stalled.failures.push("stall phase dropped audio chunks");
+  }
   if (recovered.sentFrames <= stalled.sentFrames) {
     phases.recovered.failures.push("frame delivery did not resume");
   }
   if (recovered.currentInflightFrames >= recovered.inflightLimit) {
     phases.recovered.failures.push("WebView backlog did not recover below its limit");
+  }
+  if (recovered.audioDroppedChunks !== stalled.audioDroppedChunks) {
+    phases.recovered.failures.push("recovery phase dropped audio chunks");
   }
   for (const phase of Object.values(phases)) phase.ok = phase.failures.length === 0;
   const failures = Object.values(phases).flatMap((phase) => phase.failures);

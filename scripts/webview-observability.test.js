@@ -58,6 +58,33 @@ describe("verifyBackpressurePhases", () => {
     expect(result.ok).toBe(false);
     expect(result.failures.join(" ")).toMatch(/observable UI frame drop/);
   });
+
+  it("fails the phase where audio chunks were dropped", () => {
+    const result = verifyBackpressurePhases({
+      normalStart: diagnostics(),
+      normalEnd: diagnostics({ sentFrames: 20 }),
+      stalled: diagnostics({
+        sentFrames: 140,
+        droppedFrames: 20,
+        audioDroppedChunks: 1,
+        currentInflightFrames: 120,
+        maxInflightFrames: 120,
+      }),
+      recovered: diagnostics({
+        sentFrames: 160,
+        droppedFrames: 20,
+        audioDroppedChunks: 1,
+        currentInflightFrames: 1,
+        maxInflightFrames: 120,
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.phases.stalled).toEqual({
+      ok: false,
+      failures: ["stall phase dropped audio chunks"],
+    });
+  });
 });
 
 describe("process classification", () => {
