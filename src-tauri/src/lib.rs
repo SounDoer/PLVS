@@ -53,6 +53,12 @@ use std::time::Duration;
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
+/// Build the Tauri context from one macro expansion. On macOS each expansion embeds an
+/// `_EMBED_INFO_PLIST` symbol, so the main app and update helper must share this entry point.
+fn app_context() -> tauri::Context<tauri::Wry> {
+  tauri::generate_context!()
+}
+
 #[cfg(target_os = "macos")]
 pub use audio::macos_capture_apps::{list_capture_applications, CaptureApplication};
 #[cfg(target_os = "windows")]
@@ -796,7 +802,7 @@ pub fn run() {
         .map_err(|e| format!("device watch thread: {e}"))?;
       Ok(())
     })
-    .build(tauri::generate_context!())
+    .build(app_context())
     .expect("error while building tauri application")
     .run(|app, event| {
       #[cfg(target_os = "macos")]

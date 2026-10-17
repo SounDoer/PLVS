@@ -209,7 +209,7 @@ pub fn run(ticket_path: &Path) -> Result<(), String> {
   {
     return Err("The helper is outside the approved installation cache.".into());
   }
-  let mut context = tauri::generate_context!();
+  let mut context = crate::app_context();
   context.config_mut().app.windows.clear();
   let app = tauri::Builder::default()
     .plugin(tauri_plugin_updater::Builder::new().build())
