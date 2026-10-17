@@ -221,6 +221,13 @@ export function platformTargetTriple(descriptor) {
   throw new Error(`Unsupported acceptance target: ${descriptor.os}/${descriptor.arch}`);
 }
 
+export function macUpdaterArchiveCommand(app, updater, out) {
+  return {
+    args: ["-czf", updater, "-C", out, path.basename(app)],
+    env: { COPYFILE_DISABLE: "1" },
+  };
+}
+
 function buildFrontend({ repository, snapshot, descriptor, out }, invoke = run) {
   invoke(process.execPath, [path.join(repository, "node_modules/vite/bin/vite.js"), "build"], {
     cwd: snapshot,
@@ -329,8 +336,10 @@ function buildMacPackage(context, version, out, invoke = run) {
       cwd: repository,
       log: path.join(out, "codesign-verify.log"),
     });
-    invoke("tar", ["-czf", updater, "-C", out, path.basename(app)], {
+    const archive = macUpdaterArchiveCommand(app, updater, out);
+    invoke("tar", archive.args, {
       cwd: repository,
+      env: archive.env,
       quiet: true,
     });
     invoke(

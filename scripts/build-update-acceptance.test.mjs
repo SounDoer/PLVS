@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   acceptanceBuildLayout,
   assertCommittedSource,
+  macUpdaterArchiveCommand,
   platformTargetTriple,
   replaceCargoWorkspaceVersion,
 } from "./build-update-acceptance.mjs";
@@ -53,5 +54,12 @@ describe("update acceptance builder", () => {
     expect(() => replaceCargoWorkspaceVersion('[package]\nname = "plvs"', "0.21.0")).toThrow(
       /seam changed/
     );
+  });
+
+  it("disables AppleDouble metadata in macOS updater archives", () => {
+    expect(macUpdaterArchiveCommand("/out/Test App.app", "/out/update.tar.gz", "/out")).toEqual({
+      args: ["-czf", "/out/update.tar.gz", "-C", "/out", "Test App.app"],
+      env: { COPYFILE_DISABLE: "1" },
+    });
   });
 });
