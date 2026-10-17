@@ -48,6 +48,8 @@ describe("update acceptance evidence", () => {
   });
 
   it("keeps platform-native replacement scenarios distinct", () => {
+    expect(requiredUpdateScenarios("macos")).toContain("helper-interruption-recovered");
+    expect(requiredUpdateScenarios("windows")).toContain("helper-interruption-recovered");
     expect(requiredUpdateScenarios("macos")).toContain("apfs-bundle-swap");
     expect(requiredUpdateScenarios("macos")).not.toContain("nsis-installer-replacement");
     expect(requiredUpdateScenarios("windows")).toContain("nsis-installer-replacement");

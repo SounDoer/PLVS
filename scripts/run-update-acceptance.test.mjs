@@ -6,6 +6,7 @@ import {
   comparableDock,
   findUpdateSurface,
   hasFeedPackageRequest,
+  helperPauseMarker,
   macAcceptanceLaunch,
   macReadOnlyDmgLayout,
   mountReportsReadOnly,
@@ -44,6 +45,12 @@ describe("update acceptance runner", () => {
       dataRoot: "/tmp/run with spaces/read-only dmg data",
       app: "/tmp/run with spaces/read-only dmg/PLVS Update Test abc12345.app",
     });
+  });
+
+  it("keeps the helper pause marker beside the recorded attempt", () => {
+    expect(helperPauseMarker("/tmp/data with spaces/updates/pkg/attempt.json")).toBe(
+      "/tmp/data with spaces/updates/pkg/acceptance-helper-paused"
+    );
   });
 
   it("requires the exact DMG mount point to report read-only", () => {

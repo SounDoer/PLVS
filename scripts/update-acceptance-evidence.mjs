@@ -11,6 +11,7 @@ export const UPDATE_SHARED_REQUIRED_SCENARIOS = [
   "persistence-restored",
   "dock-restored",
   "helper-finished",
+  "helper-interruption-recovered",
   "cache-cleared",
   "stale-signature-rejected",
   "truncated-package-rejected",

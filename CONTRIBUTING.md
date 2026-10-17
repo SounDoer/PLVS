@@ -646,7 +646,11 @@ Before staging the valid package, the runner serves a
 stale signature and a truncated package in turn, waits for a real Update retry and visible error,
 records screenshots, and proves that neither rejection left a ready package. It then stops the
 loopback feed after the valid signed package is cached and records the offline replacement and
-restored Dock. It prints checkpoints for actions that must remain visible in the real product UI.
+restored Dock. Before the successful replacement, the isolated debug identity pauses its helper
+before any files change; the runner terminates that exact helper process, relaunches the old app,
+captures the visible interrupted-install error, verifies that the cached package remains ready,
+and retries through the normal UI. Release builds and non-acceptance identities ignore this fault
+injection. It prints checkpoints for actions that must remain visible in the real product UI.
 Do not grant Accessibility, administrator access, or other system permissions merely to make an
 acceptance row green; the result must record that boundary explicitly.
 

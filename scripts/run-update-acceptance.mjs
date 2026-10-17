@@ -117,13 +117,18 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
-function launchBackground(command, args, { newProcessGroup = true } = {}) {
+function launchBackground(command, args, { newProcessGroup = true, env = {} } = {}) {
   const child = spawn(command, args, {
     detached: newProcessGroup,
+    env: { ...process.env, ...env },
     stdio: "ignore",
     windowsHide: true,
   });
   child.unref();
+}
+
+export function helperPauseMarker(attemptFile) {
+  return path.join(path.dirname(attemptFile), "acceptance-helper-paused");
 }
 
 function cliJson(cli, dataRoot, args) {
@@ -300,6 +305,30 @@ function terminateOwnedMacApp(app) {
   return pids;
 }
 
+async function interruptOwnedMacHelper(attemptFile, attempt) {
+  const pid = attempt.helperPid;
+  if (!Number.isInteger(pid)) throw new Error("Interrupted helper attempt recorded no helper PID");
+  const executable = path.join(path.dirname(attemptFile), "plvs-update-worker");
+  const command = run("ps", ["-p", String(pid), "-o", "command="]);
+  if (command !== executable && !command.startsWith(`${executable} `)) {
+    throw new Error(`Refusing to interrupt unexpected helper process ${pid}: ${command}`);
+  }
+  process.kill(pid, "SIGKILL");
+  await waitFor(
+    "interrupted macOS helper exit",
+    () => {
+      try {
+        run("ps", ["-p", String(pid), "-o", "pid="]);
+        return false;
+      } catch {
+        return true;
+      }
+    },
+    Boolean,
+    10_000
+  );
+}
+
 function windowsOwnedPids(executable) {
   const output = run(
     "powershell.exe",
@@ -320,6 +349,26 @@ function terminateOwnedWindowsApp(executable) {
     run("taskkill.exe", ["/PID", String(pid)]);
   }
   return pids;
+}
+
+async function interruptOwnedWindowsHelper(attemptFile, attempt) {
+  const pid = attempt.helperPid;
+  if (!Number.isInteger(pid)) throw new Error("Interrupted helper attempt recorded no helper PID");
+  const executable = path.join(path.dirname(attemptFile), "plvs-update-worker.exe");
+  const actual = run(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      '(Get-CimInstance Win32_Process -Filter "ProcessId=$env:PLVS_ACCEPTANCE_PID").ExecutablePath',
+    ],
+    { env: { PLVS_ACCEPTANCE_PID: String(pid) } }
+  );
+  if (path.resolve(actual).toLowerCase() !== path.resolve(executable).toLowerCase()) {
+    throw new Error(`Refusing to interrupt unexpected helper process ${pid}: ${actual}`);
+  }
+  run("taskkill.exe", ["/F", "/PID", String(pid)]);
 }
 
 function windowsRegistryInstallDir(productName) {
@@ -344,6 +393,7 @@ async function runGuidedAcceptance({
   cli,
   launch,
   terminate,
+  interruptHelper,
   cleanup,
   platformVersion,
   nativeScenarios,
@@ -461,7 +511,7 @@ async function runGuidedAcceptance({
       },
       Boolean
     );
-    launch();
+    launch({ interruptHelper: true });
     await waitFor(
       "offline relaunch",
       () => cliJson(cli, dataRoot, ["capabilities"]),
@@ -490,20 +540,91 @@ async function runGuidedAcceptance({
       console.warn(`Update-details screenshot was unavailable: ${error.message}`);
     }
     console.log(
-      "CHECKPOINT offline-install: Confirm Update Ready, exercise Skip This Time and reopen it from the Dock accessory, then click Update and Restart."
+      "CHECKPOINT helper-interruption: Confirm Update Ready and click Update and Restart. The isolated helper will pause before replacement and be terminated."
     );
-    const attemptFile = await waitFor(
-      "offline installation",
-      () => findNamedFile(path.join(dataRoot, "updates"), "attempt.json"),
+    const pauseMarker = await waitFor(
+      "acceptance helper pause",
+      () => findNamedFile(path.join(dataRoot, "updates"), "acceptance-helper-paused"),
       Boolean
     );
-    const attempt = await waitFor(
-      "installer completion",
+    const attemptFile = path.join(path.dirname(pauseMarker), "attempt.json");
+    if (helperPauseMarker(attemptFile) !== pauseMarker) {
+      throw new Error("Acceptance helper pause marker was outside the attempt directory");
+    }
+    const installingAttempt = await waitFor(
+      "interrupted helper installing attempt",
       () => JSON.parse(readFileSync(attemptFile, "utf8")),
-      (value) => value.phase === "finished" || value.phase === "failed"
+      (value) => value.phase === "installing" && Number.isInteger(value.helperPid)
     );
-    if (attempt.phase !== "finished")
-      throw new Error(`Installer failed: ${attempt.error ?? "unknown error"}`);
+    await interruptHelper(attemptFile, installingAttempt);
+    launch();
+    await waitFor(
+      "interrupted helper recovery relaunch",
+      () => cliJson(cli, dataRoot, ["capabilities"]),
+      (value) => value.result?.appVersion === older.version,
+      60_000
+    );
+    const interruptedAttempt = await waitFor(
+      "interrupted helper reconciliation",
+      () => JSON.parse(readFileSync(attemptFile, "utf8")),
+      (value) =>
+        value.phase === "failed" &&
+        typeof value.error === "string" &&
+        value.error.includes("interrupted before it finished"),
+      60_000
+    );
+    copyFileSync(attemptFile, path.join(runDir, "helper-interrupted-attempt.json"));
+    if (!readReady(dataRoot)?.value.ready) {
+      throw new Error("Interrupted helper recovery removed the verified ready package");
+    }
+    const interruptedUi = await waitFor(
+      "interrupted helper visible error",
+      () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+      (value) => findUpdateSurface(value.result)?.target?.phase === "install-error",
+      60_000
+    );
+    const interruptedSurface = findUpdateSurface(interruptedUi.result);
+    const interruptedScreenshot = await waitFor(
+      "interrupted helper screenshot",
+      () =>
+        cliJson(cli, dataRoot, [
+          "visual",
+          "screenshot",
+          "--target",
+          interruptedUi.result.window?.form === "dock" ? "dock-update" : "main",
+          "--expected-revision",
+          String(interruptedUi.result.revision),
+          "--expected-ui-generation",
+          String(interruptedUi.result.uiGeneration),
+          "--out",
+          path.join(runDir, "helper-interrupted.png"),
+        ]),
+      (value) => value.result?.artifact?.mediaType === "image/png",
+      30_000
+    );
+    cliJson(cli, dataRoot, [
+      "ui",
+      "cancel",
+      interruptedSurface.surfaceId,
+      "--expected-revision",
+      String(interruptedScreenshot.result.revision),
+      "--expected-ui-generation",
+      String(interruptedScreenshot.result.uiGeneration),
+    ]);
+    console.log(
+      "CHECKPOINT offline-install: Reopen the retained Update Ready package from the Dock accessory, exercise Skip This Time, reopen it again, then click Update and Restart."
+    );
+    const attempt = await waitFor(
+      "installer completion after interrupted-helper retry",
+      () => JSON.parse(readFileSync(attemptFile, "utf8")),
+      (value) =>
+        (value.phase === "finished" || value.phase === "failed") &&
+        (value.helperPid !== interruptedAttempt.helperPid ||
+          value.helperStart !== interruptedAttempt.helperStart)
+    );
+    if (attempt.phase !== "finished") {
+      throw new Error(`Installer retry failed: ${attempt.error ?? "unknown error"}`);
+    }
     const afterCapabilities = await waitFor(
       "updated app relaunch",
       () => cliJson(cli, dataRoot, ["capabilities"]),
@@ -548,6 +669,7 @@ async function runGuidedAcceptance({
       { id: "persistence-restored", status: scenarioStatus(stateEqual) },
       { id: "dock-restored", status: scenarioStatus(dockEqual) },
       { id: "helper-finished", status: "passed" },
+      { id: "helper-interruption-recovered", status: "passed" },
       { id: "cache-cleared", status: scenarioStatus(readyCleared) },
       ...nativeScenarios(attempt),
       ...rejectionScenarios,
@@ -589,12 +711,14 @@ async function runGuidedAcceptance({
         "after.json",
         "capabilities-after.json",
         "helper-attempt.json",
+        "helper-interrupted-attempt.json",
         "cache-state-after.json",
         "requests.jsonl",
         "update-details.png",
         "restored-dock.png",
         "stale-signature-rejected.png",
         "truncated-package-rejected.png",
+        "helper-interrupted.png",
         "read-only-dmg.json",
         "read-only-dmg-guidance.png",
       ]),
@@ -804,8 +928,12 @@ async function runMacAcceptance({ root, runId, receipt }) {
     runDir,
     dataRoot,
     cli,
-    launch: () =>
-      launchBackground(launchCommand.command, launchCommand.args, { newProcessGroup: false }),
+    launch: ({ interruptHelper = false } = {}) =>
+      launchBackground(launchCommand.command, launchCommand.args, {
+        newProcessGroup: false,
+        env: interruptHelper ? { PLVS_UPDATE_ACCEPTANCE_INTERRUPT_HELPER: "1" } : {},
+      }),
+    interruptHelper: interruptOwnedMacHelper,
     terminate: () => terminateOwnedMacApp(app),
     cleanup: {
       processesExited: (pids) => {
@@ -838,7 +966,10 @@ async function runWindowsAcceptance({ root, runId, receipt }) {
     throw new Error(`NSIS registered an unexpected install path: ${registeredInstall}`);
   }
   const launchCommand = windowsAcceptanceLaunch(app, dataRoot);
-  const launch = () => launchBackground(launchCommand.command, launchCommand.args);
+  const launch = ({ interruptHelper = false } = {}) =>
+    launchBackground(launchCommand.command, launchCommand.args, {
+      env: interruptHelper ? { PLVS_UPDATE_ACCEPTANCE_INTERRUPT_HELPER: "1" } : {},
+    });
   return runGuidedAcceptance({
     root,
     runId,
@@ -847,6 +978,7 @@ async function runWindowsAcceptance({ root, runId, receipt }) {
     dataRoot,
     cli,
     launch,
+    interruptHelper: interruptOwnedWindowsHelper,
     terminate: () => terminateOwnedWindowsApp(app),
     cleanup: {
       processesExited: (pids) => {

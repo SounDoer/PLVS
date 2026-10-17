@@ -11,6 +11,8 @@ use std::{
 
 use tauri_plugin_updater::UpdaterExt;
 
+const ACCEPTANCE_INTERRUPTION_MARKER: &str = "acceptance-helper-paused";
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Ticket {
   pub nonce: String,
@@ -125,9 +127,36 @@ pub fn remove_helper_files(root: &Path) {
     "worker-ticket.json",
     "worker-ready",
     "worker-commit",
+    ACCEPTANCE_INTERRUPTION_MARKER,
   ] {
     let _ = fs::remove_file(root.join(name));
   }
+}
+
+#[cfg(debug_assertions)]
+fn acceptance_interruption_requested(value: Option<&std::ffi::OsStr>, identity: &str) -> bool {
+  identity.starts_with("com.soundoer.plvs.updatetest.h") && value.is_some_and(|value| value == "1")
+}
+
+#[cfg(debug_assertions)]
+fn pause_for_acceptance_interruption(root: &Path) -> Result<(), String> {
+  if !acceptance_interruption_requested(
+    std::env::var_os("PLVS_UPDATE_ACCEPTANCE_INTERRUPT_HELPER").as_deref(),
+    env!("PLVS_APP_ID"),
+  ) {
+    return Ok(());
+  }
+  fs::write(root.join(ACCEPTANCE_INTERRUPTION_MARKER), b"ready").map_err(|e| e.to_string())?;
+  let deadline = Instant::now() + Duration::from_secs(120);
+  while Instant::now() <= deadline {
+    std::thread::sleep(Duration::from_millis(25));
+  }
+  Err("The acceptance helper interruption was not delivered before its deadline.".into())
+}
+
+#[cfg(not(debug_assertions))]
+fn pause_for_acceptance_interruption(_root: &Path) -> Result<(), String> {
+  Ok(())
 }
 
 pub fn spawn(root: &Path, ticket: Ticket) -> Result<PendingWorker, String> {
@@ -284,6 +313,7 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
       ..Default::default()
     };
     save_attempt(cache.root(), &attempt)?;
+    pause_for_acceptance_interruption(cache.root())?;
     #[cfg(windows)]
     let result = update.install_waited_verified(&bytes, |pid| {
       attempt.installer_pid = Some(pid);
@@ -372,5 +402,21 @@ mod tests {
     attempt.phase = "failed".into();
     save_attempt(root.path(), &attempt).unwrap();
     assert!(check_abandoned_attempt(root.path()).is_ok());
+  }
+
+  #[test]
+  fn acceptance_interruption_is_limited_to_isolated_debug_packages() {
+    assert!(acceptance_interruption_requested(
+      Some(std::ffi::OsStr::new("1")),
+      "com.soundoer.plvs.updatetest.h01234567"
+    ));
+    assert!(!acceptance_interruption_requested(
+      Some(std::ffi::OsStr::new("1")),
+      "com.soundoer.plvs"
+    ));
+    assert!(!acceptance_interruption_requested(
+      Some(std::ffi::OsStr::new("0")),
+      "com.soundoer.plvs.updatetest.h01234567"
+    ));
   }
 }
