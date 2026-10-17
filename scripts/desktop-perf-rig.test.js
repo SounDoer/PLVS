@@ -4,6 +4,7 @@ import {
   MACOS_DEFAULT_EXE,
   conflictingMacDevPids,
   defaultDesktopExecutable,
+  macConsoleIsLocked,
   parseRigArgs,
 } from "./desktop-perf-rig.mjs";
 
@@ -24,6 +25,11 @@ describe("parseRigArgs", () => {
         "/repo/src-tauri/target/release/bundle/macos/PLVS Dev.app/Contents/MacOS/plvs"
       )
     ).toEqual([10, 12]);
+  });
+
+  it("recognizes the public macOS console-lock state", () => {
+    expect(macConsoleIsLocked('"IOConsoleLocked" = Yes')).toBe(true);
+    expect(macConsoleIsLocked('"IOConsoleLocked" = No')).toBe(false);
   });
 
   it("parses the shared desktop performance options", () => {

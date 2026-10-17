@@ -52,7 +52,19 @@ export function conflictingMacDevPids(processList, executable) {
     .map((match) => Number(match[1]));
 }
 
+export function macConsoleIsLocked(ioregOutput) {
+  return /"IOConsoleLocked"\s*=\s*Yes/.test(String(ioregOutput));
+}
+
 function assertMacPerformanceIsolation(executable) {
+  const consoleState = spawnSync("/usr/sbin/ioreg", ["-n", "Root", "-d1"], {
+    encoding: "utf8",
+  });
+  if (consoleState.status === 0 && macConsoleIsLocked(consoleState.stdout)) {
+    throw new RigError(
+      "the macOS console is locked; unlock it before desktop performance acceptance"
+    );
+  }
   const list = spawnSync("ps", ["-axo", "pid=,command="], { encoding: "utf8" });
   if (list.status !== 0)
     throw new Error(list.stderr?.trim() || "could not inspect macOS processes");
