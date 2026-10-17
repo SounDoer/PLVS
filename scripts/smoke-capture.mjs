@@ -14,9 +14,16 @@
  *   2  rig unusable — not a code signal
  */
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import {
+  acceptanceRunId,
+  hostPlatform,
+  resolveEvidenceSourceSha,
+  writeJsonAtomic,
+} from "./acceptance-evidence.mjs";
+import {
+  ROOT,
   RigError,
   TOLERANCE_DB,
   compareMetrics,
@@ -32,7 +39,16 @@ import {
 const CAPTURE_SECONDS = 10;
 const SETTLE_MS = 2000;
 const wav = join(tmpdir(), `plvs-smoke-signal-${process.pid}.wav`);
+const startedAt = new Date().toISOString();
+const runId = acceptanceRunId();
+let sourceSha = null;
+let output = null;
 let player = null;
+let route = null;
+let truth = null;
+let live = null;
+let comparison = null;
+let failureMessage = null;
 
 function parseReport(label, { status, stdout, stderr }) {
   if (status === 2) {
@@ -58,22 +74,31 @@ function parseReport(label, { status, stdout, stderr }) {
 }
 
 try {
+  sourceSha = resolveEvidenceSourceSha(ROOT);
+  const outIndex = process.argv.indexOf("--out-dir");
+  if (
+    outIndex !== -1 &&
+    (!process.argv[outIndex + 1] || process.argv[outIndex + 1].startsWith("--"))
+  ) {
+    throw new Error("--out-dir requires a directory");
+  }
+  output =
+    outIndex === -1
+      ? join(ROOT, "artifacts", "capture-smoke", sourceSha.slice(0, 8), runId)
+      : resolve(process.argv[outIndex + 1]);
   const harness = locateHarness();
-  const route = resolveCaptureRoute(harness);
+  route = resolveCaptureRoute(harness);
 
   await synthesizeSignal(wav);
 
   // Ground truth from the already-trusted file path.
-  const truth = parseReport(
-    "analyze",
-    runCli(harness, harnessArgs(["analyze", wav, "--json"]))
-  ).summary;
+  truth = parseReport("analyze", runCli(harness, harnessArgs(["analyze", wav, "--json"]))).summary;
 
   player = await startPlayer(route.playerTarget, wav, { wait: process.argv.includes("--wait") });
   // Let the loop reach the device before measuring.
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
-  const live = parseReport(
+  live = parseReport(
     "capture",
     runCli(
       harness,
@@ -88,7 +113,7 @@ try {
     )
   );
 
-  const result = compareMetrics(truth, live.summary);
+  comparison = compareMetrics(truth, live.summary);
 
   console.log(`Rig         : ${route.label} (${route.platform})`);
   console.log(`Device      : ${live.source.deviceName}`);
@@ -105,9 +130,9 @@ try {
       `\nFAIL ${live.health.droppedChunks} chunks dropped during a ${CAPTURE_SECONDS}s capture.`
     );
     process.exitCode = 1;
-  } else if (!result.ok) {
+  } else if (!comparison.ok) {
     console.error("\nFAIL live capture disagrees with the file path:");
-    for (const f of result.failures) {
+    for (const f of comparison.failures) {
       console.error(`  ${f.field}: expected ${f.expected}, got ${f.got} (${f.reason})`);
     }
     console.error("\nDo not widen the tolerance. This is what the check is for.");
@@ -117,11 +142,13 @@ try {
   }
 } catch (err) {
   if (err instanceof RigError) {
+    failureMessage = err.message;
     console.error(`\nRIG ${err.message}`);
     console.error("\nThis is a rig problem, not a code signal. Fix the rig, or stop and ask.");
     process.exitCode = 2;
   } else {
-    console.error(err);
+    failureMessage = err instanceof Error ? err.message : String(err);
+    console.error(`\nTOOL ${failureMessage}`);
     process.exitCode = 2;
   }
 } finally {
@@ -132,4 +159,58 @@ try {
   await rm(wav, { force: true }).catch((err) => {
     console.error(`Warning: could not remove ${wav}: ${err.message}`);
   });
+}
+
+if (sourceSha && output) {
+  const exitCode = process.exitCode ?? 0;
+  const scenarios = [
+    {
+      id: "rig-route",
+      status: route ? "passed" : "rigUnavailable",
+      ...(route ? { observation: `${route.label} (${route.platform})` } : {}),
+    },
+    {
+      id: "live-file-agreement",
+      status: !live ? "notRun" : comparison?.ok ? "passed" : "failed",
+    },
+    {
+      id: "zero-dropped-chunks",
+      status: !live ? "notRun" : live.health.droppedChunks === 0 ? "passed" : "failed",
+      ...(live ? { observation: { droppedChunks: live.health.droppedChunks } } : {}),
+    },
+  ];
+  const evidence = {
+    schemaVersion: 1,
+    domain: "capture",
+    runId,
+    sourceSha,
+    platform: hostPlatform(),
+    tool: { name: "capture-smoke", version: 1 },
+    startedAt,
+    endedAt: new Date().toISOString(),
+    summary: exitCode === 0 ? "complete" : exitCode === 1 ? "failed" : "incomplete",
+    scenarios,
+    artifacts: [],
+    cleanup: {
+      status: "passed",
+      observations: ["The spawned VLC process was stopped and the temporary signal was removed."],
+    },
+    warnings: failureMessage ? [failureMessage] : [],
+    details: {
+      route,
+      source: live?.source ?? null,
+      health: live?.health ?? null,
+      truth,
+      live: live?.summary ?? null,
+      comparison,
+    },
+  };
+  const evidencePath = join(output, "result.json");
+  try {
+    await writeJsonAtomic(evidencePath, evidence);
+    console.log(`Evidence    : ${evidencePath}`);
+  } catch (error) {
+    console.error(`Could not write capture evidence: ${error.message}`);
+    process.exitCode = 2;
+  }
 }

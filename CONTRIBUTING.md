@@ -495,6 +495,23 @@ is gone. There is no way to take a live lease
 virtual device and never changes the system default output. Install and reboot after the platform
 driver setup before running it; PLVS does not install or manage that driver.
 
+Update, Dock and capture acceptance results can be indexed in one local report without rerunning
+their scenarios:
+
+```bash
+npm run acceptance:report -- \
+  --target HEAD \
+  --evidence artifacts/update-acceptance/<sha>/runs/<run>/result.json \
+  --evidence artifacts/macos-dock-reservation/<run>/result.json \
+  --evidence artifacts/capture-smoke/<sha>/<run>/result.json
+```
+
+Evidence selection is explicit; the command never guesses which run is latest. It writes JSON and
+Markdown under ignored `artifacts/acceptance-report/`. Missing, stale and incomplete cells are
+reported as advisory gaps and do not return a failure exit code. A failure recorded against the
+target SHA does. This report organizes evidence; it does not approve a stable release or replace
+the domain-specific update verifier.
+
 ## Release public-content review
 
 Every stable desktop release requires `docs/release-content-review.json`. This is the latest

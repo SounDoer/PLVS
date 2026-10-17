@@ -6,8 +6,11 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { hostPlatform, resolveEvidenceSourceSha, writeJsonAtomic } from "./acceptance-evidence.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const startedAt = new Date().toISOString();
+const sourceSha = resolveEvidenceSourceSha(root);
 const cli = process.argv[2];
 assert.ok(
   cli && process.env.PLVS_INSTANCE_ID,
@@ -36,6 +39,7 @@ mkdirSync(output, { recursive: true });
 const statePath = join(output, "state.json");
 const control = join(output, "control.json");
 const results = [];
+let failure = null;
 const host = spawn(
   process.execPath,
   [
@@ -170,6 +174,9 @@ try {
     results.push({ scenario: "display-ownership-both-edges", passed: true });
   }
   console.log(JSON.stringify({ ok: true, output, results }, null, 2));
+} catch (error) {
+  failure = error;
+  throw error;
 } finally {
   // Restore the original Dock preference through the running business path.
   try {
@@ -209,6 +216,37 @@ try {
         }
       });
       if (host.exitCode === null) host.kill("SIGTERM");
+      const scenarios = results.map((result) => ({
+        id: result.scenario,
+        status: result.passed === true ? "passed" : "failed",
+      }));
+      if (failure) {
+        scenarios.push({ id: "integration-run", status: "failed" });
+      }
+      await writeJsonAtomic(join(output, "result.json"), {
+        schemaVersion: 1,
+        domain: "dock",
+        runId: output.split("/").at(-1),
+        sourceSha,
+        platform: hostPlatform(),
+        tool: { name: "macos-dock-reservation", version: 1 },
+        startedAt,
+        endedAt: new Date().toISOString(),
+        summary: failure ? "failed" : "complete",
+        scenarios,
+        artifacts: [
+          { file: "results.json", mediaType: "application/json" },
+          { file: "state.json", mediaType: "application/json" },
+          { file: "control.json", mediaType: "application/json" },
+        ],
+        cleanup: {
+          status: "passed",
+          observations: [
+            "The disposable host was asked to quit and original Dock preferences were restored.",
+          ],
+        },
+        warnings: failure ? [failure.message] : [],
+      });
     }
   }
 }

@@ -82,6 +82,7 @@
     "update:acceptance:serve": "node scripts/serve-update-acceptance.mjs",
     "update:acceptance:run": "node scripts/run-update-acceptance.mjs",
     "update:acceptance:verify": "node scripts/verify-update-acceptance.mjs",
+    "acceptance:report": "node scripts/acceptance-report.mjs",
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
     "smoke:agent-control": "node scripts/smoke-agent-control.mjs",
     "smoke:capture": "node scripts/smoke-capture.mjs",
