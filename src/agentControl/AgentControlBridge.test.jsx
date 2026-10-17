@@ -4,6 +4,9 @@ import { render } from "@testing-library/react";
 
 const useAgentControlBridge = vi.hoisted(() => vi.fn());
 vi.mock("./useAgentControlBridge.js", () => ({ useAgentControlBridge }));
+vi.mock("../dev/useDevelopmentPerformance.js", () => ({
+  useDevelopmentPerformance: (enabled) => ({ enabled, inspect: vi.fn(), stall: vi.fn() }),
+}));
 vi.mock("../dock/DockContext.jsx", () => ({
   useDock: () => ({
     docked: false,
@@ -177,6 +180,7 @@ describe("AgentControlBridge", () => {
     expect(typeof passed.executeTransport).toBe("function");
     expect(typeof passed.uiNavigation.inspectUi).toBe("function");
     expect(passed.developmentFixtures).toEqual({ enabled: false });
+    expect(passed.developmentPerformance).toMatchObject({ enabled: false });
     expect(passed.device).toMatchObject({ runtimeUnavailable: false, snapshot: null });
     expect(passed.analysisContext).toMatchObject({
       channelCount: 2,

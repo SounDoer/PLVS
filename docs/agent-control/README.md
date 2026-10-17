@@ -84,7 +84,7 @@ the question unanswered.
 
 ## Application-wide methods
 
-### Development event fixtures
+### Private development controls
 
 Dev-identity builds have a private `dev.fixture.establish` / `dev.fixture.reset` wire path
 for deterministic review of event-only interfaces. Rust accepts the corresponding hidden CLI
@@ -98,6 +98,13 @@ settle. Existing blocking editors, real event surfaces, non-matching resets, sta
 busy states are refusals. A failed post-establishment wait reports the committed fixture ID and
 leaves the scene intact. Result actions such as Save, Send, Confirm, Update, Reload, Copy, and Delete
 remain ordinary user actions and are never fixture operations.
+
+The same private boundary has fixed `dev.performance.inspect` and `dev.performance.stall` methods
+for desktop-performance acceptance. Inspect combines the production native UI-frame diagnostics
+with a continuously maintained renderer animation-frame snapshot; it never waits for a new frame.
+Stall accepts only an integer from 100 through 10,000 milliseconds and blocks the renderer main
+thread for that bounded interval. Neither method accepts source text or arbitrary evaluation, and
+both remain unavailable outside the dev identity.
 
 ### `app.capabilities`
 

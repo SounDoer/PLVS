@@ -105,6 +105,10 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  DevPerformanceInspect,
+  DevPerformanceStall {
+    milliseconds: u64,
+  },
   MeasurementRead {
     method: String,
   },
@@ -341,9 +345,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     return parse_text_control_args(args);
   }
   match args {
-    [command, rest @ ..] if is_private_command(command) => {
-      return parse_development_fixture_args(rest)
-    }
+    [command, rest @ ..] if is_private_command(command) => return parse_development_args(rest),
     [flag] if is_help(flag) => return Ok(ControlCommand::Help),
     [command, rest @ ..]
       if is_command(command) && rest.iter().any(|argument| is_help(argument)) =>
@@ -384,6 +386,34 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [] => {}
   }
   Err("Usage: plvs-cli <capabilities|inspect|ui|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+}
+
+fn parse_development_args(args: &[String]) -> Result<ControlCommand, String> {
+  match args.first().map(String::as_str) {
+    Some("fixture") => parse_development_fixture_args(args),
+    Some("performance") => parse_development_performance_args(&args[1..]),
+    _ => Err("Development command is invalid.".to_string()),
+  }
+}
+
+fn parse_development_performance_args(args: &[String]) -> Result<ControlCommand, String> {
+  match args {
+    [operation, json] if operation == "inspect" && json == "--json" => {
+      Ok(ControlCommand::DevPerformanceInspect)
+    }
+    [operation, milliseconds, json] if operation == "stall" && json == "--json" => {
+      let milliseconds = milliseconds.parse::<u64>().map_err(|_| {
+        "Development performance stall must be an integer from 100 to 10000 ms.".to_string()
+      })?;
+      if !(100..=10_000).contains(&milliseconds) {
+        return Err(
+          "Development performance stall must be an integer from 100 to 10000 ms.".to_string(),
+        );
+      }
+      Ok(ControlCommand::DevPerformanceStall { milliseconds })
+    }
+    _ => Err("Development performance command is invalid.".to_string()),
+  }
 }
 
 fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -3255,6 +3285,8 @@ fn command_name(command: &ControlCommand) -> String {
     | ControlCommand::EditorDraftMutation { method, .. } => method.clone(),
     ControlCommand::DevFixtureEstablish { .. } => "dev.fixture.establish".to_string(),
     ControlCommand::DevFixtureReset { .. } => "dev.fixture.reset".to_string(),
+    ControlCommand::DevPerformanceInspect => "dev.performance.inspect".to_string(),
+    ControlCommand::DevPerformanceStall { .. } => "dev.performance.stall".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
@@ -3508,6 +3540,10 @@ fn request_for_command<R: Read>(
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
+    ControlCommand::DevPerformanceInspect => serde_json::json!({}),
+    ControlCommand::DevPerformanceStall { milliseconds } => {
+      serde_json::json!({ "milliseconds": milliseconds })
+    }
     ControlCommand::TransportReport {
       session_id,
       report_format,
@@ -4974,6 +5010,53 @@ mod tests {
       "dev.fixture.reset"
     );
     assert!(!help_text().contains("dev fixture"));
+  }
+
+  #[test]
+  fn parses_hidden_bounded_development_performance_commands() {
+    let inspect = parse_control_args(&args(&["dev", "performance", "inspect", "--json"])).unwrap();
+    assert_eq!(inspect, ControlCommand::DevPerformanceInspect);
+    assert_eq!(command_name(&inspect), "dev.performance.inspect");
+    assert_eq!(
+      request_for_command(&inspect, &mut "".as_bytes())
+        .unwrap()
+        .params,
+      serde_json::json!({})
+    );
+
+    let stall =
+      parse_control_args(&args(&["dev", "performance", "stall", "4000", "--json"])).unwrap();
+    assert_eq!(
+      stall,
+      ControlCommand::DevPerformanceStall {
+        milliseconds: 4_000
+      }
+    );
+    assert_eq!(command_name(&stall), "dev.performance.stall");
+    assert_eq!(
+      request_for_command(&stall, &mut "".as_bytes())
+        .unwrap()
+        .params,
+      serde_json::json!({ "milliseconds": 4_000 })
+    );
+
+    for invalid in [
+      args(&["dev", "performance", "inspect"]),
+      args(&["dev", "performance", "stall", "99", "--json"]),
+      args(&["dev", "performance", "stall", "10001", "--json"]),
+      args(&[
+        "dev",
+        "performance",
+        "stall",
+        "4000",
+        "--script",
+        "arbitrary",
+        "--json",
+      ]),
+    ] {
+      assert!(parse_control_args(&invalid).is_err());
+    }
+    assert!(!help_text().contains("dev performance"));
   }
 
   #[test]

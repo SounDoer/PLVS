@@ -267,6 +267,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentUi?: any,
  *   agentEditorDraft?: any,
  *   agentDevelopmentFixtures?: any,
+ *   agentDevelopmentPerformance?: any,
  *   applyAgentView?: (...args: any[]) => any,
  *   agentTransport?: any,
  *   agentDock?: any,
@@ -333,6 +334,7 @@ function Harness({
   },
   agentEditorDraft = null,
   agentDevelopmentFixtures = null,
+  agentDevelopmentPerformance = null,
   applyAgentView,
   agentTransport = transport,
   agentDock = dock,
@@ -546,6 +548,7 @@ function Harness({
     uiNavigation: agentUi,
     editorDraft: agentEditorDraft,
     developmentFixtures: agentDevelopmentFixtures,
+    developmentPerformance: agentDevelopmentPerformance,
     transport: transportState,
     transportContext: {
       docked: dockState.enabled,
@@ -2396,6 +2399,54 @@ describe("useAgentControlBridge", () => {
         },
         "fixture-unavailable"
       )
+    );
+    expect(unavailable.error.data.reason).toBe("methodNotFound");
+  });
+
+  it("routes only fixed development performance actions while development control is enabled", async () => {
+    const inspect = vi.fn(async () => ({
+      sampledAt: "2026-10-18T00:00:00.000Z",
+      native: { sentFrames: 10, droppedFrames: 0, audioDroppedChunks: 0 },
+      renderer: { animationFrame: { count: 20, latestAgeMs: 4, maxGapMs: 18 } },
+    }));
+    const stall = vi.fn(async (milliseconds) => ({ requestedMs: milliseconds, elapsedMs: 101 }));
+    mount({
+      agentDevelopmentFixtures: { enabled: true },
+      agentDevelopmentPerformance: { enabled: true, inspect, stall },
+    });
+    await waitUntilReady();
+
+    const inspection = await send(request("dev.performance.inspect", {}, "performance-inspect"));
+    expect(inspection.result).toMatchObject({
+      native: { sentFrames: 10 },
+      renderer: { animationFrame: { count: 20 } },
+    });
+    expect(inspect).toHaveBeenCalledOnce();
+
+    const stalled = await send(
+      request("dev.performance.stall", { milliseconds: 100 }, "performance-stall")
+    );
+    expect(stalled.result).toEqual({ requestedMs: 100, elapsedMs: 101 });
+    expect(stall).toHaveBeenCalledWith(100);
+
+    const arbitrary = await send(
+      request(
+        "dev.performance.stall",
+        { milliseconds: 100, script: "arbitrary" },
+        "performance-bad"
+      )
+    );
+    expect(arbitrary.error.data.reason).toBe("invalidParams");
+
+    cleanup();
+    adapter.ready.mockClear();
+    mount({
+      agentDevelopmentFixtures: { enabled: false },
+      agentDevelopmentPerformance: { enabled: false, inspect, stall },
+    });
+    await waitUntilReady();
+    const unavailable = await send(
+      request("dev.performance.inspect", {}, "performance-unavailable")
     );
     expect(unavailable.error.data.reason).toBe("methodNotFound");
   });

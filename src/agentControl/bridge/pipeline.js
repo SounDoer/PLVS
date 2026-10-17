@@ -3,6 +3,10 @@ import {
   isDevelopmentFixtureMethod,
   normalizeDevelopmentFixtureRequest,
 } from "../developmentFixtureProtocol.js";
+import {
+  isDevelopmentPerformanceMethod,
+  normalizeDevelopmentPerformanceRequest,
+} from "../developmentPerformanceProtocol.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "../protocol.js";
 import { WorkspaceLayoutError } from "../workspaceLayout.js";
 import { isCommitNotObserved, persistUnobservedCommit, semanticFailure } from "./failures.js";
@@ -61,11 +65,16 @@ export function createRequestProcessor({
     // The app state React had rendered when this request started. Handlers plan against it and
     // call `live()` after an `await` to see what has been rendered since.
     const snap = latestInputs();
+    const developmentEnabled = snap.developmentFixtures?.enabled === true;
     const developmentFixtureRequest =
-      snap.developmentFixtures?.enabled && isDevelopmentFixtureMethod(rawRequest?.method);
+      developmentEnabled && isDevelopmentFixtureMethod(rawRequest?.method);
+    const developmentPerformanceRequest =
+      developmentEnabled && isDevelopmentPerformanceMethod(rawRequest?.method);
     const normalized = developmentFixtureRequest
       ? normalizeDevelopmentFixtureRequest(rawRequest)
-      : normalizeAgentControlRequest(rawRequest);
+      : developmentPerformanceRequest
+        ? normalizeDevelopmentPerformanceRequest(rawRequest)
+        : normalizeAgentControlRequest(rawRequest);
     const requestId =
       normalized.ok && normalized.request.id
         ? normalized.request.id

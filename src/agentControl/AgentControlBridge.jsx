@@ -28,6 +28,7 @@ import { settleDockAccessory } from "./settleDockAccessory.js";
 import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
 import { isParticipantInstance } from "../lib/runtimeRole.js";
 import { useDevelopmentEventFixtures } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { useDevelopmentPerformance } from "../dev/useDevelopmentPerformance.js";
 import { useEditorDraftRegistry } from "./EditorDraftContext.jsx";
 import {
   captureVisualScreenshot,
@@ -110,6 +111,7 @@ export function AgentControlBridge() {
   const presets = usePresetLibrary();
   const uiNavigation = useUiNavigation();
   const developmentFixtures = useDevelopmentEventFixtures();
+  const developmentPerformance = useDevelopmentPerformance(developmentFixtures.enabled);
   const meterRuntime = useMeterRuntime();
   const {
     analyzingFileId,
@@ -525,6 +527,7 @@ export function AgentControlBridge() {
     uiNavigation,
     editorDraft,
     developmentFixtures,
+    developmentPerformance,
     device: agentControlDevice,
     presets,
     loudnessProfile,

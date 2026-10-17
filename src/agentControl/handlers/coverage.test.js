@@ -8,13 +8,20 @@ import { METHOD_TABLE } from "./index.js";
 
 /// Served only while development fixtures are enabled, so the public manifest does not list them.
 const DEVELOPMENT_FIXTURE_METHODS = ["dev.fixture.establish", "dev.fixture.reset"];
+const DEVELOPMENT_PERFORMANCE_METHODS = ["dev.performance.inspect", "dev.performance.stall"];
 
 describe("Agent Control handler coverage", () => {
   it("has exactly one handler for every wire method a running app serves", () => {
     const wireMethods = manifest.commands
       .filter(({ execution }) => execution === "runningApp")
       .map(({ wireMethod }) => wireMethod);
-    const expected = [...new Set([...wireMethods, ...DEVELOPMENT_FIXTURE_METHODS])].sort();
+    const expected = [
+      ...new Set([
+        ...wireMethods,
+        ...DEVELOPMENT_FIXTURE_METHODS,
+        ...DEVELOPMENT_PERFORMANCE_METHODS,
+      ]),
+    ].sort();
     expect(Object.keys(METHOD_TABLE).sort()).toEqual(expected);
   });
 
