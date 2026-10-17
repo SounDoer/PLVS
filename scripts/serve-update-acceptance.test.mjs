@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -90,5 +91,29 @@ describe("update acceptance feed", () => {
     const unavailableFixture = fixture();
     const unavailableOrigin = await listen(unavailableFixture.root, "manifest-unavailable");
     expect((await fetch(`${unavailableOrigin}/latest.json`)).status).toBe(503);
+  });
+
+  it("switches declared faults between requests for one guided run", async () => {
+    const dynamicFixture = fixture();
+    let fault = "stale-signature";
+    const server = createAcceptanceFeed({ root: dynamicFixture.root, fault: () => fault });
+    servers.push(server);
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+
+    const stale = await fetch(`${origin}/latest.json`).then((response) => response.json());
+    expect(stale.platforms["darwin-aarch64"].signature).toBe("stale-new-signature");
+
+    fault = "truncated-package";
+    const truncated = Buffer.from(
+      await fetch(`${origin}/package.app.tar.gz`).then((response) => response.arrayBuffer())
+    );
+    expect(truncated.length).toBeLessThan(dynamicFixture.packageBytes.length);
+
+    fault = "valid";
+    const complete = Buffer.from(
+      await fetch(`${origin}/package.app.tar.gz`).then((response) => response.arrayBuffer())
+    );
+    expect(complete).toEqual(dynamicFixture.packageBytes);
   });
 });

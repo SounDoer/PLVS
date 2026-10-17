@@ -22,6 +22,10 @@ Evidence is under the ignored directory
 run as complete while listing privileged install, authorization cancellation, and notarization as
 the remaining explicit gaps.
 
+A later runner-owned replay is under `runs/runner-owned-faults-v5/`. It passed the stale-signature
+and truncated-package rejection scenarios with real error screenshots, then completed the same
+offline update and cleanup. Its only required automated gap is the read-only DMG scenario.
+
 ## Defects found and fixed
 
 1. The builder assumed that the base fixture version must change when applying the base version.
@@ -32,24 +36,30 @@ the remaining explicit gaps.
 3. macOS `tar` copied AppleDouble `._*.app` metadata into the updater archive. Tauri attempted to
    unpack that metadata entry as the application bundle and refused installation. The builder now
    sets `COPYFILE_DISABLE=1` for updater archives, and a contract test protects that requirement.
+4. LaunchServices redirected a repeated run to an older extracted app with the same bundle ID. The
+   runner now starts the exact executable path, and the process-path cleanup guard remains exact.
+5. Immediate CLI polling could create the multi-instance directory before the app completed its
+   first persistence migration. The runner now waits for the migration marker before discovery.
 
 ## Rig and automation findings
 
-- Launching the test binary as the foreground process of a disposable terminal session caused the
-  detached update helper to die when that terminal session closed. Launching the packaged app
-  through macOS LaunchServices matched production behavior and completed the handoff. The runner
-  therefore uses `open -n -a ... --args` rather than attaching the GUI process to its terminal.
+- Launching through macOS LaunchServices completed the helper handoff in the first run, but a later
+  repeated run proved that LaunchServices may redirect the same test bundle identifier to an older
+  extracted copy. The runner now launches the exact bundle executable as a background child of the
+  long-lived acceptance process. This keeps path ownership deterministic without recreating the
+  earlier disposable-terminal failure that killed the helper's process session.
 - The disposable app path had no macOS Accessibility grant. Reserve Screen Space was refused with
   the expected guidance, while ordinary Dock geometry and restart restoration passed. The run did
   not change System Settings. This remains a clearly reported non-blocking rig boundary.
-- Routine UI confirmation is intentionally visible. The macOS runner automates staging, feed
-  shutdown, offline transition, evidence collection, comparison, and verification, but pauses for
-  enabling Auto Download and confirming Update and Restart.
+- Routine UI confirmation is intentionally visible. The macOS runner automates fault switching,
+  error-surface detection and capture, staging, feed shutdown, offline transition, evidence
+  collection, comparison, and verification, but pauses for Auto Download, each real Retry, normal
+  offline restart, and Update and Restart.
 
 ## Remaining work
 
-- Fold the proven read-only DMG, stale-signature, and truncated-package checks into runner-owned
-  scenarios, and add deterministic helper interruption.
+- Fold the proven read-only DMG check into a runner-owned scenario, and add deterministic helper
+  interruption.
 - Add manual `/Applications` approval and cancellation evidence without storing credentials.
 - Run the migrated Windows NSIS adapter on a Windows acceptance host. Its install, launch, helper,
   cleanup, result-schema, and common npm-command contracts are implemented, but macOS code tests do

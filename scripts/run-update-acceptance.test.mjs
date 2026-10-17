@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
+  acceptanceBootstrapMarker,
   comparableDock,
+  findUpdateSurface,
+  hasFeedPackageRequest,
   macAcceptanceLaunch,
   parseRunArguments,
   windowsAcceptanceInstall,
@@ -10,20 +13,21 @@ import {
 } from "./run-update-acceptance.mjs";
 
 describe("update acceptance runner", () => {
-  it("preserves paths with spaces as individual LaunchServices arguments", () => {
+  it("launches the exact macOS bundle executable with isolated data", () => {
     expect(
       macAcceptanceLaunch("/tmp/install with spaces/Test.app", "/tmp/data with spaces")
     ).toEqual({
-      command: "open",
+      command: "/tmp/install with spaces/Test.app/Contents/MacOS/plvs",
       args: [
-        "-n",
-        "-a",
-        "/tmp/install with spaces/Test.app",
-        "--args",
+        "-ApplePersistenceIgnoreState",
+        "YES",
         "--plvs-test-app-data-root",
         "/tmp/data with spaces",
       ],
     });
+    expect(acceptanceBootstrapMarker("/tmp/data with spaces")).toBe(
+      "/tmp/data with spaces/multi-instance/migration-complete.json"
+    );
   });
 
   it("rejects unsafe run IDs", () => {
@@ -76,6 +80,34 @@ describe("update acceptance runner", () => {
         { id: "level", moduleId: "levelMeter", width: 150, widthMode: "preferred", controls: {} },
       ],
     });
+  });
+
+  it("distinguishes package fault requests and real update error surfaces", () => {
+    expect(
+      hasFeedPackageRequest(
+        [
+          { path: "/latest.json", fault: "stale-signature" },
+          { path: "/package.app.tar.gz", fault: "stale-signature" },
+        ],
+        "stale-signature",
+        "/package.app.tar.gz"
+      )
+    ).toBe(true);
+    expect(
+      hasFeedPackageRequest(
+        [{ path: "/package.app.tar.gz", fault: "valid" }],
+        "truncated-package",
+        "/package.app.tar.gz"
+      )
+    ).toBe(false);
+    expect(
+      findUpdateSurface({
+        surfaces: [
+          { surfaceId: "setup", kind: "update", target: { phase: "preferences" } },
+          { surfaceId: "failure", kind: "update", target: { phase: "idle" } },
+        ],
+      })
+    ).toMatchObject({ surfaceId: "failure" });
   });
 
   it("publishes one command family for both platform adapters", () => {

@@ -635,10 +635,14 @@ npm run update:acceptance:run -- artifacts/update-acceptance/<short-sha>
 npm run update:acceptance:verify -- artifacts/update-acceptance/<short-sha>
 ```
 
-The macOS runner stages the older app in a writable path containing spaces, launches it through
-LaunchServices, stops the loopback feed after the signed package is cached, and records the offline
-replacement and restored Dock. It prints checkpoints for the two actions that must remain visible
-in the real product UI: enabling Auto Download and confirming Update and Restart. Do not grant
+The macOS runner stages the older app in a writable path containing spaces and launches that exact
+bundle executable as a background child of the long-lived runner. This keeps the update helper's
+process session alive while preventing duplicate copies with the same test identity from
+redirecting launch to an older path. Before staging the valid package, the runner serves a stale
+signature and a truncated package in turn, waits for a real Update retry and visible error, records
+screenshots, and proves that neither rejection left a ready package. It then stops the loopback feed
+after the valid signed package is cached and records the offline replacement and restored Dock. It
+prints checkpoints for actions that must remain visible in the real product UI. Do not grant
 Accessibility, administrator access, or other system permissions merely to make an acceptance row
 green; the result must record that boundary explicitly.
 

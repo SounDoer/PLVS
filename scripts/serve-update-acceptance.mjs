@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
+import process from "node:process";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -24,27 +25,34 @@ export function parseServeArguments(args) {
 }
 
 export function createAcceptanceFeed({ root, fault = "valid", onRequest }) {
-  const selectedFault = parseFeedFault(fault);
+  const selectedFault =
+    typeof fault === "function"
+      ? () => parseFeedFault(fault())
+      : (() => {
+          const fixed = parseFeedFault(fault);
+          return () => fixed;
+        })();
   const receipt = JSON.parse(readFileSync(path.join(root, "acceptance.json"), "utf8"));
   const { descriptor, latest } = validateAcceptanceReceipt(receipt, root);
   const packageFile = resolveReceiptFile(root, latest.file);
   return createServer((request, response) => {
-    const event = { time: new Date().toISOString(), path: request.url, fault: selectedFault };
+    const requestFault = selectedFault();
+    const event = { time: new Date().toISOString(), path: request.url, fault: requestFault };
     appendFileSync(path.join(root, "requests.jsonl"), `${JSON.stringify(event)}\n`);
     onRequest?.(event);
     if (request.url === "/latest.json") {
-      if (selectedFault === "manifest-unavailable") {
+      if (requestFault === "manifest-unavailable") {
         response.statusCode = 503;
         response.end("Acceptance manifest unavailable");
         return;
       }
       response.setHeader("Content-Type", "application/json");
-      response.end(JSON.stringify(acceptanceFeedManifest(receipt, selectedFault)));
+      response.end(JSON.stringify(acceptanceFeedManifest(receipt, requestFault)));
       return;
     }
     if (request.url === descriptor.packageEndpoint) {
       let bytes = readFileSync(packageFile);
-      if (selectedFault === "truncated-package") {
+      if (requestFault === "truncated-package") {
         bytes = bytes.subarray(0, Math.max(1, bytes.length >> 1));
       }
       response.setHeader("Content-Length", bytes.length);

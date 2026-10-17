@@ -46,9 +46,13 @@ export function parseRunArguments(args) {
 
 export function macAcceptanceLaunch(app, dataRoot) {
   return {
-    command: "open",
-    args: ["-n", "-a", app, "--args", "--plvs-test-app-data-root", dataRoot],
+    command: path.join(app, "Contents", "MacOS", "plvs"),
+    args: ["-ApplePersistenceIgnoreState", "YES", "--plvs-test-app-data-root", dataRoot],
   };
+}
+
+export function acceptanceBootstrapMarker(dataRoot) {
+  return path.join(dataRoot, "multi-instance", "migration-complete.json");
 }
 
 export function windowsAcceptanceInstall(installer, installRoot) {
@@ -86,6 +90,15 @@ function run(command, args, options = {}) {
   });
   if (result.status !== 0) throw new Error(result.stderr.trim() || `${command} failed`);
   return result.stdout.trim();
+}
+
+function launchBackground(command, args, { newProcessGroup = true } = {}) {
+  const child = spawn(command, args, {
+    detached: newProcessGroup,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.unref();
 }
 
 function cliJson(cli, dataRoot, args) {
@@ -142,6 +155,98 @@ function artifactList(runDir, names) {
             : "application/json"
       )
     );
+}
+
+function readRequestEvents(requestLog) {
+  if (!existsSync(requestLog)) return [];
+  return readFileSync(requestLog, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line)];
+      } catch {
+        return [];
+      }
+    });
+}
+
+export function hasFeedPackageRequest(events, fault, packageEndpoint) {
+  return events.some((event) => event.fault === fault && event.path === packageEndpoint);
+}
+
+function feedPackageRequestCount(events, fault, packageEndpoint) {
+  return events.filter((event) => event.fault === fault && event.path === packageEndpoint).length;
+}
+
+export function findUpdateSurface(uiResult) {
+  return uiResult?.surfaces?.find(
+    (surface) => surface.kind === "update" && surface.target?.phase !== "preferences"
+  );
+}
+
+async function captureRejectedPackage({
+  cli,
+  dataRoot,
+  runDir,
+  requestLog,
+  fault,
+  packageEndpoint,
+  screenshot,
+}) {
+  await waitFor(
+    `${fault} package request`,
+    () => readRequestEvents(requestLog),
+    (events) => hasFeedPackageRequest(events, fault, packageEndpoint)
+  );
+  const automaticRequestCount = feedPackageRequestCount(
+    readRequestEvents(requestLog),
+    fault,
+    packageEndpoint
+  );
+  console.log(
+    `CHECKPOINT ${fault}: Wait for Update Failed, open the update details from the Dock update indicator, click Update and Restart to retry, and leave the resulting error visible.`
+  );
+  const ui = await waitFor(
+    `${fault} visible error`,
+    () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+    (value) => findUpdateSurface(value.result)?.target?.phase === "install-error"
+  );
+  const retryRequestCount = feedPackageRequestCount(
+    readRequestEvents(requestLog),
+    fault,
+    packageEndpoint
+  );
+  if (retryRequestCount <= automaticRequestCount) {
+    throw new Error(`${fault} did not retry the rejected package through the visible update flow`);
+  }
+  if (readReady(dataRoot)?.value.ready) {
+    throw new Error(`${fault} unexpectedly left a ready update in the cache`);
+  }
+  const surface = findUpdateSurface(ui.result);
+  const screenshotTarget = ui.result.window?.form === "dock" ? "dock-update" : "main";
+  cliJson(cli, dataRoot, [
+    "visual",
+    "screenshot",
+    "--target",
+    screenshotTarget,
+    "--expected-revision",
+    String(ui.result.revision),
+    "--expected-ui-generation",
+    String(ui.result.uiGeneration),
+    "--out",
+    path.join(runDir, screenshot),
+  ]);
+  cliJson(cli, dataRoot, [
+    "ui",
+    "cancel",
+    surface.surfaceId,
+    "--expected-revision",
+    String(ui.result.revision),
+    "--expected-ui-generation",
+    String(ui.result.uiGeneration),
+  ]);
+  return { status: "passed" };
 }
 
 function terminateOwnedMacApp(app) {
@@ -217,193 +322,269 @@ async function runGuidedAcceptance({
   });
   const requestLog = path.join(runDir, "requests.jsonl");
   writeFileSync(requestLog, "");
+  let feedFault = "stale-signature";
   const server = createAcceptanceFeed({
     root,
+    fault: () => feedFault,
     onRequest: (event) => appendFileSync(requestLog, `${JSON.stringify(event)}\n`),
   });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(receipt.feed.port, receipt.feed.host, resolve);
   });
+  let feedClosed = false;
+  async function closeFeed() {
+    if (feedClosed) return;
+    feedClosed = true;
+    await new Promise((resolve) => server.close(resolve));
+  }
   const startedAt = new Date().toISOString();
-  launch();
-  const capabilities = await waitFor(
-    "packaged app launch",
-    () => cliJson(cli, dataRoot, ["capabilities"]),
-    (value) => value.result?.appVersion === older.version,
-    60_000
-  );
-  if (capabilities.result.runtime?.identifier !== receipt.identity) {
-    throw new Error("Running app identity does not match the acceptance receipt");
-  }
-  const before = cliJson(cli, dataRoot, ["inspect"]);
-  writeJsonAtomic(path.join(runDir, "before.json"), before);
-  console.log(
-    "CHECKPOINT auto-download: In the isolated app, enable Auto Download in Settings. " +
-      "The runner will continue when the signed package is ready."
-  );
-  await waitFor(
-    "automatic update download",
-    () => readReady(dataRoot),
-    (value) => value?.value.ready
-  );
-  await new Promise((resolve) => server.close(resolve));
-  console.log(
-    "CHECKPOINT offline-restart: The feed is stopped. Quit the isolated app normally; the runner will relaunch it offline."
-  );
-  await waitFor(
-    "isolated app shutdown",
-    () => {
-      try {
-        cliJson(cli, dataRoot, ["capabilities"]);
-        return false;
-      } catch {
-        return true;
-      }
-    },
-    Boolean
-  );
-  launch();
-  await waitFor(
-    "offline relaunch",
-    () => cliJson(cli, dataRoot, ["capabilities"]),
-    (value) => value.result?.appVersion === older.version,
-    60_000
-  );
-  const revision = cliJson(cli, dataRoot, ["inspect"]).result.revision;
   try {
-    cliJson(cli, dataRoot, [
-      "visual",
-      "screenshot",
-      "--target",
-      "dock-update",
-      "--expected-revision",
-      String(revision),
-      "--out",
-      path.join(runDir, "update-details.png"),
-    ]);
-  } catch (error) {
-    console.warn(`Update-details screenshot was unavailable: ${error.message}`);
-  }
-  console.log(
-    "CHECKPOINT offline-install: Confirm Update Ready, exercise Skip This Time and reopen it from the Dock accessory, then click Update and Restart."
-  );
-  const attemptFile = await waitFor(
-    "offline installation",
-    () => findNamedFile(path.join(dataRoot, "updates"), "attempt.json"),
-    Boolean
-  );
-  const attempt = await waitFor(
-    "installer completion",
-    () => JSON.parse(readFileSync(attemptFile, "utf8")),
-    (value) => value.phase === "finished" || value.phase === "failed"
-  );
-  if (attempt.phase !== "finished")
-    throw new Error(`Installer failed: ${attempt.error ?? "unknown error"}`);
-  const afterCapabilities = await waitFor(
-    "updated app relaunch",
-    () => cliJson(cli, dataRoot, ["capabilities"]),
-    (value) =>
-      value.result?.appVersion === newer.version && value.result?.cliVersion === newer.version,
-    60_000
-  );
-  const after = cliJson(cli, dataRoot, ["inspect"]);
-  writeJsonAtomic(path.join(runDir, "after.json"), after);
-  writeJsonAtomic(path.join(runDir, "capabilities-after.json"), afterCapabilities);
-  copyFileSync(attemptFile, path.join(runDir, "helper-attempt.json"));
-  const cacheAfter = readReady(dataRoot);
-  if (cacheAfter) copyFileSync(cacheAfter.file, path.join(runDir, "cache-state-after.json"));
-  try {
-    cliJson(cli, dataRoot, [
-      "visual",
-      "screenshot",
-      "--target",
-      "main",
-      "--expected-revision",
-      String(after.result.revision),
-      "--out",
-      path.join(runDir, "restored-dock.png"),
-    ]);
-  } catch (error) {
-    console.warn(`Restored-Dock screenshot was unavailable: ${error.message}`);
-  }
-  const beforeResult = before.result;
-  const afterResult = after.result;
-  const stateEqual =
-    JSON.stringify(beforeResult.settings) === JSON.stringify(afterResult.settings) &&
-    JSON.stringify(beforeResult.workspace) === JSON.stringify(afterResult.workspace);
-  const dockEqual =
-    JSON.stringify(comparableDock(beforeResult.dock)) ===
-    JSON.stringify(comparableDock(afterResult.dock));
-  const readyCleared = cacheAfter?.value.ready === null;
-  const scenarioStatus = (passed) => (passed ? "passed" : "failed");
-  const scenarios = [
-    { id: "writable-path-offline-update", status: "passed" },
-    { id: "cached-offer-survives-restart", status: "passed" },
-    { id: "version-and-cli-advance", status: "passed" },
-    { id: "persistence-restored", status: scenarioStatus(stateEqual) },
-    { id: "dock-restored", status: scenarioStatus(dockEqual) },
-    { id: "helper-finished", status: "passed" },
-    { id: "cache-cleared", status: scenarioStatus(readyCleared) },
-    ...nativeScenarios(attempt),
-    { id: "stale-signature-rejected", status: "notRun", reason: "planned automated scenario" },
-    { id: "truncated-package-rejected", status: "notRun", reason: "planned automated scenario" },
-    ...manualUpdateScenarios(receipt.platform.os).map((id) => ({
-      id,
-      status: "notRun",
-      reason: "manual or release-only checkpoint",
-    })),
-  ];
-  const incomplete = requiredUpdateScenarios(receipt.platform.os).some(
-    (id) => scenarios.find((scenario) => scenario.id === id)?.status !== "passed"
-  );
-  const failed = scenarios.some((scenario) => scenario.status === "failed");
-  const terminatedPids = terminate();
-  if (!terminatedPids.length) {
-    throw new Error("The updated isolated app was not running at its recorded installation path");
-  }
-  await waitFor(
-    "isolated app cleanup",
-    () => cleanup.processesExited(terminatedPids),
-    Boolean,
-    10_000
-  );
-  await cleanup.installation();
-  const result = {
-    schemaVersion: 1,
-    domain: "update",
-    runId,
-    sourceSha: receipt.sourceSha,
-    identity: acceptanceNames(receipt.sourceSha).identity,
-    platform: { ...receipt.platform, version: platformVersion() },
-    tool: { name: "update-acceptance", version: 1 },
-    startedAt,
-    endedAt: new Date().toISOString(),
-    summary: failed ? "failed" : incomplete ? "incomplete" : "complete",
-    scenarios,
-    artifacts: artifactList(runDir, [
-      "before.json",
-      "after.json",
-      "capabilities-after.json",
-      "helper-attempt.json",
-      "cache-state-after.json",
-      "requests.jsonl",
-      "update-details.png",
-      "restored-dock.png",
-    ]),
-    cleanup: {
-      status: "passed",
-      observations: [
-        "The feed was stopped and all app processes launched from the isolated installation path exited.",
+    launch();
+    await waitFor(
+      "packaged app persistence bootstrap",
+      () => existsSync(acceptanceBootstrapMarker(dataRoot)),
+      Boolean,
+      60_000
+    );
+    const capabilities = await waitFor(
+      "packaged app launch",
+      () => cliJson(cli, dataRoot, ["capabilities"]),
+      (value) => value.result?.appVersion === older.version,
+      60_000
+    );
+    if (capabilities.result.runtime?.identifier !== receipt.identity) {
+      throw new Error("Running app identity does not match the acceptance receipt");
+    }
+    const before = cliJson(cli, dataRoot, ["inspect"]);
+    writeJsonAtomic(path.join(runDir, "before.json"), before);
+    console.log(
+      "CHECKPOINT auto-download: In the isolated app, enable Auto Download in Settings. " +
+        "The first download deliberately has a stale signature and must show Update Failed."
+    );
+    const packageEndpoint = platformDescriptor().packageEndpoint;
+    const rejectionScenarios = [];
+    rejectionScenarios.push({
+      id: "stale-signature-rejected",
+      ...(await captureRejectedPackage({
+        cli,
+        dataRoot,
+        runDir,
+        requestLog,
+        fault: feedFault,
+        packageEndpoint,
+        screenshot: "stale-signature-rejected.png",
+      })),
+    });
+    async function restartOlderApp(label) {
+      const pids = terminate();
+      if (!pids.length) throw new Error(`${label}: isolated app was not running`);
+      await waitFor(label, () => cleanup.processesExited(pids), Boolean, 10_000);
+      launch();
+      await waitFor(
+        label,
+        () => cliJson(cli, dataRoot, ["capabilities"]),
+        (value) => value.result?.appVersion === older.version,
+        60_000
+      );
+    }
+    feedFault = "truncated-package";
+    await restartOlderApp("truncated-package relaunch");
+    rejectionScenarios.push({
+      id: "truncated-package-rejected",
+      ...(await captureRejectedPackage({
+        cli,
+        dataRoot,
+        runDir,
+        requestLog,
+        fault: feedFault,
+        packageEndpoint,
+        screenshot: "truncated-package-rejected.png",
+      })),
+    });
+    feedFault = "valid";
+    await restartOlderApp("valid-package relaunch");
+    await waitFor(
+      "automatic update download",
+      () => readReady(dataRoot),
+      (value) => value?.value.ready
+    );
+    await closeFeed();
+    console.log(
+      "CHECKPOINT offline-restart: The feed is stopped. Quit the isolated app normally; the runner will relaunch it offline."
+    );
+    await waitFor(
+      "isolated app shutdown",
+      () => {
+        try {
+          cliJson(cli, dataRoot, ["capabilities"]);
+          return false;
+        } catch {
+          return true;
+        }
+      },
+      Boolean
+    );
+    launch();
+    await waitFor(
+      "offline relaunch",
+      () => cliJson(cli, dataRoot, ["capabilities"]),
+      (value) => value.result?.appVersion === older.version,
+      60_000
+    );
+    const revision = cliJson(cli, dataRoot, ["inspect"]).result.revision;
+    try {
+      cliJson(cli, dataRoot, [
+        "visual",
+        "screenshot",
+        "--target",
+        "dock-update",
+        "--expected-revision",
+        String(revision),
+        "--out",
+        path.join(runDir, "update-details.png"),
+      ]);
+    } catch (error) {
+      console.warn(`Update-details screenshot was unavailable: ${error.message}`);
+    }
+    console.log(
+      "CHECKPOINT offline-install: Confirm Update Ready, exercise Skip This Time and reopen it from the Dock accessory, then click Update and Restart."
+    );
+    const attemptFile = await waitFor(
+      "offline installation",
+      () => findNamedFile(path.join(dataRoot, "updates"), "attempt.json"),
+      Boolean
+    );
+    const attempt = await waitFor(
+      "installer completion",
+      () => JSON.parse(readFileSync(attemptFile, "utf8")),
+      (value) => value.phase === "finished" || value.phase === "failed"
+    );
+    if (attempt.phase !== "finished")
+      throw new Error(`Installer failed: ${attempt.error ?? "unknown error"}`);
+    const afterCapabilities = await waitFor(
+      "updated app relaunch",
+      () => cliJson(cli, dataRoot, ["capabilities"]),
+      (value) =>
+        value.result?.appVersion === newer.version && value.result?.cliVersion === newer.version,
+      60_000
+    );
+    const after = cliJson(cli, dataRoot, ["inspect"]);
+    writeJsonAtomic(path.join(runDir, "after.json"), after);
+    writeJsonAtomic(path.join(runDir, "capabilities-after.json"), afterCapabilities);
+    copyFileSync(attemptFile, path.join(runDir, "helper-attempt.json"));
+    const cacheAfter = readReady(dataRoot);
+    if (cacheAfter) copyFileSync(cacheAfter.file, path.join(runDir, "cache-state-after.json"));
+    try {
+      cliJson(cli, dataRoot, [
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--expected-revision",
+        String(after.result.revision),
+        "--out",
+        path.join(runDir, "restored-dock.png"),
+      ]);
+    } catch (error) {
+      console.warn(`Restored-Dock screenshot was unavailable: ${error.message}`);
+    }
+    const beforeResult = before.result;
+    const afterResult = after.result;
+    const stateEqual =
+      JSON.stringify(beforeResult.settings) === JSON.stringify(afterResult.settings) &&
+      JSON.stringify(beforeResult.workspace) === JSON.stringify(afterResult.workspace);
+    const dockEqual =
+      JSON.stringify(comparableDock(beforeResult.dock)) ===
+      JSON.stringify(comparableDock(afterResult.dock));
+    const readyCleared = cacheAfter?.value.ready === null;
+    const scenarioStatus = (passed) => (passed ? "passed" : "failed");
+    const scenarios = [
+      { id: "writable-path-offline-update", status: "passed" },
+      { id: "cached-offer-survives-restart", status: "passed" },
+      { id: "version-and-cli-advance", status: "passed" },
+      { id: "persistence-restored", status: scenarioStatus(stateEqual) },
+      { id: "dock-restored", status: scenarioStatus(dockEqual) },
+      { id: "helper-finished", status: "passed" },
+      { id: "cache-cleared", status: scenarioStatus(readyCleared) },
+      ...nativeScenarios(attempt),
+      ...rejectionScenarios,
+      ...manualUpdateScenarios(receipt.platform.os).map((id) => ({
+        id,
+        status: "notRun",
+        reason: "manual or release-only checkpoint",
+      })),
+    ];
+    const incomplete = requiredUpdateScenarios(receipt.platform.os).some(
+      (id) => scenarios.find((scenario) => scenario.id === id)?.status !== "passed"
+    );
+    const failed = scenarios.some((scenario) => scenario.status === "failed");
+    const terminatedPids = terminate();
+    if (!terminatedPids.length) {
+      throw new Error("The updated isolated app was not running at its recorded installation path");
+    }
+    await waitFor(
+      "isolated app cleanup",
+      () => cleanup.processesExited(terminatedPids),
+      Boolean,
+      10_000
+    );
+    await cleanup.installation();
+    const result = {
+      schemaVersion: 1,
+      domain: "update",
+      runId,
+      sourceSha: receipt.sourceSha,
+      identity: acceptanceNames(receipt.sourceSha).identity,
+      platform: { ...receipt.platform, version: platformVersion() },
+      tool: { name: "update-acceptance", version: 1 },
+      startedAt,
+      endedAt: new Date().toISOString(),
+      summary: failed ? "failed" : incomplete ? "incomplete" : "complete",
+      scenarios,
+      artifacts: artifactList(runDir, [
+        "before.json",
+        "after.json",
+        "capabilities-after.json",
+        "helper-attempt.json",
+        "cache-state-after.json",
+        "requests.jsonl",
+        "update-details.png",
+        "restored-dock.png",
+        "stale-signature-rejected.png",
+        "truncated-package-rejected.png",
+      ]),
+      cleanup: {
+        status: "passed",
+        observations: [
+          "The feed was stopped and all app processes launched from the isolated installation path exited.",
+        ],
+      },
+      warnings: [
+        "Routine UI confirmations remain operator checkpoints; staging, offline transition, evidence, and verification are automated.",
       ],
-    },
-    warnings: [
-      "Routine UI confirmations remain operator checkpoints; staging, offline transition, evidence, and verification are automated.",
-    ],
-  };
-  writeJsonAtomic(path.join(runDir, "result.json"), result);
-  console.log(`Acceptance result ready: ${path.join(runDir, "result.json")}`);
-  return result;
+    };
+    writeJsonAtomic(path.join(runDir, "result.json"), result);
+    console.log(`Acceptance result ready: ${path.join(runDir, "result.json")}`);
+    return result;
+  } catch (error) {
+    await closeFeed();
+    try {
+      const pids = terminate();
+      if (pids.length) {
+        await waitFor(
+          "failed-run process cleanup",
+          () => cleanup.processesExited(pids),
+          Boolean,
+          10_000
+        );
+      }
+      await cleanup.installation();
+    } catch (cleanupError) {
+      console.warn(`Failed-run cleanup needs attention: ${cleanupError.message}`);
+    }
+    throw error;
+  }
 }
 
 async function runMacAcceptance({ root, runId, receipt }) {
@@ -425,7 +606,8 @@ async function runMacAcceptance({ root, runId, receipt }) {
     runDir,
     dataRoot,
     cli,
-    launch: () => run(launchCommand.command, launchCommand.args),
+    launch: () =>
+      launchBackground(launchCommand.command, launchCommand.args, { newProcessGroup: false }),
     terminate: () => terminateOwnedMacApp(app),
     cleanup: {
       processesExited: (pids) => {
@@ -461,14 +643,7 @@ async function runWindowsAcceptance({ root, runId, receipt }) {
     throw new Error(`NSIS registered an unexpected install path: ${registeredInstall}`);
   }
   const launchCommand = windowsAcceptanceLaunch(app, dataRoot);
-  const launch = () => {
-    const child = spawn(launchCommand.command, launchCommand.args, {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-    });
-    child.unref();
-  };
+  const launch = () => launchBackground(launchCommand.command, launchCommand.args);
   return runGuidedAcceptance({
     root,
     runId,
