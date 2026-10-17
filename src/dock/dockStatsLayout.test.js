@@ -11,12 +11,12 @@ import {
 
 describe("computeDockStatsColumnCount", () => {
   it("adds columns only after accounting for the wider group gutters", () => {
-    expect(DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX).toBe(72);
-    expect(DOCK_STATS_MIN_CELL_WIDTH_PX).toBe(60);
-    expect(computeDockStatsColumnCount(131)).toBe(1);
-    expect(computeDockStatsColumnCount(132)).toBe(2);
-    expect(computeDockStatsColumnCount(203)).toBe(2);
-    expect(computeDockStatsColumnCount(204)).toBe(3);
+    expect(DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX).toBe(92);
+    expect(DOCK_STATS_MIN_CELL_WIDTH_PX).toBe(84);
+    expect(computeDockStatsColumnCount(179)).toBe(1);
+    expect(computeDockStatsColumnCount(180)).toBe(2);
+    expect(computeDockStatsColumnCount(275)).toBe(2);
+    expect(computeDockStatsColumnCount(276)).toBe(3);
   });
 
   it("accepts a font-scaled minimum cell width", () => {
@@ -52,7 +52,7 @@ describe("dockStatsGridPosition", () => {
 
 describe("dockStatsGridTemplate", () => {
   it("puts elastic space between metric groups instead of label and value", () => {
-    expect(dockStatsGridTemplate(2)).toBe("minmax(0, 72px) minmax(12px, 1fr) minmax(0, 72px)");
+    expect(dockStatsGridTemplate(2)).toBe("minmax(0, 92px) minmax(12px, 1fr) minmax(0, 92px)");
   });
 
   it("accepts a font-scaled comfortable cell width", () => {

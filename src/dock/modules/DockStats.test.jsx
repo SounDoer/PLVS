@@ -96,7 +96,7 @@ describe("DockStats", () => {
       "ST-19.2",
       "I-20.1",
     ]);
-    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 72px)");
+    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 92px)");
 
     expect(stats[0].style.gap).toBe("2px");
     expect(
@@ -155,7 +155,7 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 132 } },
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 180 } },
       ])
     );
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("2");
@@ -164,7 +164,7 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 204 } },
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 276 } },
       ])
     );
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("3");
@@ -187,7 +187,7 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 420 } },
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 564 } },
       ])
     );
 
@@ -227,7 +227,7 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 404 } },
+        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 468 } },
       ])
     );
 

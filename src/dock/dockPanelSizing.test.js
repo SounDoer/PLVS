@@ -61,7 +61,7 @@ describe("dock panel sizing", () => {
     const size = (height, interfaceSize = "default") =>
       getDockPanelSizing("stats", interfaceSize, true, { height, controls });
     // Single-line rows: eight fit at 180px, so fifteen readings need two columns.
-    expect(size(180).defaultWidth).toBe(220);
+    expect(size(180).defaultWidth).toBe(300);
     expect(size(56).defaultWidth).toBeGreaterThan(size(180).defaultWidth);
     expect(size(180, "extra-large").defaultWidth).toBeGreaterThan(size(180).defaultWidth);
   });

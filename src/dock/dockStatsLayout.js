@@ -1,7 +1,9 @@
 import { DOCK_PAD_X, DOCK_PAD_Y, DOCK_STATS_ROW_GAP } from "./dockSizing.js";
 
-export const DOCK_STATS_MIN_CELL_WIDTH_PX = 60;
-export const DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX = 72;
+// Widths at a 13px value font, scaled by the rendered font. Single-line cells must hold the
+// longest short label (7 characters, e.g. "Dlg Rng") beside a 5ch readout without truncation.
+export const DOCK_STATS_MIN_CELL_WIDTH_PX = 84;
+export const DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX = 92;
 export const DOCK_STATS_INNER_GAP_PX = 2;
 export const DOCK_STATS_GROUP_GAP_PX = 12;
 
