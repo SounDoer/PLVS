@@ -7,7 +7,13 @@ import { spawnSync } from "node:child_process";
 
 export const ACCEPTANCE_SCHEMA_VERSION = 1;
 export const ACCEPTANCE_DOMAINS = ["update", "dock", "capture"];
-export const ACCEPTANCE_PLATFORMS = ["windows", "macos"];
+export const ACCEPTANCE_BASE_PLATFORMS = ["windows", "macos"];
+export const ACCEPTANCE_KNOWN_PLATFORMS = [...ACCEPTANCE_BASE_PLATFORMS, "linux"];
+const ACCEPTANCE_PLATFORM_LABELS = {
+  windows: "Windows",
+  macos: "macOS",
+  linux: "Linux",
+};
 export const ACCEPTANCE_STATUSES = new Set([
   "passed",
   "failed",
@@ -114,7 +120,7 @@ export function validateAcceptanceEvidence(evidence) {
     invalid("runId must be a nonempty string");
   }
   if (!/^[0-9a-f]{40}$/.test(evidence.sourceSha)) invalid("sourceSha must be 40 lowercase hex");
-  if (!ACCEPTANCE_PLATFORMS.includes(evidence.platform?.os)) {
+  if (!ACCEPTANCE_KNOWN_PLATFORMS.includes(evidence.platform?.os)) {
     invalid(`unknown platform ${evidence.platform?.os}`);
   }
   for (const key of ["arch", "version"]) {
@@ -223,10 +229,14 @@ export function buildAcceptanceReport({
     rows.push(item);
     grouped.set(key, rows);
   }
+  const evidencedPlatforms = new Set(evidence.map((item) => item.value.platform.os));
+  const platforms = ACCEPTANCE_KNOWN_PLATFORMS.filter(
+    (platform) => ACCEPTANCE_BASE_PLATFORMS.includes(platform) || evidencedPlatforms.has(platform)
+  );
 
   const matrix = [];
   for (const domain of ACCEPTANCE_DOMAINS) {
-    for (const platform of ACCEPTANCE_PLATFORMS) {
+    for (const platform of platforms) {
       const rows = grouped.get(cellKey(domain, platform)) ?? [];
       const exact = rows.filter((item) => item.value.sourceSha === targetSha);
       if (exact.length > 1 || (rows.length > 1 && exact.length !== 1)) {
@@ -282,6 +292,7 @@ export function buildAcceptanceReport({
       platform: generatorPlatform,
       tool: { name: "acceptance-report", version: 1 },
     },
+    platforms,
     ready: failed.length === 0,
     verdict: failed.length > 0 ? "failed" : gaps.length > 0 ? "incomplete" : "passed",
     matrix,
@@ -291,6 +302,7 @@ export function buildAcceptanceReport({
 }
 
 export function acceptanceReportMarkdown(report, reportPath) {
+  const platforms = report.platforms;
   const lines = [
     "# PLVS Acceptance Evidence",
     "",
@@ -298,11 +310,11 @@ export function acceptanceReportMarkdown(report, reportPath) {
     "",
     `Verdict: **${report.verdict}** (${report.ready ? "ready with any listed gaps" : "blocked by failure"})`,
     "",
-    "| Domain | Windows | macOS |",
-    "| --- | --- | --- |",
+    `| Domain | ${platforms.map((platform) => ACCEPTANCE_PLATFORM_LABELS[platform]).join(" | ")} |`,
+    `| --- | ${platforms.map(() => "---").join(" | ")} |`,
   ];
   for (const domain of ACCEPTANCE_DOMAINS) {
-    const cells = ACCEPTANCE_PLATFORMS.map((platform) =>
+    const cells = platforms.map((platform) =>
       report.matrix.find((cell) => cell.domain === domain && cell.platform === platform)
     );
     const render = (cell) => {
@@ -310,7 +322,7 @@ export function acceptanceReportMarkdown(report, reportPath) {
       const href = relative(dirname(reportPath), cell.evidenceFile).replaceAll("\\", "/");
       return `[${cell.state}](${href})`;
     };
-    lines.push(`| ${domain} | ${render(cells[0])} | ${render(cells[1])} |`);
+    lines.push(`| ${domain} | ${cells.map(render).join(" | ")} |`);
   }
   lines.push("", "## Follow-up", "");
   if (report.gaps.length === 0) {

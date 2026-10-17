@@ -691,6 +691,14 @@ evidence for the exact release commit, marks evidence older than 14 days as stal
 when a platform is missing, invalid, incomplete, or stale. This is advisory during the initial
 rollout: the release continues, but the missing cross-platform evidence remains visible in its log.
 
+The shared acceptance report is ready for Linux branch integration without claiming Linux coverage
+on `main`. Reports remain Windows/macOS-only until an explicitly supplied evidence file uses
+`platform.os: "linux"`. From that point the report adds a Linux column across update, Dock and
+capture, so producers may be connected incrementally while the remaining cells stay visibly
+`missing`. After rebasing a Linux implementation branch, keep the common envelope and scenario
+semantics unchanged, add only the platform-specific producer or adapter, and generate the report
+from real Linux evidence. Contract tests on macOS or Windows are not Linux acceptance evidence.
+
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).

@@ -85,6 +85,18 @@ describe("acceptance evidence", () => {
     });
   });
 
+  it("accepts Linux evidence without adding Linux to reports that have none", () => {
+    expect(
+      validateAcceptanceEvidence(
+        fixture({ platform: { os: "linux", arch: "x86_64", version: "6.12.0" } })
+      )
+    ).toMatchObject({ platform: { os: "linux" } });
+
+    const value = report([]);
+    expect(value.platforms).toEqual(["windows", "macos"]);
+    expect(value.matrix).toHaveLength(6);
+  });
+
   it("rejects duplicate scenarios and false complete evidence", () => {
     expect(() =>
       validateAcceptanceEvidence(
@@ -182,5 +194,32 @@ describe("acceptance evidence", () => {
     expect(markdown).toContain("update/windows: missing");
     expect(markdown).toContain("## Advisories");
     expect(markdown).toContain("not a stable-release approval");
+  });
+
+  it("adds a complete Linux column after the first Linux evidence is supplied", () => {
+    const value = report([
+      item(
+        fixture({ platform: { os: "linux", arch: "x86_64", version: "6.12.0" } }),
+        "/repo/artifacts/linux-capture/result.json"
+      ),
+    ]);
+    expect(value.platforms).toEqual(["windows", "macos", "linux"]);
+    expect(value.matrix).toHaveLength(9);
+    expect(
+      value.matrix.find((cell) => cell.domain === "capture" && cell.platform === "linux")
+    ).toMatchObject({ state: "passed" });
+    expect(
+      value.matrix.find((cell) => cell.domain === "update" && cell.platform === "linux")
+    ).toMatchObject({ state: "missing" });
+
+    const markdown = acceptanceReportMarkdown(
+      value,
+      join("/repo", "artifacts", "acceptance-report", "report.md")
+    );
+    expect(markdown).toContain("| Domain | Windows | macOS | Linux |");
+    expect(markdown).toContain(
+      "| capture | missing | missing | [passed](../linux-capture/result.json) |"
+    );
+    expect(markdown).toContain("dock/linux: missing");
   });
 });

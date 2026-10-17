@@ -66,13 +66,20 @@ possible, but original files are never copied or rewritten.
 
 ## Coverage matrix
 
-The first version owns these six cells:
+The base report owns these six cells:
 
 | Domain | Windows | macOS |
 | --- | --- | --- |
 | Update | packaged update acceptance | packaged update acceptance |
 | Dock | native reservation acceptance | native reservation acceptance |
 | Capture | VB-Cable live capture | BlackHole live capture |
+
+The evidence contract also recognizes Linux. To avoid inventing gaps for a platform that is not
+yet part of the product branch, Linux stays absent from the matrix until at least one supplied
+evidence file identifies `platform.os` as `linux`. The report then adds a Linux column for all three
+domains in the stable Windows, macOS, Linux order. Supplied cells are classified normally and the
+remaining Linux cells become explicit `missing` gaps. This lets a rebased Linux branch adopt one
+producer at a time without changing the schema or overstating untested coverage.
 
 Each cell has one of these states:
 

@@ -15,7 +15,9 @@
 ## 2. Build the report aggregator
 
 - Parse repeatable `--evidence`, optional `--target` and optional `--out-dir` arguments.
-- Build the fixed update/Dock/capture × Windows/macOS matrix without scanning directories.
+- Build the base update/Dock/capture × Windows/macOS matrix without scanning directories.
+- Accept Linux evidence and add a complete Linux column only after a supplied evidence file opts
+  that platform into the report.
 - Reject ambiguous duplicate target-SHA evidence.
 - Write atomic `report.json` and `report.md` files with the same verdict, gaps and source paths.
 - Exit 1 only for actual target-SHA automated failures, 2 for invalid input/tooling problems, and 0
