@@ -11,7 +11,7 @@ development app. It has separate settings, installation and Agent Control discov
 updater is compiled out. Select `platform=windows` for the installer and Portable ZIP, or
 `platform=linux` for the Ubuntu 24.04 x86_64 deb. The Linux deb has separate settings but cannot
 coexist with a future stable Linux deb because they share executable paths. Linux live Agent
-Control is not yet available; only diagnostics and instance discovery are supported.
+Control is available after the user enables it in Settings; Visual Capture remains unavailable.
 
 Use `plvs-release` instead when the user intends to ship a stable version.
 

@@ -130,11 +130,14 @@ compact `activeId`/`dirty` relationship; the library itself belongs to
 
 ## Transport
 
-Windows carries requests over a current-user named pipe. macOS carries the same authenticated,
-bounded protocol over a private Unix-domain socket. Both native transports use the shared framing
-and authentication implementation; only endpoint creation, peer validation, and delivery
-acknowledgement remain platform-specific. The public CLI contract is transport-neutral; callers use
-runtime capabilities to discover native features such as cross-platform screenshots and recording.
+Windows carries requests over a current-user named pipe. macOS and Linux carry the same
+authenticated, bounded protocol over a mode-`0600` Unix-domain socket. Linux places the endpoint
+under the current user's private `$XDG_RUNTIME_DIR` and verifies both client and server ownership
+with `SO_PEERCRED`; macOS verifies ownership with `getpeereid`. All native transports use the
+shared framing and authentication implementation; only endpoint creation, peer validation, and
+delivery acknowledgement remain platform-specific. The public CLI contract is transport-neutral;
+callers use runtime capabilities to discover native features. Visual Capture screenshots and
+recording remain unavailable on Linux.
 
 ## Failures below the application
 

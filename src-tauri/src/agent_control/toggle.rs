@@ -151,7 +151,11 @@ pub(crate) fn read_enabled(app: &AppHandle) -> bool {
 
 fn current_status(app: &AppHandle) -> Result<AgentControlStatus, String> {
   let path_status = crate::cli_path::cli_path_status()?;
-  let supported = cfg!(any(target_os = "windows", target_os = "macos")) && path_status.supported;
+  let supported = cfg!(any(
+    target_os = "windows",
+    target_os = "macos",
+    target_os = "linux"
+  )) && path_status.supported;
   let endpoint_running = app
     .state::<crate::agent_control::transport::ServerState>()
     .is_running();
@@ -183,7 +187,7 @@ pub fn set_agent_control_enabled(
   }
 
   // The flag is written only after the endpoint matches it. Windows PATH setup is a convenience
-  // that may lag behind a failed registry write; macOS only refreshes installation status here.
+  // that may lag behind a failed registry write; Unix platforms only refresh installation status.
   // Persisting last prevents a later launch from reopening an endpoint the user just closed.
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;

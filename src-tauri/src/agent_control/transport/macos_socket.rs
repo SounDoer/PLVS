@@ -1,9 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+#[cfg(target_os = "linux")]
+use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::os::fd::{AsRawFd, RawFd};
-use std::os::unix::fs::{FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt};
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::{FileTypeExt, OpenOptionsExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -18,7 +22,7 @@ use crate::agent_control::broker::{
   DEFAULT_MAX_PENDING_REQUESTS, DEFAULT_RESPONSE_TIMEOUT,
 };
 use crate::agent_control::discovery::{
-  descriptor_path, generate_launch_token, instance_endpoint_identity, macos_socket_file_name,
+  descriptor_path, generate_launch_token, instance_endpoint_identity, unix_socket_file_name,
   write_descriptor_atomic_at, AgentControlDescriptor, DescriptorApp, DiscoveryError, LaunchToken,
 };
 use crate::agent_control::framing::{
@@ -76,26 +80,53 @@ impl Drop for OwnershipLock {
 }
 
 fn socket_path(identifier: &str) -> Result<PathBuf, TransportError> {
-  let temporary_directory = std::env::temp_dir();
-  let metadata = temporary_directory.metadata().map_err(TransportError::io)?;
-  let current_uid = unsafe { libc::geteuid() };
-  if !metadata.is_dir() || metadata.uid() != current_uid || metadata.mode() & 0o077 != 0 {
-    return Err(TransportError::new(
-      TransportErrorReason::ConnectionFailed,
-      "The macOS user temporary directory is not private to the current user.",
-    ));
-  }
-  socket_path_in(&temporary_directory, identifier)
+  #[cfg(target_os = "macos")]
+  let runtime_directory = std::env::temp_dir();
+  #[cfg(target_os = "linux")]
+  let runtime_directory = linux_runtime_directory(std::env::var_os("XDG_RUNTIME_DIR"))?;
+  #[cfg(target_os = "linux")]
+  validate_runtime_directory(&runtime_directory)?;
+  socket_path_in(&runtime_directory, identifier)
 }
 
-fn socket_path_in(temporary_directory: &Path, identifier: &str) -> Result<PathBuf, TransportError> {
-  let path = temporary_directory.join(macos_socket_file_name(identifier));
+#[cfg(target_os = "linux")]
+fn linux_runtime_directory(value: Option<OsString>) -> Result<PathBuf, TransportError> {
+  value
+    .map(PathBuf::from)
+    .filter(|path| path.is_absolute())
+    .ok_or_else(|| {
+      TransportError::new(
+        TransportErrorReason::ConnectionFailed,
+        "XDG_RUNTIME_DIR is unavailable or is not an absolute path.",
+      )
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn validate_runtime_directory(runtime_directory: &Path) -> Result<(), TransportError> {
+  let metadata = std::fs::symlink_metadata(runtime_directory).map_err(TransportError::io)?;
+  let current_uid = unsafe { libc::geteuid() };
+  if metadata.file_type().is_symlink()
+    || !metadata.is_dir()
+    || metadata.uid() != current_uid
+    || metadata.mode() & 0o077 != 0
+  {
+    return Err(TransportError::new(
+      TransportErrorReason::ConnectionFailed,
+      "The agent-control runtime directory is not private to the current user.",
+    ));
+  }
+  Ok(())
+}
+
+fn socket_path_in(runtime_directory: &Path, identifier: &str) -> Result<PathBuf, TransportError> {
+  let path = runtime_directory.join(unix_socket_file_name(identifier));
   let length = path.as_os_str().as_encoded_bytes().len();
   if length > SOCKET_PATH_MAX_BYTES {
     return Err(TransportError::new(
       TransportErrorReason::ConnectionFailed,
       format!(
-        "The macOS agent-control socket path is too long ({length} bytes; maximum {SOCKET_PATH_MAX_BYTES})."
+        "The agent-control Unix socket path is too long ({length} bytes; maximum {SOCKET_PATH_MAX_BYTES})."
       ),
     ));
   }
@@ -109,13 +140,14 @@ fn remove_stale_socket(path: &Path) -> Result<(), TransportError> {
     }
     Ok(_) => Err(TransportError::new(
       TransportErrorReason::ConnectionFailed,
-      "The macOS agent-control endpoint path is occupied by a non-socket entry.",
+      "The agent-control endpoint path is occupied by a non-socket entry.",
     )),
     Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
     Err(error) => Err(error.into()),
   }
 }
 
+#[cfg(target_os = "macos")]
 fn peer_uid(fd: RawFd) -> io::Result<libc::uid_t> {
   let mut uid = 0;
   let mut gid = 0;
@@ -127,15 +159,43 @@ fn peer_uid(fd: RawFd) -> io::Result<libc::uid_t> {
   }
 }
 
+#[cfg(target_os = "linux")]
+fn peer_uid(fd: RawFd) -> io::Result<libc::uid_t> {
+  let mut credentials = libc::ucred {
+    pid: 0,
+    uid: 0,
+    gid: 0,
+  };
+  let mut length = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
+  let result = unsafe {
+    libc::getsockopt(
+      fd,
+      libc::SOL_SOCKET,
+      libc::SO_PEERCRED,
+      (&mut credentials as *mut libc::ucred).cast(),
+      &mut length,
+    )
+  };
+  if result == 0 && length as usize == std::mem::size_of::<libc::ucred>() {
+    Ok(credentials.uid)
+  } else {
+    Err(io::Error::last_os_error())
+  }
+}
+
 fn verify_current_user(stream: &UnixStream) -> Result<(), TransportError> {
   let peer = peer_uid(stream.as_raw_fd()).map_err(TransportError::io)?;
   let current = unsafe { libc::geteuid() };
+  verify_peer_uid(peer, current)
+}
+
+fn verify_peer_uid(peer: libc::uid_t, current: libc::uid_t) -> Result<(), TransportError> {
   if peer == current {
     Ok(())
   } else {
     Err(TransportError::new(
       TransportErrorReason::Unauthorized,
-      "The macOS agent-control peer belongs to another user.",
+      "The agent-control peer belongs to another user.",
     ))
   }
 }
@@ -589,7 +649,7 @@ mod tests {
         broker
           .respond(
             &request.id,
-            FrontendOutcome::Success(serde_json::json!({ "platform": "macos" })),
+            FrontendOutcome::Success(serde_json::json!({ "platform": std::env::consts::OS })),
           )
           .map_err(|error| error.to_string())
       }
@@ -617,10 +677,50 @@ mod tests {
 
   #[test]
   fn endpoint_names_are_short_and_identity_specific() {
-    let release = socket_path("com.soundoer.plvs").unwrap();
-    let development = socket_path("com.soundoer.plvs.dev").unwrap();
+    let release = socket_path_in(Path::new("/run/user/1000"), "com.soundoer.plvs").unwrap();
+    let development = socket_path_in(Path::new("/run/user/1000"), "com.soundoer.plvs.dev").unwrap();
     assert_ne!(release, development);
     assert!(release.as_os_str().as_encoded_bytes().len() <= SOCKET_PATH_MAX_BYTES);
+  }
+
+  #[cfg(target_os = "linux")]
+  #[test]
+  fn linux_runtime_directory_must_be_absolute_private_and_not_a_symlink() {
+    use std::os::unix::fs::{symlink, PermissionsExt};
+
+    assert!(linux_runtime_directory(None).is_err());
+    assert!(linux_runtime_directory(Some(OsString::from("relative"))).is_err());
+
+    let token = generate_launch_token().unwrap();
+    let base = std::env::temp_dir().join(format!("plvs-runtime-{}", &token.expose()[..16]));
+    let private = base.join("private");
+    let link = base.join("link");
+    std::fs::create_dir_all(&private).unwrap();
+
+    std::fs::set_permissions(&private, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(validate_runtime_directory(&private).is_err());
+
+    std::fs::set_permissions(&private, std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(validate_runtime_directory(&private).is_ok());
+
+    symlink(&private, &link).unwrap();
+    assert!(validate_runtime_directory(&link).is_err());
+    std::fs::remove_dir_all(base).unwrap();
+  }
+
+  #[cfg(target_os = "linux")]
+  #[test]
+  fn linux_peer_credentials_match_the_current_user() {
+    let (first, second) = UnixStream::pair().unwrap();
+    let current = unsafe { libc::geteuid() };
+    assert_eq!(peer_uid(first.as_raw_fd()).unwrap(), current);
+    assert!(verify_current_user(&second).is_ok());
+    assert_eq!(
+      verify_peer_uid(current.saturating_add(1), current)
+        .unwrap_err()
+        .reason,
+      TransportErrorReason::Unauthorized
+    );
   }
 
   #[test]
@@ -667,6 +767,35 @@ mod tests {
   }
 
   #[test]
+  fn stopping_the_server_removes_its_socket_and_owned_descriptor() {
+    let (mut server, token, _) = test_server(false);
+    let directory = server.endpoint.parent().unwrap().to_path_buf();
+    let descriptor_path = directory.join("agent-control.json");
+    let descriptor = AgentControlDescriptor {
+      schema_version: crate::agent_control::discovery::DESCRIPTOR_SCHEMA_VERSION,
+      protocol_version: crate::agent_control::protocol::PROTOCOL_VERSION,
+      app: DescriptorApp {
+        name: "PLVS Test".to_string(),
+        version: "0.0.0".to_string(),
+        identifier: "com.soundoer.plvs.test".to_string(),
+      },
+      pid: std::process::id(),
+      endpoint: server.endpoint.display().to_string(),
+      token,
+      started_at: "2026-10-17T00:00:00Z".to_string(),
+    };
+    write_descriptor_atomic_at(&descriptor_path, &descriptor).unwrap();
+    server.own_descriptor(descriptor_path.clone(), descriptor);
+
+    server.stop();
+
+    assert!(!server.endpoint.exists());
+    assert!(!descriptor_path.exists());
+    drop(server);
+    std::fs::remove_dir_all(directory).unwrap();
+  }
+
+  #[test]
   fn authenticated_request_round_trips_over_a_unix_socket() {
     use std::os::unix::fs::PermissionsExt;
 
@@ -676,7 +805,7 @@ mod tests {
       0o600
     );
     let request = JsonRpcRequest {
-      id: "macos-round-trip".to_string(),
+      id: "unix-round-trip".to_string(),
       method: "app.inspect".to_string(),
       params: serde_json::json!({}),
     };
@@ -689,8 +818,8 @@ mod tests {
     )
     .unwrap();
 
-    assert_eq!(response["id"], "macos-round-trip");
-    assert_eq!(response["result"]["platform"], "macos");
+    assert_eq!(response["id"], "unix-round-trip");
+    assert_eq!(response["result"]["platform"], std::env::consts::OS);
     let directory = server.endpoint.parent().unwrap().to_path_buf();
     server.stop();
     drop(server);
@@ -727,7 +856,7 @@ mod tests {
   fn delivery_wait_finishes_only_after_the_client_acknowledges_the_response() {
     let (mut server, token, responder) = test_server(true);
     let request = JsonRpcRequest {
-      id: "macos-delivery".to_string(),
+      id: "unix-delivery".to_string(),
       method: "config.import".to_string(),
       params: serde_json::json!({}),
     };

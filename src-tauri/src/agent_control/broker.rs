@@ -415,7 +415,7 @@ impl PendingRequest {
       .map(|submission| submission.response)
   }
 
-  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
   pub(crate) fn wait_with_delivery_until<F>(
     &mut self,
     client_disconnected: F,
@@ -454,7 +454,7 @@ impl PendingRequest {
           self.completed = true;
           return Ok(PendingResponse {
             response: JsonRpcResponse::success(self.request_id.clone(), result),
-            #[cfg(any(target_os = "windows", target_os = "macos", test))]
+            #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
             delivery: _delivery,
           });
         }
@@ -465,7 +465,7 @@ impl PendingRequest {
           self.completed = true;
           return Ok(PendingResponse {
             response: JsonRpcResponse::error(self.request_id.clone(), error),
-            #[cfg(any(target_os = "windows", target_os = "macos", test))]
+            #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
             delivery: _delivery,
           });
         }
@@ -510,17 +510,17 @@ impl PendingRequest {
 
 pub(crate) struct PendingResponse {
   pub response: JsonRpcResponse,
-  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
   delivery: Option<DeliverySender>,
 }
 
 impl PendingResponse {
-  #[cfg(any(target_os = "windows", target_os = "macos"))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   pub fn requires_delivery_confirmation(&self) -> bool {
     self.delivery.is_some()
   }
 
-  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
   pub fn confirm_delivery(self, result: Result<(), BrokerError>) {
     if let Some(sender) = self.delivery {
       let _ = sender.send(result);

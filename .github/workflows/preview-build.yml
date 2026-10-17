@@ -296,8 +296,9 @@ jobs:
           APT installs FFmpeg and runtime dependencies. Launch PLVS Preview from the menu, or run `plvs`.
           Diagnose with `plvs-cli doctor --json`; remove with `sudo apt remove plvs-preview`.
           This initial Preview conflicts with the future stable Linux deb because they share executable names.
+          Enable Agent Control in Settings before using live `plvs-cli` commands.
           Native desktop/hardware and four-hour soak acceptance remain pending. Per-application capture,
-          live Agent Control, screenshots and recording are not supported on Linux yet.
+          screenshots and recording are not supported on Linux yet.
           EOF
           else
             echo 'Windows Preview installs independently from stable PLVS. Keep all Portable ZIP files together.' >> preview-notes.md
