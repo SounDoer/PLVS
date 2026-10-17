@@ -6,6 +6,7 @@ import { UI_PREFERENCES } from "../preferences/data.js";
 import { resolveInterfacePreferencesForSurface } from "../preferences/interfaceSize.js";
 import {
   DOCK_DEFAULT_HEIGHT,
+  DOCK_MIN_HEIGHT,
   DOCK_HEADER_HEIGHT,
   clampDockHeight,
   dockHeightFromPointer,
@@ -15,7 +16,7 @@ import {
 
 describe("dock sizing", () => {
   it("keeps large requested heights until native display fitting", () => {
-    expect(clampDockHeight(20)).toBe(60);
+    expect(clampDockHeight(20)).toBe(68);
     expect(clampDockHeight(96.4)).toBe(96);
     expect(clampDockHeight(999)).toBe(999);
   });
@@ -50,10 +51,9 @@ describe("dock sizing", () => {
     expect(dockHeightKeyboardDelta("top", "ArrowDown", 16)).toBe(16);
   });
 
-  it("uses compact, standard, and expanded presentation tiers", () => {
-    expect(dockHeightMode(56)).toBe("compact");
-    expect(dockHeightMode(63)).toBe("compact");
-    expect(dockHeightMode(64)).toBe("standard");
+  it("starts at the standard tier because the minimum height is above the compact tier", () => {
+    expect(dockHeightMode(56)).toBe("standard");
+    expect(dockHeightMode(DOCK_MIN_HEIGHT)).toBe("standard");
     expect(dockHeightMode(119)).toBe("standard");
     expect(dockHeightMode(120)).toBe("expanded");
     expect(dockHeightMode(160)).toBe("expanded");

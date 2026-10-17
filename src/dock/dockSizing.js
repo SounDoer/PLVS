@@ -1,4 +1,4 @@
-export const DOCK_MIN_HEIGHT = 60;
+export const DOCK_MIN_HEIGHT = 68;
 /// First-run Dock height: room for four rows of Expanded Stats. Matches Rust's
 /// DOCK_DEFAULT_LOGICAL_HEIGHT, which first entry uses because the GUI passes no height.
 export const DOCK_DEFAULT_HEIGHT = 180;

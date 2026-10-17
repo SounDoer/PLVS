@@ -34,7 +34,7 @@ export function DockControlArea({
         update={update}
       />
       <IconButton
-        icon={<Maximize2 className="size-4" />}
+        icon={<Maximize2 className="size-3.5" absoluteStrokeWidth strokeWidth={1.75} />}
         tip="Return to Normal Window"
         aria-label="return to normal window"
         tipSide="left"

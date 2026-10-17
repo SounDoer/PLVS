@@ -93,13 +93,18 @@ export function SourceTransportCluster({
         chrome.action
       )}
     >
-      <ActionIcon className={vertical ? "size-4" : "size-[1em]"} />
+      {vertical ? (
+        <ActionIcon className="size-3.5" absoluteStrokeWidth strokeWidth={1.75} />
+      ) : (
+        <ActionIcon className="size-[1em]" />
+      )}
       <span className={cn("transport-cap-label", vertical && "sr-only")}>{state.actionLabel}</span>
     </button>
   );
 
   return (
     <div
+      data-chrome={vertical ? state.chromeState : undefined}
       style={{ fontSize: "var(--ui-fs-status)" }}
       className={cn(
         "relative inline-flex max-w-full shrink-0 items-center overflow-hidden",

@@ -22,7 +22,7 @@ use crate::window_state::{
 
 /// Logical (DPI-independent) strip height. Single source of truth: the
 /// frontend strip simply fills the viewport, so no JS copy of this number.
-pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 60;
+pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 68;
 pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 180;
 // Transport bound only. The actual limit is derived from the destination work area.
 pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = u32::MAX;

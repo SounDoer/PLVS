@@ -128,7 +128,7 @@ describe("useDockMode", () => {
 
   it("returns the native Dock form after a reservation fallback", async () => {
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: false, edge: "top", reserveSpace: true, height: 60 },
+      dockState: { enabled: false, edge: "top", reserveSpace: true, height: 68 },
     };
     mocks.enterDock.mockResolvedValueOnce(
       standIn({
@@ -136,14 +136,14 @@ describe("useDockMode", () => {
         edge: "top",
         monitor: "monitor-1",
         reserveSpace: false,
-        height: 60,
+        height: 68,
       })
     );
     const { result } = renderHook(() => useDockMode());
 
     let effective;
     await act(async () => {
-      effective = await result.current.enterDockMode("top", true, "monitor-1", 60);
+      effective = await result.current.enterDockMode("top", true, "monitor-1", 68);
     });
 
     expect(effective).toMatchObject({
@@ -151,7 +151,7 @@ describe("useDockMode", () => {
       edge: "top",
       monitor: "monitor-1",
       reserveSpace: false,
-      height: 60,
+      height: 68,
     });
     expect(result.current.reserveSpace).toBe(false);
   });
@@ -329,11 +329,11 @@ describe("useDockMode", () => {
       dockState: { enabled: true, edge: "bottom", height: 10 },
     };
     const { result } = renderHook(() => useDockMode());
-    expect(result.current.dockHeight).toBe(60);
+    expect(result.current.dockHeight).toBe(68);
 
     await act(() => result.current.resizeDockHeight(999, { persist: false }));
     expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 999, persist: false });
-    expect(result.current.dockHeight).toBe(60);
+    expect(result.current.dockHeight).toBe(68);
   });
 
   it("exposes a render-only preview height until the resize is committed", async () => {

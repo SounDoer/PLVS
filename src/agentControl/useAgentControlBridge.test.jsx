@@ -2952,7 +2952,7 @@ describe("useAgentControlBridge", () => {
     expect(described.result).toMatchObject({
       revision: 0,
       supported: true,
-      height: { min: 60, max: 4294967295 },
+      height: { min: 68, max: 4294967295 },
     });
   });
 

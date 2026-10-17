@@ -175,7 +175,7 @@ describe("Dock Control", () => {
     expect(result).toMatchObject({
       supported: true,
       reserveSpace: { writable: true },
-      height: { min: 60, max: 4294967295 },
+      height: { min: 68, max: 4294967295 },
       monitors: [{ id: "monitor-1", name: "Display 1" }],
     });
     expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").width).toEqual({

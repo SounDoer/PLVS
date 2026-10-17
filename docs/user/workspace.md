@@ -78,7 +78,7 @@ opening either does not restart capture. Panel settings remain accessible throug
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of
 the screen, so the meters stay visible while you work in another app. A narrow column at the right
 end of the strip holds three buttons, top to bottom: Start/Stop (Return to Live during a Snapshot),
-the toolbar arrow, and Return to Normal Window (two outward arrows). The arrow points to where the
+the toolbar arrow, and Return to Normal Window (two outward arrows). The buttons are matching rounded chips; Start/Stop is tinted by its state. The arrow points to where the
 toolbar opens and flips once it is open. The Dock toolbar lets you clear the session, switch the
 Loudness Profile, edit which modules the strip shows, and manage Presets. Dock omits the timecode
 and Ready label. Returning to the normal window preserves capture and history. The
@@ -115,7 +115,7 @@ Dock's module-width and height resize lines stay hidden while idle, appear in Bo
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer. Height starts at 180 CSS pixels, with
-room for four rows of expanded Stats. It can shrink to 60 CSS pixels or grow up to the current display's
+room for four rows of expanded Stats. It can shrink to 68 CSS pixels or grow up to the current display's
 available space minus room for the toolbar and editor.
 Oversized heights are fitted again when entering Dock on another display or restoring it.
 

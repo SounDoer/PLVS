@@ -191,7 +191,7 @@ describe("DockStrip", () => {
     fireEvent.keyDown(handle, { key: "ArrowDown", shiftKey: true });
     fireEvent.doubleClick(handle);
     expect(onHeightChange).toHaveBeenNthCalledWith(1, 76, { persist: true });
-    expect(onHeightChange).toHaveBeenNthCalledWith(2, 60, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(2, 68, { persist: true });
     expect(onHeightChange).toHaveBeenNthCalledWith(3, 180, { persist: true });
   });
 

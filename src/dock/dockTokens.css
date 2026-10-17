@@ -15,21 +15,38 @@
   width: var(--ui-dock-toolbar-toggle-w);
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  /* Three 18px rows fit the 60px minimum height. */
-  gap: 1px;
-  padding: 2px 0;
+  /* Three fixed chips spread over the strip height; at the minimum they sit one per Stats row. */
+  justify-content: space-evenly;
   border-left: 1px solid var(--border);
 }
 
-.dock-control-area .dock-control-button {
-  width: 20px;
-  height: 18px;
-}
-
+/* One chip shape for every control; the transport chip is tinted by its state instead. */
+.dock-control-area .dock-control-button,
 .dock-control-area .dock-transport {
   width: 20px;
-  height: 18px;
+  height: 20px;
+  border: 0;
+  border-radius: 5px;
+}
+
+.dock-control-area .dock-control-button {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+}
+
+.dock-control-area .dock-control-button:hover,
+.dock-control-area .dock-control-button[aria-pressed="true"] {
+  background: var(--ui-secondary-hover);
+  color: var(--foreground);
+}
+
+.dock-control-area .dock-transport[data-chrome="ready"] .dock-transport-action {
+  background: color-mix(in srgb, var(--primary) 24%, var(--secondary));
+  color: var(--primary);
+}
+
+.dock-control-area .dock-transport[data-chrome="ready"] .dock-transport-action:hover {
+  background: color-mix(in srgb, var(--primary) 36%, var(--secondary));
 }
 
 .dock-transport .dock-transport-action {

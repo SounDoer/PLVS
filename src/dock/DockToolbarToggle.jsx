@@ -19,13 +19,19 @@ export function DockToolbarToggle({ edge, open, onToggle, update = null }) {
     <IconButton
       icon={
         <span className="relative inline-flex">
-          <Icon className="size-4" data-direction={direction} />
+          {/* A chevron's strokes fill little of its box; draw it larger to match the other icons. */}
+          <Icon
+            className="size-5"
+            absoluteStrokeWidth
+            strokeWidth={1.75}
+            data-direction={direction}
+          />
           {update ? (
             <span
               data-testid="dock-update-badge"
               data-phase={update.phase}
               className={cn(
-                "absolute -right-[2px] top-1/2 size-1.5 -translate-y-1/2 rounded-full",
+                "absolute right-[2px] top-[2px] size-1.5 rounded-full",
                 update.phase === "error" ? "bg-[color:var(--ui-feedback-danger)]" : "bg-primary"
               )}
             />
@@ -37,7 +43,7 @@ export function DockToolbarToggle({ edge, open, onToggle, update = null }) {
       aria-label={tip.toLowerCase()}
       aria-pressed={open}
       onClick={onToggle}
-      className={cn("dock-control-button", open && "bg-ui-hover text-foreground")}
+      className="dock-control-button"
     />
   );
 }
