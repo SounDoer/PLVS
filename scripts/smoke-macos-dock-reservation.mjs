@@ -79,17 +79,24 @@ function mutate(args, instance) {
   const snapshot = call(["inspect"], instance);
   return call([...args, "--expected-revision", String(snapshot.revision)], instance);
 }
-const enter = (edge, height, reserve) =>
-  mutate([
-    "dock",
-    "enter",
-    "--edge",
-    edge,
-    "--height",
-    String(height),
-    "--reserve-space",
-    String(reserve),
-  ]);
+const enter = async (edge, height, reserve, instance) => {
+  mutate(
+    [
+      "dock",
+      "enter",
+      "--edge",
+      edge,
+      "--height",
+      String(height),
+      "--reserve-space",
+      String(reserve),
+    ],
+    instance
+  );
+  // The React strip may raise the requested height to its measured content minimum.
+  await pause(1000);
+  return call(["inspect"], instance).dock.height;
+};
 const exit = () => mutate(["dock", "exit"]);
 async function frame(expected) {
   return until(() => read() && matches(read().frame, expected), "host frame");
@@ -97,15 +104,15 @@ async function frame(expected) {
 try {
   await until(read, "host launch");
   for (const [edge, height] of [
-    ["top", 56],
+    ["top", 68],
     ["bottom", 160],
   ]) {
     const before = (await command("reset")).frame;
-    enter(edge, height, true);
+    const appliedHeight = await enter(edge, height, true);
     const expected = {
       ...before,
-      y: before.y + (edge === "top" ? height : 0),
-      height: before.height - height,
+      y: before.y + (edge === "top" ? appliedHeight : 0),
+      height: before.height - appliedHeight,
     };
     await frame(expected);
     assert.equal(call(["inspect"]).dock.reserveSpace, true);
@@ -114,15 +121,19 @@ try {
     results.push({ scenario: edge, before, expected, passed: true });
   }
   const compact = (await command("compact")).frame;
-  enter("top", 56, true);
+  await enter("top", 68, true);
   await pause(1500);
   assert.ok(matches(read().frame, compact));
   exit();
   results.push({ scenario: "nonoverlapping", passed: true });
 
   const before = (await command("reset")).frame;
-  enter("top", 56, true);
-  await frame({ ...before, y: before.y + 56, height: before.height - 56 });
+  const appliedHeight = await enter("top", 68, true);
+  await frame({
+    ...before,
+    y: before.y + appliedHeight,
+    height: before.height - appliedHeight,
+  });
   const moved = (await command("compact")).frame;
   await pause(1500);
   exit();
@@ -130,7 +141,7 @@ try {
   results.push({ scenario: "preserve-user-change", passed: true });
 
   const minimum = (await command("minimum")).frame;
-  enter("top", 56, true);
+  await enter("top", 68, true);
   await pause(2000);
   assert.ok(matches(read().frame, minimum), "Failed shrink must undo its partial move");
   exit();
@@ -141,16 +152,16 @@ try {
   await command("minimize");
   await until(() => read()?.minimized, "minimize");
   const minimized = read().frame;
-  enter("bottom", 160, true);
+  await enter("bottom", 160, true);
   await pause(1500);
   assert.ok(matches(read().frame, minimized));
   exit();
   results.push({ scenario: "minimized", passed: true });
   await command("reset");
   if (second) {
-    enter("top", 56, true);
+    await enter("top", 68, true);
     for (const edge of ["top", "bottom"]) {
-      mutate(["dock", "enter", "--edge", edge, "--reserve-space", "true"], second);
+      await enter(edge, secondInitial.dock.height, true, second);
       assert.equal(call(["inspect"], second).dock.reserveSpace, false);
       assert.equal(call(["inspect"]).dock.reserveSpace, true);
       mutate(["dock", "exit"], second);
@@ -163,7 +174,7 @@ try {
   // Restore the original Dock preference through the running business path.
   try {
     if (call(["inspect"]).dock.enabled) exit();
-    enter(initial.dock.edge, initial.dock.height, initial.dock.reserveSpace);
+    await enter(initial.dock.edge, initial.dock.height, initial.dock.reserveSpace);
     exit();
   } finally {
     try {
