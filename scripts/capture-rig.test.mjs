@@ -103,11 +103,14 @@ describe("compareMetrics", () => {
     // `Math.abs(got - undefined)` is NaN and `NaN > tolerance` is false, so an
     // unguarded expected value would pass unconditionally and forever. If analyze
     // ever renames a field, this check must go red rather than green.
-    const result = compareMetrics({}, {
-      integratedLufs: -22.03,
-      samplePeakMaxLDb: -20.0,
-      samplePeakMaxRDb: -26.0,
-    });
+    const result = compareMetrics(
+      {},
+      {
+        integratedLufs: -22.03,
+        samplePeakMaxLDb: -20.0,
+        samplePeakMaxRDb: -26.0,
+      }
+    );
     expect(result.ok).toBe(false);
     expect(result.failures).toHaveLength(3);
     expect(result.failures[0].reason).toBe("no ground truth for this field");
@@ -148,7 +151,7 @@ describe("capture harness invocation", () => {
     }));
 
     expect(() => captureRig.verifyHarnessBuild("plvs.exe", run)).toThrow(
-      /--features capture-harness/,
+      /--features capture-harness/
     );
   });
 
@@ -157,14 +160,110 @@ describe("capture harness invocation", () => {
     // without dev-identity landing there silently turns it into a GUI on the stable identity's settings.
     expect(captureRig.BUILD_HARNESS).toContain("--profile harness");
     expect(captureRig.BUILD_HARNESS).not.toContain("--release");
-    expect(captureRig.harnessPath("root")).toBe(
-      join("root", "src-tauri", "target", "harness", "plvs.exe"),
+    expect(captureRig.harnessPath("root", "win32")).toBe(
+      join("root", "src-tauri", "target", "harness", "plvs.exe")
+    );
+    expect(captureRig.harnessPath("root", "darwin")).toBe(
+      join("root", "src-tauri", "target", "harness", "plvs")
     );
   });
 
   it("declares the harness profile in the workspace root manifest", () => {
     const manifest = readFileSync(new URL("../src-tauri/Cargo.toml", import.meta.url), "utf8");
     expect(manifest).toMatch(/^\[profile\.harness\]\r?\ninherits = "release"$/m);
+  });
+});
+
+describe("cross-platform capture route", () => {
+  const macDeviceReport = {
+    status: "ok",
+    devices: [
+      {
+        id: "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        label: "BlackHole 2ch",
+        kind: "systemOutput",
+        sampleRateHz: 48000,
+        channelCount: 2,
+      },
+      {
+        id: "cap-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        label: "BlackHole 2ch",
+        kind: "input",
+        sampleRateHz: 48000,
+        channelCount: 2,
+      },
+    ],
+  };
+
+  it("selects the BlackHole output-monitor row rather than the same-named input", () => {
+    expect(captureRig.selectMacCaptureDevice(macDeviceReport).id).toBe(
+      "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    );
+  });
+
+  it("rejects an unexpected BlackHole capture format as a rig error", () => {
+    const wrong = structuredClone(macDeviceReport);
+    wrong.devices[0].channelCount = 4;
+    expect(() => captureRig.selectMacCaptureDevice(wrong)).toThrow(/expected 48000 Hz, 2 ch/);
+  });
+
+  it("validates the Core Audio render target", () => {
+    expect(
+      captureRig.selectMacRenderDevice({
+        devices: [
+          {
+            audioObjectId: 121,
+            name: "BlackHole 2ch",
+            outputChannelCount: 2,
+            nominalSampleRateHz: 48000,
+          },
+        ],
+      }).audioObjectId
+    ).toBe(121);
+  });
+
+  it("builds the proven VLC arguments for both adapters", () => {
+    expect(captureRig.playerArgs("endpoint", "signal.wav", "win32")).toContain(
+      "--mmdevice-audio-device=endpoint"
+    );
+    expect(captureRig.playerArgs("121", "signal.wav", "darwin")).toContain(
+      "--auhal-audio-device=121"
+    );
+  });
+
+  it("normalizes a macOS route from harness and Core Audio discovery", () => {
+    const run = vi.fn(() => ({
+      status: 0,
+      stdout: `${JSON.stringify(macDeviceReport)}\n`,
+      stderr: "",
+    }));
+    const route = captureRig.resolveCaptureRoute("plvs", {
+      platform: "darwin",
+      run,
+      macRenderResolver: () => ({ audioObjectId: 121 }),
+    });
+    expect(route).toEqual({
+      platform: "darwin",
+      label: "BlackHole 2ch",
+      captureDevice: "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      playerTarget: "121",
+    });
+    expect(run).toHaveBeenCalledWith("plvs", ["--harness", "devices", "--json"]);
+  });
+
+  it("preserves the existing Windows route contract", () => {
+    const endpointResolver = vi.fn(() => "{0.0.0.00000000}.{guid}");
+    expect(
+      captureRig.resolveCaptureRoute("plvs.exe", {
+        platform: "win32",
+        endpointResolver,
+      })
+    ).toEqual({
+      platform: "win32",
+      label: "VB-Cable",
+      captureDevice: "CABLE Output",
+      playerTarget: "{0.0.0.00000000}.{guid}",
+    });
   });
 });
 
@@ -181,9 +280,7 @@ describe("soak capture completion", () => {
 
   it("rejects a missing final report", () => {
     expect(captureRig.assertSoakCaptureCompleted).toBeTypeOf("function");
-    expect(() => captureRig.assertSoakCaptureCompleted(0, null)).toThrow(
-      /without a final report/,
-    );
+    expect(() => captureRig.assertSoakCaptureCompleted(0, null)).toThrow(/without a final report/);
   });
 
   it("rejects an error final report", () => {
@@ -192,7 +289,7 @@ describe("soak capture completion", () => {
       captureRig.assertSoakCaptureCompleted(0, {
         status: "error",
         error: { message: "device lost" },
-      }),
+      })
     ).toThrow(/device lost/);
   });
 });
@@ -294,7 +391,7 @@ describe("judgeSoak", () => {
 
   it("names a metric that drifts after warmup", () => {
     const { failures } = captureRig.judgeSoak(
-      run(600, (t) => ({ integratedLufs: -22.03 - t * 1e-4 })),
+      run(600, (t) => ({ integratedLufs: -22.03 - t * 1e-4 }))
     );
     expect(failures.join("\n")).toMatch(/integratedLufs drifted/);
   });
@@ -302,11 +399,11 @@ describe("judgeSoak", () => {
   it("lets a maximum settle through the first loop seam but not after it", () => {
     const seam = captureRig.SOAK_MAX_WARMUP_SECONDS;
     const settles = captureRig.judgeSoak(
-      run(600, (t) => (t >= seam - 10 ? { truePeakMaxDbtp: -19.9 } : {})),
+      run(600, (t) => (t >= seam - 10 ? { truePeakMaxDbtp: -19.9 } : {}))
     );
     expect(settles.failures).toEqual([]);
     const late = captureRig.judgeSoak(
-      run(600, (t) => (t >= seam + 60 ? { truePeakMaxDbtp: -19.9 } : {})),
+      run(600, (t) => (t >= seam + 60 ? { truePeakMaxDbtp: -19.9 } : {}))
     );
     expect(late.failures.join("\n")).toMatch(/truePeakMaxDbtp drifted/);
   });
@@ -315,7 +412,7 @@ describe("judgeSoak", () => {
     // Something doubled the signal for the first 40 s: Integrated recovers toward the tone, the
     // maxima do not, and neither one moves after its warmup.
     const { failures } = captureRig.judgeSoak(
-      run(600, () => ({ mMaxLufs: -16.01, stMaxLufs: -16.01 })),
+      run(600, () => ({ mMaxLufs: -16.01, stMaxLufs: -16.01 }))
     );
     expect(failures.join("\n")).toMatch(/mMaxLufs sits 6\.0200 dB from integratedLufs/);
   });

@@ -481,12 +481,19 @@ Real-machine verification outside `check`, run manually as needed:
 
 ```bash
 npm run smoke:file-analysis   # File mode analysis smoke test
-npm run smoke:capture         # real capture smoke test; needs VB-Cable and VLC on the machine
+npm run smoke:capture         # real capture smoke; VLC + VB-Cable (Windows) or BlackHole 2ch (macOS)
 npm run soak:capture          # long capture run, 4 hours by default; the only check that finds leaks and metric drift
 npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; needs a full FFmpeg (PLVS_REFERENCE_FFMPEG or PATH)
 ```
 
-The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance runs take an exclusive lease, `plvs-capture-rig.lock` in the Git common directory, before starting the test tone. While another run holds it, a run fails with exit 2 and names the holder; add `--wait` to queue instead. A lease left by a killed run is removed automatically once its process is gone. There is no way to take a live lease ([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)).
+The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance
+runs take an exclusive lease, `plvs-capture-rig.lock` in the Git common directory, before starting
+the test tone. While another run holds it, a run fails with exit 2 and names the holder; add
+`--wait` to queue instead. A lease left by a killed run is removed automatically once its process
+is gone. There is no way to take a live lease
+([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)). The rig routes VLC directly to the
+virtual device and never changes the system default output. Install and reboot after the platform
+driver setup before running it; PLVS does not install or manage that driver.
 
 ## Release public-content review
 

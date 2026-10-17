@@ -1,6 +1,6 @@
 /**
  * Shared rig for the capture smoke and soak: synthesize a known signal, route it
- * into VB-Cable, and tear the player down again.
+ * into VB-Cable on Windows or BlackHole on macOS, and tear the player down again.
  *
  * Every hardware operation lives here on purpose. The first hand-driven
  * verification burned three attempts on VLC device selection alone (an argument
@@ -45,12 +45,18 @@ export const TOLERANCE_DB = {
   samplePeakMaxRDb: 0.2,
 };
 
+/** Kept for Windows-only adjacent tools while shared callers use `resolveCaptureRoute`. */
 export const CAPTURE_DEVICE = "CABLE Output";
 const VB_CABLE_RENDER_NAME = "CABLE Input";
-const VLC_PATHS = [
-  "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
-  "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
-];
+const BLACKHOLE_DEVICE_NAME = "BlackHole 2ch";
+const VLC_PATHS = {
+  win32: [
+    "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+    "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
+  ],
+  darwin: ["/Applications/VLC.app/Contents/MacOS/VLC"],
+};
+const MACOS_AUDIO_PROBE = join(ROOT, "scripts", "macos", "core-audio-output.swift");
 
 /** The rig is unusable: not a code signal. Callers map this to exit 2. */
 export class RigError extends Error {}
@@ -144,6 +150,9 @@ const ENDPOINT_ID_SHAPE = /^\{0\.0\.0\.00000000\}\.\{[0-9a-fA-F-]{36}\}$/;
  * is built to avoid. Hence the shape check below rather than trust.
  */
 export function resolveRenderEndpointId(friendlyName = VB_CABLE_RENDER_NAME) {
+  if (process.platform !== "win32") {
+    throw new RigError("MMDevice endpoint discovery is only available on Windows.");
+  }
   const command = `
     $base = "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render"
     Get-ChildItem $base -ErrorAction SilentlyContinue | ForEach-Object {
@@ -157,26 +166,133 @@ export function resolveRenderEndpointId(friendlyName = VB_CABLE_RENDER_NAME) {
     .map((s) => s.trim())
     .filter(Boolean);
   if (ids.length === 0) {
-    throw new RigError(
-      `No audio render endpoint named "${friendlyName}". Is VB-Cable installed?`,
-    );
+    throw new RigError(`No audio render endpoint named "${friendlyName}". Is VB-Cable installed?`);
   }
   if (!ENDPOINT_ID_SHAPE.test(ids[0])) {
     throw new RigError(
       `Endpoint id for "${friendlyName}" has an unexpected shape: ${ids[0]}\n` +
         `Expected {0.0.0.00000000}.{<guid>}. VLC accepts a malformed id silently and\n` +
-        `plays nowhere, so this is caught here rather than read as a capture defect.`,
+        `plays nowhere, so this is caught here rather than read as a capture defect.`
     );
   }
   return ids[0];
 }
 
-export function locateVlc() {
-  const vlc = VLC_PATHS.find((p) => existsSync(p));
+export function locateVlc(platform = process.platform) {
+  const paths = VLC_PATHS[platform];
+  if (!paths) {
+    throw new RigError(`The live-capture rig is not supported on ${platform}.`);
+  }
+  const vlc = paths.find((p) => existsSync(p));
   if (!vlc) {
-    throw new RigError(`VLC not found. Looked in:\n${VLC_PATHS.map((p) => `  ${p}`).join("\n")}`);
+    throw new RigError(`VLC not found. Looked in:\n${paths.map((p) => `  ${p}`).join("\n")}`);
   }
   return vlc;
+}
+
+function parseLastJsonLine(text, label) {
+  const line = text.replace(/^﻿/, "").trim().split(/\r?\n/).filter(Boolean).at(-1);
+  try {
+    return JSON.parse(line);
+  } catch {
+    throw new RigError(`${label} produced unparsable output: ${line || "<empty>"}`);
+  }
+}
+
+export function selectMacCaptureDevice(report, expectedName = BLACKHOLE_DEVICE_NAME) {
+  if (report?.status !== "ok" || !Array.isArray(report.devices)) {
+    throw new RigError(
+      `PLVS device discovery failed: ${report?.error?.message || "missing device report"}`
+    );
+  }
+  const matches = report.devices.filter(
+    (device) => device.label === expectedName && device.kind === "systemOutput"
+  );
+  if (matches.length !== 1) {
+    throw new RigError(
+      `Expected exactly one PLVS system-output device named "${expectedName}", found ${matches.length}. ` +
+        `Is BlackHole 2ch installed and active after reboot?`
+    );
+  }
+  const device = matches[0];
+  if (!/^lb-[0-9a-f]{32}$/i.test(device.id)) {
+    throw new RigError(`BlackHole capture id has an unexpected shape: ${device.id}`);
+  }
+  if (device.sampleRateHz !== SIGNAL.sampleRateHz || device.channelCount !== 2) {
+    throw new RigError(
+      `BlackHole capture format is ${device.sampleRateHz} Hz, ${device.channelCount} ch; ` +
+        `expected ${SIGNAL.sampleRateHz} Hz, 2 ch.`
+    );
+  }
+  return device;
+}
+
+export function selectMacRenderDevice(report, expectedName = BLACKHOLE_DEVICE_NAME) {
+  const matches = Array.isArray(report?.devices) ? report.devices : [];
+  if (matches.length !== 1) {
+    throw new RigError(
+      `Expected exactly one Core Audio output named "${expectedName}", found ${matches.length}. ` +
+        `Is BlackHole 2ch installed and active after reboot?`
+    );
+  }
+  const device = matches[0];
+  if (!Number.isInteger(device.audioObjectId) || device.audioObjectId <= 0) {
+    throw new RigError(`BlackHole Core Audio object id is invalid: ${device.audioObjectId}`);
+  }
+  if (device.nominalSampleRateHz !== SIGNAL.sampleRateHz || device.outputChannelCount !== 2) {
+    throw new RigError(
+      `BlackHole render format is ${device.nominalSampleRateHz} Hz, ` +
+        `${device.outputChannelCount} ch; expected ${SIGNAL.sampleRateHz} Hz, 2 ch.`
+    );
+  }
+  return device;
+}
+
+function resolveMacRenderDevice(run = spawnSync) {
+  const result = run("/usr/bin/xcrun", ["swift", MACOS_AUDIO_PROBE, BLACKHOLE_DEVICE_NAME], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    throw new RigError(
+      `Core Audio device discovery failed: ${result.stderr?.trim() || "unknown error"}`
+    );
+  }
+  return selectMacRenderDevice(parseLastJsonLine(result.stdout ?? "", "Core Audio probe"));
+}
+
+/** Resolve platform details once so smoke/soak logic stays identical. */
+export function resolveCaptureRoute(
+  harness,
+  {
+    platform = process.platform,
+    run = runCli,
+    endpointResolver = resolveRenderEndpointId,
+    macRenderResolver = resolveMacRenderDevice,
+  } = {}
+) {
+  if (platform === "win32") {
+    return {
+      platform,
+      label: "VB-Cable",
+      captureDevice: CAPTURE_DEVICE,
+      playerTarget: endpointResolver(),
+    };
+  }
+  if (platform !== "darwin") {
+    throw new RigError(`The live-capture rig is not supported on ${platform}.`);
+  }
+  const result = run(harness, harnessArgs(["devices", "--json"]));
+  if (result.status !== 0) {
+    throw new RigError(`PLVS device discovery failed: ${result.stderr.trim() || "unknown error"}`);
+  }
+  const capture = selectMacCaptureDevice(parseLastJsonLine(result.stdout, "PLVS device discovery"));
+  const render = macRenderResolver();
+  return {
+    platform,
+    label: BLACKHOLE_DEVICE_NAME,
+    captureDevice: capture.id,
+    playerTarget: String(render.audioObjectId),
+  };
 }
 
 /** The harness has its own Cargo profile so it never overwrites target/release/plvs.exe,
@@ -184,8 +300,9 @@ export function locateVlc() {
 export const BUILD_HARNESS =
   "cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness";
 
-export function harnessPath(root = ROOT) {
-  return join(root, "src-tauri", "target", "harness", "plvs.exe");
+export function harnessPath(root = ROOT, platform = process.platform) {
+  const executable = platform === "win32" ? "plvs.exe" : "plvs";
+  return join(root, "src-tauri", "target", "harness", executable);
 }
 
 /** What a harness rebuild consumes. `target/` is deliberately absent: it holds the
@@ -222,7 +339,7 @@ export function verifyHarnessBuild(harness, run = runCli) {
   const detail = probe.stderr.trim();
   throw new RigError(
     `The harness binary was not built with the capture harness feature.` +
-      `${detail ? `\nReported: ${detail}` : ""}\nRebuild first:\n  ${BUILD_HARNESS}`,
+      `${detail ? `\nReported: ${detail}` : ""}\nRebuild first:\n  ${BUILD_HARNESS}`
   );
 }
 
@@ -287,7 +404,7 @@ export function judgeSoak(samples) {
     const gap = last ? Math.abs(last[field] - last.integratedLufs) : NaN;
     if (!(gap <= SOAK_MAX_TO_INTEGRATED_DB)) {
       failures.push(
-        `${field} sits ${gap.toFixed(4)} dB from integratedLufs; over a constant signal they agree`,
+        `${field} sits ${gap.toFixed(4)} dB from integratedLufs; over a constant signal they agree`
       );
     }
   }
@@ -312,7 +429,7 @@ export function locateHarness() {
       listed.push(`  ... and ${stale.length - listed.length} more`);
     }
     throw new RigError(
-      `Capture harness is older than its sources, so this run would not exercise them:\n${listed.join("\n")}\nRebuild first:\n  ${BUILD_HARNESS}`,
+      `Capture harness is older than its sources, so this run would not exercise them:\n${listed.join("\n")}\nRebuild first:\n  ${BUILD_HARNESS}`
     );
   }
   return harness;
@@ -356,22 +473,25 @@ async function takeRig({ wait }) {
  * the system default playback device: that is intrusive, and 60s of 1 kHz sine
  * through real monitors is a scream.
  */
-export async function startPlayer(endpointId, wavPath, { wait = false } = {}) {
+export function playerArgs(playerTarget, wavPath, platform = process.platform) {
+  const common = ["--intf", "dummy", "--no-video", "--loop"];
+  if (platform === "win32") {
+    return [...common, "--aout=mmdevice", `--mmdevice-audio-device=${playerTarget}`, wavPath];
+  }
+  if (platform === "darwin") {
+    return [...common, "--aout=auhal", `--auhal-audio-device=${playerTarget}`, wavPath];
+  }
+  throw new RigError(`The live-capture player is not supported on ${platform}.`);
+}
+
+export async function startPlayer(playerTarget, wavPath, { wait = false } = {}) {
   await takeRig({ wait });
   const vlc = locateVlc();
-  const child = spawn(
-    vlc,
-    [
-      "--intf",
-      "dummy",
-      "--no-video",
-      "--loop",
-      "--aout=mmdevice",
-      `--mmdevice-audio-device=${endpointId}`,
-      wavPath,
-    ],
-    { detached: false, stdio: "ignore", windowsHide: true },
-  );
+  const child = spawn(vlc, playerArgs(playerTarget, wavPath), {
+    detached: false,
+    stdio: "ignore",
+    windowsHide: true,
+  });
   return child;
 }
 
@@ -389,13 +509,35 @@ export function stopPlayer(child) {
     if (!child || child.exitCode !== null || child.signalCode !== null) {
       return;
     }
-    // /T covers any helper processes VLC spawned; /F because it is looping and
-    // will not exit politely. Targeted by PID, never by image name.
-    spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
-    try {
-      child.kill();
-    } catch {
-      // taskkill already got it.
+    if (process.platform === "win32") {
+      // /T covers any helper processes VLC spawned; /F because it is looping and
+      // will not exit politely. Targeted by PID, never by image name.
+      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      try {
+        child.kill();
+      } catch {
+        // taskkill already got it.
+      }
+    } else {
+      try {
+        process.kill(child.pid, "SIGTERM");
+      } catch {
+        return;
+      }
+      const deadline = Date.now() + 500;
+      while (Date.now() < deadline) {
+        try {
+          process.kill(child.pid, 0);
+        } catch {
+          return;
+        }
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+      }
+      try {
+        process.kill(child.pid, "SIGKILL");
+      } catch {
+        // It exited between the final probe and the fallback.
+      }
     }
   } finally {
     releaseRig();

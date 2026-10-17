@@ -61,6 +61,8 @@ enum CliCommand {
     layout: Option<String>,
     out: Option<String>,
   },
+  #[cfg(any(feature = "capture-harness", test))]
+  DevicesJson,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +153,10 @@ fn parse_harness_args(args: &[String]) -> Result<CliCommand, String> {
   match args {
     [command, rest @ ..] if command == "analyze" => parse_analyze_args(rest),
     [command, rest @ ..] if command == "capture" => parse_capture_args(rest),
+    [command, flag] if command == "devices" && flag == "--json" => Ok(CliCommand::DevicesJson),
+    [command, ..] if command == "devices" => {
+      Err("Usage: plvs --harness devices --json".to_string())
+    }
     [command, ..] => Err(format!("Unknown harness command: {command}")),
     [] => Err("Missing harness command.".to_string()),
   }
@@ -1119,6 +1125,27 @@ fn execute(command: CliCommand) -> ExitCode {
         CliCaptureStatus::Error => ExitCode::from(1),
       }
     }
+    #[cfg(any(feature = "capture-harness", test))]
+    CliCommand::DevicesJson => {
+      let report = crate::cli_devices::run_devices();
+      let status = report.status();
+      match serde_json::to_string(&report) {
+        Ok(json) => {
+          if let Err(err) = emit_json(&json, None, "devices") {
+            eprintln!("{err}");
+            return ExitCode::from(2);
+          }
+        }
+        Err(err) => {
+          eprintln!("Failed to serialize devices report: {err}");
+          return ExitCode::from(2);
+        }
+      }
+      match status {
+        crate::cli_devices::CliDevicesStatus::Ok => ExitCode::SUCCESS,
+        crate::cli_devices::CliDevicesStatus::Error => ExitCode::from(1),
+      }
+    }
   }
 }
 
@@ -1379,7 +1406,7 @@ mod tests {
   }
 
   #[test]
-  fn internal_harness_accepts_only_analyze_and_capture() {
+  fn internal_harness_accepts_only_rig_commands() {
     assert!(matches!(
       parse_harness_args(&args(&["analyze", "mix.wav", "--json"])),
       Ok(CliCommand::Analyze { .. })
@@ -1388,7 +1415,12 @@ mod tests {
       parse_harness_args(&args(&["capture", "--seconds", "10", "--json"])),
       Ok(CliCommand::CaptureJson { .. })
     ));
-    for command in ["doctor", "app", "probe", "devices", "profile", "report"] {
+    assert_eq!(
+      parse_harness_args(&args(&["devices", "--json"])),
+      Ok(CliCommand::DevicesJson)
+    );
+    assert!(parse_harness_args(&args(&["devices"])).is_err());
+    for command in ["doctor", "app", "probe", "profile", "report"] {
       assert!(parse_harness_args(&args(&[command])).is_err());
     }
   }

@@ -7,12 +7,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  CAPTURE_DEVICE,
   RigError,
   compareMetrics,
   harnessArgs,
   locateHarness,
-  resolveRenderEndpointId,
+  resolveCaptureRoute,
   runCli,
   startPlayer,
   stopPlayer,
@@ -157,16 +156,23 @@ export async function runConcurrentCapture({
   wait = false,
 } = {}) {
   const harness = locateHarness();
-  const endpoint = resolveRenderEndpointId();
+  const route = resolveCaptureRoute(harness);
   const wav = join(tmpdir(), `plvs-multi-capture-${process.pid}.wav`);
   let player = null;
   try {
     await synthesizeSignal(wav);
     const truth = parseTruth(runCli(harness, harnessArgs(["analyze", wav, "--json"])));
-    player = await startPlayer(endpoint, wav, { wait });
+    player = await startPlayer(route.playerTarget, wav, { wait });
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
-    const args = ["capture", "--device", CAPTURE_DEVICE, "--seconds", String(seconds), "--json"];
+    const args = [
+      "capture",
+      "--device",
+      route.captureDevice,
+      "--seconds",
+      String(seconds),
+      "--json",
+    ];
     if (every !== null) args.push("--every", String(every));
     const children = await Promise.all(
       Array.from({ length: count }, () => runChild(harness, args, every))
@@ -214,7 +220,7 @@ export async function runConcurrentCapture({
         )}\n`
       );
     }
-    return { ...result, reports, artifactDirectory };
+    return { ...result, reports, artifactDirectory, route };
   } finally {
     stopPlayer(player);
     await rm(wav, { force: true }).catch(() => {});
@@ -226,9 +232,11 @@ async function main() {
     const count = parsePositive("instances", 2);
     const seconds = parsePositive("seconds", 15);
     const every = process.argv.includes("--every") ? parsePositive("every", 10) : null;
-    console.log(`Capturing ${CAPTURE_DEVICE} in ${count} independent processes for ${seconds}s.`);
     const wait = process.argv.includes("--wait");
     const result = await runConcurrentCapture({ count, seconds, every, wait });
+    console.log(
+      `Captured ${result.route.label} (${result.route.platform}) in ${count} independent processes for ${seconds}s.`
+    );
     result.reports.forEach((report, index) => {
       console.log(
         `Instance ${index + 1}: ${report?.summary?.integratedLufs ?? "null"} LUFS, ` +

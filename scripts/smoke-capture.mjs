@@ -17,13 +17,12 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
-  CAPTURE_DEVICE,
   RigError,
   TOLERANCE_DB,
   compareMetrics,
   harnessArgs,
   locateHarness,
-  resolveRenderEndpointId,
+  resolveCaptureRoute,
   runCli,
   startPlayer,
   stopPlayer,
@@ -60,17 +59,17 @@ function parseReport(label, { status, stdout, stderr }) {
 
 try {
   const harness = locateHarness();
-  const endpoint = resolveRenderEndpointId();
+  const route = resolveCaptureRoute(harness);
 
   await synthesizeSignal(wav);
 
   // Ground truth from the already-trusted file path.
   const truth = parseReport(
     "analyze",
-    runCli(harness, harnessArgs(["analyze", wav, "--json"])),
+    runCli(harness, harnessArgs(["analyze", wav, "--json"]))
   ).summary;
 
-  player = await startPlayer(endpoint, wav, { wait: process.argv.includes("--wait") });
+  player = await startPlayer(route.playerTarget, wav, { wait: process.argv.includes("--wait") });
   // Let the loop reach the device before measuring.
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
@@ -81,16 +80,17 @@ try {
       harnessArgs([
         "capture",
         "--device",
-        CAPTURE_DEVICE,
+        route.captureDevice,
         "--seconds",
         String(CAPTURE_SECONDS),
         "--json",
-      ]),
-    ),
+      ])
+    )
   );
 
   const result = compareMetrics(truth, live.summary);
 
+  console.log(`Rig         : ${route.label} (${route.platform})`);
   console.log(`Device      : ${live.source.deviceName}`);
   console.log(`Format      : ${live.source.sampleRateHz} Hz, ${live.source.channelCount} ch`);
   console.log(`Dropped     : ${live.health.droppedChunks}`);
@@ -102,7 +102,7 @@ try {
 
   if (live.health.droppedChunks > 0) {
     console.error(
-      `\nFAIL ${live.health.droppedChunks} chunks dropped during a ${CAPTURE_SECONDS}s capture.`,
+      `\nFAIL ${live.health.droppedChunks} chunks dropped during a ${CAPTURE_SECONDS}s capture.`
     );
     process.exitCode = 1;
   } else if (!result.ok) {

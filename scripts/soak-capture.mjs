@@ -14,14 +14,13 @@ import { once } from "node:events";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import {
-  CAPTURE_DEVICE,
   RigError,
   SOAK_WARMUP_SECONDS,
   assertSoakCaptureCompleted,
   harnessArgs,
   judgeSoak,
   locateHarness,
-  resolveRenderEndpointId,
+  resolveCaptureRoute,
   startPlayer,
   stopPlayer,
   synthesizeSignal,
@@ -50,15 +49,18 @@ const outPath = join(process.cwd(), "artifacts", "soak", `soak-${Date.now()}.jso
 let player = null;
 
 function rssMb(pid) {
-  const out = spawnSync(
-    "powershell",
-    [
-      "-NoProfile",
-      "-Command",
-      `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).WorkingSet64`,
-    ],
-    { encoding: "utf8" },
-  );
+  const command =
+    process.platform === "win32"
+      ? [
+          "powershell",
+          [
+            "-NoProfile",
+            "-Command",
+            `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).WorkingSet64`,
+          ],
+        ]
+      : ["ps", ["-o", "rss=", "-p", String(pid)]];
+  const out = spawnSync(command[0], command[1], { encoding: "utf8" });
   const text = out.stdout?.trim();
   // An exited process prints nothing, and `Number("")` is 0 — which is finite.
   // Left unguarded, the last tick of a finished run records "0 MB" and drags the
@@ -68,17 +70,20 @@ function rssMb(pid) {
     return null;
   }
   const bytes = Number(text);
-  return Number.isFinite(bytes) ? bytes / (1024 * 1024) : null;
+  if (!Number.isFinite(bytes)) return null;
+  return process.platform === "win32" ? bytes / (1024 * 1024) : bytes / 1024;
 }
 
 try {
   const harness = locateHarness();
-  const endpoint = resolveRenderEndpointId();
+  const route = resolveCaptureRoute(harness);
   await synthesizeSignal(wav);
-  player = await startPlayer(endpoint, wav, { wait: process.argv.includes("--wait") });
+  player = await startPlayer(route.playerTarget, wav, { wait: process.argv.includes("--wait") });
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
-  console.log(`Soaking ${CAPTURE_DEVICE} for ${seconds}s, sampling every ${every}s.`);
+  console.log(
+    `Soaking ${route.label} (${route.platform}) for ${seconds}s, sampling every ${every}s.`
+  );
   console.log(`Writing ${outPath}`);
 
   const child = spawn(
@@ -86,14 +91,14 @@ try {
     harnessArgs([
       "capture",
       "--device",
-      CAPTURE_DEVICE,
+      route.captureDevice,
       "--seconds",
       String(seconds),
       "--every",
       String(every),
       "--json",
     ]),
-    { stdio: ["ignore", "pipe", "pipe"] },
+    { stdio: ["ignore", "pipe", "pipe"] }
   );
 
   mkdirSync(dirname(outPath), { recursive: true });
@@ -118,9 +123,8 @@ try {
   // RSS is sampled externally against the PID. The CLI deliberately does not
   // self-report it: that would mean a new dependency to hand back a number the
   // caller can already read, and the external figure measures the whole process.
-  // One PowerShell launch per interval (1,440 over a default 4h run) costs ~100 ms
-  // of blocked event loop each — negligible against a 10s interval, and the child
-  // buffers stdout meanwhile.
+  // One platform process query per interval is negligible against a 10s interval,
+  // and the child buffers stdout meanwhile.
   const rssTimer = setInterval(() => {
     const mb = rssMb(child.pid);
     if (mb !== null) rss.push({ t: Date.now(), mb });
@@ -152,7 +156,7 @@ try {
   const rssLast = rss.length ? rss[rss.length - 1].mb : null;
 
   console.log(
-    `\nSamples        : ${samples.length} (${settled.length} after ${SOAK_WARMUP_SECONDS}s warmup)`,
+    `\nSamples        : ${samples.length} (${settled.length} after ${SOAK_WARMUP_SECONDS}s warmup)`
   );
   for (const [field, spread] of Object.entries(spreads)) {
     console.log(`${field.padEnd(15)}: spread ${spread.toFixed(4)} dB after warmup`);
@@ -162,7 +166,7 @@ try {
     console.log(`RSS            : ${rssFirst.toFixed(1)} MB -> ${rssLast.toFixed(1)} MB`);
     console.log(
       `                 SummaryMeter accumulates ~3.5 MB over 4h by design (100 ms blocks,\n` +
-        `                 144k entries x 24 bytes). Growth of that order is the floor, not a leak.`,
+        `                 144k entries x 24 bytes). Growth of that order is the floor, not a leak.`
     );
   }
   console.log(`\nFull series: ${outPath}`);
@@ -175,7 +179,7 @@ try {
     for (const failure of failures) console.error(`  ${failure}`);
     console.error(
       "Each is the whole run's value over identical input; movement is a defect or a rig " +
-        "contaminant (anything else reaching the cable). Do not widen the limit.",
+        "contaminant (anything else reaching the cable). Do not widen the limit."
     );
     process.exitCode = 1;
   } else {
