@@ -4,6 +4,7 @@ import {
   acceptanceBuildLayout,
   assertCommittedSource,
   platformTargetTriple,
+  replaceCargoWorkspaceVersion,
 } from "./build-update-acceptance.mjs";
 
 const sha = "0123456789abcdef0123456789abcdef01234567";
@@ -43,5 +44,14 @@ describe("update acceptance builder", () => {
     [{ os: "macos", arch: "x86_64" }, "x86_64-apple-darwin"],
   ])("derives the native target triple from %o", (descriptor, expected) => {
     expect(platformTargetTriple(descriptor)).toBe(expected);
+  });
+
+  it("accepts the repository version when the first package needs no textual version change", () => {
+    const cargo = '[workspace.package]\nversion = "0.21.0"\nedition = "2021"\n';
+    expect(replaceCargoWorkspaceVersion(cargo, "0.21.0")).toBe(cargo);
+    expect(replaceCargoWorkspaceVersion(cargo, "0.21.1")).toContain('version = "0.21.1"');
+    expect(() => replaceCargoWorkspaceVersion('[package]\nname = "plvs"', "0.21.0")).toThrow(
+      /seam changed/
+    );
   });
 });

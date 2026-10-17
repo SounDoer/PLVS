@@ -77,6 +77,12 @@ function replaceExactlyOnce(source, needle, replacement, label) {
   return source.replace(needle, replacement);
 }
 
+export function replaceCargoWorkspaceVersion(source, version) {
+  const pattern = /(\[workspace\.package\]\s+version = )"[^"]+"/;
+  if (!pattern.test(source)) throw new Error("Cargo workspace version seam changed");
+  return source.replace(pattern, `$1"${version}"`);
+}
+
 function prepareSnapshot(
   { repository, sourceSha, root, snapshot, names, descriptor },
   invoke = run
@@ -160,9 +166,7 @@ function writeVersion(snapshot, version, names, key, descriptor) {
 
   const cargoPath = path.join(snapshot, "src-tauri/Cargo.toml");
   const cargo = readFileSync(cargoPath, "utf8");
-  const nextCargo = cargo.replace(/(\[workspace\.package\]\s+version = )"[^"]+"/, `$1"${version}"`);
-  if (nextCargo === cargo) throw new Error("Cargo workspace version seam changed");
-  writeFileSync(cargoPath, nextCargo);
+  writeFileSync(cargoPath, replaceCargoWorkspaceVersion(cargo, version));
 
   const configPath = path.join(snapshot, "src-tauri/tauri.conf.json");
   const config = JSON.parse(readFileSync(configPath, "utf8"));
