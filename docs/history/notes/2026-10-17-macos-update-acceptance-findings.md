@@ -24,7 +24,8 @@ the remaining explicit gaps.
 
 A later runner-owned replay is under `runs/runner-owned-faults-v5/`. It passed the stale-signature
 and truncated-package rejection scenarios with real error screenshots, then completed the same
-offline update and cleanup. Its only required automated gap is the read-only DMG scenario.
+offline update and cleanup. Its only required automated gap at that point was the read-only DMG
+scenario.
 
 ## Defects found and fixed
 
@@ -58,8 +59,7 @@ offline update and cleanup. Its only required automated gap is the read-only DMG
 
 ## Remaining work
 
-- Fold the proven read-only DMG check into a runner-owned scenario, and add deterministic helper
-  interruption.
+- Add deterministic helper interruption.
 - Add manual `/Applications` approval and cancellation evidence without storing credentials.
 - Run the migrated Windows NSIS adapter on a Windows acceptance host. Its install, launch, helper,
   cleanup, result-schema, and common npm-command contracts are implemented, but macOS code tests do

@@ -76,8 +76,9 @@ Turning automatic downloading off cancels background work and removes the staged
 update you have explicitly confirmed is separate from this preference. Installed Windows and macOS
 copies support verified local staging; Portable copies use the release-page download instead.
 Preview does not offer the updater. On macOS, automatic updates are unavailable on a read-only
-volume such as a mounted DMG; move PLVS to Applications and reopen it. A protected directory on a
-writable volume can still use the system authorization flow.
+volume such as a mounted DMG; Settings shows the reason directly below **Auto Download** so you can
+move PLVS to Applications and reopen it. A protected directory on a writable volume can still use
+the system authorization flow.
 
 Downloaded updates are offered on a later fresh launch. **Skip This Time** or closing details keeps
 the package without installing it. Details keep their selected version even if another check

@@ -79,6 +79,7 @@ it("explains the check dependency and read-only installation separately", () => 
     />
   );
   expect(screen.getByRole("button", { name: /Move PLVS to Applications/ })).toBeTruthy();
+  expect(screen.getByText("Move PLVS to Applications.")).toBeTruthy();
   expect(
     screen.getByRole("switch", { name: "automatically download updates" }).hasAttribute("disabled")
   ).toBe(true);

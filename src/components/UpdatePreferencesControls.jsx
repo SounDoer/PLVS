@@ -60,6 +60,11 @@ export function UpdatePreferencesControls({
           onCheckedChange={(autoDownload) => onChange({ autoDownload })}
         />
       </div>
+      {!installationSupported && installationUnavailableReason ? (
+        <p className="max-w-[28rem] text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+          {installationUnavailableReason}
+        </p>
+      ) : null}
     </div>
   );
 }

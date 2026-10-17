@@ -55,6 +55,29 @@ export function acceptanceBootstrapMarker(dataRoot) {
   return path.join(dataRoot, "multi-instance", "migration-complete.json");
 }
 
+export function macReadOnlyDmgLayout(root, runDir, receipt) {
+  const mountRoot = path.join(runDir, "read-only dmg");
+  return {
+    dmg: resolveReceiptFile(root, receipt.versions[0].dmg),
+    mountRoot,
+    dataRoot: path.join(runDir, "read-only dmg data"),
+    app: path.join(mountRoot, `${receipt.productName}.app`),
+  };
+}
+
+export function mountReportsReadOnly(output, mountRoot) {
+  const marker = ` on ${mountRoot} (`;
+  return output.split(/\r?\n/).some((line) => {
+    const markerIndex = line.indexOf(marker);
+    if (markerIndex < 0) return false;
+    return line
+      .slice(markerIndex + marker.length)
+      .split(")", 1)[0]
+      .split(",")
+      .some((option) => option.trim() === "read-only");
+  });
+}
+
 export function windowsAcceptanceInstall(installer, installRoot) {
   return { command: installer, args: ["/S", `/D=${installRoot}`] };
 }
@@ -139,6 +162,19 @@ function findNamedFile(root, name) {
 function readReady(dataRoot) {
   const state = findNamedFile(path.join(dataRoot, "updates"), "state.json");
   return state ? { file: state, value: JSON.parse(readFileSync(state, "utf8")) } : null;
+}
+
+function seedAcceptanceSettings(dataRoot, dockEnabled) {
+  mkdirSync(dataRoot, { recursive: true });
+  writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
+    agentControlEnabled: true,
+    dockState: {
+      enabled: dockEnabled,
+      edge: "bottom",
+      height: 160,
+      reserveSpace: false,
+    },
+  });
 }
 
 function artifactList(runDir, names) {
@@ -311,15 +347,13 @@ async function runGuidedAcceptance({
   nativeScenarios,
 }) {
   const [older, newer] = receipt.versions;
-  writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
-    agentControlEnabled: true,
-    dockState: {
-      enabled: true,
-      edge: "bottom",
-      height: 160,
-      reserveSpace: receipt.platform.os === "windows",
-    },
-  });
+  seedAcceptanceSettings(dataRoot, true);
+  if (receipt.platform.os === "windows") {
+    const settingsFile = path.join(dataRoot, "plvs-settings.json");
+    const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
+    settings.dockState.reserveSpace = true;
+    writeJsonAtomic(settingsFile, settings);
+  }
   const requestLog = path.join(runDir, "requests.jsonl");
   writeFileSync(requestLog, "");
   let feedFault = "stale-signature";
@@ -553,6 +587,8 @@ async function runGuidedAcceptance({
         "restored-dock.png",
         "stale-signature-rejected.png",
         "truncated-package-rejected.png",
+        "read-only-dmg.json",
+        "read-only-dmg-guidance.png",
       ]),
       cleanup: {
         status: "passed",
@@ -587,6 +623,116 @@ async function runGuidedAcceptance({
   }
 }
 
+async function runMacReadOnlyDmg({ root, runDir, receipt }) {
+  const layout = macReadOnlyDmgLayout(root, runDir, receipt);
+  mkdirSync(layout.mountRoot, { recursive: true });
+  seedAcceptanceSettings(layout.dataRoot, false);
+  let mounted = false;
+  let launched = false;
+  try {
+    run("hdiutil", [
+      "attach",
+      "-readonly",
+      "-nobrowse",
+      "-mountpoint",
+      layout.mountRoot,
+      layout.dmg,
+    ]);
+    mounted = true;
+    const mounts = run("mount", []);
+    if (!mountReportsReadOnly(mounts, layout.mountRoot)) {
+      throw new Error(`DMG was not mounted read-only at ${layout.mountRoot}`);
+    }
+    const cli = path.join(layout.app, "Contents", "MacOS", "plvs-cli");
+    const launchCommand = macAcceptanceLaunch(layout.app, layout.dataRoot);
+    launchBackground(launchCommand.command, launchCommand.args, { newProcessGroup: false });
+    launched = true;
+    await waitFor(
+      "read-only DMG persistence bootstrap",
+      () => existsSync(acceptanceBootstrapMarker(layout.dataRoot)),
+      Boolean,
+      60_000
+    );
+    const capabilities = await waitFor(
+      "read-only DMG app launch",
+      () => cliJson(cli, layout.dataRoot, ["capabilities"]),
+      (value) => value.result?.appVersion === receipt.versions[0].version,
+      60_000
+    );
+    if (capabilities.result.runtime?.identifier !== receipt.identity) {
+      throw new Error("Read-only DMG app identity does not match the acceptance receipt");
+    }
+    const inspected = cliJson(cli, layout.dataRoot, ["ui", "inspect"]);
+    const shown = cliJson(cli, layout.dataRoot, [
+      "ui",
+      "show",
+      "settings",
+      "--section",
+      "about",
+      "--expected-revision",
+      String(inspected.result.revision),
+      "--expected-ui-generation",
+      String(inspected.result.uiGeneration),
+    ]);
+    if (
+      shown.result.surface?.kind !== "settings" ||
+      shown.result.surface?.target?.section !== "about"
+    ) {
+      throw new Error("Read-only DMG did not open the About settings section");
+    }
+    const screenshot = cliJson(cli, layout.dataRoot, [
+      "visual",
+      "screenshot",
+      "--target",
+      "main",
+      "--expected-revision",
+      String(shown.result.revision),
+      "--expected-ui-generation",
+      String(shown.result.uiGeneration),
+      "--out",
+      path.join(runDir, "read-only-dmg-guidance.png"),
+    ]);
+    const ready = readReady(layout.dataRoot);
+    if (ready?.value.ready) {
+      throw new Error("Read-only DMG unexpectedly staged a ready update");
+    }
+    writeJsonAtomic(path.join(runDir, "read-only-dmg.json"), {
+      appVersion: capabilities.result.appVersion,
+      identity: capabilities.result.runtime.identifier,
+      mountPoint: layout.mountRoot,
+      mountReadOnly: true,
+      settingsSection: shown.result.surface.target.section,
+      ready: ready?.value.ready ?? null,
+    });
+    cliJson(cli, layout.dataRoot, [
+      "ui",
+      "close",
+      shown.result.surface.surfaceId,
+      "--expected-revision",
+      String(screenshot.result.revision),
+      "--expected-ui-generation",
+      String(screenshot.result.uiGeneration),
+    ]);
+    return { id: "read-only-dmg-refusal", status: "passed" };
+  } finally {
+    if (launched) {
+      const pids = terminateOwnedMacApp(layout.app);
+      if (pids.length) {
+        await waitFor(
+          "read-only DMG app cleanup",
+          () => {
+            const rows = run("ps", ["-axo", "pid=,command="]);
+            return pids.every((pid) => !new RegExp(`^\\s*${pid}\\s`, "m").test(rows));
+          },
+          Boolean,
+          10_000
+        );
+      }
+    }
+    if (mounted) run("hdiutil", ["detach", layout.mountRoot]);
+  }
+}
+
 async function runMacAcceptance({ root, runId, receipt }) {
   const runDir = path.join(root, "runs", runId);
   if (existsSync(runDir)) throw new Error(`Run directory already exists: ${runDir}`);
@@ -594,6 +740,16 @@ async function runMacAcceptance({ root, runId, receipt }) {
   const dataRoot = path.join(runDir, "data with spaces");
   mkdirSync(installRoot, { recursive: true });
   mkdirSync(dataRoot, { recursive: true });
+  let readOnlyDmgScenario;
+  try {
+    readOnlyDmgScenario = await runMacReadOnlyDmg({ root, runDir, receipt });
+  } catch (error) {
+    readOnlyDmgScenario = {
+      id: "read-only-dmg-refusal",
+      status: "failed",
+      reason: error.message,
+    };
+  }
   const archive = resolveReceiptFile(root, receipt.versions[0].file);
   run("tar", ["-xzf", archive, "-C", installRoot], { env: { COPYFILE_DISABLE: "1" } });
   const app = path.join(installRoot, `${receipt.productName}.app`);
@@ -617,10 +773,7 @@ async function runMacAcceptance({ root, runId, receipt }) {
       installation: () => {},
     },
     platformVersion: () => run("sw_vers", ["-productVersion"]),
-    nativeScenarios: () => [
-      { id: "apfs-bundle-swap", status: "passed" },
-      { id: "read-only-dmg-refusal", status: "notRun", reason: "planned automated scenario" },
-    ],
+    nativeScenarios: () => [{ id: "apfs-bundle-swap", status: "passed" }, readOnlyDmgScenario],
   });
 }
 

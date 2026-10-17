@@ -7,6 +7,8 @@ import {
   findUpdateSurface,
   hasFeedPackageRequest,
   macAcceptanceLaunch,
+  macReadOnlyDmgLayout,
+  mountReportsReadOnly,
   parseRunArguments,
   windowsAcceptanceInstall,
   windowsAcceptanceLaunch,
@@ -28,6 +30,35 @@ describe("update acceptance runner", () => {
     expect(acceptanceBootstrapMarker("/tmp/data with spaces")).toBe(
       "/tmp/data with spaces/multi-instance/migration-complete.json"
     );
+  });
+
+  it("derives isolated read-only DMG paths without losing spaces", () => {
+    expect(
+      macReadOnlyDmgLayout("/tmp/artifacts", "/tmp/run with spaces", {
+        productName: "PLVS Update Test abc12345",
+        versions: [{ dmg: "packages/older image.dmg" }],
+      })
+    ).toEqual({
+      dmg: "/tmp/artifacts/packages/older image.dmg",
+      mountRoot: "/tmp/run with spaces/read-only dmg",
+      dataRoot: "/tmp/run with spaces/read-only dmg data",
+      app: "/tmp/run with spaces/read-only dmg/PLVS Update Test abc12345.app",
+    });
+  });
+
+  it("requires the exact DMG mount point to report read-only", () => {
+    const output = [
+      "/dev/disk3s1 on /Volumes/Other (apfs, local, read-only)",
+      "/dev/disk4s1 on /tmp/run with spaces/read-only dmg (hfs, local, read-only, noowners)",
+    ].join("\n");
+    expect(mountReportsReadOnly(output, "/tmp/run with spaces/read-only dmg")).toBe(true);
+    expect(mountReportsReadOnly(output, "/Volumes/Other writable")).toBe(false);
+    expect(
+      mountReportsReadOnly(
+        "/dev/disk4s1 on /tmp/run with spaces/read-only dmg (hfs, local, noowners)",
+        "/tmp/run with spaces/read-only dmg"
+      )
+    ).toBe(false);
   });
 
   it("rejects unsafe run IDs", () => {
