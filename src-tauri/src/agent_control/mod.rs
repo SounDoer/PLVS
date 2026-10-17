@@ -1,6 +1,6 @@
 pub mod broker;
 pub mod discovery;
-#[cfg(any(target_os = "windows", target_os = "macos", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
 pub mod framing;
 pub mod protocol;
 pub mod toggle;

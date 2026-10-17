@@ -478,8 +478,9 @@ pub fn run() {
       let agent_control = serde_json::json!({
         // `available` is platform support alone. Whether the endpoint is actually open is
         // `enabled`, which the user owns from Settings.
-        "available": cfg!(any(target_os = "windows", target_os = "macos")),
-        "enabled": cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled,
+        "available": cfg!(any(target_os = "windows", target_os = "macos", target_os = "linux")),
+        "enabled": cfg!(any(target_os = "windows", target_os = "macos", target_os = "linux"))
+          && agent_control_enabled,
         "appName": env!("PLVS_APP_NAME"),
         "appVersion": env!("CARGO_PKG_VERSION"),
         "identifier": env!("PLVS_APP_ID"),
@@ -521,7 +522,11 @@ pub fn run() {
 
       // Install the broker before any webview can announce its frontend listener.
       // Creating accessories can yield long enough for the main frontend to hydrate.
-      if cfg!(any(target_os = "windows", target_os = "macos"))
+      if cfg!(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "linux"
+      ))
         && (agent_control_enabled || !is_coordinator)
       {
         agent_control::toggle::start_at_launch(app.handle());

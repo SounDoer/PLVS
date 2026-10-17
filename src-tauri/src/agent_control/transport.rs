@@ -5,11 +5,11 @@ use std::io;
 use std::time::Duration;
 
 use super::discovery::AgentControlDescriptor;
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 use super::protocol::JsonRpcError;
 use super::protocol::JsonRpcRequest;
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 pub(crate) const MAX_CLIENT_WORKERS: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -42,7 +42,7 @@ impl TransportError {
     }
   }
 
-  #[cfg(any(target_os = "windows", target_os = "macos"))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   pub(crate) fn rpc_error(&self) -> JsonRpcError {
     let code = match self.reason {
       TransportErrorReason::Unauthorized => -32020,
@@ -85,21 +85,21 @@ mod windows_pipe;
 #[cfg(target_os = "windows")]
 use windows_pipe as platform;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod macos_socket;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use macos_socket as platform;
 
 #[cfg(target_os = "windows")]
 pub use platform::PipeServerState as ServerState;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub use platform::ServerState;
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 #[derive(Default)]
 pub struct ServerState(());
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 impl ServerState {
   pub fn stop(&self) {}
 
@@ -108,12 +108,12 @@ impl ServerState {
   }
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
   platform::start(app)
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 pub fn start_instance(
   app: &tauri::AppHandle,
   instance_id: &str,
@@ -122,12 +122,12 @@ pub fn start_instance(
   platform::start_instance(app, instance_id, descriptor_path)
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 pub fn start(_app: &tauri::AppHandle) -> Result<(), String> {
   Err("Agent Control is unavailable on this platform.".to_string())
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 pub fn start_instance(
   _app: &tauri::AppHandle,
   _instance_id: &str,
@@ -136,7 +136,7 @@ pub fn start_instance(
   Err("Agent Control is unavailable on this platform.".to_string())
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 pub fn call_with_timeout(
   descriptor: &AgentControlDescriptor,
   request: &JsonRpcRequest,
@@ -150,7 +150,7 @@ pub fn call_with_timeout(
   )
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 pub fn call_with_timeout(
   _descriptor: &AgentControlDescriptor,
   _request: &JsonRpcRequest,

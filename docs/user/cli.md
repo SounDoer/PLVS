@@ -3,12 +3,13 @@
 PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. Commands are
 organized directly by the product resource or operation they address:
 
-Experimental Linux development and Ubuntu Preview builds support `doctor` and `instances`, using the same identity
-directory as the GUI under `$XDG_DATA_HOME` or `~/.local/share`. Live Agent Control commands and
-visual capture are not yet available on Linux. Linux development file analysis uses system
-FFmpeg/FFprobe selected by the development launcher. The Ubuntu Preview deb installs them through
-APT and resolves `/usr/bin/ffmpeg` and `/usr/bin/ffprobe` without an environment override.
-Official Linux release packages are not yet available.
+Experimental Linux development and Ubuntu Preview builds support the live Agent Control command
+surface, using the same identity directory as the GUI under `$XDG_DATA_HOME` or
+`~/.local/share`. Linux Visual Capture screenshots and recording are not yet available. Linux
+development file analysis uses system FFmpeg/FFprobe selected by the development launcher. The
+Ubuntu Preview deb installs them through APT and resolves `/usr/bin/ffmpeg` and
+`/usr/bin/ffprobe` without an environment override. Official Linux release packages are not yet
+available.
 
 ```text
 plvs-cli doctor
@@ -45,9 +46,9 @@ represents its one running window with the synthetic ID `legacy`. Commands may t
 `--instance legacy`; the CLI removes the selector before forwarding the otherwise unchanged command
 to the older application. If that application is not available to Agent Control, the list is empty.
 
-Those commands require Agent Control to be enabled in Settings and are available on Windows and
-macOS. Individual native capabilities may still be platform-specific. The CLI never starts PLVS
-implicitly or edits its store behind the running app.
+Those commands require Agent Control to be enabled in Settings and are available on Windows,
+macOS, and experimental Linux builds. Individual native capabilities may still be
+platform-specific. The CLI never starts PLVS implicitly or edits its store behind the running app.
 
 ## Install Location
 
@@ -66,6 +67,12 @@ macOS:
 ~/Applications/PLVS.app/Contents/MacOS/plvs-cli
 ```
 
+Ubuntu Preview:
+
+```bash
+/usr/bin/plvs-cli
+```
+
 When PATH setup is enabled from Settings on Windows, a fresh terminal can run:
 
 ```powershell
@@ -74,8 +81,9 @@ plvs-cli --help
 
 Portable builds may require the executable's full path.
 
-PLVS does not edit shell startup files or install symlinks on macOS. Full-path invocation always
-works; adding the bundled CLI to `PATH` is an optional user-owned setup step.
+PLVS does not edit shell startup files or install symlinks on macOS or Linux. Full-path invocation
+always works; adding a development or bundled CLI to `PATH` is an optional user-owned setup step.
+The Ubuntu Preview package installs `plvs-cli` directly in `/usr/bin`.
 
 ## Agent Discovery
 
@@ -106,6 +114,12 @@ cat /Applications/PLVS.app/Contents/Resources/plvs-agent.json
 
 ```bash
 ~/Applications/PLVS.app/Contents/MacOS/plvs-cli doctor --json
+```
+
+6. On Linux, try the Ubuntu package path:
+
+```bash
+/usr/bin/plvs-cli doctor --json
 ```
 
 Run `doctor --json` first to verify the installed runtime and bundled sidecars.

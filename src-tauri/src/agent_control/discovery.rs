@@ -24,7 +24,10 @@ impl LaunchToken {
   }
 
   // Native transports read the raw token; unsupported platforms use it only in tests.
-  #[cfg_attr(not(any(target_os = "windows", target_os = "macos")), allow(dead_code))]
+  #[cfg_attr(
+    not(any(target_os = "windows", target_os = "macos", target_os = "linux")),
+    allow(dead_code)
+  )]
   pub(crate) fn expose(&self) -> &str {
     &self.0
   }
@@ -137,8 +140,8 @@ pub fn isolated_coordinator_descriptor_path(identity_root: &Path) -> PathBuf {
     .join("coordinator.json")
 }
 
-#[cfg(any(target_os = "macos", test))]
-pub fn macos_socket_file_name(app_identifier: &str) -> String {
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
+pub fn unix_socket_file_name(app_identifier: &str) -> String {
   use sha2::{Digest, Sha256};
 
   let digest = Sha256::digest(app_identifier.as_bytes());
@@ -150,14 +153,14 @@ pub fn macos_socket_file_name(app_identifier: &str) -> String {
 }
 
 fn endpoint_matches_identity(endpoint: &str, expected_identifier: &str) -> bool {
-  #[cfg(target_os = "macos")]
+  #[cfg(any(target_os = "macos", target_os = "linux"))]
   {
     let path = Path::new(endpoint);
     path.is_absolute()
       && path.file_name().and_then(|name| name.to_str())
-        == Some(macos_socket_file_name(expected_identifier).as_str())
+        == Some(unix_socket_file_name(expected_identifier).as_str())
   }
-  #[cfg(not(target_os = "macos"))]
+  #[cfg(not(any(target_os = "macos", target_os = "linux")))]
   {
     endpoint == endpoint_name(expected_identifier)
   }
@@ -182,14 +185,14 @@ pub fn is_process_alive(pid: u32) -> bool {
   queried == 0 || exit_code == STILL_ACTIVE as u32
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn is_process_alive(pid: u32) -> bool {
   let result = unsafe { libc::kill(pid as libc::pid_t, 0) };
-  macos_process_probe_is_alive(result, std::io::Error::last_os_error().raw_os_error())
+  unix_process_probe_is_alive(result, std::io::Error::last_os_error().raw_os_error())
 }
 
-#[cfg(target_os = "macos")]
-fn macos_process_probe_is_alive(result: libc::c_int, errno: Option<i32>) -> bool {
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn unix_process_probe_is_alive(result: libc::c_int, errno: Option<i32>) -> bool {
   if result == 0 {
     return true;
   }
@@ -200,7 +203,7 @@ fn macos_process_probe_is_alive(result: libc::c_int, errno: Option<i32>) -> bool
   }
 }
 
-#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 pub fn is_process_alive(_pid: u32) -> bool {
   true
 }
@@ -349,7 +352,7 @@ pub fn write_descriptor_atomic_at(
       format!("Unable to create the descriptor directory: {error}"),
     )
   })?;
-  #[cfg(target_os = "macos")]
+  #[cfg(any(target_os = "macos", target_os = "linux"))]
   {
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).map_err(|error| {
@@ -383,7 +386,7 @@ pub fn write_descriptor_atomic_at(
       format!("Unable to atomically replace the descriptor: {error}"),
     )
   })?;
-  #[cfg(target_os = "macos")]
+  #[cfg(any(target_os = "macos", target_os = "linux"))]
   {
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|error| {
@@ -441,12 +444,12 @@ mod tests {
   }
 
   fn descriptor(token: LaunchToken) -> AgentControlDescriptor {
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     let endpoint = std::env::temp_dir()
-      .join(macos_socket_file_name("com.soundoer.plvs.dev"))
+      .join(unix_socket_file_name("com.soundoer.plvs.dev"))
       .display()
       .to_string();
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     let endpoint = endpoint_name("com.soundoer.plvs.dev");
 
     AgentControlDescriptor {
@@ -484,14 +487,25 @@ mod tests {
     );
   }
 
-  #[cfg(target_os = "macos")]
   #[test]
-  fn macos_process_liveness_classifies_probe_results_conservatively() {
+  fn unix_socket_names_are_stable_short_and_identity_scoped() {
+    let release = unix_socket_file_name("com.soundoer.plvs");
+    let development = unix_socket_file_name("com.soundoer.plvs.dev");
+
+    assert_eq!(release, unix_socket_file_name("com.soundoer.plvs"));
+    assert_ne!(release, development);
+    assert!(release.starts_with("plvs-control-"));
+    assert!(release.ends_with(".sock"));
+  }
+
+  #[cfg(any(target_os = "macos", target_os = "linux"))]
+  #[test]
+  fn unix_process_liveness_classifies_probe_results_conservatively() {
     assert!(is_process_alive(std::process::id()));
-    assert!(macos_process_probe_is_alive(0, None));
-    assert!(macos_process_probe_is_alive(-1, Some(libc::EPERM)));
-    assert!(!macos_process_probe_is_alive(-1, Some(libc::ESRCH)));
-    assert!(macos_process_probe_is_alive(-1, Some(libc::EINVAL)));
+    assert!(unix_process_probe_is_alive(0, None));
+    assert!(unix_process_probe_is_alive(-1, Some(libc::EPERM)));
+    assert!(!unix_process_probe_is_alive(-1, Some(libc::ESRCH)));
+    assert!(unix_process_probe_is_alive(-1, Some(libc::EINVAL)));
   }
 
   #[test]
@@ -515,14 +529,14 @@ mod tests {
     let instance_id = "1cf34a31-7be5-4ca8-b881-78aa30b09a51";
     let endpoint_identity = instance_endpoint_identity("com.soundoer.plvs.dev", instance_id);
     let mut candidate = descriptor(generate_launch_token().unwrap());
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
       candidate.endpoint = std::env::temp_dir()
-        .join(macos_socket_file_name(&endpoint_identity))
+        .join(unix_socket_file_name(&endpoint_identity))
         .display()
         .to_string();
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {
       candidate.endpoint = endpoint_name(&endpoint_identity);
     }
@@ -542,9 +556,9 @@ mod tests {
     fs::remove_dir_all(dir).unwrap();
   }
 
-  #[cfg(target_os = "macos")]
+  #[cfg(any(target_os = "macos", target_os = "linux"))]
   #[test]
-  fn macos_descriptor_rejects_relative_and_wrong_identity_socket_paths() {
+  fn unix_descriptor_rejects_relative_and_wrong_identity_socket_paths() {
     let mut candidate = descriptor(generate_launch_token().unwrap());
     candidate.endpoint = endpoint_name("com.soundoer.plvs.dev");
     assert_eq!(
@@ -558,7 +572,7 @@ mod tests {
     );
 
     candidate.endpoint = std::env::temp_dir()
-      .join(macos_socket_file_name("com.soundoer.plvs"))
+      .join(unix_socket_file_name("com.soundoer.plvs"))
       .display()
       .to_string();
     assert_eq!(
@@ -678,7 +692,7 @@ mod tests {
     fs::remove_dir_all(dir).unwrap();
   }
 
-  #[cfg(target_os = "macos")]
+  #[cfg(any(target_os = "macos", target_os = "linux"))]
   #[test]
   fn descriptor_and_directory_are_private_to_the_current_user() {
     use std::os::unix::fs::PermissionsExt;

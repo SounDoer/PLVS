@@ -1,7 +1,7 @@
 use serde::Serialize;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::ffi::OsStr;
-#[cfg(any(windows, target_os = "macos"))]
+#[cfg(any(windows, target_os = "macos", target_os = "linux"))]
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize)]
@@ -65,17 +65,17 @@ fn platform_set_enabled(enabled: bool) -> Result<CliPathStatus, String> {
   platform_status()
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn platform_status() -> Result<CliPathStatus, String> {
   let install_dir = current_install_dir()?;
-  Ok(macos_status_for_install_dir(
+  Ok(unix_status_for_install_dir(
     &install_dir,
     std::env::var_os("PATH").as_deref(),
   ))
 }
 
-#[cfg(target_os = "macos")]
-fn macos_status_for_install_dir(install_dir: &Path, path: Option<&OsStr>) -> CliPathStatus {
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn unix_status_for_install_dir(install_dir: &Path, path: Option<&OsStr>) -> CliPathStatus {
   use std::os::unix::fs::PermissionsExt;
 
   let cli_path = install_dir.join("plvs-cli");
@@ -93,21 +93,21 @@ fn macos_status_for_install_dir(install_dir: &Path, path: Option<&OsStr>) -> Cli
     installed,
     on_path,
     message: if !installed {
-      "plvs-cli was not found in this application bundle.".into()
+      "An executable plvs-cli was not found next to this application.".into()
     } else if on_path {
       "Available from the current process PATH.".into()
     } else {
-      "Use the bundled plvs-cli by its full application path.".into()
+      "Use the bundled plvs-cli by its full path.".into()
     },
   }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn platform_set_enabled(_enabled: bool) -> Result<CliPathStatus, String> {
   platform_status()
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn same_path(candidate: &Path, expected: &Path) -> bool {
   match (candidate.canonicalize(), expected.canonicalize()) {
     (Ok(candidate), Ok(expected)) => candidate == expected,
@@ -115,7 +115,7 @@ fn same_path(candidate: &Path, expected: &Path) -> bool {
   }
 }
 
-#[cfg(all(not(windows), not(target_os = "macos")))]
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 fn platform_status() -> Result<CliPathStatus, String> {
   Ok(CliPathStatus {
     supported: false,
@@ -127,12 +127,12 @@ fn platform_status() -> Result<CliPathStatus, String> {
   })
 }
 
-#[cfg(all(not(windows), not(target_os = "macos")))]
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 fn platform_set_enabled(_enabled: bool) -> Result<CliPathStatus, String> {
   platform_status()
 }
 
-#[cfg(any(windows, target_os = "macos"))]
+#[cfg(any(windows, target_os = "macos", target_os = "linux"))]
 fn current_install_dir() -> Result<PathBuf, String> {
   std::env::current_exe()
     .map_err(|e| format!("read current executable path: {e}"))?
@@ -244,8 +244,8 @@ mod tests {
 }
 
 #[cfg(test)]
-#[cfg(target_os = "macos")]
-mod macos_tests {
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod unix_tests {
   use super::*;
   use std::fs;
   use std::os::unix::fs::PermissionsExt;
@@ -269,13 +269,13 @@ mod macos_tests {
     fs::write(&cli_path, b"test").unwrap();
     fs::set_permissions(&cli_path, fs::Permissions::from_mode(0o600)).unwrap();
 
-    let missing_execute = macos_status_for_install_dir(&directory, None);
+    let missing_execute = unix_status_for_install_dir(&directory, None);
     assert!(!missing_execute.installed);
     assert!(!missing_execute.on_path);
 
     fs::set_permissions(&cli_path, fs::Permissions::from_mode(0o700)).unwrap();
     let path = std::env::join_paths([PathBuf::from("/usr/bin"), directory.clone()]).unwrap();
-    let installed = macos_status_for_install_dir(&directory, Some(&path));
+    let installed = unix_status_for_install_dir(&directory, Some(&path));
     assert!(installed.installed);
     assert!(installed.on_path);
 

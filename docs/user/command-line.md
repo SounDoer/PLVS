@@ -1,8 +1,9 @@
 # Command Line
 
-Installed Windows and macOS builds include `plvs-cli` for diagnosing the installation and for
-inspecting or changing the state of an already-running PLVS app. It is not a headless replacement
-for the desktop app. The full command set is in the [CLI Reference](cli.md).
+Installed Windows, macOS, and experimental Ubuntu Preview builds include `plvs-cli` for diagnosing
+the installation and for inspecting or changing the state of an already-running PLVS app. It is
+not a headless replacement for the desktop app. The full command set is in the
+[CLI Reference](cli.md).
 
 ## Where it is
 
@@ -12,6 +13,8 @@ for the desktop app. The full command set is in the [CLI Reference](cli.md).
 - **macOS**: `/Applications/PLVS.app/Contents/MacOS/plvs-cli` (or the same path under
   `~/Applications`). PLVS does not edit shell startup files; use the full path or create your own
   symlink.
+- **Linux Preview**: `/usr/bin/plvs-cli`. Development builds stage `plvs-cli` beside the desktop
+  executable. PLVS does not edit shell startup files.
 
 ## Checking the installation
 
@@ -22,6 +25,7 @@ closed. Add `--out <file>` to write the result to a file.
 
 Start PLVS and enable **Agent Control** in Settings. Then discover the available surface with
 `plvs-cli capabilities --json` and read the app's current state with `plvs-cli inspect --json`.
+Linux supports the live control surface, but not Visual Capture screenshots or recording.
 
 Queries return a global revision. Every change requires it, for example:
 

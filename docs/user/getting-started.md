@@ -49,9 +49,9 @@ Preview commits: their packages can share the same base version. Remove Preview 
 your user settings and the system FFmpeg package. The initial Preview shares executable names with
 the future stable Linux package, so the two packages cannot be installed together.
 
-Native desktop and hardware acceptance is still pending. Per-application capture, live Agent
-Control, screenshots, and recording are not yet supported on Linux. See
-[Signal Source](signal-source.md) for the experimental capture scope.
+Native desktop and hardware acceptance is still pending. Live Agent Control is available after it
+is enabled in Settings. Per-application capture, screenshots, and recording are not yet supported
+on Linux. See [Signal Source](signal-source.md) for the experimental capture scope.
 
 ## First launch
 
