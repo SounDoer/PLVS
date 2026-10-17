@@ -6,9 +6,23 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hostPlatform, resolveEvidenceSourceSha, writeJsonAtomic } from "./acceptance-evidence.mjs";
+import {
+  completeScenarioCoverage,
+  hostPlatform,
+  resolveEvidenceSourceSha,
+  writeJsonAtomic,
+} from "./acceptance-evidence.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const REQUIRED_SCENARIOS = [
+  "top",
+  "bottom",
+  "nonoverlapping",
+  "preserve-user-change",
+  "minimum-size-rollback",
+  "minimized",
+  "display-ownership-both-edges",
+];
 const startedAt = new Date().toISOString();
 const sourceSha = resolveEvidenceSourceSha(root);
 const cli = process.argv[2];
@@ -216,13 +230,17 @@ try {
         }
       });
       if (host.exitCode === null) host.kill("SIGTERM");
-      const scenarios = results.map((result) => ({
+      const completed = results.map((result) => ({
         id: result.scenario,
         status: result.passed === true ? "passed" : "failed",
       }));
       if (failure) {
-        scenarios.push({ id: "integration-run", status: "failed" });
+        const missing = REQUIRED_SCENARIOS.find(
+          (id) => !completed.some((scenario) => scenario.id === id)
+        );
+        if (missing) completed.push({ id: missing, status: "failed" });
       }
+      const coverage = completeScenarioCoverage(REQUIRED_SCENARIOS, completed);
       await writeJsonAtomic(join(output, "result.json"), {
         schemaVersion: 1,
         domain: "dock",
@@ -232,8 +250,8 @@ try {
         tool: { name: "macos-dock-reservation", version: 1 },
         startedAt,
         endedAt: new Date().toISOString(),
-        summary: failure ? "failed" : "complete",
-        scenarios,
+        summary: failure ? "failed" : coverage.summary,
+        scenarios: coverage.scenarios,
         artifacts: [
           { file: "results.json", mediaType: "application/json" },
           { file: "state.json", mediaType: "application/json" },
@@ -245,7 +263,12 @@ try {
             "The disposable host was asked to quit and original Dock preferences were restored.",
           ],
         },
-        warnings: failure ? [failure.message] : [],
+        warnings: [
+          ...(failure ? [failure.message] : []),
+          ...(coverage.summary === "incomplete"
+            ? ["A second PLVS workbench was unavailable, so display ownership was not exercised."]
+            : []),
+        ],
       });
     }
   }

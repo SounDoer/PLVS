@@ -181,6 +181,28 @@ export function classifyEvidence(evidence, targetSha) {
   return evidence.summary === "complete" ? "passed" : "incomplete";
 }
 
+export function completeScenarioCoverage(requiredIds, completed) {
+  const uniqueRequired = new Set(requiredIds);
+  if (uniqueRequired.size !== requiredIds.length) {
+    throw new Error("Required acceptance scenario IDs must be unique");
+  }
+  const byId = new Map();
+  for (const scenario of completed) {
+    if (!uniqueRequired.has(scenario.id)) {
+      throw new Error(`Unexpected acceptance scenario: ${scenario.id}`);
+    }
+    if (byId.has(scenario.id)) throw new Error(`Duplicate acceptance scenario: ${scenario.id}`);
+    byId.set(scenario.id, scenario);
+  }
+  const scenarios = requiredIds.map((id) => byId.get(id) ?? { id, status: "notRun" });
+  const summary = scenarios.some((scenario) => scenario.status === "failed")
+    ? "failed"
+    : scenarios.every((scenario) => scenario.status === "passed")
+      ? "complete"
+      : "incomplete";
+  return { scenarios, summary };
+}
+
 function cellKey(domain, platform) {
   return `${domain}:${platform}`;
 }

@@ -4,6 +4,7 @@ import {
   acceptanceReportMarkdown,
   buildAcceptanceReport,
   classifyEvidence,
+  completeScenarioCoverage,
   resolveEvidenceSourceSha,
   validateAcceptanceEvidence,
 } from "./acceptance-evidence.mjs";
@@ -45,6 +46,25 @@ function report(evidence) {
 }
 
 describe("acceptance evidence", () => {
+  it("marks omitted required scenarios notRun instead of calling the run complete", () => {
+    expect(
+      completeScenarioCoverage(
+        ["top", "bottom", "display-ownership"],
+        [
+          { id: "top", status: "passed" },
+          { id: "bottom", status: "passed" },
+        ]
+      )
+    ).toEqual({
+      summary: "incomplete",
+      scenarios: [
+        { id: "top", status: "passed" },
+        { id: "bottom", status: "passed" },
+        { id: "display-ownership", status: "notRun" },
+      ],
+    });
+  });
+
   it("refuses to label dirty code with the clean HEAD SHA", () => {
     const clean = (command, args) => ({
       status: 0,
