@@ -91,8 +91,8 @@ export function parseRigArgs(argv, defaults = {}) {
   }
   if (!Number.isInteger(options.port) || options.port <= 0)
     throw new Error("--port must be a port");
-  if (!new Set(["default", "heavy"]).has(options.scenario)) {
-    throw new Error('--scenario must be "default" or "heavy"');
+  if (!new Set(["default", "heavy", "all"]).has(options.scenario)) {
+    throw new Error('--scenario must be "default", "heavy", or "all"');
   }
   for (const key of ["seconds", "every", "stallMs"]) {
     if (options[key] !== undefined && (!Number.isFinite(options[key]) || options[key] <= 0)) {

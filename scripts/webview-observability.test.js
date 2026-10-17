@@ -37,7 +37,15 @@ describe("verifyBackpressurePhases", () => {
           maxInflightFrames: 120,
         }),
       })
-    ).toEqual({ ok: true, failures: [] });
+    ).toEqual({
+      ok: true,
+      failures: [],
+      phases: {
+        normal: { ok: true, failures: [] },
+        stalled: { ok: true, failures: [] },
+        recovered: { ok: true, failures: [] },
+      },
+    });
   });
 
   it("rejects a stall that remained invisible", () => {

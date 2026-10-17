@@ -72,23 +72,31 @@ export async function readUiFrameDiagnostics(session) {
 }
 
 export function verifyBackpressurePhases({ normalStart, normalEnd, stalled, recovered }) {
-  const failures = [];
+  const phases = {
+    normal: { ok: true, failures: [] },
+    stalled: { ok: true, failures: [] },
+    recovered: { ok: true, failures: [] },
+  };
   if (normalEnd.sentFrames <= normalStart.sentFrames)
-    failures.push("normal phase received no frames");
+    phases.normal.failures.push("normal phase received no frames");
   if (normalEnd.droppedFrames !== normalStart.droppedFrames) {
-    failures.push("normal phase dropped UI frames");
+    phases.normal.failures.push("normal phase dropped UI frames");
   }
   if (stalled.droppedFrames <= normalEnd.droppedFrames) {
-    failures.push("stall did not trigger an observable UI frame drop");
+    phases.stalled.failures.push("stall did not trigger an observable UI frame drop");
   }
   if (stalled.maxInflightFrames !== stalled.inflightLimit) {
-    failures.push("stall did not reach the configured in-flight limit");
+    phases.stalled.failures.push("stall did not reach the configured in-flight limit");
   }
-  if (recovered.sentFrames <= stalled.sentFrames) failures.push("frame delivery did not resume");
+  if (recovered.sentFrames <= stalled.sentFrames) {
+    phases.recovered.failures.push("frame delivery did not resume");
+  }
   if (recovered.currentInflightFrames >= recovered.inflightLimit) {
-    failures.push("WebView backlog did not recover below its limit");
+    phases.recovered.failures.push("WebView backlog did not recover below its limit");
   }
-  return { ok: failures.length === 0, failures };
+  for (const phase of Object.values(phases)) phase.ok = phase.failures.length === 0;
+  const failures = Object.values(phases).flatMap((phase) => phase.failures);
+  return { ok: failures.length === 0, failures, phases };
 }
 
 export const INSTALL_RUNTIME_PROBE = `(()=>{

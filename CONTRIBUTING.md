@@ -510,8 +510,8 @@ summary under `artifacts/soak/`; its hard verdict is zero UI-frame and audio-chu
 slopes are diagnostic because retained history grows during its configured window. Use
 `--seconds 14400` for the four-hour run and keep the Mac awake, foregrounded and otherwise idle.
 
-Update, Dock, capture and Agent Control acceptance results can be indexed in one local report without rerunning
-their scenarios:
+Update, Dock, capture, Agent Control and desktop-performance acceptance results can be indexed in
+one local report without rerunning their scenarios:
 
 ```bash
 npm run acceptance:report -- \
@@ -519,7 +519,8 @@ npm run acceptance:report -- \
   --evidence artifacts/update-acceptance/<sha>/runs/<run>/result.json \
   --evidence artifacts/macos-dock-reservation/<run>/result.json \
   --evidence artifacts/capture-smoke/<sha>/<run>/result.json \
-  --evidence artifacts/agent-control-smoke/<run>/result.json
+  --evidence artifacts/agent-control-smoke/<run>/result.json \
+  --evidence artifacts/desktop-performance/<sha>/<run>/result.json
 ```
 
 Evidence selection is explicit; the command never guesses which run is latest. It writes JSON and
