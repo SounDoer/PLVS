@@ -470,16 +470,22 @@ async function runGuidedAcceptance({
     );
     const revision = cliJson(cli, dataRoot, ["inspect"]).result.revision;
     try {
-      cliJson(cli, dataRoot, [
-        "visual",
-        "screenshot",
-        "--target",
-        "dock-update",
-        "--expected-revision",
-        String(revision),
-        "--out",
-        path.join(runDir, "update-details.png"),
-      ]);
+      await waitFor(
+        "offline update-details screenshot",
+        () =>
+          cliJson(cli, dataRoot, [
+            "visual",
+            "screenshot",
+            "--target",
+            "dock-update",
+            "--expected-revision",
+            String(revision),
+            "--out",
+            path.join(runDir, "update-details.png"),
+          ]),
+        (value) => value.result?.artifact?.mediaType === "image/png",
+        30_000
+      );
     } catch (error) {
       console.warn(`Update-details screenshot was unavailable: ${error.message}`);
     }
@@ -698,18 +704,24 @@ export async function runMacReadOnlyDmg({ root, runDir, receipt }) {
     ) {
       throw new Error("Read-only DMG did not open the About settings section");
     }
-    const screenshot = cliJson(cli, layout.dataRoot, [
-      "visual",
-      "screenshot",
-      "--target",
-      "main",
-      "--expected-revision",
-      String(shown.result.revision),
-      "--expected-ui-generation",
-      String(shown.result.uiGeneration),
-      "--out",
-      path.join(runDir, "read-only-dmg-guidance.png"),
-    ]);
+    const screenshot = await waitFor(
+      "read-only DMG guidance screenshot",
+      () =>
+        cliJson(cli, layout.dataRoot, [
+          "visual",
+          "screenshot",
+          "--target",
+          "main",
+          "--expected-revision",
+          String(shown.result.revision),
+          "--expected-ui-generation",
+          String(shown.result.uiGeneration),
+          "--out",
+          path.join(runDir, "read-only-dmg-guidance.png"),
+        ]),
+      (value) => value.result?.artifact?.mediaType === "image/png",
+      60_000
+    );
     const ready = readReady(layout.dataRoot);
     if (ready?.value.ready) {
       throw new Error("Read-only DMG unexpectedly staged a ready update");
