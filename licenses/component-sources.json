@@ -543,6 +543,10 @@
       "license": "MIT",
       "noticeSha256": "8afdcd03bc04254ae18811d02383b8429d5e4cda1bf7141ec684e574a0ee420a"
     },
+    "rust:enum-primitive-derive@0.3.0": {
+      "license": "MIT",
+      "noticeSha256": "345072f6bc76fd3c6e07b4728f1f58aa29e27e55795d6bbcbea1287eb36375d4"
+    },
     "rust:enumflags2@0.7.12": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "fb9cdeceaa28363a08eeba481f401525b4ab2adbcd6f65fcb3c6597ae3b6329b"
@@ -1703,6 +1707,10 @@
     "rust:proc-macro2@1.0.107": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
+    },
+    "rust:pulseaudio@0.3.1": {
+      "license": "MIT",
+      "noticeSha256": "cbac0b14dba56f6fa4552cdf690bb5dd5efec983019039cb507c3763a25a30dc"
     },
     "rust:pxfm@0.1.30": {
       "license": "BSD-3-Clause OR Apache-2.0",

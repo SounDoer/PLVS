@@ -486,9 +486,15 @@ pub fn run() {
         "identifier": env!("PLVS_APP_ID"),
         "platform": std::env::consts::OS,
       });
-      let dock_state: Option<dock::DockStateRecord> = serde_json::from_value(hydrated.dock_state)
-        .ok()
-        .map(dock::DockStateRecord::normalize_for_platform);
+      let mut dock_state: Option<dock::DockStateRecord> =
+        serde_json::from_value(hydrated.dock_state)
+          .ok()
+          .map(dock::DockStateRecord::normalize_for_platform);
+      if !dock::is_supported_platform() {
+        if let Some(state) = dock_state.as_mut() {
+          state.enabled = false;
+        }
+      }
       #[cfg(not(target_os = "windows"))]
       if let Some(state) = dock_state.as_ref() {
         dock::write_dock_state(app.handle(), state);
@@ -526,8 +532,7 @@ pub fn run() {
         target_os = "windows",
         target_os = "macos",
         target_os = "linux"
-      ))
-        && (agent_control_enabled || !is_coordinator)
+      )) && (agent_control_enabled || !is_coordinator)
       {
         agent_control::toggle::start_at_launch(app.handle());
       }

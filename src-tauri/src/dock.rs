@@ -33,6 +33,10 @@ pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 80.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_HEIGHT: f64 = 640.0;
 pub const DOCK_EDITOR_LOGICAL_INSET: f64 = 8.0;
 
+pub const fn is_supported_platform() -> bool {
+  cfg!(any(target_os = "windows", target_os = "macos"))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DockAccessoryRects {
   pub header: WindowBounds,
@@ -523,6 +527,9 @@ pub fn enter_dock<R: tauri::Runtime>(
   height: Option<u32>,
   origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<DockStateRecord, String> {
+  if !is_supported_platform() {
+    return Err("Dock is unavailable on this platform.".to_string());
+  }
   let normal_shadow = window.state::<crate::window_chrome::NormalWindowShadow>();
   crate::feedback_diagnostics::observe(
     &window,
@@ -1057,6 +1064,14 @@ pub fn set_dock_height<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn dock_support_matches_the_native_platform_contract() {
+    assert_eq!(
+      is_supported_platform(),
+      cfg!(any(target_os = "windows", target_os = "macos"))
+    );
+  }
 
   #[test]
   fn only_one_process_role_can_reserve_the_same_monitor_edge() {

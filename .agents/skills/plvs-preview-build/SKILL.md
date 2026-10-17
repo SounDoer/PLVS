@@ -7,7 +7,7 @@ description: "Builds and publishes a tested, immutable Windows or Ubuntu PLVS Pr
 
 Publish an unofficial Windows or Ubuntu Preview for an exact pushed commit. Preview is a third application
 identity (`PLVS Preview`, `com.soundoer.plvs.preview`), isolated from stable PLVS and the local
-development app. It has separate settings, installation and Agent Control discovery, and its
+dev app. It has separate settings, installation and Agent Control discovery, and its
 updater is compiled out. Select `platform=windows` for the installer and Portable ZIP, or
 `platform=linux` for the Ubuntu 24.04 x86_64 deb. The Linux deb has separate settings but cannot
 coexist with a future stable Linux deb because they share executable paths. Linux live Agent

@@ -10,3 +10,7 @@ export function isMacOS() {
 export function isWindows() {
   return /Win/i.test(platformText());
 }
+
+export function isDockSupported() {
+  return isWindows() || isMacOS();
+}

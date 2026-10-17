@@ -287,7 +287,7 @@ The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.s
 | `desktop:verify-windows-preview-installer`                     | `desktop:verify-preview-nsis`                             |
 | `--identity development`, `--identity release`                 | `--identity dev`, `--identity stable`                     |
 | `DEVELOPMENT_TARGET_DIRECTORY`                                 | `DEV_IDENTITY_TARGET_DIRECTORY`                           |
-| "release identity", "production identity", "development app"   | stable identity, stable identity, dev app                 |
+| Earlier stable/dev identity wording                            | stable identity, dev identity, dev app                    |
 
 #### Identities and build profiles
 
@@ -805,11 +805,11 @@ identify their scope and remaining limitations.
 
 ## Experimental Linux capture verification
 
-Use `npm run desktop:linux` to launch the development GUI with its development identity. This
+Use `npm run desktop:linux` to launch the dev app with its dev identity. This
 entry point requires system FFmpeg/FFprobe in `/usr/bin` (or an absolute `PLVS_FFMPEG_DIR` override)
 and stages only the CLI as a sidecar. It does not produce a redistributable Linux package. In WSL,
 keep a separate Linux dependency/build directory; do not share Windows `node_modules` or `target`.
-The development identity enables Agent Control by default. Verify the live Linux transport with
+The dev identity enables Agent Control by default. Verify the live Linux transport with
 `npm run desktop:control -- capabilities --json` and
 `npm run desktop:control -- inspect --json`. The endpoint is a mode-`0600` Unix socket under the
 private `$XDG_RUNTIME_DIR`; Linux Visual Capture remains unsupported.
@@ -834,7 +834,7 @@ native Linux desktop, device-switching, multichannel, and long-running soak chec
 On Ubuntu 24.04 x86_64, run `npm run desktop:preview-deb`. It builds the optimized application and
 CLI with `preview-identity`, packages embedded frontend assets, and writes a `.deb` under
 `src-tauri/target/release/bundle/deb/`. It does not publish anything. The Preview updater is disabled;
-do not add the capture-harness or development identity features to the package.
+do not add the capture-harness or dev identity features to the package.
 
 The builder clears the inherited resource map before loading the complete Preview resource map.
 Without that reset, recursive config merging maps both the stable and Preview manifests to

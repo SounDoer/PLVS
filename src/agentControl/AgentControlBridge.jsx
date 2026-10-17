@@ -18,6 +18,7 @@ import { firstHistoryTimestampMs, latestHistoryTimestampMs } from "../lib/histor
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
 import { roleTokensToLabels } from "../math/channelRoles.js";
 import { standardLayoutIdForCount } from "../math/channelLayoutTable.js";
+import { isDockSupported } from "../lib/platform.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
 import { buildTransportSnapshot } from "./transportControl.js";
@@ -61,7 +62,7 @@ export function AgentControlBridge() {
 
   const agentControlDock = useMemo(
     () => ({
-      supported: true,
+      supported: isDockSupported(),
       enabled: docked,
       edge: dockEdge,
       monitor: dockMonitor,
