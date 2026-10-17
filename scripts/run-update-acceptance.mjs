@@ -631,8 +631,8 @@ async function runGuidedAcceptance({
   }
 }
 
-export async function runMacReadOnlyDmg({ root, runDir, receipt }) {
-  const layout = macReadOnlyDmgLayout(root, runDir, receipt);
+export async function runMacReadOnlyDmg({ root, runDir, receipt, stagingRoot = runDir }) {
+  const layout = macReadOnlyDmgLayout(root, stagingRoot, receipt);
   mkdirSync(layout.mountRoot, { recursive: true });
   seedAcceptanceSettings(layout.dataRoot, false);
   let mounted = false;
@@ -771,14 +771,26 @@ async function runMacAcceptance({ root, runId, receipt }) {
   mkdirSync(installRoot, { recursive: true });
   mkdirSync(dataRoot, { recursive: true });
   let readOnlyDmgScenario;
-  try {
-    readOnlyDmgScenario = await runMacReadOnlyDmg({ root, runDir, receipt });
-  } catch (error) {
-    readOnlyDmgScenario = {
-      id: "read-only-dmg-refusal",
-      status: "failed",
-      reason: error.message,
-    };
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      readOnlyDmgScenario = await runMacReadOnlyDmg({
+        root,
+        runDir,
+        receipt,
+        stagingRoot: path.join(runDir, `.read-only-dmg-attempt-${attempt}`),
+      });
+      break;
+    } catch (error) {
+      if (attempt === 1) {
+        console.warn(`Read-only DMG cold-start attempt failed; retrying once: ${error.message}`);
+      } else {
+        readOnlyDmgScenario = {
+          id: "read-only-dmg-refusal",
+          status: "failed",
+          reason: error.message,
+        };
+      }
+    }
   }
   const archive = resolveReceiptFile(root, receipt.versions[0].file);
   run("tar", ["-xzf", archive, "-C", installRoot], { env: { COPYFILE_DISABLE: "1" } });

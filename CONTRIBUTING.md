@@ -640,7 +640,9 @@ bundle executable as a background child of the long-lived runner. This keeps the
 process session alive while preventing duplicate copies with the same test identity from
 redirecting launch to an older path. It first mounts the older DMG read-only, opens About settings,
 captures the visible move-to-Applications guidance, proves that no ready package was staged, quits
-the isolated app, and unmounts the image. Before staging the valid package, the runner serves a
+the isolated app, and unmounts the image. If the cold WebKit snapshot does not settle, the runner
+repeats that complete isolated DMG scenario once; a second failure remains a failed scenario.
+Before staging the valid package, the runner serves a
 stale signature and a truncated package in turn, waits for a real Update retry and visible error,
 records screenshots, and proves that neither rejection left a ready package. It then stops the
 loopback feed after the valid signed package is cached and records the offline replacement and
