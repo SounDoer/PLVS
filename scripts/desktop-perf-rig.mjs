@@ -5,6 +5,7 @@ import { basename, dirname, join, resolve } from "node:path";
 
 import {
   CAPTURE_DEVICE,
+  RigError,
   ROOT,
   locateHarness,
   resolveCaptureRoute,
@@ -297,18 +298,23 @@ async function attachToMacAgentControl(executable, identityRoot, timeoutMs = 30_
 }
 
 async function focusMacSession(session, appPid) {
-  if (!Number.isInteger(appPid) || appPid <= 0) throw new Error("macOS app PID is invalid");
+  if (!Number.isInteger(appPid) || appPid <= 0) throw new RigError("macOS app PID is invalid");
   const source = [
     "import AppKit",
     "import Foundation",
     `guard let app = NSRunningApplication(processIdentifier: ${appPid}) else { exit(2) }`,
-    "let activated = app.activate(options: [.activateAllWindows])",
-    "Thread.sleep(forTimeInterval: 0.2)",
-    'print(activated && app.isActive ? "active" : "inactive")',
+    "var active = false",
+    "for _ in 0..<15 {",
+    "  _ = app.unhide()",
+    "  _ = app.activate(options: [.activateAllWindows])",
+    "  Thread.sleep(forTimeInterval: 0.2)",
+    "  if app.isActive { active = true; break }",
+    "}",
+    'print(active ? "active" : "inactive")',
   ].join("\n");
   const activation = spawnSync("/usr/bin/xcrun", ["swift", "-e", source], { encoding: "utf8" });
   if (activation.status !== 0 || activation.stdout.trim() !== "active") {
-    throw new Error(
+    throw new RigError(
       `could not activate the isolated macOS app: ${activation.stderr?.trim() || activation.stdout?.trim() || "unknown error"}`
     );
   }
@@ -316,7 +322,7 @@ async function focusMacSession(session, appPid) {
   await wait(300);
   const after = session.readPerformanceSnapshot().renderer.animationFrame;
   if (after.count <= before || !Number.isFinite(after.latestAgeMs) || after.latestAgeMs > 250) {
-    throw new Error("the activated macOS renderer did not produce fresh animation frames");
+    throw new RigError("the activated macOS renderer did not produce fresh animation frames");
   }
 }
 

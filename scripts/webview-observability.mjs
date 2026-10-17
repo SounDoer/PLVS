@@ -71,7 +71,13 @@ export async function readUiFrameDiagnostics(session) {
   return session.evaluate('window.__TAURI_INTERNALS__.invoke("get_ui_frame_diagnostics")');
 }
 
-export function verifyBackpressurePhases({ normalStart, normalEnd, stalled, recovered }) {
+export function verifyBackpressurePhases({
+  normalStart,
+  normalEnd,
+  stalled,
+  recovered,
+  recoveredRenderer = null,
+}) {
   const phases = {
     normal: { ok: true, failures: [] },
     stalled: { ok: true, failures: [] },
@@ -102,6 +108,13 @@ export function verifyBackpressurePhases({ normalStart, normalEnd, stalled, reco
   }
   if (recovered.audioDroppedChunks !== stalled.audioDroppedChunks) {
     phases.recovered.failures.push("recovery phase dropped audio chunks");
+  }
+  if (
+    recoveredRenderer?.capabilities?.animationFrame === true &&
+    (!Number.isFinite(recoveredRenderer.animationFrame?.latestAgeMs) ||
+      recoveredRenderer.animationFrame.latestAgeMs > 250)
+  ) {
+    phases.recovered.failures.push("renderer animation frames were stale after recovery");
   }
   for (const phase of Object.values(phases)) phase.ok = phase.failures.length === 0;
   const failures = Object.values(phases).flatMap((phase) => phase.failures);

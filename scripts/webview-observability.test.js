@@ -85,6 +85,34 @@ describe("verifyBackpressurePhases", () => {
       failures: ["stall phase dropped audio chunks"],
     });
   });
+
+  it("rejects a renderer that stopped producing animation frames after recovery", () => {
+    const result = verifyBackpressurePhases({
+      normalStart: diagnostics(),
+      normalEnd: diagnostics({ sentFrames: 20 }),
+      stalled: diagnostics({
+        sentFrames: 140,
+        droppedFrames: 20,
+        currentInflightFrames: 120,
+        maxInflightFrames: 120,
+      }),
+      recovered: diagnostics({
+        sentFrames: 160,
+        droppedFrames: 20,
+        currentInflightFrames: 1,
+        maxInflightFrames: 120,
+      }),
+      recoveredRenderer: {
+        capabilities: { animationFrame: true },
+        animationFrame: { latestAgeMs: 6_708 },
+      },
+    });
+
+    expect(result.phases.recovered).toEqual({
+      ok: false,
+      failures: ["renderer animation frames were stale after recovery"],
+    });
+  });
 });
 
 describe("process classification", () => {

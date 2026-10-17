@@ -54,10 +54,16 @@ export async function runAcceptance(options, log = console.log) {
 
     await wait(2_000);
     const recovered = await readUiFrameDiagnostics(rig.session);
-    const verdict = verifyBackpressurePhases({ normalStart, normalEnd, stalled, recovered });
     const renderer = rig.session.readPerformanceSnapshot
       ? rig.session.readPerformanceSnapshot().renderer
       : null;
+    const verdict = verifyBackpressurePhases({
+      normalStart,
+      normalEnd,
+      stalled,
+      recovered,
+      recoveredRenderer: renderer,
+    });
     report = {
       scenario: options.scenario,
       device,
