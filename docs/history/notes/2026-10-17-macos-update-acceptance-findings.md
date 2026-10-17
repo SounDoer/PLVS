@@ -51,7 +51,8 @@ the remaining explicit gaps.
 - Fold the proven read-only DMG, stale-signature, and truncated-package checks into runner-owned
   scenarios, and add deterministic helper interruption.
 - Add manual `/Applications` approval and cancellation evidence without storing credentials.
-- Migrate the Windows operator flow onto the same guided runner and result schema; only then add the
-  common npm command aliases.
+- Run the migrated Windows NSIS adapter on a Windows acceptance host. Its install, launch, helper,
+  cleanup, result-schema, and common npm-command contracts are implemented, but macOS code tests do
+  not count as Windows execution evidence.
 - Add advisory exact-SHA evidence reporting to stable release review after both platform runners
   have produced comparable evidence.

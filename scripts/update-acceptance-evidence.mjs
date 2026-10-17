@@ -4,7 +4,7 @@ import path from "node:path";
 import { acceptanceNames, resolveReceiptFile, sha256File } from "./update-acceptance-lib.mjs";
 
 export const UPDATE_RESULT_SCHEMA_VERSION = 1;
-export const UPDATE_REQUIRED_SCENARIOS = [
+export const UPDATE_SHARED_REQUIRED_SCENARIOS = [
   "writable-path-offline-update",
   "cached-offer-survives-restart",
   "version-and-cli-advance",
@@ -12,16 +12,21 @@ export const UPDATE_REQUIRED_SCENARIOS = [
   "dock-restored",
   "helper-finished",
   "cache-cleared",
-  "apfs-bundle-swap",
-  "read-only-dmg-refusal",
   "stale-signature-rejected",
   "truncated-package-rejected",
 ];
-export const UPDATE_MANUAL_SCENARIOS = [
-  "privileged-applications-replacement",
-  "authorization-cancellation",
-  "gatekeeper-and-notarization",
-];
+export const UPDATE_PLATFORM_REQUIRED_SCENARIOS = {
+  macos: ["apfs-bundle-swap", "read-only-dmg-refusal"],
+  windows: ["nsis-installer-replacement"],
+};
+export const UPDATE_PLATFORM_MANUAL_SCENARIOS = {
+  macos: [
+    "privileged-applications-replacement",
+    "authorization-cancellation",
+    "gatekeeper-and-notarization",
+  ],
+  windows: ["authenticode-and-smartscreen"],
+};
 const STATUSES = new Set(["passed", "failed", "rigUnavailable", "manual", "notRun", "unsupported"]);
 
 function invalid(message) {
@@ -32,6 +37,18 @@ export function artifactEvidence(runDir, file, mediaType) {
   const resolved = resolveReceiptFile(runDir, file);
   const stat = statSync(resolved);
   return { file, mediaType, bytes: stat.size, sha256: sha256File(resolved) };
+}
+
+export function requiredUpdateScenarios(platform) {
+  const platformScenarios = UPDATE_PLATFORM_REQUIRED_SCENARIOS[platform];
+  if (!platformScenarios) invalid(`unsupported platform ${platform}`);
+  return [...UPDATE_SHARED_REQUIRED_SCENARIOS, ...platformScenarios];
+}
+
+export function manualUpdateScenarios(platform) {
+  const scenarios = UPDATE_PLATFORM_MANUAL_SCENARIOS[platform];
+  if (!scenarios) invalid(`unsupported platform ${platform}`);
+  return [...scenarios];
 }
 
 export function validateUpdateResult(result, { root, runDir, receipt }) {
@@ -53,7 +70,8 @@ export function validateUpdateResult(result, { root, runDir, receipt }) {
     if (!STATUSES.has(scenario.status)) invalid(`unknown status for ${scenario.id}`);
     scenarios.set(scenario.id, scenario);
   }
-  for (const id of UPDATE_REQUIRED_SCENARIOS) {
+  const requiredScenarios = requiredUpdateScenarios(receipt.platform.os);
+  for (const id of requiredScenarios) {
     if (!scenarios.has(id)) invalid(`missing required scenario ${id}`);
   }
   if (!Array.isArray(result.artifacts)) invalid("artifacts must be an array");
@@ -68,7 +86,7 @@ export function validateUpdateResult(result, { root, runDir, receipt }) {
     invalid("run directory is outside the receipt's runs directory");
   }
   if (result.identity !== names.identity) invalid("identity does not match sourceSha");
-  const automatedFailures = UPDATE_REQUIRED_SCENARIOS.filter(
+  const automatedFailures = requiredScenarios.filter(
     (id) => scenarios.get(id)?.status !== "passed"
   );
   const expectedSummary = automatedFailures.length ? "incomplete" : "complete";

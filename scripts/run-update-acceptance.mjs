@@ -1,6 +1,6 @@
 // Guided packaged-update acceptance. Product mutations still go through the real PLVS UI; this
 // runner owns staging, the loopback feed, offline restart, polling, evidence, and cleanup checks.
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   copyFileSync,
@@ -17,8 +17,8 @@ import { pathToFileURL } from "node:url";
 import { createAcceptanceFeed } from "./serve-update-acceptance.mjs";
 import {
   artifactEvidence,
-  UPDATE_MANUAL_SCENARIOS,
-  UPDATE_REQUIRED_SCENARIOS,
+  manualUpdateScenarios,
+  requiredUpdateScenarios,
 } from "./update-acceptance-evidence.mjs";
 import {
   acceptanceNames,
@@ -49,6 +49,14 @@ export function macAcceptanceLaunch(app, dataRoot) {
     command: "open",
     args: ["-n", "-a", app, "--args", "--plvs-test-app-data-root", dataRoot],
   };
+}
+
+export function windowsAcceptanceInstall(installer, installRoot) {
+  return { command: installer, args: ["/S", `/D=${installRoot}`] };
+}
+
+export function windowsAcceptanceLaunch(app, dataRoot) {
+  return { command: app, args: ["--plvs-test-app-data-root", dataRoot] };
 }
 
 export function comparableDock(dock) {
@@ -149,21 +157,63 @@ function terminateOwnedMacApp(app) {
   return pids;
 }
 
-async function runMacAcceptance({ root, runId, receipt }) {
-  const runDir = path.join(root, "runs", runId);
-  if (existsSync(runDir)) throw new Error(`Run directory already exists: ${runDir}`);
-  const installRoot = path.join(runDir, "install with spaces");
-  const dataRoot = path.join(runDir, "data with spaces");
-  mkdirSync(installRoot, { recursive: true });
-  mkdirSync(dataRoot, { recursive: true });
+function windowsOwnedPids(executable) {
+  const output = run(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "$target=$env:PLVS_ACCEPTANCE_EXE; Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $target } | ForEach-Object ProcessId",
+    ],
+    { env: { PLVS_ACCEPTANCE_EXE: executable } }
+  );
+  return output.split(/\r?\n/).filter(Boolean).map(Number).filter(Number.isInteger);
+}
+
+function terminateOwnedWindowsApp(executable) {
+  const pids = windowsOwnedPids(executable);
+  for (const pid of pids) {
+    run("taskkill.exe", ["/PID", String(pid)]);
+  }
+  return pids;
+}
+
+function windowsRegistryInstallDir(productName) {
+  return run(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      "$key=Join-Path 'HKCU:\\Software\\SounDoer' $env:PLVS_ACCEPTANCE_PRODUCT; if (Test-Path -LiteralPath $key) { (Get-ItemProperty -LiteralPath $key).InstallDir }",
+    ],
+    { env: { PLVS_ACCEPTANCE_PRODUCT: productName } }
+  );
+}
+
+async function runGuidedAcceptance({
+  root,
+  runId,
+  receipt,
+  runDir,
+  dataRoot,
+  cli,
+  launch,
+  terminate,
+  cleanup,
+  platformVersion,
+  nativeScenarios,
+}) {
   const [older, newer] = receipt.versions;
-  const archive = resolveReceiptFile(root, older.file);
-  run("tar", ["-xzf", archive, "-C", installRoot], { env: { COPYFILE_DISABLE: "1" } });
-  const app = path.join(installRoot, `${receipt.productName}.app`);
-  const cli = path.join(app, "Contents", "MacOS", "plvs-cli");
   writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
     agentControlEnabled: true,
-    dockState: { enabled: true, edge: "bottom", height: 160, reserveSpace: false },
+    dockState: {
+      enabled: true,
+      edge: "bottom",
+      height: 160,
+      reserveSpace: receipt.platform.os === "windows",
+    },
   });
   const requestLog = path.join(runDir, "requests.jsonl");
   writeFileSync(requestLog, "");
@@ -176,8 +226,7 @@ async function runMacAcceptance({ root, runId, receipt }) {
     server.listen(receipt.feed.port, receipt.feed.host, resolve);
   });
   const startedAt = new Date().toISOString();
-  const launch = macAcceptanceLaunch(app, dataRoot);
-  run(launch.command, launch.args);
+  launch();
   const capabilities = await waitFor(
     "packaged app launch",
     () => cliJson(cli, dataRoot, ["capabilities"]),
@@ -214,7 +263,7 @@ async function runMacAcceptance({ root, runId, receipt }) {
     },
     Boolean
   );
-  run(launch.command, launch.args);
+  launch();
   await waitFor(
     "offline relaunch",
     () => cliJson(cli, dataRoot, ["capabilities"]),
@@ -296,37 +345,37 @@ async function runMacAcceptance({ root, runId, receipt }) {
     { id: "dock-restored", status: scenarioStatus(dockEqual) },
     { id: "helper-finished", status: "passed" },
     { id: "cache-cleared", status: scenarioStatus(readyCleared) },
-    { id: "apfs-bundle-swap", status: "passed" },
-    { id: "read-only-dmg-refusal", status: "notRun", reason: "planned automated scenario" },
+    ...nativeScenarios(attempt),
     { id: "stale-signature-rejected", status: "notRun", reason: "planned automated scenario" },
     { id: "truncated-package-rejected", status: "notRun", reason: "planned automated scenario" },
-    ...UPDATE_MANUAL_SCENARIOS.map((id) => ({
+    ...manualUpdateScenarios(receipt.platform.os).map((id) => ({
       id,
       status: "notRun",
       reason: "manual or release-only checkpoint",
     })),
   ];
-  const incomplete = UPDATE_REQUIRED_SCENARIOS.some(
+  const incomplete = requiredUpdateScenarios(receipt.platform.os).some(
     (id) => scenarios.find((scenario) => scenario.id === id)?.status !== "passed"
   );
   const failed = scenarios.some((scenario) => scenario.status === "failed");
-  const terminatedPids = terminateOwnedMacApp(app);
+  const terminatedPids = terminate();
+  if (!terminatedPids.length) {
+    throw new Error("The updated isolated app was not running at its recorded installation path");
+  }
   await waitFor(
     "isolated app cleanup",
-    () => {
-      const rows = run("ps", ["-axo", "pid=,command="]);
-      return terminatedPids.every((pid) => !new RegExp(`^\\s*${pid}\\s`, "m").test(rows));
-    },
+    () => cleanup.processesExited(terminatedPids),
     Boolean,
     10_000
   );
+  await cleanup.installation();
   const result = {
     schemaVersion: 1,
     domain: "update",
     runId,
     sourceSha: receipt.sourceSha,
     identity: acceptanceNames(receipt.sourceSha).identity,
-    platform: { ...receipt.platform, version: run("sw_vers", ["-productVersion"]) },
+    platform: { ...receipt.platform, version: platformVersion() },
     tool: { name: "update-acceptance", version: 1 },
     startedAt,
     endedAt: new Date().toISOString(),
@@ -357,6 +406,112 @@ async function runMacAcceptance({ root, runId, receipt }) {
   return result;
 }
 
+async function runMacAcceptance({ root, runId, receipt }) {
+  const runDir = path.join(root, "runs", runId);
+  if (existsSync(runDir)) throw new Error(`Run directory already exists: ${runDir}`);
+  const installRoot = path.join(runDir, "install with spaces");
+  const dataRoot = path.join(runDir, "data with spaces");
+  mkdirSync(installRoot, { recursive: true });
+  mkdirSync(dataRoot, { recursive: true });
+  const archive = resolveReceiptFile(root, receipt.versions[0].file);
+  run("tar", ["-xzf", archive, "-C", installRoot], { env: { COPYFILE_DISABLE: "1" } });
+  const app = path.join(installRoot, `${receipt.productName}.app`);
+  const cli = path.join(app, "Contents", "MacOS", "plvs-cli");
+  const launchCommand = macAcceptanceLaunch(app, dataRoot);
+  return runGuidedAcceptance({
+    root,
+    runId,
+    receipt,
+    runDir,
+    dataRoot,
+    cli,
+    launch: () => run(launchCommand.command, launchCommand.args),
+    terminate: () => terminateOwnedMacApp(app),
+    cleanup: {
+      processesExited: (pids) => {
+        const rows = run("ps", ["-axo", "pid=,command="]);
+        return pids.every((pid) => !new RegExp(`^\\s*${pid}\\s`, "m").test(rows));
+      },
+      installation: () => {},
+    },
+    platformVersion: () => run("sw_vers", ["-productVersion"]),
+    nativeScenarios: () => [
+      { id: "apfs-bundle-swap", status: "passed" },
+      { id: "read-only-dmg-refusal", status: "notRun", reason: "planned automated scenario" },
+    ],
+  });
+}
+
+async function runWindowsAcceptance({ root, runId, receipt }) {
+  const runDir = path.join(root, "runs", runId);
+  if (existsSync(runDir)) throw new Error(`Run directory already exists: ${runDir}`);
+  const installRoot = path.join(runDir, "Installed App With Spaces");
+  const dataRoot = path.join(runDir, "data with spaces");
+  mkdirSync(dataRoot, { recursive: true });
+  const installer = resolveReceiptFile(root, receipt.versions[0].file);
+  const install = windowsAcceptanceInstall(installer, installRoot);
+  run(install.command, install.args);
+  const app = path.join(installRoot, "plvs.exe");
+  const cli = path.join(installRoot, "plvs-cli.exe");
+  if (!existsSync(app) || !existsSync(cli)) {
+    throw new Error(`NSIS did not create the expected installed app and CLI under ${installRoot}`);
+  }
+  const registeredInstall = windowsRegistryInstallDir(receipt.productName);
+  if (path.resolve(registeredInstall).toLowerCase() !== path.resolve(installRoot).toLowerCase()) {
+    throw new Error(`NSIS registered an unexpected install path: ${registeredInstall}`);
+  }
+  const launchCommand = windowsAcceptanceLaunch(app, dataRoot);
+  const launch = () => {
+    const child = spawn(launchCommand.command, launchCommand.args, {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.unref();
+  };
+  return runGuidedAcceptance({
+    root,
+    runId,
+    receipt,
+    runDir,
+    dataRoot,
+    cli,
+    launch,
+    terminate: () => terminateOwnedWindowsApp(app),
+    cleanup: {
+      processesExited: (pids) => {
+        const live = new Set(windowsOwnedPids(app));
+        return pids.every((pid) => !live.has(pid));
+      },
+      installation: async () => {
+        const uninstaller = path.join(installRoot, "uninstall.exe");
+        if (!existsSync(uninstaller))
+          throw new Error(`Missing isolated uninstaller: ${uninstaller}`);
+        run(uninstaller, ["/S"]);
+        await waitFor(
+          "isolated NSIS cleanup",
+          () => windowsRegistryInstallDir(receipt.productName),
+          (value) => value === "",
+          30_000
+        );
+      },
+    },
+    platformVersion: () =>
+      run("powershell.exe", [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "[Environment]::OSVersion.VersionString",
+      ]),
+    nativeScenarios: (attempt) => [
+      {
+        id: "nsis-installer-replacement",
+        status: Number.isInteger(attempt.installerPid) ? "passed" : "failed",
+      },
+    ],
+  });
+}
+
 export async function runUpdateAcceptance(options) {
   const receipt = JSON.parse(readFileSync(path.join(options.root, "acceptance.json"), "utf8"));
   validateAcceptanceReceipt(receipt, options.root);
@@ -366,10 +521,9 @@ export async function runUpdateAcceptance(options) {
       `Receipt targets ${receipt.platform.os}/${receipt.platform.arch}, host is ${host.os}/${host.arch}`
     );
   }
-  if (host.os !== "macos") {
-    throw new Error("The Windows guided runner has not yet migrated to the shared contract");
-  }
-  return runMacAcceptance({ ...options, receipt });
+  return host.os === "macos"
+    ? runMacAcceptance({ ...options, receipt })
+    : runWindowsAcceptance({ ...options, receipt });
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

@@ -629,10 +629,10 @@ Packaged update acceptance builds two real versions from one clean commit under 
 identity. It never uses the stable, dev, or Preview identity, data directory, updater key, or feed.
 
 ```bash
-node scripts/build-update-acceptance.mjs
-node scripts/serve-update-acceptance.mjs artifacts/update-acceptance/<short-sha>
-node scripts/run-update-acceptance.mjs artifacts/update-acceptance/<short-sha>
-node scripts/verify-update-acceptance.mjs artifacts/update-acceptance/<short-sha>
+npm run update:acceptance:build
+npm run update:acceptance:serve -- artifacts/update-acceptance/<short-sha>
+npm run update:acceptance:run -- artifacts/update-acceptance/<short-sha>
+npm run update:acceptance:verify -- artifacts/update-acceptance/<short-sha>
 ```
 
 The macOS runner stages the older app in a writable path containing spaces, launches it through
@@ -642,10 +642,13 @@ in the real product UI: enabling Auto Download and confirming Update and Restart
 Accessibility, administrator access, or other system permissions merely to make an acceptance row
 green; the result must record that boundary explicitly.
 
-`verify-update-acceptance.mjs` checks package and evidence hashes, the exact source SHA and identity,
-all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. The shared Windows
-builder and feed use the same receipt; migration of the existing Windows operator flow into the
-guided runner is still required before adding the four `update:acceptance:*` package aliases.
+On Windows the same runner silently installs the older isolated NSIS package into a path containing
+spaces, launches the exact installed executable, verifies the installer PID recorded by the helper,
+and uninstalls only that isolated registration after evidence capture. On both platforms,
+`update:acceptance:verify` checks package and evidence hashes, the exact source SHA and identity,
+all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. A platform claim is
+valid only after this runner produces real evidence on that platform; contract tests on another OS
+do not substitute for it.
 
 ## CI
 
