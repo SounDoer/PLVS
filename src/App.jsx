@@ -1,4 +1,5 @@
 import { normalizePanelPresentation } from "./lib/panelPresentation.js";
+import { isDockSupported } from "./lib/platform.js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
@@ -562,7 +563,7 @@ function AppContent() {
     setSurfaceOpacity,
     glassEnabled,
     setGlassEnabled,
-    showDock: isTauri(),
+    showDock: isTauri() && isDockSupported(),
     dockEdge: docked ? dockEdge : null,
     onDockChange,
     dockDisabled: sourceMode === "file",

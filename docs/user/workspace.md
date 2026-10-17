@@ -86,6 +86,8 @@ toolbar closes when you click the arrow again, press Escape, or click anywhere o
 the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
 stays open until the error clears. On macOS, controls respond to the first click when switching
 between the strip, toolbar, and editor windows, including the arrow that closes the toolbar.
+Dock is unavailable on Linux, where the Dock selector is hidden; Wayland does not provide the
+cross-desktop positioning and work-area contract this window form requires.
 On Windows, the strip can also reserve its screen space so
 maximised windows do not cover it. On macOS, it starts as an overlay within the monitor work area,
 leaving room for the menu bar and system Dock. Enable **Reserve Space** in Dock **Views**

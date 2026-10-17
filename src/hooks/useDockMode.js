@@ -11,7 +11,7 @@ import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
-import { isWindows, isMacOS } from "../lib/platform.js";
+import { isDockSupported, isWindows, isMacOS } from "../lib/platform.js";
 import { updateDiagnosticDock } from "../lib/feedbackDiagnostics.js";
 
 function supportsDockReserveSpace() {
@@ -24,7 +24,7 @@ function normalizeDockState(raw) {
   const edge = raw?.edge === "bottom" ? "bottom" : "top";
   const monitor = typeof raw?.monitor === "string" ? raw.monitor : null;
   return {
-    enabled: raw?.enabled === true,
+    enabled: isDockSupported() && raw?.enabled === true,
     edge,
     monitor,
     reserveSpace:
@@ -133,6 +133,9 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       // Before the platform checks so the refusal does not depend on where it runs, and before
       // enqueueTransition so a blocked entry never joins the transition chain.
       assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter);
+      if (!isDockSupported()) {
+        return Promise.reject(new Error("Dock is unavailable on this platform."));
+      }
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
         const current = dockRef.current;

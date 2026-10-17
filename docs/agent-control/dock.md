@@ -44,7 +44,8 @@ internal legacy `modules`/control records are not writable public state.
 
 ## Enter and exit
 
-Dock and reserve-space control are supported on Windows and macOS. On macOS, reservation is
+Dock control is supported on Windows and macOS. Linux reports `supported: false`, and Dock entry is
+refused with `controlUnavailable`. On macOS, reservation is
 opt-in AX window avoidance and requires Accessibility permission under the running PLVS identity.
 It adjusts settled foreground standard windows, skips full-screen/minimized/unsupported windows,
 and respects application minimum sizes. It does not register a system work area. Dry runs validate

@@ -69,6 +69,20 @@ describe("useDockMode", () => {
     delete window.__PLVS_INITIAL_STATE__;
   });
 
+  it("disables stored Dock state and refuses entry on unsupported Linux", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Linux x86_64" });
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    const { result } = renderHook(() => useDockMode());
+
+    expect(result.current.dockEnabled).toBe(false);
+    await act(async () => {
+      await expect(result.current.enterDockMode("top")).rejects.toThrow(
+        "Dock is unavailable on this platform."
+      );
+    });
+    expect(mocks.enterDock).not.toHaveBeenCalled();
+  });
+
   it("starts macOS in overlay mode and preserves it when Accessibility permission is refused", async () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };

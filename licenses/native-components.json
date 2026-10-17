@@ -10,18 +10,19 @@
     "FFmpeg 7.1 is an independent executable under LGPL-2.1-or-later. Complete corresponding source and build scripts are provided at the download below. Windows r2 was built from an unmodified upstream archive; macOS binaries retain their original workflow provenance (see BUILD-RECORD.json in the source bundle).",
     "Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.",
     "Rust standard library 1.99.0: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.",
-    "Windows installers use unmodified NSIS 3.11, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/kichik/nsis/tree/v311 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades."
+    "Windows installers use unmodified NSIS 3.11, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/kichik/nsis/tree/v311 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades.",
+    "The Ubuntu Preview deb dynamically uses distribution ALSA, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries."
   ],
   "bindings": {
-    "alsa-sys@0.4.0": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
-    "atk-sys@0.18.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "alsa-sys@0.4.0": "System/platform binding; Linux uses the distribution ALSA library rather than bundling it.",
+    "atk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
     "defmt@1.1.1": "Cargo links namespace / integration code; package notices retained.",
-    "gdk-sys@0.18.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
-    "gtk-sys@0.18.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
-    "libdbus-sys@0.2.7": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "gdk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
+    "gtk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
+    "libdbus-sys@0.2.7": "System/platform binding; Linux uses the distribution D-Bus library rather than bundling it.",
     "libsqlite3-sys@0.38.2": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
     "objc2-exception-helper@0.1.1": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
-    "openssl-sys@0.9.117": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
+    "openssl-sys@0.9.117": "System/platform binding; Linux uses the distribution OpenSSL library rather than bundling it.",
     "ort-sys@2.0.0-rc.12": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
     "rayon-core@1.13.0": "Cargo links namespace / integration code; package notices retained.",
     "ring@0.17.14": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
@@ -38,12 +39,12 @@
     "tauri-plugin-store@2.5.0": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-updater@2.13.2": "Cargo links namespace / integration code; package notices retained.",
     "wasm-bindgen-shared@0.2.127": "Cargo links namespace / integration code; package notices retained.",
-    "webkit2gtk-sys@2.0.2": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes."
+    "webkit2gtk-sys@2.0.2": "System/platform binding; Linux uses the distribution WebKitGTK library rather than bundling it."
   },
   "inputs": [
     {
       "path": "src-tauri/Cargo.toml",
-      "sha256": "5f7a57f1e9cce1f43c62151c22c8fa89da5d65527dec09af8903a408edc0768e"
+      "sha256": "8214753ab791b7fb268e09a6896fd3ba2408e2637aed93a4086747adaff464e6"
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",

@@ -516,6 +516,15 @@ describe("App smoke", () => {
     expect(screen.getByRole("button", { name: "Views" })).toBeTruthy();
   });
 
+  it("hides the Dock entry on Linux", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    vi.spyOn(window.navigator, "platform", "get").mockReturnValue("Linux x86_64");
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Views" }));
+    expect(screen.queryByRole("combobox", { name: "Dock position" })).toBeNull();
+  });
+
   it("does not toggle transport from Space", async () => {
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });

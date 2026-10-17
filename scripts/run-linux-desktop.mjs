@@ -20,12 +20,11 @@ try {
       throw new Error(`Install ${name}, or set PLVS_FFMPEG_DIR to its directory.`);
     }
   }
-  buildPlvsCli({ profile: "debug", identity: "development", stage: true });
+  buildPlvsCli({ profile: "debug", identity: "dev", stage: true });
   const result = spawnSync(
     process.execPath,
     [
-      join(root, "node_modules", "@tauri-apps", "cli", "tauri.js"),
-      "dev",
+      join(root, "scripts", "run-tauri-dev.mjs"),
       "--config",
       "src-tauri/tauri.dev.conf.json",
       "--config",
