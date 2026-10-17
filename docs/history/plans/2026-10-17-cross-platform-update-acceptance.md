@@ -2,6 +2,9 @@
 
 Status: proposed
 
+Design contract:
+`../specs/2026-10-17-cross-platform-acceptance-design.md`.
+
 ## Purpose
 
 Give Windows and macOS the same local, isolated acceptance contract for PLVS packaged updates. The
@@ -12,6 +15,10 @@ or production signing key.
 The existing Windows builder in `scripts/build-update-acceptance.mjs` is the behavioral baseline.
 This work generalizes its safe parts and adds a macOS adapter; it does not turn acceptance packages
 into Preview or release artifacts.
+
+Update acceptance uses the shared verdicts, evidence envelope, exact-SHA rule, restoration contract,
+and advisory release-reporting policy from the design contract. Missing evidence is reported
+prominently but does not initially fail stable release preflight solely because it is absent.
 
 ## Safety invariants
 
@@ -200,8 +207,9 @@ source SHA and identity, and print the manual/release-only gaps separately.
 3. Implement the macOS host-architecture builder and writable-path runner.
 4. Add feed fault modes, read-only DMG verification, and deterministic helper failure fixtures.
 5. Add manual privileged-install/cancellation checkpoints and release-candidate signing evidence.
-6. Wire the verifier into stable release preflight as a freshness/evidence check, not as an attempt
-   to perform GUI authorization inside CI.
+6. Wire the verifier into stable release review as an advisory freshness/evidence check, not as an
+   attempt to perform GUI authorization inside CI. It must print missing or incomplete Windows and
+   macOS evidence prominently without initially failing the release solely for that absence.
 
 ## Definition of done
 
