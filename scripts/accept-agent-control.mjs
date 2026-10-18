@@ -17,6 +17,7 @@ import {
 import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import { runAgentControlSmoke, selectSmokeInstance } from "./smoke-agent-control.mjs";
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
+import { createRunJournalStore } from "./ui-walkthrough/journal.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED_SCENARIOS = [
@@ -192,17 +193,34 @@ async function runProductWalkthrough(invoke, instanceId, outDir) {
   };
   const privateDir = await mkdtemp(join(tmpdir(), "plvs-agent-control-acceptance-"));
   try {
+    const manifestPath = join(privateDir, "manifest.json");
+    await writeFile(manifestPath, `${JSON.stringify(manifestForRun)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
     const materialize = async (label, document) => {
       const path = join(privateDir, `${label}.json`);
       await writeFile(path, `${JSON.stringify(document)}\n`, { encoding: "utf8", mode: 0o600 });
       return path;
     };
-    const report = await runUiVisualWalkthrough({
-      manifest: manifestForRun,
-      outDir,
-      invoke,
-      materialize,
-    });
+    let report;
+    try {
+      report = await runUiVisualWalkthrough({
+        manifest: manifestForRun,
+        outDir,
+        invoke,
+        materialize,
+        journalFactory: ({ manifest: runManifest, initial }) =>
+          createRunJournalStore(join(outDir, "run.json"), {
+            manifest: runManifest,
+            manifestPath,
+            initial,
+          }),
+      });
+    } catch (error) {
+      if (error.report) await writeJsonAtomic(join(outDir, "report.json"), error.report);
+      throw error;
+    }
     if (!report.restoration?.verified)
       throw new Error("Product walkthrough did not verify restoration.");
     await writeJsonAtomic(join(outDir, "report.json"), report);

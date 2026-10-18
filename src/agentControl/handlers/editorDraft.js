@@ -2,9 +2,7 @@ import { describeEditorDraft, planEditorDraftPatch } from "../editorDraftControl
 import { semanticFailure, SETTLEMENT_TIMEOUT_MS, COMMIT_NOT_OBSERVED } from "../bridge/failures.js";
 import { themeStateSignature, loudnessProfileStateSignature } from "../bridge/signatures.js";
 
-const EDITOR_DRAFT_SETTLEMENT_TIMEOUT_MS = 500;
-
-async function settleEditorDraftObservation({
+export async function settleEditorDraftObservation({
   editorDraft,
   uiNavigation,
   kind,
@@ -13,7 +11,7 @@ async function settleEditorDraftObservation({
   discarded = false,
 }) {
   const startedAt = Date.now();
-  while (Date.now() - startedAt <= EDITOR_DRAFT_SETTLEMENT_TIMEOUT_MS) {
+  while (Date.now() - startedAt <= SETTLEMENT_TIMEOUT_MS) {
     const ui = uiNavigation.inspectUi();
     if (discarded) {
       const gone = !ui.surfaces.some(
