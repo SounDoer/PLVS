@@ -1,0 +1,226 @@
+# One-shot, immutable FFmpeg sidecar supply for every supported PLVS desktop target.
+name: Build FFmpeg sidecars
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "New immutable sidecar release tag (for example ffmpeg-sidecar-7.1.5-r1)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ffmpeg-sidecars-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+env:
+  FFMPEG_VERSION: "7.1.5"
+  FFMPEG_SOURCE_SHA256: "de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f"
+  RELEASE_TAG: ${{ inputs.release_tag }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse an existing release or tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$RELEASE_TAG" == "ffmpeg-sidecar-${FFMPEG_VERSION}-"* ]]
+          ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          ! git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$RELEASE_TAG" >/dev/null 2>&1
+
+  build-linux:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install fixture encoder
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Download and verify source
+        run: |
+          curl -fL -o ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          echo "${FFMPEG_SOURCE_SHA256}  ffmpeg.tar.xz" | sha256sum -c -
+          tar -xf ffmpeg.tar.xz
+      - name: Build trimmed LGPL sidecars
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: JOBS=8 bash ../scripts/build-ffmpeg-sidecars.sh linux
+      - name: Verify ELF contract and real decoding
+        run: |
+          build="ffmpeg-${FFMPEG_VERSION}"
+          for binary in ffmpeg ffprobe; do
+            dependencies=$(readelf -d "$build/$binary" | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p')
+            unexpected=$(printf '%s\n' "$dependencies" | grep -Ev '^(libc\.so\.6|libm\.so\.6)$' || true)
+            test -z "$unexpected"
+            ! readelf --version-info "$build/$binary" | grep -Eq 'GLIBC_(2\.(4[0-9]|[5-9][0-9])|[3-9]\.)'
+            "$build/$binary" -L | grep -q 'GNU Lesser General Public'
+          done
+          node scripts/generate-sidecar-fixtures.mjs sidecar-fixtures /usr/bin/ffmpeg
+          node scripts/verify-sidecar-codecs.mjs "$build" sidecar-fixtures
+      - name: Stage binaries and evidence
+        run: |
+          mkdir -p sidecar-artifact/evidence/linux
+          cp "ffmpeg-${FFMPEG_VERSION}/ffmpeg" sidecar-artifact/ffmpeg-x86_64-unknown-linux-gnu
+          cp "ffmpeg-${FFMPEG_VERSION}/ffprobe" sidecar-artifact/ffprobe-x86_64-unknown-linux-gnu
+          cp "ffmpeg-${FFMPEG_VERSION}/ffbuild/config.mak" sidecar-artifact/evidence/linux/
+          "ffmpeg-${FFMPEG_VERSION}/ffmpeg" -version > sidecar-artifact/evidence/linux/build-version.txt
+          gcc --version > sidecar-artifact/evidence/linux/toolchain.txt
+          ldd "ffmpeg-${FFMPEG_VERSION}/ffmpeg" > sidecar-artifact/evidence/linux/ffmpeg-dependencies.txt
+          ldd "ffmpeg-${FFMPEG_VERSION}/ffprobe" > sidecar-artifact/evidence/linux/ffprobe-dependencies.txt
+          sha256sum sidecar-artifact/ff* > sidecar-artifact/evidence/linux/binary-sha256.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg-sidecars-linux
+          path: sidecar-artifact/
+          if-no-files-found: error
+
+  build-macos:
+    needs: validate
+    runs-on: macos-latest
+    env:
+      MIN_MACOS: "14.2"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download and verify source
+        run: |
+          curl -fL -o ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          echo "${FFMPEG_SOURCE_SHA256}  ffmpeg.tar.xz" | shasum -a 256 -c -
+          tar -xf ffmpeg.tar.xz
+      - name: Require the supported Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+      - name: Build trimmed LGPL sidecars
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: JOBS=8 bash ../scripts/build-ffmpeg-sidecars.sh macos
+      - name: Verify dependencies and real decoding
+        run: |
+          build="ffmpeg-${FFMPEG_VERSION}"
+          for binary in ffmpeg ffprobe; do
+            unexpected=$(otool -L "$build/$binary" | tail -n +2 | awk '{print $1}' | grep -Ev '^(/usr/lib/|/System/Library/)' || true)
+            test -z "$unexpected"
+            "$build/$binary" -L | grep -q 'GNU Lesser General Public'
+          done
+          brew install ffmpeg
+          node scripts/generate-sidecar-fixtures.mjs sidecar-fixtures "$(command -v ffmpeg)"
+          node scripts/verify-sidecar-codecs.mjs "$build" sidecar-fixtures
+      - name: Stage binaries and evidence
+        run: |
+          mkdir -p sidecar-artifact/evidence/macos
+          cp "ffmpeg-${FFMPEG_VERSION}/ffmpeg" sidecar-artifact/ffmpeg-aarch64-apple-darwin
+          cp "ffmpeg-${FFMPEG_VERSION}/ffprobe" sidecar-artifact/ffprobe-aarch64-apple-darwin
+          cp "ffmpeg-${FFMPEG_VERSION}/ffbuild/config.mak" sidecar-artifact/evidence/macos/
+          "ffmpeg-${FFMPEG_VERSION}/ffmpeg" -version > sidecar-artifact/evidence/macos/build-version.txt
+          clang --version > sidecar-artifact/evidence/macos/toolchain.txt
+          otool -L "ffmpeg-${FFMPEG_VERSION}/ffmpeg" > sidecar-artifact/evidence/macos/ffmpeg-dependencies.txt
+          otool -L "ffmpeg-${FFMPEG_VERSION}/ffprobe" > sidecar-artifact/evidence/macos/ffprobe-dependencies.txt
+          shasum -a 256 sidecar-artifact/ff* > sidecar-artifact/evidence/macos/binary-sha256.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg-sidecars-macos
+          path: sidecar-artifact/
+          if-no-files-found: error
+
+  build-windows:
+    needs: validate
+    runs-on: windows-latest
+    env:
+      WINLIBS_SHA256: "d5dbafc4a170e762ca6143151ec918fb9e2c72736fb14cd704abebc6bdd5276a"
+      WINLIBS_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-14.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r2.zip"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download source and pinned compiler
+        shell: pwsh
+        run: |
+          curl.exe -fL -o ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-$env:FFMPEG_VERSION.tar.xz"
+          if ((Get-FileHash ffmpeg.tar.xz -Algorithm SHA256).Hash.ToLower() -ne $env:FFMPEG_SOURCE_SHA256) { throw "FFmpeg source checksum mismatch" }
+          curl.exe -fL -o winlibs.zip $env:WINLIBS_URL
+          if ((Get-FileHash winlibs.zip -Algorithm SHA256).Hash.ToLower() -ne $env:WINLIBS_SHA256) { throw "winlibs checksum mismatch" }
+          tar -xf ffmpeg.tar.xz
+          7z x winlibs.zip -otoolchain -y | Out-Null
+          Copy-Item toolchain/mingw64/bin/mingw32-make.exe toolchain/mingw64/bin/make.exe
+      - name: Build trimmed LGPL sidecars
+        shell: bash
+        run: |
+          export PATH="$GITHUB_WORKSPACE/toolchain/mingw64/bin:$PATH"
+          export TMPDIR="$GITHUB_WORKSPACE/ffmpeg-tmp"
+          mkdir -p "$TMPDIR"
+          cd "ffmpeg-${FFMPEG_VERSION}"
+          JOBS=8 bash ../scripts/build-ffmpeg-sidecars.sh windows
+      - name: Install full fixture encoder
+        shell: pwsh
+        run: choco install ffmpeg -y --no-progress
+      - name: Verify runtime and real decoding
+        shell: pwsh
+        run: |
+          $build = "ffmpeg-$env:FFMPEG_VERSION"
+          & "$build/ffmpeg.exe" -L | Select-String "GNU Lesser General Public" | Out-Null
+          & "$build/ffprobe.exe" -L | Select-String "GNU Lesser General Public" | Out-Null
+          node scripts/generate-sidecar-fixtures.mjs sidecar-fixtures ffmpeg
+          node scripts/verify-sidecar-codecs.mjs $build sidecar-fixtures
+      - name: Stage binaries and evidence
+        shell: pwsh
+        run: |
+          $build = "ffmpeg-$env:FFMPEG_VERSION"
+          New-Item -ItemType Directory -Force sidecar-artifact/evidence/windows | Out-Null
+          Copy-Item "$build/ffmpeg.exe" sidecar-artifact/ffmpeg-x86_64-pc-windows-msvc.exe
+          Copy-Item "$build/ffprobe.exe" sidecar-artifact/ffprobe-x86_64-pc-windows-msvc.exe
+          Copy-Item "$build/ffbuild/config.mak" sidecar-artifact/evidence/windows/
+          & "$build/ffmpeg.exe" -version | Set-Content sidecar-artifact/evidence/windows/build-version.txt
+          & toolchain/mingw64/bin/gcc.exe --version | Set-Content sidecar-artifact/evidence/windows/toolchain.txt
+          & toolchain/mingw64/bin/objdump.exe -p "$build/ffmpeg.exe" | Select-String "DLL Name" | Set-Content sidecar-artifact/evidence/windows/ffmpeg-dependencies.txt
+          & toolchain/mingw64/bin/objdump.exe -p "$build/ffprobe.exe" | Select-String "DLL Name" | Set-Content sidecar-artifact/evidence/windows/ffprobe-dependencies.txt
+          Get-ChildItem sidecar-artifact/*.exe | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content sidecar-artifact/evidence/windows/binary-sha256.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg-sidecars-windows
+          path: sidecar-artifact/
+          if-no-files-found: error
+
+  publish:
+    needs: [validate, build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ffmpeg-sidecars-*
+          path: assembled
+          merge-multiple: true
+      - name: Assemble complete corresponding source
+        run: |
+          mkdir corresponding-source
+          curl -fL -o corresponding-source/ffmpeg-${FFMPEG_VERSION}.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          echo "${FFMPEG_SOURCE_SHA256}  corresponding-source/ffmpeg-${FFMPEG_VERSION}.tar.xz" | sha256sum -c -
+          cp scripts/build-ffmpeg-sidecars.sh corresponding-source/
+          cp -a assembled/evidence corresponding-source/
+          sha256sum assembled/ffmpeg-* assembled/ffprobe-* > corresponding-source/binary-sha256.txt
+          jq -n \
+            --arg ffmpegVersion "$FFMPEG_VERSION" \
+            --arg sourceSha256 "$FFMPEG_SOURCE_SHA256" \
+            --arg workflowCommit "$GITHUB_SHA" \
+            '{schemaVersion: 1, ffmpegVersion: $ffmpegVersion, sourceSha256: $sourceSha256, modifications: "None", workflowCommit: $workflowCommit}' \
+            > corresponding-source/BUILD-RECORD.json
+          zip -9r "ffmpeg-${FFMPEG_VERSION}-plvs-source.zip" corresponding-source
+      - name: Create, populate, and publish the immutable sidecar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" --draft --target "$GITHUB_SHA" \
+            --title "PLVS FFmpeg sidecars ${FFMPEG_VERSION}" \
+            --notes "Trimmed LGPL-2.1-or-later FFmpeg/FFprobe sidecars and complete corresponding source for PLVS. This is a tooling asset release, not a PLVS product release."
+          gh release upload "$RELEASE_TAG" \
+            assembled/ffmpeg-* assembled/ffprobe-* "ffmpeg-${FFMPEG_VERSION}-plvs-source.zip"
+          gh release edit "$RELEASE_TAG" --draft=false
+          for attempt in {1..12}; do
+            immutable=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .immutable)
+            [[ "$immutable" == true ]] && exit 0
+            sleep 5
+          done
+          echo "Published sidecar release is not immutable" >&2
+          exit 1

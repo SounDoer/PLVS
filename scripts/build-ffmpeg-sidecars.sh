@@ -2,7 +2,7 @@
 # Run in an extracted, pristine FFmpeg source directory. On Windows use Git Bash
 # with the pinned MinGW bin directory first in PATH (see docs/ffmpeg-sidecar-build.md).
 set -euo pipefail
-platform="${1:?Usage: build-ffmpeg-sidecars.sh windows|macos}"
+platform="${1:?Usage: build-ffmpeg-sidecars.sh windows|macos|linux}"
 extra=()
 case "$platform" in
   windows)
@@ -10,6 +10,11 @@ case "$platform" in
     ;;
   macos)
     extra+=(--extra-cflags=-mmacosx-version-min=14.2 --extra-ldflags=-mmacosx-version-min=14.2)
+    ;;
+  linux)
+    # PLVS currently targets Ubuntu 24.04 x86_64. FFmpeg's own libraries are linked into the
+    # executables; the ELF binaries may use only the base glibc runtime reviewed by the build job.
+    extra+=(--target-os=linux --arch=x86_64)
     ;;
   *) echo "Unsupported platform: $platform" >&2; exit 2 ;;
 esac
