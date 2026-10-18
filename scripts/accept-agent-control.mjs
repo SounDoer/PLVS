@@ -178,7 +178,7 @@ export async function runReadContract(run) {
   ];
 }
 
-async function runProductWalkthrough(run, instanceId, outDir) {
+async function runProductWalkthrough(invoke, instanceId, outDir) {
   await mkdir(outDir, { recursive: true });
   const template = JSON.parse(
     await readFile(join(root, "scripts", "ui-walkthrough", "product-surfaces.example.json"), "utf8")
@@ -200,7 +200,7 @@ async function runProductWalkthrough(run, instanceId, outDir) {
     const report = await runUiVisualWalkthrough({
       manifest: manifestForRun,
       outDir,
-      invoke: run,
+      invoke,
       materialize,
     });
     if (!report.restoration?.verified)
@@ -289,7 +289,7 @@ export async function runAgentControlAcceptance({
     pass("read-contract", await runReadContract(run));
 
     const walkthrough = await runProductWalkthrough(
-      (args) => run(args),
+      (args) => invoker.success(args),
       selectedInstance,
       join(outDir, "product-walkthrough")
     );
