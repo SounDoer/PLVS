@@ -2,8 +2,9 @@
 # Boot a fresh Ubuntu userspace in private mount/PID namespaces, then discard it.
 set -euo pipefail
 [[ $EUID -eq 0 ]] || { echo 'Run with sudo on Ubuntu 24.04.' >&2; exit 2; }
-package="$(realpath "${1:?Usage: verify-linux-deb-clean.sh package.deb output-directory}")"
+package="$(realpath "${1:?Usage: verify-linux-deb-clean.sh package.deb output-directory fixture-directory}")"
 output="$(realpath -m "${2:?Output directory is required}")"
+fixtures="$(realpath "${3:?Fixture directory is required}")"
 scripts="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 command -v debootstrap >/dev/null
 [[ -f "$package" ]]
@@ -22,6 +23,7 @@ debootstrap --variant=minbase noble "$rig" http://archive.ubuntu.com/ubuntu > "$
 chmod 0755 "$rig"
 mkdir -p "$rig/opt/plvs-package-tests"
 cp "$package" "$rig/tmp/plvs-preview.deb"
+cp -a "$fixtures" "$rig/tmp/sidecar-fixtures"
 cp "$scripts/verify-linux-deb.sh" "$scripts/verify-linux-desktop.py" "$rig/opt/plvs-package-tests/"
 unshare --mount --pid --fork bash -s -- "$rig" > "$output/verification.log" 2>&1 <<'RIG'
 set -euo pipefail
@@ -43,9 +45,11 @@ SOURCES
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d
 touch /etc/plvs-disposable-package-rig
+chmod -R a+rX /tmp/sidecar-fixtures
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   python3 xvfb xauth dbus-x11 pulseaudio desktop-file-utils fonts-dejavu-core libgl1-mesa-dri
-bash /opt/plvs-package-tests/verify-linux-deb.sh /tmp/plvs-preview.deb /var/tmp/plvs-package-verification
+bash /opt/plvs-package-tests/verify-linux-deb.sh /tmp/plvs-preview.deb \
+  /var/tmp/plvs-package-verification /tmp/sidecar-fixtures
 RIG
 echo "PASS: fresh Ubuntu installation verification; evidence in $output"

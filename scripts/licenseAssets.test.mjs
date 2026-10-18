@@ -24,7 +24,7 @@ describe("release license assets", () => {
       join(destination, "licenses", "THIRD-PARTY-NOTICES.txt"),
       "utf8"
     );
-    expect(stagedNotice).toContain("FFmpeg 7.1 sidecars");
+    expect(stagedNotice).toContain("FFmpeg 7.1.5 sidecars");
     expect(stagedNotice).toContain("Bundled fonts");
     expect(
       LICENSE_ASSETS.some((asset) => asset.destination === "licenses/COMPONENT-NOTICES.txt")

@@ -138,8 +138,8 @@ paint and supplies CSS geometry; Rust owns the private artifacts, concurrency an
 screenshots use WebView2 and macOS screenshots use the WKWebView snapshot; both capture only the PLVS
 WebView content. Linux uses the corresponding WebKitGTK visible-WebView snapshot, so Wayland needs
 no desktop-capture portal. Windows recording uses Windows Graphics Capture and Media Foundation,
-macOS recording uses ScreenCaptureKit and AVAssetWriter, and Linux sends WebKitGTK frames to the
-distribution-managed FFmpeg. All three reuse Rust's measured-source PCM timeline and encode
+macOS recording uses ScreenCaptureKit and AVAssetWriter, and Linux sends WebKitGTK frames to its
+package-private FFmpeg. All three reuse Rust's measured-source PCM timeline and encode
 H.264/AAC MP4 when audio is requested; explicit silent recordings contain only H.264 video. Linux
 does not advertise system-pointer capture.
 
@@ -736,11 +736,12 @@ buffer. The native reader requests 20 ms float PCM fragments at the source rate 
 publishes measured-source recording PCM on the reader clock, and batches five reads into the shared
 bounded pool and meter pipeline. Per-application capture remains unsupported.
 
-The experimental Ubuntu 24.04 x86_64 Preview deb installs the application and CLI in `/usr/bin`
-and declares distribution-managed FFmpeg/FFprobe as package dependencies. The existing adjacent
-binary locator therefore works without a development environment override. It uses the separate
-Preview identity and has no automatic updater. See
-[ADR 0032](adr/0032-linux-deb-uses-distribution-decoders.md) for the package layout and decoder policy.
+The Ubuntu 24.04 x86_64 deb installs the application and CLI in `/usr/bin` and bundles checksum-
+pinned FFmpeg/FFprobe in an identity-private directory under `/usr/lib`. The existing adjacent
+binary locator uses `/usr/lib/plvs/sidecars` for stable and `/usr/lib/plvs-preview/sidecars` for
+Preview without searching `/usr/bin` or `PATH`. Preview retains its separate identity and has no
+automatic updater. See [ADR 0033](adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md) for the
+package layout and decoder policy.
 
 Linux recording disables FFmpeg's redundant probing for its explicitly described raw video and PCM
 inputs and gives each pipe an input queue. This prevents the two blocking writers from waiting on

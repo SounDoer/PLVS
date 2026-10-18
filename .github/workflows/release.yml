@@ -1,4 +1,5 @@
-# Windows installer (NSIS) + portable ZIP; macOS installer (DMG, Apple Silicon).
+# Windows installer (NSIS) + portable ZIP; macOS installer (DMG, Apple Silicon); Linux installer
+# (Debian package, x86_64).
 #
 # A release is dispatched for an exact commit after its normal CI run succeeds. Each platform is
 # built and smoke-tested once. The tested files are then assembled in a draft GitHub Release and
@@ -278,8 +279,76 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-linux:
+    needs: validate
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_BUILD_JOBS: "2"
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install build and clean-system test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf ffmpeg debootstrap
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Smoke test file analysis with bundled sidecars
+        run: npm run smoke:file-analysis
+
+      - name: Build stable Debian package
+        run: npm run desktop:stable-deb
+
+      - name: Verify the exact package in a fresh Ubuntu system
+        run: |
+          packages=(src-tauri/target/release/bundle/deb/*.deb)
+          [[ ${#packages[@]} == 1 && -f "${packages[0]}" ]]
+          node scripts/generate-sidecar-fixtures.mjs "$PWD/linux-sidecar-fixtures" /usr/bin/ffmpeg
+          sudo bash scripts/verify-linux-deb-clean.sh \
+            "${packages[0]}" "$PWD/linux-package-evidence" "$PWD/linux-sidecar-fixtures"
+          mkdir deb-inspection
+          dpkg-deb -x "${packages[0]}" deb-inspection
+          node scripts/verify-license-assets.mjs "deb-inspection/usr/lib/PLVS"
+          mkdir -p release-candidate/linux/release-assets
+          cp "${packages[0]}" "release-candidate/linux/release-assets/PLVS_${VERSION}_amd64.deb"
+
+      - name: Upload package verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-package-evidence
+          path: linux-package-evidence/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload tested Linux candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-candidate-linux
+          path: release-candidate/linux/
+          if-no-files-found: error
+          retention-days: 7
+
   prepare-draft:
-    needs: [build-windows, build-macos]
+    needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -307,11 +376,18 @@ jobs:
           name: release-candidate-macos
           path: candidates/macos
 
+      - name: Download Linux candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: release-candidate-linux
+          path: candidates/linux
+
       - name: Assemble and validate the complete release
         run: |
           mkdir release-assets
           cp candidates/windows/release-assets/* release-assets/
           cp candidates/macos/release-assets/* release-assets/
+          cp candidates/linux/release-assets/* release-assets/
           node scripts/changelog-release-body.mjs "$TAG" release-notes.md
           node scripts/changelog-release-body.mjs "$TAG" updater-notes.md --changelog-cumulative
           node scripts/build-updater-manifest.mjs \

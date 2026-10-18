@@ -23,7 +23,7 @@ export const LICENSE_ASSETS = [
   {
     source: "THIRD-PARTY-NOTICES.md",
     destination: "licenses/THIRD-PARTY-NOTICES.txt",
-    markers: ["FFmpeg 7.1 sidecars", "Silero VAD v6.2", "MPL-2.0"],
+    markers: ["FFmpeg 7.1.5 sidecars", "Silero VAD v6.2", "MPL-2.0"],
   },
   {
     source: "licenses/README.txt",

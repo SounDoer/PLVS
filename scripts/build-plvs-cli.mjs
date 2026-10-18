@@ -19,8 +19,13 @@ function run(command, args, options = {}) {
     cwd: root,
     encoding: options.capture ? "utf8" : undefined,
     stdio: options.capture ? "pipe" : "inherit",
+    maxBuffer: options.capture ? 64 * 1024 * 1024 : undefined,
   });
-  if (result.error) throw new Error(`Unable to run ${command}: ${result.error.message}`);
+  // Node 24 on Linux can report a spurious EPERM after a successful captured `cargo metadata`
+  // process. A real spawn failure has no successful exit status and no usable result.
+  if (result.error && result.status !== 0) {
+    throw new Error(`Unable to run ${command}: ${result.error.message}`);
+  }
   if (result.status !== 0) {
     if (options.capture && result.stderr) process.stderr.write(result.stderr);
     throw new Error(`${command} exited with status ${result.status ?? 2}`);

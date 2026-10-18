@@ -1,171 +1,92 @@
 # FFmpeg Sidecar Build
 
-On Windows and macOS, file mode decodes audio through a bundled, trimmed **FFmpeg** pair (`ffmpeg` + `ffprobe`) run as
-Tauri sidecars (`externalBin` in `tauri.conf.json`). This replaces Symphonia and gives full codec
-coverage (AC-3, E-AC-3, DTS, Opus, HE-AAC, AAC-LC, PCM, …) for audio tracks inside video containers.
+File mode decodes audio through a bundled, trimmed FFmpeg pair (`ffmpeg` and `ffprobe`). PLVS uses
+the same pinned FFmpeg version and audio codec surface on Windows x86_64, macOS Apple Silicon, and
+Linux x86_64. The executables are separate child processes, not libraries linked into PLVS.
 
-The binaries are **not committed** to git (`src-tauri/binaries/.gitignore` ignores everything but
-itself). They are produced out-of-band and hosted as GitHub Release assets; the bundle step pulls
-them into `src-tauri/binaries/`.
-
-## Fetching the published binaries
-
-The binaries live on a dedicated, version-pinned release (named after the FFmpeg version, not the
-app version): <https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1-r2>.
-
-`scripts/fetch-ffmpeg-sidecar.mjs` downloads them into `src-tauri/binaries/` and verifies each
-against a pinned SHA-256. It is idempotent — a file already present with the right hash is skipped —
-so it runs automatically before the desktop build scripts (`npm run desktop:dev`,
-`desktop:dev-optimized`, `desktop:stable-nsis`) and can also be run on its own:
+The binaries are not committed to git. `scripts/fetch-ffmpeg-sidecar.mjs` downloads immutable
+GitHub Release assets into `src-tauri/binaries/`, verifies their SHA-256 values, inspects platform
+dependencies, and executes them before a desktop build accepts them:
 
 ```bash
 npm run ffmpeg:fetch
 ```
 
-Windows (`x86_64-pc-windows-msvc`) and macOS (`aarch64-apple-darwin`) binaries are published.
-Linux has no published decoder sidecars. Its experimental Ubuntu deb instead declares the Ubuntu
-`ffmpeg` package as a dependency; see [ADR 0032](adr/0032-linux-deb-uses-distribution-decoders.md).
-The development launcher also supports system decoders. Bundled decoder `externalBin` entries live in
-`tauri.windows.conf.json` / `tauri.macos.conf.json` (not the base config), so Linux builds — including
-the Ubuntu CI fmt/clippy/test job — do not require a decoder binary. When you bump the FFmpeg version, upload
-the new binaries to a new `ffmpeg-sidecar-<version>` release and update `TAG` + the SHA-256 values in
-the fetch script.
+The pinned set is FFmpeg 7.1.5 under the dedicated
+[`ffmpeg-sidecar-7.1.5-r1`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1.5-r1)
+release. Its source ZIP contains the unmodified upstream source archive, exact shared recipe,
+per-platform configuration and toolchain evidence, dependency reports, and binary hashes.
 
-The trimmed audio-only build is tiny: **~2 MB each** (ffmpeg + ffprobe), versus ~220 MB for a full
-prebuilt. No video decoders, encoders, filters, network, or x86 assembly are included.
+## Targets and package layout
 
-## Naming
+| Target | Asset suffix | Installed location |
+| --- | --- | --- |
+| Windows x86_64 | `x86_64-pc-windows-msvc.exe` | Beside `plvs.exe` |
+| macOS Apple Silicon | `aarch64-apple-darwin` | `PLVS.app/Contents/MacOS` |
+| Ubuntu 24.04 x86_64 | `x86_64-unknown-linux-gnu` | Stable: `/usr/lib/plvs/sidecars`; Preview: `/usr/lib/plvs-preview/sidecars` |
 
-Tauri's `externalBin` resolves per-platform by appending the Rust host target triple, then strips it
-on install. Files must be named:
+Windows and macOS use Tauri `externalBin`. Linux deb configs map the fetched triple-named inputs
+to plain `ffmpeg`/`ffprobe` names in the identity-private directory. Linux never installs these
+files in `/usr/bin` and does not depend on Ubuntu's `ffmpeg` package.
 
-- `src-tauri/binaries/ffmpeg-<target-triple>.exe`
-- `src-tauri/binaries/ffprobe-<target-triple>.exe`
+The Rust runtime honors an absolute `PLVS_FFMPEG_DIR` development/test override. Packaged Linux
+otherwise resolves only its identity-private directory; Windows and macOS resolve adjacent tools.
 
-Get the triple from `rustc -vV` (the `host:` line). On Windows it is `x86_64-pc-windows-msvc`. (The
-FFmpeg binary itself is built with MinGW, but the name must match the _Rust_ target triple so Tauri
-can find it — the sidecar's own toolchain is irrelevant since it runs as a standalone process.)
+## Reproducible recipe
 
-## Dev shortcut
+`.github/workflows/build-ffmpeg-sidecars.yml` is the authoritative one-shot build, test, and
+publication workflow. It downloads FFmpeg 7.1.5 from upstream and verifies SHA-256
+`de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f`, then invokes the shared
+`scripts/build-ffmpeg-sidecars.sh` recipe on every target.
 
-The Rust runtime locator honors `PLVS_FFMPEG_DIR`, which should point at a directory containing
-plainly-named `ffmpeg.exe`/`ffprobe.exe`. Handy for running the gated `file_analysis::session`
-integration tests against a real binary (e.g. the build output dir):
+The recipe starts with `--disable-everything`, disables GPL/nonfree components, autodetection,
+networking, video-related libraries, all encoders/muxers/filters, and x86 assembly. It then enables
+only:
 
-```bash
-PLVS_FFMPEG_DIR="/c/ffmpeg-build/ffmpeg-7.1" cargo test --manifest-path src-tauri/Cargo.toml file_analysis
-```
+- the `file` and `pipe` protocols;
+- MOV, Matroska, WAV, AIFF, FLAC, MP3, Ogg, AAC, AC-3, E-AC-3, DTS, and W64 demuxers;
+- AAC/AAC-LATM, AC-3, E-AC-3, DTS (`dca`), Opus, Vorbis, FLAC, MP3, ALAC, and required PCM decoders;
+- `aresample`, plus the PCM float encoder/muxer needed to stream f32le samples to PLVS.
 
-Any full `ffmpeg`/`ffprobe` build placed in `src-tauri/binaries/` with the triple naming also
-satisfies the Tauri build during development.
+No external codec library is linked. `--enable-static --disable-shared` folds FFmpeg's own internal
+libraries into each executable; it does not attempt to statically link the operating system C
+runtime. Windows uses the checksum-pinned winlibs GCC/MinGW-w64 UCRT toolchain recorded in
+`licenses/ffmpeg-builds.json`. macOS sets a 14.2 deployment target. Linux is built for x86_64 and
+may depend only on `libc.so.6`, `libm.so.6`, and the ELF loader, with no symbol newer than the
+Ubuntu 24.04 glibc 2.39 baseline.
 
-## Building the trimmed binary (Windows)
+The current trimmed binaries are roughly 2 MB each. A full generic FFmpeg build is intentionally
+not shipped.
 
-The current Windows r2 build uses the pinned GCC 16.2.0 / MinGW-w64 14.0.0 winlibs toolchain
-recorded in `licenses/ffmpeg-builds.json`. The authoritative recipe is
-`scripts/build-ffmpeg-sidecars.sh windows`, run inside a clean FFmpeg 7.1 source extraction.
-The source archive, toolchain download and built binaries have SHA-256 records there.
-The macOS binaries have not changed: their original successful workflow run and recipe are
-preserved in the corresponding-source bundle. Do not claim they were built by the newer script.
+## Verification
 
-> **We do NOT use the MSYS2 installer.** Its GUI installer reliably hangs on first-run GPG keyring
-> setup ("Updating trust database") in unattended environments. Instead we use the **winlibs**
-> standalone MinGW-w64 toolchain (a plain zip — no installer, no gpg, no pacman) and run FFmpeg's
-> POSIX `configure` under **Git Bash** (which ships an MSYS2 runtime + coreutils). No `nasm` is needed
-> because x86 assembly is disabled (audio decode correctness is unaffected).
+The sidecar workflow creates deterministic audio, encodes representative AAC, AC-3, E-AC-3, DTS,
+Opus, Vorbis, FLAC, MP3, ALAC, and 24-bit PCM fixtures with a full build, and verifies that both the
+candidate `ffprobe` and `ffmpeg` can inspect and decode them. It also records the reported license,
+configuration, toolchain, dependency list, and hashes.
 
-### 1. Toolchain (one-time)
-
-Download a winlibs UCRT x86_64 build (plain zip) and extract it, e.g. to `C:\ffmpeg-build\mingw64`:
-
-```bash
-# Asset list: https://github.com/brechtsanders/winlibs_mingw/releases
-curl -sL -o winlibs.zip "<winlibs x86_64-posix-seh ucrt .zip url>"
-"/c/Program Files/7-Zip/7z.exe" x winlibs.zip -oC:\\ffmpeg-build -y   # -> C:\ffmpeg-build\mingw64
-```
-
-It provides `gcc`, `ld`, `ar`, `strip`, and `mingw32-make` (copied to `make` by the build script).
-
-### 2. Source
+For repository changes, run:
 
 ```bash
-curl -sL -o ffmpeg-7.1.tar.xz "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz"
-tar -xf ffmpeg-7.1.tar.xz       # Windows' tar.exe handles .xz
+npm run ffmpeg:fetch
+npm run smoke:file-analysis
 ```
 
-### 3. Configure + build (run in Git Bash)
+Linux package verification additionally installs the exact deb into a disposable Ubuntu root that
+has no `/usr/bin/ffmpeg` or `/usr/bin/ffprobe`, decodes the fixture set with the installed private
+sidecars, starts the GUI and CLI, removes the package, and proves those private files were removed.
 
-```bash
-export TMPDIR=/c/ffmpeg-build/tmp && mkdir -p "$TMPDIR"   # Git Bash's Windows TMP breaks configure
-cp -f /c/ffmpeg-build/mingw64/bin/mingw32-make.exe /c/ffmpeg-build/mingw64/bin/make.exe
-export PATH="/c/ffmpeg-build/mingw64/bin:$PATH"
-cd ffmpeg-7.1
-./configure \
-  --disable-everything --disable-gpl --disable-nonfree --disable-autodetect \
-  --disable-doc --disable-avdevice --disable-postproc --disable-swscale \
-  --disable-network --disable-encoders --disable-muxers --disable-filters \
-  --disable-x86asm \
-  --enable-small --enable-static --disable-shared --extra-ldflags=-static \
-  --enable-ffmpeg --enable-ffprobe \
-  --target-os=mingw32 --arch=x86_64 \
-  --enable-filter=aresample \
-  --enable-protocol=file,pipe \
-  --enable-demuxer=mov,matroska,wav,aiff,flac,mp3,ogg,aac,ac3,eac3,dts,w64 \
-  --enable-decoder=aac,aac_latm,ac3,eac3,dca,opus,vorbis,flac,mp3,alac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_u8 \
-  --enable-encoder=pcm_f32le \
-  --enable-muxer=pcm_f32le
-make -j"$(nproc)"
-strip ffmpeg.exe ffprobe.exe
-```
+## Licensing and codec patents
 
-**Why each non-obvious flag matters:**
+The binaries report LGPL-2.1-or-later because the build explicitly disables GPL and nonfree
+components. Every PLVS package includes the LGPL text and third-party notices. The immutable
+sidecar release offers complete corresponding source and build records; its URL and checksum are
+pinned in `licenses/native-components.json` and checked by `npm run licenses:sources`.
 
-- `dca` = DTS, `eac3` = E-AC-3. No video decoders are enabled — only audio tracks are read.
-- The **output** side is easy to over-trim. PLVS decodes to raw f32le PCM on a pipe, which needs all
-  three of: `--enable-protocol=pipe` (for `pipe:1` stdout and `-progress pipe:2`), the
-  `--enable-encoder=pcm_f32le`, and the `--enable-muxer=pcm_f32le` (the muxer's component name is
-  `pcm_f32le`, _not_ `f32le` — `f32le` is only the `-f` format alias).
-- `--disable-gpl --disable-nonfree` keeps the build under **LGPL** (see below).
+An LGPL-compliant build does not grant codec patent rights. AAC, AC-3/E-AC-3, DTS, MP3, and other
+formats may be patent-encumbered in some jurisdictions or uses. PLVS enables decoding needed for
+user-supplied media, does not ship optional patented encoders, and makes no patent-license claim.
 
-### 4. Install with the triple naming
-
-```bash
-cp -f ffmpeg.exe  <repo>/src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
-cp -f ffprobe.exe <repo>/src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe
-```
-
-### 5. Verify
-
-```bash
-ffmpeg.exe -hide_banner -decoders | grep -E ' (ac3|eac3|dca|opus|aac) '   # all present
-ffmpeg.exe -nostdin -loglevel error -progress pipe:2 -i SAMPLE.mkv \
-  -map 0:a:0 -vn -f f32le pipe:1 | wc -c                                  # > 0 bytes of PCM
-```
-
-The macOS (`aarch64-apple-darwin`) binary is built on a CI runner — see
-`.github/workflows/build-ffmpeg-sidecar-macos.yml` — which compiles the same trimmed configuration on
-`macos-latest` (native clang/make, no winlibs/Git-Bash layer; drop `--target-os`/`--arch` and the
-`-static` link flag, add `-mmacosx-version-min`, and explicitly disable Xlib, XCB and SDL
-autodetection) and uploads the result to the release. The workflow rejects any dependency outside
-`/usr/lib` and `/System/Library`; the fetch script repeats that portability check and executes each
-downloaded tool before accepting it. PLVS ships no Linux app, so no Linux binary is built.
-
-## Licensing materials
-
-The distributed binaries report an LGPL build because the recipe uses `--disable-gpl
---disable-nonfree`. The DTS (`dca`), AC-3/E-AC-3, Opus, and AAC decoders used by PLVS are enabled
-without enabling FFmpeg's GPL components.
-
-Every PLVS package carries `licenses/THIRD-PARTY-NOTICES.txt` and the complete LGPL-2.1-or-later text.
-The notice points to the corresponding source bundle hosted alongside the sidecars, including
-unmodified FFmpeg source, exact platform recipes and binary hashes. `licenses/native-components.json`
-pins that source download, and `npm run licenses:sources` verifies it before publication.
-Native compiler/runtime notices are included in `licenses/NATIVE-NOTICES.txt`.
-
-For future builds, keep source and build records before publishing, use a new sidecar release tag,
-and never overwrite existing binary assets. The macOS workflow now uploads its source and actual
-recipe alongside its binaries and refuses to clobber assets. Update the binary and source pins only
-after testing. `scripts/verify-ffmpeg-sidecars.mjs` compares real decoded PCM and probe metadata with
-the previous pair using AC-3, E-AC-3, DTS, Opus, AAC, FLAC, Vorbis, MP3 and PCM fixtures. It takes
-reference/candidate directories containing `ffmpeg` and `ffprobe`, plus a full FFmpeg fixture encoder.
-Also run `npm run smoke:file-analysis` with the newly pinned pair.
+Never replace an asset on an existing tag. A future FFmpeg change uses a new immutable sidecar tag,
+updates all six binary hashes and the corresponding-source hash, regenerates native notices, and
+passes the real decoding and package tests before a PLVS release consumes it.

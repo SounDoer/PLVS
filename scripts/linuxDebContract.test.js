@@ -3,29 +3,56 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const config = JSON.parse(read("src-tauri/tauri.linux-deb.conf.json"));
+const stableDeb = JSON.parse(read("src-tauri/tauri.linux-stable-deb.conf.json"));
+const previewDeb = JSON.parse(read("src-tauri/tauri.linux-preview-deb.conf.json"));
 const preview = JSON.parse(read("src-tauri/tauri.preview.conf.json"));
 const builder = read("scripts/build-linux-deb.mjs");
+const locator = read("src-tauri/src/sidecar.rs");
+const packageVerifier = read("scripts/verify-linux-deb.sh");
+const desktopVerifier = read("scripts/verify-linux-desktop.py");
 
-describe("Ubuntu Preview package contract", () => {
-  it("uses APT decoders without overwriting the distribution's binaries", () => {
+describe("Ubuntu package contract", () => {
+  it("installs verified decoders in identity-private directories", () => {
     expect(config.bundle.externalBin).toEqual(["binaries/plvs-cli"]);
-    expect(config.bundle.linux.deb.depends).toContain("ffmpeg (>= 7:6.1)");
+    expect(config.bundle.linux.deb.depends).not.toContain(expect.stringContaining("ffmpeg"));
     expect(config.bundle.linux.deb.depends).toContain("libc6 (>= 2.39)");
     expect(config.bundle.linux.deb.depends).toContain("libasound2t64");
     expect(config.bundle.linux.deb.depends).toContain("libayatana-appindicator3-1");
     expect(config.bundle.linux.deb.depends).toContain("ca-certificates");
-    expect(config.bundle.linux.deb.conflicts).toContain("plvs");
+    expect(stableDeb.bundle.linux.deb.conflicts).toEqual(["plvs-preview"]);
+    expect(previewDeb.bundle.linux.deb.conflicts).toEqual(["plvs"]);
+    expect(stableDeb.bundle.linux.deb.files).toEqual({
+      "/usr/lib/plvs/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",
+      "/usr/lib/plvs/sidecars/ffprobe": "binaries/ffprobe-x86_64-unknown-linux-gnu",
+    });
+    expect(previewDeb.bundle.linux.deb.files).toEqual({
+      "/usr/lib/plvs-preview/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",
+      "/usr/lib/plvs-preview/sidecars/ffprobe": "binaries/ffprobe-x86_64-unknown-linux-gnu",
+    });
+    expect(locator).toContain('PathBuf::from("/usr/lib").join(package).join("sidecars")');
+    expect(locator).not.toContain('PathBuf::from("/usr/bin")');
   });
 
-  it("builds both executables with the isolated Preview identity and no updater artifacts", () => {
+  it("builds stable and Preview with their matching identities and no updater artifacts", () => {
     expect(preview.identifier).toBe("com.soundoer.plvs.preview");
     expect(config.bundle.createUpdaterArtifacts).toBe(false);
-    expect(builder).toContain('identity: "preview"');
+    expect(builder).toContain('["stable", "preview"]');
     expect(builder).toContain('"preview-identity"');
     expect(builder).toContain('"src-tauri/tauri.preview.conf.json"');
     expect(builder).toContain('"src-tauri/tauri.linux-deb.conf.json"');
+    expect(builder).toContain("tauri.linux-${identity}-deb.conf.json");
     expect(builder).not.toContain("capture-harness");
     expect(builder).not.toContain("dev-identity");
+  });
+
+  it("tests installation without distribution FFmpeg and removes the private sidecars", () => {
+    expect(packageVerifier).toContain("must not contain system FFmpeg/FFprobe");
+    expect(packageVerifier).toContain('sidecar_dir="/usr/lib/$package_name/sidecars"');
+    expect(packageVerifier).toContain('test ! -e "$sidecar_dir/ffmpeg"');
+    expect(packageVerifier).toContain("test ! -e /usr/bin/ffmpeg");
+    expect(desktopVerifier).toContain('Path("/usr/lib", package_name, "sidecars")');
+    expect(desktopVerifier).not.toContain('run(["ffmpeg"');
+    expect(desktopVerifier).not.toContain('run(["ffprobe"');
   });
 
   it("deletes the stable manifest key when Tauri combines the configuration patches", () => {

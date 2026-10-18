@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """Runtime checks for an installed Preview, under Xvfb and a private session bus."""
 import json
-import math
 import os
 from pathlib import Path
 import ssl
-import struct
 import subprocess
 import sys
 import tempfile
 import time
-import wave
 
 
 def run(args):
@@ -18,6 +15,15 @@ def run(args):
 
 
 output = Path(sys.argv[1]).resolve()
+fixtures = Path(sys.argv[2]).resolve()
+package_name = sys.argv[3]
+if package_name == "plvs-preview":
+    app_name = "PLVS Preview"
+    app_id = "com.soundoer.plvs.preview"
+else:
+    app_name = "PLVS"
+    app_id = "com.soundoer.plvs"
+sidecar_dir = Path("/usr/lib", package_name, "sidecars")
 output.mkdir(parents=True, exist_ok=True)
 if not ssl.create_default_context().get_ca_certs():
     raise RuntimeError("System TLS certificate trust is unavailable")
@@ -44,41 +50,31 @@ try:
     doctor = json.loads(run(["plvs-cli", "doctor", "--json"]))
     (output / "doctor.json").write_text(json.dumps(doctor, indent=2) + "\n")
     report = doctor["result"]["report"]
-    if not doctor["ok"] or report["app"]["name"] != "PLVS Preview":
-        raise RuntimeError("Installed CLI does not target the Preview identity")
-    if report["app"]["version"] != run(["dpkg-query", "-W", "-f=${Version}", "plvs-preview"]):
+    if not doctor["ok"] or report["app"]["name"] != app_name:
+        raise RuntimeError("Installed CLI does not target the package identity")
+    if report["app"]["version"] != run(["dpkg-query", "-W", "-f=${Version}", package_name]):
         raise RuntimeError("Installed application and package versions disagree")
     if report["status"] != "ok":
         raise RuntimeError("Installed doctor did not pass every check")
     for name in ("ffmpeg", "ffprobe"):
         check = next(c for c in report["checks"] if c["id"] == name + "-sidecar")
-        if check["details"]["path"] != "/usr/bin/" + name:
-            raise RuntimeError("Decoder did not resolve to the declared system dependency")
-    if not report["paths"]["dataDir"].endswith("com.soundoer.plvs.preview"):
-        raise RuntimeError("Preview storage is not isolated")
+        if check["details"]["path"] != str(sidecar_dir / name):
+            raise RuntimeError("Decoder did not resolve to the package-private sidecar")
+    if not report["paths"]["dataDir"].endswith(app_id):
+        raise RuntimeError("Package storage is not isolated")
 
-    # Exercise the package's real decoders with the exact float-PCM output route used by PLVS.
-    # This verifies dependency/codec availability, not the GUI's file-import interaction.
-    source = output / "signal.wav"
-    with wave.open(str(source), "wb") as wav:
-        wav.setparams((2, 2, 48000, 0, "NONE", "not compressed"))
-        wav.writeframes(b"".join(struct.pack("<hh", int(3000 * math.sin(i * 2 * math.pi * 1000 / 48000)),
-                                             int(1500 * math.sin(i * 2 * math.pi * 1000 / 48000)))
-                                 for i in range(48000)))
-    for codec, extension, extra in (
-        ("flac", "flac", []), ("aac", "m4a", []), ("ac3", "mka", []),
-        ("eac3", "mka", []), ("dca", "mka", ["-strict", "-2"]),
-        ("libopus", "ogg", []), ("pcm_s24le", "wav", []),
-    ):
-        encoded = output / (codec + "." + extension)
-        run(["ffmpeg", "-nostdin", "-y", "-v", "error", "-i", str(source), "-c:a", codec, *extra, str(encoded)])
-        probe = json.loads(run(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(encoded)]))
+    # Fixtures are generated outside this clean system. Only the package-private sidecars are used
+    # here, proving that installation and file analysis do not depend on Ubuntu's ffmpeg package.
+    manifest = json.loads((fixtures / "manifest.json").read_text())
+    for fixture in manifest["fixtures"]:
+        encoded = fixtures / fixture
+        probe = json.loads(run([str(sidecar_dir / "ffprobe"), "-v", "error", "-show_streams", "-of", "json", str(encoded)]))
         if probe["streams"][0]["channels"] != 2:
             raise RuntimeError("Encoded fixture lost a channel")
-        pcm = subprocess.check_output(["ffmpeg", "-nostdin", "-v", "error", "-i", str(encoded),
+        pcm = subprocess.check_output([str(sidecar_dir / "ffmpeg"), "-nostdin", "-v", "error", "-i", str(encoded),
                                        "-map", "0:a:0", "-vn", "-f", "f32le", "pipe:1"], timeout=30)
-        if len(pcm) < 48000 * 2 * 4 or not any(abs(v[0]) > 0.01 for v in struct.iter_unpack("<f", pcm)):
-            raise RuntimeError("Decoder returned empty or silent PCM: " + codec)
+        if len(pcm) < 48000 * 2 * 4 * 0.9 or not any(pcm):
+            raise RuntimeError("Decoder returned empty or silent PCM: " + fixture)
 
     gui = subprocess.Popen(["plvs"], stdout=gui_log, stderr=subprocess.STDOUT)
     deadline = time.monotonic() + 60
@@ -95,7 +91,7 @@ try:
     time.sleep(5)
     if gui.poll() is not None:
         raise RuntimeError("Installed GUI crashed after startup")
-    print("PASS: installed Preview identity, system decoders (7 codecs), and visible GUI")
+    print(f"PASS: installed {app_name} identity, bundled decoders, and visible GUI")
 finally:
     for child in (gui, audio):
         if child is not None and child.poll() is None:

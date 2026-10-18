@@ -22,6 +22,7 @@ export function validateReleaseBundle(version, assetDirectory) {
     names.windowsPortable,
     names.macosDmg,
     names.macosUpdater,
+    names.linuxDeb,
     names.updaterManifest,
   ].sort();
   const actualAssets = readdirSync(assetDirectory).sort();

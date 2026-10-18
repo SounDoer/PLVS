@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "linux": {
+      "deb": {
+        "conflicts": ["plvs-preview"],
+        "files": {
+          "/usr/lib/plvs/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",
+          "/usr/lib/plvs/sidecars/ffprobe": "binaries/ffprobe-x86_64-unknown-linux-gnu"
+        }
+      }
+    }
+  }
+}

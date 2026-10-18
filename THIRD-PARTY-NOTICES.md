@@ -33,11 +33,11 @@ Both families are distributed under the SIL Open Font License 1.1. Their complet
 files are in `licenses/license-texts/Inter-OFL-1.1.txt` and
 `licenses/license-texts/JetBrains-Mono-OFL-1.1.txt`.
 
-## FFmpeg 7.1 sidecars
+## FFmpeg 7.1.5 sidecars
 
-PLVS distributes `ffmpeg` and `ffprobe` from **FFmpeg 7.1** (upstream tag `n7.1`) as separate
+PLVS distributes `ffmpeg` and `ffprobe` from **FFmpeg 7.1.5** as separate
 executables for File mode. The binaries are fetched from the PLVS
-[`ffmpeg-sidecar-7.1-r2`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1-r2)
+[`ffmpeg-sidecar-7.1.5-r1`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1.5-r1)
 release and are checksum-pinned by
 [`scripts/fetch-ffmpeg-sidecar.mjs`](https://github.com/SounDoer/PLVS/blob/main/scripts/fetch-ffmpeg-sidecar.mjs).
 
@@ -45,19 +45,22 @@ release and are checksum-pinned by
   `--disable-gpl --disable-nonfree`; a complete copy is in
   `licenses/license-texts/LGPL-2.1-or-later.txt`.
 - **Corresponding source and build scripts:**
-  <https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1-r2/ffmpeg-7.1-plvs-source.zip>.
-  This contains the unmodified FFmpeg 7.1 source archive, Windows recipe and toolchain identity,
-  original macOS workflow, and exact distributed binary hashes. Windows r2 is a new build;
-  the macOS binaries retain the original workflow provenance recorded in that archive.
-- **Build parameters:** the Windows recipe and shared trimmed configuration are recorded in
+  <https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r1/ffmpeg-7.1.5-plvs-source.zip>.
+  This contains the unmodified FFmpeg 7.1.5 source archive, shared recipe, platform configuration,
+  toolchain and dependency evidence, and exact distributed binary hashes.
+- **Build parameters:** the shared trimmed configuration is recorded in
   [`docs/ffmpeg-sidecar-build.md`](https://github.com/SounDoer/PLVS/blob/main/docs/ffmpeg-sidecar-build.md).
-  The macOS job records its platform-specific flags in
-  [`.github/workflows/build-ffmpeg-sidecar-macos.yml`](https://github.com/SounDoer/PLVS/blob/main/.github/workflows/build-ffmpeg-sidecar-macos.yml).
+  The three platform jobs and their checks are recorded in
+  [`.github/workflows/build-ffmpeg-sidecars.yml`](https://github.com/SounDoer/PLVS/blob/main/.github/workflows/build-ffmpeg-sidecars.yml).
 - **Independent and replaceable:** PLVS starts these programs as child processes and communicates
   through pipes; they are not linked into PLVS. On Windows and in the Portable ZIP they are
   `ffmpeg.exe` and `ffprobe.exe` beside `plvs.exe`. In a macOS bundle they are
-  `PLVS.app/Contents/MacOS/ffmpeg` and `ffprobe`. Users may replace both files with compatible
-  builds for the same platform.
+  `PLVS.app/Contents/MacOS/ffmpeg` and `ffprobe`. Linux debs keep them under
+  `/usr/lib/plvs/sidecars` (stable) or `/usr/lib/plvs-preview/sidecars` (Preview), never
+  `/usr/bin`. Users may replace both files with compatible builds for the same platform.
+
+Some supported compressed-media formats may be covered by patents in some jurisdictions. The LGPL
+terms do not grant patent rights; PLVS makes no patent-license claim.
 
 FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
 

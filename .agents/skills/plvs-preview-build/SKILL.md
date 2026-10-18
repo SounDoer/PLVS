@@ -22,7 +22,8 @@ Use `plvs-release` instead when the user intends to ship a stable version.
 - A published Preview uses a unique `preview-<short-sha>-<run-id>` tag. Never reuse or move it.
 - The workflow runs `npm run check`, real file-analysis tests, and selected-platform package smoke before publishing.
 - Linux package smoke installs, launches and removes the exact deb in a fresh Ubuntu userspace;
-  it is not native desktop/hardware or four-hour soak acceptance.
+  it decodes with package-private FFmpeg sidecars and is not native desktop/hardware or four-hour
+  soak acceptance.
 - The tested platform packages are assembled in a Draft Pre-release, verified, then
   published once. The published result must report `immutable: true` and have a valid attestation.
 - Preview releases are temporary; the workflow retains the ten newest ones, deleting older Preview
@@ -105,8 +106,9 @@ Require exactly the selected platform's non-empty assets, using the package vers
 
 Windows requires the installer and Portable ZIP; Linux requires only the deb. Reject mixed or
 incomplete sets with `scripts/validate-preview-bundle.mjs <version> <sha> <directory> <platform>`.
-For Linux, explain APT installation, the required PulseAudio/pipewire-pulse service, and the pending
-native hardware/desktop/soak acceptance. Do not describe a passing package smoke as full Linux support.
+For Linux, explain APT installation, bundled private FFmpeg/FFprobe, the required
+PulseAudio/pipewire-pulse service, and the pending native hardware/desktop/soak acceptance. Do not
+describe a passing package smoke as full Linux support.
 
 The Portable ZIP contains `plvs.exe`, `plvs-cli.exe`, `ffmpeg.exe`, and `ffprobe.exe`; testers must
 keep the extracted files together. Return the immutable Release URL, full commit SHA, filenames, and

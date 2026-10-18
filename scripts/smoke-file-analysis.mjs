@@ -32,6 +32,13 @@ const PLATFORM_ASSETS = {
     },
     runtime: { ffmpeg: "ffmpeg", ffprobe: "ffprobe" },
   },
+  linux: {
+    source: {
+      ffmpeg: "ffmpeg-x86_64-unknown-linux-gnu",
+      ffprobe: "ffprobe-x86_64-unknown-linux-gnu",
+    },
+    runtime: { ffmpeg: "ffmpeg", ffprobe: "ffprobe" },
+  },
 };
 
 const assets = PLATFORM_ASSETS[process.platform];

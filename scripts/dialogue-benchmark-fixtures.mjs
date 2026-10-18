@@ -18,7 +18,6 @@ function gain(db) {
 }
 
 function findFfmpeg() {
-  // No Linux sidecar is published, so the Linux CI runner names its own ffmpeg here.
   if (process.env.PLVS_FFMPEG) return process.env.PLVS_FFMPEG;
   const name =
     process.platform === "win32"

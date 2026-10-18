@@ -51,6 +51,7 @@ describe("CLI packaging", () => {
       );
       expect(packageJson.scripts[script]).toContain("tauri.cli-sidecar.conf.json");
     }
+    expect(packageJson.scripts["desktop:stable-deb"]).toContain("build-linux-deb.mjs stable");
   });
 
   it("builds Preview GUI and CLI with the same isolated identity", () => {
@@ -71,9 +72,10 @@ describe("Windows Portable Release", () => {
     expect(releaseWorkflow).not.toContain("x64-portable.exe");
   });
 
-  it("publishes the portable and macOS packages under the shared release asset names", () => {
+  it("publishes the portable, macOS, and Linux packages under the shared release asset names", () => {
     expect(releaseWorkflow).toContain('"PLVS-$env:TAG-x64-portable"');
     expect(releaseWorkflow).toContain('"$asset_dir/PLVS-${TAG}-aarch64.dmg"');
+    expect(releaseWorkflow).toContain('"release-candidate/linux/release-assets/PLVS_${VERSION}_amd64.deb"');
   });
 
   it("stages and verifies license materials inside the final Portable ZIP", () => {
@@ -170,8 +172,11 @@ describe("Immutable Release promotion", () => {
   it("builds each platform once and promotes those tested artifacts", () => {
     expect(releaseWorkflow.match(/npm run desktop:stable-nsis/g)).toHaveLength(1);
     expect(releaseWorkflow.match(/npm run desktop:stable-dmg/g)).toHaveLength(1);
+    expect(releaseWorkflow.match(/npm run desktop:stable-deb/g)).toHaveLength(1);
     expect(releaseWorkflow).toContain("release-candidate-windows");
     expect(releaseWorkflow).toContain("release-candidate-macos");
+    expect(releaseWorkflow).toContain("release-candidate-linux");
+    expect(releaseWorkflow).toContain("sudo bash scripts/verify-linux-deb-clean.sh");
     expect(releaseWorkflow).toContain("node scripts/validate-release-bundle.mjs");
   });
 
@@ -203,7 +208,7 @@ describe("Immutable Windows Preview Build", () => {
     expect(previewBuildWorkflow).toContain("if: inputs.platform == 'linux'");
     expect(previewBuildWorkflow).toContain("if: inputs.platform == 'windows'");
     expect(previewBuildWorkflow).toContain("npm run desktop:preview-deb");
-    expect(previewBuildWorkflow).toContain("file_analysis -- --test-threads=1");
+    expect(previewBuildWorkflow).toContain("npm run smoke:file-analysis");
     expect(previewBuildWorkflow).toContain("sudo bash scripts/verify-linux-deb-clean.sh");
     expect(previewBuildWorkflow).toContain(
       "needs: [validate, build-windows-preview, build-linux-preview]"

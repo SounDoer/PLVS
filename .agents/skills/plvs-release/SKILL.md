@@ -814,18 +814,18 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 `scripts/fetch-ffmpeg-sidecar.mjs` downloads them (SHA-256 verified) from a dedicated
 `ffmpeg-sidecar-<ffmpeg-version>` release, and the `desktop:*` build scripts run it automatically.
 
-- **Normal releases need no action** — the Windows and macOS build jobs fetch the sidecars themselves
-  (`npm run ffmpeg:fetch` is wired into `desktop:stable-nsis` / `desktop:stable-dmg`).
+- **Normal releases need no action** — Windows, macOS, and Linux build jobs fetch the sidecars
+  themselves (`npm run ffmpeg:fetch` is wired into the stable desktop package scripts).
 - **When bumping the FFmpeg version**, before releasing you must:
-  1. Rebuild the trimmed binaries — Windows locally, macOS via the `build-ffmpeg-sidecar-macos.yml`
-     workflow (`gh workflow run build-ffmpeg-sidecar-macos.yml`).
+  1. Rebuild and test all three targets with the `build-ffmpeg-sidecars.yml` workflow
+     (`gh workflow run build-ffmpeg-sidecars.yml -f release_tag=ffmpeg-sidecar-<version>-r<revision>`).
   2. Upload them to a new `ffmpeg-sidecar-<version>` release.
-  3. Update `TAG` and the four SHA-256 values in `scripts/fetch-ffmpeg-sidecar.mjs`.
+  3. Update `TAG` and all six SHA-256 values in `scripts/fetch-ffmpeg-sidecar.mjs`.
 
   Full recipe: `docs/ffmpeg-sidecar-build.md`.
 
-- The sidecar `externalBin` is declared only in `tauri.windows.conf.json` / `tauri.macos.conf.json`,
-  so the Linux CI gate (PLVS ships no Linux app) does not require a binary.
+- Windows and macOS use Tauri `externalBin`; Linux maps the same fetched files into an
+  identity-private `/usr/lib/<package>/sidecars` directory through the deb configuration.
 
 ---
 

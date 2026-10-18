@@ -16,6 +16,7 @@ function createBundle(version = "1.2.3") {
     names.windowsPortable,
     names.macosDmg,
     names.macosUpdater,
+    names.linuxDeb,
   ]) {
     writeFileSync(join(directory, asset), "candidate", "utf8");
   }

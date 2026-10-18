@@ -211,10 +211,8 @@ jobs:
             libayatana-appindicator3-dev librsvg2-dev patchelf ffmpeg debootstrap
       - name: Install dependencies
         run: npm ci
-      - name: Smoke test real file analysis with distribution decoders
-        env:
-          PLVS_FFMPEG_DIR: /usr/bin
-        run: cargo test --manifest-path src-tauri/Cargo.toml file_analysis -- --test-threads=1
+      - name: Smoke test real file analysis with bundled sidecars
+        run: npm run smoke:file-analysis
       - name: Build isolated Ubuntu Preview
         run: npm run desktop:preview-deb
       - name: Verify the exact package in a fresh Ubuntu system
@@ -222,7 +220,9 @@ jobs:
         run: |
           packages=(src-tauri/target/release/bundle/deb/*.deb)
           [[ ${#packages[@]} == 1 && -f "${packages[0]}" ]]
-          sudo bash scripts/verify-linux-deb-clean.sh "${packages[0]}" "$PWD/linux-package-evidence"
+          node scripts/generate-sidecar-fixtures.mjs "$PWD/linux-sidecar-fixtures" /usr/bin/ffmpeg
+          sudo bash scripts/verify-linux-deb-clean.sh \
+            "${packages[0]}" "$PWD/linux-package-evidence" "$PWD/linux-sidecar-fixtures"
           mkdir deb-inspection
           dpkg-deb -x "${packages[0]}" deb-inspection
           node scripts/verify-license-assets.mjs "deb-inspection/usr/lib/PLVS Preview"
@@ -293,7 +293,7 @@ jobs:
 
           Targets Ubuntu 24.04 x86_64. Download the deb and install it with `sudo apt install --reinstall ./<filename>.deb`.
           Use `--reinstall` when switching commits: Preview builds can share the same base package version.
-          APT installs FFmpeg and runtime dependencies. Launch PLVS Preview from the menu, or run `plvs`.
+          The package includes PLVS's verified FFmpeg/FFprobe sidecars. Launch PLVS Preview from the menu, or run `plvs`.
           Diagnose with `plvs-cli doctor --json`; remove with `sudo apt remove plvs-preview`.
           This initial Preview conflicts with the future stable Linux deb because they share executable names.
           Enable Agent Control in Settings before using live `plvs-cli` commands.

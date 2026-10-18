@@ -133,7 +133,7 @@ does not enable ScreenCaptureKit system-audio capture. The public source meaning
 metadata are therefore the same as on Windows.
 
 Linux feeds fixed-canvas WebKitGTK frames and the shared measured-source PCM timeline to the
-distribution-managed FFmpeg declared by the Ubuntu package. Video and audio use separate inherited
+package-private FFmpeg bundled by the Ubuntu package. Video and audio use separate inherited
 pipes so encoder backpressure never reaches the capture callback. The resulting measured-source
 MP4 uses the same H.264 plus AAC shape and interruption metadata as Windows and macOS; explicit
 `--audio none` remains video-only.

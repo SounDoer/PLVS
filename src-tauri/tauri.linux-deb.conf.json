@@ -16,10 +16,8 @@
           "libwebkit2gtk-4.1-0",
           "libayatana-appindicator3-1",
           "librsvg2-common",
-          "ca-certificates",
-          "ffmpeg (>= 7:6.1)"
+          "ca-certificates"
         ],
-        "conflicts": ["plvs"],
         "section": "sound"
       }
     }

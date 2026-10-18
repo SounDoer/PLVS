@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TAG = "ffmpeg-sidecar-7.1-r2";
+const TAG = "ffmpeg-sidecar-7.1.5-r1";
 const REPO = "SounDoer/PLVS";
 const BASE = `https://github.com/${REPO}/releases/download/${TAG}`;
 
@@ -19,21 +19,31 @@ const ASSETS = {
   win32: [
     {
       name: "ffmpeg-x86_64-pc-windows-msvc.exe",
-      sha256: "7f3d06039d891573d563f77d82f854617fd60e93d3cbdaad0a2923ee9c9a5b8e",
+      sha256: "3838d8d993aae815e6997d382251f2e8f46f9bfcadc7372897be9cb4d7e5587e",
     },
     {
       name: "ffprobe-x86_64-pc-windows-msvc.exe",
-      sha256: "45766e789cb67e31664e9bdf1f2cf0a2634d34c9fc5c9ce2b8191f2862f2d15a",
+      sha256: "66d1a28dd3c47493c1e1a398f6fa7a06f801e51a00a205e8f2828b528e9300df",
     },
   ],
   darwin: [
     {
       name: "ffmpeg-aarch64-apple-darwin",
-      sha256: "ef3464777eaac4e6fac6aa5fd8c5a18baa8a3ca798d0c5168d9d71626b4f5bb9",
+      sha256: "0228de86396bea71a1fe28c61e816832b766f6f7cca7e49321f424a21536da89",
     },
     {
       name: "ffprobe-aarch64-apple-darwin",
-      sha256: "467267643ef8ef5a045fefb0a62b08f999b30f35637d9dbf2d681e19ac17d90c",
+      sha256: "c660df55e4d3b444eae7bce3db245c8e6df7c9d41d855161be077bfd15d44f5d",
+    },
+  ],
+  linux: [
+    {
+      name: "ffmpeg-x86_64-unknown-linux-gnu",
+      sha256: "cc9c0c7de5452d1c4e9344aeab252aa80ffc7eb2651466ee3a56a8cdce1e6daa",
+    },
+    {
+      name: "ffprobe-x86_64-unknown-linux-gnu",
+      sha256: "8c8fdc15d2d26538d02972887abab1b0bf4f75994480a10bf6a958c02f7ed33d",
     },
   ],
 };
@@ -64,6 +74,42 @@ function verifyRuntime(dest, name) {
         `${name} is not portable: it links to non-system libraries:\n  ${unexpected.join("\n  ")}`
       );
     }
+  }
+  if (process.platform === "linux") {
+    if (process.arch !== "x64") {
+      throw new Error(`no reviewed Linux sidecar is available for architecture ${process.arch}`);
+    }
+    const header = spawnSync("readelf", ["-h", dest], { encoding: "utf8", timeout: 10_000 });
+    if (
+      header.status !== 0 ||
+      !/Class:\s+ELF64/.test(header.stdout) ||
+      !/Machine:\s+Advanced Micro Devices X86-64/.test(header.stdout)
+    ) {
+      throw new Error(`${name} is not a reviewed Linux x86_64 ELF binary`);
+    }
+    const dynamic = spawnSync("readelf", ["-d", dest], { encoding: "utf8", timeout: 10_000 });
+    if (dynamic.status !== 0) {
+      throw new Error(`could not inspect dynamic-library dependencies for ${name}`);
+    }
+    const allowed = new Set(["libc.so.6", "libm.so.6"]);
+    const dependencies = [...dynamic.stdout.matchAll(/\(NEEDED\).*Shared library: \[([^\]]+)\]/g)].map(
+      (match) => match[1]
+    );
+    const unexpected = dependencies.filter((dependency) => !allowed.has(dependency));
+    if (unexpected.length) {
+      throw new Error(
+        `${name} is not portable: it links to unreviewed libraries:\n  ${unexpected.join("\n  ")}`
+      );
+    }
+    const versions = spawnSync("readelf", ["--version-info", dest], {
+      encoding: "utf8",
+      timeout: 10_000,
+    });
+    if (versions.status !== 0) throw new Error(`could not inspect glibc versions for ${name}`);
+    const tooNew = [...versions.stdout.matchAll(/GLIBC_(\d+)\.(\d+)/g)].some(
+      ([, major, minor]) => Number(major) > 2 || (Number(major) === 2 && Number(minor) > 39)
+    );
+    if (tooNew) throw new Error(`${name} requires a glibc version newer than Ubuntu 24.04`);
   }
   const version = spawnSync(dest, ["-version"], { encoding: "utf8", timeout: 10_000 });
   if (version.status !== 0) {
@@ -112,7 +158,7 @@ async function main() {
       `! No FFmpeg sidecar binaries are published for platform "${process.platform}" yet; ` +
         `File-mode decoding will be unavailable in a build on this platform.`
     );
-    return; // Do not fail — this phase ships Windows only.
+    return;
   }
   await mkdir(outDir, { recursive: true });
   for (const asset of assets) await ensureAsset(asset);

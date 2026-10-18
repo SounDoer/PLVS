@@ -11,6 +11,7 @@ export function releaseAssetNames(version) {
     windowsPortable: `PLVS-v${version}-x64-portable.zip`,
     macosDmg: `PLVS-v${version}-aarch64.dmg`,
     macosUpdater: "PLVS.app.tar.gz",
+    linuxDeb: `PLVS_${version}_amd64.deb`,
     updaterManifest: "latest.json",
   };
 }

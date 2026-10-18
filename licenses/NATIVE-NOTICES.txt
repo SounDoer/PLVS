@@ -6,11 +6,11 @@ macOS CPU archive: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.24.2/aarch64-apple-dar
 The upstream runtime notice is a conservative superset, not a claim that every listed execution provider ships. PLVS selects the CPU backend; enabling another provider requires a fresh distribution review.
 Silero VAD v6.2 model: SHA-256 1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3; original license reproduced below. FireRedVAD model and CMVN notices are preserved verbatim in COMPONENT-NOTICES.txt under firered-vad@0.1.0.
 SQLite is compiled from libsqlite3-sys bundled sources. SQLite itself is public domain; its original source dedication is retained in the corresponding source package. Rust wrapper notices are in COMPONENT-NOTICES.txt.
-FFmpeg 7.1 is an independent executable under LGPL-2.1-or-later. Complete corresponding source and build scripts are provided at the download below. Windows r2 was built from an unmodified upstream archive; macOS binaries retain their original workflow provenance (see BUILD-RECORD.json in the source bundle).
+FFmpeg 7.1.5 is shipped as independent executables under LGPL-2.1-or-later. Windows x86_64, macOS Apple Silicon and Linux x86_64 use one audio-only recipe with GPL, nonfree and external codec libraries disabled. Complete corresponding source, build records and binary hashes are provided at the immutable download below. Codec license compliance does not grant patent rights.
 Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.
 Rust standard library 1.99.0: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.
 Windows installers use unmodified NSIS 3.11, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/kichik/nsis/tree/v311 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades.
-The Ubuntu Preview deb dynamically uses distribution ALSA, PulseAudio, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries.
+Ubuntu stable and Preview debs dynamically use distribution ALSA, PulseAudio, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries. FFmpeg/FFprobe are separate package-private executables and depend only on the distribution glibc, libm and ELF loader.
 
 ========================================================================
 ONNX Runtime 1.24.2
@@ -7591,6 +7591,6 @@ Original notice: https://raw.githubusercontent.com/tauri-apps/nsis-tauri-utils/1
    END OF TERMS AND CONDITIONS
 
 
-Corresponding source: FFmpeg 7.1 source and platform build recipes
-https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1-r2/ffmpeg-7.1-plvs-source.zip
-SHA-256: b539cc38b7804d202521ae5645f578a50f3a21280c313adba45136998dca00aa
+Corresponding source: FFmpeg 7.1.5 source and platform build records
+https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r1/ffmpeg-7.1.5-plvs-source.zip
+SHA-256: ca6c075bbc70eff2826836735a9f4f67804655fff8689820281f387c7b09a629

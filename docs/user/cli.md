@@ -8,9 +8,9 @@ surface, using the same identity directory as the GUI under `$XDG_DATA_HOME` or
 `~/.local/share`. Linux Visual Capture supports PNG screenshots and H.264 MP4 recording of the
 visible PLVS WebView, with optional AAC audio from the measured Live source; it does not capture the
 system pointer. Linux development file analysis and visual recording use system FFmpeg/FFprobe
-selected by the development launcher. The Ubuntu Preview deb installs them through APT and resolves
-`/usr/bin/ffmpeg` and `/usr/bin/ffprobe` without an environment override. Official Linux release
-packages are not yet available.
+selected by the development launcher. The Ubuntu Preview deb instead uses its checksum-verified
+copies under `/usr/lib/plvs-preview/sidecars`; it neither replaces nor depends on `/usr/bin/ffmpeg`.
+Official Linux release packages are not yet available.
 
 ```text
 plvs-cli doctor
