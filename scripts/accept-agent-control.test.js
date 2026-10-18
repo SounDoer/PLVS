@@ -15,7 +15,7 @@ describe("Agent Control acceptance arguments", () => {
       "artifacts/custom-agent-control",
     ]);
     expect(parsed.instanceId).toBe("dev-one");
-    expect(parsed.outDir).toMatch(/artifacts\/custom-agent-control$/);
+    expect(parsed.outDir).toMatch(/artifacts[\\/]custom-agent-control$/);
   });
 
   it("rejects missing, repeated, and unknown arguments", () => {
