@@ -10,7 +10,7 @@ FFmpeg 7.1 is an independent executable under LGPL-2.1-or-later. Complete corres
 Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.
 Rust standard library 1.99.0: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.
 Windows installers use unmodified NSIS 3.11, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/kichik/nsis/tree/v311 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades.
-The Ubuntu Preview deb dynamically uses distribution ALSA, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries.
+The Ubuntu Preview deb dynamically uses distribution ALSA, PulseAudio, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries.
 
 ========================================================================
 ONNX Runtime 1.24.2
