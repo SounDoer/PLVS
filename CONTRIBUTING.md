@@ -509,6 +509,8 @@ be attributed safely, so unavailable fields remain `null` instead of being repor
 summary under `artifacts/soak/`; its hard verdict is zero UI-frame and audio-chunk drops. Resource
 slopes are diagnostic because retained history grows during its configured window. Use
 `--seconds 14400` for the four-hour run and keep the Mac awake, foregrounded and otherwise idle.
+The soak exits as a rig failure if the renderer becomes hidden or animation frames stop for more
+than five seconds, rather than treating background-throttled time as valid visible evidence.
 
 Update, Dock, capture, Agent Control and desktop-performance acceptance results can be indexed in
 one local report without rerunning their scenarios:

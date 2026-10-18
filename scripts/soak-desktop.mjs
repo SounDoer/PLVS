@@ -10,6 +10,7 @@ import {
   startLiveCapture,
   stopDesktopPerfRig,
 } from "./desktop-perf-rig.mjs";
+import { RigError } from "./capture-rig.mjs";
 import {
   INSTALL_RUNTIME_PROBE,
   readProcessTree,
@@ -17,6 +18,23 @@ import {
   summarizeDesktopSoak,
   wait,
 } from "./webview-observability.mjs";
+
+export const MAX_VISIBLE_FRAME_GAP_MS = 5_000;
+
+export function desktopSurfaceFailure(sample) {
+  if (sample.runtime?.documentHidden === true) {
+    return "the renderer document became hidden";
+  }
+  const latestAgeMs = sample.runtime?.latestRafAgeMs;
+  if (Number.isFinite(latestAgeMs) && latestAgeMs > MAX_VISIBLE_FRAME_GAP_MS) {
+    return `renderer animation frames became stale (${Math.round(latestAgeMs)} ms)`;
+  }
+  const maxGapMs = sample.runtime?.rafGapMaxMs;
+  if (Number.isFinite(maxGapMs) && maxGapMs > MAX_VISIBLE_FRAME_GAP_MS) {
+    return `renderer animation frames paused (${Math.round(maxGapMs)} ms maximum gap)`;
+  }
+  return null;
+}
 
 export async function runDesktopSoak(options, log = console.log) {
   const rig = await launchDesktopPerfRig(options);
@@ -51,6 +69,15 @@ export async function runDesktopSoak(options, log = console.log) {
       };
       samples.push(sample);
       output.write(`${JSON.stringify(sample)}\n`);
+      const surfaceFailure = desktopSurfaceFailure(sample);
+      if (surfaceFailure) {
+        output.write(
+          `${JSON.stringify({ type: "rigFailure", at: new Date().toISOString(), t: sample.t, reason: surfaceFailure })}\n`
+        );
+        throw new RigError(
+          `${surfaceFailure}; keep the PLVS test window visible and in the foreground`
+        );
+      }
       nextSample += options.every * 1000;
       await wait(Math.max(0, nextSample - Date.now()));
     }
@@ -88,7 +115,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   } else {
     runDesktopSoak(options).catch((error) => {
       console.error(error.message);
-      process.exitCode = 1;
+      process.exitCode = error instanceof RigError ? 2 : 1;
     });
   }
 }
