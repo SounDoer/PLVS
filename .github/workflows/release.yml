@@ -330,6 +330,27 @@ jobs:
           mkdir -p release-candidate/linux/release-assets
           cp "${packages[0]}" "release-candidate/linux/release-assets/PLVS_${VERSION}_amd64.deb"
 
+      - name: Sign the tested Linux package for update notices
+        env:
+          TAG: v${{ inputs.version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # Installed Linux builds only announce new versions and never install them, but the
+          # updater requires a signed descriptor for its own platform before comparing versions.
+          candidate_dir="release-candidate/linux"
+          deb="$candidate_dir/release-assets/PLVS_${VERSION}_amd64.deb"
+          npx tauri signer sign --app-version "$VERSION" "$deb"
+          mv "$deb.sig" "$candidate_dir/PLVS_${VERSION}_amd64.deb.sig"
+          node -e "
+            const fs = require('fs');
+            fs.writeFileSync(process.argv[1], JSON.stringify({
+              platform: 'linux-x86_64-deb',
+              url: 'https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/PLVS_${VERSION}_amd64.deb',
+              signature: fs.readFileSync(process.argv[2], 'utf8').trim(),
+            }));
+          " "$candidate_dir/updater-linux.json" "$candidate_dir/PLVS_${VERSION}_amd64.deb.sig"
+
       - name: Upload package verification evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -395,7 +416,8 @@ jobs:
             updater-notes.md \
             release-assets/latest.json \
             candidates/windows/updater-windows.json \
-            candidates/macos/updater-macos.json
+            candidates/macos/updater-macos.json \
+            candidates/linux/updater-linux.json
           node scripts/validate-release-bundle.mjs "$VERSION" release-assets
 
       - name: Create complete draft release

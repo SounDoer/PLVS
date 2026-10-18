@@ -748,11 +748,11 @@ inputs and gives each pipe an input queue. This prevents the two blocking writer
 each other during startup. Its audio target advances from submitted video frames rather than wall
 time, so slow Wayland snapshots cannot lengthen the AAC track beyond the video timeline.
 
-| Platform | System audio path                                                  | Minimum version                                                                                         |
-| -------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11)                        |
-| macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                                         |
-| Linux    | PulseAudio monitor source, including PipeWire via `pipewire-pulse` | Ubuntu 24.04 x86_64 experimental Preview; per-application capture is unsupported                        |
+| Platform | System audio path                                                  | Minimum version                                                                  |
+| -------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11) |
+| macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                  |
+| Linux    | PulseAudio monitor source, including PipeWire via `pipewire-pulse` | Ubuntu 24.04 x86_64; per-application capture is unsupported                      |
 
 Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User installation guidance, including Windows SmartScreen and macOS Gatekeeper verification, is in `docs/user/getting-started.md`.
 
@@ -769,3 +769,8 @@ On macOS, updater capability checks the executable's volume with `statvfs`. A re
 explanation to the shared update controls. This differs from a protected directory on a writable
 volume, where the updater may request system authorization. Native download and installation
 preparation recheck the volume rather than relying only on startup classification.
+
+Stable Linux packages check for updates but never stage or install them: `installed_distribution()`
+is false on Linux and the update controls show a manual-download explanation. The vendored updater
+still resolves its own platform descriptor before comparing versions, so every stable `latest.json`
+carries a version-signed `linux-x86_64-deb` entry for the published deb.

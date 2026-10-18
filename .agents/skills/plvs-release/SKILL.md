@@ -646,19 +646,20 @@ cannot cover:
 | -------- | ---------------- | -------------------------------------------------------------------------- |
 | Windows  | `windows-latest` | NSIS installer, portable ZIP                                               |
 | macOS    | `macos-latest`   | Developer ID signed and Apple-notarized DMG, `.app.tar.gz` updater payload |
-| Linux    | `ubuntu-24.04`   | Unsigned x86_64 Debian package (no updater payload)                        |
+| Linux    | `ubuntu-24.04`   | x86_64 Debian package, updater-signed for version notices                  |
 
 ### Draft Assembly and Publication
 
 1. Windows, macOS, and Linux build and smoke-test their final packages exactly once.
 2. Each platform uploads the tested files as a short-lived Actions artifact;
-   Windows and macOS also upload their signed updater descriptors. Build jobs
-   have read-only repository access.
+   each also uploads its signed updater descriptor. Build jobs have read-only
+   repository access.
 3. `prepare-draft` downloads all three candidates, generates release notes and
    `latest.json`, and runs `scripts/validate-release-bundle.mjs`.
 4. The validator requires exactly the six public assets below, verifies that
    none is empty, and checks updater versions, platforms, URLs, and signatures.
-   `latest.json` must list only `windows-x86_64` and `darwin-aarch64`.
+   `latest.json` must list exactly `windows-x86_64`, `darwin-aarch64`, and
+   `linux-x86_64-deb`.
 5. `prepare-draft` creates a Draft Release for the exact SHA, uploads the whole
    set, verifies the Draft's `targetCommitish` is the requested SHA, and compares
    the uploaded asset inventory with the local set. GitHub does not create the
@@ -842,13 +843,16 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 
 - **Platform signing**: Windows packages are not code-signed yet, so users may see SmartScreen.
   macOS packages are signed with Developer ID, notarized with Apple, stapled, and checked with
-  Gatekeeper before staging. The Linux deb is not signed; its integrity rests on the immutable
-  Release. The Tauri updater signature remains separate and authenticates updater
+  Gatekeeper before staging. The Linux deb carries no Debian package signature; its integrity
+  rests on the immutable Release and the updater signature in `latest.json`. The Tauri updater signature remains separate and authenticates updater
   payload bytes.
-- **Linux updates are manual**: `installed_distribution()` in `src-tauri/src/update_runtime.rs`
-  returns `false` on Linux, the deb build produces no updater payload, and `latest.json` carries no
-  Linux descriptor. Users download the new deb from the Release. Enabling in-app Linux installation
-  needs the packaged upgrade evidence listed in the Linux stable update audit first.
+- **Linux updates are announced, not installed**: `installed_distribution()` in
+  `src-tauri/src/update_runtime.rs` returns `false` on Linux, so installed builds show the new
+  version and send users to the Release for a manual download. The updater still requires a signed
+  descriptor for its own platform before it compares versions, so `build-linux` signs the tested
+  deb with `tauri signer sign --app-version` and `latest.json` must carry `linux-x86_64-deb`.
+  Enabling in-app Linux installation needs the packaged upgrade evidence listed in the Linux
+  stable update audit first.
 - **Auto-update is active**: `src-tauri/src/lib.rs` registers
   `tauri_plugin_updater` unconditionally, and `tauri.conf.json`'s `plugins.updater`
   points it at `releases/latest/download/latest.json`, so a shipped tag reaches

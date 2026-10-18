@@ -34,6 +34,10 @@ function createBundle(version = "1.2.3") {
           signature: "macos-signature",
           url: `https://github.com/SounDoer/PLVS/releases/download/v${version}/${names.macosUpdater}`,
         },
+        "linux-x86_64-deb": {
+          signature: "linux-signature",
+          url: `https://github.com/SounDoer/PLVS/releases/download/v${version}/${names.linuxDeb}`,
+        },
       },
     }),
     "utf8"
@@ -64,5 +68,15 @@ describe("release bundle validation", () => {
     expect(() => validateReleaseBundle("1.2.3", directory)).toThrow(
       "Unexpected windows-x86_64 updater URL"
     );
+  });
+
+  it("rejects a manifest without the Linux deb descriptor", () => {
+    const { directory, names } = createBundle();
+    const manifestPath = join(directory, names.updaterManifest);
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    delete manifest.platforms["linux-x86_64-deb"];
+    writeFileSync(manifestPath, JSON.stringify(manifest), "utf8");
+
+    expect(() => validateReleaseBundle("1.2.3", directory)).toThrow("Unexpected updater platforms");
   });
 });

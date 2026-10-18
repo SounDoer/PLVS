@@ -52,6 +52,7 @@ export function validateReleaseBundle(version, assetDirectory) {
   const expectedPlatforms = {
     "darwin-aarch64": names.macosUpdater,
     "windows-x86_64": names.windowsInstaller,
+    "linux-x86_64-deb": names.linuxDeb,
   };
   const actualPlatforms = Object.keys(manifest.platforms ?? {}).sort();
   if (JSON.stringify(actualPlatforms) !== JSON.stringify(Object.keys(expectedPlatforms).sort())) {

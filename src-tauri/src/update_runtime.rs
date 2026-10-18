@@ -122,6 +122,19 @@ fn installation_location_error() -> Option<String> {
   None
 }
 
+/// Linux packages announce new versions but are always updated by the user, so explain that
+/// instead of the generic text written for unpackaged copies.
+fn installation_unavailable_reason() -> Option<String> {
+  installation_location_error().or_else(|| {
+    (cfg!(target_os = "linux")
+      && !cfg!(feature = "preview-identity")
+      && !cfg!(feature = "dev-identity"))
+    .then(|| {
+      "On Linux, PLVS shows new versions but does not install them. Download the new .deb from Releases and install it with APT.".into()
+    })
+  })
+}
+
 fn authorize(window: &WebviewWindow, app: &tauri::AppHandle) -> Result<(), String> {
   if window.label() != "main" {
     return Err("Updates are owned by the main window.".into());
@@ -208,7 +221,7 @@ pub fn update_status(
     enabled: !cfg!(feature = "preview-identity"),
     installation_supported: runtime.installation_supported
       && installation_location_error().is_none(),
-    installation_unavailable_reason: installation_location_error(),
+    installation_unavailable_reason: installation_unavailable_reason(),
     ready,
     fresh_session: runtime.running.fresh_session,
     attempt,

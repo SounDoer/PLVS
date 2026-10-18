@@ -75,7 +75,15 @@ describe("Windows Portable Release", () => {
   it("publishes the portable, macOS, and Linux packages under the shared release asset names", () => {
     expect(releaseWorkflow).toContain('"PLVS-$env:TAG-x64-portable"');
     expect(releaseWorkflow).toContain('"$asset_dir/PLVS-${TAG}-aarch64.dmg"');
-    expect(releaseWorkflow).toContain('"release-candidate/linux/release-assets/PLVS_${VERSION}_amd64.deb"');
+    expect(releaseWorkflow).toContain(
+      '"release-candidate/linux/release-assets/PLVS_${VERSION}_amd64.deb"'
+    );
+  });
+
+  it("signs the tested Linux deb for a version-bound updater descriptor", () => {
+    expect(releaseWorkflow).toContain('npx tauri signer sign --app-version "$VERSION" "$deb"');
+    expect(releaseWorkflow).toContain("platform: 'linux-x86_64-deb'");
+    expect(releaseWorkflow).toContain("candidates/linux/updater-linux.json");
   });
 
   it("stages and verifies license materials inside the final Portable ZIP", () => {

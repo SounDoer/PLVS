@@ -43,8 +43,9 @@ installed application and decoders. Audio capture requires a running PulseAudio 
 PulseAudio compatibility service. PLVS installs its own FFmpeg/FFprobe copies under
 `/usr/lib/plvs/sidecars`; it neither needs nor replaces a system FFmpeg installation.
 
-PLVS does not download or install updates on Linux. To update, download the new `.deb` from
-GitHub Releases and install it the same way; your settings are kept. Remove PLVS with
+On Linux, PLVS can tell you that a new version is available, but it does not download or install
+it. To update, download the new `.deb` from GitHub Releases and install it the same way; your
+settings are kept. Remove PLVS with
 `sudo apt remove plvs`. Removing the package preserves your user settings.
 
 Dock and per-application capture are not available on Linux. See
