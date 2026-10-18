@@ -722,14 +722,19 @@ reports and older clients retain their v1 contracts. The receiver lives in `soun
 
 ## 8. Platform notes
 
-Experimental Linux builds select cpal's PulseAudio host explicitly, including PipeWire through
-`pipewire-pulse`. Linux source discovery uses server monitor metadata to separate output monitors
-from physical inputs. Both are opened as input streams; sink devices themselves are never treated
-as capture devices. Stable IDs use native source identifiers rather than display labels. Automatic
-resolves the default sink's monitor and reports an error if it is absent, without falling back to
-a microphone. Capture requests float PCM at the source's native rate and channel count and reuses
-the existing pooled callback delivery and meter pipeline. Per-application capture and native
-desktop acceptance testing remain outstanding.
+Experimental Linux builds select cpal's PulseAudio host explicitly for device discovery, including
+PipeWire through `pipewire-pulse`. The discovery client and host are process-long resources because
+the pure-Rust Pulse reactor cannot reliably tear down a short-lived client while PipeWire is
+running. Server monitor metadata separates output monitors from physical inputs. Both appear as
+input sources; sink devices themselves are never treated as capture devices. Stable IDs use native
+source identifiers rather than display labels. Automatic resolves the default sink's monitor and
+reports an error if it is absent, without falling back to a microphone.
+
+Linux live capture uses the system `libpulse-simple` ABI rather than cpal's pure-Rust record stream:
+on Ubuntu 24.04 / PipeWire 1.0.5 that stream can be created successfully without ever delivering a
+buffer. The native reader requests 20 ms float PCM fragments at the source rate and channel count,
+publishes measured-source recording PCM on the reader clock, and batches five reads into the shared
+bounded pool and meter pipeline. Per-application capture remains unsupported.
 
 The experimental Ubuntu 24.04 x86_64 Preview deb installs the application and CLI in `/usr/bin`
 and declares distribution-managed FFmpeg/FFprobe as package dependencies. The existing adjacent
@@ -737,9 +742,10 @@ binary locator therefore works without a development environment override. It us
 Preview identity and has no automatic updater. See
 [ADR 0032](adr/0032-linux-deb-uses-distribution-decoders.md) for the package layout and decoder policy.
 
-Linux capture requests 20 ms server fragments. PulseAudio's unspecified default fragments can
-exceed the shared 100 ms PCM pool capacity, causing whole callbacks to be rejected; the backend
-must negotiate the delivery size rather than grow buffers on the callback thread.
+Linux recording disables FFmpeg's redundant probing for its explicitly described raw video and PCM
+inputs and gives each pipe an input queue. This prevents the two blocking writers from waiting on
+each other during startup. Its audio target advances from submitted video frames rather than wall
+time, so slow Wayland snapshots cannot lengthen the AAC track beyond the video timeline.
 
 | Platform | System audio path                                                  | Minimum version                                                                                         |
 | -------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |

@@ -3694,6 +3694,7 @@ dependencies = [
  "hound",
  "image",
  "libc",
+ "libloading",
  "log",
  "pulseaudio",
  "realfft",

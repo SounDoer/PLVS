@@ -419,6 +419,7 @@ pub fn start_process_session(
           dialogue_gating,
           dialogue_vad_engine,
           measured_pcm,
+          true,
           bridge_dropped,
           bridge_pool,
         );

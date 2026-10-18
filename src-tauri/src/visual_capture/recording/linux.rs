@@ -18,7 +18,7 @@ use super::state::{RecordingAudioSource, RecordingRegistry, StopReason, MAX_ARTI
 use crate::audio::MeasuredPcmReceiver;
 
 const AUDIO_PIPE_FD: libc::c_int = 3;
-const AUDIO_SETTLEMENT_FRAMES: u64 = 4_800;
+const AUDIO_SETTLEMENT_FRAMES: u64 = 960;
 
 #[derive(Clone, Copy, Debug)]
 pub struct RecordingGeometry {
@@ -200,6 +200,12 @@ fn start_ffmpeg(
     &format!("{width}x{height}"),
     "-framerate",
     &fps.to_string(),
+    "-probesize",
+    "32",
+    "-analyzeduration",
+    "0",
+    "-thread_queue_size",
+    "8",
     "-i",
     "pipe:0",
   ]);
@@ -211,6 +217,12 @@ fn start_ffmpeg(
       &OUTPUT_SAMPLE_RATE.to_string(),
       "-ac",
       "2",
+      "-probesize",
+      "32",
+      "-analyzeduration",
+      "0",
+      "-thread_queue_size",
+      "256",
       "-i",
       &format!("pipe:{AUDIO_PIPE_FD}"),
     ]);
@@ -323,7 +335,6 @@ fn run_recording(
       let worker_video_finished = Arc::clone(&video_finished);
       let worker_reason = Arc::clone(&session.audio_silence_reason);
       let worker_registry = registry.clone();
-      let worker_started = started;
       Some(
         std::thread::Builder::new()
           .name("visual-recording-linux-audio".into())
@@ -333,7 +344,6 @@ fn run_recording(
               audio_origin_ns,
               receiver,
               input,
-              worker_started,
               worker_target,
               worker_video_finished,
               worker_reason,
@@ -402,16 +412,24 @@ fn run_recording(
       registry.add_dropped_frames(&session.recording_id, frames_to_submit - 1);
     }
     for _ in 0..frames_to_submit {
+      // Publish the prospective video duration before the blocking pipe write. FFmpeg may wait for
+      // its audio input while accepting this frame, so the audio worker must be allowed to feed the
+      // matching interval without advancing from wall time and outrunning a slow Wayland capture.
+      let next_submitted_frames = submitted_frames.saturating_add(1);
+      audio_target_frames.store(
+        audio_frames_for_video_frames(next_submitted_frames, fps),
+        Ordering::Release,
+      );
       if let Err(error) = stdin.write_all(&last_frame) {
+        audio_target_frames.store(
+          audio_frames_for_video_frames(submitted_frames, fps),
+          Ordering::Release,
+        );
         terminal_error = Some(format!("FFmpeg stopped accepting video frames: {error}"));
         registry.request_stop(&session.recording_id, StopReason::CaptureFailure);
         break;
       }
-      submitted_frames = submitted_frames.saturating_add(1);
-      audio_target_frames.store(
-        submitted_frames.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps),
-        Ordering::Release,
-      );
+      submitted_frames = next_submitted_frames;
       let bytes = std::fs::metadata(pending.path())
         .map(|metadata| metadata.len())
         .unwrap_or(0);
@@ -429,6 +447,10 @@ fn run_recording(
 
   drop(stdin);
   session.stop_requested.store(true, Ordering::Release);
+  audio_target_frames.store(
+    audio_frames_for_video_frames(submitted_frames, fps),
+    Ordering::Release,
+  );
   video_finished.store(true, Ordering::Release);
   if let Some(worker) = audio_worker {
     match worker {
@@ -496,7 +518,6 @@ fn run_audio_worker(
   audio_origin_ns: u64,
   receiver: MeasuredPcmReceiver,
   mut output: File,
-  started: Instant,
   audio_target_frames: Arc<AtomicU64>,
   video_finished: Arc<AtomicBool>,
   audio_silence_reason: Arc<Mutex<SilenceReason>>,
@@ -506,17 +527,7 @@ fn run_audio_worker(
   let mut deferred = None;
   loop {
     let finalizing = video_finished.load(Ordering::Acquire);
-    let video_target = audio_target_frames.load(Ordering::Acquire);
-    let target = if finalizing {
-      video_target
-    } else {
-      let clock_target = started
-        .elapsed()
-        .as_nanos()
-        .saturating_mul(u128::from(OUTPUT_SAMPLE_RATE))
-        / 1_000_000_000;
-      video_target.max(clock_target.min(u128::from(u64::MAX)) as u64)
-    };
+    let target = audio_target_frames.load(Ordering::Acquire);
     let boundary = if finalizing {
       target
     } else {
@@ -557,6 +568,10 @@ fn run_audio_worker(
     }
     std::thread::sleep(Duration::from_millis(5));
   }
+}
+
+fn audio_frames_for_video_frames(video_frames: u64, fps: u32) -> u64 {
+  video_frames.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps.max(1))
 }
 
 fn write_audio_packets(output: &mut File, packets: Vec<AudioPacket>) -> Result<(), String> {
@@ -647,5 +662,13 @@ mod tests {
       bytes,
       vec![0x00, 0x80, 0xff, 0xff, 0x00, 0x00, 0x01, 0x00, 0xff, 0x7f]
     );
+  }
+
+  #[test]
+  fn audio_target_is_derived_from_submitted_video_frames() {
+    assert_eq!(audio_frames_for_video_frames(0, 30), 0);
+    assert_eq!(audio_frames_for_video_frames(1, 30), 1_600);
+    assert_eq!(audio_frames_for_video_frames(114, 30), 182_400);
+    assert_eq!(audio_frames_for_video_frames(u64::MAX, 0), u64::MAX);
   }
 }

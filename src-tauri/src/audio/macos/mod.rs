@@ -221,6 +221,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
       dialogue_gating,
       dialogue_vad_engine,
       measured_pcm,
+      true,
       dropped_for_thread,
       bridge_pool,
     );

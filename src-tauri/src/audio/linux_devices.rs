@@ -4,6 +4,7 @@
 use std::collections::HashSet;
 use std::ffi::CString;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait};
@@ -13,6 +14,39 @@ use crate::audio::device_id;
 
 type DeviceRow = (usize, cpal::Device, cpal::SupportedStreamConfig);
 static QUERY_RUNNING: AtomicBool = AtomicBool::new(false);
+static DISCOVERY_CLIENT: OnceLock<Mutex<Option<pulseaudio::Client>>> = OnceLock::new();
+static PULSE_HOST: OnceLock<Mutex<Option<cpal::Host>>> = OnceLock::new();
+
+fn discovery_client() -> Result<pulseaudio::Client, String> {
+  let client = DISCOVERY_CLIENT.get_or_init(|| Mutex::new(None));
+  let mut client = client
+    .lock()
+    .map_err(|_| "Linux audio discovery client became unavailable.".to_string())?;
+  if let Some(existing) = client.as_ref() {
+    return Ok(existing.clone());
+  }
+  let name = CString::new("PLVS Source Discovery").expect("literal has no NUL");
+  let connected = pulseaudio::Client::from_env(&name)
+    .map_err(|error| format!("Cannot connect to PulseAudio or pipewire-pulse: {error}"))?;
+  *client = Some(connected.clone());
+  Ok(connected)
+}
+
+fn with_pulse_host<T>(
+  operation: impl FnOnce(&cpal::Host) -> Result<T, String>,
+) -> Result<T, String> {
+  let host = PULSE_HOST.get_or_init(|| Mutex::new(None));
+  let mut host = host
+    .lock()
+    .map_err(|_| "Linux CPAL host became unavailable.".to_string())?;
+  if host.is_none() {
+    *host = Some(
+      cpal::host_from_id(cpal::HostId::PulseAudio)
+        .map_err(|error| format!("Cannot connect to PulseAudio or pipewire-pulse: {error}"))?,
+    );
+  }
+  operation(host.as_ref().expect("PulseAudio host initialized"))
+}
 
 /// Bound discovery waits and prevent repeated timeouts from spawning unbounded workers.
 /// All server queries and allocation run outside the realtime capture callback.
@@ -40,10 +74,7 @@ fn query<T: Send + 'static>(
         }
       }
       let guard = QueryGuard;
-      let name = CString::new("PLVS Source Discovery").expect("literal has no NUL");
-      let result = pulseaudio::Client::from_env(&name)
-        .map_err(|e| format!("Cannot connect to PulseAudio or pipewire-pulse: {e}"))
-        .and_then(operation);
+      let result = discovery_client().and_then(operation);
       drop(guard);
       let _ = tx.send(result);
     });
@@ -53,11 +84,6 @@ fn query<T: Send + 'static>(
   }
   rx.recv_timeout(Duration::from_secs(5))
     .map_err(|e| format!("Linux audio discovery did not complete: {e}"))?
-}
-
-fn pulse_host() -> Result<cpal::Host, String> {
-  cpal::host_from_id(cpal::HostId::PulseAudio)
-    .map_err(|e| format!("Cannot connect to PulseAudio or pipewire-pulse: {e}"))
 }
 
 /// Request float PCM from the server while preserving its native rate and channel count.
@@ -84,18 +110,20 @@ fn collect(monitors: bool) -> Result<Vec<DeviceRow>, String> {
       }),
       monitors,
     );
-    let host = pulse_host()?;
-    let mut rows = Vec::new();
-    for (index, device) in host.input_devices().map_err(|e| e.to_string())?.enumerate() {
-      let id = device.id().map_err(|e| e.to_string())?;
-      if names.contains(id.id()) {
-        let config = capture_config(&device)?;
-        rows.push((index, device, config));
+    with_pulse_host(|host| {
+      let mut rows = Vec::new();
+      for (index, device) in host.input_devices().map_err(|e| e.to_string())?.enumerate() {
+        let id = device.id().map_err(|e| e.to_string())?;
+        if names.contains(id.id()) {
+          let config = capture_config(&device)?;
+          rows.push((index, device, config));
+        }
       }
-    }
-    rows
-      .sort_by_key(|(_, device, _)| super::device_enum::device_id_key(device).unwrap_or_default());
-    Ok(rows)
+      rows.sort_by_key(|(_, device, _)| {
+        super::device_enum::device_id_key(device).unwrap_or_default()
+      });
+      Ok(rows)
+    })
   })
 }
 
@@ -127,15 +155,16 @@ pub(crate) fn resolve_default_output() -> Result<(cpal::Device, cpal::SupportedS
       .monitor_source_name
       .map(|name| name.to_string_lossy().into_owned())
       .ok_or_else(|| "The default output has no monitor source.".to_string())?;
-    let host = pulse_host()?;
-    for device in host.input_devices().map_err(|e| e.to_string())? {
-      if device.id().map_err(|e| e.to_string())?.id() == monitor_name {
-        let config = capture_config(&device)?;
-        return Ok((device, config));
+    with_pulse_host(|host| {
+      for device in host.input_devices().map_err(|e| e.to_string())? {
+        if device.id().map_err(|e| e.to_string())?.id() == monitor_name {
+          let config = capture_config(&device)?;
+          return Ok((device, config));
+        }
       }
-    }
-    // Automatic must never silently become microphone capture.
-    Err("The default output's monitor source is no longer available.".into())
+      // Automatic must never silently become microphone capture.
+      Err("The default output's monitor source is no longer available.".into())
+    })
   })
 }
 
@@ -160,42 +189,43 @@ pub(crate) fn resolve_stable_source(
   target: &str,
   loopback: bool,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
-  let host = pulse_host()?;
-  let mut rows = Vec::new();
-  for device in host.input_devices().map_err(|error| error.to_string())? {
-    let key = super::device_enum::device_id_key(&device)?;
-    let config = capture_config(&device)?;
-    rows.push((key, device, config));
-  }
-  rows.sort_by(|left, right| left.0.cmp(&right.0));
-  let mut used_current = HashSet::new();
-  let mut used_legacy = HashSet::new();
-  for (key, device, config) in rows {
-    let current = if loopback {
-      device_id::alloc_loopback_id(&key, &mut used_current)
-    } else {
-      device_id::alloc_capture_id(&key, &mut used_current)
-    };
-    let legacy = if loopback {
-      device_id::legacy_alloc_loopback_id(
-        &key,
-        config.channels(),
-        config.sample_rate(),
-        &mut used_legacy,
-      )
-    } else {
-      device_id::legacy_alloc_capture_id(
-        &key,
-        config.channels(),
-        config.sample_rate(),
-        &mut used_legacy,
-      )
-    };
-    if target == current || target == legacy {
-      return Ok((device, config));
+  with_pulse_host(|host| {
+    let mut rows = Vec::new();
+    for device in host.input_devices().map_err(|error| error.to_string())? {
+      let key = super::device_enum::device_id_key(&device)?;
+      let config = capture_config(&device)?;
+      rows.push((key, device, config));
     }
-  }
-  Err(format!("Capture source id not found: {target}"))
+    rows.sort_by(|left, right| left.0.cmp(&right.0));
+    let mut used_current = HashSet::new();
+    let mut used_legacy = HashSet::new();
+    for (key, device, config) in rows {
+      let current = if loopback {
+        device_id::alloc_loopback_id(&key, &mut used_current)
+      } else {
+        device_id::alloc_capture_id(&key, &mut used_current)
+      };
+      let legacy = if loopback {
+        device_id::legacy_alloc_loopback_id(
+          &key,
+          config.channels(),
+          config.sample_rate(),
+          &mut used_legacy,
+        )
+      } else {
+        device_id::legacy_alloc_capture_id(
+          &key,
+          config.channels(),
+          config.sample_rate(),
+          &mut used_legacy,
+        )
+      };
+      if target == current || target == legacy {
+        return Ok((device, config));
+      }
+    }
+    Err(format!("Capture source id not found: {target}"))
+  })
 }
 
 fn pick_by_index(

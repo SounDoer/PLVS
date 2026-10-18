@@ -142,8 +142,9 @@ with `SO_PEERCRED`; macOS verifies ownership with `getpeereid`. All native trans
 shared framing and authentication implementation; only endpoint creation, peer validation, and
 delivery acknowledgement remain platform-specific. The public CLI contract is transport-neutral;
 callers use runtime capabilities to discover native features. Linux Visual Capture uses the
-app-owned WebKitGTK snapshot path for screenshots and silent recordings, without desktop or
-system-audio capture.
+app-owned WebKitGTK snapshot path rather than desktop capture. Silent recording is H.264-only;
+measured-source recording adds the same fixed-shape AAC timeline and gap accounting used on Windows
+and macOS. Linux does not advertise system-pointer capture.
 
 ## Failures below the application
 

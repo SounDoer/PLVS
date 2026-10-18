@@ -750,6 +750,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
+  publish_measured_pcm: bool,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
 ) {
@@ -801,7 +802,9 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       reset_tp_max.store(false, Ordering::Release);
       pipeline.reset_true_peak_max();
     }
-    measured_pcm.publish(&floats, sample_rate, channels);
+    if publish_measured_pcm {
+      measured_pcm.publish(&floats, sample_rate, channels);
+    }
     let requests = analysis_requests
       .lock()
       .map(|g| g.clone())
@@ -928,13 +931,31 @@ pub(crate) struct CaptureStreamArgs {
   pub(crate) stop_rx: std::sync::mpsc::Receiver<()>,
   pub(crate) dropped_chunks: Arc<AtomicU64>,
   pub(crate) stream_error: Option<Arc<AtomicU8>>,
+  pub(crate) measured_pcm: Option<Arc<MeasuredPcmSubscriptions>>,
 }
 
 /// Device-facing half of live capture, free of Tauri. Opens the stream, feeds
 /// pooled PCM into a queue, and hands the queue to `consumer` on its own thread.
 /// The GUI passes the meter/IPC bridge; the CLI passes a `SummaryMeter` loop.
 /// Blocks until `stop_rx` fires, then tears the stream down and joins `consumer`.
+#[cfg(target_os = "linux")]
 pub(crate) fn run_capture_stream<C>(args: CaptureStreamArgs, consumer: C) -> Result<(), String>
+where
+  C: FnOnce(PcmDeliveryQueue, PcmBufferPool, u32, u16) + Send + 'static,
+{
+  super::linux_capture::run_capture_stream(args, consumer)
+}
+
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn run_capture_stream<C>(args: CaptureStreamArgs, consumer: C) -> Result<(), String>
+where
+  C: FnOnce(PcmDeliveryQueue, PcmBufferPool, u32, u16) + Send + 'static,
+{
+  run_cpal_capture_stream(args, consumer)
+}
+
+#[cfg_attr(target_os = "linux", allow(dead_code))]
+fn run_cpal_capture_stream<C>(args: CaptureStreamArgs, consumer: C) -> Result<(), String>
 where
   C: FnOnce(PcmDeliveryQueue, PcmBufferPool, u32, u16) + Send + 'static,
 {
@@ -947,6 +968,7 @@ where
     stop_rx,
     dropped_chunks,
     stream_error,
+    measured_pcm: _,
   } = args;
   let dropped_for_callbacks = dropped_chunks;
   let stream_config = StreamConfig {
@@ -1071,6 +1093,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     stream_error,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
+  let reader_measured_pcm = measured_pcm.clone();
 
   run_capture_stream(
     CaptureStreamArgs {
@@ -1082,6 +1105,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       stop_rx,
       dropped_chunks,
       stream_error: Some(stream_error),
+      measured_pcm: Some(reader_measured_pcm),
     },
     move |audio_rx, pool, sample_rate, channels| {
       run_meter_pipeline_bridge_thread(
@@ -1096,6 +1120,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
         dialogue_gating,
         dialogue_vad_engine,
         measured_pcm,
+        !cfg!(target_os = "linux"),
         bridge_dropped,
         pool,
       );
