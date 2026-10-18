@@ -46,6 +46,7 @@ describe("changelog-release-body", () => {
     expect(body).toContain("extract it, then run `plvs.exe`");
     expect(body).toContain("keep all extracted files together");
     expect(body).not.toContain("PLVS-v0.9.4-x64-portable.exe");
+    expect(body).toContain("sudo apt install ./PLVS_0.9.4_amd64.deb");
   });
 
   it("writes only the tagged changelog section in changelog-only mode", () => {

@@ -3,14 +3,13 @@
 PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. Commands are
 organized directly by the product resource or operation they address:
 
-Experimental Linux development and Ubuntu Preview builds support the live Agent Control command
-surface, using the same identity directory as the GUI under `$XDG_DATA_HOME` or
-`~/.local/share`. Linux Visual Capture supports PNG screenshots and H.264 MP4 recording of the
-visible PLVS WebView, with optional AAC audio from the measured Live source; it does not capture the
-system pointer. Linux development file analysis and visual recording use system FFmpeg/FFprobe
-selected by the development launcher. The Ubuntu Preview deb instead uses its checksum-verified
-copies under `/usr/lib/plvs-preview/sidecars`; it neither replaces nor depends on `/usr/bin/ffmpeg`.
-Official Linux release packages are not yet available.
+Linux builds support the live Agent Control command surface, using the same identity directory as
+the GUI under `$XDG_DATA_HOME` or `~/.local/share`. Linux Visual Capture supports PNG screenshots
+and H.264 MP4 recording of the visible PLVS WebView, with optional AAC audio from the measured Live
+source; it does not capture the system pointer. The Ubuntu deb packages use checksum-verified
+FFmpeg/FFprobe copies under `/usr/lib/plvs/sidecars` (stable) or `/usr/lib/plvs-preview/sidecars`
+(Preview); they neither replace nor depend on `/usr/bin/ffmpeg`. Linux development file analysis
+and visual recording use system FFmpeg/FFprobe selected by the development launcher.
 
 ```text
 plvs-cli doctor
@@ -48,7 +47,7 @@ represents its one running window with the synthetic ID `legacy`. Commands may t
 to the older application. If that application is not available to Agent Control, the list is empty.
 
 Those commands require Agent Control to be enabled in Settings and are available on Windows,
-macOS, and experimental Linux builds. Individual native capabilities may still be
+macOS, and Linux. Individual native capabilities may still be
 platform-specific. The CLI never starts PLVS implicitly or edits its store behind the running app.
 
 ## Install Location
@@ -84,7 +83,7 @@ Portable builds may require the executable's full path.
 
 PLVS does not edit shell startup files or install symlinks on macOS or Linux. Full-path invocation
 always works; adding a development or bundled CLI to `PATH` is an optional user-owned setup step.
-The Ubuntu Preview package installs `plvs-cli` directly in `/usr/bin`.
+The Ubuntu stable and Preview packages install `plvs-cli` directly in `/usr/bin`.
 
 ## Agent Discovery
 
@@ -279,7 +278,7 @@ document. See [Editor Draft Control](../agent-control/editor-drafts.md) for atom
 Theme-only history, and the Cancel/discard workflow.
 
 Visual Capture saves the actual rendered pixels of the running app. Screenshots and recording are
-available on Windows, macOS, and experimental Linux builds:
+available on Windows, macOS, and Linux:
 
 ```powershell
 plvs-cli visual describe --json
@@ -672,8 +671,7 @@ npm run desktop:verify-stable-nsis
 Desktop build commands use `scripts/build-plvs-cli.mjs` to build the matching identity and stage a
 target-triple-named Tauri external binary. Tauri installs it beside the host under the stable public
 name `plvs-cli.exe` on Windows, `Contents/MacOS/plvs-cli` on macOS, or `/usr/bin/plvs-cli` in the
-experimental Ubuntu deb. The installer and package smoke
-checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
+Ubuntu deb. The installer and package smoke checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
 directory.
 
 ### Desktop regression checks

@@ -33,7 +33,7 @@ full-screen Spaces may not support avoidance. See [Dock](workspace.md#dock).
 
 ## Is there a Linux build?
 
-Ubuntu 24.04 x86_64 has an experimental Preview. Published packages are GitHub Pre-releases, keep their own settings, and do not update automatically. A stable Linux package is not available yet. See [Getting Started](getting-started.md#experimental-linux-preview).
+Yes. PLVS ships a `.deb` package for Ubuntu 24.04 x86_64. Linux updates are installed manually from GitHub Releases, and Dock is not available on Linux. See [Getting Started](getting-started.md#linux).
 
 ## Is PLVS available as a plugin (VST/AU/AAX)?
 

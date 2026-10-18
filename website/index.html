@@ -6,7 +6,7 @@
     <title>PLVS</title>
     <meta
       name="description"
-      content="Free and open-source real-time audio metering for Windows and macOS."
+      content="Free and open-source real-time audio metering for Windows, macOS, and Linux."
     />
     <link rel="stylesheet" href="assets/site-chrome.css" />
     <script type="module">
@@ -395,7 +395,7 @@
 
       .platform-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: var(--space-5);
         align-items: stretch;
       }
@@ -1002,6 +1002,7 @@
           windowsInstaller: `PLVS_${version}_x64-setup.exe`,
           windowsPortable: `PLVS-v${version}-x64-portable.zip`,
           macosDmg: `PLVS-v${version}-aarch64.dmg`,
+          linuxDeb: `PLVS_${version}_amd64.deb`,
         };
       }
 
@@ -1013,6 +1014,7 @@
           mac: urlFor(names.macosDmg),
           winInstall: urlFor(names.windowsInstaller),
           winPortable: urlFor(names.windowsPortable),
+          linux: urlFor(names.linuxDeb),
         };
       }
 
@@ -1044,25 +1046,35 @@
         return /Mac/.test(navigator.platform) || /Mac/.test(navigator.userAgent);
       }
 
+      function isLinuxPlatform() {
+        return /Linux/.test(navigator.platform) && !/Android/.test(navigator.userAgent);
+      }
+
       function renderHeroActions(urls) {
         const isMac = isMacPlatform();
+        const isLinux = !isMac && isLinuxPlatform();
         const winInstallUrl = urls.winInstall || RELEASES_URL;
         const macUrl = urls.mac || RELEASES_URL;
-        const winButton = `<a class="btn ${isMac ? "btn-secondary" : "btn-primary"}" href="${winInstallUrl}">Download for Windows</a>`;
+        const linuxUrl = urls.linux || RELEASES_URL;
+        const winButton = `<a class="btn ${isMac || isLinux ? "btn-secondary" : "btn-primary"}" href="${winInstallUrl}">Download for Windows</a>`;
         const macButton = `<a class="btn ${isMac ? "btn-primary" : "btn-secondary"}" href="${macUrl}">Download for macOS</a>`;
+        const linuxButton = `<a class="btn btn-primary" href="${linuxUrl}">Download for Linux</a>`;
         document.getElementById("hero-actions").innerHTML = `
-      ${isMac ? macButton + winButton : winButton + macButton}
+      ${isLinux ? linuxButton + winButton + macButton : isMac ? macButton + winButton : winButton + macButton}
     `;
       }
 
       function renderPlatformCards(urls) {
         const isMac = isMacPlatform();
+        const isLinux = !isMac && isLinuxPlatform();
         const winInstallUrl = urls.winInstall || RELEASES_URL;
         const winPortableUrl = urls.winPortable || RELEASES_URL;
         const macUrl = urls.mac || RELEASES_URL;
+        const linuxUrl = urls.linux || RELEASES_URL;
         const winInstallLabel = urls.winInstall ? "Download for Windows" : "View Releases";
         const winPortableLabel = urls.winPortable ? "Portable ZIP" : "All releases";
         const macLabel = urls.mac ? "Download for macOS" : "View Releases";
+        const linuxLabel = urls.linux ? "Download for Linux" : "View Releases";
 
         const winCard = `
       <div class="platform-card windows-card">
@@ -1071,7 +1083,7 @@
           <span class="platform-os-tag">Windows 10 / 11 · x64</span>
         </div>
         <div class="platform-actions">
-          <a class="btn ${!isMac ? "btn-primary" : "btn-secondary"}" href="${winInstallUrl}">${winInstallLabel}</a>
+          <a class="btn ${!isMac && !isLinux ? "btn-primary" : "btn-secondary"}" href="${winInstallUrl}">${winInstallLabel}</a>
           <a class="portable-link" href="${winPortableUrl}">${winPortableLabel}</a>
         </div>
       </div>`;
@@ -1087,9 +1099,22 @@
         </div>
       </div>`;
 
-        document.getElementById("platform-grid").innerHTML = isMac
-          ? macCard + winCard
-          : winCard + macCard;
+        const linuxCard = `
+      <div class="platform-card linux-card">
+        <div class="platform-header">
+          <span class="platform-name">Linux</span>
+          <span class="platform-os-tag">Ubuntu 24.04 · x86_64</span>
+        </div>
+        <div class="platform-actions">
+          <a class="btn ${isLinux ? "btn-primary" : "btn-secondary"}" href="${linuxUrl}">${linuxLabel}</a>
+        </div>
+      </div>`;
+
+        document.getElementById("platform-grid").innerHTML = isLinux
+          ? linuxCard + winCard + macCard
+          : isMac
+            ? macCard + winCard + linuxCard
+            : winCard + macCard + linuxCard;
       }
 
       loadRelease();

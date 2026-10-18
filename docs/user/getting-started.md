@@ -12,6 +12,7 @@ Download the package for your platform from
 | Windows 10/11 (x64)   | `PLVS_<version>_x64-setup.exe`     | Installer                    |
 | Windows 10/11 (x64)   | `PLVS-v<version>-x64-portable.zip` | Portable, no installation    |
 | macOS (Apple Silicon) | `PLVS-v<version>-aarch64.dmg`      | Requires macOS 14.2 or later |
+| Ubuntu 24.04 (x86_64) | `PLVS_<version>_amd64.deb`         | Debian package               |
 
 ## Windows
 
@@ -28,29 +29,41 @@ Developer ID and notarized by Apple, so Gatekeeper can verify them normally. If 
 that an official download is damaged or cannot be verified, delete it and download the DMG again
 from the PLVS GitHub Releases page instead of bypassing the warning.
 
-## Experimental Linux Preview
+## Linux
 
-Linux Preview packages target Ubuntu 24.04 x86_64. Published test builds are marked as GitHub
-**Pre-releases**, with the source commit recorded in their notes; they are separate from official
-stable releases. Install a supplied `.deb` with APT so it resolves the required system libraries:
+The Linux package targets Ubuntu 24.04 x86_64. Install it with APT so it resolves the required
+system libraries:
+
+```sh
+sudo apt install ./PLVS_<version>_amd64.deb
+```
+
+Launch **PLVS** from the application menu, or run `plvs`. `plvs-cli doctor --json` checks the
+installed application and decoders. Audio capture requires a running PulseAudio server or PipeWire's
+PulseAudio compatibility service. PLVS installs its own FFmpeg/FFprobe copies under
+`/usr/lib/plvs/sidecars`; it neither needs nor replaces a system FFmpeg installation.
+
+PLVS does not download or install updates on Linux. To update, download the new `.deb` from
+GitHub Releases and install it the same way; your settings are kept. Remove PLVS with
+`sudo apt remove plvs`. Removing the package preserves your user settings.
+
+Dock and per-application capture are not available on Linux. See
+[Signal Source](signal-source.md) for the Linux capture scope.
+
+### Linux Preview
+
+Preview packages are test builds of unreleased commits, published as GitHub **Pre-releases** with
+the source commit recorded in their notes. Install a supplied Preview `.deb` the same way:
 
 ```sh
 sudo apt install --reinstall ./plvs-preview.deb
 ```
 
-Use the actual filename of the supplied package. Launch **PLVS Preview** from the application menu,
-or run `plvs`. `plvs-cli doctor --json` checks the installed application and decoders. Audio capture
-requires a running PulseAudio server or PipeWire's PulseAudio compatibility service.
-
-Preview keeps its own settings and does not automatically update. Use `--reinstall` when switching
-Preview commits: their packages can share the same base version. Remove Preview with
-`sudo apt remove plvs-preview`. Removing the package preserves your user settings and removes only
-Preview's private FFmpeg/FFprobe copies; any system FFmpeg installation is untouched. Preview shares executable names with
-the future stable Linux package, so the two packages cannot be installed together.
-
-Native desktop and hardware acceptance is still pending. Live Agent Control is available after it
-is enabled in Settings. Per-application capture, screenshots, and recording are not yet supported
-on Linux. See [Signal Source](signal-source.md) for the experimental capture scope.
+Use the actual filename of the supplied package, then launch **PLVS Preview**. Preview keeps its own
+settings and never checks for updates. Use `--reinstall` when switching Preview commits: their
+packages can share the same base version. Remove Preview with `sudo apt remove plvs-preview`.
+Preview and the stable package share executable names, so only one of them can be installed at a
+time.
 
 ## First launch
 
@@ -78,4 +91,5 @@ your work. On a later fresh launch, it offers **Update and Restart** or **Skip T
 keeps the downloaded package. Installation always needs confirmation; there is no countdown. An
 already active workbench defers the startup offer. Download completion does not open a dialog in
 your current working session. Windows Portable copies use **Download Manually** on the release page;
-they never run the installed-app updater. Preview builds do not check for updates.
+they never run the installed-app updater. Linux packages are also updated manually. Preview builds
+do not check for updates.

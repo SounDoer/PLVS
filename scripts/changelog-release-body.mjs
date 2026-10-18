@@ -95,6 +95,10 @@ const installSection = [
   `- 下载 \`${assets.macosDmg}\`，打开后将 PLVS 拖到「应用程序」。`,
   "- macOS 版本使用 Developer ID 签名并经 Apple 公证，可通过 Gatekeeper 正常验证。",
   "",
+  "### Linux (Ubuntu 24.04 x86_64)",
+  `- 下载 \`${assets.linuxDeb}\`，运行 \`sudo apt install ./${assets.linuxDeb}\`。`,
+  "- Linux 版本不会在应用内更新，请从 Releases 下载新版本并以同样方式安装。",
+  "",
   "---",
   "",
   "## Installation",
@@ -107,6 +111,10 @@ const installSection = [
   "### macOS (Apple Silicon)",
   `- Download \`${assets.macosDmg}\`, open it and drag PLVS to Applications.`,
   "- The macOS build is Developer ID signed and Apple-notarized for normal Gatekeeper verification.",
+  "",
+  "### Linux (Ubuntu 24.04 x86_64)",
+  `- Download \`${assets.linuxDeb}\` and run \`sudo apt install ./${assets.linuxDeb}\`.`,
+  "- Linux builds do not update in-app; download each new version from Releases and install it the same way.",
   "",
 ].join("\n");
 

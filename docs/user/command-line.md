@@ -1,6 +1,6 @@
 # Command Line
 
-Installed Windows, macOS, and experimental Ubuntu Preview builds include `plvs-cli` for diagnosing
+Installed Windows, macOS, and Linux builds include `plvs-cli` for diagnosing
 the installation and for inspecting or changing the state of an already-running PLVS app. It is
 not a headless replacement for the desktop app. The full command set is in the
 [CLI Reference](cli.md).
@@ -13,8 +13,8 @@ not a headless replacement for the desktop app. The full command set is in the
 - **macOS**: `/Applications/PLVS.app/Contents/MacOS/plvs-cli` (or the same path under
   `~/Applications`). PLVS does not edit shell startup files; use the full path or create your own
   symlink.
-- **Linux Preview**: `/usr/bin/plvs-cli`. Development builds stage `plvs-cli` beside the desktop
-  executable. PLVS does not edit shell startup files.
+- **Linux**: `/usr/bin/plvs-cli`, for both the stable and the Preview package. Development builds
+  stage `plvs-cli` beside the desktop executable. PLVS does not edit shell startup files.
 
 ## Checking the installation
 
@@ -25,7 +25,7 @@ closed. Add `--out <file>` to write the result to a file.
 
 Start PLVS and enable **Agent Control** in Settings. Then discover the available surface with
 `plvs-cli capabilities --json` and read the app's current state with `plvs-cli inspect --json`.
-Experimental Linux builds support PNG screenshots and H.264 MP4 recording of the visible PLVS
+Linux builds support PNG screenshots and H.264 MP4 recording of the visible PLVS
 WebView, including optional AAC audio from the measured Live source. Keep the display session
 unlocked and the window visible; Linux does not capture the system pointer.
 

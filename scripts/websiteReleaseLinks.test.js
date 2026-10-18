@@ -28,6 +28,7 @@ describe("website release links", () => {
       { name: names.windowsPortable, browser_download_url: "https://downloads/portable.zip" },
       { name: names.windowsInstaller, browser_download_url: "https://downloads/setup.exe" },
       { name: names.macosDmg, browser_download_url: "https://downloads/plvs.dmg" },
+      { name: names.linuxDeb, browser_download_url: "https://downloads/plvs.deb" },
       {
         name: "PLVS-v0.16.0-x64-portable.exe",
         browser_download_url: "https://downloads/wrong.exe",
@@ -42,6 +43,7 @@ describe("website release links", () => {
     const windowsCard = document.querySelector(".windows-card");
     expect(windowsCard.querySelector(".btn").href).toBe("https://downloads/setup.exe");
     expect(windowsCard.querySelector(".portable-link").href).toBe("https://downloads/portable.zip");
+    expect(document.querySelector(".linux-card .btn").href).toBe("https://downloads/plvs.deb");
   });
 
   it("falls back to GitHub Releases when the API or an asset is unavailable", async () => {
@@ -63,6 +65,9 @@ describe("website release links", () => {
       "https://github.com/SounDoer/PLVS/releases"
     );
     expect(failedDocument.querySelector(".windows-card .btn").href).toBe(
+      "https://github.com/SounDoer/PLVS/releases"
+    );
+    expect(failedDocument.querySelector(".linux-card .btn").href).toBe(
       "https://github.com/SounDoer/PLVS/releases"
     );
   });

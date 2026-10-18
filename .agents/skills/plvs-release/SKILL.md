@@ -127,7 +127,7 @@ Until then, ignore this section.
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  Step 8: Automated Release (GitHub Actions)                     │
-│  - Build and smoke-test Windows + macOS exactly once            │
+│  - Build and smoke-test Windows + macOS + Linux exactly once    │
 │  - Assemble every asset and latest.json in a Draft Release      │
 │  - Publish once, locking the tag and assets                     │
 │  - Verify the immutable Release attestation                     │
@@ -580,7 +580,7 @@ SHA. Do not create a tag manually.
 **Why dispatch instead of tagging?**
 
 - The workflow receives the exact reviewed commit explicitly.
-- Windows and macOS installers are built and smoke-tested once.
+- Windows, macOS, and Linux packages are built and smoke-tested once.
 - The tested files, rather than a second rebuild, become the release assets.
 - No public Release appears until every required asset is assembled.
 - Publishing the Draft is the single irreversible operation.
@@ -633,11 +633,12 @@ full build in the Release workflow while preserving the exact-SHA gate.
 The build jobs also run package-oriented smoke checks that `npm run check`
 cannot cover:
 
-| Gate                                 | Platform        | Checks                                                                                                                                             |
-| ------------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run smoke:file-analysis`        | Windows + macOS | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests                                                              |
-| `npm run desktop:verify-stable-nsis` | Windows         | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
-| `npm run desktop:verify-stable-dmg`  | macOS           | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
+| Gate                                 | Platform  | Checks                                                                                                                                             |
+| ------------------------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run smoke:file-analysis`        | All three | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests                                                              |
+| `npm run desktop:verify-stable-nsis` | Windows   | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
+| `npm run desktop:verify-stable-dmg`  | macOS     | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
+| `scripts/verify-linux-deb-clean.sh`  | Linux     | Installs the exact deb into a fresh Ubuntu 24.04 root without system FFmpeg, decodes fixtures, launches app and CLI, then removes it cleanly       |
 
 ### Build Matrix
 
@@ -645,16 +646,19 @@ cannot cover:
 | -------- | ---------------- | -------------------------------------------------------------------------- |
 | Windows  | `windows-latest` | NSIS installer, portable ZIP                                               |
 | macOS    | `macos-latest`   | Developer ID signed and Apple-notarized DMG, `.app.tar.gz` updater payload |
+| Linux    | `ubuntu-24.04`   | Unsigned x86_64 Debian package (no updater payload)                        |
 
 ### Draft Assembly and Publication
 
-1. Windows and macOS build and smoke-test their final packages exactly once.
-2. Each platform uploads the tested files and signed updater descriptor as a
-   short-lived Actions artifact; build jobs have read-only repository access.
-3. `prepare-draft` downloads both candidates, generates release notes and
+1. Windows, macOS, and Linux build and smoke-test their final packages exactly once.
+2. Each platform uploads the tested files as a short-lived Actions artifact;
+   Windows and macOS also upload their signed updater descriptors. Build jobs
+   have read-only repository access.
+3. `prepare-draft` downloads all three candidates, generates release notes and
    `latest.json`, and runs `scripts/validate-release-bundle.mjs`.
-4. The validator requires exactly the five public assets below, verifies that
+4. The validator requires exactly the six public assets below, verifies that
    none is empty, and checks updater versions, platforms, URLs, and signatures.
+   `latest.json` must list only `windows-x86_64` and `darwin-aarch64`.
 5. `prepare-draft` creates a Draft Release for the exact SHA, uploads the whole
    set, verifies the Draft's `targetCommitish` is the requested SHA, and compares
    the uploaded asset inventory with the local set. GitHub does not create the
@@ -684,13 +688,14 @@ below is a reading aid.
 | Windows Portable      | `PLVS-vX.Y.Z-x64-portable.zip` |
 | macOS DMG             | `PLVS-vX.Y.Z-aarch64.dmg`      |
 | macOS updater payload | `PLVS.app.tar.gz`              |
+| Linux Debian package  | `PLVS_X.Y.Z_amd64.deb`         |
 | Updater manifest      | `latest.json`                  |
 
 The portable entry is a ZIP staged by `release.yml`, not a bare exe: it holds
 `plvs.exe`, `plvs-cli.exe`, `ffmpeg.exe` and `ffprobe.exe`, which is why the
 release notes tell users to keep the extracted files together.
 
-The Draft cannot publish unless all five assets are present and valid. This
+The Draft cannot publish unless all six assets are present and valid. This
 prevents a platform failure or updater-manifest failure from leaving a partial
 public Release.
 
@@ -711,6 +716,7 @@ gh workflow run deploy-website.yml -f ref=vX.Y.Z
 | Windows  | NSIS Installer | `src-tauri/target/release/bundle/nsis/*.exe` |
 | Windows  | Portable       | `src-tauri/target/release/plvs.exe`          |
 | macOS    | DMG            | `src-tauri/target/release/bundle/dmg/*.dmg`  |
+| Linux    | Debian package | `src-tauri/target/release/bundle/deb/*.deb`  |
 
 ---
 
@@ -724,6 +730,9 @@ npm run desktop:stable-nsis
 
 # macOS DMG
 npm run desktop:stable-dmg
+
+# Linux Debian package (Ubuntu 24.04 x86_64)
+npm run desktop:stable-deb
 
 # Optimized dev-identity build, for performance checks (not a shippable package)
 npm run desktop:dev-optimized
@@ -785,8 +794,8 @@ git ls-remote --tags origin refs/tags/vX.Y.Z refs/tags/vX.Y.Z^{}
 
 ### No Installers Were Produced
 
-If no Draft appears, inspect the first failing `validate`, `build-windows`, or
-`build-macos` job. Before publication, fix the issue, keep the same version,
+If no Draft appears, inspect the first failing `validate`, `build-windows`,
+`build-macos`, or `build-linux` job. Before publication, fix the issue, keep the same version,
 re-run `npm run release:preflight`, push the new exact SHA, and dispatch again.
 If a mutable Draft was already created, remove it and its workflow-created tag
 as described above before retrying.
@@ -833,8 +842,13 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 
 - **Platform signing**: Windows packages are not code-signed yet, so users may see SmartScreen.
   macOS packages are signed with Developer ID, notarized with Apple, stapled, and checked with
-  Gatekeeper before staging. The Tauri updater signature remains separate and authenticates updater
+  Gatekeeper before staging. The Linux deb is not signed; its integrity rests on the immutable
+  Release. The Tauri updater signature remains separate and authenticates updater
   payload bytes.
+- **Linux updates are manual**: `installed_distribution()` in `src-tauri/src/update_runtime.rs`
+  returns `false` on Linux, the deb build produces no updater payload, and `latest.json` carries no
+  Linux descriptor. Users download the new deb from the Release. Enabling in-app Linux installation
+  needs the packaged upgrade evidence listed in the Linux stable update audit first.
 - **Auto-update is active**: `src-tauri/src/lib.rs` registers
   `tauri_plugin_updater` unconditionally, and `tauri.conf.json`'s `plugins.updater`
   points it at `releases/latest/download/latest.json`, so a shipped tag reaches
@@ -867,5 +881,6 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 | `npm run check`                                        | Full check (lint + test + build + rust) |
 | `npm run desktop:stable-nsis`                          | Build Windows installer                 |
 | `npm run desktop:stable-dmg`                           | Build macOS DMG                         |
+| `npm run desktop:stable-deb`                           | Build Linux Debian package              |
 | `npm run desktop:verify-stable-nsis`                   | Smoke-test Windows installer            |
 | `npm run desktop:verify-stable-dmg`                    | Smoke-test macOS DMG                    |

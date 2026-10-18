@@ -14,7 +14,7 @@
 ## What is PLVS?
 
 PLVS (reads as _"plus"_) is a **read-only desktop companion** for **sound designers and mix
-engineers** on Windows and macOS. It keeps your audio's level, shape, and movement in view while you
+engineers** on Windows, macOS, and Linux. It keeps your audio's level, shape, and movement in view while you
 work — no DAW routing, no virtual cables, no plugin slots. PLVS **does not process, route, or modify
 audio**.
 
@@ -44,9 +44,11 @@ Get the latest version from [**GitHub Releases**](https://github.com/SounDoer/PL
 | **Windows 10/11 (x64)**   | `PLVS_<version>_x64-setup.exe`     | Installer                                |
 | **Windows 10/11 (x64)**   | `PLVS-v<version>-x64-portable.zip` | Portable — keep extracted files together |
 | **macOS (Apple Silicon)** | `PLVS-v<version>-aarch64.dmg`      | Requires macOS 14.2 or later             |
+| **Ubuntu 24.04 (x86_64)** | `PLVS_<version>_amd64.deb`         | Install with `apt`; updates are manual   |
 
 Windows builds are not code-signed yet; choose **More info** → **Run anyway** if SmartScreen warns.
-macOS builds are Developer ID signed and Apple-notarized for normal Gatekeeper verification. See
+macOS builds are Developer ID signed and Apple-notarized for normal Gatekeeper verification. On
+Linux, Dock and single-application capture are not available. See
 [Getting Started](docs/user/getting-started.md) for details.
 
 ## Documentation
