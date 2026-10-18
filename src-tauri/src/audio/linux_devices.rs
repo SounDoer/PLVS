@@ -9,6 +9,8 @@ use std::time::{Duration, Instant};
 use cpal::traits::{DeviceTrait, HostTrait};
 use futures::executor::block_on;
 
+use crate::audio::device_id;
+
 type DeviceRow = (usize, cpal::Device, cpal::SupportedStreamConfig);
 static QUERY_RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -147,6 +149,53 @@ pub(crate) fn pick_input_by_index(
   target: usize,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
   pick_by_index(collect_inputs()?, target)
+}
+
+/// Resolve an already-enumerated stable source id directly through CPAL. Device discovery uses
+/// PulseAudio metadata to classify monitors, but capture startup must not depend on opening a
+/// second metadata client after the UI has already selected one exact id. PipeWire's PulseAudio
+/// compatibility server can reset those short-lived metadata connections while its CPAL stream
+/// endpoint remains healthy.
+pub(crate) fn resolve_stable_source(
+  target: &str,
+  loopback: bool,
+) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
+  let host = pulse_host()?;
+  let mut rows = Vec::new();
+  for device in host.input_devices().map_err(|error| error.to_string())? {
+    let key = super::device_enum::device_id_key(&device)?;
+    let config = capture_config(&device)?;
+    rows.push((key, device, config));
+  }
+  rows.sort_by(|left, right| left.0.cmp(&right.0));
+  let mut used_current = HashSet::new();
+  let mut used_legacy = HashSet::new();
+  for (key, device, config) in rows {
+    let current = if loopback {
+      device_id::alloc_loopback_id(&key, &mut used_current)
+    } else {
+      device_id::alloc_capture_id(&key, &mut used_current)
+    };
+    let legacy = if loopback {
+      device_id::legacy_alloc_loopback_id(
+        &key,
+        config.channels(),
+        config.sample_rate(),
+        &mut used_legacy,
+      )
+    } else {
+      device_id::legacy_alloc_capture_id(
+        &key,
+        config.channels(),
+        config.sample_rate(),
+        &mut used_legacy,
+      )
+    };
+    if target == current || target == legacy {
+      return Ok((device, config));
+    }
+  }
+  Err(format!("Capture source id not found: {target}"))
 }
 
 fn pick_by_index(

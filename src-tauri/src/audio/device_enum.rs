@@ -227,55 +227,69 @@ pub(crate) fn resolve_default_output() -> Result<(cpal::Device, cpal::SupportedS
 fn resolve_stable_loopback(
   target: &str,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
-  let mut used_lb = HashSet::new();
-  for (_, device, cfg) in collect_outputs()? {
-    let key = device_id_key(&device)?;
-    let id = device_id::alloc_loopback_id(&key, &mut used_lb);
-    if id == target {
-      return Ok((device, cfg));
-    }
+  #[cfg(target_os = "linux")]
+  {
+    super::linux_devices::resolve_stable_source(target, true)
   }
-  let mut used_legacy = HashSet::new();
-  for (_, device, cfg) in collect_outputs()? {
-    let name = device_id_key(&device)?;
-    let id = device_id::legacy_alloc_loopback_id(
-      &name,
-      cfg.channels(),
-      cfg.sample_rate(),
-      &mut used_legacy,
-    );
-    if id == target {
-      return Ok((device, cfg));
+  #[cfg(not(target_os = "linux"))]
+  {
+    let mut used_lb = HashSet::new();
+    for (_, device, cfg) in collect_outputs()? {
+      let key = device_id_key(&device)?;
+      let id = device_id::alloc_loopback_id(&key, &mut used_lb);
+      if id == target {
+        return Ok((device, cfg));
+      }
     }
+    let mut used_legacy = HashSet::new();
+    for (_, device, cfg) in collect_outputs()? {
+      let name = device_id_key(&device)?;
+      let id = device_id::legacy_alloc_loopback_id(
+        &name,
+        cfg.channels(),
+        cfg.sample_rate(),
+        &mut used_legacy,
+      );
+      if id == target {
+        return Ok((device, cfg));
+      }
+    }
+    Err(format!("Unknown loopback device id: {target}"))
   }
-  Err(format!("Unknown loopback device id: {target}"))
 }
 
 fn resolve_stable_capture(
   target: &str,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
-  let mut used_cap = HashSet::new();
-  for (_, device, cfg) in collect_inputs()? {
-    let key = device_id_key(&device)?;
-    let id = device_id::alloc_capture_id(&key, &mut used_cap);
-    if id == target {
-      return Ok((device, cfg));
-    }
+  #[cfg(target_os = "linux")]
+  {
+    super::linux_devices::resolve_stable_source(target, false)
   }
-  let mut used_legacy = HashSet::new();
-  for (_, device, cfg) in collect_inputs()? {
-    let name = device_id_key(&device)?;
-    let id = device_id::legacy_alloc_capture_id(
-      &name,
-      cfg.channels(),
-      cfg.sample_rate(),
-      &mut used_legacy,
-    );
-    if id == target {
-      return Ok((device, cfg));
+  #[cfg(not(target_os = "linux"))]
+  {
+    let mut used_cap = HashSet::new();
+    for (_, device, cfg) in collect_inputs()? {
+      let key = device_id_key(&device)?;
+      let id = device_id::alloc_capture_id(&key, &mut used_cap);
+      if id == target {
+        return Ok((device, cfg));
+      }
     }
+    let mut used_legacy = HashSet::new();
+    for (_, device, cfg) in collect_inputs()? {
+      let name = device_id_key(&device)?;
+      let id = device_id::legacy_alloc_capture_id(
+        &name,
+        cfg.channels(),
+        cfg.sample_rate(),
+        &mut used_legacy,
+      );
+      if id == target {
+        return Ok((device, cfg));
+      }
+    }
+    Err(format!("Unknown capture device id: {target}"))
   }
-  Err(format!("Unknown capture device id: {target}"))
 }
 
 /// v2 list id for a loopback row matching the given **id key** and current default format.
