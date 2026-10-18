@@ -1,6 +1,8 @@
 //! System audio capture: WASAPI loopback on Windows; Core Audio process tap (macOS 14.2+) + cpal.
 
 pub mod capture;
+#[cfg(feature = "capture-harness")]
+mod capture_evidence;
 pub mod capture_summary;
 pub mod cpal_backend;
 pub mod device;

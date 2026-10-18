@@ -60,6 +60,8 @@ pub fn capture_device_to_summary_with_layout(
   let device_label = device_list_label(&device)?;
   let sample_rate = supported.sample_rate();
   let channels = supported.channels();
+  #[cfg(feature = "capture-harness")]
+  let evidence = super::capture_evidence::EvidenceRecorder::from_env(sample_rate, channels)?;
   let meter = match layout_id {
     Some(layout_id) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
     None => SummaryMeter::new(sample_rate, channels),
@@ -70,18 +72,34 @@ pub fn capture_device_to_summary_with_layout(
   let dropped_chunks = Arc::new(AtomicU64::new(0));
   let dropped_for_report = dropped_chunks.clone();
   let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
-  let (result_tx, result_rx) = std::sync::mpsc::channel();
+  let (result_tx, result_rx) = std::sync::mpsc::channel::<Result<_, String>>();
   let (sample_tx, sample_rx) = std::sync::mpsc::channel::<CaptureSample>();
 
   let consumer_dropped = dropped_chunks.clone();
   let consumer =
     move |delivery: PcmDeliveryQueue, pool: PcmBufferPool, _sample_rate: u32, _channels: u16| {
       let mut meter = meter;
+      #[cfg(feature = "capture-harness")]
+      let mut evidence = evidence;
+      #[cfg(feature = "capture-harness")]
+      let mut evidence_error = None;
       let mut next_sample_at = every;
       let started = std::time::Instant::now();
 
       while let Some(pcm) = delivery.pop_until_stopped() {
         meter.push_interleaved(&pcm);
+        #[cfg(feature = "capture-harness")]
+        if evidence_error.is_none() {
+          if let Some(recorder) = evidence.as_mut() {
+            evidence_error = recorder
+              .observe(
+                &pcm,
+                meter.evidence_true_peak_max(),
+                started.elapsed().as_secs_f64(),
+              )
+              .err();
+          }
+        }
         // Mirrors the GUI consumer: the buffer belongs to the pool, not to us.
         pool.recycle(pcm);
 
@@ -106,7 +124,15 @@ pub fn capture_device_to_summary_with_layout(
       }
 
       let metrics = meter.finish();
-      let _ = result_tx.send(metrics);
+      #[cfg(feature = "capture-harness")]
+      if let Some(recorder) = evidence {
+        let result = recorder.finish();
+        if let Some(error) = evidence_error.or_else(|| result.err()) {
+          let _ = result_tx.send(Err(format!("Capture evidence failed: {error}")));
+          return;
+        }
+      }
+      let _ = result_tx.send(Ok(metrics));
     };
 
   let stream_args = CaptureStreamArgs {
@@ -143,7 +169,7 @@ pub fn capture_device_to_summary_with_layout(
 
   let metrics = result_rx
     .recv()
-    .map_err(|_| "Capture produced no metrics".to_string())?;
+    .map_err(|_| "Capture produced no metrics".to_string())??;
 
   Ok(CaptureRun {
     device_label,

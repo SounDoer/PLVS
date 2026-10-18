@@ -3,12 +3,12 @@
  * Long-run diagnostic for the capture path. Never a gate: a leak comes from a
  * commit, not from a release, and a four-hour test cannot sit inside one.
  *
- * Usage: node scripts/soak-capture.mjs [--seconds 14400] [--every 10]
+ * Usage: node scripts/soak-capture.mjs [--seconds 14400] [--every 10] [--evidence]
  *
  * Exit codes match the smoke check: 0 clean, 1 drift detected, 2 rig unusable.
  */
 import { createWriteStream, mkdirSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { open, rm } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { dirname, join } from "node:path";
@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import {
   RigError,
   SOAK_WARMUP_SECONDS,
+  SIGNAL,
   assertSoakCaptureCompleted,
   harnessArgs,
   judgeSoak,
@@ -42,10 +43,16 @@ function arg(name, fallback) {
 // Parsed before any rig setup, so exiting here leaks neither a player nor a file.
 const seconds = arg("seconds", 14400);
 const every = arg("every", 10);
+const evidenceSelfTest = process.argv.includes("--evidence-self-test");
+if (evidenceSelfTest && (!process.argv.includes("--evidence") || seconds < 140)) {
+  console.error("--evidence-self-test requires --evidence and at least 140 seconds.");
+  process.exit(2);
+}
 const wav = join(tmpdir(), `plvs-soak-signal-${process.pid}.wav`);
 // Runs are kept as the drift baseline for later ones, so they land beside the other rig output
 // rather than in the repository root.
 const outPath = join(process.cwd(), "artifacts", "soak", `soak-${Date.now()}.jsonl`);
+const evidencePath = process.argv.includes("--evidence") ? `${outPath}.evidence` : null;
 let player = null;
 
 function rssMb(pid) {
@@ -77,14 +84,39 @@ function rssMb(pid) {
 try {
   const harness = locateHarness();
   const route = resolveCaptureRoute(harness);
-  await synthesizeSignal(wav);
-  player = await startPlayer(route.playerTarget, wav, { wait: process.argv.includes("--wait") });
+  // VLC's file-loop restart inserts silence into the cable. Its abrupt edges create real
+  // intersample peaks and make a constant-signal drift test invalid. Keep the entire capture
+  // inside one file, including setup/teardown headroom, without changing any verdict limit.
+  await synthesizeSignal(wav, { seconds: Math.ceil(seconds + SETTLE_MS / 1000 + 30) });
+  if (evidenceSelfTest) {
+    // Intentional fixture, never used in a normal soak: a 10 ms interruption near a
+    // sine maximum after warmup must produce evidence and a failed drift verdict.
+    const file = await open(wav, "r+");
+    try {
+      const startFrame = SIGNAL.sampleRateHz * 130 + 13;
+      await file.write(
+        Buffer.alloc((SIGNAL.sampleRateHz / 100) * 4),
+        0,
+        (SIGNAL.sampleRateHz / 100) * 4,
+        44 + startFrame * 4
+      );
+    } finally {
+      await file.close();
+    }
+    console.log("EVIDENCE SELF-TEST: intentional 10 ms signal interruption at 130 seconds.");
+  }
+  player = await startPlayer(route.playerTarget, wav, {
+    wait: process.argv.includes("--wait"),
+    loop: false,
+  });
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
   console.log(
     `Soaking ${route.label} (${route.platform}) for ${seconds}s, sampling every ${every}s.`
   );
   console.log(`Writing ${outPath}`);
+  if (evidencePath) console.log(`Capture evidence: ${evidencePath}`);
+  mkdirSync(dirname(outPath), { recursive: true });
 
   const child = spawn(
     harness,
@@ -98,10 +130,12 @@ try {
       String(every),
       "--json",
     ]),
-    { stdio: ["ignore", "pipe", "pipe"] }
+    {
+      stdio: ["ignore", "pipe", "pipe"],
+      ...(evidencePath ? { env: { ...process.env, PLVS_CAPTURE_EVIDENCE_DIR: evidencePath } } : {}),
+    }
   );
 
-  mkdirSync(dirname(outPath), { recursive: true });
   const out = createWriteStream(outPath);
   const samples = [];
   const rss = [];
@@ -148,6 +182,9 @@ try {
   await once(out, "close");
 
   assertSoakCaptureCompleted(status, finalReport);
+  if (player.exitCode !== null || player.signalCode !== null) {
+    throw new RigError("Test-tone player exited before capture completed.");
+  }
 
   const settled = samples.filter((s) => s.t >= SOAK_WARMUP_SECONDS);
   const { spreads, failures } = judgeSoak(samples);

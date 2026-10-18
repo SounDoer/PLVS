@@ -174,6 +174,11 @@ impl SummaryMeter {
     self.loudness_weights = weights;
   }
 
+  #[cfg(feature = "capture-harness")]
+  pub(crate) fn evidence_true_peak_max(&self) -> f64 {
+    db_from_linear(self.true_peak_max)
+  }
+
   pub fn finish(&self) -> SummaryMetrics {
     // Windows ending in the last, partial block are complete windows too.
     let (tail_m, tail_s) = self.sliding.peek_block_max();

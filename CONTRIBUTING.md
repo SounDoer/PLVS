@@ -531,6 +531,30 @@ reported as advisory gaps and do not return a failure exit code. A failure recor
 target SHA does. This report organizes evidence; it does not approve a stable release or replace
 the domain-specific update verifier.
 
+The capture soak writes one continuous temporary WAV for the run plus 32 seconds of headroom,
+then plays it once. A four-hour run needs about 2.77 GB of temporary disk space; synthesis uses
+bounded memory and the file is removed on normal teardown. Durations exceeding the PCM RIFF
+4 GiB limit are rejected. Do not replace this with looping a short file: VLC's restart can insert
+silence and create real intersample peaks, invalidating the constant-signal drift check. The
+0.01 dB drift limit and historical warmup windows remain unchanged.
+
+For an unexplained late True Peak jump, use `npm run soak:capture -- --evidence --wait`.
+The opt-in capture harness keeps the exact Float32 PCM passed to its summary meter,
+with approximately three seconds before and after a new maximum greater than 0.01 dB
+above its post-120-second baseline. Up to four clips are saved beside the JSONL in a
+fresh `.evidence` directory, as Float32 WAV plus frame offsets and peak metadata.
+The PCM ring runs on the existing consumer thread; a separate bounded writer handles
+disk I/O. No callback-thread I/O is added. A pending clip is saved with incomplete
+post-roll marked on shutdown, and evidence write failures fail the capture command.
+The `PLVS_CAPTURE_EVIDENCE_DIR` environment variable is private to harness builds;
+the soak wrapper sets it only when `--evidence` is requested. Evidence stays local.
+To validate the complete recording path, run
+`npm run soak:capture -- --seconds 150 --every 1 --evidence --evidence-self-test --wait`.
+This explicitly marked diagnostic inserts a 10 ms interruption at 130 seconds in
+the source file. Expect exit 1 and an evidence clip that reproduces the peak on
+replay; exit 0 or a missing clip does not validate the recorder. This intentional
+failure is not a normal soak baseline. Never pass this flag to a four-hour baseline run.
+
 ## Release public-content review
 
 Every stable desktop release requires `docs/release-content-review.json`. This is the latest

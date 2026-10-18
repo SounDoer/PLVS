@@ -13,6 +13,36 @@ import {
 } from "./capture-rig.mjs";
 
 describe("synthesizeSignal", () => {
+  it("writes continuous PCM across repeated chunks and a partial final chunk", async () => {
+    const path = join(tmpdir(), `plvs-rig-duration-${Date.now()}.wav`);
+    try {
+      await synthesizeSignal(path, { seconds: 2.125 });
+      const buf = readFileSync(path);
+      const frames = SIGNAL.sampleRateHz * 2.125;
+      expect(buf.length).toBe(44 + frames * 4);
+      expect(buf.readUInt32LE(4)).toBe(buf.length - 8);
+      expect(buf.readUInt32LE(40)).toBe(frames * 4);
+      const expectedPcm = Buffer.alloc(frames * 4);
+      for (let i = 0; i < frames; i++) {
+        const phase = (2 * Math.PI * SIGNAL.freqHz * i) / SIGNAL.sampleRateHz;
+        for (const [channel, peak] of [SIGNAL.peakLDb, SIGNAL.peakRDb].entries()) {
+          const expected = Math.round(Math.sin(phase) * 10 ** (peak / 20) * 32767);
+          expectedPcm.writeInt16LE(expected, i * 4 + channel * 2);
+        }
+      }
+      expect(buf.subarray(44).equals(expectedPcm)).toBe(true);
+    } finally {
+      await rm(path, { force: true });
+    }
+  });
+
+  it.each([0, -1, NaN, Infinity, 24000])(
+    "rejects invalid or oversized duration %s",
+    async (seconds) => {
+      await expect(synthesizeSignal("unused.wav", { seconds })).rejects.toThrow(/duration/);
+    }
+  );
+
   it("writes a WAV whose header matches the declared format", async () => {
     const path = join(tmpdir(), `plvs-rig-test-${Date.now()}.wav`);
     try {
@@ -229,6 +259,14 @@ describe("cross-platform capture route", () => {
     expect(captureRig.playerArgs("121", "signal.wav", "darwin")).toContain(
       "--auhal-audio-device=121"
     );
+  });
+
+  it.each(["win32", "darwin"])("plays a continuous soak file once on %s", (platform) => {
+    const args = captureRig.playerArgs("target", "signal.wav", platform, { loop: false });
+    expect(args).toEqual(expect.arrayContaining(["--no-loop", "--no-repeat", "--play-and-exit"]));
+    expect(args).not.toContain("--loop");
+    expect(args.at(-1)).toBe("signal.wav");
+    expect(captureRig.playerArgs("target", "signal.wav", platform)).toContain("--loop");
   });
 
   it("normalizes a macOS route from harness and Core Audio discovery", () => {

@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -18,8 +19,8 @@ describe("update acceptance builder", () => {
       platform: "darwin",
       arch: "arm64",
     });
-    expect(mac.root).toBe("/repo/artifacts/update-acceptance/01234567");
-    expect(mac.snapshot).toBe("/repo/artifacts/update-acceptance/01234567/source");
+    expect(mac.root).toBe(resolve("/repo/artifacts/update-acceptance/01234567"));
+    expect(mac.snapshot).toBe(resolve("/repo/artifacts/update-acceptance/01234567/source"));
     expect(mac.descriptor.key).toBe("darwin-aarch64");
     expect(mac.names.identity).toBe("com.soundoer.plvs.updatetest.h01234567");
   });

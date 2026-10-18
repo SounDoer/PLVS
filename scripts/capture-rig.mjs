@@ -8,7 +8,8 @@
  * `directsound` rejects a device name and wants a GUID; only `mmdevice` with an
  * MMDevice endpoint id works). A caller should never have to know any of that.
  */
-import { writeFileSync, existsSync, statSync, readdirSync } from "node:fs";
+import { existsSync, statSync, readdirSync } from "node:fs";
+import { open } from "node:fs/promises";
 import { spawnSync, spawn } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,13 +62,16 @@ const MACOS_AUDIO_PROBE = join(ROOT, "scripts", "macos", "core-audio-output.swif
 /** The rig is unusable: not a code signal. Callers map this to exit 2. */
 export class RigError extends Error {}
 
-export async function synthesizeSignal(path) {
-  const { sampleRateHz, seconds, freqHz, peakLDb, peakRDb } = SIGNAL;
+export async function synthesizeSignal(path, { seconds = SIGNAL.seconds } = {}) {
+  const { sampleRateHz, freqHz, peakLDb, peakRDb } = SIGNAL;
   const ampL = 10 ** (peakLDb / 20);
   const ampR = 10 ** (peakRDb / 20);
-  const frames = sampleRateHz * seconds;
+  const frames = Math.round(sampleRateHz * seconds);
   const dataBytes = frames * 2 * 2;
-  const buf = Buffer.alloc(44 + dataBytes);
+  if (!Number.isFinite(seconds) || seconds <= 0 || frames < 1 || dataBytes > 0xffffffff - 36) {
+    throw new RigError("Signal duration must fit a nonempty PCM RIFF WAV (less than 4 GiB).");
+  }
+  const buf = Buffer.alloc(44);
 
   buf.write("RIFF", 0);
   buf.writeUInt32LE(36 + dataBytes, 4);
@@ -83,13 +87,25 @@ export async function synthesizeSignal(path) {
   buf.write("data", 36);
   buf.writeUInt32LE(dataBytes, 40);
 
-  for (let i = 0; i < frames; i++) {
+  // One second contains an integer number of cycles. Repeat these PCM bytes inside
+  // a single file, without player restarts or a multi-gigabyte allocation for a soak.
+  const chunkFrames = Math.min(frames, sampleRateHz);
+  const chunk = Buffer.alloc(chunkFrames * 4);
+  for (let i = 0; i < chunkFrames; i++) {
     const phase = (2 * Math.PI * freqHz * i) / sampleRateHz;
-    buf.writeInt16LE(Math.round(Math.sin(phase) * ampL * 32767), 44 + i * 4);
-    buf.writeInt16LE(Math.round(Math.sin(phase) * ampR * 32767), 44 + i * 4 + 2);
+    chunk.writeInt16LE(Math.round(Math.sin(phase) * ampL * 32767), i * 4);
+    chunk.writeInt16LE(Math.round(Math.sin(phase) * ampR * 32767), i * 4 + 2);
   }
 
-  writeFileSync(path, buf);
+  const file = await open(path, "w");
+  try {
+    await file.writeFile(buf);
+    for (let written = 0; written < dataBytes; written += chunk.length) {
+      await file.writeFile(chunk.subarray(0, Math.min(chunk.length, dataBytes - written)));
+    }
+  } finally {
+    await file.close();
+  }
 }
 
 /** `null` fails rather than skips: silence reports null, and a skipped null
@@ -360,8 +376,8 @@ export function assertSoakCaptureCompleted(status, finalReport) {
 export const SOAK_DRIFT_LIMIT_DB = 0.01;
 /** Early on, few blocks exist and BS.1770's relative gate has not settled. */
 export const SOAK_WARMUP_SECONDS = 60;
-/** A maximum keeps the largest value ever seen, so a one-off at the player's first loop seam
- *  would read as drift if it landed just after the plain warmup. Wait out one more loop. */
+/** Keep the historical 120 s maximum warmup for comparable judgments. Older runs looped
+ *  a 60 s file; current soaks play one continuous file and have no playback seam. */
 export const SOAK_MAX_WARMUP_SECONDS = SOAK_WARMUP_SECONDS + SIGNAL.seconds;
 /** Over a constant tone the loudest 400 ms and 3 s windows hold the programme itself, so Max M
  *  and Max S equal Integrated. A gap means the signal was not constant: something else reached
@@ -469,12 +485,22 @@ async function takeRig({ wait }) {
 }
 
 /**
- * Loop `wavPath` into `endpointId` and nothing else. Deliberately does not touch
+ * Play `wavPath` into `endpointId` and nothing else. Deliberately does not touch
  * the system default playback device: that is intrusive, and 60s of 1 kHz sine
  * through real monitors is a scream.
  */
-export function playerArgs(playerTarget, wavPath, platform = process.platform) {
-  const common = ["--intf", "dummy", "--no-video", "--loop"];
+export function playerArgs(
+  playerTarget,
+  wavPath,
+  platform = process.platform,
+  { loop = true } = {}
+) {
+  const common = [
+    "--intf",
+    "dummy",
+    "--no-video",
+    ...(loop ? ["--loop"] : ["--no-loop", "--no-repeat", "--play-and-exit"]),
+  ];
   if (platform === "win32") {
     return [...common, "--aout=mmdevice", `--mmdevice-audio-device=${playerTarget}`, wavPath];
   }
@@ -484,10 +510,10 @@ export function playerArgs(playerTarget, wavPath, platform = process.platform) {
   throw new RigError(`The live-capture player is not supported on ${platform}.`);
 }
 
-export async function startPlayer(playerTarget, wavPath, { wait = false } = {}) {
+export async function startPlayer(playerTarget, wavPath, { wait = false, loop = true } = {}) {
   await takeRig({ wait });
   const vlc = locateVlc();
-  const child = spawn(vlc, playerArgs(playerTarget, wavPath), {
+  const child = spawn(vlc, playerArgs(playerTarget, wavPath, process.platform, { loop }), {
     detached: false,
     stdio: "ignore",
     windowsHide: true,

@@ -1,3 +1,4 @@
+import { normalize, resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -20,7 +21,7 @@ describe("update acceptance runner", () => {
     expect(
       macAcceptanceLaunch("/tmp/install with spaces/Test.app", "/tmp/data with spaces")
     ).toEqual({
-      command: "/tmp/install with spaces/Test.app/Contents/MacOS/plvs",
+      command: normalize("/tmp/install with spaces/Test.app/Contents/MacOS/plvs"),
       args: [
         "-ApplePersistenceIgnoreState",
         "YES",
@@ -29,7 +30,7 @@ describe("update acceptance runner", () => {
       ],
     });
     expect(acceptanceBootstrapMarker("/tmp/data with spaces")).toBe(
-      "/tmp/data with spaces/multi-instance/migration-complete.json"
+      normalize("/tmp/data with spaces/multi-instance/migration-complete.json")
     );
   });
 
@@ -40,16 +41,16 @@ describe("update acceptance runner", () => {
         versions: [{ dmg: "packages/older image.dmg" }],
       })
     ).toEqual({
-      dmg: "/tmp/artifacts/packages/older image.dmg",
-      mountRoot: "/tmp/run with spaces/read-only dmg",
-      dataRoot: "/tmp/run with spaces/read-only dmg data",
-      app: "/tmp/run with spaces/read-only dmg/PLVS Update Test abc12345.app",
+      dmg: resolve("/tmp/artifacts/packages/older image.dmg"),
+      mountRoot: normalize("/tmp/run with spaces/read-only dmg"),
+      dataRoot: normalize("/tmp/run with spaces/read-only dmg data"),
+      app: normalize("/tmp/run with spaces/read-only dmg/PLVS Update Test abc12345.app"),
     });
   });
 
   it("keeps the helper pause marker beside the recorded attempt", () => {
     expect(helperPauseMarker("/tmp/data with spaces/updates/pkg/attempt.json")).toBe(
-      "/tmp/data with spaces/updates/pkg/acceptance-helper-paused"
+      normalize("/tmp/data with spaces/updates/pkg/acceptance-helper-paused")
     );
   });
 
