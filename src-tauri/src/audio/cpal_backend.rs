@@ -931,6 +931,7 @@ pub(crate) struct CaptureStreamArgs {
   pub(crate) stop_rx: std::sync::mpsc::Receiver<()>,
   pub(crate) dropped_chunks: Arc<AtomicU64>,
   pub(crate) stream_error: Option<Arc<AtomicU8>>,
+  #[cfg(target_os = "linux")]
   pub(crate) measured_pcm: Option<Arc<MeasuredPcmSubscriptions>>,
 }
 
@@ -968,7 +969,7 @@ where
     stop_rx,
     dropped_chunks,
     stream_error,
-    measured_pcm: _,
+    ..
   } = args;
   let dropped_for_callbacks = dropped_chunks;
   let stream_config = StreamConfig {
@@ -1093,6 +1094,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     stream_error,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
+  #[cfg(target_os = "linux")]
   let reader_measured_pcm = measured_pcm.clone();
 
   run_capture_stream(
@@ -1105,6 +1107,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       stop_rx,
       dropped_chunks,
       stream_error: Some(stream_error),
+      #[cfg(target_os = "linux")]
       measured_pcm: Some(reader_measured_pcm),
     },
     move |audio_rx, pool, sample_rate, channels| {

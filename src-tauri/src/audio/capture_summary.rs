@@ -144,6 +144,7 @@ pub fn capture_device_to_summary_with_layout(
     stop_rx,
     dropped_chunks,
     stream_error: None,
+    #[cfg(target_os = "linux")]
     measured_pcm: None,
   };
 
