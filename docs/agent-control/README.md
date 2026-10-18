@@ -64,14 +64,12 @@ is a new entry in `src/agentControl/bridge/domains.js`: the entry is what gives 
 revision watcher, its settlement slot and its place in the unmount cleanup, so none of the three can
 be added without the others.
 
-Settings has no coverage guard of its own. There is no single definition of "every setting" to check
-`PUBLIC_FIELDS` against -- the settings persistence domain also holds Preset-captured scene state,
-the Theme and Loudness Profile libraries and window state, all of which `settings.md` places outside
-this contract -- so such a list would be a judgement call maintained by hand, which is the failure
-mode these guards exist to remove. What is checked instead is that Settings Control never restates an
-option list or default: it imports the app's own from `src/settings/defaults.js` and
-`src/lib/dialogueVadEngines.js`. A value the GUI offers that Agent Control rejects would otherwise be
-invisible, because `settings describe` would tell the agent the value does not exist.
+`src/agentControl/settingsSurfaceCatalog.js` is the authority inventory for every user-operable
+Settings control. Each entry is owned by Settings Control, another Agent Control family, an external
+destination, or an explicit user-only boundary. `PUBLIC_FIELDS` is derived from that catalogue, so
+adding a Settings-owned control without exposing it cannot silently create a second field list.
+Settings Control also imports option lists and defaults from `src/settings/defaults.js` and
+`src/lib/dialogueVadEngines.js`; a value the GUI offers cannot drift from `settings describe`.
 
 `generated/` holds the reference half of this directory: every field's type, unit, default and
 bounds, rendered from the schema builders. It is not editable by hand. The pages beside it carry

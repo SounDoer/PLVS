@@ -17,16 +17,9 @@ import {
   HISTORY_RETENTION_OPTIONS_SEC,
   INTERFACE_SIZE_OPTIONS,
 } from "../settings/defaults.js";
+import { PUBLIC_SETTINGS_FIELDS } from "./settingsSurfaceCatalog.js";
 
-export const PUBLIC_FIELDS = [
-  "openAtLogin",
-  "closeBehavior",
-  "clearShortcut",
-  "interfaceSize",
-  "historyRetentionSec",
-  "dialogueVadEngine",
-  "channelLabels",
-];
+export const PUBLIC_FIELDS = PUBLIC_SETTINGS_FIELDS;
 // Every option list and default below is the app's own, not a copy: a value the GUI offers that
 // Agent Control would reject is the failure this indirection exists to make impossible.
 const CLOSE_BEHAVIORS = CLOSE_ACTION_OPTIONS;

@@ -687,6 +687,15 @@ The local `release:preflight` requires this smoke when desktop dependencies chan
 stable release tag. Start the current source with `npm run desktop:dev` before running preflight;
 failures block the gate. Reports are saved under `artifacts/agent-control-smoke/`.
 
+`npm run acceptance:agent-control -- --instance <instance-id>` is the broader cross-platform
+desktop acceptance. It verifies the installed command schemas and completions, runs the base smoke,
+enumerates the live read surfaces and libraries, walks visible Settings, panel, Theme, Loudness
+Profile and feedback surfaces with deterministic file analysis, then verifies the platform's Dock
+contract. It restores every owned surface, draft, file session and durable setting before writing
+shared acceptance evidence under `artifacts/agent-control-acceptance/`. Capture-rig commands remain
+owned by `smoke:capture`; configuration import remains in update acceptance because it relaunches
+the app.
+
 Dock monitor discovery and entry, and Preset application, read the current monitor inventory on
 each request, including dry-run. Hot-plugging a monitor does not require restarting PLVS. A failed
 inventory read refuses the request without mutation; the next request retries the read.
