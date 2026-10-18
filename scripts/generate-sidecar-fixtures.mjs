@@ -45,7 +45,7 @@ const fixtures = [
   ["eac3", "mka", []],
   ["dca", "mka", ["-strict", "-2"]],
   ["libopus", "ogg", []],
-  ["libvorbis", "ogg", []],
+  ["vorbis", "ogg", ["-strict", "-2"]],
   ["libmp3lame", "mp3", []],
   ["alac", "m4a", []],
   ["pcm_s24le", "wav", []],

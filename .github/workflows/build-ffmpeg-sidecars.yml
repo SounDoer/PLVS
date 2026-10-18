@@ -146,7 +146,9 @@ jobs:
         shell: bash
         run: |
           export PATH="$GITHUB_WORKSPACE/toolchain/mingw64/bin:$PATH"
-          export TMPDIR="$GITHUB_WORKSPACE/ffmpeg-tmp"
+          # FFmpeg configure needs a POSIX path under Git Bash; the raw D:\... runner path loses
+          # its separators when configure emits helper scripts.
+          export TMPDIR="$(cygpath -u "$RUNNER_TEMP")/ffmpeg-build"
           mkdir -p "$TMPDIR"
           cd "ffmpeg-${FFMPEG_VERSION}"
           JOBS=8 bash ../scripts/build-ffmpeg-sidecars.sh windows
