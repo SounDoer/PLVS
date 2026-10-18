@@ -143,8 +143,9 @@ under the current user's private `$XDG_RUNTIME_DIR` and verifies both client and
 with `SO_PEERCRED`; macOS verifies ownership with `getpeereid`. All native transports use the
 shared framing and authentication implementation; only endpoint creation, peer validation, and
 delivery acknowledgement remain platform-specific. The public CLI contract is transport-neutral;
-callers use runtime capabilities to discover native features. Visual Capture screenshots and
-recording remain unavailable on Linux.
+callers use runtime capabilities to discover native features. Linux Visual Capture uses the
+app-owned WebKitGTK snapshot path for screenshots and silent recordings, without desktop or
+system-audio capture.
 
 ## Failures below the application
 

@@ -92,10 +92,13 @@ libc = "0.2"
 window-vibrancy = "0.8"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+cairo-rs = { version = "0.18.5", features = ["png"] }
 cpal = { version = "0.18.1", features = ["pulseaudio"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 pulseaudio = "0.3"
 futures = "0.3"
 libc = "0.2"
+webkit2gtk = { version = "=2.0.2", features = ["v2_40"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }

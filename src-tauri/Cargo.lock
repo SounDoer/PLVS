@@ -3681,6 +3681,7 @@ name = "plvs"
 version = "0.21.0"
 dependencies = [
  "atomic-write-file",
+ "cairo-rs",
  "cc",
  "cpal",
  "criterion",
@@ -3718,6 +3719,7 @@ dependencies = [
  "tempfile",
  "time",
  "voice_activity_detector",
+ "webkit2gtk",
  "webview2-com",
  "window-vibrancy",
  "windows",

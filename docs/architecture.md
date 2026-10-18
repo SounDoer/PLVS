@@ -136,9 +136,12 @@ and is never persisted.
 Visual Capture keeps the same semantic boundary: React chooses the capture target, waits for a stable
 paint and supplies CSS geometry; Rust owns the private artifacts, concurrency and lifecycle. Windows
 screenshots use WebView2 and macOS screenshots use the WKWebView snapshot; both capture only the PLVS
-WebView content. Windows recording uses Windows Graphics Capture and Media Foundation, macOS
-recording uses ScreenCaptureKit and AVAssetWriter. Both reuse Rust's measured-source PCM timeline and
-encode H.264/AAC MP4.
+WebView content. Linux uses the corresponding WebKitGTK visible-WebView snapshot, so Wayland needs
+no desktop-capture portal. Windows recording uses Windows Graphics Capture and Media Foundation,
+macOS recording uses ScreenCaptureKit and AVAssetWriter, and Linux sends WebKitGTK frames to the
+distribution-managed FFmpeg. Windows and macOS reuse Rust's measured-source PCM timeline and encode
+H.264/AAC MP4; Linux currently encodes silent H.264 MP4 and advertises neither measured-source audio
+nor system-pointer capture.
 
 ### Frontend state ownership
 

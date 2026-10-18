@@ -1,4 +1,6 @@
 pub mod artifacts;
+#[cfg(target_os = "linux")]
+pub mod linux;
 #[cfg(target_os = "macos")]
 pub mod macos;
 pub mod platform;
@@ -16,9 +18,11 @@ use tauri::Manager;
 use tauri::{AppHandle, State};
 
 use artifacts::{ArtifactKind, ArtifactMetadata, ArtifactStore};
+#[cfg(target_os = "linux")]
+use linux::LinuxPlatform;
 #[cfg(target_os = "macos")]
 use macos::MacOsPlatform;
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 use platform::UnsupportedPlatform;
 use platform::{CaptureError, PlatformCapabilities, ScreenshotRequest, VisualCapturePlatform};
 use recording::state::{RecordingAudioSource, RecordingSnapshot, StopReason};
@@ -95,7 +99,11 @@ fn platform_capabilities() -> PlatformCapabilities {
   {
     MacOsPlatform.capabilities()
   }
-  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  #[cfg(target_os = "linux")]
+  {
+    LinuxPlatform.capabilities()
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   {
     UnsupportedPlatform.capabilities()
   }
@@ -143,7 +151,11 @@ pub async fn visual_capture_screenshot(
   let captured = MacOsPlatform
     .capture_screenshot(&app, &request, pending.path())
     .await;
-  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  #[cfg(target_os = "linux")]
+  let captured = LinuxPlatform
+    .capture_screenshot(&app, &request, pending.path())
+    .await;
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   let captured = UnsupportedPlatform
     .capture_screenshot(&app, &request, pending.path())
     .await;
@@ -458,7 +470,60 @@ pub async fn visual_recording_start(
     }
     Ok(controller.inspect(&recording_id).unwrap_or(created))
   }
-  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  #[cfg(target_os = "linux")]
+  {
+    if audio_source != RecordingAudioSource::None {
+      controller.registry().fail(
+        &created.recording_id,
+        "Linux visual recording currently supports silent capture only.",
+      );
+      return Err(NativeCaptureError::recording(
+        "audioUnavailable",
+        "Linux visual recording currently supports --audio none only.",
+      ));
+    }
+    if request.cursor != recording::state::RecordingCursorMode::None {
+      controller.registry().fail(
+        &created.recording_id,
+        "Linux WebKit capture cannot include the system pointer.",
+      );
+      return Err(NativeCaptureError::recording(
+        "recordingFailed",
+        "Linux visual recording currently supports --cursor none only.",
+      ));
+    }
+    let recording_id = created.recording_id.clone();
+    let session = recording::linux::begin_recording(
+      app,
+      recording_id.clone(),
+      width,
+      height,
+      request.fps,
+      recording::linux::RecordingGeometry {
+        rect: request.rect,
+        viewport: request.viewport,
+      },
+      pending,
+      artifact_store.inner().clone(),
+      controller.registry().clone(),
+    )
+    .map_err(|message| {
+      controller.registry().fail(&recording_id, message.clone());
+      NativeCaptureError::recording("recordingFailed", message)
+    })?;
+    if let Err(reason) = controller.insert_session(session, request.max_duration_seconds) {
+      controller.registry().fail(
+        &recording_id,
+        "The recording session could not be retained.",
+      );
+      return Err(NativeCaptureError::recording(
+        reason,
+        "The recording session could not be retained.",
+      ));
+    }
+    Ok(controller.inspect(&recording_id).unwrap_or(created))
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   {
     let _ = (app, pending);
     controller
@@ -533,16 +598,26 @@ mod tests {
     assert_eq!(capabilities.platform, std::env::consts::OS);
     assert_eq!(
       capabilities.screenshot.available,
-      cfg!(any(target_os = "windows", target_os = "macos"))
+      cfg!(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "linux"
+      ))
     );
     assert_eq!(
       capabilities.recording.available,
-      cfg!(any(target_os = "windows", target_os = "macos"))
+      cfg!(any(
+        target_os = "windows",
+        target_os = "macos",
+        target_os = "linux"
+      ))
     );
     assert_eq!(
       capabilities.recording.cursor_modes,
       if cfg!(any(target_os = "windows", target_os = "macos")) {
         vec!["none", "visible"]
+      } else if cfg!(target_os = "linux") {
+        vec!["none"]
       } else {
         Vec::new()
       }

@@ -25,7 +25,9 @@ closed. Add `--out <file>` to write the result to a file.
 
 Start PLVS and enable **Agent Control** in Settings. Then discover the available surface with
 `plvs-cli capabilities --json` and read the app's current state with `plvs-cli inspect --json`.
-Linux supports the live control surface, but not Visual Capture screenshots or recording.
+Experimental Linux builds support PNG screenshots and silent H.264 MP4 recording of the visible
+PLVS WebView. Keep the display session unlocked and the window visible; Linux does not capture the
+system pointer or measured-source audio.
 
 Queries return a global revision. Every change requires it, for example:
 

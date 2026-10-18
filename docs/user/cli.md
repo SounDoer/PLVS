@@ -5,11 +5,12 @@ organized directly by the product resource or operation they address:
 
 Experimental Linux development and Ubuntu Preview builds support the live Agent Control command
 surface, using the same identity directory as the GUI under `$XDG_DATA_HOME` or
-`~/.local/share`. Linux Visual Capture screenshots and recording are not yet available. Linux
-development file analysis uses system FFmpeg/FFprobe selected by the development launcher. The
-Ubuntu Preview deb installs them through APT and resolves `/usr/bin/ffmpeg` and
-`/usr/bin/ffprobe` without an environment override. Official Linux release packages are not yet
-available.
+`~/.local/share`. Linux Visual Capture supports PNG screenshots and silent H.264 MP4 recording of
+the visible PLVS WebView; it does not capture the system pointer or measured-source audio. Linux
+development file analysis and visual recording use system FFmpeg/FFprobe selected by the
+development launcher. The Ubuntu Preview deb installs them through APT and resolves
+`/usr/bin/ffmpeg` and `/usr/bin/ffprobe` without an environment override. Official Linux release
+packages are not yet available.
 
 ```text
 plvs-cli doctor
@@ -278,7 +279,7 @@ document. See [Editor Draft Control](../agent-control/editor-drafts.md) for atom
 Theme-only history, and the Cancel/discard workflow.
 
 Visual Capture saves the actual rendered pixels of the running app. Screenshots and recording are
-available on Windows and macOS:
+available on Windows, macOS, and experimental Linux builds:
 
 ```powershell
 plvs-cli visual describe --json
@@ -290,9 +291,10 @@ plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 ```
 
 Live recordings default to the measured source; File recordings default to `none`, and an explicit
-File `measured-source` request fails. Recording output is finalized by `wait` or `stop`, not
-`start`. See [Visual Capture](../agent-control/visual.md) for target meaning, revision correlation,
-audio gaps, lifecycle, limits, retention, output-file behavior, and stable errors.
+File `measured-source` request fails. Linux advertises only `--audio none` and `--cursor none`, so
+its Live default also resolves to silent recording. Recording output is finalized by `wait` or
+`stop`, not `start`. See [Visual Capture](../agent-control/visual.md) for target meaning, revision
+correlation, audio gaps, lifecycle, limits, retention, output-file behavior, and stable errors.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. Loudness Profile Control additionally provides:

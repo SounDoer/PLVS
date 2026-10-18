@@ -1,10 +1,11 @@
 # Visual Capture
 
 Visual Capture lets an agent save the pixels currently rendered by a running PLVS window. It is
-available for screenshots and recordings on Windows and macOS. Screenshots are PNG files;
-recordings are H.264 MP4 files. Both platforms support either no audio or the same Live source PCM
-that PLVS measures. It does not independently capture File-analysis audio, microphones, arbitrary
-system audio, other windows, or raw canvas/DOM data.
+available for screenshots and recordings on Windows, macOS, and experimental Linux builds.
+Screenshots are PNG files; recordings are H.264 MP4 files. Windows and macOS support either no
+audio or the same Live source PCM that PLVS measures. Linux recording is silent and excludes the
+system pointer. Visual Capture does not independently capture File-analysis audio, microphones,
+arbitrary system audio, other windows, or raw canvas/DOM data.
 
 ## Commands
 
@@ -32,6 +33,11 @@ screenshot metadata reports the actual output width and height after device/WebV
 On macOS, screenshots use WebKit's app-owned snapshot path. They do not request Screen Recording
 permission and do not include the native title bar, window shadow, desktop, or pixels from another
 application behind transparent PLVS content.
+
+On Linux, screenshots and recording frames use WebKitGTK's app-owned visible-WebView snapshot path.
+They require the PLVS window to remain visible in an unlocked display session, work under Wayland
+without a desktop-capture portal, and do not include native window chrome, the desktop, other
+applications, or the system pointer.
 
 Screenshots and recordings do not increment the global revision. Optional `--expected-revision`
 is checked after render settlement and before native capture allocation, so a conflict creates no
@@ -100,6 +106,9 @@ The system pointer is excluded by default. `--cursor visible` includes it while 
 captured PLVS window. This option does not alter PLVS-rendered cursors, hover state, or overlays;
 those are ordinary application pixels and are always preserved.
 
+Linux advertises only `--cursor none`; a caller must discover cursor modes through
+`visual describe` rather than assuming cross-platform parity.
+
 On macOS, `visual describe` checks Screen Recording access without prompting. The first explicit
 recording start requests access when needed. If macOS does not grant it immediately, the command
 returns `screenCapturePermissionRequired`; allow PLVS under System Settings > Privacy & Security >
@@ -122,6 +131,10 @@ bounded interruption history.
 On macOS, measured PCM crosses a bounded Rust-to-native queue and is encoded by AVAssetWriter; it
 does not enable ScreenCaptureKit system-audio capture. The public source meaning and interruption
 metadata are therefore the same as on Windows.
+
+Linux advertises only `--audio none`. It feeds fixed-canvas WebKitGTK frames to the
+distribution-managed FFmpeg declared by the Ubuntu package and explicitly disables audio, so the
+MP4 contains no audio stream.
 
 ## Artifacts and errors
 
@@ -147,8 +160,9 @@ files' length and SHA-256 against the returned artifact metadata. Results are re
 location. A successful run writes the compatibility `smoke-report.json`. Success or a caught
 product/cleanup failure also writes the shared acceptance envelope as `result.json`, including the
 exact clean source SHA, completed and skipped scenarios, artifact hashes, and cleanup outcome. Run
-it on both Windows and macOS before treating native transport or Visual Capture work as accepted;
-one platform's contract tests or evidence do not certify the other.
+it on Windows, macOS, and Linux before treating that platform's native transport or Visual Capture
+work as accepted; one platform's contract tests or evidence do not certify another. Linux
+acceptance requires a visible PLVS window in an unlocked real GNOME Wayland session.
 
 Stable Visual Capture errors are:
 
