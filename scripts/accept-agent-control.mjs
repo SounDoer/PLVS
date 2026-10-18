@@ -137,10 +137,12 @@ export async function runOfflineContract(invoke) {
   return [`Verified ${expectedIds.length} schemas, three completions, and doctor diagnostics.`];
 }
 
-async function runReadContract(run) {
+export async function runReadContract(run) {
   const app = await run(["inspect", "--json"]);
   const modules = await run(["module", "list", "--json"]);
-  for (const item of modules.modules ?? []) await run(["module", "describe", item.id, "--json"]);
+  for (const item of modules.modules ?? []) {
+    await run(["module", "describe", item.moduleId, "--json"]);
+  }
   for (const panel of app.workspace?.panels ?? []) {
     await run(["panel", "describe", panel.id, "--json"]);
   }

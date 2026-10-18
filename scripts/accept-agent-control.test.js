@@ -3,6 +3,7 @@ import {
   createAcceptanceInvoker,
   parseAgentControlAcceptanceArgs,
   runDockPlatformContract,
+  runReadContract,
 } from "./accept-agent-control.mjs";
 
 describe("Agent Control acceptance arguments", () => {
@@ -80,5 +81,25 @@ describe("Dock platform acceptance", () => {
       "9",
       "--json",
     ]);
+  });
+});
+
+describe("live read acceptance", () => {
+  it("uses the public discovery identifiers for modules, panels, and libraries", async () => {
+    const run = vi.fn(async (args) => {
+      const command = args.slice(0, -1).join(" ");
+      if (command === "inspect") return { workspace: { panels: [{ id: "panel-1" }] } };
+      if (command === "module list") return { modules: [{ moduleId: "spectrum" }] };
+      if (command === "preset list") return { presets: [{ id: "preset-1" }] };
+      if (command === "theme list") return { themes: [{ id: "theme-1" }] };
+      if (command === "loudness-profile list") return { profiles: [{ id: "profile-1" }] };
+      return {};
+    });
+    await runReadContract(run);
+    expect(run).toHaveBeenCalledWith(["module", "describe", "spectrum", "--json"]);
+    expect(run).toHaveBeenCalledWith(["panel", "describe", "panel-1", "--json"]);
+    expect(run).toHaveBeenCalledWith(["preset", "describe", "preset-1", "--json"]);
+    expect(run).toHaveBeenCalledWith(["theme", "describe", "theme-1", "--json"]);
+    expect(run).toHaveBeenCalledWith(["loudness-profile", "describe", "profile-1", "--json"]);
   });
 });
