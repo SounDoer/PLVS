@@ -24,7 +24,7 @@ npm run ffmpeg:fetch
 
 Windows (`x86_64-pc-windows-msvc`) and macOS (`aarch64-apple-darwin`) binaries are published.
 Linux has no published decoder sidecars. Its experimental Ubuntu deb instead declares the Ubuntu
-`ffmpeg` package as a dependency; see [ADR 0024](adr/0024-linux-deb-uses-distribution-decoders.md).
+`ffmpeg` package as a dependency; see [ADR 0032](adr/0032-linux-deb-uses-distribution-decoders.md).
 The development launcher also supports system decoders. Bundled decoder `externalBin` entries live in
 `tauri.windows.conf.json` / `tauri.macos.conf.json` (not the base config), so Linux builds — including
 the Ubuntu CI fmt/clippy/test job — do not require a decoder binary. When you bump the FFmpeg version, upload

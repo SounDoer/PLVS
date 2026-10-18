@@ -842,7 +842,7 @@ Without that reset, recursive config merging maps both the stable and Preview ma
 
 The deb declares system FFmpeg/FFprobe and runtime libraries as APT dependencies. It does not use
 `ffmpeg:fetch` or bundle files over Ubuntu's `/usr/bin/ffmpeg`. See
-[ADR 0024](docs/adr/0024-linux-deb-uses-distribution-decoders.md). Build on the stated baseline;
+[ADR 0032](docs/adr/0032-linux-deb-uses-distribution-decoders.md). Build on the stated baseline;
 building on a newer distribution can silently raise the required glibc version.
 
 `scripts/verify-linux-deb.sh <package.deb> <output-directory>` installs, checks, and removes the

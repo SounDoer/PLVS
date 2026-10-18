@@ -1,4 +1,4 @@
-# ADR 0023: Linux capture through PulseAudio monitor sources
+# ADR 0031: Linux capture through PulseAudio monitor sources
 
 ## Status
 

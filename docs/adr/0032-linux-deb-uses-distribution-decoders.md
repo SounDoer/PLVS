@@ -1,4 +1,4 @@
-# ADR 0024: Ubuntu deb packages use distribution-managed decoders
+# ADR 0032: Ubuntu deb packages use distribution-managed decoders
 
 Date: 2026-10-09
 

@@ -732,16 +732,17 @@ The experimental Ubuntu 24.04 x86_64 Preview deb installs the application and CL
 and declares distribution-managed FFmpeg/FFprobe as package dependencies. The existing adjacent
 binary locator therefore works without a development environment override. It uses the separate
 Preview identity and has no automatic updater. See
-[ADR 0024](adr/0024-linux-deb-uses-distribution-decoders.md) for the package layout and decoder policy.
+[ADR 0032](adr/0032-linux-deb-uses-distribution-decoders.md) for the package layout and decoder policy.
 
 Linux capture requests 20 ms server fragments. PulseAudio's unspecified default fragments can
 exceed the shared 100 ms PCM pool capacity, causing whole callbacks to be rejected; the backend
 must negotiate the delivery size rather than grow buffers on the callback thread.
 
-| Platform | System audio path                                                  | Minimum version                                                                  |
-| -------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11) |
-| macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                  |
+| Platform | System audio path                                                  | Minimum version                                                                                         |
+| -------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11)                        |
+| macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                                         |
+| Linux    | PulseAudio monitor source, including PipeWire via `pipewire-pulse` | Ubuntu 24.04 x86_64 experimental Preview; per-application capture is unsupported                        |
 
 Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User installation guidance, including Windows SmartScreen and macOS Gatekeeper verification, is in `docs/user/getting-started.md`.
 
