@@ -22,9 +22,9 @@ Settings Control is internally consistent, but there is no authoritative invento
 user-writable Settings surface control to its public owner or an explicit exclusion. A newly added
 GUI setting can therefore omit Agent Control without failing a coverage test.
 
-Linux now supports the common socket transport, visible-WebView PNG screenshots, and silent H.264
-MP4 recording. Linux Dock remains unsupported. Linux recording does not capture the system pointer
-or measured-source audio.
+Linux now supports the common socket transport, visible-WebView PNG screenshots, silent H.264 MP4
+recording, and measured-source AAC recording through distribution FFmpeg. Linux Dock remains
+unsupported. Linux recording does not capture the system pointer.
 
 ## Decisions
 
@@ -86,11 +86,10 @@ WebKitGTK snapshots contain application pixels, not the compositor-owned system 
 does not provide a reliable global-pointer capture path to an ordinary application. Linux therefore
 continues to advertise `cursorModes: ["none"]` until a compositor-approved capture API is adopted.
 
-Measured-source recording can be added independently because PLVS already owns the measured PCM
-stream. It must reuse the shared 48 kHz stereo timeline, gap accounting, and recording evidence
-shape. It is complete only after a real LIVE recording contains one H.264 video stream and one AAC
-audio stream and the Agent Control smoke remains green. Until then Linux continues to advertise
-only `audioSources: ["none"]`.
+Measured-source recording reuses the shared 48 kHz stereo timeline, gap accounting, and recording
+evidence shape. Linux writes video and PCM through separate inherited FFmpeg pipes so encoder
+backpressure stays outside the capture callback. Completion still requires a real LIVE recording
+with one H.264 video stream and one AAC audio stream plus a green Agent Control smoke.
 
 ## Safety and cleanup
 
@@ -99,5 +98,5 @@ blocking editor, owns every artifact or temporary resource it creates, and resto
 order. A failed cleanup makes the shared evidence fail. No scenario edits persistence files or
 native state behind the running React owners.
 
-Linux Dock unsupported behavior, pointer omission, and any deferred measured-source audio work are
-reported explicitly; they are never converted into passed feature scenarios.
+Linux Dock unsupported behavior and pointer omission are reported explicitly; they are never
+converted into passed feature scenarios.

@@ -132,9 +132,11 @@ On macOS, measured PCM crosses a bounded Rust-to-native queue and is encoded by 
 does not enable ScreenCaptureKit system-audio capture. The public source meaning and interruption
 metadata are therefore the same as on Windows.
 
-Linux advertises only `--audio none`. It feeds fixed-canvas WebKitGTK frames to the
-distribution-managed FFmpeg declared by the Ubuntu package and explicitly disables audio, so the
-MP4 contains no audio stream.
+Linux feeds fixed-canvas WebKitGTK frames and the shared measured-source PCM timeline to the
+distribution-managed FFmpeg declared by the Ubuntu package. Video and audio use separate inherited
+pipes so encoder backpressure never reaches the capture callback. The resulting measured-source
+MP4 uses the same H.264 plus AAC shape and interruption metadata as Windows and macOS; explicit
+`--audio none` remains video-only.
 
 ## Artifacts and errors
 

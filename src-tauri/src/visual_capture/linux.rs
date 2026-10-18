@@ -45,7 +45,7 @@ impl VisualCapturePlatform for LinuxPlatform {
         available: true,
         permission: RecordingPermission::Granted,
         targets: vec!["main", "workspace"],
-        audio_sources: vec!["none"],
+        audio_sources: vec!["none", "measuredSource"],
         cursor_modes: vec!["none"],
       },
     }
@@ -273,7 +273,10 @@ mod tests {
       capabilities.recording.permission,
       RecordingPermission::Granted
     );
-    assert_eq!(capabilities.recording.audio_sources, vec!["none"]);
+    assert_eq!(
+      capabilities.recording.audio_sources,
+      vec!["none", "measuredSource"]
+    );
     assert_eq!(capabilities.recording.cursor_modes, vec!["none"]);
   }
 

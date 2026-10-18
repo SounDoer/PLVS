@@ -33,7 +33,7 @@ use recording::{
 #[cfg(target_os = "windows")]
 use windows::WindowsPlatform;
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 const RECORDING_PCM_QUEUE_CAPACITY: usize = 256;
 
 #[derive(Default)]
@@ -472,16 +472,6 @@ pub async fn visual_recording_start(
   }
   #[cfg(target_os = "linux")]
   {
-    if audio_source != RecordingAudioSource::None {
-      controller.registry().fail(
-        &created.recording_id,
-        "Linux visual recording currently supports silent capture only.",
-      );
-      return Err(NativeCaptureError::recording(
-        "audioUnavailable",
-        "Linux visual recording currently supports --audio none only.",
-      ));
-    }
     if request.cursor != recording::state::RecordingCursorMode::None {
       controller.registry().fail(
         &created.recording_id,
@@ -492,6 +482,25 @@ pub async fn visual_recording_start(
         "Linux visual recording currently supports --cursor none only.",
       ));
     }
+    let measured_pcm = _engine_state.inner().measured_pcm.clone();
+    let audio_origin_ns = measured_pcm.timestamp_ns();
+    let audio_receiver = if audio_source == RecordingAudioSource::MeasuredSource {
+      match measured_pcm.subscribe(RECORDING_PCM_QUEUE_CAPACITY) {
+        Ok(receiver) => Some(receiver),
+        Err(reason) => {
+          controller.registry().fail(
+            &created.recording_id,
+            "Measured-source audio could not be attached.",
+          );
+          return Err(NativeCaptureError::recording(
+            reason,
+            "Measured-source audio could not be attached.",
+          ));
+        }
+      }
+    } else {
+      None
+    };
     let recording_id = created.recording_id.clone();
     let session = recording::linux::begin_recording(
       app,
@@ -503,6 +512,10 @@ pub async fn visual_recording_start(
         rect: request.rect,
         viewport: request.viewport,
       },
+      audio_source,
+      audio_origin_ns,
+      audio_receiver,
+      request.audio_state.silence_reason(),
       pending,
       artifact_store.inner().clone(),
       controller.registry().clone(),

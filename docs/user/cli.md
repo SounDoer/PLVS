@@ -5,10 +5,10 @@ organized directly by the product resource or operation they address:
 
 Experimental Linux development and Ubuntu Preview builds support the live Agent Control command
 surface, using the same identity directory as the GUI under `$XDG_DATA_HOME` or
-`~/.local/share`. Linux Visual Capture supports PNG screenshots and silent H.264 MP4 recording of
-the visible PLVS WebView; it does not capture the system pointer or measured-source audio. Linux
-development file analysis and visual recording use system FFmpeg/FFprobe selected by the
-development launcher. The Ubuntu Preview deb installs them through APT and resolves
+`~/.local/share`. Linux Visual Capture supports PNG screenshots and H.264 MP4 recording of the
+visible PLVS WebView, with optional AAC audio from the measured Live source; it does not capture the
+system pointer. Linux development file analysis and visual recording use system FFmpeg/FFprobe
+selected by the development launcher. The Ubuntu Preview deb installs them through APT and resolves
 `/usr/bin/ffmpeg` and `/usr/bin/ffprobe` without an environment override. Official Linux release
 packages are not yet available.
 
@@ -291,10 +291,11 @@ plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 ```
 
 Live recordings default to the measured source; File recordings default to `none`, and an explicit
-File `measured-source` request fails. Linux advertises only `--audio none` and `--cursor none`, so
-its Live default also resolves to silent recording. Recording output is finalized by `wait` or
-`stop`, not `start`. See [Visual Capture](../agent-control/visual.md) for target meaning, revision
-correlation, audio gaps, lifecycle, limits, retention, output-file behavior, and stable errors.
+File `measured-source` request fails. Linux advertises only `--cursor none`; its measured-source
+recording uses the same PCM, fixed AAC shape, and gap accounting as Windows and macOS. Recording
+output is finalized by `wait` or `stop`, not `start`. See
+[Visual Capture](../agent-control/visual.md) for target meaning, revision correlation, audio gaps,
+lifecycle, limits, retention, output-file behavior, and stable errors.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. Loudness Profile Control additionally provides:

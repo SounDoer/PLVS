@@ -139,9 +139,9 @@ screenshots use WebView2 and macOS screenshots use the WKWebView snapshot; both 
 WebView content. Linux uses the corresponding WebKitGTK visible-WebView snapshot, so Wayland needs
 no desktop-capture portal. Windows recording uses Windows Graphics Capture and Media Foundation,
 macOS recording uses ScreenCaptureKit and AVAssetWriter, and Linux sends WebKitGTK frames to the
-distribution-managed FFmpeg. Windows and macOS reuse Rust's measured-source PCM timeline and encode
-H.264/AAC MP4; Linux currently encodes silent H.264 MP4 and advertises neither measured-source audio
-nor system-pointer capture.
+distribution-managed FFmpeg. All three reuse Rust's measured-source PCM timeline and encode
+H.264/AAC MP4 when audio is requested; explicit silent recordings contain only H.264 video. Linux
+does not advertise system-pointer capture.
 
 ### Frontend state ownership
 

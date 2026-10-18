@@ -1,6 +1,9 @@
+use std::fs::File;
 use std::io::{Read, Write};
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -9,9 +12,13 @@ use tauri::AppHandle;
 use super::super::artifacts::{ArtifactStore, PendingArtifact};
 use super::super::linux::{capture_visible_frame, recording_frame_rgba};
 use super::super::platform::{CssRect, CssViewport};
-use super::audio::SilenceReason;
+use super::audio::{AudioPacket, AudioTimeline, SilenceReason, AAC_BITRATE, OUTPUT_SAMPLE_RATE};
 use super::session::RecordingSessionControl;
-use super::state::{RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES};
+use super::state::{RecordingAudioSource, RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES};
+use crate::audio::MeasuredPcmReceiver;
+
+const AUDIO_PIPE_FD: libc::c_int = 3;
+const AUDIO_SETTLEMENT_FRAMES: u64 = 4_800;
 
 #[derive(Clone, Copy, Debug)]
 pub struct RecordingGeometry {
@@ -25,6 +32,7 @@ pub struct LinuxRecordingSession {
   stop_requested: Arc<AtomicBool>,
   finished: Arc<AtomicBool>,
   geometry: Arc<Mutex<RecordingGeometry>>,
+  audio_silence_reason: Arc<Mutex<SilenceReason>>,
 }
 
 impl RecordingSessionControl for LinuxRecordingSession {
@@ -57,7 +65,11 @@ impl RecordingSessionControl for LinuxRecordingSession {
     Ok(())
   }
 
-  fn update_audio_silence_reason(&self, _reason: SilenceReason) -> Result<(), &'static str> {
+  fn update_audio_silence_reason(&self, reason: SilenceReason) -> Result<(), &'static str> {
+    *self
+      .audio_silence_reason
+      .lock()
+      .map_err(|_| "stateUnavailable")? = reason;
     Ok(())
   }
 
@@ -74,6 +86,10 @@ pub fn begin_recording(
   height: u32,
   fps: u32,
   geometry: RecordingGeometry,
+  audio_source: RecordingAudioSource,
+  audio_origin_ns: u64,
+  audio_receiver: Option<MeasuredPcmReceiver>,
+  initial_audio_silence_reason: SilenceReason,
   pending: PendingArtifact,
   store: ArtifactStore,
   registry: RecordingRegistry,
@@ -87,6 +103,7 @@ pub fn begin_recording(
     stop_requested: Arc::new(AtomicBool::new(false)),
     finished: Arc::new(AtomicBool::new(false)),
     geometry: Arc::new(Mutex::new(geometry)),
+    audio_silence_reason: Arc::new(Mutex::new(initial_audio_silence_reason)),
   };
   let worker_session = session.clone();
   let startup_session = session.clone();
@@ -94,7 +111,14 @@ pub fn begin_recording(
   let spawned = std::thread::Builder::new()
     .name("visual-recording-linux".into())
     .spawn(move || {
-      let startup = start_ffmpeg(width, height, fps, pending.path()).and_then(|mut child| {
+      let startup = start_ffmpeg(
+        width,
+        height,
+        fps,
+        audio_source == RecordingAudioSource::MeasuredSource,
+        pending.path(),
+      )
+      .and_then(|(mut child, audio_input)| {
         let stdin = child
           .stdin
           .take()
@@ -103,9 +127,9 @@ pub fn begin_recording(
           .stderr
           .take()
           .ok_or_else(|| "FFmpeg did not provide a diagnostic pipe.".to_owned())?;
-        Ok((child, stdin, stderr))
+        Ok((child, stdin, stderr, audio_input))
       });
-      let (child, stdin, stderr) = match startup {
+      let (child, stdin, stderr, audio_input) = match startup {
         Ok(startup) => {
           let _ = startup_sender.send(Ok(()));
           startup
@@ -127,6 +151,9 @@ pub fn begin_recording(
         child,
         stdin,
         stderr,
+        audio_origin_ns,
+        audio_receiver,
+        audio_input,
         pending,
         store,
         registry,
@@ -153,49 +180,106 @@ fn start_ffmpeg(
   width: u32,
   height: u32,
   fps: u32,
+  has_audio: bool,
   output: &std::path::Path,
-) -> Result<Child, String> {
+) -> Result<(Child, Option<File>), String> {
   let ffmpeg = crate::sidecar::locate_sidecar("ffmpeg");
-  Command::new(&ffmpeg)
-    .args([
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-nostdin",
-      "-y",
+  let audio_pipe = has_audio.then(create_audio_pipe).transpose()?;
+  let mut command = Command::new(&ffmpeg);
+  command.args([
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-nostdin",
+    "-y",
+    "-f",
+    "rawvideo",
+    "-pixel_format",
+    "rgba",
+    "-video_size",
+    &format!("{width}x{height}"),
+    "-framerate",
+    &fps.to_string(),
+    "-i",
+    "pipe:0",
+  ]);
+  if let Some((audio_read, audio_write)) = audio_pipe.as_ref() {
+    command.args([
       "-f",
-      "rawvideo",
-      "-pixel_format",
-      "rgba",
-      "-video_size",
-      &format!("{width}x{height}"),
-      "-framerate",
-      &fps.to_string(),
+      "s16le",
+      "-ar",
+      &OUTPUT_SAMPLE_RATE.to_string(),
+      "-ac",
+      "2",
       "-i",
-      "pipe:0",
-      "-an",
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-pix_fmt",
-      "yuv420p",
-      "-movflags",
-      "+faststart",
-      "-f",
-      "mp4",
-    ])
+      &format!("pipe:{AUDIO_PIPE_FD}"),
+    ]);
+    let audio_read_fd = audio_read.as_raw_fd();
+    let audio_write_fd = audio_write.as_raw_fd();
+    // SAFETY: the closure calls only async-signal-safe libc functions between fork and exec. The
+    // parent owns both descriptors until spawn returns; the child duplicates only the read end to
+    // the stable FFmpeg input descriptor and closes its copy of the write end.
+    unsafe {
+      command.pre_exec(move || {
+        if audio_read_fd == AUDIO_PIPE_FD {
+          if libc::fcntl(AUDIO_PIPE_FD, libc::F_SETFD, 0) == -1 {
+            return Err(std::io::Error::last_os_error());
+          }
+        } else {
+          if libc::dup2(audio_read_fd, AUDIO_PIPE_FD) == -1 {
+            return Err(std::io::Error::last_os_error());
+          }
+          libc::close(audio_read_fd);
+        }
+        libc::close(audio_write_fd);
+        Ok(())
+      });
+    }
+  }
+  command.args([
+    "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+  ]);
+  if has_audio {
+    command.args(["-c:a", "aac", "-b:a", &AAC_BITRATE.to_string()]);
+  } else {
+    command.arg("-an");
+  }
+  command
+    .args(["-movflags", "+faststart", "-f", "mp4"])
     .arg(output)
     .stdin(Stdio::piped())
     .stdout(Stdio::null())
-    .stderr(Stdio::piped())
-    .spawn()
-    .map_err(|error| {
-      format!(
-        "The Linux H.264 encoder could not start at {}: {error}",
-        ffmpeg.display()
-      )
-    })
+    .stderr(Stdio::piped());
+  let child = command.spawn().map_err(|error| {
+    format!(
+      "The Linux H.264 encoder could not start at {}: {error}",
+      ffmpeg.display()
+    )
+  })?;
+  let audio_input = audio_pipe.map(|(audio_read, audio_write)| {
+    drop(audio_read);
+    File::from(audio_write)
+  });
+  Ok((child, audio_input))
+}
+
+fn create_audio_pipe() -> Result<(OwnedFd, OwnedFd), String> {
+  let mut descriptors = [-1; 2];
+  // SAFETY: pipe2 initializes both descriptors on success. They are immediately wrapped in
+  // OwnedFd, so every parent-side return path closes them exactly once.
+  if unsafe { libc::pipe2(descriptors.as_mut_ptr(), libc::O_CLOEXEC) } == -1 {
+    return Err(format!(
+      "The Linux audio pipe could not be created: {}",
+      std::io::Error::last_os_error()
+    ));
+  }
+  // SAFETY: successful pipe2 returned two new, independently owned file descriptors.
+  Ok(unsafe {
+    (
+      OwnedFd::from_raw_fd(descriptors[0]),
+      OwnedFd::from_raw_fd(descriptors[1]),
+    )
+  })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -209,6 +293,9 @@ fn run_recording(
   mut child: Child,
   mut stdin: std::process::ChildStdin,
   mut stderr: std::process::ChildStderr,
+  audio_origin_ns: u64,
+  audio_receiver: Option<MeasuredPcmReceiver>,
+  audio_input: Option<File>,
   pending: PendingArtifact,
   store: ArtifactStore,
   registry: RecordingRegistry,
@@ -227,6 +314,41 @@ fn run_recording(
 
   registry.mark_recording(&session.recording_id);
   let started = Instant::now();
+  let audio_target_frames = Arc::new(AtomicU64::new(0));
+  let audio_worker = match (audio_receiver, audio_input) {
+    (Some(receiver), Some(input)) => {
+      let worker_recording_id = session.recording_id.clone();
+      let worker_stop = Arc::clone(&session.stop_requested);
+      let worker_target = Arc::clone(&audio_target_frames);
+      let worker_reason = Arc::clone(&session.audio_silence_reason);
+      let worker_registry = registry.clone();
+      Some(
+        std::thread::Builder::new()
+          .name("visual-recording-linux-audio".into())
+          .spawn(move || {
+            run_audio_worker(
+              worker_recording_id,
+              audio_origin_ns,
+              receiver,
+              input,
+              worker_stop,
+              worker_target,
+              worker_reason,
+              worker_registry,
+            )
+          }),
+      )
+    }
+    (None, None) => None,
+    _ => {
+      registry.fail(
+        &session.recording_id,
+        "The Linux measured-source audio pipe was incomplete.",
+      );
+      session.finished.store(true, Ordering::Release);
+      return;
+    }
+  };
   let mut last_frame = first_frame;
   let mut submitted_frames = 0_u64;
   let mut consecutive_capture_failures = 0_u32;
@@ -283,6 +405,10 @@ fn run_recording(
         break;
       }
       submitted_frames = submitted_frames.saturating_add(1);
+      audio_target_frames.store(
+        submitted_frames.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps),
+        Ordering::Release,
+      );
       let bytes = std::fs::metadata(pending.path())
         .map(|metadata| metadata.len())
         .unwrap_or(0);
@@ -299,6 +425,26 @@ fn run_recording(
   }
 
   drop(stdin);
+  session.stop_requested.store(true, Ordering::Release);
+  if let Some(worker) = audio_worker {
+    match worker {
+      Ok(worker) => match worker.join() {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+          terminal_error.get_or_insert(error);
+        }
+        Err(_) => {
+          terminal_error
+            .get_or_insert_with(|| "The Linux measured-source audio worker panicked.".to_owned());
+        }
+      },
+      Err(error) => {
+        terminal_error.get_or_insert_with(|| {
+          format!("The Linux measured-source audio worker could not start: {error}")
+        });
+      }
+    }
+  }
   let status = child.wait();
   if let Ok(worker) = stderr_worker {
     let _ = worker.join();
@@ -340,9 +486,81 @@ fn run_recording(
   session.finished.store(true, Ordering::Release);
 }
 
+#[allow(clippy::too_many_arguments)]
+fn run_audio_worker(
+  recording_id: String,
+  audio_origin_ns: u64,
+  receiver: MeasuredPcmReceiver,
+  mut output: File,
+  stop_requested: Arc<AtomicBool>,
+  audio_target_frames: Arc<AtomicU64>,
+  audio_silence_reason: Arc<Mutex<SilenceReason>>,
+  registry: RecordingRegistry,
+) -> Result<(), String> {
+  let mut timeline = AudioTimeline::new(audio_origin_ns);
+  let mut deferred = None;
+  loop {
+    let target = audio_target_frames.load(Ordering::Acquire);
+    let stopping = stop_requested.load(Ordering::Acquire);
+    let boundary = if stopping {
+      target
+    } else {
+      target.saturating_sub(AUDIO_SETTLEMENT_FRAMES)
+    };
+    let reason = audio_silence_reason
+      .lock()
+      .map(|reason| *reason)
+      .unwrap_or(SilenceReason::LiveRestart);
+    while let Some(frame) = deferred.take().or_else(|| receiver.try_recv()) {
+      let start_frame = frame
+        .timestamp_ns
+        .saturating_sub(timeline.origin_ns())
+        .saturating_mul(u64::from(OUTPUT_SAMPLE_RATE))
+        / 1_000_000_000;
+      if start_frame >= boundary {
+        deferred = Some(frame);
+        break;
+      }
+      let packets = timeline.ingest(&frame, reason);
+      receiver.recycle(frame);
+      write_audio_packets(&mut output, packets)?;
+    }
+    write_audio_packets(&mut output, timeline.insert_silence_to(boundary, reason))?;
+    registry.update_audio(
+      &recording_id,
+      timeline.silent_duration_ms(),
+      timeline.interruptions().to_vec(),
+    );
+    if stopping {
+      if let Some(frame) = deferred.take() {
+        receiver.recycle(frame);
+      }
+      output
+        .flush()
+        .map_err(|error| format!("FFmpeg stopped accepting measured-source audio: {error}"))?;
+      return Ok(());
+    }
+    std::thread::sleep(Duration::from_millis(5));
+  }
+}
+
+fn write_audio_packets(output: &mut File, packets: Vec<AudioPacket>) -> Result<(), String> {
+  for packet in packets {
+    let mut bytes = Vec::with_capacity(packet.samples.len().saturating_mul(2));
+    for sample in packet.samples {
+      bytes.extend_from_slice(&sample.to_le_bytes());
+    }
+    output
+      .write_all(&bytes)
+      .map_err(|error| format!("FFmpeg stopped accepting measured-source audio: {error}"))?;
+  }
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::io::{Read, Seek, SeekFrom};
 
   #[test]
   fn geometry_updates_reject_empty_or_non_finite_values() {
@@ -362,6 +580,7 @@ mod tests {
           height: 10.0,
         },
       })),
+      audio_silence_reason: Arc::new(Mutex::new(SilenceReason::LiveStopped)),
     };
     assert_eq!(
       session.update_geometry(
@@ -392,6 +611,26 @@ mod tests {
         }
       ),
       Err("invalidGeometry")
+    );
+  }
+
+  #[test]
+  fn measured_audio_packets_are_written_as_little_endian_pcm() {
+    let mut output = tempfile::tempfile().expect("temporary PCM output");
+    write_audio_packets(
+      &mut output,
+      vec![AudioPacket {
+        start_frame: 0,
+        samples: vec![i16::MIN, -1, 0, 1, i16::MAX],
+      }],
+    )
+    .expect("write PCM");
+    output.seek(SeekFrom::Start(0)).expect("rewind PCM");
+    let mut bytes = Vec::new();
+    output.read_to_end(&mut bytes).expect("read PCM");
+    assert_eq!(
+      bytes,
+      vec![0x00, 0x80, 0xff, 0xff, 0x00, 0x00, 0x01, 0x00, 0xff, 0x7f]
     );
   }
 }
