@@ -566,7 +566,10 @@ export function resolveLinuxCaptureRoute({
   return {
     platform: "linux",
     label: "PulseAudio null sink",
-    captureDevice: `${sinkName}.monitor`,
+    // The harness matches the monitor description ("Monitor of <sink>"), the same
+    // selector smoke:capture:linux already uses. The Pulse source name
+    // "<sink>.monitor" is not that label.
+    captureDevice: sinkName,
     playerTarget: sinkName,
     release() {
       if (released) return;

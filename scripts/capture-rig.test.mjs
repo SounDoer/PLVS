@@ -313,7 +313,7 @@ describe("cross-platform capture route", () => {
     expect(route).toMatchObject({
       platform: "linux",
       label: "PulseAudio null sink",
-      captureDevice: "plvs_rig_test.monitor",
+      captureDevice: "plvs_rig_test",
       playerTarget: "plvs_rig_test",
     });
     route.release();
