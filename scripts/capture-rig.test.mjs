@@ -262,6 +262,11 @@ describe("cross-platform capture route", () => {
     expect(captureRig.playerArgs("121", "signal.wav", "darwin")).toContain(
       "--auhal-audio-device=121"
     );
+    expect(captureRig.linuxPlayerArgs("plvs_rig", "signal.wav")).toEqual([
+      "paplay",
+      "--device=plvs_rig",
+      "signal.wav",
+    ]);
   });
 
   it.each(["win32", "darwin"])("plays a continuous soak file once on %s", (platform) => {
@@ -290,6 +295,40 @@ describe("cross-platform capture route", () => {
       playerTarget: "121",
     });
     expect(run).toHaveBeenCalledWith("plvs", ["--harness", "devices", "--json"]);
+  });
+
+  it("creates a private PulseAudio null sink and can remove it", () => {
+    const calls = [];
+    const run = vi.fn((command, args) => {
+      calls.push([command, args]);
+      if (args[0] === "info") return { status: 0, stdout: "Server Name: PulseAudio\n", stderr: "" };
+      if (args[0] === "load-module") return { status: 0, stdout: "42\n", stderr: "" };
+      return { status: 0, stdout: "", stderr: "" };
+    });
+    const route = captureRig.resolveCaptureRoute("plvs", {
+      platform: "linux",
+      linuxPulseRunner: run,
+      linuxSinkName: "plvs_rig_test",
+    });
+    expect(route).toMatchObject({
+      platform: "linux",
+      label: "PulseAudio null sink",
+      captureDevice: "plvs_rig_test.monitor",
+      playerTarget: "plvs_rig_test",
+    });
+    route.release();
+    route.release();
+    expect(calls.at(-1)).toEqual(["pactl", ["unload-module", "42"]]);
+    expect(calls.filter((call) => call[1][0] === "unload-module")).toHaveLength(1);
+  });
+
+  it("reports a missing PulseAudio server as a rig error", () => {
+    expect(() =>
+      captureRig.resolveCaptureRoute("plvs", {
+        platform: "linux",
+        linuxPulseRunner: () => ({ status: 1, stdout: "", stderr: "Connection refused" }),
+      })
+    ).toThrow(/PulseAudio is not available/);
   });
 
   it("preserves the existing Windows route contract", () => {

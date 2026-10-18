@@ -27,6 +27,7 @@ import {
   RigError,
   TOLERANCE_DB,
   compareMetrics,
+  ensureLinuxDecoders,
   harnessArgs,
   locateHarness,
   resolveCaptureRoute,
@@ -49,6 +50,7 @@ let truth = null;
 let live = null;
 let comparison = null;
 let failureMessage = null;
+let releaseError = null;
 
 function parseReport(label, { status, stdout, stderr }) {
   if (status === 2) {
@@ -75,6 +77,7 @@ function parseReport(label, { status, stdout, stderr }) {
 
 try {
   sourceSha = resolveEvidenceSourceSha(ROOT);
+  if (process.platform === "linux") ensureLinuxDecoders();
   const outIndex = process.argv.indexOf("--out-dir");
   if (
     outIndex !== -1 &&
@@ -153,6 +156,14 @@ try {
   }
 } finally {
   stopPlayer(player);
+  if (route?.release) {
+    try {
+      route.release();
+    } catch (error) {
+      releaseError = error instanceof Error ? error.message : String(error);
+      if ((process.exitCode ?? 0) === 0) process.exitCode = 2;
+    }
+  }
   // Teardown must not rewrite the verdict: VLC's exit is asynchronous, so the
   // WAV can still be locked here, and letting that reject would surface as a
   // capture-layer failure that never happened.
@@ -192,10 +203,14 @@ if (sourceSha && output) {
     scenarios,
     artifacts: [],
     cleanup: {
-      status: "passed",
-      observations: ["The spawned VLC process was stopped and the temporary signal was removed."],
+      status: releaseError ? "failed" : "passed",
+      observations: [
+        route?.platform === "linux"
+          ? "The looping paplay process was stopped, the private null sink was removed, and the temporary signal was removed."
+          : "The spawned VLC process was stopped and the temporary signal was removed.",
+      ],
     },
-    warnings: failureMessage ? [failureMessage] : [],
+    warnings: [failureMessage, releaseError].filter(Boolean),
     details: {
       route,
       source: live?.source ?? null,

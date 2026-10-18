@@ -1,6 +1,7 @@
 /**
  * Shared rig for the capture smoke and soak: synthesize a known signal, route it
- * into VB-Cable on Windows or BlackHole on macOS, and tear the player down again.
+ * into VB-Cable on Windows, BlackHole on macOS, or a private PulseAudio null sink
+ * on Linux, and tear the player down again.
  *
  * Every hardware operation lives here on purpose. The first hand-driven
  * verification burned three attempts on VLC device selection alone (an argument
@@ -284,6 +285,8 @@ export function resolveCaptureRoute(
     run = runCli,
     endpointResolver = resolveRenderEndpointId,
     macRenderResolver = resolveMacRenderDevice,
+    linuxPulseRunner = spawnSync,
+    linuxSinkName = `plvs_rig_${process.pid}`,
   } = {}
 ) {
   if (platform === "win32") {
@@ -293,6 +296,12 @@ export function resolveCaptureRoute(
       captureDevice: CAPTURE_DEVICE,
       playerTarget: endpointResolver(),
     };
+  }
+  if (platform === "linux") {
+    return resolveLinuxCaptureRoute({
+      run: linuxPulseRunner,
+      sinkName: linuxSinkName,
+    });
   }
   if (platform !== "darwin") {
     throw new RigError(`The live-capture rig is not supported on ${platform}.`);
@@ -510,8 +519,79 @@ export function playerArgs(
   throw new RigError(`The live-capture player is not supported on ${platform}.`);
 }
 
+/** One paplay invocation. The long-running helper repeats it so soak input stays constant. */
+export function linuxPlayerArgs(playerTarget, wavPath) {
+  return ["paplay", `--device=${playerTarget}`, wavPath];
+}
+
+export function ensureLinuxDecoders() {
+  if (process.env.PLVS_FFMPEG_DIR) return;
+  if (existsSync("/usr/bin/ffmpeg") && existsSync("/usr/bin/ffprobe")) {
+    process.env.PLVS_FFMPEG_DIR = "/usr/bin";
+  }
+}
+
+export function resolveLinuxCaptureRoute({
+  run = spawnSync,
+  sinkName = `plvs_rig_${process.pid}`,
+} = {}) {
+  if (!/^[A-Za-z0-9_.-]+$/.test(sinkName)) {
+    throw new RigError(`Linux rig sink name is not safe to pass to PulseAudio: ${sinkName}`);
+  }
+  const info = run("pactl", ["info"], { encoding: "utf8" });
+  if (info.error || info.status !== 0) {
+    throw new RigError(
+      `PulseAudio is not available: ${info.stderr?.trim() || info.error?.message || "unknown error"}`
+    );
+  }
+  const loaded = run(
+    "pactl",
+    [
+      "load-module",
+      "module-null-sink",
+      `sink_name=${sinkName}`,
+      "rate=48000",
+      "channels=2",
+      `sink_properties=device.description=${sinkName}`,
+    ],
+    { encoding: "utf8" }
+  );
+  const moduleId = loaded.stdout?.trim() ?? "";
+  if (loaded.status !== 0 || !/^\d+$/.test(moduleId)) {
+    throw new RigError(
+      `Could not create the Linux null sink: ${loaded.stderr?.trim() || loaded.stdout?.trim() || loaded.error?.message || "unknown error"}`
+    );
+  }
+  let released = false;
+  return {
+    platform: "linux",
+    label: "PulseAudio null sink",
+    captureDevice: `${sinkName}.monitor`,
+    playerTarget: sinkName,
+    release() {
+      if (released) return;
+      released = true;
+      const removed = run("pactl", ["unload-module", moduleId], { encoding: "utf8" });
+      if (removed.error || removed.status !== 0) {
+        throw new RigError(
+          `Could not remove Linux null sink module ${moduleId}: ${removed.stderr?.trim() || removed.error?.message || "unknown error"}`
+        );
+      }
+    },
+  };
+}
+
 export async function startPlayer(playerTarget, wavPath, { wait = false, loop = true } = {}) {
   await takeRig({ wait });
+  if (process.platform === "linux") {
+    if (!existsSync("/usr/bin/paplay")) {
+      throw new RigError("paplay was not found at /usr/bin/paplay.");
+    }
+    return spawn(process.execPath, [join(ROOT, "scripts", "linux-pulse-player.mjs"), playerTarget, wavPath], {
+      detached: false,
+      stdio: "ignore",
+    });
+  }
   const vlc = locateVlc();
   const child = spawn(vlc, playerArgs(playerTarget, wavPath, process.platform, { loop }), {
     detached: false,

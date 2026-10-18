@@ -76,6 +76,7 @@ describe("desktop smoke orchestration", () => {
     failScreenshot = false,
     showChanged = true,
     failCleanup = false,
+    visual = null,
   } = {}) {
     const outDir = mkdtempSync(join(tmpdir(), "plvs-smoke-test-"));
     directories.push(outDir);
@@ -132,6 +133,12 @@ describe("desktop smoke orchestration", () => {
           break;
         case "ui inspect final":
           result = { ...ui, revision: 5, uiGeneration: 2 };
+          break;
+        case "visual describe":
+          result = visual ?? {
+            screenshot: { available: true },
+            recording: { available: true },
+          };
           break;
         case "visual recording start":
           result = { recording: { recordingId: "owned-recording" } };
@@ -243,6 +250,25 @@ describe("desktop smoke orchestration", () => {
       status: "failed",
       observations: [expect.stringContaining("Settings cleanup failed")],
     });
+  });
+
+  it("records unavailable visual capture without treating it as a pass", async () => {
+    const options = rig({
+      visual: { screenshot: { available: false }, recording: { available: false } },
+    });
+    const { evidence } = await runAgentControlSmoke({ ...options, instanceId: "one" });
+    expect(evidence.summary).toBe("incomplete");
+    expect(evidence.scenarios).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "discovery-and-capabilities", status: "passed" }),
+        expect.objectContaining({ id: "settings-navigation", status: "passed" }),
+        expect.objectContaining({ id: "settings-cleanup", status: "passed" }),
+        expect.objectContaining({ id: "screenshot", status: "unsupported" }),
+        expect.objectContaining({ id: "silent-recording", status: "unsupported" }),
+      ])
+    );
+    expect(options.invoke.mock.calls.some(([label]) => label === "visual screenshot")).toBe(false);
+    expect(options.invoke.mock.calls.some(([label]) => label === "ui close")).toBe(true);
   });
 
   it("never closes a reused surface", async () => {

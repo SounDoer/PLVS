@@ -328,8 +328,39 @@ async function readMacProcessTree(appPid) {
 export async function readProcessTree(appPid, platform = process.platform) {
   if (!Number.isInteger(appPid) || appPid <= 0) throw new Error("appPid must be a process id");
   if (platform === "darwin") return readMacProcessTree(appPid);
+  if (platform === "linux") return readLinuxProcessTree(appPid);
   if (platform === "win32") return readWindowsProcessTree(appPid);
   throw new Error(`desktop process observation is unsupported on ${platform}`);
+}
+
+async function readLinuxProcessTree(appPid) {
+  const processList = spawnSync("ps", ["-axo", "pid=,ppid=,rss=,time=,command="], {
+    encoding: "utf8",
+  });
+  if (processList.status !== 0) {
+    throw new Error(processList.stderr?.trim() || "ps failed");
+  }
+  const rows = parseMacProcessRows(processList.stdout);
+  const descendants = new Set([appPid]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const row of rows) {
+      if (!descendants.has(row.parentPid) || descendants.has(row.pid)) continue;
+      descendants.add(row.pid);
+      changed = true;
+    }
+  }
+  return rows
+    .filter((row) => descendants.has(row.pid))
+    .map((row) => ({
+      pid: row.pid,
+      parentPid: row.parentPid,
+      kind: row.pid === appPid ? "host" : row.commandLine.includes("WebKit") ? "renderer" : "child",
+      workingSetMb: row.workingSetMb,
+      privateMb: null,
+      cpuMs: row.cpuMs,
+    }));
 }
 
 export function summarizeDesktopSoak(samples) {

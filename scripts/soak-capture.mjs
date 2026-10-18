@@ -17,6 +17,7 @@ import {
   RigError,
   SOAK_WARMUP_SECONDS,
   SIGNAL,
+  ensureLinuxDecoders,
   assertSoakCaptureCompleted,
   harnessArgs,
   judgeSoak,
@@ -54,6 +55,7 @@ const wav = join(tmpdir(), `plvs-soak-signal-${process.pid}.wav`);
 const outPath = join(process.cwd(), "artifacts", "soak", `soak-${Date.now()}.jsonl`);
 const evidencePath = process.argv.includes("--evidence") ? `${outPath}.evidence` : null;
 let player = null;
+let route = null;
 
 function rssMb(pid) {
   const command =
@@ -82,8 +84,9 @@ function rssMb(pid) {
 }
 
 try {
+  if (process.platform === "linux") ensureLinuxDecoders();
   const harness = locateHarness();
-  const route = resolveCaptureRoute(harness);
+  route = resolveCaptureRoute(harness);
   // VLC's file-loop restart inserts silence into the cable. Its abrupt edges create real
   // intersample peaks and make a constant-signal drift test invalid. Keep the entire capture
   // inside one file, including setup/teardown headroom, without changing any verdict limit.
@@ -232,6 +235,14 @@ try {
   }
 } finally {
   stopPlayer(player);
+  if (route?.release) {
+    try {
+      route.release();
+    } catch (error) {
+      console.error(`Warning: ${error.message}`);
+      if ((process.exitCode ?? 0) === 0) process.exitCode = 2;
+    }
+  }
   // Teardown must not rewrite the verdict; see smoke-capture.mjs.
   await rm(wav, { force: true }).catch((err) => {
     console.error(`Warning: could not remove ${wav}: ${err.message}`);

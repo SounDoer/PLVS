@@ -17,6 +17,7 @@ import {
 import { attachToMainWebView, wait } from "./webview-observability.mjs";
 
 export const DEFAULT_EXE = join(ROOT, "src-tauri", "target", "release", "plvs.exe");
+export const LINUX_DEFAULT_EXE = join(ROOT, "src-tauri", "target", "release", "plvs");
 export const MACOS_DEFAULT_EXE = join(
   ROOT,
   "src-tauri",
@@ -32,7 +33,13 @@ export const MACOS_DEFAULT_EXE = join(
 const DEV_APP_ID = "com.soundoer.plvs.dev";
 
 export function defaultDesktopExecutable(platform = process.platform) {
-  return platform === "darwin" ? MACOS_DEFAULT_EXE : DEFAULT_EXE;
+  if (platform === "darwin") return MACOS_DEFAULT_EXE;
+  if (platform === "linux") return LINUX_DEFAULT_EXE;
+  return DEFAULT_EXE;
+}
+
+function usesAgentControlSession(platform = process.platform) {
+  return platform === "darwin" || platform === "linux";
 }
 
 export function conflictingMacDevPids(processList, executable) {
@@ -159,27 +166,62 @@ function safeTemporaryUserDataFolder(path) {
   );
 }
 
+function assertLinuxPerformanceIsolation(executable) {
+  const lock = spawnSync(
+    "gdbus",
+    [
+      "call",
+      "--session",
+      "--dest",
+      "org.gnome.ScreenSaver",
+      "--object-path",
+      "/org/gnome/ScreenSaver",
+      "--method",
+      "org.gnome.ScreenSaver.GetActive",
+    ],
+    { encoding: "utf8" }
+  );
+  if (lock.status === 0 && /\(true,\)/.test(lock.stdout ?? "")) {
+    throw new RigError("the Linux session is locked; unlock it before desktop performance acceptance");
+  }
+  const list = spawnSync("ps", ["-axo", "pid=,command="], { encoding: "utf8" });
+  if (list.status !== 0) throw new Error(list.stderr?.trim() || "could not inspect Linux processes");
+  const exact = resolve(executable);
+  const conflicts = String(list.stdout)
+    .split(/\r?\n/)
+    .map((line) => line.trim().match(/^(\d+)\s+(.+)$/))
+    .filter((match) => match && (match[2] === exact || match[2].startsWith(`${exact} `)))
+    .map((match) => Number(match[1]));
+  if (conflicts.length > 0) {
+    throw new Error(
+      `another PLVS Dev process is running (${conflicts.join(", ")}); close it before desktop performance acceptance`
+    );
+  }
+}
+
 export async function launchDesktopPerfRig(options) {
   if (process.platform === "darwin") assertMacPerformanceIsolation(options.exe);
+  if (process.platform === "linux") assertLinuxPerformanceIsolation(options.exe);
   const userDataFolder = await mkdtemp(join(tmpdir(), "plvs-desktop-perf-"));
   const wav = join(userDataFolder, "signal.wav");
   await synthesizeSignal(wav);
-  const route =
-    process.platform === "darwin"
-      ? resolveCaptureRoute(locateHarness())
-      : {
-          platform: "win32",
-          label: "VB-Cable",
-          captureDevice: options.device ?? CAPTURE_DEVICE,
-          playerTarget: resolveRenderEndpointId(),
-        };
+  const route = usesAgentControlSession()
+    ? resolveCaptureRoute(locateHarness())
+    : {
+        platform: "win32",
+        label: "VB-Cable",
+        captureDevice: options.device ?? CAPTURE_DEVICE,
+        playerTarget: resolveRenderEndpointId(),
+      };
   const player = await startPlayer(route.playerTarget, wav);
   const identityRoot = join(userDataFolder, "multi-instance");
   const app = spawn(
     options.exe,
     process.platform === "darwin"
       ? ["-ApplePersistenceIgnoreState", "YES", "--plvs-test-app-data-root", userDataFolder]
-      : [],
+      : process.platform === "linux"
+        ? ["--plvs-test-app-data-root", userDataFolder]
+        : [],
     {
       env: {
         ...process.env,
@@ -197,16 +239,23 @@ export async function launchDesktopPerfRig(options) {
   );
   let session = null;
   try {
-    session =
-      process.platform === "darwin"
-        ? await attachToMacAgentControl(options.exe, identityRoot)
-        : await attachToMainWebView(options.port);
+    session = usesAgentControlSession()
+      ? await attachToMacAgentControl(options.exe, identityRoot, process.platform)
+      : await attachToMainWebView(options.port);
     session.route = route;
     if (process.platform === "darwin") {
       await focusMacSession(session, app.pid);
     }
+    if (process.platform === "linux") {
+      await focusLinuxSession(session);
+    }
     return { app, player, session, userDataFolder, route };
   } catch (error) {
+    try {
+      route.release?.();
+    } catch {
+      // The original launch error remains the rig result.
+    }
     await terminateOwnedApp(app);
     stopPlayer(player);
     if (safeTemporaryUserDataFolder(userDataFolder))
@@ -217,7 +266,7 @@ export async function launchDesktopPerfRig(options) {
 
 export async function stopDesktopPerfRig(rig) {
   try {
-    if (rig.session?.platform === "darwin") {
+    if (usesAgentControlSession(rig.session?.platform)) {
       await stopMacLiveCapture(rig.session).catch(() => {});
     } else {
       await rig.session
@@ -240,10 +289,17 @@ export async function stopDesktopPerfRig(rig) {
     rig.session?.close();
     await terminateOwnedApp(rig.app);
     stopPlayer(rig.player);
+    let releaseError = null;
+    try {
+      rig.route?.release?.();
+    } catch (error) {
+      releaseError = error;
+    }
     if (!safeTemporaryUserDataFolder(rig.userDataFolder)) {
-      throw new Error(`refusing to remove unexpected temporary path: ${rig.userDataFolder}`);
+      throw releaseError ?? new Error(`refusing to remove unexpected temporary path: ${rig.userDataFolder}`);
     }
     await rm(rig.userDataFolder, { recursive: true, force: true });
+    if (releaseError) throw releaseError;
   }
 }
 
@@ -271,7 +327,7 @@ function macControl(executable, identityRoot, args) {
   return parseControlReport(result, `plvs-cli ${args.slice(0, -1).join(" ")}`);
 }
 
-async function attachToMacAgentControl(executable, identityRoot, timeoutMs = 30_000) {
+async function attachToMacAgentControl(executable, identityRoot, platform = "darwin", timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   let lastError = null;
   while (Date.now() < deadline) {
@@ -280,7 +336,7 @@ async function attachToMacAgentControl(executable, identityRoot, timeoutMs = 30_
       if (instances.length === 1) {
         macControl(executable, identityRoot, ["inspect", "--json"]);
         return {
-          platform: "darwin",
+          platform,
           appPid: null,
           control: (args) => macControl(executable, identityRoot, args),
           inspect: () => macControl(executable, identityRoot, ["inspect", "--json"]),
@@ -304,7 +360,7 @@ async function attachToMacAgentControl(executable, identityRoot, timeoutMs = 30_
     await wait(250);
   }
   throw new Error(
-    `no isolated macOS Agent Control instance appeared` +
+    `no isolated ${platform} Agent Control instance appeared` +
       (lastError ? ` (${lastError.message})` : "")
   );
 }
@@ -338,6 +394,17 @@ async function focusMacSession(session, appPid) {
   }
 }
 
+async function focusLinuxSession(session) {
+  const before = session.readPerformanceSnapshot().renderer.animationFrame.count;
+  await wait(500);
+  const after = session.readPerformanceSnapshot().renderer.animationFrame;
+  if (after.count <= before || !Number.isFinite(after.latestAgeMs) || after.latestAgeMs > 250) {
+    throw new RigError(
+      "the Linux window did not produce fresh animation frames; keep it visible and unlocked"
+    );
+  }
+}
+
 async function clickByLabel(session, label) {
   const found = await waitForValue(
     () =>
@@ -356,7 +423,7 @@ async function clickByLabel(session, label) {
 
 export async function configureScenario(session, scenario) {
   if (scenario === "default") return;
-  if (session.platform === "darwin") {
+  if (usesAgentControlSession(session.platform)) {
     const inspection = session.inspect();
     const panels = inspection.workspace?.panels ?? [];
     const layout = {
@@ -391,7 +458,7 @@ export async function configureScenario(session, scenario) {
 }
 
 export async function startLiveCapture(session, device) {
-  if (session.platform === "darwin") return startMacLiveCapture(session, device);
+  if (usesAgentControlSession(session.platform)) return startMacLiveCapture(session, device);
   const appLoaded = await waitUntil(
     () =>
       session.evaluate(

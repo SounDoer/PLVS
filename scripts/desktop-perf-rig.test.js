@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  LINUX_DEFAULT_EXE,
   MACOS_DEFAULT_EXE,
   conflictingMacDevPids,
   defaultDesktopExecutable,
@@ -11,6 +12,7 @@ import {
 describe("parseRigArgs", () => {
   it("selects the native optimized executable", () => {
     expect(defaultDesktopExecutable("darwin")).toBe(MACOS_DEFAULT_EXE);
+    expect(defaultDesktopExecutable("linux")).toBe(LINUX_DEFAULT_EXE);
     expect(defaultDesktopExecutable("win32")).toMatch(/plvs\.exe$/);
   });
 

@@ -248,34 +248,54 @@ export async function runAgentControlSmoke({
     pass("settings-navigation");
 
     begin("screenshot");
-    const screenshotPath = join(outDir, "main.png");
-    const screenshot = run("visual screenshot", [
-      "visual",
-      "screenshot",
-      "--target",
-      "main",
-      "--expected-revision",
-      String(shown.result.revision),
-      "--expected-ui-generation",
-      String(shown.result.uiGeneration),
-      "--out",
-      screenshotPath,
-      "--json",
-    ]);
-    const screenshotCheck = verifyArtifactBuffer(
-      "screenshot",
-      await readFile(screenshotPath),
-      screenshot.result.artifact
-    );
-    evidenceArtifacts.push({
-      id: "main-screenshot",
-      kind: "image/png",
-      file: screenshotPath,
-      ...screenshotCheck,
-    });
-    pass("screenshot", [
-      `Captured ${screenshotCheck.bytes} bytes with SHA-256 ${screenshotCheck.sha256}.`,
-    ]);
+    const described = run("visual describe", ["visual", "describe", "--json"]);
+    const screenshotAvailable = described.result?.screenshot?.available === true;
+    const recordingAvailable = described.result?.recording?.available === true;
+    let navigationRevision = shown.result.revision;
+    let navigationGeneration = shown.result.uiGeneration;
+    let screenshotPath = null;
+    let screenshotCheck = null;
+    let screenshotMetadata = null;
+    if (!screenshotAvailable) {
+      completedScenarios.push({
+        id: "screenshot",
+        status: "unsupported",
+        observations: ["This platform reports visual screenshots as unavailable."],
+      });
+      currentScenario = null;
+    } else {
+      screenshotPath = join(outDir, "main.png");
+      const screenshot = run("visual screenshot", [
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--expected-revision",
+        String(navigationRevision),
+        "--expected-ui-generation",
+        String(navigationGeneration),
+        "--out",
+        screenshotPath,
+        "--json",
+      ]);
+      screenshotCheck = verifyArtifactBuffer(
+        "screenshot",
+        await readFile(screenshotPath),
+        screenshot.result.artifact
+      );
+      screenshotMetadata = screenshot.result.artifact;
+      navigationRevision = screenshot.result.revision;
+      navigationGeneration = screenshot.result.uiGeneration;
+      evidenceArtifacts.push({
+        id: "main-screenshot",
+        kind: "image/png",
+        file: screenshotPath,
+        ...screenshotCheck,
+      });
+      pass("screenshot", [
+        `Captured ${screenshotCheck.bytes} bytes with SHA-256 ${screenshotCheck.sha256}.`,
+      ]);
+    }
 
     begin("settings-cleanup");
     run("ui close", [
@@ -283,9 +303,9 @@ export async function runAgentControlSmoke({
       "close",
       activeUiSurface.surfaceId,
       "--expected-revision",
-      String(screenshot.result.revision),
+      String(navigationRevision),
       "--expected-ui-generation",
-      String(screenshot.result.uiGeneration),
+      String(navigationGeneration),
       "--json",
     ]);
     const finalUi = run("ui inspect final", ["ui", "inspect", "--json"]);
@@ -296,6 +316,17 @@ export async function runAgentControlSmoke({
     pass("settings-cleanup");
 
     begin("silent-recording");
+    let recordingPath = null;
+    let recordingCheck = null;
+    let recording = null;
+    if (!recordingAvailable) {
+      completedScenarios.push({
+        id: "silent-recording",
+        status: "unsupported",
+        observations: ["This platform reports visual recording as unavailable."],
+      });
+      currentScenario = null;
+    } else {
     const started = run("visual recording start", [
       "visual",
       "recording",
@@ -315,7 +346,7 @@ export async function runAgentControlSmoke({
       throw new Error("visual recording start returned no recording ID.");
     }
 
-    const recordingPath = join(outDir, "main-3s.mp4");
+    recordingPath = join(outDir, "main-3s.mp4");
     const completed = run("visual recording wait", [
       "visual",
       "recording",
@@ -335,8 +366,8 @@ export async function runAgentControlSmoke({
         `recording wait ended with outcome ${completed.result.outcome ?? "unknown"}.`
       );
     }
-    const recording = completed.result.recording;
-    const recordingCheck = verifyArtifactBuffer(
+    recording = completed.result.recording;
+    recordingCheck = verifyArtifactBuffer(
       "recording",
       await readFile(recordingPath),
       recording?.artifact
@@ -351,21 +382,30 @@ export async function runAgentControlSmoke({
     pass("silent-recording", [
       `Captured ${recordingCheck.bytes} bytes with SHA-256 ${recordingCheck.sha256}.`,
     ]);
+    }
 
     legacyReport = {
-      ok: true,
+      ok: screenshotAvailable && recordingAvailable,
       createdAt: new Date().toISOString(),
       platform: process.platform,
       revision,
       instanceId: selectedInstance,
       runtime: capabilities.result.runtime,
       artifacts: {
-        screenshot: {
-          path: screenshotPath,
-          ...screenshotCheck,
-          metadata: screenshot.result.artifact,
-        },
-        recording: { path: recordingPath, ...recordingCheck, metadata: recording.artifact },
+        ...(screenshotCheck
+          ? {
+              screenshot: {
+                path: screenshotPath,
+                ...screenshotCheck,
+                metadata: screenshotMetadata,
+              },
+            }
+          : {}),
+        ...(recordingAvailable
+          ? {
+              recording: { path: recordingPath, ...recordingCheck, metadata: recording.artifact },
+            }
+          : {}),
       },
     };
   } catch (error) {
@@ -459,17 +499,25 @@ async function main() {
   const sourceSha = resolveEvidenceSourceSha(root);
   scopeDevCliToWorktree();
   const { executable } = buildPlvsCli({ identity: "dev" });
-  const { report, reportPath, evidencePath } = await runAgentControlSmoke({
+  const { report, reportPath, evidence, evidencePath } = await runAgentControlSmoke({
     executable,
     outDir,
     instanceId,
     sourceSha,
   });
+  console.log(`Report    : ${reportPath}`);
+  console.log(`Evidence  : ${evidencePath}`);
+  if (evidence.summary !== "complete") {
+    for (const scenario of evidence.scenarios) {
+      if (scenario.status !== "passed") console.log(`${scenario.id}: ${scenario.status}`);
+    }
+    console.error(`Agent Control smoke is ${evidence.summary}; unsupported scenarios are not passes.`);
+    process.exitCode = evidence.summary === "failed" ? 1 : 2;
+    return;
+  }
   console.log(`OK Agent Control smoke passed on ${report.platform}.`);
   console.log(`Screenshot: ${report.artifacts.screenshot.path}`);
   console.log(`Recording : ${report.artifacts.recording.path}`);
-  console.log(`Report    : ${reportPath}`);
-  console.log(`Evidence  : ${evidencePath}`);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
