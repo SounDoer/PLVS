@@ -315,13 +315,15 @@ fn run_recording(
   registry.mark_recording(&session.recording_id);
   let started = Instant::now();
   let audio_target_frames = Arc::new(AtomicU64::new(0));
+  let video_finished = Arc::new(AtomicBool::new(false));
   let audio_worker = match (audio_receiver, audio_input) {
     (Some(receiver), Some(input)) => {
       let worker_recording_id = session.recording_id.clone();
-      let worker_stop = Arc::clone(&session.stop_requested);
       let worker_target = Arc::clone(&audio_target_frames);
+      let worker_video_finished = Arc::clone(&video_finished);
       let worker_reason = Arc::clone(&session.audio_silence_reason);
       let worker_registry = registry.clone();
+      let worker_started = started;
       Some(
         std::thread::Builder::new()
           .name("visual-recording-linux-audio".into())
@@ -331,8 +333,9 @@ fn run_recording(
               audio_origin_ns,
               receiver,
               input,
-              worker_stop,
+              worker_started,
               worker_target,
+              worker_video_finished,
               worker_reason,
               worker_registry,
             )
@@ -426,6 +429,7 @@ fn run_recording(
 
   drop(stdin);
   session.stop_requested.store(true, Ordering::Release);
+  video_finished.store(true, Ordering::Release);
   if let Some(worker) = audio_worker {
     match worker {
       Ok(worker) => match worker.join() {
@@ -492,17 +496,28 @@ fn run_audio_worker(
   audio_origin_ns: u64,
   receiver: MeasuredPcmReceiver,
   mut output: File,
-  stop_requested: Arc<AtomicBool>,
+  started: Instant,
   audio_target_frames: Arc<AtomicU64>,
+  video_finished: Arc<AtomicBool>,
   audio_silence_reason: Arc<Mutex<SilenceReason>>,
   registry: RecordingRegistry,
 ) -> Result<(), String> {
   let mut timeline = AudioTimeline::new(audio_origin_ns);
   let mut deferred = None;
   loop {
-    let target = audio_target_frames.load(Ordering::Acquire);
-    let stopping = stop_requested.load(Ordering::Acquire);
-    let boundary = if stopping {
+    let finalizing = video_finished.load(Ordering::Acquire);
+    let video_target = audio_target_frames.load(Ordering::Acquire);
+    let target = if finalizing {
+      video_target
+    } else {
+      let clock_target = started
+        .elapsed()
+        .as_nanos()
+        .saturating_mul(u128::from(OUTPUT_SAMPLE_RATE))
+        / 1_000_000_000;
+      video_target.max(clock_target.min(u128::from(u64::MAX)) as u64)
+    };
+    let boundary = if finalizing {
       target
     } else {
       target.saturating_sub(AUDIO_SETTLEMENT_FRAMES)
@@ -531,7 +546,7 @@ fn run_audio_worker(
       timeline.silent_duration_ms(),
       timeline.interruptions().to_vec(),
     );
-    if stopping {
+    if finalizing {
       if let Some(frame) = deferred.take() {
         receiver.recycle(frame);
       }
