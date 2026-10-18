@@ -499,9 +499,26 @@ export async function startLiveCapture(session, device) {
   return selection.selected;
 }
 
+export function matchCaptureDeviceId(devices, selector) {
+  if (selector === "default" || /^(?:lb|cap)-[0-9a-f]{32}$/.test(selector)) return selector;
+  const rows = Array.isArray(devices) ? devices : [];
+  const matches = rows.filter((device) => String(device?.label ?? "").includes(selector));
+  if (matches.length !== 1) {
+    const available = rows.map((device) => device?.label).filter(Boolean);
+    throw new Error(
+      `capture device selector ${selector} matched ${matches.length} devices` +
+        (available.length > 0 ? `: ${available.join(", ")}` : "")
+    );
+  }
+  return matches[0].id;
+}
+
 async function startMacLiveCapture(session, requestedDevice) {
   const before = session.inspect();
-  const device = requestedDevice ?? session.route.captureDevice;
+  const selector = requestedDevice ?? session.route.captureDevice;
+  const device = /^(?:default|lb-[0-9a-f]{32}|cap-[0-9a-f]{32})$/.test(selector)
+    ? selector
+    : matchCaptureDeviceId(session.control(["device", "list", "--json"]).devices, selector);
   session.captureDeviceRestoreId = before.device.selection.requestedId;
   let revision = before.revision;
   if (before.device.selection.requestedId !== device) {

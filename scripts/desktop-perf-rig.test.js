@@ -6,6 +6,7 @@ import {
   conflictingMacDevPids,
   defaultDesktopExecutable,
   macConsoleIsLocked,
+  matchCaptureDeviceId,
   parseRigArgs,
 } from "./desktop-perf-rig.mjs";
 
@@ -32,6 +33,21 @@ describe("parseRigArgs", () => {
   it("recognizes the public macOS console-lock state", () => {
     expect(macConsoleIsLocked('"IOConsoleLocked" = Yes')).toBe(true);
     expect(macConsoleIsLocked('"IOConsoleLocked" = No')).toBe(false);
+  });
+
+  it("resolves a Linux monitor label to the listed device id", () => {
+    const devices = [
+      { id: "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", label: "Monitor of Built-in Audio Analog Stereo" },
+      { id: "lb-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", label: "Monitor of plvs_rig_test" },
+      { id: "cap-cccccccccccccccccccccccccccccccc", label: "Built-in Audio Analog Stereo" },
+    ];
+    expect(matchCaptureDeviceId(devices, "plvs_rig_test")).toBe(
+      "lb-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    );
+    expect(matchCaptureDeviceId(devices, "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).toBe(
+      "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    );
+    expect(() => matchCaptureDeviceId(devices, "missing")).toThrow(/matched 0 devices/);
   });
 
   it("parses the shared desktop performance options", () => {
