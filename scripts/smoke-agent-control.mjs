@@ -205,7 +205,17 @@ export async function runAgentControlSmoke({
     capabilities = run("capabilities", ["capabilities", "--json"]);
     const methods = capabilities.result.methods;
     if (!Array.isArray(methods)) throw new Error("capabilities returned no method list.");
-    const missing = REQUIRED_METHODS.filter((method) => !methods.includes(method));
+    const visualFeatures = capabilities.result.features?.visual;
+    const missing = REQUIRED_METHODS.filter((method) => {
+      if (method === "visual.screenshot" && visualFeatures?.screenshot === false) return false;
+      if (
+        (method === "visual.recording.start" || method === "visual.recording.wait") &&
+        visualFeatures?.recording === false
+      ) {
+        return false;
+      }
+      return !methods.includes(method);
+    });
     if (missing.length > 0) {
       throw new Error(`This desktop does not advertise required methods: ${missing.join(", ")}.`);
     }
@@ -218,7 +228,9 @@ export async function runAgentControlSmoke({
       throw new Error("inspect returned an invalid global revision.");
     }
     const uiInspected = run("ui inspect", ["ui", "inspect", "--json"]);
-    assertWalkthroughStart({ scenarios: [] }, capabilities.result, uiInspected.result);
+    assertWalkthroughStart({ scenarios: [] }, capabilities.result, uiInspected.result, {
+      requireVisualScreenshot: visualFeatures?.screenshot !== false,
+    });
     if (uiInspected.result.window?.form !== "normal" || uiInspected.result.window?.visible !== true)
       throw new Error("Smoke requires a visible normal window; restore it before running.");
     pass("inspect-and-safe-start");

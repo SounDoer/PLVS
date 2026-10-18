@@ -234,10 +234,16 @@ export function requiredWalkthroughMethods(manifest) {
   return [...methods];
 }
 
-export function assertWalkthroughStart(manifest, capabilities, ui) {
-  const missing = requiredWalkthroughMethods(manifest).filter(
-    (method) => !capabilities.methods?.includes(method)
-  );
+export function assertWalkthroughStart(
+  manifest,
+  capabilities,
+  ui,
+  { requireVisualScreenshot = true } = {}
+) {
+  const missing = requiredWalkthroughMethods(manifest).filter((method) => {
+    if (!requireVisualScreenshot && method === "visual.screenshot") return false;
+    return !capabilities.methods?.includes(method);
+  });
   if (missing.length > 0) throw new Error(`Missing Agent Control methods: ${missing.join(", ")}.`);
   if (ui.activeBlockingEditors?.length > 0)
     throw new Error(`A blocking editor is already open: ${ui.activeBlockingEditors.join(", ")}.`);
