@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-19
+
+### Added
+
+- **Linux**: a stable `.deb` package for Ubuntu 24.04 x86_64, installed with APT. It captures
+  system output and physical inputs through PulseAudio or PipeWire, bundles its own FFmpeg/FFprobe
+  for File Mode, and includes `plvs-cli` with Agent Control, screenshots and recording. Dock and
+  per-application capture are not available on Linux. PLVS shows when a new version is out;
+  install it by downloading the new package from GitHub Releases.
+- Updates can be downloaded in the background and installed on a later launch. A new installation
+  asks once whether to check and download automatically; checking starts on, downloading off, and
+  nothing is requested before you choose. Existing installations keep checking on and downloading
+  off. A downloaded update is offered at the next fresh start with **Update and Restart** or
+  **Skip This Time**, and is never installed without confirmation.
+
+### Changed
+
+- Update notices, release notes and installation progress share one details view in the workspace
+  and in Dock. If an installation fails or is interrupted, the previous version opens normally and
+  the details explain what happened.
+- Settings groups the crash report preference with the update preferences.
+- The Dock strip's minimum height follows **Interface Size** (68 px at the default size), and Stats
+  always uses single-line rows with room for the longest label. The control column has three
+  matching buttons: transport, toolbar, and return to the window. An update is marked by a dot on
+  the toolbar button and named in the toolbar.
+
+### Fixed
+
+- Stats Correlation and Side/Mid read channels 1 and 2 when no Vectorscope is open, instead of
+  showing 0.00 for the whole session; mono sources show no value. Agent Control reports the same
+  values.
+- Dock keeps three Stats rows visible when its panel row scrolls horizontally.
+
 ## [0.21.0] - 2026-10-16
 
 ### Added
