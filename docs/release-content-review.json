@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "version": "0.22.0",
+  "baselineTag": "v0.21.0",
+  "baselineRevision": "72f2395dd154c8c6ff508757cf9804ce838818c1",
+  "candidateRevision": "f9a1f167daa38728ea2c5c61b55fc1fe023d1df4",
+  "contentSha256": "a8d5ad061873e965817902a36929ee8b629ca22145a2cece39ae4ba172c0ba9e",
+  "reviews": {
+    "userGuide": {
+      "status": "updated",
+      "rationale": "The range ships the first stable Linux package and Linux update notices. Chapters that described Linux as an experimental Preview-only build, or said a stable Linux package was unavailable, now describe the stable Ubuntu 24.04 deb, its private FFmpeg/FFprobe, manual APT updates, the unavailable Dock and per-application capture, and keep Preview as a subsection. A stale claim that Linux lacks screenshots and recording was corrected. Updater, Dock and Stats behaviour in the range was already described by the commits that introduced it.",
+      "evidence": [
+        "docs/user/getting-started.md: package table, new Linux section and Preview subsection, Linux manual-update sentence (dc2211bf, 533946b0)",
+        "docs/user/faq.md, signal-source.md, command-line.md, cli.md: removed experimental/unavailable Linux wording and fixed #linux anchors (dc2211bf)",
+        "docs/user/workspace.md: Dock unavailable on Linux already stated; Dock control column and Interface Size strip height checked against 55e7661f, ff3ca57d and cb9b419e",
+        "docs/user/getting-started.md update section checked against src/components/UpdatePreferencesControls.jsx and src-tauri/src/update_runtime.rs",
+        "grep for 'experimental', 'stable Linux' and 'Linux release' across docs/user returns no stale claims"
+      ]
+    },
+    "readme": {
+      "status": "updated",
+      "rationale": "README named only Windows and macOS. It now lists Linux in the introduction and download table and notes that Dock and single-application capture are unavailable there. Other highlights still hold for 0.22.0.",
+      "evidence": [
+        "README.md: introduction, Download table row for PLVS_<version>_amd64.deb, Linux limitation sentence (dc2211bf)",
+        "README.md highlights compared with CHANGELOG.md [0.22.0]; no highlight is contradicted"
+      ]
+    },
+    "website": {
+      "status": "updated",
+      "rationale": "The homepage download section and meta description covered Windows and macOS only. It now adds a Linux card and a Linux-first hero button for Linux visitors, resolved from the shared release asset name. GitHub Release installation notes gained a Linux section. Privacy review: no policy change. The range adds no recipient, payload or retention beyond the update checks and optional downloads the 2026-10-16 policy revision already describes; Linux builds make the same latest.json request and never download packages automatically. Effective date retained at 2026-10-16 by maintainer decision on 2026-10-19, because 0.22.0 is the first desktop release shipping that policy revision's update features.",
+      "evidence": [
+        "website/index.html: meta description, three-card platform grid, Linux hero action (dc2211bf)",
+        "scripts/websiteReleaseLinks.test.js: Linux card resolves the deb and falls back to Releases",
+        "scripts/changelog-release-body.mjs: Linux installation section in Chinese and English",
+        "npm run website:check passed on dc2211bf",
+        "Privacy: website/privacy/index.html text reviewed against src-tauri/src/update_runtime.rs, src-tauri/src/update_worker.rs, src/components/UpdatePreferencesControls.jsx and .github/workflows/release.yml (linux-x86_64-deb descriptor); docs/privacy-review.json unchanged, node scripts/privacy-review.mjs check passes via npm test"
+      ]
+    },
+    "screenshots": {
+      "status": "unchanged",
+      "rationale": "Known stale and deliberately deferred by the maintainer on 2026-10-19. website/assets/landing-dock.webp and landing-dock-custom.webp show the 0.21.0 Dock: two-line Stats cells and a single toolbar chevron, where 0.22.0 uses single-line Stats and three control buttons. They could not be retaken in this session because the capture recipe needs a 2560 px wide display at 125% scaling, and the available RDP session is 2940 px at 200%. Retake them after release with the artifacts/marketing Dock pair scripts and publish through an independent website deployment. landing-hero.webp shows the workspace, which has no visible change in this range.",
+      "evidence": [
+        "website/assets/landing-dock.webp and landing-dock-custom.webp inspected: outdated Stats layout and control column",
+        "website/assets/raw/landing-dock.json: captured 2026-10-16 on PLVS 0.20.0, 2560x225, Dock height 180",
+        "website/assets/landing-hero.webp: workspace layout has no visible change in v0.21.0..f9a1f167",
+        "Current session display: 2940x1846 physical at 192 DPI, so the recipe's 2048-logical-pixel Dock width is unavailable"
+      ]
+    }
+  }
+}
