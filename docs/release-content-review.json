@@ -1,44 +1,44 @@
 {
   "schemaVersion": 1,
-  "version": "0.22.1",
-  "baselineTag": "v0.22.0",
-  "baselineRevision": "9ea50057bbff16ab96db94841d8a18957944c4c1",
-  "candidateRevision": "11d18336865fec1f45d52fed409df08dddcb95d2",
-  "contentSha256": "072ce9c195d34c74509dcd203e2856752f1b520d6f499d8a0b8a8105b6d25480",
+  "version": "0.22.2",
+  "baselineTag": "v0.22.1",
+  "baselineRevision": "220e8e6a2832e8031533f5a73124b9176b8804b4",
+  "candidateRevision": "10d9fce262b74d9271d97ad56b42f1e9d2f58976",
+  "contentSha256": "23765b04db5d6bdcb6c34e681e9cfb2ef3b4631ed1779066bfcfde24e456711f",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The only user-visible behaviour change is Live Dialogue Detection moving off the meter thread: readouts may trail programme readouts slightly and detection stops with an explicit error rather than skipping audio when it cannot keep up. eeeea0d6 added that paragraph to the Dialogue chapter. The later channel parallelism (2f27d84d, c115ea57) changes only how often that stop happens, not the described behaviour, and the recording-timestamp fix (a1073648) restores already-documented recording behaviour.",
+      "rationale": "The release fixes macOS installation handoff and has an unavoidable migration boundary: 0.22.0 and 0.22.1 cannot execute their detached update helper. The Updates section now tells those users to replace PLVS from the DMG once and states that 0.22.2 and later restore in-app installation.",
       "evidence": [
-        "docs/user/dialogue-gated-loudness.md: new Live paragraph from eeeea0d6, checked against src/lib/dialogueDetectionError.js detectorOverloaded message",
-        "grep for thread, parallel, overload and keep up across docs/user: only the new paragraph, no contradicting claim",
-        "git diff v0.22.0..HEAD -- docs/user: dialogue-gated-loudness.md is the only changed chapter"
+        "docs/user/system-settings.md Updates section compared with CHANGELOG.md [0.22.2]",
+        "src-tauri/src/update_worker.rs macOS helper path copies plvs-update-worker.app with its complete bundle signature",
+        "git diff v0.22.1..10d9fce2 -- docs/user: system-settings.md is the only changed user-guide chapter"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "This patch release adds no feature and removes none. README highlights, including the dialogue-gated readouts and the two on-device VAD engines, still describe what ships.",
+      "rationale": "This patch restores an existing automatic-update promise and adds no feature, panel, platform or workflow. The README highlights remain accurate and do not describe version-specific update recovery.",
       "evidence": [
-        "README.md lines 25 and 79 (dialogue-gated readouts, VAD engines) compared with CHANGELOG.md [0.22.1]",
-        "git diff v0.22.0..HEAD -- README.md is empty"
+        "git diff v0.22.1..10d9fce2 -- README.md is empty",
+        "README.md highlights compared with CHANGELOG.md [0.22.2]: no affected product highlight or screenshot claim"
       ]
     },
     "website": {
-      "status": "updated",
-      "rationale": "The homepage hero now offers the visitor's own platform, Linux included, with the others as secondary buttons (b4e13d6e); links still resolve from the shared release asset names. Privacy review: no change in data collection, payloads, recipients, storage or retention. The range changes capture timing, a dialogue worker thread and a direct ort dependency with identical resolved features and no network access; the homepage change adds only GitHub Release links already used. docs/privacy-review.json and the policy effective date are unchanged.",
+      "status": "unchanged",
+      "rationale": "The homepage promises and download links remain accurate; the updated user guide is rendered into the Docs page by the existing website build. Privacy review: the complete range changes only local update-helper copying, release tooling and version metadata. It adds no collection, consent, payload, recipient/provider, storage, retention, deletion, network request or third-party service, so website/privacy/index.html, docs/privacy-review.json and the effective date remain unchanged.",
       "evidence": [
-        "website/index.html diff v0.22.0..HEAD: hero platform buttons and download links only, no new script or third-party host",
-        "scripts/websiteReleaseLinks.test.js passes in npm test on 11d18336",
-        "Privacy: git diff v0.22.0..HEAD -- website/privacy is empty; 45dd4b5f states no binding, model, download or execution provider changed; node scripts/privacy-review.mjs check passes via npm test"
+        "git diff v0.22.1..10d9fce2 -- website/index.html website/privacy/index.html is empty",
+        "git diff v0.22.1..10d9fce2 -- src-tauri/src/update_worker.rs: local bundle copy and path validation only; no network or telemetry code",
+        "docs/user/system-settings.md is an input to the generated Docs page; npm run website:verify is included in the release preflight",
+        "node scripts/privacy-review.mjs check passes through npm test; no policy text or data-handling behavior changed"
       ]
     },
     "screenshots": {
-      "status": "updated",
-      "rationale": "The Dock pair that the 0.22.0 review recorded as stale was retaken on the 0.22.0 Dock with the tracked recipe (dee5d72d) and shows single-line Stats and the three-button control column. The hero shows the workspace, which has no visible change in this range; the patch fixes change no UI.",
+      "status": "unchanged",
+      "rationale": "The patch changes only a headless native installation helper and version metadata. It does not change any visible application or website layout, label, theme, panel, Dock surface or screenshot state, so all tracked screenshots still match the product.",
       "evidence": [
-        "website/assets/raw/landing-dock.json: captured 2026-10-19 on PLVS 0.22.0, commit 9ea50057, recipe dock-default, 2560x225",
-        "website/assets/landing-dock.webp and landing-dock-custom.webp updated in dee5d72d",
-        "website/assets/landing-hero.webp unchanged; no src/ UI component change in v0.22.0..11d18336 beyond the dialogue error string"
+        "git diff v0.22.1..10d9fce2 -- src website/assets README.md contains no UI component, CSS or image change",
+        "CHANGELOG.md [0.22.2] describes only updater handoff behavior and one-time manual migration guidance"
       ]
     }
   }
