@@ -2,11 +2,14 @@
 
 use super::channel_weights::standard_loudness_weights;
 use super::dialogue::DialogueIntegrator;
+use super::dialogue_worker::{
+  DialogueOutcome, DialogueSession, DialogueWorker, DETECTOR_OVERLOADED,
+};
 use super::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use super::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
 use super::meter::{Meter, PcmContext};
 use super::sliding_window::{SlidingWindowMax, M_BLOCKS, S_BLOCKS};
-use super::speech::{MultichannelSpeechDetector, VadEngineKind};
+use super::speech::VadEngineKind;
 
 pub struct LoudnessMeter {
   sample_rate: f64,
@@ -34,16 +37,18 @@ pub struct LoudnessMeter {
   tp_h: Vec<Vec<f64>>,
   tp_wp: Vec<usize>,
   pending_block: Option<LoudnessBlock>,
-  /// Speech detector for dialogue gating; lazily built on first gated push (`None` until then,
-  /// or if model init fails).
-  speech: Option<MultichannelSpeechDetector>,
+  /// Detector and dialogue integrator, run inline; lazily built on the first gated push.
+  dialogue: Option<DialogueSession>,
+  /// Live only: the same work on its own thread (see `dialogue_worker`).
+  dialogue_worker: Option<DialogueWorker>,
+  async_dialogue: bool,
   speech_kind: VadEngineKind,
   /// Stable machine-readable failure for the current dialogue measurement, reported once by the
   /// UI while programme loudness continues normally.
   dialogue_detection_error: Option<&'static str>,
-  /// Dialogue-gated loudness accumulator.
-  dialogue: DialogueIntegrator,
-  /// Whether the most recent 100ms block was classified as speech.
+  /// The latest settled dialogue values; `None` keeps a block's dialogue-off values.
+  dialogue_values: Option<(f64, f64, f64)>,
+  /// Whether the most recently settled 100ms block was classified as speech.
   speech_now: bool,
 }
 
@@ -77,11 +82,22 @@ impl LoudnessMeter {
       tp_h,
       tp_wp: vec![0; 2],
       pending_block: None,
-      speech: None,
+      dialogue: None,
+      dialogue_worker: None,
+      async_dialogue: false,
       speech_kind: VadEngineKind::default(),
       dialogue_detection_error: None,
-      dialogue: DialogueIntegrator::new(),
+      dialogue_values: Some(empty_dialogue_values()),
       speech_now: false,
+    }
+  }
+
+  /// Runs dialogue detection on its own thread, for Live capture. Values are identical to the
+  /// inline path; they arrive a block or two later. File and CLI analysis stay inline.
+  pub fn enable_async_dialogue(&mut self) {
+    if !self.async_dialogue {
+      self.async_dialogue = true;
+      self.reset_dialogue();
     }
   }
 
@@ -93,16 +109,18 @@ impl LoudnessMeter {
   /// Full meter state reset (UI Clear): K-weighting blocks, gating buffers, true-peak accumulators.
   pub fn reset(&mut self) {
     let sr = self.sample_rate;
+    let async_dialogue = self.async_dialogue;
     *self = LoudnessMeter::new(sr);
+    self.async_dialogue = async_dialogue;
   }
 
-  /// Reset only the dialogue accumulators + speech detector buffers (gating toggle), not main loudness.
+  /// Reset only the dialogue accumulators + speech detector (gating toggle), not main loudness.
   pub fn reset_dialogue(&mut self) {
-    self.dialogue.reset();
+    self.dialogue = None;
+    self.dialogue_worker = None;
     self.dialogue_detection_error = None;
-    if let Some(det) = self.speech.as_mut() {
-      det.reset();
-    }
+    self.dialogue_values = Some(empty_dialogue_values());
+    self.speech_now = false;
   }
 
   fn tp_sample(&mut self, x: f64, ch: usize) -> f64 {
@@ -412,26 +430,21 @@ impl LoudnessBlock {
   const DIALOGUE_OFF: (f64, f64, f64) = (f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
 }
 
+/// Dialogue values of a measurement that has not settled a block yet.
+fn empty_dialogue_values() -> (f64, f64, f64) {
+  let empty = DialogueIntegrator::new();
+  (empty.integrated(), empty.lra(), empty.percent())
+}
+
 impl Meter for LoudnessMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
     if ctx.dialogue_gating {
       if ctx.dialogue_vad_engine != self.speech_kind {
-        self.dialogue.reset();
-        self.speech = None;
+        self.reset_dialogue();
         self.speech_kind = ctx.dialogue_vad_engine;
-        self.speech_now = false;
-        self.dialogue_detection_error = None;
       }
-      if self.speech.is_none() && self.dialogue_detection_error.is_none() {
-        self.speech = MultichannelSpeechDetector::new(
-          self.sample_rate,
-          self.speech_kind,
-          ctx.channels,
-          ctx.dialogue_channel_roles,
-        );
-        if self.speech.is_none() {
-          self.dialogue_detection_error = Some("initializationFailed");
-        }
+      if self.dialogue_detection_error.is_none() {
+        self.start_dialogue(ctx);
       }
     }
 
@@ -450,15 +463,17 @@ impl Meter for LoudnessMeter {
       let segment = &ctx.interleaved[sample_start..sample_end];
 
       if ctx.dialogue_gating {
-        if let Some(detector) = self.speech.as_mut() {
-          detector.push_interleaved(segment, ctx.channels);
+        if let Some(worker) = self.dialogue_worker.as_mut() {
+          worker.push_interleaved(segment);
+        } else if let Some(session) = self.dialogue.as_mut() {
+          session.push_interleaved(segment, ctx.channels);
         }
       }
 
       let block =
         self.push_loudness_segment(segment, ctx.channels, ctx.loudness_weights.as_deref());
       if let Some(block) = block {
-        self.settle_dialogue_block(block, ctx.dialogue_gating);
+        self.settle_dialogue_block(block, ctx.dialogue_gating, ctx.channels);
       }
       frame_offset += segment_frames;
     }
@@ -492,35 +507,86 @@ impl LoudnessMeter {
     }
   }
 
-  fn settle_dialogue_block(&mut self, mut block: LoudnessBlock, dialogue_gating: bool) {
-    if dialogue_gating {
-      let ms = self.last_mean_square;
-      if let Some(detector) = self.speech.as_mut() {
-        match detector.take_block_decision() {
-          Some(is_speech) => {
-            self.speech_now = is_speech;
-            self.dialogue.push_block(ms, is_speech);
-            block.dialogue_integrated = self.dialogue.integrated();
-            block.dialogue_lra = self.dialogue.lra();
-            block.dialogue_percent = self.dialogue.percent();
-          }
-          None if detector.has_failed() => {
-            self.speech_now = false;
-            self.dialogue_detection_error = Some("runtimeFailed");
-          }
-          None => {
-            block.dialogue_integrated = self.dialogue.integrated();
-            block.dialogue_lra = self.dialogue.lra();
-            block.dialogue_percent = self.dialogue.percent();
-          }
+  fn start_dialogue(&mut self, ctx: &PcmContext<'_>) {
+    if self.async_dialogue {
+      if self.dialogue_worker.is_none() {
+        self.dialogue_worker = DialogueWorker::spawn(
+          self.sample_rate,
+          self.speech_kind,
+          ctx.channels,
+          ctx.dialogue_channel_roles.map(<[String]>::to_vec),
+        );
+        if self.dialogue_worker.is_none() {
+          self.fail_dialogue("initializationFailed");
         }
-      } else {
-        self.speech_now = false;
       }
-    } else {
+    } else if self.dialogue.is_none() {
+      let session = DialogueSession::new(
+        self.sample_rate,
+        self.speech_kind,
+        ctx.channels,
+        ctx.dialogue_channel_roles,
+      );
+      if let Some(error) = session.error() {
+        self.fail_dialogue(error);
+      }
+      self.dialogue = Some(session);
+    }
+  }
+
+  fn fail_dialogue(&mut self, error: &'static str) {
+    self.dialogue_detection_error = Some(error);
+    self.dialogue_values = None;
+    self.speech_now = false;
+  }
+
+  fn settle_dialogue_block(
+    &mut self,
+    mut block: LoudnessBlock,
+    dialogue_gating: bool,
+    channels: u16,
+  ) {
+    if !dialogue_gating {
       self.speech_now = false;
+      self.pending_block = Some(block);
+      return;
+    }
+    let ms = self.last_mean_square;
+    let mut outcomes = Vec::new();
+    if let Some(worker) = self.dialogue_worker.as_mut() {
+      if worker.submit_block(channels, ms) {
+        outcomes.extend(worker.drain());
+      } else {
+        // Never skip a block: a gap would silently change every dialogue value.
+        self.dialogue_worker = None;
+        self.fail_dialogue(DETECTOR_OVERLOADED);
+      }
+    } else if let Some(session) = self.dialogue.as_mut() {
+      outcomes.push(session.settle_block(ms));
+    }
+    for outcome in outcomes {
+      self.apply_dialogue_outcome(outcome);
+    }
+    if self.dialogue_detection_error.is_none() {
+      if let Some((integrated, lra, percent)) = self.dialogue_values {
+        block.dialogue_integrated = integrated;
+        block.dialogue_lra = lra;
+        block.dialogue_percent = percent;
+      }
     }
     self.pending_block = Some(block);
+  }
+
+  fn apply_dialogue_outcome(&mut self, outcome: DialogueOutcome) {
+    if self.dialogue_detection_error.is_some() {
+      return;
+    }
+    if let Some(error) = outcome.error {
+      self.fail_dialogue(error);
+      return;
+    }
+    self.dialogue_values = outcome.values;
+    self.speech_now = outcome.speech_now;
   }
 
   /// `(max M, max S)` over the windows that ended in the block still being filled, for a stream
@@ -535,6 +601,19 @@ impl LoudnessMeter {
       20.0 * self.tp_block.log10()
     } else {
       f64::NEG_INFINITY
+    }
+  }
+
+  /// Waits for the dialogue worker to settle every block handed to it. Tests only.
+  #[cfg(test)]
+  fn wait_for_dialogue_for_test(&mut self) {
+    let outcomes = self
+      .dialogue_worker
+      .as_mut()
+      .map(DialogueWorker::wait_for_outstanding)
+      .unwrap_or_default();
+    for outcome in outcomes {
+      self.apply_dialogue_outcome(outcome);
     }
   }
 
@@ -873,7 +952,7 @@ mod tests {
 
     meter.push_pcm(&dialogue_ctx(&stereo, 2));
 
-    assert_eq!(meter.dialogue.valid_blocks_for_test(), 3);
+    assert_eq!(meter.dialogue.as_ref().unwrap().valid_blocks_for_test(), 3);
     assert!(meter.take_block().is_some());
   }
 
@@ -897,13 +976,163 @@ mod tests {
 
     let whole_block = whole.take_block().expect("whole-input block");
     let fragmented_block = fragmented.take_block().expect("fragmented-input block");
-    assert_eq!(whole.dialogue.valid_blocks_for_test(), 3);
-    assert_eq!(fragmented.dialogue.valid_blocks_for_test(), 3);
+    assert_eq!(whole.dialogue.as_ref().unwrap().valid_blocks_for_test(), 3);
+    assert_eq!(
+      fragmented
+        .dialogue
+        .as_ref()
+        .unwrap()
+        .valid_blocks_for_test(),
+      3
+    );
     assert_eq!(whole_block.integrated, fragmented_block.integrated);
     assert_eq!(
       whole_block.dialogue_percent,
       fragmented_block.dialogue_percent
     );
+  }
+
+  /// Six channels: a voiced, syllable-modulated harmonic source in the centre (index 2) with
+  /// pauses, quieter noise in the others, and a tone in the LFE.
+  fn voice_like_5_1(seconds: f64) -> Vec<f32> {
+    let sr = 48_000.0;
+    let frames = (sr * seconds) as usize;
+    let mut seed = 0x2468_ace1_u32;
+    let mut noise = move || {
+      seed ^= seed << 13;
+      seed ^= seed >> 17;
+      seed ^= seed << 5;
+      seed as f32 / u32::MAX as f32 - 0.5
+    };
+    let mut phase = 0.0_f64;
+    (0..frames)
+      .flat_map(|i| {
+        let t = i as f64 / sr;
+        let pitch = 120.0 + 25.0 * (2.0 * std::f64::consts::PI * 0.7 * t).sin();
+        phase += 2.0 * std::f64::consts::PI * pitch / sr;
+        let syllables = (0.5 - 0.5 * (2.0 * std::f64::consts::PI * 4.0 * t).cos()).powi(2);
+        let talking = if (t % 2.0) < 1.4 { 1.0 } else { 0.0 };
+        let voice: f64 = (1..=20)
+          .map(|h| {
+            let f = pitch * h as f64;
+            let formants = (-((f - 700.0) / 300.0).powi(2)).exp()
+              + 0.6 * (-((f - 1_200.0) / 400.0).powi(2)).exp()
+              + 0.3 * (-((f - 2_600.0) / 500.0).powi(2)).exp();
+            formants * (phase * h as f64).sin() / h as f64
+          })
+          .sum();
+        let centre = (voice * syllables * talking * 0.5) as f32;
+        let lfe = (0.2 * (2.0 * std::f64::consts::PI * 50.0 * t).sin()) as f32;
+        [
+          noise() * 0.02,
+          noise() * 0.02,
+          centre + noise() * 0.005,
+          lfe,
+          noise() * 0.01,
+          noise() * 0.01,
+        ]
+      })
+      .collect()
+  }
+
+  fn roles_5_1() -> Vec<String> {
+    ["L", "R", "C", "LFE", "Ls", "Rs"]
+      .map(str::to_string)
+      .to_vec()
+  }
+
+  #[test]
+  fn async_dialogue_settles_every_block_exactly_as_inline() {
+    let pcm = voice_like_5_1(6.0);
+    let roles = roles_5_1();
+    let mut inline = LoudnessMeter::new(48_000.0);
+    let mut worker = LoudnessMeter::new(48_000.0);
+    worker.enable_async_dialogue();
+
+    let mut blocks = 0;
+    let mut speech_blocks = 0;
+    // 10 ms packets, as Live capture delivers them; each meter settles a block every tenth.
+    for packet in pcm.chunks(480 * 6) {
+      let mut ctx = dialogue_ctx(packet, 6);
+      ctx.dialogue_channel_roles = Some(&roles);
+      inline.push_pcm(&ctx);
+      worker.push_pcm(&ctx);
+      let Some(expected) = inline.take_block() else {
+        continue;
+      };
+      worker.wait_for_dialogue_for_test();
+      blocks += 1;
+      speech_blocks += usize::from(inline.speech_now());
+      let expected = (
+        expected.dialogue_integrated,
+        expected.dialogue_lra,
+        expected.dialogue_percent,
+      );
+      let actual = worker.dialogue_values.expect("worker values");
+      // Bit-for-bit, NaN-safe: the worker must reproduce the inline arithmetic exactly.
+      assert_eq!(
+        [actual.0.to_bits(), actual.1.to_bits(), actual.2.to_bits()],
+        [
+          expected.0.to_bits(),
+          expected.1.to_bits(),
+          expected.2.to_bits()
+        ],
+        "block {blocks}: worker {actual:?} vs inline {expected:?}"
+      );
+      assert_eq!(worker.speech_now(), inline.speech_now(), "block {blocks}");
+    }
+    assert_eq!(blocks, 60);
+    assert_eq!(worker.dialogue_detection_error(), None);
+    assert!(
+      speech_blocks > 0 && speech_blocks < blocks,
+      "the signal should exercise both decisions, got {speech_blocks} of {blocks} speech blocks"
+    );
+  }
+
+  #[test]
+  fn async_dialogue_stops_explicitly_when_the_worker_falls_behind() {
+    let pcm = voice_like_5_1(0.1);
+    let mut meter = LoudnessMeter::new(48_000.0);
+    meter.enable_async_dialogue();
+    let (worker, release) =
+      DialogueWorker::spawn_paused(48_000.0, VadEngineKind::default(), 6).expect("worker");
+    meter.dialogue_worker = Some(worker);
+
+    // The worker holds every job: thirty blocks wait, the thirty-first finds no room.
+    for _ in 0..crate::dsp::dialogue_worker::DIALOGUE_WORKER_BACKLOG_BLOCKS {
+      meter.push_pcm(&dialogue_ctx(&pcm, 6));
+      let block = meter.take_block().expect("block");
+      assert!(block.momentary.is_finite());
+      assert_eq!(meter.dialogue_detection_error(), None);
+    }
+    meter.push_pcm(&dialogue_ctx(&pcm, 6));
+    let block = meter.take_block().expect("programme loudness continues");
+
+    assert_eq!(meter.dialogue_detection_error(), Some("detectorOverloaded"));
+    assert!(block.momentary.is_finite());
+    assert!(!block.dialogue_integrated.is_finite());
+    assert!(!block.dialogue_percent.is_finite());
+    assert!(!meter.speech_now());
+
+    // The stop holds until a coherent dialogue reset, which starts a fresh worker.
+    drop(release);
+    meter.push_pcm(&dialogue_ctx(&pcm, 6));
+    assert_eq!(meter.dialogue_detection_error(), Some("detectorOverloaded"));
+    meter.reset_dialogue();
+    meter.push_pcm(&dialogue_ctx(&pcm, 6));
+    meter.wait_for_dialogue_for_test();
+    assert_eq!(meter.dialogue_detection_error(), None);
+  }
+
+  #[test]
+  fn async_dialogue_survives_a_full_meter_reset() {
+    let mut meter = LoudnessMeter::new(48_000.0);
+    meter.enable_async_dialogue();
+    meter.reset();
+    let pcm = voice_like_5_1(0.1);
+    meter.push_pcm(&dialogue_ctx(&pcm, 6));
+    assert!(meter.dialogue_worker.is_some());
+    assert!(meter.dialogue.is_none());
   }
 
   fn run_once_100ms(m: &mut LoudnessMeter, interleaved: &[f32], channels: u16) -> LoudnessBlock {

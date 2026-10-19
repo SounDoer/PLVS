@@ -72,7 +72,6 @@ pub trait DialogueVadEngine: Send {
   fn kind(&self) -> VadEngineKind;
   fn frame_size(&self) -> usize;
   fn predict(&mut self, frame: Vec<f32>) -> Result<Option<VadDecision>, ()>;
-  fn reset(&mut self);
 }
 
 struct SileroVadEngine {
@@ -102,10 +101,6 @@ impl DialogueVadEngine for SileroVadEngine {
 
   fn predict(&mut self, frame: Vec<f32>) -> Result<Option<VadDecision>, ()> {
     Ok(Some(VadDecision::speech(self.vad.predict(frame))))
-  }
-
-  fn reset(&mut self) {
-    self.vad.reset();
   }
 }
 
@@ -141,10 +136,6 @@ impl DialogueVadEngine for FireRedVadEngine {
       singing_probability: None,
       music_probability: None,
     }))
-  }
-
-  fn reset(&mut self) {
-    self.vad.reset();
   }
 }
 
@@ -290,15 +281,6 @@ impl SpeechDetector {
   pub fn has_failed(&self) -> bool {
     self.failed
   }
-
-  pub fn reset(&mut self) {
-    self.in_buf.clear();
-    self.chunk_buf.clear();
-    self.aggregator.reset();
-    self.failed = false;
-    self.resampler.reset();
-    self.engine.reset();
-  }
 }
 
 /// Fuse time-aligned per-channel VAD decisions for one loudness block.
@@ -426,14 +408,6 @@ impl MultichannelSpeechDetector {
   pub fn has_failed(&self) -> bool {
     self.invalid_input || self.detectors.iter().any(SpeechDetector::has_failed)
   }
-
-  pub fn reset(&mut self) {
-    for detector in &mut self.detectors {
-      detector.reset();
-    }
-    self.block_energies.fill(0.0);
-    self.invalid_input = false;
-  }
 }
 
 #[cfg(test)]
@@ -540,18 +514,13 @@ mod tests {
   }
 
   #[test]
-  fn partial_block_has_no_evidence_and_reset_discards_the_tail() {
+  fn partial_block_has_no_evidence() {
     let mut detector =
       SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed).expect("detector builds");
     detector.push_mono(&vec![0.0; 4_799]);
     assert_eq!(detector.take_block_decision(), None);
     detector.push_mono(&[0.0]);
     assert_eq!(detector.take_block_decision(), Some(false));
-
-    detector.reset();
-    detector.push_mono(&[0.0]);
-    assert_eq!(detector.take_block_decision(), None);
-    assert_eq!(detector.in_buf.len(), 1);
   }
 
   // Integration smoke test: exercises the full mono->resample->Silero->vote chain on real

@@ -58,7 +58,7 @@
  * @property {number} timestampMs
  * @property {MeterHistoryEntry|null|undefined} loudnessHistTick
  * @property {VisualHistEntry|null|undefined} visualHistTick
- * @property {"initializationFailed"|"runtimeFailed"|null|undefined} dialogueDetectionError
+ * @property {"initializationFailed"|"runtimeFailed"|"detectorOverloaded"|null|undefined} dialogueDetectionError
  */
 
 /**

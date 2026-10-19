@@ -321,9 +321,17 @@ channel has independent detector state, so opposite phase and an LFE-heavy mix c
 dilute the detector input. In a layout with a known centre, centre speech is accepted directly;
 speech on another channel is accepted only when the strongest other channel carries more than
 twice the centre's block energy. A layout without a centre uses the maximum of its independent
-non-LFE decisions. Model inference and fusion run in the meter pipeline after capture delivery,
-never in the realtime capture callback. Reports preserve the policy identity next to the engine
-identity.
+non-LFE decisions. Model inference and fusion never run in the realtime capture callback. Reports
+preserve the policy identity next to the engine identity.
+
+One detector per channel makes detection the most expensive part of the meter pipeline, growing
+with the channel count. In Live capture it therefore runs on its own thread
+(`dsp/dialogue_worker.rs`): the meter thread hands it each complete 100 ms block and folds results
+back in as they finish, so detection cannot delay metering or the measured PCM that recordings take
+from the meter thread. The worker settles the same blocks in the same order with the same code as
+the inline path, so values are identical and only arrive a block or two later. If it falls three
+seconds behind, dialogue stops with `detectorOverloaded` until the next coherent reset rather than
+skipping blocks. File and CLI analysis run detection inline, where there is no deadline.
 
 Dialogue collection is enabled independently of panel visibility. A detector or method change
 uses the normal coherent Live Clear path so Programme Loudness and dialogue-derived metrics keep a

@@ -772,6 +772,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   let mut sent_seq: u64 = 0;
   let mut dropped_frames: u64 = 0;
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
+  pipeline.enable_async_dialogue();
   let mut recv_tick: u32 = 0;
   while let Some(floats) = delivery.pop_until_stopped() {
     recv_tick = recv_tick.wrapping_add(1);

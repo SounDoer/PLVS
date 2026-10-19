@@ -1,5 +1,9 @@
 export function dialogueDetectionErrorMessage(code) {
-  return code === "initializationFailed"
-    ? "Dialogue Detection could not start. Programme loudness is still available."
-    : "Dialogue Detection stopped. Programme loudness is still available.";
+  if (code === "initializationFailed") {
+    return "Dialogue Detection could not start. Programme loudness is still available.";
+  }
+  if (code === "detectorOverloaded") {
+    return "Dialogue Detection could not keep up and stopped. Programme loudness is still available; Clear restarts it.";
+  }
+  return "Dialogue Detection stopped. Programme loudness is still available.";
 }

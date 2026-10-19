@@ -4,6 +4,7 @@ pub(crate) mod channel_layouts;
 pub mod channel_sel;
 pub(crate) mod channel_weights;
 pub mod dialogue;
+mod dialogue_worker;
 #[cfg(test)]
 mod ebu_conformance;
 #[cfg(test)]

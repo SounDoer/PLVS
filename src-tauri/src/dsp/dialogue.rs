@@ -121,10 +121,6 @@ impl DialogueIntegrator {
     self.range.value()
   }
 
-  pub fn reset(&mut self) {
-    *self = Self::new();
-  }
-
   #[cfg(test)]
   pub(crate) fn valid_blocks_for_test(&self) -> usize {
     self.valid_blocks

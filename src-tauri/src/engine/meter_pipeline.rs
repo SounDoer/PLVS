@@ -255,6 +255,12 @@ impl MeterPipeline {
     }
   }
 
+  /// Live capture: dialogue detection runs on its own thread so it cannot delay metering or the
+  /// measured PCM published from the same thread (see `dsp::dialogue_worker`).
+  pub fn enable_async_dialogue(&mut self) {
+    self.loudness.enable_async_dialogue();
+  }
+
   /// Clears peak maxima, loudness/spectrum/vectorscope DSP state, and history accumulators (UI Clear).
   pub fn clear_peak_and_history(&mut self) {
     self.pending_loudness_hist = None;
