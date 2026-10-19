@@ -13,6 +13,11 @@
     "windowDpi": 120,
     "textScalePercent": 100
   },
+  "startup": {
+    "themeId": "plvs-dark",
+    "dismissSurfaces": [{ "kind": "update", "phase": "preferences", "action": "cancel" }],
+    "surfaceTimeoutMs": 15000
+  },
   "scene": {
     "layout": "current-first-run-default",
     "panelControls": "current-first-run-default",

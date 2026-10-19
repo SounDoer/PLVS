@@ -20,7 +20,7 @@ documented in the adjacent provenance JSON; they must not replace or reshape the
 - `scripts/marketing/recipes/homepage-features.json` with `capture-homepage-features.mjs` and
   `export-homepage-features.mjs`: the History, Frequency and multichannel feature originals.
 - `scripts/marketing/workbench.mjs` and `homepage-lib.mjs`: the disposable workbench and the
-  tested safeguards shared by the Dock and feature commands.
+  tested safeguards shared by the hero, Dock and feature commands.
 - `website/assets/raw/landing-hero.png` and `.json`: the published original and its provenance.
 - `website/assets/raw/landing-dock.png`, `landing-dock-custom.png` and their `.json`: the default
   and custom LIVE Dock strips captured from the complete main WebView in Dock form, without native
@@ -49,8 +49,9 @@ Use Windows display scaling **125%** and text scaling **100%**; the default 1280
 window produces a 1600 × 1000 screenshot. The script checks dimensions and the actual window DPI.
 Keep the checkout unchanged during capture, including in another release session.
 
-The capture script starts a separate workbench with a fresh app-data directory. It selects the
-recipe's dark theme and CABLE Output input through Agent Control. It validates default layout,
+The capture script starts a separate workbench with a fresh app-data directory. It cancels the
+first-run Update Preferences dialog, then selects the recipe's dark theme and CABLE Output input
+through Agent Control. It validates default layout,
 panel controls, axes, starter loudness profile and View settings without rewriting them.
 VLC plays the master into CABLE Input. Keep that route free of other playback and leave the
 Windows/VLC output volume at unity, with no audio enhancements. The measured threshold checks

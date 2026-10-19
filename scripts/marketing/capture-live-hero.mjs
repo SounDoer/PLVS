@@ -1,9 +1,8 @@
 // Windows-only, disposable workbench. Never attaches to a user's running instance.
 import process from "node:process";
 import { Buffer } from "node:buffer";
-import { execFile, execFileSync, spawn } from "node:child_process";
-import { promisify } from "node:util";
-import { readFile, mkdir, writeFile, copyFile, readdir, stat } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { readFile, mkdir, writeFile, copyFile } from "node:fs/promises";
 import { resolve, join, dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import sharp from "sharp";
@@ -20,8 +19,8 @@ import {
   assertGeometry,
   candidateIssues,
 } from "./hero-lib.mjs";
+import { openWorkbench } from "./workbench.mjs";
 
-const execute = promisify(execFile);
 const recipe = await loadRecipe(process.argv[2] ?? DEFAULT_RECIPE);
 if (process.platform !== recipe.environment.platform)
   throw new Error("This capture recipe requires Windows.");
@@ -33,13 +32,9 @@ const output = contained(
 );
 await mkdir(dirname(output), { recursive: true });
 await mkdir(output); // Exclusive: never reuse an old app profile or overwrite a capture run.
-const appData = join(output, "app-data");
-const env = { ...process.env, PLVS_TEST_IDENTITY_ROOT: join(appData, "multi-instance") };
-const appPath = join(ROOT, "src-tauri/target/dev-identity/debug/plvs.exe");
-const cli = join(ROOT, "src-tauri/target/dev-identity/debug/plvs-cli.exe");
 const controller = new AbortController();
 for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => controller.abort());
-let app, player, server, instanceId;
+let workbench, player;
 let capturedState = false;
 const report = {
   version: 1,
@@ -52,25 +47,8 @@ const report = {
 async function save() {
   await writeFile(join(output, "capture-report.json"), JSON.stringify(report, null, 2) + "\n");
 }
-async function call(args, targeted = true) {
-  const prefix = targeted && instanceId ? ["--instance", instanceId] : [];
-  const { stdout } = await execute(cli, [...prefix, ...args, "--json"], {
-    cwd: ROOT,
-    env,
-    windowsHide: true,
-    timeout: 25000,
-    maxBuffer: 16 * 1024 * 1024,
-  }).catch((error) => {
-    throw new Error(error.stdout || error.message);
-  });
-  const envelope = JSON.parse(stdout.trim());
-  if (!envelope.ok) throw new Error(JSON.stringify(envelope.error));
-  return envelope.result;
-}
-async function mutate(args) {
-  const state = await call(["inspect"]);
-  return call([...args, "--expected-revision", String(state.revision)]);
-}
+const call = (args) => workbench.call(args);
+const mutate = (args) => workbench.mutate(args);
 async function fingerprint() {
   const files = execFileSync(
     "git",
@@ -102,47 +80,6 @@ async function fingerprint() {
     )
   );
 }
-async function checkNativeBuild() {
-  const built = (await stat(appPath)).mtimeMs;
-  async function visit(dir) {
-    for (const item of await readdir(dir, { withFileTypes: true })) {
-      const path = join(dir, item.name);
-      if (item.isDirectory()) await visit(path);
-      else if (item.name.endsWith(".rs") && (await stat(path)).mtimeMs > built)
-        throw new Error(
-          "Native sources are newer than plvs.exe. Build the current dev app with npm run desktop:dev first."
-        );
-    }
-  }
-  await visit(join(ROOT, "src-tauri/src"));
-  for (const name of [
-    "Cargo.toml",
-    "Cargo.lock",
-    "build.rs",
-    "tauri.conf.json",
-    "tauri.dev.conf.json",
-  ]) {
-    if ((await stat(join(ROOT, "src-tauri", name))).mtimeMs > built)
-      throw new Error(`${name} changed after the native build. Run npm run desktop:dev first.`);
-  }
-  await stat(cli);
-}
-async function environment() {
-  const { stdout } = await execute(
-    "powershell.exe",
-    [
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      join(ROOT, "scripts/marketing/window-environment.ps1"),
-      "-TargetProcessId",
-      String(app.pid),
-    ],
-    { windowsHide: true, timeout: 15000 }
-  );
-  return JSON.parse(stdout.trim());
-}
 async function scene() {
   const state = await call(["inspect"]);
   const ui = await call(["ui", "inspect"]);
@@ -167,113 +104,23 @@ async function screenshot(name, current) {
     path,
   ]);
   const meta = await sharp(path).metadata();
-  const actual = { width: meta.width, height: meta.height, ...(await environment()) };
+  const actual = {
+    width: meta.width,
+    height: meta.height,
+    ...(await workbench.windowEnvironment()),
+  };
   assertGeometry(actual, recipe.environment);
   assertClearUi(await call(["ui", "inspect"]));
   return { result, actual, sha256: sha256(await readFile(path)) };
 }
-async function killOwned(child) {
-  if (!child?.pid || child.exitCode !== null || child.signalCode !== null) return;
-  await execute("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true });
-}
 try {
   console.log(`Hero run: ${output}`);
   verifyAudio(await readFile(contained(ROOT, recipe.audio.path)), recipe);
-  await checkNativeBuild();
   locateVlc();
   const endpoint = resolveRenderEndpointId(recipe.capture.renderEndpointName);
-  report.commit = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: ROOT,
-    encoding: "utf8",
-    windowsHide: true,
-  }).trim();
   report.sourceFingerprint = await fingerprint();
-  report.nativeBinarySha256 = sha256(await readFile(appPath));
-  let existing;
-  try {
-    existing = await fetch("http://localhost:1420/", { signal: AbortSignal.timeout(2000) });
-  } catch {
-    /* Start our own server below. */
-  }
-  if (existing) {
-    throw new Error(
-      "Port 1420 is occupied. Stop its development server before capture; the recipe starts its own server with hot reload disabled."
-    );
-  } else {
-    const { createServer } = await import("vite");
-    server = await createServer({
-      root: ROOT,
-      configFile: join(ROOT, "vite.config.js"),
-      // Match the desktop launcher: plain Vite otherwise selects browser-only adapters.
-      define: { "import.meta.env.TAURI_ENV_PLATFORM": JSON.stringify("windows") },
-      server: { port: 1420, strictPort: true, watch: { ignored: ["**/*"] }, hmr: false },
-      optimizeDeps: { entries: ["index.html"] },
-    });
-    await server.listen();
-    report.frontend = "owned development server";
-  }
-  app = spawn(appPath, ["--plvs-test-app-data-root", appData], {
-    cwd: ROOT,
-    env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(output, "webview-data") },
-    windowsHide: true,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  app.stdout.on("data", (data) => {
-    report.appLog = (report.appLog ?? "") + data.toString();
-  });
-  app.stderr.on("data", (data) => {
-    report.appLog = (report.appLog ?? "") + data.toString();
-  });
-  app.on("error", (error) => {
-    report.launchError = error.message;
-    controller.abort();
-  });
-  const deadline = Date.now() + 45000;
-  while (!instanceId) {
-    controller.signal.throwIfAborted();
-    if (app.exitCode !== null || Date.now() > deadline)
-      throw new Error(
-        `Isolated workbench did not become ready (exit ${app.exitCode}). ${report.appLog ?? ""}`
-      );
-    try {
-      const { instances } = await call(["instances"], false);
-      if (instances.length === 1) {
-        instanceId = instances[0].instanceId;
-        await call(["inspect"]);
-      }
-    } catch {
-      instanceId = undefined;
-    }
-    if (!instanceId) await delay(500, undefined, { signal: controller.signal });
-  }
-  report.instanceId = instanceId;
-  const capabilities = await call(["capabilities"]);
-  const packageVersion = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8")).version;
-  report.appVersion = capabilities.appVersion;
-  if (
-    capabilities.runtime?.identifier !== "com.soundoer.plvs.dev" ||
-    capabilities.appVersion !== packageVersion
-  )
-    throw new Error("Dev app identity/version does not match this checkout.");
-  for (const method of [
-    "ui.inspect",
-    "visual.screenshot",
-    "device.select",
-    "transport.live.start",
-    "transport.live.stop",
-    "measurement.inspect",
-    "measurement.waitUntil",
-    "theme.select",
-  ]) {
-    if (!capabilities.methods.includes(method)) throw new Error(`Missing capability ${method}`);
-  }
-  const doctor = await call(["doctor"], false);
-  if (doctor.report.checks.find((c) => c.id === "device-enumeration")?.status !== "ok")
-    throw new Error("Audio device enumeration failed.");
-  assertClearUi(await call(["ui", "inspect"]));
-  await mutate(["theme", "select", recipe.scene.themeId]);
-  // Initial device discovery and window hydration can advance the revision after inspect.
-  await delay(2000, undefined, { signal: controller.signal });
+  // Launches the fresh workbench, dismisses first-run surfaces and selects the recipe theme.
+  workbench = await openWorkbench({ output, recipe, report, signal: controller.signal });
   report.before = await scene();
   if (
     report.before.state.transport.live.state !== "stopped" ||
@@ -415,17 +262,7 @@ try {
   } catch (error) {
     report.cleanup.playerStopError = error.message;
   }
-  try {
-    await killOwned(app);
-    report.cleanup.workbenchStopped = true;
-  } catch (error) {
-    report.cleanup.workbenchStopError = error.message;
-  }
-  try {
-    await server?.close();
-  } catch (error) {
-    report.cleanup.serverStopError = error.message;
-  }
+  if (workbench) Object.assign(report.cleanup, await workbench.close());
   if (Object.keys(report.cleanup).some((k) => k.endsWith("Error"))) {
     report.status = "failed";
     process.exitCode = 1;

@@ -1,4 +1,4 @@
-// Disposable Windows workbench for the homepage Dock and feature captures: its own Vite server
+// Disposable Windows workbench for the homepage hero, Dock and feature captures: its own Vite server
 // (hot reload off), a fresh app-data root and WebView profile, and Agent Control through the dev
 // CLI. Never attaches to a user's running instance; cleanup stops only processes it started.
 import process from "node:process";
@@ -211,6 +211,7 @@ export async function openWorkbench({ output, recipe, report, signal }) {
     mutate,
     patch,
     screenshot,
+    windowEnvironment,
     dismissStartupSurfaces,
     selectInput,
     close,

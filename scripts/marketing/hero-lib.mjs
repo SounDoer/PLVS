@@ -31,6 +31,17 @@ export function validateRecipe(recipe) {
     throw new Error("Unsupported hero recipe; expected the Windows default LIVE scene.");
   }
   if (!/^[a-f0-9]{64}$/.test(recipe.audio?.sha256)) throw new Error("Audio checksum is required.");
+  const startup = recipe.startup;
+  if (
+    startup?.themeId !== recipe.scene.themeId ||
+    !Array.isArray(startup.dismissSurfaces) ||
+    startup.dismissSurfaces.some((s) => !s.kind || !s.phase || s.action !== "cancel") ||
+    !Number.isInteger(startup.surfaceTimeoutMs) ||
+    startup.surfaceTimeoutMs <= 0
+  )
+    throw new Error(
+      "Startup must select the scene theme and name the first-run surfaces to cancel."
+    );
   const c = recipe.capture;
   if (
     !Array.isArray(c.candidateSeconds) ||
