@@ -116,7 +116,21 @@ impl MeasuredPcmSubscriptions {
     Ok(MeasuredPcmReceiver { inner })
   }
 
+  /// For a caller that publishes as soon as the buffer arrives (the Linux reader thread).
+  #[cfg(any(test, target_os = "linux"))]
   pub(crate) fn publish(&self, samples: &[f32], sample_rate: u32, channels: u16) {
+    self.publish_arrived_at(samples, sample_rate, channels, Instant::now());
+  }
+
+  /// As `publish`, for a buffer that arrived from the device at `arrived_at`: a worker that
+  /// publishes late, behind earlier slow work, must not move the buffer later on the timeline.
+  pub(crate) fn publish_arrived_at(
+    &self,
+    samples: &[f32],
+    sample_rate: u32,
+    channels: u16,
+    arrived_at: Instant,
+  ) {
     let Ok(mut subscribers) = self.subscribers.lock() else {
       return;
     };
@@ -126,10 +140,13 @@ impl MeasuredPcmSubscriptions {
     }
     let frame_count = samples.len() / usize::from(channels.max(1));
     // The device callback cadence jitters even when its PCM is continuous. Anchor the first buffer
-    // to the worker's monotonic clock, then advance by sample count until a real gap or sample-rate
+    // to the time it arrived, then advance by sample count until a real gap or sample-rate
     // transition occurs. Otherwise alternating late/early callbacks become false silence plus
     // trimmed source PCM in a recording.
-    let observed_end_ns = self.timestamp_ns();
+    let observed_end_ns = arrived_at
+      .saturating_duration_since(self.epoch)
+      .as_nanos()
+      .min(u128::from(u64::MAX)) as u64;
     let timestamp_ns = self
       .timestamp_clock
       .lock()
@@ -271,6 +288,23 @@ mod measured_pcm_tests {
     assert_eq!(clock.place(3_600_000, 48, 48_000), 2_000_000);
     assert_eq!(clock.place(104_600_000, 48, 48_000), 103_600_000);
     assert_eq!(clock.place(105_600_000, 44, 44_100), 104_602_268);
+  }
+
+  #[test]
+  fn a_late_publish_keeps_the_buffer_where_it_arrived() {
+    let hub = MeasuredPcmSubscriptions::default();
+    let receiver = hub.subscribe(2).expect("subscriber");
+    let start = std::time::Instant::now();
+    hub.publish_arrived_at(&[0.0; 480], 48_000, 1, start);
+    // The second 10 ms buffer arrived on time but is published 120 ms late, as when the worker
+    // was busy: it must still follow the first one directly.
+    let second_arrival = start + std::time::Duration::from_millis(10);
+    std::thread::sleep(std::time::Duration::from_millis(120));
+    hub.publish_arrived_at(&[0.0; 480], 48_000, 1, second_arrival);
+
+    let first = receiver.try_recv().expect("first");
+    let second = receiver.try_recv().expect("second");
+    assert_eq!(second.timestamp_ns - first.timestamp_ns, 10_000_000);
   }
 
   #[test]

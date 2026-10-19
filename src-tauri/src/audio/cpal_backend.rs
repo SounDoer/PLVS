@@ -503,9 +503,12 @@ impl PcmBufferPool {
   }
 }
 
+/// A delivered buffer and the time the device handed it over.
+type DeliveredPcm = (Vec<f32>, std::time::Instant);
+
 #[derive(Clone)]
 pub(crate) struct PcmDeliveryQueue {
-  buffers: Arc<ArrayQueue<Vec<f32>>>,
+  buffers: Arc<ArrayQueue<DeliveredPcm>>,
   producer_stopped: Arc<AtomicBool>,
   consumer_stopped: Arc<AtomicBool>,
   active_pushes: Arc<AtomicUsize>,
@@ -530,7 +533,7 @@ impl PcmDeliveryQueue {
   }
 
   pub(crate) fn pop(&self) -> Option<Vec<f32>> {
-    self.buffers.pop()
+    self.buffers.pop().map(|(buffer, _)| buffer)
   }
 
   pub(crate) fn stop_producer(&self) {
@@ -538,9 +541,16 @@ impl PcmDeliveryQueue {
   }
 
   pub(crate) fn pop_until_stopped(&self) -> Option<Vec<f32>> {
+    self
+      .pop_until_stopped_with_arrival()
+      .map(|(buffer, _)| buffer)
+  }
+
+  /// As `pop_until_stopped`, with the time the buffer arrived from the device.
+  pub(crate) fn pop_until_stopped_with_arrival(&self) -> Option<DeliveredPcm> {
     loop {
-      if let Some(buffer) = self.pop() {
-        return Some(buffer);
+      if let Some(delivered) = self.buffers.pop() {
+        return Some(delivered);
       }
       if self.producer_stopped.load(Ordering::Acquire) {
         return None;
@@ -562,7 +572,7 @@ impl PcmDeliveryQueue {
 
 #[derive(Clone)]
 pub(crate) struct PcmDeliveryProducer {
-  buffers: Arc<ArrayQueue<Vec<f32>>>,
+  buffers: Arc<ArrayQueue<DeliveredPcm>>,
   consumer_stopped: Arc<AtomicBool>,
   active_pushes: Arc<AtomicUsize>,
 }
@@ -574,7 +584,12 @@ impl PcmDeliveryProducer {
       self.active_pushes.fetch_sub(1, Ordering::Release);
       return Err(buffer);
     }
-    let result = self.buffers.push(buffer);
+    // A monotonic clock read: user-mode on Windows (QPC), macOS and Linux (vDSO), so it neither
+    // allocates nor blocks on a realtime callback thread.
+    let result = self
+      .buffers
+      .push((buffer, std::time::Instant::now()))
+      .map_err(|(buffer, _)| buffer);
     self.active_pushes.fetch_sub(1, Ordering::Release);
     result
   }
@@ -774,7 +789,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
   pipeline.enable_async_dialogue();
   let mut recv_tick: u32 = 0;
-  while let Some(floats) = delivery.pop_until_stopped() {
+  while let Some((floats, arrived_at)) = delivery.pop_until_stopped_with_arrival() {
     recv_tick = recv_tick.wrapping_add(1);
     if recv_tick.is_multiple_of(480) {
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
@@ -804,7 +819,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       pipeline.reset_true_peak_max();
     }
     if publish_measured_pcm {
-      measured_pcm.publish(&floats, sample_rate, channels);
+      measured_pcm.publish_arrived_at(&floats, sample_rate, channels, arrived_at);
     }
     let requests = analysis_requests
       .lock()
@@ -1715,6 +1730,22 @@ mod pcm_buffer_pool_tests {
     let only = pool.checkout().expect("original pooled buffer");
     assert!(pool.checkout().is_none(), "full recycle grew the pool");
     pool.recycle(only);
+  }
+
+  #[test]
+  fn delivered_buffer_keeps_the_time_it_arrived_not_the_time_it_was_taken() {
+    let delivery = PcmDeliveryQueue::new(1);
+    let before = std::time::Instant::now();
+    assert!(delivery.producer().push(vec![0.5]).is_ok());
+    let after = std::time::Instant::now();
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    delivery.stop_producer();
+
+    let (buffer, arrived_at) = delivery
+      .pop_until_stopped_with_arrival()
+      .expect("delivered buffer");
+    assert_eq!(buffer, vec![0.5]);
+    assert!(before <= arrived_at && arrived_at <= after);
   }
 
   #[test]

@@ -141,7 +141,10 @@ no desktop-capture portal. Windows recording uses Windows Graphics Capture and M
 macOS recording uses ScreenCaptureKit and AVAssetWriter, and Linux sends WebKitGTK frames to its
 package-private FFmpeg. All three reuse Rust's measured-source PCM timeline and encode
 H.264/AAC MP4 when audio is requested; explicit silent recordings contain only H.264 video. Linux
-does not advertise system-pointer capture.
+does not advertise system-pointer capture. The timeline places each buffer at the time it arrived
+from the device, stamped when the capture backend queues it, not when the meter thread later
+publishes it; a meter thread delayed by earlier work therefore cannot turn continuous audio into
+recorded silence.
 
 ### Frontend state ownership
 
