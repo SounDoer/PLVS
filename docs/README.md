@@ -22,8 +22,8 @@ alone makes them wrong, so they are updated in the same commit as the change.
 
 Keep this group small. Every file added here is one more thing that can go stale.
 
-[Marketing screenshots](marketing-screenshots.md) documents the maintained audio fixture,
-LIVE capture recipe, visual review and publication workflow.
+[Marketing screenshots](marketing-screenshots.md) documents the maintained audio fixture, the hero,
+Dock and feature-image capture recipes, visual review and publication workflow.
 
 [Video production](promo-video.md) documents the reusable capture, alignment, editing, validation
 and archival workflow, independent of any video's creative direction.

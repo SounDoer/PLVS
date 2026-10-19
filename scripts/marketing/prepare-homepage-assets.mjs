@@ -2,8 +2,12 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { readSharesetsSource } from "../sharesets-catalogue-source.mjs";
+import { FEATURES_RECIPE, loadRecipeFile, validateFeaturesRecipe } from "./homepage-lib.mjs";
 const output = resolve("website/assets/homepage");
-const raw = resolve("website/assets/raw/homepage-20261016");
+// The feature originals live where capture-homepage-features.mjs publishes them.
+const raw = resolve(
+  (await loadRecipeFile(FEATURES_RECIPE, validateFeaturesRecipe)).publication.rawDirectory
+);
 const rulesRaw = resolve("website/assets/raw/homepage-20261014");
 await mkdir(output, { recursive: true });
 const previews = {

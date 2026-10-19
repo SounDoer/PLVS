@@ -143,8 +143,10 @@ After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepar
 to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
 published resource and its latest preview revision from the validated Catalogue; they do not read
 fixed `v1` screenshot paths. This is an explicit preparation step, not part of every website build.
-The script also exports the dated raw feature screenshots named in it. Refresh those through Agent
-Control when their UI changes, retain their capture metadata, and review the resulting homepage.
+The script also exports the dated raw feature screenshots named in
+`scripts/marketing/recipes/homepage-features.json`. Refresh those with
+`scripts/marketing/capture-homepage-features.mjs` when their UI changes (see
+`docs/marketing-screenshots.md`), retain their capture metadata, and review the resulting homepage.
 The shared homepage/README hero uses `scripts/marketing/capture-live-hero.mjs` and
 `scripts/marketing/select-hero.mjs`; its local `--publish` flag updates tracked image files, not the
 deployed website.
