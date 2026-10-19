@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-10-16T04:59:02.523Z",
-  "commit": "f2478f325731c8175e5b678cdda48f5b5b7bee3e",
+  "capturedAt": "2026-10-19T02:31:33.247Z",
+  "commit": "9ea50057bbff16ab96db94841d8a18957944c4c1",
   "sourceAudio": "assets/marketing/audio/discovery-hero.wav",
   "recipe": "dock-default",
-  "sha256": "528c23ab701ba2659848acf45ba6b6940adc67894136128b02db1c69295d13e8",
+  "sha256": "141d003bcd290e0c7758289d065a62443e90f9a9413a88ce913f29a5211d461a",
   "width": 2560,
   "height": 225,
   "state": {
@@ -11,7 +11,7 @@
       "identifier": "com.soundoer.plvs.dev",
       "name": "PLVS Dev",
       "platform": "windows",
-      "version": "0.20.0"
+      "version": "0.22.0"
     },
     "appearance": {
       "mode": "fixed",
@@ -25,7 +25,7 @@
         "transition": null,
         "usingRequestedSelection": true
       },
-      "observedAt": "2026-10-16T04:57:37.926Z",
+      "observedAt": "2026-10-19T02:28:29.608Z",
       "selection": {
         "available": true,
         "mode": "exact",
@@ -44,7 +44,6 @@
       "edge": "top",
       "enabled": true,
       "height": 180,
-      "heightMode": "expanded",
       "monitor": "\\\\.\\DISPLAY3",
       "panels": [
         {
@@ -96,7 +95,7 @@
           "id": "stats",
           "moduleId": "stats",
           "title": "Stats",
-          "width": 440,
+          "width": 300,
           "widthMode": "automatic"
         },
         {
@@ -338,10 +337,10 @@
       "suspended": false
     },
     "loudnessProfile": {
-      "activeId": "8acbbdfe-7e09-437a-ba6c-12987d2d5e56"
+      "activeId": "f8efaf3c-5f4a-4a1e-a1ea-23c94eaf1b47"
     },
     "preset": {
-      "activeId": "preset-1792126657748",
+      "activeId": "preset-1792376909452",
       "dirty": true
     },
     "protocolVersion": 1,
@@ -385,7 +384,7 @@
         "error": null,
         "requestedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
         "resolvedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
-        "startedAt": 1792126668143,
+        "startedAt": 1792376919421,
         "state": "running"
       },
       "snapshot": {
@@ -769,38 +768,38 @@
     "revision": 5,
     "surfaces": [],
     "topSurfaceId": null,
-    "uiGeneration": 0,
+    "uiGeneration": 3,
     "window": {
       "form": "dock",
       "visible": true
     },
     "workbench": {
       "displayName": "PLVS",
-      "instanceId": "073d9ef6-938f-48fd-b729-4754677598cf",
+      "instanceId": "0b06d5de-5498-4779-9041-093e39323c3c",
       "workspaceId": "default"
     }
   },
   "capture": {
     "artifact": {
-      "artifactId": "art-61439c7a1c23d49525477941e61f09b5",
-      "bytes": 262804,
-      "createdAt": "2026-10-16T04:58:55.5460085Z",
-      "expiresAt": "2026-10-17T04:58:55.5460085Z",
+      "artifactId": "art-e15d6582a2fae30650df7955772bdfe7",
+      "bytes": 279874,
+      "createdAt": "2026-10-19T02:29:46.4600118Z",
+      "expiresAt": "2026-10-20T02:29:46.4600118Z",
       "height": 225,
       "kind": "screenshot",
       "mediaType": "image/png",
-      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792126647908\\dock-default.png",
-      "sha256": "524d94b3d3f2095a77110cebabaf52aa291dd385b2eaded14d20e7a091548f8c",
+      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792376896570\\dock-default.png",
+      "sha256": "8f78cec217d6cc96a106ec2b12b98c07aace0c24df95d9bf8d3397648257e3ea",
       "width": 2560
     },
     "measurement": {
       "generation": 1,
-      "sequence": 2544
+      "sequence": 2633
     },
     "revision": 5,
     "target": {
       "kind": "main"
     },
-    "uiGeneration": 0
+    "uiGeneration": 3
   }
 }
