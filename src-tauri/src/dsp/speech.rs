@@ -525,6 +525,12 @@ mod tests {
 
   #[test]
   fn threaded_channel_groups_match_independent_detectors() {
+    for kind in [VadEngineKind::FireRed, VadEngineKind::Silero] {
+      assert_threaded_groups_match_independent_detectors(kind);
+    }
+  }
+
+  fn assert_threaded_groups_match_independent_detectors(kind: VadEngineKind) {
     let roles: Vec<String> = [
       "L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Lw", "Rw", "Ltf", "Rtf", "Ltm", "Rtm", "Ltr",
       "Rtr",
@@ -532,11 +538,10 @@ mod tests {
     .map(str::to_string)
     .to_vec();
     let mut detector =
-      MultichannelSpeechDetector::new(48_000.0, VadEngineKind::FireRed, 16, Some(&roles))
-        .expect("detector builds");
+      MultichannelSpeechDetector::new(48_000.0, kind, 16, Some(&roles)).expect("detector builds");
     assert!(detector.detectors.len() > DETECTORS_PER_THREAD);
     let mut independent: Vec<SpeechDetector> = (0..detector.detectors.len())
-      .map(|_| SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed).unwrap())
+      .map(|_| SpeechDetector::new_with_engine(48_000.0, kind).unwrap())
       .collect();
     let mut seed = 1_u32;
     for _ in 0..5 {

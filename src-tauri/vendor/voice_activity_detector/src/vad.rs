@@ -1,6 +1,6 @@
 use ort::value::Tensor;
 use ort::{session::builder::GraphOptimizationLevel, session::Session};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, Mutex};
 
 use crate::{error::Error, Sample};
 
@@ -18,8 +18,11 @@ pub struct VoiceActivityDetector {
 /// The silero ONNX model as bytes.
 const MODEL: &[u8] = include_bytes!("silero_vad.onnx");
 
-static DEFAULT_SESSION: LazyLock<Arc<Mutex<Session>>> = LazyLock::new(|| {
-  Arc::new(Mutex::new({
+/// Each detector gets its own session unless the caller passes one. PLVS runs one detector per
+/// channel and spreads channels over threads; a shared session behind one lock would put every
+/// channel's inference back in a single queue.
+fn new_session() -> Arc<Mutex<Session>> {
+  Arc::new(Mutex::new(
     Session::builder()
       .unwrap()
       .with_optimization_level(GraphOptimizationLevel::Level3)
@@ -29,9 +32,9 @@ static DEFAULT_SESSION: LazyLock<Arc<Mutex<Session>>> = LazyLock::new(|| {
       .with_inter_threads(1)
       .unwrap()
       .commit_from_memory(MODEL)
-      .unwrap()
-  }))
-});
+      .unwrap(),
+  ))
+}
 
 impl VoiceActivityDetector {
   /// Create a new [VoiceActivityDetectorBuilder].
@@ -145,7 +148,7 @@ impl From<VoiceActivityDetectorConfig> for Result<VoiceActivityDetector, Error> 
       .context_size
       .unwrap_or(if sample_rate == 16_000 { 64 } else { 32 });
 
-    let session = value.session.unwrap_or_else(|| DEFAULT_SESSION.clone());
+    let session = value.session.unwrap_or_else(new_session);
 
     Ok(VoiceActivityDetector {
       session,

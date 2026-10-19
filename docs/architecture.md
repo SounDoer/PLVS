@@ -338,9 +338,10 @@ skipping blocks. File and CLI analysis run detection inline, where there is no d
 
 Within a block, layouts with more than four detectors split their channels into groups of four on
 scoped threads (`MultichannelSpeechDetector`); channels share no state, so the split changes no
-value. Each FireRed detector runs its ONNX session on one non-spinning thread, so detection uses
-these groups instead of one Runtime thread pool per channel. At 9.1.6 this takes a block from
-about 60 ms to about 20 ms on the development machine.
+value. Every detector, FireRed or Silero, owns a single-threaded ONNX session: no engine shares a
+session behind a lock, which would queue the groups again, and none starts a Runtime thread pool
+per channel. At 9.1.6 a block takes about 20 ms with FireRed (60 ms before) and about 2 ms with
+Silero on the development machine.
 
 Dialogue collection is enabled independently of panel visibility. A detector or method change
 uses the normal coherent Live Clear path so Programme Loudness and dialogue-derived metrics keep a
