@@ -8,21 +8,42 @@ export const DOCK_RECIPE = "scripts/marketing/recipes/homepage-dock.json";
 export const FEATURES_RECIPE = "scripts/marketing/recipes/homepage-features.json";
 const SHA256 = /^[a-f0-9]{64}$/;
 
-/** `[--recipe <file>] [--out <dir>] [--wait]` for the capture commands. */
-export function parseCaptureArgs(argv, defaultRecipe) {
+/**
+ * `[--recipe <file>] [--out <dir>] [--wait]` for the capture commands, plus any command-specific
+ * value flags (`--multichannel-audio` becomes `multichannelAudio`).
+ */
+export function parseCaptureArgs(argv, defaultRecipe, extraFlags = []) {
   const options = { recipe: defaultRecipe, out: null, wait: false };
+  const key = (flag) => flag.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  for (const flag of extraFlags) options[key(flag)] = null;
+  const valueFlags = ["--recipe", "--out", ...extraFlags];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--wait") options.wait = true;
-    else if (
-      (arg === "--recipe" || arg === "--out") &&
-      argv[i + 1] &&
-      !argv[i + 1].startsWith("--")
-    )
-      options[arg.slice(2)] = argv[++i];
-    else throw new Error(`Usage: [--recipe <file>] [--out <run-directory>] [--wait]; got ${arg}`);
+    else if (valueFlags.includes(arg) && argv[i + 1] && !argv[i + 1].startsWith("--"))
+      options[key(arg)] = argv[++i];
+    else
+      throw new Error(
+        `Usage: [--recipe <file>] [--out <run-directory>] [--wait]${extraFlags.map((f) => ` [${f} <file>]`).join("")}; got ${arg}`
+      );
   }
   return options;
+}
+
+/** Explains where the untracked multichannel bed comes from when it is missing or different. */
+export function multichannelAudioError(audio, path, actualSha256) {
+  const problem = actualSha256
+    ? `has SHA-256 ${actualSha256}, expected ${audio.sha256}`
+    : "does not exist";
+  return new Error(
+    [
+      `Multichannel audio ${path} ${problem}.`,
+      "The 7.1.4 bed is not in Git. Take it from the promo production archive:",
+      `  ${audio.origin}`,
+      `  SHA-256 ${audio.sha256}`,
+      `Then pass --multichannel-audio <file>, or copy it to ${audio.path}.`,
+    ].join("\n")
+  );
 }
 
 /** `<run-directory> --reviewed [--publish]` for the export commands. */
@@ -180,8 +201,8 @@ export function validateFeaturesRecipe(recipe) {
   validateCommon(recipe, "homepage-features");
   const multi = recipe.multichannelAudio;
   validateAudio(multi, "Multichannel audio");
-  if (!multi.loudnessLayout || multi.channelRoles?.length < 3)
-    throw new Error("Multichannel audio needs its channel roles and expected layout.");
+  if (!multi.origin || !multi.loudnessLayout || multi.channelRoles?.length < 3)
+    throw new Error("Multichannel audio needs its archive origin, channel roles and layout.");
   if (!recipe.interfaceSize) throw new Error("Interface size is required.");
   if (recipe.multichannel?.source !== "file") throw new Error("Multichannel images use FILE mode.");
   const profile = recipe.multichannel.loudnessProfile;

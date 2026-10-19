@@ -10,6 +10,7 @@ import {
   assertLiveEdge,
   assertSnapshotAt,
   findStartupSurface,
+  multichannelAudioError,
 } from "./homepage-lib.mjs";
 
 const dock = await loadRecipeFile(DOCK_RECIPE, validateDockRecipe);
@@ -38,6 +39,19 @@ describe("homepage capture arguments", () => {
     expect(() => parseCaptureArgs(["--publish"], DOCK_RECIPE)).toThrow("Usage");
     expect(() => parseCaptureArgs(["--out"], DOCK_RECIPE)).toThrow("Usage");
     expect(() => parseCaptureArgs(["--out", "--wait"], DOCK_RECIPE)).toThrow("Usage");
+  });
+  it("accepts a command-specific file flag only where it is declared", () => {
+    const flags = ["--multichannel-audio"];
+    expect(parseCaptureArgs([], FEATURES_RECIPE, flags).multichannelAudio).toBe(null);
+    expect(
+      parseCaptureArgs(["--multichannel-audio", "D:/archive/bed.wav"], FEATURES_RECIPE, flags)
+    ).toMatchObject({ recipe: FEATURES_RECIPE, multichannelAudio: "D:/archive/bed.wav" });
+    expect(() => parseCaptureArgs(["--multichannel-audio"], FEATURES_RECIPE, flags)).toThrow(
+      "--multichannel-audio <file>"
+    );
+    expect(() => parseCaptureArgs(["--multichannel-audio", "bed.wav"], DOCK_RECIPE)).toThrow(
+      "Usage"
+    );
   });
   it("exports only after explicit review and publishes only on request", () => {
     expect(parseExportArgs(["run", "--reviewed"])).toEqual({ run: "run", publish: false });
@@ -133,6 +147,18 @@ describe("Dock recipe", () => {
 });
 
 describe("feature recipe", () => {
+  it("tells a machine without the bed where to get it", () => {
+    const audio = features.multichannelAudio;
+    const missing = multichannelAudioError(audio, "C:/x/bed.wav").message;
+    for (const text of ["does not exist", audio.origin, audio.sha256, "--multichannel-audio"])
+      expect(missing).toContain(text);
+    expect(multichannelAudioError(audio, "C:/x/bed.wav", "0".repeat(64)).message).toContain(
+      `has SHA-256 ${"0".repeat(64)}, expected ${audio.sha256}`
+    );
+    const unsourced = copy(features);
+    delete unsourced.multichannelAudio.origin;
+    expect(() => validateFeaturesRecipe(unsourced)).toThrow("archive origin");
+  });
   it("keeps multichannel in FILE mode and the rest LIVE", () => {
     const fileMode = copy(features);
     fileMode.multichannel.source = "live";

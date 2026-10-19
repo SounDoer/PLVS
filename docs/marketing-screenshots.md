@@ -170,10 +170,18 @@ node scripts/marketing/capture-homepage-features.mjs
 After the same first-run dismissal, the command sets the large interface size and the 7.1.4
 channel roles. It applies the multichannel layout and controls and creates the recipe's delivery
 Loudness Profile. Then it analyzes the 7.1.4 bed in FILE mode and captures `multichannel` at an
-8-second Snapshot. The bed is a promo-archive file that is not in Git; the recipe pins its path
-and SHA-256. The command then applies the Default preset, switches to LIVE CABLE Output with the
-master and waits 65 seconds. It captures `history` at a 22-second Snapshot, then `frequency-full`
-and `frequency-detail` at 5 seconds. Each image has its own recipe layout, controls and pixel size.
+8-second Snapshot. The command then applies the Default preset, switches to LIVE CABLE Output with
+the master and waits 65 seconds. It captures `history` at a 22-second Snapshot, then
+`frequency-full` and `frequency-detail` at 5 seconds. Each image has its own recipe layout, controls
+and pixel size.
+
+The 7.1.4 bed is a demonstration mix assembled from promo music stems. It stays out of Git because
+its licence is not recorded and it is 42 MB. The recipe pins its SHA-256 and records its origin in
+the promo production archive (`PLVS_Promo_v10_Archive_2026-10-09/capture/mixes/future-funk-714.wav`).
+By default the command reads it from `artifacts/homepage-proposal/monitor-714.wav`; pass
+`--multichannel-audio <file>` to use the archive copy where it is. If the file is missing or its
+checksum differs, the command stops before launching the workbench and prints the archive path and
+the expected checksum.
 
 Compare each PNG with the published original, then:
 

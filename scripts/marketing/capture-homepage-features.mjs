@@ -13,10 +13,11 @@ import {
   loadRecipeFile,
   validateFeaturesRecipe,
   assertSnapshotAt,
+  multichannelAudioError,
 } from "./homepage-lib.mjs";
 import { openWorkbench } from "./workbench.mjs";
 
-const options = parseCaptureArgs(process.argv.slice(2), FEATURES_RECIPE);
+const options = parseCaptureArgs(process.argv.slice(2), FEATURES_RECIPE, ["--multichannel-audio"]);
 const recipe = await loadRecipeFile(options.recipe, validateFeaturesRecipe);
 if (process.platform !== recipe.environment.platform)
   throw new Error("This capture recipe requires Windows.");
@@ -46,9 +47,18 @@ let liveStarted = false;
 try {
   console.log(`Feature run: ${output}`);
   verifyAudio(await readFile(contained(ROOT, recipe.audio.path)), recipe);
-  const multichannelPath = contained(ROOT, recipe.multichannelAudio.path);
-  if (sha256(await readFile(multichannelPath)) !== recipe.multichannelAudio.sha256)
-    throw new Error(`Multichannel audio checksum mismatch: ${recipe.multichannelAudio.path}`);
+  // The bed may stay in the production archive, outside the repository.
+  const multichannelPath = options.multichannelAudio
+    ? resolve(options.multichannelAudio)
+    : contained(ROOT, recipe.multichannelAudio.path);
+  const bed = await readFile(multichannelPath).catch((error) => {
+    if (error.code === "ENOENT")
+      throw multichannelAudioError(recipe.multichannelAudio, multichannelPath);
+    throw error;
+  });
+  if (sha256(bed) !== recipe.multichannelAudio.sha256)
+    throw multichannelAudioError(recipe.multichannelAudio, multichannelPath, sha256(bed));
+  report.multichannelAudioPath = multichannelPath;
   locateVlc();
   const endpoint = resolveRenderEndpointId(recipe.live.renderEndpointName);
   workbench = await openWorkbench({ output, recipe, report, signal: controller.signal });
