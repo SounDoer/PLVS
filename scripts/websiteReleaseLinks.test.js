@@ -6,7 +6,7 @@ import { releaseAssetNames } from "./release-assets.mjs";
 const html = readFileSync(new URL("../website/index.html", import.meta.url), "utf8");
 const releaseScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
 
-async function renderRelease(payload, { ok = true } = {}) {
+async function renderRelease(payload, { ok = true, platform = "Win32" } = {}) {
   const dom = new JSDOM(
     `
     <a id="download-version"></a>
@@ -15,6 +15,7 @@ async function renderRelease(payload, { ok = true } = {}) {
   `,
     { runScripts: "outside-only", url: "https://plvs.app/" }
   );
+  Object.defineProperty(dom.window.navigator, "platform", { value: platform });
   dom.window.fetch = vi.fn().mockResolvedValue({ ok, json: async () => payload });
   dom.window.eval(releaseScript);
   await dom.window.loadRelease();
@@ -70,5 +71,36 @@ describe("website release links", () => {
     expect(failedDocument.querySelector(".linux-card .btn").href).toBe(
       "https://github.com/SounDoer/PLVS/releases"
     );
+  });
+
+  it("offers every platform in the hero, led by the visitor's own", async () => {
+    const names = releaseAssetNames("0.16.0");
+    const assets = [
+      { name: names.windowsInstaller, browser_download_url: "https://downloads/setup.exe" },
+      { name: names.macosDmg, browser_download_url: "https://downloads/plvs.dmg" },
+      { name: names.linuxDeb, browser_download_url: "https://downloads/plvs.deb" },
+    ];
+    const hero = async (platform) =>
+      [
+        ...(await renderRelease({ tag_name: "v0.16.0", assets }, { platform })).querySelectorAll(
+          "#hero-actions a"
+        ),
+      ].map((a) => [a.textContent, a.className.includes("btn-primary"), a.href]);
+
+    expect(await hero("Win32")).toEqual([
+      ["Download for Windows", true, "https://downloads/setup.exe"],
+      ["macOS", false, "https://downloads/plvs.dmg"],
+      ["Linux", false, "https://downloads/plvs.deb"],
+    ]);
+    expect(await hero("MacIntel")).toEqual([
+      ["Download for macOS", true, "https://downloads/plvs.dmg"],
+      ["Windows", false, "https://downloads/setup.exe"],
+      ["Linux", false, "https://downloads/plvs.deb"],
+    ]);
+    expect(await hero("Linux x86_64")).toEqual([
+      ["Download for Linux", true, "https://downloads/plvs.deb"],
+      ["Windows", false, "https://downloads/setup.exe"],
+      ["macOS", false, "https://downloads/plvs.dmg"],
+    ]);
   });
 });

@@ -89,6 +89,16 @@
         .hero-copy .hero-actions {
           margin: 0;
         }
+
+        /* Two rows keep the copy within the image height beside it. */
+        .hero-copy .hero-actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .hero-actions .hero-primary {
+          grid-column: 1 / -1;
+        }
       }
 
       @media (max-width: 1199px) {
@@ -704,11 +714,16 @@
               A desktop companion that keeps your audio's level, shape, and movement in view.
             </p>
             <div class="hero-actions" id="hero-actions">
-              <a class="btn btn-primary" href="https://github.com/SounDoer/PLVS/releases"
+              <a
+                class="btn btn-primary hero-primary"
+                href="https://github.com/SounDoer/PLVS/releases"
                 >Download for Windows</a
               >
               <a class="btn btn-secondary" href="https://github.com/SounDoer/PLVS/releases"
-                >Download for macOS</a
+                >macOS</a
+              >
+              <a class="btn btn-secondary" href="https://github.com/SounDoer/PLVS/releases"
+                >Linux</a
               >
             </div>
           </div>
@@ -1053,15 +1068,22 @@
       function renderHeroActions(urls) {
         const isMac = isMacPlatform();
         const isLinux = !isMac && isLinuxPlatform();
-        const winInstallUrl = urls.winInstall || RELEASES_URL;
-        const macUrl = urls.mac || RELEASES_URL;
-        const linuxUrl = urls.linux || RELEASES_URL;
-        const winButton = `<a class="btn ${isMac || isLinux ? "btn-secondary" : "btn-primary"}" href="${winInstallUrl}">Download for Windows</a>`;
-        const macButton = `<a class="btn ${isMac ? "btn-primary" : "btn-secondary"}" href="${macUrl}">Download for macOS</a>`;
-        const linuxButton = `<a class="btn btn-primary" href="${linuxUrl}">Download for Linux</a>`;
-        document.getElementById("hero-actions").innerHTML = `
-      ${isLinux ? linuxButton + winButton + macButton : isMac ? macButton + winButton : winButton + macButton}
-    `;
+        const platforms = [
+          { id: "windows", name: "Windows", url: urls.winInstall },
+          { id: "mac", name: "macOS", url: urls.mac },
+          { id: "linux", name: "Linux", url: urls.linux },
+        ];
+        const currentId = isMac ? "mac" : isLinux ? "linux" : "windows";
+        const current = platforms.find((platform) => platform.id === currentId);
+        const others = platforms.filter((platform) => platform !== current);
+        // The visitor's platform gets the full label; the others share the second row.
+        document.getElementById("hero-actions").innerHTML = [
+          `<a class="btn btn-primary hero-primary" href="${current.url || RELEASES_URL}">Download for ${current.name}</a>`,
+          ...others.map(
+            (platform) =>
+              `<a class="btn btn-secondary" href="${platform.url || RELEASES_URL}">${platform.name}</a>`
+          ),
+        ].join("");
       }
 
       function renderPlatformCards(urls) {
