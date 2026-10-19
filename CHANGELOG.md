@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-10-19
+
+### Fixed
+
+- On macOS, the update helper now keeps its Developer ID signature by copying the complete signed
+  application bundle, so **Update and Restart** can install later releases. PLVS 0.22.0 and 0.22.1
+  must be upgraded to 0.22.2 once by downloading the DMG and replacing PLVS in Applications;
+  automatic installation works again after that manual upgrade.
+
 ## [0.22.1] - 2026-10-19
 
 ### Fixed
