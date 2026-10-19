@@ -94,6 +94,7 @@ Until then, ignore this section.
 │  - README.md highlights still summarise the product             │
 │  - website/index.html selling points still hold                 │
 │  - website/assets screenshots: retake if the UI visibly changed │
+│    (commands in docs/marketing-screenshots.md)                  │
 │  - A changed promise or non-goal also updates docs/prd.md       │
 │  - Review privacy impact and the policy's effective date       │
 │  The website deploys from the tag after the release publishes.  │
@@ -350,7 +351,14 @@ reject missing, incomplete or stale records. Any candidate change other than the
 requires renewed review; never refresh its fingerprint without reviewing the change.
 
 Reconcile user-visible changes against `docs/user/`, README highlights and the website as described
-in the workflow overview. Also follow **Privacy policy review** in `CONTRIBUTING.md`: inspect the
+in the workflow overview. When a homepage or README screenshot no longer matches the UI, retake it
+with the recipe-driven commands in `docs/marketing-screenshots.md`: the hero, the Dock pair and the
+feature images each have a capture command and a select or export command, whose `--publish` flag
+replaces the tracked images. Do not retake them with one-off scripts. Retaking needs the Windows
+capture machine (VB-Cable, VLC, 125% scaling); if it is unavailable, record the outdated image as
+a decision in the release review instead of publishing a stale screenshot silently.
+
+Also follow **Privacy policy review** in `CONTRIBUTING.md`: inspect the
 complete release range for changes to data collection, consent, payloads, recipients/providers,
 storage, retention and deletion, including related service changes. Record the baseline and
 candidate revisions, evidence and privacy-impact conclusion in the release review, even when no
