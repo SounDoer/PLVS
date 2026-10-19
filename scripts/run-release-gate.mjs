@@ -12,6 +12,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { captureSmokeChangesSinceLastTag } from "./audio-code-changed.mjs";
 import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
+import { BUILD_HARNESS } from "./capture-rig.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -50,6 +51,9 @@ if (paths.length === 0) {
   for (const p of paths) {
     console.log(`  ${p}`);
   }
+  // A release bump always edits Cargo.toml and Cargo.lock, so an existing harness
+  // is older than its sources here and the smoke's staleness guard would exit 2.
+  run("Capture harness build", BUILD_HARNESS, []);
   run("Capture smoke", npm, ["run", "smoke:capture"]);
 }
 

@@ -95,7 +95,9 @@ v0.15.4 preflight it silently replaced the dev-identity GUI from `npm run deskto
 file opened the stable identity's settings alongside the installed PLVS, with no single-instance guard. Do not
 move the harness back into the `release` profile.
 
-When instructed, rebuild explicitly and rerun:
+`npm run release:preflight` builds the harness itself right before capture smoke, because every
+version bump edits `Cargo.toml` and `Cargo.lock` and would otherwise always trip this guard. Ad-hoc
+smoke and soak runs do not build it. When instructed, rebuild explicitly and rerun:
 
 ```sh
 cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness

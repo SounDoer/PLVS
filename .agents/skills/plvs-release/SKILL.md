@@ -451,7 +451,13 @@ succeeds. Existing static pages do not update merely because a GitHub Release wa
 since the last tag. Most releases touch dock/UI code and skip it entirely,
 touching no hardware.
 
-When it does run, read the exit code:
+When it does run, the gate first builds the feature-gated capture harness
+(`--profile harness`) itself. The version bump has already edited
+`src-tauri/Cargo.toml` and `Cargo.lock`, so any existing harness is older than
+its sources and the smoke would otherwise stop with exit 2. Do not prebuild it
+by hand.
+
+Then read the exit code:
 
 | Exit | Meaning                                             | What to do                                                                         |
 | ---- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
