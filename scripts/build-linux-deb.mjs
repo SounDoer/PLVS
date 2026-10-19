@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +22,18 @@ try {
     );
   }
   if (process.argv.length !== 3) throw new Error("This Linux builder accepts one identity.");
+  if (identity === "stable") {
+    const installer = spawnSync(
+      "cargo",
+      ["build", "--release", "--package", "plvs-update-installer"],
+      { cwd: join(root, "src-tauri"), stdio: "inherit" }
+    );
+    if (installer.error) throw installer.error;
+    if (installer.status !== 0) process.exit(installer.status ?? 1);
+    const staged = join(root, "src-tauri", "binaries", "plvs-update-installer");
+    copyFileSync(join(root, "src-tauri", "target", "release", "plvs-update-installer"), staged);
+    chmodSync(staged, 0o755);
+  }
   buildPlvsCli({ profile: "release", identity, stage: true });
   const config = [
     ...(identity === "preview"

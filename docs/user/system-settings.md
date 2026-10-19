@@ -73,12 +73,20 @@ automatic checking is off. Preferences are shared across workbenches and are not
 configuration profile.
 
 Turning automatic downloading off cancels background work and removes the staged update. A manual
-update you have explicitly confirmed is separate from this preference. Installed Windows and macOS
-copies support verified local staging; Portable copies use the release-page download instead.
+update you have explicitly confirmed is separate from this preference. Installed Windows, macOS
+and stable Ubuntu `.deb` copies support verified local staging; Portable copies use the
+release-page download instead.
 Preview does not offer the updater. On macOS, automatic updates are unavailable on a read-only
 volume such as a mounted DMG; Settings shows the reason directly below **Auto Download Updates** so you can
 move PLVS to Applications and reopen it. A protected directory on a writable volume can still use
 the system authorization flow.
+
+On Ubuntu, **Update and Restart** uses the system Polkit prompt and a small package-owned installer;
+PLVS never collects an administrator password. The installer authenticates the package again,
+checks its version, package name and architecture, and asks APT to install it without downloading
+or removing other packages. Canceling the prompt, a missing authorization service, or a dependency
+problem reopens PLVS and keeps the verified package for retry. Update details retain the manual
+release download when the installed package predates this support or system tools are missing.
 
 Downloaded updates are offered on a later fresh launch. **Skip This Time** or closing details keeps
 the package without installing it. Details keep their selected version even if another check

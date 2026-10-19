@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Stable Ubuntu packages can download and install signed updates from PLVS. Installation uses the
+  system Polkit authentication prompt and offline APT, never an app-owned password dialog; it
+  refuses package removals and rechecks the signature, version, package name and architecture in a
+  minimal privileged helper. Canceling or failing installation reopens PLVS and keeps the verified
+  download for retry or manual installation. Existing Linux installations need one final manual
+  `.deb` update to add this component. Preview remains update-disabled.
+
 ### Changed
 
 - Failed update details offer **Download Manually**, which opens the exact immutable GitHub Release

@@ -30,6 +30,8 @@ mod glass_effect;
 #[cfg(feature = "capture-harness")]
 pub mod harness_main;
 mod ipc;
+#[cfg(target_os = "linux")]
+mod linux_update;
 #[cfg(target_os = "macos")]
 mod macos_dock;
 pub mod persistence;

@@ -3739,6 +3739,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "plvs-update-installer"
+version = "0.22.2"
+dependencies = [
+ "base64 0.22.1",
+ "minisign-verify",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+]
+
+[[package]]
 name = "png"
 version = "0.17.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"

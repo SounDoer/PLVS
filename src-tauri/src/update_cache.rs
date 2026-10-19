@@ -168,6 +168,10 @@ impl UpdateCache {
     Ok(self.root.join(format!("{id}.package")))
   }
 
+  pub(crate) fn package_file(&self, id: &str) -> Result<PathBuf, String> {
+    self.package_path(id)
+  }
+
   /// The caller verifies bytes with the trusted updater key before this transaction.
   /// A canceled generation cannot publish or overwrite the previous ready candidate.
   pub fn publish_verified(

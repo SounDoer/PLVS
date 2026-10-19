@@ -111,8 +111,9 @@ workbench save barrier. Windows runs a copied executable so the installed binary
 macOS copies the complete signed application bundle because a detached Mach-O fails Developer ID
 validation. Startup confirmations inspect peers without stopping them; in-session manual
 updates use the existing global prepare/commit protocol. The helper waits up to five minutes for the
-old processes to exit, records the attempt with its own process identity, waits for Windows NSIS to
-finish (or macOS replacement to return), then releases the gate and relaunches the application.
+old processes to exit, records the attempt with its own process identity, waits for Windows NSIS,
+macOS replacement, or the Linux Polkit/APT installer to return, then releases the gate and
+relaunches the application.
 While the recorded helper or installer is alive, a new workspace cannot start. Once neither is alive,
 an unfinished attempt is recorded as failed and the installed version starts. A completed or failed
 attempt is not automatically retried. A fresh session removes previous helper artifacts. Updater
@@ -790,7 +791,12 @@ explanation to the shared update controls. This differs from a protected directo
 volume, where the updater may request system authorization. Native download and installation
 preparation recheck the volume rather than relying only on startup classification.
 
-Stable Linux packages check for updates but never stage or install them: `installed_distribution()`
-is false on Linux and the update controls show a manual-download explanation. The vendored updater
-still resolves its own platform descriptor before comparing versions, so every stable `latest.json`
-carries a version-signed `linux-x86_64-deb` entry for the published deb.
+Stable Linux packages enable staging only when the running `/usr/bin/plvs`, the installed `plvs`
+package version, the root-owned update helper and the required absolute-path system tools all match
+the expected stable distribution. The unprivileged worker rechecks this immediately before
+installation and invokes the helper only through Polkit. The helper treats its ticket and cache as
+hostile, verifies the exact package bytes and signed version again, copies them to a root-only
+temporary directory, validates the deb name, architecture and version, then invokes APT with no
+download, no removal, only-upgrade and reinstall constraints. It accepts completion only after
+`dpkg-query` reports the expected installed version. See
+[ADR 0034](adr/0034-linux-deb-updates-use-a-privileged-installer.md).

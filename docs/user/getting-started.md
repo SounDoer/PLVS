@@ -43,10 +43,14 @@ installed application and decoders. Audio capture requires a running PulseAudio 
 PulseAudio compatibility service. PLVS installs its own FFmpeg/FFprobe copies under
 `/usr/lib/plvs/sidecars`; it neither needs nor replaces a system FFmpeg installation.
 
-On Linux, PLVS can tell you that a new version is available, but it does not download or install
-it. To update, download the new `.deb` from GitHub Releases and install it the same way; your
-settings are kept. Remove PLVS with
-`sudo apt remove plvs`. Removing the package preserves your user settings.
+Stable packages that include the Linux update component can download signed updates in PLVS and
+install them after you choose **Update and Restart**. Ubuntu shows its normal administrator
+authentication prompt. The already verified package is installed offline through APT; PLVS does
+not ask for or handle your password. Canceling authentication keeps the download so you can retry.
+If the required system authorization tools or package dependencies are unavailable, update details
+link to the `.deb` on GitHub Releases for manual installation. Versions installed before this
+component was introduced need one final manual `.deb` update to add it. Your settings are kept.
+Remove PLVS with `sudo apt remove plvs`; removing the package preserves user settings.
 
 Dock and per-application capture are not available on Linux. See
 [Signal Source](signal-source.md) for the Linux capture scope.
@@ -92,5 +96,6 @@ your work. On a later fresh launch, it offers **Update and Restart** or **Skip T
 keeps the downloaded package. Installation always needs confirmation; there is no countdown. An
 already active workbench defers the startup offer. Download completion does not open a dialog in
 your current working session. Windows Portable copies use **Download Manually** on the release page;
-they never run the installed-app updater. Linux packages are also updated manually. Preview builds
-do not check for updates.
+they never run the installed-app updater. Installed stable Linux packages use the same verified
+download and confirmation flow; Ubuntu supplies the administrator authentication dialog for the
+APT installation. Preview builds do not check for updates.

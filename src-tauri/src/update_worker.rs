@@ -127,6 +127,7 @@ pub fn remove_helper_files(root: &Path) {
     "worker-ticket.json",
     "worker-ready",
     "worker-commit",
+    "linux-installer-ticket.json",
     ACCEPTANCE_INTERRUPTION_MARKER,
   ] {
     let _ = fs::remove_file(root.join(name));
@@ -391,6 +392,8 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
     let _running = gate.wait_until_closed(Duration::from_secs(300))?;
     // Recheck after all workbenches have exited. Cancellation cannot revive a removed candidate.
     let (_, bytes) = cache.load(&ticket.package_id)?;
+    #[cfg(target_os = "linux")]
+    drop(bytes);
     let helper_pid = std::process::id();
     let mut attempt = Attempt {
       version: ready.version,
@@ -407,8 +410,20 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
       attempt.installer_start = crate::coordinator::registry::process_start_identity(pid);
       save_attempt(cache.root(), &attempt).map_err(std::io::Error::other)
     });
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
     let result = update.install_verified(&bytes);
+    #[cfg(target_os = "linux")]
+    let result = crate::linux_update::install(
+      cache,
+      &ticket.package_id,
+      &update.version,
+      &update.signature,
+      |pid| {
+        attempt.installer_pid = Some(pid);
+        attempt.installer_start = crate::coordinator::registry::process_start_identity(pid);
+        save_attempt(cache.root(), &attempt)
+      },
+    );
     attempt.phase = if result.is_ok() { "finished" } else { "failed" }.into();
     attempt.error = result.err().map(|e| e.to_string());
     save_attempt(cache.root(), &attempt)?;

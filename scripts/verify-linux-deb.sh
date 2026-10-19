@@ -51,6 +51,16 @@ for binary in ffmpeg ffprobe; do
   fi
   dpkg-query -S "$sidecar_dir/$binary" | grep -q "^$package_name:"
 done
+if [[ "$package_name" == plvs ]]; then
+  update_installer="/usr/lib/plvs/plvs-update-installer"
+  update_policy="/usr/share/polkit-1/actions/com.soundoer.plvs.update.policy"
+  test -x "$update_installer"
+  test -s "$update_policy"
+  [[ $(stat -c '%u:%a' "$update_installer") == 0:755 ]]
+  grep -q 'com.soundoer.plvs.update' "$update_policy"
+  dpkg-query -S "$update_installer" | grep -q '^plvs:'
+  dpkg-query -S "$update_policy" | grep -q '^plvs:'
+fi
 desktop="$(dpkg-query -L "$package_name" | grep '\.desktop$')"
 desktop-file-validate "$desktop"
 grep -q "Name=$app_name" "$desktop"
@@ -91,6 +101,10 @@ test ! -e "$desktop"
 test ! -e "$resources/plvs-agent.json"
 test ! -e "$sidecar_dir/ffmpeg"
 test ! -e "$sidecar_dir/ffprobe"
+if [[ "$package_name" == plvs ]]; then
+  test ! -e "$update_installer"
+  test ! -e "$update_policy"
+fi
 test ! -e /usr/bin/ffmpeg
 test ! -e /usr/bin/ffprobe
 sha256sum --check "$output/settings.sha256"

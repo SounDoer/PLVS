@@ -44,7 +44,7 @@ Get the latest version from [**GitHub Releases**](https://github.com/SounDoer/PL
 | **Windows 10/11 (x64)**   | `PLVS_<version>_x64-setup.exe`     | Installer                                |
 | **Windows 10/11 (x64)**   | `PLVS-v<version>-x64-portable.zip` | Portable — keep extracted files together |
 | **macOS (Apple Silicon)** | `PLVS-v<version>-aarch64.dmg`      | Requires macOS 14.2 or later             |
-| **Ubuntu 24.04 (x86_64)** | `PLVS_<version>_amd64.deb`         | Install with `apt`; updates are manual   |
+| **Ubuntu 24.04 (x86_64)** | `PLVS_<version>_amd64.deb`         | APT package with verified in-app updates |
 
 Windows builds are not code-signed yet; choose **More info** → **Run anyway** if SmartScreen warns.
 macOS builds are Developer ID signed and Apple-notarized for normal Gatekeeper verification. On

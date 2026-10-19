@@ -1,5 +1,5 @@
 [workspace]
-members = ["plvs-cli"]
+members = ["linux-update-installer", "plvs-cli"]
 exclude = ["vendor/voice_activity_detector", "vendor/tauri-plugin-updater"]
 resolver = "2"
 

@@ -91,7 +91,14 @@ fn installed_distribution() -> bool {
     })
   }
   #[cfg(not(any(windows, target_os = "macos")))]
-  false
+  {
+    #[cfg(target_os = "linux")]
+    {
+      crate::linux_update::unavailable_reason().is_none()
+    }
+    #[cfg(not(target_os = "linux"))]
+    false
+  }
 }
 
 /// A read-only volume cannot become writable through an authorization prompt. Do not
@@ -122,16 +129,16 @@ fn installation_location_error() -> Option<String> {
   None
 }
 
-/// Linux packages announce new versions but are always updated by the user, so explain that
-/// instead of the generic text written for unpackaged copies.
 fn installation_unavailable_reason() -> Option<String> {
   installation_location_error().or_else(|| {
-    (cfg!(target_os = "linux")
-      && !cfg!(feature = "preview-identity")
-      && !cfg!(feature = "dev-identity"))
-    .then(|| {
-      "On Linux, PLVS shows new versions but does not install them. Download the new .deb from Releases and install it with APT.".into()
-    })
+    #[cfg(target_os = "linux")]
+    {
+      crate::linux_update::unavailable_reason()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+      None
+    }
   })
 }
 
@@ -217,11 +224,11 @@ pub fn update_status(
       crate::update_worker::save_attempt(runtime.cache.root(), previous)?;
     }
   }
+  let unavailable = installation_unavailable_reason();
   Ok(UpdateStatus {
     enabled: !cfg!(feature = "preview-identity"),
-    installation_supported: runtime.installation_supported
-      && installation_location_error().is_none(),
-    installation_unavailable_reason: installation_unavailable_reason(),
+    installation_supported: runtime.installation_supported && unavailable.is_none(),
+    installation_unavailable_reason: unavailable,
     ready,
     fresh_session: runtime.running.fresh_session,
     attempt,
@@ -299,7 +306,7 @@ pub async fn update_download(
     automatic_allowed(&app, true)?;
   }
   let runtime = app.state::<UpdateRuntime>();
-  if let Some(reason) = installation_location_error() {
+  if let Some(reason) = installation_unavailable_reason() {
     return Err(reason);
   }
   if !runtime.installation_supported {
@@ -401,7 +408,7 @@ pub async fn update_prepare_install(
   authorize(&window, &app)?;
   tauri::async_runtime::spawn_blocking(move || {
     let runtime = app.state::<UpdateRuntime>();
-    if let Some(reason) = installation_location_error() {
+    if let Some(reason) = installation_unavailable_reason() {
       return Err(reason);
     }
     if !runtime.installation_supported {

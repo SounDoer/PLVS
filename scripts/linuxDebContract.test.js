@@ -22,8 +22,11 @@ describe("Ubuntu package contract", () => {
     expect(stableDeb.bundle.linux.deb.conflicts).toEqual(["plvs-preview"]);
     expect(previewDeb.bundle.linux.deb.conflicts).toEqual(["plvs"]);
     expect(stableDeb.bundle.linux.deb.files).toEqual({
+      "/usr/lib/plvs/plvs-update-installer": "binaries/plvs-update-installer",
       "/usr/lib/plvs/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",
       "/usr/lib/plvs/sidecars/ffprobe": "binaries/ffprobe-x86_64-unknown-linux-gnu",
+      "/usr/share/polkit-1/actions/com.soundoer.plvs.update.policy":
+        "linux-update-installer/com.soundoer.plvs.update.policy",
     });
     expect(previewDeb.bundle.linux.deb.files).toEqual({
       "/usr/lib/plvs-preview/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",
@@ -31,6 +34,7 @@ describe("Ubuntu package contract", () => {
     });
     expect(locator).toContain('PathBuf::from("/usr/lib").join(package).join("sidecars")');
     expect(locator).not.toContain('PathBuf::from("/usr/bin")');
+    expect(builder).toContain('"plvs-update-installer"');
   });
 
   it("builds stable and Preview with their matching identities and no updater artifacts", () => {
@@ -53,6 +57,14 @@ describe("Ubuntu package contract", () => {
     expect(desktopVerifier).toContain('Path("/usr/lib", package_name, "sidecars")');
     expect(desktopVerifier).not.toContain('run(["ffmpeg"');
     expect(desktopVerifier).not.toContain('run(["ffprobe"');
+  });
+
+  it("installs the stable-only privileged updater with its Polkit policy", () => {
+    expect(packageVerifier).toContain('update_installer="/usr/lib/plvs/plvs-update-installer"');
+    expect(packageVerifier).toContain("com.soundoer.plvs.update.policy");
+    expect(previewDeb.bundle.linux.deb.files).not.toHaveProperty(
+      "/usr/lib/plvs-preview/plvs-update-installer"
+    );
   });
 
   it("deletes the stable manifest key when Tauri combines the configuration patches", () => {

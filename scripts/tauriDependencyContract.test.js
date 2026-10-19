@@ -26,7 +26,9 @@ describe("Tauri dependency contracts", () => {
   });
 
   it("keeps the Agent Control forwarder isolated from the application crate", () => {
-    expect(cargoToml).toContain('members = ["plvs-cli"]');
+    expect(cargoToml).toMatch(
+      /members\s*=\s*\[[^\]]*"linux-update-installer"[^\]]*"plvs-cli"[^\]]*\]/
+    );
     expect(cargoToml).toMatch(/exclude\s*=\s*\[[^\]]*"vendor\/voice_activity_detector"[^\]]*\]/);
     expect(cliCargoToml).not.toMatch(/^\[dependencies\]$/m);
     expect(cliCargoToml).not.toMatch(/app_lib|tauri|cpal|voice_activity_detector/);
