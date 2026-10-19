@@ -109,8 +109,25 @@ struct FireRedVadEngine {
 }
 
 impl FireRedVadEngine {
+  /// Same model and options as `FireRedVad::bundled()`, but on a single-threaded, non-spinning
+  /// session: every channel owns a detector, and ONNX Runtime's default per-session thread pool
+  /// multiplied by the channel count would compete with the channel groups that
+  /// [`MultichannelSpeechDetector`] already runs in parallel.
   fn new() -> Option<Self> {
-    let vad = FireRedVad::bundled().ok()?;
+    let options = firered_vad::VadOptions::default();
+    let session = ort::session::Session::builder()
+      .ok()?
+      .with_optimization_level(options.session_options().optimization_level())
+      .ok()?
+      .with_intra_threads(1)
+      .ok()?
+      .with_inter_threads(1)
+      .ok()?
+      .with_intra_op_spinning(false)
+      .ok()?
+      .commit_from_memory(firered_vad::BUNDLED_MODEL)
+      .ok()?;
+    let vad = FireRedVad::from_ort_session(session, firered_vad::BUNDLED_CMVN, options).ok()?;
     Some(Self { vad })
   }
 }
@@ -318,6 +335,12 @@ pub(crate) fn fuse_center_priority(
   Some(other_speech && strongest_other > energies[center] * CENTER_FALLBACK_ENERGY_RATIO)
 }
 
+/// Channel detectors one thread runs per block. Each FireRed detector runs its model on a single
+/// thread and costs several milliseconds of every 100 ms block, so a 9.1.6 layout's 15 detectors
+/// in series took most of a core and fell behind Live capture under load; larger layouts spread
+/// their channels over scoped threads instead.
+const DETECTORS_PER_THREAD: usize = 4;
+
 /// Production multichannel dialogue detector. Every eligible channel keeps an independent VAD
 /// state; LFE is excluded before inference, so phase cancellation and LFE dilution cannot hide
 /// dialogue. The owner resets this object coherently when the engine or resolved roles change.
@@ -369,21 +392,37 @@ impl MultichannelSpeechDetector {
       self.invalid_input = true;
       return;
     }
-    let frames = interleaved.len() / channels;
-    for ((channel_index, detector), energy) in self
+    let mut lanes: Vec<_> = self
       .channel_indices
       .iter()
-      .zip(&mut self.detectors)
-      .zip(&mut self.block_energies)
-    {
-      let mut mono = Vec::with_capacity(frames);
-      for frame in interleaved.chunks_exact(channels) {
-        let sample = frame[*channel_index];
-        mono.push(sample);
-        *energy += sample as f64 * sample as f64;
+      .copied()
+      .zip(
+        self
+          .detectors
+          .iter_mut()
+          .zip(self.block_energies.iter_mut()),
+      )
+      .collect();
+    let push_lanes = |lanes: &mut [(usize, (&mut SpeechDetector, &mut f64))]| {
+      for (channel_index, (detector, energy)) in lanes {
+        let mut mono = Vec::with_capacity(interleaved.len() / channels);
+        for frame in interleaved.chunks_exact(channels) {
+          let sample = frame[*channel_index];
+          mono.push(sample);
+          **energy += sample as f64 * sample as f64;
+        }
+        detector.push_mono(&mono);
       }
-      detector.push_mono(&mono);
-    }
+    };
+    // Channels are independent, so splitting them across threads changes no value.
+    let mut groups = lanes.chunks_mut(DETECTORS_PER_THREAD);
+    let first = groups.next().unwrap_or_default();
+    std::thread::scope(|scope| {
+      for group in groups {
+        scope.spawn(move || push_lanes(group));
+      }
+      push_lanes(first);
+    });
   }
 
   pub fn take_block_decision(&mut self) -> Option<bool> {
@@ -482,6 +521,51 @@ mod tests {
     assert!(
       MultichannelSpeechDetector::new(48_000.0, VadEngineKind::Silero, 1, Some(&roles)).is_none()
     );
+  }
+
+  #[test]
+  fn threaded_channel_groups_match_independent_detectors() {
+    let roles: Vec<String> = [
+      "L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Lw", "Rw", "Ltf", "Rtf", "Ltm", "Rtm", "Ltr",
+      "Rtr",
+    ]
+    .map(str::to_string)
+    .to_vec();
+    let mut detector =
+      MultichannelSpeechDetector::new(48_000.0, VadEngineKind::FireRed, 16, Some(&roles))
+        .expect("detector builds");
+    assert!(detector.detectors.len() > DETECTORS_PER_THREAD);
+    let mut independent: Vec<SpeechDetector> = (0..detector.detectors.len())
+      .map(|_| SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed).unwrap())
+      .collect();
+    let mut seed = 1_u32;
+    for _ in 0..5 {
+      let block: Vec<f32> = (0..4_800 * 16)
+        .map(|i| {
+          seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+          let noise = (seed >> 8) as f32 / 16_777_216.0 - 0.5;
+          noise * 0.3 * (i % 16) as f32 / 16.0 + (i as f32 * 0.01).sin() * 0.2
+        })
+        .collect();
+      detector.push_interleaved(&block, 16);
+      for (lane, channel) in detector.channel_indices.iter().enumerate() {
+        let mono: Vec<f32> = block
+          .as_chunks::<16>()
+          .0
+          .iter()
+          .map(|frame| frame[*channel])
+          .collect();
+        independent[lane].push_mono(&mono);
+        let energy: f64 = mono.iter().map(|s| *s as f64 * *s as f64).sum();
+        assert_eq!(detector.block_energies[lane], energy);
+      }
+      for (threaded, alone) in detector.detectors.iter_mut().zip(&mut independent) {
+        let threaded = threaded.take_block_evidence().unwrap();
+        assert!(threaded.is_some());
+        assert_eq!(threaded, alone.take_block_evidence().unwrap());
+      }
+      detector.block_energies.fill(0.0);
+    }
   }
 
   #[test]

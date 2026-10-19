@@ -3696,6 +3696,7 @@ dependencies = [
  "libc",
  "libloading",
  "log",
+ "ort",
  "pulseaudio",
  "realfft",
  "rubato",

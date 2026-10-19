@@ -336,6 +336,12 @@ the inline path, so values are identical and only arrive a block or two later. I
 seconds behind, dialogue stops with `detectorOverloaded` until the next coherent reset rather than
 skipping blocks. File and CLI analysis run detection inline, where there is no deadline.
 
+Within a block, layouts with more than four detectors split their channels into groups of four on
+scoped threads (`MultichannelSpeechDetector`); channels share no state, so the split changes no
+value. Each FireRed detector runs its ONNX session on one non-spinning thread, so detection uses
+these groups instead of one Runtime thread pool per channel. At 9.1.6 this takes a block from
+about 60 ms to about 20 ms on the development machine.
+
 Dialogue collection is enabled independently of panel visibility. A detector or method change
 uses the normal coherent Live Clear path so Programme Loudness and dialogue-derived metrics keep a
 common session scope. File analysis snapshots its dialogue settings at start. Reports carry a

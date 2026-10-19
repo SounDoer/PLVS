@@ -75,6 +75,7 @@ time = { version = "=0.3.55", features = ["formatting"] }
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-updater = { path = "vendor/tauri-plugin-updater" }
 firered-vad = "0.1.0"
+ort = { version = "=2.0.0-rc.12", default-features = false }
 futures-util = "0.3"
 fs4 = { version = "1.1.0", features = ["sync"] }
 crossbeam-queue = "0.3.13"
