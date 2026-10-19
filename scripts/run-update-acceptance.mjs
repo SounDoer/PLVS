@@ -308,7 +308,16 @@ function terminateOwnedMacApp(app) {
 async function interruptOwnedMacHelper(attemptFile, attempt) {
   const pid = attempt.helperPid;
   if (!Number.isInteger(pid)) throw new Error("Interrupted helper attempt recorded no helper PID");
-  const executable = path.join(path.dirname(attemptFile), "plvs-update-worker");
+  const ticket = JSON.parse(
+    readFileSync(path.join(path.dirname(attemptFile), "worker-ticket.json"), "utf8")
+  );
+  const executable = path.join(
+    path.dirname(attemptFile),
+    "plvs-update-worker.app",
+    "Contents",
+    "MacOS",
+    path.basename(ticket.target)
+  );
   const command = run("ps", ["-p", String(pid), "-o", "command="]);
   if (command !== executable && !command.startsWith(`${executable} `)) {
     throw new Error(`Refusing to interrupt unexpected helper process ${pid}: ${command}`);

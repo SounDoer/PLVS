@@ -131,6 +131,90 @@ pub fn remove_helper_files(root: &Path) {
   ] {
     let _ = fs::remove_file(root.join(name));
   }
+  let _ = fs::remove_dir_all(root.join("plvs-update-worker.app"));
+}
+
+#[cfg(target_os = "macos")]
+fn prepare_worker_executable(root: &Path, current_exe: &Path) -> Result<PathBuf, String> {
+  // A Developer ID signature on the main executable is sealed against the surrounding app
+  // bundle. Copy the complete sealed bundle so the helper remains valid after the installed app
+  // is replaced; copying only the Mach-O preserves its bytes but AMFI refuses to launch it.
+  let macos = current_exe
+    .parent()
+    .filter(|path| path.file_name().is_some_and(|name| name == "MacOS"))
+    .ok_or("The macOS executable is outside an application bundle.")?;
+  let contents = macos
+    .parent()
+    .filter(|path| path.file_name().is_some_and(|name| name == "Contents"))
+    .ok_or("The macOS executable is outside an application bundle.")?;
+  let bundle = contents
+    .parent()
+    .filter(|path| path.extension().is_some_and(|extension| extension == "app"))
+    .ok_or("The macOS executable is outside an application bundle.")?;
+  let worker_bundle = root.join("plvs-update-worker.app");
+  match fs::remove_dir_all(&worker_bundle) {
+    Ok(()) => {}
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+    Err(error) => return Err(error.to_string()),
+  }
+  let status = Command::new("/usr/bin/ditto")
+    .arg(bundle)
+    .arg(&worker_bundle)
+    .status()
+    .map_err(|error| error.to_string())?;
+  if !status.success() {
+    return Err("The signed update helper could not be copied.".into());
+  }
+  worker_bundle
+    .join("Contents/MacOS")
+    .join(
+      current_exe
+        .file_name()
+        .ok_or("The update helper executable has no file name.")?,
+    )
+    .canonicalize()
+    .map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn prepare_worker_executable(root: &Path, current_exe: &Path) -> Result<PathBuf, String> {
+  let worker_name = if cfg!(windows) {
+    "plvs-update-worker.exe"
+  } else {
+    "plvs-update-worker"
+  };
+  let worker = root.join(worker_name);
+  fs::copy(current_exe, &worker).map_err(|e| e.to_string())?;
+  Ok(worker)
+}
+
+#[cfg(target_os = "macos")]
+fn approved_worker_executable(cache: &UpdateCache, ticket: &Ticket) -> Result<PathBuf, String> {
+  cache
+    .root()
+    .join("plvs-update-worker.app/Contents/MacOS")
+    .join(
+      ticket
+        .target
+        .file_name()
+        .ok_or("The update target has no file name.")?,
+    )
+    .canonicalize()
+    .map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn approved_worker_executable(cache: &UpdateCache, _ticket: &Ticket) -> Result<PathBuf, String> {
+  let worker_name = if cfg!(windows) {
+    "plvs-update-worker.exe"
+  } else {
+    "plvs-update-worker"
+  };
+  cache
+    .root()
+    .join(worker_name)
+    .canonicalize()
+    .map_err(|e| e.to_string())
 }
 
 #[cfg(debug_assertions)]
@@ -160,14 +244,15 @@ fn pause_for_acceptance_interruption(_root: &Path) -> Result<(), String> {
 }
 
 pub fn spawn(root: &Path, ticket: Ticket) -> Result<PendingWorker, String> {
-  let worker_name = if cfg!(windows) {
-    "plvs-update-worker.exe"
-  } else {
-    "plvs-update-worker"
-  };
-  let worker = root.join(worker_name);
-  fs::copy(std::env::current_exe().map_err(|e| e.to_string())?, &worker)
+  let current_exe = std::env::current_exe()
+    .map_err(|e| e.to_string())?
+    .canonicalize()
     .map_err(|e| e.to_string())?;
+  let target = ticket.target.canonicalize().map_err(|e| e.to_string())?;
+  if current_exe != target {
+    return Err("The update target is not the running application.".into());
+  }
+  let worker = prepare_worker_executable(root, &current_exe)?;
   fs::write(
     root.join("worker-ticket.json"),
     serde_json::to_vec(&ticket).map_err(|e| e.to_string())?,
@@ -234,9 +319,11 @@ pub fn run(ticket_path: &Path) -> Result<(), String> {
     .map_err(|e| e.to_string())?
     .canonicalize()
     .map_err(|e| e.to_string())?;
-  if worker.parent() != Some(cache.root()) || ticket_path != cache.root().join("worker-ticket.json")
-  {
-    return Err("The helper is outside the approved installation cache.".into());
+  let approved_worker = approved_worker_executable(&cache, &ticket)?;
+  let approved_ticket = cache.root().join("worker-ticket.json");
+  let ticket_path = ticket_path.canonicalize().map_err(|e| e.to_string())?;
+  if worker != approved_worker || ticket_path != approved_ticket {
+    return Err("The helper is outside the approved update context.".into());
   }
   let mut context = crate::app_context();
   context.config_mut().app.windows.clear();
@@ -353,6 +440,38 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn macos_helper_copies_the_complete_signed_bundle() {
+    let root = tempfile::tempdir().unwrap();
+    let executable = root.path().join("PLVS.app/Contents/MacOS/plvs");
+    fs::create_dir_all(executable.parent().unwrap()).unwrap();
+    fs::create_dir_all(root.path().join("PLVS.app/Contents/_CodeSignature")).unwrap();
+    fs::write(&executable, b"executable").unwrap();
+    fs::write(
+      root
+        .path()
+        .join("PLVS.app/Contents/_CodeSignature/CodeResources"),
+      b"signature",
+    )
+    .unwrap();
+    let cache = root.path().join("cache");
+    fs::create_dir(&cache).unwrap();
+    let worker = prepare_worker_executable(&cache, &executable).unwrap();
+    assert_eq!(
+      worker,
+      cache
+        .join("plvs-update-worker.app/Contents/MacOS/plvs")
+        .canonicalize()
+        .unwrap()
+    );
+    assert_eq!(fs::read(worker).unwrap(), b"executable");
+    assert_eq!(
+      fs::read(cache.join("plvs-update-worker.app/Contents/_CodeSignature/CodeResources")).unwrap(),
+      b"signature"
+    );
+  }
 
   #[test]
   fn relaunch_does_not_replay_consumed_restore_grants() {

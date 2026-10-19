@@ -106,14 +106,16 @@ Packages are checked against the trusted updater key and signed version on stagi
 installation. Manifest notes are display data, not authenticated authority.
 
 A fresh-session probe and installation entry gate use file leases, not process-local flags. After
-explicit confirmation a copied helper verifies cached bytes and acquires the entry gate before the
-workbench save barrier. Startup confirmations inspect peers without stopping them; in-session manual
+explicit confirmation a helper verifies cached bytes and acquires the entry gate before the
+workbench save barrier. Windows runs a copied executable so the installed binary can be replaced;
+macOS copies the complete signed application bundle because a detached Mach-O fails Developer ID
+validation. Startup confirmations inspect peers without stopping them; in-session manual
 updates use the existing global prepare/commit protocol. The helper waits up to five minutes for the
 old processes to exit, records the attempt with its own process identity, waits for Windows NSIS to
 finish (or macOS replacement to return), then releases the gate and relaunches the application.
 While the recorded helper or installer is alive, a new workspace cannot start. Once neither is alive,
 an unfinished attempt is recorded as failed and the installed version starts. A completed or failed
-attempt is not automatically retried. A fresh session removes the previous helper copy. Updater
+attempt is not automatically retried. A fresh session removes previous helper artifacts. Updater
 commands are not exposed to webviews; only the native update commands can install. The offline adapter and its trust boundary are described in
 [ADR 0030](adr/0030-verify-cached-updates-through-updater-adapter.md).
 

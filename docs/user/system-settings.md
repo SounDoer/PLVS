@@ -96,6 +96,12 @@ the next launch opens the version that is still installed and reports the interr
 Failed attempts do not automatically retry on the next launch.
 Reopening the failed version's update details shows the previous installation error.
 
+On macOS, PLVS 0.22.0 and 0.22.1 cannot complete an automatic update because their copied update
+helper loses the application bundle's Developer ID signature. If you are running either version,
+download the current DMG from GitHub Releases and replace PLVS in Applications once. PLVS 0.22.2
+and later copy the complete signed application bundle for the helper, so later updates can again be
+installed from update details.
+
 ## Global shortcut
 
 Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS
