@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-10-19
+
+### Fixed
+
+- Live Dialogue Detection no longer runs in step with the meters. On 7.1 and larger sources it
+  could delay metering enough that Agent Control recordings were interrupted and had seconds of
+  silence inserted. Dialogue readouts in Live can now trail the programme readouts by a fraction
+  of a second, with the same values. If the computer cannot keep up with detection on every
+  channel, Dialogue Detection stops instead of skipping audio, and **Clear** starts it again.
+- Dialogue Detection on large layouts such as 9.1.6 analyses channels in parallel, so it keeps up
+  on a busy computer instead of stopping during ordinary programme material.
+- Agent Control recordings place captured audio at the time the device delivered it, so a delay in
+  metering no longer inserts silence or drops samples.
+
 ## [0.22.0] - 2026-10-19
 
 ### Added
