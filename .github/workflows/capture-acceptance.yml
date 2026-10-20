@@ -25,8 +25,10 @@ on:
 permissions:
   contents: read
 
+# A called workflow sees its caller's github.workflow, so a standalone dispatch for the release SHA
+# cannot take the group of, and so cancel, the release's pending call.
 concurrency:
-  group: capture-acceptance-${{ inputs.commit_sha }}
+  group: capture-acceptance-${{ github.workflow }}-${{ inputs.commit_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -65,7 +67,17 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
           persist-credentials: false
+
+      # A dispatch accepts any SHA in the repository network, including fork pull request commits.
+      # Nothing from the checkout may run on these machines unless main contains it.
+      - name: Require the commit on main
+        run: |
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main; then
+            echo "commit_sha is not reachable from main" >&2
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v7

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
+import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 import { BUILD_HARNESS } from "./capture-rig.mjs";
 import { selfHostedViolations } from "./self-hosted-workflow-guard.mjs";
@@ -42,6 +43,29 @@ describe("self-hosted runners on a public repository", () => {
     expect(capture).toContain("npm run smoke:capture -- --wait");
     expect(capture).toContain('--sha "$COMMIT_SHA" --platform "$PLATFORM"');
     expect(capture).not.toMatch(/continue-on-error|^\s*if:/m);
+  });
+
+  it("keeps standalone dispatches out of the release call's concurrency group", () => {
+    // Only one run per group may be pending, so a standalone dispatch for the release SHA would
+    // otherwise cancel the release's pending call. A called workflow sees the caller's
+    // github.workflow, which separates the two.
+    const { concurrency } = parse(workflows["capture-acceptance.yml"]);
+    expect(concurrency.group).toBe(
+      "capture-acceptance-${{ github.workflow }}-${{ inputs.commit_sha }}"
+    );
+  });
+
+  it("refuses a commit that main does not contain before anything from it runs", () => {
+    // A dispatch accepts any SHA in the repository network, fork pull request commits included.
+    const { steps } = parse(workflows["capture-acceptance.yml"]).jobs["capture-smoke"];
+    const names = steps.map((step) => step.name);
+    const checkout = steps[names.indexOf("Checkout the exact commit")];
+    const reachable = names.indexOf("Require the commit on main");
+    expect(checkout.with["fetch-depth"]).toBe(0);
+    expect(reachable).toBe(names.indexOf("Checkout the exact commit") + 1);
+    expect(steps[reachable].run).toContain(
+      'git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main'
+    );
   });
 
   it("accepts a dispatch-only self-hosted workflow and a dispatch-only caller", () => {
