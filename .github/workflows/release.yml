@@ -368,8 +368,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Real capture smoke on the maintainer's self-hosted Windows, macOS and Linux runners for this
+  # exact commit. No input skips it; a runner that is off makes the release wait, then fail.
+  capture-acceptance:
+    needs: validate
+    uses: ./.github/workflows/capture-acceptance.yml
+    with:
+      commit_sha: ${{ inputs.commit_sha }}
+
   prepare-draft:
-    needs: [build-windows, build-macos, build-linux]
+    needs: [build-windows, build-macos, build-linux, capture-acceptance]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -167,6 +167,20 @@ describe("Immutable Release promotion", () => {
     );
   });
 
+  it("requires three-platform capture acceptance before the draft", () => {
+    expect(releaseWorkflow).toMatch(
+      /\n {2}capture-acceptance:\n {4}needs: validate\n {4}uses: \.\/\.github\/workflows\/capture-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
+    );
+    expect(releaseWorkflow).toContain(
+      "needs: [build-windows, build-macos, build-linux, capture-acceptance]"
+    );
+  });
+
+  it("never lets capture acceptance be skipped or handed secrets", () => {
+    const job = releaseWorkflow.split("\n  capture-acceptance:\n")[1].split(/\n {2}\S/)[0];
+    expect(job).not.toMatch(/continue-on-error|^\s*if:|secrets/m);
+  });
+
   it("builds stable releases on pinned hosted images", () => {
     expect(releaseWorkflow).not.toMatch(/runs-on:\s*(macos|windows)-latest/);
     expect(releaseWorkflow).toContain("runs-on: macos-26");
