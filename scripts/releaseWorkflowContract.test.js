@@ -167,6 +167,12 @@ describe("Immutable Release promotion", () => {
     );
   });
 
+  it("builds stable releases on pinned hosted images", () => {
+    expect(releaseWorkflow).not.toMatch(/runs-on:\s*(macos|windows)-latest/);
+    expect(releaseWorkflow).toContain("runs-on: macos-26");
+    expect(releaseWorkflow).toContain("runs-on: windows-2025-vs2026");
+  });
+
   it("dispatches an exact version and commit instead of rebuilding from a pushed tag", () => {
     expect(releaseWorkflow).toContain("workflow_dispatch:");
     expect(releaseWorkflow).toContain("version:");
