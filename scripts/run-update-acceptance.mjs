@@ -1002,6 +1002,44 @@ async function runMacAcceptance({ root, runId, receipt }) {
   const dataRoot = path.join(runDir, "data with spaces");
   mkdirSync(installRoot, { recursive: true });
   mkdirSync(dataRoot, { recursive: true });
+  const archive = resolveReceiptFile(root, receipt.versions[0].file);
+  run("tar", ["-xzf", archive, "-C", installRoot], { env: { COPYFILE_DISABLE: "1" } });
+  const app = path.join(installRoot, `${receipt.productName}.app`);
+  const cli = path.join(app, "Contents", "MacOS", "plvs-cli");
+  const launchCommand = macAcceptanceLaunch(app, dataRoot);
+  const result = await runGuidedAcceptance({
+    root,
+    runId,
+    receipt,
+    runDir,
+    dataRoot,
+    cli,
+    launch: ({ interruptHelper = false } = {}) =>
+      launchBackground(launchCommand.command, launchCommand.args, {
+        newProcessGroup: false,
+        env: interruptHelper ? { PLVS_UPDATE_ACCEPTANCE_INTERRUPT_HELPER: "1" } : {},
+      }),
+    interruptHelper: interruptOwnedMacHelper,
+    terminate: () => terminateOwnedMacApp(app),
+    cleanup: {
+      processesExited: (pids) => {
+        const rows = run("ps", ["-axo", "pid=,command="]);
+        return pids.every((pid) => !new RegExp(`^\\s*${pid}\\s`, "m").test(rows));
+      },
+      installation: () => {},
+    },
+    platformVersion: () => run("sw_vers", ["-productVersion"]),
+    nativeScenarios: () => [
+      { id: "apfs-bundle-swap", status: "passed" },
+      {
+        id: "read-only-dmg-refusal",
+        status: "notRun",
+        reason: "Runs after the writable installation is fully cleaned up",
+      },
+    ],
+  });
+  // Both packages intentionally share the acceptance identity. Exercise the read-only DMG only
+  // after the writable app has exited so macOS cannot route its launch into the earlier process.
   let readOnlyDmgScenario;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
@@ -1024,35 +1062,23 @@ async function runMacAcceptance({ root, runId, receipt }) {
       }
     }
   }
-  const archive = resolveReceiptFile(root, receipt.versions[0].file);
-  run("tar", ["-xzf", archive, "-C", installRoot], { env: { COPYFILE_DISABLE: "1" } });
-  const app = path.join(installRoot, `${receipt.productName}.app`);
-  const cli = path.join(app, "Contents", "MacOS", "plvs-cli");
-  const launchCommand = macAcceptanceLaunch(app, dataRoot);
-  return runGuidedAcceptance({
-    root,
-    runId,
-    receipt,
-    runDir,
-    dataRoot,
-    cli,
-    launch: ({ interruptHelper = false } = {}) =>
-      launchBackground(launchCommand.command, launchCommand.args, {
-        newProcessGroup: false,
-        env: interruptHelper ? { PLVS_UPDATE_ACCEPTANCE_INTERRUPT_HELPER: "1" } : {},
-      }),
-    interruptHelper: interruptOwnedMacHelper,
-    terminate: () => terminateOwnedMacApp(app),
-    cleanup: {
-      processesExited: (pids) => {
-        const rows = run("ps", ["-axo", "pid=,command="]);
-        return pids.every((pid) => !new RegExp(`^\\s*${pid}\\s`, "m").test(rows));
-      },
-      installation: () => {},
-    },
-    platformVersion: () => run("sw_vers", ["-productVersion"]),
-    nativeScenarios: () => [{ id: "apfs-bundle-swap", status: "passed" }, readOnlyDmgScenario],
-  });
+  result.scenarios = result.scenarios.map((scenario) =>
+    scenario.id === "read-only-dmg-refusal" ? readOnlyDmgScenario : scenario
+  );
+  const incomplete = requiredUpdateScenarios(receipt.platform.os).some(
+    (id) => result.scenarios.find((scenario) => scenario.id === id)?.status !== "passed"
+  );
+  result.summary = result.scenarios.some((scenario) => scenario.status === "failed")
+    ? "failed"
+    : incomplete
+      ? "incomplete"
+      : "complete";
+  result.endedAt = new Date().toISOString();
+  result.artifacts.push(
+    ...artifactList(runDir, ["read-only-dmg.json", "read-only-dmg-guidance.png"])
+  );
+  writeJsonAtomic(path.join(runDir, "result.json"), result);
+  return result;
 }
 
 async function runWindowsAcceptance({ root, runId, receipt }) {
