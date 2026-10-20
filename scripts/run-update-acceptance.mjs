@@ -534,6 +534,15 @@ async function runGuidedAcceptance({
       surfaceId: preferencesSurface.surfaceId,
       preferences: { autoCheck: true, autoDownload: true },
     });
+    await waitFor(
+      "saved update preferences",
+      () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+      (value) =>
+        !value.result?.surfaces?.some(
+          (surface) => surface.kind === "update" && surface.target?.phase === "preferences"
+        ),
+      60_000
+    );
     const packageEndpoint = platformDescriptor().packageEndpoint;
     const rejectionScenarios = [];
     rejectionScenarios.push({

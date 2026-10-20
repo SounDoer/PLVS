@@ -51,10 +51,19 @@ async function act(ctx) {
         -32042
       );
     }
-    await developmentUpdate.setPreferences({
-      autoCheck: request.params.autoCheck,
-      autoDownload: request.params.autoDownload,
-    });
+    return {
+      requestId,
+      result: { action: request.method, accepted: true, revision: clock.current() },
+      // Saving can include the first identity-wide persistence flush. A cold packaged macOS
+      // launch may take longer than the broker response budget, so acknowledge the validated UI
+      // action before running the same application business function. The acceptance runner
+      // waits for the preferences surface to close before it proceeds.
+      afterResponse: () =>
+        developmentUpdate.setPreferences({
+          autoCheck: request.params.autoCheck,
+          autoDownload: request.params.autoDownload,
+        }),
+    };
   } else if (request.method === "dev.update.open") {
     developmentUpdate.open();
   } else if (request.method === "dev.update.confirm") {
