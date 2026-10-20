@@ -12,6 +12,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { captureSmokeChangesSinceLastTag } from "./audio-code-changed.mjs";
 import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
+import { updateAcceptanceChangesSinceLastTag } from "./update-acceptance-code-changed.mjs";
 import { BUILD_HARNESS } from "./capture-rig.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,7 +36,21 @@ run("Release state", "node", ["scripts/check-release-state.mjs"]);
 run("Public content review", "node", ["scripts/release-content-review.mjs", "check"]);
 run("Full repository check", npm, ["run", "check"]);
 run("Corresponding-source availability", npm, ["run", "licenses:sources"]);
-run("Update acceptance evidence (advisory)", "node", ["scripts/report-update-acceptance.mjs"]);
+const updateAcceptanceChanges = updateAcceptanceChangesSinceLastTag({ cwd: root });
+if (updateAcceptanceChanges.paths.length > 0) {
+  console.log(
+    `\n== Update acceptance dependencies ==\nChanged since ${
+      updateAcceptanceChanges.tag ?? "the initial commit"
+    }:`
+  );
+  for (const path of updateAcceptanceChanges.paths) console.log(`  ${path}`);
+  run("Update acceptance evidence", "node", [
+    "scripts/report-update-acceptance.mjs",
+    "--require-complete",
+  ]);
+} else {
+  run("Update acceptance evidence (advisory)", "node", ["scripts/report-update-acceptance.mjs"]);
+}
 
 // The capture layer cannot be tested by `npm run check` — CI has no sound card —
 // so it is verified here when either that layer or its smoke harness changed.

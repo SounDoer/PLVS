@@ -157,6 +157,29 @@ describe("UpdateDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it("opens the exact public release after an installation failure", () => {
+    const openExternalUrl = vi.fn();
+    render(
+      <UpdateDialog
+        {...BASE_PROPS}
+        targetVersion="1.2.3"
+        manualDownloadUrl="https://github.com/SounDoer/PLVS/releases/tag/v1.2.3"
+        installStatus="install-error"
+        openExternalUrl={openExternalUrl}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "Update failed. Please try again, or download v1.2.3 manually from GitHub Releases."
+      )
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Download Manually" }));
+    expect(openExternalUrl).toHaveBeenCalledWith(
+      "https://github.com/SounDoer/PLVS/releases/tag/v1.2.3"
+    );
+  });
+
   it("offers restart-only retry after a relaunch failure", () => {
     const onRestart = vi.fn();
     render(<UpdateDialog {...BASE_PROPS} installStatus="restart-error" onRestart={onRestart} />);

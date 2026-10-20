@@ -74,6 +74,8 @@ export function DockUpdateApp() {
           <UpdateDetailsContent
             accessory
             releaseNotes={payload.releaseNotes}
+            targetVersion={payload.targetVersion}
+            manualDownloadUrl={payload.manualDownloadUrl}
             ready={payload.ready}
             installationSupported={payload.installationSupported}
             installStatus={payload.installStatus}

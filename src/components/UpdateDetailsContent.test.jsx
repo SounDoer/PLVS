@@ -45,4 +45,9 @@ describe("shared update details", () => {
     expect(callbacks.onRestart).toHaveBeenCalledTimes(1);
     expect(callbacks.onConfirm).not.toHaveBeenCalled();
   });
+
+  it("does not offer a manual download without an exact public release URL", () => {
+    render(<UpdateDetailsContent {...props({ installStatus: "install-error" })} />);
+    expect(screen.queryByRole("button", { name: "Download Manually" })).toBeNull();
+  });
 });

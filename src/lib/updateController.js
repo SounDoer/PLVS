@@ -2,7 +2,15 @@ import { normalizeUpdatePreferences } from "./updatePreferences.js";
 import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
 
 export const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases/latest";
+const RELEASE_TAGS_URL = "https://github.com/SounDoer/PLVS/releases/tag";
 export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
+
+/** Public stable updates have exact immutable Release pages; fixtures and malformed values do not. */
+export function releaseUrlForVersion(version) {
+  return typeof version === "string" && /^\d+\.\d+\.\d+$/.test(version)
+    ? `${RELEASE_TAGS_URL}/v${version}`
+    : null;
+}
 
 /** One owner for update decisions. Dependencies keep native handoff and race tests deterministic. */
 export function createUpdateController({

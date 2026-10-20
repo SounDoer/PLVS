@@ -1,8 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { createUpdateController } from "./updateController.js";
+import { createUpdateController, releaseUrlForVersion } from "./updateController.js";
 
 const a = { id: "a", version: "2.0.0", manifest: { notes: "A" } };
 const b = { id: "b", version: "3.0.0", manifest: { notes: "B" } };
+
+describe("releaseUrlForVersion", () => {
+  it("targets one exact stable Release and rejects non-public fixture versions", () => {
+    expect(releaseUrlForVersion("1.2.3")).toBe(
+      "https://github.com/SounDoer/PLVS/releases/tag/v1.2.3"
+    );
+    expect(releaseUrlForVersion("99.0.0-development-fixture")).toBeNull();
+    expect(releaseUrlForVersion(undefined)).toBeNull();
+  });
+});
 const prefs = { choiceMade: true, autoCheck: true, autoDownload: true };
 function deferred() {
   let resolve = (_value) => {};

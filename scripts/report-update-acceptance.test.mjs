@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   classifyUpdateAcceptance,
   formatUpdateAcceptanceAdvisory,
+  formatRequiredUpdateAcceptance,
+  incompleteUpdateAcceptancePlatforms,
   updateAcceptanceAdvisory,
 } from "./report-update-acceptance.mjs";
 
@@ -81,7 +83,23 @@ describe("update acceptance release advisory", () => {
 
   it("is wired into release preflight as an explicit advisory", () => {
     const releaseGate = readFileSync(new URL("./run-release-gate.mjs", import.meta.url), "utf8");
+    expect(releaseGate).toContain("updateAcceptanceChangesSinceLastTag");
+    expect(releaseGate).toContain('"--require-complete"');
     expect(releaseGate).toContain('run("Update acceptance evidence (advisory)", "node", [');
     expect(releaseGate).toContain('"scripts/report-update-acceptance.mjs"');
+  });
+
+  it("blocks a guarded release until every platform has complete exact-SHA evidence", () => {
+    const report = {
+      sourceSha: "a".repeat(40),
+      platforms: [
+        { platform: "windows", status: "complete", reason: "complete" },
+        { platform: "macos", status: "missing", reason: "no exact-SHA evidence" },
+      ],
+    };
+    expect(incompleteUpdateAcceptancePlatforms(report)).toEqual([report.platforms[1]]);
+    expect(formatRequiredUpdateAcceptance(report)).toContain(
+      "Release blocked: complete exact-SHA evidence is required for macos."
+    );
   });
 });

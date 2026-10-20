@@ -94,7 +94,10 @@ owns the installation. If another workbench has not closed within five minutes, 
 not installed and PLVS reopens. If an installation is interrupted, for example by a power loss,
 the next launch opens the version that is still installed and reports the interrupted attempt.
 Failed attempts do not automatically retry on the next launch.
-Reopening the failed version's update details shows the previous installation error.
+Reopening the failed version's update details shows the previous installation error. Failed update
+details keep **Retry** as the primary action and also offer **Download Manually**. The manual action
+opens that exact version's immutable GitHub Release page in the system browser; it does not close
+PLVS, choose an installer or install anything automatically.
 
 On macOS, PLVS 0.22.0 and 0.22.1 cannot complete an automatic update because their copied update
 helper loses the application bundle's Developer ID signature. If you are running either version,

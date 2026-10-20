@@ -20,6 +20,7 @@ import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigatio
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
 import { isParticipantInstance } from "../lib/runtimeRole.js";
+import { releaseUrlForVersion } from "../lib/updateController.js";
 import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 
 /**
@@ -369,6 +370,11 @@ export function AppSettingsOverlays({
         open={updateDialogOpen}
         currentVersion={appVersion}
         targetVersion={selectedUpdate?.update?.version}
+        manualDownloadUrl={
+          updateDevelopmentFixtureIdRef.current
+            ? null
+            : releaseUrlForVersion(selectedUpdate?.update?.version)
+        }
         releaseNotes={selectedUpdate?.releaseNotes}
         installStatus={installStatus}
         downloadProgress={downloadProgress}

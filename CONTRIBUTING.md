@@ -731,10 +731,13 @@ all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. A
 valid only after this runner produces real evidence on that platform; contract tests on another OS
 do not substitute for it.
 
-Stable release preflight also prints a non-blocking report for both platforms. It accepts only
-evidence for the exact release commit, marks evidence older than 14 days as stale, and says plainly
-when a platform is missing, invalid, incomplete, or stale. This is advisory during the initial
-rollout: the release continues, but the missing cross-platform evidence remains visible in its log.
+Stable release preflight reports both platforms. It accepts only evidence for the exact release
+commit, marks evidence older than 14 days as stale, and says plainly when a platform is missing,
+invalid, incomplete, or stale. When updater, installer, signing, packaging or acceptance
+dependencies changed since the latest stable tag, missing Windows or macOS evidence stops the
+release. Other releases keep the report advisory. `scripts/update-acceptance-code-changed.mjs` owns
+that deliberately narrow dependency list; update it when a new path can affect the installed update
+chain, rather than broadening the gate to ordinary version or interface-only changes.
 
 The shared acceptance report is ready for Linux branch integration without claiming Linux coverage
 on `main`. Reports remain Windows/macOS-only until an explicitly supplied evidence file uses

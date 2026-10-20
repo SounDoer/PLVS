@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Failed update details offer **Download Manually**, which opens the exact immutable GitHub Release
+  page while leaving **Retry** available.
+- Stable-release preflight requires complete Windows and macOS packaged-update acceptance for the
+  exact release commit when updater, installer, signing, packaging or acceptance dependencies
+  changed; releases outside that scope keep the existing advisory report.
+
 ## [0.22.2] - 2026-10-19
 
 ### Fixed

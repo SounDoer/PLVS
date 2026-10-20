@@ -22,6 +22,8 @@ export function UpdateDetailsHeader({ ready, targetVersion, currentVersion, acce
 /** Shared content for the normal dialog and the Dock accessory; owns no update or window state. */
 export function UpdateDetailsContent({
   releaseNotes = "",
+  targetVersion = null,
+  manualDownloadUrl = null,
   accessory = false,
   installStatus = "idle",
   downloadProgress = null,
@@ -64,6 +66,10 @@ export function UpdateDetailsContent({
     if (!busy) onCancel();
   }
 
+  function handleManualDownload() {
+    if (!busy && manualDownloadUrl) void openExternalUrl(manualDownloadUrl);
+  }
+
   return (
     <>
       {" "}
@@ -97,7 +103,9 @@ export function UpdateDetailsContent({
       ) : null}
       {installFailed ? (
         <p className="mb-2 text-[length:var(--ui-fs-control)] text-destructive">
-          Update failed. Please try again.
+          {manualDownloadUrl && targetVersion
+            ? `Update failed. Please try again, or download v${targetVersion} manually from GitHub Releases.`
+            : "Update failed. Please try again."}
         </p>
       ) : null}
       {restartFailed ? (
@@ -105,13 +113,20 @@ export function UpdateDetailsContent({
           Update installed. Restart PLVS to finish.
         </p>
       ) : null}
-      <DialogFooter>
-        <Button variant="ghost" disabled={busy} onClick={handleDismiss}>
-          {restartFailed ? "Close" : ready ? "Skip This Time" : "Cancel"}
-        </Button>
-        <Button disabled={busy} onClick={handlePrimary}>
-          {primaryLabel}
-        </Button>
+      <DialogFooter className={installFailed && manualDownloadUrl ? "justify-between" : undefined}>
+        {installFailed && manualDownloadUrl ? (
+          <Button variant="outline" disabled={busy} onClick={handleManualDownload}>
+            Download Manually
+          </Button>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" disabled={busy} onClick={handleDismiss}>
+            {restartFailed ? "Close" : ready ? "Skip This Time" : "Cancel"}
+          </Button>
+          <Button disabled={busy} onClick={handlePrimary}>
+            {primaryLabel}
+          </Button>
+        </div>
       </DialogFooter>
     </>
   );

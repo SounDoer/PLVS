@@ -132,15 +132,55 @@ export function formatUpdateAcceptanceAdvisory(report) {
   return lines.join("\n");
 }
 
+export function incompleteUpdateAcceptancePlatforms(report) {
+  return report.platforms.filter((platform) => platform.status !== "complete");
+}
+
+export function formatRequiredUpdateAcceptance(report) {
+  const lines = [
+    "Update acceptance evidence (required because update dependencies changed):",
+    `  Exact source: ${report.sourceSha}`,
+  ];
+  for (const platform of report.platforms) {
+    lines.push(`  ${platform.platform}: ${platform.status} — ${platform.reason}`);
+    for (const gap of platform.gaps || []) {
+      lines.push(`    ${gap.id}: ${gap.status}${gap.reason ? ` — ${gap.reason}` : ""}`);
+    }
+  }
+  const incomplete = incompleteUpdateAcceptancePlatforms(report);
+  if (incomplete.length > 0) {
+    lines.push(
+      `  Release blocked: complete exact-SHA evidence is required for ${incomplete
+        .map(({ platform }) => platform)
+        .join(" and ")}.`
+    );
+  }
+  return lines.join("\n");
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const repository = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const required = process.argv.includes("--require-complete");
   try {
-    console.log(formatUpdateAcceptanceAdvisory(updateAcceptanceAdvisory({ repository })));
-  } catch (error) {
-    console.log("Update acceptance evidence (advisory; does not block this release):");
-    console.log(`  unavailable — ${error.message}`);
+    const report = updateAcceptanceAdvisory({ repository });
     console.log(
-      "  Release is proceeding without complete cross-platform update acceptance evidence."
+      required ? formatRequiredUpdateAcceptance(report) : formatUpdateAcceptanceAdvisory(report)
     );
+    if (required && incompleteUpdateAcceptancePlatforms(report).length > 0) process.exitCode = 1;
+  } catch (error) {
+    console.log(
+      required
+        ? "Update acceptance evidence (required because update dependencies changed):"
+        : "Update acceptance evidence (advisory; does not block this release):"
+    );
+    console.log(`  unavailable — ${error.message}`);
+    if (required) {
+      console.log("  Release blocked: exact-SHA update acceptance evidence is unavailable.");
+      process.exitCode = 1;
+    } else {
+      console.log(
+        "  Release is proceeding without complete cross-platform update acceptance evidence."
+      );
+    }
   }
 }

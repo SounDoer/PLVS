@@ -6,6 +6,7 @@ export function UpdateDialog({
   open,
   currentVersion,
   targetVersion = null,
+  manualDownloadUrl = null,
   releaseNotes = "",
   ready = false,
   installationSupported = true,
@@ -55,6 +56,8 @@ export function UpdateDialog({
 
         <UpdateDetailsContent
           releaseNotes={releaseNotes}
+          targetVersion={targetVersion}
+          manualDownloadUrl={manualDownloadUrl}
           installStatus={installStatus}
           downloadProgress={downloadProgress}
           ready={ready}

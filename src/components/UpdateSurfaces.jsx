@@ -5,6 +5,7 @@ import { useDock } from "../dock/DockContext.jsx";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
+import { releaseUrlForVersion } from "../lib/updateController.js";
 import { openExternalUrl } from "../ipc/openExternal.js";
 import { UpdateDialog } from "./UpdateDialog.jsx";
 import { UpdateSetupContent } from "./UpdatePreferencesControls.jsx";
@@ -52,6 +53,10 @@ export function UpdateSurfaces({ currentVersion }) {
     error: setup ? error : updates.error,
     targetId: updates.details?.target.id,
     targetVersion: updates.details?.target.version,
+    manualDownloadUrl:
+      updates.details?.origin === "fixture"
+        ? null
+        : releaseUrlForVersion(updates.details?.target.version),
     currentVersion,
     installationUnavailableReason: updates.installationUnavailableReason,
     ready: updates.details?.staged === true,
@@ -157,6 +162,11 @@ export function UpdateSurfaces({ currentVersion }) {
         open={Boolean(updates.details)}
         currentVersion={currentVersion}
         targetVersion={updates.details?.target.version}
+        manualDownloadUrl={
+          updates.details?.origin === "fixture"
+            ? null
+            : releaseUrlForVersion(updates.details?.target.version)
+        }
         releaseNotes={releaseNotes}
         ready={updates.details?.staged === true}
         installStatus={updates.installStatus}

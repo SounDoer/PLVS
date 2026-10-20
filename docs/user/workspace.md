@@ -206,7 +206,8 @@ When an update is available, downloading, ready, or has failed, a dot appears on
 (red after a failure), and the toolbar shows the state in words beside its tools, for example
 **Update Ready · v0.22.0** or **Downloading Update · 45%**. Clicking it opens the details in a
 separate window, reusing the normal release notes and confirmation
-actions. Closing details keeps Dock active. The toolbar and any open settings editor retain their
+actions. A failed installation also offers **Download Manually** on the left, while **Cancel** and
+**Retry** stay on the right. Closing details keeps Dock active. The toolbar and any open settings editor retain their
 state, and the strip keeps its width and height. Returning to the normal window transfers the same
 selected update to its normal dialog. If the update window cannot open,
 PLVS restores the normal window with the same details or unsaved update preferences.
