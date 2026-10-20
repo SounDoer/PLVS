@@ -168,6 +168,7 @@ impl UpdateCache {
     Ok(self.root.join(format!("{id}.package")))
   }
 
+  #[cfg(target_os = "linux")]
   pub(crate) fn package_file(&self, id: &str) -> Result<PathBuf, String> {
     self.package_path(id)
   }

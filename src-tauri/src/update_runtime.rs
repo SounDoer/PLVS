@@ -130,16 +130,10 @@ fn installation_location_error() -> Option<String> {
 }
 
 fn installation_unavailable_reason() -> Option<String> {
-  installation_location_error().or_else(|| {
-    #[cfg(target_os = "linux")]
-    {
-      crate::linux_update::unavailable_reason()
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-      None
-    }
-  })
+  #[cfg(target_os = "linux")]
+  return installation_location_error().or_else(crate::linux_update::unavailable_reason);
+  #[cfg(not(target_os = "linux"))]
+  installation_location_error()
 }
 
 fn authorize(window: &WebviewWindow, app: &tauri::AppHandle) -> Result<(), String> {
