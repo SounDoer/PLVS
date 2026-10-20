@@ -297,10 +297,22 @@ async function captureRejectedPackage({
     fault,
     packageEndpoint
   );
-  await confirmVisibleUpdate(cli, dataRoot);
+  await openUpdateDetails(cli, dataRoot);
   const ui = await waitFor(
     `${fault} visible error`,
-    () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+    () => {
+      const current = cliJson(cli, dataRoot, ["ui", "inspect"]);
+      const surface = findUpdateSurface(current.result);
+      // The package request can be observed before the automatic transfer releases its lease.
+      // Retry the Agent Control confirmation while the real dialog remains idle; once the
+      // transfer settles, exactly one attempt advances to installing or its visible error.
+      if (surface?.target?.phase === "idle") {
+        developmentUpdateAction(cli, dataRoot, "confirm", current, {
+          surfaceId: surface.surfaceId,
+        });
+      }
+      return current;
+    },
     (value) => findUpdateSurface(value.result)?.target?.phase === "install-error"
   );
   const retryRequestCount = feedPackageRequestCount(
@@ -872,7 +884,7 @@ export async function runMacReadOnlyDmg({ root, runDir, receipt, stagingRoot = r
     if (capabilities.result.runtime?.identifier !== receipt.identity) {
       throw new Error("Read-only DMG app identity does not match the acceptance receipt");
     }
-    const inspected = await waitFor(
+    let inspected = await waitFor(
       "read-only DMG UI bridge",
       () => cliJson(cli, layout.dataRoot, ["ui", "inspect"]),
       (value) =>
@@ -881,6 +893,24 @@ export async function runMacReadOnlyDmg({ root, runDir, receipt, stagingRoot = r
         value.result?.window?.visible === true,
       60_000
     );
+    const preferencesSurface = inspected.result.surfaces?.find(
+      (surface) => surface.kind === "update" && surface.target?.phase === "preferences"
+    );
+    if (preferencesSurface) {
+      developmentUpdateAction(cli, layout.dataRoot, "preferences", inspected, {
+        surfaceId: preferencesSurface.surfaceId,
+        preferences: { autoCheck: false, autoDownload: false },
+      });
+      inspected = await waitFor(
+        "read-only DMG update preference dismissal",
+        () => cliJson(cli, layout.dataRoot, ["ui", "inspect"]),
+        (value) =>
+          !value.result?.surfaces?.some(
+            (surface) => surface.kind === "update" && surface.target?.phase === "preferences"
+          ),
+        60_000
+      );
+    }
     const shown = await waitFor(
       "read-only DMG About settings",
       () =>
