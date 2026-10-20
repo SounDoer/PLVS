@@ -511,7 +511,12 @@ async function runGuidedAcceptance({
     if (capabilities.result.runtime?.identifier !== receipt.identity) {
       throw new Error("Running app identity does not match the acceptance receipt");
     }
-    const before = cliJson(cli, dataRoot, ["inspect"]);
+    const before = await waitFor(
+      "packaged app inspection",
+      () => cliJson(cli, dataRoot, ["inspect"]),
+      (value) => Number.isSafeInteger(value.result?.revision),
+      60_000
+    );
     writeJsonAtomic(path.join(runDir, "before.json"), before);
     const preferencesUi = await waitFor(
       "update preferences",
