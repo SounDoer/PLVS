@@ -3,8 +3,8 @@
   "version": "0.23.0",
   "baselineTag": "v0.22.2",
   "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
-  "candidateRevision": "4f87f06a4f4c06130723b0e11c1bc9049c9ce96d",
-  "contentSha256": "bf38692b85659a827e4d7a301641a68a89a16262eb1ff814c65cbed987bf40af",
+  "candidateRevision": "71b12551c15ef347289accdb78a82c86794797c4",
+  "contentSha256": "b8c1142fde4c958444982807ff2a206c31f2f2ce0ee749d549f4ed6653970567",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -18,7 +18,8 @@
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
         "Re-reviewed for candidate c2f268eb: changes since 08e61ad9 are acceptance-only Agent Control, workflow/evidence automation, tests and maintainer documentation; stable, dev and Preview identities cannot access the private controls",
         "Re-reviewed for candidate b041e59f: the migration fix preserves the user's existing documented update preference while the other changes affect only updater acceptance tooling",
-        "Re-reviewed for candidate 4f87f06a: the only change since b041e59f reopens a retained test update through acceptance-only Agent Control after an intentionally interrupted helper"
+        "Re-reviewed for candidate 4f87f06a: the only change since b041e59f reopens a retained test update through acceptance-only Agent Control after an intentionally interrupted helper",
+        "Re-reviewed for candidate 71b12551: acceptance-only Agent Control now waits for transfer settlement and dismisses the synthetic first-run choice in the read-only DMG scenario; documented product behavior is unchanged"
       ]
     },
     "readme": {
@@ -31,7 +32,8 @@
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
         "Re-reviewed for candidate c2f268eb: updater acceptance automation changes only private tooling, tests and maintainer documentation",
         "Re-reviewed for candidate b041e59f: no download, feature-summary or platform-support claim changed",
-        "Re-reviewed for candidate 4f87f06a: the acceptance runner retry fix changes no public download or feature claim"
+        "Re-reviewed for candidate 4f87f06a: the acceptance runner retry fix changes no public download or feature claim",
+        "Re-reviewed for candidate 71b12551: updater acceptance timing and isolated DMG setup changes no public download or feature claim"
       ]
     },
     "website": {
@@ -45,7 +47,8 @@
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
         "Re-reviewed for candidate c2f268eb: the new Actions workflow exports ephemeral acceptance packages and test evidence only; it handles no production-user data and changes no public site content",
         "Re-reviewed for candidate b041e59f: preference migration remains local and updater acceptance artifacts contain no production-user data",
-        "Re-reviewed for candidate 4f87f06a: the acceptance-only retry continues to use isolated synthetic data and changes no public site content or production-user data flow"
+        "Re-reviewed for candidate 4f87f06a: the acceptance-only retry continues to use isolated synthetic data and changes no public site content or production-user data flow",
+        "Re-reviewed for candidate 71b12551: the acceptance runner continues to use isolated synthetic data and changes no public site content or production-user data flow"
       ]
     },
     "screenshots": {
@@ -58,7 +61,8 @@
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
         "Re-reviewed for candidate c2f268eb: no product CSS, visual component or published image changed since 08e61ad9",
         "Re-reviewed for candidate b041e59f: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate 4f87f06a: no product CSS, visual component or published image changed"
+        "Re-reviewed for candidate 4f87f06a: no product CSS, visual component or published image changed",
+        "Re-reviewed for candidate 71b12551: no product CSS, visual component or published image changed"
       ]
     }
   }
