@@ -55,10 +55,11 @@
 
 The desktop app also has a low-rate semantic control path: `plvs-cli` Agent Control commands find the
 running instance with the same identity through a named pipe with a current-user ACL on Windows and
-a private Unix socket on macOS. The Rust broker only handles authentication, rate limiting, timeouts
-and request correlation, then routes the request to the main WebView. Workspace validation, revision,
-one-shot replacement and persistence completion remain owned by the React frontend; the broker does
-not duplicate business state and does not broadcast requests to accessory WebViews.
+a private Unix socket on macOS and Linux. The Rust broker only handles authentication, rate
+limiting, timeouts and request correlation, then routes the request to the main WebView. Workspace
+validation, revision, one-shot replacement and persistence completion remain owned by the React
+frontend; the broker does not duplicate business state and does not broadcast requests to accessory
+WebViews.
 
 Transient editor authoring uses a separate mounted-draft registry in the React workbench. Each
 adapter is bound to the UI Navigation surface ID for one Theme/Profile editor lifetime and exposes

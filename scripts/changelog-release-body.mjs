@@ -97,7 +97,7 @@ const installSection = [
   "",
   "### Linux (Ubuntu 24.04 x86_64)",
   `- 下载 \`${assets.linuxDeb}\`，运行 \`sudo apt install ./${assets.linuxDeb}\`。`,
-  "- Linux 版本不会在应用内更新，请从 Releases 下载新版本并以同样方式安装。",
+  "- 安装了更新组件的 Linux 稳定版可在 PLVS 内下载签名更新，并通过系统授权提示安装；也可手动安装新的 `.deb`。",
   "",
   "---",
   "",
@@ -114,7 +114,7 @@ const installSection = [
   "",
   "### Linux (Ubuntu 24.04 x86_64)",
   `- Download \`${assets.linuxDeb}\` and run \`sudo apt install ./${assets.linuxDeb}\`.`,
-  "- Linux builds do not update in-app; download each new version from Releases and install it the same way.",
+  "- Stable Linux builds with the update component can download signed updates in PLVS and install them through the system authorization prompt; manual `.deb` installation remains available.",
   "",
 ].join("\n");
 

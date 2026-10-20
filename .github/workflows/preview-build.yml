@@ -295,10 +295,10 @@ jobs:
           Use `--reinstall` when switching commits: Preview builds can share the same base package version.
           The package includes PLVS's verified FFmpeg/FFprobe sidecars. Launch PLVS Preview from the menu, or run `plvs`.
           Diagnose with `plvs-cli doctor --json`; remove with `sudo apt remove plvs-preview`.
-          This initial Preview conflicts with the future stable Linux deb because they share executable names.
+          Preview conflicts with stable PLVS because the packages share executable names.
           Enable Agent Control in Settings before using live `plvs-cli` commands.
-          Native desktop/hardware and four-hour soak acceptance remain pending. Per-application capture,
-          screenshots and recording are not supported on Linux yet.
+          Native desktop/hardware and four-hour soak acceptance remain pending. Per-application capture is
+          not supported on Linux. Screenshots and pointer-free recording, including measured-source audio, are supported.
           EOF
           else
             echo 'Windows Preview installs independently from stable PLVS. Keep all Portable ZIP files together.' >> preview-notes.md
