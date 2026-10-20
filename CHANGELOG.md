@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-21
+
 ### Added
 
 - Stable Ubuntu packages can download and install signed updates from PLVS. Installation uses the
@@ -23,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stable-release preflight requires complete Windows and macOS packaged-update acceptance for the
   exact release commit when updater, installer, signing, packaging or acceptance dependencies
   changed; releases outside that scope keep the existing advisory report.
+- Settings switches now read **Auto Check for Updates**, **Auto Download Updates** and
+  **Crash Report Prompt** (previously Auto Check, Auto Download and Ask To Send Crash Reports).
+- Every stable release is now checked with real audio capture on Windows, macOS and Linux before
+  it is published.
 
 ### Fixed
 
@@ -31,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mistakes the copied update helper for an installer. PLVS 0.22.0 to 0.22.2 users who hit this error
   must install the next release once by downloading the `x64-setup.exe`; automatic installation
   works again after that manual upgrade.
+- Turning on **Crash Report Prompt** no longer immediately opens a crash report that was saved while
+  the prompt was off or postponed.
+- Leaving Dock no longer fails with "Dock height could not be changed" when the strip's new layout
+  needs more height.
+- On Windows with a top-edge Dock strip, the first toolbar opened after launch no longer appears one
+  strip height below the strip.
 
 ## [0.22.2] - 2026-10-19
 

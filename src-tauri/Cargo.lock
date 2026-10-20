@@ -3678,7 +3678,7 @@ dependencies = [
 
 [[package]]
 name = "plvs"
-version = "0.22.2"
+version = "0.23.0"
 dependencies = [
  "atomic-write-file",
  "cairo-rs",
@@ -3733,14 +3733,14 @@ dependencies = [
 
 [[package]]
 name = "plvs-cli"
-version = "0.22.2"
+version = "0.23.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "plvs-update-installer"
-version = "0.22.2"
+version = "0.23.0"
 dependencies = [
  "base64 0.22.1",
  "minisign-verify",
