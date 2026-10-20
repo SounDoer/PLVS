@@ -20,6 +20,9 @@ const MEASUREMENT_WAIT_UNTIL_METHOD: &str = "measurement.waitUntil";
 const VISUAL_RECORDING_WAIT_METHOD: &str = "visual.recording.wait";
 const VISUAL_RECORDING_STOP_METHOD: &str = "visual.recording.stop";
 const VISUAL_RECORDING_STOP_TIMEOUT: Duration = Duration::from_secs(10);
+const DEVELOPMENT_PERFORMANCE_STALL_METHOD: &str = "dev.performance.stall";
+const MIN_DEVELOPMENT_PERFORMANCE_STALL_MS: u64 = 100;
+const MAX_DEVELOPMENT_PERFORMANCE_STALL_MS: u64 = 30_000;
 /// Mirrors the long-wait contracts the frontend validates.
 const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
 const MIN_WAIT_TIMEOUT_MS: u64 = 100;
@@ -33,20 +36,32 @@ pub const CLIENT_GRACE: Duration = Duration::from_secs(2);
 /// How long the frontend itself may take to answer this request.
 ///
 /// Every layer between the caller and the frontend has to agree on this, or whichever one gives up
-/// first replaces the real outcome with its own error. Long-poll methods deliberately hold a
+/// first replaces the real outcome with its own error. Long-running methods deliberately hold a
 /// request open, so they need more than the default.
-/// The value is clamped rather than trusted: the frontend rejects an out-of-range `timeoutMs`, but
-/// the broker has to pick its own deadline before the frontend ever sees the request, and an
+/// The value is clamped rather than trusted: the frontend rejects out-of-range duration fields,
+/// but the broker has to pick its own deadline before the frontend ever sees the request, and an
 /// unbounded one would pin a pending slot.
 pub fn frontend_budget(request: &JsonRpcRequest) -> Duration {
-  wait_budget(request).unwrap_or(DEFAULT_RESPONSE_TIMEOUT)
+  extended_budget(request).unwrap_or(DEFAULT_RESPONSE_TIMEOUT)
 }
 
-/// The caller-supplied budget for long-poll methods. `None` for every other method,
+/// The caller-supplied budget for long-running methods. `None` for every other method,
 /// which leaves the broker free to keep using its own configured default.
-fn wait_budget(request: &JsonRpcRequest) -> Option<Duration> {
+fn extended_budget(request: &JsonRpcRequest) -> Option<Duration> {
   if request.method == VISUAL_RECORDING_STOP_METHOD {
     return Some(VISUAL_RECORDING_STOP_TIMEOUT);
+  }
+  if request.method == DEVELOPMENT_PERFORMANCE_STALL_METHOD {
+    let milliseconds = request
+      .params
+      .get("milliseconds")
+      .and_then(Value::as_u64)
+      .unwrap_or(MIN_DEVELOPMENT_PERFORMANCE_STALL_MS)
+      .clamp(
+        MIN_DEVELOPMENT_PERFORMANCE_STALL_MS,
+        MAX_DEVELOPMENT_PERFORMANCE_STALL_MS,
+      );
+    return Some(Duration::from_millis(milliseconds));
   }
   if !matches!(
     request.method.as_str(),
@@ -245,10 +260,10 @@ impl Broker {
   }
 
   pub fn dispatch(&self, request: JsonRpcRequest) -> Result<PendingRequest, BrokerError> {
-    // Read the deadline before `request` is moved into the pending map. Only `app.wait` carries
-    // its own budget; everything else keeps this broker's configured default.
+    // Read the deadline before `request` is moved into the pending map. Long-running methods carry
+    // their own budget; everything else keeps this broker's configured default.
     let response_timeout =
-      wait_budget(&request).map_or(self.core.response_timeout, |budget| budget + BROKER_GRACE);
+      extended_budget(&request).map_or(self.core.response_timeout, |budget| budget + BROKER_GRACE);
     let (sender, receiver) = mpsc::sync_channel(1);
     {
       let mut inner = self
@@ -793,7 +808,7 @@ mod tests {
   }
 
   #[test]
-  fn long_polls_and_recording_stop_carry_bounded_frontend_budgets() {
+  fn long_running_requests_carry_bounded_frontend_budgets() {
     assert_eq!(frontend_budget(&request("plain")), DEFAULT_RESPONSE_TIMEOUT);
     // The documented default, for a caller that omits the field entirely.
     assert_eq!(
@@ -852,6 +867,22 @@ mod tests {
         json!({})
       )),
       VISUAL_RECORDING_STOP_TIMEOUT
+    );
+    assert_eq!(
+      frontend_budget(&wait_request(
+        "development-stall",
+        DEVELOPMENT_PERFORMANCE_STALL_METHOD,
+        json!({ "milliseconds": 12_100 })
+      )),
+      Duration::from_millis(12_100)
+    );
+    assert_eq!(
+      frontend_budget(&wait_request(
+        "development-stall-huge",
+        DEVELOPMENT_PERFORMANCE_STALL_METHOD,
+        json!({ "milliseconds": 999_999_u64 })
+      )),
+      Duration::from_millis(MAX_DEVELOPMENT_PERFORMANCE_STALL_MS)
     );
   }
 

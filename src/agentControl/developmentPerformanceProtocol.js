@@ -1,7 +1,7 @@
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const METHODS = new Set(["dev.performance.inspect", "dev.performance.stall"]);
 export const DEVELOPMENT_PERFORMANCE_STALL_MIN_MS = 100;
-export const DEVELOPMENT_PERFORMANCE_STALL_MAX_MS = 10_000;
+export const DEVELOPMENT_PERFORMANCE_STALL_MAX_MS = 30_000;
 
 function plain(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);

@@ -403,11 +403,11 @@ fn parse_development_performance_args(args: &[String]) -> Result<ControlCommand,
     }
     [operation, milliseconds, json] if operation == "stall" && json == "--json" => {
       let milliseconds = milliseconds.parse::<u64>().map_err(|_| {
-        "Development performance stall must be an integer from 100 to 10000 ms.".to_string()
+        "Development performance stall must be an integer from 100 to 30000 ms.".to_string()
       })?;
-      if !(100..=10_000).contains(&milliseconds) {
+      if !(100..=30_000).contains(&milliseconds) {
         return Err(
-          "Development performance stall must be an integer from 100 to 10000 ms.".to_string(),
+          "Development performance stall must be an integer from 100 to 30000 ms.".to_string(),
         );
       }
       Ok(ControlCommand::DevPerformanceStall { milliseconds })
@@ -5025,11 +5025,11 @@ mod tests {
     );
 
     let stall =
-      parse_control_args(&args(&["dev", "performance", "stall", "4000", "--json"])).unwrap();
+      parse_control_args(&args(&["dev", "performance", "stall", "30000", "--json"])).unwrap();
     assert_eq!(
       stall,
       ControlCommand::DevPerformanceStall {
-        milliseconds: 4_000
+        milliseconds: 30_000
       }
     );
     assert_eq!(command_name(&stall), "dev.performance.stall");
@@ -5037,13 +5037,13 @@ mod tests {
       request_for_command(&stall, &mut "".as_bytes())
         .unwrap()
         .params,
-      serde_json::json!({ "milliseconds": 4_000 })
+      serde_json::json!({ "milliseconds": 30_000 })
     );
 
     for invalid in [
       args(&["dev", "performance", "inspect"]),
       args(&["dev", "performance", "stall", "99", "--json"]),
-      args(&["dev", "performance", "stall", "10001", "--json"]),
+      args(&["dev", "performance", "stall", "30001", "--json"]),
       args(&[
         "dev",
         "performance",

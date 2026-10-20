@@ -18,14 +18,14 @@ describe("development performance protocol", () => {
     });
     expect(
       normalizeDevelopmentPerformanceRequest(
-        request("dev.performance.stall", { milliseconds: 4_000 })
+        request("dev.performance.stall", { milliseconds: DEVELOPMENT_PERFORMANCE_STALL_MAX_MS })
       )
     ).toEqual({
       ok: true,
       request: {
         id: "performance-test",
         method: "dev.performance.stall",
-        params: { milliseconds: 4_000 },
+        params: { milliseconds: DEVELOPMENT_PERFORMANCE_STALL_MAX_MS },
       },
     });
   });
