@@ -103,6 +103,16 @@ describe("useCrashReporting ordinary error logging", () => {
     expect(readPendingCrashReport).not.toHaveBeenCalled();
   });
 
+  it("does not prompt when asking is enabled later in the session", async () => {
+    readPendingCrashReport.mockResolvedValue({ id: "report-1" });
+    const view = render(<Harness promptEnabled={false} />);
+
+    view.rerender(<Harness promptEnabled />);
+    await act(async () => {});
+    expect(readPendingCrashReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "report-1" })).toBeNull();
+  });
+
   it("leaves the shared pending report to the coordinator workbench", async () => {
     setCoordinatorRole(false);
     readPendingCrashReport.mockResolvedValue({ id: "report-1" });

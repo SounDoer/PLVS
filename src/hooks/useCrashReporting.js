@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { logFrontendError, readPendingCrashReport } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
@@ -40,9 +40,12 @@ export function useCrashReporting({ promptEnabled = true } = {}) {
   // becomes coordinator re-reads, which offers a report left pending by the previous one.
   const isCoordinator = useCoordinatorRole();
   const asking = promptEnabled && isCoordinator;
+  // Only launch and coordinator promotion read the pending report. Turning the setting on later
+  // must not prompt on the spot for a report saved while it was off or postponed with Later.
+  const isPromptEnabled = useEffectEvent(() => promptEnabled);
 
   useEffect(() => {
-    if (!asking || !isTauri()) {
+    if (!isCoordinator || !isPromptEnabled() || !isTauri()) {
       return undefined;
     }
     let cancelled = false;
@@ -59,7 +62,7 @@ export function useCrashReporting({ promptEnabled = true } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [asking]);
+  }, [isCoordinator]);
 
   useEffect(() => {
     const onError = (event) => {

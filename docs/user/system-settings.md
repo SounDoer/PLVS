@@ -383,7 +383,8 @@ writing its local log files.
 
 **Crash Report Prompt** is at the bottom of Settings, below **Auto Download Updates** when update
 preferences are available. PLVS saves crash reports locally. With this option enabled, it asks before sending
-one after a crash; with it off, PLVS never asks and sends nothing. With several workbenches open, only the current coordinator asks; choosing
+one after a crash; with it off, PLVS never asks and sends nothing. Turning it on does not ask about reports
+saved while it was off until the next launch. With several workbenches open, only the current coordinator asks; choosing
 **Later** keeps the report saved, and PLVS asks again at the next launch or when another workbench
 becomes coordinator.
 Feedback diagnostics are attached only when you choose to include them. Audio
