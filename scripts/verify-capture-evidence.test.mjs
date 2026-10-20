@@ -66,6 +66,12 @@ describe("findCaptureEvidence", () => {
     );
   });
 
+  it("ignores evidence without a readable endedAt instead of letting it sort anywhere", () => {
+    const dated = writeRun("b-dated", { endedAt: "2026-10-20T09:00:00.000Z" });
+    writeRun("a-undated", { summary: "incomplete", endedAt: "not a date" });
+    expect(findCaptureEvidence({ root, sha: SHA, platform: "linux" }).path).toBe(dated);
+  });
+
   it("prefers the newest exact run by endedAt", () => {
     writeRun("old", { endedAt: "2026-10-20T09:00:00.000Z" });
     const newest = writeRun("new", { endedAt: "2026-10-20T11:00:00.000Z" });

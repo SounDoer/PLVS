@@ -33,7 +33,8 @@ export function findCaptureEvidence({ root, sha, platform }) {
       ({ evidence }) =>
         evidence?.domain === "capture" &&
         evidence.sourceSha === sha &&
-        evidence.platform?.os === platform
+        evidence.platform?.os === platform &&
+        Number.isFinite(Date.parse(evidence.endedAt))
     )
     .sort((a, b) => Date.parse(b.evidence.endedAt) - Date.parse(a.evidence.endedAt));
   if (matches.length === 0) throw new Error(`No capture evidence for ${platform} at ${sha}`);
