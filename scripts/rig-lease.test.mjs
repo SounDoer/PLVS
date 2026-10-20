@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,8 +16,10 @@ import {
   LeaseBusyError,
   acquireLease,
   currentOwner,
+  ensureLeaseDirectory,
   holderIsAlive,
   leasePath,
+  machineLeaseDirectory,
   releaseLease,
   waitForLease,
 } from "./rig-lease.mjs";
@@ -89,8 +98,47 @@ describe("holderIsAlive", () => {
     expect(holderIsAlive({ ...owner(child.pid), processStartedAtMs: Date.now() })).toBe(false);
   });
 
-  it.runIf(process.platform === "win32")("rejects a live PID that started at another time", () => {
+  it("rejects a live PID that started at another time", () => {
     expect(holderIsAlive({ ...owner(process.pid), processStartedAtMs: 0 })).toBe(false);
+  });
+});
+
+describe("machineLeaseDirectory", () => {
+  it("is one shared directory per platform", () => {
+    expect(machineLeaseDirectory("win32", { ProgramData: "D:\\PD" })).toBe(join("D:\\PD", "PLVS"));
+    expect(machineLeaseDirectory("win32", {})).toBe(join("C:\\ProgramData", "PLVS"));
+    expect(machineLeaseDirectory("darwin", {})).toBe("/Users/Shared/PLVS");
+    expect(machineLeaseDirectory("linux", {})).toBe("/var/tmp/plvs");
+  });
+});
+
+describe("ensureLeaseDirectory", () => {
+  it("creates a nested directory and returns it", () => {
+    const nested = join(directory, "shared", "PLVS");
+    expect(ensureLeaseDirectory(nested)).toBe(nested);
+    expect(statSync(nested).isDirectory()).toBe(true);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "lets every local user create and remove the lease",
+    () => {
+      const nested = join(directory, "PLVS");
+      ensureLeaseDirectory(nested);
+      expect(statSync(nested).mode & 0o777).toBe(0o777);
+    }
+  );
+});
+
+describe("holderIsAlive across users and PID reuse", () => {
+  it("treats a live PID whose start time cannot be read as alive", () => {
+    // A recorded start time that cannot be confirmed must not be read as PID reuse.
+    const holder = { ...currentOwner({ worktree: "w", command: "c" }), processStartedAtMs: 1 };
+    expect(holderIsAlive(holder, { startTimeMs: () => null })).toBe(true);
+  });
+
+  it("treats a live PID that started at another time as reused, so dead", () => {
+    const holder = { ...currentOwner({ worktree: "w", command: "c" }), processStartedAtMs: 1 };
+    expect(holderIsAlive(holder, { startTimeMs: () => Date.now() })).toBe(false);
   });
 });
 

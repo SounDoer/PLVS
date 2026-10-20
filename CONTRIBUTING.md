@@ -295,28 +295,28 @@ The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.s
 
 Two independent choices describe every build. The identity decides which app it is; the Cargo profile decides how it is compiled.
 
-| Identity | Window title | Identifier | Used for |
-| --- | --- | --- | --- |
-| `stable` | PLVS | `com.soundoer.plvs` | What users install |
-| `dev` | PLVS Dev | `com.soundoer.plvs.dev` | Local development |
+| Identity  | Window title | Identifier                  | Used for                              |
+| --------- | ------------ | --------------------------- | ------------------------------------- |
+| `stable`  | PLVS         | `com.soundoer.plvs`         | What users install                    |
+| `dev`     | PLVS Dev     | `com.soundoer.plvs.dev`     | Local development                     |
 | `preview` | PLVS Preview | `com.soundoer.plvs.preview` | Installable test packages; no updater |
 
 Each identity has its own settings, webview data and Agent Control discovery, so all three can be installed side by side.
 
-| Cargo profile | Trade-off | Used for |
-| --- | --- | --- |
-| `debug` | Fast to compile, slow to run | Daily development and tests |
-| `release` | Slow to compile, fast to run | Packages and performance work |
-| `harness` | `release` plus the capture test commands | `smoke:capture` and `soak:capture` only |
+| Cargo profile | Trade-off                                | Used for                                |
+| ------------- | ---------------------------------------- | --------------------------------------- |
+| `debug`       | Fast to compile, slow to run             | Daily development and tests             |
+| `release`     | Slow to compile, fast to run             | Packages and performance work           |
+| `harness`     | `release` plus the capture test commands | `smoke:capture` and `soak:capture` only |
 
-| Command | Identity | Profile | Output under `src-tauri/target/` |
-| --- | --- | --- | --- |
-| `npm run desktop:dev` | `dev` | `debug` | `dev-identity/debug/` |
-| `npm run desktop:dev-optimized` | `dev` | `release` | `release/` |
-| `npm run desktop:preview-nsis` | `preview` | `release` | `release/` |
-| `npm run desktop:stable-nsis`, `desktop:stable-dmg` | `stable` | `release` | `release/` |
-| `npm run rust:test` (part of `npm run check`) | `stable` | `debug` | `debug/` |
-| Capture harness build | `stable` | `harness` | `harness/` |
+| Command                                             | Identity  | Profile   | Output under `src-tauri/target/` |
+| --------------------------------------------------- | --------- | --------- | -------------------------------- |
+| `npm run desktop:dev`                               | `dev`     | `debug`   | `dev-identity/debug/`            |
+| `npm run desktop:dev-optimized`                     | `dev`     | `release` | `release/`                       |
+| `npm run desktop:preview-nsis`                      | `preview` | `release` | `release/`                       |
+| `npm run desktop:stable-nsis`, `desktop:stable-dmg` | `stable`  | `release` | `release/`                       |
+| `npm run rust:test` (part of `npm run check`)       | `stable`  | `debug`   | `debug/`                         |
+| Capture harness build                               | `stable`  | `harness` | `harness/`                       |
 
 `release/plvs` is whichever of the three `release`-profile commands ran last. The dev `debug` build has its own directory because `cargo test` and a running dev app would otherwise fight over `debug/plvs`; see [ADR 0024](docs/adr/0024-development-identity-target-directory.md). `plvs-cli` forwards to the `plvs` beside it, so the two are always built as a pair with the same identity.
 
@@ -491,11 +491,14 @@ npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; nee
 ```
 
 The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance
-runs take an exclusive lease, `plvs-capture-rig.lock` in the Git common directory, before starting
-the test tone. While another run holds it, a run fails with exit 2 and names the holder; add
+runs take an exclusive lease, `plvs-capture-rig.lock` in one shared directory per machine
+(`%ProgramData%PLVS`, `/Users/Shared/PLVS` or `/var/tmp/plvs`), before starting the test tone.
+Every clone, worktree and local user on the machine, including a self-hosted runner, sees it. While another run holds it, a run fails with exit 2 and names the holder; add
 `--wait` to queue instead. A lease left by a killed run is removed automatically once its process
-is gone. There is no way to take a live lease
-([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md)). The rig routes VLC directly to the
+is gone; a holder whose start time cannot be read counts as alive and is cleared by hand only
+when it really is dead. There is no way to take a live lease
+([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md),
+[ADR 0034](docs/adr/0034-capture-rig-lease-is-machine-wide.md)). The rig routes VLC directly to the
 virtual device and never changes the system default output. Install and reboot after the platform
 driver setup before running it; PLVS does not install or manage that driver.
 

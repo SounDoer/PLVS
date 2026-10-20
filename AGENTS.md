@@ -24,24 +24,24 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 
 ## Commands
 
-| Command                                | Purpose                                                                           |
-| -------------------------------------- | --------------------------------------------------------------------------------- |
-| `npm run desktop:dev`                  | Run the dev app (Tauri). Audio capture only works here.                           |
-| `npm run desktop:control -- <command>` | Build and run the dev CLI against a running dev app.                              |
-| `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                         |
+| Command                                | Purpose                                                                          |
+| -------------------------------------- | -------------------------------------------------------------------------------- |
+| `npm run desktop:dev`                  | Run the dev app (Tauri). Audio capture only works here.                          |
+| `npm run desktop:control -- <command>` | Build and run the dev CLI against a running dev app.                             |
+| `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                        |
 | `npm run check`                        | Full repository gate: version + format + lint + typecheck + test + build + Rust. |
-| `npm run typecheck`                    | `tsc` over `src/` (checkJs, JSDoc types). Zero errors, no baseline.               |
-| `npm test`                             | Vitest, single run.                                                               |
-| `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
-| `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the dev app running.         |
-| `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                    |
-| `npm run verify:loudness-reference`    | Loudness meters against FFmpeg `ebur128`. Needs a full FFmpeg, not the sidecar.   |
-| `npm run website:dev`                  | Build, watch and serve the complete website at `127.0.0.1:4173`.                  |
-| `npm run website:build`                | Assemble the complete static website under `artifacts/website/`.                  |
-| `npm run website:check`                | Assemble and validate all local website pages, links and assets.                  |
-| `npm run website:verify`               | Website build, link validation, and website / documentation contract tests.       |
-| `npm run check:changes`                | Refresh origin/main and check the complete pending range plus working changes.    |
-| `npm run docs:site`                    | Render `docs/user/` into an isolated ignored Docs artifact.                       |
+| `npm run typecheck`                    | `tsc` over `src/` (checkJs, JSDoc types). Zero errors, no baseline.              |
+| `npm test`                             | Vitest, single run.                                                              |
+| `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                    |
+| `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the dev app running.        |
+| `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                   |
+| `npm run verify:loudness-reference`    | Loudness meters against FFmpeg `ebur128`. Needs a full FFmpeg, not the sidecar.  |
+| `npm run website:dev`                  | Build, watch and serve the complete website at `127.0.0.1:4173`.                 |
+| `npm run website:build`                | Assemble the complete static website under `artifacts/website/`.                 |
+| `npm run website:check`                | Assemble and validate all local website pages, links and assets.                 |
+| `npm run website:verify`               | Website build, link validation, and website / documentation contract tests.      |
+| `npm run check:changes`                | Refresh origin/main and check the complete pending range plus working changes.   |
+| `npm run docs:site`                    | Render `docs/user/` into an isolated ignored Docs artifact.                      |
 
 ## Agent Control
 
@@ -212,7 +212,7 @@ rules below are the working set; the incident history and rationale live there.
   remains `null`. Build the current feature-gated `capture-harness` binary (`--profile harness`,
   `target/harness/`) when smoke or soak reports exit 2. Drive the rig only through the smoke, soak
   and multi-instance scripts, which hold its lease; a busy lease means wait (`--wait`), never work
-  around it.
+  around it. The lease is per machine, not per repository, so a runner's clone and yours share it.
 - **Scene editors:** blocking is based on an editor being open, not dirty. Guard scene operations in
   the business function before mutation; never discard a draft to make an operation proceed.
 - **Analysis history:** changing a request key creates a history slab. Key-changing sliders commit

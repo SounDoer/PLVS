@@ -1,14 +1,25 @@
 /**
- * An exclusive lease on the capture rig, shared by every worktree of the repository (ADR 0028).
+ * An exclusive lease on the capture rig, shared by every clone, worktree and local user of the
+ * machine (ADR 0034).
  *
- * VB-Cable and the VLC test tone exist once per machine. Two runs at once sum their tones and
- * both read +6.02 dB, which is how the rig's 2026-10-15 soak was spoiled. The lease is a file in
- * the Git common directory: creating it exclusively takes the rig, deleting it gives it back.
+ * VB-Cable, BlackHole and the test tone exist once per machine. Two runs at once sum their tones
+ * and both read +6.02 dB, which is how the rig's 2026-10-15 soak was spoiled. The lease is a file
+ * in one shared directory per machine, so a self-hosted runner's own clone sees it too: creating
+ * it exclusively takes the rig, deleting it gives it back.
  *
  * It is advisory. It holds only while the rig is driven through the scripts that take it.
  */
 import { spawnSync } from "node:child_process";
-import { closeSync, openSync, readFileSync, statSync, unlinkSync, writeSync } from "node:fs";
+import {
+  chmodSync,
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs";
 import { join } from "node:path";
 
 export const LEASE_FILE_NAME = "plvs-capture-rig.lock";
@@ -33,8 +44,22 @@ export class LeaseBusyError extends Error {
   }
 }
 
-export function leasePath(gitCommonDir) {
-  return join(gitCommonDir, LEASE_FILE_NAME);
+/** The one directory every clone and every local user on this machine takes the rig through. */
+export function machineLeaseDirectory(platform = process.platform, env = process.env) {
+  if (platform === "win32") return join(env.ProgramData ?? "C:\\ProgramData", "PLVS");
+  if (platform === "darwin") return "/Users/Shared/PLVS";
+  return "/var/tmp/plvs";
+}
+
+/** Creates the lease directory. On POSIX any local user may then create and remove the lease. */
+export function ensureLeaseDirectory(directory) {
+  mkdirSync(directory, { recursive: true });
+  if (process.platform !== "win32") chmodSync(directory, 0o777);
+  return directory;
+}
+
+export function leasePath(directory) {
+  return join(directory, LEASE_FILE_NAME);
 }
 
 export function describeHolder(holder) {
@@ -52,35 +77,40 @@ export function currentOwner({ worktree, command }) {
 }
 
 function processStartTimeMs(pid) {
-  if (process.platform !== "win32") return null;
-  const result = spawnSync(
-    "powershell",
-    [
-      "-NoProfile",
-      "-Command",
-      `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().ToString('o')`,
-    ],
-    { encoding: "utf8", windowsHide: true }
-  );
+  const result =
+    process.platform === "win32"
+      ? spawnSync(
+          "powershell",
+          [
+            "-NoProfile",
+            "-Command",
+            `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().ToString('o')`,
+          ],
+          { encoding: "utf8", windowsHide: true }
+        )
+      : spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+          encoding: "utf8",
+          env: { ...process.env, LC_ALL: "C" },
+        });
   if (result.status !== 0) return null;
   const parsed = Date.parse(result.stdout.trim());
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**
- * Alive means the PID exists and, on Windows, started when the holder said it did: Windows
- * reuses PIDs, so a live PID alone can belong to an unrelated process. Elsewhere only the PID is
- * checked; the rig is Windows-only today.
+ * Alive means the PID exists and started when the holder said it did: PIDs are reused, so a live
+ * PID alone can belong to an unrelated process. A start time that cannot be read, as for another
+ * user's process on Windows, counts as alive: taking a live rig is worse than clearing a dead
+ * lease by hand.
  */
-export function holderIsAlive(holder) {
+export function holderIsAlive(holder, { startTimeMs = processStartTimeMs } = {}) {
   try {
     process.kill(holder.pid, 0);
   } catch (error) {
     if (error.code === "ESRCH") return false;
   }
-  if (process.platform !== "win32") return true;
-  const started = processStartTimeMs(holder.pid);
-  if (started === null) return false;
+  const started = startTimeMs(holder.pid);
+  if (started === null) return true;
   return Math.abs(started - holder.processStartedAtMs) <= START_TIME_TOLERANCE_MS;
 }
 

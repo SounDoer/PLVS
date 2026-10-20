@@ -14,13 +14,14 @@ import { open } from "node:fs/promises";
 import { spawnSync, spawn } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gitCommonDir } from "./dev-worktree.mjs";
 import {
   LeaseBusyError,
   acquireLease,
   currentOwner,
   describeHolder,
+  ensureLeaseDirectory,
   leasePath,
+  machineLeaseDirectory,
   releaseLease,
   waitForLease,
 } from "./rig-lease.mjs";
@@ -472,12 +473,12 @@ function releaseRig() {
 process.on("exit", releaseRig);
 
 /**
- * Takes the rig lease (ADR 0028). Without `wait`, a busy rig is a RigError naming the run that
+ * Takes the rig lease (ADR 0034). Without `wait`, a busy rig is a RigError naming the run that
  * holds it; with it, this waits until that run ends.
  */
 async function takeRig({ wait }) {
   if (heldLease) return;
-  const path = leasePath(gitCommonDir(ROOT));
+  const path = leasePath(ensureLeaseDirectory(machineLeaseDirectory()));
   const command = [basename(process.argv[1] ?? "node"), ...process.argv.slice(2)].join(" ");
   const owner = currentOwner({ worktree: ROOT, command });
   try {
@@ -590,10 +591,14 @@ export async function startPlayer(playerTarget, wavPath, { wait = false, loop = 
     if (!existsSync("/usr/bin/paplay")) {
       throw new RigError("paplay was not found at /usr/bin/paplay.");
     }
-    return spawn(process.execPath, [join(ROOT, "scripts", "linux-pulse-player.mjs"), playerTarget, wavPath], {
-      detached: false,
-      stdio: "ignore",
-    });
+    return spawn(
+      process.execPath,
+      [join(ROOT, "scripts", "linux-pulse-player.mjs"), playerTarget, wavPath],
+      {
+        detached: false,
+        stdio: "ignore",
+      }
+    );
   }
   const vlc = locateVlc();
   const child = spawn(vlc, playerArgs(playerTarget, wavPath, process.platform, { loop }), {
