@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exact release commit when updater, installer, signing, packaging or acceptance dependencies
   changed; releases outside that scope keep the existing advisory report.
 
+### Fixed
+
+- On Windows, **Update and Restart** no longer fails with "The requested operation requires
+  elevation" (os error 740). PLVS now declares that it runs without elevation, so Windows no longer
+  mistakes the copied update helper for an installer. PLVS 0.22.0 to 0.22.2 users who hit this error
+  must install the next release once by downloading the `x64-setup.exe`; automatic installation
+  works again after that manual upgrade.
+
 ## [0.22.2] - 2026-10-19
 
 ### Fixed

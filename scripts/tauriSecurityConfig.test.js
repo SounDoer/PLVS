@@ -113,6 +113,17 @@ describe("Tauri security configuration", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installMode).toBe("currentUser");
   });
 
+  it("declares asInvoker so Windows installer detection never elevates the update helper", () => {
+    const manifest = readFileSync(
+      join(process.cwd(), "src-tauri", "windows-app-manifest.xml"),
+      "utf8"
+    );
+    const buildScript = readFileSync(join(process.cwd(), "src-tauri", "build.rs"), "utf8");
+    expect(manifest).toMatch(/<requestedExecutionLevel level="asInvoker" uiAccess="false"\s*\/>/);
+    expect(manifest).toContain("Microsoft.Windows.Common-Controls");
+    expect(buildScript).toContain('app_manifest(include_str!("windows-app-manifest.xml"))');
+  });
+
   it("uses the PLVS icon for the Windows installer and uninstaller", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installerIcon).toBe("icons/icon.ico");
     expect(tauriWindowsConfig.bundle.windows.nsis.uninstallerIcon).toBe("icons/icon.ico");

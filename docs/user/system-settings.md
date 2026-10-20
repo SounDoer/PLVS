@@ -105,6 +105,12 @@ download the current DMG from GitHub Releases and replace PLVS in Applications o
 and later copy the complete signed application bundle for the helper, so later updates can again be
 installed from update details.
 
+On Windows, an automatic update from PLVS 0.22.0, 0.22.1 or 0.22.2 can fail with "The requested
+operation requires elevation" (os error 740) because Windows mistakes their copied update helper for
+an installer. If you see this error, choose **Download Manually** and run the current
+`x64-setup.exe` once; it installs for the current user and does not need administrator rights. Later
+versions declare that they run without elevation, so their updates install from update details.
+
 ## Global shortcut
 
 Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS

@@ -78,7 +78,16 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=CoreMedia");
     println!("cargo:rustc-link-lib=framework=CoreVideo");
   }
-  tauri_build::build()
+  // Tauri's default manifest omits requestedExecutionLevel. Without it, Windows installer detection
+  // treats the updater's `plvs-update-worker.exe` copy as an installer and CreateProcess fails with
+  // os error 740 (elevation required) under default UAC settings.
+  println!("cargo:rerun-if-changed=windows-app-manifest.xml");
+  let attributes = tauri_build::Attributes::new().windows_attributes(
+    tauri_build::WindowsAttributes::new().app_manifest(include_str!("windows-app-manifest.xml")),
+  );
+  if let Err(error) = tauri_build::try_build(attributes) {
+    panic!("{error:#}");
+  }
 }
 
 fn emit_build_revision() {
