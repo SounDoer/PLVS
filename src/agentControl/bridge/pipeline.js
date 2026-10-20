@@ -7,6 +7,10 @@ import {
   isDevelopmentPerformanceMethod,
   normalizeDevelopmentPerformanceRequest,
 } from "../developmentPerformanceProtocol.js";
+import {
+  isDevelopmentUpdateMethod,
+  normalizeDevelopmentUpdateRequest,
+} from "../developmentUpdateProtocol.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "../protocol.js";
 import { WorkspaceLayoutError } from "../workspaceLayout.js";
 import { isCommitNotObserved, persistUnobservedCommit, semanticFailure } from "./failures.js";
@@ -70,11 +74,15 @@ export function createRequestProcessor({
       developmentEnabled && isDevelopmentFixtureMethod(rawRequest?.method);
     const developmentPerformanceRequest =
       developmentEnabled && isDevelopmentPerformanceMethod(rawRequest?.method);
+    const developmentUpdateRequest =
+      snap.developmentUpdate?.enabled === true && isDevelopmentUpdateMethod(rawRequest?.method);
     const normalized = developmentFixtureRequest
       ? normalizeDevelopmentFixtureRequest(rawRequest)
       : developmentPerformanceRequest
         ? normalizeDevelopmentPerformanceRequest(rawRequest)
-        : normalizeAgentControlRequest(rawRequest);
+        : developmentUpdateRequest
+          ? normalizeDevelopmentUpdateRequest(rawRequest)
+          : normalizeAgentControlRequest(rawRequest);
     const requestId =
       normalized.ok && normalized.request.id
         ? normalized.request.id

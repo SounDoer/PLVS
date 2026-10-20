@@ -1,0 +1,166 @@
+# Fully automated packaged updater acceptance on the maintainer's logged-in desktop runners.
+# The acceptance-only Agent Control methods drive the real update UI; Actions artifacts carry the
+# exact-SHA evidence between machines and the aggregate verifier. No signing secret is used here.
+name: Update Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA to verify
+        required: true
+        type: string
+      force:
+        description: Run even when updater dependencies did not change
+        required: true
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      commit_sha:
+        description: Full commit SHA to verify
+        required: true
+        type: string
+      force:
+        description: Run even when updater dependencies did not change
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-acceptance-${{ github.workflow }}-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    outputs:
+      required: ${{ steps.requirement.outputs.required }}
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      FORCE: ${{ inputs.force }}
+    steps:
+      - name: Validate the commit
+        run: |
+          [[ "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid commit SHA" >&2; exit 1; }
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the commit on main
+        run: |
+          git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main || {
+            echo "commit_sha is not reachable from main" >&2
+            exit 1
+          }
+      - name: Detect updater-chain changes
+        id: requirement
+        run: |
+          required=$(node --input-type=module -e "import { updateAcceptanceChangesSinceLastTag } from './scripts/update-acceptance-code-changed.mjs'; console.log(updateAcceptanceChangesSinceLastTag().paths.length ? 'true' : 'false')")
+          if [[ "$FORCE" == "true" ]]; then required=true; fi
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+
+  platform:
+    needs: detect
+    if: needs.detect.outputs.required == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            labels: [self-hosted, plvs-rig, windows]
+          - platform: macos
+            labels: [self-hosted, plvs-rig, macos]
+    runs-on: ${{ matrix.labels }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      COREPACK_ENABLE_AUTO_PIN: 0
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the commit on main
+        run: |
+          git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main || exit 1
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+      - name: Install dependencies
+        run: npm ci
+      - name: Fetch FFmpeg sidecars
+        run: npm run ffmpeg:fetch
+      - name: Build isolated update packages
+        run: npm run update:acceptance:build
+      - name: Run Agent Control update acceptance
+        id: acceptance
+        run: |
+          short_sha="${COMMIT_SHA:0:8}"
+          root="artifacts/update-acceptance/$short_sha"
+          run_id="github-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${PLATFORM}"
+          npm run update:acceptance:run -- "$root" --run-id "$run_id"
+          npm run update:acceptance:verify -- "$root" --run "$run_id"
+          node scripts/export-update-acceptance.mjs "$root" "update-evidence/$PLATFORM" --run "$run_id"
+      - name: Upload verified platform evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-acceptance-${{ matrix.platform }}
+          path: update-evidence/${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  verify:
+    needs: [detect, platform]
+    if: always() && needs.detect.result == 'success' && (needs.platform.result == 'success' || needs.platform.result == 'skipped')
+    runs-on: ubuntu-24.04
+    env:
+      REQUIRED: ${{ needs.detect.outputs.required }}
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - name: Download Windows evidence
+        if: env.REQUIRED == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: update-acceptance-windows
+          path: update-evidence/windows
+      - name: Download macOS evidence
+        if: env.REQUIRED == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: update-acceptance-macos
+          path: update-evidence/macos
+      - name: Verify both exact-SHA evidence sets
+        if: env.REQUIRED == 'true'
+        run: |
+          node scripts/verify-update-acceptance.mjs update-evidence/windows
+          node scripts/verify-update-acceptance.mjs update-evidence/macos
+      - name: Record skipped acceptance
+        if: env.REQUIRED != 'true'
+        run: echo "Updater dependencies did not change; packaged update acceptance is not required."
+      - name: Upload combined evidence
+        if: env.REQUIRED == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-acceptance-${{ inputs.commit_sha }}
+          path: update-evidence/
+          if-no-files-found: error
+          retention-days: 14

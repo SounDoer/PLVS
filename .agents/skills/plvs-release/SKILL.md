@@ -545,6 +545,12 @@ Agent Control smoke runs only on the preflight machine (Windows). Until it runs 
 Linux runners, also open the current build on the Mac and on Ubuntu, open Settings once and close
 it. Remove this step once Agent Control smoke covers those platforms.
 
+When updater-chain dependencies changed, `release.yml` also calls `update-acceptance.yml`. Its
+self-hosted Windows and macOS jobs drive the isolated packaged updater entirely through
+acceptance-only Agent Control actions, transfer evidence through Actions artifacts, and verify both
+platform records before the Draft can be assembled. Do not ask the maintainer to click update UI or
+copy acceptance files between machines.
+
 ### Mandatory Remote Gate
 
 Do **not** create or push the release tag. `ci.yml` must succeed for the exact

@@ -30,6 +30,7 @@ import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts.js";
  *   onShowWindow: () => Promise<void>,
  *   updateBusy: boolean,
  *   updateControls: ReturnType<typeof useUpdateController>,
+ *   requestCloseAction: (action: string, dontAskAgain?: boolean) => Promise<boolean>,
  *   closeConfirm: {
  *     dialogOpen: boolean,
  *     closeError: any,
@@ -228,6 +229,7 @@ export function AppLifecycleProvider({ children }) {
         onShowWindow,
         updateBusy,
         updateControls,
+        requestCloseAction,
         closeConfirm: {
           dialogOpen: closeDialogOpen,
           closeError,

@@ -55,6 +55,17 @@ describe("self-hosted runners on a public repository", () => {
     );
   });
 
+  it("runs automated update acceptance on both desktop platforms without secrets", () => {
+    const workflow = workflows["update-acceptance.yml"];
+    for (const platform of ["windows", "macos"]) {
+      expect(workflow).toContain(`labels: [self-hosted, plvs-rig, ${platform}]`);
+    }
+    expect(workflow).toContain("npm run update:acceptance:run");
+    expect(workflow).toContain("actions/upload-artifact@v7");
+    expect(workflow).toContain("actions/download-artifact@v8");
+    expect(workflow).not.toContain("secrets.");
+  });
+
   it("refuses a commit that main does not contain before anything from it runs", () => {
     // A dispatch accepts any SHA in the repository network, fork pull request commits included.
     const { steps } = parse(workflows["capture-acceptance.yml"]).jobs["capture-smoke"];

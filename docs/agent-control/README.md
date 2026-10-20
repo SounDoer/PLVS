@@ -97,6 +97,14 @@ busy states are refusals. A failed post-establishment wait reports the committed
 leaves the scene intact. Result actions such as Save, Send, Confirm, Update, Reload, Copy, and Delete
 remain ordinary user actions and are never fixture operations.
 
+Packaged updater acceptance has a separate hidden `dev.update.*` wire path. It is admitted only
+when the running identifier is the SHA-derived `com.soundoer.plvs.updatetest.h*` identity and the
+debug CLI exposes its private `dev` grammar. Its fixed actions save update preferences, open the
+real details surface, confirm the exact visible update surface, or request a normal full-app quit.
+Every action requires current revision and UI-generation tokens; surface actions also require the
+exact opaque surface ID. Stable, dev and Preview identities cannot use these controls, and the
+methods stay absent from capabilities, generated reference, help and completion.
+
 The same private boundary has fixed `dev.performance.inspect` and `dev.performance.stall` methods
 for desktop-performance acceptance. Inspect combines the production native UI-frame diagnostics
 with a continuously maintained renderer animation-frame snapshot; it never waits for a new frame.

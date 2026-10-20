@@ -136,7 +136,7 @@ export function AgentControlBridge() {
     commitCaptureDevice,
   } = useSource();
   const { beginDeviceRestartForControl } = meterRuntime;
-  const { updateBusy } = useAppLifecycle();
+  const { updateBusy, updateControls, requestCloseAction } = useAppLifecycle();
   const agentControlDevice = useMemo(
     () => ({
       snapshot: audioDeviceSnapshot,
@@ -265,6 +265,16 @@ export function AgentControlBridge() {
   );
   const loudnessProfile = useLoudnessProfile();
   const settings = useAppSettings();
+  const developmentUpdate = useMemo(
+    () => ({
+      enabled: runtime.identifier?.startsWith("com.soundoer.plvs.updatetest.h") === true,
+      setPreferences: settings.setUpdatePreferences,
+      open: updateControls.openDetails,
+      confirm: () => updateControls.confirmInstall(),
+      quit: () => requestCloseAction("quit"),
+    }),
+    [requestCloseAction, runtime.identifier, settings.setUpdatePreferences, updateControls]
+  );
   const { onClearRef } = settings;
   const {
     state: workspaceState,
@@ -529,6 +539,7 @@ export function AgentControlBridge() {
     editorDraft,
     developmentFixtures,
     developmentPerformance,
+    developmentUpdate,
     device: agentControlDevice,
     presets,
     loudnessProfile,

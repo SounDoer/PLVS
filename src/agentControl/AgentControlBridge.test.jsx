@@ -135,7 +135,11 @@ vi.mock("./useVisualCaptureSurfaces.js", () => ({
 }));
 vi.mock("../lib/runtimeRole.js", () => ({ isParticipantInstance: () => false }));
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
-  useAppLifecycle: () => ({ updateBusy: false }),
+  useAppLifecycle: () => ({
+    updateBusy: false,
+    updateControls: { openDetails: () => {}, confirmInstall: () => {} },
+    requestCloseAction: async () => true,
+  }),
 }));
 vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
   useUiNavigation: () => ({ inspectUi: () => ({}) }),

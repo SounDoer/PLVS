@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 import { TAURI_LICENSE_RESOURCES } from "./license-assets.mjs";
 
 const releaseWorkflow = readFileSync(join(cwd(), ".github", "workflows", "release.yml"), "utf8");
+const updateAcceptanceWorkflow = readFileSync(
+  join(cwd(), ".github", "workflows", "update-acceptance.yml"),
+  "utf8"
+);
 const previewBuildWorkflow = readFileSync(
   join(cwd(), ".github", "workflows", "preview-build.yml"),
   "utf8"
@@ -172,7 +176,25 @@ describe("Immutable Release promotion", () => {
       /\n {2}capture-acceptance:\n {4}needs: validate\n {4}uses: \.\/\.github\/workflows\/capture-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
     );
     expect(releaseWorkflow).toContain(
-      "needs: [build-windows, build-macos, build-linux, capture-acceptance]"
+      "needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]"
+    );
+  });
+
+  it("runs exact-SHA packaged update acceptance without operator file transfer", () => {
+    expect(releaseWorkflow).toMatch(
+      /\n {2}update-acceptance:\n {4}needs: validate\n {4}uses: \.\/\.github\/workflows\/update-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
+    );
+    expect(releaseWorkflow).toContain(
+      "needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]"
+    );
+    expect(updateAcceptanceWorkflow).toContain("npm run update:acceptance:run");
+    expect(updateAcceptanceWorkflow).toContain("node scripts/export-update-acceptance.mjs");
+    expect(updateAcceptanceWorkflow).toContain("actions/download-artifact@v8");
+    expect(updateAcceptanceWorkflow).toContain(
+      "node scripts/verify-update-acceptance.mjs update-evidence/windows"
+    );
+    expect(updateAcceptanceWorkflow).toContain(
+      "node scripts/verify-update-acceptance.mjs update-evidence/macos"
     );
   });
 

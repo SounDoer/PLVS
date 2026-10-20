@@ -376,8 +376,14 @@ jobs:
     with:
       commit_sha: ${{ inputs.commit_sha }}
 
+  update-acceptance:
+    needs: validate
+    uses: ./.github/workflows/update-acceptance.yml
+    with:
+      commit_sha: ${{ inputs.commit_sha }}
+
   prepare-draft:
-    needs: [build-windows, build-macos, build-linux, capture-acceptance]
+    needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]
     runs-on: ubuntu-latest
     permissions:
       contents: write

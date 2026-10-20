@@ -26,13 +26,17 @@ pub fn is_command(command: &str) -> bool {
 fn is_private_command_for_build(
   command: &str,
   development_identity: bool,
-  test_build: bool,
+  debug_build: bool,
 ) -> bool {
-  (development_identity || test_build) && command == "dev"
+  (development_identity || debug_build) && command == "dev"
 }
 
 pub fn is_private_command(command: &str) -> bool {
-  is_private_command_for_build(command, cfg!(feature = "dev-identity"), cfg!(test))
+  is_private_command_for_build(
+    command,
+    cfg!(feature = "dev-identity"),
+    cfg!(debug_assertions),
+  )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,6 +112,26 @@ pub enum ControlCommand {
   DevPerformanceInspect,
   DevPerformanceStall {
     milliseconds: u64,
+  },
+  DevUpdatePreferences {
+    surface_id: String,
+    auto_check: bool,
+    auto_download: bool,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  DevUpdateOpen {
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  DevUpdateConfirm {
+    surface_id: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  DevUpdateQuit {
+    expected_revision: u64,
+    expected_ui_generation: u64,
   },
   MeasurementRead {
     method: String,
@@ -392,7 +416,122 @@ fn parse_development_args(args: &[String]) -> Result<ControlCommand, String> {
   match args.first().map(String::as_str) {
     Some("fixture") => parse_development_fixture_args(args),
     Some("performance") => parse_development_performance_args(&args[1..]),
+    Some("update") => parse_development_update_args(&args[1..]),
     _ => Err("Development command is invalid.".to_string()),
+  }
+}
+
+fn parse_development_update_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Development update command is invalid.";
+  let operation = args
+    .first()
+    .map(String::as_str)
+    .ok_or_else(|| USAGE.to_string())?;
+  if !matches!(operation, "preferences" | "open" | "confirm" | "quit") {
+    return Err(USAGE.to_string());
+  }
+  let mut surface_id = None;
+  let mut auto_check = None;
+  let mut auto_download = None;
+  let mut expected_revision = None;
+  let mut expected_ui_generation = None;
+  let mut json = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--surface-id" if surface_id.is_none() => {
+        surface_id = args.get(index + 1).cloned();
+        index += 2;
+      }
+      "--auto-check" if auto_check.is_none() => {
+        auto_check = Some(parse_development_bool(args.get(index + 1), "--auto-check")?);
+        index += 2;
+      }
+      "--auto-download" if auto_download.is_none() => {
+        auto_download = Some(parse_development_bool(
+          args.get(index + 1),
+          "--auto-download",
+        )?);
+        index += 2;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      "--expected-ui-generation" if expected_ui_generation.is_none() => {
+        expected_ui_generation = Some(parse_ui_safe_integer(
+          args.get(index + 1),
+          "--expected-ui-generation",
+        )?);
+        index += 2;
+      }
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      _ => return Err(USAGE.to_string()),
+    }
+  }
+  if !json {
+    return Err("Development update actions require --json.".to_string());
+  }
+  let expected_revision = expected_revision
+    .ok_or_else(|| "Development update actions require --expected-revision.".to_string())?;
+  let expected_ui_generation = expected_ui_generation
+    .ok_or_else(|| "Development update actions require --expected-ui-generation.".to_string())?;
+  let require_surface = || {
+    let value = surface_id.clone().ok_or_else(|| USAGE.to_string())?;
+    if !value.starts_with("ui-") {
+      return Err(USAGE.to_string());
+    }
+    Ok(value)
+  };
+  match operation {
+    "preferences" => {
+      let auto_check = auto_check.ok_or_else(|| USAGE.to_string())?;
+      let auto_download = auto_download.ok_or_else(|| USAGE.to_string())?;
+      if auto_download && !auto_check {
+        return Err("Automatic update downloads require automatic checks.".to_string());
+      }
+      Ok(ControlCommand::DevUpdatePreferences {
+        surface_id: require_surface()?,
+        auto_check,
+        auto_download,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "open" if surface_id.is_none() && auto_check.is_none() && auto_download.is_none() => {
+      Ok(ControlCommand::DevUpdateOpen {
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "confirm" if auto_check.is_none() && auto_download.is_none() => {
+      Ok(ControlCommand::DevUpdateConfirm {
+        surface_id: require_surface()?,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "quit" if surface_id.is_none() && auto_check.is_none() && auto_download.is_none() => {
+      Ok(ControlCommand::DevUpdateQuit {
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    _ => Err(USAGE.to_string()),
+  }
+}
+
+fn parse_development_bool(raw: Option<&String>, option: &str) -> Result<bool, String> {
+  match raw.map(String::as_str) {
+    Some("true") => Ok(true),
+    Some("false") => Ok(false),
+    _ => Err(format!("The {option} value must be true or false.")),
   }
 }
 
@@ -3287,6 +3426,10 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DevFixtureReset { .. } => "dev.fixture.reset".to_string(),
     ControlCommand::DevPerformanceInspect => "dev.performance.inspect".to_string(),
     ControlCommand::DevPerformanceStall { .. } => "dev.performance.stall".to_string(),
+    ControlCommand::DevUpdatePreferences { .. } => "dev.update.preferences".to_string(),
+    ControlCommand::DevUpdateOpen { .. } => "dev.update.open".to_string(),
+    ControlCommand::DevUpdateConfirm { .. } => "dev.update.confirm".to_string(),
+    ControlCommand::DevUpdateQuit { .. } => "dev.update.quit".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
@@ -3544,6 +3687,41 @@ fn request_for_command<R: Read>(
     ControlCommand::DevPerformanceStall { milliseconds } => {
       serde_json::json!({ "milliseconds": milliseconds })
     }
+    ControlCommand::DevUpdatePreferences {
+      surface_id,
+      auto_check,
+      auto_download,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "surfaceId": surface_id,
+      "autoCheck": auto_check,
+      "autoDownload": auto_download,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::DevUpdateOpen {
+      expected_revision,
+      expected_ui_generation,
+    }
+    | ControlCommand::DevUpdateQuit {
+      expected_revision,
+      expected_ui_generation,
+    } => {
+      serde_json::json!({
+        "expectedRevision": expected_revision,
+        "expectedUiGeneration": expected_ui_generation,
+      })
+    }
+    ControlCommand::DevUpdateConfirm {
+      surface_id,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "surfaceId": surface_id,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
     ControlCommand::TransportReport {
       session_id,
       report_format,
@@ -5057,6 +5235,71 @@ mod tests {
       assert!(parse_control_args(&invalid).is_err());
     }
     assert!(!help_text().contains("dev performance"));
+  }
+
+  #[test]
+  fn parses_hidden_packaged_update_acceptance_commands() {
+    let preferences = parse_control_args(&args(&[
+      "dev",
+      "update",
+      "preferences",
+      "--surface-id",
+      "ui-aaaaaaaaaaaaaaaa",
+      "--auto-check",
+      "true",
+      "--auto-download",
+      "true",
+      "--expected-revision",
+      "7",
+      "--expected-ui-generation",
+      "3",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&preferences), "dev.update.preferences");
+    assert_eq!(
+      request_for_command(&preferences, &mut "".as_bytes())
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "surfaceId": "ui-aaaaaaaaaaaaaaaa",
+        "autoCheck": true,
+        "autoDownload": true,
+        "expectedRevision": 7,
+        "expectedUiGeneration": 3,
+      })
+    );
+
+    for (operation, method) in [("open", "dev.update.open"), ("quit", "dev.update.quit")] {
+      let command = parse_control_args(&args(&[
+        "dev",
+        "update",
+        operation,
+        "--expected-revision",
+        "7",
+        "--expected-ui-generation",
+        "3",
+        "--json",
+      ]))
+      .unwrap();
+      assert_eq!(command_name(&command), method);
+    }
+
+    let confirm = parse_control_args(&args(&[
+      "dev",
+      "update",
+      "confirm",
+      "--surface-id",
+      "ui-bbbbbbbbbbbbbbbb",
+      "--expected-revision",
+      "7",
+      "--expected-ui-generation",
+      "3",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&confirm), "dev.update.confirm");
+    assert!(!help_text().contains("dev update"));
   }
 
   #[test]

@@ -704,10 +704,21 @@ identity. It never uses the stable, dev, or Preview identity, data directory, up
 
 ```bash
 npm run update:acceptance:build
-npm run update:acceptance:serve -- artifacts/update-acceptance/<short-sha>
 npm run update:acceptance:run -- artifacts/update-acceptance/<short-sha>
 npm run update:acceptance:verify -- artifacts/update-acceptance/<short-sha>
 ```
+
+The runner drives the real Update surfaces through acceptance-only Agent Control actions. It saves
+the first-run preferences, opens details, retries rejected downloads, skips once, confirms both
+installation attempts, and quits through the normal application business path. No pointer input or
+operator checkpoint is part of a valid run. `update:acceptance:serve` remains a debugging command,
+not a release step.
+
+Stable releases call `update-acceptance.yml`. When updater-chain dependencies changed, its
+self-hosted Windows and macOS jobs build and run the exact commit, export evidence without the
+ephemeral private key or build cache, upload it as short-lived Actions artifacts, and verify both
+platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
+assembling the Draft, so maintainers never copy acceptance files between machines.
 
 The macOS runner stages the older app in a writable path containing spaces and launches that exact
 bundle executable as a background child of the long-lived runner. This keeps the update helper's
@@ -724,7 +735,8 @@ restored Dock. Before the successful replacement, the isolated debug identity pa
 before any files change; the runner terminates that exact helper process, relaunches the old app,
 captures the visible interrupted-install error, verifies that the cached package remains ready,
 and retries through the normal UI. Release builds and non-acceptance identities ignore this fault
-injection. It prints checkpoints for actions that must remain visible in the real product UI.
+injection. Every driven action remains visible in the real product UI and is observed through the
+same semantic state that a user action changes.
 Do not grant Accessibility, administrator access, or other system permissions merely to make an
 acceptance row green; the result must record that boundary explicitly.
 
@@ -736,11 +748,11 @@ all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. A
 valid only after this runner produces real evidence on that platform; contract tests on another OS
 do not substitute for it.
 
-Stable release preflight reports both platforms. It accepts only evidence for the exact release
-commit, marks evidence older than 14 days as stale, and says plainly when a platform is missing,
-invalid, incomplete, or stale. When updater, installer, signing, packaging or acceptance
-dependencies changed since the latest stable tag, missing Windows or macOS evidence stops the
-release. Other releases keep the report advisory. `scripts/update-acceptance-code-changed.mjs` owns
+Local stable release preflight reports retained platform evidence as advisory. When updater,
+installer, signing, packaging or acceptance dependencies changed since the latest stable tag, the
+called `update-acceptance.yml` workflow runs both platforms for the exact release commit; missing,
+invalid or incomplete evidence stops `release.yml` before the Draft. Other releases skip the
+platform jobs. `scripts/update-acceptance-code-changed.mjs` owns
 that deliberately narrow dependency list; update it when a new path can affect the installed update
 chain, rather than broadening the gate to ordinary version or interface-only changes.
 

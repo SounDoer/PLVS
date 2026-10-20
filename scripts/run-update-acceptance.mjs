@@ -144,6 +144,44 @@ function cliJson(cli, dataRoot, args) {
   );
 }
 
+function developmentUpdateAction(cli, dataRoot, action, ui, options = {}) {
+  const args = [
+    "dev",
+    "update",
+    action,
+    "--expected-revision",
+    String(ui.result.revision),
+    "--expected-ui-generation",
+    String(ui.result.uiGeneration),
+  ];
+  if (options.surfaceId) args.push("--surface-id", options.surfaceId);
+  if (options.preferences) {
+    args.push("--auto-check", String(options.preferences.autoCheck));
+    args.push("--auto-download", String(options.preferences.autoDownload));
+  }
+  return cliJson(cli, dataRoot, args);
+}
+
+async function openUpdateDetails(cli, dataRoot) {
+  let ui = cliJson(cli, dataRoot, ["ui", "inspect"]);
+  let surface = findUpdateSurface(ui.result);
+  if (surface) return { ui, surface };
+  developmentUpdateAction(cli, dataRoot, "open", ui);
+  ui = await waitFor(
+    "update details",
+    () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+    (value) => Boolean(findUpdateSurface(value.result)),
+    30_000
+  );
+  surface = findUpdateSurface(ui.result);
+  return { ui, surface };
+}
+
+async function confirmVisibleUpdate(cli, dataRoot) {
+  const { ui, surface } = await openUpdateDetails(cli, dataRoot);
+  developmentUpdateAction(cli, dataRoot, "confirm", ui, { surfaceId: surface.surfaceId });
+}
+
 async function waitFor(label, inspect, accept, timeout = CHECKPOINT_TIMEOUT_MS) {
   const deadline = Date.now() + timeout;
   let lastError;
@@ -254,9 +292,7 @@ async function captureRejectedPackage({
     fault,
     packageEndpoint
   );
-  console.log(
-    `CHECKPOINT ${fault}: Wait for Update Failed, open the update details from the Dock update indicator, click Update and Restart to retry, and leave the resulting error visible.`
-  );
+  await confirmVisibleUpdate(cli, dataRoot);
   const ui = await waitFor(
     `${fault} visible error`,
     () => cliJson(cli, dataRoot, ["ui", "inspect"]),
@@ -460,10 +496,22 @@ async function runGuidedAcceptance({
     }
     const before = cliJson(cli, dataRoot, ["inspect"]);
     writeJsonAtomic(path.join(runDir, "before.json"), before);
-    console.log(
-      "CHECKPOINT auto-download: In the isolated app, enable Auto Download Updates in Settings. " +
-        "The first download deliberately has a stale signature and must show Update Failed."
+    const preferencesUi = await waitFor(
+      "update preferences",
+      () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+      (value) =>
+        value.result?.surfaces?.some(
+          (surface) => surface.kind === "update" && surface.target?.phase === "preferences"
+        ),
+      60_000
     );
+    const preferencesSurface = preferencesUi.result.surfaces.find(
+      (surface) => surface.kind === "update" && surface.target?.phase === "preferences"
+    );
+    developmentUpdateAction(cli, dataRoot, "preferences", preferencesUi, {
+      surfaceId: preferencesSurface.surfaceId,
+      preferences: { autoCheck: true, autoDownload: true },
+    });
     const packageEndpoint = platformDescriptor().packageEndpoint;
     const rejectionScenarios = [];
     rejectionScenarios.push({
@@ -512,9 +560,8 @@ async function runGuidedAcceptance({
       (value) => value?.value.ready
     );
     await closeFeed();
-    console.log(
-      "CHECKPOINT offline-restart: The feed is stopped. Quit the isolated app normally; the runner will relaunch it offline."
-    );
+    const quitUi = cliJson(cli, dataRoot, ["ui", "inspect"]);
+    developmentUpdateAction(cli, dataRoot, "quit", quitUi);
     await waitFor(
       "isolated app shutdown",
       () => {
@@ -555,10 +602,7 @@ async function runGuidedAcceptance({
     } catch (error) {
       console.warn(`Update-details screenshot was unavailable: ${error.message}`);
     }
-    console.log(
-      "CHECKPOINT helper-interruption: Confirm Update Ready and click Update and Restart. " +
-        "After the isolated helper is terminated and the old app relaunches, open the failed update details from the Dock update indicator and leave the interrupted-install error visible."
-    );
+    await confirmVisibleUpdate(cli, dataRoot);
     const pauseMarker = await waitFor(
       "acceptance helper pause",
       () => findNamedFile(path.join(dataRoot, "updates"), "acceptance-helper-paused"),
@@ -630,9 +674,19 @@ async function runGuidedAcceptance({
       "--expected-ui-generation",
       String(interruptedScreenshot.result.uiGeneration),
     ]);
-    console.log(
-      "CHECKPOINT offline-install: Reopen the retained Update Ready package from the Dock accessory, exercise Skip This Time, reopen it again, then click Update and Restart."
-    );
+    const skippedUi = cliJson(cli, dataRoot, ["ui", "inspect"]);
+    const skippedSurface = findUpdateSurface(skippedUi.result);
+    if (!skippedSurface) throw new Error("Interrupted update details disappeared before skip");
+    cliJson(cli, dataRoot, [
+      "ui",
+      "cancel",
+      skippedSurface.surfaceId,
+      "--expected-revision",
+      String(skippedUi.result.revision),
+      "--expected-ui-generation",
+      String(skippedUi.result.uiGeneration),
+    ]);
+    await confirmVisibleUpdate(cli, dataRoot);
     const attempt = await waitFor(
       "installer completion after interrupted-helper retry",
       () => JSON.parse(readFileSync(attemptFile, "utf8")),
@@ -748,7 +802,7 @@ async function runGuidedAcceptance({
         ],
       },
       warnings: [
-        "Routine UI confirmations remain operator checkpoints; staging, offline transition, evidence, and verification are automated.",
+        "Update UI actions were exercised through the packaged app's acceptance-only Agent Control surface.",
       ],
     };
     writeJsonAtomic(path.join(runDir, "result.json"), result);
