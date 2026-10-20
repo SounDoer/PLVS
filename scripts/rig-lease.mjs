@@ -80,25 +80,35 @@ export function currentOwner({ worktree, command }) {
   };
 }
 
+/** Seconds in a `ps -o etime=` value, `[[dd-]hh:]mm:ss`, or null. */
+export function parseElapsedSeconds(text) {
+  const match = /^(?:(?:(\d+)-)?(\d+):)?(\d+):(\d+)$/.exec(text.trim());
+  if (!match) return null;
+  const [days, hours, minutes, seconds] = match.slice(1).map((part) => Number(part ?? 0));
+  return ((days * 24 + hours) * 60 + minutes) * 60 + seconds;
+}
+
 function processStartTimeMs(pid) {
-  const result =
-    process.platform === "win32"
-      ? spawnSync(
-          "powershell",
-          [
-            "-NoProfile",
-            "-Command",
-            `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().ToString('o')`,
-          ],
-          { encoding: "utf8", windowsHide: true }
-        )
-      : spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
-          encoding: "utf8",
-          env: { ...process.env, LC_ALL: "C" },
-        });
+  if (process.platform === "win32") {
+    const result = spawnSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().ToString('o')`,
+      ],
+      { encoding: "utf8", windowsHide: true }
+    );
+    if (result.status !== 0) return null;
+    const parsed = Date.parse(result.stdout.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  // `lstart` is local wall time, which a DST fall-back repeats, so it can read an hour off and
+  // mark a live holder dead. Elapsed time does not depend on the time zone.
+  const result = spawnSync("ps", ["-o", "etime=", "-p", String(pid)], { encoding: "utf8" });
   if (result.status !== 0) return null;
-  const parsed = Date.parse(result.stdout.trim());
-  return Number.isFinite(parsed) ? parsed : null;
+  const elapsed = parseElapsedSeconds(result.stdout);
+  return elapsed === null ? null : Date.now() - elapsed * 1000;
 }
 
 /**
@@ -147,7 +157,7 @@ function sameHolder(a, b) {
  * create retried once. An unreadable lease is busy while it is young, because its holder may be
  * between creating and writing it, and stale once it is old.
  */
-export function acquireLease(path, owner, { isAlive = holderIsAlive } = {}) {
+export function acquireLease(path, owner, { isAlive = holderIsAlive, ageMs = leaseAgeMs } = {}) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const fd = openSync(path, "wx");
@@ -161,11 +171,17 @@ export function acquireLease(path, owner, { isAlive = holderIsAlive } = {}) {
       if (error.code !== "EEXIST") throw error;
     }
     const holder = readHolder(path);
-    if (holder ? isAlive(holder) : leaseAgeMs(path) < UNREADABLE_GRACE_MS) {
+    if (holder ? isAlive(holder) : ageMs(path) < UNREADABLE_GRACE_MS) {
       throw new LeaseBusyError(holder ?? UNKNOWN_HOLDER);
     }
-    // Remove only the stale lease just read, not one another process took in the meantime.
-    if (sameHolder(readHolder(path), holder)) {
+    // Remove only the stale lease just read, not one another process took in the meantime. Two
+    // unreadable leases compare equal, so an unreadable one must also still be old: a contender
+    // that replaced it may not have written its own yet.
+    const current = readHolder(path);
+    const stillStale = holder
+      ? sameHolder(current, holder)
+      : current === null && ageMs(path) >= UNREADABLE_GRACE_MS;
+    if (stillStale) {
       try {
         unlinkSync(path);
       } catch (error) {

@@ -20,6 +20,7 @@ import {
   holderIsAlive,
   leasePath,
   machineLeaseDirectory,
+  parseElapsedSeconds,
   releaseLease,
   waitForLease,
 } from "./rig-lease.mjs";
@@ -80,6 +81,20 @@ describe("acquireLease and releaseLease", () => {
     expect(acquireLease(path, owner(22)).owner.pid).toBe(22);
   });
 
+  it("leaves a fresh unreadable lease alone that replaced the stale one just read", () => {
+    writeFileSync(path, "");
+    let checks = 0;
+    const ageMs = (leaseFile) => {
+      checks += 1;
+      if (checks > 1) return Date.now() - statSync(leaseFile).mtimeMs;
+      // Another contender removes the stale lease and creates its own, not yet written.
+      writeFileSync(leaseFile, "");
+      return 60_000;
+    };
+    expect(() => acquireLease(path, owner(22), { ageMs })).toThrow(LeaseBusyError);
+    expect(readFileSync(path, "utf8")).toBe("");
+  });
+
   it("never releases a lease that has passed to someone else", () => {
     const first = acquireLease(path, owner(11));
     acquireLease(path, owner(22), { isAlive: () => false });
@@ -100,6 +115,16 @@ describe("holderIsAlive", () => {
 
   it("rejects a live PID that started at another time", () => {
     expect(holderIsAlive({ ...owner(process.pid), processStartedAtMs: 0 })).toBe(false);
+  });
+});
+
+describe("parseElapsedSeconds", () => {
+  it("reads every ps etime form, which no clock change can shift", () => {
+    expect(parseElapsedSeconds("   05:07\n")).toBe(307);
+    expect(parseElapsedSeconds("01:02:03")).toBe(3723);
+    expect(parseElapsedSeconds("2-01:02:03")).toBe(2 * 86_400 + 3723);
+    expect(parseElapsedSeconds("")).toBeNull();
+    expect(parseElapsedSeconds("Tue Oct 20 10:00:00 2026")).toBeNull();
   });
 });
 
