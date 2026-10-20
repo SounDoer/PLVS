@@ -42,6 +42,7 @@ jobs:
         shell: bash
     env:
       COMMIT_SHA: ${{ inputs.commit_sha }}
+      COREPACK_ENABLE_AUTO_PIN: 0
       PLATFORM: ${{ matrix.platform }}
     steps:
       - name: Validate the commit

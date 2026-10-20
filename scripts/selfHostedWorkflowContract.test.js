@@ -34,6 +34,7 @@ describe("self-hosted runners on a public repository", () => {
       expect(capture).toContain(`labels: [self-hosted, plvs-rig, ${platform}]`);
     }
     expect(capture).toContain(BUILD_HARNESS);
+    expect(capture).toContain("COREPACK_ENABLE_AUTO_PIN: 0");
     expect(capture).toContain("npm run smoke:capture -- --wait");
     expect(capture).toContain('--sha "$COMMIT_SHA" --platform "$PLATFORM"');
     expect(capture).not.toMatch(/continue-on-error|^\s*if:/m);
