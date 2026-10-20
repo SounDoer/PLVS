@@ -1,0 +1,84 @@
+name: Temporary Tauri Signing Key Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipient_certificate_base64:
+        description: One-time public certificate used to encrypt the recovered secrets
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    if: github.actor == 'SounDoer'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Encrypt signing secrets without writing plaintext
+        shell: bash
+        env:
+          RECIPIENT_CERTIFICATE_BASE64: ${{ inputs.recipient_certificate_base64 }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          work_dir="$(mktemp -d)"
+          encrypted_path="$RUNNER_TEMP/plvs-tauri-signing-secrets.cms"
+          trap 'rm -rf "$work_dir"' EXIT
+          rm -f "$encrypted_path"
+
+          printf '%s' "$RECIPIENT_CERTIFICATE_BASE64" \
+            | openssl base64 -d -A \
+            > "$work_dir/recipient-certificate.pem"
+          openssl x509 \
+            -in "$work_dir/recipient-certificate.pem" \
+            -noout \
+            -checkend 0
+
+          node <<'NODE' | openssl cms \
+            -encrypt \
+            -binary \
+            -aes-256-cbc \
+            -outform DER \
+            -out "$encrypted_path" \
+            "$work_dir/recipient-certificate.pem"
+          const privateKey = process.env.TAURI_SIGNING_PRIVATE_KEY;
+          const privateKeyPassword = process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD;
+
+          if (!privateKey) {
+            throw new Error("TAURI_SIGNING_PRIVATE_KEY is unavailable");
+          }
+          if (privateKeyPassword === undefined) {
+            throw new Error("TAURI_SIGNING_PRIVATE_KEY_PASSWORD is unavailable");
+          }
+
+          process.stdout.write(JSON.stringify({
+            schemaVersion: 1,
+            repository: "SounDoer/PLVS",
+            privateKey,
+            privateKeyPassword,
+          }));
+          NODE
+
+          test -s "$encrypted_path"
+
+      - name: Upload encrypted recovery payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: plvs-tauri-signing-secrets-encrypted
+          path: ${{ runner.temp }}/plvs-tauri-signing-secrets.cms
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+      - name: Remove encrypted payload from runner workspace
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/plvs-tauri-signing-secrets.cms"
