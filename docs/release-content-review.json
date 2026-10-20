@@ -3,8 +3,8 @@
   "version": "0.23.0",
   "baselineTag": "v0.22.2",
   "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
-  "candidateRevision": "3a7540e2da0aee6924959224597fb79e85d67382",
-  "contentSha256": "d57e2266534f70ea1d8e539e17fae2e706140b3578a218e0445348a8fa2dee8d",
+  "candidateRevision": "7a6e3a0b16673e17b120cad22805056ba9b1e3f2",
+  "contentSha256": "4c8ca461044e8ce02dd4ea3149f7118763967e3e6a302b98c246c4473f39a053",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -23,7 +23,8 @@
         "Re-reviewed for candidate cceefb17: the acceptance harness now treats Skip This Time as the single real UI action and preserves a read-only DMG verdict when optional visual evidence cannot settle; documented product behavior is unchanged",
         "Re-reviewed for candidate 83b63110: the isolated read-only DMG process is terminated directly after its verdict instead of issuing a redundant UI close; documented product behavior is unchanged",
         "Re-reviewed for candidate aa7682b8: writable and read-only macOS acceptance packages now run sequentially under their shared synthetic identity; documented product behavior is unchanged",
-        "Re-reviewed for candidate 3a7540e2: the acceptance harness now waits for the packaged frontend inspection bridge after native capabilities become available; documented product behavior is unchanged"
+        "Re-reviewed for candidate 3a7540e2: the acceptance harness now waits for the packaged frontend inspection bridge after native capabilities become available; documented product behavior is unchanged",
+        "Re-reviewed for candidate 7a6e3a0b: the private acceptance preference action now acknowledges before a potentially slow first persistence flush and the harness waits for the real first-launch surface to close; stable, dev and Preview behavior is unchanged"
       ]
     },
     "readme": {
@@ -41,7 +42,8 @@
         "Re-reviewed for candidate cceefb17: updater acceptance evidence handling changes no public download or feature claim",
         "Re-reviewed for candidate 83b63110: updater acceptance cleanup changes no public download or feature claim",
         "Re-reviewed for candidate aa7682b8: macOS acceptance scenario ordering changes no public download or feature claim",
-        "Re-reviewed for candidate 3a7540e2: packaged inspection readiness handling changes no public download or feature claim"
+        "Re-reviewed for candidate 3a7540e2: packaged inspection readiness handling changes no public download or feature claim",
+        "Re-reviewed for candidate 7a6e3a0b: acceptance-only preference timing changes no public download or feature claim"
       ]
     },
     "website": {
@@ -60,7 +62,8 @@
         "Re-reviewed for candidate cceefb17: the acceptance runner still uses only isolated synthetic data and changes no public site content or production-user data flow",
         "Re-reviewed for candidate 83b63110: isolated process cleanup changes no public site content or production-user data flow",
         "Re-reviewed for candidate aa7682b8: isolated scenario ordering changes no public site content or production-user data flow",
-        "Re-reviewed for candidate 3a7540e2: acceptance readiness polling changes no public site content or production-user data flow"
+        "Re-reviewed for candidate 3a7540e2: acceptance readiness polling changes no public site content or production-user data flow",
+        "Re-reviewed for candidate 7a6e3a0b: the isolated acceptance preference flow still uses only synthetic local data and changes no public site content or production-user data flow"
       ]
     },
     "screenshots": {
@@ -78,7 +81,8 @@
         "Re-reviewed for candidate cceefb17: no product CSS, visual component or published image changed; only optional acceptance screenshot handling changed",
         "Re-reviewed for candidate 83b63110: no product CSS, visual component or published image changed",
         "Re-reviewed for candidate aa7682b8: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate 3a7540e2: no product CSS, visual component or published image changed"
+        "Re-reviewed for candidate 3a7540e2: no product CSS, visual component or published image changed",
+        "Re-reviewed for candidate 7a6e3a0b: no product CSS, visual component or published image changed; only acceptance-only command timing and its harness wait changed"
       ]
     }
   }
