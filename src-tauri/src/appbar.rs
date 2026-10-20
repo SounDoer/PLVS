@@ -220,7 +220,7 @@ fn appbar_rect_from_work_area(
   rect
 }
 
-fn enforce_window_position(position: &mut WINDOWPOS, rect: RECT) {
+pub(crate) fn enforce_window_position(position: &mut WINDOWPOS, rect: RECT) {
   position.x = rect.left;
   position.y = rect.top;
   position.cx = rect.right - rect.left;

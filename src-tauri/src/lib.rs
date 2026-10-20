@@ -1,3 +1,5 @@
+#[cfg(target_os = "windows")]
+mod accessory_pin;
 pub mod agent_control;
 #[cfg(target_os = "windows")]
 mod appbar;

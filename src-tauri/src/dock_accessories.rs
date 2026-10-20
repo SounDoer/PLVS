@@ -60,10 +60,24 @@ fn ensure_accessory<R: tauri::Runtime>(
     return Ok(());
   }
   let init_script = app.state::<AccessoryInitScript>().0.clone();
-  accessory_builder(app, label, &init_script)
+  let window = accessory_builder(app, label, &init_script)
     .build()
-    .map(|_| ())
-    .map_err(|error| format!("{label} window: {error}"))
+    .map_err(|error| format!("{label} window: {error}"))?;
+  // Subclassing must happen on the thread that owns the window; this command runs elsewhere.
+  #[cfg(target_os = "windows")]
+  {
+    let pinned = window.clone();
+    window
+      .run_on_main_thread(move || {
+        if let Err(error) = crate::accessory_pin::install(&pinned) {
+          log::warn!("{} position pin: {error}", pinned.label());
+        }
+      })
+      .map_err(|error| format!("{label} position pin: {error}"))?;
+  }
+  #[cfg(not(target_os = "windows"))]
+  let _ = window;
+  Ok(())
 }
 
 /// Create the toolbar and editor accessories when the main window enters or boots into Dock, so
@@ -103,6 +117,8 @@ fn set_rect<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   rect: WindowBounds,
 ) -> Result<(), String> {
+  #[cfg(target_os = "windows")]
+  crate::accessory_pin::pin(window, rect);
   window
     .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
     .map_err(|e| format!("{} size: {e}", window.label()))?;
