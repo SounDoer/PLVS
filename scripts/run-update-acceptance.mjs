@@ -180,7 +180,8 @@ export function seedAcceptanceSettings(dataRoot, dockEnabled) {
   mkdirSync(dataRoot, { recursive: true });
   writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
     agentControlEnabled: true,
-    closeBehavior: "quit",
+    // The persisted key is closeAction; closeBehavior is only its Agent Control name.
+    closeAction: "quit",
     dockState: {
       enabled: dockEnabled,
       edge: "bottom",

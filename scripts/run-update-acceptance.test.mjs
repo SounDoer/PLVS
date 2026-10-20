@@ -2,6 +2,7 @@ import { normalize, resolve } from "node:path";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
+import { normalizeCloseAction } from "../src/settings/defaults.js";
 
 import {
   acceptanceBootstrapMarker,
@@ -98,11 +99,11 @@ describe("update acceptance runner", () => {
     const root = mkdtempSync(resolve(tmpdir(), "plvs-update-acceptance-"));
     try {
       seedAcceptanceSettings(root, true);
-      expect(JSON.parse(readFileSync(resolve(root, "plvs-settings.json"), "utf8"))).toMatchObject({
-        agentControlEnabled: true,
-        closeBehavior: "quit",
-        dockState: { enabled: true },
-      });
+      const seeded = JSON.parse(readFileSync(resolve(root, "plvs-settings.json"), "utf8"));
+      expect(seeded).toMatchObject({ agentControlEnabled: true, dockState: { enabled: true } });
+      // Read the way the app reads it: an unknown key leaves the default "ask", whose close
+      // confirmation keeps a guided restart's terminated app open until the wait times out.
+      expect(normalizeCloseAction(seeded.closeAction)).toBe("quit");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
