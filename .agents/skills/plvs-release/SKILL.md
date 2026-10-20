@@ -527,6 +527,24 @@ Do NOT proceed to Step 7. Fix issues and re-run `npm run release:preflight`.
 git push origin main
 ```
 
+### Before Dispatch: Home Runners and a Manual GUI Check
+
+`release.yml` runs real capture smoke on the self-hosted runners (see "Home capture runners" in
+`CONTRIBUTING.md`). Confirm all three are `online` and idle before dispatching; an offline runner
+makes the release wait in the queue and then fail:
+
+```bash
+gh api repos/SounDoer/PLVS/actions/runners --jq '.runners[] | "\(.name) \(.status) busy=\(.busy)"'
+```
+
+The Windows runner lives on the maintainer's company PC for now, so dispatch while that PC is on
+and logged in. The macOS runner runs in a Terminal window and does not come back after a reboot or
+logout.
+
+Agent Control smoke runs only on the preflight machine (Windows). Until it runs on the macOS and
+Linux runners, also open the current build on the Mac and on Ubuntu, open Settings once and close
+it. Remove this step once Agent Control smoke covers those platforms.
+
 ### Mandatory Remote Gate
 
 Do **not** create or push the release tag. `ci.yml` must succeed for the exact
@@ -654,13 +672,18 @@ cannot cover:
 | `npm run desktop:verify-stable-dmg`  | macOS     | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars                         |
 | `scripts/verify-linux-deb-clean.sh`  | Linux     | Installs the exact deb into a fresh Ubuntu 24.04 root without system FFmpeg, decodes fixtures, launches app and CLI, then removes it cleanly       |
 
+In parallel, the `capture-acceptance` job calls `capture-acceptance.yml`, which runs
+`smoke:capture` for the exact SHA on the self-hosted `plvs-rig` runners (home PC or company PC,
+Mac, Ubuntu). `prepare-draft` waits for it, so no draft exists unless real capture passed on all
+three platforms. It always runs, unlike the conditional local capture smoke in Step 6.
+
 ### Build Matrix
 
-| Platform | Runner           | Artifacts                                                                  |
-| -------- | ---------------- | -------------------------------------------------------------------------- |
-| Windows  | `windows-latest` | NSIS installer, portable ZIP                                               |
-| macOS    | `macos-latest`   | Developer ID signed and Apple-notarized DMG, `.app.tar.gz` updater payload |
-| Linux    | `ubuntu-24.04`   | x86_64 Debian package, updater-signed for version notices                  |
+| Platform | Runner                | Artifacts                                                                  |
+| -------- | --------------------- | -------------------------------------------------------------------------- |
+| Windows  | `windows-2025-vs2026` | NSIS installer, portable ZIP                                               |
+| macOS    | `macos-26`            | Developer ID signed and Apple-notarized DMG, `.app.tar.gz` updater payload |
+| Linux    | `ubuntu-24.04`        | x86_64 Debian package, updater-signed for version notices                  |
 
 ### Draft Assembly and Publication
 

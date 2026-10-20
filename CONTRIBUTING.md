@@ -492,7 +492,7 @@ npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; nee
 
 The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance
 runs take an exclusive lease, `plvs-capture-rig.lock` in one shared directory per machine
-(`%ProgramData%PLVS`, `/Users/Shared/PLVS` or `/var/tmp/plvs`), before starting the test tone.
+(`%ProgramData%\PLVS`, `/Users/Shared/PLVS` or `/var/tmp/plvs`), before starting the test tone.
 Every clone, worktree and local user on the machine, including a self-hosted runner, sees it. While another run holds it, a run fails with exit 2 and names the holder; add
 `--wait` to queue instead. A lease left by a killed run is removed automatically once its process
 is gone; a holder whose start time cannot be read counts as alive and is cleared by hand only
@@ -746,9 +746,51 @@ The shared acceptance report treats Linux as a base platform alongside Windows a
 report has a Linux column across update, Dock, capture, Agent Control and performance, and a Linux
 cell without real Linux evidence stays visibly `missing`. Producers are connected one domain at a
 time, keeping the common envelope and scenario semantics unchanged. Packaged update acceptance and
-its release gate remain Windows/macOS until a Linux producer for the version-notice path exists;
-Linux never stages or installs updates. Contract tests on macOS or Windows are not Linux acceptance
+its release gate remain Windows/macOS until a Linux producer exists, although installed stable Linux
+packages can install signed updates. Contract tests on macOS or Windows are not Linux acceptance
 evidence.
+
+## Home capture runners
+
+Hosted runners have no sound card, so every stable release also runs `smoke:capture` for the exact
+release commit on three self-hosted runners: [`capture-acceptance.yml`](.github/workflows/capture-acceptance.yml),
+called by `release.yml` before the draft is assembled. Each runner carries the label `plvs-rig`
+plus its platform. The draft waits for all three. A runner that is off or logged out makes the
+release wait in the queue and then fail; there is no input that skips a platform.
+
+The repository is public. Self-hosted jobs may only live in workflows triggered by
+`workflow_dispatch`, `workflow_call` or `schedule`, and never receive secrets;
+`scripts/selfHostedWorkflowContract.test.js` enforces this through reusable-workflow calls too.
+Keep the fork pull request approval setting at "first-time contributors" or stricter.
+
+Check a runner without a release:
+
+```bash
+gh workflow run capture-acceptance.yml -f commit_sha=$(git rev-parse HEAD)
+```
+
+Each job verifies its own `result.json` names the commit and platform and is `complete`, then
+uploads it as `capture-evidence-<platform>`. The runner workspace is reused and cleaned by later
+checkouts; the uploaded artifact is the record.
+
+Setting up a runner (register with a short-lived token from
+`gh api -X POST repos/SounDoer/PLVS/actions/runners/registration-token`, kept in memory only;
+verify the runner archive against the SHA-256 in its GitHub release before extracting):
+
+| Platform | Account and launch                                                                                                        | Rig                                                           | Traps                                                                                                                                                                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Windows  | Maintainer's logged-in account. Not a service: a logon launcher in the Startup folder runs `run.cmd` in the user session. | VB-Cable, VLC, Git for Windows                                | The first `bash.exe` on a Windows desktop's PATH is usually WSL's. The launcher must put `C:\Program Files\Git\bin` first on PATH; the runner cannot take a quoted shell path. Started from an agent inside the Claude desktop app, launch it through `explorer.exe` so it leaves the app's container. |
+| macOS    | Maintainer's login account, `./run.sh` in a Terminal window that holds microphone permission.                             | BlackHole 2ch, VLC                                            | A LaunchAgent (`./svc.sh install`) captures silence: TCC attributes the request to the runner's Node, which has no audio entitlement. The runner does not return after a logout, reboot or closing that Terminal. The screen may stay locked; capture passes while locked.                             |
+| Linux    | Desktop user's `systemd --user` unit running `runsvc.sh`, with `loginctl enable-linger`.                                  | `pactl`/`paplay` on PipeWire or PulseAudio, `/usr/bin/ffmpeg` | Copy `bin/runsvc.sh` to the runner root first, or the unit fails with `203/EXEC`. Put `~/.cargo/bin` on the unit's PATH and order it after the PipeWire user services. A dedicated user cannot reach the desktop user's audio session.                                                                 |
+
+Every clone and runner on one machine shares the rig lease (ADR 0034), so a manual `smoke:capture`
+and a runner job queue behind each other instead of summing tones. Each runner keeps its own Rust
+target directory, several GB. Before dispatching a release, check that all three runners are
+`online` and idle:
+
+```bash
+gh api repos/SounDoer/PLVS/actions/runners --jq '.runners[] | "\(.name) \(.status) busy=\(.busy)"'
+```
 
 ## CI
 

@@ -131,6 +131,22 @@ meter defect. Before a smoke or soak, make sure no other session is driving the 
 `soak:desktop` records UI frame drops and audio chunk drops, not loudness drift, and its verdict is
 self-contained, so its files play no baseline role and can be deleted once read.
 
+Release capture acceptance runs on self-hosted runners (`CONTRIBUTING.md`, "Home capture
+runners"). Three traps cost the first setup on 2026-10-20 a run each:
+
+- **macOS microphone permission follows the launching process.** A runner installed as a
+  LaunchAgent built and ran the smoke but captured silence: TCC attributed the audio request to the
+  runner's bundled Node, which has no audio-input entitlement (`Client is not granted access`).
+  Started with `./run.sh` from a Terminal that holds microphone permission, it captures, also while
+  the screen is locked. A silent macOS capture on a runner means a permission problem first.
+- **Windows `bash` is often WSL.** The first `bash.exe` on a desktop PATH is usually
+  `C:\Windows\System32\bash.exe`. A quoted shell path in the workflow does not help: the runner
+  split `"C:\Program Files\Git\bin\bash.exe"` at the quote and failed before the first step. The
+  runner's launcher puts Git Bash first on PATH instead.
+- **Corepack can dirty the checkout.** `actions/setup-node` probing Yarn let Corepack add a
+  `packageManager` field to `package.json`; capture evidence then refused a dirty worktree. The
+  workflow sets `COREPACK_ENABLE_AUTO_PIN: 0`.
+
 ## Scene operations and draft editors
 
 Preset apply, save, and update plus dock entry are scene operations. They must call
