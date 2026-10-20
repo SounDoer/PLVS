@@ -892,6 +892,9 @@ what it is.
 | `APPLE_API_KEY`                      | `build-macos` in both workflows                                                                 | Key ID of the App Store Connect API key (identifier, not key material)                                          | Recoverable: shown in App Store Connect next to the key.                                                                                                                                                                                                  | App Store Connect                               | Follows the API key.                                                                                |
 | `APPLE_API_ISSUER`                   | `build-macos` in both workflows                                                                 | Issuer ID of the App Store Connect team (identifier, not key material)                                          | Recoverable: shown in App Store Connect.                                                                                                                                                                                                                  | App Store Connect                               | Does not expire.                                                                                    |
 
+The Apple Developer Program membership renews on 2027-10-04. If it lapses, notarization fails and
+`build-macos` stops the release, so renew it before that date.
+
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).
