@@ -65,8 +65,10 @@ pub fn plan_legacy_store(legacy: &Map<String, Value>) -> Result<LegacyMigrationP
     profiles.remove("profiles");
   }
   let mut global_preferences = Map::new();
-  if let Some(value) = workspace_settings.remove("askToSendCrashReports") {
-    global_preferences.insert("askToSendCrashReports".to_string(), value);
+  for key in ["askToSendCrashReports", "updatePreferences"] {
+    if let Some(value) = workspace_settings.remove(key) {
+      global_preferences.insert(key.to_string(), value);
+    }
   }
   for key in ["clearShortcut", "clearGlobal", "agentControlEnabled"] {
     if let Some(value) = legacy.get(key) {

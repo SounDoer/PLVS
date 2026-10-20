@@ -219,7 +219,12 @@ export function seedAcceptanceSettings(dataRoot, dockEnabled) {
   writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
     agentControlEnabled: true,
     // The first launch migrates this legacy store, taking app settings only from "plvs:settings".
-    "plvs:settings": { closeAction: "quit" },
+    "plvs:settings": {
+      closeAction: "quit",
+      // Preserve the fresh-install chooser while seeding the legacy file needed for Dock state.
+      // Native migration owns moving this installation-wide preference into the library.
+      updatePreferences: { choiceMade: false, autoCheck: false, autoDownload: false },
+    },
     dockState: {
       enabled: dockEnabled,
       edge: "bottom",

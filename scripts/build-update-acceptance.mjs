@@ -108,7 +108,9 @@ function prepareSnapshot(
     cwd: repository,
     quiet: true,
   });
-  invoke("tar", ["-xf", archive, "-C", snapshot], { cwd: repository, quiet: true });
+  // GNU tar treats a Windows drive-letter path as a remote archive (`C:...`). Keep every
+  // extraction path relative to the acceptance root so the same command works in Git Bash.
+  invoke("tar", ["-xf", "source.tar", "-C", "source"], { cwd: root, quiet: true });
   symlinkSync(
     path.join(repository, "node_modules"),
     path.join(snapshot, "node_modules"),

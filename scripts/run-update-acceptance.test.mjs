@@ -107,6 +107,11 @@ describe("update acceptance runner", () => {
       // restart's terminated app open until the wait times out.
       expect(seeded).not.toHaveProperty("closeAction");
       expect(normalizeCloseAction(seeded["plvs:settings"]?.closeAction)).toBe("quit");
+      expect(seeded["plvs:settings"]?.updatePreferences).toEqual({
+        choiceMade: false,
+        autoCheck: false,
+        autoDownload: false,
+      });
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

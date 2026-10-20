@@ -11,6 +11,11 @@ fn legacy_store_is_split_into_shared_library_and_default_workspace_state() {
       "themeId": "night",
       "appearance": "fixed",
       "referenceLufs": -23,
+      "updatePreferences": {
+        "choiceMade": false,
+        "autoCheck": false,
+        "autoDownload": false
+      },
       "loudnessProfiles": {
         "active": "profile:ebu",
         "profiles": [{ "id": "ebu", "name": "EBU R128", "rules": [] }]
@@ -69,6 +74,13 @@ fn legacy_store_is_split_into_shared_library_and_default_workspace_state() {
   assert_eq!(plan.global_preferences["clearShortcut"], "Ctrl+Shift+K");
   assert_eq!(plan.global_preferences["clearGlobal"], true);
   assert_eq!(plan.global_preferences["agentControlEnabled"], true);
+  assert_eq!(
+    plan.global_preferences["updatePreferences"]["choiceMade"],
+    false
+  );
+  assert!(plan.workspace_state["plvs:settings"]
+    .get("updatePreferences")
+    .is_none());
 }
 
 #[test]
