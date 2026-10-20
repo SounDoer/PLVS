@@ -29,17 +29,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # A Windows desktop's PATH usually finds WSL's System32 bash.exe first, not Git Bash.
           - platform: windows
             labels: [self-hosted, plvs-rig, windows]
+            shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -eo pipefail {0}'
           - platform: macos
             labels: [self-hosted, plvs-rig, macos]
+            shell: bash
           - platform: linux
             labels: [self-hosted, plvs-rig, linux]
+            shell: bash
     runs-on: ${{ matrix.labels }}
     timeout-minutes: 90
     defaults:
       run:
-        shell: bash
+        shell: ${{ matrix.shell }}
     env:
       COMMIT_SHA: ${{ inputs.commit_sha }}
       COREPACK_ENABLE_AUTO_PIN: 0

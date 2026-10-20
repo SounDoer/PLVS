@@ -34,6 +34,11 @@ describe("self-hosted runners on a public repository", () => {
       expect(capture).toContain(`labels: [self-hosted, plvs-rig, ${platform}]`);
     }
     expect(capture).toContain(BUILD_HARNESS);
+    // On a Windows desktop, `bash` on PATH is usually WSL's System32 launcher, not Git Bash.
+    expect(capture).toContain(
+      `shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -eo pipefail {0}'`
+    );
+    expect(capture).toContain("shell: ${{ matrix.shell }}");
     expect(capture).toContain("COREPACK_ENABLE_AUTO_PIN: 0");
     expect(capture).toContain("npm run smoke:capture -- --wait");
     expect(capture).toContain('--sha "$COMMIT_SHA" --platform "$PLATFORM"');
