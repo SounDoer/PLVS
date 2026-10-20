@@ -645,13 +645,13 @@ async function runGuidedAcceptance({
     }
     // The public UI contract deliberately reports update details as phase `idle`; the recorded
     // attempt above owns the error verdict while this check proves that the real details are open.
-    const interruptedUi = await waitFor(
-      "interrupted helper update details",
-      () => cliJson(cli, dataRoot, ["ui", "inspect"]),
-      (value) => Boolean(findUpdateSurface(value.result)),
-      60_000
+    // A failed attempt for the same cached version deliberately suppresses the automatic
+    // startup dialog. Open the retained ready package through Agent Control to verify the real
+    // recovery details and retry path without clicking the UI.
+    const { ui: interruptedUi, surface: interruptedSurface } = await openUpdateDetails(
+      cli,
+      dataRoot
     );
-    const interruptedSurface = findUpdateSurface(interruptedUi.result);
     const interruptedScreenshot = await waitFor(
       "interrupted helper screenshot",
       () =>
