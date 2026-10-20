@@ -3,8 +3,8 @@
   "version": "0.23.0",
   "baselineTag": "v0.22.2",
   "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
-  "candidateRevision": "9446758d119d61fc38bfac7c83f256436d77f4db",
-  "contentSha256": "732331b2468f5ab4ee51ab7955054754bb3fa48ec8e9ad68f9be29370d27dcc6",
+  "candidateRevision": "08e61ad9122112accf6a273cf0d3a7f3bb07036e",
+  "contentSha256": "b1c876140526efaed362a8e9b9fec620d665d2a517ca6004b0228d099c2787ac",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -14,7 +14,8 @@
         "docs/user/getting-started.md Linux section and docs/user/faq.md 'Is there a Linux build?' compared with CHANGELOG.md [0.23.0] Added",
         "docs/user/system-settings.md Updates section: Download Manually, os error 740 migration note",
         "grep of docs/user, README.md, website for 'Ask To Send Crash Reports', 'Auto Check', 'Auto Download' without the new suffixes: no matches",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes"
+        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
+        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes"
       ]
     },
     "readme": {
@@ -23,7 +24,8 @@
       "evidence": [
         "git diff v0.22.2..dd11d5ff -- README.md: Ubuntu row 'updates are manual' -> 'APT package with verified in-app updates'",
         "README.md highlights compared with CHANGELOG.md [0.23.0]",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes"
+        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
+        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes"
       ]
     },
     "website": {
@@ -33,7 +35,8 @@
         "git diff --stat v0.22.2..dd11d5ff -- website ':!website/assets' is empty",
         "website/index.html platform cards (linuxCard) inspected: no update wording",
         "website/privacy/index.html 'Update Checks and Downloads' section compared with CHANGELOG.md [0.23.0] Added (offline APT, Polkit)",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes"
+        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
+        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes"
       ]
     },
     "screenshots": {
@@ -42,7 +45,8 @@
       "evidence": [
         "git diff --name-only v0.22.2..dd11d5ff -- '*.webp' '*.png' '*.jpg' '*.svg' is empty",
         "website/assets/homepage/*.webp, landing-hero.webp, landing-dock.webp, landing-dock-custom.webp: no Settings view",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes"
+        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
+        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes"
       ]
     }
   }
