@@ -454,7 +454,7 @@ async function runGuidedAcceptance({
     const before = cliJson(cli, dataRoot, ["inspect"]);
     writeJsonAtomic(path.join(runDir, "before.json"), before);
     console.log(
-      "CHECKPOINT auto-download: In the isolated app, enable Auto Download in Settings. " +
+      "CHECKPOINT auto-download: In the isolated app, enable Auto Download Updates in Settings. " +
         "The first download deliberately has a stale signature and must show Update Failed."
     );
     const packageEndpoint = platformDescriptor().packageEndpoint;

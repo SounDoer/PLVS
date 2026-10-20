@@ -19,12 +19,12 @@ export function UpdatePreferencesControls({
     ? (installationUnavailableReason ??
       "Automatic downloads require the installed version of PLVS. Download updates manually from Releases.")
     : !preferences.autoCheck
-      ? "Turn on Auto Check to enable automatic downloads."
+      ? "Turn on Auto Check for Updates to enable automatic downloads."
       : "Download updates in the background. PLVS asks before installing on the next launch.";
   return (
     <div className="flex flex-col gap-[var(--ui-drawer-row-gap)] text-[length:var(--ui-fs-control)]">
       <label className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
-        <span>Auto Check</span>
+        <span>Auto Check for Updates</span>
         <Switch
           className={COMPACT_SWITCH_CLASS}
           thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
@@ -43,7 +43,7 @@ export function UpdatePreferencesControls({
       ) : null}
       <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
         <div className="flex items-center gap-1">
-          <span>Auto Download</span>
+          <span>Auto Download Updates</span>
           <HoverTip
             tip={downloadHelp}
             side="top"

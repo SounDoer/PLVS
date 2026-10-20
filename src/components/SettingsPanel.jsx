@@ -930,7 +930,7 @@ export function SettingsPanel({
                   <SettingsRow
                     labelNode={
                       <SettingsLabelWithTip
-                        label="Ask To Send Crash Reports"
+                        label="Crash Report Prompt"
                         tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
                       />
                     }

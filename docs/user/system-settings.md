@@ -62,12 +62,12 @@ workbench set; quitting one workbench does not close its peers.
 ## Updates
 
 Update preferences are grouped at the bottom of Settings, above version information.
-The question-mark icon beside **Auto Download** explains download availability, the **Auto Check**
+The question-mark icon beside **Auto Download Updates** explains download availability, the **Auto Check for Updates**
 dependency, and installation confirmation on hover or keyboard focus. The version status row shows
 background download progress, a ready package, or a failed download. A failed replacement download
 does not erase an older verified ready package. Update details identify the selected target version
 independently of the release notes.
-**Auto Check** controls startup and twelve-hour checks. **Auto Download** requires checking to be enabled. Turning checking off also turns downloading
+**Auto Check for Updates** controls startup and twelve-hour checks. **Auto Download Updates** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. **Check** remains an explicit action when
 automatic checking is off. Preferences are shared across workbenches and are not imported from a
 configuration profile.
@@ -76,7 +76,7 @@ Turning automatic downloading off cancels background work and removes the staged
 update you have explicitly confirmed is separate from this preference. Installed Windows and macOS
 copies support verified local staging; Portable copies use the release-page download instead.
 Preview does not offer the updater. On macOS, automatic updates are unavailable on a read-only
-volume such as a mounted DMG; Settings shows the reason directly below **Auto Download** so you can
+volume such as a mounted DMG; Settings shows the reason directly below **Auto Download Updates** so you can
 move PLVS to Applications and reopen it. A protected directory on a writable volume can still use
 the system authorization flow.
 
@@ -381,9 +381,9 @@ while its detail page remains available.
 If the terminal that launched PLVS disconnects its output, PLVS continues running and keeps
 writing its local log files.
 
-**Ask To Send Crash Reports** is at the bottom of Settings, below **Auto Download** when update
+**Crash Report Prompt** is at the bottom of Settings, below **Auto Download Updates** when update
 preferences are available. PLVS saves crash reports locally. With this option enabled, it asks before sending
-one after a crash. With several workbenches open, only the current coordinator asks; choosing
+one after a crash; with it off, PLVS never asks and sends nothing. With several workbenches open, only the current coordinator asks; choosing
 **Later** keeps the report saved, and PLVS asks again at the next launch or when another workbench
 becomes coordinator.
 Feedback diagnostics are attached only when you choose to include them. Audio

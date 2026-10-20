@@ -70,7 +70,7 @@ it("explains the check dependency and read-only installation separately", () => 
       installationSupported
     />
   );
-  expect(screen.getByRole("button", { name: /Turn on Auto Check/ })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Turn on Auto Check for Updates/ })).toBeTruthy();
   rerender(
     <UpdatePreferencesControls
       preferences={{ autoCheck: true, autoDownload: false }}
