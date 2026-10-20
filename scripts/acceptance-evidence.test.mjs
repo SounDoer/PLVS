@@ -85,7 +85,7 @@ describe("acceptance evidence", () => {
     });
   });
 
-  it("accepts Linux evidence without adding Linux to reports that have none", () => {
+  it("reports Linux as a base platform whose cells stay missing without evidence", () => {
     expect(
       validateAcceptanceEvidence(
         fixture({ platform: { os: "linux", arch: "x86_64", version: "6.12.0" } })
@@ -93,8 +93,11 @@ describe("acceptance evidence", () => {
     ).toMatchObject({ platform: { os: "linux" } });
 
     const value = report([]);
-    expect(value.platforms).toEqual(["windows", "macos"]);
-    expect(value.matrix).toHaveLength(10);
+    expect(value.platforms).toEqual(["windows", "macos", "linux"]);
+    expect(value.matrix).toHaveLength(15);
+    const linux = value.matrix.filter((cell) => cell.platform === "linux");
+    expect(linux).toHaveLength(5);
+    expect(linux.every((cell) => cell.state === "missing")).toBe(true);
   });
 
   it("rejects duplicate scenarios and false complete evidence", () => {
@@ -142,7 +145,7 @@ describe("acceptance evidence", () => {
     ]);
     expect(value.ready).toBe(true);
     expect(value.verdict).toBe("incomplete");
-    expect(value.matrix).toHaveLength(10);
+    expect(value.matrix).toHaveLength(15);
     expect(
       value.matrix.find((cell) => cell.domain === "capture" && cell.platform === "macos")
     ).toMatchObject({ state: "passed" });
@@ -150,6 +153,7 @@ describe("acceptance evidence", () => {
       value.matrix.find((cell) => cell.domain === "update" && cell.platform === "macos")
     ).toMatchObject({ state: "stale", sourceSha: OTHER });
     expect(value.gaps.some((gap) => gap.platform === "windows")).toBe(true);
+    expect(value.gaps.some((gap) => gap.platform === "linux")).toBe(true);
     expect(value.advisories).toContainEqual({
       domain: "capture",
       platform: "macos",

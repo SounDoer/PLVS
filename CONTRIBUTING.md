@@ -742,13 +742,13 @@ release. Other releases keep the report advisory. `scripts/update-acceptance-cod
 that deliberately narrow dependency list; update it when a new path can affect the installed update
 chain, rather than broadening the gate to ordinary version or interface-only changes.
 
-The shared acceptance report is ready for Linux branch integration without claiming Linux coverage
-on `main`. Reports remain Windows/macOS-only until an explicitly supplied evidence file uses
-`platform.os: "linux"`. From that point the report adds a Linux column across update, Dock and
-capture, so producers may be connected incrementally while the remaining cells stay visibly
-`missing`. After rebasing a Linux implementation branch, keep the common envelope and scenario
-semantics unchanged, add only the platform-specific producer or adapter, and generate the report
-from real Linux evidence. Contract tests on macOS or Windows are not Linux acceptance evidence.
+The shared acceptance report treats Linux as a base platform alongside Windows and macOS: every
+report has a Linux column across update, Dock, capture, Agent Control and performance, and a Linux
+cell without real Linux evidence stays visibly `missing`. Producers are connected one domain at a
+time, keeping the common envelope and scenario semantics unchanged. Packaged update acceptance and
+its release gate remain Windows/macOS until a Linux producer for the version-notice path exists;
+Linux never stages or installs updates. Contract tests on macOS or Windows are not Linux acceptance
+evidence.
 
 ## CI
 

@@ -7,8 +7,8 @@ import { spawnSync } from "node:child_process";
 
 export const ACCEPTANCE_SCHEMA_VERSION = 1;
 export const ACCEPTANCE_DOMAINS = ["update", "dock", "capture", "agent-control", "performance"];
-export const ACCEPTANCE_BASE_PLATFORMS = ["windows", "macos"];
-export const ACCEPTANCE_KNOWN_PLATFORMS = [...ACCEPTANCE_BASE_PLATFORMS, "linux"];
+export const ACCEPTANCE_BASE_PLATFORMS = ["windows", "macos", "linux"];
+export const ACCEPTANCE_KNOWN_PLATFORMS = [...ACCEPTANCE_BASE_PLATFORMS];
 const ACCEPTANCE_PLATFORM_LABELS = {
   windows: "Windows",
   macos: "macOS",
