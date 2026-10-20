@@ -82,6 +82,62 @@ jobs:
     ]);
   });
 
+  it("treats any runs-on that is not a hosted image label as self-hosted", () => {
+    const job = (runsOn) =>
+      `on:\n  pull_request:\njobs:\n  rig:\n    runs-on: ${runsOn}\n    steps:\n      - run: echo\n`;
+    const shapes = {
+      "labels.yml": job("[plvs-rig, linux]"),
+      "expression.yml": job("${{ fromJSON(vars.RIG) }}"),
+      "group.yml": job("{ group: home }"),
+      "matrix.yml": job("${{ matrix.labels }}"),
+    };
+    expect(selfHostedViolations(shapes)).toEqual(
+      Object.keys(shapes).map(
+        (name) => `${name} reaches a self-hosted runner and is triggered by pull_request`
+      )
+    );
+    const hosted = job("ubuntu-24.04").replace("pull_request", "push");
+    expect(selfHostedViolations({ "ci.yml": hosted })).toEqual([]);
+  });
+
+  it("reads every YAML form of on:", () => {
+    const body = "jobs:\n  rig:\n    runs-on: [self-hosted]\n    steps:\n      - run: echo\n";
+    const forms = {
+      "sequence.yml": `on:\n  - workflow_dispatch\n  - pull_request\n${body}`,
+      "spaced.yml": `on :\n  pull_request:\n${body}`,
+      "quoted.yml": `"on":\n  "pull_request_target": {}\n${body}`,
+      "flow.yml": `on: {workflow_dispatch: {}, issue_comment: {}}\n${body}`,
+    };
+    expect(selfHostedViolations(forms)).toEqual([
+      "sequence.yml reaches a self-hosted runner and is triggered by pull_request",
+      "spaced.yml reaches a self-hosted runner and is triggered by pull_request",
+      "quoted.yml reaches a self-hosted runner and is triggered by pull_request_target",
+      "flow.yml reaches a self-hosted runner and is triggered by issue_comment",
+    ]);
+  });
+
+  it("follows quoted, deeply indented and same-repository remote reusable calls", () => {
+    const callers = {
+      "quoted.yml": `on: [pull_request]\njobs:\n  "rig":\n    uses: "./.github/workflows/rig.yml"\n`,
+      "indented.yml": `on: [pull_request]\njobs:\n    rig:\n        uses: ./.github/workflows/rig.yml\n`,
+      "remote.yml": `on: [pull_request]\njobs:\n  rig:\n    uses: SounDoer/PLVS/.github/workflows/rig.yml@main\n`,
+    };
+    expect(selfHostedViolations({ "rig.yml": selfHosted, ...callers })).toEqual(
+      Object.keys(callers).map(
+        (name) => `${name} reaches a self-hosted runner and is triggered by pull_request`
+      )
+    );
+  });
+
+  it("fails closed on a workflow it cannot read", () => {
+    expect(selfHostedViolations({ "broken.yml": "on: [push\njobs: {" })).toEqual([
+      "broken.yml cannot be parsed as YAML",
+    ]);
+    expect(
+      selfHostedViolations({ "empty.yml": "jobs:\n  a:\n    runs-on: [self-hosted]\n" })
+    ).toEqual(["empty.yml reaches a self-hosted runner and has no readable on: triggers"]);
+  });
+
   it("rejects secrets in a self-hosted workflow or passed to one", () => {
     const leaking = selfHosted.replace(
       "      - run: npm run smoke:capture\n",

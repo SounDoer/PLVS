@@ -493,10 +493,12 @@ npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; nee
 The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance
 runs take an exclusive lease, `plvs-capture-rig.lock` in one shared directory per machine
 (`%ProgramData%\PLVS`, `/Users/Shared/PLVS` or `/var/tmp/plvs`), before starting the test tone.
-Every clone, worktree and local user on the machine, including a self-hosted runner, sees it. While another run holds it, a run fails with exit 2 and names the holder; add
-`--wait` to queue instead. A lease left by a killed run is removed automatically once its process
-is gone; a holder whose start time cannot be read counts as alive and is cleared by hand only
-when it really is dead. There is no way to take a live lease
+Every clone and worktree on the machine, including a self-hosted runner's, sees it. While another
+run holds it, a run fails with exit 2 and names the holder; add `--wait` to queue instead. A lease
+left by a killed run is removed automatically once its process is gone; a holder whose start time
+or PID cannot be read counts as alive and is cleared by hand only when it really is dead. On
+Windows, a lease file another user created can only be deleted by that user or an administrator.
+There is no way to take a live lease
 ([ADR 0028](docs/adr/0028-parallel-worktree-dev-apps.md),
 [ADR 0034](docs/adr/0034-capture-rig-lease-is-machine-wide.md)). The rig routes VLC directly to the
 virtual device and never changes the system default output. Install and reboot after the platform
@@ -758,10 +760,19 @@ called by `release.yml` before the draft is assembled. Each runner carries the l
 plus its platform. The draft waits for all three. A runner that is off or logged out makes the
 release wait in the queue and then fail; there is no input that skips a platform.
 
-The repository is public. Self-hosted jobs may only live in workflows triggered by
-`workflow_dispatch`, `workflow_call` or `schedule`, and never receive secrets;
-`scripts/selfHostedWorkflowContract.test.js` enforces this through reusable-workflow calls too.
-Keep the fork pull request approval setting at "first-time contributors" or stricter.
+The repository is public and every runner runs as the maintainer's own account, so a job on one
+can do anything that account can on that machine. A fork pull request runs the workflow files it
+brings itself, which the workflows on `main` cannot restrict. **The boundary is the repository
+setting that requires approval before workflows from any external contributor run**
+(`all_external_contributors`). `release:preflight` refuses to continue when it is weaker
+(`scripts/check-fork-pr-approval.mjs`). Never approve a pull request's workflow run when the pull
+request touches `.github/`.
+
+On `main` itself, self-hosted jobs may only live in workflows triggered by `workflow_dispatch`,
+`workflow_call` or `schedule`, and never receive secrets. `scripts/selfHostedWorkflowContract.test.js`
+enforces this, including through reusable-workflow calls. It parses the workflows and treats any
+`runs-on` other than a single hosted image label as self-hosted. It catches mistakes on `main`; it
+is not a defence against a pull request.
 
 Check a runner without a release:
 

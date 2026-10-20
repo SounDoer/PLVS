@@ -23,9 +23,16 @@ with 0 dropped chunks.
 
 ## Repository setting
 
-Fork pull request workflow approval: `first_time_contributors` (read through the REST API). This
-meets the plan's minimum. Self-hosted safety rests on the trigger rule in
-`scripts/self-hosted-workflow-guard.mjs`, not on this setting.
+Fork pull request workflow approval was `first_time_contributors` (read through the REST API),
+which met the plan's minimum.
+
+**Correction after the final review (2026-10-21).** The spec (§4) and this record first said
+self-hosted safety rests on the trigger rule in `scripts/self-hosted-workflow-guard.mjs`. That is
+wrong. A fork pull request runs the workflow files it brings itself, so under
+`first_time_contributors`, any contributor who once had a pull request merged could run code on all
+three runners without approval. With the maintainer's approval, the setting was changed to
+`all_external_contributors` on 2026-10-21, and `release:preflight` now refuses a weaker setting.
+The guard catches mistakes on `main` only.
 
 ## Windows — company PC (temporary)
 
