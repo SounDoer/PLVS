@@ -3,8 +3,8 @@
   "version": "0.23.0",
   "baselineTag": "v0.22.2",
   "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
-  "candidateRevision": "c2f268eb0a13a420474f179acbaddc893d5e8fb1",
-  "contentSha256": "359341c0a7f48439239aa5ce7faa5581641f1beff53ffbd1c238de9e0201393e",
+  "candidateRevision": "b041e59ff07e5e852fc7ca141659b593d99d665d",
+  "contentSha256": "398d49fe707899548fe615c5b64a88fbd820ee25a6d241a355353aaf4765ca6a",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -16,7 +16,8 @@
         "grep of docs/user, README.md, website for 'Ask To Send Crash Reports', 'Auto Check', 'Auto Download' without the new suffixes: no matches",
         "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: changes since 08e61ad9 are acceptance-only Agent Control, workflow/evidence automation, tests and maintainer documentation; stable, dev and Preview identities cannot access the private controls"
+        "Re-reviewed for candidate c2f268eb: changes since 08e61ad9 are acceptance-only Agent Control, workflow/evidence automation, tests and maintainer documentation; stable, dev and Preview identities cannot access the private controls",
+        "Re-reviewed for candidate b041e59f: the migration fix preserves the user's existing documented update preference while the other changes affect only updater acceptance tooling"
       ]
     },
     "readme": {
@@ -27,7 +28,8 @@
         "README.md highlights compared with CHANGELOG.md [0.23.0]",
         "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: updater acceptance automation changes only private tooling, tests and maintainer documentation"
+        "Re-reviewed for candidate c2f268eb: updater acceptance automation changes only private tooling, tests and maintainer documentation",
+        "Re-reviewed for candidate b041e59f: no download, feature-summary or platform-support claim changed"
       ]
     },
     "website": {
@@ -39,7 +41,8 @@
         "website/privacy/index.html 'Update Checks and Downloads' section compared with CHANGELOG.md [0.23.0] Added (offline APT, Polkit)",
         "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: the new Actions workflow exports ephemeral acceptance packages and test evidence only; it handles no production-user data and changes no public site content"
+        "Re-reviewed for candidate c2f268eb: the new Actions workflow exports ephemeral acceptance packages and test evidence only; it handles no production-user data and changes no public site content",
+        "Re-reviewed for candidate b041e59f: preference migration remains local and updater acceptance artifacts contain no production-user data"
       ]
     },
     "screenshots": {
@@ -50,7 +53,8 @@
         "website/assets/homepage/*.webp, landing-hero.webp, landing-dock.webp, landing-dock-custom.webp: no Settings view",
         "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
         "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: no product CSS, visual component or published image changed since 08e61ad9"
+        "Re-reviewed for candidate c2f268eb: no product CSS, visual component or published image changed since 08e61ad9",
+        "Re-reviewed for candidate b041e59f: no product CSS, visual component or published image changed"
       ]
     }
   }
