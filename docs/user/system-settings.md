@@ -107,8 +107,8 @@ installed from update details.
 
 On Windows, an automatic update from PLVS 0.22.0, 0.22.1 or 0.22.2 can fail with "The requested
 operation requires elevation" (os error 740) because Windows mistakes their copied update helper for
-an installer. If you see this error, choose **Download Manually** and run the current
-`x64-setup.exe` once; it installs for the current user and does not need administrator rights. Later
+an installer. If you see this error, download the current `x64-setup.exe` from GitHub Releases and
+run it once; it installs for the current user and does not need administrator rights. Later
 versions declare that they run without elevation, so their updates install from update details.
 
 ## Global shortcut
