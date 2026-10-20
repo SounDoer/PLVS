@@ -213,6 +213,7 @@ function AppContent() {
     dockEdge,
     dockHeight,
     dockPreviewHeight,
+    dockTransitioning,
     layout: dockLayout,
     onDockChange,
     exitDockRestoringAttributes,
@@ -616,7 +617,9 @@ function AppContent() {
         },
         edge: dockEdge,
         height: dockPreviewHeight ?? dockHeight,
-        heightResizeDisabled: dockAccessoryVisibility.editorView !== null,
+        // Exiting Dock restores the normal window while the strip is still mounted; its new
+        // layout must not send a height change to a window that is no longer docked.
+        heightResizeDisabled: dockAccessoryVisibility.editorView !== null || dockTransitioning,
         panelResizeDisabled: dockAccessoryVisibility.editorView !== null,
         onHeightChange: onDockHeightChange,
         onPanelResize: dockLayout.resizePanelPair,

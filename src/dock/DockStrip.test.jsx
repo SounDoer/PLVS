@@ -114,6 +114,30 @@ describe("DockStrip", () => {
     );
   });
 
+  it("holds the raise while height changes are disabled and applies it once they are allowed", () => {
+    const onHeightChange = vi.fn();
+    const tree = (heightResizeDisabled) => (
+      <LoudnessProfileProvider>
+        <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
+          <HistoryDataProvider value={{ histSourceList: [] }}>
+            <DockStrip
+              {...BASE_PROPS}
+              height={70}
+              interfaceSize="large"
+              heightResizeDisabled={heightResizeDisabled}
+              onHeightChange={onHeightChange}
+            />
+          </HistoryDataProvider>
+        </FrameDataProvider>
+      </LoudnessProfileProvider>
+    );
+    const { rerender } = render(tree(true));
+    expect(onHeightChange).not.toHaveBeenCalled();
+
+    rerender(tree(false));
+    expect(onHeightChange).toHaveBeenCalledWith(77, { persist: true });
+  });
+
   it("reserves the horizontal scrollbar when the panels overflow the screen", () => {
     const viewportHeight = (/** @type {HTMLElement} */ element, value) =>
       element.matches?.("[aria-label='dock panels']") ? value : 0;
