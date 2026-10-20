@@ -52,9 +52,13 @@ export function machineLeaseDirectory(platform = process.platform, env = process
 }
 
 /** Creates the lease directory. On POSIX any local user may then create and remove the lease. */
-export function ensureLeaseDirectory(directory) {
-  mkdirSync(directory, { recursive: true });
-  if (process.platform !== "win32") chmodSync(directory, 0o777);
+export function ensureLeaseDirectory(
+  directory,
+  { platform = process.platform, chmod = chmodSync } = {}
+) {
+  // Only the run that creates the directory owns it; chmod on another user's would fail.
+  const created = mkdirSync(directory, { recursive: true }) !== undefined;
+  if (created && platform !== "win32") chmod(directory, 0o777);
   return directory;
 }
 
@@ -104,11 +108,15 @@ function processStartTimeMs(pid) {
  * lease by hand.
  */
 export function holderIsAlive(holder, { startTimeMs = processStartTimeMs } = {}) {
+  // The lease directory is writable by every local user, so its contents are untrusted: a PID
+  // that is not a positive integer never reaches a process query, and is held, not cleared.
+  if (!Number.isInteger(holder.pid) || holder.pid <= 0) return true;
   try {
     process.kill(holder.pid, 0);
   } catch (error) {
     if (error.code === "ESRCH") return false;
   }
+  if (!Number.isFinite(holder.processStartedAtMs)) return true;
   const started = startTimeMs(holder.pid);
   if (started === null) return true;
   return Math.abs(started - holder.processStartedAtMs) <= START_TIME_TOLERANCE_MS;

@@ -119,6 +119,21 @@ describe("ensureLeaseDirectory", () => {
     expect(statSync(nested).isDirectory()).toBe(true);
   });
 
+  it("leaves the mode of a directory another user already created alone", () => {
+    const nested = join(directory, "PLVS");
+    const chmods = [];
+    ensureLeaseDirectory(nested, {
+      platform: "linux",
+      chmod: (path, mode) => chmods.push([path, mode]),
+    });
+    expect(chmods).toEqual([[nested, 0o777]]);
+    // A later run, possibly as another user, must not chmod a directory it does not own.
+    const denied = () => {
+      throw Object.assign(new Error("EPERM"), { code: "EPERM" });
+    };
+    expect(ensureLeaseDirectory(nested, { platform: "linux", chmod: denied })).toBe(nested);
+  });
+
   it.skipIf(process.platform === "win32")(
     "lets every local user create and remove the lease",
     () => {
@@ -134,6 +149,24 @@ describe("holderIsAlive across users and PID reuse", () => {
     // A recorded start time that cannot be confirmed must not be read as PID reuse.
     const holder = { ...currentOwner({ worktree: "w", command: "c" }), processStartedAtMs: 1 };
     expect(holderIsAlive(holder, { startTimeMs: () => null })).toBe(true);
+  });
+
+  it("never hands a non-integer PID from the lease file to a start-time query", () => {
+    const queried = [];
+    const startTimeMs = (pid) => {
+      queried.push(pid);
+      return null;
+    };
+    const planted = { ...owner(1), pid: "$(Write-Host INJECTED; $PID)" };
+    expect(holderIsAlive(planted, { startTimeMs })).toBe(true);
+    expect(holderIsAlive({ ...owner(1), pid: -5 }, { startTimeMs })).toBe(true);
+    expect(queried).toEqual([]);
+  });
+
+  it("treats a live holder without a recorded start time as alive", () => {
+    const holder = currentOwner({ worktree: "w", command: "c" });
+    delete holder.processStartedAtMs;
+    expect(holderIsAlive(holder, { startTimeMs: () => Date.now() })).toBe(true);
   });
 
   it("treats a live PID that started at another time as reused, so dead", () => {
