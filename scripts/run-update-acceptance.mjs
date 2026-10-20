@@ -180,8 +180,8 @@ export function seedAcceptanceSettings(dataRoot, dockEnabled) {
   mkdirSync(dataRoot, { recursive: true });
   writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
     agentControlEnabled: true,
-    // The persisted key is closeAction; closeBehavior is only its Agent Control name.
-    closeAction: "quit",
+    // The first launch migrates this legacy store, taking app settings only from "plvs:settings".
+    "plvs:settings": { closeAction: "quit" },
     dockState: {
       enabled: dockEnabled,
       edge: "bottom",

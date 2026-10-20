@@ -101,9 +101,12 @@ describe("update acceptance runner", () => {
       seedAcceptanceSettings(root, true);
       const seeded = JSON.parse(readFileSync(resolve(root, "plvs-settings.json"), "utf8"));
       expect(seeded).toMatchObject({ agentControlEnabled: true, dockState: { enabled: true } });
-      // Read the way the app reads it: an unknown key leaves the default "ask", whose close
-      // confirmation keeps a guided restart's terminated app open until the wait times out.
-      expect(normalizeCloseAction(seeded.closeAction)).toBe("quit");
+      // The first launch migrates this legacy store into the multi-instance layout, and the
+      // migration takes app settings only from "plvs:settings" (persistence/migration.rs). Any
+      // other placement leaves the default "ask", whose close confirmation keeps a guided
+      // restart's terminated app open until the wait times out.
+      expect(seeded).not.toHaveProperty("closeAction");
+      expect(normalizeCloseAction(seeded["plvs:settings"]?.closeAction)).toBe("quit");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
