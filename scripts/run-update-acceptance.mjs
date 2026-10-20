@@ -176,10 +176,11 @@ function readReady(dataRoot) {
   return state ? { file: state, value: JSON.parse(readFileSync(state, "utf8")) } : null;
 }
 
-function seedAcceptanceSettings(dataRoot, dockEnabled) {
+export function seedAcceptanceSettings(dataRoot, dockEnabled) {
   mkdirSync(dataRoot, { recursive: true });
   writeJsonAtomic(path.join(dataRoot, "plvs-settings.json"), {
     agentControlEnabled: true,
+    closeBehavior: "quit",
     dockState: {
       enabled: dockEnabled,
       edge: "bottom",

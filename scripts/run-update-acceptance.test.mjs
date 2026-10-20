@@ -1,5 +1,6 @@
 import { normalize, resolve } from "node:path";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +13,7 @@ import {
   macReadOnlyDmgLayout,
   mountReportsReadOnly,
   parseRunArguments,
+  seedAcceptanceSettings,
   windowsAcceptanceInstall,
   windowsAcceptanceLaunch,
 } from "./run-update-acceptance.mjs";
@@ -90,6 +92,20 @@ describe("update acceptance runner", () => {
       command: "C:\\runs\\Installed App With Spaces\\plvs.exe",
       args: ["--plvs-test-app-data-root", "C:\\data with spaces"],
     });
+  });
+
+  it("seeds a non-blocking close behavior for guided restarts and cleanup", () => {
+    const root = mkdtempSync(resolve(tmpdir(), "plvs-update-acceptance-"));
+    try {
+      seedAcceptanceSettings(root, true);
+      expect(JSON.parse(readFileSync(resolve(root, "plvs-settings.json"), "utf8"))).toMatchObject({
+        agentControlEnabled: true,
+        closeBehavior: "quit",
+        dockState: { enabled: true },
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("compares durable Dock state without monitor or runtime analysis fields", () => {
