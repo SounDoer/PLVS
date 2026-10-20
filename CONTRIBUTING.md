@@ -803,6 +803,95 @@ target directory, several GB. Before dispatching a release, check that all three
 gh api repos/SounDoer/PLVS/actions/runners --jq '.runners[] | "\(.name) \(.status) busy=\(.busy)"'
 ```
 
+## Bad release response
+
+Use this when a published stable release is broken badly enough that nobody else should install
+it. Published Releases are immutable: the tag and assets cannot be replaced, and the version
+number is consumed for good. The title, notes, prerelease flag and the **Latest** mark can still
+change, and the response works through those.
+
+How users reach a version:
+
+- Installed apps read `https://github.com/SounDoer/PLVS/releases/latest/download/latest.json`
+  (`plugins.updater.endpoints` in `src-tauri/tauri.conf.json`). GitHub resolves `releases/latest`
+  to the release carrying the Latest mark, so moving the mark changes the manifest every installed
+  app sees on its next check.
+- PLVS sets no version comparator, so the vendored updater (`src-tauri/vendor/tauri-plugin-updater`)
+  offers a release only when its version is greater than the running one. There is no downgrade.
+- The homepage resolves its version label and download buttons in the visitor's browser from the
+  GitHub API `releases/latest` (`website/index.html`), so it follows the Latest mark without a
+  redeploy. The rest of the website (user guide, privacy policy) is static and was deployed from
+  the bad tag by `release.yml`'s `deploy-website` job.
+
+Steps, with `<bad>` the broken version and `<previous>` the last good stable version:
+
+1. Stop new installs and updates by moving the Latest mark back:
+
+   ```bash
+   gh release edit v<previous> --latest
+   gh release view --json tagName --jq .tagName
+   curl -sL https://github.com/SounDoer/PLVS/releases/latest/download/latest.json
+   ```
+
+   The second command must print `v<previous>` and the manifest must carry `<previous>`. Apps older
+   than `<previous>` are now offered `<previous>`; apps on `<previous>` or `<bad>` are offered nothing.
+
+2. Warn in the bad release's notes. Put a short notice at the top of the existing body: what is
+   broken, "do not install", and a link to `https://github.com/SounDoer/PLVS/releases/tag/v<previous>`
+   for the previous version. Keep the rest of the body.
+
+   ```bash
+   gh release view v<bad> --json body --jq .body > notes.md
+   # Edit notes.md, then:
+   gh release edit v<bad> --notes-file notes.md
+   ```
+
+3. Ship a higher fixed version through the normal `plvs-release` flow. Never retag `<bad>`. The
+   fixed release's `publish-release` job marks it Latest, and its `deploy-website` job redeploys the
+   website from the new tag, which ends the response.
+
+4. Check that the website does not point at `<bad>` while the fix is pending. Open the homepage and
+   confirm the version label shows `v<previous>`. Then read
+   `git diff v<previous> v<bad> -- docs/user website`: if the live guide or pages describe
+   behaviour only `<bad>` has, or send users to it, redeploy the website from the previous tag:
+
+   ```bash
+   npm run website:review -- v<previous>
+   gh workflow run deploy-website.yml --ref main -f ref=v<previous>
+   ```
+
+   The deployment gate accepts a stable tag whose commit passed push CI, and the live Sharesets
+   history check still applies. Redeploying an older tag also reverts any independent website
+   publication made since `<bad>`; the review output lists those files. Confirm the live
+   `/publication.json` `websiteSha` equals `git rev-parse v<previous>^{commit}`.
+
+What this cannot do:
+
+- Users already running `<bad>` stay on it until the fixed version ships; the updater never
+  downgrades, and nothing here reaches them. If the defect breaks the update path itself, they must
+  download the fixed version manually.
+- An app that already downloaded `<bad>` and shows it as ready still installs it: installation uses
+  the cached signed manifest, which is still newer than the running version.
+- `<bad>`'s assets remain downloadable from its release page; the tag and assets cannot be removed
+  or replaced.
+
+## Signing secrets inventory
+
+These are every repository Actions secret that `release.yml` and `upgrade-candidate.yml` read.
+`GH_TOKEN` there is the automatic per-run `github.token`, not a stored secret. Never commit or paste
+secret values anywhere, including this file; the backup column says where a value is kept, not
+what it is.
+
+| Secret                               | Used by                                                                                         | What it signs                                                                                                   | If lost                                                                                                                                                                                                                                                   | Backup location                                                  | Expiry / renewal                                                                                                          |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `TAURI_SIGNING_PRIVATE_KEY`          | `release.yml` Windows, macOS and Linux builds; `upgrade-candidate.yml` Windows and macOS builds | Updater signatures for every platform's package in `latest.json`, including the Linux version-notice descriptor | **Not recoverable.** Every installed app trusts only the public key embedded at build time (`plugins.updater.pubkey` in `src-tauri/tauri.conf.json`). A new key reaches users only through a manual reinstall of a build that carries the new public key. | **Maintainer to fill in.** No backup outside GitHub Secrets yet. | Does not expire.                                                                                                          |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Same jobs as the key                                                                            | Unlocks the updater private key                                                                                 | **Not recoverable.** The key is unusable without it, with the same consequence as losing the key.                                                                                                                                                         | **Maintainer to fill in.**                                       | Does not expire.                                                                                                          |
+| `APPLE_CERTIFICATE`                  | `build-macos` in both workflows                                                                 | Base64 Developer ID Application `.p12`: code signature of the `.app` and DMG                                    | Recoverable: issue a new Developer ID Application certificate under the same Apple team and export a new `.p12`. The updater does not depend on it.                                                                                                       | **Maintainer to fill in.**                                       | Expires **maintainer to fill in (date)**. Renew in the Apple Developer account before that date, then replace the secret. |
+| `APPLE_CERTIFICATE_PASSWORD`         | `build-macos` in both workflows                                                                 | Export password of the `.p12`                                                                                   | Recoverable: re-export the `.p12` with a new password from the keychain that holds its private key, or issue a new certificate.                                                                                                                           | **Maintainer to fill in.**                                       | Follows the certificate.                                                                                                  |
+| `APPLE_API_PRIVATE_KEY_BASE64`       | `build-macos` in both workflows                                                                 | Base64 App Store Connect API `.p8`: authenticates notarization of the app and DMG                               | Recoverable: Apple allows one download only, so revoke the key, generate a new one, and update `APPLE_API_KEY` with it.                                                                                                                                   | **Maintainer to fill in.**                                       | **Maintainer to fill in (date, or none).**                                                                                |
+| `APPLE_API_KEY`                      | `build-macos` in both workflows                                                                 | Key ID of the App Store Connect API key (identifier, not key material)                                          | Recoverable: shown in App Store Connect next to the key.                                                                                                                                                                                                  | App Store Connect                                                | Follows the API key.                                                                                                      |
+| `APPLE_API_ISSUER`                   | `build-macos` in both workflows                                                                 | Issuer ID of the App Store Connect team (identifier, not key material)                                          | Recoverable: shown in App Store Connect.                                                                                                                                                                                                                  | App Store Connect                                                | Does not expire.                                                                                                          |
+
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).

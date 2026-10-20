@@ -624,6 +624,10 @@ Immutable Releases reject that operation, and the process treats a published
 version as permanently consumed. To ship a fix, run the normal flow with a
 **new** version number (e.g. 0.3.2 → 0.3.3).
 
+If a published release turns out to be broken, follow **Bad release response**
+in `CONTRIBUTING.md`. The signing secrets these workflows read, and which of
+them cannot be replaced, are listed in **Signing secrets inventory** there.
+
 ---
 
 ## Step 8: Automated Release
