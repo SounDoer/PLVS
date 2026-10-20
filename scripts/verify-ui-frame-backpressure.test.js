@@ -3,11 +3,61 @@ import { describe, expect, it } from "vitest";
 import { validateAcceptanceEvidence } from "./acceptance-evidence.mjs";
 import {
   buildPerformanceEvidence,
+  deriveStallDurationMs,
   PERFORMANCE_PHASES,
   PERFORMANCE_SCENARIOS,
 } from "./verify-ui-frame-backpressure.mjs";
 
 const SHA = "a".repeat(40);
+
+describe("adaptive backpressure stall", () => {
+  const diagnostics = (sentFrames, overrides = {}) => ({
+    sentFrames,
+    currentInflightFrames: 0,
+    inflightLimit: 120,
+    ...overrides,
+  });
+
+  it("keeps the requested minimum when the observed cadence can fill the cap", () => {
+    expect(
+      deriveStallDurationMs({
+        normalStart: diagnostics(10),
+        normalEnd: diagnostics(70),
+        minimumMs: 4_000,
+      })
+    ).toBe(4_000);
+  });
+
+  it("extends the stall for Linux's 100 ms meter batches", () => {
+    expect(
+      deriveStallDurationMs({
+        normalStart: diagnostics(20),
+        normalEnd: diagnostics(35),
+        minimumMs: 4_000,
+      })
+    ).toBe(13_000);
+  });
+
+  it("keeps the requested duration when normal flow produced no measurable cadence", () => {
+    expect(
+      deriveStallDurationMs({
+        normalStart: diagnostics(20),
+        normalEnd: diagnostics(20),
+        minimumMs: 4_000,
+      })
+    ).toBe(4_000);
+  });
+
+  it("bounds an unusually slow cadence", () => {
+    expect(
+      deriveStallDurationMs({
+        normalStart: diagnostics(20),
+        normalEnd: diagnostics(21),
+        minimumMs: 4_000,
+      })
+    ).toBe(30_000);
+  });
+});
 
 function phase(ok = true, failures = []) {
   return { ok, failures };

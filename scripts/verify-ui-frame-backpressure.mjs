@@ -26,6 +26,35 @@ export const PERFORMANCE_PHASES = ["normal", "stalled", "recovered"];
 export const PERFORMANCE_SCENARIOS = ["default", "heavy"].flatMap((scenario) =>
   PERFORMANCE_PHASES.map((phase) => `performance.${scenario}.${phase}`)
 );
+const NORMAL_OBSERVATION_MS = 1_500;
+const MAX_STALL_MS = 30_000;
+const STALL_HEADROOM_FRAMES = 10;
+
+export function deriveStallDurationMs({
+  normalStart,
+  normalEnd,
+  minimumMs,
+  observationMs = NORMAL_OBSERVATION_MS,
+  maximumMs = MAX_STALL_MS,
+}) {
+  const sentFrames = normalEnd.sentFrames - normalStart.sentFrames;
+  if (
+    !Number.isFinite(sentFrames) ||
+    sentFrames <= 0 ||
+    !Number.isFinite(normalEnd.inflightLimit) ||
+    normalEnd.inflightLimit <= 0
+  ) {
+    return minimumMs;
+  }
+  const currentInflight = Math.max(0, normalEnd.currentInflightFrames ?? 0);
+  const framesToLimit = Math.max(
+    1,
+    normalEnd.inflightLimit - currentInflight + STALL_HEADROOM_FRAMES
+  );
+  const observedFrameIntervalMs = observationMs / sentFrames;
+  const adaptiveMs = Math.ceil((framesToLimit * observedFrameIntervalMs) / 100) * 100;
+  return Math.min(maximumMs, Math.max(minimumMs, adaptiveMs));
+}
 
 export async function runAcceptance(options, log = console.log) {
   const rig = await launchDesktopPerfRig(options);
@@ -42,12 +71,17 @@ export async function runAcceptance(options, log = console.log) {
     log(`Live signal: ${device}`);
 
     const normalStart = await readUiFrameDiagnostics(rig.session);
-    await wait(1_500);
+    await wait(NORMAL_OBSERVATION_MS);
     const normalEnd = await readUiFrameDiagnostics(rig.session);
+    const stallMs = deriveStallDurationMs({
+      normalStart,
+      normalEnd,
+      minimumMs: options.stallMs,
+    });
 
-    if (rig.session.stall) await rig.session.stall(options.stallMs);
+    if (rig.session.stall) await rig.session.stall(stallMs);
     else {
-      await rig.session.evaluate(`(()=>{const end=performance.now()+${options.stallMs};
+      await rig.session.evaluate(`(()=>{const end=performance.now()+${stallMs};
         while(performance.now()<end){};return true;})()`);
     }
     const stalled = await readUiFrameDiagnostics(rig.session);
@@ -68,7 +102,8 @@ export async function runAcceptance(options, log = console.log) {
       scenario: options.scenario,
       device,
       layout: layout ?? null,
-      stallMs: options.stallMs,
+      minimumStallMs: options.stallMs,
+      stallMs,
       normalStart,
       normalEnd,
       stalled,
