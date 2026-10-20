@@ -3,8 +3,8 @@
   "version": "0.23.0",
   "baselineTag": "v0.22.2",
   "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
-  "candidateRevision": "83b63110078a45e3151978bfa9413f450b3a6d08",
-  "contentSha256": "d37f7106cb3930a13dc0f26a3b911d60c9e9640323b7ac26cd3fd4baef4c0997",
+  "candidateRevision": "aa7682b825f241cba434e03f51208e6248fb4ae2",
+  "contentSha256": "5a852bf6a4a8011c2fac926750c2ad5e2ba6fb9186b63876e70ca62c9ced6dbb",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -21,7 +21,8 @@
         "Re-reviewed for candidate 4f87f06a: the only change since b041e59f reopens a retained test update through acceptance-only Agent Control after an intentionally interrupted helper",
         "Re-reviewed for candidate 71b12551: acceptance-only Agent Control now waits for transfer settlement and dismisses the synthetic first-run choice in the read-only DMG scenario; documented product behavior is unchanged",
         "Re-reviewed for candidate cceefb17: the acceptance harness now treats Skip This Time as the single real UI action and preserves a read-only DMG verdict when optional visual evidence cannot settle; documented product behavior is unchanged",
-        "Re-reviewed for candidate 83b63110: the isolated read-only DMG process is terminated directly after its verdict instead of issuing a redundant UI close; documented product behavior is unchanged"
+        "Re-reviewed for candidate 83b63110: the isolated read-only DMG process is terminated directly after its verdict instead of issuing a redundant UI close; documented product behavior is unchanged",
+        "Re-reviewed for candidate aa7682b8: writable and read-only macOS acceptance packages now run sequentially under their shared synthetic identity; documented product behavior is unchanged"
       ]
     },
     "readme": {
@@ -37,7 +38,8 @@
         "Re-reviewed for candidate 4f87f06a: the acceptance runner retry fix changes no public download or feature claim",
         "Re-reviewed for candidate 71b12551: updater acceptance timing and isolated DMG setup changes no public download or feature claim",
         "Re-reviewed for candidate cceefb17: updater acceptance evidence handling changes no public download or feature claim",
-        "Re-reviewed for candidate 83b63110: updater acceptance cleanup changes no public download or feature claim"
+        "Re-reviewed for candidate 83b63110: updater acceptance cleanup changes no public download or feature claim",
+        "Re-reviewed for candidate aa7682b8: macOS acceptance scenario ordering changes no public download or feature claim"
       ]
     },
     "website": {
@@ -54,7 +56,8 @@
         "Re-reviewed for candidate 4f87f06a: the acceptance-only retry continues to use isolated synthetic data and changes no public site content or production-user data flow",
         "Re-reviewed for candidate 71b12551: the acceptance runner continues to use isolated synthetic data and changes no public site content or production-user data flow",
         "Re-reviewed for candidate cceefb17: the acceptance runner still uses only isolated synthetic data and changes no public site content or production-user data flow",
-        "Re-reviewed for candidate 83b63110: isolated process cleanup changes no public site content or production-user data flow"
+        "Re-reviewed for candidate 83b63110: isolated process cleanup changes no public site content or production-user data flow",
+        "Re-reviewed for candidate aa7682b8: isolated scenario ordering changes no public site content or production-user data flow"
       ]
     },
     "screenshots": {
@@ -70,7 +73,8 @@
         "Re-reviewed for candidate 4f87f06a: no product CSS, visual component or published image changed",
         "Re-reviewed for candidate 71b12551: no product CSS, visual component or published image changed",
         "Re-reviewed for candidate cceefb17: no product CSS, visual component or published image changed; only optional acceptance screenshot handling changed",
-        "Re-reviewed for candidate 83b63110: no product CSS, visual component or published image changed"
+        "Re-reviewed for candidate 83b63110: no product CSS, visual component or published image changed",
+        "Re-reviewed for candidate aa7682b8: no product CSS, visual component or published image changed"
       ]
     }
   }
