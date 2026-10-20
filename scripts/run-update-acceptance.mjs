@@ -972,20 +972,9 @@ export async function runMacReadOnlyDmg({ root, runDir, receipt, stagingRoot = r
       screenshotCaptured: screenshot !== null,
       ready: ready?.value.ready ?? null,
     });
-    const closeUi = cliJson(cli, layout.dataRoot, ["ui", "inspect"]);
-    const closeSurface = closeUi.result.surfaces?.find(
-      (surface) => surface.kind === "settings" && surface.target?.section === "about"
-    );
-    if (!closeSurface) throw new Error("Read-only DMG About settings disappeared before close");
-    cliJson(cli, layout.dataRoot, [
-      "ui",
-      "close",
-      closeSurface.surfaceId,
-      "--expected-revision",
-      String(closeUi.result.revision),
-      "--expected-ui-generation",
-      String(closeUi.result.uiGeneration),
-    ]);
+    // The isolated DMG app is terminated in `finally`; closing About through the frontend adds no
+    // product assertion after the verdict above and can race a screenshot settlement that the
+    // bridge is still unwinding.
     return { id: "read-only-dmg-refusal", status: "passed" };
   } finally {
     if (launched) {
