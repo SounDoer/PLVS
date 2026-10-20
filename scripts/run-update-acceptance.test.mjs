@@ -79,6 +79,7 @@ describe("update acceptance runner", () => {
     ).toEqual({
       command: "C:\\build\\test setup.exe",
       args: ["/S", "/D=C:\\runs\\Installed App With Spaces"],
+      options: { windowsVerbatimArguments: true },
     });
     expect(
       windowsAcceptanceLaunch(

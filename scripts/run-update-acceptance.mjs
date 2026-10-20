@@ -79,7 +79,11 @@ export function mountReportsReadOnly(output, mountRoot) {
 }
 
 export function windowsAcceptanceInstall(installer, installRoot) {
-  return { command: installer, args: ["/S", `/D=${installRoot}`] };
+  return {
+    command: installer,
+    args: ["/S", `/D=${installRoot}`],
+    options: { windowsVerbatimArguments: true },
+  };
 }
 
 export function windowsAcceptanceLaunch(app, dataRoot) {
@@ -110,6 +114,7 @@ function run(command, args, options = {}) {
     env: { ...process.env, ...options.env },
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
+    windowsVerbatimArguments: options.windowsVerbatimArguments,
   });
   if (result.status !== 0) {
     throw new Error(result.stderr.trim() || result.stdout.trim() || `${command} failed`);
@@ -967,7 +972,7 @@ async function runWindowsAcceptance({ root, runId, receipt }) {
   mkdirSync(dataRoot, { recursive: true });
   const installer = resolveReceiptFile(root, receipt.versions[0].file);
   const install = windowsAcceptanceInstall(installer, installRoot);
-  run(install.command, install.args);
+  run(install.command, install.args, install.options);
   const app = path.join(installRoot, "plvs.exe");
   const cli = path.join(installRoot, "plvs-cli.exe");
   if (!existsSync(app) || !existsSync(cli)) {
