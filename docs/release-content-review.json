@@ -1,44 +1,44 @@
 {
   "schemaVersion": 1,
-  "version": "0.22.2",
-  "baselineTag": "v0.22.1",
-  "baselineRevision": "220e8e6a2832e8031533f5a73124b9176b8804b4",
-  "candidateRevision": "10d9fce262b74d9271d97ad56b42f1e9d2f58976",
-  "contentSha256": "23765b04db5d6bdcb6c34e681e9cfb2ef3b4631ed1779066bfcfde24e456711f",
+  "version": "0.23.0",
+  "baselineTag": "v0.22.2",
+  "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
+  "candidateRevision": "dd11d5fff0e69a759139d60f084c9c1025d5f59e",
+  "contentSha256": "8229e708447203b5c8f4bc946f190bd8d2654d5ead7421faba1413e21c0d328f",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The release fixes macOS installation handoff and has an unavoidable migration boundary: 0.22.0 and 0.22.1 cannot execute their detached update helper. The Updates section now tells those users to replace PLVS from the DMG once and states that 0.22.2 and later restore in-app installation.",
+      "rationale": "The release adds signed Linux in-app updates, Download Manually in failed update details, the Windows elevation fix with its one-time manual upgrade, and renamed update and crash-report switches. The guide chapters that describe these were updated in the release range and match CHANGELOG.md [0.23.0]; no old switch label remains in docs/user.",
       "evidence": [
-        "docs/user/system-settings.md Updates section compared with CHANGELOG.md [0.22.2]",
-        "src-tauri/src/update_worker.rs macOS helper path copies plvs-update-worker.app with its complete bundle signature",
-        "git diff v0.22.1..10d9fce2 -- docs/user: system-settings.md is the only changed user-guide chapter"
+        "git diff --stat v0.22.2..dd11d5ff -- docs/user: faq.md, getting-started.md, system-settings.md, workspace.md",
+        "docs/user/getting-started.md Linux section and docs/user/faq.md 'Is there a Linux build?' compared with CHANGELOG.md [0.23.0] Added",
+        "docs/user/system-settings.md Updates section: Download Manually, os error 740 migration note",
+        "grep of docs/user, README.md, website for 'Ask To Send Crash Reports', 'Auto Check', 'Auto Download' without the new suffixes: no matches"
       ]
     },
     "readme": {
-      "status": "unchanged",
-      "rationale": "This patch restores an existing automatic-update promise and adds no feature, panel, platform or workflow. The README highlights remain accurate and do not describe version-specific update recovery.",
+      "status": "updated",
+      "rationale": "The Ubuntu row of the downloads table said updates are manual; it now says the APT package has verified in-app updates, matching the new Linux update support. Other highlights describe no changed behaviour.",
       "evidence": [
-        "git diff v0.22.1..10d9fce2 -- README.md is empty",
-        "README.md highlights compared with CHANGELOG.md [0.22.2]: no affected product highlight or screenshot claim"
+        "git diff v0.22.2..dd11d5ff -- README.md: Ubuntu row 'updates are manual' -> 'APT package with verified in-app updates'",
+        "README.md highlights compared with CHANGELOG.md [0.23.0]"
       ]
     },
     "website": {
       "status": "unchanged",
-      "rationale": "The homepage promises and download links remain accurate; the updated user guide is rendered into the Docs page by the existing website build. Privacy review: the complete range changes only local update-helper copying, release tooling and version metadata. It adds no collection, consent, payload, recipient/provider, storage, retention, deletion, network request or third-party service, so website/privacy/index.html, docs/privacy-review.json and the effective date remain unchanged.",
+      "rationale": "The homepage download cards name platforms and package files only and make no per-platform update claim, so Linux in-app updates need no homepage change. The privacy policy's Update Checks and Downloads section already covers signed package downloads from GitHub Releases for every platform; Linux installation uses the already-downloaded package through local Polkit and offline APT, adding no recipient or data. The crash-prompt fix changes when a saved report is read locally, not what is sent.",
       "evidence": [
-        "git diff v0.22.1..10d9fce2 -- website/index.html website/privacy/index.html is empty",
-        "git diff v0.22.1..10d9fce2 -- src-tauri/src/update_worker.rs: local bundle copy and path validation only; no network or telemetry code",
-        "docs/user/system-settings.md is an input to the generated Docs page; npm run website:verify is included in the release preflight",
-        "node scripts/privacy-review.mjs check passes through npm test; no policy text or data-handling behavior changed"
+        "git diff --stat v0.22.2..dd11d5ff -- website ':!website/assets' is empty",
+        "website/index.html platform cards (linuxCard) inspected: no update wording",
+        "website/privacy/index.html 'Update Checks and Downloads' section compared with CHANGELOG.md [0.23.0] Added (offline APT, Polkit)"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The patch changes only a headless native installation helper and version metadata. It does not change any visible application or website layout, label, theme, panel, Dock surface or screenshot state, so all tracked screenshots still match the product.",
+      "rationale": "No published screenshot shows Settings or the update and crash-report switches whose labels changed; the homepage images show panels and Dock. The Dock fixes change window placement and error handling, not how the strip or toolbar look in the published images.",
       "evidence": [
-        "git diff v0.22.1..10d9fce2 -- src website/assets README.md contains no UI component, CSS or image change",
-        "CHANGELOG.md [0.22.2] describes only updater handoff behavior and one-time manual migration guidance"
+        "git diff --name-only v0.22.2..dd11d5ff -- '*.webp' '*.png' '*.jpg' '*.svg' is empty",
+        "website/assets/homepage/*.webp, landing-hero.webp, landing-dock.webp, landing-dock-custom.webp: no Settings view"
       ]
     }
   }
