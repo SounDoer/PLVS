@@ -1,0 +1,91 @@
+# Real capture smoke for one exact commit on the maintainer's home machines: VB-Cable on Windows,
+# BlackHole on macOS, a private Pulse null sink on Linux. Hosted runners have no sound card, so
+# these jobs run on self-hosted runners labelled `plvs-rig`.
+#
+# PLVS is public. Self-hosted jobs must never be reachable from pull requests or other events an
+# outsider can trigger, and receive no secrets; scripts/selfHostedWorkflowContract.test.js enforces
+# both. There is no input to skip a platform: a runner that is off makes the run wait, then fail.
+
+name: Capture Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capture-acceptance-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  capture-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            labels: [self-hosted, plvs-rig, windows]
+          - platform: macos
+            labels: [self-hosted, plvs-rig, macos]
+          - platform: linux
+            labels: [self-hosted, plvs-rig, linux]
+    runs-on: ${{ matrix.labels }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Validate the commit
+        run: |
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase commit SHA" >&2
+            exit 1
+          fi
+
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch FFmpeg sidecars
+        run: npm run ffmpeg:fetch
+
+      - name: Build the capture harness
+        run: cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness
+
+      - name: Capture smoke
+        run: npm run smoke:capture -- --wait
+
+      - name: Verify exact-commit evidence
+        id: evidence
+        run: |
+          path=$(node scripts/verify-capture-evidence.mjs --sha "$COMMIT_SHA" --platform "$PLATFORM")
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload capture evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: capture-evidence-${{ matrix.platform }}
+          path: ${{ steps.evidence.outputs.path }}
+          if-no-files-found: error
