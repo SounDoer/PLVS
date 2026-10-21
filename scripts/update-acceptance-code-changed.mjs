@@ -12,7 +12,6 @@ import { STABLE_RELEASE_TAG_GLOB } from "./release-tag.mjs";
 
 export const UPDATE_ACCEPTANCE_PATHS = [
   ".github/workflows/release.yml",
-  ".github/workflows/upgrade-candidate.yml",
   ".github/workflows/update-acceptance.yml",
   "src/agentControl/developmentUpdateProtocol.js",
   "src/agentControl/handlers/developmentUpdate.js",
@@ -39,7 +38,6 @@ export const UPDATE_ACCEPTANCE_PATHS = [
   "src-tauri/vendor/tauri-plugin-updater",
   "scripts/build-linux-deb.mjs",
   "scripts/build-update-acceptance.mjs",
-  "scripts/build-upgrade-test-manifest.mjs",
   "scripts/build-updater-manifest.mjs",
   "scripts/export-update-acceptance.mjs",
   "scripts/notarize-macos-dmg.sh",

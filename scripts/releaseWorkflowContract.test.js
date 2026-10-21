@@ -28,10 +28,6 @@ const previewBuildWorkflow = readFileSync(
   join(cwd(), ".github", "workflows", "preview-build.yml"),
   "utf8"
 );
-const upgradeCandidateWorkflow = readFileSync(
-  join(cwd(), ".github", "workflows", "upgrade-candidate.yml"),
-  "utf8"
-);
 const previewBuildSkill = readFileSync(
   join(cwd(), ".agents", "skills", "plvs-preview-build", "SKILL.md"),
   "utf8"
@@ -141,7 +137,6 @@ describe("macOS Developer ID distribution", () => {
       "APPLE_API_KEY",
     ]) {
       expect(releaseWorkflow).toContain(`secrets.${secret}`);
-      expect(upgradeCandidateWorkflow).toContain(`secrets.${secret}`);
     }
     expect(macosSigningSetup).toContain("security create-keychain");
     expect(macosSigningSetup).toContain("security set-key-partition-list");
@@ -152,16 +147,14 @@ describe("macOS Developer ID distribution", () => {
   });
 
   it("notarizes the final DMG before package smoke testing", () => {
-    for (const workflow of [releaseWorkflow, upgradeCandidateWorkflow]) {
-      expect(workflow).toContain("bash scripts/prepare-macos-signing.sh");
-      expect(workflow).toContain("bash scripts/notarize-macos-dmg.sh");
-      expect(workflow.indexOf("npm run desktop:stable-dmg")).toBeLessThan(
-        workflow.indexOf("bash scripts/notarize-macos-dmg.sh")
-      );
-      expect(workflow.indexOf("bash scripts/notarize-macos-dmg.sh")).toBeLessThan(
-        workflow.indexOf("npm run desktop:verify-stable-dmg")
-      );
-    }
+    expect(releaseWorkflow).toContain("bash scripts/prepare-macos-signing.sh");
+    expect(releaseWorkflow).toContain("bash scripts/notarize-macos-dmg.sh");
+    expect(releaseWorkflow.indexOf("npm run desktop:stable-dmg")).toBeLessThan(
+      releaseWorkflow.indexOf("bash scripts/notarize-macos-dmg.sh")
+    );
+    expect(releaseWorkflow.indexOf("bash scripts/notarize-macos-dmg.sh")).toBeLessThan(
+      releaseWorkflow.indexOf("npm run desktop:verify-stable-dmg")
+    );
     expect(macosDmgNotarization).toContain("xcrun notarytool submit");
     expect(macosDmgNotarization).toContain("xcrun stapler staple");
     expect(macosDmgNotarization).toContain("context:primary-signature");
@@ -393,28 +386,5 @@ describe("Immutable Windows Preview Build", () => {
   it("compiles the updater out of Preview packages", () => {
     expect(appSource).toContain('#[cfg(not(feature = "preview-identity"))]');
     expect(appSource).toContain("tauri_plugin_updater::Builder::new().build()");
-  });
-});
-
-describe("private upgrade candidate", () => {
-  it("builds signed stable-identity packages for both platforms", () => {
-    expect(upgradeCandidateWorkflow).toContain("npm run desktop:stable-nsis");
-    expect(upgradeCandidateWorkflow).toContain("npm run desktop:stable-dmg");
-    expect(upgradeCandidateWorkflow).toContain("TAURI_SIGNING_PRIVATE_KEY");
-    expect(upgradeCandidateWorkflow).toContain("updater-windows.json");
-    expect(upgradeCandidateWorkflow).toContain("updater-macos.json");
-  });
-
-  it("cannot create a public tag or Release", () => {
-    expect(upgradeCandidateWorkflow).toMatch(/permissions:\s*\n\s*contents: read/);
-    expect(upgradeCandidateWorkflow).not.toContain("contents: write");
-    expect(upgradeCandidateWorkflow).not.toContain("gh release create");
-    expect(upgradeCandidateWorkflow).not.toContain("git tag");
-  });
-
-  it("stamps and gates the requested candidate version", () => {
-    expect(upgradeCandidateWorkflow).toContain('node scripts/bump-version.mjs "$VERSION"');
-    expect(upgradeCandidateWorkflow).toContain("npm run check");
-    expect(upgradeCandidateWorkflow).toContain("build-upgrade-test-manifest.mjs");
   });
 });
