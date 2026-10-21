@@ -421,12 +421,20 @@ accepting an intentional visual change.
 
 Installable test packages use a third identity rather than either of those two. `npm run desktop:preview-nsis` combines `tauri.preview.conf.json` with `preview-identity`, producing **PLVS Preview** (`com.soundoer.plvs.preview`) with its own settings, installer registration and Agent Control discovery. The Preview feature also compiles out updater registration. `scripts/generate-agent-discovery.mjs` owns both the stable and Preview manifests and NSIS hooks; do not edit those generated files by hand.
 
-Windows Preview build (matching CI `preview-build.yml`):
+Preview builds per platform (matching CI `preview-build.yml`; `npm run preview:dispatch` publishes
+all three from the pushed HEAD, or one with `-- windows|macos|linux`):
 
 ```bash
 npm run desktop:preview-nsis
 npm run desktop:verify-preview-nsis
+npm run desktop:preview-dmg
+npm run desktop:verify-preview-dmg
+npm run desktop:preview-deb
 ```
+
+The macOS Preview DMG is signed and notarized with the same Developer ID secrets as the stable
+release (below); `scripts/verify-macos-dmg.sh preview` checks the Preview bundle identifier,
+discovery manifest and CLI identity and that no updater payload was produced.
 
 The stable macOS release workflow imports Developer ID credentials into an ephemeral runner
 keychain, lets Tauri sign and notarize the app, then separately notarizes and staples the final DMG
@@ -1048,7 +1056,7 @@ default output. Missing tools, unsupported module loading, or stale harness bina
 errors (exit 2); metric disagreement is exit 1. Passing in WSLg verifies the protocol path only;
 native Linux desktop, device-switching, multichannel, and long-running soak checks are still needed.
 
-## Experimental Ubuntu Preview package
+## Ubuntu Preview package
 
 On Ubuntu 24.04 x86_64, run `npm run desktop:preview-deb`. It builds the optimized application and
 CLI with `preview-identity`, packages embedded frontend assets, and writes a `.deb` under
@@ -1059,14 +1067,21 @@ The builder clears the inherited resource map before loading the complete Previe
 Without that reset, recursive config merging maps both the stable and Preview manifests to
 `plvs-agent.json`, making the installed identity depend on copy order. Keep the config order intact.
 
+The Preview deb sets `mainBinaryName` to `plvs-preview` and ships its CLI as `plvs-preview-cli`, so
+its executables, icons and desktop entry never collide with the stable deb's and the two packages
+install side by side without `Conflicts` (ADR 0036). The Rust build scripts emit the same names as
+`PLVS_HOST_BINARY` / `PLVS_CLI_BINARY`; keep them in step with `tauri.linux-preview-deb.conf.json`.
+
 The deb fetches checksum-pinned FFmpeg/FFprobe and installs them below
 `/usr/lib/plvs-preview/sidecars`; it never owns, replaces, or depends on Ubuntu's
 `/usr/bin/ffmpeg`. Stable packages use `/usr/lib/plvs/sidecars`. See
 [ADR 0033](docs/adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md). Build on the stated baseline;
 building on a newer distribution can silently raise the required glibc version.
 
-`scripts/verify-linux-deb.sh <package.deb> <output-directory> <fixture-directory>` installs,
-checks, and removes the package. It requires root **inside a disposable Ubuntu 24.04 system** with the marker file
+`scripts/verify-linux-deb.sh <package.deb> <output-directory> <fixture-directory> [companion.deb]`
+installs, checks, and removes the package. With a companion (the other identity's deb), it installs
+both, launches both, removes the primary package and checks that the companion still verifies and
+launches; `preview-build.yml` passes a stable deb built from the same commit. It requires root **inside a disposable Ubuntu 24.04 system** with the marker file
 `/etc/plvs-disposable-package-rig`; never run it against a personal desktop. Provision the test
 tools `python3`, `xvfb`, `xauth`, `dbus-x11`, `pulseaudio`, and `desktop-file-utils` there first.
 The script refuses an existing PLVS installation and any system FFmpeg executable. It checks the

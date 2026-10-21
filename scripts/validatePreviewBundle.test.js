@@ -39,7 +39,32 @@ describe("Preview bundle validation", () => {
     expect(() => validatePreviewBundle("0.19.0", sha, directory, "linux")).toThrow(
       "asset set mismatch"
     );
-    expect(() => previewAssetNames("0.19.0", sha, "macos")).toThrow("Unsupported Preview platform");
+    expect(() => previewAssetNames("0.19.0", sha, "android")).toThrow(
+      "Unsupported Preview platform"
+    );
+  });
+
+  it("names the macOS DMG and requires every platform's packages for platform all", () => {
+    const directory = temporaryDirectory();
+    expect(previewAssetNames("0.23.0", sha, "macos")).toEqual({
+      dmg: "PLVS-Preview_0.23.0-preview.0123456_aarch64.dmg",
+    });
+    const all = previewAssetNames("0.23.0", sha, "all");
+    expect(Object.values(all).sort()).toEqual([
+      "PLVS-Preview-v0.23.0-preview.0123456-x64-portable.zip",
+      "PLVS-Preview_0.23.0-preview.0123456_aarch64.dmg",
+      "PLVS-Preview_0.23.0-preview.0123456_amd64.deb",
+      "PLVS-Preview_0.23.0-preview.0123456_x64-setup.exe",
+    ]);
+    for (const name of Object.values(previewAssetNames("0.23.0", sha, "windows"))) {
+      writeFileSync(join(directory, name), "package");
+    }
+    expect(() => validatePreviewBundle("0.23.0", sha, directory, "all")).toThrow(
+      "asset set mismatch"
+    );
+    writeFileSync(join(directory, all.dmg), "package");
+    writeFileSync(join(directory, all.deb), "package");
+    expect(validatePreviewBundle("0.23.0", sha, directory, "all")).toEqual(all);
   });
   it("accepts exactly the non-empty installer and Portable ZIP for the commit", () => {
     const directory = temporaryDirectory();

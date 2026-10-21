@@ -1,5 +1,5 @@
-# Installable Windows or Ubuntu Preview builds. Every published build uses a unique immutable
-# tag and an identity isolated from stable PLVS and the local development app.
+# Installable Windows, macOS and Ubuntu Preview builds. Every published build uses a unique
+# immutable tag and an identity isolated from stable PLVS and the local development app.
 
 name: Preview Build
 run-name: Preview ${{ inputs.platform }} ${{ github.ref_name }} @ ${{ inputs.commit_sha }} (${{ inputs.request_id }})
@@ -11,8 +11,8 @@ on:
         description: Platform to build and test
         required: true
         type: choice
-        default: windows
-        options: [windows, linux]
+        default: all
+        options: [all, windows, macos, linux]
       commit_sha:
         description: Full 40-character commit SHA to build
         required: true
@@ -52,7 +52,10 @@ jobs:
             echo "request_id must be 6-32 letters, digits, underscores, or hyphens" >&2
             exit 1
           fi
-          [[ "$PREVIEW_PLATFORM" == windows || "$PREVIEW_PLATFORM" == linux ]]
+          case "$PREVIEW_PLATFORM" in
+            all | windows | macos | linux) ;;
+            *) echo "platform must be all, windows, macos or linux" >&2; exit 1 ;;
+          esac
 
       - name: Checkout the exact commit
         uses: actions/checkout@v7
@@ -106,7 +109,7 @@ jobs:
         run: npm run licenses:sources
 
   build-windows-preview:
-    if: inputs.platform == 'windows'
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
     needs: validate
     runs-on: windows-2025-vs2026
     permissions:
@@ -171,7 +174,8 @@ jobs:
           node scripts/validate-preview-bundle.mjs `
             "$env:VERSION" `
             "${{ inputs.commit_sha }}" `
-            preview-assets
+            preview-assets `
+            windows
 
       - name: Upload the tested Preview candidate
         uses: actions/upload-artifact@v7
@@ -181,8 +185,77 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-macos-preview:
+    if: inputs.platform == 'all' || inputs.platform == 'macos'
+    needs: validate
+    runs-on: macos-26
+    permissions:
+      contents: read
+    env:
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      VERSION: ${{ needs.validate.outputs.version }}
+      SHORT_SHA: ${{ needs.validate.outputs.short_sha }}
+      PREVIEW_SHA: ${{ inputs.commit_sha }}
+    steps:
+      - name: Checkout the exact tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gatekeeper blocks an unsigned DMG for testers, so Preview reuses the release
+      # Developer ID signing and notarization. The updater stays compiled out.
+      - name: Prepare Apple signing credentials
+        env:
+          APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: bash scripts/prepare-macos-signing.sh
+
+      - name: Smoke test file analysis with FFmpeg sidecars
+        run: npm run smoke:file-analysis
+
+      - name: Build isolated Preview DMG
+        run: npm run desktop:preview-dmg
+
+      - name: Notarize and staple the Preview DMG
+        run: bash scripts/notarize-macos-dmg.sh
+
+      - name: Smoke test the Preview DMG
+        run: npm run desktop:verify-preview-dmg
+
+      - name: Stage and validate the tested package
+        run: |
+          dmg=$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          mkdir preview-assets
+          cp "$dmg" "preview-assets/PLVS-Preview_${VERSION}-preview.${SHORT_SHA}_aarch64.dmg"
+          node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets macos
+
+      - name: Upload the tested Preview candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-candidate-macos
+          path: preview-assets/
+          if-no-files-found: error
+          retention-days: 7
+
   build-linux-preview:
-    if: inputs.platform == 'linux'
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
     needs: validate
     runs-on: ubuntu-24.04
     env:
@@ -214,15 +287,28 @@ jobs:
       - name: Smoke test real file analysis with bundled sidecars
         run: npm run smoke:file-analysis
       - name: Build isolated Ubuntu Preview
-        run: npm run desktop:preview-deb
-      - name: Verify the exact package in a fresh Ubuntu system
         shell: bash
         run: |
+          npm run desktop:preview-deb
           packages=(src-tauri/target/release/bundle/deb/*.deb)
           [[ ${#packages[@]} == 1 && -f "${packages[0]}" ]]
+          [[ $(dpkg-deb -f "${packages[0]}" Package) == plvs-preview ]]
+          mkdir preview-package
+          mv "${packages[0]}" preview-package/
+      # The stable deb from the same commit is only the coexistence companion; it is not published.
+      - name: Build the stable deb used to prove coexistence
+        run: npm run desktop:stable-deb
+      - name: Verify the exact package beside stable PLVS in a fresh Ubuntu system
+        shell: bash
+        run: |
+          packages=(preview-package/*.deb)
+          [[ ${#packages[@]} == 1 && -f "${packages[0]}" ]]
+          companions=(src-tauri/target/release/bundle/deb/*.deb)
+          [[ ${#companions[@]} == 1 && $(dpkg-deb -f "${companions[0]}" Package) == plvs ]]
           node scripts/generate-sidecar-fixtures.mjs "$PWD/linux-sidecar-fixtures" /usr/bin/ffmpeg
           sudo bash scripts/verify-linux-deb-clean.sh \
-            "${packages[0]}" "$PWD/linux-package-evidence" "$PWD/linux-sidecar-fixtures"
+            "${packages[0]}" "$PWD/linux-package-evidence" "$PWD/linux-sidecar-fixtures" \
+            "${companions[0]}"
           mkdir deb-inspection
           dpkg-deb -x "${packages[0]}" deb-inspection
           node scripts/verify-license-assets.mjs "deb-inspection/usr/lib/PLVS Preview"
@@ -245,12 +331,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Unselected platforms are skipped; every selected one must succeed. The bundle validation
+  # below independently requires the complete asset set for the selected platform(s).
   prepare-draft:
-    if: ${{ !cancelled() && needs.validate.result == 'success' && (needs.build-windows-preview.result == 'success' || needs.build-linux-preview.result == 'success') }}
-    needs: [validate, build-windows-preview, build-linux-preview]
+    if: ${{ !cancelled() && needs.validate.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+    needs: [validate, build-windows-preview, build-macos-preview, build-linux-preview]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    outputs:
+      asset_count: ${{ steps.bundle.outputs.asset_count }}
     env:
       GH_TOKEN: ${{ github.token }}
       PREVIEW_SHA: ${{ inputs.commit_sha }}
@@ -266,14 +356,18 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           persist-credentials: false
 
-      - name: Download the tested candidate
+      - name: Download the tested candidates
         uses: actions/download-artifact@v8
         with:
-          name: preview-candidate-${{ inputs.platform }}
+          pattern: preview-candidate-*
+          merge-multiple: true
           path: preview-assets
 
       - name: Validate the complete Preview bundle
-        run: node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets "$PREVIEW_PLATFORM"
+        id: bundle
+        run: |
+          node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets "$PREVIEW_PLATFORM"
+          echo "asset_count=$(find preview-assets -maxdepth 1 -type f | wc -l)" >> "$GITHUB_OUTPUT"
 
       - name: Write Preview notes
         shell: bash
@@ -288,20 +382,33 @@ jobs:
 
           Preview builds are temporary. The workflow retains only the ten newest Preview releases.
           EOF
-          if [[ "$PREVIEW_PLATFORM" == linux ]]; then
+          if [[ "$PREVIEW_PLATFORM" == all || "$PREVIEW_PLATFORM" == windows ]]; then
             cat >> preview-notes.md <<'EOF'
 
-          Targets Ubuntu 24.04 x86_64. Download the deb and install it with `sudo apt install --reinstall ./<filename>.deb`.
-          Use `--reinstall` when switching commits: Preview builds can share the same base package version.
-          The package includes PLVS's verified FFmpeg/FFprobe sidecars. Launch PLVS Preview from the menu, or run `plvs`.
-          Diagnose with `plvs-cli doctor --json`; remove with `sudo apt remove plvs-preview`.
-          Preview conflicts with stable PLVS because the packages share executable names.
-          Enable Agent Control in Settings before using live `plvs-cli` commands.
-          Native desktop/hardware and four-hour soak acceptance remain pending. Per-application capture is
-          not supported on Linux. Screenshots and pointer-free recording, including measured-source audio, are supported.
+          **Windows (x64).** Install with the setup program, or extract the Portable ZIP and keep all of its files together.
+          Windows Preview installs independently from stable PLVS.
           EOF
-          else
-            echo 'Windows Preview installs independently from stable PLVS. Keep all Portable ZIP files together.' >> preview-notes.md
+          fi
+          if [[ "$PREVIEW_PLATFORM" == all || "$PREVIEW_PLATFORM" == macos ]]; then
+            cat >> preview-notes.md <<'EOF'
+
+          **macOS (Apple Silicon, macOS 14.2 or later).** Open the signed and notarized DMG and drag PLVS Preview to Applications.
+          PLVS Preview is a separate app from PLVS, with its own settings and its own macOS permission prompts.
+          EOF
+          fi
+          if [[ "$PREVIEW_PLATFORM" == all || "$PREVIEW_PLATFORM" == linux ]]; then
+            cat >> preview-notes.md <<'EOF'
+
+          **Ubuntu 24.04 (x86_64).** Install the deb with `sudo apt install --reinstall ./<filename>.deb`.
+          Use `--reinstall` when switching commits: Preview builds can share the same base package version.
+          The package includes PLVS's verified FFmpeg/FFprobe sidecars. Launch PLVS Preview from the menu, or run `plvs-preview`.
+          Diagnose with `plvs-preview-cli doctor --json`; remove with `sudo apt remove plvs-preview`.
+          Preview installs beside stable PLVS. The PLVS 0.23.0 deb still declares a conflict with Preview, so APT removes
+          that one release when Preview is installed; later stable debs coexist.
+          Enable Agent Control in Settings before using live `plvs-preview-cli` commands.
+          Per-application capture is not supported on Linux. Screenshots and pointer-free recording, including
+          measured-source audio, are supported.
+          EOF
           fi
 
       - name: Create the complete Draft Pre-release
@@ -348,7 +455,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PREVIEW_SHA: ${{ inputs.commit_sha }}
       TAG: ${{ needs.validate.outputs.tag }}
-      PREVIEW_PLATFORM: ${{ inputs.platform }}
+      EXPECTED_ASSET_COUNT: ${{ needs.prepare-draft.outputs.asset_count }}
     steps:
       - name: Revalidate the Draft
         shell: bash
@@ -368,9 +475,7 @@ jobs:
           fi
           asset_count=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
             --jq '.assets | length')
-          expected_count=2
-          if [[ "$PREVIEW_PLATFORM" == linux ]]; then expected_count=1; fi
-          if [[ "$asset_count" != "$expected_count" ]]; then
+          if [[ ! "$EXPECTED_ASSET_COUNT" =~ ^[1-9][0-9]*$ || "$asset_count" != "$EXPECTED_ASSET_COUNT" ]]; then
             echo "${TAG} does not contain the complete tested platform asset set" >&2
             exit 1
           fi

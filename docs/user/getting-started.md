@@ -55,20 +55,34 @@ Remove PLVS with `sudo apt remove plvs`; removing the package preserves user set
 Dock and per-application capture are not available on Linux. See
 [Signal Source](signal-source.md) for the Linux capture scope.
 
-### Linux Preview
+## Preview builds
 
 Preview packages are test builds of unreleased commits, published as GitHub **Pre-releases** with
-the source commit recorded in their notes. Install a supplied Preview `.deb` the same way:
+the source commit recorded in their notes. **PLVS Preview** is a separate application from PLVS: it
+installs beside stable PLVS, keeps its own settings, and never checks for updates, so install each
+new Preview by hand. A Preview usually contains a package for every platform:
+
+| Platform              | Package                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| Windows 10/11 (x64)   | `PLVS-Preview_<version>-preview.<commit>_x64-setup.exe`     |
+| Windows 10/11 (x64)   | `PLVS-Preview-v<version>-preview.<commit>-x64-portable.zip` |
+| macOS (Apple Silicon) | `PLVS-Preview_<version>-preview.<commit>_aarch64.dmg`       |
+| Ubuntu 24.04 (x86_64) | `PLVS-Preview_<version>-preview.<commit>_amd64.deb`         |
+
+On macOS, drag **PLVS Preview** into Applications. The DMG is signed and notarized like the
+stable one. macOS asks for its permissions again, because it treats PLVS Preview as a separate app.
+
+On Ubuntu, install the deb the same way as the stable package:
 
 ```sh
-sudo apt install --reinstall ./plvs-preview.deb
+sudo apt install --reinstall ./PLVS-Preview_<version>-preview.<commit>_amd64.deb
 ```
 
-Use the actual filename of the supplied package, then launch **PLVS Preview**. Preview keeps its own
-settings and never checks for updates. Use `--reinstall` when switching Preview commits: their
-packages can share the same base version. Remove Preview with `sudo apt remove plvs-preview`.
-Preview and the stable package share executable names, so only one of them can be installed at a
-time.
+Use `--reinstall` when switching Preview commits: their packages can share the same base version.
+Launch **PLVS Preview** from the application menu, or run `plvs-preview`; its command-line tool is
+`plvs-preview-cli`. Remove Preview with `sudo apt remove plvs-preview`. The PLVS 0.23.0 deb still
+declares a conflict with Preview, so installing a Preview removes that one stable version; later
+stable packages install side by side with Preview.
 
 ## First launch
 

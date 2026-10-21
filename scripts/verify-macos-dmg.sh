@@ -2,6 +2,12 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+identity="${1:-stable}"
+case "$identity" in
+  stable) app_name=PLVS; app_id=com.soundoer.plvs ;;
+  preview) app_name="PLVS Preview"; app_id=com.soundoer.plvs.preview ;;
+  *) echo "Usage: verify-macos-dmg.sh [stable|preview]" >&2; exit 2 ;;
+esac
 dmg_dir="$repo_root/src-tauri/target/release/bundle/dmg"
 dmg="$(find "$dmg_dir" -maxdepth 1 -name '*.dmg' -print -quit)"
 
@@ -28,9 +34,14 @@ spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg
 
 hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse -quiet
 
-app="$(find "$mount_point" -maxdepth 1 -name '*.app' -print -quit)"
-if [[ -z "${app:-}" ]]; then
-  echo "No .app bundle found in DMG $dmg" >&2
+app="$mount_point/$app_name.app"
+if [[ ! -d "$app" ]]; then
+  echo "No $app_name.app bundle found in DMG $dmg" >&2
+  exit 1
+fi
+bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")"
+if [[ "$bundle_id" != "$app_id" ]]; then
+  echo "Bundle identifier is $bundle_id, expected $app_id" >&2
   exit 1
 fi
 
@@ -53,6 +64,11 @@ fi
 agent_manifest="$app/Contents/Resources/plvs-agent.json"
 if [[ ! -f "$agent_manifest" ]]; then
   echo "Missing agent discovery manifest: $agent_manifest" >&2
+  exit 1
+fi
+if ! grep -q "\"identifier\": \"$app_id\"" "$agent_manifest"; then
+  echo "Agent discovery manifest does not name $app_id" >&2
+  cat "$agent_manifest" >&2
   exit 1
 fi
 if ! grep -q '"macos": "Contents/MacOS/plvs-cli"' "$agent_manifest"; then
@@ -89,19 +105,38 @@ if [[ -n "$unexpected_binaries" ]]; then
 fi
 
 "$cli_binary" doctor --json >"$doctor_output"
-DOCTOR_OUTPUT="$doctor_output" node <<'NODE'
+DOCTOR_OUTPUT="$doctor_output" APP_NAME="$app_name" APP_ID="$app_id" node <<'NODE'
 const { readFileSync } = require("node:fs");
 const doctor = JSON.parse(readFileSync(process.env.DOCTOR_OUTPUT, "utf8"));
-const status = doctor["result"]["report"]["status"];
+const report = doctor["result"]["report"];
 if (
   doctor["schemaVersion"] !== 1 ||
   doctor["ok"] !== true ||
-  !["ok", "warning"].includes(status)
+  !["ok", "warning"].includes(doctor["result"]["report"]["status"])
 ) {
   console.error("CLI doctor returned an unexpected v1 envelope:", doctor);
   process.exit(1);
 }
+if (report["app"]["name"] !== process.env.APP_NAME) {
+  console.error(`CLI doctor targets ${report["app"]["name"]}, expected ${process.env.APP_NAME}`);
+  process.exit(1);
+}
+if (!report["paths"]["dataDir"].endsWith(process.env.APP_ID)) {
+  console.error(`CLI doctor data directory is not isolated: ${report["paths"]["dataDir"]}`);
+  process.exit(1);
+}
 NODE
+
+if [[ "$identity" == preview ]]; then
+  # Preview compiles the updater out and must not ship an update payload.
+  if find "$repo_root/src-tauri/target/release/bundle/macos" -maxdepth 1 -name '*.app.tar.gz*' |
+    grep -q .; then
+    echo "Preview produced a macOS updater payload" >&2
+    exit 1
+  fi
+  echo "macOS Preview DMG smoke check passed: $dmg"
+  exit 0
+fi
 
 updater_tarball="$(find "$repo_root/src-tauri/target/release/bundle/macos" \
   -maxdepth 1 -name '*.app.tar.gz' -print -quit)"

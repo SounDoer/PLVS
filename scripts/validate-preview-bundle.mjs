@@ -12,12 +12,19 @@ export function previewAssetNames(version, commitSha, platform = "windows") {
     throw new Error(`Invalid Preview commit SHA: ${commitSha}`);
   }
   const label = `${version}-preview.${commitSha.slice(0, 7)}`;
-  if (platform === "linux") return { deb: `PLVS-Preview_${label}_amd64.deb` };
-  if (platform !== "windows") throw new Error(`Unsupported Preview platform: ${platform}`);
-  return {
-    installer: `PLVS-Preview_${label}_x64-setup.exe`,
-    portable: `PLVS-Preview-v${label}-x64-portable.zip`,
+  const platforms = {
+    windows: {
+      installer: `PLVS-Preview_${label}_x64-setup.exe`,
+      portable: `PLVS-Preview-v${label}-x64-portable.zip`,
+    },
+    macos: { dmg: `PLVS-Preview_${label}_aarch64.dmg` },
+    linux: { deb: `PLVS-Preview_${label}_amd64.deb` },
   };
+  if (platform === "all") return Object.assign({}, ...Object.values(platforms));
+  if (!Object.hasOwn(platforms, platform)) {
+    throw new Error(`Unsupported Preview platform: ${platform}`);
+  }
+  return platforms[platform];
 }
 
 export function validatePreviewBundle(version, commitSha, assetDirectory, platform = "windows") {
@@ -41,7 +48,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const [, , version, commitSha, assetDirectory, platform = "windows"] = process.argv;
   if (!version || !commitSha || !assetDirectory) {
     console.error(
-      "Usage: node scripts/validate-preview-bundle.mjs <version> <commit-sha> <asset-directory> [windows|linux]"
+      "Usage: node scripts/validate-preview-bundle.mjs <version> <commit-sha> <asset-directory> [windows|macos|linux|all]"
     );
     process.exit(1);
   }

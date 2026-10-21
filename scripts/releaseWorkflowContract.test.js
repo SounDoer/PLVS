@@ -38,6 +38,7 @@ const updateRuntimeSource = readFileSync(
 );
 const packageJson = JSON.parse(readFileSync(join(cwd(), "package.json"), "utf8"));
 const tauriConfig = JSON.parse(readFileSync(join(cwd(), "src-tauri", "tauri.conf.json"), "utf8"));
+const previewDispatch = readFileSync(join(cwd(), "scripts", "preview-dispatch.mjs"), "utf8");
 const previewTauriConfig = JSON.parse(
   readFileSync(join(cwd(), "src-tauri", "tauri.preview.conf.json"), "utf8")
 );
@@ -303,25 +304,74 @@ describe("Immutable Release promotion", () => {
   });
 });
 
-describe("Immutable Windows Preview Build", () => {
-  it("gates Linux publication on a tested Ubuntu package and complete platform asset set", () => {
-    expect(previewBuildWorkflow).toContain("options: [windows, linux]");
-    expect(previewBuildWorkflow).toContain("if: inputs.platform == 'linux'");
-    expect(previewBuildWorkflow).toContain("if: inputs.platform == 'windows'");
-    expect(previewBuildWorkflow).toContain("npm run desktop:preview-deb");
-    expect(previewBuildWorkflow).toContain("npm run smoke:file-analysis");
-    expect(previewBuildWorkflow).toContain("sudo bash scripts/verify-linux-deb-clean.sh");
+describe("Immutable Preview Build", () => {
+  it("builds all three platforms by default and keeps single-platform choices", () => {
+    expect(previewBuildWorkflow).toContain("default: all");
+    expect(previewBuildWorkflow).toContain("options: [all, windows, macos, linux]");
+    for (const platform of ["windows", "macos", "linux"]) {
+      expect(previewBuildWorkflow).toContain(
+        `build-${platform}-preview:\n    if: inputs.platform == 'all' || inputs.platform == '${platform}'`
+      );
+      expect(previewBuildWorkflow).toContain(`name: preview-candidate-${platform}`);
+    }
     expect(previewBuildWorkflow).toContain(
-      "needs: [validate, build-windows-preview, build-linux-preview]"
+      "needs: [validate, build-windows-preview, build-macos-preview, build-linux-preview]"
     );
-    expect(previewBuildWorkflow).toContain("needs.build-linux-preview.result == 'success'");
-    expect(previewBuildWorkflow).toContain("!cancelled() && needs.validate.result == 'success'");
+    expect(previewBuildWorkflow).toContain(
+      "!cancelled() && needs.validate.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')"
+    );
     expect(previewBuildWorkflow).toContain("needs.prepare-draft.result == 'success'");
-    expect(previewBuildWorkflow).toContain("preview-candidate-${{ inputs.platform }}");
+    expect(previewBuildWorkflow).toContain("pattern: preview-candidate-*");
+    expect(previewBuildWorkflow).toContain("merge-multiple: true");
     expect(previewBuildWorkflow).toContain('preview-assets "$PREVIEW_PLATFORM"');
     expect(previewBuildWorkflow).toContain(
-      'if [[ "$PREVIEW_PLATFORM" == linux ]]; then expected_count=1; fi'
+      "EXPECTED_ASSET_COUNT: ${{ needs.prepare-draft.outputs.asset_count }}"
     );
+  });
+
+  it("gates Linux publication on a tested Ubuntu package that coexists with stable", () => {
+    expect(previewBuildWorkflow).toContain("npm run desktop:preview-deb");
+    expect(previewBuildWorkflow).toContain("npm run desktop:stable-deb");
+    expect(previewBuildWorkflow).toContain("npm run smoke:file-analysis");
+    expect(previewBuildWorkflow).toContain("sudo bash scripts/verify-linux-deb-clean.sh");
+  });
+
+  it("signs, notarizes and smoke-tests the exact macOS Preview DMG on a pinned hosted runner", () => {
+    const macos = previewBuildWorkflow.slice(
+      previewBuildWorkflow.indexOf("  build-macos-preview:"),
+      previewBuildWorkflow.indexOf("  build-linux-preview:")
+    );
+    expect(macos).toContain("runs-on: macos-26");
+    expect(macos).not.toContain("plvs-rig");
+    expect(macos).toContain("bash scripts/prepare-macos-signing.sh");
+    expect(macos).toContain("npm run desktop:preview-dmg");
+    expect(macos).toContain("bash scripts/notarize-macos-dmg.sh");
+    expect(macos).toContain("npm run desktop:verify-preview-dmg");
+    expect(macos).not.toContain("TAURI_SIGNING_PRIVATE_KEY");
+    const build = packageJson.scripts["desktop:preview-dmg"];
+    expect(build).toContain("build-plvs-cli.mjs --profile release --identity preview --stage");
+    expect(build).toContain("--bundles dmg,app");
+    expect(build.indexOf("tauri.clear-resources.conf.json")).toBeLessThan(
+      build.indexOf("tauri.preview.conf.json")
+    );
+    expect(build).toContain("--features preview-identity");
+    expect(packageJson.scripts["desktop:verify-preview-dmg"]).toBe(
+      "bash scripts/verify-macos-dmg.sh preview"
+    );
+  });
+
+  it("dispatches through the checked preview:dispatch script", () => {
+    expect(packageJson.scripts["preview:dispatch"]).toBe("node scripts/preview-dispatch.mjs");
+    expect(previewBuildSkill).toContain("npm run preview:dispatch");
+    expect(previewBuildSkill).not.toContain("gh workflow run preview-build.yml");
+    expect(previewBuildSkill).not.toContain("cannot coexist");
+    expect(previewBuildSkill).toMatch(/^description: ".*Windows, macOS and Ubuntu/m);
+    expect(previewBuildSkill).toContain("(`all`, the default)");
+    for (const asset of ["_x64-setup.exe", "-x64-portable.zip", "_aarch64.dmg", "_amd64.deb"]) {
+      expect(previewBuildSkill).toContain(asset);
+    }
+    expect(previewBuildSkill).toContain("signed and notarized");
+    expect(previewBuildSkill).toContain("coexists with the stable");
   });
   it("publishes the GUI host and CLI forwarder together in one ZIP", () => {
     for (const name of ["plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe"]) {
@@ -345,7 +395,9 @@ describe("Immutable Windows Preview Build", () => {
     expect(previewBuildWorkflow).toContain("npm run smoke:file-analysis");
     expect(previewBuildWorkflow).toContain("npm run desktop:verify-preview-nsis");
     expect(previewBuildWorkflow).toContain("preview-${short_sha}-${GITHUB_RUN_ID}");
-    expect(previewBuildSkill).toContain("--commit $sha --event workflow_dispatch");
+    expect(previewDispatch).toMatch(/"--event",\s*"workflow_dispatch"/);
+    expect(previewDispatch).toContain(`"status", "--porcelain"`);
+    expect(previewDispatch).toContain("ls-remote");
   });
 
   it("installs the Linux system dependencies required by the repository gate", () => {

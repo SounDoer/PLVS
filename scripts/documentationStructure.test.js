@@ -7,6 +7,7 @@ import { commandEntries } from "../src/agentControl/commandManifest.js";
 import { standardLayoutIdForCount } from "../src/math/channelLayoutTable.js";
 import { MODULE_CATALOG } from "../src/workspace/moduleCatalog.js";
 import { releaseAssetNames } from "./release-assets.mjs";
+import { previewAssetNames } from "./validate-preview-bundle.mjs";
 
 /**
  * Guards the documentation layout described in `docs/README.md`: claims that code owns are asserted
@@ -120,8 +121,7 @@ describe("public documents state what the code ships", () => {
 
   it("states the macOS minimum version the bundle declares", () => {
     // Prose ("macOS 14.2", "**macOS** 14.2") and the website homepage's spec row.
-    const macosVersion =
-      /macOS(?:\*\*)?(?: |<\/span><span class="spec-val">)(\d+\.\d+(?:\.\d+)?)/g;
+    const macosVersion = /macOS(?:\*\*)?(?: |<\/span><span class="spec-val">)(\d+\.\d+(?:\.\d+)?)/g;
     const { minimumSystemVersion } = JSON.parse(read("src-tauri", "tauri.conf.json")).bundle.macOS;
     const stated = PUBLIC_DOCUMENTS.flatMap((path) =>
       [...read(path).matchAll(macosVersion)].map(([, version]) => ({
@@ -141,9 +141,7 @@ describe("public documents state what the code ships", () => {
     const earlierSpellings =
       /\b(?:release|production|official)[- ]identity\b|\bdevelopment[- ](?:app|GUI|CLI|identity)\b|\binstalled release\b|--identity (?:development|release)\b/gi;
     const withoutEarlierNames = (markdown) =>
-      markdown
-        .replace(/^\|\s*Earlier name\s*\|.*\n(?:\|.*\n)*/m, "")
-        .replace(/adr\/[\w.-]+/g, "");
+      markdown.replace(/^\|\s*Earlier name\s*\|.*\n(?:\|.*\n)*/m, "").replace(/adr\/[\w.-]+/g, "");
     const documents = [
       ...collectMarkdown("docs", ["docs/history", "docs/adr"]),
       ...collectMarkdown(".agents/skills", []),
@@ -161,9 +159,13 @@ describe("public documents state what the code ships", () => {
   });
 
   it("names release packages the way the release publishes them", () => {
-    const valid = new Set(Object.values(releaseAssetNames("<version>")));
+    const previewLabel = "0.0.0-preview.0000000";
+    const preview = Object.values(previewAssetNames("0.0.0", "0".repeat(40), "all")).map((name) =>
+      name.replace(previewLabel, "<version>-preview.<commit>")
+    );
+    const valid = new Set([...Object.values(releaseAssetNames("<version>")), ...preview]);
     const named = PUBLIC_DOCUMENTS.flatMap((path) =>
-      [...read(path).matchAll(/PLVS[\w.<>-]*\.(?:exe|zip|dmg)\b/g)].map(([name]) => ({
+      [...read(path).matchAll(/PLVS[\w.<>-]*\.(?:exe|zip|dmg|deb)\b/g)].map(([name]) => ({
         path,
         name,
       }))
