@@ -163,7 +163,12 @@ function developmentUpdateAction(cli, dataRoot, action, ui, options = {}) {
 }
 
 async function openUpdateDetails(cli, dataRoot) {
-  let ui = cliJson(cli, dataRoot, ["ui", "inspect"]);
+  let ui = await waitFor(
+    "update UI inspection",
+    () => cliJson(cli, dataRoot, ["ui", "inspect"]),
+    (value) => Number.isSafeInteger(value.result?.uiGeneration),
+    60_000
+  );
   let surface = findUpdateSurface(ui.result);
   if (surface) return { ui, surface };
   developmentUpdateAction(cli, dataRoot, "open", ui);
@@ -328,26 +333,32 @@ async function captureRejectedPackage({
   }
   const surface = findUpdateSurface(ui.result);
   const screenshotTarget = ui.result.window?.form === "dock" ? "dock-update" : "main";
-  cliJson(cli, dataRoot, [
-    "visual",
-    "screenshot",
-    "--target",
-    screenshotTarget,
-    "--expected-revision",
-    String(ui.result.revision),
-    "--expected-ui-generation",
-    String(ui.result.uiGeneration),
-    "--out",
-    path.join(runDir, screenshot),
-  ]);
+  const screenshotResult = await waitFor(
+    `${fault} screenshot`,
+    () =>
+      cliJson(cli, dataRoot, [
+        "visual",
+        "screenshot",
+        "--target",
+        screenshotTarget,
+        "--expected-revision",
+        String(ui.result.revision),
+        "--expected-ui-generation",
+        String(ui.result.uiGeneration),
+        "--out",
+        path.join(runDir, screenshot),
+      ]),
+    (value) => value.result?.artifact?.mediaType === "image/png",
+    30_000
+  );
   cliJson(cli, dataRoot, [
     "ui",
     "cancel",
     surface.surfaceId,
     "--expected-revision",
-    String(ui.result.revision),
+    String(screenshotResult.result.revision),
     "--expected-ui-generation",
-    String(ui.result.uiGeneration),
+    String(screenshotResult.result.uiGeneration),
   ]);
   return { status: "passed" };
 }
