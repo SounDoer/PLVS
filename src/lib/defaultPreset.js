@@ -3,6 +3,7 @@ import { DEFAULT_FOCUS_VIEW } from "./focusView.js";
 import { DEFAULT_LOUDNESS_PROFILE_ID, profileSelectionId } from "./loudnessProfileCatalog.js";
 
 export const DEFAULT_PRESET_ID = "default";
+export const DEFAULT_PRESET_NAME = "PLVS Default";
 
 function clone(value) {
   if (typeof structuredClone === "function") return structuredClone(value);
@@ -10,7 +11,7 @@ function clone(value) {
 }
 
 /**
- * The canonical product content behind the first-run Default Preset and its Sharesets Included
+ * The canonical product content behind the first-run PLVS Default Preset and its Sharesets Included
  * listing. Runtime copies substitute the starter Profile's local ID and may add machine-local
  * window bounds; neither changes the portable Preset content.
  */
@@ -20,7 +21,7 @@ export function createDefaultPreset({
 } = {}) {
   return {
     id,
-    name: "Default",
+    name: DEFAULT_PRESET_NAME,
     ...clone(DEFAULT_WORKSPACE_STATE),
     windowPinned: false,
     focusView: clone(DEFAULT_FOCUS_VIEW),

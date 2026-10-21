@@ -166,7 +166,7 @@ describe("initial Sharesets Catalogue", () => {
     expect(theme.releases[0].metadata.content.contentHash).not.toBe(builtinHash);
   });
 
-  it("keeps Default linked to the current built-in Preset", async () => {
+  it("keeps PLVS Default linked to the current built-in Preset", async () => {
     const source = await readLaunchSource();
     const preset = source.listings.find(
       ({ document }) => document.id === "default-preset"
@@ -175,7 +175,7 @@ describe("initial Sharesets Catalogue", () => {
       loudnessProfiles: [DEFAULT_LOUDNESS_PROFILE],
     });
 
-    expect(preset.title).toBe("Default");
+    expect(preset.title).toBe("PLVS Default");
     expect(preset.included.sourceId).toBe("default");
     expect(preset.included.item).toEqual({ id: "default", ...portable });
     expect(preset.included.metadata.content.contentHash).toBe(await hashPortablePreset(portable));

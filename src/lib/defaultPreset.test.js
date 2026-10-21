@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { presetToPortable } from "../transfer/portablePreset.js";
 import { DEFAULT_LOUDNESS_PROFILE } from "./loudnessProfileCatalog.js";
-import { DEFAULT_PRESET, DEFAULT_PRESET_ID, createDefaultPreset } from "./defaultPreset.js";
+import {
+  DEFAULT_PRESET,
+  DEFAULT_PRESET_ID,
+  DEFAULT_PRESET_NAME,
+  createDefaultPreset,
+} from "./defaultPreset.js";
 
-describe("Default Preset product source", () => {
+describe("PLVS Default Preset product source", () => {
   it("exports the current first-run workspace with PLVS Default attached", () => {
     const portable = presetToPortable(DEFAULT_PRESET, {
       loudnessProfiles: [DEFAULT_LOUDNESS_PROFILE],
@@ -11,7 +16,7 @@ describe("Default Preset product source", () => {
 
     expect(DEFAULT_PRESET).toMatchObject({
       id: DEFAULT_PRESET_ID,
-      name: "Default",
+      name: DEFAULT_PRESET_NAME,
       windowPinned: false,
       surfaceOpacity: 100,
       glassEnabled: false,
@@ -19,7 +24,7 @@ describe("Default Preset product source", () => {
       loudnessProfileActive: "profile:default",
     });
     expect(portable).toMatchObject({
-      name: "Default",
+      name: DEFAULT_PRESET_NAME,
       dock: { enabled: false },
       loudnessProfile: { dependencyId: "default" },
     });

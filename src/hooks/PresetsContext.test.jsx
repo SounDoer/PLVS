@@ -61,7 +61,7 @@ describe("PresetsProvider", () => {
     presetsStore.reset();
   });
 
-  it("saves the first-run scene as the active Default preset", async () => {
+  it("saves the first-run scene as the active PLVS Default preset", async () => {
     const { result } = renderHook(
       () => ({ presets: usePresetLibrary(), workspace: useWorkspaceStore().state }),
       { wrapper }
@@ -69,7 +69,7 @@ describe("PresetsProvider", () => {
     await act(async () => {});
 
     const { presets, workspace } = result.current;
-    expect(presets.list.map((preset) => preset.name)).toEqual(["Default"]);
+    expect(presets.list.map((preset) => preset.name)).toEqual(["PLVS Default"]);
     expect(presets.activeId).toBe(presets.list[0].id);
     expect(presets.dirty).toBe(false);
     expect(presets.list[0].tree).toEqual(workspace.tree);

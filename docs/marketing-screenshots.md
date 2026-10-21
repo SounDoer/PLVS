@@ -170,7 +170,7 @@ node scripts/marketing/capture-homepage-features.mjs
 After the same first-run dismissal, the command sets the large interface size and the 7.1.4
 channel roles. It applies the multichannel layout and controls and creates the recipe's delivery
 Loudness Profile. Then it analyzes the 7.1.4 bed in FILE mode and captures `multichannel` at an
-8-second Snapshot. The command then applies the Default preset, switches to LIVE CABLE Output with
+8-second Snapshot. The command then applies the PLVS Default preset, switches to LIVE CABLE Output with
 the master and waits 65 seconds. It captures `history` at a 22-second Snapshot, then
 `frequency-full` and `frequency-detail` at 5 seconds. Each image has its own recipe layout, controls
 and pixel size.

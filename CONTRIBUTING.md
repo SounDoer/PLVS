@@ -74,7 +74,7 @@ Theme Library. Treat all output as review material; promoting one result into Sh
 a separate explicit curation step.
 
 Theme product scenes use the same first-run workspace and Panel Settings that PLVS saves as the
-Default Preset, with the generated Default Loudness Profile active. The preview constructs both
+PLVS Default Preset, with the generated PLVS Default Loudness Profile active. The preview constructs both
 from the production defaults with a deterministic Profile ID; it never reads a maintainer's local
 Library. This keeps the Loudness reference, Stats verdict colours, and Level Meter TP Max verdict
 visible while making repeated exports reproducible.
@@ -111,7 +111,7 @@ reference WAV SHA-256, 5.1 derivation hash, and explicit Spectrum, Vectorscope, 
 requests, so replacing the audio or changing those controls requires a deliberate Fixture
 regeneration. Never hand-edit either file under `src/transfer/fixtures/`. The generator derives its
 analysis requests from the production `DEFAULT_WORKSPACE_STATE`, records those requests in each
-Fixture, and stores every result under its real request key. A Default Preset change therefore
+Fixture, and stores every result under its real request key. A PLVS Default Preset change therefore
 makes the committed Fixtures stale instead of silently substituting data measured with different
 controls.
 

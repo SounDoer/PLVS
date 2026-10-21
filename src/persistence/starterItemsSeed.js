@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /// Whether this installation has settled its first-run starter items -- the "PLVS Default"
-/// Loudness Profile and the "Default" preset: seeded on a first run, or skipped because the installation
+/// Loudness Profile and the "PLVS Default" preset: seeded on a first run, or skipped because the installation
 /// already existed. A global preference rather than workspace state, because both live in the one
 /// library every workspace shares -- without it, a new workspace beside an emptied library looks
 /// like a first run and brings back an item the user deleted. Only Reset PLVS to Default clears it

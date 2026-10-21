@@ -132,7 +132,7 @@ try {
     );
   for (const image of recipe.multichannel.images) await capture(image);
 
-  // LIVE History and Frequency views from the Default preset.
+  // LIVE History and Frequency views from the PLVS Default preset.
   const live = recipe.live;
   const preset = (await call(["preset", "list"])).presets.find((p) => p.name === live.presetName);
   if (!preset) throw new Error(`No ${live.presetName} preset.`);

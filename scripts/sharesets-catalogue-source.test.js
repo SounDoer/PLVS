@@ -238,7 +238,7 @@ describe("Sharesets Catalogue source boundary", () => {
     });
   });
 
-  it("resolves the built-in Default Preset from the product source", async () => {
+  it("resolves the built-in PLVS Default Preset from the product source", async () => {
     const directory = temporarySource();
     const previews = [{ id: "preset-workspace", path: "previews/default/preset-workspace.png" }];
     writeFileSync(
@@ -253,7 +253,7 @@ describe("Sharesets Catalogue source boundary", () => {
         slug: "default-preset",
         type: "presets",
         classification: "official",
-        title: "Default",
+        title: "PLVS Default",
         summary: "The built-in default Preset.",
         descriptionMarkdown: "Included with PLVS.",
         tags: ["Built-in"],
@@ -271,7 +271,7 @@ describe("Sharesets Catalogue source boundary", () => {
               sourceId: "default",
               item: {
                 id: "default",
-                name: "Default",
+                name: "PLVS Default",
                 loudnessProfile: { dependencyId: "default" },
               },
               metadata: {

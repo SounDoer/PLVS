@@ -1292,7 +1292,7 @@ describe("usePresets under an active blocking editor", () => {
   });
 });
 
-describe("usePresets first-run Default preset", () => {
+describe("usePresets first-run PLVS Default preset", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.mocked(invoke).mockReset().mockResolvedValue({ starterItemsSeeded: 1 });
@@ -1311,7 +1311,7 @@ describe("usePresets first-run Default preset", () => {
     renderPresetHook();
     await act(async () => {});
 
-    expect(names()).toEqual(["Default"]);
+    expect(names()).toEqual(["PLVS Default"]);
     // The profile provider and the presets hook settle the same marker; one write covers both.
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith("persistence_save_global_preferences", {

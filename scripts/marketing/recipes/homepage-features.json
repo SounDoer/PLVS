@@ -123,7 +123,7 @@
   },
   "live": {
     "source": "live",
-    "presetName": "Default",
+    "presetName": "PLVS Default",
     "inputLabel": "CABLE Output (VB-Audio Virtual Cable)",
     "renderEndpointName": "CABLE Input",
     "historySeconds": 65,

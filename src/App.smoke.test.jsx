@@ -385,12 +385,11 @@ describe("App smoke", () => {
 
     expect(footer().getByText("Source")).toBeTruthy();
     expect(footer().getByText("Not connected")).toBeTruthy();
-    // First run saves the scene as the Default preset and selects PLVS Default as the starter
+    // First run saves the scene as the PLVS Default preset and selects PLVS Default as the starter
     // Loudness Profile, so the footer identifies both built-in starting points.
     await waitFor(() => expect(footer().getByText("Preset")).toBeTruthy());
     expect(footer().getByText("Loudness")).toBeTruthy();
-    expect(footer().getByText("Default")).toBeTruthy();
-    expect(footer().getByText("PLVS Default")).toBeTruthy();
+    expect(footer().getAllByText("PLVS Default")).toHaveLength(2);
   });
 
   it("uses a custom light theme's color scheme for native window surfaces", async () => {

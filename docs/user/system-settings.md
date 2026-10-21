@@ -361,7 +361,7 @@ information and saved display settings. Loudness Profile shows its included name
 applying a Preset with **Off** turns off the active Profile. Expand each row under **Panel Settings**
 to inspect saved controls and axes for that panel. Omitted controls use PLVS defaults. Bundled
 Loudness Profiles show their complete rules below the panel settings. Older published releases use text download
-links in **Release History**, as on Theme pages. The built-in **Default** Preset page is marked
+links in **Release History**, as on Theme pages. The built-in **PLVS Default** Preset page is marked
 **Included with PLVS** and omits download, import, file, and release controls. On every resource
 detail page, release history appears last, after all resource information and settings.
 On narrow screens, **Menu** exposes the website navigation on both listing and detail pages;
@@ -386,7 +386,7 @@ review. An identical Item already in your Library is recognized instead of being
 
 Sharesets previews use fixed example measurements, not your audio. A Theme gallery shows the
 first-run Workspace, the 5.1 **Multichannel Monitoring** scene, a measurement Snapshot, and Theme
-Colors. The Workspace and Snapshot use the Panel Settings saved as the Default Preset, with the
+Colors. The Workspace and Snapshot use the Panel Settings saved as the PLVS Default Preset, with the
 editable **PLVS Default** Loudness Profile active. Example verdict colours do not certify a delivery
 standard; review a downloaded Profile's rules against your own requirements before using it.
 

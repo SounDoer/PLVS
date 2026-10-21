@@ -14,6 +14,7 @@ import { starterItemsSeeded, markStarterItemsSeeded } from "../persistence/start
 import { SCENE_OPERATIONS, SceneOperationUnavailableError } from "../lib/sceneOperations.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
+import { DEFAULT_PRESET_NAME } from "../lib/defaultPreset.js";
 
 const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
 
@@ -35,7 +36,7 @@ export function normalizePresets(raw) {
 }
 
 /// First run: no workspace has been stored, the library holds no preset, and the installation has
-/// not settled this before. The first-run scene is then saved as the "Default" preset, so a new
+/// not settled this before. The first-run scene is then saved as the "PLVS Default" preset, so a new
 /// user has a named way back to it. An existing user always has a stored workspace; a new
 /// workspace opened later is covered by the settled marker, so deleting the preset is final until
 /// Reset PLVS to Default.
@@ -284,7 +285,7 @@ export function usePresets({
     if (defaultPresetSeededRef.current) return;
     defaultPresetSeededRef.current = true;
     if (seedDefaultPreset) {
-      captureSnapshot().then((snapshot) => saveSnapshot("Default", snapshot));
+      captureSnapshot().then((snapshot) => saveSnapshot(DEFAULT_PRESET_NAME, snapshot));
     }
     // Settled either way: an installation that already existed must not be seeded later from a
     // new workspace. Losing the write to another window settling it at the same moment is fine.

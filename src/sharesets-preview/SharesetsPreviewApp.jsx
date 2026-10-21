@@ -21,6 +21,7 @@ import { SplitLayout } from "../workspace/SplitLayout.jsx";
 import { WorkspacePreviewProvider } from "../workspace/WorkspaceContext.jsx";
 import { buildSharesetsPreviewFixtureValues } from "./fixture.js";
 import { MULTICHANNEL_MONITORING_PRESET } from "./multichannelMonitoringPreset.js";
+import { DEFAULT_PRESET_NAME } from "../lib/defaultPreset.js";
 
 const noop = () => {};
 
@@ -93,7 +94,7 @@ function previewLibrary(profile) {
 }
 
 const PREVIEW_PRESETS = {
-  list: [{ id: "sharesets-preview-default-preset", name: "Default" }],
+  list: [{ id: "sharesets-preview-default-preset", name: DEFAULT_PRESET_NAME }],
   activeId: "sharesets-preview-default-preset",
   dirty: false,
   blocked: false,
@@ -105,7 +106,13 @@ const PREVIEW_PRESETS = {
   reorder: noop,
 };
 
-function FullWorkspaceExample({ fixture, profile, snapshot, state, presetName = "Default" }) {
+function FullWorkspaceExample({
+  fixture,
+  profile,
+  snapshot,
+  state,
+  presetName = DEFAULT_PRESET_NAME,
+}) {
   const values = useMemo(
     () => buildSharesetsPreviewFixtureValues(fixture, { snapshot }),
     [fixture, snapshot]

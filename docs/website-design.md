@@ -81,7 +81,7 @@ Loudness Profile, immediately before the footer. Themes and Presets use an image
 summary, never screenshots. Both catalogue and detail summaries show the first three rules in
 artifact order, with an accurate remaining-rule count; detail overflow links to full Details.
 Theme product screenshots use the production first-run workspace and Panel Settings saved as the
-Default Preset, with the generated PLVS Default Loudness Profile active. The renderer constructs this
+PLVS Default Preset, with the generated PLVS Default Loudness Profile active. The renderer constructs this
 fixture from production defaults rather than reading a maintainer's Library, so exports are
 reproducible and stay aligned with the application. The audio Fixture generator derives its
 analysis requests from that same default workspace and stores keyed results; no second set of

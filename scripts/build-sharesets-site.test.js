@@ -175,7 +175,7 @@ function writeBuiltinPresetSource(directory) {
       slug: "default-preset",
       type: "presets",
       classification: "official",
-      title: "Default",
+      title: "PLVS Default",
       summary: "The default Preset included with PLVS.",
       descriptionMarkdown: "The default Preset included with PLVS.",
       tags: ["Built-in"],
@@ -443,7 +443,7 @@ describe("Sharesets static site generator", () => {
     expect(detail).not.toContain("File Checksum");
   });
 
-  it("renders the included Default Preset without download or import controls", async () => {
+  it("renders the included PLVS Default Preset without download or import controls", async () => {
     const source = temporaryDirectory("plvs-sharesets-default-preset-source-");
     const output = temporaryDirectory("plvs-sharesets-default-preset-output-");
     writeBuiltinPresetSource(source);
@@ -456,6 +456,7 @@ describe("Sharesets static site generator", () => {
 
     expect(browse).toContain("/sharesets/files/default-preset/included/preset-workspace.png");
     expect(detail).toContain("Included with PLVS");
+    expect(detail).toContain("PLVS Default");
     expect(detail).toContain("Workspace Panels</dt><dd>8");
     expect(detail).toContain("Included Loudness Profile");
     expect(detail).toContain("PLVS Default");

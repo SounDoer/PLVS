@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The built-in Preset is now named **PLVS Default**, matching the built-in Loudness Profile in PLVS
+  and on Sharesets.
+
 ## [0.23.0] - 2026-10-21
 
 ### Added

@@ -68,7 +68,7 @@ describe("Sharesets Vectorscope preview data", () => {
     expect(values.historyData).toMatchObject({ sourceMode: "live", running: true });
   });
 
-  it("derives and stores only the analysis requests used by the real Default Preset", () => {
+  it("derives and stores only the analysis requests used by the real PLVS Default Preset", () => {
     expect(SHARESETS_PREVIEW_STEREO_V1.analysisRequests).toEqual(defaultRequests);
     const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1);
     const results = values.frameData.displayAudio.spectrumResultsByKey;

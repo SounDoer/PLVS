@@ -134,7 +134,7 @@ describe("Sharesets preview command", () => {
     ).rejects.toThrow("Unknown built-in Theme");
   });
 
-  it("renders the built-in Default Preset directly from the product source", async () => {
+  it("renders the built-in PLVS Default Preset directly from the product source", async () => {
     const root = temporaryRoot();
     const result = await generateSharesetsPreviews({
       builtinPresetId: "default",

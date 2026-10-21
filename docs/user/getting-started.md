@@ -73,7 +73,7 @@ time.
 ## First launch
 
 A new installation opens with a starter workspace and a starter Loudness Profile. The workspace is
-saved as the **Default** Preset, while the Profile is named **PLVS Default**. The Preset lets you
+saved as the **PLVS Default** Preset, while the Profile is also named **PLVS Default**. The Preset lets you
 return to the initial layout after rearranging it. **PLVS Default** is a general starting point, not
 a delivery standard: True Peak above −1 dBTP fails, while Momentary above −6 LUFS, Short-term above
 −12 LUFS, Integrated outside −30 to −16 LUFS, or Loudness Range above 18 LU warns. Both are ordinary
