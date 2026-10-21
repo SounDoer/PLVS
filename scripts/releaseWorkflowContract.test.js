@@ -412,6 +412,10 @@ describe("Immutable Preview Build", () => {
     ]) {
       expect(previewBuildWorkflow).toContain(dependency);
     }
+    // The gate's dialogue benchmark needs a full FFmpeg encoder, as in ci.yml.
+    expect(previewBuildWorkflow).toMatch(
+      /patchelf \\\n\s+ffmpeg\n[\s\S]*?run: npm run check\n\s+env:\n\s+PLVS_FFMPEG: ffmpeg/
+    );
   });
 
   it("publishes a verified immutable Draft instead of overwriting a rolling release", () => {

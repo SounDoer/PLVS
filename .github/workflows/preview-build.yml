@@ -97,13 +97,17 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            ffmpeg
 
       - name: Install dependencies
         run: npm ci
 
+      # The dialogue benchmark generator needs a full encoder; shipped sidecars are decode-only.
       - name: Run the full repository gate
         run: npm run check
+        env:
+          PLVS_FFMPEG: ffmpeg
 
       - name: Verify corresponding-source downloads
         run: npm run licenses:sources
