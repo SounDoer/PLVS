@@ -12,6 +12,7 @@ export function UpdateDialog({
   installationSupported = true,
   error = null,
   installStatus = "idle",
+  downloading = false,
   downloadProgress = null,
   onConfirm,
   onCancel,
@@ -60,6 +61,7 @@ export function UpdateDialog({
           targetVersion={targetVersion}
           manualDownloadUrl={manualDownloadUrl}
           installStatus={installStatus}
+          downloading={downloading}
           downloadProgress={downloadProgress}
           ready={ready}
           installationSupported={installationSupported}

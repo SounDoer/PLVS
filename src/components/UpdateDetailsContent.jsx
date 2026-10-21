@@ -26,6 +26,7 @@ export function UpdateDetailsContent({
   manualDownloadUrl = null,
   accessory = false,
   installStatus = "idle",
+  downloading = false,
   downloadProgress = null,
   ready = false,
   installationSupported = true,
@@ -40,21 +41,24 @@ export function UpdateDetailsContent({
   const installFailed = installStatus === "install-error";
   const restartFailed = installStatus === "restart-error";
   const busy = installing || restarting;
+  const waitingForDownload = downloading && !busy;
 
   const primaryLabel = restarting
     ? "Restarting..."
     : installing
       ? "Updating..."
-      : restartFailed
-        ? "Restart"
-        : installFailed
-          ? "Retry"
-          : installationSupported
-            ? "Update and Restart"
-            : "Download Manually";
+      : waitingForDownload
+        ? "Downloading..."
+        : restartFailed
+          ? "Restart"
+          : installFailed
+            ? "Retry"
+            : installationSupported
+              ? "Update and Restart"
+              : "Download Manually";
 
   function handlePrimary() {
-    if (busy) return;
+    if (busy || waitingForDownload) return;
     if (restartFailed) {
       onRestart();
       return;
@@ -95,7 +99,7 @@ export function UpdateDetailsContent({
           {releaseNotes}
         </ReactMarkdown>
       </div>
-      {installing ? <UpdateDownloadBar progress={downloadProgress} /> : null}
+      {installing || waitingForDownload ? <UpdateDownloadBar progress={downloadProgress} /> : null}
       {error ? (
         <p role="alert" className="mb-2 text-destructive">
           {error}
@@ -123,7 +127,7 @@ export function UpdateDetailsContent({
           <Button variant="ghost" disabled={busy} onClick={handleDismiss}>
             {restartFailed ? "Close" : ready ? "Skip This Time" : "Cancel"}
           </Button>
-          <Button disabled={busy} onClick={handlePrimary}>
+          <Button disabled={busy || waitingForDownload} onClick={handlePrimary}>
             {primaryLabel}
           </Button>
         </div>

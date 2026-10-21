@@ -47,4 +47,15 @@ describe("Dock update details", () => {
     fireEvent.click(screen.getByRole("button", { name: "Skip This Time" }));
     expect(client.action).not.toHaveBeenCalled();
   });
+  it("keeps dismissal available while a background download disables confirmation", () => {
+    client.payload = { ...client.payload, ready: false, downloading: true, downloadProgress: 0.5 };
+    render(<DockUpdateApp />);
+    client.action.mockClear();
+    const download = /** @type {HTMLButtonElement} */ (
+      screen.getByRole("button", { name: "Downloading..." })
+    );
+    expect(download.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(client.action).toHaveBeenCalledWith("update-dismiss", { key: "details:a" });
+  });
 });

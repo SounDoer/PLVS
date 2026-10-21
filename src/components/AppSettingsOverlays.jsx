@@ -28,7 +28,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
- *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
+ *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloading?: boolean, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
  *   appVersion: string,
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
@@ -78,6 +78,7 @@ export function AppSettingsOverlays({
     updateInfo,
     refreshUpdateCheck,
     installStatus,
+    downloading,
     downloadProgress,
     install,
     restartToApply,
@@ -403,6 +404,7 @@ export function AppSettingsOverlays({
         }
         releaseNotes={selectedUpdate?.releaseNotes}
         installStatus={installStatus}
+        downloading={downloading}
         downloadProgress={downloadProgress}
         onConfirm={() => install(selectedUpdate?.update)}
         onCancel={closeUpdateDialog}

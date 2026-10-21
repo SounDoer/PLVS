@@ -120,7 +120,14 @@ export function createUpdateController({
     try {
       const ready = await invoke("update_download", { candidateId: target.id, automatic });
       if (automatic && (job.generation !== generation || !preferences.autoDownload)) return null;
-      if (ready) emit({ ready });
+      if (ready) {
+        const details = state.details;
+        const stagedDetails =
+          details && details.target.version === ready.version
+            ? { ...details, target: ready, staged: true }
+            : details;
+        emit({ ready, details: stagedDetails, error: null });
+      }
       return ready;
     } catch (error) {
       if (!automatic || job.generation === generation)
@@ -130,7 +137,7 @@ export function createUpdateController({
     } finally {
       if (transfer === job) {
         transfer = null;
-        emit({ downloading: false });
+        emit({ downloading: false, downloadProgress: null });
       }
     }
   }
@@ -178,7 +185,8 @@ export function createUpdateController({
       emit({ details: { ...state.details, presentation: ++presentation } });
       return;
     }
-    // Freeze the descriptor and whether it was a cached package. A replacement never changes it.
+    // Freeze the selected version across later checks. Completion of that version's own download
+    // may still promote the descriptor to the verified staged package.
     emit({
       details: {
         target,
@@ -211,7 +219,6 @@ export function createUpdateController({
       return;
     }
     if (transfer) {
-      emit({ error: "An update is downloading. Try again when it finishes." });
       return;
     }
     confirming = true;

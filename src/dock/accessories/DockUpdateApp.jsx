@@ -79,6 +79,7 @@ export function DockUpdateApp() {
             ready={payload.ready}
             installationSupported={payload.installationSupported}
             installStatus={payload.installStatus}
+            downloading={payload.downloading}
             downloadProgress={payload.downloadProgress}
             error={payload.error}
             onConfirm={() => send("update-confirm", { targetId: payload.targetId })}

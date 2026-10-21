@@ -90,8 +90,11 @@ release download when the installed package predates this support or system tool
 
 Downloaded updates are offered on a later fresh launch. **Skip This Time** or closing details keeps
 the package without installing it. Details keep their selected version even if another check
-finishes. If that package has been replaced or removed, confirmation fails safely and asks you to
-reopen details. A previously downloaded package can be installed without another network check.
+finishes. If the selected version is still downloading, details show its progress and temporarily
+disable **Update and Restart**; when verification finishes, the same view becomes **Update Ready**
+without reporting the active download as an error. If that package has been replaced or removed,
+confirmation fails safely and asks you to reopen details. A previously downloaded package can be
+installed without another network check.
 If a background check fails while those cached details are open, the offline installation remains
 available; the check failure does not replace the installation status in the dialog.
 

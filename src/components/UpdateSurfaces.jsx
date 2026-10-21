@@ -68,6 +68,7 @@ export function UpdateSurfaces({ currentVersion }) {
     ready: updates.details?.staged === true,
     releaseNotes,
     installStatus: updates.installStatus,
+    downloading: updates.downloading,
     downloadProgress: updates.downloadProgress,
   };
   const dockWindow = useDockUpdateWindow({
@@ -192,6 +193,7 @@ export function UpdateSurfaces({ currentVersion }) {
         releaseNotes={releaseNotes}
         ready={updates.details?.staged === true}
         installStatus={updates.installStatus}
+        downloading={updates.downloading}
         downloadProgress={updates.downloadProgress}
         onConfirm={() => void updates.confirmInstall()}
         onCancel={updates.dismissDetails}

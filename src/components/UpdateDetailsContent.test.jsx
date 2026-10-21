@@ -38,6 +38,21 @@ describe("shared update details", () => {
     expect(screen.getByRole("progressbar").hasAttribute("aria-valuenow")).toBe(false);
   });
 
+  it("shows background download progress without treating it as an error", () => {
+    const callbacks = props({ downloading: true, downloadProgress: 0.4 });
+    render(<UpdateDetailsContent {...callbacks} />);
+    const download = /** @type {HTMLButtonElement} */ (
+      screen.getByRole("button", { name: "Downloading..." })
+    );
+    const cancel = /** @type {HTMLButtonElement} */ (
+      screen.getByRole("button", { name: "Cancel" })
+    );
+    expect(download.disabled).toBe(true);
+    expect(cancel.disabled).toBe(false);
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("40");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("delegates restart retry without starting another installation", () => {
     const callbacks = props({ installStatus: "restart-error" });
     render(<UpdateDetailsContent {...callbacks} />);

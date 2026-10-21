@@ -193,6 +193,38 @@ describe("shared update controller", () => {
     expect(controller.getSnapshot().details).toBeNull();
   });
 
+  it("promotes open details when their background download finishes", async () => {
+    const pending = deferred();
+    const { controller, invoke, prepare } = setup();
+    await controller.setPreferences(prefs);
+    await controller.initialize();
+    invoke.mockResolvedValueOnce(a).mockImplementationOnce(() => pending.promise);
+
+    const checking = controller.check(true);
+    await vi.waitFor(() => expect(controller.getSnapshot().downloading).toBe(true));
+    controller.openDetails();
+    await controller.confirmInstall();
+    expect(prepare).not.toHaveBeenCalled();
+    expect(controller.getSnapshot().error).toBeNull();
+
+    const ready = { ...a, id: "staged-a" };
+    pending.resolve(ready);
+    await checking;
+    expect(controller.getSnapshot()).toMatchObject({
+      ready,
+      downloading: false,
+      downloadProgress: null,
+      error: null,
+      details: { target: ready, staged: true, origin: "manual" },
+    });
+
+    await controller.confirmInstall();
+    expect(invoke).toHaveBeenCalledWith("update_prepare_install", {
+      packageId: "staged-a",
+      startup: false,
+    });
+  });
+
   it("offers an eligible cached target only once and skip retains the cache", async () => {
     const { controller, invoke } = setup();
     await controller.setPreferences(prefs);
