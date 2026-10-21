@@ -26,7 +26,7 @@ describe("update acceptance release advisory", () => {
     }
   });
 
-  it("reports both platforms prominently without treating missing evidence as success", () => {
+  it("reports all three platforms prominently without treating missing evidence as success", () => {
     const repository = temporaryRepository();
     const report = updateAcceptanceAdvisory({
       repository,
@@ -36,6 +36,7 @@ describe("update acceptance release advisory", () => {
     expect(report.platforms).toEqual([
       { platform: "windows", status: "missing", reason: "no exact-SHA evidence" },
       { platform: "macos", status: "missing", reason: "no exact-SHA evidence" },
+      { platform: "linux", status: "missing", reason: "no exact-SHA evidence" },
     ]);
     expect(formatUpdateAcceptanceAdvisory(report)).toContain(
       "Release is proceeding without complete cross-platform update acceptance evidence."

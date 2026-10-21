@@ -204,6 +204,9 @@ describe("Immutable Release promotion", () => {
     expect(updateAcceptanceWorkflow).toContain(
       "node scripts/verify-update-acceptance.mjs update-evidence/macos"
     );
+    expect(updateAcceptanceWorkflow).toContain(
+      "node scripts/verify-update-acceptance.mjs update-evidence/linux"
+    );
   });
 
   it("runs nightly update acceptance only for updater changes since the last success", () => {

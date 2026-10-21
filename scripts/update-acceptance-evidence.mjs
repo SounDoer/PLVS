@@ -19,6 +19,7 @@ export const UPDATE_SHARED_REQUIRED_SCENARIOS = [
 export const UPDATE_PLATFORM_REQUIRED_SCENARIOS = {
   macos: ["apfs-bundle-swap", "read-only-dmg-refusal"],
   windows: ["nsis-installer-replacement"],
+  linux: ["apt-package-upgrade"],
 };
 export const UPDATE_PLATFORM_MANUAL_SCENARIOS = {
   macos: [
@@ -27,6 +28,9 @@ export const UPDATE_PLATFORM_MANUAL_SCENARIOS = {
     "gatekeeper-and-notarization",
   ],
   windows: ["authenticode-and-smartscreen"],
+  // The runner pre-authorizes the update action for its own account; the desktop password prompt
+  // and its cancellation stay a manual check in a real session.
+  linux: ["polkit-prompt-and-cancellation"],
 };
 const STATUSES = new Set(["passed", "failed", "rigUnavailable", "manual", "notRun", "unsupported"]);
 

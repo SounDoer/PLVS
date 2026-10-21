@@ -10,9 +10,13 @@ import {
   findUpdateSurface,
   hasFeedPackageRequest,
   helperPauseMarker,
+  isLinuxAppExecutable,
+  LINUX_PACKAGE_TOOL,
+  linuxAcceptanceLaunch,
   macAcceptanceLaunch,
   macReadOnlyDmgLayout,
   mountReportsReadOnly,
+  parseOriginalPackage,
   parseRunArguments,
   seedAcceptanceSettings,
   windowsAcceptanceInstall,
@@ -175,7 +179,46 @@ describe("update acceptance runner", () => {
     ).toMatchObject({ surfaceId: "failure" });
   });
 
-  it("publishes one command family for both platform adapters", () => {
+  it("launches the APT-installed Linux app and recognises it after an upgrade", () => {
+    expect(linuxAcceptanceLaunch("/tmp/data with spaces")).toEqual({
+      command: "/usr/bin/plvs",
+      args: ["--plvs-test-app-data-root", "/tmp/data with spaces"],
+    });
+    expect(isLinuxAppExecutable("/usr/bin/plvs")).toBe(true);
+    expect(isLinuxAppExecutable("/usr/bin/plvs (deleted)")).toBe(true);
+    expect(isLinuxAppExecutable("/usr/bin/plvs-preview")).toBe(false);
+    expect(isLinuxAppExecutable(null)).toBe(false);
+  });
+
+  it("reads the original package state the root tool recorded", () => {
+    expect(parseOriginalPackage("original: absent")).toBe("absent");
+    expect(parseOriginalPackage("Selecting...\noriginal: 0.23.0\n")).toBe("0.23.0");
+    expect(() => parseOriginalPackage("done")).toThrow(/original state/);
+  });
+
+  it("limits the Linux runner authorization to two actions for one account", () => {
+    const dir = "scripts/update-acceptance-linux";
+    const policy = readFileSync(`${dir}/com.soundoer.plvs.update-acceptance.policy`, "utf8");
+    const setup = readFileSync(`${dir}/setup.sh`, "utf8");
+    expect(policy).toContain(
+      `<annotate key="org.freedesktop.policykit.exec.path">${LINUX_PACKAGE_TOOL}</annotate>`
+    );
+    expect(policy).toContain("<allow_active>auth_admin</allow_active>");
+    expect(setup).toContain(`TOOL=${LINUX_PACKAGE_TOOL}`);
+    const rule = setup.slice(setup.indexOf("polkit.addRule"), setup.indexOf("\nEOF"));
+    expect(rule.match(/action\.id == "[^"]+"/g)).toEqual([
+      'action.id == "com.soundoer.plvs.update"',
+      'action.id == "com.soundoer.plvs.update-acceptance"',
+    ]);
+    expect(rule).toContain('subject.user == "$1"');
+    expect(rule.match(/polkit\.Result\.\w+/g)).toEqual(["polkit.Result.YES"]);
+    // The shipped product policy keeps its interactive default; only the runner's rule differs.
+    expect(
+      readFileSync("src-tauri/linux-update-installer/com.soundoer.plvs.update.policy", "utf8")
+    ).toContain("<allow_active>auth_admin</allow_active>");
+  });
+
+  it("publishes one command family for every platform adapter", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts;
     expect(scripts).toMatchObject({
       "update:acceptance:build": "node scripts/build-update-acceptance.mjs",

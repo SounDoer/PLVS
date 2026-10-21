@@ -68,9 +68,9 @@ describe("self-hosted runners on a public repository", () => {
     );
   });
 
-  it("runs automated update acceptance on both desktop platforms without secrets", () => {
+  it("runs automated update acceptance on all three desktop platforms without secrets", () => {
     const workflow = workflows["update-acceptance.yml"];
-    for (const platform of ["windows", "macos"]) {
+    for (const platform of ["windows", "macos", "linux"]) {
       expect(workflow).toContain(`labels: [self-hosted, plvs-rig, ${platform}]`);
     }
     expect(workflow).toContain("npm run update:acceptance:run");

@@ -356,7 +356,7 @@ export function missingDebDependencies(depends, installed) {
 }
 
 /** Linux runners under systemd --user have no display; give the app a private Xvfb. */
-async function ensureLinuxDisplay() {
+export async function ensureLinuxDisplay() {
   if (process.env.DISPLAY || process.env.WAYLAND_DISPLAY) return { env: {}, stop() {} };
   if (!existsSync("/usr/bin/Xvfb")) {
     throw new RigError("No DISPLAY or WAYLAND_DISPLAY and /usr/bin/Xvfb is absent. Install xvfb.");

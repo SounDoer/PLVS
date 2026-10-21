@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { verifyUpdateAcceptance } from "./verify-update-acceptance.mjs";
 
 export const UPDATE_ACCEPTANCE_MAX_AGE_DAYS = 14;
-const PLATFORMS = ["windows", "macos"];
+const PLATFORMS = ["windows", "macos", "linux"];
 
 export function classifyUpdateAcceptance({ summary, automatedFailures, ageDays, maxAgeDays }) {
   if (summary !== "complete" || automatedFailures.length > 0) return "incomplete";

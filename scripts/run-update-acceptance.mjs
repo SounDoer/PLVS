@@ -8,12 +8,15 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
+  realpathSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
+import { ensureLinuxDisplay } from "./release-package-smoke.mjs";
 import { createAcceptanceFeed } from "./serve-update-acceptance.mjs";
 import {
   artifactEvidence,
@@ -834,6 +837,8 @@ async function runGuidedAcceptance({
         "helper-interrupted.png",
         "read-only-dmg.json",
         "read-only-dmg-guidance.png",
+        "linux-package-original.json",
+        "linux-package-restored.json",
       ]),
       cleanup: {
         status: "passed",
@@ -1173,6 +1178,207 @@ async function runWindowsAcceptance({ root, runId, receipt }) {
   });
 }
 
+// Linux installs updates only for the APT-owned package at these fixed paths (ADR 0034), so the
+// acceptance package is the real `plvs` package. A root-owned tool installed once by the
+// maintainer installs it and later restores whatever the machine had before (ADR 0038).
+export const LINUX_APP = "/usr/bin/plvs";
+const LINUX_CLI = "/usr/bin/plvs-cli";
+export const LINUX_PACKAGE_TOOL = "/usr/local/libexec/plvs-update-acceptance-package";
+const LINUX_SETUP_HINT =
+  'run scripts/update-acceptance-linux/setup.sh (CONTRIBUTING, "Linux update acceptance runner")';
+
+export function linuxAcceptanceLaunch(dataRoot) {
+  return { command: LINUX_APP, args: ["--plvs-test-app-data-root", dataRoot] };
+}
+
+export function isLinuxAppExecutable(link) {
+  // A process that outlived its package upgrade still reports the replaced file as deleted.
+  return link === LINUX_APP || link === `${LINUX_APP} (deleted)`;
+}
+
+export function parseOriginalPackage(output) {
+  const match = output.match(/^original: (absent|\S+)$/m);
+  if (!match) throw new Error(`The package tool did not report the original state: ${output}`);
+  return match[1];
+}
+
+function processExecutable(pid) {
+  try {
+    return readlinkSync(`/proc/${pid}/exe`);
+  } catch {
+    return null;
+  }
+}
+
+// /proc/<pid>/exe is readable only for this account's processes, so another user's PLVS is never
+// matched here; the root package tool refuses to change the package while any PLVS runs.
+function linuxOwnedAppPids() {
+  return readdirSync("/proc")
+    .filter((name) => /^\d+$/.test(name))
+    .map(Number)
+    .filter((pid) => isLinuxAppExecutable(processExecutable(pid)));
+}
+
+function terminateOwnedLinuxApp() {
+  const pids = linuxOwnedAppPids();
+  for (const pid of pids) process.kill(pid, "SIGTERM");
+  return pids;
+}
+
+async function interruptOwnedLinuxHelper(attemptFile, attempt) {
+  const pid = attempt.helperPid;
+  if (!Number.isInteger(pid)) throw new Error("Interrupted helper attempt recorded no helper PID");
+  const executable = realpathSync(path.join(path.dirname(attemptFile), "plvs-update-worker"));
+  const actual = processExecutable(pid);
+  if (actual !== executable) {
+    throw new Error(`Refusing to interrupt unexpected helper process ${pid}: ${actual}`);
+  }
+  process.kill(pid, "SIGKILL");
+  await waitFor(
+    "interrupted Linux helper exit",
+    () => processExecutable(pid) !== executable,
+    Boolean,
+    10_000
+  );
+}
+
+function linuxInstalledPlvs() {
+  const result = spawnSync("dpkg-query", ["--show", "--showformat=${Status}|${Version}", "plvs"], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) return null;
+  const [status, version] = result.stdout.trim().split("|");
+  return status === "install ok installed" ? version : null;
+}
+
+function requireLinuxAuthorization(action) {
+  const result = spawnSync("pkcheck", ["--action-id", action, "--process", String(process.pid)], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `Polkit does not let this account run ${action} without a password; ${LINUX_SETUP_HINT}.`
+    );
+  }
+}
+
+async function startPrivateSessionBus() {
+  if (process.env.DBUS_SESSION_BUS_ADDRESS) return { env: {}, stop() {} };
+  if (!existsSync("/usr/bin/dbus-daemon")) {
+    throw new Error("No session bus and /usr/bin/dbus-daemon is absent. Install dbus.");
+  }
+  // One bus for the whole run: the app, its update helper and every relaunch share it.
+  const daemon = spawn(
+    "/usr/bin/dbus-daemon",
+    ["--session", "--nofork", "--nopidfile", "--print-address=3"],
+    { stdio: ["ignore", "ignore", "ignore", "pipe"] }
+  );
+  const address = await new Promise((resolve, reject) => {
+    let text = "";
+    const timer = setTimeout(() => reject(new Error("dbus-daemon reported no address.")), 10_000);
+    daemon.stdio[3].on("data", (chunk) => {
+      text += chunk;
+      if (text.includes("\n")) {
+        clearTimeout(timer);
+        resolve(text.trim());
+      }
+    });
+    daemon.on("exit", () => reject(new Error("dbus-daemon exited before reporting an address.")));
+  });
+  return { env: { DBUS_SESSION_BUS_ADDRESS: address }, stop: () => daemon.kill("SIGTERM") };
+}
+
+async function runLinuxAcceptance({ root, runId, receipt }) {
+  const runDir = path.join(root, "runs", runId);
+  if (existsSync(runDir)) throw new Error(`Run directory already exists: ${runDir}`);
+  const dataRoot = path.join(runDir, "data with spaces");
+  mkdirSync(dataRoot, { recursive: true });
+  const [older, newer] = receipt.versions;
+  requireLinuxAuthorization("com.soundoer.plvs.update-acceptance");
+  if (linuxOwnedAppPids().length) {
+    throw new Error(`${LINUX_APP} is already running; quit it before update acceptance.`);
+  }
+  const packageTool = (args) => run("pkexec", [LINUX_PACKAGE_TOOL, ...args]);
+  let original = null;
+  const restore = () => {
+    const output = packageTool(["restore"]);
+    const installed = linuxInstalledPlvs();
+    if (original !== null && installed !== (original === "absent" ? null : original)) {
+      throw new Error(`Restoring left plvs at ${installed ?? "absent"}, expected ${original}`);
+    }
+    return { output, installed };
+  };
+  const display = await ensureLinuxDisplay();
+  let bus = { env: {}, stop() {} };
+  try {
+    bus = await startPrivateSessionBus();
+    original = parseOriginalPackage(packageTool(["install", resolveReceiptFile(root, older.file)]));
+    writeJsonAtomic(path.join(runDir, "linux-package-original.json"), {
+      original,
+      installed: linuxInstalledPlvs(),
+    });
+    if (linuxInstalledPlvs() !== older.version) {
+      throw new Error(`APT did not install plvs ${older.version}`);
+    }
+    // The update action exists only once a package that ships its Polkit policy is installed.
+    requireLinuxAuthorization("com.soundoer.plvs.update");
+    const launchCommand = linuxAcceptanceLaunch(dataRoot);
+    const sessionEnv = { ...display.env, ...bus.env };
+    return await runGuidedAcceptance({
+      root,
+      runId,
+      receipt,
+      runDir,
+      dataRoot,
+      cli: LINUX_CLI,
+      launch: ({ interruptHelper = false } = {}) =>
+        launchBackground(launchCommand.command, launchCommand.args, {
+          env: interruptHelper
+            ? { ...sessionEnv, PLVS_UPDATE_ACCEPTANCE_INTERRUPT_HELPER: "1" }
+            : sessionEnv,
+        }),
+      interruptHelper: interruptOwnedLinuxHelper,
+      terminate: terminateOwnedLinuxApp,
+      cleanup: {
+        processesExited: (pids) => {
+          const live = new Set(linuxOwnedAppPids());
+          return pids.every((pid) => !live.has(pid));
+        },
+        installation: () => {
+          const restored = restore();
+          writeJsonAtomic(path.join(runDir, "linux-package-restored.json"), {
+            original,
+            installed: restored.installed,
+            tool: restored.output,
+          });
+        },
+      },
+      platformVersion: () =>
+        readFileSync("/etc/os-release", "utf8").match(/^PRETTY_NAME="?([^"\n]*)"?$/m)?.[1] ??
+        "Linux",
+      nativeScenarios: (attempt) => [
+        {
+          id: "apt-package-upgrade",
+          status:
+            Number.isInteger(attempt.installerPid) && linuxInstalledPlvs() === newer.version
+              ? "passed"
+              : "failed",
+        },
+      ],
+    });
+  } catch (error) {
+    try {
+      restore();
+    } catch (cleanupError) {
+      console.warn(`Restoring the original PLVS package needs attention: ${cleanupError.message}`);
+    }
+    throw error;
+  } finally {
+    bus.stop();
+    display.stop();
+  }
+}
+
 export async function runUpdateAcceptance(options) {
   const receipt = JSON.parse(readFileSync(path.join(options.root, "acceptance.json"), "utf8"));
   validateAcceptanceReceipt(receipt, options.root);
@@ -1182,9 +1388,12 @@ export async function runUpdateAcceptance(options) {
       `Receipt targets ${receipt.platform.os}/${receipt.platform.arch}, host is ${host.os}/${host.arch}`
     );
   }
-  return host.os === "macos"
-    ? runMacAcceptance({ ...options, receipt })
-    : runWindowsAcceptance({ ...options, receipt });
+  const runner = {
+    macos: runMacAcceptance,
+    windows: runWindowsAcceptance,
+    linux: runLinuxAcceptance,
+  }[host.os];
+  return runner({ ...options, receipt });
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

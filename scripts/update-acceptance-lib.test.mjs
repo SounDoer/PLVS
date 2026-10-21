@@ -4,6 +4,7 @@ import {
   ACCEPTANCE_WARNING,
   acceptanceFeedManifest,
   acceptanceNames,
+  acceptanceProductName,
   acceptanceVersions,
   createAcceptanceReceipt,
   parseFeedFault,
@@ -44,6 +45,7 @@ describe("update acceptance contract", () => {
     ["win32", "x64", "windows-x86_64", "/package.exe"],
     ["darwin", "arm64", "darwin-aarch64", "/package.app.tar.gz"],
     ["darwin", "x64", "darwin-x86_64", "/package.app.tar.gz"],
+    ["linux", "x64", "linux-x86_64-deb", "/package.deb"],
   ])("maps %s/%s to its updater platform", (platform, arch, key, packageEndpoint) => {
     expect(platformDescriptor(platform, arch)).toMatchObject({ key, packageEndpoint });
   });
@@ -74,6 +76,22 @@ describe("update acceptance contract", () => {
     ["missing warning", { warning: "safe enough" }, /warning/],
   ])("rejects %s", (_label, override, message) => {
     expect(() => validateAcceptanceReceipt(receipt(override), "/tmp/acceptance")).toThrow(message);
+  });
+
+  it("keeps the stable package name only for Linux, whose updater requires it", () => {
+    const linux = receipt({
+      platform: { os: "linux", arch: "x86_64", key: "linux-x86_64-deb" },
+      productName: "PLVS",
+    });
+    expect(validateAcceptanceReceipt(linux, "/tmp/acceptance").descriptor.os).toBe("linux");
+    expect(acceptanceProductName(sourceSha, "linux")).toBe("PLVS");
+    expect(acceptanceProductName(sourceSha, "macos")).toBe("PLVS Update Test 01234567");
+    expect(() => validateAcceptanceReceipt(receipt({ productName: "PLVS" }), "/tmp/a")).toThrow(
+      /productName/
+    );
+    expect(() =>
+      validateAcceptanceReceipt({ ...linux, identity: "com.soundoer.plvs" }, "/tmp/acceptance")
+    ).toThrow(/identity/);
   });
 
   it("generates valid, stale-signature, and wrong-version feed manifests", () => {

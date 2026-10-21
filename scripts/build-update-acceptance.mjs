@@ -17,6 +17,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   acceptanceNames,
+  acceptanceProductName,
   acceptanceRoot,
   acceptanceVersions,
   createAcceptanceReceipt,
@@ -59,7 +60,10 @@ export function assertCommittedSource(repository, invoke = run) {
 
 export function acceptanceBuildLayout({ repository, sourceSha, platform, arch }) {
   const descriptor = platformDescriptor(platform, arch);
-  const names = acceptanceNames(sourceSha);
+  const names = {
+    ...acceptanceNames(sourceSha),
+    productName: acceptanceProductName(sourceSha, descriptor.os),
+  };
   const root = acceptanceRoot(repository, sourceSha);
   return {
     descriptor,
@@ -220,6 +224,9 @@ export function platformTargetTriple(descriptor) {
   if (descriptor.os === "macos" && descriptor.arch === "x86_64") {
     return "x86_64-apple-darwin";
   }
+  if (descriptor.os === "linux" && descriptor.arch === "x86_64") {
+    return "x86_64-unknown-linux-gnu";
+  }
   throw new Error(`Unsupported acceptance target: ${descriptor.os}/${descriptor.arch}`);
 }
 
@@ -233,7 +240,7 @@ export function macUpdaterArchiveCommand(app, updater, out) {
 function buildFrontend({ repository, snapshot, descriptor, out }, invoke = run) {
   invoke(process.execPath, [path.join(repository, "node_modules/vite/bin/vite.js"), "build"], {
     cwd: snapshot,
-    env: { TAURI_ENV_PLATFORM: descriptor.os === "windows" ? "windows" : "macos" },
+    env: { TAURI_ENV_PLATFORM: descriptor.os },
     log: path.join(out, "frontend.log"),
   });
   invoke(process.execPath, ["scripts/generate-agent-discovery.mjs"], { cwd: snapshot });
@@ -359,6 +366,58 @@ function buildMacPackage(context, version, out, invoke = run) {
   };
 }
 
+// The stable deb layout (scripts/build-linux-deb.mjs): the CLI as a sidecar, FFmpeg and the
+// privileged update installer under /usr/lib/plvs, and the Polkit action beside them.
+export function linuxDebBundleArgs(tauri) {
+  return [
+    tauri,
+    "build",
+    "--debug",
+    "--bundles",
+    "deb",
+    "--config",
+    "src-tauri/tauri.linux-deb.conf.json",
+    "--config",
+    "src-tauri/tauri.linux-stable-deb.conf.json",
+  ];
+}
+
+function buildLinuxPackage(context, version, out, invoke = run) {
+  const { repository, snapshot, target, names, key } = context;
+  const deb = path.join(out, `${names.productName}_${version}_amd64.deb`);
+  if (!existsSync(deb)) {
+    buildFrontend({ ...context, out }, invoke);
+    buildCli({ ...context, out }, invoke);
+    // build.rs embeds the snapshot's updater key, so this installer trusts only the ephemeral key.
+    invoke(
+      "cargo",
+      [
+        "build",
+        "--manifest-path",
+        "src-tauri/linux-update-installer/Cargo.toml",
+        "--target-dir",
+        target,
+      ],
+      { cwd: snapshot, log: path.join(out, "installer.log") }
+    );
+    const installer = path.join(snapshot, "src-tauri/binaries/plvs-update-installer");
+    copyFileSync(path.join(target, "debug", "plvs-update-installer"), installer);
+    chmodSync(installer, 0o755);
+    const tauri = path.join(repository, "node_modules", "@tauri-apps", "cli", "tauri.js");
+    invoke(process.execPath, linuxDebBundleArgs(tauri), {
+      cwd: snapshot,
+      env: { CARGO_TARGET_DIR: target },
+      log: path.join(out, "bundle.log"),
+    });
+    copyFileSync(
+      path.join(target, "debug/bundle/deb", `${names.productName}_${version}_amd64.deb`),
+      deb
+    );
+    signUpdater({ repository, key, version, file: deb }, invoke);
+  }
+  return { file: deb, bundleSigning: "unsigned-test-deb" };
+}
+
 export function buildUpdateAcceptance({ repository = process.cwd(), invoke = run } = {}) {
   const sourceSha = assertCommittedSource(repository, invoke);
   const layout = acceptanceBuildLayout({
@@ -385,10 +444,12 @@ export function buildUpdateAcceptance({ repository = process.cwd(), invoke = run
     console.log(
       `Building ${version} from ${sourceSha} for ${context.descriptor.key} with ${context.names.identity}`
     );
-    const built =
-      context.descriptor.os === "windows"
-        ? buildWindowsPackage(context, version, out, invoke)
-        : buildMacPackage(context, version, out, invoke);
+    const builder = {
+      windows: buildWindowsPackage,
+      macos: buildMacPackage,
+      linux: buildLinuxPackage,
+    }[context.descriptor.os];
+    const built = builder(context, version, out, invoke);
     bundleSigning ??= built.bundleSigning;
     if (bundleSigning !== built.bundleSigning)
       throw new Error("Bundle signing mode changed mid-build");
@@ -410,20 +471,26 @@ export function buildUpdateAcceptance({ repository = process.cwd(), invoke = run
     sourceSha,
     platform: context.descriptor,
     versions,
-    substitutions:
-      context.descriptor.os === "windows"
-        ? [
-            "application identity and registry namespace",
-            "version",
-            "ephemeral signing key and loopback-only HTTP feed",
-            "debug profile with embedded frontend; zlib installer compression",
-          ]
-        : [
-            "application identity and bundle identifier",
-            "version",
-            "ephemeral signing key and loopback-only HTTP feed",
-            "debug profile with embedded frontend; isolated app, DMG, and updater archive",
-          ],
+    substitutions: {
+      windows: [
+        "application identity and registry namespace",
+        "version",
+        "ephemeral signing key and loopback-only HTTP feed",
+        "debug profile with embedded frontend; zlib installer compression",
+      ],
+      macos: [
+        "application identity and bundle identifier",
+        "version",
+        "ephemeral signing key and loopback-only HTTP feed",
+        "debug profile with embedded frontend; isolated app, DMG, and updater archive",
+      ],
+      linux: [
+        "application identity only; the stable plvs package and its fixed system paths are kept (ADR 0038)",
+        "version",
+        "ephemeral signing key, also embedded in the privileged update installer, and loopback-only HTTP feed",
+        "debug profile with embedded frontend; installed through APT on the runner and restored afterwards",
+      ],
+    }[context.descriptor.os],
     bundleSigning,
   });
   validateAcceptanceReceipt(receipt, context.root);

@@ -49,6 +49,14 @@ export function platformDescriptor(platform = process.platform, arch = process.a
       packageEndpoint: "/package.app.tar.gz",
     };
   }
+  if (platform === "linux" && arch === "x64") {
+    return {
+      os: "linux",
+      arch: "x86_64",
+      key: "linux-x86_64-deb",
+      packageEndpoint: "/package.deb",
+    };
+  }
   throw new Error(`Unsupported update acceptance platform: ${platform}/${arch}`);
 }
 
@@ -60,6 +68,12 @@ export function acceptanceNames(sourceSha) {
     identity: `${ACCEPTANCE_IDENTITY_PREFIX}${short}`,
     productName: `${ACCEPTANCE_PRODUCT_PREFIX}${short}`,
   };
+}
+
+// Linux installs updates only for the APT-owned `plvs` package at /usr/bin/plvs (ADR 0034), so its
+// acceptance packages keep the stable product and package name and isolate only the identity.
+export function acceptanceProductName(sourceSha, os) {
+  return os === "linux" ? "PLVS" : acceptanceNames(sourceSha).productName;
 }
 
 export function acceptanceVersions(baseVersion) {
@@ -118,7 +132,7 @@ export function createAcceptanceReceipt({
     schemaVersion: ACCEPTANCE_SCHEMA_VERSION,
     sourceSha,
     identity: names.identity,
-    productName: names.productName,
+    productName: acceptanceProductName(sourceSha, descriptor.os),
     feed: { host: "127.0.0.1", port },
     platform: { os: descriptor.os, arch: descriptor.arch, key: descriptor.key },
     versions,
@@ -137,7 +151,6 @@ export function validateAcceptanceReceipt(receipt, root) {
     fail("sourceSha must be a full lowercase Git SHA");
   const names = acceptanceNames(receipt.sourceSha);
   if (receipt.identity !== names.identity) fail("identity does not match sourceSha");
-  if (receipt.productName !== names.productName) fail("productName does not match sourceSha");
   if (receipt.feed?.host !== "127.0.0.1") fail("feed host must be 127.0.0.1");
   if (
     !Number.isInteger(receipt.feed?.port) ||
@@ -153,6 +166,9 @@ export function validateAcceptanceReceipt(receipt, root) {
     fail(error.message);
   }
   if (receipt.platform.key !== descriptor.key) fail("platform key does not match os and arch");
+  if (receipt.productName !== acceptanceProductName(receipt.sourceSha, descriptor.os)) {
+    fail("productName does not match sourceSha and platform");
+  }
   if (!Array.isArray(receipt.versions) || receipt.versions.length !== 2) {
     fail("versions must contain exactly two packages");
   }

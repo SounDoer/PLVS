@@ -1,0 +1,119 @@
+#!/bin/bash
+# Root side of Linux update acceptance (ADR 0038). Installed once by the maintainer as
+# /usr/local/libexec/plvs-update-acceptance-package and reachable only through pkexec with the
+# Polkit action com.soundoer.plvs.update-acceptance. It changes nothing but the `plvs` package:
+#
+#   install <package.deb>  install an acceptance deb offline; the first install of a series also
+#                          records what the machine had (nothing, or a repacked copy of the
+#                          installed PLVS) and prints it as `original: absent|<version>`
+#   restore                put that recorded state back and forget it; a no-op without a record
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+umask 077
+
+STATE_DIR=/var/lib/plvs-update-acceptance
+STATE="$STATE_DIR/original"
+BACKUP_DIR="$STATE_DIR/backup"
+APT=(apt-get -y -o DPkg::Lock::Timeout=300 --no-download)
+
+fail() {
+  echo "$*" >&2
+  exit 2
+}
+
+[[ $EUID -eq 0 ]] || fail "Run this through pkexec."
+
+installed_version() {
+  local line
+  line=$(dpkg-query --show --showformat='${Status}|${Version}' plvs 2>/dev/null) || return 0
+  [[ ${line%%|*} == "install ok installed" ]] && echo "${line#*|}"
+  return 0
+}
+
+refuse_running_plvs() {
+  local exe
+  for proc in /proc/[0-9]*; do
+    exe=$(readlink "$proc/exe" 2>/dev/null) || continue
+    if [[ $exe == /usr/bin/plvs || $exe == "/usr/bin/plvs (deleted)" ]]; then
+      fail "PLVS is running (PID ${proc#/proc/}). Quit it before update acceptance changes the package."
+    fi
+  done
+}
+
+require_version() {
+  local actual
+  actual=$(installed_version)
+  [[ $actual == "$1" ]] || fail "APT left plvs at '${actual:-absent}', expected '$1'."
+}
+
+record_original() {
+  [[ -e $STATE ]] && return 0
+  local version
+  version=$(installed_version)
+  mkdir -p "$STATE_DIR"
+  if [[ -z $version ]]; then
+    echo absent >"$STATE.tmp"
+  else
+    command -v dpkg-repack >/dev/null ||
+      fail "PLVS $version is installed. Install dpkg-repack (sudo apt install dpkg-repack) so acceptance can restore it."
+    rm -rf "$BACKUP_DIR"
+    mkdir "$BACKUP_DIR"
+    (cd "$BACKUP_DIR" && dpkg-repack plvs >/dev/null) || fail "dpkg-repack could not save PLVS $version."
+    echo "$version" >"$STATE.tmp"
+  fi
+  mv "$STATE.tmp" "$STATE"
+}
+
+install_package() {
+  local source=$1
+  [[ $source == /* && -f $source ]] || fail "Expected an absolute path to a deb file."
+  refuse_running_plvs
+  record_original
+  # Inspect and install a root-owned copy, so the file cannot change between the two.
+  local work
+  work=$(mktemp -d /var/tmp/plvs-update-acceptance-XXXXXX)
+  trap 'rm -rf "$work"' EXIT
+  cp -- "$source" "$work/plvs.deb"
+  [[ $(dpkg-deb --field "$work/plvs.deb" Package) == plvs ]] || fail "The deb is not the plvs package."
+  [[ $(dpkg-deb --field "$work/plvs.deb" Architecture) == amd64 ]] || fail "The deb is not amd64."
+  local version
+  version=$(dpkg-deb --field "$work/plvs.deb" Version)
+  "${APT[@]}" --reinstall --allow-downgrades install "$work/plvs.deb" >&2
+  require_version "$version"
+  echo "original: $(cat "$STATE")"
+}
+
+restore_original() {
+  [[ -e $STATE ]] || return 0
+  refuse_running_plvs
+  local original
+  original=$(cat "$STATE")
+  if [[ $original == absent ]]; then
+    if [[ -n $(installed_version) ]] || dpkg-query --show plvs >/dev/null 2>&1; then
+      "${APT[@]}" purge plvs >&2
+    fi
+    [[ -z $(installed_version) ]] || fail "APT did not remove plvs."
+  else
+    local backup
+    backup=$(find "$BACKUP_DIR" -maxdepth 1 -name 'plvs_*.deb' -print -quit)
+    [[ -n $backup ]] || fail "The saved PLVS $original package is missing from $BACKUP_DIR."
+    "${APT[@]}" --reinstall --allow-downgrades install "$backup" >&2
+    require_version "$original"
+  fi
+  rm -rf "$BACKUP_DIR" "$STATE"
+  echo "restored: $original"
+}
+
+case "${1:-}" in
+  install)
+    [[ $# -eq 2 ]] || fail "Usage: plvs-update-acceptance-package install <package.deb>"
+    install_package "$2"
+    ;;
+  restore)
+    [[ $# -eq 1 ]] || fail "Usage: plvs-update-acceptance-package restore"
+    restore_original
+    ;;
+  *)
+    fail "Usage: plvs-update-acceptance-package install <package.deb> | restore"
+    ;;
+esac

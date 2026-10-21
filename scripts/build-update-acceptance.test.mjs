@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   acceptanceBuildLayout,
   assertCommittedSource,
+  linuxDebBundleArgs,
   macUpdaterArchiveCommand,
   platformTargetTriple,
   replaceCargoWorkspaceVersion,
@@ -25,6 +26,27 @@ describe("update acceptance builder", () => {
     expect(mac.names.identity).toBe("com.soundoer.plvs.updatetest.h01234567");
   });
 
+  it("keeps the stable plvs package name on Linux and its identity isolated", () => {
+    const linux = acceptanceBuildLayout({
+      repository: "/repo",
+      sourceSha: sha,
+      platform: "linux",
+      arch: "x64",
+    });
+    expect(linux.names).toMatchObject({
+      productName: "PLVS",
+      identity: "com.soundoer.plvs.updatetest.h01234567",
+    });
+  });
+
+  it("bundles the Linux deb with the stable package layout", () => {
+    const args = linuxDebBundleArgs("tauri.js");
+    expect(args.slice(0, 5)).toEqual(["tauri.js", "build", "--debug", "--bundles", "deb"]);
+    expect(args.join(" ")).toContain(
+      "--config src-tauri/tauri.linux-deb.conf.json --config src-tauri/tauri.linux-stable-deb.conf.json"
+    );
+  });
+
   it("refuses to build a receipt from a dirty source tree", () => {
     const calls = [];
     const invoke = (command, args) => {
@@ -44,6 +66,7 @@ describe("update acceptance builder", () => {
     [{ os: "windows", arch: "x86_64" }, "x86_64-pc-windows-msvc"],
     [{ os: "macos", arch: "aarch64" }, "aarch64-apple-darwin"],
     [{ os: "macos", arch: "x86_64" }, "x86_64-apple-darwin"],
+    [{ os: "linux", arch: "x86_64" }, "x86_64-unknown-linux-gnu"],
   ])("derives the native target triple from %o", (descriptor, expected) => {
     expect(platformTargetTriple(descriptor)).toBe(expected);
   });

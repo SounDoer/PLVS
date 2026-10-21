@@ -4,7 +4,9 @@
 # A release call requires the run only when the product update chain changed. The nightly schedule
 # and standalone dispatches also watch the acceptance harness, and a scheduled run tests main's tip
 # only when either changed since the last successful run, so a broken harness surfaces before
-# release day.
+# release day. Linux has no isolated install location: its job installs the real `plvs` package
+# through a root-owned tool the maintainer authorized once, and restores the machine afterwards
+# (ADR 0038).
 name: Update Acceptance
 
 on:
@@ -99,6 +101,8 @@ jobs:
             labels: [self-hosted, plvs-rig, windows]
           - platform: macos
             labels: [self-hosted, plvs-rig, macos]
+          - platform: linux
+            labels: [self-hosted, plvs-rig, linux]
     runs-on: ${{ matrix.labels }}
     timeout-minutes: 180
     defaults:
@@ -171,11 +175,18 @@ jobs:
         with:
           name: update-acceptance-macos
           path: update-evidence/macos
-      - name: Verify both exact-SHA evidence sets
+      - name: Download Linux evidence
+        if: env.REQUIRED == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: update-acceptance-linux
+          path: update-evidence/linux
+      - name: Verify all three exact-SHA evidence sets
         if: env.REQUIRED == 'true'
         run: |
           node scripts/verify-update-acceptance.mjs update-evidence/windows
           node scripts/verify-update-acceptance.mjs update-evidence/macos
+          node scripts/verify-update-acceptance.mjs update-evidence/linux
       - name: Record skipped acceptance
         if: env.REQUIRED != 'true'
         run: echo "Updater dependencies did not change; packaged update acceptance is not required."
