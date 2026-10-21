@@ -2,7 +2,8 @@ import { readFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { validateWalkthroughManifest } from "./ui-visual-walkthrough-lib.mjs";
+import { EVENT_FIXTURES, validateWalkthroughManifest } from "./ui-visual-walkthrough-lib.mjs";
+import { DEVELOPMENT_EVENT_FIXTURE_NAMES } from "../src/agentControl/developmentFixtureProtocol.js";
 
 const scripts = dirname(fileURLToPath(import.meta.url));
 
@@ -60,17 +61,13 @@ describe("real PLVS visual automation boundary", () => {
       await readFile(join(scripts, "ui-walkthrough", "development-fixtures.example.json"), "utf8")
     );
     expect(validateWalkthroughManifest(manifest)).toEqual([]);
-    expect(
-      manifest.scenarios.filter(({ ui }) => ui.kind === "eventFixture").map(({ ui }) => ui.name)
-    ).toEqual([
-      "update.available",
-      "close-confirmation.requested",
-      "crash-report.pending",
-      "library-conflict.pending",
-    ]);
-    expect(
-      manifest.scenarios.filter(({ ui }) => ui.kind === "eventFixture").map(({ ui }) => ui.action)
-    ).toEqual(["cancel", "cancel", "close", "reset"]);
+    const fixtureScenarios = manifest.scenarios.filter(({ ui }) => ui.kind === "eventFixture");
+    expect(fixtureScenarios.map(({ ui }) => ui.name).sort()).toEqual(
+      [...DEVELOPMENT_EVENT_FIXTURE_NAMES].sort()
+    );
+    for (const { ui } of fixtureScenarios) {
+      expect(ui.action, ui.name).toBe(EVENT_FIXTURES[ui.name].action);
+    }
     expect(manifest.scenarios.map(({ id }) => id)).toContain("file-analysis");
     expect(manifest.scenarios.map(({ ui }) => ui.kind)).toContain("themeEditor");
   });

@@ -32,7 +32,7 @@ const DURABLE_FIELDS = Object.freeze({
   ]),
 });
 const SCREENSHOT_TARGETS = new Set(["main", "workspace", "panel", "dock-header", "dock-editor"]);
-const EVENT_FIXTURES = Object.freeze({
+export const EVENT_FIXTURES = Object.freeze({
   "update.available": { surfaceKind: "update", phase: "idle", action: "cancel" },
   "crash-report.pending": { surfaceKind: "crashReport", phase: "decision", action: "close" },
   "close-confirmation.requested": {
