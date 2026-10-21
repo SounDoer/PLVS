@@ -54,4 +54,7 @@ changing `release.yml`, so this does not widen who can sign.
 
 Contract tests cover the dispatch platforms, the gating of the Draft on every selected platform,
 the macOS signing and smoke steps, the Linux executable names and coexistence check, and the
-dispatch script.
+dispatch script. Run 39611316605 (`platform=all`, commit `14ae9bf`) published the immutable,
+attested Pre-release `preview-14ae9bf-39611316605` with all four packages: the Windows installer
+smoke passed, the macOS DMG was notarized and passed its Preview smoke, and the Ubuntu clean system
+installed Preview beside a stable deb, launched both, removed Preview and launched stable again.
