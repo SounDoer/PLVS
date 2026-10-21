@@ -14,7 +14,6 @@ umask 077
 STATE_DIR=/var/lib/plvs-update-acceptance
 STATE="$STATE_DIR/original"
 BACKUP_DIR="$STATE_DIR/backup"
-APT=(apt-get -y -o DPkg::Lock::Timeout=300 --no-download)
 
 fail() {
   echo "$*" >&2
@@ -22,6 +21,15 @@ fail() {
 }
 
 [[ $EUID -eq 0 ]] || fail "Run this through pkexec."
+
+WORK=$(mktemp -d /var/tmp/plvs-update-acceptance-XXXXXX)
+trap 'rm -rf "$WORK"' EXIT
+# Offline APT: with no package sources it can install only the given deb and resolve dependencies
+# only from what is already installed. (`--no-download` rejects local debs on apt 2.8.)
+: >"$WORK/sources.list"
+mkdir "$WORK/sources.list.d"
+APT=(apt-get -y -o DPkg::Lock::Timeout=300 -o "Dir::Etc::SourceList=$WORK/sources.list"
+  -o "Dir::Etc::SourceParts=$WORK/sources.list.d")
 
 installed_version() {
   local line
@@ -70,15 +78,12 @@ install_package() {
   refuse_running_plvs
   record_original
   # Inspect and install a root-owned copy, so the file cannot change between the two.
-  local work
-  work=$(mktemp -d /var/tmp/plvs-update-acceptance-XXXXXX)
-  trap 'rm -rf "$work"' EXIT
-  cp -- "$source" "$work/plvs.deb"
-  [[ $(dpkg-deb --field "$work/plvs.deb" Package) == plvs ]] || fail "The deb is not the plvs package."
-  [[ $(dpkg-deb --field "$work/plvs.deb" Architecture) == amd64 ]] || fail "The deb is not amd64."
+  cp -- "$source" "$WORK/plvs.deb"
+  [[ $(dpkg-deb --field "$WORK/plvs.deb" Package) == plvs ]] || fail "The deb is not the plvs package."
+  [[ $(dpkg-deb --field "$WORK/plvs.deb" Architecture) == amd64 ]] || fail "The deb is not amd64."
   local version
-  version=$(dpkg-deb --field "$work/plvs.deb" Version)
-  "${APT[@]}" --reinstall --allow-downgrades install "$work/plvs.deb" >&2
+  version=$(dpkg-deb --field "$WORK/plvs.deb" Version)
+  "${APT[@]}" --reinstall --allow-downgrades install "$WORK/plvs.deb" >&2
   require_version "$version"
   echo "original: $(cat "$STATE")"
 }

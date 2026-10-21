@@ -60,7 +60,9 @@ install_files() {
 verify() {
   [[ $EUID -ne 0 ]] || fail "Run verify as the runner account, without sudo."
   local ok=true
-  for file in "$TOOL" "$POLICY" "$RULE"; do
+  # The rule itself is unreadable to this account (rules.d is root:polkitd 0750); Polkit's answer
+  # below is the check that it is in place.
+  for file in "$TOOL" "$POLICY"; do
     if [[ $(stat -c %U "$file" 2>/dev/null) != root ]]; then
       echo "missing or not root-owned: $file"
       ok=false
