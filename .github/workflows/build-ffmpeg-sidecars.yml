@@ -23,7 +23,7 @@ env:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -81,7 +81,7 @@ jobs:
 
   build-macos:
     needs: validate
-    runs-on: macos-latest
+    runs-on: macos-26
     env:
       MIN_MACOS: "14.2"
     steps:
@@ -126,7 +126,7 @@ jobs:
 
   build-windows:
     needs: validate
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     env:
       WINLIBS_SHA256: "d5dbafc4a170e762ca6143151ec918fb9e2c72736fb14cd704abebc6bdd5276a"
       WINLIBS_URL: "https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-14.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r2.zip"
@@ -184,7 +184,7 @@ jobs:
 
   publish:
     needs: [validate, build-linux, build-macos, build-windows]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

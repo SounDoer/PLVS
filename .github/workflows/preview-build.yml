@@ -108,7 +108,7 @@ jobs:
   build-windows-preview:
     if: inputs.platform == 'windows'
     needs: validate
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     permissions:
       contents: read
     steps:
@@ -248,7 +248,7 @@ jobs:
   prepare-draft:
     if: ${{ !cancelled() && needs.validate.result == 'success' && (needs.build-windows-preview.result == 'success' || needs.build-linux-preview.result == 'success') }}
     needs: [validate, build-windows-preview, build-linux-preview]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
@@ -341,7 +341,7 @@ jobs:
   publish-preview:
     if: ${{ !cancelled() && needs.validate.result == 'success' && needs.prepare-draft.result == 'success' }}
     needs: [validate, prepare-draft]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:

@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -406,7 +406,7 @@ jobs:
         release-package-smoke,
         update-acceptance,
       ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
@@ -500,7 +500,7 @@ jobs:
 
   publish-release:
     needs: prepare-draft
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: release
       url: https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.version }}
@@ -558,7 +558,7 @@ jobs:
 
   deploy-website:
     needs: publish-release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
       contents: read
