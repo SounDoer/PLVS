@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Agent Control visual recording works in the Ubuntu packages. It now encodes with Ubuntu's own
+  FFmpeg instead of the audio-only copy PLVS bundles for file analysis, which made every packaged
+  Linux recording fail. When that FFmpeg or its H.264 encoder is missing, `visual describe` and
+  `visual recording start` say so with `recordingEncoderUnavailable` and the remedy
+  `sudo apt install ffmpeg`, and `plvs-cli doctor` shows a `visual-recording-encoder` check.
+
 ### Changed
 
 - The built-in Preset is now named **PLVS Default**, matching the built-in Loudness Profile in PLVS

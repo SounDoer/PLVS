@@ -2,10 +2,10 @@
 
 Visual Capture lets an agent save the pixels currently rendered by a running PLVS window. It is
 available for screenshots and recordings on Windows, macOS, and experimental Linux builds.
-Screenshots are PNG files; recordings are H.264 MP4 files. Windows and macOS support either no
-audio or the same Live source PCM that PLVS measures. Linux recording is silent and excludes the
-system pointer. Visual Capture does not independently capture File-analysis audio, microphones,
-arbitrary system audio, other windows, or raw canvas/DOM data.
+Screenshots are PNG files; recordings are H.264 MP4 files. Every platform supports either no
+audio or the same Live source PCM that PLVS measures. Linux recording excludes the system pointer
+and needs the distribution FFmpeg (see Audio). Visual Capture does not independently capture
+File-analysis audio, microphones, arbitrary system audio, other windows, or raw canvas/DOM data.
 
 ## Commands
 
@@ -15,7 +15,10 @@ Command syntax and arguments are in [`generated/commands.md`](generated/commands
 availability, formats, codecs, audio sources, cursor modes, frame rates, duration and size limits,
 recording permission, and the current global revision. `recording.permission` is `granted`,
 `required`, or `unsupported`; discovery never requests permission. It creates no capture session or
-artifact.
+artifact. `recording.unavailable` is `null` while recording is available; otherwise it is
+`{ reason, message, details }`, the same failure a recording start would return. Its `reason` is
+`visualUnavailable`, or `recordingEncoderUnavailable` on Linux, where `details` holds
+`encoderPath`, `missingEncoders`, and the `remedy` command.
 
 ## Targets and pixels
 
@@ -133,10 +136,17 @@ does not enable ScreenCaptureKit system-audio capture. The public source meaning
 metadata are therefore the same as on Windows.
 
 Linux feeds fixed-canvas WebKitGTK frames and the shared measured-source PCM timeline to the
-package-private FFmpeg bundled by the Ubuntu package. Video and audio use separate inherited
-pipes so encoder backpressure never reaches the capture callback. The resulting measured-source
-MP4 uses the same H.264 plus AAC shape and interruption metadata as Windows and macOS; explicit
-`--audio none` remains video-only.
+distribution FFmpeg at `/usr/bin/ffmpeg`, never to the audio-only FFmpeg that the Ubuntu package
+bundles for file analysis ([ADR 0037](../adr/0037-linux-recording-uses-distribution-ffmpeg.md)).
+Video and audio use separate inherited pipes so encoder backpressure never reaches the capture
+callback. The resulting measured-source MP4 uses the same H.264 plus AAC shape and interruption
+metadata as Windows and macOS; explicit `--audio none` remains video-only.
+
+PLVS lists that FFmpeg's encoders when it starts and again at each recording start. Without
+libx264, recording is unavailable and start fails with `recordingEncoderUnavailable` before any
+recording exists; without AAC, only `--audio none` is offered. Install Ubuntu's FFmpeg with
+`sudo apt install ffmpeg` and restart PLVS. `PLVS_RECORDING_FFMPEG` can name another absolute
+FFmpeg executable for development and tests; `PLVS_FFMPEG_DIR` does not affect recording.
 
 ## Artifacts and errors
 
@@ -175,6 +185,8 @@ Stable Visual Capture errors are:
   paint-settlement failures;
 - `captureBusy` and `captureFailed` for screenshot/recording resource and native capture failures;
 - `recordingNotFound`, `recordingFailed`, and `audioUnavailable` for lifecycle or audio failures;
+- `recordingEncoderUnavailable` when Linux has no usable distribution FFmpeg encoder; `details`
+  names the missing encoders and the remedy;
 - `artifactExpired` and `artifactWriteFailed` for staged-media failures;
 - `waitLimitReached` when the shared bounded wait pool is full.
 

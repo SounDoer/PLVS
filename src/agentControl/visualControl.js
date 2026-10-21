@@ -80,6 +80,36 @@ export function normalizeVisualTarget(value) {
   return { ok: true, target: { kind: value.kind } };
 }
 
+const RECORDING_UNAVAILABLE_REASONS = Object.freeze([
+  "visualUnavailable",
+  "recordingEncoderUnavailable",
+]);
+
+/**
+ * Why recording is unavailable, as the native layer reported it, or a generic platform reason.
+ * The same object is the failure a recording start returns, so describe and start agree.
+ */
+export function recordingUnavailability(platform) {
+  if (platform?.recording?.available === true) return null;
+  const native = platform?.recording?.unavailable;
+  if (
+    isPlainJsonObject(native) &&
+    RECORDING_UNAVAILABLE_REASONS.includes(native.reason) &&
+    typeof native.message === "string"
+  ) {
+    return {
+      reason: native.reason,
+      message: native.message,
+      details: isPlainJsonObject(native.details) ? native.details : null,
+    };
+  }
+  return {
+    reason: "visualUnavailable",
+    message: "Visual recording is unavailable on this platform.",
+    details: null,
+  };
+}
+
 function retainKnown(values, allowed) {
   if (!Array.isArray(values)) return [];
   return allowed.filter((value) => values.includes(value));
@@ -120,6 +150,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
     },
     recording: {
       available: recordingAvailable,
+      unavailable: recordingUnavailability(platform),
       permission,
       targets: recordingTargets,
       container: RECORDING_CONTAINER,

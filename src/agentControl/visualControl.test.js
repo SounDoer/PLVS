@@ -9,6 +9,7 @@ import {
   VISUAL_SCREENSHOT_TARGET_KINDS,
   buildVisualDescription,
   normalizeVisualTarget,
+  recordingUnavailability,
 } from "./visualControl.js";
 
 describe("visual control contract", () => {
@@ -110,6 +111,7 @@ describe("visual control contract", () => {
       },
       recording: {
         available: true,
+        unavailable: null,
         permission: "granted",
         targets: ["main", "workspace"],
         container: "mp4",
@@ -146,6 +148,11 @@ describe("visual control contract", () => {
       screenshot: { available: false, targets: [] },
       recording: {
         available: false,
+        unavailable: {
+          reason: "visualUnavailable",
+          message: "Visual recording is unavailable on this platform.",
+          details: null,
+        },
         permission: "unsupported",
         targets: [],
         audioSources: [],
@@ -154,6 +161,47 @@ describe("visual control contract", () => {
       },
       runtime: { availableScreenshotTargets: [], availableAudioSources: [] },
     });
+  });
+
+  it("passes through a native encoder reason and remedy, and nothing else", () => {
+    const encoderMissing = {
+      platform: "linux",
+      screenshot: { available: true, targets: ["main"] },
+      recording: {
+        available: false,
+        permission: "granted",
+        targets: [],
+        audioSources: [],
+        cursorModes: [],
+        unavailable: {
+          reason: "recordingEncoderUnavailable",
+          message: "Install it with `sudo apt install ffmpeg`, then restart PLVS.",
+          details: {
+            encoderPath: "/usr/bin/ffmpeg",
+            missingEncoders: ["libx264"],
+            remedy: "sudo apt install ffmpeg",
+          },
+        },
+      },
+    };
+    const description = buildVisualDescription({
+      revision: 3,
+      platform: encoderMissing,
+      runtime: { availableScreenshotTargets: ["main"] },
+    });
+    expect(description.screenshot.available).toBe(true);
+    expect(description.recording.available).toBe(false);
+    expect(description.recording.unavailable).toEqual(encoderMissing.recording.unavailable);
+    expect(recordingUnavailability(encoderMissing)).toEqual(encoderMissing.recording.unavailable);
+
+    const unknownReason = {
+      ...encoderMissing,
+      recording: { ...encoderMissing.recording, unavailable: { reason: "other", message: "x" } },
+    };
+    expect(recordingUnavailability(unknownReason).reason).toBe("visualUnavailable");
+    expect(
+      recordingUnavailability({ recording: { available: true, unavailable: { reason: "x" } } })
+    ).toBeNull();
   });
 
   it("falls back to silent recording when measured source is unavailable", () => {

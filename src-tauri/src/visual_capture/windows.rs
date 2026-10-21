@@ -40,6 +40,7 @@ impl VisualCapturePlatform for WindowsPlatform {
         targets: vec!["main", "workspace"],
         audio_sources: vec!["none", "measuredSource"],
         cursor_modes: vec!["none", "visible"],
+        unavailable: None,
       },
     }
   }

@@ -28,7 +28,9 @@ Start PLVS and enable **Agent Control** in Settings. Then discover the available
 `plvs-cli capabilities --json` and read the app's current state with `plvs-cli inspect --json`.
 Linux builds support PNG screenshots and H.264 MP4 recording of the visible PLVS
 WebView, including optional AAC audio from the measured Live source. Keep the display session
-unlocked and the window visible; Linux does not capture the system pointer.
+unlocked and the window visible; Linux does not capture the system pointer. Recording on Linux uses
+Ubuntu's own FFmpeg, which PLVS does not install: run `sudo apt install ffmpeg`, then restart PLVS.
+`plvs-cli doctor` shows whether recording is available.
 
 Queries return a global revision. Every change requires it, for example:
 

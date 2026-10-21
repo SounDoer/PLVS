@@ -65,6 +65,8 @@ impl ScreenshotCaptureState {
 pub struct NativeCaptureError {
   reason: &'static str,
   message: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  details: Option<serde_json::Value>,
 }
 
 impl NativeCaptureError {
@@ -72,6 +74,7 @@ impl NativeCaptureError {
     Self {
       reason,
       message: message.into(),
+      details: None,
     }
   }
 
@@ -81,6 +84,16 @@ impl NativeCaptureError {
 
   fn recording(reason: &'static str, message: impl Into<String>) -> Self {
     Self::new(reason, message)
+  }
+}
+
+impl From<recording::system_ffmpeg::EncoderUnavailable> for NativeCaptureError {
+  fn from(value: recording::system_ffmpeg::EncoderUnavailable) -> Self {
+    Self {
+      reason: value.reason,
+      message: value.message,
+      details: serde_json::to_value(value.details).ok(),
+    }
   }
 }
 
@@ -109,9 +122,12 @@ fn platform_capabilities() -> PlatformCapabilities {
   }
 }
 
+/// Async so that Linux's encoder probe, which runs FFmpeg once, never blocks the main thread.
 #[tauri::command]
-pub fn visual_capture_capabilities() -> PlatformCapabilities {
-  platform_capabilities()
+pub async fn visual_capture_capabilities() -> PlatformCapabilities {
+  tauri::async_runtime::spawn_blocking(platform_capabilities)
+    .await
+    .unwrap_or_else(|_| platform::UnsupportedPlatform.capabilities())
 }
 
 #[tauri::command]
@@ -227,6 +243,25 @@ pub async fn visual_recording_start(
   {
     macos::request_recording_permission().map_err(NativeCaptureError::from)?;
   }
+  // Probe again rather than trust the boot-time capabilities: FFmpeg may have been removed since.
+  // A missing encoder is refused before a recording record exists, like the File-audio check.
+  #[cfg(target_os = "linux")]
+  let recording_ffmpeg = {
+    let probe = tauri::async_runtime::spawn_blocking(recording::system_ffmpeg::probe)
+      .await
+      .map_err(|_| {
+        NativeCaptureError::recording(
+          "recordingFailed",
+          "The recording encoder probe did not finish.",
+        )
+      })?;
+    if let Some(unavailable) =
+      probe.unavailable(audio_source == RecordingAudioSource::MeasuredSource)
+    {
+      return Err(unavailable.into());
+    }
+    probe.path
+  };
   let (width, height) = output_canvas(&request)?;
   let created = controller
     .registry()
@@ -504,6 +539,7 @@ pub async fn visual_recording_start(
     let recording_id = created.recording_id.clone();
     let session = recording::linux::begin_recording(
       app,
+      recording_ffmpeg,
       recording_id.clone(),
       width,
       height,
@@ -617,24 +653,23 @@ mod tests {
         target_os = "linux"
       ))
     );
-    assert_eq!(
-      capabilities.recording.available,
-      cfg!(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "linux"
-      ))
-    );
-    assert_eq!(
-      capabilities.recording.cursor_modes,
-      if cfg!(any(target_os = "windows", target_os = "macos")) {
-        vec!["none", "visible"]
-      } else if cfg!(target_os = "linux") {
-        vec!["none"]
-      } else {
-        Vec::new()
-      }
-    );
+    // Linux recording depends on the host's distribution FFmpeg; its mapping is tested with
+    // fixed probe results in `recording::system_ffmpeg`.
+    if !cfg!(target_os = "linux") {
+      assert_eq!(
+        capabilities.recording.available,
+        cfg!(any(target_os = "windows", target_os = "macos"))
+      );
+      assert_eq!(
+        capabilities.recording.cursor_modes,
+        if cfg!(any(target_os = "windows", target_os = "macos")) {
+          vec!["none", "visible"]
+        } else {
+          Vec::new()
+        }
+      );
+      assert_eq!(capabilities.recording.unavailable, None);
+    }
   }
 
   #[test]

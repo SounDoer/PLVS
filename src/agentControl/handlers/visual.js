@@ -1,4 +1,4 @@
-import { buildVisualDescription } from "../visualControl.js";
+import { buildVisualDescription, recordingUnavailability } from "../visualControl.js";
 import { visualSemanticFailure } from "../bridge/failures.js";
 import { measuredAudioState } from "../bridge/signatures.js";
 
@@ -88,9 +88,8 @@ async function screenshot(ctx) {
 async function startRecording(ctx) {
   const { request, requestId, clock, visual } = ctx;
   const visualControl = ctx.live().visual;
-  if (visualControl?.platformCapabilities?.recording?.available !== true) {
-    throw visualSemanticFailure({ reason: "visualUnavailable" });
-  }
+  const unavailable = recordingUnavailability(visualControl?.platformCapabilities);
+  if (unavailable) throw visualSemanticFailure(unavailable);
   const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
   if (!availableTargets.includes(request.params.target.kind)) {
     throw visualSemanticFailure({ reason: "targetUnavailable" });

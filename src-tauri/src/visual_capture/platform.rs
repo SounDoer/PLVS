@@ -5,6 +5,8 @@ use std::pin::Pin;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
+use super::recording::system_ffmpeg::EncoderUnavailable;
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlatformCapabilities {
@@ -28,6 +30,8 @@ pub struct RecordingCapabilities {
   pub targets: Vec<&'static str>,
   pub audio_sources: Vec<&'static str>,
   pub cursor_modes: Vec<&'static str>,
+  /// Why recording is unavailable and how to fix it, when a fix exists; `null` otherwise.
+  pub unavailable: Option<EncoderUnavailable>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -144,6 +148,7 @@ impl VisualCapturePlatform for UnsupportedPlatform {
         targets: Vec::new(),
         audio_sources: Vec::new(),
         cursor_modes: Vec::new(),
+        unavailable: None,
       },
     }
   }

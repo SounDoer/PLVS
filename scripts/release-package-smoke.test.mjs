@@ -15,6 +15,7 @@ import {
   installedPackageNames,
   missingDebDependencies,
   parseArgs,
+  requireRecordingScenario,
   selectRigDevice,
   stagedLayout,
 } from "./release-package-smoke.mjs";
@@ -129,6 +130,24 @@ describe("release-package smoke", () => {
     expect(judgeTone(measurement({ peaks: [-26, -20] }))).toHaveLength(2);
     expect(judgeTone(measurement({ integrated: -28 })).join()).toMatch(/expected -22\.04/);
     expect(judgeTone(measurement({ state: "stopped" })).join()).toMatch(/not running/);
+  });
+
+  it("makes unavailable recording a rig problem on Linux and a package failure elsewhere", () => {
+    const unsupported = {
+      id: "silent-recording",
+      status: "unsupported",
+      observations: ["Visual recording is unavailable (recordingEncoderUnavailable): no libx264."],
+    };
+    const passed = { id: "screenshot", status: "passed", observations: [] };
+    const [, linux] = requireRecordingScenario("linux", [passed, unsupported]);
+    expect(linux.status).toBe("rigUnavailable");
+    expect(linux.observations[0]).toBe(unsupported.observations[0]);
+    expect(linux.observations[1]).toContain("sudo apt install ffmpeg");
+    for (const platform of ["windows", "macos"]) {
+      expect(requireRecordingScenario(platform, [unsupported])[0].status).toBe("failed");
+    }
+    const recorded = { ...unsupported, status: "passed" };
+    expect(requireRecordingScenario("linux", [passed, recorded])).toEqual([passed, recorded]);
   });
 
   it("names each unmet deb dependency group", () => {

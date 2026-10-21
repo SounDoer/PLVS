@@ -273,6 +273,35 @@ describe("desktop smoke orchestration", () => {
     expect(options.invoke.mock.calls.some(([label]) => label === "ui close")).toBe(true);
   });
 
+  it("records the reported reason and remedy when recording is unavailable", async () => {
+    const options = rig({
+      visual: {
+        screenshot: { available: true },
+        recording: {
+          available: false,
+          unavailable: {
+            reason: "recordingEncoderUnavailable",
+            message: "/usr/bin/ffmpeg has no libx264 encoder.",
+            details: { remedy: "sudo apt install ffmpeg" },
+          },
+        },
+      },
+    });
+    const { evidence } = await runAgentControlSmoke({ ...options, instanceId: "one" });
+    expect(evidence.summary).toBe("incomplete");
+    expect(evidence.scenarios.find(({ id }) => id === "screenshot").status).toBe("passed");
+    expect(evidence.scenarios.find(({ id }) => id === "silent-recording")).toEqual({
+      id: "silent-recording",
+      status: "unsupported",
+      observations: [
+        "Visual recording is unavailable (recordingEncoderUnavailable): /usr/bin/ffmpeg has no libx264 encoder. Remedy: sudo apt install ffmpeg.",
+      ],
+    });
+    expect(options.invoke.mock.calls.some(([label]) => label === "visual recording start")).toBe(
+      false
+    );
+  });
+
   it("accepts a platform that omits gated visual methods and still marks them unsupported", async () => {
     const options = rig({
       methods: [

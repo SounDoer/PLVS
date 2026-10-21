@@ -8,8 +8,11 @@ the GUI under `$XDG_DATA_HOME` or `~/.local/share`. Linux Visual Capture support
 and H.264 MP4 recording of the visible PLVS WebView, with optional AAC audio from the measured Live
 source; it does not capture the system pointer. The Ubuntu deb packages use checksum-verified
 FFmpeg/FFprobe copies under `/usr/lib/plvs/sidecars` (stable) or `/usr/lib/plvs-preview/sidecars`
-(Preview); they neither replace nor depend on `/usr/bin/ffmpeg`. Linux development file analysis
-and visual recording use system FFmpeg/FFprobe selected by the development launcher.
+(Preview) for file analysis; they neither replace nor depend on `/usr/bin/ffmpeg`. Those copies
+contain no video encoder, so Linux recording needs Ubuntu's own FFmpeg: install it with
+`sudo apt install ffmpeg`, then restart PLVS. Without it, screenshots still work and
+`visual describe` reports recording as unavailable with that remedy. Linux development file
+analysis uses system FFmpeg/FFprobe selected by the development launcher.
 
 ```text
 plvs-cli doctor
@@ -295,7 +298,12 @@ plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 
 Live recordings default to the measured source; File recordings default to `none`, and an explicit
 File `measured-source` request fails. Linux advertises only `--cursor none`; its measured-source
-recording uses the same PCM, fixed AAC shape, and gap accounting as Windows and macOS. Recording
+recording uses the same PCM, fixed AAC shape, and gap accounting as Windows and macOS. On Linux,
+recording encodes with `/usr/bin/ffmpeg`; when that lacks the libx264 encoder, `visual describe`
+reports `recording.available: false` with `recording.unavailable`, and `visual recording start`
+fails with `recordingEncoderUnavailable`, naming the missing encoders and the remedy
+`sudo apt install ffmpeg`. `plvs-cli doctor` shows the same result as its
+`visual-recording-encoder` check. Recording
 output is finalized by `wait` or `stop`, not `start`. See
 [Visual Capture](../agent-control/visual.md) for target meaning, revision correlation, audio gaps,
 lifecycle, limits, retention, output-file behavior, and stable errors.

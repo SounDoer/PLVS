@@ -9,9 +9,9 @@ use webkit2gtk::{SnapshotOptions, SnapshotRegion, WebViewExt};
 
 use super::platform::{
   calculate_pixel_crop, CaptureError, CaptureFuture, CapturedImage, CssRect, CssViewport,
-  PlatformCapabilities, RecordingCapabilities, RecordingPermission, ScreenshotCapabilities,
-  ScreenshotRequest, VisualCapturePlatform,
+  PlatformCapabilities, ScreenshotCapabilities, ScreenshotRequest, VisualCapturePlatform,
 };
+use super::recording::system_ffmpeg;
 
 const SNAPSHOT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -41,13 +41,7 @@ impl VisualCapturePlatform for LinuxPlatform {
           "dockUpdate",
         ],
       },
-      recording: RecordingCapabilities {
-        available: true,
-        permission: RecordingPermission::Granted,
-        targets: vec!["main", "workspace"],
-        audio_sources: vec!["none", "measuredSource"],
-        cursor_modes: vec!["none"],
-      },
+      recording: system_ffmpeg::linux_recording_capabilities(&system_ffmpeg::probe()),
     }
   }
 
@@ -265,19 +259,13 @@ mod tests {
   }
 
   #[test]
-  fn linux_capabilities_expose_only_implemented_recording_options() {
+  fn linux_capabilities_follow_the_recording_encoder_probe() {
     let capabilities = LinuxPlatform.capabilities();
     assert!(capabilities.screenshot.available);
-    assert!(capabilities.recording.available);
     assert_eq!(
-      capabilities.recording.permission,
-      RecordingPermission::Granted
+      capabilities.recording,
+      system_ffmpeg::linux_recording_capabilities(&system_ffmpeg::probe())
     );
-    assert_eq!(
-      capabilities.recording.audio_sources,
-      vec!["none", "measuredSource"]
-    );
-    assert_eq!(capabilities.recording.cursor_modes, vec!["none"]);
   }
 
   #[test]

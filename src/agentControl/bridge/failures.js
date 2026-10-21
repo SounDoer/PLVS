@@ -23,6 +23,7 @@ const VISUAL_ERROR_REASONS = new Set([
   "recordingNotFound",
   "audioUnavailable",
   "recordingFailed",
+  "recordingEncoderUnavailable",
   "artifactExpired",
   "waitLimitReached",
 ]);
@@ -44,6 +45,8 @@ export function visualSemanticFailure(error) {
     recordingNotFound: "The recording ID is unknown.",
     audioUnavailable: "The requested recording audio source is unavailable.",
     recordingFailed: "The visual recording failed.",
+    recordingEncoderUnavailable:
+      "Linux visual recording needs the distribution FFmpeg with the encoders in details.missingEncoders. Install it with `sudo apt install ffmpeg`, then restart PLVS.",
     artifactExpired: "The recording artifact has expired or disappeared.",
     waitLimitReached: "The visual recording wait limit is full.",
   };

@@ -31,6 +31,8 @@ files in `/usr/bin` and does not depend on Ubuntu's `ffmpeg` package.
 
 The Rust runtime honors an absolute `PLVS_FFMPEG_DIR` development/test override. Packaged Linux
 otherwise resolves only its identity-private directory; Windows and macOS resolve adjacent tools.
+Linux visual recording does not use these sidecars, which have no video encoder; it uses the
+distribution FFmpeg ([ADR 0037](adr/0037-linux-recording-uses-distribution-ffmpeg.md)).
 
 ## Reproducible recipe
 

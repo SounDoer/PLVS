@@ -169,6 +169,32 @@ export function launchCommand(platform, layout, isolation) {
   };
 }
 
+/**
+ * The release check never accepts an unrecorded package. Linux recording uses the runner's
+ * distribution FFmpeg rather than anything in the package (ADR 0037), so an unavailable recorder
+ * there is the rig's problem; on Windows and macOS it is the package's.
+ */
+export function requireRecordingScenario(platform, scenarios) {
+  return scenarios.map((scenario) => {
+    if (scenario.id !== "silent-recording" || scenario.status !== "unsupported") return scenario;
+    const observations = scenario.observations ?? [];
+    return platform === "linux"
+      ? {
+          ...scenario,
+          status: "rigUnavailable",
+          observations: [
+            ...observations,
+            "The release check must record; install the distribution FFmpeg on the runner with `sudo apt install ffmpeg`.",
+          ],
+        }
+      : {
+          ...scenario,
+          status: "failed",
+          observations: [...observations, "The release package must record on this platform."],
+        };
+  });
+}
+
 /** The app's device row for the rig's capture side, by the same names smoke:capture uses. */
 export function selectRigDevice(platform, devices, { linuxSinkName } = {}) {
   if (!Array.isArray(devices)) throw new RigError("device list returned no devices.");
@@ -571,9 +597,17 @@ export async function runReleasePackageSmoke({ candidate, outDir, wait, sourceSh
       artifacts.push(...(evidence?.artifacts ?? []));
       throw error;
     }
-    for (const scenario of smoke.evidence.scenarios) completed.push(scenario);
+    const scenarios = requireRecordingScenario(platform, smoke.evidence.scenarios);
+    for (const scenario of scenarios) completed.push(scenario);
     artifacts.push(...smoke.evidence.artifacts);
     warnings.push(...smoke.evidence.warnings);
+    const recording = scenarios.find(({ id }) => id === "silent-recording");
+    if (recording?.status === "rigUnavailable") {
+      throw new RigError(recording.observations.join(" "));
+    }
+    if (recording?.status === "failed" && smoke.evidence.summary !== "failed") {
+      throw new Error(recording.observations.join(" "));
+    }
     if (smoke.evidence.summary !== "complete") {
       throw new Error(`Agent Control smoke is ${smoke.evidence.summary}.`);
     }

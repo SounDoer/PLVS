@@ -870,7 +870,9 @@ One-time setup for the release-package smoke, beyond the table above:
   desktop session's display into the unit. Unpacking installs none of the deb's `Depends`; when the
   smoke reports missing packages, install them with `sudo apt install <names>`
   (`dpkg-deb -f PLVS_<version>_amd64.deb Depends` lists them all). Without a session bus in the
-  unit's environment the app gets a private one from `dbus-run-session` (package `dbus`).
+  unit's environment the app gets a private one from `dbus-run-session` (package `dbus`). The
+  rig's `/usr/bin/ffmpeg` must include libx264 and AAC (Ubuntu's `ffmpeg` package does): the
+  packaged app records with it, and the smoke exits 2 when recording is unavailable.
 
 Every clone and runner on one machine shares the rig lease (ADR 0034), so a manual `smoke:capture`
 and a runner job queue behind each other instead of summing tones. Each runner keeps its own Rust
@@ -1045,7 +1047,10 @@ The dev identity enables Agent Control by default. Verify the live Linux transpo
 `npm run desktop:control -- inspect --json`. The endpoint is a mode-`0600` Unix socket under the
 private `$XDG_RUNTIME_DIR`. Linux Visual Capture uses WebKitGTK snapshots for PNG screenshots and
 H.264 MP4 recording with optional measured-source AAC audio; keep the real display session
-unlocked and the PLVS window visible.
+unlocked and the PLVS window visible. Recording always encodes with `/usr/bin/ffmpeg` (ADR 0037),
+whatever `PLVS_FFMPEG_DIR` says; set an absolute `PLVS_RECORDING_FFMPEG` to try another FFmpeg, or
+a path that does not exist to see the unavailable-recording reporting. The release-package smoke
+needs Ubuntu's `ffmpeg` on the Linux runner and reports its absence as a rig problem.
 
 On a Linux development desktop with PulseAudio or `pipewire-pulse`, install `pactl`, `paplay`,
 and FFmpeg/FFprobe, then build the current capture harness and run:

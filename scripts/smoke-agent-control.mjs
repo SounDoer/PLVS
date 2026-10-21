@@ -67,6 +67,14 @@ export async function retryUnsettledRenderOnce(label, capture, warnings) {
   }
 }
 
+/** The reason `visual describe` gave for unavailable recording, in one evidence line. */
+export function recordingUnavailableObservation(recording) {
+  const unavailable = recording?.unavailable;
+  if (!unavailable?.reason) return "This platform reports visual recording as unavailable.";
+  const remedy = unavailable.details?.remedy ? ` Remedy: ${unavailable.details.remedy}.` : "";
+  return `Visual recording is unavailable (${unavailable.reason}): ${unavailable.message}${remedy}`;
+}
+
 export function verifyArtifactBuffer(label, contents, artifact) {
   if (!artifact || typeof artifact !== "object") {
     throw new Error(`${label} returned no artifact metadata.`);
@@ -360,7 +368,7 @@ export async function runAgentControlSmoke({
       completedScenarios.push({
         id: "silent-recording",
         status: "unsupported",
-        observations: ["This platform reports visual recording as unavailable."],
+        observations: [recordingUnavailableObservation(described.result?.recording)],
       });
       currentScenario = null;
     } else {

@@ -5,6 +5,7 @@ pub mod linux;
 pub mod macos;
 pub mod session;
 pub mod state;
+pub mod system_ffmpeg;
 pub mod windows;
 
 use std::collections::HashMap;

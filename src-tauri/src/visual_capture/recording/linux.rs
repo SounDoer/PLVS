@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::process::CommandExt;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -81,6 +82,7 @@ impl RecordingSessionControl for LinuxRecordingSession {
 #[allow(clippy::too_many_arguments)]
 pub fn begin_recording(
   app: AppHandle,
+  ffmpeg: PathBuf,
   recording_id: String,
   width: u32,
   height: u32,
@@ -112,6 +114,7 @@ pub fn begin_recording(
     .name("visual-recording-linux".into())
     .spawn(move || {
       let startup = start_ffmpeg(
+        &ffmpeg,
         width,
         height,
         fps,
@@ -176,16 +179,18 @@ pub fn begin_recording(
   }
 }
 
+/// `ffmpeg` is the distribution FFmpeg that `system_ffmpeg::probe` accepted, never the
+/// package-private decoder sidecar, which has no H.264 or AAC encoder (ADR 0037).
 fn start_ffmpeg(
+  ffmpeg: &Path,
   width: u32,
   height: u32,
   fps: u32,
   has_audio: bool,
-  output: &std::path::Path,
+  output: &Path,
 ) -> Result<(Child, Option<File>), String> {
-  let ffmpeg = crate::sidecar::locate_sidecar("ffmpeg");
   let audio_pipe = has_audio.then(create_audio_pipe).transpose()?;
-  let mut command = Command::new(&ffmpeg);
+  let mut command = Command::new(ffmpeg);
   command.args([
     "-hide_banner",
     "-loglevel",

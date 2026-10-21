@@ -122,6 +122,10 @@ pub fn run_doctor() -> DoctorReport {
   ));
   checks.push(check_sidecar("ffmpeg"));
   checks.push(check_sidecar("ffprobe"));
+  #[cfg(target_os = "linux")]
+  checks.push(check_recording_encoder(
+    &crate::visual_capture::recording::system_ffmpeg::probe(),
+  ));
   checks.push(check_capabilities());
   checks.push(check_device_enumeration());
   checks.push(check_dialogue_vad_engines());
@@ -397,6 +401,41 @@ fn check_sidecar_at(stem: &str, path: PathBuf) -> DoctorCheck {
   }
 }
 
+/// Linux visual recording encodes with the distribution FFmpeg rather than the audio-only sidecar
+/// (ADR 0037). A missing encoder is a warning: everything except recording still works.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn check_recording_encoder(
+  probe: &crate::visual_capture::recording::system_ffmpeg::EncoderProbe,
+) -> DoctorCheck {
+  let unavailable = probe.unavailable(false);
+  let ok = unavailable.is_none() && probe.aac;
+  DoctorCheck {
+    id: "visual-recording-encoder".to_string(),
+    status: if ok {
+      DoctorStatus::Ok
+    } else {
+      DoctorStatus::Warning
+    },
+    severity: DoctorStatus::Warning,
+    title: if unavailable.is_some() {
+      "Visual recording is unavailable: system FFmpeg lacks the H.264 encoder".to_string()
+    } else if ok {
+      "Visual recording encoder is available".to_string()
+    } else {
+      "Visual recording is silent-only: system FFmpeg lacks the AAC encoder".to_string()
+    },
+    details: json!({
+      "path": path_to_string(probe.path.clone()),
+      "h264": probe.h264,
+      "aac": probe.aac,
+      "recordingAvailable": unavailable.is_none(),
+      "measuredSourceAudioAvailable": unavailable.is_none() && probe.aac,
+      "error": probe.error,
+      "remedy": (!ok).then_some(crate::visual_capture::recording::system_ffmpeg::INSTALL_REMEDY),
+    }),
+  }
+}
+
 fn path_to_string(path: PathBuf) -> String {
   path.to_string_lossy().to_string()
 }
@@ -644,6 +683,35 @@ mod tests {
     assert_eq!(result.details["writable"], false);
 
     fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[test]
+  fn recording_encoder_check_reports_availability_and_remedy() {
+    use crate::visual_capture::recording::system_ffmpeg::EncoderProbe;
+    let probe = |h264, aac| EncoderProbe {
+      path: PathBuf::from("/usr/bin/ffmpeg"),
+      h264,
+      aac,
+      error: None,
+    };
+
+    let ready = check_recording_encoder(&probe(true, true));
+    assert_eq!(ready.id, "visual-recording-encoder");
+    assert_eq!(ready.status, DoctorStatus::Ok);
+    assert_eq!(ready.details["recordingAvailable"], true);
+    assert_eq!(ready.details["measuredSourceAudioAvailable"], true);
+    assert_eq!(ready.details["remedy"], Value::Null);
+
+    let silent_only = check_recording_encoder(&probe(true, false));
+    assert_eq!(silent_only.status, DoctorStatus::Warning);
+    assert_eq!(silent_only.details["recordingAvailable"], true);
+    assert_eq!(silent_only.details["measuredSourceAudioAvailable"], false);
+
+    let missing = check_recording_encoder(&probe(false, false));
+    assert_eq!(missing.status, DoctorStatus::Warning);
+    assert_eq!(missing.severity, DoctorStatus::Warning);
+    assert_eq!(missing.details["recordingAvailable"], false);
+    assert_eq!(missing.details["remedy"], "sudo apt install ffmpeg");
   }
 
   #[test]
