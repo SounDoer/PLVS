@@ -10,6 +10,7 @@ import {
   expectedTone,
   isolatedProfileSeed,
   judgeTone,
+  keepDisplayAwake,
   launchCommand,
   missingDebDependencies,
   parseArgs,
@@ -17,6 +18,7 @@ import {
   stagedLayout,
 } from "./release-package-smoke.mjs";
 import { verifyReleasePackageEvidence } from "./verify-release-package-evidence.mjs";
+import { retryUnsettledRenderOnce } from "./smoke-agent-control.mjs";
 
 const SHA = "a".repeat(40);
 
@@ -201,5 +203,65 @@ describe("release-package evidence", () => {
     expect(() =>
       verifyReleasePackageEvidence({ directory, sha: SHA, platform: "windows" })
     ).toThrow(/differs/);
+  });
+});
+
+describe("visual capture resilience", () => {
+  const failure = (code) =>
+    Object.assign(new Error(`visual screenshot failed (${code})`), { code });
+
+  it("retries an unsettled render once and records the retry", async () => {
+    const warnings = [];
+    let calls = 0;
+    const result = await retryUnsettledRenderOnce(
+      "metering screenshot",
+      () => {
+        calls += 1;
+        if (calls === 1) throw failure("renderNotSettled");
+        return "captured";
+      },
+      warnings
+    );
+    expect(result).toBe("captured");
+    expect(calls).toBe(2);
+    expect(warnings).toEqual([
+      expect.stringContaining("metering screenshot: the render did not settle"),
+    ]);
+  });
+
+  it("fails on a second unsettled render and never retries other failures", async () => {
+    let calls = 0;
+    await expect(
+      retryUnsettledRenderOnce(
+        "screenshot",
+        () => {
+          calls += 1;
+          throw failure("renderNotSettled");
+        },
+        []
+      )
+    ).rejects.toThrow("renderNotSettled");
+    expect(calls).toBe(2);
+    calls = 0;
+    await expect(
+      retryUnsettledRenderOnce(
+        "screenshot",
+        () => {
+          calls += 1;
+          throw failure("revisionConflict");
+        },
+        []
+      )
+    ).rejects.toThrow("revisionConflict");
+    expect(calls).toBe(1);
+  });
+
+  it("keeps only the macOS display awake, for exactly this process", () => {
+    const spawned = [];
+    const spawnProcess = (command, args) => spawned.push([command, args]) && { kill() {} };
+    expect(keepDisplayAwake("windows", 42, spawnProcess)).toBeNull();
+    expect(keepDisplayAwake("linux", 42, spawnProcess)).toBeNull();
+    expect(keepDisplayAwake("macos", 42, spawnProcess)).not.toBeNull();
+    expect(spawned).toEqual([["caffeinate", ["-d", "-i", "-w", "42"]]]);
   });
 });

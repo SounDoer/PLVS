@@ -835,7 +835,13 @@ to match the rig tone (integrated loudness and both channel peaks within 0.5 dB)
 screenshot while metering. `release-package-evidence-<platform>` holds `result.json`, the
 screenshots, the silent recording and the app log; `scripts/verify-release-package-evidence.mjs`
 checks their sizes and SHA-256 before upload. Exit 1 is a package defect, exit 2 a rig or runner
-problem. Check the runners against an earlier release run's candidates without a release:
+problem.
+
+Visual captures wait for WebView animation frames, which stop while a window is hidden, a display
+sleeps or a remote-desktop session switches. Screenshots and the recording start therefore retry
+once on `renderNotSettled` only, recording the retry in `warnings`; a second unsettled render or any
+other failure still fails. On macOS the script holds `caffeinate -d -i` for its own lifetime. Neither
+helps a locked screen, so the Mac runner must not auto-lock during a release. Check the runners against an earlier release run's candidates without a release:
 
 ```bash
 gh workflow run release-package-smoke.yml -f commit_sha=<release commit> -f run_id=<release.yml run id>

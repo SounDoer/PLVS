@@ -47,9 +47,24 @@ export function parseJsonEnvelope(label, output) {
   if (!envelope || envelope.ok !== true || !envelope.result) {
     const code = envelope?.error?.code ?? "unknownError";
     const message = envelope?.error?.message ?? "The command returned no result.";
-    throw new Error(`${label} failed (${code}): ${message}`);
+    throw Object.assign(new Error(`${label} failed (${code}): ${message}`), { code });
   }
   return envelope;
+}
+
+/**
+ * Run a visual capture, retrying once when the window did not render in time. A hidden, occluded
+ * or sleeping display stops WebView animation frames, which is the machine's state rather than a
+ * product defect; every other failure, and a second unsettled render, still fails.
+ */
+export async function retryUnsettledRenderOnce(label, capture, warnings) {
+  try {
+    return await capture();
+  } catch (error) {
+    if (error.code !== "renderNotSettled") throw error;
+    warnings.push(`${label}: the render did not settle; retried once (${error.message})`);
+    return await capture();
+  }
 }
 
 export function verifyArtifactBuffer(label, contents, artifact) {
@@ -152,7 +167,9 @@ function createRunner(executable, env) {
       envelope = parseJsonEnvelope(label, result.stdout);
     } catch (error) {
       const stderr = result.stderr?.trim();
-      throw new Error(stderr ? `${error.message}\n${stderr}` : error.message);
+      throw Object.assign(new Error(stderr ? `${error.message}\n${stderr}` : error.message), {
+        code: error.code,
+      });
     }
     if (result.status !== 0) {
       throw new Error(`${label} exited with status ${result.status}.`);
@@ -187,6 +204,7 @@ export async function runAgentControlSmoke({
   let legacyReport = null;
   let failure = null;
   let cleanupStatus = "passed";
+  const warnings = [];
   const pass = (id, observations = []) => {
     completedScenarios.push({ id, status: "passed", observations });
     currentScenario = null;
@@ -279,19 +297,24 @@ export async function runAgentControlSmoke({
       currentScenario = null;
     } else {
       screenshotPath = join(outDir, "main.png");
-      const screenshot = run("visual screenshot", [
-        "visual",
-        "screenshot",
-        "--target",
-        "main",
-        "--expected-revision",
-        String(navigationRevision),
-        "--expected-ui-generation",
-        String(navigationGeneration),
-        "--out",
-        screenshotPath,
-        "--json",
-      ]);
+      const screenshot = await retryUnsettledRenderOnce(
+        "visual screenshot",
+        () =>
+          run("visual screenshot", [
+            "visual",
+            "screenshot",
+            "--target",
+            "main",
+            "--expected-revision",
+            String(navigationRevision),
+            "--expected-ui-generation",
+            String(navigationGeneration),
+            "--out",
+            screenshotPath,
+            "--json",
+          ]),
+        warnings
+      );
       screenshotCheck = verifyArtifactBuffer(
         "screenshot",
         await readFile(screenshotPath),
@@ -341,20 +364,25 @@ export async function runAgentControlSmoke({
       });
       currentScenario = null;
     } else {
-    const started = run("visual recording start", [
-      "visual",
-      "recording",
-      "start",
-      "--target",
-      "main",
-      "--audio",
-      "none",
-      "--max-duration-seconds",
-      "3",
-      "--expected-revision",
-      String(finalUi.result.revision),
-      "--json",
-    ]);
+    const started = await retryUnsettledRenderOnce(
+      "visual recording start",
+      () =>
+        run("visual recording start", [
+          "visual",
+          "recording",
+          "start",
+          "--target",
+          "main",
+          "--audio",
+          "none",
+          "--max-duration-seconds",
+          "3",
+          "--expected-revision",
+          String(finalUi.result.revision),
+          "--json",
+        ]),
+      warnings
+    );
     activeRecordingId = started.result.recording?.recordingId;
     if (typeof activeRecordingId !== "string" || activeRecordingId.length === 0) {
       throw new Error("visual recording start returned no recording ID.");
@@ -492,7 +520,7 @@ export async function runAgentControlSmoke({
     scenarios: coverage.scenarios,
     artifacts: evidenceArtifacts,
     cleanup: { status: cleanupStatus, observations: cleanupObservations },
-    warnings: [],
+    warnings,
     instanceId: selectedInstance,
     revision,
     runtime: capabilities?.result.runtime ?? null,

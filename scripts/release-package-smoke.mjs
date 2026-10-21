@@ -50,6 +50,7 @@ import {
 } from "./capture-rig.mjs";
 import {
   parseJsonEnvelope,
+  retryUnsettledRenderOnce,
   runAgentControlSmoke,
   verifyArtifactBuffer,
 } from "./smoke-agent-control.mjs";
@@ -342,6 +343,15 @@ async function ensureLinuxDisplay() {
   };
 }
 
+/**
+ * Keep the display awake for this process on macOS. A display that sleeps mid-run stops WebView
+ * animation frames, so visual captures cannot settle. It cannot unlock an already locked screen.
+ */
+export function keepDisplayAwake(platform, pid = process.pid, spawnProcess = spawn) {
+  if (platform !== "macos") return null;
+  return spawnProcess("caffeinate", ["-d", "-i", "-w", String(pid)], { stdio: "ignore" });
+}
+
 function launchApp({ command, args, env }, logFile) {
   const log = [];
   // A runner without a session bus gets a private one; the app and its bus then share a process
@@ -478,6 +488,8 @@ export async function runReleasePackageSmoke({ candidate, outDir, wait, sourceSh
   };
 
   const signal = join(work, "signal.wav");
+  const awake = keepDisplayAwake(platform);
+  awake?.on("error", (error) => warnings.push(`caffeinate did not start: ${error.message}`));
   try {
     const file = candidatePackage(platform, candidate, version);
     packageRecord = {
@@ -542,6 +554,7 @@ export async function runReleasePackageSmoke({ candidate, outDir, wait, sourceSh
     }
     for (const scenario of smoke.evidence.scenarios) completed.push(scenario);
     artifacts.push(...smoke.evidence.artifacts);
+    warnings.push(...smoke.evidence.warnings);
     if (smoke.evidence.summary !== "complete") {
       throw new Error(`Agent Control smoke is ${smoke.evidence.summary}.`);
     }
@@ -592,14 +605,19 @@ export async function runReleasePackageSmoke({ candidate, outDir, wait, sourceSh
 
     current = "metering-screenshot";
     const screenshotPath = join(outDir, "main-metering.png");
-    const screenshot = run("visual screenshot", [
-      "visual",
-      "screenshot",
-      "--target",
-      "main",
-      "--out",
-      screenshotPath,
-    ]);
+    const screenshot = await retryUnsettledRenderOnce(
+      "metering screenshot",
+      () =>
+        run("visual screenshot", [
+          "visual",
+          "screenshot",
+          "--target",
+          "main",
+          "--out",
+          screenshotPath,
+        ]),
+      warnings
+    );
     const check = verifyArtifactBuffer(
       "screenshot",
       await readFile(screenshotPath),
@@ -661,6 +679,7 @@ export async function runReleasePackageSmoke({ candidate, outDir, wait, sourceSh
       cleanup.push("Ended the staged PLVS process by PID.");
     }
     display?.stop();
+    awake?.kill();
     // Windows releases file handles after the process tree ends; give it a moment.
     await sleep(1000);
     try {
