@@ -533,10 +533,12 @@ installing them, on an isolated profile, and checks Agent Control, Settings, Liv
 tone and screenshot/recording evidence. Nobody opens the build by hand.
 
 When updater-chain dependencies changed, `release.yml` also calls `update-acceptance.yml`. Its
-self-hosted Windows and macOS jobs drive the isolated packaged updater entirely through
-acceptance-only Agent Control actions, transfer evidence through Actions artifacts, and verify both
-platform records before the Draft can be assembled. Do not ask the maintainer to click update UI or
-copy acceptance files between machines.
+self-hosted Windows, macOS and Linux jobs drive the packaged updater entirely through
+acceptance-only Agent Control actions, transfer evidence through Actions artifacts, and verify all
+three platform records before the Draft can be assembled. Do not ask the maintainer to click update
+UI or copy acceptance files between machines. The Linux job installs the real `plvs` package and
+restores the machine afterwards (ADR 0038); it fails until the runner account was authorized once
+(CONTRIBUTING, "Linux update acceptance runner"), and while any PLVS runs on that machine.
 
 ### Mandatory Remote Gate
 

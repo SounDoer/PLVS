@@ -717,6 +717,9 @@ Use **English only** for commit messages, PR titles/descriptions, and any text t
 
 Packaged update acceptance builds two real versions from one clean commit under an isolated test
 identity. It never uses the stable, dev, or Preview identity, data directory, updater key, or feed.
+On Linux the packages keep the stable `plvs` package name and paths, which the Linux updater
+requires, so the run installs them system-wide and restores the machine afterwards
+([ADR 0038](docs/adr/0038-linux-update-acceptance-installs-the-system-package.md)).
 
 ```bash
 npm run update:acceptance:build
@@ -732,9 +735,9 @@ not a release step.
 
 Stable releases call `update-acceptance.yml`. When the product update chain changed
 (`UPDATE_ACCEPTANCE_PATHS` in `scripts/update-acceptance-code-changed.mjs`), its
-self-hosted Windows and macOS jobs build and run the exact commit, export evidence without the
-ephemeral private key or build cache, upload it as short-lived Actions artifacts, and verify both
-platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
+self-hosted Windows, macOS and Linux jobs build and run the exact commit, export evidence without
+the ephemeral private key or build cache, upload it as short-lived Actions artifacts, and verify all
+three platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
 assembling the Draft, so maintainers never copy acceptance files between machines.
 
 The same workflow also runs nightly (18:00 UTC) against the tip of `main`. A scheduled run compares
@@ -764,11 +767,25 @@ and retries through the normal UI. Release builds and non-acceptance identities 
 injection. Every driven action remains visible in the real product UI and is observed through the
 same semantic state that a user action changes.
 Do not grant Accessibility, administrator access, or other system permissions merely to make an
-acceptance row green; the result must record that boundary explicitly.
+acceptance row green; the result must record that boundary explicitly. The Linux runner is the one
+recorded exception (ADR 0038): installing a system package needs root, so the maintainer authorizes
+its account once for exactly two Polkit actions.
 
 On Windows the same runner silently installs the older isolated NSIS package into a path containing
 spaces, launches the exact installed executable, verifies the installer PID recorded by the helper,
-and uninstalls only that isolated registration after evidence capture. On both platforms,
+and uninstalls only that isolated registration after evidence capture.
+
+On Linux the installed stable package is the only one the updater accepts (`/usr/bin/plvs`, owned
+by the APT package `plvs`, with `/usr/lib/plvs/plvs-update-installer` and its Polkit action), so the
+acceptance debs keep that package name and paths and isolate only the identity, data root and
+updater key. Through `pkexec`, a root-owned tool installs the older deb offline, first recording
+what the machine had: no `plvs`, or a `dpkg-repack` copy of the installed version. The run then
+checks that Polkit authorizes the product action `com.soundoer.plvs.update` without a password,
+drives the same scenarios on a private Xvfb display and session bus, lets the product helper
+install the newer deb through its own `pkexec` installer and APT, and requires the installer PID and
+the new package version (`apt-package-upgrade`). Cleanup restores the recorded state and fails the
+run if `dpkg-query` disagrees. The Polkit password prompt and its cancellation remain a manual
+check (`polkit-prompt-and-cancellation`). On every platform,
 `update:acceptance:verify` checks package and evidence hashes, the exact source SHA and identity,
 all routine scenario verdicts, cleanup, and explicit manual/release-only gaps. A platform claim is
 valid only after this runner produces real evidence on that platform; contract tests on another OS
@@ -776,7 +793,7 @@ do not substitute for it.
 
 Local stable release preflight reports retained platform evidence as advisory. When updater,
 installer, signing, packaging or acceptance dependencies changed since the latest stable tag, the
-called `update-acceptance.yml` workflow runs both platforms for the exact release commit; missing,
+called `update-acceptance.yml` workflow runs all three platforms for the exact release commit; missing,
 invalid or incomplete evidence stops `release.yml` before the Draft. Other releases skip the
 platform jobs. `scripts/update-acceptance-code-changed.mjs` owns
 that deliberately narrow dependency list; update it when a new path can affect the installed update
@@ -785,10 +802,9 @@ chain, rather than broadening the gate to ordinary version or interface-only cha
 The shared acceptance report treats Linux as a base platform alongside Windows and macOS: every
 report has a Linux column across update, Dock, capture, Agent Control and performance, and a Linux
 cell without real Linux evidence stays visibly `missing`. Producers are connected one domain at a
-time, keeping the common envelope and scenario semantics unchanged. Packaged update acceptance and
-its release gate remain Windows/macOS until a Linux producer exists, although installed stable Linux
-packages can install signed updates. Contract tests on macOS or Windows are not Linux acceptance
-evidence.
+time, keeping the common envelope and scenario semantics unchanged. Packaged update acceptance has
+a Linux producer and gates releases on all three platforms. Contract tests on macOS or Windows are
+not Linux acceptance evidence.
 
 ## Home capture runners
 
@@ -873,6 +889,44 @@ One-time setup for the release-package smoke, beyond the table above:
   unit's environment the app gets a private one from `dbus-run-session` (package `dbus`). The
   rig's `/usr/bin/ffmpeg` must include libx264 and AAC (Ubuntu's `ffmpeg` package does): the
   packaged app records with it, and the smoke exits 2 when recording is unavailable.
+
+### Linux update acceptance runner
+
+`update-acceptance.yml` installs the real `plvs` system package on the Ubuntu runner and restores the
+machine afterwards ([ADR 0038](docs/adr/0038-linux-update-acceptance-installs-the-system-package.md)).
+The runner is unattended, so its account is authorized once, from that account in a checkout:
+
+```bash
+sudo apt install polkitd pkexec dpkg-repack xvfb dbus libasound2-dev libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+```bash
+sudo bash scripts/update-acceptance-linux/setup.sh install
+```
+
+```bash
+bash scripts/update-acceptance-linux/setup.sh verify
+```
+
+`install` writes three root-owned files and nothing else: the package tool
+`/usr/local/libexec/plvs-update-acceptance-package`, its Polkit action
+`com.soundoer.plvs.update-acceptance`, and `/etc/polkit-1/rules.d/49-plvs-update-acceptance.rules`,
+which answers yes without a password to that action and to the product action
+`com.soundoer.plvs.update`, for that one account only. The shipped Polkit policy keeps its
+interactive default. Because the runner builds the debs it installs, this makes the runner account
+root-equivalent on that machine; use it only on a dedicated test machine.
+`sudo bash scripts/update-acceptance-linux/setup.sh remove` undoes it; it refuses while a run still
+has an original PLVS to restore (`sudo /usr/local/libexec/plvs-update-acceptance-package restore`).
+A run refuses to start while any PLVS runs on the machine, and `dpkg-repack` is needed only when a
+PLVS package is installed before the run. To run it by hand on that machine from a clean checkout:
+
+```bash
+npm ci && npm run ffmpeg:fetch && npm run update:acceptance:build
+```
+
+```bash
+npm run update:acceptance:run -- artifacts/update-acceptance/$(git rev-parse --short=8 HEAD)
+```
 
 Every clone and runner on one machine shares the rig lease (ADR 0034), so a manual `smoke:capture`
 and a runner job queue behind each other instead of summing tones. Each runner keeps its own Rust
