@@ -392,13 +392,15 @@ absolute `--plvs-test-app-data-root` for each compared code state when identical
 bounds and settings are required.
 
 Some screenshot states cannot be manufactured by the public CLI. Copy
-`scripts/ui-walkthrough/development-fixtures.example.json`, insert the running dev app's
-workbench instance ID, and run `ui:walkthrough` as above. The runner uses its dev-identity
-CLI's private event fixtures to establish Update, first-run Update Preferences, Crash Report, Close
-Confirmation, and Library Conflict through their production owners. It then returns to the public `ui inspect`,
-`visual screenshot`, and exact `ui cancel` / `ui close` contracts for review and dismissal. Library
-Conflict has no product dismissal action, and cancelling the real Update Preferences choice saves
-it as skipped, so the runner uses the exact fixture reset token for both.
+`scripts/ui-walkthrough/development-fixtures.example.json`, insert the running dev app's workbench
+instance ID, and run `ui:walkthrough` as above. The runner uses its dev-identity CLI's private event
+fixtures to establish Update, first-run Update Preferences, Import Review, Import Complete, Crash
+Report, Close Confirmation, and Library Conflict through their production owners. The two Import
+fixtures use a fixed sample Preset with a bundled Loudness Profile and write nothing to the library.
+It then returns to the public `ui inspect`, `visual screenshot`, and exact `ui cancel` / `ui close`
+contracts for review and dismissal. Library Conflict has no product dismissal action, and cancelling
+the real Update Preferences choice saves it as skipped, so the runner uses the exact fixture reset
+token for both.
 
 These fixture commands are absent from public capabilities, help, completion, schema, and packaged
 CLIs. They never invoke Save, Send, Confirm, Update, Restart, Apply, Delete, or mutate arbitrary

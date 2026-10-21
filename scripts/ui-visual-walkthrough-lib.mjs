@@ -42,6 +42,8 @@ export const SCREENSHOT_TARGETS = new Set([
 export const EVENT_FIXTURES = Object.freeze({
   "update.available": { surfaceKind: "update", phase: "idle", action: "cancel" },
   "update-preferences.pending": { surfaceKind: "update", phase: "preferences", action: "reset" },
+  "import-review.pending": { surfaceKind: "importReview", phase: "review", action: "cancel" },
+  "import-complete.pending": { surfaceKind: "importComplete", phase: "complete", action: "close" },
   "crash-report.pending": { surfaceKind: "crashReport", phase: "decision", action: "close" },
   "close-confirmation.requested": {
     surfaceKind: "closeConfirmation",

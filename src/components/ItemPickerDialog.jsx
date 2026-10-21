@@ -19,6 +19,12 @@ const EMPTY_MESSAGE = {
   themes: "No custom themes to export.",
 };
 
+const ITEM_PICKER_FIXTURES = {
+  pick: { none: "Library Export opens from Settings > Transfer with an ordinary click." },
+  review: "import-review.pending",
+  complete: "import-complete.pending",
+};
+
 const DISPOSITION_LABEL = {
   added: "Add",
   skipped: "Already in your library",
@@ -161,6 +167,7 @@ export function ItemPickerDialog({
     active: open,
     kind: surfaceKind,
     origin: "nested",
+    developmentFixture: ITEM_PICKER_FIXTURES[mode],
     blocking: false,
     dismissible: true,
     supportedActions: mode === "complete" ? ["close"] : ["cancel"],

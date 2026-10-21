@@ -272,6 +272,7 @@ describe("AppSettingsOverlays", () => {
       cancelImport: vi.fn(),
       runCompletionAction: vi.fn(),
       dismissCompletion: vi.fn(),
+      developmentFixtures: { review: {}, completion: {} },
     };
     const settings = makeSettings({
       editor: {
@@ -312,6 +313,7 @@ describe("AppSettingsOverlays", () => {
       cancelImport: vi.fn(),
       runCompletionAction,
       dismissCompletion: vi.fn(),
+      developmentFixtures: { review: {}, completion: {} },
     };
 
     renderOverlays(makeSettings(), {}, { packTransfer, presets: { apply } });

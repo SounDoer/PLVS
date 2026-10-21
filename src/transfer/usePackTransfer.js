@@ -6,6 +6,7 @@
 /// a machine whose user did not make it, and "Import failed" tells them nothing they can act on.
 
 import { useCallback, useRef, useState } from "react";
+import { developmentImportPackText } from "../dev/developmentEventFixtureData.js";
 import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
@@ -222,6 +223,8 @@ export function usePackTransfer() {
     async (action) => {
       if (!completion || completion.itemPlan.length !== 1 || operationActiveRef.current)
         return false;
+      // A fixture completion names an item that was never written, so its follow-up is refused.
+      if (completion.fixtureId) return false;
       operationActiveRef.current = true;
       setBusy(true);
       const entry = completion.itemPlan[0];
@@ -247,6 +250,43 @@ export function usePackTransfer() {
 
   const dismissCompletion = useCallback(() => setCompletion(null), []);
 
+  // Development fixtures show the real review and completion dialogs for a fixed sample pack.
+  // Neither writes to the library; Add on the review stays an ordinary user action.
+  function fixturePlan() {
+    const { type, pack } = parseClipboardItem(developmentImportPackText());
+    return {
+      type,
+      pack,
+      ...planPackImport(type, pack, {
+        existingItems: getAdapter(type).list(),
+        existingProfiles: getAdapter("loudness").list(),
+      }),
+    };
+  }
+  const developmentFixtures = {
+    review: {
+      establish(fixtureId) {
+        setCompletion(null);
+        setReview({ ...fixturePlan(), origin: "clipboard", fixtureId });
+      },
+      matches: (fixtureId) => review?.fixtureId === fixtureId,
+      reset(fixtureId) {
+        setReview((current) => (current?.fixtureId === fixtureId ? null : current));
+      },
+    },
+    completion: {
+      establish(fixtureId) {
+        const { type, itemPlan } = fixturePlan();
+        setReview(null);
+        setCompletion({ type, origin: "clipboard", itemPlan, fixtureId });
+      },
+      matches: (fixtureId) => completion?.fixtureId === fixtureId,
+      reset(fixtureId) {
+        setCompletion((current) => (current?.fixtureId === fixtureId ? null : current));
+      },
+    },
+  };
+
   return {
     busy,
     status,
@@ -260,5 +300,6 @@ export function usePackTransfer() {
     cancelImport,
     runCompletionAction,
     dismissCompletion,
+    developmentFixtures,
   };
 }

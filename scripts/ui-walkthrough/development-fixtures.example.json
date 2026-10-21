@@ -37,6 +37,32 @@
       "touches": []
     },
     {
+      "id": "import-review",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "import-review.pending",
+        "surfaceKind": "importReview",
+        "phase": "review",
+        "action": "cancel"
+      },
+      "screenshot": { "target": "main", "output": "import-review.png" },
+      "touches": []
+    },
+    {
+      "id": "import-complete",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "import-complete.pending",
+        "surfaceKind": "importComplete",
+        "phase": "complete",
+        "action": "close"
+      },
+      "screenshot": { "target": "main", "output": "import-complete.png" },
+      "touches": []
+    },
+    {
       "id": "close-confirmation",
       "durable": [],
       "ui": {

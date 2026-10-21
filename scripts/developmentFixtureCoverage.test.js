@@ -28,45 +28,55 @@ async function sourceFiles(directory) {
   return files.flat();
 }
 
-// Returns the object literal passed to each useUiSurface({ ... }) call, by brace depth.
-function surfaceDescriptors(source) {
-  const descriptors = [];
-  for (const match of source.matchAll(/(?<!function )\buseUiSurface\(\{/g)) {
-    const start = match.index + match[0].length - 1;
-    let depth = 0;
-    for (let index = start; index < source.length; index += 1) {
-      if (source[index] === "{") depth += 1;
-      if (source[index] === "}") depth -= 1;
-      if (depth === 0) {
-        descriptors.push({
-          line: source.slice(0, match.index).split("\n").length,
-          text: source.slice(start, index + 1),
-        });
-        break;
-      }
-    }
+// The object literal that starts at `start` (an opening brace), by brace depth.
+function objectLiteralAt(source, start) {
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
   }
-  return descriptors;
+  return "";
 }
 
-async function eventSurfaceDeclarations() {
-  const src = join(root, "src");
+// Returns the object literal passed to each useUiSurface({ ... }) call.
+function surfaceDescriptors(source) {
+  return [...source.matchAll(/(?<!function )\buseUiSurface\(\{/g)].map((match) => ({
+    line: source.slice(0, match.index).split("\n").length,
+    text: objectLiteralAt(source, match.index + match[0].length - 1),
+  }));
+}
+
+const FIXTURE_VALUE = /"[^"]*"|\{\s*none:\s*"[^"]*",?\s*\}/g;
+
+// A declaration is a fixture name, `{ none: "<reason>" }`, or `TABLE[key]` for a module-level
+// `const TABLE = { ... }` whose every value is one of those two forms.
+function fixtureValues(source, text) {
+  const declared = text.match(/\bdevelopmentFixture:\s*("[^"]*"|\{[^}]*\}|([A-Z_]+)\[[^\]]+\])/);
+  if (!declared) return [];
+  if (!declared[2]) return [declared[1]];
+  const table = source.match(new RegExp(`const ${declared[2]} = \\{`));
+  if (!table) return [`unresolved ${declared[2]}`];
+  const body = objectLiteralAt(source, table.index + table[0].length - 1).slice(1, -1);
+  return [...body.matchAll(FIXTURE_VALUE)].map((match) => match[0]);
+}
+
+async function surfaceDeclarations() {
   const declarations = [];
-  for (const file of await sourceFiles(src)) {
+  for (const file of await sourceFiles(join(root, "src"))) {
     const source = await readFile(file, "utf8");
     for (const { line, text } of surfaceDescriptors(source)) {
       const where = `${relative(root, file).replaceAll("\\", "/")}:${line}`;
       const origin = text.match(/\borigin:\s*([^,\n]+)/)?.[1].trim();
-      const fixture = text.match(/\bdevelopmentFixture:\s*("[^"]*"|\{[^}]*\})/)?.[1];
-      declarations.push({ where, origin, fixture });
+      declarations.push({ where, origin, fixtures: fixtureValues(source, text) });
     }
   }
   return declarations;
 }
 
 describe("development event fixture coverage", () => {
-  it("requires every event surface to name its development fixture or a reason it has none", async () => {
-    const declarations = await eventSurfaceDeclarations();
+  it("requires every event or nested surface to name its development fixture or a reason it has none", async () => {
+    const declarations = await surfaceDeclarations();
     const adapters = new Set();
     for (const file of await sourceFiles(join(root, "src"))) {
       const source = await readFile(file, "utf8");
@@ -77,27 +87,32 @@ describe("development event fixture coverage", () => {
     expect(declarations.length).toBeGreaterThan(0);
     const problems = [];
     const declared = new Set();
-    for (const { where, origin, fixture } of declarations) {
+    for (const { where, origin, fixtures } of declarations) {
       if (!/^"(navigable|event|nested)"$/.test(origin ?? "")) {
         problems.push(`${where}: origin must be a string literal so this check can read it.`);
         continue;
       }
-      if (origin !== '"event"') continue;
-      if (!fixture) {
-        problems.push(`${where}: event surface must declare developmentFixture.`);
-      } else if (fixture.startsWith("{")) {
-        if (!/^\{\s*none:\s*"[^"]{8,}"\s*\}$/.test(fixture))
-          problems.push(`${where}: developmentFixture { none } needs a reason.`);
-      } else {
-        const name = fixture.slice(1, -1);
-        declared.add(name);
-        if (!DEVELOPMENT_EVENT_FIXTURE_NAMES.includes(name))
-          problems.push(`${where}: ${name} is not a development fixture name.`);
-        if (!adapters.has(name)) problems.push(`${where}: ${name} has no fixture adapter.`);
+      if (origin === '"navigable"') continue;
+      if (fixtures.length === 0) {
+        problems.push(`${where}: ${origin} surface must declare developmentFixture.`);
+      }
+      for (const fixture of fixtures) {
+        if (fixture.startsWith("{")) {
+          if (!/^\{\s*none:\s*"[^"]{8,}",?\s*\}$/.test(fixture))
+            problems.push(`${where}: developmentFixture { none } needs a reason.`);
+        } else if (!fixture.startsWith('"')) {
+          problems.push(`${where}: ${fixture} is not a readable developmentFixture table.`);
+        } else {
+          const name = fixture.slice(1, -1);
+          declared.add(name);
+          if (!DEVELOPMENT_EVENT_FIXTURE_NAMES.includes(name))
+            problems.push(`${where}: ${name} is not a development fixture name.`);
+          if (!adapters.has(name)) problems.push(`${where}: ${name} has no fixture adapter.`);
+        }
       }
     }
     for (const name of DEVELOPMENT_EVENT_FIXTURE_NAMES) {
-      if (!declared.has(name)) problems.push(`${name} is not declared by any event surface.`);
+      if (!declared.has(name)) problems.push(`${name} is not declared by any surface.`);
     }
     expect(problems).toEqual([]);
   });

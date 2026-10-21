@@ -261,6 +261,17 @@ export function AppSettingsOverlays({
     canReset: () => installStatus === "idle",
     surface: { kind: "update", target: { phase: "idle" } },
   });
+  const packIdle = () => !pack.busy && !pack.review && !pack.completion;
+  useDevelopmentEventFixtureAdapter("import-review.pending", {
+    ...pack.developmentFixtures.review,
+    canEstablish: packIdle,
+    surface: { kind: "importReview", target: { phase: "review" } },
+  });
+  useDevelopmentEventFixtureAdapter("import-complete.pending", {
+    ...pack.developmentFixtures.completion,
+    canEstablish: packIdle,
+    surface: { kind: "importComplete", target: { phase: "complete" } },
+  });
 
   function openFeedback() {
     settings.setSettingsOpen(false);

@@ -533,3 +533,47 @@ describe("usePackTransfer paste", () => {
     );
   });
 });
+
+describe("usePackTransfer development fixtures", () => {
+  it("reviews the sample Preset and its bundled profile without writing, and resets only its own fixture", () => {
+    const { result } = renderHook(() => usePackTransfer());
+
+    act(() => result.current.developmentFixtures.review.establish("fixture-a"));
+    expect(result.current.review).toMatchObject({
+      type: "presets",
+      origin: "clipboard",
+      fixtureId: "fixture-a",
+      itemPlan: [{ name: "Essential Monitoring", disposition: "added" }],
+      profilePlan: [{ name: "Spotify", disposition: "added" }],
+    });
+    expect(result.current.developmentFixtures.review.matches("fixture-a")).toBe(true);
+
+    act(() => result.current.developmentFixtures.review.reset("fixture-b"));
+    expect(result.current.review).not.toBeNull();
+    act(() => result.current.developmentFixtures.review.reset("fixture-a"));
+    expect(result.current.review).toBeNull();
+    expect(presetsStore.read()).toEqual({});
+    expect(settingsStore.read().loudnessProfiles?.profiles ?? []).toEqual([]);
+  });
+
+  it("shows the completion without writing and refuses its follow-up action", async () => {
+    const { result } = renderHook(() => usePackTransfer());
+    const action = vi.fn(async () => true);
+
+    act(() => result.current.developmentFixtures.completion.establish("fixture-a"));
+    expect(result.current.completion).toMatchObject({
+      type: "presets",
+      fixtureId: "fixture-a",
+      itemPlan: [{ name: "Essential Monitoring" }],
+    });
+    await act(async () => {
+      expect(await result.current.runCompletionAction(action)).toBe(false);
+    });
+    expect(action).not.toHaveBeenCalled();
+    expect(result.current.completion).not.toBeNull();
+    expect(presetsStore.read()).toEqual({});
+
+    act(() => result.current.developmentFixtures.completion.reset("fixture-a"));
+    expect(result.current.completion).toBeNull();
+  });
+});

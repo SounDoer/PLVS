@@ -56,6 +56,9 @@ export function ConfirmDialog({
       : undefined,
     kind: "confirmation",
     origin: "nested",
+    developmentFixture: {
+      none: "Opened by the action that needs it; editor discard decisions follow ui cancel on a patched draft.",
+    },
     blocking: true,
     dismissible: true,
     supportedActions: ["cancel"],
