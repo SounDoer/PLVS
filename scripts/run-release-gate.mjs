@@ -10,10 +10,8 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { captureSmokeChangesSinceLastTag } from "./audio-code-changed.mjs";
 import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
 import { updateAcceptanceChangesSinceLastTag } from "./update-acceptance-code-changed.mjs";
-import { BUILD_HARNESS } from "./capture-rig.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -55,25 +53,8 @@ if (updateAcceptanceChanges.paths.length > 0) {
   run("Update acceptance evidence (advisory)", "node", ["scripts/report-update-acceptance.mjs"]);
 }
 
-// The capture layer cannot be tested by `npm run check` — CI has no sound card —
-// so it is verified here when either that layer or its smoke harness changed.
-// Releases that touch neither never need the rig at all.
-const { tag, paths } = captureSmokeChangesSinceLastTag();
-if (paths.length === 0) {
-  console.log(
-    `\n== Capture smoke ==\nSkipped: no capture-smoke dependency changed since ${tag ?? "the initial commit"}.`
-  );
-} else {
-  console.log(`\n== Capture smoke ==`);
-  console.log(`Capture-smoke dependencies changed since ${tag ?? "the initial commit"}:`);
-  for (const p of paths) {
-    console.log(`  ${p}`);
-  }
-  // A release bump always edits Cargo.toml and Cargo.lock, so an existing harness
-  // is older than its sources here and the smoke's staleness guard would exit 2.
-  run("Capture harness build", BUILD_HARNESS, []);
-  run("Capture smoke", npm, ["run", "smoke:capture"]);
-}
+// Real capture smoke runs remotely for the exact release commit on all three self-hosted runners
+// (capture-acceptance.yml, called by release.yml), so this local gate no longer drives the rig.
 
 const agentControlChanges = agentControlSmokeChangesSinceLastTag({ cwd: root });
 if (agentControlChanges.paths.length > 0) {

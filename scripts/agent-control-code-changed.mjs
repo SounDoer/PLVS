@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { STABLE_RELEASE_TAG_GLOB } from "./audio-code-changed.mjs";
+import { STABLE_RELEASE_TAG_GLOB } from "./release-tag.mjs";
 
 // Domain owners and renderers are part of the real desktop control path too.
 export const AGENT_CONTROL_SMOKE_PATHS = [

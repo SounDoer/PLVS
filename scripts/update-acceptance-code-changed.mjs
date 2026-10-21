@@ -8,7 +8,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { STABLE_RELEASE_TAG_GLOB } from "./audio-code-changed.mjs";
+import { STABLE_RELEASE_TAG_GLOB } from "./release-tag.mjs";
 
 export const UPDATE_ACCEPTANCE_PATHS = [
   ".github/workflows/release.yml",

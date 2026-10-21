@@ -138,13 +138,11 @@ Tests sit next to the source file they cover, named `*.test.js` / `*.test.jsx` (
 
 **The capture layer is not covered by CI.** After changing `src-tauri/src/audio`, `dsp` or `engine`: neither `npm run check` nor CI touches that code, because the runners have no sound card. A bug there ships with an all-green board.
 
-`release:preflight` runs `npm run smoke:capture` when capture-smoke dependencies changed and will
-stop the release. It has no bypass flag, deliberately: a gate you can wave through is not a gate.
-Fixing it means fixing the harness build or the rig — VB-Cable + VLC on the machine.
-
-Stable releases also run `smoke:capture` for the exact commit on self-hosted Windows, macOS and
-Linux runners (`capture-acceptance.yml`, "Home capture runners" in `CONTRIBUTING.md`). A runner
-that is off makes the release wait and then fail; never add a way to skip a platform.
+Every stable release runs `smoke:capture` for the exact commit on self-hosted Windows, macOS and
+Linux runners (`capture-acceptance.yml`, "Home capture runners" in `CONTRIBUTING.md`) and will stop
+the release when it fails. It has no bypass flag, deliberately: a gate you can wave through is not a
+gate. Fixing it means fixing the harness build or the rig. A runner that is off makes the release
+wait and then fail; never add a way to skip a platform.
 
 After capture-layer work, remind the user to run `npm run soak:capture` (4 hours by default). It is the only thing that surfaces leaks and metric drift, it does not gate releases, and it will therefore never run unless someone asks for it. Complete runs are kept in `artifacts/soak/` as the baseline: read a new run's drift against the spread of those runs, recomputed from the files, not only against the script's 0.01 dB limit — a value well under the limit but far outside the usual spread still deserves a look. Treat a red soak as a lead, not a verdict.
 

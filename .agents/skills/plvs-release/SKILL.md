@@ -388,11 +388,10 @@ Run comprehensive checks before pushing:
 
 ### Check List
 
-| #   | Check                       | Command                                 | Failure Action                                                                                                              |
-| --- | --------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Release state               | `node scripts/check-release-state.mjs`  | Fix version / CHANGELOG / Theme compatibility / git / tag state                                                             |
-| 2   | Full repository gate        | `npm run check`                         | Fix format / lint / test / build / Rust errors                                                                              |
-| 3   | Capture smoke (conditional) | Runs inside `npm run release:preflight` | Only when `src-tauri/src/audio`/`dsp`/`engine` changed since the last tag. Needs VB-Cable + VLC. See "Capture Smoke" below. |
+| #   | Check                | Command                                | Failure Action                                                  |
+| --- | -------------------- | -------------------------------------- | --------------------------------------------------------------- |
+| 1   | Release state        | `node scripts/check-release-state.mjs` | Fix version / CHANGELOG / Theme compatibility / git / tag state |
+| 2   | Full repository gate | `npm run check`                        | Fix format / lint / test / build / Rust errors                  |
 
 Branch selection is a release-management decision from the Branching Model
 section. The automated preflight command does not enforce a branch name.
@@ -449,17 +448,11 @@ succeeds. Existing static pages do not update merely because a GitHub Release wa
 
 ### Capture Smoke
 
-`release:preflight` runs `npm run smoke:capture` **only if** audio code changed
-since the last tag. Most releases touch dock/UI code and skip it entirely,
-touching no hardware.
-
-When it does run, the gate first builds the feature-gated capture harness
-(`--profile harness`) itself. The version bump has already edited
-`src-tauri/Cargo.toml` and `Cargo.lock`, so any existing harness is older than
-its sources and the smoke would otherwise stop with exit 2. Do not prebuild it
-by hand.
-
-Then read the exit code:
+Local preflight does not run `npm run smoke:capture`. `release.yml` calls
+`capture-acceptance.yml`, which runs it for the exact release commit on all three
+self-hosted runners on every release and builds the feature-gated capture harness
+(`--profile harness`) itself first. When a platform's capture job fails, read the
+smoke's exit code in that job's log:
 
 | Exit | Meaning                                             | What to do                                                                         |
 | ---- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -687,7 +680,7 @@ cannot cover:
 In parallel, the `capture-acceptance` job calls `capture-acceptance.yml`, which runs
 `smoke:capture` for the exact SHA on the self-hosted `plvs-rig` runners (home PC or company PC,
 Mac, Ubuntu). `prepare-draft` waits for it, so no draft exists unless real capture passed on all
-three platforms. It always runs, unlike the conditional local capture smoke in Step 6.
+three platforms. It runs on every release; local preflight no longer runs capture smoke.
 
 ### Build Matrix
 
