@@ -283,16 +283,35 @@ function stagePackage(platform, file, stageDir) {
   }
   runTool("dpkg-deb", ["-x", file, stageDir]);
   // Unpacking installs none of the package's Depends; name the ones the runner lacks.
-  const installed = (name) =>
-    spawnSync("dpkg-query", ["-W", "-f=${Status}", name], { encoding: "utf8" }).stdout?.includes(
-      "install ok installed"
-    );
+  const names = installedPackageNames(
+    runTool("dpkg-query", ["-W", "-f=${Status}\\t${Package}\\t${Provides}\\n"])
+  );
+  const installed = (name) => names.has(name);
   const missing = missingDebDependencies(runTool("dpkg-deb", ["-f", file, "Depends"]), installed);
   if (missing.length > 0) {
     throw new RigError(
       `The runner lacks packages the deb depends on: ${missing.join(", ")}. Install them with apt.`
     );
   }
+}
+
+/**
+ * Installed package names plus the virtual names they provide, from `dpkg-query -W` lines of
+ * status, package and Provides. Ubuntu 24.04's time_t transition renamed libraries such as
+ * libgtk-3-0 to libgtk-3-0t64, which provides the old name that Tauri's bundler still lists.
+ */
+export function installedPackageNames(output) {
+  const names = new Set();
+  for (const line of output.split("\n")) {
+    const [status, name, provides = ""] = line.split("\t");
+    if (status !== "install ok installed" || !name) continue;
+    names.add(name);
+    for (const virtual of provides.split(",")) {
+      const provided = virtual.trim().split(/[\s(:]/)[0];
+      if (provided) names.add(provided);
+    }
+  }
+  return names;
 }
 
 /** Each `Depends` group none of whose alternatives `installed` reports, as written. */

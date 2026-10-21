@@ -12,6 +12,7 @@ import {
   judgeTone,
   keepDisplayAwake,
   launchCommand,
+  installedPackageNames,
   missingDebDependencies,
   parseArgs,
   selectRigDevice,
@@ -138,6 +139,23 @@ describe("release-package smoke", () => {
         installed
       )
     ).toEqual(["libgtk-3-0"]);
+  });
+
+  it("counts the old library names that Ubuntu 24.04's t64 packages provide", () => {
+    const names = installedPackageNames(
+      [
+        "install ok installed\tlibgtk-3-0t64\tlibgtk-3-0 (= 3.24.41-4ubuntu1.3)",
+        "install ok installed\tlibc6\t",
+        "deinstall ok config-files\tlibold\tliblegacy",
+        "",
+      ].join("\n")
+    );
+    expect([...names].sort()).toEqual(["libc6", "libgtk-3-0", "libgtk-3-0t64"]);
+    expect(
+      missingDebDependencies("libc6 (>= 2.39), libgtk-3-0t64, libgtk-3-0, liblegacy", (name) =>
+        names.has(name)
+      )
+    ).toEqual(["liblegacy"]);
   });
 });
 
