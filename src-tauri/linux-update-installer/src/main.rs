@@ -11,6 +11,7 @@ mod installer {
   use serde::Deserialize;
   use sha2::{Digest, Sha256};
   use std::{
+    ffi::OsString,
     fs,
     io::{Read, Write},
     os::unix::fs::OpenOptionsExt,
@@ -112,16 +113,13 @@ mod installer {
       .map_err(|e| format!("Cannot stage the protected package: {e}"))?;
 
     validate_deb(&root_package, &ticket.version)?;
+    let sources = root_dir.path().join("sources.list");
+    let source_parts = root_dir.path().join("sources.list.d");
+    fs::write(&sources, b"")
+      .and_then(|_| fs::create_dir(&source_parts))
+      .map_err(|e| format!("Cannot prepare offline APT: {e}"))?;
     let result = Command::new("/usr/bin/apt-get")
-      .args([
-        "-y",
-        "--no-download",
-        "--no-remove",
-        "--only-upgrade",
-        "--reinstall",
-        "install",
-      ])
-      .arg(&root_package)
+      .args(offline_apt_args(&sources, &source_parts, &root_package))
       .output()
       .map_err(|e| format!("Cannot start APT: {e}"))?;
     require_success("APT could not install the update", result)?;
@@ -134,6 +132,28 @@ mod installer {
       ));
     }
     Ok(())
+  }
+
+  /// Offline APT: with an empty source list it can resolve dependencies only from installed
+  /// packages and has nothing to download. `--no-download` cannot be used for this: apt 2.8
+  /// (Ubuntu 24.04) rejects every local deb under it ("Pathname to install is not absolute").
+  fn offline_apt_args(sources: &Path, source_parts: &Path, package: &Path) -> Vec<OsString> {
+    let mut args: Vec<OsString> = ["-y", "--no-remove", "--only-upgrade", "--reinstall"]
+      .into_iter()
+      .map(OsString::from)
+      .collect();
+    for (key, value) in [
+      ("Dir::Etc::SourceList", sources),
+      ("Dir::Etc::SourceParts", source_parts),
+    ] {
+      args.push("-o".into());
+      let mut option = OsString::from(format!("{key}="));
+      option.push(value);
+      args.push(option);
+    }
+    args.push("install".into());
+    args.push(package.into());
+    args
   }
 
   fn validate_ticket(ticket: &Ticket) -> Result<(), String> {
@@ -284,6 +304,31 @@ mod installer {
         signature: "anything".into(),
       };
       assert!(validate_ticket(&ticket).is_err());
+    }
+
+    #[test]
+    fn apt_installs_offline_from_an_empty_source_list() {
+      let args = offline_apt_args(
+        Path::new("/var/tmp/x/sources.list"),
+        Path::new("/var/tmp/x/sources.list.d"),
+        Path::new("/var/tmp/x/plvs.deb"),
+      );
+      assert_eq!(
+        args,
+        [
+          "-y",
+          "--no-remove",
+          "--only-upgrade",
+          "--reinstall",
+          "-o",
+          "Dir::Etc::SourceList=/var/tmp/x/sources.list",
+          "-o",
+          "Dir::Etc::SourceParts=/var/tmp/x/sources.list.d",
+          "install",
+          "/var/tmp/x/plvs.deb",
+        ]
+        .map(OsString::from)
+      );
     }
 
     #[test]

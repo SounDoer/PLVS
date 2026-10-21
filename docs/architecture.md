@@ -803,7 +803,9 @@ package version, the root-owned update helper and the required absolute-path sys
 the expected stable distribution. The unprivileged worker rechecks this immediately before
 installation and invokes the helper only through Polkit. The helper treats its ticket and cache as
 hostile, verifies the exact package bytes and signed version again, copies them to a root-only
-temporary directory, validates the deb name, architecture and version, then invokes APT with no
-download, no removal, only-upgrade and reinstall constraints. It accepts completion only after
+temporary directory, validates the deb name, architecture and version, then invokes APT offline
+(an empty source list, so nothing can be downloaded) with no-removal, only-upgrade and reinstall
+constraints. The worker judges availability by the installed target it updates, not by its own
+cache copy. It accepts completion only after
 `dpkg-query` reports the expected installed version. See
 [ADR 0034](adr/0034-linux-deb-updates-use-a-privileged-installer.md).

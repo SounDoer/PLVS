@@ -25,17 +25,16 @@ struct InstallerTicket<'a> {
 }
 
 pub fn unavailable_reason() -> Option<String> {
-  availability().err()
+  availability(&std::env::current_exe().unwrap_or_default()).err()
 }
 
-fn availability() -> Result<(), String> {
+/// `executable` is the installed application being updated. The update worker runs from a copy in
+/// the update cache, so it passes the ticket's target rather than its own path.
+fn availability(executable: &Path) -> Result<(), String> {
   if cfg!(feature = "preview-identity") || cfg!(feature = "dev-identity") {
     return Err("This build does not install updates.".into());
   }
-  let executable = std::env::current_exe()
-    .ok()
-    .and_then(|path| path.canonicalize().ok());
-  if executable.as_deref() != Some(Path::new(EXECUTABLE)) {
+  if executable.canonicalize().ok().as_deref() != Some(Path::new(EXECUTABLE)) {
     return Err(
       "Install the stable PLVS .deb with APT to enable automatic updates. This copy can still show new versions."
         .into(),
@@ -103,12 +102,13 @@ fn is_executable(path: &Path) -> bool {
 
 pub fn install(
   cache: &UpdateCache,
+  target: &Path,
   package_id: &str,
   version: &str,
   signature: &str,
   on_spawn: impl FnOnce(u32) -> Result<(), String>,
 ) -> Result<(), String> {
-  availability()?;
+  availability(target)?;
   let ticket = InstallerTicket {
     package_path: &cache.package_file(package_id)?,
     package_sha256: package_id,
@@ -176,5 +176,14 @@ mod tests {
         .into_iter()
         .all(|path| Path::new(path).is_absolute())
     );
+  }
+
+  #[test]
+  fn availability_judges_the_given_application_not_the_caller() {
+    // The update worker runs from a cache copy; only the installed target decides availability.
+    let worker = tempfile::NamedTempFile::new().unwrap();
+    assert!(availability(worker.path())
+      .unwrap_err()
+      .contains("Install the stable PLVS .deb"));
   }
 }

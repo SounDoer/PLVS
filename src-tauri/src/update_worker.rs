@@ -415,6 +415,7 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
     #[cfg(target_os = "linux")]
     let result = crate::linux_update::install(
       cache,
+      &ticket.target,
       &ticket.package_id,
       &update.version,
       &update.signature,

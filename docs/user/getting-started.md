@@ -48,8 +48,9 @@ install them after you choose **Update and Restart**. Ubuntu shows its normal ad
 authentication prompt. The already verified package is installed offline through APT; PLVS does
 not ask for or handle your password. Canceling authentication keeps the download so you can retry.
 If the required system authorization tools or package dependencies are unavailable, update details
-link to the `.deb` on GitHub Releases for manual installation. Versions installed before this
-component was introduced need one final manual `.deb` update to add it. Your settings are kept.
+link to the `.deb` on GitHub Releases for manual installation. PLVS 0.23.0 and earlier need one
+final manual `.deb` update: earlier versions lack the component, and 0.23.0 cannot complete the
+installation. Your settings are kept.
 Remove PLVS with `sudo apt remove plvs`; removing the package preserves user settings.
 
 Dock and per-application capture are not available on Linux. See
