@@ -70,7 +70,16 @@ describe("FeedbackDialog", () => {
     expect(
       /** @type {HTMLInputElement} */ (screen.getByLabelText("attach diagnostics")).checked
     ).toBe(false);
-    expect(screen.getByText(/recent Dock operations, and up to 500 log lines/i)).toBeTruthy();
+    const help = screen.getByRole("button", { name: /Attach Diagnostics help/i });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.focus(help);
+    expect(screen.getByRole("tooltip").textContent).toMatch(
+      /recent Dock operations, and up to 500 log lines/i
+    );
+    fireEvent.click(help);
+    expect(
+      /** @type {HTMLInputElement} */ (screen.getByLabelText("attach diagnostics")).checked
+    ).toBe(false);
     expect(
       /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "Send" })).disabled
     ).toBe(true);

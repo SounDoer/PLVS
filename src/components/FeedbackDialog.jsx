@@ -1,5 +1,6 @@
 import { FLOATING_WINDOW_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useEffect, useRef, useState } from "react";
+import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { submitFeedback } from "../lib/feedback.js";
@@ -9,10 +10,14 @@ import { LinkButton } from "@/components/ui/link-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { frontendDiagnostics } from "../lib/feedbackDiagnostics.js";
+import { HoverTip } from "./HoverTip.jsx";
+import { IconAction } from "./ui/icon-action";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_POS = { x: 120, y: 120 };
 const CLOSE_DELAY_MS = 2000;
+const DIAGNOSTICS_HELP =
+  "Includes app and window state, recent Dock operations, and up to 500 log lines. Audio and screenshots are never attached.";
 
 /**
  * @param {{ onClose: () => void, onDirtyChange?: (dirty: boolean) => void }} props
@@ -126,26 +131,33 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
           placeholder="you@example.com (optional)"
           className="h-[var(--ui-control-h)] rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] outline-none"
         />
-        <label className="flex items-start gap-2 text-[length:var(--ui-fs-control)]">
-          <Checkbox
-            aria-label="attach diagnostics"
-            checked={attachDiagnostics}
-            onChange={(event) => {
-              setAttachDiagnostics(event.target.checked);
-              setDiagnosticsPreview(null);
-              setShowDiagnostics(false);
-              setStatus("idle");
-            }}
-            disabled={busy}
-          />
-          <span>
+        <div className="flex items-center gap-1 text-[length:var(--ui-fs-control)]">
+          <label className="flex items-center gap-2">
+            <Checkbox
+              aria-label="attach diagnostics"
+              checked={attachDiagnostics}
+              onChange={(event) => {
+                setAttachDiagnostics(event.target.checked);
+                setDiagnosticsPreview(null);
+                setShowDiagnostics(false);
+                setStatus("idle");
+              }}
+              disabled={busy}
+            />
             <span className="font-medium">Attach Diagnostics</span>
-            <span className="mt-0 block text-[length:var(--ui-fs-axis)] text-muted-foreground">
-              Includes app and window state, recent Dock operations, and up to 500 log lines. Audio
-              and screenshots are never attached.
-            </span>
-          </span>
-        </label>
+          </label>
+          <HoverTip
+            tip={DIAGNOSTICS_HELP}
+            side="top"
+            align="start"
+            className="inline-flex shrink-0"
+            tipClassName="w-max max-w-[18rem] whitespace-normal"
+          >
+            <IconAction aria-label={`Attach Diagnostics help: ${DIAGNOSTICS_HELP}`} className="p-1">
+              <CircleHelp className="size-[1em]" aria-hidden />
+            </IconAction>
+          </HoverTip>
+        </div>
         {attachDiagnostics && (
           <>
             <LinkButton
