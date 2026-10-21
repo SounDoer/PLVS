@@ -1,8 +1,10 @@
 # Fully automated packaged updater acceptance on the maintainer's logged-in desktop runners.
 # The acceptance-only Agent Control methods drive the real update UI; Actions artifacts carry the
 # exact-SHA evidence between machines and the aggregate verifier. No signing secret is used here.
-# The nightly schedule tests main's tip only when the updater chain changed since the last
-# successful run, so a broken harness surfaces before release day.
+# A release call requires the run only when the product update chain changed. The nightly schedule
+# and standalone dispatches also watch the acceptance harness, and a scheduled run tests main's tip
+# only when either changed since the last successful run, so a broken harness surfaces before
+# release day.
 name: Update Acceptance
 
 on:
@@ -18,6 +20,11 @@ on:
         description: Run even when updater dependencies did not change
         required: true
         default: false
+        type: boolean
+      include_harness:
+        description: Also run when only the acceptance harness changed
+        required: true
+        default: true
         type: boolean
   workflow_call:
     inputs:
@@ -50,6 +57,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
       FORCE: ${{ inputs.force }}
+      INCLUDE_HARNESS: ${{ github.event_name == 'schedule' || inputs.include_harness }}
     steps:
       - name: Validate the commit
         run: |
@@ -76,7 +84,7 @@ jobs:
       - name: Detect updater-chain changes
         id: requirement
         run: |
-          required=$(node --input-type=module -e "import { updateAcceptanceChangesSinceLastTag } from './scripts/update-acceptance-code-changed.mjs'; console.log(updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined }).paths.length ? 'true' : 'false')")
+          required=$(node --input-type=module -e "import { updateAcceptanceChangesSinceLastTag } from './scripts/update-acceptance-code-changed.mjs'; console.log(updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined, includeHarness: process.env.INCLUDE_HARNESS === 'true' }).paths.length ? 'true' : 'false')")
           if [[ "$FORCE" == "true" ]]; then required=true; fi
           echo "required=$required" >> "$GITHUB_OUTPUT"
 

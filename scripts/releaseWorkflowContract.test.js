@@ -212,7 +212,10 @@ describe("Immutable Release promotion", () => {
       "actions/workflows/update-acceptance.yml/runs?status=success&per_page=1"
     );
     expect(updateAcceptanceWorkflow).toContain(
-      "updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined })"
+      "updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined, includeHarness: process.env.INCLUDE_HARNESS === 'true' })"
+    );
+    expect(updateAcceptanceWorkflow).toContain(
+      "INCLUDE_HARNESS: ${{ github.event_name == 'schedule' || inputs.include_harness }}"
     );
   });
 

@@ -722,7 +722,8 @@ installation attempts, and quits through the normal application business path. N
 operator checkpoint is part of a valid run. `update:acceptance:serve` remains a debugging command,
 not a release step.
 
-Stable releases call `update-acceptance.yml`. When updater-chain dependencies changed, its
+Stable releases call `update-acceptance.yml`. When the product update chain changed
+(`UPDATE_ACCEPTANCE_PATHS` in `scripts/update-acceptance-code-changed.mjs`), its
 self-hosted Windows and macOS jobs build and run the exact commit, export evidence without the
 ephemeral private key or build cache, upload it as short-lived Actions artifacts, and verify both
 platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
@@ -730,9 +731,12 @@ assembling the Draft, so maintainers never copy acceptance files between machine
 
 The same workflow also runs nightly (18:00 UTC) against the tip of `main`. A scheduled run compares
 with the head commit of the latest successful `update-acceptance.yml` run instead of the last
-release tag, so it reaches the runners only when the updater chain changed since then. A broken
-acceptance harness therefore fails overnight rather than on release day; GitHub's failure
-notification for the scheduled run is the signal.
+release tag, and it also counts the acceptance harness (`UPDATE_ACCEPTANCE_HARNESS_PATHS`: the
+acceptance-only Agent Control surface, the acceptance scripts and workflows). It reaches the runners
+only when either changed since then. A release does not wait for a harness-only change, because the
+harness cannot change what users receive; a broken harness instead fails overnight, and GitHub's
+failure notification for the scheduled run is the signal. A standalone dispatch watches both by
+default (`include_harness`).
 
 The macOS runner stages the older app in a writable path containing spaces and launches that exact
 bundle executable as a background child of the long-lived runner. This keeps the update helper's

@@ -7,12 +7,13 @@ import { describe, expect, it } from "vitest";
 import {
   filterUpdateAcceptancePaths,
   normalizeUpdateAcceptanceContent,
+  UPDATE_ACCEPTANCE_HARNESS_PATHS,
   UPDATE_ACCEPTANCE_PATHS,
   updateAcceptanceChangesSinceLastTag,
 } from "./update-acceptance-code-changed.mjs";
 
 describe("update acceptance change classification", () => {
-  it("guards the installed updater, signing, packaging, and acceptance chain", () => {
+  it("guards the installed updater, signing and packaging chain for releases", () => {
     expect(UPDATE_ACCEPTANCE_PATHS).toEqual(
       expect.arrayContaining([
         "src-tauri/src/update_worker.rs",
@@ -21,20 +22,31 @@ describe("update acceptance change classification", () => {
         "src-tauri/vendor/tauri-plugin-updater",
         "src-tauri/tauri.windows.conf.json",
         "scripts/prepare-macos-signing.sh",
-        ".github/workflows/release.yml",
-        "scripts/run-release-gate.mjs",
       ])
     );
+    expect(UPDATE_ACCEPTANCE_PATHS).not.toContain("scripts/run-release-gate.mjs");
     expect(
       filterUpdateAcceptancePaths([
         "src-tauri/vendor/tauri-plugin-updater/src/updater.rs",
         "scripts/run-update-acceptance.mjs",
         "src/components/LevelMeter.jsx",
       ])
-    ).toEqual([
-      "src-tauri/vendor/tauri-plugin-updater/src/updater.rs",
+    ).toEqual(["src-tauri/vendor/tauri-plugin-updater/src/updater.rs"]);
+  });
+
+  it("watches the acceptance harness only when asked, as the nightly run does", () => {
+    const harness = [
       "scripts/run-update-acceptance.mjs",
-    ]);
+      "src/agentControl/AgentControlBridge.jsx",
+      "src-tauri/src/cli_control.rs",
+      ".github/workflows/update-acceptance.yml",
+    ];
+    expect(UPDATE_ACCEPTANCE_HARNESS_PATHS).toEqual(expect.arrayContaining(harness));
+    for (const path of UPDATE_ACCEPTANCE_HARNESS_PATHS) {
+      expect(UPDATE_ACCEPTANCE_PATHS).not.toContain(path);
+    }
+    expect(filterUpdateAcceptancePaths(harness)).toEqual([]);
+    expect(filterUpdateAcceptancePaths(harness, { includeHarness: true })).toEqual(harness);
   });
 
   it("does not turn ordinary version and UI changes into an every-release gate", () => {

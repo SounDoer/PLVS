@@ -1,11 +1,15 @@
 /**
  * Require packaged update acceptance only when the installer/update chain changed.
  *
- * Version-only release files are deliberately absent: this is the narrower rollout gate, not an
- * every-release requirement. The guarded set covers code that downloads, coordinates, signs,
- * packages, launches, or validates an installed update, plus the acceptance gate itself.
- * `lib.rs` is deliberately absent: most releases touch it, so its update wiring lives in
- * `update_runtime.rs` and the test beside this file keeps lib.rs calling into it.
+ * Two layers. `UPDATE_ACCEPTANCE_PATHS` is the product update chain: code that downloads,
+ * coordinates, signs, packages, launches or installs an update. A release requires acceptance
+ * only when it changed. `UPDATE_ACCEPTANCE_HARNESS_PATHS` is what drives the acceptance run
+ * itself; changing it cannot change what users receive, so only the nightly run (and a standalone
+ * dispatch) also watches it, and a broken harness still fails before release day.
+ *
+ * Version-only release files are deliberately absent. `lib.rs` is too: most releases touch it, so
+ * its update wiring lives in `update_runtime.rs` and the test beside this file keeps lib.rs
+ * calling into it.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -13,19 +17,10 @@ import path from "node:path";
 import { STABLE_RELEASE_TAG_GLOB } from "./release-tag.mjs";
 
 export const UPDATE_ACCEPTANCE_PATHS = [
-  ".github/workflows/release.yml",
-  ".github/workflows/update-acceptance.yml",
-  "src/agentControl/developmentUpdateProtocol.js",
-  "src/agentControl/handlers/developmentUpdate.js",
-  "src/agentControl/handlers/index.js",
-  "src/agentControl/AgentControlBridge.jsx",
-  "src/agentControl/bridge/pipeline.js",
-  "src/agentControl/useAgentControlBridge.js",
   "src/hooks/AppLifecycleContext.jsx",
   "src/hooks/useUpdateController.js",
   "src/lib/updateController.js",
   "src-tauri/src/main.rs",
-  "src-tauri/src/cli_control.rs",
   "src-tauri/src/linux_update.rs",
   "src-tauri/src/update_cache.rs",
   "src-tauri/src/update_gate.rs",
@@ -39,14 +34,24 @@ export const UPDATE_ACCEPTANCE_PATHS = [
   "src-tauri/tauri.windows.conf.json",
   "src-tauri/vendor/tauri-plugin-updater",
   "scripts/build-linux-deb.mjs",
-  "scripts/build-update-acceptance.mjs",
   "scripts/build-updater-manifest.mjs",
-  "scripts/export-update-acceptance.mjs",
   "scripts/notarize-macos-dmg.sh",
   "scripts/prepare-macos-signing.sh",
+];
+export const UPDATE_ACCEPTANCE_HARNESS_PATHS = [
+  ".github/workflows/release.yml",
+  ".github/workflows/update-acceptance.yml",
+  "src/agentControl/developmentUpdateProtocol.js",
+  "src/agentControl/handlers/developmentUpdate.js",
+  "src/agentControl/handlers/index.js",
+  "src/agentControl/AgentControlBridge.jsx",
+  "src/agentControl/bridge/pipeline.js",
+  "src/agentControl/useAgentControlBridge.js",
+  "src-tauri/src/cli_control.rs",
+  "scripts/build-update-acceptance.mjs",
+  "scripts/export-update-acceptance.mjs",
   "scripts/probe-cached-updater.mjs",
   "scripts/report-update-acceptance.mjs",
-  "scripts/run-release-gate.mjs",
   "scripts/run-update-acceptance.mjs",
   "scripts/serve-update-acceptance.mjs",
   "scripts/update-acceptance-code-changed.mjs",
@@ -60,9 +65,12 @@ export const UPDATE_ACCEPTANCE_CONTENT_PATHS = [
   "src-tauri/tauri.conf.json",
 ];
 
-export function filterUpdateAcceptancePaths(paths) {
+export function filterUpdateAcceptancePaths(paths, { includeHarness = false } = {}) {
+  const guards = includeHarness
+    ? [...UPDATE_ACCEPTANCE_PATHS, ...UPDATE_ACCEPTANCE_HARNESS_PATHS]
+    : UPDATE_ACCEPTANCE_PATHS;
   return paths.filter((file) =>
-    UPDATE_ACCEPTANCE_PATHS.some((guarded) => file === guarded || file.startsWith(`${guarded}/`))
+    guards.some((guarded) => file === guarded || file.startsWith(`${guarded}/`))
   );
 }
 
@@ -87,8 +95,15 @@ export function normalizeUpdateAcceptanceContent(file, contents) {
   return contents;
 }
 
-/** `since` replaces the last stable tag as the baseline, for the nightly run. */
-export function updateAcceptanceChangesSinceLastTag({ cwd = process.cwd(), since } = {}) {
+/**
+ * `since` replaces the last stable tag as the baseline, for the nightly run. `includeHarness` also
+ * counts changes to the acceptance harness.
+ */
+export function updateAcceptanceChangesSinceLastTag({
+  cwd = process.cwd(),
+  since,
+  includeHarness = false,
+} = {}) {
   const git = (args) =>
     execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   git(["rev-parse", "--verify", "HEAD"]);
@@ -96,7 +111,11 @@ export function updateAcceptanceChangesSinceLastTag({ cwd = process.cwd(), since
   const tag =
     since ??
     (tags ? git(["describe", "--tags", "--match", STABLE_RELEASE_TAG_GLOB, "--abbrev=0"]) : null);
-  const guardedPaths = [...UPDATE_ACCEPTANCE_PATHS, ...UPDATE_ACCEPTANCE_CONTENT_PATHS];
+  const guardedPaths = [
+    ...UPDATE_ACCEPTANCE_PATHS,
+    ...UPDATE_ACCEPTANCE_HARNESS_PATHS,
+    ...UPDATE_ACCEPTANCE_CONTENT_PATHS,
+  ];
   const committed = git(
     tag
       ? ["diff", "--name-only", `${tag}..HEAD`, "--", ...guardedPaths]
@@ -127,6 +146,6 @@ export function updateAcceptanceChangesSinceLastTag({ cwd = process.cwd(), since
   });
   return {
     tag,
-    paths: [...filterUpdateAcceptancePaths(changed), ...contentChanges],
+    paths: [...filterUpdateAcceptancePaths(changed, { includeHarness }), ...contentChanges],
   };
 }
