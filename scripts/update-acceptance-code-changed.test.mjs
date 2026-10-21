@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -106,5 +106,24 @@ describe("update acceptance change classification", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
+  });
+
+  it("keeps lib.rs, which it does not guard, reduced to calls into the guarded update runtime", () => {
+    const source = (file) => readFileSync(join(process.cwd(), "src-tauri", "src", file), "utf8");
+    const lib = source("lib.rs");
+    const runtime = source("update_runtime.rs");
+    expect(UPDATE_ACCEPTANCE_PATHS).not.toContain("src-tauri/src/lib.rs");
+    expect(UPDATE_ACCEPTANCE_PATHS).toContain("src-tauri/src/update_runtime.rs");
+    expect(lib).toContain("update_runtime::register_plugin(builder)");
+    expect(lib).toContain("update_runtime::manage(app, &app_data_dir)?");
+    expect(lib).toContain(".build(update_runtime::app_context())");
+    expect(lib).not.toMatch(
+      /tauri_plugin_updater|UpdateRuntime::new|UpdateCache::open|generate_context!/
+    );
+    const commands = [
+      ...runtime.matchAll(/#\[tauri::command\]\s*(?:pub )?(?:async )?fn (\w+)/g),
+    ].map((match) => match[1]);
+    expect(commands.length).toBeGreaterThan(0);
+    for (const command of commands) expect(lib).toContain(`update_runtime::${command},`);
   });
 });

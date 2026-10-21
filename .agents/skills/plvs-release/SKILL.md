@@ -853,8 +853,8 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
   deb with `tauri signer sign --app-version` and `latest.json` must carry `linux-x86_64-deb`.
   Enabling in-app Linux installation needs the packaged upgrade evidence listed in the Linux
   stable update audit first.
-- **Auto-update is active**: `src-tauri/src/lib.rs` registers
-  `tauri_plugin_updater` unconditionally, and `tauri.conf.json`'s `plugins.updater`
+- **Auto-update is active**: `register_plugin` in `src-tauri/src/update_runtime.rs`
+  registers `tauri_plugin_updater` in every non-Preview build, and `tauri.conf.json`'s `plugins.updater`
   points it at `releases/latest/download/latest.json`, so a shipped tag reaches
   existing installs on its own. Updates are signed — the matching `pubkey` means an
   unsigned or wrongly signed payload is refused. **There is no `active` flag to turn
@@ -864,7 +864,7 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
   `bundle.active` next door is a real field and gates the bundler).
   `tauri.no-updater.conf.json` only sets `bundle.createUpdaterArtifacts: false`,
   which stops a build producing updater payloads but leaves the updater client in
-  the app. Disabling it for real means not registering the plugin in `lib.rs`.
+  the app. Disabling it for real means not registering the plugin there.
 - **Semantic versioning**: Breaking = MAJOR, Feature = MINOR, Fix = PATCH
 
 ---

@@ -4,6 +4,8 @@
  * Version-only release files are deliberately absent: this is the narrower rollout gate, not an
  * every-release requirement. The guarded set covers code that downloads, coordinates, signs,
  * packages, launches, or validates an installed update, plus the acceptance gate itself.
+ * `lib.rs` is deliberately absent: most releases touch it, so its update wiring lives in
+ * `update_runtime.rs` and the test beside this file keeps lib.rs calling into it.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -22,7 +24,7 @@ export const UPDATE_ACCEPTANCE_PATHS = [
   "src/hooks/AppLifecycleContext.jsx",
   "src/hooks/useUpdateController.js",
   "src/lib/updateController.js",
-  "src-tauri/src/lib.rs",
+  "src-tauri/src/main.rs",
   "src-tauri/src/cli_control.rs",
   "src-tauri/src/linux_update.rs",
   "src-tauri/src/update_cache.rs",

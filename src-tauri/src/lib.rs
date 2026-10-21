@@ -57,12 +57,6 @@ use std::time::Duration;
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
-/// Build the Tauri context from one macro expansion. On macOS each expansion embeds an
-/// `_EMBED_INFO_PLIST` symbol, so the main app and update helper must share this entry point.
-fn app_context() -> tauri::Context<tauri::Wry> {
-  tauri::generate_context!()
-}
-
 #[cfg(target_os = "macos")]
 pub use audio::macos_capture_apps::{list_capture_applications, CaptureApplication};
 #[cfg(target_os = "windows")]
@@ -192,8 +186,7 @@ pub fn run() {
   let builder = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init());
-  #[cfg(not(feature = "preview-identity"))]
-  let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+  let builder = update_runtime::register_plugin(builder);
 
   builder
     .plugin(tauri_plugin_autostart::init(
@@ -335,24 +328,8 @@ pub fn run() {
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(&app_data_dir)
         .map_err(|error| format!("agent artifact storage: {error}"))?;
       app.manage(artifact_store);
-      let updates = update_runtime::UpdateRuntime::new(
-        update_cache::UpdateCache::open(&app_data_dir, &std::env::current_exe()?)?,
-        app_data_dir.clone(),
-      );
-      match updates {
-        Ok(updates) => {
-          app.manage(updates);
-        }
-        Err(error) => {
-          use tauri_plugin_dialog::DialogExt;
-          app
-            .dialog()
-            .message(error)
-            .title("PLVS Update")
-            .blocking_show();
-          app.handle().exit(0);
-          return Ok(());
-        }
+      if !update_runtime::manage(app, &app_data_dir)? {
+        return Ok(());
       }
 
       // --- Persistence: migrate once, hydrate the selected Workspace, restore pre-paint state. ---
@@ -810,7 +787,7 @@ pub fn run() {
         .map_err(|e| format!("device watch thread: {e}"))?;
       Ok(())
     })
-    .build(app_context())
+    .build(update_runtime::app_context())
     .expect("error while building tauri application")
     .run(|app, event| {
       #[cfg(target_os = "macos")]

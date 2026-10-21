@@ -326,7 +326,7 @@ pub fn run(ticket_path: &Path) -> Result<(), String> {
   if worker != approved_worker || ticket_path != approved_ticket {
     return Err("The helper is outside the approved update context.".into());
   }
-  let mut context = crate::app_context();
+  let mut context = crate::update_runtime::app_context();
   context.config_mut().app.windows.clear();
   let app = tauri::Builder::default()
     .plugin(tauri_plugin_updater::Builder::new().build())

@@ -32,7 +32,10 @@ const previewBuildSkill = readFileSync(
   join(cwd(), ".agents", "skills", "plvs-preview-build", "SKILL.md"),
   "utf8"
 );
-const appSource = readFileSync(join(cwd(), "src-tauri", "src", "lib.rs"), "utf8");
+const updateRuntimeSource = readFileSync(
+  join(cwd(), "src-tauri", "src", "update_runtime.rs"),
+  "utf8"
+);
 const packageJson = JSON.parse(readFileSync(join(cwd(), "package.json"), "utf8"));
 const tauriConfig = JSON.parse(readFileSync(join(cwd(), "src-tauri", "tauri.conf.json"), "utf8"));
 const previewTauriConfig = JSON.parse(
@@ -384,7 +387,8 @@ describe("Immutable Windows Preview Build", () => {
   });
 
   it("compiles the updater out of Preview packages", () => {
-    expect(appSource).toContain('#[cfg(not(feature = "preview-identity"))]');
-    expect(appSource).toContain("tauri_plugin_updater::Builder::new().build()");
+    expect(updateRuntimeSource).toContain(
+      '#[cfg(not(feature = "preview-identity"))]\n  let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());'
+    );
   });
 });

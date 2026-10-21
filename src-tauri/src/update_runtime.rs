@@ -9,6 +9,47 @@ use std::{sync::Mutex, time::Duration};
 use tauri::{Emitter, Manager, State, WebviewWindow};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
+/// Build the Tauri context from one macro expansion. On macOS each expansion embeds an
+/// `_EMBED_INFO_PLIST` symbol, so the main app and update helper must share this entry point.
+pub(crate) fn app_context() -> tauri::Context<tauri::Wry> {
+  tauri::generate_context!()
+}
+
+/// Preview builds never check for updates, so they carry no updater plugin.
+pub(crate) fn register_plugin(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
+  #[cfg(not(feature = "preview-identity"))]
+  let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+  builder
+}
+
+/// Manage the update runtime before any webview exists. `false` means it could not start and the
+/// app is exiting after showing why.
+pub(crate) fn manage(
+  app: &tauri::App,
+  app_data_dir: &std::path::Path,
+) -> Result<bool, Box<dyn std::error::Error>> {
+  let updates = UpdateRuntime::new(
+    UpdateCache::open(app_data_dir, &std::env::current_exe()?)?,
+    app_data_dir.to_path_buf(),
+  );
+  match updates {
+    Ok(updates) => {
+      app.manage(updates);
+      Ok(true)
+    }
+    Err(error) => {
+      use tauri_plugin_dialog::DialogExt;
+      app
+        .dialog()
+        .message(error)
+        .title("PLVS Update")
+        .blocking_show();
+      app.handle().exit(0);
+      Ok(false)
+    }
+  }
+}
+
 pub struct UpdateRuntime {
   cache: UpdateCache,
   /// Oldest first, so the bound evicts the stalest selection rather than an arbitrary one.
