@@ -76,6 +76,7 @@
     "rust:check": "npm run rust:fmt && npm run rust:clippy && npm run rust:test",
     "check": "npm run version:check && npm run licenses:check && npm run sharesets:source:check && npm run website:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run rust:check",
     "release:preflight": "node scripts/run-release-gate.mjs",
+    "release:dispatch": "node scripts/release-dispatch.mjs",
     "release:content:snapshot": "node scripts/release-content-review.mjs snapshot",
     "release:content:check": "node scripts/release-content-review.mjs check",
     "update:acceptance:build": "node scripts/build-update-acceptance.mjs",

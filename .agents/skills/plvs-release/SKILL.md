@@ -525,16 +525,8 @@ git push origin main
 ### Before Dispatch: Home Runners and a Manual GUI Check
 
 `release.yml` runs real capture smoke on the self-hosted runners (see "Home capture runners" in
-`CONTRIBUTING.md`). Confirm all three are `online` and idle before dispatching; an offline runner
-makes the release wait in the queue and then fail:
-
-```bash
-gh api repos/SounDoer/PLVS/actions/runners --jq '.runners[] | "\(.name) \(.status) busy=\(.busy)"'
-```
-
-The Windows runner lives on the maintainer's company PC for now, so dispatch while that PC is on
-and logged in. The macOS runner runs in a Terminal window and does not come back after a reboot or
-logout.
+`CONTRIBUTING.md`). The Windows runner lives on the maintainer's company PC for now, so dispatch
+while that PC is on and logged in.
 
 Agent Control smoke runs only on the preflight machine (Windows). Until it runs on the macOS and
 Linux runners, also open the current build on the Mac and on Ubuntu, open Settings once and close
@@ -552,59 +544,18 @@ Do **not** create or push the release tag. `ci.yml` must succeed for the exact
 release commit first. `release.yml` then builds each platform once, smoke-tests
 those exact files, and creates the tag as part of the Draft Release flow.
 
-**PowerShell (Windows):**
-
-```powershell
-$sha = git rev-parse HEAD
-$runId = $null
-
-1..30 | ForEach-Object {
-  $runs = gh run list --workflow=ci.yml --commit $sha --event push --limit 1 --json databaseId | ConvertFrom-Json
-  $runId = ($runs | Select-Object -First 1).databaseId
-  if ($runId) { break }
-  Start-Sleep -Seconds 2
-}
-
-if (-not $runId) { throw "No CI run appeared for $sha" }
-gh run watch $runId --exit-status
-if ((gh run view $runId --json conclusion -q .conclusion) -ne "success") {
-  throw "CI did not succeed for $sha"
-}
-
-$remoteMain = (git ls-remote origin refs/heads/main).Split()[0]
-if ($remoteMain -ne $sha) { throw "origin/main moved after CI verification" }
-$version = node -p "require('./package.json').version"
-gh api --header "X-GitHub-Api-Version: 2026-03-10" repos/SounDoer/PLVS/immutable-releases
-gh workflow run release.yml --ref main -f version=$version -f commit_sha=$sha -f confirm_immutable_releases=true
-```
-
-**Bash (Linux/macOS):**
-
 ```bash
-sha=$(git rev-parse HEAD)
-run_id=""
-for _ in $(seq 1 30); do
-  run_id=$(gh run list --workflow=ci.yml --commit "$sha" --event push --limit 1 --json databaseId -q '.[0].databaseId')
-  [ -n "$run_id" ] && break
-  sleep 2
-done
-
-[ -n "$run_id" ] || { echo "No CI run appeared for $sha" >&2; exit 1; }
-gh run watch "$run_id" --exit-status
-[ "$(gh run view "$run_id" --json conclusion -q .conclusion)" = "success" ]
-[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$sha" ]
-
-version=$(node -p "require('./package.json').version")
-gh api --header "X-GitHub-Api-Version: 2026-03-10" repos/SounDoer/PLVS/immutable-releases
-gh workflow run release.yml --ref main -f version="$version" -f commit_sha="$sha" -f confirm_immutable_releases=true
+npm run release:dispatch
 ```
 
-The immutable-releases API call requires repository admin read access and returns
-404 when the setting is disabled. Enable **Settings → General → Releases →
-Enable release immutability** before dispatching. `GITHUB_TOKEN` cannot inspect
-that admin setting, so this maintainer-side check is mandatory; the workflow also
-requires an explicit confirmation input and verifies that the published Release
-actually became immutable.
+`scripts/release-dispatch.mjs` requires `HEAD` to be the pushed tip of `origin/main`, an online
+`plvs-rig` runner for Windows, macOS and Linux, and release immutability enabled; it then waits for
+the exact commit's `ci.yml` push run, requires success, checks that `origin/main` did not move, and
+dispatches `release.yml` with the package version. The runner list and the immutability setting
+need the maintainer's admin `gh` login, which `GITHUB_TOKEN` lacks, so these checks cannot move into
+the workflow. Enable immutability under **Settings → General → Releases → Enable release
+immutability**; the workflow also requires an explicit confirmation input and verifies that the
+published Release actually became immutable.
 
 If CI fails, keep the already-bumped version, fix the failure on `main`, re-run
 `npm run release:preflight`, push again, and repeat this step for the new exact
@@ -919,6 +870,7 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 | `node scripts/bump-version.mjs X.Y.Z`                  | Bump version                            |
 | `node scripts/check-release-state.mjs`                 | Fast release-state checklist            |
 | `npm run release:preflight`                            | Complete local pre-dispatch gate        |
+| `npm run release:dispatch`                             | Wait for CI, check runners, dispatch    |
 | `node scripts/validate-release-bundle.mjs X.Y.Z <dir>` | Verify the complete public asset set    |
 | `npm run smoke:file-analysis`                          | Real FFmpeg sidecar file-analysis smoke |
 | `npm run lint`                                         | Run linting                             |
