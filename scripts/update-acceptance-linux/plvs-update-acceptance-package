@@ -8,7 +8,7 @@
 #                          installed PLVS) and prints it as `original: absent|<version>`
 #   restore                put that recorded state back and forget it; a no-op without a record
 set -euo pipefail
-export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin DEBIAN_FRONTEND=noninteractive
 umask 077
 
 STATE_DIR=/var/lib/plvs-update-acceptance
