@@ -226,6 +226,8 @@ describe("ItemPickerDialog completion mode", () => {
     );
 
     expect(screen.getByText("Import Complete")).toBeTruthy();
+    expect(screen.getByText("Shared is now in your library.")).toBeTruthy();
+    expect(screen.getByText("Shared").closest("li").textContent).toContain("Added");
     fireEvent.click(screen.getByRole("button", { name: actionLabel }));
     expect(onAction).toHaveBeenCalledTimes(1);
   });
@@ -239,6 +241,32 @@ describe("ItemPickerDialog completion mode", () => {
         review={{
           itemPlan: [
             { sourceId: "a", finalId: "a", name: "A", disposition: "added" },
+            { sourceId: "b", finalId: "b2", name: "B (2)", disposition: "duplicated" },
+            { sourceId: "c", finalId: "c", name: "C", disposition: "skipped" },
+          ],
+        }}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByText("A").closest("li").textContent).toContain("Added");
+    expect(screen.getByText("B (2)").closest("li").textContent).toContain("Imported as a copy");
+    expect(screen.getByText("C").closest("li").textContent).toContain("Already in your library");
+    expect(screen.queryByRole("button", { name: "Use Theme" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+  });
+});
+
+describe("ItemPickerDialog completion summary", () => {
+  it("names the kind in the plural after a multi-item import", () => {
+    render(
+      <ItemPickerDialog
+        open
+        mode="complete"
+        type="presets"
+        review={{
+          itemPlan: [
+            { sourceId: "a", finalId: "a", name: "A", disposition: "added" },
             { sourceId: "b", finalId: "b", name: "B", disposition: "added" },
           ],
         }}
@@ -246,8 +274,7 @@ describe("ItemPickerDialog completion mode", () => {
       />
     );
 
-    expect(screen.queryByRole("button", { name: "Use Theme" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(screen.getByText("The presets are now in your library.")).toBeTruthy();
   });
 });
 

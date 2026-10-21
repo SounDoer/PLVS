@@ -275,7 +275,8 @@ setting that version does not have.
 Before a shared file is added, the import review lists each Item as **Add**, **Already in your
 library**, or **Import as a copy**, shows bundled Loudness Profile dependencies, and calls out safe
 adaptations such as collision renaming or a missing legacy dependency. Confirming the review is the
-only step that writes to the Library.
+only step that writes to the Library. The completion then reports each Item as **Added**, **Already
+in your library**, or **Imported as a copy**.
 
 Import only adds saved Library content, so it remains available while a Theme or Loudness Profile
 draft is open and never discards that draft. After a single Item is imported, PLVS offers a separate

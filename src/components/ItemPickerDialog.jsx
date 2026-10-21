@@ -31,17 +31,25 @@ const DISPOSITION_LABEL = {
   duplicated: "Import as a copy",
 };
 
+// After the import the same rows describe what happened, not what will.
+const COMPLETED_DISPOSITION_LABEL = {
+  added: "Added",
+  skipped: "Already in your library",
+  duplicated: "Imported as a copy",
+};
+
 const COMPLETION_ACTION_LABEL = {
   loudness: "Use Profile",
   presets: "Apply Preset",
   themes: "Use Theme",
 };
 
-function PlanRow({ entry }) {
+function PlanRow({ entry, completed = false }) {
+  const labels = completed ? COMPLETED_DISPOSITION_LABEL : DISPOSITION_LABEL;
   return (
     <li className="flex items-center justify-between gap-3 py-1 text-[length:var(--ui-fs-control)]">
       <span className="truncate">{entry.name}</span>
-      <span className="shrink-0 text-muted-foreground">{DISPOSITION_LABEL[entry.disposition]}</span>
+      <span className="shrink-0 text-muted-foreground">{labels[entry.disposition]}</span>
     </li>
   );
 }
@@ -190,7 +198,9 @@ export function ItemPickerDialog({
             {mode === "pick"
               ? `Choose which ${label.toLowerCase()} to export.`
               : mode === "complete"
-                ? `The ${label.toLowerCase()} are now in your library.`
+                ? singleCompletion
+                  ? `${review.itemPlan[0].name} is now in your library.`
+                  : `The ${label.toLowerCase()} are now in your library.`
                 : `Review what will be added to your library.`}
           </DialogDescription>
         </div>
@@ -220,7 +230,7 @@ export function ItemPickerDialog({
           ) : (
             <ul className="flex flex-col gap-0">
               {(review?.itemPlan ?? []).map((entry) => (
-                <PlanRow key={entry.sourceId} entry={entry} />
+                <PlanRow key={entry.sourceId} entry={entry} completed={mode === "complete"} />
               ))}
             </ul>
           )}
@@ -238,7 +248,7 @@ export function ItemPickerDialog({
           {mode !== "pick" && profilePlan.length > 0 ? (
             <AlsoIncluded>
               {profilePlan.map((entry) => (
-                <PlanRow key={entry.sourceId} entry={entry} />
+                <PlanRow key={entry.sourceId} entry={entry} completed={mode === "complete"} />
               ))}
             </AlsoIncluded>
           ) : null}
