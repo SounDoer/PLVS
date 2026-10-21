@@ -759,7 +759,11 @@ publishes measured-source recording PCM on the reader clock, and batches five re
 bounded pool and meter pipeline. Per-application capture remains unsupported.
 
 The Ubuntu 24.04 x86_64 deb installs the application and CLI in `/usr/bin` and bundles checksum-
-pinned FFmpeg/FFprobe in an identity-private directory under `/usr/lib`. The existing adjacent
+pinned FFmpeg/FFprobe in an identity-private directory under `/usr/lib`. Every path is identity
+specific, so the stable and Preview debs coexist: Preview installs `plvs-preview` and
+`plvs-preview-cli`, its icons and desktop entry follow those names, and the build scripts emit the
+matching `PLVS_HOST_BINARY` / `PLVS_CLI_BINARY` names the CLI forwarder, doctor and Agent Control
+use to find each other (ADR 0036). The existing adjacent
 binary locator uses `/usr/lib/plvs/sidecars` for stable and `/usr/lib/plvs-preview/sidecars` for
 Preview without searching `/usr/bin` or `PATH`. Preview retains its separate identity and has no
 automatic updater. See [ADR 0033](adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md) for the

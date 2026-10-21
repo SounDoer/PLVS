@@ -3,7 +3,6 @@
   "bundle": {
     "linux": {
       "deb": {
-        "conflicts": ["plvs-preview"],
         "files": {
           "/usr/lib/plvs/plvs-update-installer": "binaries/plvs-update-installer",
           "/usr/lib/plvs/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",

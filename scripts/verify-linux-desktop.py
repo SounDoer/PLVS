@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime checks for an installed Preview, under Xvfb and a private session bus."""
+"""Runtime checks for an installed PLVS package, under Xvfb and a private session bus."""
 import json
 import os
 from pathlib import Path
@@ -20,9 +20,11 @@ package_name = sys.argv[3]
 if package_name == "plvs-preview":
     app_name = "PLVS Preview"
     app_id = "com.soundoer.plvs.preview"
+    binary, cli = "plvs-preview", "plvs-preview-cli"
 else:
     app_name = "PLVS"
     app_id = "com.soundoer.plvs"
+    binary, cli = "plvs", "plvs-cli"
 sidecar_dir = Path("/usr/lib", package_name, "sidecars")
 output.mkdir(parents=True, exist_ok=True)
 if not ssl.create_default_context().get_ca_certs():
@@ -47,7 +49,7 @@ try:
         if audio.poll() is not None:
             raise RuntimeError("Private audio server failed; inspect pulse.log")
         time.sleep(0.1)
-    doctor = json.loads(run(["plvs-cli", "doctor", "--json"]))
+    doctor = json.loads(run([cli, "doctor", "--json"]))
     (output / "doctor.json").write_text(json.dumps(doctor, indent=2) + "\n")
     report = doctor["result"]["report"]
     if not doctor["ok"] or report["app"]["name"] != app_name:
@@ -76,12 +78,12 @@ try:
         if len(pcm) < 48000 * 2 * 4 * 0.9 or not any(pcm):
             raise RuntimeError("Decoder returned empty or silent PCM: " + fixture)
 
-    gui = subprocess.Popen(["plvs"], stdout=gui_log, stderr=subprocess.STDOUT)
+    gui = subprocess.Popen([binary], stdout=gui_log, stderr=subprocess.STDOUT)
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
         if gui.poll() is not None:
             raise RuntimeError("Installed GUI exited early; inspect desktop.log")
-        instances = json.loads(run(["plvs-cli", "instances", "--json"]))
+        instances = json.loads(run([cli, "instances", "--json"]))
         if instances["ok"] and any(i["visible"] for i in instances["result"]["instances"]):
             (output / "instances.json").write_text(json.dumps(instances, indent=2) + "\n")
             break

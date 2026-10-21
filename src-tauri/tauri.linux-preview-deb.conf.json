@@ -1,9 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "mainBinaryName": "plvs-preview",
   "bundle": {
+    "externalBin": ["binaries/plvs-preview-cli"],
     "linux": {
       "deb": {
-        "conflicts": ["plvs"],
         "files": {
           "/usr/lib/plvs-preview/sidecars/ffmpeg": "binaries/ffmpeg-x86_64-unknown-linux-gnu",
           "/usr/lib/plvs-preview/sidecars/ffprobe": "binaries/ffprobe-x86_64-unknown-linux-gnu"

@@ -29,4 +29,14 @@ fn main() {
 
   println!("cargo:rustc-env=PLVS_APP_ID={identifier}");
   println!("cargo:rustc-env=PLVS_APP_NAME={product_name}");
+
+  // Mirrors `emit_binary_names` in the application's build script: Linux Preview installs
+  // `/usr/bin/plvs-preview` so it can coexist with the stable deb's `/usr/bin/plvs`.
+  let linux = std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux");
+  let host = if preview && linux {
+    "plvs-preview"
+  } else {
+    "plvs"
+  };
+  println!("cargo:rustc-env=PLVS_HOST_BINARY={host}");
 }

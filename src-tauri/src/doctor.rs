@@ -483,11 +483,15 @@ fn check_cli_host_layout() -> DoctorCheck {
     .as_ref()
     .and_then(|path| path.parent().map(Path::to_path_buf));
   let cli_name = if cfg!(windows) {
-    "plvs-cli.exe"
+    concat!(env!("PLVS_CLI_BINARY"), ".exe")
   } else {
-    "plvs-cli"
+    env!("PLVS_CLI_BINARY")
   };
-  let host_name = if cfg!(windows) { "plvs.exe" } else { "plvs" };
+  let host_name = if cfg!(windows) {
+    concat!(env!("PLVS_HOST_BINARY"), ".exe")
+  } else {
+    env!("PLVS_HOST_BINARY")
+  };
   let cli_path = dir.as_ref().map(|path| path.join(cli_name));
   let sibling_host = dir.as_ref().map(|path| path.join(host_name));
   let cli_present = cli_path.as_ref().is_some_and(|path| path.is_file());

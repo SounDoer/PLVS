@@ -2,9 +2,12 @@
 # Boot a fresh Ubuntu userspace in private mount/PID namespaces, then discard it.
 set -euo pipefail
 [[ $EUID -eq 0 ]] || { echo 'Run with sudo on Ubuntu 24.04.' >&2; exit 2; }
-package="$(realpath "${1:?Usage: verify-linux-deb-clean.sh package.deb output-directory fixture-directory}")"
+usage='Usage: verify-linux-deb-clean.sh package.deb output-directory fixture-directory [companion.deb]'
+package="$(realpath "${1:?$usage}")"
 output="$(realpath -m "${2:?Output directory is required}")"
 fixtures="$(realpath "${3:?Fixture directory is required}")"
+# An optional companion (the other identity's deb) is installed alongside to prove coexistence.
+companion="${4:+$(realpath "$4")}"
 scripts="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 command -v debootstrap >/dev/null
 [[ -f "$package" ]]
@@ -22,12 +25,19 @@ debootstrap --variant=minbase noble "$rig" http://archive.ubuntu.com/ubuntu > "$
 # mktemp starts at 0700; after pivot_root this becomes /, which normal users must traverse.
 chmod 0755 "$rig"
 mkdir -p "$rig/opt/plvs-package-tests"
-cp "$package" "$rig/tmp/plvs-preview.deb"
+cp "$package" "$rig/tmp/plvs-package.deb"
+companion_argument=
+if [[ -n "$companion" ]]; then
+  cp "$companion" "$rig/tmp/plvs-companion.deb"
+  companion_argument=/tmp/plvs-companion.deb
+fi
 cp -a "$fixtures" "$rig/tmp/sidecar-fixtures"
 cp "$scripts/verify-linux-deb.sh" "$scripts/verify-linux-desktop.py" "$rig/opt/plvs-package-tests/"
-unshare --mount --pid --fork bash -s -- "$rig" > "$output/verification.log" 2>&1 <<'RIG'
+unshare --mount --pid --fork bash -s -- "$rig" "$companion_argument" \
+  > "$output/verification.log" 2>&1 <<'RIG'
 set -euo pipefail
 rig=$1
+companion=$2
 mount --make-rprivate /
 mount --bind "$rig" "$rig"
 mount -t proc proc "$rig/proc"
@@ -49,7 +59,7 @@ chmod -R a+rX /tmp/sidecar-fixtures
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   python3 xvfb xauth dbus-x11 pulseaudio desktop-file-utils fonts-dejavu-core libgl1-mesa-dri
-bash /opt/plvs-package-tests/verify-linux-deb.sh /tmp/plvs-preview.deb \
-  /var/tmp/plvs-package-verification /tmp/sidecar-fixtures
+bash /opt/plvs-package-tests/verify-linux-deb.sh /tmp/plvs-package.deb \
+  /var/tmp/plvs-package-verification /tmp/sidecar-fixtures ${companion:+"$companion"}
 RIG
 echo "PASS: fresh Ubuntu installation verification; evidence in $output"

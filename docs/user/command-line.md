@@ -13,7 +13,8 @@ not a headless replacement for the desktop app. The full command set is in the
 - **macOS**: `/Applications/PLVS.app/Contents/MacOS/plvs-cli` (or the same path under
   `~/Applications`). PLVS does not edit shell startup files; use the full path or create your own
   symlink.
-- **Linux**: `/usr/bin/plvs-cli`, for both the stable and the Preview package. Development builds
+- **Linux**: `/usr/bin/plvs-cli` for the stable package and `/usr/bin/plvs-preview-cli` for the
+  Preview package, so the two can be installed side by side. Development builds
   stage `plvs-cli` beside the desktop executable. PLVS does not edit shell startup files.
 
 ## Checking the installation

@@ -34,7 +34,14 @@ try {
     copyFileSync(join(root, "src-tauri", "target", "release", "plvs-update-installer"), staged);
     chmodSync(staged, 0o755);
   }
-  buildPlvsCli({ profile: "release", identity, stage: true });
+  const cli = buildPlvsCli({ profile: "release", identity, stage: true });
+  if (identity === "preview") {
+    // Every deb binary lands in /usr/bin, so Preview ships `plvs-preview-cli` next to
+    // `plvs-preview` (tauri.linux-preview-deb.conf.json) and can coexist with the stable deb.
+    const staged = join(root, "src-tauri", "binaries", `plvs-preview-cli-${cli.targetTriple}`);
+    copyFileSync(cli.staged, staged);
+    chmodSync(staged, 0o755);
+  }
   const config = [
     ...(identity === "preview"
       ? [

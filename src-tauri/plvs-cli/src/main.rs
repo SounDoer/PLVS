@@ -143,7 +143,11 @@ fn host_binary_path() -> Result<PathBuf, String> {
   let dir = own_path
     .parent()
     .ok_or_else(|| "plvs-cli has no parent directory".to_string())?;
-  let name = if cfg!(windows) { "plvs.exe" } else { "plvs" };
+  let name = if cfg!(windows) {
+    concat!(env!("PLVS_HOST_BINARY"), ".exe")
+  } else {
+    env!("PLVS_HOST_BINARY")
+  };
   let host = dir.join(name);
   if !host.is_file() {
     return Err(format!(

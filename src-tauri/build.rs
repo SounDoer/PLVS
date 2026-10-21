@@ -35,6 +35,22 @@ fn emit_app_identity() {
 
   println!("cargo:rustc-env=PLVS_APP_ID={identifier}");
   println!("cargo:rustc-env=PLVS_APP_NAME={product_name}");
+  emit_binary_names(preview);
+}
+
+/// The Linux deb installs every executable into `/usr/bin`, so Preview needs its own names to
+/// coexist with the stable package (`tauri.linux-preview-deb.conf.json` sets the same names).
+/// Windows and macOS keep both binaries inside each identity's own install folder. `plvs-cli`'s
+/// build script mirrors this.
+fn emit_binary_names(preview: bool) {
+  let linux = std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux");
+  let (host, cli) = if preview && linux {
+    ("plvs-preview", "plvs-preview-cli")
+  } else {
+    ("plvs", "plvs-cli")
+  };
+  println!("cargo:rustc-env=PLVS_HOST_BINARY={host}");
+  println!("cargo:rustc-env=PLVS_CLI_BINARY={cli}");
 }
 
 fn main() {

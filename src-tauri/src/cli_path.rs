@@ -78,7 +78,7 @@ fn platform_status() -> Result<CliPathStatus, String> {
 fn unix_status_for_install_dir(install_dir: &Path, path: Option<&OsStr>) -> CliPathStatus {
   use std::os::unix::fs::PermissionsExt;
 
-  let cli_path = install_dir.join("plvs-cli");
+  let cli_path = install_dir.join(env!("PLVS_CLI_BINARY"));
   let installed = cli_path
     .metadata()
     .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)

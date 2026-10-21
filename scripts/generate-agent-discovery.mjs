@@ -7,9 +7,15 @@ const tauriConfig = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.
 const previewConfig = JSON.parse(
   readFileSync(join(root, "src-tauri", "tauri.preview.conf.json"), "utf8")
 );
+const previewLinuxConfig = JSON.parse(
+  readFileSync(join(root, "src-tauri", "tauri.linux-preview-deb.conf.json"), "utf8")
+);
 const version = packageJson.version;
 
-function manifestFor(config) {
+// Every deb executable is installed into /usr/bin, so the Linux Preview CLI carries its own name.
+const previewLinuxCli = previewLinuxConfig.bundle.externalBin[0].replace(/^binaries\//, "");
+
+function manifestFor(config, linuxCli = "plvs-cli") {
   return {
     schemaVersion: 2,
     productName: config.productName,
@@ -20,7 +26,7 @@ function manifestFor(config) {
       relativePath: {
         windows: "plvs-cli.exe",
         macos: "Contents/MacOS/plvs-cli",
-        linux: "usr/bin/plvs-cli",
+        linux: `usr/bin/${linuxCli}`,
       },
       doctor: ["doctor", "--json"],
     },
@@ -60,7 +66,7 @@ ${defines.trimEnd()}
 }
 
 const releaseManifest = manifestFor(tauriConfig);
-const previewManifest = manifestFor(previewConfig);
+const previewManifest = manifestFor(previewConfig, previewLinuxCli);
 
 writeFileSync(
   join(root, "src-tauri", "plvs-agent.json"),

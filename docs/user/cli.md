@@ -70,7 +70,7 @@ macOS:
 Ubuntu Preview:
 
 ```bash
-/usr/bin/plvs-cli
+/usr/bin/plvs-preview-cli
 ```
 
 When PATH setup is enabled from Settings on Windows, a fresh terminal can run:
@@ -83,7 +83,8 @@ Portable builds may require the executable's full path.
 
 PLVS does not edit shell startup files or install symlinks on macOS or Linux. Full-path invocation
 always works; adding a development or bundled CLI to `PATH` is an optional user-owned setup step.
-The Ubuntu stable and Preview packages install `plvs-cli` directly in `/usr/bin`.
+The Ubuntu stable package installs `plvs-cli` directly in `/usr/bin`; the Preview package installs
+`plvs-preview-cli` there so that both packages can be installed side by side.
 
 ## Agent Discovery
 
@@ -121,6 +122,9 @@ cat /Applications/PLVS.app/Contents/Resources/plvs-agent.json
 ```bash
 /usr/bin/plvs-cli doctor --json
 ```
+
+A PLVS Preview installation uses `PLVS Preview.app` on macOS and `/usr/bin/plvs-preview-cli` on
+Linux; its discovery manifest names its own identifier and CLI path.
 
 Run `doctor --json` first to verify the installed runtime and bundled sidecars.
 
@@ -671,7 +675,7 @@ npm run desktop:verify-stable-nsis
 Desktop build commands use `scripts/build-plvs-cli.mjs` to build the matching identity and stage a
 target-triple-named Tauri external binary. Tauri installs it beside the host under the stable public
 name `plvs-cli.exe` on Windows, `Contents/MacOS/plvs-cli` on macOS, or `/usr/bin/plvs-cli` in the
-Ubuntu deb. The installer and package smoke checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
+Ubuntu deb (`/usr/bin/plvs-preview-cli` in the Preview deb, which installs beside stable). The installer and package smoke checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
 directory.
 
 ### Desktop regression checks
