@@ -20,7 +20,7 @@ const EMPTY_MESSAGE = {
 };
 
 const ITEM_PICKER_FIXTURES = {
-  pick: { none: "Library Export opens from Settings > Transfer with an ordinary click." },
+  pick: { none: "The export item list follows choosing a type in Library Export." },
   review: "import-review.pending",
   complete: "import-complete.pending",
 };

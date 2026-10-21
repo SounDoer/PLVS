@@ -468,6 +468,7 @@ describe("UI visual walkthrough runner", () => {
             ui: { kind: "themeEditor", mode: "customize", themeId: "plvs-dark" },
             draft: { operations: [{ op: "setName", name: "Screenshot Draft" }] },
             screenshot: { target: "main", output: "theme-draft.png" },
+            decisionScreenshot: { target: "main", output: "theme-discard.png" },
             touches: [],
           },
         ],
@@ -481,7 +482,21 @@ describe("UI visual walkthrough runner", () => {
       operations: [{ op: "setName", name: "Screenshot Draft" }],
     });
     expect(calls.some((args) => args.slice(0, 2).join(" ") === "editor-draft patch")).toBe(true);
-    expect(calls.some((args) => args.slice(0, 2).join(" ") === "editor-draft discard")).toBe(true);
+    const discardIndex = calls.findIndex(
+      (args) => args.slice(0, 2).join(" ") === "editor-draft discard"
+    );
+    const decisionShotIndex = calls.findIndex((args) =>
+      args.some((arg) => String(arg).endsWith("theme-discard.png"))
+    );
+    expect(discardIndex).toBeGreaterThan(-1);
+    expect(decisionShotIndex).toBeGreaterThan(-1);
+    expect(decisionShotIndex).toBeLessThan(discardIndex);
+    const decisionShot = calls[decisionShotIndex];
+    expect(decisionShot[decisionShot.indexOf("--expected-ui-generation") + 1]).toBe("3");
+    expect(result.artifacts.map(({ path }) => path.replaceAll("\\", "/"))).toEqual([
+      "C:/safe-output/theme-draft.png",
+      "C:/safe-output/theme-discard.png",
+    ]);
     expect(result.restoration.verified).toBe(true);
   });
 

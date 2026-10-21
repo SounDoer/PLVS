@@ -60,6 +60,7 @@ export function AppSettingsOverlays({
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
   const [libraryExportOpen, setLibraryExportOpen] = useState(false);
+  const [libraryExportFixtureId, setLibraryExportFixtureId] = useState(null);
   const {
     configurationBusy,
     configurationStatus,
@@ -261,6 +262,20 @@ export function AppSettingsOverlays({
     canReset: () => installStatus === "idle",
     surface: { kind: "update", target: { phase: "idle" } },
   });
+  useDevelopmentEventFixtureAdapter("library-export.pending", {
+    establish: (fixtureId) => {
+      setLibraryExportFixtureId(fixtureId);
+      setLibraryExportOpen(true);
+    },
+    matches: (fixtureId) => libraryExportOpen && libraryExportFixtureId === fixtureId,
+    reset: (fixtureId) => {
+      if (libraryExportFixtureId !== fixtureId) return;
+      setLibraryExportOpen(false);
+      setLibraryExportFixtureId(null);
+    },
+    canEstablish: () => !libraryExportOpen,
+    surface: { kind: "libraryExport", target: { phase: "chooseType" } },
+  });
   const packIdle = () => !pack.busy && !pack.review && !pack.completion;
   useDevelopmentEventFixtureAdapter("import-review.pending", {
     ...pack.developmentFixtures.review,
@@ -416,7 +431,10 @@ export function AppSettingsOverlays({
         }}
         dependenciesByType={{ presets: getAdapter("loudness").list() }}
         onExport={pack.exportSelection}
-        onClose={() => setLibraryExportOpen(false)}
+        onClose={() => {
+          setLibraryExportOpen(false);
+          setLibraryExportFixtureId(null);
+        }}
       />
 
       {pack.review ? (

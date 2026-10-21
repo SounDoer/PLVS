@@ -1,6 +1,14 @@
 import { isAbsolute, normalize, sep } from "node:path";
 
-const SCENARIO_FIELDS = new Set(["id", "durable", "draft", "ui", "screenshot", "touches"]);
+const SCENARIO_FIELDS = new Set([
+  "id",
+  "durable",
+  "draft",
+  "ui",
+  "screenshot",
+  "decisionScreenshot",
+  "touches",
+]);
 const UI_TARGETS = Object.freeze({
   workspace: { method: null, fields: new Set(["kind"]) },
   eventFixture: {
@@ -44,6 +52,11 @@ export const EVENT_FIXTURES = Object.freeze({
   "update-preferences.pending": { surfaceKind: "update", phase: "preferences", action: "reset" },
   "import-review.pending": { surfaceKind: "importReview", phase: "review", action: "cancel" },
   "import-complete.pending": { surfaceKind: "importComplete", phase: "complete", action: "close" },
+  "library-export.pending": {
+    surfaceKind: "libraryExport",
+    phase: "chooseType",
+    action: "cancel",
+  },
   "crash-report.pending": { surfaceKind: "crashReport", phase: "decision", action: "close" },
   "close-confirmation.requested": {
     surfaceKind: "closeConfirmation",
@@ -69,6 +82,19 @@ function safeRelativeOutput(value) {
 
 function unknownFields(value, allowed) {
   return plain(value) ? Object.keys(value).filter((key) => !allowed.has(key)) : [];
+}
+
+function screenshotIssues(screenshot, path) {
+  const issues = [];
+  if (!plain(screenshot) || !SCREENSHOT_TARGETS.has(screenshot.target))
+    issues.push(`${path}.target is invalid.`);
+  if (unknownFields(screenshot, new Set(["target", "panelId", "output"])).length > 0)
+    issues.push(`${path} contains an unknown field.`);
+  if (!safeRelativeOutput(screenshot?.output))
+    issues.push(`${path}.output must be a contained relative path.`);
+  if (screenshot?.target === "panel" && typeof screenshot.panelId !== "string")
+    issues.push(`${path}.panelId is required.`);
+  return issues;
 }
 
 export function validateWalkthroughManifest(manifest) {
@@ -164,14 +190,12 @@ export function validateWalkthroughManifest(manifest) {
       }
     }
 
-    if (!plain(scenario.screenshot) || !SCREENSHOT_TARGETS.has(scenario.screenshot.target))
-      issues.push(`${path}.screenshot.target is invalid.`);
-    if (unknownFields(scenario.screenshot, new Set(["target", "panelId", "output"])).length > 0)
-      issues.push(`${path}.screenshot contains an unknown field.`);
-    if (!safeRelativeOutput(scenario.screenshot?.output))
-      issues.push(`${path}.screenshot.output must be a contained relative path.`);
-    if (scenario.screenshot?.target === "panel" && typeof scenario.screenshot.panelId !== "string")
-      issues.push(`${path}.screenshot.panelId is required.`);
+    issues.push(...screenshotIssues(scenario.screenshot, `${path}.screenshot`));
+    if (scenario.decisionScreenshot !== undefined) {
+      // The discard decision only exists while the runner closes a dirty editor draft.
+      if (scenario.draft === undefined) issues.push(`${path}.decisionScreenshot requires a draft.`);
+      issues.push(...screenshotIssues(scenario.decisionScreenshot, `${path}.decisionScreenshot`));
+    }
 
     const declaredTouches = new Set(scenario.touches ?? []);
     const actualTouches = new Set();

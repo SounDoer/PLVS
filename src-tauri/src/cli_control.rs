@@ -748,6 +748,7 @@ fn parse_development_fixture_args(args: &[String]) -> Result<ControlCommand, Str
         | "update-preferences.pending"
         | "import-review.pending"
         | "import-complete.pending"
+        | "library-export.pending"
         | "crash-report.pending"
         | "close-confirmation.requested"
         | "library-conflict.pending"

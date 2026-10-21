@@ -63,6 +63,19 @@
       "touches": []
     },
     {
+      "id": "library-export",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "library-export.pending",
+        "surfaceKind": "libraryExport",
+        "phase": "chooseType",
+        "action": "cancel"
+      },
+      "screenshot": { "target": "main", "output": "library-export.png" },
+      "touches": []
+    },
+    {
       "id": "close-confirmation",
       "durable": [],
       "ui": {

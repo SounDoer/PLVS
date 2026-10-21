@@ -57,9 +57,7 @@ export function LibraryExportDialog({
     active: open && !selectedType,
     kind: "libraryExport",
     origin: "nested",
-    developmentFixture: {
-      none: "Library Export opens from Settings > Transfer with an ordinary click.",
-    },
+    developmentFixture: "library-export.pending",
     blocking: false,
     dismissible: true,
     supportedActions: ["cancel"],

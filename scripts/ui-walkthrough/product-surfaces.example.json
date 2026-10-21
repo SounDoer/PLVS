@@ -47,6 +47,7 @@
         ]
       },
       "screenshot": { "target": "main", "output": "theme-customize.png" },
+      "decisionScreenshot": { "target": "main", "output": "theme-customize-discard.png" },
       "touches": []
     },
     {
@@ -64,6 +65,7 @@
         ]
       },
       "screenshot": { "target": "main", "output": "profile-create.png" },
+      "decisionScreenshot": { "target": "main", "output": "profile-create-discard.png" },
       "touches": []
     },
     {

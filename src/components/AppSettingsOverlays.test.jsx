@@ -475,6 +475,23 @@ describe("AppSettingsOverlays", () => {
     expect(resetInstall).toHaveBeenCalledTimes(2);
   });
 
+  it("opens and resets only the exact Library Export development fixture", () => {
+    renderOverlays();
+    let fixture = mocks.fixtureAdapters.get("library-export.pending");
+    expect(fixture.canEstablish()).toBe(true);
+
+    act(() => fixture.establish("fixture-aaaaaaaaaaaaaaaa"));
+    fixture = mocks.fixtureAdapters.get("library-export.pending");
+    expect(screen.getByText("Export Saved Items")).toBeTruthy();
+    expect(fixture.matches("fixture-aaaaaaaaaaaaaaaa")).toBe(true);
+    expect(fixture.canEstablish()).toBe(false);
+
+    act(() => fixture.reset("fixture-bbbbbbbbbbbbbbbb"));
+    expect(screen.getByText("Export Saved Items")).toBeTruthy();
+    act(() => fixture.reset("fixture-aaaaaaaaaaaaaaaa"));
+    expect(screen.queryByText("Export Saved Items")).toBeNull();
+  });
+
   it("refuses the update development fixture in a participant workbench", () => {
     mocks.participantInstance = true;
     renderOverlays();

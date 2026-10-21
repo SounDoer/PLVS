@@ -399,31 +399,39 @@ export async function runUiVisualWalkthrough({
         latestUi = await run(["ui", "inspect", "--json"]);
       }
 
-      const screenshotPath = join(outDir, scenario.screenshot.output);
-      const screenshotArgs = ["visual", "screenshot", "--target", scenario.screenshot.target];
-      if (scenario.screenshot.panelId)
-        screenshotArgs.push("--panel-id", scenario.screenshot.panelId);
-      screenshotArgs.push(
-        "--expected-revision",
-        String(latestApp.revision),
-        "--expected-ui-generation",
-        String(latestUi.uiGeneration),
-        "--out",
-        screenshotPath,
-        "--json"
-      );
-      const captured = await run(screenshotArgs);
-      report.artifacts.push({
-        scenario: scenario.id,
-        path: screenshotPath,
-        metadata: captured.artifact,
-      });
-      await journal?.update((draft) => {
-        draft.scenarios.find(({ id }) => id === scenario.id).artifact = {
+      const capture = async (spec, revision, uiGeneration, journalField) => {
+        const screenshotPath = join(outDir, spec.output);
+        const screenshotArgs = ["visual", "screenshot", "--target", spec.target];
+        if (spec.panelId) screenshotArgs.push("--panel-id", spec.panelId);
+        screenshotArgs.push(
+          "--expected-revision",
+          String(revision),
+          "--expected-ui-generation",
+          String(uiGeneration),
+          "--out",
+          screenshotPath,
+          "--json"
+        );
+        const result = await run(screenshotArgs);
+        report.artifacts.push({
+          scenario: scenario.id,
           path: screenshotPath,
-          metadata: captured.artifact,
-        };
-      });
+          metadata: result.artifact,
+        });
+        await journal?.update((draft) => {
+          draft.scenarios.find(({ id }) => id === scenario.id)[journalField] = {
+            path: screenshotPath,
+            metadata: result.artifact,
+          };
+        });
+        return result;
+      };
+      const captured = await capture(
+        scenario.screenshot,
+        latestApp.revision,
+        latestUi.uiGeneration,
+        "artifact"
+      );
       await journal?.transitionScenario(scenario.id, "cleaning");
       if (surface) {
         if (draftState) {
@@ -452,6 +460,14 @@ export async function runUiVisualWalkthrough({
               .resources.find(({ type }) => type === "draft");
             resource.decisionSurfaceId = decision.surfaceId;
           });
+          if (scenario.decisionScreenshot) {
+            await capture(
+              scenario.decisionScreenshot,
+              captured.revision,
+              decisionUi.uiGeneration,
+              "decisionArtifact"
+            );
+          }
           const discarded = await run([
             "editor-draft",
             "discard",

@@ -3,6 +3,7 @@ export const DEVELOPMENT_EVENT_FIXTURE_NAMES = Object.freeze([
   "update-preferences.pending",
   "import-review.pending",
   "import-complete.pending",
+  "library-export.pending",
   "crash-report.pending",
   "close-confirmation.requested",
   "library-conflict.pending",

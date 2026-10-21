@@ -44,6 +44,32 @@ describe("UI visual walkthrough manifest", () => {
     ]);
   });
 
+  it("accepts a discard-decision screenshot only for a scenario that dirties a draft", () => {
+    const draftScenario = {
+      id: "theme",
+      durable: [],
+      ui: { kind: "themeEditor", mode: "customize", themeId: "plvs-dark" },
+      draft: { operations: [{ op: "setName", name: "Draft" }] },
+      screenshot: { target: "main", output: "theme.png" },
+      decisionScreenshot: { target: "main", output: "theme-discard.png" },
+      touches: [],
+    };
+    expect(validateWalkthroughManifest({ ...manifest, scenarios: [draftScenario] })).toEqual([]);
+
+    const { draft: _draft, ...withoutDraft } = draftScenario;
+    expect(validateWalkthroughManifest({ ...manifest, scenarios: [withoutDraft] })).toEqual([
+      "$.scenarios[0].decisionScreenshot requires a draft.",
+    ]);
+    expect(
+      validateWalkthroughManifest({
+        ...manifest,
+        scenarios: [
+          { ...draftScenario, decisionScreenshot: { target: "main", output: "../x.png" } },
+        ],
+      })
+    ).toEqual(["$.scenarios[0].decisionScreenshot.output must be a contained relative path."]);
+  });
+
   it("builds an independent first-before and final-applied ledger for each scenario", () => {
     const scenario = {
       id: "appearance",
