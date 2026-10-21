@@ -11,6 +11,8 @@ describe("update acceptance change classification", () => {
     expect(UPDATE_ACCEPTANCE_PATHS).toEqual(
       expect.arrayContaining([
         "src-tauri/src/update_worker.rs",
+        "src-tauri/src/linux_update.rs",
+        "src-tauri/linux-update-installer",
         "src-tauri/vendor/tauri-plugin-updater",
         "src-tauri/tauri.windows.conf.json",
         "scripts/prepare-macos-signing.sh",
