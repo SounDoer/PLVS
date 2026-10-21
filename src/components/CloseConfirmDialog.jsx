@@ -57,6 +57,7 @@ export function CloseConfirmDialog({
     active: open,
     kind: "closeConfirmation",
     origin: "event",
+    developmentFixture: "close-confirmation.requested",
     blocking: true,
     busy,
     dismissible: !busy,

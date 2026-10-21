@@ -73,6 +73,7 @@ export function CrashReportDialog({
   useUiSurface({
     kind: "crashReport",
     origin: "event",
+    developmentFixture: "crash-report.pending",
     blocking: true,
     busy,
     dismissible: !busy,

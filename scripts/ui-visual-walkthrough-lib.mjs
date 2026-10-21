@@ -31,9 +31,17 @@ const DURABLE_FIELDS = Object.freeze({
     "channelLabels",
   ]),
 });
-const SCREENSHOT_TARGETS = new Set(["main", "workspace", "panel", "dock-header", "dock-editor"]);
+export const SCREENSHOT_TARGETS = new Set([
+  "main",
+  "workspace",
+  "panel",
+  "dock-header",
+  "dock-editor",
+  "dock-update",
+]);
 export const EVENT_FIXTURES = Object.freeze({
   "update.available": { surfaceKind: "update", phase: "idle", action: "cancel" },
+  "update-preferences.pending": { surfaceKind: "update", phase: "preferences", action: "reset" },
   "crash-report.pending": { surfaceKind: "crashReport", phase: "decision", action: "close" },
   "close-confirmation.requested": {
     surfaceKind: "closeConfirmation",

@@ -24,6 +24,19 @@
       "touches": []
     },
     {
+      "id": "update-preferences",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "update-preferences.pending",
+        "surfaceKind": "update",
+        "phase": "preferences",
+        "action": "reset"
+      },
+      "screenshot": { "target": "main", "output": "update-preferences.png" },
+      "touches": []
+    },
+    {
       "id": "close-confirmation",
       "durable": [],
       "ui": {

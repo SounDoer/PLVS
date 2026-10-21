@@ -488,6 +488,9 @@ export function useUiSurface({
   lifetimeKey = undefined,
   onClose = undefined,
   onCancel = undefined,
+  // Read only by scripts/developmentFixtureCoverage.test.js: every event surface names the
+  // development fixture that can show it, or { none: "<reason>" }.
+  developmentFixture: _developmentFixture = undefined,
   ...descriptor
 }) {
   const registry = useContext(UiSurfaceRegistryContext);

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { UpdateSurfaces } from "./UpdateSurfaces.jsx";
@@ -10,6 +10,17 @@ const mock = vi.hoisted(() => ({
   windowError: null,
   exitDock: vi.fn(async () => ({ ok: true })),
   registry: null,
+  adapters: new Map(),
+  surfaces: [],
+}));
+vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
+  useDevelopmentEventFixtureAdapter: (name, adapter) => mock.adapters.set(name, adapter),
+}));
+vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
+  useUiSurface: (descriptor) => {
+    mock.surfaces.push(descriptor);
+    return descriptor.active ? "surface" : null;
+  },
 }));
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
   useAppLifecycle: () => ({
@@ -43,6 +54,9 @@ function Harness() {
 }
 beforeEach(() => {
   mock.settings.setUpdatePreferences.mockReset();
+  mock.settings.updatePreferences = { choiceMade: false };
+  mock.adapters.clear();
+  mock.surfaces = [];
   mock.docked = false;
   mock.windowError = null;
   mock.exitDock.mockClear();
@@ -106,5 +120,51 @@ describe("first-launch update choice", () => {
     });
     expect((await screen.findByRole("alert")).textContent).toContain("Save failed");
     expect(mock.registry.activeBlockingEditors).toContain("updatePreferences");
+  });
+});
+describe("update preferences development fixture", () => {
+  const preferencesSurface = () =>
+    mock.surfaces.filter((surface) => surface.target?.phase === "preferences").at(-1);
+  function renderAfterChoice() {
+    mock.settings.updatePreferences = { choiceMade: true };
+    render(
+      <BlockingEditorsProvider>
+        <Harness />
+      </BlockingEditorsProvider>
+    );
+    return mock.adapters.get("update-preferences.pending");
+  }
+
+  it("shows the first-run dialog after the choice was made and cancels without saving", () => {
+    const adapter = renderAfterChoice();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(adapter.canEstablish()).toBe(true);
+    act(() => adapter.establish("fixture-a"));
+    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    expect(mock.adapters.get("update-preferences.pending").matches("fixture-a")).toBe(true);
+    expect(preferencesSurface().active).toBe(true);
+    expect(mock.registry.activeBlockingEditors).toContain("updatePreferences");
+    act(() => preferencesSurface().onCancel());
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(mock.settings.setUpdatePreferences).not.toHaveBeenCalled();
+  });
+
+  it("resets only its own fixture and never saves", () => {
+    const adapter = renderAfterChoice();
+    act(() => adapter.establish("fixture-a"));
+    act(() => mock.adapters.get("update-preferences.pending").reset("fixture-b"));
+    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    act(() => mock.adapters.get("update-preferences.pending").reset("fixture-a"));
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(mock.settings.setUpdatePreferences).not.toHaveBeenCalled();
+  });
+
+  it("refuses to cover a real first-run choice", () => {
+    render(
+      <BlockingEditorsProvider>
+        <Harness />
+      </BlockingEditorsProvider>
+    );
+    expect(mock.adapters.get("update-preferences.pending").canEstablish()).toBe(false);
   });
 });

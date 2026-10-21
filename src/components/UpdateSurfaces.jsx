@@ -15,16 +15,21 @@ import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 
+const DEFAULT_SETUP_DRAFT = Object.freeze({ autoCheck: true, autoDownload: false });
+
 export function UpdateSurfaces({ currentVersion }) {
   const { updateControls: updates } = useAppLifecycle();
   const settings = useAppSettings();
   const { docked, dockEdge, dockSuspended, exitDockRestoringAttributes } = useDock();
   const coordinator = useCoordinatorRole();
   const { setUpdateGeometry } = useDockAccessories();
-  const [draft, setDraft] = useState({ autoCheck: true, autoDownload: false });
+  const [draft, setDraft] = useState(DEFAULT_SETUP_DRAFT);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const setup = coordinator && updates.enabled && !settings.updatePreferences.choiceMade;
+  // A development fixture shows the first-run dialog without clearing the persisted choice.
+  const [setupFixtureId, setSetupFixtureId] = useState(null);
+  const firstRunSetup = coordinator && updates.enabled && !settings.updatePreferences.choiceMade;
+  const setup = firstRunSetup || setupFixtureId !== null;
   useBlockingEditor("updatePreferences", setup);
   async function save(skip = false) {
     if (busy) return;
@@ -32,6 +37,7 @@ export function UpdateSurfaces({ currentVersion }) {
     setError(null);
     try {
       await settings.setUpdatePreferences(skip ? { autoCheck: false, autoDownload: false } : draft);
+      setSetupFixtureId(null);
     } catch (error) {
       setError(String(error));
     } finally {
@@ -105,17 +111,19 @@ export function UpdateSurfaces({ currentVersion }) {
     active: setup,
     kind: "update",
     origin: "event",
+    developmentFixture: "update-preferences.pending",
     blocking: true,
     busy,
     dismissible: !busy,
     supportedActions: busy ? [] : ["cancel"],
     target: { phase: "preferences" },
-    onCancel: () => save(true),
+    onCancel: () => (firstRunSetup ? save(true) : setSetupFixtureId(null)),
   });
   useUiSurface({
     active: docked && Boolean(updates.details),
     kind: "update",
     origin: "event",
+    developmentFixture: "update.available",
     lifetimeKey: updates.details?.target.id,
     blocking: false,
     busy: payload.busy,
@@ -134,6 +142,20 @@ export function UpdateSurfaces({ currentVersion }) {
     canEstablish: () => coordinator && !payload.busy && !setup,
     canReset: () => !payload.busy,
     surface: { kind: "update", target: { phase: "idle" } },
+  });
+  useDevelopmentEventFixtureAdapter("update-preferences.pending", {
+    establish: (id) => {
+      setDraft(DEFAULT_SETUP_DRAFT);
+      setError(null);
+      setSetupFixtureId(id);
+    },
+    matches: (id) => setupFixtureId === id,
+    reset: (id) => {
+      if (setupFixtureId === id) setSetupFixtureId(null);
+    },
+    canEstablish: () => coordinator && !firstRunSetup && !updates.details && !busy,
+    canReset: () => !busy,
+    surface: { kind: "update", target: { phase: "preferences" } },
   });
   if (docked) return null;
   return (

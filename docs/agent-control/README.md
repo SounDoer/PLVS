@@ -97,6 +97,13 @@ busy states are refusals. A failed post-establishment wait reports the committed
 leaves the scene intact. Result actions such as Save, Send, Confirm, Update, Reload, Copy, and Delete
 remain ordinary user actions and are never fixture operations.
 
+Every `useUiSurface` registration with `origin: "event"` declares `developmentFixture`: the
+fixture name that shows it, or `{ none: "<reason>" }`. `scripts/developmentFixtureCoverage.test.js`
+fails when an event surface omits the declaration, names an unknown fixture or one without an
+adapter, or when the fixture names in the frontend protocol, the dev CLI parser, and the
+walkthrough validator differ. A new event surface therefore cannot ship without a screenshot path
+or a stated reason.
+
 Packaged updater acceptance has a separate hidden `dev.update.*` wire path. It is admitted only
 when the running identifier is the SHA-derived `com.soundoer.plvs.updatetest.h*` identity and the
 debug CLI exposes its private `dev` grammar. Its fixed actions save update preferences, open the

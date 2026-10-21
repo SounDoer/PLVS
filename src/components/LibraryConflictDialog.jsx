@@ -60,6 +60,7 @@ export function LibraryConflictDialog() {
     active: conflict !== null,
     kind: "libraryConflict",
     origin: "event",
+    developmentFixture: "library-conflict.pending",
     blocking: true,
     busy,
     dismissible: false,

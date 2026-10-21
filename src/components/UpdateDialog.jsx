@@ -27,6 +27,7 @@ export function UpdateDialog({
     active: open,
     kind: "update",
     origin: "event",
+    developmentFixture: "update.available",
     blocking: false,
     busy,
     dismissible: !busy,
