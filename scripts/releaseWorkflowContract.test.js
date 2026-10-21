@@ -182,7 +182,7 @@ describe("Immutable Release promotion", () => {
 
   it("runs exact-SHA packaged update acceptance without operator file transfer", () => {
     expect(releaseWorkflow).toMatch(
-      /\n {2}update-acceptance:\n {4}needs: validate\n {4}uses: \.\/\.github\/workflows\/update-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
+      /\n {2}update-acceptance:\n {4}needs: validate\n {4}permissions:\n {6}actions: read\n {6}contents: read\n {4}uses: \.\/\.github\/workflows\/update-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
     );
     expect(releaseWorkflow).toContain(
       "needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]"
@@ -195,6 +195,17 @@ describe("Immutable Release promotion", () => {
     );
     expect(updateAcceptanceWorkflow).toContain(
       "node scripts/verify-update-acceptance.mjs update-evidence/macos"
+    );
+  });
+
+  it("runs nightly update acceptance only for updater changes since the last success", () => {
+    expect(updateAcceptanceWorkflow).toContain('\n  schedule:\n    - cron: "0 18 * * *"\n');
+    expect(updateAcceptanceWorkflow).not.toContain("${{ inputs.commit_sha }}");
+    expect(updateAcceptanceWorkflow).toContain(
+      "actions/workflows/update-acceptance.yml/runs?status=success&per_page=1"
+    );
+    expect(updateAcceptanceWorkflow).toContain(
+      "updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined })"
     );
   });
 

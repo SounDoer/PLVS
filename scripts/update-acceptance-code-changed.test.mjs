@@ -1,9 +1,14 @@
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
   filterUpdateAcceptancePaths,
   normalizeUpdateAcceptanceContent,
   UPDATE_ACCEPTANCE_PATHS,
+  updateAcceptanceChangesSinceLastTag,
 } from "./update-acceptance-code-changed.mjs";
 
 describe("update acceptance change classification", () => {
@@ -71,5 +76,35 @@ describe("update acceptance change classification", () => {
         '!define PLVS_AGENT_VERSION "1.0.1"\n!macro NSIS_HOOK_POSTINSTALL\n!macroend\n'
       )
     );
+  });
+
+  it("compares with an explicit baseline commit instead of the last release tag", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plvs-update-since-"));
+    try {
+      const git = (...args) =>
+        execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], {
+          cwd,
+          encoding: "utf8",
+        }).trim();
+      const commit = (file, message) => {
+        mkdirSync(join(cwd, file, ".."), { recursive: true });
+        writeFileSync(join(cwd, file), message);
+        git("add", ".");
+        git("commit", "-q", "-m", message);
+        return git("rev-parse", "HEAD");
+      };
+      git("init", "-q");
+      commit("README.md", "base");
+      git("tag", "v1.0.0");
+      commit("src-tauri/src/update_worker.rs", "updater");
+      const accepted = commit("README.md", "docs");
+
+      expect(updateAcceptanceChangesSinceLastTag({ cwd }).paths).toEqual([
+        "src-tauri/src/update_worker.rs",
+      ]);
+      expect(updateAcceptanceChangesSinceLastTag({ cwd, since: accepted }).paths).toEqual([]);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });

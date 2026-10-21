@@ -727,6 +727,12 @@ ephemeral private key or build cache, upload it as short-lived Actions artifacts
 platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
 assembling the Draft, so maintainers never copy acceptance files between machines.
 
+The same workflow also runs nightly (18:00 UTC) against the tip of `main`. A scheduled run compares
+with the head commit of the latest successful `update-acceptance.yml` run instead of the last
+release tag, so it reaches the runners only when the updater chain changed since then. A broken
+acceptance harness therefore fails overnight rather than on release day; GitHub's failure
+notification for the scheduled run is the signal.
+
 The macOS runner stages the older app in a writable path containing spaces and launches that exact
 bundle executable as a background child of the long-lived runner. This keeps the update helper's
 process session alive while preventing duplicate copies with the same test identity from

@@ -87,14 +87,15 @@ export function normalizeUpdateAcceptanceContent(file, contents) {
   return contents;
 }
 
-export function updateAcceptanceChangesSinceLastTag({ cwd = process.cwd() } = {}) {
+/** `since` replaces the last stable tag as the baseline, for the nightly run. */
+export function updateAcceptanceChangesSinceLastTag({ cwd = process.cwd(), since } = {}) {
   const git = (args) =>
     execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   git(["rev-parse", "--verify", "HEAD"]);
   const tags = git(["tag", "--merged", "HEAD", "--list", STABLE_RELEASE_TAG_GLOB]);
-  const tag = tags
-    ? git(["describe", "--tags", "--match", STABLE_RELEASE_TAG_GLOB, "--abbrev=0"])
-    : null;
+  const tag =
+    since ??
+    (tags ? git(["describe", "--tags", "--match", STABLE_RELEASE_TAG_GLOB, "--abbrev=0"]) : null);
   const guardedPaths = [...UPDATE_ACCEPTANCE_PATHS, ...UPDATE_ACCEPTANCE_CONTENT_PATHS];
   const committed = git(
     tag

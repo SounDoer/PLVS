@@ -1,9 +1,13 @@
 # Fully automated packaged updater acceptance on the maintainer's logged-in desktop runners.
 # The acceptance-only Agent Control methods drive the real update UI; Actions artifacts carry the
 # exact-SHA evidence between machines and the aggregate verifier. No signing secret is used here.
+# The nightly schedule tests main's tip only when the updater chain changed since the last
+# successful run, so a broken harness surfaces before release day.
 name: Update Acceptance
 
 on:
+  schedule:
+    - cron: "0 18 * * *"
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -31,16 +35,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: update-acceptance-${{ github.workflow }}-${{ inputs.commit_sha }}
+  group: update-acceptance-${{ github.workflow }}-${{ inputs.commit_sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
   detect:
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
     outputs:
       required: ${{ steps.requirement.outputs.required }}
     env:
-      COMMIT_SHA: ${{ inputs.commit_sha }}
+      GH_TOKEN: ${{ github.token }}
+      COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
       FORCE: ${{ inputs.force }}
     steps:
       - name: Validate the commit
@@ -49,7 +57,7 @@ jobs:
       - name: Checkout the exact commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ inputs.commit_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Require the commit on main
@@ -58,10 +66,17 @@ jobs:
             echo "commit_sha is not reachable from main" >&2
             exit 1
           }
+      - name: Compare a scheduled run with the last successful run
+        if: github.event_name == 'schedule'
+        run: |
+          since=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/update-acceptance.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          if [[ -n "$since" ]] && git merge-base --is-ancestor "$since" "$COMMIT_SHA"; then
+            echo "UPDATE_ACCEPTANCE_SINCE=$since" >> "$GITHUB_ENV"
+          fi
       - name: Detect updater-chain changes
         id: requirement
         run: |
-          required=$(node --input-type=module -e "import { updateAcceptanceChangesSinceLastTag } from './scripts/update-acceptance-code-changed.mjs'; console.log(updateAcceptanceChangesSinceLastTag().paths.length ? 'true' : 'false')")
+          required=$(node --input-type=module -e "import { updateAcceptanceChangesSinceLastTag } from './scripts/update-acceptance-code-changed.mjs'; console.log(updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined }).paths.length ? 'true' : 'false')")
           if [[ "$FORCE" == "true" ]]; then required=true; fi
           echo "required=$required" >> "$GITHUB_OUTPUT"
 
@@ -82,14 +97,14 @@ jobs:
       run:
         shell: bash
     env:
-      COMMIT_SHA: ${{ inputs.commit_sha }}
+      COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
       COREPACK_ENABLE_AUTO_PIN: 0
       PLATFORM: ${{ matrix.platform }}
     steps:
       - name: Checkout the exact commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ inputs.commit_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Require the commit on main
@@ -134,7 +149,7 @@ jobs:
       - name: Checkout the exact commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ inputs.commit_sha || github.sha }}
           persist-credentials: false
       - name: Download Windows evidence
         if: env.REQUIRED == 'true'
@@ -160,7 +175,7 @@ jobs:
         if: env.REQUIRED == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: update-acceptance-${{ inputs.commit_sha }}
+          name: update-acceptance-${{ inputs.commit_sha || github.sha }}
           path: update-evidence/
           if-no-files-found: error
           retention-days: 14
