@@ -682,9 +682,7 @@ explicit selector it uses `PLVS_INSTANCE_ID`, or discovers and pins the sole dev
 It refuses multiple unselected instances, existing UI surfaces or blocking editors, and hidden or
 non-normal windows before navigation. It closes only the Settings surface it created.
 
-The local `release:preflight` requires this smoke when desktop dependencies changed since the last
-stable release tag. Start the current source with `npm run desktop:dev` before running preflight;
-failures block the gate. Reports are saved under `artifacts/agent-control-smoke/`.
+Reports are saved under `artifacts/agent-control-smoke/`.
 
 `npm run acceptance:agent-control -- --instance <instance-id>` is the broader cross-platform
 desktop acceptance. It verifies the installed command schemas and completions, runs the base smoke,

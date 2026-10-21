@@ -2,7 +2,7 @@
 # (Debian package, x86_64).
 #
 # A release is dispatched for an exact commit after its normal CI run succeeds. Each platform is
-# built and smoke-tested once. The tested files are then assembled in a draft GitHub Release and
+# built and smoke-tested once, then opened and metered on a self-hosted rig runner. The tested files are then assembled in a draft GitHub Release and
 # published together, so immutable releases never expose or lock a partial set of assets.
 
 name: Release
@@ -376,6 +376,17 @@ jobs:
     with:
       commit_sha: ${{ inputs.commit_sha }}
 
+  # The exact packages above, opened on the same three self-hosted runners without installing them:
+  # Agent Control, Settings, Live capture of the rig tone, and screenshot/recording evidence.
+  release-package-smoke:
+    needs: [build-windows, build-macos, build-linux]
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/release-package-smoke.yml
+    with:
+      commit_sha: ${{ inputs.commit_sha }}
+
   update-acceptance:
     needs: validate
     permissions:
@@ -386,7 +397,15 @@ jobs:
       commit_sha: ${{ inputs.commit_sha }}
 
   prepare-draft:
-    needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]
+    needs:
+      [
+        build-windows,
+        build-macos,
+        build-linux,
+        capture-acceptance,
+        release-package-smoke,
+        update-acceptance,
+      ]
     runs-on: ubuntu-latest
     permissions:
       contents: write

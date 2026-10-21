@@ -10,7 +10,6 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { agentControlSmokeChangesSinceLastTag } from "./agent-control-code-changed.mjs";
 import { updateAcceptanceChangesSinceLastTag } from "./update-acceptance-code-changed.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -53,21 +52,9 @@ if (updateAcceptanceChanges.paths.length > 0) {
   run("Update acceptance evidence (advisory)", "node", ["scripts/report-update-acceptance.mjs"]);
 }
 
-// Real capture smoke runs remotely for the exact release commit on all three self-hosted runners
-// (capture-acceptance.yml, called by release.yml), so this local gate no longer drives the rig.
-
-const agentControlChanges = agentControlSmokeChangesSinceLastTag({ cwd: root });
-if (agentControlChanges.paths.length > 0) {
-  console.log(
-    `Agent Control desktop dependencies changed since ${agentControlChanges.tag ?? "the initial commit"}:`
-  );
-  for (const path of agentControlChanges.paths) console.log(`  ${path}`);
-  console.log(
-    "Start the current source with npm run desktop:dev in a visible normal window. Set PLVS_INSTANCE_ID when several development workbenches are running."
-  );
-  run("Agent Control desktop smoke", npm, ["run", "smoke:agent-control"]);
-} else {
-  console.log("Agent Control desktop smoke skipped: no desktop dependency changed.");
-}
+// Real capture smoke and the release-package Agent Control smoke run remotely for the exact
+// release commit and packages on all three self-hosted runners (capture-acceptance.yml and
+// release-package-smoke.yml, called by release.yml), so this local gate drives neither the rig
+// nor a desktop app.
 
 console.log("\nOK Local release preflight passed.");

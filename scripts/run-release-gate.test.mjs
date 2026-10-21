@@ -11,4 +11,14 @@ describe("run-release-gate", () => {
     expect(gate).not.toContain("smoke:capture");
     expect(release).toContain("uses: ./.github/workflows/capture-acceptance.yml");
   });
+
+  it("leaves the desktop Agent Control smoke to the remote release-package smoke", () => {
+    const gate = readFileSync(new URL("./run-release-gate.mjs", import.meta.url), "utf8");
+    const release = readFileSync(
+      new URL("../.github/workflows/release.yml", import.meta.url),
+      "utf8"
+    );
+    expect(gate).not.toContain("smoke:agent-control");
+    expect(release).toContain("uses: ./.github/workflows/release-package-smoke.yml");
+  });
 });

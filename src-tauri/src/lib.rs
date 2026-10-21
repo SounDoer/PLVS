@@ -125,12 +125,8 @@ fn test_app_data_root(args: &[String]) -> Result<Option<PathBuf>, String> {
   if !path.is_absolute() {
     return Err("The isolated test app-data root must be absolute.".to_string());
   }
-  // Dev-identity release builds (`desktop:dev-optimized`) accept it too, so an optimized dev
-  // app in a linked worktree keeps its own data (ADR 0028). Stable and Preview never enable
-  // that feature.
-  #[cfg(not(any(debug_assertions, feature = "dev-identity")))]
-  return Err("The isolated test app-data root is unavailable in packaged builds.".to_string());
-  #[cfg(any(debug_assertions, feature = "dev-identity"))]
+  // Every build accepts it, Stable and Preview included, so the release-package smoke can run the
+  // exact downloaded package without touching the real profile (ADR 0035).
   Ok(Some(path))
 }
 

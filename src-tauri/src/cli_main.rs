@@ -580,11 +580,8 @@ struct InstancesResult {
 }
 
 fn read_live_instances() -> Result<Vec<crate::coordinator::InstanceSummary>, String> {
-  // Same gate as `--plvs-test-app-data-root` in lib.rs (ADR 0028).
-  #[cfg(any(debug_assertions, feature = "dev-identity"))]
+  // The CLI side of `--plvs-test-app-data-root` in lib.rs, accepted by every build (ADR 0035).
   let test_root = std::env::var_os("PLVS_TEST_IDENTITY_ROOT").map(std::path::PathBuf::from);
-  #[cfg(not(any(debug_assertions, feature = "dev-identity")))]
-  let test_root: Option<std::path::PathBuf> = None;
   let root = match test_root {
     Some(root) => root,
     None => crate::doctor::resolve_config_dir()

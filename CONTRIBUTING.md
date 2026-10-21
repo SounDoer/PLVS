@@ -334,12 +334,11 @@ Use `npm run cli:build` to build only the CLI package without starting the GUI. 
 
 `desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the dev app must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed stable PLVS. The stable CLI uses the same flat commands but talks to the installed app through the stable identity. Windows uses a current-user named pipe; macOS and Linux use a private Unix socket. Linux requires a private `$XDG_RUNTIME_DIR` and verifies peer ownership with `SO_PEERCRED`. Visual Capture screenshots and recording work on all three desktop platforms; Linux supports measured-source audio but advertises only pointer-free recording. `smoke:agent-control` requires the current dev app in a visible normal window with no open surfaces or blocking editors. It verifies capabilities, inspect, Settings navigation, a screenshot and a 3-second silent recording, and writes artifacts plus the selected instance ID to `artifacts/agent-control-smoke/`. A successful run keeps the compatibility `smoke-report.json`; success or a caught product/cleanup failure writes the shared `result.json`. Formal evidence requires a clean worktree so its source SHA identifies the code that ran. Use `npm run smoke:agent-control -- --instance <id>` or `PLVS_INSTANCE_ID` with multiple workbenches. Without either, it discovers and pins the sole instance for the whole run, including cleanup.
 
-`release:preflight` requires this real-desktop smoke whenever frontend, native, shared-contract,
-build dependency or smoke tooling paths changed since the last stable release tag. A missing
-GUI, ambiguous instance, unsafe initial UI, discovery failure or smoke failure blocks the gate;
-there is no skip flag. Restart the dev app from the current source before preflight.
+`smoke:agent-control` is a development check of the current source. Releases do not run it locally:
+`release-package-smoke.yml` runs the same scenarios against the exact release packages on the three
+home runners (see "Home capture runners").
 Ordinary hosted CI runs the protocol and orchestration tests; it does not certify native GUI
-capture or replace this local desktop gate. Native capture still needs validation on each desktop
+capture. Native capture still needs validation on each desktop
 platform; Linux validation must use an unlocked real GNOME Wayland session with the window visible.
 
 ### UI visual walkthroughs
@@ -809,6 +808,27 @@ Each job verifies its own `result.json` names the commit and platform and is `co
 uploads it as `capture-evidence-<platform>`. The runner workspace is reused and cleaned by later
 checkouts; the uploaded artifact is the record.
 
+After the three builds, `release.yml` also calls
+[`release-package-smoke.yml`](.github/workflows/release-package-smoke.yml) on the same runners. It
+downloads the exact `release-candidate-<platform>` artifact and runs
+`scripts/release-package-smoke.mjs` on it: the portable ZIP on Windows, a copy of `PLVS.app` from
+the DMG on macOS, the deb unpacked with `dpkg-deb -x` on Linux. Nothing is installed. The app starts
+from a temporary directory with `--plvs-test-app-data-root` ([ADR 0035](docs/adr/0035-packaged-builds-accept-an-isolated-data-root.md))
+on a seeded profile in which only Agent Control is enabled, so the maintainer's own PLVS, running or
+not, and its settings are untouched. The package's own `plvs-cli` runs the base Agent Control
+smoke scenarios, selects the rig device, starts Live under the rig lease and requires the reading
+to match the rig tone (integrated loudness and both channel peaks within 0.5 dB), then takes a
+screenshot while metering. `release-package-evidence-<platform>` holds `result.json`, the
+screenshots, the silent recording and the app log; `scripts/verify-release-package-evidence.mjs`
+checks their sizes and SHA-256 before upload. Exit 1 is a package defect, exit 2 a rig or runner
+problem. Check the runners against an earlier release run's candidates without a release:
+
+```bash
+gh workflow run release-package-smoke.yml -f commit_sha=<release commit> -f run_id=<release.yml run id>
+```
+
+Candidate artifacts are kept for seven days.
+
 Setting up a runner (register with a short-lived token from
 `gh api -X POST repos/SounDoer/PLVS/actions/runners/registration-token`, kept in memory only;
 verify the runner archive against the SHA-256 in its GitHub release before extracting):
@@ -818,6 +838,19 @@ verify the runner archive against the SHA-256 in its GitHub release before extra
 | Windows  | Maintainer's logged-in account. Not a service: a logon launcher in the Startup folder runs `run.cmd` in the user session. | VB-Cable, VLC, Git for Windows                                | The first `bash.exe` on a Windows desktop's PATH is usually WSL's. The launcher must put `C:\Program Files\Git\bin` first on PATH; the runner cannot take a quoted shell path. Started from an agent inside the Claude desktop app, launch it through `explorer.exe` so it leaves the app's container. |
 | macOS    | Maintainer's login account, `./run.sh` in a Terminal window that holds microphone permission.                             | BlackHole 2ch, VLC                                            | A LaunchAgent (`./svc.sh install`) captures silence: TCC attributes the request to the runner's Node, which has no audio entitlement. The runner does not return after a logout, reboot or closing that Terminal. The screen may stay locked; capture passes while locked.                             |
 | Linux    | Desktop user's `systemd --user` unit running `runsvc.sh`, with `loginctl enable-linger`.                                  | `pactl`/`paplay` on PipeWire or PulseAudio, `/usr/bin/ffmpeg` | Copy `bin/runsvc.sh` to the runner root first, or the unit fails with `203/EXEC`. Put `~/.cargo/bin` on the unit's PATH and order it after the PipeWire user services. A dedicated user cannot reach the desktop user's audio session.                                                                 |
+
+One-time setup for the release-package smoke, beyond the table above:
+
+- **Windows:** none. The window opens on the logged-in desktop for about a minute; leave the session
+  unlocked while a release runs.
+- **macOS:** none beyond the Terminal-launched runner. The copied app is started by the runner, so
+  macOS attributes its audio capture to that Terminal, as it does for capture smoke.
+- **Linux:** `sudo apt install xvfb`. The `systemd --user` unit has no display, and the smoke starts
+  a private Xvfb server when `DISPLAY` and `WAYLAND_DISPLAY` are both unset; do not import the
+  desktop session's display into the unit. Unpacking installs none of the deb's `Depends`; when the
+  smoke reports missing packages, install them with `sudo apt install <names>`
+  (`dpkg-deb -f PLVS_<version>_amd64.deb Depends` lists them all). Without a session bus in the
+  unit's environment the app gets a private one from `dbus-run-session` (package `dbus`).
 
 Every clone and runner on one machine shares the rig lease (ADR 0034), so a manual `smoke:capture`
 and a runner job queue behind each other instead of summing tones. Each runner keeps its own Rust

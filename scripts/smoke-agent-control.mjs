@@ -136,10 +136,11 @@ export function selectSmokeInstance(instances, selector) {
   return instances[0].instanceId;
 }
 
-function createRunner(executable) {
+function createRunner(executable, env) {
   return (label, args, { allowFailure = false } = {}) => {
     const result = spawnSync(executable, args, {
       cwd: root,
+      env: env ? { ...process.env, ...env } : undefined,
       encoding: "utf8",
       maxBuffer: 4 * 1024 * 1024,
       timeout: 330_000,
@@ -166,7 +167,8 @@ export async function runAgentControlSmoke({
   instanceId,
   sourceSha,
   platform = hostPlatform(),
-  invoke = createRunner(executable),
+  env,
+  invoke = createRunner(executable, env),
 }) {
   if (!/^[0-9a-f]{40}$/.test(sourceSha)) {
     throw new Error("Agent Control smoke requires an exact lowercase source SHA.");

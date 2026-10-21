@@ -55,6 +55,19 @@ describe("self-hosted runners on a public repository", () => {
     );
   });
 
+  it("runs the release-package smoke on all three home platforms under the rig lease", () => {
+    const workflow = workflows["release-package-smoke.yml"];
+    for (const platform of ["windows", "macos", "linux"]) {
+      expect(workflow).toContain(`labels: [self-hosted, plvs-rig, ${platform}]`);
+    }
+    expect(workflow).toMatch(/defaults:\n\s+run:\n\s+shell: bash\n/);
+    expect(workflow).toContain("--wait");
+    expect(workflow).not.toContain("secrets.");
+    expect(parse(workflow).concurrency.group).toBe(
+      "release-package-smoke-${{ github.workflow }}-${{ inputs.commit_sha }}"
+    );
+  });
+
   it("runs automated update acceptance on both desktop platforms without secrets", () => {
     const workflow = workflows["update-acceptance.yml"];
     for (const platform of ["windows", "macos"]) {
@@ -66,9 +79,12 @@ describe("self-hosted runners on a public repository", () => {
     expect(workflow).not.toContain("secrets.");
   });
 
-  it("refuses a commit that main does not contain before anything from it runs", () => {
+  it.each([
+    ["capture-acceptance.yml", "capture-smoke"],
+    ["release-package-smoke.yml", "package-smoke"],
+  ])("%s refuses a commit that main does not contain before anything from it runs", (file, job) => {
     // A dispatch accepts any SHA in the repository network, fork pull request commits included.
-    const { steps } = parse(workflows["capture-acceptance.yml"]).jobs["capture-smoke"];
+    const { steps } = parse(workflows[file]).jobs[job];
     const names = steps.map((step) => step.name);
     const checkout = steps[names.indexOf("Checkout the exact commit")];
     const reachable = names.indexOf("Require the commit on main");

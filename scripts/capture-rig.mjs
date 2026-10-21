@@ -266,7 +266,7 @@ export function selectMacRenderDevice(report, expectedName = BLACKHOLE_DEVICE_NA
   return device;
 }
 
-function resolveMacRenderDevice(run = spawnSync) {
+export function resolveMacRenderDevice(run = spawnSync) {
   const result = run("/usr/bin/xcrun", ["swift", MACOS_AUDIO_PROBE, BLACKHOLE_DEVICE_NAME], {
     encoding: "utf8",
   });

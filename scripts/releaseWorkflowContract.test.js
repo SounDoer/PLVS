@@ -1,10 +1,25 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
+import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 import { TAURI_LICENSE_RESOURCES } from "./license-assets.mjs";
 
 const releaseWorkflow = readFileSync(join(cwd(), ".github", "workflows", "release.yml"), "utf8");
+const releaseJobs = parse(releaseWorkflow).jobs;
+const prepareDraftNeeds = releaseJobs["prepare-draft"].needs;
+const DRAFT_GATES = [
+  "build-windows",
+  "build-macos",
+  "build-linux",
+  "capture-acceptance",
+  "release-package-smoke",
+  "update-acceptance",
+];
+const releasePackageSmokeWorkflow = readFileSync(
+  join(cwd(), ".github", "workflows", "release-package-smoke.yml"),
+  "utf8"
+);
 const updateAcceptanceWorkflow = readFileSync(
   join(cwd(), ".github", "workflows", "update-acceptance.yml"),
   "utf8"
@@ -175,18 +190,14 @@ describe("Immutable Release promotion", () => {
     expect(releaseWorkflow).toMatch(
       /\n {2}capture-acceptance:\n {4}needs: validate\n {4}uses: \.\/\.github\/workflows\/capture-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
     );
-    expect(releaseWorkflow).toContain(
-      "needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]"
-    );
+    expect(prepareDraftNeeds).toEqual(DRAFT_GATES);
   });
 
   it("runs exact-SHA packaged update acceptance without operator file transfer", () => {
     expect(releaseWorkflow).toMatch(
       /\n {2}update-acceptance:\n {4}needs: validate\n {4}permissions:\n {6}actions: read\n {6}contents: read\n {4}uses: \.\/\.github\/workflows\/update-acceptance\.yml\n {4}with:\n {6}commit_sha: \$\{\{ inputs\.commit_sha \}\}\n/
     );
-    expect(releaseWorkflow).toContain(
-      "needs: [build-windows, build-macos, build-linux, capture-acceptance, update-acceptance]"
-    );
+    expect(prepareDraftNeeds).toEqual(DRAFT_GATES);
     expect(updateAcceptanceWorkflow).toContain("npm run update:acceptance:run");
     expect(updateAcceptanceWorkflow).toContain("node scripts/export-update-acceptance.mjs");
     expect(updateAcceptanceWorkflow).toContain("actions/download-artifact@v8");
@@ -207,6 +218,36 @@ describe("Immutable Release promotion", () => {
     expect(updateAcceptanceWorkflow).toContain(
       "updateAcceptanceChangesSinceLastTag({ since: process.env.UPDATE_ACCEPTANCE_SINCE || undefined })"
     );
+  });
+
+  it("opens and meters the exact release candidates before the draft", () => {
+    expect(releaseJobs["release-package-smoke"]).toEqual({
+      needs: ["build-windows", "build-macos", "build-linux"],
+      permissions: { actions: "read", contents: "read" },
+      uses: "./.github/workflows/release-package-smoke.yml",
+      with: { commit_sha: "${{ inputs.commit_sha }}" },
+    });
+    expect(prepareDraftNeeds).toEqual(DRAFT_GATES);
+    const smoke = parse(releasePackageSmokeWorkflow);
+    const job = smoke.jobs["package-smoke"];
+    expect(job.strategy.matrix.include.map(({ platform }) => platform)).toEqual([
+      "windows",
+      "macos",
+      "linux",
+    ]);
+    const steps = job.steps.map((step) => step.run ?? step.uses).join("\n");
+    for (const platform of ["windows", "macos", "linux"]) {
+      expect(releaseWorkflow).toContain(`name: release-candidate-${platform}`);
+    }
+    expect(steps).toContain("node scripts/release-package-smoke.mjs");
+    expect(steps).toContain("node scripts/verify-release-package-evidence.mjs");
+    expect(steps).toContain("--wait");
+    expect(JSON.stringify(smoke)).not.toMatch(/continue-on-error|secrets/);
+    expect(job.steps.filter((step) => step.if).map((step) => step.name)).toEqual([
+      "Download the candidate from this release run",
+      "Download the candidate from the named release run",
+      "Upload release-package evidence",
+    ]);
   });
 
   it("never lets capture acceptance be skipped or handed secrets", () => {

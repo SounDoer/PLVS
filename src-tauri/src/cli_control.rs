@@ -3098,15 +3098,8 @@ struct LocalControlClient {
 }
 
 fn test_identity_root() -> Option<std::path::PathBuf> {
-  // Same gate as `--plvs-test-app-data-root` in lib.rs (ADR 0028).
-  #[cfg(any(debug_assertions, feature = "dev-identity"))]
-  {
-    std::env::var_os("PLVS_TEST_IDENTITY_ROOT").map(std::path::PathBuf::from)
-  }
-  #[cfg(not(any(debug_assertions, feature = "dev-identity")))]
-  {
-    None
-  }
+  // The CLI side of `--plvs-test-app-data-root` in lib.rs, accepted by every build (ADR 0035).
+  std::env::var_os("PLVS_TEST_IDENTITY_ROOT").map(std::path::PathBuf::from)
 }
 
 impl LocalControlClient {

@@ -1,0 +1,133 @@
+# The exact release candidates release.yml built, opened on the maintainer's home Windows, macOS
+# and Linux runners: Agent Control answers, Settings opens and closes, Live meters the rig tone, and
+# a screenshot and silent recording are kept as evidence. Nothing is installed. Each package runs
+# from a temporary directory on an isolated profile (ADR 0035), so the maintainer's own PLVS and
+# its settings are never touched.
+#
+# Self-hosted jobs must never be reachable from events an outsider can trigger and receive no
+# secrets; scripts/selfHostedWorkflowContract.test.js enforces both. There is no input to skip a
+# platform: a runner that is off makes the run wait, then fail.
+
+name: Release Package Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA the candidates were built from
+        required: true
+        type: string
+      run_id:
+        description: Release workflow run whose release-candidate-* artifacts to test
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      commit_sha:
+        description: Full commit SHA the candidates were built from
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: release-package-smoke-${{ github.workflow }}-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  package-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            labels: [self-hosted, plvs-rig, windows]
+          - platform: macos
+            labels: [self-hosted, plvs-rig, macos]
+          - platform: linux
+            labels: [self-hosted, plvs-rig, linux]
+    runs-on: ${{ matrix.labels }}
+    timeout-minutes: 60
+    # See capture-acceptance.yml: a Windows runner puts Git Bash first on its own PATH.
+    defaults:
+      run:
+        shell: bash
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      PLATFORM: ${{ matrix.platform }}
+      RUN_ID: ${{ inputs.run_id }}
+    steps:
+      - name: Validate the inputs
+        run: |
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase commit SHA" >&2
+            exit 1
+          fi
+          if [[ -n "$RUN_ID" && ! "$RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "run_id must be a workflow run number" >&2
+            exit 1
+          fi
+
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A dispatch accepts any SHA in the repository network, including fork pull request commits.
+      # Nothing from the checkout may run on these machines unless main contains it.
+      - name: Require the commit on main
+        run: |
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main; then
+            echo "commit_sha is not reachable from main" >&2
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # Below the ignored artifacts/ directory, so the checkout stays clean for the evidence SHA.
+      - name: Download the candidate from this release run
+        if: ${{ !inputs.run_id }}
+        uses: actions/download-artifact@v8
+        with:
+          name: release-candidate-${{ matrix.platform }}
+          path: artifacts/release-candidate/${{ matrix.platform }}
+
+      - name: Download the candidate from the named release run
+        if: ${{ inputs.run_id }}
+        uses: actions/download-artifact@v8
+        with:
+          name: release-candidate-${{ matrix.platform }}
+          path: artifacts/release-candidate/${{ matrix.platform }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Release-package smoke
+        run: |
+          rm -rf "artifacts/release-package-evidence/$PLATFORM"
+          node scripts/release-package-smoke.mjs \
+            --candidate "artifacts/release-candidate/$PLATFORM" \
+            --out-dir "artifacts/release-package-evidence/$PLATFORM" \
+            --wait
+
+      - name: Verify exact-commit evidence
+        run: |
+          node scripts/verify-release-package-evidence.mjs \
+            --dir "artifacts/release-package-evidence/$PLATFORM" \
+            --sha "$COMMIT_SHA" \
+            --platform "$PLATFORM"
+
+      - name: Upload release-package evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-package-evidence-${{ matrix.platform }}
+          path: artifacts/release-package-evidence/${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14

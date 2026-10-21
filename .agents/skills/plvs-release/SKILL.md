@@ -522,15 +522,15 @@ Do NOT proceed to Step 7. Fix issues and re-run `npm run release:preflight`.
 git push origin main
 ```
 
-### Before Dispatch: Home Runners and a Manual GUI Check
+### Before Dispatch: Home Runners
 
-`release.yml` runs real capture smoke on the self-hosted runners (see "Home capture runners" in
-`CONTRIBUTING.md`). The Windows runner lives on the maintainer's company PC for now, so dispatch
-while that PC is on and logged in.
+`release.yml` runs real capture smoke and the release-package smoke on the self-hosted runners (see
+"Home capture runners" in `CONTRIBUTING.md`). The Windows runner lives on the maintainer's company PC
+for now, so dispatch while that PC is on and logged in.
 
-Agent Control smoke runs only on the preflight machine (Windows). Until it runs on the macOS and
-Linux runners, also open the current build on the Mac and on Ubuntu, open Settings once and close
-it. Remove this step once Agent Control smoke covers those platforms.
+`release-package-smoke.yml` opens the exact candidate packages on all three runners without
+installing them, on an isolated profile, and checks Agent Control, Settings, Live capture of the rig
+tone and screenshot/recording evidence. Nobody opens the build by hand.
 
 When updater-chain dependencies changed, `release.yml` also calls `update-acceptance.yml`. Its
 self-hosted Windows and macOS jobs drive the isolated packaged updater entirely through
@@ -632,6 +632,13 @@ In parallel, the `capture-acceptance` job calls `capture-acceptance.yml`, which 
 `smoke:capture` for the exact SHA on the self-hosted `plvs-rig` runners (home PC or company PC,
 Mac, Ubuntu). `prepare-draft` waits for it, so no draft exists unless real capture passed on all
 three platforms. It runs on every release; local preflight no longer runs capture smoke.
+
+After the three builds, the `release-package-smoke` job calls `release-package-smoke.yml` on the same
+runners. Each runs its platform's exact candidate (portable ZIP, a copy of the app from the DMG, the
+unpacked deb) on an isolated profile, drives the base Agent Control smoke with the package's own
+`plvs-cli`, selects the rig device, and requires the Live reading to match the rig tone. Its exit
+codes follow capture smoke: 1 is a package defect, 2 a rig or runner problem. `prepare-draft` waits
+for it as well.
 
 ### Build Matrix
 
