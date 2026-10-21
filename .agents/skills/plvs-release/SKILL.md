@@ -348,7 +348,9 @@ candidate in Step 5, run `npm run release:content:snapshot`, complete the pendin
 `docs/release-content-review.json`, run `npm run release:content:check` and the required pre-commit
 checks, then commit the record before Step 6. Both local preflight and remote Release validation
 reject missing, incomplete or stale records. Any candidate change other than the record itself
-requires renewed review; never refresh its fingerprint without reviewing the change.
+requires renewed review; never refresh its fingerprint without reviewing the change. Do not renew
+the record after each fix while a standalone acceptance run is being repaired; renew it once, over
+the whole change since the reviewed candidate, right before the final preflight and dispatch.
 
 Reconcile user-visible changes against `docs/user/`, README highlights and the website as described
 in the workflow overview. When a homepage or README screenshot no longer matches the UI, retake it

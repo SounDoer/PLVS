@@ -584,6 +584,10 @@ record. Both `release:preflight` and the remote Release validation job enforce i
    An unchanged surface still needs a concrete reason. Do not merely replace a stale fingerprint.
 4. Run `npm run release:content:check`, then the required pre-commit checks and commit the record.
    Run the full `npm run release:preflight` before pushing and dispatching the exact final SHA.
+5. When fixes land after the record, such as while iterating a standalone `update-acceptance.yml`
+   or `capture-acceptance.yml` run, leave the record stale until the fixes are finished. Those
+   workflows do not read it. Renew it once, reviewing the whole change since the reviewed
+   candidate, immediately before the final preflight and dispatch.
 
 The record binds the version, baseline tag and commit, reviewed candidate commit and a fingerprint
 of the entire tracked candidate tree, including file modes and asset bytes. Only the review record
