@@ -1,92 +1,47 @@
 {
   "schemaVersion": 1,
-  "version": "0.23.0",
-  "baselineTag": "v0.22.2",
-  "baselineRevision": "f4a8c6465c7de8ab39aaab58ec42903bdb77a652",
-  "candidateRevision": "beab32598a25738f2c23e2a78c35a9901ebe8adb",
-  "contentSha256": "7bddd48e8ac90042a91f328be3ede943c42e11ed6c93c289a06269ad8d5df826",
+  "version": "0.23.1",
+  "baselineTag": "v0.23.0",
+  "baselineRevision": "0d863589a18af63e4b5ea2f31d67b411b5d3a176",
+  "candidateRevision": "1777038b8bb5f183e5b4a601035e740d1096e7f1",
+  "contentSha256": "787f367751d067f6da497e67513a59336619a7b003d211e680d0e4b94c440332",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The release adds signed Linux in-app updates, Download Manually in failed update details, the Windows elevation fix with its one-time manual upgrade, and renamed update and crash-report switches. The guide chapters that describe these were updated in the release range and match CHANGELOG.md [0.23.0]; no old switch label remains in docs/user.",
+      "rationale": "Every user-visible 0.23.1 change was documented in docs/user in the commit that made it: the Linux in-app update fix and the one manual .deb update from 0.23.0 (getting-started), Linux recording through Ubuntu's FFmpeg with recordingEncoderUnavailable and the doctor check (cli.md, command-line.md), update details during an active download and Import Complete labels (system-settings), and the PLVS Default preset name. The feedback dialog change only moves the existing Attach Diagnostics description into a help tip; system-settings already describes its content.",
       "evidence": [
-        "git diff --stat v0.22.2..dd11d5ff -- docs/user: faq.md, getting-started.md, system-settings.md, workspace.md",
-        "docs/user/getting-started.md Linux section and docs/user/faq.md 'Is there a Linux build?' compared with CHANGELOG.md [0.23.0] Added",
-        "docs/user/system-settings.md Updates section: Download Manually, os error 740 migration note",
-        "grep of docs/user, README.md, website for 'Ask To Send Crash Reports', 'Auto Check', 'Auto Download' without the new suffixes: no matches",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
-        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: changes since 08e61ad9 are acceptance-only Agent Control, workflow/evidence automation, tests and maintainer documentation; stable, dev and Preview identities cannot access the private controls",
-        "Re-reviewed for candidate b041e59f: the migration fix preserves the user's existing documented update preference while the other changes affect only updater acceptance tooling",
-        "Re-reviewed for candidate 4f87f06a: the only change since b041e59f reopens a retained test update through acceptance-only Agent Control after an intentionally interrupted helper",
-        "Re-reviewed for candidate 71b12551: acceptance-only Agent Control now waits for transfer settlement and dismisses the synthetic first-run choice in the read-only DMG scenario; documented product behavior is unchanged",
-        "Re-reviewed for candidate cceefb17: the acceptance harness now treats Skip This Time as the single real UI action and preserves a read-only DMG verdict when optional visual evidence cannot settle; documented product behavior is unchanged",
-        "Re-reviewed for candidate 83b63110: the isolated read-only DMG process is terminated directly after its verdict instead of issuing a redundant UI close; documented product behavior is unchanged",
-        "Re-reviewed for candidate aa7682b8: writable and read-only macOS acceptance packages now run sequentially under their shared synthetic identity; documented product behavior is unchanged",
-        "Re-reviewed for candidate 3a7540e2: the acceptance harness now waits for the packaged frontend inspection bridge after native capabilities become available; documented product behavior is unchanged",
-        "Re-reviewed for candidate 7a6e3a0b: the private acceptance preference action now acknowledges before a potentially slow first persistence flush and the harness waits for the real first-launch surface to close; stable, dev and Preview behavior is unchanged",
-        "Re-reviewed for candidate beab3259: the acceptance harness now retries cold macOS UI inspection and screenshot evidence while preserving the same real update-surface assertions; documented product behavior is unchanged"
+        "git diff --stat v0.23.0..1777038b -- docs/user: cli.md, command-line.md, getting-started.md, system-settings.md",
+        "docs/user/getting-started.md lines 51-52 compared with CHANGELOG.md [0.23.1] Fixed (0.23.0 Linux users need one manual .deb update)",
+        "docs/user/system-settings.md Updates section and Import Complete wording compared with CHANGELOG.md [0.23.1] Fixed",
+        "docs/user/cli.md Linux Visual Capture paragraph compared with ADR 0037 and CHANGELOG.md [0.23.1] Fixed",
+        "grep of docs/user for the old preset name 'Default' preset: no matches; system-settings.md:415 Attach Diagnostics text still matches FeedbackDialog.jsx DIAGNOSTICS_HELP"
       ]
     },
     "readme": {
-      "status": "updated",
-      "rationale": "The Ubuntu row of the downloads table said updates are manual; it now says the APT package has verified in-app updates, matching the new Linux update support. Other highlights describe no changed behaviour.",
+      "status": "unchanged",
+      "rationale": "README highlights make no claim affected by this release. The Ubuntu download row's 'APT package with verified in-app updates' was already the promise; 0.23.1 makes it work rather than changing it, and the manual step for 0.23.0 users belongs in the user guide and release notes.",
       "evidence": [
-        "git diff v0.22.2..dd11d5ff -- README.md: Ubuntu row 'updates are manual' -> 'APT package with verified in-app updates'",
-        "README.md highlights compared with CHANGELOG.md [0.23.0]",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
-        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: updater acceptance automation changes only private tooling, tests and maintainer documentation",
-        "Re-reviewed for candidate b041e59f: no download, feature-summary or platform-support claim changed",
-        "Re-reviewed for candidate 4f87f06a: the acceptance runner retry fix changes no public download or feature claim",
-        "Re-reviewed for candidate 71b12551: updater acceptance timing and isolated DMG setup changes no public download or feature claim",
-        "Re-reviewed for candidate cceefb17: updater acceptance evidence handling changes no public download or feature claim",
-        "Re-reviewed for candidate 83b63110: updater acceptance cleanup changes no public download or feature claim",
-        "Re-reviewed for candidate aa7682b8: macOS acceptance scenario ordering changes no public download or feature claim",
-        "Re-reviewed for candidate 3a7540e2: packaged inspection readiness handling changes no public download or feature claim",
-        "Re-reviewed for candidate 7a6e3a0b: acceptance-only preference timing changes no public download or feature claim",
-        "Re-reviewed for candidate beab3259: acceptance evidence retry handling changes no public download or feature claim"
+        "git diff --stat v0.23.0..1777038b -- README.md is empty",
+        "README.md line 47 Ubuntu row and highlights compared with CHANGELOG.md [0.23.1]"
       ]
     },
     "website": {
       "status": "unchanged",
-      "rationale": "The homepage download cards name platforms and package files only and make no per-platform update claim, so Linux in-app updates need no homepage change. The privacy policy's Update Checks and Downloads section already covers signed package downloads from GitHub Releases for every platform; Linux installation uses the already-downloaded package through local Polkit and offline APT, adding no recipient or data. The crash-prompt fix changes when a saved report is read locally, not what is sent.",
+      "rationale": "No homepage, Sharesets or privacy text changes. Platform cards name packages only. Privacy: Linux recording encodes locally with the distribution FFmpeg, the Linux updater still installs the already-downloaded signed package offline, and feedback diagnostics content is unchanged, so no collection, transmission, recipient or retention change.",
       "evidence": [
-        "git diff --stat v0.22.2..dd11d5ff -- website ':!website/assets' is empty",
-        "website/index.html platform cards (linuxCard) inspected: no update wording",
-        "website/privacy/index.html 'Update Checks and Downloads' section compared with CHANGELOG.md [0.23.0] Added (offline APT, Polkit)",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
-        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: the new Actions workflow exports ephemeral acceptance packages and test evidence only; it handles no production-user data and changes no public site content",
-        "Re-reviewed for candidate b041e59f: preference migration remains local and updater acceptance artifacts contain no production-user data",
-        "Re-reviewed for candidate 4f87f06a: the acceptance-only retry continues to use isolated synthetic data and changes no public site content or production-user data flow",
-        "Re-reviewed for candidate 71b12551: the acceptance runner continues to use isolated synthetic data and changes no public site content or production-user data flow",
-        "Re-reviewed for candidate cceefb17: the acceptance runner still uses only isolated synthetic data and changes no public site content or production-user data flow",
-        "Re-reviewed for candidate 83b63110: isolated process cleanup changes no public site content or production-user data flow",
-        "Re-reviewed for candidate aa7682b8: isolated scenario ordering changes no public site content or production-user data flow",
-        "Re-reviewed for candidate 3a7540e2: acceptance readiness polling changes no public site content or production-user data flow",
-        "Re-reviewed for candidate 7a6e3a0b: the isolated acceptance preference flow still uses only synthetic local data and changes no public site content or production-user data flow",
-        "Re-reviewed for candidate beab3259: cold-start acceptance retries still use only isolated synthetic data and change no public site content or production-user data flow"
+        "git diff --stat v0.23.0..1777038b -- website ':!website/assets' is empty",
+        "website/index.html grep for update/recording claims: none",
+        "website/privacy/index.html Update Checks and Feedback sections compared with 9e705c9f, 5c38eea9 and 0d71c0ae"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "No published screenshot shows Settings or the update and crash-report switches whose labels changed; the homepage images show panels and Dock. The Dock fixes change window placement and error handling, not how the strip or toolbar look in the published images.",
+      "rationale": "Outdated by decision: website/assets/landing-hero.webp (shared by README and homepage) shows 'Preset Default' in the status bar, now 'PLVS Default'. Retaking it needs the Windows capture rig run and the maintainer's visual selection, which are not available for this patch release; the difference is one status-bar word and is recorded here instead of silently left. Retake with scripts/marketing/capture-live-hero.mjs before the next minor release. landing-dock.webp and landing-dock-custom.webp show no preset name or changed UI.",
       "evidence": [
-        "git diff --name-only v0.22.2..dd11d5ff -- '*.webp' '*.png' '*.jpg' '*.svg' is empty",
-        "website/assets/homepage/*.webp, landing-hero.webp, landing-dock.webp, landing-dock-custom.webp: no Settings view",
-        "Re-reviewed for candidate 9446758d: the only change since dd11d5ff is scripts/run-update-acceptance.mjs and its test (acceptance harness seed key), which no public surface describes",
-        "Re-reviewed for candidate 08e61ad9: the only change since fe5492ad is scripts/run-update-acceptance.mjs and its test (seed placement for the multi-instance migration), which no public surface describes",
-        "Re-reviewed for candidate c2f268eb: no product CSS, visual component or published image changed since 08e61ad9",
-        "Re-reviewed for candidate b041e59f: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate 4f87f06a: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate 71b12551: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate cceefb17: no product CSS, visual component or published image changed; only optional acceptance screenshot handling changed",
-        "Re-reviewed for candidate 83b63110: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate aa7682b8: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate 3a7540e2: no product CSS, visual component or published image changed",
-        "Re-reviewed for candidate 7a6e3a0b: no product CSS, visual component or published image changed; only acceptance-only command timing and its harness wait changed",
-        "Re-reviewed for candidate beab3259: no product CSS, visual component or published image changed; only private acceptance screenshot retry handling changed"
+        "website/assets/landing-hero.webp inspected: status bar reads 'Source Input · VB-Audio Virtual Cable | Loudness PLVS Default | Preset Default'",
+        "website/assets/landing-dock.webp inspected: Dock strip only, no preset name",
+        "website/assets/landing-dock-custom.webp inspected: custom Dock strip only, no preset name",
+        "No 0.23.1 change touches panels, Dock or the main layout; Feedback and Import Complete dialogs are not in any marketing image"
       ]
     }
   }
