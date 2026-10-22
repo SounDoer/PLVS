@@ -3,8 +3,8 @@
   "version": "0.23.1",
   "baselineTag": "v0.23.0",
   "baselineRevision": "0d863589a18af63e4b5ea2f31d67b411b5d3a176",
-  "candidateRevision": "85e3274abbc7c16fd5bcc9c7ba20940dc4ae988e",
-  "contentSha256": "e0bd1c2853d7017869885f0de4614cf7bf84158d53d415c53b6c374bd1f6e4c2",
+  "candidateRevision": "b65b0bf8c9614b33692f6dfe1747a7909cdfd1ac",
+  "contentSha256": "60c0c7bc5e44ffe534de791c659b80ccc62d512dfafa7a27fcaff6bb25a4e1f1",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -15,7 +15,8 @@
         "docs/user/system-settings.md Updates section and Import Complete wording compared with CHANGELOG.md [0.23.1] Fixed",
         "docs/user/cli.md Linux Visual Capture paragraph compared with ADR 0037 and CHANGELOG.md [0.23.1] Fixed",
         "grep of docs/user for the old preset name 'Default' preset: no matches; system-settings.md:415 Attach Diagnostics text still matches FeedbackDialog.jsx DIAGNOSTICS_HELP",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
+        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
       ]
     },
     "readme": {
@@ -24,7 +25,8 @@
       "evidence": [
         "git diff --stat v0.23.0..1777038b -- README.md is empty",
         "README.md line 47 Ubuntu row and highlights compared with CHANGELOG.md [0.23.1]",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
+        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
       ]
     },
     "website": {
@@ -34,7 +36,8 @@
         "git diff --stat v0.23.0..1777038b -- website ':!website/assets' is empty",
         "website/index.html grep for update/recording claims: none",
         "website/privacy/index.html Update Checks and Feedback sections compared with 9e705c9f, 5c38eea9 and 0d71c0ae",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
+        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
       ]
     },
     "screenshots": {
@@ -45,7 +48,8 @@
         "website/assets/landing-dock.webp inspected: Dock strip only, no preset name",
         "website/assets/landing-dock-custom.webp inspected: custom Dock strip only, no preset name",
         "No 0.23.1 change touches panels, Dock or the main layout; Feedback and Import Complete dialogs are not in any marketing image",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
+        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
       ]
     }
   }
