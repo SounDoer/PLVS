@@ -7,18 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Agent Control visual recording works in the Ubuntu packages. It now encodes with Ubuntu's own
-  FFmpeg instead of the audio-only copy PLVS bundles for file analysis, which made every packaged
-  Linux recording fail. When that FFmpeg or its H.264 encoder is missing, `visual describe` and
-  `visual recording start` say so with `recordingEncoderUnavailable` and the remedy
-  `sudo apt install ffmpeg`, and `plvs-cli doctor` shows a `visual-recording-encoder` check.
+## [0.23.1] - 2026-10-22
 
 ### Changed
 
 - The built-in Preset is now named **PLVS Default**, matching the built-in Loudness Profile in PLVS
   and on Sharesets.
+- The feedback dialog's diagnostics description moved into a help tip beside **Attach
+  Diagnostics**.
+
+### Fixed
+
+- In-app updates now install on Ubuntu 24.04. In 0.23.0 every Linux update failed before
+  installation: PLVS judged update support from the temporary copy of its update helper instead of
+  the installed package, and APT 2.8 rejects the offline install command the privileged installer
+  used. The installer now keeps APT offline with an empty source list, so a missing dependency still
+  fails instead of downloading. PLVS 0.23.0 Linux users must install this release once by
+  downloading the `.deb`; in-app updates work after that manual upgrade.
+- Agent Control visual recording works in the Ubuntu packages. It now encodes with Ubuntu's own
+  FFmpeg instead of the audio-only copy PLVS bundles for file analysis, which made every packaged
+  Linux recording fail. When that FFmpeg or its H.264 encoder is missing, `visual describe` and
+  `visual recording start` say so with `recordingEncoderUnavailable` and the remedy
+  `sudo apt install ffmpeg`, and `plvs-cli doctor` shows a `visual-recording-encoder` check.
+- Update details opened while the selected version is still downloading show its progress and
+  disable **Update and Restart** until verification finishes, then become **Update Ready** instead
+  of reporting the active download as an error.
+- Import Complete reports each Item as **Added**, **Already in your library** or **Imported as a
+  copy**, instead of reusing the review's pending action labels, and names a single imported Item.
 
 ## [0.23.0] - 2026-10-21
 
