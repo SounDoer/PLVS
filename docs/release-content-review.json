@@ -3,8 +3,8 @@
   "version": "0.23.1",
   "baselineTag": "v0.23.0",
   "baselineRevision": "0d863589a18af63e4b5ea2f31d67b411b5d3a176",
-  "candidateRevision": "1777038b8bb5f183e5b4a601035e740d1096e7f1",
-  "contentSha256": "787f367751d067f6da497e67513a59336619a7b003d211e680d0e4b94c440332",
+  "candidateRevision": "85e3274abbc7c16fd5bcc9c7ba20940dc4ae988e",
+  "contentSha256": "e0bd1c2853d7017869885f0de4614cf7bf84158d53d415c53b6c374bd1f6e4c2",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -14,7 +14,8 @@
         "docs/user/getting-started.md lines 51-52 compared with CHANGELOG.md [0.23.1] Fixed (0.23.0 Linux users need one manual .deb update)",
         "docs/user/system-settings.md Updates section and Import Complete wording compared with CHANGELOG.md [0.23.1] Fixed",
         "docs/user/cli.md Linux Visual Capture paragraph compared with ADR 0037 and CHANGELOG.md [0.23.1] Fixed",
-        "grep of docs/user for the old preset name 'Default' preset: no matches; system-settings.md:415 Attach Diagnostics text still matches FeedbackDialog.jsx DIAGNOSTICS_HELP"
+        "grep of docs/user for the old preset name 'Default' preset: no matches; system-settings.md:415 Attach Diagnostics text still matches FeedbackDialog.jsx DIAGNOSTICS_HELP",
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
       ]
     },
     "readme": {
@@ -22,7 +23,8 @@
       "rationale": "README highlights make no claim affected by this release. The Ubuntu download row's 'APT package with verified in-app updates' was already the promise; 0.23.1 makes it work rather than changing it, and the manual step for 0.23.0 users belongs in the user guide and release notes.",
       "evidence": [
         "git diff --stat v0.23.0..1777038b -- README.md is empty",
-        "README.md line 47 Ubuntu row and highlights compared with CHANGELOG.md [0.23.1]"
+        "README.md line 47 Ubuntu row and highlights compared with CHANGELOG.md [0.23.1]",
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
       ]
     },
     "website": {
@@ -31,7 +33,8 @@
       "evidence": [
         "git diff --stat v0.23.0..1777038b -- website ':!website/assets' is empty",
         "website/index.html grep for update/recording claims: none",
-        "website/privacy/index.html Update Checks and Feedback sections compared with 9e705c9f, 5c38eea9 and 0d71c0ae"
+        "website/privacy/index.html Update Checks and Feedback sections compared with 9e705c9f, 5c38eea9 and 0d71c0ae",
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
       ]
     },
     "screenshots": {
@@ -41,7 +44,8 @@
         "website/assets/landing-hero.webp inspected: status bar reads 'Source Input · VB-Audio Virtual Cable | Loudness PLVS Default | Preset Default'",
         "website/assets/landing-dock.webp inspected: Dock strip only, no preset name",
         "website/assets/landing-dock-custom.webp inspected: custom Dock strip only, no preset name",
-        "No 0.23.1 change touches panels, Dock or the main layout; Feedback and Import Complete dialogs are not in any marketing image"
+        "No 0.23.1 change touches panels, Dock or the main layout; Feedback and Import Complete dialogs are not in any marketing image",
+        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes"
       ]
     }
   }
