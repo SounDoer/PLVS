@@ -60,6 +60,13 @@ describe("Ubuntu package contract", () => {
     expect(desktopVerifier).not.toContain('run(["ffprobe"');
   });
 
+  it("accepts only the recording encoder warning that a system without FFmpeg must report", () => {
+    expect(desktopVerifier).toContain('c["id"] == "visual-recording-encoder"');
+    expect(desktopVerifier).toContain('"remedy") != "sudo apt install ffmpeg"');
+    expect(desktopVerifier).toContain('c["status"] != "ok" and c is not recording');
+    expect(desktopVerifier).not.toContain('report["status"] != "ok"');
+  });
+
   it("installs the stable-only privileged updater with its Polkit policy", () => {
     expect(packageVerifier).toContain('update_installer="/usr/lib/plvs/plvs-update-installer"');
     expect(packageVerifier).toContain("com.soundoer.plvs.update.policy");

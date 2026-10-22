@@ -56,8 +56,17 @@ try:
         raise RuntimeError("Installed CLI does not target the package identity")
     if report["app"]["version"] != run(["dpkg-query", "-W", "-f=${Version}", package_name]):
         raise RuntimeError("Installed application and package versions disagree")
-    if report["status"] != "ok":
-        raise RuntimeError("Installed doctor did not pass every check")
+    # The clean system has no distribution FFmpeg, so the recording encoder check must warn with
+    # its install remedy (ADR 0037); every other check must pass.
+    recording = next(c for c in report["checks"] if c["id"] == "visual-recording-encoder")
+    if recording["status"] != "ok" and (
+        recording["status"] != "warning"
+        or recording["details"].get("remedy") != "sudo apt install ffmpeg"
+    ):
+        raise RuntimeError("Recording encoder check did not report its install remedy")
+    blocking = [c["id"] for c in report["checks"] if c["status"] != "ok" and c is not recording]
+    if blocking:
+        raise RuntimeError("Installed doctor did not pass every check: " + ", ".join(blocking))
     for name in ("ffmpeg", "ffprobe"):
         check = next(c for c in report["checks"] if c["id"] == name + "-sidecar")
         if check["details"]["path"] != str(sidecar_dir / name):
