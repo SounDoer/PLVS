@@ -228,3 +228,13 @@ describe("update acceptance runner", () => {
     });
   });
 });
+
+describe("unattended macOS runs", () => {
+  it("keeps the display awake for the whole acceptance run", () => {
+    const source = readFileSync(new URL("./run-update-acceptance.mjs", import.meta.url), "utf8");
+    const start = source.indexOf("const awake = keepDisplayAwake(host.os);");
+    expect(start).toBeGreaterThan(-1);
+    expect(source.indexOf("return await runner({ ...options, receipt });")).toBeGreaterThan(start);
+    expect(source).toMatch(/\} finally \{\n\s+awake\?\.kill\(\);\n\s+\}/);
+  });
+});

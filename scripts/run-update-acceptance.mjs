@@ -16,7 +16,7 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-import { ensureLinuxDisplay } from "./release-package-smoke.mjs";
+import { ensureLinuxDisplay, keepDisplayAwake } from "./release-package-smoke.mjs";
 import { createAcceptanceFeed } from "./serve-update-acceptance.mjs";
 import {
   artifactEvidence,
@@ -1393,7 +1393,14 @@ export async function runUpdateAcceptance(options) {
     windows: runWindowsAcceptance,
     linux: runLinuxAcceptance,
   }[host.os];
-  return runner({ ...options, receipt });
+  // An unattended Mac whose display sleeps stops WebView frames and the frontend stops answering.
+  const awake = keepDisplayAwake(host.os);
+  awake?.on("error", (error) => console.warn(`caffeinate did not start: ${error.message}`));
+  try {
+    return await runner({ ...options, receipt });
+  } finally {
+    awake?.kill();
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

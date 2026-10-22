@@ -856,8 +856,13 @@ problem.
 Visual captures wait for WebView animation frames, which stop while a window is hidden, a display
 sleeps or a remote-desktop session switches. Screenshots and the recording start therefore retry
 once on `renderNotSettled` only, recording the retry in `warnings`; a second unsettled render or any
-other failure still fails. On macOS the script holds `caffeinate -d -i` for its own lifetime. Neither
-helps a locked screen, so the Mac runner must not auto-lock during a release. Check the runners against an earlier release run's candidates without a release:
+other failure still fails. On macOS this script and `run-update-acceptance.mjs` hold
+`caffeinate -d -i` for their own lifetime. That cannot unlock a locked screen or render without a
+display, so the Mac runner must not auto-lock or sleep and needs an active display (a monitor that
+is on, or an HDMI dummy plug) whenever release or nightly acceptance can run; the first nightly
+update acceptance failed on the Mac at 05:19 with the frontend no longer answering.
+
+Check the runners against an earlier release run's candidates without a release:
 
 ```bash
 gh workflow run release-package-smoke.yml -f commit_sha=<release commit> -f run_id=<release.yml run id>
