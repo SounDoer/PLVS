@@ -29,6 +29,18 @@ describe("self-hosted runners on a public repository", () => {
     expect(selfHostedViolations(workflows)).toEqual([]);
   });
 
+  it("stops Corepack from pinning package.json in every self-hosted workflow", () => {
+    // A pinned packageManager field dirties the runner checkout, and exact-SHA evidence then
+    // refuses to run (the first 0.23.1 macOS release-package smoke).
+    const selfHosted = Object.entries(workflows).filter(([, text]) =>
+      text.includes("[self-hosted, plvs-rig")
+    );
+    expect(selfHosted.length).toBeGreaterThanOrEqual(3);
+    for (const [name, text] of selfHosted) {
+      expect(text, name).toContain("COREPACK_ENABLE_AUTO_PIN: 0");
+    }
+  });
+
   it("runs leased capture smoke on all three home platforms with the release harness build", () => {
     const capture = workflows["capture-acceptance.yml"];
     for (const platform of ["windows", "macos", "linux"]) {
