@@ -6,13 +6,13 @@ Thanks for your interest in PLVS. This covers local development and CI conventio
 
 - **Node.js**: `.nvmrc` is the single version source, and CI's `setup-node` reads it too; `engines` in `package.json` only declares the lower bound.
 - **Rust**: stable (matching `rust-version` in `src-tauri/Cargo.toml`)
-- **FFmpeg sidecar**: `npm run ffmpeg:fetch`. `src-tauri/binaries/` is not committed (sidecars ship as Release assets), so every fresh clone and worktree starts empty, and the Rust build fails without it — with an error pointing at an unrelated third-party crate such as a `serde_derive` compile failure, while the real cause is buried in the build script output. The build process is in [`docs/ffmpeg-sidecar-build.md`](docs/ffmpeg-sidecar-build.md).
+- **FFmpeg sidecar**: `npm run ffmpeg:fetch`. `src-tauri/binaries/` is not committed (sidecars ship as Release assets), so every fresh clone and worktree starts empty. `npm ci` automatically restores checksum-verified sidecars in linked worktrees, and supported npm Rust/desktop commands self-prepare before Cargo; use `npm run worktree:doctor` to diagnose the common environment. The build process is in [`docs/ffmpeg-sidecar-build.md`](docs/ffmpeg-sidecar-build.md).
 
 ## Common commands
 
 ```bash
 npm ci
-npm run ffmpeg:fetch     # once per clone/worktree: downloads the gitignored FFmpeg sidecars
+npm run ffmpeg:fetch     # once per primary clone; linked-worktree npm ci does this automatically
 npm run theme:generate   # optional: regenerates src/generated/theme-fallbacks.css (also runs via prebuild)
 npm run lint
 npm run typecheck        # tsc over src/ (checkJs); types live in JSDoc, there is no baseline
@@ -28,6 +28,12 @@ npm run sharesets:source:check -- path/to/catalogue
 npm run sharesets:curate -- path/to/published path/to/candidate path/to/new-review-output
 npm run sharesets:curate -- --write path/to/published path/to/candidate path/to/new-review-output
 ```
+
+For a newly created linked worktree, use `npm run worktree:setup` instead. It runs the locked
+dependency install, restores sidecars from the machine-level verified cache, and checks Node and
+Rust. A plain `npm ci` in a linked worktree also restores the sidecars automatically. Task-specific
+requirements such as Playwright Chromium, VLC, virtual audio devices and active desktop sessions
+remain with the commands that use them; they are not installed into every worktree.
 
 `sharesets:validate` is the repository/CI intake boundary for one immutable Sharesets artifact. It
 accepts `.plvsloudness`, `.plvspreset`, or `.plvstheme`, requires canonical Pack V2 bytes and one

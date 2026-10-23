@@ -27,6 +27,8 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | Command                                | Purpose                                                                          |
 | -------------------------------------- | -------------------------------------------------------------------------------- |
 | `npm run desktop:dev`                  | Run the dev app (Tauri). Audio capture only works here.                          |
+| `npm run worktree:setup`               | Install and verify the common environment for a new linked worktree.             |
+| `npm run worktree:doctor`              | Recheck Node, dependencies, Rust and verified FFmpeg sidecars.                   |
 | `npm run desktop:control -- <command>` | Build and run the dev CLI against a running dev app.                             |
 | `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                        |
 | `npm run check`                        | Full repository gate: version + format + lint + typecheck + test + build + Rust. |
@@ -174,7 +176,7 @@ the Sharesets immutable-history gate. Commands and initial marker recovery are i
 
 The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `npm run version:check` verifies this.
 
-**Worktrees and branches.** Big features get an isolated worktree, one per feature, under an agent-specific prefix: `.claude/worktrees/<feature-name>` for Claude Code, `.codex/worktrees/<feature-name>` for Codex, `.cursor/worktrees/<feature-name>` for Cursor. Don't reuse one fixed worktree across features — that just relocates the same cleanup problem instead of avoiding it. When a feature merges or is dropped, clean up right away: `git worktree remove` plus deleting the branch (`-d` once merged, `-D` for unmerged only after confirming with the user), and `git push origin --delete` for any merged remote branch. Skip `archive/`-prefixed branches by default. Branches parked for a dependency reason (e.g. Dependabot's `deps/*`) — confirm the reason still holds before deleting.
+**Worktrees and branches.** Big features get an isolated worktree, one per feature, under an agent-specific prefix: `.claude/worktrees/<feature-name>` for Claude Code, `.codex/worktrees/<feature-name>` for Codex, `.cursor/worktrees/<feature-name>` for Cursor. Run `npm run worktree:setup` immediately after creating one; ordinary `npm ci` also detects a linked worktree and restores checksum-verified FFmpeg sidecars from the machine cache. Don't reuse one fixed worktree across features — that just relocates the same cleanup problem instead of avoiding it. When a feature merges or is dropped, clean up right away: `git worktree remove` plus deleting the branch (`-d` once merged, `-D` for unmerged only after confirming with the user), and `git push origin --delete` for any merged remote branch. Skip `archive/`-prefixed branches by default. Branches parked for a dependency reason (e.g. Dependabot's `deps/*`) — confirm the reason still holds before deleting.
 
 ## Boundaries
 
@@ -206,8 +208,9 @@ Read the relevant section of `docs/pitfalls.md` before touching these areas. The
 rules below are the working set; the incident history and rationale live there.
 
 - **Tests and tooling:** Vitest also guards Tauri and installer files. React or persistence tests
-  need `/** @vitest-environment jsdom */`; jest-dom matchers are unavailable. A fresh worktree needs
-  `npm run ffmpeg:fetch` before the Rust build.
+  need `/** @vitest-environment jsdom */`; jest-dom matchers are unavailable. Initialize a fresh
+  linked worktree with `npm run worktree:setup`; supported npm Rust commands also restore verified
+  FFmpeg sidecars before Cargo runs.
 - **Module boundaries:** logic-only code imports `workspace/moduleCatalog.js`, never
   `workspace/registry.jsx`.
 - **Windows and dock geometry:** frontend CSS lengths crossing into Rust use the frontend-provided

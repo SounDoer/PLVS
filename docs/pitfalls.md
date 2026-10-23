@@ -25,10 +25,12 @@ undefined and the local-storage backend silently no-ops, which often looks like 
 
 ### Fresh worktrees need verified sidecars
 
-`src-tauri/binaries/` is gitignored because FFmpeg sidecars are release assets. Run
-`npm run ffmpeg:fetch` in a new worktree before building Rust. Do not copy binaries from another
-checkout: the fetch script performs checksum verification. A missing sidecar can surface as a
-misleading Cargo error about `serde_derive`; inspect build-script output for the missing resource.
+`src-tauri/binaries/` is gitignored because FFmpeg sidecars are release assets. Initialize a new
+linked worktree with `npm run worktree:setup`; its `npm ci` lifecycle restores checksum-verified
+sidecars from the machine cache. Supported npm Rust and desktop commands self-prepare too. Do not
+copy binaries from another checkout or use bare Cargo as the first command in an unprepared
+worktree: a missing sidecar can surface as a misleading `serde_derive` error while the real cause is
+buried in build-script output.
 
 ## Module loading boundary
 
