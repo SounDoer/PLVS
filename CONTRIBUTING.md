@@ -151,14 +151,22 @@ The shared homepage/README hero uses `scripts/marketing/capture-live-hero.mjs` a
 `scripts/marketing/select-hero.mjs`; its local `--publish` flag updates tracked image files, not the
 deployed website.
 
-Use `npm run check:changes` before committing or pushing. It refreshes `origin/main`, checks all
-pending commits plus staged, unstaged and untracked changes, then selects the narrowest safe local
-gate: `website:verify` for website-only work, `check:contracts` for documentation and tooling,
-`check:frontend` for frontend work, or the full `check` for native/shared/unknown inputs. Reverted
-changes within the pending range still count. Unknown paths, empty ranges, and missing or divergent
-baselines fail open to the full gate. After a rebase or further edits, check again. For an explicit
-range, use `-- --base <base-sha> --head <head-sha>`; only CI should normally add
-`--committed-only`. Do not narrow the base to skip earlier pending commits.
+During implementation, run the focused tests that exercise the behavior being changed. Creating a
+commit does not by itself require another complete test run. The pre-commit hook uses only staged
+paths: Prettier runs for supported JavaScript, JSON, workflow and documentation files; `cargo fmt
+--check` runs only for staged Rust source; and a staged Cargo manifest gets a read-only
+`cargo metadata --locked` consistency check. The hook never updates `Cargo.lock` automatically.
+
+Run `npm run check:changes` once after the final intended commit and immediately before pushing. It
+refreshes `origin/main`, checks all pending commits plus staged, unstaged and untracked changes,
+then selects the narrowest safe local gate: `website:verify` for website-only work,
+`check:contracts` for documentation and tooling, `check:frontend` for frontend work, or the full
+`check` for native/shared/unknown inputs. Reverted changes within the pending range still count.
+Unknown paths, empty ranges, and missing or divergent baselines fail open to the full gate. A
+successful run does not need repeating while `HEAD`, the index, and the worktree remain unchanged;
+a rebase, amended commit, generated-file update, or edit invalidates it. For an explicit range, use
+`-- --base <base-sha> --head <head-sha>`; only CI should normally add `--committed-only`. Do not
+narrow the base to skip earlier pending commits.
 
 `website:verify` assembles and validates the complete site and runs website, guide, and deployment
 contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
@@ -890,7 +898,7 @@ verify the runner archive against the SHA-256 in its GitHub release before extra
 | Platform | Account and launch                                                                                                        | Rig                                                           | Traps                                                                                                                                                                                                                                                                                                  |
 | -------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Windows  | Maintainer's logged-in account. Not a service: a logon launcher in the Startup folder runs `run.cmd` in the user session. | VB-Cable, VLC, Git for Windows                                | The first `bash.exe` on a Windows desktop's PATH is usually WSL's. The launcher must put `C:\Program Files\Git\bin` first on PATH; the runner cannot take a quoted shell path. Started from an agent inside the Claude desktop app, launch it through `explorer.exe` so it leaves the app's container. |
-| macOS    | Maintainer's login account, `./run.sh` in a Terminal window that holds microphone permission.                             | BlackHole 2ch, VLC                                            | A LaunchAgent (`./svc.sh install`) captures silence: TCC attributes the request to the runner's Node, which has no audio entitlement. The runner does not return after a logout, reboot or closing that Terminal. Capture smoke itself passes while locked; package smoke does not (see below).          |
+| macOS    | Maintainer's login account, `./run.sh` in a Terminal window that holds microphone permission.                             | BlackHole 2ch, VLC                                            | A LaunchAgent (`./svc.sh install`) captures silence: TCC attributes the request to the runner's Node, which has no audio entitlement. The runner does not return after a logout, reboot or closing that Terminal. Capture smoke itself passes while locked; package smoke does not (see below).        |
 | Linux    | Desktop user's `systemd --user` unit running `runsvc.sh`, with `loginctl enable-linger`.                                  | `pactl`/`paplay` on PipeWire or PulseAudio, `/usr/bin/ffmpeg` | Copy `bin/runsvc.sh` to the runner root first, or the unit fails with `203/EXEC`. Put `~/.cargo/bin` on the unit's PATH and order it after the PipeWire user services. A dedicated user cannot reach the desktop user's audio session.                                                                 |
 
 One-time setup for the release-package smoke, beyond the table above:

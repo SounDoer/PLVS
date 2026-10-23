@@ -123,10 +123,16 @@
     "licenses:sources": "node scripts/generate-native-notices.mjs --sources"
   },
   "simple-git-hooks": {
-    "pre-commit": "cargo fmt --manifest-path src-tauri/Cargo.toml --all && npx lint-staged && { git diff --cached --name-only | grep -q src-tauri/Cargo.toml && (cargo update --manifest-path src-tauri/Cargo.toml --workspace && git add src-tauri/Cargo.lock) || true; }"
+    "pre-commit": "node scripts/pre-commit.mjs"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,css,json}": "prettier --write"
+    "src/**/*.{js,jsx,css,json}": "prettier --write",
+    "scripts/**/*.{js,mjs,cjs,json}": "prettier --write",
+    ".github/**/*.{yml,yaml}": "prettier --write",
+    "docs/**/*.md": "prettier --write",
+    ".agents/**/*.md": "prettier --write",
+    "{AGENTS,CHANGELOG,CONTRIBUTING,README}.md": "prettier --write",
+    "package.json": "prettier --write"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.17",

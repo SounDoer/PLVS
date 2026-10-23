@@ -154,15 +154,18 @@ bump and group the CHANGELOG, so an unprefixed commit silently drops out of the 
 
 **Checks follow the complete change scope.** CI runs on push and pull requests, not on commit:
 
-- Website-only changes: use `npm run check:changes` before commit and push. Its shared classifier
-  examines every pending commit plus staged, unstaged, and untracked files; only known website
-  inputs qualify for `website:verify`. Inspect responsive screenshots for visual changes.
-- Other changes, before each commit: `npm test`, plus the checks for the side you touched — `format:check`, `lint`
-  and `typecheck` for frontend changes, `rust:check` for Rust changes. Outside the website-only
-  exception, `npm test` is never skipped, even for Rust-only, config-only or docs-only commits: Vitest suites under `scripts/` guard
-  `src-tauri` config, installer files and the documentation structure.
-- Before each push or merge: `npm run check:changes`. Mixed or unknown changes and unavailable
-  baselines fall back to the full `npm run check`. Stable desktop releases always run the full gate.
+- During implementation, run focused tests for the behavior being changed. Keep each commit
+  coherent and reviewable, but do not rerun the complete repository suite solely because a commit
+  is being created. The pre-commit hook selects staged formatting, Rust formatting, and Cargo lock
+  consistency checks without running unrelated toolchains.
+- Before each push or merge, run `npm run check:changes` once after the final intended commit. Its
+  shared classifier examines every pending commit plus staged, unstaged, and untracked files.
+  Website, contracts, frontend, and native changes select progressively broader gates; mixed or
+  unknown changes and unavailable baselines fall back to the full `npm run check`.
+- A successful `check:changes` remains valid while `HEAD`, the index, and the worktree are unchanged.
+  Do not repeat it before the same push. Any rebase, commit amendment, generated-file update, or
+  working-tree edit invalidates it. Inspect responsive screenshots for visual website changes.
+- Stable desktop releases always run the full gate.
 
 **Website publication:** use `.agents/skills/plvs-website-publish/SKILL.md` for independent website
 deployments; no desktop version bump is needed. Publish an exact reviewed SHA only after its push
