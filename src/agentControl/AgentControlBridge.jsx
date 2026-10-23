@@ -298,9 +298,9 @@ export function AgentControlBridge() {
   const agentControlSettingsContext = useMemo(
     () => ({
       autostartReady: settings.autostartReady,
-      clearShortcutReady: settings.clearReady,
-      clearShortcutCapturing: settings.clearCapturing,
-      clearShortcutRegistrationError: settings.registrationError,
+      shortcutsReady: settings.shortcutsReady,
+      shortcutCapturing: settings.shortcutCapturing,
+      shortcutRegistrationErrors: settings.shortcutRegistrationErrors,
       dialogueDetectionRequested: dialogueGating,
       dialogueDetectionActive: dialogueGating && running,
       hasCompletedFileAnalysis: fileSessions.some((session) => session.state === "complete"),
@@ -319,9 +319,9 @@ export function AgentControlBridge() {
       fileSessions,
       running,
       settings.autostartReady,
-      settings.clearCapturing,
-      settings.clearReady,
-      settings.registrationError,
+      settings.shortcutCapturing,
+      settings.shortcutRegistrationErrors,
+      settings.shortcutsReady,
       sourceMode,
     ]
   );
@@ -339,10 +339,10 @@ export function AgentControlBridge() {
             settings.setAutostartEnabledForControl(agentControlSettings.openAtLogin)
           );
         }
-        if (changed.some((path) => path.startsWith("settings.clearShortcut."))) {
-          await settings.applyClearShortcutForControl(next.clearShortcut);
+        if (changed.some((path) => path.startsWith("settings.keyboardShortcuts."))) {
+          await settings.applyKeyboardShortcutsForControl(next.keyboardShortcuts);
           compensation.push(() =>
-            settings.applyClearShortcutForControl(agentControlSettings.clearShortcut)
+            settings.applyKeyboardShortcutsForControl(agentControlSettings.keyboardShortcuts)
           );
         }
         if (changed.includes("settings.dialogueVadEngine")) {

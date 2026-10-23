@@ -89,7 +89,7 @@ describe("profile API", () => {
     expect(profile).toMatchObject({
       app: "PLVS",
       kind: "configuration-profile",
-      version: 1,
+      version: 2,
       settings: { referenceLufs: -23 },
       workspace: { panelOrder: [] },
       presets: { list: [], activeId: null },

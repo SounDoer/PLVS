@@ -5,8 +5,10 @@ import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 
 /**
  * @param {{
- *   value: string,
+ *   value: string | null,
  *   onChange: (...args: any[]) => any,
+ *   label?: string,
+ *   conflictForAccelerator?: (accelerator: string) => string | null,
  *   isMac?: boolean,
  *   disabled?: boolean,
  *   onRecordingChange?: (...args: any[]) => any,
@@ -15,6 +17,8 @@ import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 export function ShortcutCapture({
   value,
   onChange,
+  label = "Clear shortcut",
+  conflictForAccelerator = reservedComboConflict,
   isMac = false,
   disabled = false,
   onRecordingChange = () => {},
@@ -38,12 +42,17 @@ export function ShortcutCapture({
         stopRecording();
         return;
       }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        onChange(null);
+        stopRecording();
+        return;
+      }
       const accel = keyEventToAccelerator(e);
       if (!accel) {
         setHint("Needs a modifier (Ctrl/Alt/Shift)");
         return;
       }
-      const conflict = reservedComboConflict(accel);
+      const conflict = conflictForAccelerator(accel);
       if (conflict) {
         setHint(`Used by ${conflict}`);
         return;
@@ -51,7 +60,7 @@ export function ShortcutCapture({
       onChange(accel);
       stopRecording();
     },
-    [onChange, stopRecording]
+    [conflictForAccelerator, onChange, stopRecording]
   );
 
   useEffect(() => {
@@ -70,7 +79,7 @@ export function ShortcutCapture({
         type="button"
         variant="outline"
         disabled={disabled}
-        aria-label="Clear shortcut"
+        aria-label={label}
         className="h-[var(--ui-control-h)] px-3 font-mono text-[length:var(--ui-fs-control)]"
         onClick={() => {
           setRecording(true);
@@ -79,7 +88,11 @@ export function ShortcutCapture({
         }}
         onBlur={stopRecording}
       >
-        {recording ? "Press a combo…" : formatAcceleratorForDisplay(value, { isMac })}
+        {recording
+          ? "Press a combo…"
+          : value
+            ? formatAcceleratorForDisplay(value, { isMac })
+            : "Not Set"}
       </Button>
       {hint ? (
         <span className="text-[length:var(--ui-fs-axis)] text-destructive">{hint}</span>

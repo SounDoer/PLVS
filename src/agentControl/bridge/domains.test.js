@@ -19,8 +19,8 @@ function baseInputs(overrides = {}) {
     themeControl: null,
     themeSignature: "theme-0",
     loudnessSignature: "loudness-0",
-    settings: { openAtLogin: false, clearShortcut: null, channelLabels: { mode: "auto" } },
-    settingsContext: { autostartReady: true, clearShortcutReady: true },
+    settings: { openAtLogin: false, keyboardShortcuts: null, channelLabels: { mode: "auto" } },
+    settingsContext: { autostartReady: true, shortcutsReady: true },
     transport: {
       source: "live",
       live: { state: "stopped" },

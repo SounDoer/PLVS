@@ -37,6 +37,11 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
       },
       "clearShortcut": "CmdOrCtrl+L",
       "clearGlobal": true,
+      "keyboardShortcuts": {
+        "toggleLiveCapture": { "accelerator": "CmdOrCtrl+Shift+Space", "global": false },
+        "toggleLiveSnapshot": { "accelerator": "CmdOrCtrl+Shift+L", "global": false },
+        "clear": { "accelerator": "CmdOrCtrl+Alt+K", "global": true }
+      },
       "captureDeviceId": "out:9",
       "windowBounds": { "x": 1, "y": 2, "width": 800, "height": 600 }
     }))
@@ -66,8 +71,13 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
   assert_eq!(hydrated.window_bounds["width"], 800);
   assert_eq!(hydrated.global_preferences["clearShortcut"], "CmdOrCtrl+L");
   assert_eq!(hydrated.global_preferences["clearGlobal"], true);
+  assert_eq!(
+    hydrated.global_preferences["keyboardShortcuts"]["clear"]["accelerator"],
+    "CmdOrCtrl+Alt+K"
+  );
   assert_eq!(hydrated.global_preferences["askToSendCrashReports"], false);
   assert_eq!(hydrated.global_preference_revisions["clearShortcut"], 1);
+  assert_eq!(hydrated.global_preference_revisions["keyboardShortcuts"], 1);
   assert_eq!(hydrated.library_item_revisions["preset"]["preset-a"], 1);
   assert_eq!(hydrated.library_item_revisions["theme"]["theme-b"], 1);
   assert_eq!(

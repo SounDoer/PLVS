@@ -20,8 +20,11 @@ import {
 const RAW_SETTINGS = {
   autostartEnabled: false,
   closeAction: DEFAULT_CLOSE_ACTION,
-  clearShortcut: "CmdOrCtrl+K",
-  clearGlobal: false,
+  keyboardShortcuts: {
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+    clear: { accelerator: "CmdOrCtrl+K", global: false },
+  },
   interfaceSize: DEFAULT_INTERFACE_SIZE,
   historyRetentionSec: DEFAULT_HISTORY_RETENTION_SEC,
   dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
@@ -29,8 +32,9 @@ const RAW_SETTINGS = {
 
 const CONTEXT = {
   autostartReady: true,
-  clearShortcutReady: true,
-  clearShortcutCapturing: false,
+  shortcutsReady: true,
+  shortcutCapturing: false,
+  shortcutRegistrationErrors: {},
   channelCount: 2,
   channelLabelMode: "auto",
   channelLabelRoles: ["L", "R"],

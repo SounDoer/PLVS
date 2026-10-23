@@ -3,6 +3,12 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts.js";
 
+const keyboardShortcuts = {
+  toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+  toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+  clear: { accelerator: "CmdOrCtrl+K", global: false },
+};
+
 function keyDown(init) {
   const event = new KeyboardEvent("keydown", {
     bubbles: true,
@@ -19,15 +25,16 @@ describe("useAppKeyboardShortcuts", () => {
   });
 
   it("runs clear only when capture or clock state is active", () => {
-    const clearAll = vi.fn();
+    const dispatchShortcutAction = vi.fn();
     const { rerender } = renderHook(
       ({ running, showClock }) =>
         useAppKeyboardShortcuts({
-          clearAll,
+          dispatchShortcutAction,
           running,
           showClock,
           setSettingsOpen: vi.fn(),
-          clearShortcut: "CmdOrCtrl+K",
+          keyboardShortcuts,
+          shortcutCapturing: false,
           autoHideControls: false,
           toggleFocusControls: vi.fn(),
         }),
@@ -35,24 +42,73 @@ describe("useAppKeyboardShortcuts", () => {
     );
 
     keyDown({ key: "k", ctrlKey: true });
-    expect(clearAll).not.toHaveBeenCalled();
+    expect(dispatchShortcutAction).not.toHaveBeenCalled();
 
     rerender({ running: true, showClock: false });
     const event = keyDown({ key: "k", ctrlKey: true });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(clearAll).toHaveBeenCalledTimes(1);
+    expect(dispatchShortcutAction).toHaveBeenCalledWith("clear");
+  });
+
+  it.each([
+    [{ key: " ", ctrlKey: true, shiftKey: true }, "toggleLiveCapture"],
+    [{ key: "l", ctrlKey: true, shiftKey: true }, "toggleLiveSnapshot"],
+  ])("dispatches a configured toggle", (eventInit, actionId) => {
+    const dispatchShortcutAction = vi.fn();
+    renderHook(() =>
+      useAppKeyboardShortcuts({
+        dispatchShortcutAction,
+        running: true,
+        showClock: true,
+        setSettingsOpen: vi.fn(),
+        keyboardShortcuts,
+        shortcutCapturing: false,
+        autoHideControls: false,
+        toggleFocusControls: vi.fn(),
+      })
+    );
+
+    const event = keyDown(eventInit);
+    expect(event.defaultPrevented).toBe(true);
+    expect(dispatchShortcutAction).toHaveBeenCalledWith(actionId);
+  });
+
+  it("suppresses configurable actions while capturing and ignores key repeats", () => {
+    const dispatchShortcutAction = vi.fn();
+    const { rerender } = renderHook(
+      ({ shortcutCapturing }) =>
+        useAppKeyboardShortcuts({
+          dispatchShortcutAction,
+          running: true,
+          showClock: true,
+          setSettingsOpen: vi.fn(),
+          keyboardShortcuts,
+          shortcutCapturing,
+          autoHideControls: false,
+          toggleFocusControls: vi.fn(),
+        }),
+      { initialProps: { shortcutCapturing: true } }
+    );
+
+    keyDown({ key: "l", ctrlKey: true, shiftKey: true });
+    expect(dispatchShortcutAction).not.toHaveBeenCalled();
+
+    rerender({ shortcutCapturing: false });
+    keyDown({ key: "l", ctrlKey: true, shiftKey: true, repeat: true });
+    expect(dispatchShortcutAction).not.toHaveBeenCalled();
   });
 
   it("reveals Focus View controls with Escape outside editable fields", () => {
     const toggleFocusControls = vi.fn();
     renderHook(() =>
       useAppKeyboardShortcuts({
-        clearAll: vi.fn(),
+        dispatchShortcutAction: vi.fn(),
         running: false,
         showClock: false,
         setSettingsOpen: vi.fn(),
-        clearShortcut: "CmdOrCtrl+K",
+        keyboardShortcuts,
+        shortcutCapturing: false,
         autoHideControls: true,
         toggleFocusControls,
       })
@@ -71,11 +127,12 @@ describe("useAppKeyboardShortcuts", () => {
     const toggleFocusControls = vi.fn();
     renderHook(() =>
       useAppKeyboardShortcuts({
-        clearAll: vi.fn(),
+        dispatchShortcutAction: vi.fn(),
         running: false,
         showClock: false,
         setSettingsOpen: vi.fn(),
-        clearShortcut: "CmdOrCtrl+K",
+        keyboardShortcuts,
+        shortcutCapturing: false,
         autoHideControls: true,
         toggleFocusControls,
       })
@@ -90,11 +147,12 @@ describe("useAppKeyboardShortcuts", () => {
     const setSettingsOpen = vi.fn();
     renderHook(() =>
       useAppKeyboardShortcuts({
-        clearAll: vi.fn(),
+        dispatchShortcutAction: vi.fn(),
         running: false,
         showClock: false,
         setSettingsOpen,
-        clearShortcut: "CmdOrCtrl+K",
+        keyboardShortcuts,
+        shortcutCapturing: false,
         autoHideControls: false,
         toggleFocusControls: vi.fn(),
       })

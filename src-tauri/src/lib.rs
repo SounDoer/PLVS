@@ -262,7 +262,7 @@ pub fn run() {
       coordinator::runtime_publish_instance_state,
       coordinator::runtime_list_instances,
       coordinator::runtime_retire_current_workspace,
-      coordinator::runtime_route_global_clear,
+      coordinator::runtime_route_global_shortcut,
       coordinator::runtime_route_instance_transport,
       coordinator::runtime_issue_commands,
       coordinator::runtime_poll_command,

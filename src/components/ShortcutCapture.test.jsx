@@ -4,6 +4,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 
 describe("ShortcutCapture", () => {
+  it("accepts an action-specific label and renders an unbound value", () => {
+    render(
+      <ShortcutCapture
+        label="Live / Snapshot shortcut"
+        value={null}
+        onChange={vi.fn()}
+        isMac={false}
+      />
+    );
+    expect(screen.getByLabelText("Live / Snapshot shortcut").textContent).toBe("Not Set");
+  });
+
   it("shows the formatted current value", () => {
     render(<ShortcutCapture value="CmdOrCtrl+Alt+K" onChange={vi.fn()} isMac={false} />);
     expect(screen.getByLabelText("Clear shortcut").textContent).toBe("Ctrl+Alt+K");
@@ -97,5 +109,31 @@ describe("ShortcutCapture", () => {
     fireEvent.click(btn);
     fireEvent.keyDown(btn, { key: "m", ctrlKey: true, altKey: true });
     expect(onRecordingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it.each(["Backspace", "Delete"])("removes the binding with %s", (key) => {
+    const onChange = vi.fn();
+    render(<ShortcutCapture value="CmdOrCtrl+K" onChange={onChange} />);
+    const button = screen.getByLabelText("Clear shortcut");
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key });
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it("reports a dynamic configurable-action conflict", () => {
+    const onChange = vi.fn();
+    render(
+      <ShortcutCapture
+        label="Start / Stop shortcut"
+        value="CmdOrCtrl+Shift+Space"
+        onChange={onChange}
+        conflictForAccelerator={(accelerator) => (accelerator === "CmdOrCtrl+K" ? "Clear" : null)}
+      />
+    );
+    const button = screen.getByLabelText("Start / Stop shortcut");
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: "k", ctrlKey: true });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText("Used by Clear")).toBeTruthy();
   });
 });

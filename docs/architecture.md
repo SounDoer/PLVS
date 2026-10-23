@@ -90,6 +90,14 @@ instance; the identity-wide compatibility endpoint follows the coordinator. Dev,
 and Stable application identifiers therefore produce separate data, lock, registry and endpoint
 namespaces.
 
+Configurable keyboard shortcuts are defined by one action catalogue shared by Settings, focused
+window matching, portable configuration profiles, and Agent Control. The identity-wide
+`keyboardShortcuts` global preference stores every known action in one revisioned object. Only the
+coordinator owns native registrations; a global press routes the action ID to the most recently
+focused workbench, where it uses the same source business action as a focused-window key press.
+Legacy Clear preference keys are read only to synthesize this object when the new preference is
+absent.
+
 Commands that affect the complete process set use disk-backed, instance-targeted mailboxes. Update,
 configuration replacement and full-app quit have a prepare phase in which every process checks its
 blocking editors, stops capture and flushes persistence. Only unanimous acknowledgements allow the

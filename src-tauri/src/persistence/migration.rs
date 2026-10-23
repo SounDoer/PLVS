@@ -70,7 +70,12 @@ pub fn plan_legacy_store(legacy: &Map<String, Value>) -> Result<LegacyMigrationP
       global_preferences.insert(key.to_string(), value);
     }
   }
-  for key in ["clearShortcut", "clearGlobal", "agentControlEnabled"] {
+  for key in [
+    "keyboardShortcuts",
+    "clearShortcut",
+    "clearGlobal",
+    "agentControlEnabled",
+  ] {
     if let Some(value) = legacy.get(key) {
       global_preferences.insert(key.to_string(), value.clone());
     }

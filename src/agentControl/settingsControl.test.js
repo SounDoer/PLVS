@@ -9,7 +9,11 @@ import {
 const current = {
   openAtLogin: false,
   closeBehavior: "ask",
-  clearShortcut: { accelerator: "CmdOrCtrl+K", global: false },
+  keyboardShortcuts: {
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+    clear: { accelerator: "CmdOrCtrl+K", global: false },
+  },
   interfaceSize: "default",
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",
@@ -18,8 +22,9 @@ const current = {
 
 const context = {
   autostartReady: true,
-  clearShortcutReady: true,
-  clearShortcutCapturing: false,
+  shortcutsReady: true,
+  shortcutCapturing: false,
+  shortcutRegistrationErrors: {},
   dialogueDetectionActive: false,
   sourceMode: "live",
   channelAutoRoles: ["L", "R"],
@@ -32,8 +37,10 @@ describe("Settings Control", () => {
         {
           autostartEnabled: true,
           closeAction: "tray",
-          clearShortcut: "CmdOrCtrl+L",
-          clearGlobal: true,
+          keyboardShortcuts: {
+            ...current.keyboardShortcuts,
+            clear: { accelerator: "CmdOrCtrl+L", global: true },
+          },
           interfaceSize: "large",
           historyRetentionSec: 7200,
           dialogueVadEngine: "silero",
@@ -43,7 +50,10 @@ describe("Settings Control", () => {
     ).toEqual({
       openAtLogin: true,
       closeBehavior: "tray",
-      clearShortcut: { accelerator: "CmdOrCtrl+L", global: true },
+      keyboardShortcuts: {
+        ...current.keyboardShortcuts,
+        clear: { accelerator: "CmdOrCtrl+L", global: true },
+      },
       interfaceSize: "large",
       historyRetentionSec: 7200,
       dialogueVadEngine: "silero",
@@ -143,12 +153,16 @@ describe("Settings Control", () => {
     expect(buildSettingsInspection(current, context)).toEqual({
       settings: current,
       runtime: {
-        clearShortcut: { globalRegistration: "notRequested" },
+        keyboardShortcuts: {
+          toggleLiveCapture: { globalRegistration: "notRequested" },
+          toggleLiveSnapshot: { globalRegistration: "notRequested" },
+          clear: { globalRegistration: "notRequested" },
+        },
         dialogueDetection: { requested: false, active: false, engine: null },
       },
       availability: {
         openAtLogin: { writable: true, reason: null },
-        clearShortcut: { writable: true, reason: null },
+        keyboardShortcuts: { writable: true, reason: null },
         channelLabels: { writable: true, reason: null },
       },
     });
@@ -163,7 +177,7 @@ describe("Settings Control", () => {
         historyRetentionSec: "1800",
         dialogueVadEngine: "other",
         appearance: { mode: "fixed" },
-        clearShortcut: { accelerator: "K" },
+        keyboardShortcuts: { clear: { accelerator: "K" } },
         unknown: true,
       },
       context
@@ -185,7 +199,7 @@ describe("Settings Control", () => {
       current,
       {
         closeBehavior: "tray",
-        clearShortcut: { global: true },
+        keyboardShortcuts: { clear: { global: true } },
         historyRetentionSec: 1800,
       },
       context
@@ -193,12 +207,14 @@ describe("Settings Control", () => {
     expect(planned.issues).toEqual([]);
     expect(planned.settings).toMatchObject({
       closeBehavior: "tray",
-      clearShortcut: { accelerator: "CmdOrCtrl+K", global: true },
+      keyboardShortcuts: {
+        clear: { accelerator: "CmdOrCtrl+K", global: true },
+      },
       historyRetentionSec: 1800,
     });
     expect(planned.changed).toEqual([
       "settings.closeBehavior",
-      "settings.clearShortcut.global",
+      "settings.keyboardShortcuts.clear.global",
       "settings.historyRetentionSec",
     ]);
     expect(planned.warnings).toEqual([
@@ -210,6 +226,40 @@ describe("Settings Control", () => {
     ]);
   });
 
+  it("supports removal and rejects duplicate or unknown shortcut actions atomically", () => {
+    const removed = planSettingsUpdate(
+      current,
+      { keyboardShortcuts: { clear: { accelerator: null, global: true } } },
+      context
+    );
+    expect(removed.issues).toEqual([]);
+    expect(removed.settings.keyboardShortcuts.clear).toEqual({
+      accelerator: null,
+      global: false,
+    });
+
+    const invalid = planSettingsUpdate(
+      current,
+      {
+        keyboardShortcuts: {
+          toggleLiveSnapshot: { accelerator: "CmdOrCtrl+K" },
+          futureAction: { accelerator: "CmdOrCtrl+J" },
+        },
+      },
+      context
+    );
+    expect(invalid.changed).toEqual([]);
+    expect(invalid.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unknownControl",
+          path: "$.keyboardShortcuts.futureAction",
+        }),
+        expect.objectContaining({ code: "invalidShortcut" }),
+      ])
+    );
+  });
+
   it("rejects Appearance as an unknown control and still refuses shortcut capture", () => {
     expect(planSettingsUpdate(current, { appearance: { mode: "system" } }, context).issues).toEqual(
       [expect.objectContaining({ code: "unknownControl", path: "$.appearance" })]
@@ -217,10 +267,10 @@ describe("Settings Control", () => {
     expect(
       planSettingsUpdate(
         current,
-        { clearShortcut: { global: false } },
+        { keyboardShortcuts: { clear: { global: false } } },
         {
           ...context,
-          clearShortcutCapturing: true,
+          shortcutCapturing: true,
         }
       ).refusal
     ).toEqual({ code: "controlUnavailable", reason: "shortcutCaptureActive" });

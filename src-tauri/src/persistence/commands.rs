@@ -241,7 +241,8 @@ pub fn persistence_save_global_preferences(
   values: BTreeMap<String, Value>,
   expected_revisions: BTreeMap<String, i64>,
 ) -> Result<BTreeMap<String, i64>, PersistenceCommandError> {
-  const ALLOWED: [&str; 7] = [
+  const ALLOWED: [&str; 8] = [
+    "keyboardShortcuts",
     "clearShortcut",
     "clearGlobal",
     "agentControlEnabled",

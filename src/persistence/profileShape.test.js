@@ -33,7 +33,7 @@ describe("profileShape", () => {
   it("defines the PLVS profile identity", () => {
     expect(PROFILE_APP).toBe("PLVS");
     expect(PROFILE_KIND).toBe("configuration-profile");
-    expect(PROFILE_VERSION).toBe(1);
+    expect(PROFILE_VERSION).toBe(2);
     expect(PROFILE_EXTENSION).toBe("plvsconfig");
   });
 
@@ -55,7 +55,7 @@ describe("profileShape", () => {
     expect(profile).toMatchObject({
       app: "PLVS",
       kind: "configuration-profile",
-      version: 1,
+      version: 2,
       exportedAt: "2026-06-27T00:00:00.000Z",
       settings: { referenceLufs: -23, surfaceOpacity: 100 },
       workspace: { visibleModules: ["levelMeter"] },
@@ -63,8 +63,11 @@ describe("profileShape", () => {
       themes: { themes: {}, order: [] },
       windowBounds: { x: 1, y: 3, width: 800, height: 601, isMaximized: true },
       captureDeviceId: "out:3",
-      clearShortcut: "CmdOrCtrl+L",
-      clearGlobal: true,
+      keyboardShortcuts: {
+        toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+        clear: { accelerator: "CmdOrCtrl+L", global: true },
+      },
     });
   });
 
@@ -72,7 +75,7 @@ describe("profileShape", () => {
     expect(buildProfileSnapshot({}, { exportedAt: "now" })).toEqual({
       app: "PLVS",
       kind: "configuration-profile",
-      version: 1,
+      version: 2,
       exportedAt: "now",
       settings: {},
       workspace: {},
@@ -80,8 +83,27 @@ describe("profileShape", () => {
       themes: { themes: {}, order: [] },
       windowBounds: null,
       captureDeviceId: "default",
-      clearShortcut: "CmdOrCtrl+K",
-      clearGlobal: false,
+      keyboardShortcuts: {
+        toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+        clear: { accelerator: "CmdOrCtrl+K", global: false },
+      },
+    });
+  });
+
+  it("migrates a version 1 Clear shortcut into the version 2 action map", () => {
+    const profile = normalizeImportedProfile({
+      app: "PLVS",
+      kind: "configuration-profile",
+      version: 1,
+      clearShortcut: "CmdOrCtrl+Alt+K",
+      clearGlobal: true,
+    });
+
+    expect(profile.version).toBe(2);
+    expect(profile.keyboardShortcuts.clear).toEqual({
+      accelerator: "CmdOrCtrl+Alt+K",
+      global: true,
     });
   });
 

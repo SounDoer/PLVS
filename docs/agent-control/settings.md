@@ -25,7 +25,7 @@ Fields, types, defaults and options are generated from the schema:
 [`generated/settings.md`](generated/settings.md). Current values and dynamic availability are
 runtime state, reported by `settings inspect` rather than documented here.
 
-The public fields correspond to Open at Login, Close Behavior, the configurable Clear shortcut,
+The public fields correspond to Open at Login, Close Behavior, the configurable keyboard shortcuts,
 Interface Size, History Length, Dialogue Detection, and channel-role labels.
 
 The following are intentionally outside Settings Control:
@@ -60,25 +60,28 @@ swallowed by the GUI-oriented hook.
 what a future close request does and never immediately hides or quits the app. Both fields remain
 available while a draft editor is open.
 
-## Clear shortcut
+## Keyboard shortcuts
 
-`clearShortcut` is a merge-patched object with `accelerator` and `global`; omitted members retain
-their current values. The default is `{ "accelerator": "CmdOrCtrl+K", "global": false }`.
-Accelerators use the same canonical, cross-platform Tauri form produced and validated by the GUI:
-at least one modifier plus exactly one non-modifier key. Display-form strings, bare modifiers,
-invalid chords, and conflicts with fixed PLVS shortcuts are rejected through shared validation.
+`keyboardShortcuts` is a merge-patched object keyed by `toggleLiveCapture`,
+`toggleLiveSnapshot`, and `clear`. Each action contains `accelerator` and `global`; omitted actions
+and members retain their current values. The respective default accelerators are
+`CmdOrCtrl+Shift+Space`, `CmdOrCtrl+Shift+L`, and `CmdOrCtrl+K`, with Global off. An accelerator may
+be null to remove the binding, which also forces Global off. Other accelerator values use the same
+canonical, cross-platform Tauri form produced and validated by the GUI: at least one modifier plus
+exactly one non-modifier key. Display-form strings, bare modifiers, invalid chords, fixed PLVS
+conflicts, duplicate configurable accelerators, unknown actions, and unknown members are rejected
+atomically.
 
 Inspection separates requested configuration from runtime registration. Runtime
-`globalRegistration` is `active`, `notRequested`, or `unavailable`. A global registration failure is
-a command failure, not a warning. Replacing an active global chord registers the new chord before
-persisting it and releasing the old one; failure preserves the old configuration and registration.
+Each action's runtime `globalRegistration` is `active`, `notRequested`, or `unavailable`. A global
+registration failure is a command failure, not a warning. Replacing active global chords and
+multi-action swaps are one public update; failure preserves the old configuration and registrations.
 Dry-run cannot reserve a chord and therefore cannot guarantee that another application will not
 claim it before real execution. A no-op performs no registration work.
 
-While the GUI is displaying `Press a combo...`, only patches containing `clearShortcut` are
+While the GUI is displaying `Press a combo...`, only patches containing `keyboardShortcuts` are
 temporarily unavailable; the recorder is not a global blocking editor. Loudness Profile and Theme
-editors do not block this field. The Agent Control implementation must expose persistence and
-registration errors currently swallowed by the GUI-oriented shortcut hook.
+editors do not block this field.
 
 ## Interface size
 

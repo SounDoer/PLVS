@@ -6,18 +6,25 @@
 Current values and writability are runtime state and are reported by `settings.inspect`, not
 here.
 
-| Field | Type | Unit | Default | Allowed | In the default state |
-| --- | --- | --- | --- | --- | --- |
-| `openAtLogin` | boolean | - | `false` | - | - |
-| `closeBehavior` | enum | - | `"ask"` | "ask", "tray", "quit" | - |
-| `clearShortcut` | object | - | - | - | - |
-| `clearShortcut.accelerator` | accelerator | - | `"CmdOrCtrl+K"` | - | - |
-| `clearShortcut.global` | boolean | - | `false` | - | - |
-| `interfaceSize` | enum | - | `"default"` | "small", "default", "large", "extra-large" | - |
-| `historyRetentionSec` | enum | s | `3600` | 1800, 3600, 7200, 14400 | - |
-| `dialogueVadEngine` | enum | - | `"firered"` | "firered", "silero" | - |
-| `channelLabels` | object | - | - | - | - |
-| `channelLabels.channelCount` | integer | - | - | - | - |
-| `channelLabels.mode` | enum | - | - | "auto", "custom" | - |
-| `channelLabels.layout` | enum | - | - | "stereo", "custom" | - |
-| `channelLabels.roles` | array | - | - | each of "generic", "M", "L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb", "Cs", "Lw", "Rw", "Ltf", "Rtf", "Ltm", "Rtm", "Ltr", "Rtr" | - |
+| Field                                              | Type             | Unit | Default                   | Allowed                                                                                                                          | In the default state |
+| -------------------------------------------------- | ---------------- | ---- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `openAtLogin`                                      | boolean          | -    | `false`                   | -                                                                                                                                | -                    |
+| `closeBehavior`                                    | enum             | -    | `"ask"`                   | "ask", "tray", "quit"                                                                                                            | -                    |
+| `keyboardShortcuts`                                | object           | -    | -                         | -                                                                                                                                | -                    |
+| `keyboardShortcuts.toggleLiveCapture`              | object           | -    | -                         | -                                                                                                                                | -                    |
+| `keyboardShortcuts.toggleLiveCapture.accelerator`  | accelerator,null | -    | `"CmdOrCtrl+Shift+Space"` | -                                                                                                                                | -                    |
+| `keyboardShortcuts.toggleLiveCapture.global`       | boolean          | -    | `false`                   | -                                                                                                                                | -                    |
+| `keyboardShortcuts.toggleLiveSnapshot`             | object           | -    | -                         | -                                                                                                                                | -                    |
+| `keyboardShortcuts.toggleLiveSnapshot.accelerator` | accelerator,null | -    | `"CmdOrCtrl+Shift+L"`     | -                                                                                                                                | -                    |
+| `keyboardShortcuts.toggleLiveSnapshot.global`      | boolean          | -    | `false`                   | -                                                                                                                                | -                    |
+| `keyboardShortcuts.clear`                          | object           | -    | -                         | -                                                                                                                                | -                    |
+| `keyboardShortcuts.clear.accelerator`              | accelerator,null | -    | `"CmdOrCtrl+K"`           | -                                                                                                                                | -                    |
+| `keyboardShortcuts.clear.global`                   | boolean          | -    | `false`                   | -                                                                                                                                | -                    |
+| `interfaceSize`                                    | enum             | -    | `"default"`               | "small", "default", "large", "extra-large"                                                                                       | -                    |
+| `historyRetentionSec`                              | enum             | s    | `3600`                    | 1800, 3600, 7200, 14400                                                                                                          | -                    |
+| `dialogueVadEngine`                                | enum             | -    | `"firered"`               | "firered", "silero"                                                                                                              | -                    |
+| `channelLabels`                                    | object           | -    | -                         | -                                                                                                                                | -                    |
+| `channelLabels.channelCount`                       | integer          | -    | -                         | -                                                                                                                                | -                    |
+| `channelLabels.mode`                               | enum             | -    | -                         | "auto", "custom"                                                                                                                 | -                    |
+| `channelLabels.layout`                             | enum             | -    | -                         | "stereo", "custom"                                                                                                               | -                    |
+| `channelLabels.roles`                              | array            | -    | -                         | each of "generic", "M", "L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb", "Cs", "Lw", "Rw", "Ltf", "Rtf", "Ltm", "Rtm", "Ltr", "Rtr" | -                    |

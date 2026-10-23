@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useThemeSettings } from "./useThemeSettings.js";
 import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useAutostart } from "./useAutostart.js";
-import { useClearShortcut } from "./useClearShortcut.js";
+import { useKeyboardShortcuts } from "./useKeyboardShortcuts.js";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
 import { useDialogueVadEngineSetting } from "./useDialogueVadEngineSetting.js";
 import { useHistoryRetentionSetting } from "./useHistoryRetentionSetting.js";
@@ -12,12 +12,12 @@ import { useViewSettings } from "./useViewSettings.js";
 import { useWindowPinnedSetting } from "./useWindowPinnedSetting.js";
 import { useUpdatePreferences } from "./useUpdatePreferences.js";
 
-/** @param {{ onClearRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
-export function useSettings({ onClearRef, onHistoryRetentionChangeRef } = {}) {
+/** @param {{ shortcutActionRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
+export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { autostartEnabled, setAutostartEnabled, setAutostartEnabledForControl, autostartReady } =
     useAutostart();
-  const clearShortcutState = useClearShortcut(onClearRef);
+  const shortcutState = useKeyboardShortcuts(shortcutActionRef);
   const themeSettings = useThemeSettings();
   const customThemeSettings = useCustomThemeSettings({ themeSettings, setSettingsOpen });
   const closeActionSetting = useCloseActionSetting();
@@ -57,6 +57,6 @@ export function useSettings({ onClearRef, onHistoryRetentionChangeRef } = {}) {
     setAutostartEnabledForControl,
     autostartReady,
     ...customThemeSettings,
-    ...clearShortcutState,
+    ...shortcutState,
   };
 }

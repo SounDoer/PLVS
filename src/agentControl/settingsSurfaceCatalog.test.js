@@ -25,7 +25,7 @@ describe("Settings surface authority catalogue", () => {
     expect(PUBLIC_FIELDS).toEqual([
       "openAtLogin",
       "closeBehavior",
-      "clearShortcut",
+      "keyboardShortcuts",
       "interfaceSize",
       "historyRetentionSec",
       "dialogueVadEngine",

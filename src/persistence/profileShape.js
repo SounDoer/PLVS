@@ -1,4 +1,4 @@
-import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
+import { normalizeKeyboardShortcuts } from "../data/keyboardShortcutActions.js";
 import { LOUDNESS_PROFILE_OFF, parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
@@ -14,7 +14,7 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 
 export const PROFILE_APP = "PLVS";
 export const PROFILE_KIND = "configuration-profile";
-export const PROFILE_VERSION = 1;
+export const PROFILE_VERSION = 2;
 export const PROFILE_EXTENSION = "plvsconfig";
 
 export class ProfileValidationError extends Error {
@@ -145,13 +145,6 @@ function normalizeThemes(raw) {
   return { themes, order };
 }
 
-/**
- * @param {string} value
- */
-function normalizeClearShortcut(value) {
-  return typeof value === "string" && value.trim() ? value : DEFAULT_CLEAR_SHORTCUT;
-}
-
 export function buildProfileSnapshot(raw = {}, { exportedAt = new Date().toISOString() } = {}) {
   const settings = normalizeSettings(raw.settings);
   return {
@@ -165,8 +158,10 @@ export function buildProfileSnapshot(raw = {}, { exportedAt = new Date().toISOSt
     themes: normalizeThemes(raw.themes),
     windowBounds: normalizeWindowBounds(raw.windowBounds),
     captureDeviceId: normalizeCaptureDeviceId(raw.captureDeviceId),
-    clearShortcut: normalizeClearShortcut(raw.clearShortcut),
-    clearGlobal: raw.clearGlobal === true,
+    keyboardShortcuts: normalizeKeyboardShortcuts(raw.keyboardShortcuts, {
+      clearShortcut: raw.clearShortcut,
+      clearGlobal: raw.clearGlobal,
+    }),
   };
 }
 

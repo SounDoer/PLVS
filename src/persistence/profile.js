@@ -5,7 +5,7 @@ import {
   resetProfileCommand,
 } from "../ipc/commands.js";
 import { LEGACY_CAPTURE_DEVICE_LS_KEY } from "../ipc/capturePrefs.js";
-import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
+import { DEFAULT_KEYBOARD_SHORTCUTS } from "../data/keyboardShortcutActions.js";
 import {
   exportAll,
   flushPersistence,
@@ -37,8 +37,7 @@ function browserRawProfile() {
     ...domains,
     windowBounds: null,
     captureDeviceId,
-    clearShortcut: DEFAULT_CLEAR_SHORTCUT,
-    clearGlobal: false,
+    keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
   };
 }
 

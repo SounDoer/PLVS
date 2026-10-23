@@ -122,7 +122,11 @@ export function settingsStateSignature(settings) {
 export function ordinarySettingsStateSignature(settings) {
   const normalized = settingsStateForSignature(settings);
   if (normalized === null) return "null";
-  const { openAtLogin: _openAtLogin, clearShortcut: _clearShortcut, ...ordinary } = normalized;
+  const {
+    openAtLogin: _openAtLogin,
+    keyboardShortcuts: _keyboardShortcuts,
+    ...ordinary
+  } = normalized;
   return JSON.stringify(ordinary);
 }
 

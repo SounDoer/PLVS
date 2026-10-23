@@ -17,9 +17,12 @@ import { ResetAction } from "@/components/ResetAction.jsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { HoverTip } from "@/components/HoverTip.jsx";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
-import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
-import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
-import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  KEYBOARD_SHORTCUT_ACTIONS,
+  configuredShortcutConflict,
+} from "@/data/keyboardShortcutActions.js";
+import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
@@ -186,13 +189,12 @@ function IconButton({ children, className, ...props }) {
  *   setHistoryRetentionSec?: (...args: any[]) => any,
  *   dialogueVadEngine?: string,
  *   setDialogueVadEngine?: (...args: any[]) => any,
- *   clearShortcut?: string,
- *   setClearShortcut?: (...args: any[]) => any,
- *   clearGlobal?: boolean,
- *   setClearGlobal?: (...args: any[]) => any,
- *   setClearCapturing?: (...args: any[]) => any,
- *   clearReady?: boolean,
- *   registrationError?: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["registrationError"],
+ *   keyboardShortcuts?: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["keyboardShortcuts"],
+ *   setShortcutAccelerator?: (...args: any[]) => any,
+ *   setShortcutGlobal?: (...args: any[]) => any,
+ *   setShortcutCapturing?: (...args: any[]) => any,
+ *   shortcutsReady?: boolean,
+ *   shortcutRegistrationErrors?: Record<string, string>,
  *   channelCount?: number,
  *   channelLabelTokens?: any[],
  *   channelLabelHasOverride?: boolean,
@@ -258,13 +260,12 @@ export function SettingsPanel({
   setHistoryRetentionSec = () => {},
   dialogueVadEngine = DEFAULT_DIALOGUE_VAD_ENGINE,
   setDialogueVadEngine = () => {},
-  clearShortcut = "CmdOrCtrl+K",
-  setClearShortcut = () => {},
-  clearGlobal = false,
-  setClearGlobal = () => {},
-  setClearCapturing = () => {},
-  clearReady = false,
-  registrationError = null,
+  keyboardShortcuts = DEFAULT_KEYBOARD_SHORTCUTS,
+  setShortcutAccelerator = () => {},
+  setShortcutGlobal = () => {},
+  setShortcutCapturing = () => {},
+  shortcutsReady = false,
+  shortcutRegistrationErrors = {},
   channelCount = 0,
   channelLabelTokens = [],
   channelLabelHasOverride = false,
@@ -523,46 +524,67 @@ export function SettingsPanel({
 
                 {/* Keyboard shortcuts */}
                 <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
-                  {KEYBOARD_SHORTCUTS.map((s) => (
-                    <div key={s.id} className={KBD_ROW_CLASS}>
-                      <span className="text-muted-foreground">{s.label}</span>
-                      <span className="font-mono tabular-nums text-muted-foreground text-[length:var(--ui-fs-metric-meta)]">
-                        {formatAcceleratorForDisplay(s.keys, { isMac })}
-                      </span>
+                  <div className={KBD_ROW_CLASS} aria-hidden="true">
+                    <span />
+                    <div className="flex items-center gap-3 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                      <span>Shortcut</span>
+                      <span>Global</span>
                     </div>
-                  ))}
-                  <SettingsRow label="Clear">
-                    <div className="flex items-center gap-1">
-                      <ShortcutCapture
-                        value={clearShortcut}
-                        onChange={setClearShortcut}
-                        onRecordingChange={setClearCapturing}
-                        isMac={isMac}
-                        disabled={!clearReady}
-                      />
-                      <ResetAction
-                        label="Reset clear shortcut"
-                        isDefault={!clearReady || clearShortcut === DEFAULT_CLEAR_SHORTCUT}
-                        onReset={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
-                        confirmLabel="Confirm reset clear shortcut"
-                        cancelLabel="Cancel reset clear shortcut"
-                      />
-                    </div>
-                  </SettingsRow>
-                  {registrationError ? (
-                    <div className="text-right text-[length:var(--ui-fs-axis)] text-destructive px-2">
-                      Combo unavailable, try another
-                    </div>
-                  ) : null}
-                  <SettingsRow label="Global Shortcut">
-                    <SettingsSwitch
-                      aria-label="Global Shortcut"
-                      checked={clearGlobal}
-                      onCheckedChange={setClearGlobal}
-                      disabled={!clearReady}
-                      className={cn(registrationError && "border-destructive")}
-                    />
-                  </SettingsRow>
+                  </div>
+                  {KEYBOARD_SHORTCUT_ACTIONS.map((action) => {
+                    const binding =
+                      keyboardShortcuts[action.id] ?? DEFAULT_KEYBOARD_SHORTCUTS[action.id];
+                    const registrationError = shortcutRegistrationErrors[action.id];
+                    return (
+                      <SettingsRow key={action.id} label={action.label}>
+                        <div className="flex flex-col items-end gap-0">
+                          <div className="flex items-center gap-1">
+                            <ShortcutCapture
+                              label={`${action.label} shortcut`}
+                              value={binding.accelerator}
+                              onChange={(accelerator) =>
+                                setShortcutAccelerator(action.id, accelerator)
+                              }
+                              conflictForAccelerator={(accelerator) =>
+                                reservedComboConflict(accelerator) ??
+                                configuredShortcutConflict(
+                                  keyboardShortcuts,
+                                  action.id,
+                                  accelerator
+                                )
+                              }
+                              onRecordingChange={setShortcutCapturing}
+                              isMac={isMac}
+                              disabled={!shortcutsReady}
+                            />
+                            <ResetAction
+                              label={`Reset ${action.label} shortcut`}
+                              isDefault={
+                                !shortcutsReady || binding.accelerator === action.defaultAccelerator
+                              }
+                              onReset={() =>
+                                setShortcutAccelerator(action.id, action.defaultAccelerator)
+                              }
+                              confirmLabel={`Confirm reset ${action.label} shortcut`}
+                              cancelLabel={`Cancel reset ${action.label} shortcut`}
+                            />
+                            <SettingsSwitch
+                              aria-label={`${action.label} global shortcut`}
+                              checked={binding.global}
+                              onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
+                              disabled={!shortcutsReady || binding.accelerator === null}
+                              className={cn(registrationError && "border-destructive")}
+                            />
+                          </div>
+                          {registrationError ? (
+                            <span className="text-[length:var(--ui-fs-axis)] text-destructive">
+                              Combo unavailable, try another
+                            </span>
+                          ) : null}
+                        </div>
+                      </SettingsRow>
+                    );
+                  })}
                 </SettingsSection>
 
                 <SettingsDivider />

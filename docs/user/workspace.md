@@ -45,6 +45,13 @@ Both states use the same neutral icon color at rest, without a persistent highli
 Click any point on a history chart to freeze every meter at that moment, then return to live with one
 click. Useful for inspecting a peak you only heard go by.
 
+The default **Live / Snapshot** shortcut (`CmdOrCtrl+Shift+L`) freezes the latest retained Live
+moment when history exists, or returns an active Snapshot to the Live edge. It does not start or
+stop capture. The default **Start / Stop** shortcut (`CmdOrCtrl+Shift+Space`) changes only the Live
+capture lifecycle, so a Snapshot stays selected while capture starts or stops in the background.
+Both actions are silent no-ops for a FILE Source; Start / Stop is also a no-op during an in-progress
+start or stop, and Live / Snapshot is a no-op before Live history exists.
+
 ## Views
 
 The Views menu pares the window down for monitoring: **Always on Top**, **Hide Panel Headers**, **Hide Axes & Labels**,

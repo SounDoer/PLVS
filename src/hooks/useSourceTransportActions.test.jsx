@@ -16,8 +16,11 @@ function renderActions(overrides = {}) {
   const props = {
     sourceMode: "live",
     running: false,
+    liveLifecycle: "stopped",
+    hasLiveHistory: false,
     selectedOffset: -1,
     setSelectedOffset: vi.fn(),
+    selectSnapshot: vi.fn(),
     setHistoryOffsetSec: vi.fn(),
     setHistoryWindowSec: vi.fn(),
     startLive: vi.fn(),
@@ -58,6 +61,81 @@ describe("useSourceTransportActions", () => {
     expect(props.setSelectedOffset).not.toHaveBeenCalled();
     expect(props.startLive).not.toHaveBeenCalled();
     expect(props.stopLive).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["stopped", "startLive"],
+    ["error", "startLive"],
+    ["running", "stopLive"],
+  ])("toggles a settled Live lifecycle from %s", (liveLifecycle, expected) => {
+    const { result, props } = renderActions({
+      liveLifecycle,
+      running: liveLifecycle === "running",
+    });
+
+    act(() => result.current.toggleLiveCapture());
+
+    expect(props[expected]).toHaveBeenCalledOnce();
+    expect(props.switchSource).not.toHaveBeenCalled();
+  });
+
+  it.each(["starting", "stopping"])("does not toggle during %s", (liveLifecycle) => {
+    const { result, props } = renderActions({ liveLifecycle });
+    act(() => result.current.toggleLiveCapture());
+    expect(props.startLive).not.toHaveBeenCalled();
+    expect(props.stopLive).not.toHaveBeenCalled();
+  });
+
+  it("does not toggle Live capture from FILE or clear an active Snapshot", () => {
+    const clearSnapshot = vi.fn();
+    const { result, props } = renderActions({
+      sourceMode: "file",
+      liveLifecycle: "running",
+      selectedOffset: 4,
+      clearSnapshot,
+    });
+    act(() => result.current.toggleLiveCapture());
+    expect(props.startLive).not.toHaveBeenCalled();
+    expect(props.stopLive).not.toHaveBeenCalled();
+    expect(clearSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("selects the current Live snapshot only when retained history exists", () => {
+    const withHistory = renderActions({ hasLiveHistory: true });
+    act(() => withHistory.result.current.toggleLiveSnapshot());
+    expect(withHistory.props.selectSnapshot).toHaveBeenCalledWith(0);
+
+    const empty = renderActions({ hasLiveHistory: false });
+    act(() => empty.result.current.toggleLiveSnapshot());
+    expect(empty.props.selectSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("returns an active Snapshot to Live without changing capture", () => {
+    const clearSnapshot = vi.fn();
+    const { result, props } = renderActions({
+      liveLifecycle: "running",
+      running: true,
+      hasLiveHistory: true,
+      selectedOffset: 0,
+      clearSnapshot,
+    });
+    act(() => result.current.toggleLiveSnapshot());
+    expect(clearSnapshot).toHaveBeenCalledOnce();
+    expect(props.startLive).not.toHaveBeenCalled();
+    expect(props.stopLive).not.toHaveBeenCalled();
+  });
+
+  it("does not toggle Snapshot in FILE", () => {
+    const clearSnapshot = vi.fn();
+    const { result, props } = renderActions({
+      sourceMode: "file",
+      selectedOffset: 0,
+      hasLiveHistory: true,
+      clearSnapshot,
+    });
+    act(() => result.current.toggleLiveSnapshot());
+    expect(props.selectSnapshot).not.toHaveBeenCalled();
+    expect(clearSnapshot).not.toHaveBeenCalled();
   });
 
   it.each(["returnToLive", "returnToFileResult"])(

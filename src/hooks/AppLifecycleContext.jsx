@@ -48,8 +48,15 @@ const AppLifecycleContext = createContext(/** @type {AppLifecycle | null} */ (nu
  * dialog, crash reports, and the global shortcuts. Mounts inside every domain those need.
  */
 export function AppLifecycleProvider({ children }) {
-  const { setSettingsOpen, clearShortcut, focusView, resolvedTheme, updatePreferences } =
-    useAppSettings();
+  const {
+    setSettingsOpen,
+    keyboardShortcuts,
+    shortcutCapturing,
+    shortcutActionRef,
+    focusView,
+    resolvedTheme,
+    updatePreferences,
+  } = useAppSettings();
   const { docked, suspendDockMode, resumeDockMode, exitDockRestoringAttributes } = useDock();
   const { reveal } = useWindowChrome();
   const toggleFocusControls = reveal.toggleControls;
@@ -74,7 +81,7 @@ export function AppLifecycleProvider({ children }) {
     onSelectCaptureDevice,
     sourceDisplayName,
   } = useSource();
-  const { clearAll, onStartClick } = useSourceActions();
+  const { onStartClick } = useSourceActions();
 
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
@@ -209,13 +216,14 @@ export function AppLifecycleProvider({ children }) {
   });
 
   useAppKeyboardShortcuts({
-    clearAll,
+    dispatchShortcutAction: (actionId) => shortcutActionRef.current?.(actionId),
     running,
     showClock,
     // Settings dialog is normal-form only; ignore the shortcut while docked so
     // exiting dock doesn't pop a dialog opened invisibly from the strip.
     setSettingsOpen: docked ? () => {} : setSettingsOpen,
-    clearShortcut,
+    keyboardShortcuts,
+    shortcutCapturing,
     autoHideControls: focusView.autoHideControls,
     toggleFocusControls,
   });

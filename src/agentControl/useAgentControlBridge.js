@@ -35,9 +35,9 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  *
  * @typedef {{
  *   autostartReady: boolean,
- *   clearShortcutReady: boolean,
- *   clearShortcutCapturing: boolean,
- *   clearShortcutRegistrationError: any,
+ *   shortcutsReady: boolean,
+ *   shortcutCapturing: boolean,
+ *   shortcutRegistrationErrors: Record<string, any>,
  *   dialogueDetectionRequested: boolean,
  *   dialogueDetectionActive: any,
  *   hasCompletedFileAnalysis: any,

@@ -154,7 +154,11 @@ function axesPage() {
 const SETTINGS_AT_DEFAULTS = {
   openAtLogin: false,
   closeBehavior: "ask",
-  clearShortcut: { accelerator: "CmdOrCtrl+K", global: false },
+  keyboardShortcuts: {
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+    clear: { accelerator: "CmdOrCtrl+K", global: false },
+  },
   interfaceSize: "default",
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",

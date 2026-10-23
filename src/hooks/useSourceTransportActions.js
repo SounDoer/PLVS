@@ -6,8 +6,11 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  * @param {{
  *   sourceMode: string,
  *   running: boolean,
+ *   liveLifecycle?: string,
+ *   hasLiveHistory?: boolean | (() => boolean),
  *   selectedOffset: number,
  *   setSelectedOffset: (...args: any[]) => any,
+ *   selectSnapshot?: (...args: any[]) => any,
  *   clearSnapshot?: (...args: any[]) => any,
  *   setHistoryOffsetSec: (...args: any[]) => any,
  *   setHistoryWindowSec: (...args: any[]) => any,
@@ -29,8 +32,11 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
 export function useSourceTransportActions({
   sourceMode,
   running,
+  liveLifecycle = running ? "running" : "stopped",
+  hasLiveHistory = false,
   selectedOffset,
   setSelectedOffset,
+  selectSnapshot = setSelectedOffset,
   clearSnapshot = () => setSelectedOffset(-1),
   setHistoryOffsetSec,
   setHistoryWindowSec,
@@ -129,6 +135,26 @@ export function useSourceTransportActions({
     startLive();
   }, [clearSnapshot, running, selectedOffset, startLive, stopLive]);
 
+  const toggleLiveCapture = useCallback(() => {
+    if (sourceMode !== "live") return;
+    if (liveLifecycle === "running") {
+      stopLive();
+      return;
+    }
+    if (liveLifecycle === "stopped" || liveLifecycle === "error") startLive();
+  }, [liveLifecycle, sourceMode, startLive, stopLive]);
+
+  const toggleLiveSnapshot = useCallback(() => {
+    if (sourceMode !== "live") return;
+    if (selectedOffset >= 0) {
+      clearSnapshot();
+      return;
+    }
+    const historyAvailable =
+      typeof hasLiveHistory === "function" ? hasLiveHistory() : hasLiveHistory;
+    if (historyAvailable) selectSnapshot(0);
+  }, [clearSnapshot, hasLiveHistory, selectSnapshot, selectedOffset, sourceMode]);
+
   const onSourceTransportAction = useCallback(
     async (/** @type {string} */ actionKind) => {
       if (actionKind === "returnToLive") {
@@ -192,6 +218,8 @@ export function useSourceTransportActions({
     onClearAllFiles,
     handleDropFile,
     onStartClick: runLiveStartAction,
+    toggleLiveCapture,
+    toggleLiveSnapshot,
     onSourceTransportAction,
     onSourceModeChange,
   };

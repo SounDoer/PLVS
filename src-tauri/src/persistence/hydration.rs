@@ -36,6 +36,7 @@ pub fn hydrate_workspace(
   let mut global_preferences = BTreeMap::new();
   let mut global_preference_revisions = BTreeMap::new();
   for key in [
+    "keyboardShortcuts",
     "clearShortcut",
     "clearGlobal",
     "agentControlEnabled",

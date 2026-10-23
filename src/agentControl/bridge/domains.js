@@ -154,7 +154,7 @@ const loudnessProfile = {
   },
 };
 
-/// `openAtLogin` and `clearShortcut` are read from the operating system after startup. Their first
+/// `openAtLogin` and `keyboardShortcuts` are read from the operating system after startup. Their first
 /// real value replacing the placeholder is not a change anyone made, so each counts only once its
 /// source has reported ready.
 /** @type {Domain} */
@@ -166,15 +166,15 @@ const settings = {
       ready: inputs.settingsContext.autostartReady === true,
       value: inputs.settings?.openAtLogin,
     },
-    clearShortcut: {
-      ready: inputs.settingsContext.clearShortcutReady === true,
-      signature: JSON.stringify(inputs.settings?.clearShortcut ?? null),
+    keyboardShortcuts: {
+      ready: inputs.settingsContext.shortcutsReady === true,
+      signature: JSON.stringify(inputs.settings?.keyboardShortcuts ?? null),
     },
   }),
   deps: (inputs) => [
     inputs.settings,
     inputs.settingsContext.autostartReady,
-    inputs.settingsContext.clearShortcutReady,
+    inputs.settingsContext.shortcutsReady,
   ],
   observe({ inputs, memory, clock, settlement }) {
     const signature = settingsStateSignature(inputs.settings);
@@ -194,14 +194,15 @@ const settings = {
       openAtLogin.ready = false;
     }
 
-    const clearShortcut = memory.clearShortcut;
-    const clearShortcutSignature = JSON.stringify(inputs.settings?.clearShortcut ?? null);
-    if (inputs.settingsContext.clearShortcutReady === true) {
-      if (clearShortcut.ready && clearShortcut.signature !== clearShortcutSignature) changed = true;
-      clearShortcut.ready = true;
-      clearShortcut.signature = clearShortcutSignature;
+    const keyboardShortcuts = memory.keyboardShortcuts;
+    const keyboardShortcutsSignature = JSON.stringify(inputs.settings?.keyboardShortcuts ?? null);
+    if (inputs.settingsContext.shortcutsReady === true) {
+      if (keyboardShortcuts.ready && keyboardShortcuts.signature !== keyboardShortcutsSignature)
+        changed = true;
+      keyboardShortcuts.ready = true;
+      keyboardShortcuts.signature = keyboardShortcutsSignature;
     } else {
-      clearShortcut.ready = false;
+      keyboardShortcuts.ready = false;
     }
 
     if (changed) {

@@ -122,11 +122,18 @@ an installer. If you see this error, download the current `x64-setup.exe` from G
 run it once; it installs for the current user and does not need administrator rights. Later
 versions declare that they run without elevation, so their updates install from update details.
 
-## Global shortcut
+## Keyboard shortcuts
 
-Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS
-workbenches are open, PLVS registers the shortcut once and sends Clear to the workbench that was
-focused most recently.
+PLVS provides three configurable shortcuts: **Start / Stop** (`CmdOrCtrl+Shift+Space`),
+**Live / Snapshot** (`CmdOrCtrl+Shift+L`), and **Clear** (`CmdOrCtrl+K`). Select a shortcut to record
+a replacement, press Delete or Backspace while recording to remove it, or use Reset to restore its
+built-in default. PLVS rejects bare keys, reserved combinations, and combinations already assigned
+to another configurable action.
+
+Each row has its own **Global** switch. An enabled action works even when PLVS is not focused; its
+ordinary shortcut continues to work whenever PLVS is focused. When several PLVS workbenches are
+open, the coordinator registers each global combination once and sends the action to the workbench
+that was focused most recently. A registration error affects only that row.
 
 ## Appearance
 

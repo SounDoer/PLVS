@@ -12,12 +12,14 @@ beforeEach(() => {
   }));
 });
 
-describe("useSettings clear-shortcut wiring", () => {
-  it("exposes clear-shortcut state with safe defaults outside Tauri", () => {
+describe("useSettings keyboard shortcut wiring", () => {
+  it("exposes the shortcut catalogue with safe defaults outside Tauri", () => {
     const { result } = renderHook(() => useSettings());
-    expect(result.current.clearGlobal).toBe(false);
-    expect(result.current.clearShortcut).toBe("CmdOrCtrl+K");
-    expect(typeof result.current.setClearGlobal).toBe("function");
-    expect(typeof result.current.setClearShortcut).toBe("function");
+    expect(result.current.keyboardShortcuts.clear).toEqual({
+      accelerator: "CmdOrCtrl+K",
+      global: false,
+    });
+    expect(typeof result.current.setShortcutGlobal).toBe("function");
+    expect(typeof result.current.setShortcutAccelerator).toBe("function");
   });
 });

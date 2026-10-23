@@ -1,6 +1,11 @@
 import { reservedComboConflict } from "../data/keyboardShortcuts.js";
 import { isValidAccelerator } from "../lib/accelerator.js";
-import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
+import {
+  KEYBOARD_SHORTCUT_ACTIONS,
+  KEYBOARD_SHORTCUT_ACTION_IDS,
+  configuredShortcutConflict,
+  normalizeKeyboardShortcuts,
+} from "../data/keyboardShortcutActions.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "../lib/dialogueVadEngines.js";
 import { CHANNEL_ROLE_VOCABULARY, roleTokensToLoudnessWeights } from "../math/channelRoles.js";
 import {
@@ -27,6 +32,8 @@ const INTERFACE_SIZES = INTERFACE_SIZE_OPTIONS.map(({ id }) => id);
 const HISTORY_LENGTHS = HISTORY_RETENTION_OPTIONS_SEC;
 const VAD_ENGINES = DIALOGUE_VAD_ENGINE_OPTIONS.map(({ id }) => id);
 const CHANNEL_ROLES = new Set(CHANNEL_ROLE_VOCABULARY.map(({ id }) => id));
+/** @type {Set<string>} */
+const SHORTCUT_ACTION_IDS = new Set(KEYBOARD_SHORTCUT_ACTION_IDS);
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -52,10 +59,7 @@ export function buildPublicSettings(settings, context) {
   return {
     openAtLogin: context.autostartReady === false ? null : settings.autostartEnabled === true,
     closeBehavior: settings.closeAction,
-    clearShortcut: {
-      accelerator: settings.clearShortcut,
-      global: settings.clearGlobal === true,
-    },
+    keyboardShortcuts: normalizeKeyboardShortcuts(settings.keyboardShortcuts),
     interfaceSize: settings.interfaceSize,
     historyRetentionSec: settings.historyRetentionSec,
     dialogueVadEngine: settings.dialogueVadEngine,
@@ -83,17 +87,30 @@ export function buildSettingsSchema(settings, context) {
       current: settings.closeBehavior,
       options: CLOSE_BEHAVIORS,
     },
-    clearShortcut: {
+    keyboardShortcuts: {
       type: "object",
-      properties: {
-        accelerator: {
-          type: "accelerator",
-          default: DEFAULT_CLEAR_SHORTCUT,
-          current: settings.clearShortcut.accelerator,
-        },
-        global: { type: "boolean", default: false, current: settings.clearShortcut.global },
-      },
-      availability: inspection.availability.clearShortcut,
+      properties: Object.fromEntries(
+        KEYBOARD_SHORTCUT_ACTIONS.map((action) => [
+          action.id,
+          {
+            type: "object",
+            label: action.label,
+            properties: {
+              accelerator: {
+                type: ["accelerator", "null"],
+                default: action.defaultAccelerator,
+                current: settings.keyboardShortcuts[action.id].accelerator,
+              },
+              global: {
+                type: "boolean",
+                default: false,
+                current: settings.keyboardShortcuts[action.id].global,
+              },
+            },
+          },
+        ])
+      ),
+      availability: inspection.availability.keyboardShortcuts,
     },
     interfaceSize: {
       type: "enum",
@@ -143,18 +160,23 @@ export function buildSettingsSchema(settings, context) {
 
 export function buildSettingsInspection(settings, context) {
   const autostartWritable = context.autostartReady === true;
-  const shortcutWritable = context.clearShortcutCapturing !== true;
+  const shortcutWritable = context.shortcutCapturing !== true;
   const channelWritable = settings.channelLabels.channelCount > 0;
   return {
     settings,
     runtime: {
-      clearShortcut: {
-        globalRegistration: !settings.clearShortcut.global
-          ? "notRequested"
-          : context.clearShortcutReady !== true || context.clearShortcutRegistrationError
-            ? "unavailable"
-            : "active",
-      },
+      keyboardShortcuts: Object.fromEntries(
+        KEYBOARD_SHORTCUT_ACTIONS.map(({ id }) => [
+          id,
+          {
+            globalRegistration: !settings.keyboardShortcuts[id].global
+              ? "notRequested"
+              : context.shortcutsReady !== true || context.shortcutRegistrationErrors?.[id]
+                ? "unavailable"
+                : "active",
+          },
+        ])
+      ),
       dialogueDetection: {
         requested:
           context.dialogueDetectionRequested === true || context.dialogueDetectionActive === true,
@@ -167,7 +189,7 @@ export function buildSettingsInspection(settings, context) {
         writable: autostartWritable,
         reason: autostartWritable ? null : "autostartUnavailable",
       },
-      clearShortcut: {
+      keyboardShortcuts: {
         writable: shortcutWritable,
         reason: shortcutWritable ? null : "shortcutCaptureActive",
       },
@@ -193,36 +215,96 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     issues.push(issue("invalidOption", "$.closeBehavior", "closeBehavior is not supported."));
   }
 
-  let nextShortcut = current.clearShortcut;
-  if ("clearShortcut" in patch) {
-    if (!isObject(patch.clearShortcut)) {
-      issues.push(issue("invalidType", "$.clearShortcut", "clearShortcut must be an object."));
+  let nextKeyboardShortcuts = current.keyboardShortcuts;
+  if ("keyboardShortcuts" in patch) {
+    if (!isObject(patch.keyboardShortcuts)) {
+      issues.push(
+        issue("invalidType", "$.keyboardShortcuts", "keyboardShortcuts must be an object.")
+      );
     } else {
-      for (const key of Object.keys(patch.clearShortcut)) {
-        if (!new Set(["accelerator", "global"]).has(key)) {
+      nextKeyboardShortcuts = normalizeKeyboardShortcuts(current.keyboardShortcuts);
+      for (const actionId of Object.keys(patch.keyboardShortcuts)) {
+        if (!SHORTCUT_ACTION_IDS.has(actionId)) {
           issues.push(
-            issue("unknownControl", `$.clearShortcut.${key}`, `Unknown shortcut control: ${key}.`)
+            issue(
+              "unknownControl",
+              `$.keyboardShortcuts.${actionId}`,
+              `Unknown shortcut action: ${actionId}.`
+            )
+          );
+          continue;
+        }
+        const value = patch.keyboardShortcuts[actionId];
+        if (!isObject(value)) {
+          issues.push(
+            issue(
+              "invalidType",
+              `$.keyboardShortcuts.${actionId}`,
+              `${actionId} must be an object.`
+            )
+          );
+          continue;
+        }
+        for (const key of Object.keys(value)) {
+          if (!new Set(["accelerator", "global"]).has(key)) {
+            issues.push(
+              issue(
+                "unknownControl",
+                `$.keyboardShortcuts.${actionId}.${key}`,
+                `Unknown shortcut control: ${key}.`
+              )
+            );
+          }
+        }
+        const accelerator = Object.hasOwn(value, "accelerator")
+          ? value.accelerator
+          : nextKeyboardShortcuts[actionId].accelerator;
+        if (
+          accelerator !== null &&
+          (!isValidAccelerator(accelerator) || reservedComboConflict(accelerator))
+        ) {
+          issues.push(
+            issue(
+              "invalidShortcut",
+              `$.keyboardShortcuts.${actionId}.accelerator`,
+              "accelerator must be null or a valid, unreserved Tauri accelerator."
+            )
           );
         }
+        if ("global" in value && typeof value.global !== "boolean") {
+          issues.push(
+            issue(
+              "invalidType",
+              `$.keyboardShortcuts.${actionId}.global`,
+              `${actionId}.global must be a boolean.`
+            )
+          );
+        }
+        nextKeyboardShortcuts = {
+          ...nextKeyboardShortcuts,
+          [actionId]: {
+            ...nextKeyboardShortcuts[actionId],
+            ...value,
+            ...(accelerator === null ? { global: false } : null),
+          },
+        };
       }
-      nextShortcut = { ...current.clearShortcut, ...patch.clearShortcut };
-      if (
-        "accelerator" in patch.clearShortcut &&
-        (!isValidAccelerator(patch.clearShortcut.accelerator) ||
-          reservedComboConflict(patch.clearShortcut.accelerator))
-      ) {
-        issues.push(
-          issue(
-            "invalidShortcut",
-            "$.clearShortcut.accelerator",
-            "accelerator must be a valid, unreserved Tauri accelerator."
+      for (const { id } of KEYBOARD_SHORTCUT_ACTIONS) {
+        if (
+          configuredShortcutConflict(
+            nextKeyboardShortcuts,
+            id,
+            nextKeyboardShortcuts[id].accelerator
           )
-        );
-      }
-      if ("global" in patch.clearShortcut && typeof patch.clearShortcut.global !== "boolean") {
-        issues.push(
-          issue("invalidType", "$.clearShortcut.global", "clearShortcut.global must be a boolean.")
-        );
+        ) {
+          issues.push(
+            issue(
+              "invalidShortcut",
+              `$.keyboardShortcuts.${id}.accelerator`,
+              "accelerator duplicates another configured shortcut."
+            )
+          );
+        }
       }
     }
   }
@@ -342,7 +424,7 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       refusal: { code: "controlUnavailable", reason: "autostartUnavailable" },
     };
   }
-  if ("clearShortcut" in patch && context.clearShortcutCapturing === true) {
+  if ("keyboardShortcuts" in patch && context.shortcutCapturing === true) {
     return {
       settings: current,
       changed: [],
@@ -382,7 +464,9 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     ...current,
     ...(Object.hasOwn(patch, "openAtLogin") ? { openAtLogin: patch.openAtLogin } : {}),
     ...(Object.hasOwn(patch, "closeBehavior") ? { closeBehavior: patch.closeBehavior } : {}),
-    ...(Object.hasOwn(patch, "clearShortcut") ? { clearShortcut: nextShortcut } : {}),
+    ...(Object.hasOwn(patch, "keyboardShortcuts")
+      ? { keyboardShortcuts: nextKeyboardShortcuts }
+      : {}),
     ...(Object.hasOwn(patch, "interfaceSize") ? { interfaceSize: patch.interfaceSize } : {}),
     ...(Object.hasOwn(patch, "historyRetentionSec")
       ? { historyRetentionSec: patch.historyRetentionSec }
@@ -395,18 +479,20 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
   const changed = [];
   changedValue(changed, "settings.openAtLogin", current.openAtLogin, settings.openAtLogin);
   changedValue(changed, "settings.closeBehavior", current.closeBehavior, settings.closeBehavior);
-  changedValue(
-    changed,
-    "settings.clearShortcut.accelerator",
-    current.clearShortcut.accelerator,
-    settings.clearShortcut.accelerator
-  );
-  changedValue(
-    changed,
-    "settings.clearShortcut.global",
-    current.clearShortcut.global,
-    settings.clearShortcut.global
-  );
+  for (const { id } of KEYBOARD_SHORTCUT_ACTIONS) {
+    changedValue(
+      changed,
+      `settings.keyboardShortcuts.${id}.accelerator`,
+      current.keyboardShortcuts[id].accelerator,
+      settings.keyboardShortcuts[id].accelerator
+    );
+    changedValue(
+      changed,
+      `settings.keyboardShortcuts.${id}.global`,
+      current.keyboardShortcuts[id].global,
+      settings.keyboardShortcuts[id].global
+    );
+  }
   changedValue(changed, "settings.interfaceSize", current.interfaceSize, settings.interfaceSize);
   changedValue(
     changed,

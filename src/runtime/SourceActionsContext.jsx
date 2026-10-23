@@ -8,7 +8,11 @@ import { useFileAnalysisReportExport } from "../hooks/useFileAnalysisReportExpor
 import { useSourceTransportActions } from "../hooks/useSourceTransportActions.js";
 import { useDialogueEngineRestart } from "../hooks/useDialogueEngineRestart.js";
 import { deriveDialogueRuntime } from "./appRuntimeDerivations.js";
-import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx";
+import {
+  useMeterDisplayState,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "./MeterRuntimeContext.jsx";
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
@@ -43,6 +47,7 @@ export function SourceActionsProvider({ children }) {
   const {
     sourceMode,
     running,
+    liveLifecycle,
     activeFileSession,
     startLive,
     stopLive,
@@ -55,9 +60,12 @@ export function SourceActionsProvider({ children }) {
     clearFiles,
     stopFileAnalysis,
   } = useMeterRuntime();
-  const { selectedOffset, setSelectedOffset, clearSnapshot, raiseNotice } = useMeterDisplayState();
+  const { liveIntakeRef } = useMeterRuntimeAssembly();
+  const { selectedOffset, setSelectedOffset, selectSnapshot, clearSnapshot, raiseNotice } =
+    useMeterDisplayState();
   const settings = useAppSettings();
-  const { onClearRef, onHistoryRetentionChangeRef, dialogueVadEngine } = settings;
+  const { onClearRef, shortcutActionRef, onHistoryRetentionChangeRef, dialogueVadEngine } =
+    settings;
   const loudnessProfile = useLoudnessProfile();
 
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
@@ -84,8 +92,11 @@ export function SourceActionsProvider({ children }) {
   const actions = useSourceTransportActions({
     sourceMode,
     running,
+    liveLifecycle,
+    hasLiveHistory: () => liveIntakeRef.current.getLoudnessHistory().length > 0,
     selectedOffset,
     setSelectedOffset,
+    selectSnapshot,
     clearSnapshot,
     setHistoryOffsetSec,
     setHistoryWindowSec,
@@ -107,6 +118,11 @@ export function SourceActionsProvider({ children }) {
     },
   });
   onClearRef.current = actions.clearAll;
+  shortcutActionRef.current = (actionId) => {
+    if (actionId === "toggleLiveCapture") return actions.toggleLiveCapture();
+    if (actionId === "toggleLiveSnapshot") return actions.toggleLiveSnapshot();
+    if (actionId === "clear") return actions.clearAll();
+  };
   onHistoryRetentionChangeRef.current = sourceMode === "live" ? actions.clearAll : async () => true;
   useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);
 

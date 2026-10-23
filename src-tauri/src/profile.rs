@@ -13,8 +13,10 @@ use tauri_plugin_store::StoreExt;
 const STORE_FILE: &str = "plvs-settings.json";
 const PROFILE_APP: &str = "PLVS";
 const PROFILE_KIND: &str = "configuration-profile";
-const PROFILE_VERSION: i64 = 1;
+const PROFILE_VERSION: i64 = 2;
 const DEFAULT_CLEAR_SHORTCUT: &str = "CmdOrCtrl+K";
+const DEFAULT_TOGGLE_LIVE_CAPTURE_SHORTCUT: &str = "CmdOrCtrl+Shift+Space";
+const DEFAULT_TOGGLE_LIVE_SNAPSHOT_SHORTCUT: &str = "CmdOrCtrl+Shift+L";
 const STARTER_ITEMS_SEEDED_KEY: &str = "starterItemsSeeded";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -30,12 +32,89 @@ const DOMAIN_KEYS: [&str; 4] = [
   "plvs:themes",
 ];
 
-const SIBLING_KEYS: [&str; 4] = [
-  "windowBounds",
-  "captureDeviceId",
-  "clearShortcut",
-  "clearGlobal",
-];
+const SIBLING_KEYS: [&str; 3] = ["windowBounds", "captureDeviceId", "keyboardShortcuts"];
+
+fn default_keyboard_shortcuts() -> Value {
+  json!({
+    "toggleLiveCapture": {
+      "accelerator": DEFAULT_TOGGLE_LIVE_CAPTURE_SHORTCUT,
+      "global": false,
+    },
+    "toggleLiveSnapshot": {
+      "accelerator": DEFAULT_TOGGLE_LIVE_SNAPSHOT_SHORTCUT,
+      "global": false,
+    },
+    "clear": {
+      "accelerator": DEFAULT_CLEAR_SHORTCUT,
+      "global": false,
+    },
+  })
+}
+
+fn normalize_keyboard_shortcuts(obj: Option<&Map<String, Value>>) -> Value {
+  let configured = obj
+    .and_then(|value| value.get("keyboardShortcuts"))
+    .and_then(Value::as_object);
+  let defaults = default_keyboard_shortcuts();
+  let defaults = defaults
+    .as_object()
+    .expect("shortcut defaults are an object");
+  let mut normalized = Map::new();
+  let mut used = std::collections::HashSet::new();
+  for action_id in ["toggleLiveCapture", "toggleLiveSnapshot", "clear"] {
+    let fallback = defaults[action_id].as_object().unwrap();
+    let action = configured
+      .and_then(|shortcuts| shortcuts.get(action_id))
+      .and_then(Value::as_object);
+    let mut accelerator = match action.and_then(|value| value.get("accelerator")) {
+      Some(Value::Null) => Value::Null,
+      Some(Value::String(value)) if !value.trim().is_empty() => json!(value),
+      _ if action_id == "clear" && configured.is_none() => obj
+        .and_then(|value| value.get("clearShortcut"))
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map_or_else(|| fallback["accelerator"].clone(), |value| json!(value)),
+      _ => fallback["accelerator"].clone(),
+    };
+    let duplicate = accelerator
+      .as_str()
+      .is_some_and(|value| used.contains(value));
+    if duplicate {
+      accelerator = fallback["accelerator"].clone();
+      if accelerator
+        .as_str()
+        .is_some_and(|value| used.contains(value))
+      {
+        accelerator = Value::Null;
+      }
+    }
+    if let Some(value) = accelerator.as_str() {
+      used.insert(value.to_string());
+    }
+    let global = if accelerator.is_null() || duplicate {
+      false
+    } else {
+      action
+        .and_then(|value| value.get("global"))
+        .and_then(Value::as_bool)
+        .or_else(|| {
+          (action_id == "clear" && configured.is_none())
+            .then(|| {
+              obj
+                .and_then(|value| value.get("clearGlobal"))
+                .and_then(Value::as_bool)
+            })
+            .flatten()
+        })
+        .unwrap_or(false)
+    };
+    normalized.insert(
+      action_id.to_string(),
+      json!({ "accelerator": accelerator, "global": global }),
+    );
+  }
+  Value::Object(normalized)
+}
 
 fn plain_object(value: Option<Value>) -> Value {
   match value {
@@ -120,21 +199,8 @@ pub fn normalize_profile_for_store(profile: Value) -> Map<String, Value> {
     normalize_capture_device_id(obj.and_then(|o| o.get("captureDeviceId"))),
   );
   out.insert(
-    "clearShortcut".into(),
-    match obj
-      .and_then(|o| o.get("clearShortcut"))
-      .and_then(Value::as_str)
-    {
-      Some(shortcut) if !shortcut.trim().is_empty() => json!(shortcut),
-      _ => json!(DEFAULT_CLEAR_SHORTCUT),
-    },
-  );
-  out.insert(
-    "clearGlobal".into(),
-    json!(obj
-      .and_then(|o| o.get("clearGlobal"))
-      .and_then(Value::as_bool)
-      .unwrap_or(false)),
+    "keyboardShortcuts".into(),
+    normalize_keyboard_shortcuts(obj),
   );
 
   out
@@ -202,8 +268,7 @@ pub fn build_profile_snapshot_from_store(store: &Map<String, Value>) -> Value {
     "themes": store.get("plvs:themes").cloned().unwrap_or_else(|| json!({})),
     "windowBounds": store.get("windowBounds").cloned().unwrap_or(Value::Null),
     "captureDeviceId": store.get("captureDeviceId").cloned().unwrap_or_else(|| json!("default")),
-    "clearShortcut": store.get("clearShortcut").cloned().unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
-    "clearGlobal": store.get("clearGlobal").cloned().unwrap_or(json!(false)),
+    "keyboardShortcuts": normalize_keyboard_shortcuts(Some(store)),
   })
 }
 
@@ -215,10 +280,8 @@ fn profile_from_hydrated(hydrated: crate::persistence::HydratedWorkspace) -> Val
     "themes": hydrated.themes,
     "windowBounds": hydrated.window_bounds,
     "captureDeviceId": hydrated.capture_device_id,
-    "clearShortcut": hydrated.global_preferences.get("clearShortcut").cloned()
-      .unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
-    "clearGlobal": hydrated.global_preferences.get("clearGlobal").cloned()
-      .unwrap_or(json!(false)),
+    "keyboardShortcuts": normalize_keyboard_shortcuts(Some(&hydrated.global_preferences
+      .into_iter().collect::<Map<String, Value>>())),
   })
 }
 
@@ -235,8 +298,7 @@ fn profile_snapshot_from_hydrated(hydrated: crate::persistence::HydratedWorkspac
     "themes": raw["themes"],
     "windowBounds": raw["windowBounds"],
     "captureDeviceId": raw["captureDeviceId"],
-    "clearShortcut": raw["clearShortcut"],
-    "clearGlobal": raw["clearGlobal"],
+    "keyboardShortcuts": raw["keyboardShortcuts"],
   })
 }
 
@@ -363,7 +425,12 @@ fn restore_profile_import_snapshot(
     .and_then(Value::as_object)
     .cloned()
     .unwrap_or_default();
-  for key in ["clearShortcut", "clearGlobal", "askToSendCrashReports"] {
+  for key in [
+    "keyboardShortcuts",
+    "clearShortcut",
+    "clearGlobal",
+    "askToSendCrashReports",
+  ] {
     let current = session
       .library()
       .read_global_preference(key)
@@ -468,19 +535,13 @@ fn apply_profile_to_session_unjournaled(
     values.get("captureDeviceId").unwrap_or(&json!("default")),
   )?;
 
-  let mut global_values = std::collections::BTreeMap::from([
-    (
-      "clearShortcut".to_string(),
-      values
-        .get("clearShortcut")
-        .cloned()
-        .unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
-    ),
-    (
-      "clearGlobal".to_string(),
-      values.get("clearGlobal").cloned().unwrap_or(json!(false)),
-    ),
-  ]);
+  let mut global_values = std::collections::BTreeMap::from([(
+    "keyboardShortcuts".to_string(),
+    values
+      .get("keyboardShortcuts")
+      .cloned()
+      .unwrap_or_else(default_keyboard_shortcuts),
+  )]);
   if let Some(consent) = settings.get("askToSendCrashReports") {
     global_values.insert("askToSendCrashReports".to_string(), consent.clone());
   }
@@ -591,16 +652,14 @@ pub fn import_profile_to_disk(
   }
 
   store.insert(
-    "clearShortcut".into(),
+    "keyboardShortcuts".into(),
     values
-      .get("clearShortcut")
+      .get("keyboardShortcuts")
       .cloned()
-      .unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
+      .unwrap_or_else(default_keyboard_shortcuts),
   );
-  store.insert(
-    "clearGlobal".into(),
-    values.get("clearGlobal").cloned().unwrap_or(json!(false)),
-  );
+  store.remove("clearShortcut");
+  store.remove("clearGlobal");
 
   if options.include_window_bounds {
     match values.get("windowBounds") {
@@ -643,8 +702,11 @@ pub fn export_profile(app: AppHandle) -> Result<Value, String> {
     "themes": store.get("plvs:themes").unwrap_or(json!({})),
     "windowBounds": store.get("windowBounds").unwrap_or(Value::Null),
     "captureDeviceId": store.get("captureDeviceId").unwrap_or(json!("default")),
-    "clearShortcut": store.get("clearShortcut").unwrap_or(json!(DEFAULT_CLEAR_SHORTCUT)),
-    "clearGlobal": store.get("clearGlobal").unwrap_or(json!(false)),
+    "keyboardShortcuts": normalize_keyboard_shortcuts(Some(&Map::from_iter([
+      ("keyboardShortcuts".to_string(), store.get("keyboardShortcuts").unwrap_or(Value::Null)),
+      ("clearShortcut".to_string(), store.get("clearShortcut").unwrap_or(Value::Null)),
+      ("clearGlobal".to_string(), store.get("clearGlobal").unwrap_or(Value::Null)),
+    ]))),
   }))
 }
 
@@ -706,6 +768,8 @@ pub fn reset_profile(app: AppHandle) -> Result<(), String> {
   for key in DOMAIN_KEYS.iter().chain(SIBLING_KEYS.iter()) {
     store.delete(key);
   }
+  store.delete("clearShortcut");
+  store.delete("clearGlobal");
   store.save().map_err(|e| format!("store save: {e}"))?;
   Ok(())
 }
@@ -749,8 +813,10 @@ mod tests {
     assert_eq!(values["windowBounds"]["height"], 601);
     assert_eq!(values["windowBounds"]["isMaximized"], true);
     assert_eq!(values["captureDeviceId"], "out:2");
-    assert_eq!(values["clearShortcut"], "CmdOrCtrl+L");
-    assert_eq!(values["clearGlobal"], true);
+    assert_eq!(
+      values["keyboardShortcuts"]["clear"],
+      json!({ "accelerator": "CmdOrCtrl+L", "global": true })
+    );
   }
 
   #[test]
@@ -790,8 +856,10 @@ mod tests {
     assert_eq!(exported["presets"]["list"][0]["id"], "one");
     assert_eq!(exported["themes"]["order"], json!(["dark"]));
     assert_eq!(exported["captureDeviceId"], "out:2");
-    assert_eq!(exported["clearShortcut"], "CmdOrCtrl+L");
-    assert_eq!(exported["clearGlobal"], true);
+    assert_eq!(
+      exported["keyboardShortcuts"]["clear"],
+      json!({ "accelerator": "CmdOrCtrl+L", "global": true })
+    );
 
     drop(session);
     let _ = std::fs::remove_dir_all(root);
@@ -946,8 +1014,7 @@ mod tests {
 
     assert_eq!(values["windowBounds"], Value::Null);
     assert_eq!(values["captureDeviceId"], "default");
-    assert_eq!(values["clearShortcut"], DEFAULT_CLEAR_SHORTCUT);
-    assert_eq!(values["clearGlobal"], false);
+    assert_eq!(values["keyboardShortcuts"], default_keyboard_shortcuts());
   }
 
   #[test]
@@ -962,7 +1029,7 @@ mod tests {
     assert!(validate_profile_identity(&json!({
       "app": "PLVS",
       "kind": "configuration-profile",
-      "version": 2
+      "version": 3
     }))
     .is_err());
   }

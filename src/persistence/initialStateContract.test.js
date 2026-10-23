@@ -32,7 +32,7 @@ const READERS = {
   "hooks/useTray.js": ["instanceId"],
   "hooks/useAutostart.js": ["globalPreferences", "multiInstancePersistence"],
   "ipc/capturePrefs.js": ["captureDeviceId", "multiInstancePersistence"],
-  "lib/clearShortcutPrefs.js": ["globalPreferences", "multiInstancePersistence"],
+  "lib/shortcutPrefs.js": ["globalPreferences", "multiInstancePersistence"],
   "lib/runtimeRole.js": ["isCoordinator"],
   "persistence/starterItemsSeed.js": ["globalPreferences", "multiInstancePersistence"],
   "persistence/index.js": ["multiInstancePersistence"],

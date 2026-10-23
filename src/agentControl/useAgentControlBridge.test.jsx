@@ -63,7 +63,11 @@ const runtime = {
 const publicSettings = {
   openAtLogin: false,
   closeBehavior: "ask",
-  clearShortcut: { accelerator: "CmdOrCtrl+K", global: false },
+  keyboardShortcuts: {
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+    clear: { accelerator: "CmdOrCtrl+K", global: false },
+  },
   interfaceSize: "default",
   appearance: { mode: "system", themeId: null, resolvedThemeId: "plvs-dark" },
   historyRetentionSec: 3600,
@@ -73,8 +77,9 @@ const publicSettings = {
 
 const settingsContext = {
   autostartReady: true,
-  clearShortcutReady: true,
-  clearShortcutCapturing: false,
+  shortcutsReady: true,
+  shortcutCapturing: false,
+  shortcutRegistrationErrors: {},
   themeOptions: [
     { id: "plvs-dark", name: "Dark", kind: "builtin" },
     { id: "plvs-light", name: "Light", kind: "builtin" },
@@ -3561,7 +3566,7 @@ describe("useAgentControlBridge", () => {
       agentSettingsContext: {
         ...settingsContext,
         autostartReady: false,
-        clearShortcutReady: false,
+        shortcutsReady: false,
       },
     });
     await waitUntilReady();
@@ -3572,7 +3577,7 @@ describe("useAgentControlBridge", () => {
           agentSettingsContext={{
             ...settingsContext,
             autostartReady: true,
-            clearShortcutReady: true,
+            shortcutsReady: true,
           }}
           controlledAgentSettings
         />
@@ -3585,13 +3590,13 @@ describe("useAgentControlBridge", () => {
   it.each([
     [
       "autostart",
-      { autostartReady: false, clearShortcutReady: true },
+      { autostartReady: false, shortcutsReady: true },
       { interfaceSize: "large" },
       { interfaceSize: "large" },
     ],
     [
       "clear shortcut",
-      { autostartReady: true, clearShortcutReady: false },
+      { autostartReady: true, shortcutsReady: false },
       { closeBehavior: "tray" },
       { closeBehavior: "tray" },
     ],
@@ -5160,15 +5165,14 @@ describe("useAgentControlBridge", () => {
     const configuration = {
       app: "PLVS",
       kind: "configuration-profile",
-      version: 1,
+      version: 2,
       settings: { interfaceSize: "large" },
       workspace: {},
       presets: { list: [], activeId: null },
       themes: { themes: {}, order: [] },
       windowBounds: null,
       captureDeviceId: "default",
-      clearShortcut: "CmdOrCtrl+K",
-      clearGlobal: false,
+      keyboardShortcuts: publicSettings.keyboardShortcuts,
     };
     const exportConfiguration = vi.fn(async () => configuration);
     mount({ exportConfiguration });

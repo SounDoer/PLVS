@@ -2,52 +2,57 @@ import { useEffect, useRef } from "react";
 import { eventMatchesAccelerator } from "../lib/accelerator.js";
 
 export function useAppKeyboardShortcuts({
-  clearAll,
+  dispatchShortcutAction,
   running,
   showClock,
   setSettingsOpen,
-  clearShortcut,
+  keyboardShortcuts,
+  shortcutCapturing,
   autoHideControls,
   toggleFocusControls,
 }) {
   const shortcutHandlerRef = useRef({
-    clearAll,
+    dispatchShortcutAction,
     running,
     showClock,
     setSettingsOpen,
-    clearShortcut,
+    keyboardShortcuts,
+    shortcutCapturing,
     autoHideControls,
     toggleFocusControls,
   });
 
   useEffect(() => {
     shortcutHandlerRef.current = {
-      clearAll,
+      dispatchShortcutAction,
       running,
       showClock,
       setSettingsOpen,
-      clearShortcut,
+      keyboardShortcuts,
+      shortcutCapturing,
       autoHideControls,
       toggleFocusControls,
     };
   }, [
     autoHideControls,
-    clearAll,
-    clearShortcut,
+    dispatchShortcutAction,
+    keyboardShortcuts,
     running,
     setSettingsOpen,
     showClock,
+    shortcutCapturing,
     toggleFocusControls,
   ]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
       const {
-        clearAll: clear,
+        dispatchShortcutAction: dispatch,
         running: isRunning,
         showClock: hasClock,
         setSettingsOpen: openSettings,
-        clearShortcut: clearCombo,
+        keyboardShortcuts: bindings,
+        shortcutCapturing: isCapturing,
         autoHideControls: autoHide,
         toggleFocusControls: toggleFocus,
       } = shortcutHandlerRef.current;
@@ -56,9 +61,15 @@ export function useAppKeyboardShortcuts({
         tag === "INPUT" ||
         tag === "TEXTAREA" ||
         /** @type {HTMLElement | null} */ (document.activeElement)?.isContentEditable;
-      if (eventMatchesAccelerator(e, clearCombo)) {
+      const configuredAction = isCapturing
+        ? null
+        : Object.entries(bindings ?? {}).find(([, binding]) =>
+            binding.accelerator ? eventMatchesAccelerator(e, binding.accelerator) : false
+          )?.[0];
+      if (configuredAction) {
         e.preventDefault();
-        if (isRunning || hasClock) clear();
+        if (e.repeat) return;
+        if (configuredAction !== "clear" || isRunning || hasClock) dispatch(configuredAction);
         return;
       }
       if (e.key === "Escape" && autoHide && !editable) {

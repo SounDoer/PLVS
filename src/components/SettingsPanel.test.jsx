@@ -6,6 +6,7 @@ import { SettingsPanel } from "./SettingsPanel.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
+import { DEFAULT_KEYBOARD_SHORTCUTS } from "../data/keyboardShortcutActions.js";
 
 const CUSTOM_THEME = {
   ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -897,9 +898,11 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 
-  it("renders the keyboard shortcuts reference rows", () => {
+  it("renders the three configurable keyboard shortcut rows", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.queryByText("Start / Stop")).toBeNull();
+    expect(screen.getByText("Start / Stop")).toBeTruthy();
+    expect(screen.getByText("Live / Snapshot")).toBeTruthy();
+    expect(screen.getByText("Clear")).toBeTruthy();
     expect(screen.queryByText("Fullscreen Panel")).toBeNull();
     expect(screen.queryByText("Exit Fullscreen")).toBeNull();
   });
@@ -908,22 +911,27 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        clearGlobal={true}
-        clearReady={true}
-        clearShortcut="CmdOrCtrl+K"
+        keyboardShortcuts={{
+          ...DEFAULT_KEYBOARD_SHORTCUTS,
+          clear: { accelerator: "CmdOrCtrl+K", global: true },
+        }}
+        shortcutsReady={true}
       />
     );
     expect(screen.getByLabelText("Clear shortcut")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: /Global Shortcut/i })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Clear global shortcut" })).toBeTruthy();
   });
 
   it("shows the error state on the Global shortcut toggle when registration failed", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        clearGlobal={true}
-        clearReady={true}
-        registrationError="HotKey already registered"
+        keyboardShortcuts={{
+          ...DEFAULT_KEYBOARD_SHORTCUTS,
+          clear: { accelerator: "CmdOrCtrl+K", global: true },
+        }}
+        shortcutsReady={true}
+        shortcutRegistrationErrors={{ clear: "HotKey already registered" }}
       />
     );
     expect(screen.getByText(/combo unavailable/i)).toBeTruthy();
@@ -1087,19 +1095,22 @@ describe("SettingsPanel — Channel labels", () => {
 
 describe("SettingsPanel — Clear shortcut reset", () => {
   it("resets the clear shortcut only after confirming", () => {
-    const setClearShortcut = vi.fn();
+    const setShortcutAccelerator = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        clearReady={true}
-        clearShortcut="CmdOrCtrl+Shift+K"
-        setClearShortcut={setClearShortcut}
+        shortcutsReady={true}
+        keyboardShortcuts={{
+          ...DEFAULT_KEYBOARD_SHORTCUTS,
+          clear: { accelerator: "CmdOrCtrl+Shift+K", global: false },
+        }}
+        setShortcutAccelerator={setShortcutAccelerator}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Reset clear shortcut" }));
-    expect(setClearShortcut).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByLabelText("Confirm reset clear shortcut"));
-    expect(setClearShortcut).toHaveBeenCalledWith("CmdOrCtrl+K");
+    fireEvent.click(screen.getByRole("button", { name: "Reset Clear shortcut" }));
+    expect(setShortcutAccelerator).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Confirm reset Clear shortcut"));
+    expect(setShortcutAccelerator).toHaveBeenCalledWith("clear", "CmdOrCtrl+K");
   });
 });
 

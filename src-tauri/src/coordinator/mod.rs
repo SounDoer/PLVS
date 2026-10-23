@@ -457,11 +457,18 @@ fn global_shortcut_target(
 }
 
 #[tauri::command]
-pub async fn runtime_route_global_clear(
+pub async fn runtime_route_global_shortcut(
   identity: State<'_, RuntimeIdentity>,
   registry: State<'_, InstanceRegistry>,
   persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  action_id: String,
 ) -> Result<bool, String> {
+  if !matches!(
+    action_id.as_str(),
+    "toggleLiveCapture" | "toggleLiveSnapshot" | "clear"
+  ) {
+    return Err("Unknown global shortcut action.".to_string());
+  }
   let _ = registry.remove_stale()?;
   let instances = summarize_instances(registry.list()?);
   let current_instance_id = identity.instance_id().to_string();
@@ -473,7 +480,7 @@ pub async fn runtime_route_global_clear(
   }
   let identity_root = persistence.identity_root()?;
   tauri::async_runtime::spawn_blocking(move || {
-    route_clear_to_instance(&identity_root, &target_instance_id)
+    route_shortcut_to_instance(&identity_root, &target_instance_id, &action_id)
   })
   .await
   .map_err(|error| format!("Global shortcut routing task failed: {error}"))??;
@@ -516,12 +523,76 @@ pub async fn runtime_route_instance_transport(
   Ok(true)
 }
 
-fn route_clear_to_instance(identity_root: &Path, instance_id: &str) -> Result<(), String> {
-  route_revisioned_method_to_instance(
-    identity_root,
+fn route_shortcut_to_instance(
+  identity_root: &Path,
+  instance_id: &str,
+  action_id: &str,
+) -> Result<(), String> {
+  let descriptor_path =
+    crate::agent_control::discovery::instance_descriptor_path(identity_root, instance_id);
+  let descriptor = crate::agent_control::discovery::read_instance_descriptor_at(
+    &descriptor_path,
+    env!("PLVS_APP_ID"),
     instance_id,
-    "transport.live.clear",
-    "global-shortcut-clear",
+    crate::agent_control::discovery::is_process_alive,
+  )
+  .map_err(|error| error.to_string())?;
+  let inspect = crate::agent_control::protocol::JsonRpcRequest {
+    id: format!("global-shortcut-inspect-{}", std::process::id()),
+    method: "app.inspect".to_string(),
+    params: serde_json::json!({}),
+  };
+  let inspected = crate::agent_control::transport::call_with_timeout(
+    &descriptor,
+    &inspect,
+    crate::agent_control::broker::frontend_budget(&inspect)
+      + crate::agent_control::broker::CLIENT_GRACE,
+  )
+  .map_err(|error| error.to_string())?;
+  let revision = inspected
+    .pointer("/result/revision")
+    .and_then(serde_json::Value::as_u64)
+    .ok_or_else(|| agent_response_error(&inspected, "inspect"))?;
+  let transport = inspected.pointer("/result/transport");
+  let source = transport
+    .and_then(|value| value.get("source"))
+    .and_then(serde_json::Value::as_str);
+  let (method, extra_params) = match action_id {
+    "clear" => ("transport.live.clear", serde_json::json!({})),
+    "toggleLiveCapture" if source == Some("live") => {
+      match transport
+        .and_then(|value| value.pointer("/live/state"))
+        .and_then(serde_json::Value::as_str)
+      {
+        Some("running") => ("transport.live.stop", serde_json::json!({})),
+        Some("stopped" | "error") => ("transport.live.start", serde_json::json!({})),
+        _ => return Ok(()),
+      }
+    }
+    "toggleLiveSnapshot" if source == Some("live") => {
+      let active = transport
+        .and_then(|value| value.pointer("/snapshot/active"))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
+      if active {
+        ("transport.snapshot.clear", serde_json::json!({}))
+      } else {
+        (
+          "transport.snapshot.select",
+          serde_json::json!({ "offsetSec": 0 }),
+        )
+      }
+    }
+    "toggleLiveCapture" | "toggleLiveSnapshot" => return Ok(()),
+    _ => return Err("Unknown global shortcut action.".to_string()),
+  };
+  route_revisioned_method_with_descriptor(
+    &descriptor,
+    revision,
+    method,
+    &format!("global-shortcut-{action_id}"),
+    extra_params,
+    action_id == "toggleLiveSnapshot" && method == "transport.snapshot.select",
   )
 }
 
@@ -556,18 +627,46 @@ fn route_revisioned_method_to_instance(
     .pointer("/result/revision")
     .and_then(serde_json::Value::as_u64)
     .ok_or_else(|| agent_response_error(&inspected, "inspect"))?;
-  let clear = crate::agent_control::protocol::JsonRpcRequest {
+  route_revisioned_method_with_descriptor(
+    &descriptor,
+    revision,
+    method,
+    request_prefix,
+    serde_json::json!({}),
+    false,
+  )
+}
+
+fn route_revisioned_method_with_descriptor(
+  descriptor: &crate::agent_control::discovery::AgentControlDescriptor,
+  revision: u64,
+  method: &str,
+  request_prefix: &str,
+  extra_params: serde_json::Value,
+  history_unavailable_is_noop: bool,
+) -> Result<(), String> {
+  let mut params = extra_params.as_object().cloned().unwrap_or_default();
+  params.insert("expectedRevision".to_string(), serde_json::json!(revision));
+  let request = crate::agent_control::protocol::JsonRpcRequest {
     id: format!("{request_prefix}-{}", std::process::id()),
     method: method.to_string(),
-    params: serde_json::json!({ "expectedRevision": revision }),
+    params: serde_json::Value::Object(params),
   };
   let response = crate::agent_control::transport::call_with_timeout(
-    &descriptor,
-    &clear,
-    crate::agent_control::broker::frontend_budget(&clear)
+    descriptor,
+    &request,
+    crate::agent_control::broker::frontend_budget(&request)
       + crate::agent_control::broker::CLIENT_GRACE,
   )
   .map_err(|error| error.to_string())?;
+  if history_unavailable_is_noop
+    && response
+      .pointer("/error/data/reason")
+      .and_then(serde_json::Value::as_str)
+      == Some("historyUnavailable")
+  {
+    return Ok(());
+  }
   if response.get("result").is_none() {
     return Err(agent_response_error(&response, method));
   }
