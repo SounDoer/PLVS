@@ -33,9 +33,9 @@ concurrency:
 jobs:
   windows:
     if: >-
+      inputs.windows ||
       github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'windows')) ||
-      (github.event_name == 'workflow_call' && inputs.windows)
+      (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'windows'))
     runs-on: windows-2025-vs2026
     timeout-minutes: 40
     env:
@@ -72,9 +72,9 @@ jobs:
 
   macos:
     if: >-
+      inputs.macos ||
       github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos')) ||
-      (github.event_name == 'workflow_call' && inputs.macos)
+      (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
     runs-on: macos-26
     timeout-minutes: 40
     env:
@@ -109,9 +109,9 @@ jobs:
 
   linux:
     if: >-
+      inputs.linux ||
       github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'linux')) ||
-      (github.event_name == 'workflow_call' && inputs.linux)
+      (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'linux'))
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:

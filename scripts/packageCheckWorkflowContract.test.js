@@ -40,6 +40,9 @@ describe("routine package checks", () => {
     expect(workflow.jobs.linux["runs-on"]).toBe("ubuntu-24.04");
     for (const name of ["windows", "macos", "linux"]) {
       expect(workflow.jobs[name]["timeout-minutes"], name).toBeGreaterThanOrEqual(40);
+      expect(workflow.jobs[name].if, name).toContain(`inputs.${name}`);
+      expect(workflow.jobs[name].if, name).toContain("github.event_name == 'schedule'");
+      expect(workflow.jobs[name].if, name).not.toContain("github.event_name == 'workflow_call'");
       expect(commands(workflow.jobs[name]), name).toContain("npm ci");
       expect(source, name).toContain(`name: package-check-${name}`);
     }
