@@ -52,6 +52,10 @@ describe("routine package checks", () => {
     expect(commands(workflow.jobs.macos)).toContain("npm run desktop:verify-check-dmg");
     expect(commands(workflow.jobs.linux)).toContain("npm run desktop:stable-deb");
     expect(commands(workflow.jobs.linux)).toContain("verify-linux-deb-clean.sh");
+    expect(commands(workflow.jobs.linux)).toMatch(/install -y[\s\S]*\bffmpeg\b/);
+    expect(commands(workflow.jobs.linux)).toMatch(
+      /generate-sidecar-fixtures\.mjs[\s\\]*"\$PWD\/linux-sidecar-fixtures"[\s\\]*\/usr\/bin\/ffmpeg/
+    );
   });
 
   it("keeps routine macOS unsigned while leaving exact-release verification strict", () => {

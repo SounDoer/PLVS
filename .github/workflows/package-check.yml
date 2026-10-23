@@ -135,6 +135,7 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             patchelf \
+            ffmpeg \
             debootstrap
       - run: npm ci
       - name: Build non-publishing Ubuntu package candidate
@@ -148,7 +149,7 @@ jobs:
           sha256sum "${candidates[0]}" > package-check-evidence/candidate.sha256
           node scripts/generate-sidecar-fixtures.mjs \
             "$PWD/linux-sidecar-fixtures" \
-            "$PWD/src-tauri/binaries/ffmpeg-x86_64-unknown-linux-gnu"
+            /usr/bin/ffmpeg
           sudo bash scripts/verify-linux-deb-clean.sh \
             "${candidates[0]}" "$PWD/package-check-evidence" "$PWD/linux-sidecar-fixtures"
       - name: Upload Ubuntu package evidence
