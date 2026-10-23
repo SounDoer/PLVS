@@ -75,6 +75,15 @@ export function recordingUnavailableObservation(recording) {
   return `Visual recording is unavailable (${unavailable.reason}): ${unavailable.message}${remedy}`;
 }
 
+/** Explain why a recording reached a non-success terminal state without hiding backend detail. */
+export function recordingWaitFailureObservation(result) {
+  const outcome = result?.outcome ?? "unknown";
+  const error = result?.recording?.error;
+  const reason = error?.reason ? ` (${error.reason})` : "";
+  const message = error?.message ? `: ${error.message}` : "";
+  return `recording wait ended with outcome ${outcome}${reason}${message}.`;
+}
+
 export function verifyArtifactBuffer(label, contents, artifact) {
   if (!artifact || typeof artifact !== "object") {
     throw new Error(`${label} returned no artifact metadata.`);
@@ -372,66 +381,64 @@ export async function runAgentControlSmoke({
       });
       currentScenario = null;
     } else {
-    const started = await retryUnsettledRenderOnce(
-      "visual recording start",
-      () =>
-        run("visual recording start", [
-          "visual",
-          "recording",
-          "start",
-          "--target",
-          "main",
-          "--audio",
-          "none",
-          "--max-duration-seconds",
-          "3",
-          "--expected-revision",
-          String(finalUi.result.revision),
-          "--json",
-        ]),
-      warnings
-    );
-    activeRecordingId = started.result.recording?.recordingId;
-    if (typeof activeRecordingId !== "string" || activeRecordingId.length === 0) {
-      throw new Error("visual recording start returned no recording ID.");
-    }
-
-    recordingPath = join(outDir, "main-3s.mp4");
-    const completed = run("visual recording wait", [
-      "visual",
-      "recording",
-      "wait",
-      activeRecordingId,
-      "--timeout-ms",
-      "30000",
-      "--out",
-      recordingPath,
-      "--json",
-    ]);
-    if (
-      completed.result.outcome !== "terminal" ||
-      completed.result.recording?.state !== "completed"
-    ) {
-      throw new Error(
-        `recording wait ended with outcome ${completed.result.outcome ?? "unknown"}.`
+      const started = await retryUnsettledRenderOnce(
+        "visual recording start",
+        () =>
+          run("visual recording start", [
+            "visual",
+            "recording",
+            "start",
+            "--target",
+            "main",
+            "--audio",
+            "none",
+            "--max-duration-seconds",
+            "3",
+            "--expected-revision",
+            String(finalUi.result.revision),
+            "--json",
+          ]),
+        warnings
       );
-    }
-    recording = completed.result.recording;
-    recordingCheck = verifyArtifactBuffer(
-      "recording",
-      await readFile(recordingPath),
-      recording?.artifact
-    );
-    evidenceArtifacts.push({
-      id: "main-silent-recording",
-      kind: "video/mp4",
-      file: recordingPath,
-      ...recordingCheck,
-    });
-    activeRecordingId = null;
-    pass("silent-recording", [
-      `Captured ${recordingCheck.bytes} bytes with SHA-256 ${recordingCheck.sha256}.`,
-    ]);
+      activeRecordingId = started.result.recording?.recordingId;
+      if (typeof activeRecordingId !== "string" || activeRecordingId.length === 0) {
+        throw new Error("visual recording start returned no recording ID.");
+      }
+
+      recordingPath = join(outDir, "main-3s.mp4");
+      const completed = run("visual recording wait", [
+        "visual",
+        "recording",
+        "wait",
+        activeRecordingId,
+        "--timeout-ms",
+        "30000",
+        "--out",
+        recordingPath,
+        "--json",
+      ]);
+      if (
+        completed.result.outcome !== "terminal" ||
+        completed.result.recording?.state !== "completed"
+      ) {
+        throw new Error(recordingWaitFailureObservation(completed.result));
+      }
+      recording = completed.result.recording;
+      recordingCheck = verifyArtifactBuffer(
+        "recording",
+        await readFile(recordingPath),
+        recording?.artifact
+      );
+      evidenceArtifacts.push({
+        id: "main-silent-recording",
+        kind: "video/mp4",
+        file: recordingPath,
+        ...recordingCheck,
+      });
+      activeRecordingId = null;
+      pass("silent-recording", [
+        `Captured ${recordingCheck.bytes} bytes with SHA-256 ${recordingCheck.sha256}.`,
+      ]);
     }
 
     legacyReport = {
@@ -561,7 +568,9 @@ async function main() {
     for (const scenario of evidence.scenarios) {
       if (scenario.status !== "passed") console.log(`${scenario.id}: ${scenario.status}`);
     }
-    console.error(`Agent Control smoke is ${evidence.summary}; unsupported scenarios are not passes.`);
+    console.error(
+      `Agent Control smoke is ${evidence.summary}; unsupported scenarios are not passes.`
+    );
     process.exitCode = evidence.summary === "failed" ? 1 : 2;
     return;
   }

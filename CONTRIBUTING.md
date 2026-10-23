@@ -877,15 +877,21 @@ verify the runner archive against the SHA-256 in its GitHub release before extra
 | Platform | Account and launch                                                                                                        | Rig                                                           | Traps                                                                                                                                                                                                                                                                                                  |
 | -------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Windows  | Maintainer's logged-in account. Not a service: a logon launcher in the Startup folder runs `run.cmd` in the user session. | VB-Cable, VLC, Git for Windows                                | The first `bash.exe` on a Windows desktop's PATH is usually WSL's. The launcher must put `C:\Program Files\Git\bin` first on PATH; the runner cannot take a quoted shell path. Started from an agent inside the Claude desktop app, launch it through `explorer.exe` so it leaves the app's container. |
-| macOS    | Maintainer's login account, `./run.sh` in a Terminal window that holds microphone permission.                             | BlackHole 2ch, VLC                                            | A LaunchAgent (`./svc.sh install`) captures silence: TCC attributes the request to the runner's Node, which has no audio entitlement. The runner does not return after a logout, reboot or closing that Terminal. The screen may stay locked; capture passes while locked.                             |
+| macOS    | Maintainer's login account, `./run.sh` in a Terminal window that holds microphone permission.                             | BlackHole 2ch, VLC                                            | A LaunchAgent (`./svc.sh install`) captures silence: TCC attributes the request to the runner's Node, which has no audio entitlement. The runner does not return after a logout, reboot or closing that Terminal. Capture smoke itself passes while locked; package smoke does not (see below).          |
 | Linux    | Desktop user's `systemd --user` unit running `runsvc.sh`, with `loginctl enable-linger`.                                  | `pactl`/`paplay` on PipeWire or PulseAudio, `/usr/bin/ffmpeg` | Copy `bin/runsvc.sh` to the runner root first, or the unit fails with `203/EXEC`. Put `~/.cargo/bin` on the unit's PATH and order it after the PipeWire user services. A dedicated user cannot reach the desktop user's audio session.                                                                 |
 
 One-time setup for the release-package smoke, beyond the table above:
 
-- **Windows:** none. The window opens on the logged-in desktop for about a minute; leave the session
-  unlocked while a release runs.
-- **macOS:** none beyond the Terminal-launched runner. The copied app is started by the runner, so
-  macOS attributes its audio capture to that Terminal, as it does for capture smoke.
+- **Windows:** the package smoke needs an active desktop session for recording. Keep the session
+  unlocked and locally active while a release runs: locking it or disconnecting Remote Desktop can
+  leave Media Foundation with no frames and error `0xC00D4A44`. The window opens on that desktop for
+  about a minute.
+- **macOS:** grant **Screen & System Audio Recording** permission to the Terminal that launches the
+  runner. Without it, package-smoke recording fails with `screenCapturePermissionRequired`. After
+  granting the permission, fully quit Terminal, reopen it, and restart the runner before testing.
+  Changing how the runner is launched changes the process macOS authorizes, so grant the permission
+  again for the new launcher. The copied app is started by the runner, and macOS attributes its audio
+  capture to that Terminal, as it does for capture smoke.
 - **Linux:** `sudo apt install xvfb`. The `systemd --user` unit has no display, and the smoke starts
   a private Xvfb server when `DISPLAY` and `WAYLAND_DISPLAY` are both unset; do not import the
   desktop session's display into the unit. Unpacking installs none of the deb's `Depends`; when the

@@ -70,12 +70,15 @@ describe("acceptance evidence", () => {
       status: 0,
       stdout: args[0] === "rev-parse" ? `${TARGET}\n` : "",
     });
+    const dirtyOutput = " M scripts/tool.mjs\n?? artifacts/result.json\n";
     const dirty = (command, args) => ({
       status: 0,
-      stdout: args[0] === "rev-parse" ? `${TARGET}\n` : " M scripts/tool.mjs\n",
+      stdout: args[0] === "rev-parse" ? `${TARGET}\n` : dirtyOutput,
     });
     expect(resolveEvidenceSourceSha("/repo", clean)).toBe(TARGET);
-    expect(() => resolveEvidenceSourceSha("/repo", dirty)).toThrow(/clean worktree/);
+    expect(() => resolveEvidenceSourceSha("/repo", dirty)).toThrow(
+      `Dirty worktree entries from git status --porcelain:\n${dirtyOutput.trimEnd()}`
+    );
   });
 
   it("accepts the shared update/dock/capture envelope", () => {

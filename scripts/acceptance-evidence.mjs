@@ -90,8 +90,9 @@ export function resolveEvidenceSourceSha(cwd = process.cwd(), run = spawnSync) {
   if (status.status !== 0)
     throw new Error("Could not inspect the worktree for acceptance evidence");
   if (status.stdout?.trim()) {
+    const dirtyEntries = status.stdout.trimEnd();
     throw new Error(
-      "Acceptance evidence requires a clean worktree so its sourceSha names the code that ran"
+      `Acceptance evidence requires a clean worktree so its sourceSha names the code that ran.\nDirty worktree entries from git status --porcelain:\n${dirtyEntries}`
     );
   }
   return sha;

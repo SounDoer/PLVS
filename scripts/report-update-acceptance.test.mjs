@@ -85,7 +85,10 @@ describe("update acceptance release advisory", () => {
   it("is wired into release preflight as an explicit advisory", () => {
     const releaseGate = readFileSync(new URL("./run-release-gate.mjs", import.meta.url), "utf8");
     expect(releaseGate).toContain("updateAcceptanceChangesSinceLastTag");
-    expect(releaseGate).toContain("will run automatically on the self-hosted runners");
+    expect(releaseGate).toContain(
+      "Exact-SHA Windows, macOS and Linux update acceptance will run automatically on the self-hosted runners"
+    );
+    expect(releaseGate).not.toContain("Windows and macOS update acceptance");
     expect(releaseGate).not.toContain('"--require-complete"');
     expect(releaseGate).toContain('run("Update acceptance evidence (advisory)", "node", [');
     expect(releaseGate).toContain('"scripts/report-update-acceptance.mjs"');

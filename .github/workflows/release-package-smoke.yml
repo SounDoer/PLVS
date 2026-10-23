@@ -95,6 +95,7 @@ jobs:
       # Below the ignored artifacts/ directory, so the checkout stays clean for the evidence SHA.
       - name: Download the candidate from this release run
         if: ${{ !inputs.run_id }}
+        timeout-minutes: 10
         uses: actions/download-artifact@v8
         with:
           name: release-candidate-${{ matrix.platform }}
@@ -102,6 +103,7 @@ jobs:
 
       - name: Download the candidate from the named release run
         if: ${{ inputs.run_id }}
+        timeout-minutes: 10
         uses: actions/download-artifact@v8
         with:
           name: release-candidate-${{ matrix.platform }}

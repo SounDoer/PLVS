@@ -72,6 +72,11 @@ export const REQUIRED_SCENARIOS = [
   "metering-screenshot",
 ];
 
+/** Keep actionable nested failure text identical in evidence and the final console summary. */
+export function releasePackageFailureSummary(error) {
+  return error?.message || String(error);
+}
+
 /** Integrated loudness is a windowed statistic; the peaks are direct PCM properties. */
 export const TONE_TOLERANCE_DB = { integratedLufs: 0.5, peakDbfs: 0.5 };
 const LAUNCH_TIMEOUT_MS = 120_000;
@@ -762,7 +767,7 @@ export async function runReleasePackageSmoke({ candidate, outDir, wait, sourceSh
       file: relative(outDir, artifact.file).replaceAll("\\", "/"),
     })),
     cleanup: { status: cleanupFailed ? "failed" : "passed", observations: cleanup },
-    warnings: failure ? [failure.message, ...warnings] : warnings,
+    warnings: failure ? [releasePackageFailureSummary(failure), ...warnings] : warnings,
     package: packageRecord && {
       file: packageRecord.file,
       bytes: packageRecord.bytes,
@@ -803,7 +808,9 @@ async function main() {
     return;
   }
   if (failure)
-    console.error(`\n${failure instanceof RigError ? "RIG" : "FAIL"} ${failure.message}`);
+    console.error(
+      `\n${failure instanceof RigError ? "RIG" : "FAIL"} ${releasePackageFailureSummary(failure)}`
+    );
   process.exitCode = evidence.summary === "failed" ? 1 : 2;
 }
 

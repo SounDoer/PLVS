@@ -8,6 +8,7 @@ import {
   verifyArtifactBuffer,
   verifyUiSurface,
   parseArgs,
+  recordingWaitFailureObservation,
   selectSmokeInstance,
   runAgentControlSmoke,
 } from "./smoke-agent-control.mjs";
@@ -74,6 +75,7 @@ describe("desktop smoke orchestration", () => {
   function rig({
     initialUi = {},
     failScreenshot = false,
+    recordingFailure = null,
     showChanged = true,
     failCleanup = false,
     visual = null,
@@ -160,7 +162,12 @@ describe("desktop smoke orchestration", () => {
           result =
             label === "visual screenshot"
               ? { revision: 4, uiGeneration: 1, artifact }
-              : { outcome: "terminal", recording: { state: "completed", artifact } };
+              : recordingFailure
+                ? {
+                    outcome: "terminal",
+                    recording: { state: "failed", error: recordingFailure },
+                  }
+                : { outcome: "terminal", recording: { state: "completed", artifact } };
           break;
         }
         default:
@@ -251,6 +258,28 @@ describe("desktop smoke orchestration", () => {
     expect(evidence.cleanup).toMatchObject({
       status: "failed",
       observations: [expect.stringContaining("Settings cleanup failed")],
+    });
+  });
+
+  it("puts the recording failure reason and message in the error and evidence", async () => {
+    const recordingFailure = {
+      reason: "recordingEncoderFailed",
+      message: "Media Foundation: no samples were processed",
+    };
+    const options = rig({ recordingFailure });
+    const detail =
+      "recording wait ended with outcome terminal (recordingEncoderFailed): Media Foundation: no samples were processed.";
+    expect(
+      recordingWaitFailureObservation({
+        outcome: "terminal",
+        recording: { error: recordingFailure },
+      })
+    ).toBe(detail);
+    await expect(runAgentControlSmoke({ ...options, instanceId: "one" })).rejects.toThrow(detail);
+    const evidence = JSON.parse(readFileSync(join(options.outDir, "result.json"), "utf8"));
+    expect(evidence.scenarios.find(({ id }) => id === "silent-recording")).toMatchObject({
+      status: "failed",
+      observations: [detail],
     });
   });
 

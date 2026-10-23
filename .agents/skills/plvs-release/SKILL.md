@@ -532,6 +532,15 @@ for now, so dispatch while that PC is on and logged in.
 installing them, on an isolated profile, and checks Agent Control, Settings, Live capture of the rig
 tone and screenshot/recording evidence. Nobody opens the build by hand.
 
+Before dispatching, verify the package-smoke recording prerequisites as well as runner availability:
+
+- **Windows:** keep the desktop session active and unlocked. A locked session or disconnected Remote
+  Desktop session can produce no recording frames and Media Foundation error `0xC00D4A44`.
+- **macOS:** the Terminal that launches the runner must have **Screen & System Audio Recording**
+  permission. After granting it, fully quit Terminal, reopen it, and restart the runner. If the
+  runner's launch method changes, authorize the new launcher again. A missing permission surfaces as
+  `screenCapturePermissionRequired` in package smoke.
+
 When updater-chain dependencies changed, `release.yml` also calls `update-acceptance.yml`. Its
 self-hosted Windows, macOS and Linux jobs drive the packaged updater entirely through
 acceptance-only Agent Control actions, transfer evidence through Actions artifacts, and verify all

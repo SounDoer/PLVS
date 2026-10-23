@@ -91,6 +91,20 @@ describe("self-hosted runners on a public repository", () => {
     expect(workflow).not.toContain("secrets.");
   });
 
+  it.each(["release-package-smoke.yml", "capture-acceptance.yml", "update-acceptance.yml"])(
+    "%s bounds every artifact download",
+    (file) => {
+      const workflow = parse(workflows[file]);
+      const downloads = Object.values(workflow.jobs).flatMap((job) =>
+        (job.steps ?? []).filter((step) => step.uses?.startsWith("actions/download-artifact@"))
+      );
+      if (file !== "capture-acceptance.yml") expect(downloads.length).toBeGreaterThan(0);
+      for (const step of downloads) {
+        expect(step["timeout-minutes"], step.name).toBe(10);
+      }
+    }
+  );
+
   it.each([
     ["capture-acceptance.yml", "capture-smoke"],
     ["release-package-smoke.yml", "package-smoke"],

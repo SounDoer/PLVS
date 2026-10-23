@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // Fetches the trimmed FFmpeg sidecar binaries from the dedicated GitHub Release into
 // `src-tauri/binaries/`. Idempotent: a file already present with the expected SHA-256 is skipped,
-// so this is safe to run before every desktop build. See docs/ffmpeg-sidecar-build.md.
+// so this is safe to run before every desktop build. Verified downloads are cached outside the
+// checkout; set PLVS_FFMPEG_CACHE to override the platform user-cache location. See
+// docs/ffmpeg-sidecar-build.md.
 
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-import { dirname, join } from "node:path";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const TAG = "ffmpeg-sidecar-7.1.5-r1";
@@ -51,6 +54,19 @@ const ASSETS = {
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "src-tauri", "binaries");
 
+export function ffmpegCacheDirectory({
+  platform = process.platform,
+  env = process.env,
+  home = homedir(),
+} = {}) {
+  if (env.PLVS_FFMPEG_CACHE?.trim()) return resolve(env.PLVS_FFMPEG_CACHE);
+  if (platform === "win32") {
+    return join(env.LOCALAPPDATA || join(home, "AppData", "Local"), "PLVS", "ffmpeg-sidecars");
+  }
+  if (platform === "darwin") return join(home, "Library", "Caches", "PLVS", "ffmpeg-sidecars");
+  return join(env.XDG_CACHE_HOME || join(home, ".cache"), "plvs", "ffmpeg-sidecars");
+}
+
 async function fileSha256(path) {
   return createHash("sha256")
     .update(await readFile(path))
@@ -92,9 +108,9 @@ function verifyRuntime(dest, name) {
       throw new Error(`could not inspect dynamic-library dependencies for ${name}`);
     }
     const allowed = new Set(["libc.so.6", "libm.so.6"]);
-    const dependencies = [...dynamic.stdout.matchAll(/\(NEEDED\).*Shared library: \[([^\]]+)\]/g)].map(
-      (match) => match[1]
-    );
+    const dependencies = [
+      ...dynamic.stdout.matchAll(/\(NEEDED\).*Shared library: \[([^\]]+)\]/g),
+    ].map((match) => match[1]);
     const unexpected = dependencies.filter((dependency) => !allowed.has(dependency));
     if (unexpected.length) {
       throw new Error(
@@ -129,29 +145,132 @@ function verifyRuntime(dest, name) {
   }
 }
 
-async function ensureAsset({ name, sha256: expected }) {
-  const dest = join(outDir, name);
+async function writeAtomically(path, bytes, platform) {
+  await mkdir(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
+  try {
+    await writeFile(temporary, bytes);
+    if (platform !== "win32") await chmod(temporary, 0o755);
+    try {
+      await rename(temporary, path);
+    } catch (error) {
+      if (platform !== "win32" || !["EEXIST", "EPERM"].includes(error.code)) throw error;
+
+      // Windows rename does not reliably replace an existing file. Preserve the old file until
+      // the new one is in place so a failed replacement does not leave the destination missing.
+      const previous = `${temporary}.previous`;
+      await rename(path, previous);
+      try {
+        await rename(temporary, path);
+      } catch (replacementError) {
+        await rename(previous, path);
+        throw replacementError;
+      }
+      await rm(previous, { force: true });
+    }
+  } finally {
+    await rm(temporary, { force: true });
+  }
+}
+
+function retryableStatus(status) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+export async function downloadWithRetry(
+  url,
+  {
+    fetchImpl = fetch,
+    sleepImpl = (ms) => new Promise((done) => setTimeout(done, ms)),
+    log = console,
+  } = {}
+) {
+  const attempts = 3;
+  let lastError;
+  let attemptsUsed = 0;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    attemptsUsed = attempt;
+    try {
+      const response = await fetchImpl(url, { redirect: "follow" });
+      if (!response.ok) {
+        const error = new Error(`download failed (${response.status}) for ${url}`);
+        error.retryable = retryableStatus(response.status);
+        throw error;
+      }
+      return Buffer.from(await response.arrayBuffer());
+    } catch (error) {
+      lastError = error;
+      if (error.retryable === false || attempt === attempts) break;
+      const delay = 1_000 * 2 ** (attempt - 1);
+      log.warn(
+        `! download attempt ${attempt}/${attempts} failed: ${error.message}; retrying in ${delay} ms`
+      );
+      await sleepImpl(delay);
+    }
+  }
+  const count = `${attemptsUsed} attempt${attemptsUsed === 1 ? "" : "s"}`;
+  throw new Error(`download failed after ${count} for ${url}: ${lastError.message}`);
+}
+
+export async function ensureAsset(
+  { name, sha256: expected },
+  {
+    outputDirectory = outDir,
+    cacheDirectory = ffmpegCacheDirectory(),
+    platform = process.platform,
+    fetchImpl = fetch,
+    sleepImpl,
+    verifyRuntimeImpl = verifyRuntime,
+    log = console,
+  } = {}
+) {
+  const dest = join(outputDirectory, name);
   if (existsSync(dest) && (await fileSha256(dest)) === expected) {
-    verifyRuntime(dest, name);
-    console.log(`✓ ${name} present and verified`);
+    verifyRuntimeImpl(dest, name);
+    log.log(`✓ ${name} present and verified`);
     return;
   }
+
+  const cached = join(cacheDirectory, TAG, name);
+  if (existsSync(cached)) {
+    if ((await fileSha256(cached)) === expected) {
+      const bytes = await readFile(cached);
+      await writeAtomically(dest, bytes, platform);
+      const installed = await fileSha256(dest);
+      if (installed !== expected) {
+        throw new Error(`checksum mismatch after copying cached ${name}`);
+      }
+      verifyRuntimeImpl(dest, name);
+      log.log(`✓ ${name} restored from verified cache`);
+      return;
+    }
+    log.warn(`! ignoring cached ${name}: checksum mismatch`);
+  }
+
   const url = `${BASE}/${name}`;
-  console.log(`↓ downloading ${name} …`);
-  const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok) throw new Error(`download failed (${res.status}) for ${url}`);
-  const buf = Buffer.from(await res.arrayBuffer());
+  log.log(`↓ downloading ${name} …`);
+  const buf = await downloadWithRetry(url, { fetchImpl, sleepImpl, log });
   const got = createHash("sha256").update(buf).digest("hex");
   if (got !== expected) {
     throw new Error(`checksum mismatch for ${name}\n  expected ${expected}\n  got      ${got}`);
   }
-  await writeFile(dest, buf);
-  if (process.platform !== "win32") await chmod(dest, 0o755); // sidecars must be executable on Unix
-  verifyRuntime(dest, name);
-  console.log(`✓ ${name} downloaded and verified (${buf.length} bytes)`);
+  await writeAtomically(dest, buf, platform);
+  if ((await fileSha256(dest)) !== expected) {
+    throw new Error(`checksum mismatch after installing ${name}`);
+  }
+  verifyRuntimeImpl(dest, name);
+  try {
+    await writeAtomically(cached, buf, platform);
+    if ((await fileSha256(cached)) !== expected) {
+      throw new Error(`checksum mismatch after caching ${name}`);
+    }
+  } catch (error) {
+    log.warn(`! could not cache ${name}: ${error.message}`);
+  }
+  log.log(`✓ ${name} downloaded and verified (${buf.length} bytes)`);
 }
 
-async function main() {
+export async function main() {
   const assets = ASSETS[process.platform];
   if (!assets) {
     console.warn(
@@ -161,10 +280,13 @@ async function main() {
     return;
   }
   await mkdir(outDir, { recursive: true });
-  for (const asset of assets) await ensureAsset(asset);
+  const cacheDirectory = ffmpegCacheDirectory();
+  for (const asset of assets) await ensureAsset(asset, { cacheDirectory });
 }
 
-main().catch((err) => {
-  console.error(`FFmpeg sidecar fetch failed: ${err.message}`);
-  process.exit(1);
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(`FFmpeg sidecar fetch failed: ${err.message}`);
+    process.exit(1);
+  });
+}

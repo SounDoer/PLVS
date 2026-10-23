@@ -165,18 +165,21 @@ jobs:
           persist-credentials: false
       - name: Download Windows evidence
         if: env.REQUIRED == 'true'
+        timeout-minutes: 10
         uses: actions/download-artifact@v8
         with:
           name: update-acceptance-windows
           path: update-evidence/windows
       - name: Download macOS evidence
         if: env.REQUIRED == 'true'
+        timeout-minutes: 10
         uses: actions/download-artifact@v8
         with:
           name: update-acceptance-macos
           path: update-evidence/macos
       - name: Download Linux evidence
         if: env.REQUIRED == 'true'
+        timeout-minutes: 10
         uses: actions/download-artifact@v8
         with:
           name: update-acceptance-linux

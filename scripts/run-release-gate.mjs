@@ -43,7 +43,7 @@ if (updateAcceptanceChanges.paths.length > 0) {
   );
   for (const path of updateAcceptanceChanges.paths) console.log(`  ${path}`);
   console.log(
-    "Exact-SHA Windows and macOS update acceptance will run automatically on the self-hosted runners before the Release draft is assembled."
+    "Exact-SHA Windows, macOS and Linux update acceptance will run automatically on the self-hosted runners before the Release draft is assembled."
   );
   run("Local update acceptance evidence (advisory)", "node", [
     "scripts/report-update-acceptance.mjs",

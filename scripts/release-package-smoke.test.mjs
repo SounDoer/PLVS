@@ -15,6 +15,7 @@ import {
   installedPackageNames,
   missingDebDependencies,
   parseArgs,
+  releasePackageFailureSummary,
   requireRecordingScenario,
   selectRigDevice,
   stagedLayout,
@@ -148,6 +149,12 @@ describe("release-package smoke", () => {
     }
     const recorded = { ...unsupported, status: "passed" };
     expect(requireRecordingScenario("linux", [passed, recorded])).toEqual([passed, recorded]);
+  });
+
+  it("preserves nested recording diagnostics in the package failure summary", () => {
+    const detail =
+      "recording wait ended with outcome terminal (recordingEncoderFailed): Media Foundation: no samples were processed.";
+    expect(releasePackageFailureSummary(new Error(detail))).toBe(detail);
   });
 
   it("names each unmet deb dependency group", () => {
