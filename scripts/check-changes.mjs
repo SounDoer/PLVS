@@ -3,7 +3,8 @@ import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// Keep this deliberately narrow. Shared dependencies and the classifier itself require full CI.
+// Keep the website-only fast path deliberately narrow. Shared dependencies and the classifier
+// itself require broader lanes.
 const websiteScripts = new Set([
   "build-website.mjs",
   "validate-website.mjs",
@@ -20,19 +21,186 @@ const websiteScripts = new Set([
   "websiteReleaseLinks.test.js",
 ]);
 
+const frontendFiles = new Set([
+  ".nvmrc",
+  ".prettierrc",
+  "components.json",
+  "eslint-plugin-plvs-adr-theme.js",
+  "eslint.config.js",
+  "index.html",
+  "jsconfig.json",
+  "sharesets-preview.html",
+  "vite.config.js",
+  "vitest.setup.js",
+]);
+const sharedDependencyFiles = new Set(["package.json", "package-lock.json"]);
+const nativeFiles = new Set(["rust-toolchain.toml"]);
+const classifierFiles = new Set(["scripts/check-changes.mjs", "scripts/check-changes.test.js"]);
+const sharedPackageFiles = new Set([
+  "package.json",
+  "package-lock.json",
+  "src-tauri/Cargo.toml",
+  "src-tauri/Cargo.lock",
+  "src-tauri/build.rs",
+  "src-tauri/plvs-agent.json",
+  "src-tauri/tauri.conf.json",
+  "src-tauri/tauri.cli-sidecar.conf.json",
+  "src-tauri/tauri.no-updater.conf.json",
+  "scripts/build-plvs-cli.mjs",
+  "scripts/fetch-ffmpeg-sidecar.mjs",
+  "scripts/verify-license-assets.mjs",
+]);
+const sharedPackageSourcePattern = /^src-tauri\/src\/(?:doctor|cli_[^/]+|sidecar)\.rs$/;
+const windowsPackageFiles = new Set([
+  "src-tauri/tauri.windows.conf.json",
+  "scripts/verify-windows-installer.ps1",
+]);
+const macosPackageFiles = new Set([
+  "src-tauri/tauri.macos.conf.json",
+  "scripts/verify-macos-dmg.sh",
+]);
+const linuxPackageFiles = new Set([
+  "scripts/build-linux-deb.mjs",
+  "scripts/generate-sidecar-fixtures.mjs",
+  "scripts/verify-linux-deb-clean.sh",
+  "scripts/verify-linux-deb.sh",
+  "scripts/verify-linux-desktop.py",
+]);
+const contractRoots = [
+  ".agents/",
+  ".claude/",
+  ".codex/",
+  ".github/",
+  ".superpowers/",
+  "assets/",
+  "docs/",
+  "fixtures/",
+  "licenses/",
+  "scripts/",
+  "sharesets/",
+];
+const contractFiles = new Set([
+  ".editorconfig",
+  ".gitattributes",
+  ".gitignore",
+  "AGENTS.md",
+  "CHANGELOG.md",
+  "CLAUDE.md",
+  "CONTRIBUTING.md",
+  "LICENSE",
+  "README.md",
+  "THIRD-PARTY-NOTICES.md",
+]);
+
+function isWebsitePath(path) {
+  return (
+    (path.startsWith("website/") &&
+      !path.split("/").some((part) => part.startsWith(".")) &&
+      /\.(?:html|css|js|json|svg|png|webp|jpg|jpeg|gif|ico|woff2?|txt)$/.test(path)) ||
+    /^docs\/user\/.+\.md$/.test(path) ||
+    (path.startsWith("scripts/") && websiteScripts.has(path.slice(8)))
+  );
+}
+
+function laneForPath(path) {
+  if (classifierFiles.has(path)) return { frontend: true, native: true, known: true };
+  if (path.startsWith("src-tauri/") || nativeFiles.has(path)) {
+    return { frontend: false, native: true, known: true };
+  }
+  if (path.startsWith("shared/")) return { frontend: true, native: true, known: true };
+  if (path.startsWith("src/") || path.startsWith("public/") || frontendFiles.has(path)) {
+    return { frontend: true, native: false, known: true };
+  }
+  // npm dependencies include the Tauri build CLI as well as frontend packages. Keep dependency
+  // changes on the full lane until package checks provide a narrower independent safety net.
+  if (sharedDependencyFiles.has(path)) return { frontend: true, native: true, known: true };
+  if (isWebsitePath(path)) return { frontend: false, native: false, known: true };
+  if (contractFiles.has(path) || contractRoots.some((root) => path.startsWith(root))) {
+    return { frontend: false, native: false, known: true };
+  }
+  return { frontend: true, native: true, known: false };
+}
+
+function packageLanesForPath(path) {
+  const all =
+    classifierFiles.has(path) ||
+    path === ".github/workflows/package-check.yml" ||
+    sharedPackageFiles.has(path) ||
+    sharedPackageSourcePattern.test(path);
+  return {
+    package_windows: all || windowsPackageFiles.has(path) || path.startsWith("src-tauri/nsis/"),
+    package_macos: all || macosPackageFiles.has(path),
+    package_linux:
+      all ||
+      linuxPackageFiles.has(path) ||
+      path.startsWith("src-tauri/linux-update-installer/") ||
+      /^src-tauri\/tauri\.linux-[^/]+\.conf\.json$/.test(path),
+  };
+}
+
+const fullLanes = {
+  contracts: true,
+  frontend: true,
+  native: true,
+  package_windows: true,
+  package_macos: true,
+  package_linux: true,
+};
+
 export function classifyPaths(paths) {
   const files = [...new Set(paths)].sort();
-  const unknown = files.filter(
-    (path) =>
-      !(
-        (path.startsWith("website/") &&
-          !path.split("/").some((part) => part.startsWith(".")) &&
-          /\.(?:html|css|js|json|svg|png|webp|jpg|jpeg|gif|ico|woff2?|txt)$/.test(path)) ||
-        /^docs\/user\/.+\.md$/.test(path) ||
-        (path.startsWith("scripts/") && websiteScripts.has(path.slice(8)))
-      )
-  );
-  return { scope: files.length && !unknown.length ? "website" : "full", files, unknown };
+  if (files.length && files.every(isWebsitePath)) {
+    return {
+      scope: "website",
+      files,
+      unknown: [],
+      lanes: {
+        contracts: false,
+        frontend: false,
+        native: false,
+        package_windows: false,
+        package_macos: false,
+        package_linux: false,
+      },
+    };
+  }
+  let frontend = false;
+  let native = false;
+  let packageWindows = false;
+  let packageMacos = false;
+  let packageLinux = false;
+  const unknown = [];
+  for (const file of files) {
+    const lane = laneForPath(file);
+    frontend ||= lane.frontend;
+    native ||= lane.native;
+    const packages = packageLanesForPath(file);
+    packageWindows ||= packages.package_windows;
+    packageMacos ||= packages.package_macos;
+    packageLinux ||= packages.package_linux;
+    if (!lane.known) unknown.push(file);
+  }
+  if (!files.length) {
+    return { scope: "native", files, unknown, lanes: { ...fullLanes } };
+  }
+  if (unknown.length) {
+    packageWindows = true;
+    packageMacos = true;
+    packageLinux = true;
+  }
+  return {
+    scope: native ? "native" : frontend ? "frontend" : "contracts",
+    files,
+    unknown,
+    lanes: {
+      contracts: true,
+      frontend,
+      native,
+      package_windows: packageWindows,
+      package_macos: packageMacos,
+      package_linux: packageLinux,
+    },
+  };
 }
 
 export function inspectChanges({ base, head = "HEAD", working = true, cwd = process.cwd() }) {
@@ -73,9 +241,10 @@ export function inspectChanges({ base, head = "HEAD", working = true, cwd = proc
     return { ...classifyPaths(files.filter(Boolean)), base: baseSha, head: headSha };
   } catch (error) {
     return {
-      scope: "full",
+      scope: "native",
       files: [],
       unknown: [],
+      lanes: { ...fullLanes },
       reason: `Cannot establish change range: ${error.message}`,
     };
   }
@@ -99,15 +268,37 @@ function main(args) {
       execFileSync("git", ["fetch", "origin", "main"], { stdio: "pipe" });
       base = "origin/main";
     } catch {
-      result = { scope: "full", reason: "Cannot refresh origin/main; using the full gate." };
+      result = {
+        scope: "native",
+        lanes: { ...fullLanes },
+        reason: "Cannot refresh origin/main; using the full gate.",
+      };
     }
   }
   result ??= inspectChanges({ base, head, working });
   console.log(JSON.stringify(result, null, 2));
-  if (process.env.GITHUB_OUTPUT)
+  if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `scope=${result.scope}\n`);
+    for (const lane of [
+      "contracts",
+      "frontend",
+      "native",
+      "package_windows",
+      "package_macos",
+      "package_linux",
+    ]) {
+      appendFileSync(process.env.GITHUB_OUTPUT, `${lane}=${result.lanes?.[lane] === true}\n`);
+    }
+  }
   if (run) {
-    const command = result.scope === "website" ? "website:verify" : "check";
+    const command =
+      result.scope === "website"
+        ? "website:verify"
+        : result.scope === "contracts"
+          ? "check:contracts"
+          : result.scope === "frontend"
+            ? "check:frontend"
+            : "check";
     // Only fixed script names enter cmd.exe; no revision or path is interpolated into a shell.
     const child =
       process.platform === "win32"

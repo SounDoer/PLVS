@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("release", "preview")]
+  [ValidateSet("stable", "preview")]
   [string]$Identity = "stable"
 )
 

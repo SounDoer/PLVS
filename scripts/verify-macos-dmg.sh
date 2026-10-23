@@ -3,10 +3,15 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 identity="${1:-stable}"
+verification="${2:-release}"
 case "$identity" in
   stable) app_name=PLVS; app_id=com.soundoer.plvs ;;
   preview) app_name="PLVS Preview"; app_id=com.soundoer.plvs.preview ;;
-  *) echo "Usage: verify-macos-dmg.sh [stable|preview]" >&2; exit 2 ;;
+  *) echo "Usage: verify-macos-dmg.sh [stable|preview] [release|routine]" >&2; exit 2 ;;
+esac
+case "$verification" in
+  release|routine) ;;
+  *) echo "Usage: verify-macos-dmg.sh [stable|preview] [release|routine]" >&2; exit 2 ;;
 esac
 dmg_dir="$repo_root/src-tauri/target/release/bundle/dmg"
 dmg="$(find "$dmg_dir" -maxdepth 1 -name '*.dmg' -print -quit)"
@@ -28,9 +33,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-codesign --verify --strict --verbose=2 "$dmg"
-xcrun stapler validate "$dmg"
-spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
+if [[ "$verification" == release ]]; then
+  codesign --verify --strict --verbose=2 "$dmg"
+  xcrun stapler validate "$dmg"
+  spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
+fi
 
 hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse -quiet
 
@@ -45,9 +52,11 @@ if [[ "$bundle_id" != "$app_id" ]]; then
   exit 1
 fi
 
-codesign --verify --deep --strict --verbose=2 "$app"
-xcrun stapler validate "$app"
-spctl --assess --type execute --verbose=4 "$app"
+if [[ "$verification" == release ]]; then
+  codesign --verify --deep --strict --verbose=2 "$app"
+  xcrun stapler validate "$app"
+  spctl --assess --type execute --verbose=4 "$app"
+fi
 
 main_binary="$app/Contents/MacOS/plvs"
 if [[ ! -x "$main_binary" ]]; then
@@ -127,14 +136,14 @@ if (!report["paths"]["dataDir"].endsWith(process.env.APP_ID)) {
 }
 NODE
 
-if [[ "$identity" == preview ]]; then
-  # Preview compiles the updater out and must not ship an update payload.
+if [[ "$identity" == preview || "$verification" == routine ]]; then
+  # Preview and routine CI compile updater artifacts out and must not ship an update payload.
   if find "$repo_root/src-tauri/target/release/bundle/macos" -maxdepth 1 -name '*.app.tar.gz*' |
     grep -q .; then
-    echo "Preview produced a macOS updater payload" >&2
+    echo "$identity $verification build produced a macOS updater payload" >&2
     exit 1
   fi
-  echo "macOS Preview DMG smoke check passed: $dmg"
+  echo "macOS $identity $verification DMG smoke check passed: $dmg"
   exit 0
 fi
 

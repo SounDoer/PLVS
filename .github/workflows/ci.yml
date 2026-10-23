@@ -6,9 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   licenses:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -21,8 +26,15 @@ jobs:
 
   scope:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       scope: ${{ steps.changes.outputs.scope }}
+      contracts: ${{ steps.changes.outputs.contracts }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      native: ${{ steps.changes.outputs.native }}
+      package_windows: ${{ steps.changes.outputs.package_windows }}
+      package_macos: ${{ steps.changes.outputs.package_macos }}
+      package_linux: ${{ steps.changes.outputs.package_linux }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -39,6 +51,7 @@ jobs:
 
   website:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -48,10 +61,11 @@ jobs:
       - run: npm ci
       - run: npm run website:verify
 
-  frontend:
-    needs: scope
-    if: needs.scope.outputs.scope != 'website'
+  contracts:
+    needs: [scope, licenses]
+    if: needs.scope.outputs.contracts == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -69,6 +83,53 @@ jobs:
       - name: Verify package / Cargo versions match
         run: npm run version:check
 
+      - name: Verify Sharesets source
+        run: npm run sharesets:source:check
+
+      # The deterministic dialogue fixture test only decodes its attributed sources; use the
+      # reviewed decode-only sidecar instead of installing the distribution encoder through apt.
+      - name: Fetch FFmpeg decoder sidecar
+        run: npm run ffmpeg:fetch
+
+      - name: Test repository contracts
+        if: needs.scope.outputs.frontend != 'true'
+        run: npm test
+        env:
+          PLVS_FFMPEG: ${{ github.workspace }}/src-tauri/binaries/ffmpeg-x86_64-unknown-linux-gnu
+
+      - name: Test frontend and repository contracts (with coverage)
+        if: needs.scope.outputs.frontend == 'true'
+        run: npm run test:coverage
+        env:
+          PLVS_FFMPEG: ${{ github.workspace }}/src-tauri/binaries/ffmpeg-x86_64-unknown-linux-gnu
+
+      - name: Upload coverage report
+        if: needs.scope.outputs.frontend == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+  frontend:
+    needs: [scope, licenses]
+    if: needs.scope.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Format (Prettier)
         run: npm run format:check
 
@@ -78,33 +139,17 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # The dialogue benchmark generator needs a full encoder; shipped sidecars are decode-only.
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      # One run: the coverage command executes the whole suite and fails on any failing test.
-      - name: Test (with coverage)
-        run: npm run test:coverage
-        env:
-          PLVS_FFMPEG: ffmpeg
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 14
-
       - name: Build frontend (Vite)
         run: npm run build
 
   rust:
-    needs: scope
-    if: needs.scope.outputs.scope != 'website'
+    needs: [scope, licenses]
+    if: needs.scope.outputs.native == 'true'
     # ubuntu-24.04 (glibc 2.39) provides the __isoc23_* symbols the prebuilt ONNX Runtime (ort,
     # pulled in by the ten-vad/firered-vad adapters) is linked against; 22.04 (glibc 2.35) fails to
     # link them.
     runs-on: ubuntu-24.04
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -113,9 +158,11 @@ jobs:
         run: rustup toolchain install --no-self-update
 
       - name: Install Linux dependencies (Tauri / WebKit / audio)
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y \
             libasound2-dev \
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
@@ -136,9 +183,10 @@ jobs:
         run: cargo test --workspace
 
   rust-windows:
-    needs: scope
-    if: needs.scope.outputs.scope != 'website'
+    needs: [scope, licenses]
+    if: needs.scope.outputs.native == 'true'
     runs-on: windows-2025-vs2026
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -151,10 +199,6 @@ jobs:
       - name: Fetch ffmpeg sidecar binaries
         run: node scripts/fetch-ffmpeg-sidecar.mjs
 
-      - name: Format (rustfmt)
-        working-directory: src-tauri
-        run: cargo fmt --all -- --check
-
       - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --workspace --all-targets -- -D warnings
@@ -164,9 +208,10 @@ jobs:
         run: cargo test --workspace
 
   rust-macos:
-    needs: scope
-    if: needs.scope.outputs.scope != 'website'
+    needs: [scope, licenses]
+    if: needs.scope.outputs.native == 'true'
     runs-on: macos-26
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -179,10 +224,6 @@ jobs:
       - name: Fetch ffmpeg sidecar binaries
         run: node scripts/fetch-ffmpeg-sidecar.mjs
 
-      - name: Format (rustfmt)
-        working-directory: src-tauri
-        run: cargo fmt --all -- --check
-
       - name: Clippy
         working-directory: src-tauri
         run: cargo clippy --workspace --all-targets -- -D warnings
@@ -190,3 +231,15 @@ jobs:
       - name: Test
         working-directory: src-tauri
         run: cargo test --workspace
+
+  package-check:
+    needs: [scope, licenses]
+    if: >-
+      needs.scope.outputs.package_windows == 'true' ||
+      needs.scope.outputs.package_macos == 'true' ||
+      needs.scope.outputs.package_linux == 'true'
+    uses: ./.github/workflows/package-check.yml
+    with:
+      windows: ${{ needs.scope.outputs.package_windows == 'true' }}
+      macos: ${{ needs.scope.outputs.package_macos == 'true' }}
+      linux: ${{ needs.scope.outputs.package_linux == 'true' }}

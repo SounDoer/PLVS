@@ -152,18 +152,31 @@ The shared homepage/README hero uses `scripts/marketing/capture-live-hero.mjs` a
 deployed website.
 
 Use `npm run check:changes` before committing or pushing. It refreshes `origin/main`, checks all
-pending commits plus staged, unstaged and untracked changes, and runs `website:verify` only when
-every changed path belongs to the explicit website allowlist. Reverted changes within the pending
-range still count. Shared code, dependencies, workflow configuration, unknown paths, empty ranges,
-and missing or divergent baselines use the full `npm run check`. After a rebase or further edits,
-check again. For an explicit range, use `-- --base <base-sha> --head <head-sha>`; only CI should
-normally add `--committed-only`. Do not narrow the base to skip earlier pending commits.
+pending commits plus staged, unstaged and untracked changes, then selects the narrowest safe local
+gate: `website:verify` for website-only work, `check:contracts` for documentation and tooling,
+`check:frontend` for frontend work, or the full `check` for native/shared/unknown inputs. Reverted
+changes within the pending range still count. Unknown paths, empty ranges, and missing or divergent
+baselines fail open to the full gate. After a rebase or further edits, check again. For an explicit
+range, use `-- --base <base-sha> --head <head-sha>`; only CI should normally add
+`--committed-only`. Do not narrow the base to skip earlier pending commits.
 
 `website:verify` assembles and validates the complete site and runs website, guide, and deployment
 contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
-widths; unit tests cannot verify alignment. CI uses the same classifier for the complete push/PR:
-the website job always runs, while website-only changes skip desktop frontend and Rust jobs.
-Desktop releases retain the full local preflight and exact-SHA CI gate.
+widths; unit tests cannot verify alignment. CI uses the same classifier for the complete push/PR
+and exposes independent contracts, frontend, native, and per-platform package lanes. Pure docs or
+tooling changes run the repository contracts without compiling Rust; frontend-only changes do not
+start Rust; native changes still run Rust checks on Ubuntu, Windows, and macOS. Unknown paths select
+every lane. The website job continues to run on every push/PR, while website-only changes skip the
+other lanes.
+
+`package-check.yml` is the ordinary, non-publishing package gate on GitHub-hosted runners. Shared
+Doctor, CLI, sidecar, dependency, or packaging inputs select Windows, macOS, and Ubuntu together;
+platform-only installer inputs select only that platform. Windows silently installs and removes an
+NSIS candidate, macOS mounts an unsigned/no-updater DMG, and Ubuntu runs the deb inside a disposable
+fresh userspace. The workflow also runs all three every Sunday so a missing classifier path cannot
+remain hidden indefinitely. Signing, notarization, updater artifacts, physical capture, and update
+acceptance remain release-only exact-SHA gates. Desktop releases retain the full local preflight and
+exact-SHA CI gate.
 
 Website publication does not bump the desktop version or create a GitHub Release. After checking
 and committing the intended changes:

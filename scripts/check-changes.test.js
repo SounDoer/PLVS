@@ -6,27 +6,102 @@ import { describe, expect, it } from "vitest";
 import { classifyPaths, inspectChanges } from "./check-changes.mjs";
 
 describe("change scope", () => {
-  it("allows website code and guide edits, but rejects mixed, shared and unknown inputs", () => {
+  it("separates website, contracts, frontend and native lanes", () => {
     expect(
       classifyPaths([
         "website/assets/sharesets.css",
         "docs/user/intro.md",
         "scripts/build-website.mjs",
-      ]).scope
-    ).toBe("website");
+      ])
+    ).toMatchObject({
+      scope: "website",
+      lanes: {
+        contracts: false,
+        frontend: false,
+        native: false,
+        package_windows: false,
+        package_macos: false,
+        package_linux: false,
+      },
+    });
+    expect(classifyPaths(["CONTRIBUTING.md", "scripts/release-package-smoke.mjs"])).toMatchObject({
+      scope: "contracts",
+      lanes: { contracts: true, frontend: false, native: false },
+    });
+    expect(classifyPaths(["src/App.jsx", "docs/history/notes/a.md"])).toMatchObject({
+      scope: "frontend",
+      lanes: { contracts: true, frontend: true, native: false },
+    });
     for (const file of [
-      "src/App.jsx",
-      "src-tauri/Cargo.toml",
       "package-lock.json",
-      ".github/workflows/ci.yml",
+      "shared/channel-layouts.json",
       "scripts/check-changes.mjs",
-      "scripts/new-generator.mjs",
+      "new-root.config",
       "website/CNAME",
       "website/.config.js",
     ]) {
-      expect(classifyPaths(["website/index.html", file]).scope).toBe("full");
+      expect(classifyPaths([file])).toMatchObject({
+        scope: "native",
+        lanes: { contracts: true, frontend: true, native: true },
+      });
     }
-    expect(classifyPaths([]).scope).toBe("full");
+    expect(classifyPaths(["src-tauri/Cargo.toml"])).toMatchObject({
+      scope: "native",
+      lanes: {
+        contracts: true,
+        frontend: false,
+        native: true,
+        package_windows: true,
+        package_macos: true,
+        package_linux: true,
+      },
+    });
+    expect(classifyPaths([])).toMatchObject({
+      scope: "native",
+      lanes: {
+        contracts: true,
+        frontend: true,
+        native: true,
+        package_windows: true,
+        package_macos: true,
+        package_linux: true,
+      },
+    });
+  });
+
+  it("selects package checks symmetrically and by platform", () => {
+    for (const file of [
+      "package-lock.json",
+      "scripts/fetch-ffmpeg-sidecar.mjs",
+      "src-tauri/src/doctor.rs",
+      ".github/workflows/package-check.yml",
+    ]) {
+      expect(classifyPaths([file]).lanes).toMatchObject({
+        package_windows: true,
+        package_macos: true,
+        package_linux: true,
+      });
+    }
+    expect(classifyPaths(["src-tauri/nsis/installer-hooks.nsh"]).lanes).toMatchObject({
+      package_windows: true,
+      package_macos: false,
+      package_linux: false,
+    });
+    expect(classifyPaths(["src-tauri/tauri.macos.conf.json"]).lanes).toMatchObject({
+      package_windows: false,
+      package_macos: true,
+      package_linux: false,
+    });
+    expect(classifyPaths(["scripts/verify-linux-desktop.py"]).lanes).toMatchObject({
+      package_windows: false,
+      package_macos: false,
+      package_linux: true,
+    });
+    expect(classifyPaths(["new-root.config"]).lanes).toMatchObject({
+      package_windows: true,
+      package_macos: true,
+      package_linux: true,
+    });
   });
 
   it("covers all pending commits, reverted changes, renames, untracked and staged files", () => {
@@ -53,7 +128,7 @@ describe("change scope", () => {
       commit();
       write("website/index.html", "after");
       commit();
-      expect(inspectChanges({ base, cwd, working: false }).scope).toBe("full");
+      expect(inspectChanges({ base, cwd, working: false }).scope).toBe("native");
       const cleanBase = git("rev-parse", "HEAD");
       write("website/index.html", "another");
       commit();
@@ -61,18 +136,18 @@ describe("change scope", () => {
       write("shared.js", "staged change");
       git("add", "shared.js");
       write("shared.js", "before");
-      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("full");
+      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("native");
       git("reset", "--hard", "HEAD");
       write("new.config", "untracked");
-      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("full");
+      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("native");
       git("add", "new.config");
-      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("full");
+      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("native");
       git("reset", "--hard", "HEAD");
       git("mv", "shared.js", "website/shared.js");
       commit();
-      expect(inspectChanges({ base: cleanBase, cwd, working: false }).scope).toBe("full");
-      expect(inspectChanges({ base: "missing", cwd }).scope).toBe("full");
-      expect(inspectChanges({ base: "HEAD", head: base, cwd }).scope).toBe("full");
+      expect(inspectChanges({ base: cleanBase, cwd, working: false }).scope).toBe("native");
+      expect(inspectChanges({ base: "missing", cwd }).scope).toBe("native");
+      expect(inspectChanges({ base: "HEAD", head: base, cwd }).scope).toBe("native");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

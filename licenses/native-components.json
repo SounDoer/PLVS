@@ -48,7 +48,7 @@
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",
-      "sha256": "2dfc5230343ee1a5ff7457caaf00efda85f21eece0054df5118ba88f228eb9f2"
+      "sha256": "8f6443255bc03cab380dd815a601cfbc5c7a19a79b56768d63b5445b24683dfd"
     },
     {
       "path": "scripts/build-ffmpeg-sidecars.sh",
