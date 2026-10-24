@@ -2060,7 +2060,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "ac963a05a71e6d1eb3db3bd31d91e7bbe0edb183b26e2d3c8899997b3b21ce31"
     },
-    "rust:tauri@2.12.1": {
+    "rust:tauri@2.12.2": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "34861012cff8d0d0063a7a745ec8c4cc8456b98079a68f7c2299e05f94f278b3"
     },
@@ -2080,11 +2080,11 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-dialog@2.8.1": {
+    "rust:tauri-plugin-dialog@2.8.3": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-fs@2.6.0": {
+    "rust:tauri-plugin-fs@2.7.1": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
@@ -2092,11 +2092,11 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-log@2.10.0": {
+    "rust:tauri-plugin-log@2.10.1": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-opener@2.7.0": {
+    "rust:tauri-plugin-opener@2.7.2": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
@@ -3200,7 +3200,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
-    "npm:@tauri-apps/plugin-global-shortcut@2.4.0": {
+    "npm:@tauri-apps/plugin-global-shortcut@2.4.1": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
@@ -3572,7 +3572,7 @@
       "license": "MIT",
       "noticeSha256": "f741d4442e55f700bf15df42e55f95b77f2f2461df44af463b7233200adb6739"
     },
-    "npm:tailwind-merge@3.6.0": {
+    "npm:tailwind-merge@3.7.0": {
       "license": "MIT",
       "noticeSha256": "08692c92df6c954cfbdde73df7746f039429e53422e1140b627952ed292524b8"
     },
@@ -3855,7 +3855,7 @@
     "npm:@types/esrecurse@4.3.1": "MIT",
     "npm:@types/json-schema@7.0.15": "MIT",
     "npm:@types/node@24.19.1": "MIT",
-    "npm:@vitejs/plugin-react@6.0.3": "MIT",
+    "npm:@vitejs/plugin-react@6.1.2": "MIT",
     "npm:@vitest/coverage-v8@4.1.8": "MIT",
     "npm:@vitest/expect@4.1.8": "MIT",
     "npm:@vitest/mocker@4.1.8": "MIT",
@@ -3934,7 +3934,7 @@
     "npm:get-east-asian-width@1.6.0": "MIT",
     "npm:get-stream@8.0.1": "MIT",
     "npm:glob-parent@6.0.2": "ISC",
-    "npm:globals@17.7.0": "MIT",
+    "npm:globals@17.13.0": "MIT",
     "npm:graceful-fs@4.2.11": "ISC",
     "npm:has-flag@4.0.0": "MIT",
     "npm:hashery@1.5.1": "MIT",
@@ -4108,7 +4108,7 @@
     "rust:autocfg@1.5.1": "Apache-2.0 OR MIT",
     "rust:cargo_toml@1.0.1": "Apache-2.0 OR MIT",
     "rust:cast@0.3.0": "MIT OR Apache-2.0",
-    "rust:cc@1.6.0": "MIT OR Apache-2.0",
+    "rust:cc@1.9.0": "MIT OR Apache-2.0",
     "rust:cfg_aliases@0.2.2": "MIT",
     "rust:cfg-expr@0.15.8": "MIT OR Apache-2.0",
     "rust:ciborium-io@0.2.2": "Apache-2.0",
@@ -4120,7 +4120,7 @@
     "rust:criterion-plot@0.8.2": "Apache-2.0 OR MIT",
     "rust:criterion@0.8.2": "Apache-2.0 OR MIT",
     "rust:embed-resource@3.0.11": "MIT",
-    "rust:find-msvc-tools@0.1.14": "MIT OR Apache-2.0",
+    "rust:find-msvc-tools@0.1.15": "MIT OR Apache-2.0",
     "rust:hmac-sha256@1.1.14": "ISC",
     "rust:itertools@0.13.0": "MIT OR Apache-2.0",
     "rust:lzma-rust2@0.15.8": "Apache-2.0",

@@ -2433,9 +2433,9 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 
 ========================================================================
-npm:@tauri-apps/plugin-global-shortcut@2.4.0
+npm:@tauri-apps/plugin-global-shortcut@2.4.1
 Declared license: MIT OR Apache-2.0
-Source: https://registry.npmjs.org/@tauri-apps/plugin-global-shortcut/-/plugin-global-shortcut-2.4.0.tgz
+Source: https://registry.npmjs.org/@tauri-apps/plugin-global-shortcut/-/plugin-global-shortcut-2.4.1.tgz
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -5500,9 +5500,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:tailwind-merge@3.6.0
+npm:tailwind-merge@3.7.0
 Declared license: MIT
-Source: https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.6.0.tgz
+Source: https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.7.0.tgz
 
 --- LICENSE.md ---
 MIT License
@@ -82221,9 +82221,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-dialog@2.8.1
+rust:tauri-plugin-dialog@2.8.3
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-dialog/2.8.1/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-dialog/2.8.3/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -82450,9 +82450,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-fs@2.6.0
+rust:tauri-plugin-fs@2.7.1
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-fs/2.6.0/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-fs/2.7.1/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -82908,9 +82908,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-log@2.10.0
+rust:tauri-plugin-log@2.10.1
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-log/2.10.0/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-log/2.10.1/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -83137,9 +83137,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-opener@2.7.0
+rust:tauri-plugin-opener@2.7.2
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-opener/2.7.0/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-opener/2.7.2/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -84680,9 +84680,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:tauri@2.12.1
+rust:tauri@2.12.2
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri/2.12.1/download
+Source: https://crates.io/api/v1/crates/tauri/2.12.2/download
 
 --- LICENSE-APACHE-2.0 ---
 
