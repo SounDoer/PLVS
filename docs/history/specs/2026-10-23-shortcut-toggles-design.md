@@ -1,6 +1,6 @@
 # Configurable Transport and Snapshot Shortcuts
 
-**Date:** 2026-10-23  
+**Date:** 2026-10-23
 **Status:** Approved
 
 ## Summary

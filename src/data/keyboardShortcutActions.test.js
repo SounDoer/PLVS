@@ -12,19 +12,19 @@ describe("KEYBOARD_SHORTCUT_ACTIONS", () => {
       {
         id: "toggleLiveCapture",
         label: "Start / Stop",
-        defaultAccelerator: "CmdOrCtrl+Shift+Space",
+        defaultAccelerator: "CmdOrCtrl+1",
       },
       {
         id: "toggleLiveSnapshot",
         label: "Live / Snapshot",
-        defaultAccelerator: "CmdOrCtrl+Shift+L",
+        defaultAccelerator: "CmdOrCtrl+2",
       },
-      { id: "clear", label: "Clear", defaultAccelerator: "CmdOrCtrl+K" },
+      { id: "clear", label: "Clear", defaultAccelerator: "CmdOrCtrl+3" },
     ]);
     expect(DEFAULT_KEYBOARD_SHORTCUTS).toEqual({
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-      clear: { accelerator: "CmdOrCtrl+K", global: false },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+      clear: { accelerator: "CmdOrCtrl+3", global: false },
     });
   });
 });
@@ -37,8 +37,8 @@ describe("normalizeKeyboardShortcuts", () => {
     });
 
     expect(normalized).toEqual({
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
       clear: { accelerator: "CmdOrCtrl+Alt+K", global: true },
     });
     expect(normalized).not.toBe(DEFAULT_KEYBOARD_SHORTCUTS);
@@ -52,9 +52,9 @@ describe("normalizeKeyboardShortcuts", () => {
         clear: "CmdOrCtrl+J",
       })
     ).toEqual({
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
       toggleLiveSnapshot: { accelerator: null, global: false },
-      clear: { accelerator: "CmdOrCtrl+K", global: false },
+      clear: { accelerator: "CmdOrCtrl+3", global: false },
     });
   });
 
@@ -65,8 +65,8 @@ describe("normalizeKeyboardShortcuts", () => {
         clearGlobal: true,
       })
     ).toEqual({
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
       clear: { accelerator: "CmdOrCtrl+Alt+K", global: true },
     });
   });
@@ -76,22 +76,36 @@ describe("normalizeKeyboardShortcuts", () => {
       normalizeKeyboardShortcuts({
         toggleLiveCapture: { accelerator: "CmdOrCtrl+Alt+K", global: false },
         toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Alt+K", global: true },
-        clear: { accelerator: "CmdOrCtrl+K", global: false },
+        clear: { accelerator: "CmdOrCtrl+3", global: false },
       }).toggleLiveSnapshot
-    ).toEqual({ accelerator: "CmdOrCtrl+Shift+L", global: false });
+    ).toEqual({ accelerator: "CmdOrCtrl+2", global: false });
+  });
+
+  it("moves the unreleased previous defaults to the numbered defaults", () => {
+    expect(
+      normalizeKeyboardShortcuts({
+        toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: true },
+        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+        clear: { accelerator: "CmdOrCtrl+K", global: false },
+      })
+    ).toEqual({
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: true },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+      clear: { accelerator: "CmdOrCtrl+3", global: false },
+    });
   });
 });
 
 describe("configuredShortcutConflict", () => {
   it("reports another configurable action with the same non-null accelerator", () => {
     expect(
-      configuredShortcutConflict(DEFAULT_KEYBOARD_SHORTCUTS, "toggleLiveSnapshot", "CmdOrCtrl+K")
+      configuredShortcutConflict(DEFAULT_KEYBOARD_SHORTCUTS, "toggleLiveSnapshot", "CmdOrCtrl+3")
     ).toBe("Clear");
   });
 
   it("ignores the current action and a null accelerator", () => {
     expect(
-      configuredShortcutConflict(DEFAULT_KEYBOARD_SHORTCUTS, "clear", "CmdOrCtrl+K")
+      configuredShortcutConflict(DEFAULT_KEYBOARD_SHORTCUTS, "clear", "CmdOrCtrl+3")
     ).toBeNull();
     expect(configuredShortcutConflict(DEFAULT_KEYBOARD_SHORTCUTS, "clear", null)).toBeNull();
   });

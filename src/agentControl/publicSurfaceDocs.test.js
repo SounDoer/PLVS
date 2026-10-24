@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { format } from "prettier";
 
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
@@ -155,9 +156,9 @@ const SETTINGS_AT_DEFAULTS = {
   openAtLogin: false,
   closeBehavior: "ask",
   keyboardShortcuts: {
-    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-    clear: { accelerator: "CmdOrCtrl+K", global: false },
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+    clear: { accelerator: "CmdOrCtrl+3", global: false },
   },
   interfaceSize: "default",
   historyRetentionSec: 3600,
@@ -311,7 +312,7 @@ describe("generated Agent Control reference", () => {
   });
 
   it("documents the settings fields", async () => {
-    await expect(settingsPage()).toMatchFileSnapshot(
+    await expect(await format(settingsPage(), { parser: "markdown" })).toMatchFileSnapshot(
       "../../docs/agent-control/generated/settings.md"
     );
   });

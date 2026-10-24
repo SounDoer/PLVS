@@ -64,8 +64,8 @@ describe("profileShape", () => {
       windowBounds: { x: 1, y: 3, width: 800, height: 601, isMaximized: true },
       captureDeviceId: "out:3",
       keyboardShortcuts: {
-        toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+        toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
         clear: { accelerator: "CmdOrCtrl+L", global: true },
       },
     });
@@ -84,9 +84,9 @@ describe("profileShape", () => {
       windowBounds: null,
       captureDeviceId: "default",
       keyboardShortcuts: {
-        toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-        clear: { accelerator: "CmdOrCtrl+K", global: false },
+        toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+        clear: { accelerator: "CmdOrCtrl+3", global: false },
       },
     });
   });

@@ -16,7 +16,7 @@ describe("useSettings keyboard shortcut wiring", () => {
   it("exposes the shortcut catalogue with safe defaults outside Tauri", () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current.keyboardShortcuts.clear).toEqual({
-      accelerator: "CmdOrCtrl+K",
+      accelerator: "CmdOrCtrl+3",
       global: false,
     });
     expect(typeof result.current.setShortcutGlobal).toBe("function");

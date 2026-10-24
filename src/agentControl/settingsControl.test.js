@@ -10,9 +10,9 @@ const current = {
   openAtLogin: false,
   closeBehavior: "ask",
   keyboardShortcuts: {
-    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-    clear: { accelerator: "CmdOrCtrl+K", global: false },
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+    clear: { accelerator: "CmdOrCtrl+3", global: false },
   },
   interfaceSize: "default",
   historyRetentionSec: 3600,
@@ -208,7 +208,7 @@ describe("Settings Control", () => {
     expect(planned.settings).toMatchObject({
       closeBehavior: "tray",
       keyboardShortcuts: {
-        clear: { accelerator: "CmdOrCtrl+K", global: true },
+        clear: { accelerator: "CmdOrCtrl+3", global: true },
       },
       historyRetentionSec: 1800,
     });
@@ -242,7 +242,7 @@ describe("Settings Control", () => {
       current,
       {
         keyboardShortcuts: {
-          toggleLiveSnapshot: { accelerator: "CmdOrCtrl+K" },
+          toggleLiveSnapshot: { accelerator: "CmdOrCtrl+3" },
           futureAction: { accelerator: "CmdOrCtrl+J" },
         },
       },

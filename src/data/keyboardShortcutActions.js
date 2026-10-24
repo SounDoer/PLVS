@@ -7,15 +7,21 @@ export const KEYBOARD_SHORTCUT_ACTIONS = Object.freeze([
   Object.freeze({
     id: "toggleLiveCapture",
     label: "Start / Stop",
-    defaultAccelerator: "CmdOrCtrl+Shift+Space",
+    defaultAccelerator: "CmdOrCtrl+1",
   }),
   Object.freeze({
     id: "toggleLiveSnapshot",
     label: "Live / Snapshot",
-    defaultAccelerator: "CmdOrCtrl+Shift+L",
+    defaultAccelerator: "CmdOrCtrl+2",
   }),
-  Object.freeze({ id: "clear", label: "Clear", defaultAccelerator: "CmdOrCtrl+K" }),
+  Object.freeze({ id: "clear", label: "Clear", defaultAccelerator: "CmdOrCtrl+3" }),
 ]);
+
+const PREVIOUS_DEFAULT_ACCELERATORS = Object.freeze({
+  toggleLiveCapture: "CmdOrCtrl+Shift+Space",
+  toggleLiveSnapshot: "CmdOrCtrl+Shift+L",
+  clear: "CmdOrCtrl+K",
+});
 
 export const KEYBOARD_SHORTCUT_ACTION_IDS = Object.freeze(
   KEYBOARD_SHORTCUT_ACTIONS.map(({ id }) => id)
@@ -72,6 +78,9 @@ export function normalizeKeyboardShortcuts(value, legacy = {}) {
   const used = new Set();
   for (const { id } of KEYBOARD_SHORTCUT_ACTIONS) {
     let binding = normalizedBinding(source[id], DEFAULT_KEYBOARD_SHORTCUTS[id]);
+    if (binding.accelerator === PREVIOUS_DEFAULT_ACCELERATORS[id]) {
+      binding = { ...binding, accelerator: DEFAULT_KEYBOARD_SHORTCUTS[id].accelerator };
+    }
     if (binding.accelerator !== null && used.has(binding.accelerator)) {
       const fallback = DEFAULT_KEYBOARD_SHORTCUTS[id];
       binding = used.has(fallback.accelerator)

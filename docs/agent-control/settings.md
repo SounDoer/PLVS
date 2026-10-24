@@ -65,7 +65,7 @@ available while a draft editor is open.
 `keyboardShortcuts` is a merge-patched object keyed by `toggleLiveCapture`,
 `toggleLiveSnapshot`, and `clear`. Each action contains `accelerator` and `global`; omitted actions
 and members retain their current values. The respective default accelerators are
-`CmdOrCtrl+Shift+Space`, `CmdOrCtrl+Shift+L`, and `CmdOrCtrl+K`, with Global off. An accelerator may
+`CmdOrCtrl+1`, `CmdOrCtrl+2`, and `CmdOrCtrl+3`, with Global off. An accelerator may
 be null to remove the binding, which also forces Global off. Other accelerator values use the same
 canonical, cross-platform Tauri form produced and validated by the GUI: at least one modifier plus
 exactly one non-modifier key. Display-form strings, bare modifiers, invalid chords, fixed PLVS

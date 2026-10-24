@@ -64,9 +64,9 @@ const publicSettings = {
   openAtLogin: false,
   closeBehavior: "ask",
   keyboardShortcuts: {
-    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-    clear: { accelerator: "CmdOrCtrl+K", global: false },
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+    clear: { accelerator: "CmdOrCtrl+3", global: false },
   },
   interfaceSize: "default",
   appearance: { mode: "system", themeId: null, resolvedThemeId: "plvs-dark" },

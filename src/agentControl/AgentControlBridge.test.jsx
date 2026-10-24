@@ -47,9 +47,9 @@ vi.mock("../settings/SettingsContext.jsx", () => ({
     shortcutCapturing: false,
     shortcutRegistrationErrors: {},
     keyboardShortcuts: {
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-      clear: { accelerator: "CmdOrCtrl+K", global: false },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+      clear: { accelerator: "CmdOrCtrl+3", global: false },
     },
     applyKeyboardShortcutsForControl: async () => {},
     themeControl: { readState: () => ({ appearance: {}, themes: [] }) },

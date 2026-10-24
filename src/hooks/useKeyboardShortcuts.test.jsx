@@ -12,9 +12,9 @@ vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../lib/shortcutPrefs.js", () => ({
   loadKeyboardShortcutPrefs: () =>
     Promise.resolve({
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: true },
-      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-      clear: { accelerator: "CmdOrCtrl+K", global: true },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: true },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+      clear: { accelerator: "CmdOrCtrl+3", global: true },
     }),
   saveKeyboardShortcutPrefs: () => Promise.resolve(),
   saveKeyboardShortcutPrefsForControl: saveForControl,
@@ -52,7 +52,7 @@ describe("useKeyboardShortcuts", () => {
     render(<Harness dispatch={dispatch} />);
 
     await waitFor(() => expect(register).toHaveBeenCalledTimes(2));
-    const clearCall = register.mock.calls.find(([accelerator]) => accelerator === "CmdOrCtrl+K");
+    const clearCall = register.mock.calls.find(([accelerator]) => accelerator === "CmdOrCtrl+3");
     clearCall[1]({ state: "Pressed" });
 
     await waitFor(() =>
@@ -119,9 +119,9 @@ describe("useKeyboardShortcuts", () => {
     ).rejects.toThrow("revision conflict");
 
     expect(register).toHaveBeenCalledWith("CmdOrCtrl+Alt+K", expect.any(Function));
-    expect(unregister).toHaveBeenCalledWith("CmdOrCtrl+K");
+    expect(unregister).toHaveBeenCalledWith("CmdOrCtrl+3");
     expect(unregister).toHaveBeenCalledWith("CmdOrCtrl+Alt+K");
-    expect(register).toHaveBeenCalledWith("CmdOrCtrl+K", expect.any(Function));
-    expect(latest.keyboardShortcuts.clear.accelerator).toBe("CmdOrCtrl+K");
+    expect(register).toHaveBeenCalledWith("CmdOrCtrl+3", expect.any(Function));
+    expect(latest.keyboardShortcuts.clear.accelerator).toBe("CmdOrCtrl+3");
   });
 });

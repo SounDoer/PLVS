@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts.js";
 
 const keyboardShortcuts = {
-  toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-  toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-  clear: { accelerator: "CmdOrCtrl+K", global: false },
+  toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+  toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+  clear: { accelerator: "CmdOrCtrl+3", global: false },
 };
 
 function keyDown(init) {
@@ -41,19 +41,19 @@ describe("useAppKeyboardShortcuts", () => {
       { initialProps: { running: false, showClock: false } }
     );
 
-    keyDown({ key: "k", ctrlKey: true });
+    keyDown({ key: "3", ctrlKey: true });
     expect(dispatchShortcutAction).not.toHaveBeenCalled();
 
     rerender({ running: true, showClock: false });
-    const event = keyDown({ key: "k", ctrlKey: true });
+    const event = keyDown({ key: "3", ctrlKey: true });
 
     expect(event.defaultPrevented).toBe(true);
     expect(dispatchShortcutAction).toHaveBeenCalledWith("clear");
   });
 
   it.each([
-    [{ key: " ", ctrlKey: true, shiftKey: true }, "toggleLiveCapture"],
-    [{ key: "l", ctrlKey: true, shiftKey: true }, "toggleLiveSnapshot"],
+    [{ key: "1", ctrlKey: true }, "toggleLiveCapture"],
+    [{ key: "2", ctrlKey: true }, "toggleLiveSnapshot"],
   ])("dispatches a configured toggle", (eventInit, actionId) => {
     const dispatchShortcutAction = vi.fn();
     renderHook(() =>
@@ -91,11 +91,11 @@ describe("useAppKeyboardShortcuts", () => {
       { initialProps: { shortcutCapturing: true } }
     );
 
-    keyDown({ key: "l", ctrlKey: true, shiftKey: true });
+    keyDown({ key: "2", ctrlKey: true });
     expect(dispatchShortcutAction).not.toHaveBeenCalled();
 
     rerender({ shortcutCapturing: false });
-    keyDown({ key: "l", ctrlKey: true, shiftKey: true, repeat: true });
+    keyDown({ key: "2", ctrlKey: true, repeat: true });
     expect(dispatchShortcutAction).not.toHaveBeenCalled();
   });
 

@@ -124,8 +124,8 @@ versions declare that they run without elevation, so their updates install from 
 
 ## Keyboard shortcuts
 
-PLVS provides three configurable shortcuts: **Start / Stop** (`CmdOrCtrl+Shift+Space`),
-**Live / Snapshot** (`CmdOrCtrl+Shift+L`), and **Clear** (`CmdOrCtrl+K`). Select a shortcut to record
+PLVS provides three configurable shortcuts: **Start / Stop** (`CmdOrCtrl+1`),
+**Live / Snapshot** (`CmdOrCtrl+2`), and **Clear** (`CmdOrCtrl+3`). Select a shortcut to record
 a replacement, press Delete or Backspace while recording to remove it, or use Reset to restore its
 built-in default. PLVS rejects bare keys, reserved combinations, and combinations already assigned
 to another configurable action.

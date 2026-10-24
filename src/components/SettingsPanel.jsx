@@ -67,8 +67,6 @@ const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
 const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
-const KBD_ROW_CLASS = "flex min-h-[var(--ui-shell-h)] items-center justify-between gap-2 px-2";
-
 const FOOTER_LINK_CLASS =
   "inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-metric-meta)] cursor-pointer outline-none disabled:cursor-default disabled:opacity-50";
 
@@ -524,21 +522,15 @@ export function SettingsPanel({
 
                 {/* Keyboard shortcuts */}
                 <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
-                  <div className={KBD_ROW_CLASS} aria-hidden="true">
-                    <span />
-                    <div className="flex items-center gap-3 text-[length:var(--ui-fs-axis)] text-muted-foreground">
-                      <span>Shortcut</span>
-                      <span>Global</span>
-                    </div>
-                  </div>
                   {KEYBOARD_SHORTCUT_ACTIONS.map((action) => {
                     const binding =
                       keyboardShortcuts[action.id] ?? DEFAULT_KEYBOARD_SHORTCUTS[action.id];
                     const registrationError = shortcutRegistrationErrors[action.id];
+                    const isDefault = binding.accelerator === action.defaultAccelerator;
                     return (
                       <SettingsRow key={action.id} label={action.label}>
                         <div className="flex flex-col items-end gap-0">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <ShortcutCapture
                               label={`${action.label} shortcut`}
                               value={binding.accelerator}
@@ -557,24 +549,27 @@ export function SettingsPanel({
                               isMac={isMac}
                               disabled={!shortcutsReady}
                             />
-                            <ResetAction
-                              label={`Reset ${action.label} shortcut`}
-                              isDefault={
-                                !shortcutsReady || binding.accelerator === action.defaultAccelerator
-                              }
-                              onReset={() =>
-                                setShortcutAccelerator(action.id, action.defaultAccelerator)
-                              }
-                              confirmLabel={`Confirm reset ${action.label} shortcut`}
-                              cancelLabel={`Cancel reset ${action.label} shortcut`}
-                            />
-                            <SettingsSwitch
-                              aria-label={`${action.label} global shortcut`}
-                              checked={binding.global}
-                              onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
-                              disabled={!shortcutsReady || binding.accelerator === null}
-                              className={cn(registrationError && "border-destructive")}
-                            />
+                            {!isDefault ? (
+                              <ResetAction
+                                label={`Reset ${action.label} shortcut`}
+                                isDefault={!shortcutsReady}
+                                onReset={() =>
+                                  setShortcutAccelerator(action.id, action.defaultAccelerator)
+                                }
+                                confirmLabel={`Confirm reset ${action.label} shortcut`}
+                                cancelLabel={`Cancel reset ${action.label} shortcut`}
+                              />
+                            ) : null}
+                            <label className={cn(ROW_LABEL_CLASS, "flex items-center gap-1")}>
+                              <span>Global</span>
+                              <SettingsSwitch
+                                aria-label={`${action.label} global shortcut`}
+                                checked={binding.global}
+                                onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
+                                disabled={!shortcutsReady || binding.accelerator === null}
+                                className={cn(registrationError && "border-destructive")}
+                              />
+                            </label>
                           </div>
                           {registrationError ? (
                             <span className="text-[length:var(--ui-fs-axis)] text-destructive">

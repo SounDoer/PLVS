@@ -21,9 +21,9 @@ const RAW_SETTINGS = {
   autostartEnabled: false,
   closeAction: DEFAULT_CLOSE_ACTION,
   keyboardShortcuts: {
-    toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: false },
-    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
-    clear: { accelerator: "CmdOrCtrl+K", global: false },
+    toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false },
+    toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+    clear: { accelerator: "CmdOrCtrl+3", global: false },
   },
   interfaceSize: DEFAULT_INTERFACE_SIZE,
   historyRetentionSec: DEFAULT_HISTORY_RETENTION_SEC,

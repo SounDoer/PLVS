@@ -900,9 +900,14 @@ describe("SettingsPanel", () => {
 
   it("renders the three configurable keyboard shortcut rows", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByText("Start / Stop")).toBeTruthy();
-    expect(screen.getByText("Live / Snapshot")).toBeTruthy();
-    expect(screen.getByText("Clear")).toBeTruthy();
+    for (const label of ["Start / Stop", "Live / Snapshot", "Clear"]) {
+      const row = screen.getByText(label).closest("[data-settings-row]");
+      expect(row).toBeTruthy();
+      expect(row.textContent).toContain("Global");
+      expect(row.querySelector('[role="switch"]')).toBeTruthy();
+    }
+    expect(screen.queryByText("Shortcut")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Reset .* shortcut/ })).toBeNull();
     expect(screen.queryByText("Fullscreen Panel")).toBeNull();
     expect(screen.queryByText("Exit Fullscreen")).toBeNull();
   });
@@ -913,7 +918,7 @@ describe("SettingsPanel", () => {
         {...BASE_PROPS}
         keyboardShortcuts={{
           ...DEFAULT_KEYBOARD_SHORTCUTS,
-          clear: { accelerator: "CmdOrCtrl+K", global: true },
+          clear: { accelerator: "CmdOrCtrl+3", global: true },
         }}
         shortcutsReady={true}
       />
@@ -928,7 +933,7 @@ describe("SettingsPanel", () => {
         {...BASE_PROPS}
         keyboardShortcuts={{
           ...DEFAULT_KEYBOARD_SHORTCUTS,
-          clear: { accelerator: "CmdOrCtrl+K", global: true },
+          clear: { accelerator: "CmdOrCtrl+3", global: true },
         }}
         shortcutsReady={true}
         shortcutRegistrationErrors={{ clear: "HotKey already registered" }}
@@ -1110,7 +1115,7 @@ describe("SettingsPanel — Clear shortcut reset", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset Clear shortcut" }));
     expect(setShortcutAccelerator).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Confirm reset Clear shortcut"));
-    expect(setShortcutAccelerator).toHaveBeenCalledWith("clear", "CmdOrCtrl+K");
+    expect(setShortcutAccelerator).toHaveBeenCalledWith("clear", "CmdOrCtrl+3");
   });
 });
 

@@ -47,6 +47,20 @@ describe("SourceActionsProvider", () => {
     expect(result.current.settings.onClearRef.current).toBe(result.current.actions.clearAll);
   });
 
+  it("routes the Start / Stop shortcut through the Live lifecycle action", async () => {
+    const { result } = renderHook(
+      () => ({ settings: useAppSettings(), runtime: useMeterRuntime() }),
+      { wrapper }
+    );
+
+    expect(result.current.runtime.liveLifecycle).toBe("stopped");
+    await act(async () => {
+      await result.current.settings.shortcutActionRef.current("toggleLiveCapture");
+    });
+
+    expect(result.current.runtime.liveLifecycle).not.toBe("stopped");
+  });
+
   it("bumps both reset epochs when a clear succeeds", async () => {
     const { result } = renderHook(
       () => ({ actions: useSourceActions(), runtime: useMeterRuntime() }),
