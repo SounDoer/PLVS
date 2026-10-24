@@ -264,7 +264,7 @@ or PID cannot be read counts as alive and is cleared by hand only when it really
 Windows, a lease file another user created can only be deleted by that user or an administrator.
 There is no way to take a live lease
 ([ADR 0028](adr/0028-parallel-worktree-dev-apps.md),
-[ADR 0034](adr/0034-capture-rig-lease-is-machine-wide.md)). The rig routes VLC directly to the
+[ADR 0039](adr/0039-capture-rig-lease-is-machine-wide.md)). The rig routes VLC directly to the
 virtual device and never changes the system default output. Install and reboot after the platform
 driver setup before running it; PLVS does not install or manage that driver.
 

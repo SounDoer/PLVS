@@ -473,7 +473,7 @@ function releaseRig() {
 process.on("exit", releaseRig);
 
 /**
- * Takes the rig lease (ADR 0034). Without `wait`, a busy rig is a RigError naming the run that
+ * Takes the rig lease (ADR 0039). Without `wait`, a busy rig is a RigError naming the run that
  * holds it; with it, this waits until that run ends.
  */
 async function takeRig({ wait }) {

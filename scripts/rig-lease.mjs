@@ -1,6 +1,6 @@
 /**
  * An exclusive lease on the capture rig, shared by every clone, worktree and local user of the
- * machine (ADR 0034).
+ * machine (ADR 0039).
  *
  * VB-Cable, BlackHole and the test tone exist once per machine. Two runs at once sum their tones
  * and both read +6.02 dB, which is how the rig's 2026-10-15 soak was spoiled. The lease is a file

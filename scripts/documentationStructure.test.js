@@ -52,6 +52,17 @@ describe("documentation structure", () => {
     expect(existsSync(join(cwd(), "docs", "working"))).toBe(false);
   });
 
+  it("gives every ADR a unique numeric identifier", () => {
+    const names = readdirSync(join(cwd(), "docs", "adr")).filter((name) => name.endsWith(".md"));
+    const identifiers = names.map((name) => name.match(/^(\d{4})-/)?.[1] ?? `invalid:${name}`);
+    const duplicates = identifiers.filter(
+      (identifier, index) => identifiers.indexOf(identifier) !== index
+    );
+
+    expect(identifiers.filter((identifier) => identifier.startsWith("invalid:"))).toEqual([]);
+    expect(duplicates).toEqual([]);
+  });
+
   it("does not cite historical records from living documents", () => {
     // docs/README.md and AGENTS.md describe where records go; ADRs are themselves historical and may
     // record the design document a decision came from.
@@ -65,8 +76,12 @@ describe("documentation structure", () => {
     expect(citations).toEqual([]);
   });
 
-  it("resolves relative links in the user guide and the root documents", () => {
-    const documents = [...collectMarkdown("docs/user", []), "README.md", "CONTRIBUTING.md"];
+  it("resolves relative links in living documents and the root documents", () => {
+    const documents = [
+      ...collectMarkdown("docs", ["docs/history"]),
+      "README.md",
+      "CONTRIBUTING.md",
+    ];
     const broken = documents.flatMap((path) =>
       [...read(path).matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)]
         .map(([, target]) => target)

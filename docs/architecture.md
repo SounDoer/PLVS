@@ -469,7 +469,9 @@ The old `builtinThemes.js`, `buildThemeTokens.js` and `legacy/resolveV1Theme.js`
 runtime theme pipeline; they are kept only for the frozen V1 migration, fixtures and regression tests.
 New consumers must not import them.
 
-### Portable Theme boundary
+## 7. Portable content boundaries
+
+### Portable Theme
 
 The persisted authoring document, portable sharing document, and compiled result are separate
 contracts (ADR 0009). A portable `plvs-theme` document contains only stable authoring meaning:
@@ -490,7 +492,7 @@ import matches it by content identity against the whole custom library and mints
 for new content; Theme Pack items keep the ID-based merge rules. Theme Pack V1 remains readable
 through the legacy migration path, but no invalid Theme entry is silently discarded.
 
-### Portable Preset boundary
+### Portable Preset
 
 `src/transfer/portablePreset.js` converts saved Presets into strict `plvs-preset` documents built
 from the public Workspace, Panel, Axis, presentation and Dock vocabulary. Portable documents use
@@ -515,6 +517,8 @@ Preset Pack V2 carries referenced Loudness Profiles in its single `loudness-prof
 group. Dependencies are validated before primary Presets, then normal library merge planning
 allocates or reuses local Profile IDs and rewrites each imported Preset reference to that result.
 Pack V1 remains readable through the legacy normalization path.
+
+## 8. Rendering coordinate and size rules
 
 ### Panel orientation
 
@@ -588,7 +592,7 @@ Declared exceptions (device px on purpose):
 
 ---
 
-## 7. Key terms
+## 9. Key terms
 
 | Term                | Definition                                                                                                                               |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -707,7 +711,7 @@ the toolbar remains the transport surface.
 
 ---
 
-## Feedback diagnostics
+## 10. Feedback diagnostics
 
 Feedback diagnostics schema v2 is independent of the schema-v1 crash report. Native collection
 lives in `src-tauri/src/feedback_diagnostics.rs`; the frontend supplies only the allowlisted
@@ -744,7 +748,7 @@ The independent rotating file target continues receiving records after a console
 Deploy the receiver's v1/v2 validation before distributing a client that emits v2. Existing crash
 reports and older clients retain their v1 contracts. The receiver lives in `soundoer-newsletter`.
 
-## 8. Platform notes
+## 11. Platform notes
 
 Experimental Linux builds select cpal's PulseAudio host explicitly for device discovery, including
 PipeWire through `pipewire-pulse`. The discovery client and host are process-long resources because

@@ -266,7 +266,7 @@ npm ci && npm run ffmpeg:fetch && npm run update:acceptance:build
 npm run update:acceptance:run -- artifacts/update-acceptance/$(git rev-parse --short=8 HEAD)
 ```
 
-Every clone and runner on one machine shares the rig lease (ADR 0034), so a manual `smoke:capture`
+Every clone and runner on one machine shares the rig lease (ADR 0039), so a manual `smoke:capture`
 and a runner job queue behind each other instead of summing tones. Each runner keeps its own Rust
 target directory, several GB. Before dispatching a release, check that all three runners are
 `online` and idle:

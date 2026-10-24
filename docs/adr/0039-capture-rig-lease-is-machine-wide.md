@@ -1,4 +1,4 @@
-# ADR 0034: The capture rig lease is machine-wide
+# ADR 0039: The capture rig lease is machine-wide
 
 ## Status
 
