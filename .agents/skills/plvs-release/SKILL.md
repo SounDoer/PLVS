@@ -342,7 +342,7 @@ Insert new section after `## [Unreleased]`, before the latest released version.
 
 ## Step 4b: Public documentation and privacy review
 
-Follow **Release public-content review** in `CONTRIBUTING.md`. Review all four surfaces against
+Follow **Release public-content review** in `docs/release-operations.md`. Review all four surfaces against
 the complete stable-release range and collect concrete evidence. After committing the finished
 candidate in Step 5, run `npm run release:content:snapshot`, complete the pending decisions in
 `docs/release-content-review.json`, run `npm run release:content:check` and the required pre-commit
@@ -360,7 +360,7 @@ replaces the tracked images. Do not retake them with one-off scripts. Retaking n
 capture machine (VB-Cable, VLC, 125% scaling); if it is unavailable, record the outdated image as
 a decision in the release review instead of publishing a stale screenshot silently.
 
-Also follow **Privacy policy review** in `CONTRIBUTING.md`: inspect the
+Also follow **Privacy policy review** in `docs/website-and-sharesets.md`: inspect the
 complete release range for changes to data collection, consent, payloads, recipients/providers,
 storage, retention and deletion, including related service changes. Record the baseline and
 candidate revisions, evidence and privacy-impact conclusion in the release review, even when no
@@ -524,30 +524,11 @@ git push origin main
 
 ### Before Dispatch: Home Runners
 
-`release.yml` runs real capture smoke and the release-package smoke on the self-hosted runners (see
-"Home capture runners" in `CONTRIBUTING.md`). The Windows runner lives on the maintainer's company PC
-for now, so dispatch while that PC is on and logged in.
-
-`release-package-smoke.yml` opens the exact candidate packages on all three runners without
-installing them, on an isolated profile, and checks Agent Control, Settings, Live capture of the rig
-tone and screenshot/recording evidence. Nobody opens the build by hand.
-
-Before dispatching, verify the package-smoke recording prerequisites as well as runner availability:
-
-- **Windows:** keep the desktop session active and unlocked. A locked session or disconnected Remote
-  Desktop session can produce no recording frames and Media Foundation error `0xC00D4A44`.
-- **macOS:** the Terminal that launches the runner must have **Screen & System Audio Recording**
-  permission. After granting it, fully quit Terminal, reopen it, and restart the runner. If the
-  runner's launch method changes, authorize the new launcher again. A missing permission surfaces as
-  `screenCapturePermissionRequired` in package smoke.
-
-When updater-chain dependencies changed, `release.yml` also calls `update-acceptance.yml`. Its
-self-hosted Windows, macOS and Linux jobs drive the packaged updater entirely through
-acceptance-only Agent Control actions, transfer evidence through Actions artifacts, and verify all
-three platform records before the Draft can be assembled. Do not ask the maintainer to click update
-UI or copy acceptance files between machines. The Linux job installs the real `plvs` package and
-restores the machine afterwards (ADR 0038); it fails until the runner account was authorized once
-(CONTRIBUTING, "Linux update acceptance runner"), and while any PLVS runs on that machine.
+`release.yml` gates the exact candidate on self-hosted Windows, macOS and Linux. Before dispatch,
+complete the availability, active-session, permission and Linux authorization checklist in
+[`docs/release-operations.md`](../../../docs/release-operations.md#home-capture-runners). Package smoke
+opens the candidates automatically on isolated profiles; updater acceptance is also fully driven by
+automation. Do not ask the maintainer to click the UI or copy evidence between machines.
 
 ### Mandatory Remote Gate
 
@@ -587,9 +568,9 @@ Immutable Releases reject that operation, and the process treats a published
 version as permanently consumed. To ship a fix, run the normal flow with a
 **new** version number (e.g. 0.3.2 → 0.3.3).
 
-If a published release turns out to be broken, follow **Bad release response**
-in `CONTRIBUTING.md`. The signing secrets these workflows read, and which of
-them cannot be replaced, are listed in **Signing secrets inventory** there.
+If a published release turns out to be broken, follow **Bad release response** in
+`docs/release-operations.md`. The signing secrets these workflows read, and which cannot be
+replaced, are listed in **Signing secrets inventory** there.
 
 ---
 

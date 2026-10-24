@@ -1,0 +1,192 @@
+# Website and Sharesets maintenance
+
+This guide owns the maintainer workflows for validating Sharesets artifacts, reviewing the complete
+website, publishing website or Catalogue changes independently, and reviewing privacy-policy impact.
+For ordinary local development and CI selection, start in [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Sharesets artifact intake
+
+`sharesets:validate` is the repository/CI intake boundary for one immutable Sharesets artifact. It
+accepts `.plvsloudness`, `.plvspreset`, or `.plvstheme`, requires canonical Pack V2 bytes and one
+primary Item, and prints a JSON report containing the exact byte length, SHA-256, versions, and
+derived compatibility facts.
+
+`sharesets:metadata` runs the same validation boundary and emits only Pack-derived static Catalogue
+input: content identity and summary, dependency hashes, compatibility facets, and the versioned
+preview plan. Author, description, tags, licence, and release notes are submission metadata and are
+therefore never invented from the artifact.
+
+`sharesets:preview` validates one canonical artifact, builds the isolated browser harness, and uses
+the Chromium revision pinned by Playwright to generate the exact contract-owned PNG set plus
+`preview-result.json`. The output path is explicit and must not already exist; the command never
+edits Catalogue records or deploys content. Run `npx playwright install chromium` once after
+installing dependencies on a machine that generates previews.
+
+Loudness Profiles deliberately have an empty PNG set: Catalogue cards and detail pages render their
+structured rules directly. Their preview result therefore records the validated empty set without
+starting Chromium. Presets and Themes still require every PNG in their preview plan.
+
+## Website checks and independent publication
+
+After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepare-homepage-assets.mjs`
+to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
+published resource and its latest preview revision from the validated Catalogue; they do not read
+fixed `v1` screenshot paths. This is an explicit preparation step, not part of every website build.
+The script also exports the dated raw feature screenshots named in
+`scripts/marketing/recipes/homepage-features.json`. Refresh those with
+`scripts/marketing/capture-homepage-features.mjs` when their UI changes (see
+`docs/marketing-screenshots.md`), retain their capture metadata, and review the resulting homepage.
+The shared homepage/README hero uses `scripts/marketing/capture-live-hero.mjs` and
+`scripts/marketing/select-hero.mjs`; its local `--publish` flag updates tracked image files, not the
+deployed website.
+
+Follow the phase-specific checks in [CONTRIBUTING.md](../CONTRIBUTING.md#git-commits-and-prs).
+Website-only work is classified to `website:verify`; mixed changes keep the broader gate.
+
+`website:verify` assembles and validates the complete site and runs website, guide, and deployment
+contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
+widths; unit tests cannot verify alignment.
+
+Website publication does not bump the desktop version or create a GitHub Release. After checking
+and committing the intended changes:
+
+```powershell
+$siteSha = git rev-parse HEAD
+npm run website:review -- $siteSha
+git push origin main
+gh run list --workflow ci.yml --commit $siteSha --event push
+# Wait for the matching CI run to finish successfully before dispatching.
+gh workflow run deploy-website.yml --ref main -f ref=$siteSha
+```
+
+The review command reads `/publication.json`, reports every changed file from the exact live
+website SHA, and separately lists guide differences from the latest stable desktop release. Read
+the actual diff, including website generator/shared inputs and generated guide output. Text
+corrections may ship independently; descriptions of unshipped app features must not silently go
+live. Resolve such differences before dispatch, or discuss a narrowly scoped hotfix checkout with
+the user (the normal rule requiring approval to move work off `main` still applies).
+
+The deployment workflow resolves the requested ref once, requires successful push CI for that
+exact SHA, then passes that SHA to the shared publication workflow. The existing live Sharesets
+history validation remains mandatory. Wait for the deployment conclusion, then verify the live
+`/publication.json` website SHA and the affected page in a browser. A dispatched run is not a
+completed publication. The root marker records `websiteSha` and `contentSha` separately; the
+existing `/sharesets/publication.json` continues to own immutable Catalogue history.
+
+On the first deployment of this workflow, the root marker will not yet exist. Recover the exact
+website SHA from the previous successful deployment's artifact and resolved checkout, then pass
+it explicitly: `npm run website:review -- <candidate-sha> <verified-live-website-sha>`. This bootstrap
+is accepted only for a missing (404) root marker, never for a malformed or unreadable marker, and
+never overrides an existing one. Do not substitute the Sharesets content SHA or assume the previous
+workflow's `headSha` is the deployed website ref. Later missing markers require the same evidence-
+based recovery rather than guessing a baseline. Re-run review if another deployment changes the
+live website while preparing a publication.
+
+## Curating Sharesets content
+
+The detail-page compatibility line is generated by `scripts/sharesets-app-compatibility.mjs`.
+Tracked saved-content features use their first supported stable version, independently of resource
+Release numbers. During development an unassigned minimum displays `Requires upcoming PLVS`.
+Both the local release-state check and the stable Release workflow reject unassigned, invalid,
+or future minimum versions. Register the first supporting release before publishing; later releases
+retain that minimum. The published site changes only after its website deployment succeeds.
+
+`sharesets:curate` is the maintainer path from a candidate content tree to a local review. The first
+form above is always a dry run: it validates the candidate records and new canonical artifacts,
+compares all existing Release records and bytes with the published baseline, and prints a concise
+JSON summary of additions, preview revisions, one-way withdrawals, and Listing copy edits. It writes nothing.
+
+The complete local website has one ordinary entry point: `npm run website:dev`. It assembles the
+homepage, generated user guide, Privacy Policy, and current Sharesets Catalogue in versioned
+directories under ignored `artifacts/website-dev/`, then serves the current successful build at
+`http://127.0.0.1:4173/`. The server owns that exact IPv4 port, watches all three inputs, keeps the
+last successful site after a build error, and reloads the browser after a successful rebuild. Use
+`npm run website:build` for a one-shot assembly under `artifacts/website/` and
+`npm run website:check` for assembly plus complete local-link and asset validation. `docs:site` and
+`sharesets:site` remain focused generator commands, not standalone complete-site previews.
+
+After reading that summary, repeat the same command with `--write`. This generates previews only for
+new Releases and preview revisions, validates the now-complete candidate and its immutable history, then creates a new
+review directory containing `site/`, `report.json`, and `report.md`. Preview IDs and paths belong in
+the new Release or preview revision record; dimensions, hashes, Pack-derived metadata, and site copies are generated.
+The command refuses an existing review directory or existing new preview target, and it
+does not commit or deploy. Serve the review directory's `site/` as a static website when browser
+review is useful; for example, `npx vite preview --outDir path/to/review/site`.
+
+The baseline must be the exact content commit currently named by the deployed
+`/sharesets/publication.json`, not an arbitrary old checkout. Keep both checkouts unchanged while
+curating so the byte comparison remains meaningful.
+
+To publish after review, commit the candidate content, wait for the normal merge gate, then dispatch
+`.github/workflows/deploy-sharesets.yml` with that exact commit SHA as `content_ref`. The workflow
+repeats source and immutable-history validation against the deployed marker before GitHub Pages is
+changed.
+
+Both deployment entry points call `publish-site.yml`, which holds the shared Pages lock from live
+baseline discovery through deployment, validates the complete immutable history, and writes the
+candidate's exact content commit into the same Pages artifact as the website. A desktop release
+whose content is older than an independent Sharesets update is rejected: synchronize those content
+changes into the release tree, then retry. Never bypass validation by deleting the marker.
+
+An unreadable, malformed, foreign-repository, or missing marker stops publication. Recover a lost
+marker from the last successful Pages artifact and its exact content commit before trying again.
+Website tags older than v0.20.0, the first Sharesets publication, cannot be deployed through this
+workflow.
+
+Before publishing a new Release, confirm its date and regenerate any previews affected by UI changes
+made since they were generated. Once published, the date and preview bytes are immutable.
+
+Create a new resource Release only when its downloadable content changes. For screenshot-only
+updates, append `previewRevisions` to its existing Release (or `included` source), with an increasing
+`number`, a `publishedAt` date, and the complete required `previews` set at new paths. Keep all older
+records and PNGs unchanged. These revisions update the gallery without changing downloads or the
+displayed Release number. Catalogue tooling and the selected site renderer must support this field;
+publish the supporting website code before using it with a content-only deployment.
+
+To withdraw a bad Release, leave its artifact, previews, paths, notes, and date untouched; change
+only `status` to `withdrawn` and add `withdrawalReason`, then run the dry run and `--write` review
+again. Never delete, restore, renumber, or replace a published Release. Before deployment, recovery
+means fixing the candidate and creating a fresh review directory—the live Pages artifact is
+unchanged. After deployment, publish a withdrawal or a higher-numbered corrective Release; do not
+redeploy an older tree as though the newer history never existed.
+
+## Privacy policy review
+
+`website/privacy/index.html` is the policy source. `docs/privacy-review.json` is the latest
+review record; git preserves earlier records. Its fingerprint covers normalized text inside
+`main` and link destinations, excluding the Effective date (checked separately), comments,
+scripts, styles and surrounding navigation/footer. Cosmetic classes, inline emphasis and
+formatting whitespace do not require a new review. Keep the date in the marked `time` element;
+its displayed text, ISO `datetime`, and the review's `effectiveDate` must agree.
+
+For every desktop release and independent website publication, inspect the complete change range
+since the previous corresponding publication for changes to collection, upload triggers and
+consent, payloads, recipients/providers, storage, retention and deletion. Check the actual code
+and relevant service configuration, not only the policy diff. Record the release-specific outcome
+and baseline/candidate SHAs in the release or publication review report, including a no-impact
+conclusion when appropriate. A release with no policy change does not need a new JSON record.
+
+When policy wording, links or dates change:
+
+1. Review the diff and the affected implementation or service configuration. Update the policy
+   to describe behavior that is actually shipping. Resolve relevant unknowns before publication;
+   do not assert that a source checkout proves live configuration or mailbox retention.
+2. Set `dateDecision` to `updated` for a material policy/data-handling change and choose the actual
+   effective date. Set it to `retained` for a correction or clarification that does not change the
+   policy's effective date. Copy the prior record's `effectiveDate` into `previousEffectiveDate`.
+   Explain the decision in `dateRationale`; do not use today's build/deployment date automatically.
+3. Run `node scripts/privacy-review.mjs snapshot`. After review, copy its `contentSha256` and
+   `effectiveDate` into the JSON record. Update `reviewedOn`, `changeSummary`, `scope`, `evidence`
+   (source paths, inspected revision/configuration reference and findings), and `limitations`
+   (use an explicit statement if none). This read-only command never writes an approval or date.
+4. Run `node scripts/privacy-review.mjs check` and `npm run website:verify`. Commit the policy and
+   its review record together. For initial adoption only, the existing effective date is also
+   the previous date; the initial record documents the source-review scope and its limits.
+
+`website/privacy/index.test.js` runs this gate in both `npm test` and the existing website CI job.
+It rejects a stale fingerprint, missing review details, inconsistent dates and invalid date
+decisions. It does not judge whether prose is true, a change is material, or the declared previous
+date is historically correct. Reviewers must check the git diff and supporting evidence; editing
+the fingerprint alone is not review. Unchanged policy text cannot detect a newly added data flow,
+which is why the release-level semantic check above remains required. This is an omission guard,
+not legal certification or an automatic audit of deployed systems.

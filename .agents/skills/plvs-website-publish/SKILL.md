@@ -5,7 +5,7 @@ description: Check and publish an independent PLVS website update from an exact 
 
 # PLVS Website Publication
 
-Read the "Website checks and independent publication" section of `CONTRIBUTING.md` for commands
+Read the "Website checks and independent publication" section of `docs/website-and-sharesets.md` for commands
 and marker recovery. This skill coordinates those commands; it does not replace repository gates.
 
 ## Prepare and review
@@ -18,7 +18,7 @@ and marker recovery. This skill coordinates those commands; it does not replace 
 - For rendering changes, compare before/after browser screenshots at desktop, tablet and mobile
   widths. Use the local complete-site server, `npm run website:dev`. App Agent Control is for the
   desktop UI, not the website.
-- Follow **Privacy policy review** in `CONTRIBUTING.md`. Check the full live-to-candidate range
+- Follow **Privacy policy review** in `docs/website-and-sharesets.md`. Check the full live-to-candidate range
   for changes to collection, consent, payloads, providers/recipients, retention and deletion,
   including related service changes. Record the baseline/candidate SHAs, evidence and privacy
   conclusion in the publication review even when the policy is unchanged. Resolve relevant
@@ -36,7 +36,7 @@ and marker recovery. This skill coordinates those commands; it does not replace 
   ask before moving work off `main`. Do not revert unrelated pending product documentation.
 - The report is evidence for semantic review, not automatic authorization. Review shared source
   and generator changes too. Missing-marker bootstrap requires evidence from the previous
-  successful deployment, as documented in `CONTRIBUTING.md`; never guess from a content-only SHA.
+  successful deployment, as documented in `docs/website-and-sharesets.md`; never guess from a content-only SHA.
 
 ## Publish and verify
 

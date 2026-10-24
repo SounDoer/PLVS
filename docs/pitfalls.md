@@ -133,8 +133,9 @@ meter defect. Before a smoke or soak, make sure no other session is driving the 
 `soak:desktop` records UI frame drops and audio chunk drops, not loudness drift, and its verdict is
 self-contained, so its files play no baseline role and can be deleted once read.
 
-Release capture acceptance runs on self-hosted runners (`CONTRIBUTING.md`, "Home capture
-runners"). Three traps cost the first setup on 2026-10-20 a run each:
+Release capture acceptance runs on self-hosted runners (see
+[Release operations](release-operations.md#home-capture-runners)). Three traps cost the first setup
+on 2026-10-20 a run each:
 
 - **macOS microphone permission follows the launching process.** A runner installed as a
   LaunchAgent built and ran the smoke but captured silence: TCC attributed the audio request to the

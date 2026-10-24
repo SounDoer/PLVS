@@ -6,7 +6,7 @@
  *
  * This guard checks the workflows on the default branch, so it catches the maintainer's and
  * agents' mistakes. A fork pull request runs the workflow files it brings itself, so against
- * outsiders the boundary is the repository's fork-PR approval setting (`CONTRIBUTING.md`, "Home
+ * outsiders the boundary is the repository's fork-PR approval setting (`docs/release-operations.md`, "Home
  * capture runners").
  *
  * It fails closed: any `runs-on` that is not a single hosted image label counts as self-hosted,

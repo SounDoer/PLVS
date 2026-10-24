@@ -185,7 +185,7 @@ capture, and dismissible recovery still use this public UI Navigation contract. 
 non-dismissible and therefore uses an exact private reset token.
 
 The fixture protocol is deliberately not a public `ui show` family and is absent from public
-capabilities, help, completion, schema, and packaged CLIs. See `CONTRIBUTING.md` for the real desktop
+capabilities, help, completion, schema, and packaged CLIs. See `docs/desktop-development.md` for the real desktop
 and exact pixel-comparison workflow. Other exceptional states need a new closed, owner-backed
 fixture and contract tests; they must not introduce selectors, arbitrary input, or React/store
 mutation. The isolated sharesets-preview renderer may continue to use Playwright because it renders

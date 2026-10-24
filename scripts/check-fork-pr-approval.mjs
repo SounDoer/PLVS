@@ -17,7 +17,7 @@ export function forkApprovalProblem(policy) {
   if (policy === REQUIRED_FORK_APPROVAL) return null;
   return (
     `Fork pull request approval is "${policy}"; self-hosted capture runners need ` +
-    `"${REQUIRED_FORK_APPROVAL}" (CONTRIBUTING.md, "Home capture runners").`
+    `"${REQUIRED_FORK_APPROVAL}" (docs/release-operations.md, "Home capture runners").`
   );
 }
 

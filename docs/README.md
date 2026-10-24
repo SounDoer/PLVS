@@ -28,6 +28,20 @@ Dock and feature-image capture recipes, visual review and publication workflow.
 [Video production](promo-video.md) documents the reusable capture, alignment, editing, validation
 and archival workflow, independent of any video's creative direction.
 
+Maintainer workflows are also current-state documents, but stay separate so that ordinary
+contributors do not have to read low-frequency release and review procedures:
+
+| File                                                                 | Owns                                                      |
+| -------------------------------------------------------------------- | --------------------------------------------------------- |
+| [desktop-development.md](desktop-development.md)                     | Dev identities, Linux capture and Preview packaging       |
+| [visual-and-capture-validation.md](visual-and-capture-validation.md) | Theme, screenshot, smoke and soak review                  |
+| [website-and-sharesets.md](website-and-sharesets.md)                 | Website, Catalogue and privacy-policy maintenance         |
+| [release-operations.md](release-operations.md)                       | Release reviews, acceptance runners, recovery and signing |
+| [dependency-license-review.md](dependency-license-review.md)         | Dependency and native-component licence review            |
+
+Each fact has one owner. Other documents may give a short routing summary, but must link here
+instead of copying the procedure.
+
 ## 2. User guide — [user/](user/)
 
 How to use PLVS, written for people using the app, one file per chapter with
@@ -66,9 +80,10 @@ New specs go to `history/specs/YYYY-MM-DD-<topic>-design.md` and new plans to
 ## Where the other documents live
 
 `README.md`, `CHANGELOG.md` and the website under `website/` are written for people who do not
-know the project. The README and the website homepage summarise the user guide and are reconciled
-against the changelog at release time; the website docs page is generated from `user/`. `CONTRIBUTING.md` covers local development and CI. `AGENTS.md` carries the rules for
-agents, including where to write new documents.
+know the project. The README and website homepage summarise the user guide and are reconciled
+against the changelog at release time; the website docs page is generated from `user/`.
+`CONTRIBUTING.md` is the short entry point for environment setup, daily commands and CI.
+`AGENTS.md` contains only non-obvious agent rules and routes detailed procedures here.
 
 ## Guards
 

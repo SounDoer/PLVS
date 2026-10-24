@@ -14,6 +14,7 @@ This file records only what an agent cannot infer from the code. Details live in
 | Design tokens                                | `docs/design-tokens.md`        |
 | Architecture decisions                       | `docs/adr/`                    |
 | Local dev, CI, versioning                    | `CONTRIBUTING.md`              |
+| Specialized maintainer workflows             | `docs/README.md`               |
 | How the documentation itself is organised    | `docs/README.md`               |
 
 When the docs and the code disagree, **the code on `main` wins**.
@@ -24,26 +25,20 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 
 ## Commands
 
-| Command                                | Purpose                                                                          |
-| -------------------------------------- | -------------------------------------------------------------------------------- |
-| `npm run desktop:dev`                  | Run the dev app (Tauri). Audio capture only works here.                          |
-| `npm run worktree:setup`               | Install and verify the common environment for a new linked worktree.             |
-| `npm run worktree:doctor`              | Recheck Node, dependencies, Rust and verified FFmpeg sidecars.                   |
-| `npm run desktop:control -- <command>` | Build and run the dev CLI against a running dev app.                             |
-| `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                        |
-| `npm run check`                        | Full repository gate: version + format + lint + typecheck + test + build + Rust. |
-| `npm run typecheck`                    | `tsc` over `src/` (checkJs, JSDoc types). Zero errors, no baseline.              |
-| `npm test`                             | Vitest, single run.                                                              |
-| `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                    |
-| `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the dev app running.        |
-| `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                   |
-| `npm run verify:loudness-reference`    | Loudness meters against FFmpeg `ebur128`. Needs a full FFmpeg, not the sidecar.  |
-| `npm run website:dev`                  | Build, watch and serve the complete website at `127.0.0.1:4173`.                 |
-| `npm run website:build`                | Assemble the complete static website under `artifacts/website/`.                 |
-| `npm run website:check`                | Assemble and validate all local website pages, links and assets.                 |
-| `npm run website:verify`               | Website build, link validation, and website / documentation contract tests.      |
-| `npm run check:changes`                | Refresh origin/main and check the complete pending range plus working changes.   |
-| `npm run docs:site`                    | Render `docs/user/` into an isolated ignored Docs artifact.                      |
+| Command                                | Purpose                                                |
+| -------------------------------------- | ------------------------------------------------------ |
+| `npm run desktop:dev`                  | Run the dev app; audio capture works only in Tauri.    |
+| `npm run worktree:setup`               | Prepare and verify a new linked worktree.              |
+| `npm run worktree:doctor`              | Diagnose Node, dependencies, Rust and FFmpeg sidecars. |
+| `npm run desktop:control -- <command>` | Run the dev CLI against the already-running dev app.   |
+| `npm test`                             | Run the Vitest suite once.                             |
+| `npm run check`                        | Run the full repository gate.                          |
+| `npm run check:changes`                | Select the safe gate for the complete pending change.  |
+| `npm run smoke:capture`                | Exercise real capture hardware.                        |
+| `npm run smoke:agent-control`          | Exercise Agent Control against the running dev app.    |
+| `npm run soak:capture`                 | Run the four-hour capture soak.                        |
+| `npm run website:dev`                  | Serve the complete local website.                      |
+| `npm run website:verify`               | Validate website and documentation contracts.          |
 
 ## Agent Control
 
@@ -77,62 +72,29 @@ Only the directories that carry rules are listed; the rest of the tree speaks fo
 
 ## Documentation
 
-Documents are grouped by shelf life, not by subject. `docs/README.md` explains the groups; these are
-the rules that bind you.
+`docs/README.md` owns the document map. These placement rules bind agents:
 
-**New specs and plans go to `docs/history/`**, overriding any skill that names another path:
-
-- spec → `docs/history/specs/YYYY-MM-DD-<topic>-design.md`
-- plan → `docs/history/plans/YYYY-MM-DD-<feature>.md`
-- anything else one-off (investigation, spike, roadmap, audit) → `docs/history/notes/`
-
-`docs/superpowers/` and `docs/working/` no longer exist and must not be recreated; a test fails if
-they are.
-
-**Records under `docs/history/` are historical, not living documentation.** You may refine a record
-while its design, review or implementation work is active. Do not edit an older record merely to
-make it match the current product, mark later implementation status or rewrite a superseded
-decision. Put materially changed direction in a new dated record. Whether a feature shipped is
-answered by git history and `CHANGELOG.md`.
-
-**Living documents must never link into `docs/history/`**, and a record there is never the source of
-current behaviour. If some current behaviour is described only in a historical record, move the durable
-part into `docs/architecture.md` (what it is) or a new ADR (why it has to stay that way), then link
-that. Source comments may cite a record as evidence ("measured in …"), because they are versioned
-with the code beside them.
-
-**A change to user-visible behaviour updates the matching `docs/user/` chapter in the same
-commit.** The user guide is the single source for how PLVS behaves. The website renders it and can
-deploy independently of desktop releases; review guide differences for unshipped features before
-an independent website deployment. The `README.md`
-highlights, the website homepage and its screenshots are summaries, reconciled at release by
-`.agents/skills/plvs-release` Step 4b. `docs/prd.md` states intent and boundaries; a new capability reaches
-it only when it changes a promise or a non-goal.
-
-Stable releases require a current `docs/release-content-review.json` covering the guide, README,
-website and screenshots. Follow "Release public-content review" in `CONTRIBUTING.md`; local
-preflight and remote Release validation reject absent, incomplete or stale records. Snapshotting
-content does not perform or approve the review.
-
-Facts the code owns — panels, auto-detected layouts, the macOS minimum version, release package
-names, `plvs-cli` commands — are checked against the code by `scripts/documentationStructure.test.js`.
-Extend those checks instead of adding tests that assert sentences.
-
-Changes to data collection, transmission, retention, recipients or third-party services must
-review `website/privacy/index.html` in the same change. Policy text or link changes also update
-`docs/privacy-review.json` with evidence and an explicit effective-date decision. Presentation-only
-changes do not advance the date. Follow "Privacy policy review" in `CONTRIBUTING.md`; a matching
-fingerprint does not replace checking actual data handling before desktop or website publication.
-
-Write an ADR when someone could look at the code and reasonably ask "why not just do the obvious
-simpler thing?". ADRs are never edited; a changed decision gets a new ADR that supersedes the old.
+- New specs go to `docs/history/specs/YYYY-MM-DD-<topic>-design.md`, plans to
+  `docs/history/plans/YYYY-MM-DD-<feature>.md`, and other one-off investigations to
+  `docs/history/notes/`. Never recreate `docs/superpowers/` or `docs/working/`.
+- History records are not living documentation. Refine one only while its work is active; later
+  direction gets a new dated record. Living documents never cite history as current behaviour.
+- User-visible behaviour changes update the matching `docs/user/` chapter in the same commit.
+  README and website summaries are reconciled at release; `docs/prd.md` changes only when a
+  promise or non-goal changes.
+- Stable release review follows `docs/release-operations.md`. Changes to data handling or
+  third-party services also follow the privacy review in `docs/website-and-sharesets.md`.
+  Fingerprints are omission guards, not substitutes for semantic review.
+- Extend `scripts/documentationStructure.test.js` for facts the code owns instead of testing prose.
+- Write a new ADR when someone could reasonably ask why the obvious simpler choice was rejected.
+  ADRs are never edited; a changed decision supersedes the old one.
 
 ## Code style
 
 Documentation, comments, commit messages and PRs are in English. String literals that must match localized OS/UI text are the exception.
 Line endings are LF (`.editorconfig`, `.gitattributes`). Formatting and lint are enforced by `npm run check` — no need to memorize the rules.
 UI-visible labels across PLVS default to Title Case unless there's a specific reason not to, e.g. `Max Hold`, `Channel Pair`; `aria-label`s stay lowercase — a separate, non-user-facing convention.
-The three app identities are `stable`, `dev` and `preview`. "Release" names the Cargo profile and the act of publishing a version, never an identity. The dev identity's programs are the dev app and the dev CLI. `scripts/documentationStructure.test.js` rejects the earlier spellings; ADRs keep them, and `CONTRIBUTING.md` maps old to new.
+The three app identities are `stable`, `dev` and `preview`. "Release" names the Cargo profile and the act of publishing a version, never an identity. The dev identity's programs are the dev app and the dev CLI. `scripts/documentationStructure.test.js` rejects the earlier spellings; ADRs keep them, and `docs/desktop-development.md` maps old to new.
 
 ## Testing
 
@@ -141,7 +103,7 @@ Tests sit next to the source file they cover, named `*.test.js` / `*.test.jsx` (
 **The capture layer is not covered by CI.** After changing `src-tauri/src/audio`, `dsp` or `engine`: neither `npm run check` nor CI touches that code, because the runners have no sound card. A bug there ships with an all-green board.
 
 Every stable release runs `smoke:capture` for the exact commit on self-hosted Windows, macOS and
-Linux runners (`capture-acceptance.yml`, "Home capture runners" in `CONTRIBUTING.md`) and will stop
+Linux runners (`capture-acceptance.yml`, `docs/release-operations.md`) and will stop
 the release when it fails. It has no bypass flag, deliberately: a gate you can wave through is not a
 gate. Fixing it means fixing the harness build or the rig. A runner that is off makes the release
 wait and then fail; never add a way to skip a platform.
@@ -169,14 +131,16 @@ bump and group the CHANGELOG, so an unprefixed commit silently drops out of the 
   working-tree edit invalidates it. Inspect responsive screenshots for visual website changes.
 - Stable desktop releases always run the full gate.
 
-**Website publication:** use `.agents/skills/plvs-website-publish/SKILL.md` for independent website
-deployments; no desktop version bump is needed. Publish an exact reviewed SHA only after its push
-CI succeeds, review the full difference from the live website (including generated docs), and keep
-the Sharesets immutable-history gate. Commands and initial marker recovery are in `CONTRIBUTING.md`.
+**Website publication:** use `.agents/skills/plvs-website-publish/SKILL.md`; durable maintainer
+instructions live in `docs/website-and-sharesets.md`.
 
 The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `npm run version:check` verifies this.
 
-**Worktrees and branches.** Big features get an isolated worktree, one per feature, under an agent-specific prefix: `.claude/worktrees/<feature-name>` for Claude Code, `.codex/worktrees/<feature-name>` for Codex, `.cursor/worktrees/<feature-name>` for Cursor. Run `npm run worktree:setup` immediately after creating one; ordinary `npm ci` also detects a linked worktree and restores checksum-verified FFmpeg sidecars from the machine cache. Don't reuse one fixed worktree across features — that just relocates the same cleanup problem instead of avoiding it. When a feature merges or is dropped, clean up right away: `git worktree remove` plus deleting the branch (`-d` once merged, `-D` for unmerged only after confirming with the user), and `git push origin --delete` for any merged remote branch. Skip `archive/`-prefixed branches by default. Branches parked for a dependency reason (e.g. Dependabot's `deps/*`) — confirm the reason still holds before deleting.
+**Worktrees and branches.** Big features get one isolated worktree under the tool-specific prefix
+(`.claude/worktrees/`, `.codex/worktrees/`, or `.cursor/worktrees/`). Run `npm run worktree:setup`
+immediately. Do not reuse one fixed worktree. When work merges or is dropped, remove its worktree
+and branch; deleting an unmerged or remote branch still requires the user's authority. Preserve
+`archive/` branches and confirm that parked dependency branches are no longer needed.
 
 ## Boundaries
 
@@ -196,8 +160,9 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 **Always**
 
-- Follow the scope-aware checks in Git workflow before each commit, push, or merge. Unknown or
-  mixed changes use the full gate; desktop release checks are never reduced.
+- Follow Git workflow's phase-specific checks: focused tests while implementing, the staged
+  pre-commit hook at commit time, and `check:changes` once before push or merge. Desktop release
+  checks are never reduced.
 - Register every new editor with draft / preview / save / cancel semantics as a blocking editor
   (`useBlockingEditor`), and cover it with tests that the scene operations are refused and that
   nothing was mutated before the refusal. See Known pitfalls.
@@ -208,9 +173,7 @@ Read the relevant section of `docs/pitfalls.md` before touching these areas. The
 rules below are the working set; the incident history and rationale live there.
 
 - **Tests and tooling:** Vitest also guards Tauri and installer files. React or persistence tests
-  need `/** @vitest-environment jsdom */`; jest-dom matchers are unavailable. Initialize a fresh
-  linked worktree with `npm run worktree:setup`; supported npm Rust commands also restore verified
-  FFmpeg sidecars before Cargo runs.
+  need `/** @vitest-environment jsdom */`; jest-dom matchers are unavailable.
 - **Module boundaries:** logic-only code imports `workspace/moduleCatalog.js`, never
   `workspace/registry.jsx`.
 - **Windows and dock geometry:** frontend CSS lengths crossing into Rust use the frontend-provided
