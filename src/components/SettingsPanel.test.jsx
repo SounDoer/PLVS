@@ -907,7 +907,13 @@ describe("SettingsPanel", () => {
       expect(row.querySelector('[role="switch"]')).toBeTruthy();
     }
     expect(screen.queryByText("Shortcut")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Reset .* shortcut/ })).toBeNull();
+    for (const label of ["Start / Stop", "Live / Snapshot", "Clear"]) {
+      expect(
+        /** @type {HTMLButtonElement} */ (
+          screen.getByRole("button", { name: `Reset ${label} shortcut settings` })
+        ).disabled
+      ).toBe(true);
+    }
     expect(screen.queryByText("Fullscreen Panel")).toBeNull();
     expect(screen.queryByText("Exit Fullscreen")).toBeNull();
   });
@@ -1098,24 +1104,32 @@ describe("SettingsPanel — Channel labels", () => {
   });
 });
 
-describe("SettingsPanel — Clear shortcut reset", () => {
-  it("resets the clear shortcut only after confirming", () => {
+describe("SettingsPanel — shortcut reset", () => {
+  it("resets the Clear key and Global scope only after confirming", () => {
     const setShortcutAccelerator = vi.fn();
+    const setShortcutGlobal = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
         shortcutsReady={true}
         keyboardShortcuts={{
           ...DEFAULT_KEYBOARD_SHORTCUTS,
-          clear: { accelerator: "CmdOrCtrl+Shift+K", global: false },
+          clear: { accelerator: "CmdOrCtrl+Shift+K", global: true },
         }}
         setShortcutAccelerator={setShortcutAccelerator}
+        setShortcutGlobal={setShortcutGlobal}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Reset Clear shortcut" }));
+    const reset = screen.getByRole("button", { name: "Reset Clear shortcut settings" });
+    const global = screen.getByRole("switch", { name: "Clear global shortcut" });
+    expect(reset.compareDocumentPosition(global) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+
+    fireEvent.click(reset);
     expect(setShortcutAccelerator).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByLabelText("Confirm reset Clear shortcut"));
+    expect(setShortcutGlobal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Confirm reset Clear shortcut settings"));
     expect(setShortcutAccelerator).toHaveBeenCalledWith("clear", "CmdOrCtrl+3");
+    expect(setShortcutGlobal).toHaveBeenCalledWith("clear", false);
   });
 });
 

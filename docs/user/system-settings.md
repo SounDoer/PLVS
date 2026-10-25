@@ -127,8 +127,8 @@ versions declare that they run without elevation, so their updates install from 
 PLVS provides three configurable shortcuts: **Start / Stop** (`CmdOrCtrl+1`),
 **Live / Snapshot** (`CmdOrCtrl+2`), and **Clear** (`CmdOrCtrl+3`). Select a shortcut to record
 a replacement, press Delete or Backspace while recording to remove it, or use Reset to restore its
-built-in default. PLVS rejects bare keys, reserved combinations, and combinations already assigned
-to another configurable action.
+built-in key and turn Global off. PLVS rejects bare keys, reserved combinations, and combinations
+already assigned to another configurable action.
 
 Each row has its own **Global** switch. An enabled action works even when PLVS is not focused; its
 ordinary shortcut continues to work whenever PLVS is focused. When several PLVS workbenches are

@@ -523,10 +523,12 @@ export function SettingsPanel({
                 {/* Keyboard shortcuts */}
                 <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
                   {KEYBOARD_SHORTCUT_ACTIONS.map((action) => {
-                    const binding =
-                      keyboardShortcuts[action.id] ?? DEFAULT_KEYBOARD_SHORTCUTS[action.id];
+                    const defaultBinding = DEFAULT_KEYBOARD_SHORTCUTS[action.id];
+                    const binding = keyboardShortcuts[action.id] ?? defaultBinding;
                     const registrationError = shortcutRegistrationErrors[action.id];
-                    const isDefault = binding.accelerator === action.defaultAccelerator;
+                    const isDefault =
+                      binding.accelerator === defaultBinding.accelerator &&
+                      binding.global === defaultBinding.global;
                     return (
                       <SettingsRow key={action.id} label={action.label}>
                         <div className="flex flex-col items-end gap-0">
@@ -549,17 +551,6 @@ export function SettingsPanel({
                               isMac={isMac}
                               disabled={!shortcutsReady}
                             />
-                            {!isDefault ? (
-                              <ResetAction
-                                label={`Reset ${action.label} shortcut`}
-                                isDefault={!shortcutsReady}
-                                onReset={() =>
-                                  setShortcutAccelerator(action.id, action.defaultAccelerator)
-                                }
-                                confirmLabel={`Confirm reset ${action.label} shortcut`}
-                                cancelLabel={`Cancel reset ${action.label} shortcut`}
-                              />
-                            ) : null}
                             <label className={cn(ROW_LABEL_CLASS, "flex items-center gap-1")}>
                               <span>Global</span>
                               <SettingsSwitch
@@ -570,6 +561,17 @@ export function SettingsPanel({
                                 className={cn(registrationError && "border-destructive")}
                               />
                             </label>
+                            <ResetAction
+                              compact
+                              label={`Reset ${action.label} shortcut settings`}
+                              isDefault={!shortcutsReady || isDefault}
+                              onReset={() => {
+                                setShortcutAccelerator(action.id, defaultBinding.accelerator);
+                                setShortcutGlobal(action.id, defaultBinding.global);
+                              }}
+                              confirmLabel={`Confirm reset ${action.label} shortcut settings`}
+                              cancelLabel={`Cancel reset ${action.label} shortcut settings`}
+                            />
                           </div>
                           {registrationError ? (
                             <span className="text-[length:var(--ui-fs-axis)] text-destructive">
