@@ -727,6 +727,18 @@ function HorizontalLevelMeter({
     ? fitHorizontalTicks(candidates, metrics.trackPx, metrics.labelWidth, metrics.tickPx / 2)
     : candidates;
   const rows = isPeakFamily ? channels : [{ label: modeMeta.meterLabel, valueDb: liveLevelValue }];
+  const [scrollRows, setScrollRows] = useState(null);
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  useLayoutEffect(() => {
+    if (!scrollRows) return undefined;
+    const measure = () =>
+      setScrollbarWidth(Math.max(0, scrollRows.offsetWidth - scrollRows.clientWidth));
+    measure();
+    if (typeof ResizeObserver !== "function") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(scrollRows);
+    return () => observer.disconnect();
+  }, [scrollRows, rows.length]);
   const value = isPeak
     ? displayAudio?.tpMax
     : controls.levelMeterPlaybackMax
@@ -771,8 +783,12 @@ function HorizontalLevelMeter({
       )}
     >
       <div
+        ref={setScrollRows}
         data-level-meter-horizontal-rows
-        className="col-span-2 grid min-h-0 grid-cols-subgrid auto-rows-[minmax(1.25rem,1fr)] gap-y-[var(--ui-chart-axis-gap)] overflow-y-auto"
+        // A scrolling subgrid misplaces the inherited columns in macOS WebKit. Repeat the
+        // explicit tracks, and reserve its scrollbar width on the non-scrolling rails below.
+        style={{ columnGap: showAxes ? undefined : 0 }}
+        className="col-span-2 grid min-h-0 grid-cols-[var(--level-label-rail)_minmax(0,1fr)] auto-rows-[minmax(1.25rem,1fr)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] overflow-y-auto"
       >
         {rows.map((row, i) => (
           <Fragment key={i}>
@@ -831,6 +847,7 @@ function HorizontalLevelMeter({
       {placement && (
         <div
           className="@container relative col-start-2 h-[var(--ui-fs-display)] shrink-0"
+          style={{ marginRight: scrollbarWidth }}
           data-level-meter-horizontal-marker
         >
           <span
@@ -880,6 +897,7 @@ function HorizontalLevelMeter({
         <AxisRail
           axis="x"
           className="col-start-2 h-[var(--ui-chart-x-axis-row-h)] shrink-0"
+          style={{ marginRight: scrollbarWidth }}
           interaction={axis}
           scaleProps={{ ref: trackRef }}
           ticks={ticks}

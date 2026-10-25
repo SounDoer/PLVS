@@ -40,6 +40,8 @@ controls this rail together with numeric axes in Workspace and Dock. Momentary a
 the same rail for M/ST and follow the same visibility choice. Enabling TP Max keeps the per-channel readings visible in both
 orientations, using the same readout font size; readings shrink to fit narrow bars. Horizontal markers stay inside the
 panel at either end of the range.
+When horizontal channel rows need vertical scrolling, their bars, numeric axis, and max marker
+keep the same horizontal range, including when the system reserves space for a scrollbar.
 
 **Bar Colors** chooses what the colours mean. **Gradient** (the default) is appearance only: one
 Theme-defined ramp over the visible bar, in every mode, that zooms with the scale and ignores the

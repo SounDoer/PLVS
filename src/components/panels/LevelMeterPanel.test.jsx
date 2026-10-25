@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FrameDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
@@ -780,6 +780,52 @@ describe("LevelMeterPanel", () => {
 });
 
 describe("horizontal Level Meter", () => {
+  it.each(["left-to-right", "right-to-left"])(
+    "keeps the axis and TP Max aligned with scrolling bars in %s",
+    (orientation) => {
+      let gutter = 15;
+      let resizeRows;
+      vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(200);
+      vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function () {
+        return this.hasAttribute("data-level-meter-horizontal-rows") ? 200 - gutter : 200;
+      });
+      const OriginalResizeObserver = globalThis.ResizeObserver;
+      globalThis.ResizeObserver = class {
+        constructor(callback) {
+          this.callback = callback;
+        }
+        observe(node) {
+          if (node.hasAttribute("data-level-meter-horizontal-rows")) resizeRows = this.callback;
+        }
+        disconnect() {}
+        unobserve() {}
+      };
+      try {
+        const { container } = renderPanel({
+          panelControls: {
+            levelMeterOrientation: orientation,
+            levelMeterTpMaxMarker: true,
+          },
+        });
+        const marker = /** @type {HTMLElement} */ (
+          container.querySelector("[data-level-meter-horizontal-marker]")
+        );
+        const axis = /** @type {HTMLElement} */ (
+          container.querySelector("[data-level-meter-horizontal-rows]").parentElement
+            .lastElementChild
+        );
+        expect(marker.style.marginRight).toBe("15px");
+        expect(axis.style.marginRight).toBe("15px");
+        // Overlay scrollbars and a taller panel must restore the full scale width.
+        gutter = 0;
+        act(() => resizeRows());
+        expect(marker.style.marginRight).toBe("0px");
+        expect(axis.style.marginRight).toBe("0px");
+      } finally {
+        globalThis.ResizeObserver = OriginalResizeObserver;
+      }
+    }
+  );
   it.each(["peak", "rms", "momentary", "shortTerm"])(
     "renders %s with a horizontal gradient",
     (mode) => {
