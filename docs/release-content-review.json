@@ -1,55 +1,49 @@
 {
   "schemaVersion": 1,
-  "version": "0.23.1",
-  "baselineTag": "v0.23.0",
-  "baselineRevision": "0d863589a18af63e4b5ea2f31d67b411b5d3a176",
-  "candidateRevision": "b65b0bf8c9614b33692f6dfe1747a7909cdfd1ac",
-  "contentSha256": "60c0c7bc5e44ffe534de791c659b80ccc62d512dfafa7a27fcaff6bb25a4e1f1",
+  "version": "0.23.2",
+  "baselineTag": "v0.23.1",
+  "baselineRevision": "61a4a25dd080b7aa04793f83823c73e660f1dc43",
+  "candidateRevision": "e2f90ec6f7ceb2de7a184394901553673ba35794",
+  "contentSha256": "3f404704be714d71887a517b26d322f4613e64c375657196fda81cee36083c5b",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "Every user-visible 0.23.1 change was documented in docs/user in the commit that made it: the Linux in-app update fix and the one manual .deb update from 0.23.0 (getting-started), Linux recording through Ubuntu's FFmpeg with recordingEncoderUnavailable and the doctor check (cli.md, command-line.md), update details during an active download and Import Complete labels (system-settings), and the PLVS Default preset name. The feedback dialog change only moves the existing Attach Diagnostics description into a help tip; system-settings already describes its content.",
+      "rationale": "Every user-visible 0.23.2 change was documented in docs/user in the commit that made it: the three configurable shortcuts, their defaults, per-row Global switches, Delete/Backspace removal and Reset (system-settings), the Start / Stop and Live / Snapshot semantics including FILE Source no-ops (workspace), and the horizontal Level Meter alignment with a reserved scrollbar (panels). Later shortcut-row refinements (9dc405b7, e434b97e) only adjust layout and the Reset control; system-settings still describes them correctly.",
       "evidence": [
-        "git diff --stat v0.23.0..1777038b -- docs/user: cli.md, command-line.md, getting-started.md, system-settings.md",
-        "docs/user/getting-started.md lines 51-52 compared with CHANGELOG.md [0.23.1] Fixed (0.23.0 Linux users need one manual .deb update)",
-        "docs/user/system-settings.md Updates section and Import Complete wording compared with CHANGELOG.md [0.23.1] Fixed",
-        "docs/user/cli.md Linux Visual Capture paragraph compared with ADR 0037 and CHANGELOG.md [0.23.1] Fixed",
-        "grep of docs/user for the old preset name 'Default' preset: no matches; system-settings.md:415 Attach Diagnostics text still matches FeedbackDialog.jsx DIAGNOSTICS_HELP",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
-        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
+        "git diff v0.23.1..e434b97e -- docs/user: panels.md, system-settings.md, workspace.md",
+        "docs/user/system-settings.md 'Keyboard shortcuts' compared with src/data/keyboardShortcutActions.js defaults (CmdOrCtrl+1/2/3) and CHANGELOG.md [0.23.2]",
+        "docs/user/workspace.md Live / Snapshot paragraph compared with src/hooks/useSourceTransportActions.js and CHANGELOG.md [0.23.2] Added",
+        "docs/user/panels.md Level Meter paragraph compared with ff34ea6b (scrollbar width reserved on marker and axis rails)",
+        "grep of docs/user for 'Global Shortcut' and CmdOrCtrl+K: no stale references remain"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "README highlights make no claim affected by this release. The Ubuntu download row's 'APT package with verified in-app updates' was already the promise; 0.23.1 makes it work rather than changing it, and the manual step for 0.23.0 users belongs in the user guide and release notes.",
+      "rationale": "README highlights make no claim about keyboard shortcuts or Level Meter layout, so neither the new shortcuts nor the macOS alignment fix changes any statement there. The dependency update (tauri 2.12.2, Rust 1.99.1) changes no platform or package claim.",
       "evidence": [
-        "git diff --stat v0.23.0..1777038b -- README.md is empty",
-        "README.md line 47 Ubuntu row and highlights compared with CHANGELOG.md [0.23.1]",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
-        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
+        "grep of README.md for shortcut, hotkey and CmdOrCtrl: no matches",
+        "git diff --stat v0.23.1..e2f90ec6 -- README.md is empty",
+        "README platform/download table re-read against 524954f7: no package or platform change"
       ]
     },
     "website": {
       "status": "unchanged",
-      "rationale": "No homepage, Sharesets or privacy text changes. Platform cards name packages only. Privacy: Linux recording encodes locally with the distribution FFmpeg, the Linux updater still installs the already-downloaded signed package offline, and feedback diagnostics content is unchanged, so no collection, transmission, recipient or retention change.",
+      "rationale": "No homepage, Sharesets or privacy text changes, and the homepage makes no shortcut or Level Meter alignment claim. Privacy: shortcuts are stored locally in the existing settings store and global registration happens through the OS shortcut API; nothing is collected, transmitted or retained differently, and the dependency bump adds no service or recipient. docs/prd.md 5.8 already promises in-app shortcuts by default with user-enabled global registration and customisable combinations, which this release keeps.",
       "evidence": [
-        "git diff --stat v0.23.0..1777038b -- website ':!website/assets' is empty",
-        "website/index.html grep for update/recording claims: none",
-        "website/privacy/index.html Update Checks and Feedback sections compared with 9e705c9f, 5c38eea9 and 0d71c0ae",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
-        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
+        "git diff --stat v0.23.1..e2f90ec6 -- website is empty",
+        "grep of website HTML for shortcut, hotkey and CmdOrCtrl: no matches",
+        "website/privacy/index.html sections re-read against d91d5226 (keyboardShortcuts persisted in plvs-settings.json global preferences) and 524954f7 (crate versions only)",
+        "docs/prd.md section 5.8 Keyboard shortcuts compared with docs/user/system-settings.md"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "Outdated by decision: website/assets/landing-hero.webp (shared by README and homepage) shows 'Preset Default' in the status bar, now 'PLVS Default'. Retaking it needs the Windows capture rig run and the maintainer's visual selection, which are not available for this patch release; the difference is one status-bar word and is recorded here instead of silently left. Retake with scripts/marketing/capture-live-hero.mjs before the next minor release. landing-dock.webp and landing-dock-custom.webp show no preset name or changed UI.",
+      "rationale": "No marketing image shows Settings, so the shortcut rows do not appear in any of them. The Level Meter fix only changes horizontal rows that scroll with a space-reserving scrollbar, which no homepage image shows. Still outdated by decision, carried over from 0.23.1: website/assets/landing-hero.webp shows 'Preset Default' in the status bar, now 'PLVS Default'. Retaking it needs the Windows capture rig and the maintainer's visual selection, which this patch release does not include; retake with scripts/marketing/capture-live-hero.mjs before the next minor release.",
       "evidence": [
-        "website/assets/landing-hero.webp inspected: status bar reads 'Source Input · VB-Audio Virtual Cable | Loudness PLVS Default | Preset Default'",
-        "website/assets/landing-dock.webp inspected: Dock strip only, no preset name",
-        "website/assets/landing-dock-custom.webp inspected: custom Dock strip only, no preset name",
-        "No 0.23.1 change touches panels, Dock or the main layout; Feedback and Import Complete dialogs are not in any marketing image",
-        "Re-reviewed for candidate 85e3274a: the only change since 184d877e is scripts/verify-linux-desktop.py and its contract test (clean-system package check accepts the recording encoder warning), which no public surface describes",
-        "Re-reviewed for candidate b65b0bf8: the only change since 7aa6c740 is COREPACK_ENABLE_AUTO_PIN in release-package-smoke.yml and its contract test, which no public surface describes"
+        "git log v0.23.1..e2f90ec6 -- website/assets: no changes",
+        "ls website/assets/homepage: amber, frequency, graphite, history, meter-bridge, multichannel, night, paper, rules, spectral, stereo; none shows Settings",
+        "landing-hero.webp, landing-dock.webp and landing-dock-custom.webp: no Settings dialog, no scrolling horizontal Level Meter",
+        "0.23.1 review record screenshots decision for landing-hero.webp ('Preset Default') carried over unchanged"
       ]
     }
   }
