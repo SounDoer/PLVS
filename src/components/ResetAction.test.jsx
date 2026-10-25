@@ -35,13 +35,16 @@ it("keeps the original trigger as the confirmation state's size reference", () =
   expect(confirmation.closest("[data-reset-action]")).toBe(slot);
 });
 
-it("can use an icon-width idle slot while confirmation expands left", () => {
+it("expands a compact slot before showing confirmation controls", () => {
   render(<ResetAction label="Reset layout" compact onReset={vi.fn()} />);
 
   const reset = screen.getByRole("button", { name: "Reset layout" });
   const slot = reset.closest("[data-reset-action]");
+  expect(slot.getAttribute("data-compact")).toBe("true");
+  expect(slot.hasAttribute("data-armed")).toBe(false);
 
   fireEvent.click(reset);
   const confirmation = screen.getByRole("button", { name: "Confirm reset layout" }).parentElement;
   expect(confirmation.closest("[data-reset-action]")).toBe(slot);
+  expect(slot.getAttribute("data-armed")).toBe("true");
 });

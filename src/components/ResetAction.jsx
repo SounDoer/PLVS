@@ -1,4 +1,5 @@
 import { RotateCcw } from "lucide-react";
+import { useState } from "react";
 import { HoverTip } from "@/components/HoverTip.jsx";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { ManagementIconAction } from "@/components/ManagementRow.jsx";
@@ -42,12 +43,16 @@ export function ResetAction({
   onArmedChange,
   ...props
 }) {
+  const [armed, setArmed] = useState(false);
+
   return (
     <div
       data-reset-action
+      data-compact={compact || undefined}
+      data-armed={armed || undefined}
       className={cn(
         "flex shrink-0 justify-end",
-        compact ? "w-[calc(var(--ui-icon-management-action)+0.25rem)]" : "w-10",
+        compact && !armed ? "w-[calc(var(--ui-icon-management-action)+0.25rem)]" : "w-10",
         className
       )}
       {...props}
@@ -57,7 +62,10 @@ export function ResetAction({
         onConfirm={onReset}
         confirmLabel={confirmLabel}
         cancelLabel={cancelLabel}
-        onArmedChange={onArmedChange}
+        onArmedChange={(nextArmed) => {
+          setArmed(nextArmed);
+          onArmedChange?.(nextArmed);
+        }}
         preserveTriggerSize
         trigger={(arm) => (
           <HoverTip tip={isDefault ? defaultTip : tip} side={side} align={align}>

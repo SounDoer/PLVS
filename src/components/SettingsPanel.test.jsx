@@ -903,7 +903,6 @@ describe("SettingsPanel", () => {
     for (const label of ["Start / Stop", "Live / Snapshot", "Clear"]) {
       const row = screen.getByText(label).closest("[data-settings-row]");
       expect(row).toBeTruthy();
-      expect(row.textContent).toContain("Global");
       expect(row.querySelector('[role="switch"]')).toBeTruthy();
     }
     expect(screen.queryByText("Shortcut")).toBeNull();
@@ -930,7 +929,10 @@ describe("SettingsPanel", () => {
       />
     );
     expect(screen.getByLabelText("Clear shortcut")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Clear global shortcut" })).toBeTruthy();
+    const scope = screen.getByRole("switch", { name: "Clear works outside PLVS" });
+    expect(scope).toBeTruthy();
+    fireEvent.mouseEnter(scope.closest(".relative"));
+    expect(screen.getByRole("tooltip").textContent).toBe("Works Outside PLVS");
   });
 
   it("shows the error state on the Global shortcut toggle when registration failed", () => {
@@ -1121,7 +1123,7 @@ describe("SettingsPanel — shortcut reset", () => {
       />
     );
     const reset = screen.getByRole("button", { name: "Reset Clear shortcut settings" });
-    const global = screen.getByRole("switch", { name: "Clear global shortcut" });
+    const global = screen.getByRole("switch", { name: "Clear works outside PLVS" });
     expect(reset.compareDocumentPosition(global) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 
     fireEvent.click(reset);

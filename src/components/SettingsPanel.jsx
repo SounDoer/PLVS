@@ -551,16 +551,19 @@ export function SettingsPanel({
                               isMac={isMac}
                               disabled={!shortcutsReady}
                             />
-                            <label className={cn(ROW_LABEL_CLASS, "flex items-center gap-1")}>
-                              <span>Global</span>
+                            <HoverTip
+                              tip="Works Outside PLVS"
+                              side="top"
+                              className="inline-flex shrink-0"
+                            >
                               <SettingsSwitch
-                                aria-label={`${action.label} global shortcut`}
+                                aria-label={`${action.label} works outside PLVS`}
                                 checked={binding.global}
                                 onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
                                 disabled={!shortcutsReady || binding.accelerator === null}
                                 className={cn(registrationError && "border-destructive")}
                               />
-                            </label>
+                            </HoverTip>
                             <ResetAction
                               compact
                               label={`Reset ${action.label} shortcut settings`}
