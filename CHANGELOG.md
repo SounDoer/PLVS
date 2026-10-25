@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-10-26
+
+### Added
+
+- **Start / Stop** (`CmdOrCtrl+1`) and **Live / Snapshot** (`CmdOrCtrl+2`) keyboard shortcuts join
+  **Clear** in Settings. Each shortcut has its own **Global** switch, so any of them can work while
+  PLVS is not focused. Live / Snapshot freezes the latest retained Live moment, or returns an active
+  Snapshot to the Live edge; Start / Stop changes only the Live capture lifecycle. Both do nothing
+  for a FILE Source.
+
+### Changed
+
+- Clear's default shortcut is now `CmdOrCtrl+3` (previously `CmdOrCtrl+K`). A Clear shortcut you
+  recorded yourself, and its Global setting, carry over unchanged.
+- While recording a shortcut, Delete or Backspace removes it. **Reset** restores the built-in key
+  and turns Global off. PLVS rejects bare keys, reserved combinations, and combinations already used
+  by another shortcut.
+
+### Fixed
+
+- On macOS, horizontal Level Meter bars, their numeric axis and the max marker stay aligned when
+  the channel rows scroll and the system reserves space for a scrollbar.
+
 ## [0.23.1] - 2026-10-22
 
 ### Changed
