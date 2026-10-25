@@ -1708,7 +1708,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
     },
-    "rust:pulseaudio@0.3.1": {
+    "rust:pulseaudio@0.3.2": {
       "license": "MIT",
       "noticeSha256": "cbac0b14dba56f6fa4552cdf690bb5dd5efec983019039cb507c3763a25a30dc"
     },
@@ -1936,7 +1936,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "c0e21038ea9d26641e297350b380ad82fa7458b11119277705d5a04fc6334a5f"
     },
-    "rust:sha2@0.11.0": {
+    "rust:sha2@0.11.1": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "f00eec8c0858f767ad9cf5f52ec6ed7f913e0ba9862673494779b49a40d80a6d"
     },
@@ -2088,7 +2088,7 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-global-shortcut@2.4.0": {
+    "rust:tauri-plugin-global-shortcut@2.4.1": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
@@ -3054,7 +3054,7 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-switch@1.3.7": {
+    "npm:@radix-ui/react-switch@1.4.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
@@ -3188,7 +3188,7 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@tauri-apps/api@2.12.1": {
+    "npm:@tauri-apps/api@2.12.4": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "600ae7f78a8bd63d412051da4c13c33e7102f263db0e5d3c396f3d028d60ce26"
     },
@@ -3520,7 +3520,7 @@
       "license": "MIT",
       "noticeSha256": "adafb6cdb9e2dcf213fa3a611deb73ec8e672e6fabdba25c4ccb3c9aeffbd793"
     },
-    "npm:react@19.3.0": {
+    "npm:react@19.3.1": {
       "license": "MIT",
       "noticeSha256": "e5b5bed0925ac8f9c5558798163d98ecd67b9de2e95d8dc65bb032c4f08146d6"
     },
@@ -3528,7 +3528,7 @@
       "license": "MIT",
       "noticeSha256": "b90259bcae3bdbba79e648092c27b2f6cfc00bbccf9acd19466dcf36e8fa1990"
     },
-    "npm:react-dom@19.3.0": {
+    "npm:react-dom@19.3.1": {
       "license": "MIT",
       "noticeSha256": "e5b5bed0925ac8f9c5558798163d98ecd67b9de2e95d8dc65bb032c4f08146d6"
     },
@@ -3700,6 +3700,30 @@
       ],
       "reason": "Published package and declared gitHead omit/unavailable standalone LICENSE. Preserve the published author and MIT declaration without inventing a copyright year; full MIT terms are supplied separately.",
       "noticeSha256": "a51cb9b0a9d7100f5a1e9565be06db053142ddd7c4c99382ef449c5744bf5fa5"
+    },
+    "npm:@radix-ui/primitive@1.2.0": {
+      "license": "MIT",
+      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
+    },
+    "npm:@radix-ui/react-context@1.3.0": {
+      "license": "MIT",
+      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
+    },
+    "npm:@radix-ui/react-primitive@2.2.0": {
+      "license": "MIT",
+      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
+    },
+    "npm:@radix-ui/react-slot@1.5.0": {
+      "license": "MIT",
+      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
+    },
+    "npm:@radix-ui/react-use-controllable-state@1.3.0": {
+      "license": "MIT",
+      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
+    },
+    "npm:@radix-ui/react-use-size@1.1.5": {
+      "license": "MIT",
+      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     }
   },
   "tools": {
@@ -3729,7 +3753,9 @@
     "npm:@csstools/css-color-parser@3.1.0": "MIT",
     "npm:@csstools/css-parser-algorithms@3.0.5": "MIT",
     "npm:@csstools/css-tokenizer@3.0.4": "MIT",
+    "npm:@emnapi/core@1.11.1": "MIT",
     "npm:@emnapi/runtime@1.11.1": "MIT",
+    "npm:@emnapi/wasi-threads@1.2.2": "MIT",
     "npm:@esbuild/aix-ppc64@0.28.2": "MIT",
     "npm:@esbuild/android-arm@0.28.2": "MIT",
     "npm:@esbuild/android-arm64@0.28.2": "MIT",
@@ -3802,6 +3828,7 @@
     "npm:@jridgewell/trace-mapping@0.3.31": "MIT",
     "npm:@keyv/bigmap@1.3.1": "MIT",
     "npm:@keyv/serialize@1.1.1": "MIT",
+    "npm:@napi-rs/wasm-runtime@1.1.4": "MIT",
     "npm:@oxc-project/types@0.153.0": "MIT",
     "npm:@rolldown/binding-android-arm-eabi@1.2.13": "MIT",
     "npm:@rolldown/binding-android-arm64@1.2.13": "MIT",
@@ -3849,6 +3876,7 @@
     "npm:@tauri-apps/cli@2.12.1": "Apache-2.0 OR MIT",
     "npm:@testing-library/dom@10.4.1": "MIT",
     "npm:@testing-library/react@16.3.3": "MIT",
+    "npm:@tybys/wasm-util@0.10.2": "MIT",
     "npm:@types/aria-query@5.0.4": "MIT",
     "npm:@types/chai@5.2.3": "MIT",
     "npm:@types/deep-eql@4.0.2": "MIT",
@@ -4032,8 +4060,8 @@
     "npm:picomatch@2.3.2": "MIT",
     "npm:picomatch@4.0.7": "MIT",
     "npm:pidtree@0.6.0": "MIT",
-    "npm:playwright-core@1.63.0": "Apache-2.0",
-    "npm:playwright@1.63.0": "Apache-2.0",
+    "npm:playwright-core@1.64.1": "Apache-2.0",
+    "npm:playwright@1.64.1": "Apache-2.0",
     "npm:postcss@8.5.29": "MIT",
     "npm:prelude-ls@1.2.1": "MIT",
     "npm:prettier@3.9.5": "MIT",
@@ -4078,6 +4106,7 @@
     "npm:to-regex-range@5.0.1": "MIT",
     "npm:tough-cookie@5.1.2": "BSD-3-Clause",
     "npm:tr46@5.1.1": "MIT",
+    "npm:tslib@2.8.1": "0BSD",
     "npm:type-check@0.4.0": "MIT",
     "npm:typescript@5.9.3": "Apache-2.0",
     "npm:undici-types@7.24.6": "MIT",
@@ -4098,7 +4127,7 @@
     "npm:xml-name-validator@5.0.0": "Apache-2.0",
     "npm:xmlchars@2.2.0": "MIT",
     "npm:yallist@3.1.1": "ISC",
-    "npm:yaml@2.9.0": "ISC",
+    "npm:yaml@2.9.1": "ISC",
     "npm:yocto-queue@0.1.0": "MIT",
     "npm:zod-validation-error@4.0.2": "MIT",
     "npm:zod@4.3.6": "MIT",
@@ -4133,7 +4162,7 @@
     "rust:string_cache_codegen@0.6.1": "MIT OR Apache-2.0",
     "rust:system-deps@6.2.2": "MIT OR Apache-2.0",
     "rust:target-lexicon@0.12.16": "Apache-2.0 WITH LLVM-exception",
-    "rust:tauri-build@2.7.1": "Apache-2.0 OR MIT",
+    "rust:tauri-build@2.7.2": "Apache-2.0 OR MIT",
     "rust:tauri-plugin@2.7.1": "Apache-2.0 OR MIT",
     "rust:tauri-winres@0.3.6": "MIT",
     "rust:tinytemplate@1.2.1": "Apache-2.0 OR MIT",
