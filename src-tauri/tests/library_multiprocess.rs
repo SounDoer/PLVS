@@ -63,6 +63,8 @@ fn release_all(mut children: Vec<Child>) -> Vec<serde_json::Value> {
 #[test]
 fn separate_processes_commit_independent_items_and_conflict_on_one_id() {
   let root = std::env::temp_dir().join(format!("plvs-library-processes-{}", std::process::id()));
+  // The name repeats whenever Windows reuses a PID, so clear what a failed earlier run left.
+  let _ = std::fs::remove_dir_all(&root);
   let independent: Vec<_> = (0..4)
     .map(|index| spawn_writer(&root, &format!("preset-{index}")))
     .collect();
@@ -97,6 +99,8 @@ fn four_processes_preserve_every_committed_revision_during_a_write_stress() {
     "plvs-library-process-stress-{}",
     std::process::id()
   ));
+  // The name repeats whenever Windows reuses a PID, so clear what a failed earlier run left.
+  let _ = std::fs::remove_dir_all(&root);
   let iterations = 100;
   let writers: Vec<_> = (0..4)
     .map(|index| spawn_stress_writer(&root, &format!("writer-{index}"), iterations))
@@ -118,5 +122,7 @@ fn four_processes_preserve_every_committed_revision_during_a_write_stress() {
     .unwrap();
   assert_eq!(integrity, "ok");
 
+  // Windows cannot delete the database files while this connection holds them open.
+  drop(connection);
   let _ = std::fs::remove_dir_all(root);
 }
