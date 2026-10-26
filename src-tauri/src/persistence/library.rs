@@ -14,6 +14,10 @@ const DATABASE_SCHEMA_VERSION: i64 = 1;
 // SQLite permits one WAL writer at a time; concurrent workbenches should wait instead of losing a
 // valid write during a short burst of cross-process contention.
 const DATABASE_BUSY_TIMEOUT: Duration = Duration::from_secs(10);
+// SQLite's default busy handler backs off to 100 ms sleeps. Workbenches that write back to back
+// free the lock only briefly, so a backed-off waiter keeps missing those gaps and can be starved
+// until it times out; a short fixed poll keeps every waiting writer in the race.
+const DATABASE_BUSY_POLL_INTERVAL: Duration = Duration::from_millis(1);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,9 +74,11 @@ impl LibraryRepository {
     let repository = Self {
       database_path: shared_dir.join("library.sqlite3"),
     };
-    let connection = repository.connection()?;
-    initialize_schema(&connection)?;
-    enable_wal(&connection)?;
+    let connection = repository
+      .connection()
+      .map_err(during("opening the connection"))?;
+    initialize_schema(&connection).map_err(during("initializing the schema"))?;
+    enable_wal(&connection).map_err(during("enabling WAL"))?;
     Ok(repository)
   }
 
@@ -730,13 +736,31 @@ impl LibraryRepository {
   pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
-      .busy_timeout(DATABASE_BUSY_TIMEOUT)
+      .busy_handler(Some(wait_while_busy))
       .map_err(map_sqlite_error)?;
     connection
       .pragma_update(None, "foreign_keys", "ON")
       .map_err(map_sqlite_error)?;
     Ok(connection)
   }
+}
+
+fn wait_while_busy(attempt: i32) -> bool {
+  thread_local! {
+    static BUSY_SINCE: std::cell::Cell<Option<Instant>> = const { std::cell::Cell::new(None) };
+  }
+  let now = Instant::now();
+  let since = BUSY_SINCE.with(|since| {
+    if attempt == 0 {
+      since.set(Some(now));
+    }
+    since.get().unwrap_or(now)
+  });
+  if now.duration_since(since) >= DATABASE_BUSY_TIMEOUT {
+    return false;
+  }
+  std::thread::sleep(DATABASE_BUSY_POLL_INTERVAL);
+  true
 }
 
 fn enable_wal(connection: &Connection) -> Result<(), LibraryError> {
@@ -894,7 +918,7 @@ pub fn run_library_test_host(args: &[String]) -> std::process::ExitCode {
       Ok(_) => committed += 1,
       Err(LibraryError::Conflict(_)) => status = "conflict",
       Err(error) => {
-        eprintln!("{error}");
+        eprintln!("{error} while creating {id}");
         return std::process::ExitCode::from(1);
       }
     }
@@ -918,7 +942,20 @@ fn content_hash(document_json: &str) -> String {
 }
 
 fn map_sqlite_error(error: rusqlite::Error) -> LibraryError {
-  LibraryError::Storage(format!("Shared Library database error: {error}"))
+  match &error {
+    rusqlite::Error::SqliteFailure(inner, _) => LibraryError::Storage(format!(
+      "Shared Library database error: {error} (SQLite code {})",
+      inner.extended_code
+    )),
+    _ => LibraryError::Storage(format!("Shared Library database error: {error}")),
+  }
+}
+
+fn during(operation: &'static str) -> impl Fn(LibraryError) -> LibraryError {
+  move |error| match error {
+    LibraryError::Storage(message) => LibraryError::Storage(format!("{message} while {operation}")),
+    conflict => conflict,
+  }
 }
 
 impl From<rusqlite::Error> for LibraryError {
