@@ -745,10 +745,11 @@ impl LibraryRepository {
   }
 }
 
+thread_local! {
+  static BUSY_SINCE: std::cell::Cell<Option<Instant>> = const { std::cell::Cell::new(None) };
+}
+
 fn wait_while_busy(attempt: i32) -> bool {
-  thread_local! {
-    static BUSY_SINCE: std::cell::Cell<Option<Instant>> = const { std::cell::Cell::new(None) };
-  }
   let now = Instant::now();
   let since = BUSY_SINCE.with(|since| {
     if attempt == 0 {
@@ -961,5 +962,36 @@ fn during(operation: &'static str) -> impl Fn(LibraryError) -> LibraryError {
 impl From<rusqlite::Error> for LibraryError {
   fn from(error: rusqlite::Error) -> Self {
     map_sqlite_error(error)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn a_long_waiting_writer_keeps_polling_without_backing_off() {
+    // By attempt 500 SQLite's default busy handler sleeps 100 ms per attempt, long enough to miss
+    // the brief gaps that back-to-back writers leave and be starved until it times out.
+    assert!(wait_while_busy(0));
+    let started = Instant::now();
+    for attempt in 500..520 {
+      assert!(wait_while_busy(attempt));
+    }
+    assert!(
+      started.elapsed() < Duration::from_millis(500),
+      "20 late busy attempts took {:?}",
+      started.elapsed()
+    );
+  }
+
+  #[test]
+  fn a_waiting_writer_gives_up_at_the_busy_deadline() {
+    assert!(wait_while_busy(0));
+    let expired = Instant::now()
+      .checked_sub(DATABASE_BUSY_TIMEOUT)
+      .expect("monotonic clock reaches back past the busy timeout");
+    BUSY_SINCE.with(|since| since.set(Some(expired)));
+    assert!(!wait_while_busy(1));
   }
 }
