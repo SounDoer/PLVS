@@ -100,7 +100,9 @@ describe("self-hosted runners on a public repository", () => {
       );
       if (file !== "capture-acceptance.yml") expect(downloads.length).toBeGreaterThan(0);
       for (const step of downloads) {
-        expect(step["timeout-minutes"], step.name).toBe(10);
+        expect(step["timeout-minutes"], step.name).toBe(
+          file === "release-package-smoke.yml" ? 20 : 10
+        );
       }
     }
   );
