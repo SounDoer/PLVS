@@ -270,6 +270,8 @@ pub fn run() {
       coordinator::runtime_wait_commands,
       coordinator::runtime_finish_operation,
       update_runtime::update_status,
+      dock_accessories::set_dock_import_window,
+      dock_accessories::prepare_dock_import_window,
       dock_accessories::set_dock_update_window,
       dock_accessories::prepare_dock_update_window,
       dock_accessories::prepare_dock_accessories,

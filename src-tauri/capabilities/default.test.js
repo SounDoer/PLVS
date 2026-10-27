@@ -44,7 +44,12 @@ describe("default Tauri capabilities", () => {
 
 describe("Dock accessory Tauri capabilities", () => {
   it("targets only the accessory windows with event permissions", () => {
-    expect(accessoryCapability.windows).toEqual(["dock-header", "dock-editor", "dock-update"]);
+    expect(accessoryCapability.windows).toEqual([
+      "dock-header",
+      "dock-editor",
+      "dock-update",
+      "dock-import",
+    ]);
     expect(accessoryCapability.permissions).toEqual(["core:event:default"]);
   });
 

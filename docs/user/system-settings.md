@@ -309,7 +309,7 @@ Theme. PLVS still imports older Theme pack files. If any Theme entry is damaged 
 the import reports the problem and adds nothing instead of silently skipping that entry.
 
 A Theme, Preset, or Loudness Profile copied as text can be pasted straight into PLVS: press
-**Ctrl+V** on Windows or **Command+V** on macOS anywhere outside a text field. The text is the
+**Ctrl+V** on Windows or **Command+V** on macOS outside a text field. In Dock mode, first focus the Dock strip, toolbar, or editor; the import review opens in a separate window. The text is the
 same content as the shared file, so anything **Import** accepts can also be pasted. PLVS opens the
 normal import review before adding anything; it never applies or overwrites an Item just because
 it was pasted. A copied or

@@ -5,9 +5,20 @@ export const DOCK_ACCESSORY_EVENTS = Object.freeze({
   ready: "dock-accessory://ready",
 });
 
-export const DOCK_ACCESSORY_SURFACES = Object.freeze(["dock-header", "dock-editor", "dock-update"]);
+export const DOCK_ACCESSORY_SURFACES = Object.freeze([
+  "dock-header",
+  "dock-editor",
+  "dock-update",
+  "dock-import",
+]);
 
 const ACTION_TYPES = new Set([
+  "import-paste",
+  "import-ready",
+  "import-resize",
+  "import-confirm",
+  "import-dismiss",
+  "import-action",
   "update-ready",
   "update-resize",
   "update-confirm",

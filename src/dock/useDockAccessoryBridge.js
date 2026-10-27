@@ -7,7 +7,6 @@ import {
 } from "../ipc/dockAccessoryEvents.js";
 import {
   createAccessorySnapshot,
-  isDockAccessorySurface,
   normalizeAccessoryAction,
   normalizeAccessoryFocus,
 } from "./accessoryProtocol.js";
@@ -59,14 +58,16 @@ export function useDockAccessoryBridge({ active, headerState, editorState, onAct
     Promise.all([
       listenDockAccessoryAction((raw) => {
         const action = normalizeAccessoryAction(raw);
-        if (action && action.surface !== "dock-update") onActionRef.current?.(action);
+        if (action && ["dock-header", "dock-editor"].includes(action.surface))
+          onActionRef.current?.(action);
       }),
       listenDockAccessoryFocus((raw) => {
         const focus = normalizeAccessoryFocus(raw);
-        if (focus && focus.surface !== "dock-update") onFocusRef.current?.(focus);
+        if (focus && ["dock-header", "dock-editor"].includes(focus.surface))
+          onFocusRef.current?.(focus);
       }),
       listenDockAccessoryReady((raw) => {
-        if (!isDockAccessorySurface(raw?.surface) || raw.surface === "dock-update") return;
+        if (!["dock-header", "dock-editor"].includes(raw?.surface)) return;
         const payload =
           raw.surface === "dock-header"
             ? latestRef.current.headerState

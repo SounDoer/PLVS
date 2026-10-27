@@ -28,6 +28,7 @@ import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
  *   hoveredDockPanelId: string | null,
  *   visualRuntimeRef: import("react").MutableRefObject<any>,
  *   setUpdateGeometry: (value: any) => void,
+ *   setImportActive: (value: boolean) => void,
  * }} DockAccessories
  */
 const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} */ (null));
@@ -80,6 +81,7 @@ export function DockAccessoriesProvider({ children }) {
   // request arrives.
   const visualRuntimeRef = useRef(null);
   const [updateGeometry, setUpdateGeometry] = useState(null);
+  const [importActive, setImportActive] = useState(false);
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {
@@ -105,7 +107,7 @@ export function DockAccessoriesProvider({ children }) {
     [docked, exitDockRestoringAttributes, raiseNotice]
   );
   const dockAccessoryVisibility = useDockAccessoryVisibility({
-    preserveOnBlur: Boolean(updateControls.details),
+    preserveOnBlur: Boolean(updateControls.details) || importActive,
     active: docked && !dockSuspended,
     edge: dockEdge,
     geometryVersion: dockHeight,
@@ -290,6 +292,7 @@ export function DockAccessoriesProvider({ children }) {
         if (payload.view === "device") void refreshInventory();
         dockAccessoryVisibility.openEditor(payload.view, payload.anchorX);
       } else if (type === "close-editor") {
+        if (payload.reason === "blur" && importActive) return;
         setHoveredDockPanelId(null);
         dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
       } else if (type === "dismiss-toolbar") {
@@ -383,6 +386,7 @@ export function DockAccessoriesProvider({ children }) {
       else if (type === "reorder-preset") presets.reorder(payload.presetIds);
     },
     [
+      importActive,
       setAxisViewport,
       presentation,
       setPanelPresentation,
@@ -418,6 +422,7 @@ export function DockAccessoriesProvider({ children }) {
         hoveredDockPanelId,
         visualRuntimeRef,
         setUpdateGeometry,
+        setImportActive,
       }}
     >
       {children}

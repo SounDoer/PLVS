@@ -8,6 +8,7 @@ use crate::window_state::{MonitorRect, WindowBounds};
 pub const DOCK_HEADER_LABEL: &str = "dock-header";
 pub const DOCK_EDITOR_LABEL: &str = "dock-editor";
 pub const DOCK_UPDATE_LABEL: &str = "dock-update";
+pub const DOCK_IMPORT_LABEL: &str = "dock-import";
 
 fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   manager: &'a M,
@@ -113,6 +114,16 @@ pub async fn prepare_dock_update_window<R: tauri::Runtime>(
   ensure_accessory(window.app_handle(), DOCK_UPDATE_LABEL)
 }
 
+#[tauri::command]
+pub async fn prepare_dock_import_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+) -> Result<(), String> {
+  if window.label() != "main" {
+    return Err("Only the main window owns import presentation.".into());
+  }
+  ensure_accessory(window.app_handle(), DOCK_IMPORT_LABEL)
+}
+
 fn set_rect<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   rect: WindowBounds,
@@ -186,7 +197,12 @@ fn main_geometry<R: tauri::Runtime>(
 }
 
 pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-  for label in [DOCK_HEADER_LABEL, DOCK_EDITOR_LABEL, DOCK_UPDATE_LABEL] {
+  for label in [
+    DOCK_HEADER_LABEL,
+    DOCK_EDITOR_LABEL,
+    DOCK_UPDATE_LABEL,
+    DOCK_IMPORT_LABEL,
+  ] {
     if let Some(window) = app.get_webview_window(label) {
       let _ = window.hide();
     }
@@ -236,6 +252,51 @@ pub fn set_dock_update_window<R: tauri::Runtime>(
   );
   set_rect(&update, rects.editor)?;
   show_or_hide(&update, true, true)?;
+  Ok(Some(rects.editor))
+}
+
+#[tauri::command]
+pub fn set_dock_import_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+  visible: bool,
+  edge: DockEdge,
+  webview_scale: f64,
+  content_height: f64,
+) -> Result<Option<WindowBounds>, String> {
+  if window.label() != "main" {
+    return Err("Only the main window owns import presentation.".into());
+  }
+  // The main webview can hydrate before setup finishes creating its accessories.
+  // Hiding a window that does not exist yet is already satisfied; showing it is not.
+  let Some(import) = window.app_handle().get_webview_window(DOCK_IMPORT_LABEL) else {
+    return if visible {
+      Err("Dock import window unavailable.".into())
+    } else {
+      Ok(None)
+    };
+  };
+  if !visible {
+    show_or_hide(&import, false, false)?;
+    return Ok(None);
+  }
+  if !webview_scale.is_finite() || webview_scale <= 0.0 {
+    return Err("Invalid import window scale.".into());
+  }
+  let (monitor, strip, _) = main_geometry(&window)?;
+  if !content_height.is_finite() || content_height <= 0.0 {
+    return Err("Invalid import content height.".into());
+  }
+  let rects = dock_accessory_rects(
+    monitor,
+    strip,
+    edge,
+    webview_scale,
+    480.0,
+    content_height.min(2000.0),
+    None,
+  );
+  set_rect(&import, rects.editor)?;
+  show_or_hide(&import, true, true)?;
   Ok(Some(rects.editor))
 }
 

@@ -167,12 +167,10 @@ export function usePackTransfer() {
 
   const beginPaste = useCallback(
     async (/** @type {string} */ text) => {
-      if (operationActiveRef.current) return;
+      if (operationActiveRef.current || review || completion) return;
       operationActiveRef.current = true;
       setBusy(true);
       setStatus("");
-      setReview(null);
-      setCompletion(null);
       try {
         const { type, pack } = parseClipboardItem(text);
         const planned = planPackImport(type, pack, {
@@ -191,7 +189,7 @@ export function usePackTransfer() {
         setBusy(false);
       }
     },
-    [setStatus]
+    [setStatus, review, completion]
   );
 
   const confirmImport = useCallback(() => {

@@ -67,6 +67,25 @@ export function useAccessoryClient(surface) {
     };
   }, [surface]);
 
+  useEffect(() => {
+    if (surface !== "dock-header" && surface !== "dock-editor") return;
+    const onPaste = (event) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable
+      )
+        return;
+      const text = event.clipboardData?.getData("text/plain");
+      if (!text) return;
+      event.preventDefault();
+      void emitDockAccessoryAction({ surface, type: "import-paste", payload: { text } });
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [surface]);
+
   const action = useCallback(
     (type, actionPayload = {}) =>
       emitDockAccessoryAction({

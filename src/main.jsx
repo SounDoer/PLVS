@@ -15,6 +15,7 @@ import {
 import { listCustomThemes } from "./theme/customThemesRepo.js";
 import { DockHeaderApp } from "./dock/accessories/DockHeaderApp.jsx";
 import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
+import { DockImportApp } from "./dock/accessories/DockImportApp.jsx";
 import { DockUpdateApp } from "./dock/accessories/DockUpdateApp.jsx";
 import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
 import { DOCK_ACCESSORY_SURFACES } from "./dock/accessoryProtocol.js";
@@ -46,6 +47,8 @@ const root =
     <DockHeaderApp />
   ) : surface === "dock-editor" ? (
     <DockEditorApp />
+  ) : surface === "dock-import" ? (
+    <DockImportApp />
   ) : surface === "dock-update" ? (
     <DockUpdateApp />
   ) : (

@@ -162,6 +162,9 @@ body {
   }
 }
 
+html[data-surface="dock-import"],
+html[data-surface="dock-import"] body,
+html[data-surface="dock-import"] #root,
 html[data-surface="dock-update"],
 html[data-surface="dock-update"] body,
 html[data-surface="dock-update"] #root,

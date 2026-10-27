@@ -42,6 +42,7 @@ import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
+import { DockImportSurface } from "./dock/DockImportSurface.jsx";
 import { UpdateSurfaces } from "./components/UpdateSurfaces.jsx";
 import { dockUpdateStatus } from "./dock/dockUpdateStatus.js";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
@@ -640,6 +641,12 @@ function AppContent() {
     <>
       <AgentControlBridge />
       <UpdateSurfaces currentVersion={APP_VERSION} />
+      <DockImportSurface
+        pack={packTransfer}
+        settings={settings}
+        loudnessProfile={loudnessProfile}
+        presets={presets}
+      />
       <AppShell
         docked={docked}
         dockProps={dockProps}

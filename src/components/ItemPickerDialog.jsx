@@ -38,13 +38,13 @@ const COMPLETED_DISPOSITION_LABEL = {
   duplicated: "Imported as a copy",
 };
 
-const COMPLETION_ACTION_LABEL = {
+export const COMPLETION_ACTION_LABEL = {
   loudness: "Use Profile",
   presets: "Apply Preset",
   themes: "Use Theme",
 };
 
-function PlanRow({ entry, completed = false }) {
+export function PlanRow({ entry, completed = false }) {
   const labels = completed ? COMPLETED_DISPOSITION_LABEL : DISPOSITION_LABEL;
   return (
     <li className="flex items-center justify-between gap-3 py-1 text-[length:var(--ui-fs-control)]">
@@ -61,7 +61,7 @@ function PlanRow({ entry, completed = false }) {
 /// -- a profile's name is whatever its author typed, nothing about it says "loudness profile" --
 /// and even once named, nobody chose it, so it needs to say why it is here. Worded to fit both
 /// directions: on export these get written into the file, on import they get added to the library.
-function AlsoIncluded({ children }) {
+export function AlsoIncluded({ children }) {
   return (
     <section className="mt-3">
       <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
