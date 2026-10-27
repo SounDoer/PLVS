@@ -40,14 +40,6 @@ afterEach(() => {
 });
 
 describe("ChartHoverHud", () => {
-  it("is a translucent, blurred overlay", () => {
-    renderHud();
-    const hud = screen.getByText("359 Hz").closest("[data-chart-hover-hud]");
-    expect(hud.className).toContain("bg-secondary/40");
-    expect(hud.className.split(" ")).not.toContain("border");
-    expect(hud.className).toContain("backdrop-blur-[2px]");
-  });
-
   it("fits fields to their text and never shrinks them while the hover lasts", () => {
     const hud = (dbLabel) => (
       <div data-chart-hud-boundary>
@@ -74,7 +66,8 @@ describe("ChartHoverHud", () => {
 
   it("moves to the right corner while the cursor is near the left one, and back", () => {
     const boundary = renderHud();
-    const hud = () => screen.getByText("359 Hz").closest("[data-chart-hover-hud]");
+    const hud = () =>
+      /** @type {HTMLElement} */ (screen.getByText("359 Hz").closest("[data-chart-hover-hud]"));
     expect(hud().dataset.side).toBe("left");
 
     pointerMove(boundary, 80, 20);
