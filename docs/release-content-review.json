@@ -3,8 +3,8 @@
   "version": "0.23.3",
   "baselineTag": "v0.23.2",
   "baselineRevision": "f5ebdec9d46cd9f1954a956f6c54b99c79c9d686",
-  "candidateRevision": "4aac5b45c24d77d6cabbbcc1762a5b0a9a83e560",
-  "contentSha256": "829979644152e043ada5ccfa4f8417edbfcb46c199a022e55b01b10561c22875",
+  "candidateRevision": "8802313b25686610fb0c283cf7de9d0f6ec99f19",
+  "contentSha256": "2162cd5f99e57c6601bae938fd6a1bf95d699094f13e05ee61f0626b16332280",
   "reviews": {
     "userGuide": {
       "status": "updated",
@@ -12,7 +12,8 @@
       "evidence": [
         "git diff v0.23.2..4aac5b45 -- docs/user/system-settings.md docs/user/multichannel.md docs/user/workspace.md docs/user/panels.md",
         "src/transfer/usePackTransfer.js and src/dock/DockImportSurface.jsx compared with the Sharesets paste guide",
-        "src/analysis/effectiveChannels.js and src/lib/presetDivergence.js compared with the channel and Preset descriptions"
+        "src/analysis/effectiveChannels.js and src/lib/presetDivergence.js compared with the channel and Preset descriptions",
+        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
       ]
     },
     "readme": {
@@ -20,7 +21,8 @@
       "rationale": "README highlights describe Dock, saved Presets and Sharesets generally; none makes a conflicting claim about the new paste interaction, channel fallback, or hover behavior.",
       "evidence": [
         "README.md highlights and platform table read against CHANGELOG.md 0.23.3",
-        "git diff v0.23.2..4aac5b45 -- README.md is empty"
+        "git diff v0.23.2..4aac5b45 -- README.md is empty",
+        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
       ]
     },
     "website": {
@@ -30,7 +32,8 @@
         "website/index.html Workspace and Dock sections and website/privacy/index.html compared with the complete v0.23.2..4aac5b45 change range",
         "src/dock/DockImportSurface.jsx, src/dock/accessories/useAccessoryClient.js, src/ipc/dockAccessoryEvents.js and src/transfer/usePackTransfer.js: local paste and in-app event routing",
         "src-tauri/src/persistence/library.rs: local lock retry behavior; no network service change",
-        "node scripts/privacy-review.mjs check passed; git diff v0.23.2..4aac5b45 -- website is empty"
+        "node scripts/privacy-review.mjs check passed; git diff v0.23.2..4aac5b45 -- website is empty",
+        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
       ]
     },
     "screenshots": {
@@ -40,7 +43,8 @@
         "Viewed website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp",
         "Viewed website/assets/homepage/{amber,frequency,graphite,history,meter-bridge,multichannel,night,paper,rules,spectral,stereo}.webp",
         "git diff v0.23.2..4aac5b45 -- website/assets is empty; compared changed UI scope with docs/user chapters and CHANGELOG.md 0.23.3",
-        "Prior 0.23.2 release-content record already identified landing-hero.webp Preset Default as stale"
+        "Prior 0.23.2 release-content record already identified landing-hero.webp Preset Default as stale",
+        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
       ]
     }
   }
