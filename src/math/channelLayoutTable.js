@@ -6,7 +6,7 @@
  * @typedef {{ id: string, name: string, roles: string[] }} ChannelLayoutEntry
  */
 
-import table from "../../shared/channel-layouts.json";
+import table from "../../shared/channel-layouts.json" with { type: "json" };
 
 // Deep-freeze so every accessor has the same contract: nothing handed out, whether a direct
 // export or a derived array like `layoutsForChannelCount`'s filter result, can mutate the
