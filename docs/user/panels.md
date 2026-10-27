@@ -29,8 +29,8 @@ Hovering Loudness, Spectrum, Spectrogram, Stereo Map, or Waveform shows the read
 pointer in a translucent box in the plot's top-left corner, in the window and in the Dock. When the
 pointer comes near that corner, the box moves to the top-right one so it never covers what you
 are reading. A reading that belongs to a channel starts with that channel's name: Spectrum's
-L / R and M / S curves (for example `L -47.6 dB`), Stereo Map Position (`L 42%`; equal energy
-reads `0%`), and M/S Ratio (`M/S -12.0 dB`).
+L / R and M / S curves (for example `L -47.6 dB`) and Stereo Map Position (`L 42%`; equal energy
+reads `0%`).
 
 ## Level Meter
 

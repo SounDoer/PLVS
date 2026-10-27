@@ -378,12 +378,7 @@ export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = 
   if (mode === STEREO_MAP_MODES.CORRELATION) {
     return formatStereoMapCorrelationValue(point.value);
   }
-  return labelMsRatio(mode, formatStereoMapDbValue(point));
-}
-
-/** M/S Ratio compares two channels, so its reading names them, like Position and Spectrum. */
-function labelMsRatio(mode, text) {
-  return mode === STEREO_MAP_MODES.MS_RATIO_DB && text !== "-" ? `M/S ${text}` : text;
+  return formatStereoMapDbValue(point);
 }
 
 /**
@@ -413,5 +408,5 @@ export function formatStereoMapHoldValue(mode, rawValue, range, labels = {}) {
   if (mode === STEREO_MAP_MODES.CORRELATION) {
     return formatStereoMapCorrelationValue(clipped.value);
   }
-  return labelMsRatio(mode, formatStereoMapDbValue(clipped));
+  return formatStereoMapDbValue(clipped);
 }

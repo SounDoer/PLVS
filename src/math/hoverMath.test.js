@@ -314,7 +314,6 @@ describe("freqToNote", () => {
 
 describe("Stereo Map hover readings", () => {
   const labels = { firstLabel: "L", secondLabel: "R" };
-  const range = { lowerBound: -48, upperBound: 24 };
 
   it("puts the channel before the Position share", () => {
     expect(formatStereoMapValue("position", { state: "finite", value: 0.42 }, labels)).toBe(
@@ -329,17 +328,9 @@ describe("Stereo Map hover readings", () => {
     ).toBe("L 50%");
   });
 
-  it("labels M/S Ratio readings, clipped bounds included", () => {
-    expect(formatStereoMapValue("msRatioDb", { state: "finite", value: -12 })).toBe("M/S -12.0 dB");
-    expect(formatStereoMapValue("msRatioDb", { state: "belowRange", value: -48 })).toBe(
-      "M/S <= -48.0 dB"
-    );
-    expect(formatStereoMapHoldValue("msRatioDb", -9, range)).toBe("M/S -9.0 dB");
-    expect(formatStereoMapValue("msRatioDb", { state: "invalid" })).toBe("-");
-  });
-
   it("leaves the readings not tied to a channel unlabelled", () => {
     expect(formatStereoMapValue("monoLossDb", { state: "finite", value: -3.2 })).toBe("-3.2 dB");
     expect(formatStereoMapValue("correlation", { state: "finite", value: 0.42 })).toBe("0.42");
+    expect(formatStereoMapValue("msRatioDb", { state: "finite", value: -12 })).toBe("-12.0 dB");
   });
 });
