@@ -1,49 +1,46 @@
 {
   "schemaVersion": 1,
-  "version": "0.23.2",
-  "baselineTag": "v0.23.1",
-  "baselineRevision": "61a4a25dd080b7aa04793f83823c73e660f1dc43",
-  "candidateRevision": "e2f90ec6f7ceb2de7a184394901553673ba35794",
-  "contentSha256": "3f404704be714d71887a517b26d322f4613e64c375657196fda81cee36083c5b",
+  "version": "0.23.3",
+  "baselineTag": "v0.23.2",
+  "baselineRevision": "f5ebdec9d46cd9f1954a956f6c54b99c79c9d686",
+  "candidateRevision": "4aac5b45c24d77d6cabbbcc1762a5b0a9a83e560",
+  "contentSha256": "829979644152e043ada5ccfa4f8417edbfcb46c199a022e55b01b10561c22875",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "Every user-visible 0.23.2 change was documented in docs/user in the commit that made it: the three configurable shortcuts, their defaults, per-row Global switches, Delete/Backspace removal and Reset (system-settings), the Start / Stop and Live / Snapshot semantics including FILE Source no-ops (workspace), and the horizontal Level Meter alignment with a reserved scrollbar (panels). Later shortcut-row refinements (9dc405b7, e434b97e) only adjust layout and the Reset control; system-settings still describes them correctly.",
+      "rationale": "The release changes the Dock paste, duplicate review, channel fallback, preset modified marker, and hover readouts; the corresponding user chapters were updated with those changes.",
       "evidence": [
-        "git diff v0.23.1..e434b97e -- docs/user: panels.md, system-settings.md, workspace.md",
-        "docs/user/system-settings.md 'Keyboard shortcuts' compared with src/data/keyboardShortcutActions.js defaults (CmdOrCtrl+1/2/3) and CHANGELOG.md [0.23.2]",
-        "docs/user/workspace.md Live / Snapshot paragraph compared with src/hooks/useSourceTransportActions.js and CHANGELOG.md [0.23.2] Added",
-        "docs/user/panels.md Level Meter paragraph compared with ff34ea6b (scrollbar width reserved on marker and axis rails)",
-        "grep of docs/user for 'Global Shortcut' and CmdOrCtrl+K: no stale references remain"
+        "git diff v0.23.2..4aac5b45 -- docs/user/system-settings.md docs/user/multichannel.md docs/user/workspace.md docs/user/panels.md",
+        "src/transfer/usePackTransfer.js and src/dock/DockImportSurface.jsx compared with the Sharesets paste guide",
+        "src/analysis/effectiveChannels.js and src/lib/presetDivergence.js compared with the channel and Preset descriptions"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "README highlights make no claim about keyboard shortcuts or Level Meter layout, so neither the new shortcuts nor the macOS alignment fix changes any statement there. The dependency update (tauri 2.12.2, Rust 1.99.1) changes no platform or package claim.",
+      "rationale": "README highlights describe Dock, saved Presets and Sharesets generally; none makes a conflicting claim about the new paste interaction, channel fallback, or hover behavior.",
       "evidence": [
-        "grep of README.md for shortcut, hotkey and CmdOrCtrl: no matches",
-        "git diff --stat v0.23.1..e2f90ec6 -- README.md is empty",
-        "README platform/download table re-read against 524954f7: no package or platform change"
+        "README.md highlights and platform table read against CHANGELOG.md 0.23.3",
+        "git diff v0.23.2..4aac5b45 -- README.md is empty"
       ]
     },
     "website": {
       "status": "unchanged",
-      "rationale": "No homepage, Sharesets or privacy text changes, and the homepage makes no shortcut or Level Meter alignment claim. Privacy: shortcuts are stored locally in the existing settings store and global registration happens through the OS shortcut API; nothing is collected, transmitted or retained differently, and the dependency bump adds no service or recipient. docs/prd.md 5.8 already promises in-app shortcuts by default with user-enabled global registration and customisable combinations, which this release keeps.",
+      "rationale": "The homepage describes the existing Workspace, Dock and Presets without specifying paste or hover behavior. Privacy review found no new collection, transmission, recipient, service, retention or deletion: clipboard text is processed locally in the main application and passed to the local Dock WebView; the Library change affects local SQLite lock waiting only. Policy text and effective date remain unchanged.",
       "evidence": [
-        "git diff --stat v0.23.1..e2f90ec6 -- website is empty",
-        "grep of website HTML for shortcut, hotkey and CmdOrCtrl: no matches",
-        "website/privacy/index.html sections re-read against d91d5226 (keyboardShortcuts persisted in plvs-settings.json global preferences) and 524954f7 (crate versions only)",
-        "docs/prd.md section 5.8 Keyboard shortcuts compared with docs/user/system-settings.md"
+        "website/index.html Workspace and Dock sections and website/privacy/index.html compared with the complete v0.23.2..4aac5b45 change range",
+        "src/dock/DockImportSurface.jsx, src/dock/accessories/useAccessoryClient.js, src/ipc/dockAccessoryEvents.js and src/transfer/usePackTransfer.js: local paste and in-app event routing",
+        "src-tauri/src/persistence/library.rs: local lock retry behavior; no network service change",
+        "node scripts/privacy-review.mjs check passed; git diff v0.23.2..4aac5b45 -- website is empty"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "No marketing image shows Settings, so the shortcut rows do not appear in any of them. The Level Meter fix only changes horizontal rows that scroll with a space-reserving scrollbar, which no homepage image shows. Still outdated by decision, carried over from 0.23.1: website/assets/landing-hero.webp shows 'Preset Default' in the status bar, now 'PLVS Default'. Retaking it needs the Windows capture rig and the maintainer's visual selection, which this patch release does not include; retake with scripts/marketing/capture-live-hero.mjs before the next minor release.",
+      "rationale": "Inspected the homepage hero, both Dock strips and all eleven homepage feature images: the changed paste dialog, channel fallback and hover readout are not shown in these static views. Existing stale labels remain visible: landing-hero.webp and the amber, graphite, night and paper Theme images show Preset Default instead of PLVS Default; this predates this release and remains an explicit deferred update. Retaking the hero needs the recipe-driven Windows capture rig and review; these images are not silently represented as current in this record.",
       "evidence": [
-        "git log v0.23.1..e2f90ec6 -- website/assets: no changes",
-        "ls website/assets/homepage: amber, frequency, graphite, history, meter-bridge, multichannel, night, paper, rules, spectral, stereo; none shows Settings",
-        "landing-hero.webp, landing-dock.webp and landing-dock-custom.webp: no Settings dialog, no scrolling horizontal Level Meter",
-        "0.23.1 review record screenshots decision for landing-hero.webp ('Preset Default') carried over unchanged"
+        "Viewed website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp",
+        "Viewed website/assets/homepage/{amber,frequency,graphite,history,meter-bridge,multichannel,night,paper,rules,spectral,stereo}.webp",
+        "git diff v0.23.2..4aac5b45 -- website/assets is empty; compared changed UI scope with docs/user chapters and CHANGELOG.md 0.23.3",
+        "Prior 0.23.2 release-content record already identified landing-hero.webp Preset Default as stale"
       ]
     }
   }
