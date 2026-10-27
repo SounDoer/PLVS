@@ -71,6 +71,18 @@ export function AppSettingsOverlays({
   const localPack = usePackTransfer();
   const pack = packTransfer ?? localPack;
   const { beginPaste } = pack;
+  const applyImportedItem = async (type, id) => {
+    if (type === "themes") {
+      settings.setFixedThemeIdFromPicker(id);
+      return true;
+    }
+    if (type === "loudness") {
+      if (loudnessProfile.draftBlocksLibraryActions) return false;
+      loudnessProfile.select(`profile:${id}`);
+      return true;
+    }
+    return presets.apply(id);
+  };
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
@@ -445,6 +457,9 @@ export function AppSettingsOverlays({
           type={pack.review.type}
           review={pack.review}
           onConfirm={pack.confirmImport}
+          onAction={() => pack.runReviewAction(applyImportedItem)}
+          status={pack.status}
+          busy={pack.busy}
           onClose={pack.cancelImport}
         />
       ) : null}
@@ -455,25 +470,14 @@ export function AppSettingsOverlays({
           mode="complete"
           type={pack.completion.type}
           review={pack.completion}
-          onAction={() =>
-            pack.runCompletionAction(async (type, id) => {
-              if (type === "themes") {
-                settings.setFixedThemeIdFromPicker(id);
-                return true;
-              }
-              if (type === "loudness") {
-                if (loudnessProfile.draftBlocksLibraryActions) return false;
-                loudnessProfile.select(`profile:${id}`);
-                return true;
-              }
-              return presets.apply(id);
-            })
-          }
+          onAction={() => pack.runCompletionAction(applyImportedItem)}
+          status={pack.status}
+          busy={pack.busy}
           onClose={pack.dismissCompletion}
         />
       ) : null}
 
-      {!settings.settingsOpen && pack.status ? (
+      {!settings.settingsOpen && !pack.review && !pack.completion && pack.status ? (
         <div
           role="status"
           className={`fixed bottom-4 left-1/2 ${LAYER_PRIORITY} -translate-x-1/2 rounded-md border border-border bg-popover px-3 py-2 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-raised`}

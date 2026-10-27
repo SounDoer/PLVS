@@ -44,6 +44,18 @@ export const COMPLETION_ACTION_LABEL = {
   themes: "Use Theme",
 };
 
+export function isExistingReview(review) {
+  return (
+    (review?.itemPlan?.length ?? 0) > 0 &&
+    review.itemPlan.every((entry) => entry.disposition === "skipped") &&
+    (review.profilePlan ?? []).every((entry) => entry.disposition === "skipped")
+  );
+}
+
+export function isSingleExistingReview(review) {
+  return review?.itemPlan?.length === 1 && isExistingReview(review);
+}
+
 export function PlanRow({ entry, completed = false }) {
   const labels = completed ? COMPLETED_DISPOSITION_LABEL : DISPOSITION_LABEL;
   return (
@@ -98,6 +110,8 @@ export function AlsoIncluded({ children }) {
  *   onExport?: (...args: any[]) => any,
  *   onConfirm?: (...args: any[]) => any,
  *   onAction?: (...args: any[]) => any,
+ *   status?: string,
+ *   busy?: boolean,
  *   onBack?: (...args: any[]) => any,
  *   onClose?: (...args: any[]) => any,
  * }} props
@@ -112,6 +126,8 @@ export function ItemPickerDialog({
   onExport = () => {},
   onConfirm = () => {},
   onAction = () => {},
+  status = "",
+  busy = false,
   onBack = null,
   onClose = () => {},
 }) {
@@ -131,6 +147,8 @@ export function ItemPickerDialog({
         : pasted
           ? `Paste ${itemLabel}`
           : `Import ${label}`;
+  const allExisting = mode === "review" && isExistingReview(review);
+  const existingReview = allExisting && isSingleExistingReview(review);
   const singleCompletion = mode === "complete" && review?.itemPlan?.length === 1;
 
   useEffect(() => {
@@ -201,7 +219,11 @@ export function ItemPickerDialog({
                 ? singleCompletion
                   ? `${review.itemPlan[0].name} is now in your library.`
                   : `The ${label.toLowerCase()} are now in your library.`
-                : `Review what will be added to your library.`}
+                : allExisting
+                  ? existingReview
+                    ? "This item is already in your library."
+                    : "These items are already in your library."
+                  : `Review what will be added to your library.`}
           </DialogDescription>
         </div>
 
@@ -272,9 +294,14 @@ export function ItemPickerDialog({
           ) : null}
         </div>
 
+        {status && mode !== "pick" ? (
+          <p role="status" className="text-muted-foreground">
+            {status}
+          </p>
+        ) : null}
         <DialogFooter divided>
           <Button variant="ghost" onClick={onBack ?? handleDismiss}>
-            {mode === "complete" ? "Done" : onBack ? "Back" : "Cancel"}
+            {mode === "complete" || allExisting ? "Done" : onBack ? "Back" : "Cancel"}
           </Button>
           {mode === "pick" ? (
             <Button disabled={selected.size === 0} onClick={() => onExport([...selected])}>
@@ -284,8 +311,16 @@ export function ItemPickerDialog({
             singleCompletion ? (
               <Button onClick={onAction}>{COMPLETION_ACTION_LABEL[type]}</Button>
             ) : null
+          ) : allExisting && !existingReview ? null : existingReview ? (
+            <Button disabled={busy} onClick={onAction}>
+              {COMPLETION_ACTION_LABEL[type]}
+            </Button>
           ) : (
-            <Button onClick={onConfirm}>{pasted ? `Add ${itemLabel}` : "Import"}</Button>
+            <Button onClick={onConfirm}>
+              {pasted && review?.itemPlan?.some((entry) => entry.disposition !== "skipped")
+                ? `Add ${itemLabel}`
+                : "Import"}
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

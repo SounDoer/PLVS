@@ -472,7 +472,7 @@ describe("usePackTransfer paste", () => {
     expect(Object.values(themesStore.read().themes).map(({ name }) => name)).toEqual([
       "Sharesets Theme",
     ]);
-    expect(result.current.status).toBe("Theme added to your library.");
+    expect(result.current.status).toBe("");
   });
 
   it("reviews a pasted Loudness Profile pack before adding it", async () => {
@@ -497,7 +497,7 @@ describe("usePackTransfer paste", () => {
     expect(settingsStore.read().loudnessProfiles.profiles.map(({ name }) => name)).toEqual([
       "Spotify",
     ]);
-    expect(result.current.status).toBe("Loudness Profile added to your library.");
+    expect(result.current.status).toBe("");
   });
 
   it("reviews a pasted Sharesets Preset before adding it", async () => {
@@ -517,7 +517,7 @@ describe("usePackTransfer paste", () => {
     expect(presetsStore.read()).toEqual({});
 
     act(() => result.current.confirmImport());
-    expect(result.current.status).toBe("Preset added to your library.");
+    expect(result.current.status).toBe("");
   });
 
   it("reports unrelated clipboard text without opening review", async () => {
@@ -576,4 +576,44 @@ describe("usePackTransfer development fixtures", () => {
     act(() => result.current.developmentFixtures.completion.reset("fixture-a"));
     expect(result.current.completion).toBeNull();
   });
+});
+
+it("uses an already-present pasted Theme without appending another item", async () => {
+  const { result } = renderHook(() => usePackTransfer());
+  await act(async () => {
+    await result.current.beginPaste(clipboardTheme());
+  });
+  act(() => result.current.confirmImport());
+  act(() => result.current.dismissCompletion());
+  const before = structuredClone(themesStore.read());
+  await act(async () => {
+    await result.current.beginPaste(clipboardTheme());
+  });
+  expect(result.current.review.itemPlan[0].disposition).toBe("skipped");
+  const localId = result.current.review.itemPlan[0].finalId;
+  const useTheme = vi.fn(async () => true);
+  await act(async () => {
+    await result.current.runReviewAction(useTheme);
+  });
+  expect(useTheme).toHaveBeenCalledWith("themes", localId);
+  expect(themesStore.read()).toEqual(before);
+  expect(result.current.review).toBeNull();
+  expect(result.current.status).toBe("");
+});
+
+it("retains an existing-item review if the follow-up action is refused", async () => {
+  const { result } = renderHook(() => usePackTransfer());
+  await act(async () => {
+    await result.current.beginPaste(clipboardTheme());
+  });
+  act(() => result.current.confirmImport());
+  act(() => result.current.dismissCompletion());
+  await act(async () => {
+    await result.current.beginPaste(clipboardTheme());
+  });
+  await act(async () => {
+    await result.current.runReviewAction(async () => false);
+  });
+  expect(result.current.review).not.toBeNull();
+  expect(result.current.status).toContain("could not be used");
 });

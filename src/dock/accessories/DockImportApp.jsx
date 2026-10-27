@@ -4,6 +4,8 @@ import {
   AlsoIncluded,
   COMPLETION_ACTION_LABEL,
   PlanRow,
+  isSingleExistingReview,
+  isExistingReview,
 } from "../../components/ItemPickerDialog.jsx";
 import { PACK_KINDS } from "../../transfer/packShape.js";
 import { useAccessoryClient } from "./useAccessoryClient.js";
@@ -42,6 +44,8 @@ export function DockImportApp() {
   const { mode, review, status, busy } = payload;
   const descriptor = review ? PACK_KINDS[review.type] : null;
   const send = (type) => void action(type, { key });
+  const allExisting = mode === "review" && isExistingReview(review);
+  const existingReview = allExisting && isSingleExistingReview(review);
   const single = mode === "complete" && review?.itemPlan?.length === 1;
   return (
     <div className="max-h-screen overflow-y-auto">
@@ -63,7 +67,9 @@ export function DockImportApp() {
           <>
             <p className="text-muted-foreground">
               {mode === "review"
-                ? "Review what will be added to your library."
+                ? existingReview
+                  ? "This item is already in your library."
+                  : "Review what will be added to your library."
                 : single
                   ? `${review.itemPlan[0].name} is now in your library.`
                   : "The items are now in your library."}
@@ -92,18 +98,24 @@ export function DockImportApp() {
             ) : null}
           </>
         )}
-        {mode === "complete" && status ? (
+        {mode !== "status" && status ? (
           <p role="status" className="mt-2 text-muted-foreground">
             {status}
           </p>
         ) : null}
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="ghost" disabled={busy} onClick={() => send("import-dismiss")}>
-            {mode === "review" ? "Cancel" : "Done"}
+            {mode === "review" && !allExisting ? "Cancel" : "Done"}
           </Button>
-          {mode === "review" ? (
+          {allExisting && !existingReview ? null : existingReview ? (
+            <Button disabled={busy} onClick={() => send("import-action")}>
+              {COMPLETION_ACTION_LABEL[review.type]}
+            </Button>
+          ) : mode === "review" ? (
             <Button disabled={busy} onClick={() => send("import-confirm")}>
-              Add {descriptor.itemLabel}
+              {review.itemPlan.some((entry) => entry.disposition !== "skipped")
+                ? `Add ${descriptor.itemLabel}`
+                : "Import"}
             </Button>
           ) : single ? (
             <Button disabled={busy} onClick={() => send("import-action")}>

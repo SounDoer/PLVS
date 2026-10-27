@@ -314,7 +314,9 @@ same content as the shared file, so anything **Import** accepts can also be past
 normal import review before adding anything; it never applies or overwrites an Item just because
 it was pasted. A copied or
 downloaded Theme is recognized by its content: if an identical Theme, including its name, is
-already in your library, the review says so and nothing is added. Single `.plvstheme` files use
+already in your library, the review says so and nothing is added. For a single existing Item, choose
+**Use Theme**, **Use Profile**, or **Apply Preset** to use it directly, or **Done** to close the
+review. Single `.plvstheme` files use
 the same **Import** action as PLVS-exported Theme pack files.
 
 ## Sharesets

@@ -365,3 +365,43 @@ describe("ItemPickerDialog dragging", () => {
     expect(reopened.style.top).toBe("");
   });
 });
+
+it("offers Use Theme for an existing single Theme without an Add button", () => {
+  const onAction = vi.fn();
+  render(
+    <ItemPickerDialog
+      open
+      mode="review"
+      type="themes"
+      review={{
+        origin: "clipboard",
+        itemPlan: [{ sourceId: "a", finalId: "b", name: "Existing", disposition: "skipped" }],
+      }}
+      onAction={onAction}
+    />
+  );
+  expect(screen.getByText("This item is already in your library.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Add Theme" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Use Theme" }));
+  expect(onAction).toHaveBeenCalledOnce();
+});
+
+it("closes an entirely existing multi-item review without importing", () => {
+  render(
+    <ItemPickerDialog
+      open
+      mode="review"
+      type="themes"
+      review={{
+        origin: "clipboard",
+        itemPlan: [
+          { sourceId: "a", name: "A", disposition: "skipped" },
+          { sourceId: "b", name: "B", disposition: "skipped" },
+        ],
+      }}
+    />
+  );
+  expect(screen.getByText("These items are already in your library.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Add Theme" })).toBeNull();
+});

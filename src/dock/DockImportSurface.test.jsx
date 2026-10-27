@@ -159,3 +159,19 @@ it("keeps the completion visible when the follow-up action is refused", async ()
   expect(mock.options.payload.mode).toBe("complete");
   expect(mock.options.active).toBe(true);
 });
+
+it("uses the existing reviewed Theme without confirming an import", async () => {
+  pack.review = {
+    type: "themes",
+    itemPlan: [{ sourceId: "a", finalId: "saved", name: "Existing", disposition: "skipped" }],
+    profilePlan: [],
+  };
+  pack.runReviewAction = vi.fn(async (action) => action("themes", "saved"));
+  mount();
+  await act(async () => {
+    mock.options.onAction({ type: "import-action", payload: { key: mock.options.payload.key } });
+  });
+  expect(pack.runReviewAction).toHaveBeenCalledOnce();
+  expect(settings.setFixedThemeIdFromPicker).toHaveBeenCalledWith("saved");
+  expect(pack.confirmImport).not.toHaveBeenCalled();
+});

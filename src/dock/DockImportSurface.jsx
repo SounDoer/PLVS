@@ -5,6 +5,7 @@ import { useDockImportWindow } from "./useDockImportWindow.js";
 import { listenDockAccessoryAction } from "../ipc/dockAccessoryEvents.js";
 import { normalizeAccessoryAction } from "./accessoryProtocol.js";
 import { isTauri } from "../ipc/env.js";
+import { isSingleExistingReview } from "../components/ItemPickerDialog.jsx";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 
 export function DockImportSurface({ pack, settings, loudnessProfile, presets }) {
@@ -140,24 +141,27 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
         if (mode === "complete") pack.dismissCompletion();
         setRequested(false);
         setStatusMessage("");
-      } else if (type === "import-action" && mode === "complete") {
+      } else if (
+        type === "import-action" &&
+        (mode === "complete" || (mode === "review" && isSingleExistingReview(pack.review)))
+      ) {
         handled.current = key;
-        void pack
-          .runCompletionAction(async (type, id) => {
-            if (type === "themes") {
-              settings.setFixedThemeIdFromPicker(id);
-              return true;
-            }
-            if (type === "loudness") {
-              if (loudnessProfile.draftBlocksLibraryActions) return false;
-              loudnessProfile.select(`profile:${id}`);
-              return true;
-            }
-            return presets.apply(id);
-          })
-          .finally(() => {
-            handled.current = null;
-          });
+        if (mode === "review") setRequested(false);
+        const runAction = mode === "review" ? pack.runReviewAction : pack.runCompletionAction;
+        void runAction(async (type, id) => {
+          if (type === "themes") {
+            settings.setFixedThemeIdFromPicker(id);
+            return true;
+          }
+          if (type === "loudness") {
+            if (loudnessProfile.draftBlocksLibraryActions) return false;
+            loudnessProfile.select(`profile:${id}`);
+            return true;
+          }
+          return presets.apply(id);
+        }).finally(() => {
+          handled.current = null;
+        });
       }
     },
   });

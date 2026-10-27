@@ -197,16 +197,7 @@ export function usePackTransfer() {
     const { type, profileAdditions, itemAdditions } = review;
     if (profileAdditions.length > 0) getAdapter("loudness").append(profileAdditions);
     getAdapter(type).append(itemAdditions);
-    if (review.origin === "clipboard") {
-      const { itemLabel } = packDescriptor(type);
-      setStatus(
-        itemAdditions.length > 0
-          ? `${itemLabel} added to your library.`
-          : `${itemLabel} is already in your library.`
-      );
-    } else {
-      setStatus(`${packDescriptor(type).label} imported`);
-    }
+    setStatus("");
     setCompletion({
       type,
       origin: review.origin,
@@ -215,7 +206,10 @@ export function usePackTransfer() {
     setReview(null);
   }, [review, setStatus]);
 
-  const cancelImport = useCallback(() => setReview(null), []);
+  const cancelImport = useCallback(() => {
+    setReview(null);
+    setStatus("");
+  }, [setStatus]);
 
   const runCompletionAction = useCallback(
     async (action) => {
@@ -225,6 +219,7 @@ export function usePackTransfer() {
       if (completion.fixtureId) return false;
       operationActiveRef.current = true;
       setBusy(true);
+      setStatus("");
       const entry = completion.itemPlan[0];
       try {
         const applied = await action(completion.type, entry.finalId);
@@ -246,7 +241,45 @@ export function usePackTransfer() {
     [completion, setStatus]
   );
 
-  const dismissCompletion = useCallback(() => setCompletion(null), []);
+  const runReviewAction = useCallback(
+    async (action) => {
+      if (
+        !review ||
+        review.itemPlan.length !== 1 ||
+        review.itemPlan[0].disposition !== "skipped" ||
+        review.itemAdditions.length ||
+        review.profileAdditions.length ||
+        operationActiveRef.current
+      )
+        return false;
+      operationActiveRef.current = true;
+      setBusy(true);
+      setStatus("");
+      const entry = review.itemPlan[0];
+      try {
+        if ((await action(review.type, entry.finalId)) === false) {
+          setStatus(`${entry.name} could not be used.`);
+          return false;
+        }
+        setReview(null);
+        return true;
+      } catch (error) {
+        setStatus(
+          `${entry.name} could not be used. ${error instanceof Error ? error.message : ""}`.trim()
+        );
+        return false;
+      } finally {
+        operationActiveRef.current = false;
+        setBusy(false);
+      }
+    },
+    [review, setStatus]
+  );
+
+  const dismissCompletion = useCallback(() => {
+    setCompletion(null);
+    setStatus("");
+  }, [setStatus]);
 
   // Development fixtures show the real review and completion dialogs for a fixed sample pack.
   // Neither writes to the library; Add on the review stays an ordinary user action.
@@ -297,6 +330,7 @@ export function usePackTransfer() {
     confirmImport,
     cancelImport,
     runCompletionAction,
+    runReviewAction,
     dismissCompletion,
     developmentFixtures,
   };

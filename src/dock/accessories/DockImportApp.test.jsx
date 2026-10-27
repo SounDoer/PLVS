@@ -36,3 +36,20 @@ it("shows completion errors alongside the optional action", () => {
   expect(screen.getByRole("status").textContent).toBe("Follow-up refused");
   expect(screen.getByRole("button", { name: "Use Theme" })).toBeTruthy();
 });
+
+it("offers the existing Theme action in Dock review", () => {
+  client.payload = {
+    key: "2:review",
+    mode: "review",
+    review: {
+      type: "themes",
+      itemPlan: [{ sourceId: "a", finalId: "b", name: "Existing", disposition: "skipped" }],
+    },
+  };
+  client.action.mockClear();
+  render(<DockImportApp />);
+  expect(screen.getByText("This item is already in your library.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Add Theme" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Use Theme" }));
+  expect(client.action).toHaveBeenCalledWith("import-action", { key: "2:review" });
+});
