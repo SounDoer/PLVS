@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.3] - 2026-10-27
+
+### Added
+
+- Paste shared Themes, Presets, and Loudness Profiles directly into a focused Dock using Ctrl+V on
+  Windows or Command+V on macOS. Review the result in a separate window before adding anything.
+
+### Changed
+
+- Import reviews identify Items already in the Library and let you use an existing single Item
+  directly, without importing it again or showing duplicate success messages.
+- Chart hover readouts stay clear of the pointer, fit their contents, and identify the channel for
+  channel-specific readings.
+
+### Fixed
+
+- Panel channel selections remain saved when the current source has fewer channels, and become
+  effective again when the channels are available.
+- A Preset's modified indicator follows the current state compared with its saved snapshot, so it
+  clears when changes are reversed.
+- Concurrent Library writers wait fairly instead of starving one another.
+
 ## [0.23.2] - 2026-10-26
 
 ### Added
