@@ -1,13 +1,15 @@
 import { useState } from "react";
 
 import { normalizePanelControls } from "@/lib/panelControls.js";
+import { formatVectorscopePairLabel } from "@/math/vectorscopePairMath.js";
 
 import { PanelControlRows } from "./PanelControlRows.jsx";
-import { getSelectedOption, stereoMapKeyFromPair } from "./selectionKeys.js";
+import { getSelectedOption, stereoMapKeyFromPair, storedChannelLabel } from "./selectionKeys.js";
 import { SettingsGroup, SettingsSelect } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function StereoMapSettings({
+  channelCount = 0,
   stereoMapPairOptions = [],
   stereoMapPairDisplayLabel = "",
   panelControls,
@@ -26,7 +28,15 @@ export function StereoMapSettings({
     : { matchedOption: null, selectedOption: null };
   const pairLabel = matchedOption
     ? selectedOption.label
-    : stereoMapPairDisplayLabel || selectedOption?.label;
+    : channelCount > 0
+      ? storedChannelLabel(
+          formatVectorscopePairLabel({
+            ...normalizedPanelControls.stereoMapPair,
+            channelLabels: [],
+          }),
+          channelCount
+        )
+      : stereoMapPairDisplayLabel || selectedOption?.label;
 
   return (
     <SettingsGroup>

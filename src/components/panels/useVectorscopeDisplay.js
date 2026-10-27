@@ -16,6 +16,7 @@ import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscope
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
+import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -86,7 +87,9 @@ export function useVectorscopeDisplay() {
   const normalizedPanelControls = normalizePanelControls(panelControls);
   const vectorscopeMode = normalizedPanelControls.vectorscopeMode;
   const isLissajous = vectorscopeMode === "lissajous";
-  const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
+  // What this panel analyses: the requested pair, or the fallback while the source lacks it.
+  const effectivePanelControls = useEffectiveChannelControls("vectorscope", panelControls);
+  const vectorscopeKey = vectorscopeRequestKeyFromControls(effectivePanelControls);
   const isSnapshot = selectedOffset >= 0;
   const [holdSlowActive, setHoldSlowActive] = useState(false);
   const holdSlowTimerRef = useRef(null);
@@ -161,7 +164,7 @@ export function useVectorscopeDisplay() {
     ? null
     : displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey];
   // The panel's own pair (snapshot/pending fall back to its per-instance controls, not the global).
-  const controlPair = normalizedPanelControls.vectorscopePair ?? {
+  const controlPair = normalizePanelControls(effectivePanelControls).vectorscopePair ?? {
     x: pairX,
     y: pairY,
   };

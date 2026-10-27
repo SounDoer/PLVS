@@ -246,9 +246,10 @@ function bool(value, fallback) {
   return typeof value === "boolean" ? value : fallback;
 }
 
-/// The Dock adds two constraints the Workspace panels leave to clampPanelControls: the indices
-/// must be non-negative and distinct. A Dock module has no later clamp against the device's
-/// channel count, so a degenerate pair would reach the analysis request as-is.
+/// The Dock adds two constraints the Workspace panels leave to channel resolution: the indices
+/// must be non-negative and distinct. Resolution against the device's channel count
+/// (`analysis/effectiveChannels.js`) keeps any valid pair, so a degenerate one would reach the
+/// analysis request as-is.
 function dockPair(value, fallback) {
   if (value.x >= 0 && value.y >= 0 && value.x !== value.y) {
     return { x: Math.floor(value.x), y: Math.floor(value.y) };

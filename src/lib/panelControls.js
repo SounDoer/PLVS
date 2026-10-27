@@ -953,8 +953,9 @@ const CONTROLS = [
     /// Stored as `{ x, y }` like every other channel-index pair. It was `{ first, second }` until
     /// the Dock and the panel were put on one set of keys; the analysis request payload still
     /// says `{ first, second }`, because that shape belongs to the Rust request type, not here.
-    /// Only shape/type is validated at this point; clamping to the pair actually available for
-    /// the current channel count happens in clampPanelControls.js, same split as vectorscopePair.
+    /// Only shape/type is validated at this point; falling back to a pair the current channel
+    /// count offers happens in analysis/effectiveChannels.js, same split as vectorscopePair, and
+    /// never rewrites the stored pair.
     key: "stereoMapPair",
     kind: "pair",
     legacyMembers: ["first", "second"],

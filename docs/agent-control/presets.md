@@ -232,8 +232,10 @@ Preset Apply distinguishes a resource that has a safe fallback from a current-mo
   produces `dockUnsupported`.
 - A platform that cannot reserve screen space keeps Dock in overlay mode and produces
   `dockReserveSpaceUnsupported`; unsupported Glass is disabled with `glassUnsupported`.
-- Saved Spectrum, Spectrogram, Vectorscope, and Stereo Map channel selections are clamped to the
-  current channel topology and produce `channelSelectionAdapted` for each affected Panel.
+- Saved Spectrum, Spectrogram, Vectorscope, and Stereo Map channel selections are applied as saved.
+  Each one the current channel topology lacks produces `channelSelectionAdapted` naming the
+  selection the Panel analyses meanwhile; the saved one returns with a source that has those
+  channels.
 - When the runtime supplies a Dock width constraint, preferred widths beyond it produce
   `dockPreferredWidthConstrained`; the authoring preference remains saved while the rendered strip
   uses the effective available width.

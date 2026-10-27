@@ -1,13 +1,15 @@
 import { useState } from "react";
 
 import { normalizePanelControls } from "@/lib/panelControls.js";
+import { formatVectorscopePairLabel } from "@/math/vectorscopePairMath.js";
 
 import { PanelControlRows } from "./PanelControlRows.jsx";
-import { getSelectedOption, vectorscopeKeyFromPair } from "./selectionKeys.js";
+import { getSelectedOption, storedChannelLabel, vectorscopeKeyFromPair } from "./selectionKeys.js";
 import { SettingsGroup, SettingsSelect } from "./SettingsWidgets.jsx";
 
 /** @param {import("./types.js").PanelSettingsProps} props */
 export function VectorscopeSettings({
+  channelCount = 0,
   vectorscopeOptions = [],
   panelControls,
   onPanelControlsChange,
@@ -17,10 +19,19 @@ export function VectorscopeSettings({
   if (vectorscopeOptions.length === 0) return null;
 
   const normalizedPanelControls = normalizePanelControls(panelControls);
-  const { selectedOption } = getSelectedOption(
+  const { matchedOption, selectedOption } = getSelectedOption(
     vectorscopeOptions,
     vectorscopeKeyFromPair(normalizedPanelControls.vectorscopePair)
   );
+  const pairLabel = matchedOption
+    ? selectedOption.label
+    : storedChannelLabel(
+        formatVectorscopePairLabel({
+          ...normalizedPanelControls.vectorscopePair,
+          channelLabels: [],
+        }),
+        channelCount
+      );
 
   return (
     <SettingsGroup>
@@ -31,7 +42,7 @@ export function VectorscopeSettings({
         slots={{
           vectorscopePair: (
             <SettingsSelect
-              label={selectedOption.label}
+              label={pairLabel}
               ariaLabel="vectorscope channel"
               options={vectorscopeOptions}
               value={selectedOption.key}

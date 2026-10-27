@@ -1349,21 +1349,37 @@ describe("PanelSettingsContent", () => {
     ).toBe("24");
   });
 
-  it("falls back to the first spectrum option when the stored channel is not offered", () => {
+  it("names a stored spectrum channel the source lacks instead of the fallback", () => {
+    const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
-        channelCount={6}
+        channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 99 } }}
-        onPanelControlsChange={vi.fn()}
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          spectrumChannel: { type: "pair", x: 4, y: 5 },
+        }}
+        onPanelControlsChange={onPanelControlsChange}
       />
     );
 
-    expect(screen.getByRole("combobox", { name: "spectrum channel" }).textContent).toContain("L/R");
+    // Shown even on two channels, where the row is otherwise hidden: the request is kept.
+    const channel = screen.getByRole("combobox", { name: "spectrum channel" });
+    expect(channel.textContent).toContain("Ch 5+Ch 6 (Unavailable)");
+
+    // Changing something else writes the stored request back, never the fallback.
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrum view" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getAllByRole("option").at(-1));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ spectrumChannel: { type: "pair", x: 4, y: 5 } })
+    );
   });
 
-  it("falls back to the first vectorscope option when the stored pair is not offered", () => {
+  it("names a stored vectorscope pair the source lacks, and replaces it when another is chosen", () => {
+    const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="vectorscope"
@@ -1373,13 +1389,34 @@ describe("PanelSettingsContent", () => {
           { key: "0-2", label: "L/C", x: 0, y: 2 },
         ]}
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopePair: { x: 9, y: 10 } }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const channel = screen.getByRole("combobox", { name: "vectorscope channel" });
+    expect(channel.textContent).toContain("Ch 10/Ch 11 (Unavailable)");
+
+    fireEvent.keyDown(channel, { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "L/C" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vectorscopePair: { x: 0, y: 2 } })
+    );
+  });
+
+  it("does not call a stored pair unavailable before the channel count is known", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="vectorscope"
+        channelCount={0}
+        vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopePair: { x: 4, y: 5 } }}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    expect(screen.getByRole("combobox", { name: "vectorscope channel" }).textContent).toContain(
-      "L/R"
-    );
+    const label = screen.getByRole("combobox", { name: "vectorscope channel" }).textContent;
+    expect(label).toContain("Ch 5/Ch 6");
+    expect(label).not.toContain("Unavailable");
   });
 
   it("renders Stats metrics as an inline labeled detail and toggles stat ids", () => {

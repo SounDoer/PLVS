@@ -14,6 +14,8 @@ import { MeterRuntimeProvider, useMeterRuntimeAssembly } from "./MeterRuntimeCon
 import { SourceActionsProvider } from "./SourceActionsContext.jsx";
 import { DisplaySnapshotProvider } from "./DisplaySnapshotContext.jsx";
 import { AnalysisSessionProvider, useAnalysisSession } from "./AnalysisSessionContext.jsx";
+import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 function Providers({ children }) {
   return (
@@ -47,8 +49,10 @@ function mount() {
     session: /** @type {ReturnType<typeof useAnalysisSession>} */ (null),
     assembly: /** @type {ReturnType<typeof useMeterRuntimeAssembly>} */ (null),
     settings: /** @type {ReturnType<typeof useAppSettings>} */ (null),
+    workspace: /** @type {ReturnType<typeof useWorkspaceStore>} */ (null),
   };
   function Probe() {
+    seen.workspace = useWorkspaceStore();
     seen.session = useAnalysisSession();
     seen.assembly = useMeterRuntimeAssembly();
     seen.settings = useAppSettings();
@@ -119,6 +123,47 @@ describe("AnalysisSessionProvider", () => {
     act(() => seen.assembly.display.setAudio((current) => ({ ...current, tpMax: -3 })));
 
     expect(seen.renders).toBe(rendersAfterFirstFrame);
+  });
+
+  it("analyses the fallback on a narrower source without rewriting the requested channels", () => {
+    workspaceStore.patch({
+      tree: DEFAULT_WORKSPACE_STATE.tree,
+      panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
+      panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
+      panelControlsById: {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById,
+        spectrum: {
+          ...DEFAULT_WORKSPACE_STATE.panelControlsById.spectrum,
+          spectrumChannel: { type: "pair", x: 4, y: 5 },
+        },
+      },
+    });
+    const seen = mount();
+    const spectrumChannels = () =>
+      seen.session.derivedAnalysisRequests.spectrumRequests
+        .filter(({ panelIds }) => panelIds.includes("spectrum"))
+        .map(({ channel }) => channel);
+    const stored = () => seen.workspace.state.panelControlsById.spectrum.spectrumChannel;
+    const frame = (channels) =>
+      act(() =>
+        seen.assembly.display.setAudio((current) => ({
+          ...current,
+          peakDb: Array.from({ length: channels }, () => -20),
+        }))
+      );
+
+    frame(2);
+    expect(spectrumChannels()).toEqual([{ type: "pair", x: 0, y: 1 }]);
+    expect(stored()).toEqual({ type: "pair", x: 4, y: 5 });
+
+    frame(10);
+    expect(spectrumChannels()).toEqual([{ type: "pair", x: 4, y: 5 }]);
+    expect(stored()).toEqual({ type: "pair", x: 4, y: 5 });
+    expect(workspaceStore.read().panelControlsById.spectrum.spectrumChannel).toEqual({
+      type: "pair",
+      x: 4,
+      y: 5,
+    });
   });
 
   it("refuses the hook outside the provider", () => {

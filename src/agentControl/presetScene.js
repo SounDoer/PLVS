@@ -1,5 +1,7 @@
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
-import { deriveClampedPanelControls } from "../workspace/clampPanelControls.js";
+import { resolveEffectiveChannelControls } from "../analysis/effectiveChannels.js";
+
+const CHANNEL_CONTROL_KEYS = ["spectrumChannel", "vectorscopePair", "stereoMapPair"];
 
 /**
  * @param {string} code
@@ -181,7 +183,9 @@ export function planPresetApplyResources(preset, context = {}) {
   }
 
   if (Number.isInteger(context.channelCount) && context.channelCount > 0) {
-    const clampContext = {
+    // Channel selections are applied as saved: a narrower topology only changes what the panel
+    // analyses (`resolveEffectiveChannelControls`), so the request returns with a wider source.
+    const topology = {
       channelCount: context.channelCount,
       spectrumChannelOptions: buildSpectrumChannelOptions(
         context.channelCount,
@@ -191,41 +195,38 @@ export function planPresetApplyResources(preset, context = {}) {
     };
     const containers = [
       {
-        state: effectivePreset,
-        controlsKey: "panelControlsById",
+        panelOrder: effectivePreset.panelOrder ?? [],
+        panelsById: effectivePreset.panelsById ?? {},
+        controlsById: effectivePreset.panelControlsById ?? {},
         path: "$.panelControlsById",
       },
       {
-        state: {
-          panelOrder: effectivePreset.dock?.panelOrder ?? [],
-          panelsById: effectivePreset.dock?.panelsById ?? {},
-          panelControlsById: effectivePreset.dock?.controlsByPanelId ?? {},
-        },
-        controlsKey: "dock.controlsByPanelId",
+        panelOrder: effectivePreset.dock?.panelOrder ?? [],
+        panelsById: effectivePreset.dock?.panelsById ?? {},
+        controlsById: effectivePreset.dock?.controlsByPanelId ?? {},
         path: "$.dock.controlsByPanelId",
       },
     ];
     for (const container of containers) {
-      for (const update of deriveClampedPanelControls(container.state, clampContext)) {
-        const moduleId = container.state.panelsById?.[update.panelId]?.moduleId;
-        const controlKey =
-          moduleId === "vectorscope"
-            ? "vectorscopePair"
-            : moduleId === "stereo-map"
-              ? "stereoMapPair"
-              : "spectrumChannel";
-        const requested = container.state.panelControlsById?.[update.panelId]?.[controlKey];
+      for (const panelId of container.panelOrder) {
+        const moduleId = container.panelsById[panelId]?.moduleId;
+        const requestedControls = container.controlsById[panelId];
+        if (!moduleId || !requestedControls) continue;
+        const { controls, unavailable } = resolveEffectiveChannelControls(
+          moduleId,
+          requestedControls,
+          topology
+        );
+        if (!unavailable) continue;
+        const controlKey = CHANNEL_CONTROL_KEYS.find(
+          (key) => controls[key] !== requestedControls[key]
+        );
         warnings.push({
           code: "channelSelectionAdapted",
-          path: `${container.path}.${update.panelId}.${controlKey}`,
-          requested,
-          effective: update.panelControls[controlKey],
+          path: `${container.path}.${panelId}.${controlKey}`,
+          requested: requestedControls[controlKey],
+          effective: controls[controlKey],
         });
-        if (container.controlsKey === "panelControlsById") {
-          effectivePreset.panelControlsById[update.panelId] = update.panelControls;
-        } else {
-          effectivePreset.dock.controlsByPanelId[update.panelId] = update.panelControls;
-        }
       }
     }
   }

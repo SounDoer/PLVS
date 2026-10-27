@@ -1,23 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
-import { deriveClampedPanelControls } from "../workspace/clampPanelControls.js";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useChannelRolesRestart } from "../hooks/useDialogueEngineRestart.js";
 import { useDock } from "../dock/DockContext.jsx";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "../dock/dockAnalysisRequest.js";
+import { dockModuleIdForPanelModuleId } from "../dock/dockLayout.js";
 import {
   deriveAnalysisRequests,
   deriveRetainedAnalysisKeys,
+  unionRetainedAnalysisKeys,
 } from "../analysis/analysisRequests.js";
 import {
-  buildVectorscopePairOptions,
-  clampVectorscopePairToAvailable,
-} from "../math/vectorscopePairMath.js";
-import {
-  buildSpectrumChannelOptions,
-  clampSpectrumChannelToAvailable,
-} from "../math/spectrumChannelOptions.js";
+  effectiveWorkspaceState,
+  resolveEffectiveChannelControls,
+} from "../analysis/effectiveChannels.js";
+import { buildVectorscopePairOptions } from "../math/vectorscopePairMath.js";
+import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { rolesForLayout } from "../math/channelLayoutTable.js";
@@ -44,6 +43,7 @@ import { useRuntimeBackendSync } from "./useRuntimeBackendSync.js";
  *   resetChannelLabels: () => void,
  *   vectorscopePairOptions: any[],
  *   spectrumChannelOptions: any[],
+ *   channelTopology: import("../analysis/effectiveChannels.js").ChannelTopology,
  *   derivedAnalysisRequests: ReturnType<typeof mergeDockAnalysisRequests>,
  *   analysisRequests: ReturnType<typeof deriveBackendAnalysisRequests>,
  *   fileDurationMs: number | undefined,
@@ -52,18 +52,17 @@ import { useRuntimeBackendSync } from "./useRuntimeBackendSync.js";
 const AnalysisSessionContext = createContext(/** @type {AnalysisSession | null} */ (null));
 
 /**
- * What is being analysed and how its channels are named: the channel count and labels, the
- * analysis requests derived from the open panels, their synchronization to the Rust engine, and
- * the repairs applied to panel controls when the channel count changes.
+ * What is being analysed and how its channels are named: the channel count and labels, and the
+ * analysis requests derived from the open panels -- with each panel's requested channels resolved
+ * against what the source offers -- and their synchronization to the Rust engine.
  *
  * Re-renders per meter frame, because the channel count comes from the displayed frame. The value
  * it publishes is memoized on facts that change at human speed, so its consumers do not.
  *
- * Its effects stay in this one component in a fixed order: the backend learns the analysis
- * requests before the clamps repair a selection, exactly as before the move.
+ * Its effects stay in this one component in a fixed order.
  */
 export function AnalysisSessionProvider({ children }) {
-  const { state: workspaceState, setPanelControlsForPanel } = useWorkspaceStore();
+  const { state: workspaceState } = useWorkspaceStore();
   const { setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   const { sourceMode } = useMeterRuntime();
   const { setSelectedOffset } = useMeterDisplayState();
@@ -105,6 +104,35 @@ export function AnalysisSessionProvider({ children }) {
     // stored shared and dormant local values intact so increasing retention can reveal them again.
   }, [historyRetentionSec, setSelectedOffset]);
 
+  const channelLabelRuntime = useMemo(
+    () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides }),
+    [channelCount, channelLabelOverrides]
+  );
+  const peakLabelContext = channelLabelRuntime.peakLabelContext;
+
+  /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
+  const vectorscopePairOptions = useMemo(() => {
+    const n = channelCount >= 2 ? channelCount : channelCount === 0 ? 2 : 1;
+    return buildVectorscopePairOptions(n, peakLabelContext);
+  }, [channelCount, peakLabelContext]);
+
+  const spectrumChannelOptions = useMemo(() => {
+    const n = channelCount >= 2 ? channelCount : 2;
+    const labels = getPeakMeterChannelLabels(n, peakLabelContext);
+    return buildSpectrumChannelOptions(n, labels);
+  }, [channelCount, peakLabelContext]);
+
+  // What the current source offers. Panels keep their requested channels; requests and history
+  // keys use the effective ones resolved against this, so a narrower source never rewrites a panel.
+  const channelTopology = useMemo(
+    () => ({ channelCount, spectrumChannelOptions, peakLabelContext }),
+    [channelCount, spectrumChannelOptions, peakLabelContext]
+  );
+  const effectiveWorkspace = useMemo(
+    () => effectiveWorkspaceState(workspaceState, channelTopology),
+    [workspaceState, channelTopology]
+  );
+
   const dockPanelInstances = useMemo(
     () =>
       dockLayout.panels.map((panel) => ({
@@ -114,13 +142,25 @@ export function AnalysisSessionProvider({ children }) {
       })),
     [dockLayout.panels, dockLayout.controlsByPanelId]
   );
+  const effectiveDockPanelInstances = useMemo(
+    () =>
+      dockPanelInstances.map((panel) => {
+        const { controls, unavailable } = resolveEffectiveChannelControls(
+          dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId,
+          panel.controls,
+          channelTopology
+        );
+        return unavailable ? { ...panel, controls } : panel;
+      }),
+    [dockPanelInstances, channelTopology]
+  );
   const derivedAnalysisRequests = useMemo(
     () =>
       mergeDockAnalysisRequests(
-        deriveAnalysisRequests(workspaceState, { channelCount }),
-        docked ? dockPanelInstances : false
+        deriveAnalysisRequests(effectiveWorkspace, { channelCount }),
+        docked ? effectiveDockPanelInstances : false
       ),
-    [workspaceState, channelCount, docked, dockPanelInstances]
+    [effectiveWorkspace, channelCount, docked, effectiveDockPanelInstances]
   );
   const analysisRequests = useMemo(
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
@@ -129,9 +169,24 @@ export function AnalysisSessionProvider({ children }) {
   // Which histories survive is a different question from what Rust computes, so this is derived
   // from the open panels rather than from `analysisRequests` -- and deliberately without `docked`,
   // because AppShell renders the strip or the panels and whichever is hidden comes back intact.
+  // A panel falling back keeps both keys: its request's history returns with the wider source.
   const retainedAnalysisKeys = useMemo(
-    () => mergeDockRetainedKeys(deriveRetainedAnalysisKeys(workspaceState), dockPanelInstances),
-    [workspaceState, dockPanelInstances]
+    () =>
+      mergeDockRetainedKeys(
+        unionRetainedAnalysisKeys(
+          deriveRetainedAnalysisKeys(workspaceState),
+          effectiveWorkspace === workspaceState
+            ? null
+            : deriveRetainedAnalysisKeys(effectiveWorkspace)
+        ),
+        [
+          ...dockPanelInstances,
+          ...effectiveDockPanelInstances.filter(
+            (panel, index) => panel !== dockPanelInstances[index]
+          ),
+        ]
+      ),
+    [workspaceState, effectiveWorkspace, dockPanelInstances, effectiveDockPanelInstances]
   );
   // Sweeping runs inside pushVisualHistRow -- i.e. only on the intakes that INGEST frames
   // (routing's `ingestingIntakes`: live + file-analysis), not on `intakeRef.current`, which is
@@ -150,10 +205,6 @@ export function AnalysisSessionProvider({ children }) {
       intake?.setRetainedVisualKeys(retainedAnalysisKeys, windowMs);
     }
   }, [ingestingIntakes, retainedAnalysisKeys, historyRetentionSec]);
-  const channelLabelRuntime = useMemo(
-    () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides }),
-    [channelCount, channelLabelOverrides]
-  );
   const { channelRoles } = channelLabelRuntime;
   useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", onClearRef);
   const {
@@ -169,8 +220,6 @@ export function AnalysisSessionProvider({ children }) {
     dialogueVadEngine,
   });
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
-
-  const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
   const setChannelLabelToken = useCallback(
     (index, token) => {
@@ -204,88 +253,6 @@ export function AnalysisSessionProvider({ children }) {
     });
   }, [channelCount, setChannelLabelOverrides]);
 
-  /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
-  const vectorscopePairOptions = useMemo(() => {
-    const n = channelCount >= 2 ? channelCount : channelCount === 0 ? 2 : 1;
-    return buildVectorscopePairOptions(n, peakLabelContext);
-  }, [channelCount, peakLabelContext]);
-
-  const spectrumChannelOptions = useMemo(() => {
-    const n = channelCount >= 2 ? channelCount : 2;
-    const labels = getPeakMeterChannelLabels(n, peakLabelContext);
-    return buildSpectrumChannelOptions(n, labels);
-  }, [channelCount, peakLabelContext]);
-  // Clamp every panel instance's channel selection to the currently available channels. Lowering
-  // the device channel count must repair all panels (not just the first), otherwise a stale
-  // out-of-range selection would derive an analysis request key with no matching backend result.
-  useEffect(() => {
-    const updates = deriveClampedPanelControls(workspaceState, {
-      spectrumChannelOptions,
-      channelCount,
-      peakLabelContext,
-    });
-    for (const { panelId, panelControls } of updates) {
-      setPanelControlsForPanel(panelId, panelControls);
-    }
-  }, [
-    workspaceState,
-    spectrumChannelOptions,
-    channelCount,
-    peakLabelContext,
-    setPanelControlsForPanel,
-  ]);
-
-  const dockPanels = dockLayout.panels;
-  const dockControlsByPanelId = dockLayout.controlsByPanelId;
-  const setDockPanelControls = dockLayout.setPanelControls;
-
-  useEffect(() => {
-    for (const panel of dockPanels) {
-      if (panel.moduleId !== "vectorscope") continue;
-      const controls = dockControlsByPanelId[panel.id];
-      const pair = controls?.vectorscopePair;
-      const nextPair = clampVectorscopePairToAvailable(
-        pair,
-        channelCount >= 2 ? channelCount : 2,
-        peakLabelContext
-      );
-      if (nextPair.x === pair?.x && nextPair.y === pair?.y) continue;
-      setDockPanelControls(panel.id, { ...controls, vectorscopePair: nextPair });
-    }
-  }, [channelCount, dockControlsByPanelId, dockPanels, setDockPanelControls, peakLabelContext]);
-
-  useEffect(() => {
-    for (const panel of dockPanels) {
-      if (panel.moduleId !== "stereo-map") continue;
-      const controls = dockControlsByPanelId[panel.id];
-      const pair = controls?.stereoMapPair;
-      const nextPair = clampVectorscopePairToAvailable(
-        pair,
-        channelCount >= 2 ? channelCount : 2,
-        peakLabelContext
-      );
-      if (nextPair.x === pair?.x && nextPair.y === pair?.y) continue;
-      setDockPanelControls(panel.id, { ...controls, stereoMapPair: nextPair });
-    }
-  }, [channelCount, dockControlsByPanelId, dockPanels, setDockPanelControls, peakLabelContext]);
-
-  useEffect(() => {
-    for (const panel of dockPanels) {
-      if (panel.moduleId !== "spectrum" && panel.moduleId !== "spectrogram") continue;
-      const controls = dockControlsByPanelId[panel.id];
-      const channel = controls?.spectrumChannel;
-      const nextChannel = clampSpectrumChannelToAvailable(channel, spectrumChannelOptions);
-      const currentKey =
-        channel?.type === "single" ? `s-${channel.ch}` : `p-${channel?.x ?? 0}-${channel?.y ?? 1}`;
-      const nextKey =
-        nextChannel.type === "single"
-          ? `s-${nextChannel.ch}`
-          : `p-${nextChannel.x}-${nextChannel.y}`;
-      if (currentKey === nextKey) continue;
-      setDockPanelControls(panel.id, { ...controls, spectrumChannel: nextChannel });
-    }
-  }, [dockControlsByPanelId, dockPanels, setDockPanelControls, spectrumChannelOptions]);
-
   const value = useMemo(
     () => ({
       channelCount,
@@ -296,6 +263,7 @@ export function AnalysisSessionProvider({ children }) {
       resetChannelLabels,
       vectorscopePairOptions,
       spectrumChannelOptions,
+      channelTopology,
       derivedAnalysisRequests,
       analysisRequests,
       fileDurationMs,
@@ -314,6 +282,7 @@ export function AnalysisSessionProvider({ children }) {
       resetChannelLabels,
       vectorscopePairOptions,
       spectrumChannelOptions,
+      channelTopology,
       derivedAnalysisRequests,
       analysisRequests,
       fileDurationMs,

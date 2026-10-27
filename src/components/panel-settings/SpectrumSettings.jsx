@@ -5,7 +5,12 @@ import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChann
 
 import { TimeRangeRow } from "./AxisRangeRows.jsx";
 import { PanelControlRows } from "./PanelControlRows.jsx";
-import { getSelectedOption, spectrumKeyFromSelection } from "./selectionKeys.js";
+import {
+  getSelectedOption,
+  spectrumKeyFromSelection,
+  spectrumSelectionLabel,
+  storedChannelLabel,
+} from "./selectionKeys.js";
 import { SettingsGroup, SettingsSelect } from "./SettingsWidgets.jsx";
 
 function SpectrumViewChipLabel({ fallbackLabel, legend }) {
@@ -49,14 +54,16 @@ export function SpectrumSettings({
   if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
   const normalizedPanelControls = normalizePanelControls(panelControls);
-  const { selectedOption } = getSelectedOption(
+  const { matchedOption, selectedOption } = getSelectedOption(
     spectrumOptions,
     spectrumKeyFromSelection(normalizedPanelControls.spectrumChannel)
   );
+  // The source lacks the requested channels: the panel analyses `selectedOption` meanwhile.
+  const requestUnavailable = !matchedOption && channelCount > 0 && spectrumOptions.length > 0;
   // The view toggle (M/S, L/R) only makes sense for the overlaid spectrum curve; a spectrogram is
   // a single heatmap and can't overlay, which is why only the Spectrum tab has a View row.
   const showView = spectrumViewApplies(selectedOption?.sel ?? null);
-  const showChannel = channelCount > 2 && spectrumOptions.length > 0;
+  const showChannel = (channelCount > 2 && spectrumOptions.length > 0) || requestUnavailable;
   const update = (changes) =>
     onPanelControlsChange(normalizePanelControls({ ...normalizedPanelControls, ...changes }));
 
@@ -69,7 +76,14 @@ export function SpectrumSettings({
         slots={{
           spectrumChannel: showChannel ? (
             <SettingsSelect
-              label={selectedOption.label}
+              label={
+                requestUnavailable
+                  ? storedChannelLabel(
+                      spectrumSelectionLabel(normalizedPanelControls.spectrumChannel),
+                      channelCount
+                    )
+                  : selectedOption.label
+              }
               ariaLabel={`${activeTab} channel`}
               options={spectrumOptions}
               value={selectedOption.key}

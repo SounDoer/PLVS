@@ -241,3 +241,23 @@ export function deriveRetainedAnalysisKeys(state) {
 
   return { spectrum, vectorscope, stereoMap, stereoMapModesByKey };
 }
+
+/// Both sets of keys, for a panel whose effective channels differ from its request: the request's
+/// history comes back with a source that has those channels, and the fallback's is being recorded.
+export function unionRetainedAnalysisKeys(a, b) {
+  if (!b) return a;
+  const stereoMapModesByKey = new Map(
+    [...(a.stereoMapModesByKey ?? [])].map(([key, modes]) => [key, new Set(modes)])
+  );
+  for (const [key, modes] of b.stereoMapModesByKey ?? []) {
+    const merged = stereoMapModesByKey.get(key) ?? new Set();
+    for (const mode of modes) merged.add(mode);
+    stereoMapModesByKey.set(key, merged);
+  }
+  return {
+    spectrum: new Set([...a.spectrum, ...b.spectrum]),
+    vectorscope: new Set([...a.vectorscope, ...b.vectorscope]),
+    stereoMap: new Set([...a.stereoMap, ...b.stereoMap]),
+    stereoMapModesByKey,
+  };
+}

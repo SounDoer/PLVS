@@ -25,6 +25,8 @@ one. Channels above 8 are never guessed from the count alone.
 - **Loudness** uses BS.1770 channel weighting for the detected or selected layout, excluding LFE.
 - **True Peak Max** covers every channel.
 - **Spectrum**, **Spectrogram**, **Vectorscope**, and **Stereo Map** let you choose which channel or
-  channel pair to view.
+  channel pair to view. If the current source lacks the channels you chose, the panel shows the
+  first available ones and the setting reads **(Unavailable)**; your choice is kept and comes back
+  when you switch to a source that has those channels.
 
 Channel labels can be renamed under **Channels** in Settings.

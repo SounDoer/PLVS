@@ -73,7 +73,15 @@ where `source` is `workspace` or `panel`. Axes are read-only here and writable t
 [`axes.md`](axes.md).
 
 Where a module requests analysis, the panel reports it as `active`, `waitingForChannels`, or
-`notRequested`/`inactive`. Request families have no count cap: identical request keys share one
+`notRequested`/`inactive`. A Spectrum, Spectrogram, Vectorscope, or Stereo Map panel whose
+`channel` or `channelPair` names channels the current source lacks keeps that value in `controls`
+and reports the selection it analyses meanwhile as `effectiveChannel` or `effectiveChannelPair`:
+
+```json
+{ "status": "waitingForChannels", "effectiveChannel": { "type": "pair", "x": 0, "y": 1 } }
+```
+
+The saved selection returns on its own once a source has those channels. Request families have no count cap: identical request keys share one
 request, every distinct valid key is sent to the backend, and Dock requests are deduplicated with
 matching Workspace requests or appended, never evicting one. There is therefore no `overCap`,
 request priority, or allocation warning. A dry run computes the expected request and status without

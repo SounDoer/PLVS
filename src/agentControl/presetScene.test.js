@@ -195,7 +195,7 @@ describe("Preset scene capture planning", () => {
     ).toEqual([expect.objectContaining({ code: "monitorUnavailable" })]);
   });
 
-  it("adapts optional presentation, Dock, width and channel capabilities", () => {
+  it("adapts optional presentation, Dock and width, and reports channel fallbacks", () => {
     const preset = {
       id: "preset-1",
       name: "Surround",
@@ -237,15 +237,36 @@ describe("Preset scene capture planning", () => {
       "channelSelectionAdapted",
       "channelSelectionAdapted",
     ]);
+    expect(planned.warnings.slice(3)).toEqual([
+      {
+        code: "channelSelectionAdapted",
+        path: "$.panelControlsById.spectrum.spectrumChannel",
+        requested: { type: "pair", x: 4, y: 5 },
+        effective: { type: "pair", x: 0, y: 1 },
+      },
+      {
+        code: "channelSelectionAdapted",
+        path: "$.panelControlsById.scope.vectorscopePair",
+        requested: { x: 4, y: 5 },
+        effective: { x: 0, y: 1 },
+      },
+      {
+        code: "channelSelectionAdapted",
+        path: "$.dock.controlsByPanelId.dock-scope.stereoMapPair",
+        requested: { x: 4, y: 5 },
+        effective: { x: 0, y: 1 },
+      },
+    ]);
+    // The channels are applied as saved; only what the panels analyse falls back.
     expect(planned.preset).toMatchObject({
       glassEnabled: false,
       panelControlsById: {
-        spectrum: { spectrumChannel: { type: "pair", x: 0, y: 1 } },
-        scope: { vectorscopePair: { x: 0, y: 1 } },
+        spectrum: { spectrumChannel: { type: "pair", x: 4, y: 5 } },
+        scope: { vectorscopePair: { x: 4, y: 5 } },
       },
       dock: {
         reserveSpace: false,
-        controlsByPanelId: { "dock-scope": { stereoMapPair: { x: 0, y: 1 } } },
+        controlsByPanelId: { "dock-scope": { stereoMapPair: { x: 4, y: 5 } } },
       },
     });
   });

@@ -290,6 +290,7 @@ export function AgentControlBridge() {
     derivedAnalysisRequests,
     analysisRequests,
     fileDurationMs,
+    channelTopology,
   } = useAnalysisSession();
   const { channelLabelOverride, channelRoles } = channelLabelRuntime;
   const { activeBlockingEditors } = useSceneGuard();
@@ -431,6 +432,7 @@ export function AgentControlBridge() {
           : Math.min(historyRetentionSec, measuredDurationSec);
       return {
         channelCount,
+        channelTopology,
         channelLabels: channelLabelRuntime.channelAutoLabels,
         dialogueDetectionActive: dialogueGating,
         spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
@@ -447,6 +449,7 @@ export function AgentControlBridge() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       channelCount,
+      channelTopology,
       channelLabelRuntime.channelAutoLabels,
       dialogueGating,
       derivedAnalysisRequests.spectralWaveform,

@@ -440,6 +440,7 @@ describe("StereoMapPanel", () => {
     const { container: containerC } = renderPanel(
       baseAudioData({
         getStereoMapHistoryForKey,
+        channelCount: 4,
         panelControls: { ...sharedControls, stereoMapPair: { x: 2, y: 3 } },
       })
     );
@@ -527,6 +528,7 @@ describe("StereoMapPanel", () => {
     const ctx = mockCanvas();
     renderPanel(
       baseAudioData({
+        channelCount: 4,
         panelControls: { stereoMapPair: { x: 2, y: 3 } },
         displayAudio: { stereoMapResultsByKey: { [KEY]: primitiveRow() } },
       })
@@ -537,6 +539,20 @@ describe("StereoMapPanel", () => {
     // different key.
     expect(ctx.fill).not.toHaveBeenCalled();
     expect(ctx.stroke).toHaveBeenCalledTimes(0); // Grid defaults off
+  });
+
+  it("draws the fallback pair while the source lacks the requested one", () => {
+    const ctx = mockCanvas();
+    renderPanel(
+      baseAudioData({
+        channelCount: 2,
+        panelControls: { stereoMapPair: { x: 2, y: 3 } },
+        displayAudio: { stereoMapResultsByKey: { [KEY]: primitiveRow() } },
+      })
+    );
+
+    // Pair 2:3 is kept as the request; on two channels the panel analyses and draws pair 0:1.
+    expect(ctx.fill).toHaveBeenCalled();
   });
 
   it("shows the snapshot no-data state when its request key has no history at the selected time", () => {
@@ -554,6 +570,7 @@ describe("StereoMapPanel", () => {
     const ctx = mockCanvas();
     const { rerender } = renderPanel(
       baseAudioData({
+        channelCount: 4,
         panelControls: { stereoMapPair: { x: 0, y: 1 } },
       })
     );
@@ -565,7 +582,7 @@ describe("StereoMapPanel", () => {
       <FrameDataProvider
         value={{
           displayAudio: { stereoMapResultsByKey: { [KEY]: primitiveRow() } },
-          channelCount: 2,
+          channelCount: 4,
           peakLabelContext: {},
         }}
       >

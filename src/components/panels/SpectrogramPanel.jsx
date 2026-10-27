@@ -48,6 +48,7 @@ import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelControls.js";
+import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 
 // A right press already starts a rotation drag, so a right double-click has to be distinguished
 // from "rotated out and came back". Both conditions are required: barely moved, and soon after the
@@ -269,7 +270,8 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
 
   // Spectrograms are request-keyed: resolve this panel's key once and read both the live rolling
   // history and the frozen snapshot history for that key only.
-  const spectrogramKey = spectrumRequestKeyFromControls(panelControls);
+  const effectivePanelControls = useEffectiveChannelControls("spectrogram", panelControls);
+  const spectrogramKey = spectrumRequestKeyFromControls(effectivePanelControls);
   const snapRef = useMemo(
     () => ({
       get current() {

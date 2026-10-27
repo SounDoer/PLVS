@@ -1,5 +1,6 @@
 import { DEFAULT_PANEL_PRESENTATION } from "../lib/panelPresentation.js";
 /** @vitest-environment jsdom */
+import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
@@ -4293,7 +4294,7 @@ describe("useAgentControlBridge", () => {
     ]);
   });
 
-  it("commits the effective channel adaptation while keeping the saved Preset unchanged", async () => {
+  it("reports the channel fallback and applies the saved channels unchanged", async () => {
     const target = {
       id: "preset-1",
       name: "Surround",
@@ -4331,10 +4332,11 @@ describe("useAgentControlBridge", () => {
         effective: { type: "pair", x: 0, y: 1 },
       }),
     ]);
+    // The panel keeps the request; it analyses the fallback until a source has those channels.
     expect(view.store.state.panelControlsById.spectrum.spectrumChannel).toEqual({
       type: "pair",
-      x: 0,
-      y: 1,
+      x: 4,
+      y: 5,
     });
     expect(target.panelControlsById.spectrum.spectrumChannel).toEqual({
       type: "pair",
@@ -4377,6 +4379,31 @@ describe("useAgentControlBridge", () => {
     const spectrum = inspected.result.workspace.panels.find(({ id }) => id === "spectrum");
 
     expect(spectrum.analysis).toEqual({ status: "active" });
+  });
+
+  it("reports the channel a panel analyses while its requested one waits for channels", async () => {
+    const channelTopology = {
+      channelCount: 2,
+      spectrumChannelOptions: buildSpectrumChannelOptions(2, ["L", "R"]),
+      peakLabelContext: {},
+    };
+    const view = mount({ analysisContext: { channelCount: 2, channelTopology } });
+    await waitUntilReady();
+    act(() => {
+      view.store.setPanelControlsForPanel("spectrum", {
+        ...view.store.state.panelControlsById.spectrum,
+        spectrumChannel: { type: "pair", x: 4, y: 5 },
+      });
+    });
+
+    const inspected = await send(request("app.inspect", {}, "inspect-effective-channel"));
+    const spectrum = inspected.result.workspace.panels.find(({ id }) => id === "spectrum");
+
+    expect(spectrum.controls.channel).toEqual({ type: "pair", x: 4, y: 5 });
+    expect(spectrum.analysis).toEqual({
+      status: "waitingForChannels",
+      effectiveChannel: { type: "pair", x: 0, y: 1 },
+    });
   });
 
   it("describes one live panel with its dynamic public control schema", async () => {

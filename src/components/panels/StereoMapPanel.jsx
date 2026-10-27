@@ -46,6 +46,7 @@ import {
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
 import { beginPanelCpuSample, finishPanelCpuSample } from "../../dev/panelCpuProfiler.js";
+import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 
 export const STEREO_MAP_MONO_MESSAGE = "Mono input — Stereo Map requires a channel pair.";
 
@@ -166,7 +167,9 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
   );
   const mode = normalizedPanelControls.stereoMapMode;
   const holdVisible = normalizedPanelControls.stereoMapHold;
-  const stereoMapKey = stereoMapRequestKeyFromControls(panelControls);
+  // What this panel analyses: the requested pair, or the fallback while the source lacks it.
+  const effectivePanelControls = useEffectiveChannelControls("stereo-map", panelControls);
+  const stereoMapKey = stereoMapRequestKeyFromControls(effectivePanelControls);
   const isSnapshot = selectedOffset >= 0;
   const themeColors = useResolvedTheme(selectStereoMapCanvasColors);
   const hoverColors = useMemo(
@@ -240,7 +243,7 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
   });
   const freqTicks = buildAdaptiveFreqTicks(xMinHz, xMaxHz, stereoMapXAxis.axisPx);
 
-  const pair = normalizedPanelControls.stereoMapPair;
+  const pair = normalizePanelControls(effectivePanelControls).stereoMapPair;
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const channelLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});

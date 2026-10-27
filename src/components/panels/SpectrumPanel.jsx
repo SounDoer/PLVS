@@ -48,6 +48,7 @@ import {
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
 import { beginPanelCpuSample, finishPanelCpuSample } from "../../dev/panelCpuProfiler.js";
+import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 
 // Shared by the axis rails and the plot area, which edit the same two ranges. The y rail resets to
 // -96 rather than to absMin -- a default, not a bound, so it stays out of this.
@@ -128,6 +129,8 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
     () => normalizePanelControls(panelControls),
     [panelControls]
   );
+  // What this panel analyses: the requested channels, or the fallback while the source lacks them.
+  const effectivePanelControls = useEffectiveChannelControls("spectrum", panelControls);
   const [holdSmoothingActive, setHoldSmoothingActive] = useState(false);
   const spectrumMaxMode = normalizedPanelControls.spectrumMaxMode;
   const maxHoldEnabled = spectrumMaxMode === "hold";
@@ -135,7 +138,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   // Two overlaid curves name their channel in the hover readout; colour alone is not a label.
   const hoverLegend = spectrumViewLegend(
     normalizedPanelControls.spectrumView,
-    normalizedPanelControls.spectrumChannel,
+    normalizePanelControls(effectivePanelControls).spectrumChannel,
     getPeakMeterChannelLabels(channelCount >= 2 ? channelCount : 2, peakLabelContext || {})
   );
   const gradientId = useId().replaceAll(":", "");
@@ -241,7 +244,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   const [maxHoldClearKey, setMaxHoldClearKey] = useState(0);
   const spectrumPeakTrackRef = useRef([]);
   const spectrumPeakDetectDbRef = useRef(null);
-  const spectrumKey = spectrumRequestKeyFromControls(panelControls);
+  const spectrumKey = spectrumRequestKeyFromControls(effectivePanelControls);
   const isSnapshot = selectedOffset >= 0;
   // In snapshot mode each panel reads history for its own request key; in live mode it reads the
   // request-keyed live result.

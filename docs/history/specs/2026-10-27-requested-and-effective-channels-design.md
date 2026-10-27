@@ -91,16 +91,23 @@ Retained keys keep both: the requested key, so its history survives while the so
 and is shown again when the wider source returns within the retention window, and the effective key,
 so the history being recorded during the fallback is not swept as unretained.
 
-Stereo Map's request-side rule (omit the request while the pair is unavailable) is replaced by the
-same fallback the other modules use, which is what users see today, because the clamp currently
-rewrites the pair before that rule applies.
+Stereo Map's request-side rule in `deriveAnalysisRequests` (omit the request while the pair is
+out of range) stays, but only a mono source still reaches it: on two or more channels the resolved
+fallback pair is always in range, which is what users saw before, because the clamp rewrote the pair
+first.
+
+Agent Control's Preset apply plan (`planPresetApplyResources` in `presetScene.js`) also used the
+clamp, and the apply installed the clamped copy. It now applies the saved selections and keeps the
+`channelSelectionAdapted` warning, reporting the effective selection.
 
 ### Settings display
 
 Decision: while the requested selection is unavailable, the channel control shows the request,
-marked unavailable, for example `Ch 5/6 (Unavailable)`, and the panel draws the fallback. Choosing
-any listed option replaces the request. The control is shown wherever it is shown today; the
-unavailable entry is not offered as a choice in the list.
+marked unavailable, for example `Ch 5+Ch 6 (Unavailable)`, and the panel draws the fallback. Choosing
+any listed option replaces the request; the unavailable entry is not offered as a choice in the list.
+The Spectrum channel row, otherwise shown only above two channels, is also shown while its request is
+unavailable, so the kept request is visible on a stereo source. While the channel count is not known
+yet, nothing is marked unavailable.
 
 ### Agent Control
 

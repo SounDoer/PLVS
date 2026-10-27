@@ -15,6 +15,7 @@ import { UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
  * What the app knows about the running analysis that a snapshot reports alongside the workspace.
  * @typedef {{
  *   channelCount: number,
+ *   channelTopology?: import("../analysis/effectiveChannels.js").ChannelTopology,
  *   channelLabels: string[],
  *   dialogueDetectionActive: boolean,
  *   spectralWaveformActive: boolean,

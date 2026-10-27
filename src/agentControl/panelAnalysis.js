@@ -1,4 +1,5 @@
 import { getPanelControls } from "../workspace/panelControlInstances.js";
+import { resolveEffectiveChannelControls } from "../analysis/effectiveChannels.js";
 
 const DIALOGUE_METRICS = new Set([
   "dialogueCoverage",
@@ -13,6 +14,17 @@ function channelIsAvailable(selection, channelCount) {
   return selection?.x < assumedCount && selection?.y < assumedCount;
 }
 
+/// The selection the panel analyses while its requested one waits for channels. The request stays in
+/// `controls`; this names the fallback, under the public control name it falls back for.
+function effectiveSelection(moduleId, controls, context, field, publicName) {
+  const { controls: effective, unavailable } = resolveEffectiveChannelControls(
+    moduleId,
+    controls,
+    context.channelTopology
+  );
+  return unavailable ? { [publicName]: effective[field] } : {};
+}
+
 /**
  * @param {string} panelId
  */
@@ -25,6 +37,7 @@ export function readPublicPanelAnalysis(workspace, panelId, context = {}) {
       status: channelIsAvailable(controls.spectrumChannel, context.channelCount)
         ? "active"
         : "waitingForChannels",
+      ...effectiveSelection(moduleId, controls, context, "spectrumChannel", "effectiveChannel"),
     };
   }
 
@@ -36,6 +49,7 @@ export function readPublicPanelAnalysis(workspace, panelId, context = {}) {
       )
         ? "active"
         : "waitingForChannels",
+      ...effectiveSelection(moduleId, controls, context, "vectorscopePair", "effectiveChannelPair"),
     };
   }
 
@@ -44,6 +58,7 @@ export function readPublicPanelAnalysis(workspace, panelId, context = {}) {
       status: channelIsAvailable({ type: "pair", ...controls.stereoMapPair }, context.channelCount)
         ? "active"
         : "waitingForChannels",
+      ...effectiveSelection(moduleId, controls, context, "stereoMapPair", "effectiveChannelPair"),
     };
   }
 
