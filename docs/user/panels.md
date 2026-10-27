@@ -25,6 +25,11 @@ Line traces, reference guides, event markers, and max-hold outlines use their re
 colours directly. Filled areas and time-, level-, or energy-based fades can still use transparency
 when it carries measurement meaning.
 
+Hovering Loudness, Spectrum, Spectrogram, Stereo Map, or Waveform shows the readings under the
+pointer in a translucent box in the plot's top-left corner, in the window and in the Dock. When the
+pointer comes near that corner, the box moves to the top-right one so it never covers what you
+are reading.
+
 ## Level Meter
 
 Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Short-term**. It can show

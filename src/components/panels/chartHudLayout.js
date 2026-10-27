@@ -32,3 +32,14 @@ export function fitChartHud(widths, width, height, lineHeight, channelOverflow =
   }
   return { horizontal: true, count: 0, overflow: "…" };
 }
+
+/** Move the HUD to the right corner while the cursor would read through it in the left one. */
+export function chartHudSide(cursor, hud, margin = 12) {
+  if (!cursor) return "left";
+  const near = (x) =>
+    cursor.x >= x - margin &&
+    cursor.x <= x + hud.width + margin &&
+    cursor.y >= hud.top - margin &&
+    cursor.y <= hud.top + hud.height + margin;
+  return near(hud.left) && !near(hud.boundaryWidth - hud.right - hud.width) ? "right" : "left";
+}
