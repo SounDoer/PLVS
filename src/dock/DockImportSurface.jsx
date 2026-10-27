@@ -130,6 +130,9 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
       if (actionPayload.key !== key || handled.current === key) return;
       if (type === "import-confirm" && mode === "review") {
         handled.current = key;
+        // Parsing succeeded; subsequent status belongs to the completion flow, not paste errors.
+        setRequested(false);
+        setStatusMessage("");
         pack.confirmImport();
       } else if (type === "import-dismiss") {
         handled.current = key;

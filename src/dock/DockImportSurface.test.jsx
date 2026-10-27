@@ -117,3 +117,45 @@ it("keeps an invalid-paste message until it can be shown after an update", () =>
   expect(mock.options.active).toBe(true);
   expect(mock.options.payload.status).toContain("Clipboard");
 });
+
+it("does not reopen a success status after applying a pasted item", async () => {
+  const view = mount();
+  paste(window, "theme");
+  pack.review = {
+    type: "themes",
+    itemPlan: [{ sourceId: "a", name: "Theme", disposition: "added" }],
+  };
+  view.rerender(<DockImportSurface {...{ pack, settings, loudnessProfile, presets }} />);
+  act(() =>
+    mock.options.onAction({ type: "import-confirm", payload: { key: mock.options.payload.key } })
+  );
+  pack.review = null;
+  pack.completion = {
+    type: "themes",
+    itemPlan: [{ sourceId: "a", name: "Theme", disposition: "added", finalId: "a" }],
+  };
+  pack.status = "Theme added to your library.";
+  view.rerender(<DockImportSurface {...{ pack, settings, loudnessProfile, presets }} />);
+  expect(mock.options.payload.mode).toBe("complete");
+  await act(async () => {
+    mock.options.onAction({ type: "import-action", payload: { key: mock.options.payload.key } });
+  });
+  pack.completion = null;
+  view.rerender(<DockImportSurface {...{ pack, settings, loudnessProfile, presets }} />);
+  expect(mock.options.active).toBe(false);
+  expect(mock.options.payload.mode).toBe(null);
+});
+
+it("keeps the completion visible when the follow-up action is refused", async () => {
+  pack.completion = {
+    type: "loudness",
+    itemPlan: [{ sourceId: "a", name: "Profile", disposition: "added", finalId: "a" }],
+  };
+  pack.runCompletionAction.mockResolvedValue(false);
+  mount();
+  await act(async () => {
+    mock.options.onAction({ type: "import-action", payload: { key: mock.options.payload.key } });
+  });
+  expect(mock.options.payload.mode).toBe("complete");
+  expect(mock.options.active).toBe(true);
+});
