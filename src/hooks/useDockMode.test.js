@@ -10,8 +10,6 @@ const mocks = vi.hoisted(() => ({
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
-  readPresets: vi.fn(() => ({ list: [], activeId: null, dirty: false })),
-  patchPresets: vi.fn(),
 }));
 
 vi.mock("../ipc/commands.js", () => ({
@@ -23,14 +21,6 @@ vi.mock("../ipc/commands.js", () => ({
   setDockSuspended: mocks.setDockSuspended,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
-// Only presetsStore is faked; the dock/profile hand-off below drives the real settingsStore.
-vi.mock("../persistence/index.js", async () => ({
-  .../** @type {typeof import("../persistence/index.js")} */ (
-    await vi.importActual("../persistence/index.js")
-  ),
-  presetsStore: { read: mocks.readPresets, patch: mocks.patchPresets },
-}));
-
 import { createElement } from "react";
 import { settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
@@ -63,8 +53,6 @@ describe("useDockMode", () => {
     mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
     mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
-    mocks.readPresets.mockClear();
-    mocks.patchPresets.mockClear();
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     delete window.__PLVS_INITIAL_STATE__;
   });
@@ -93,7 +81,6 @@ describe("useDockMode", () => {
       await expect(result.current.setReserveSpace(true)).rejects.toThrow("Accessibility");
     });
     expect(result.current.reserveSpace).toBe(false);
-    expect(mocks.patchPresets).not.toHaveBeenCalled();
   });
 
   it("toggles reserve-space through IPC using the current edge", async () => {
@@ -168,17 +155,6 @@ describe("useDockMode", () => {
       height: 68,
     });
     expect(result.current.reserveSpace).toBe(false);
-  });
-
-  it("marks the active preset dirty after a successful reserve-space change", async () => {
-    window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: true, edge: "top", reserveSpace: false },
-    };
-    const { result } = renderHook(() => useDockMode());
-
-    await act(() => result.current.setReserveSpace(true));
-
-    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("serializes rapid reserve toggles and computes each from the latest state", async () => {
@@ -292,7 +268,6 @@ describe("useDockMode", () => {
     expect(mocks.enterDock).toHaveBeenCalledWith("top", undefined, undefined, undefined);
     expect(result.current.dockEnabled).toBe(true);
     expect(result.current.dockEdge).toBe("top");
-    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("stores the monitor resolved by the dock IPC call", async () => {
@@ -322,7 +297,6 @@ describe("useDockMode", () => {
     });
     expect(result.current.dockEnabled).toBe(false);
     expect(result.current.reserveSpace).toBe(true);
-    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("resizes and persists dock height through IPC", async () => {
@@ -335,7 +309,6 @@ describe("useDockMode", () => {
 
     expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 110, persist: true });
     expect(result.current.dockHeight).toBe(110);
-    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("clamps legacy and requested dock heights", async () => {
@@ -359,12 +332,10 @@ describe("useDockMode", () => {
     await act(() => result.current.resizeDockHeight(124, { persist: false }));
     expect(result.current.dockPreviewHeight).toBe(124);
     expect(result.current.dockHeight).toBe(72);
-    expect(mocks.patchPresets).not.toHaveBeenCalled();
 
     await act(() => result.current.resizeDockHeight(124, { persist: true }));
     expect(result.current.dockPreviewHeight).toBeNull();
     expect(result.current.dockHeight).toBe(124);
-    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("is inert outside Tauri", async () => {
@@ -393,7 +364,6 @@ describe("useDockMode", () => {
     const { result } = renderHook(() => useDockMode());
     await expect(act(() => result.current.enterDockMode("top"))).rejects.toThrow();
     expect(result.current.dockEnabled).toBe(false);
-    expect(mocks.patchPresets).not.toHaveBeenCalled();
   });
 });
 
@@ -409,7 +379,6 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
     mocks.enterDock.mockClear().mockResolvedValue(undefined);
     mocks.getDockState.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
-    mocks.patchPresets.mockClear();
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     delete window.__PLVS_INITIAL_STATE__;
     settingsStore.reset();
@@ -505,7 +474,6 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
     expect(thrown?.editors).toEqual(["feedback"]);
     expect(mocks.enterDock).not.toHaveBeenCalled();
     expect(result.current.dockEnabled).toBe(false);
-    expect(mocks.patchPresets).not.toHaveBeenCalled();
   });
 
   it("enters once the draft is cancelled", async () => {

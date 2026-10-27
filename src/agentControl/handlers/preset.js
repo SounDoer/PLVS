@@ -10,7 +10,7 @@ import {
 } from "../presetScene.js";
 import { awaitSettlement } from "../bridge/settlement.js";
 import { semanticFailure } from "../bridge/failures.js";
-import { presetStateSignature, workspaceMatchesPresetView } from "../bridge/signatures.js";
+import { presetLibrarySignature, workspaceMatchesPresetView } from "../bridge/signatures.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function list(ctx) {
@@ -120,7 +120,7 @@ async function saveOrUpdate(ctx) {
     planned = planPresetSave(state, planned.preset.name, snapshot, saved.id);
   }
   const committed = settlement.arm("presets", {
-    signature: presetStateSignature(planned.presets),
+    signature: presetLibrarySignature(planned.presets),
   });
   if (request.method === "preset.update") {
     const updated = presets.updateSnapshot(request.params.presetId, snapshot);
@@ -239,7 +239,7 @@ async function apply(ctx) {
 
   const presetStateChanged = planned.changed.some((path) => path.startsWith("presets."));
   const presetCommitted = presetStateChanged
-    ? settlement.arm("presets", { signature: presetStateSignature(planned.presets) })
+    ? settlement.arm("presets", { signature: presetLibrarySignature(planned.presets) })
     : null;
   let workspaceCommitted = null;
   // What applying this Preset actually installs. Both the settlement below and the
@@ -374,7 +374,7 @@ async function renameDeleteOrReorder(ctx) {
   }
 
   const committed = settlement.arm("presets", {
-    signature: presetStateSignature(planned.presets),
+    signature: presetLibrarySignature(planned.presets),
   });
   if (request.method === "preset.rename") {
     presets.rename(request.params.presetId, planned.preset.name);

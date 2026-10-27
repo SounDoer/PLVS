@@ -57,10 +57,12 @@ The first two are the "dirty from nowhere" cases users notice.
 dirty = activePreset != null && presetDiverges(activePreset, currentScene)
 ```
 
-`presetDiverges(preset, current)` is a pure function in `src/lib/presetDivergence.js`. `usePresets`
-computes it in a `useMemo` over the workspace state, view settings, Dock state, the active Loudness
-Profile id and the latest window bounds. The preset-side projection is memoised per active Preset
-object, so a gesture only re-projects the current side.
+`presetDiverges(preset, current)` is a pure function in `src/lib/presetDivergence.js`. It builds
+the scene applying the Preset would leave behind by overlaying, onto the current scene, exactly the
+fields apply restores (`presetRestoredScene`), then compares that with the current scene. A field
+apply leaves alone therefore keeps its current value and cannot diverge. `usePresets` computes it in
+a `useMemo` over the workspace state, view settings, Dock state, the active Loudness Profile id and
+the latest window bounds.
 
 The comparison is a structural deep equality with early exit, not `JSON.stringify`, so key order and
 `undefined` members do not matter.
@@ -70,15 +72,15 @@ The comparison is a structural deep equality with early exit, not `JSON.stringif
 The projection mirrors `applySnapshot` field by field. A field apply does not restore must not be
 compared, or the Preset reads modified right after Apply.
 
-| Field                                                                                                       | Rule                                                                                                                                                                                                          |
-| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tree`, `panelsById`, `panelOrder`, `panelControlsById`, `pinnedPanelsById`, `axisViewports`                | Preset side through `presetWorkspaceView`; current side through the same normalizers. Both sides use today's normalizers, so a normalizer that gains a default key does not make every older Preset modified. |
-| `focusView`, `panelPresentation`, `surfaceOpacity`, `glassEnabled`, `windowPinned`, `loudnessProfileActive` | Compared only when the Preset stores the field. Apply leaves an absent field alone, so an older Preset must not diverge on it.                                                                                |
-| `panelPresentation.dock`                                                                                    | Ignored when the Preset's Dock is disabled: apply keeps the current Dock presentation.                                                                                                                        |
-| Dock, Preset enabled                                                                                        | Compare `enabled`, `edge`, `monitor`, `reserveSpace`, `height` and the strip layout (`panelsById`, `panelOrder`, `panelSizesById`, `controlsByPanelId`).                                                      |
-| Dock, Preset disabled                                                                                       | Compare only `enabled === false`. A Dock-disabled Preset deliberately does not restore the strip layout in its snapshot.                                                                                      |
-| `windowBounds`                                                                                              | Compared exactly (physical pixels and `isMaximized`) only when the Preset stores bounds and its Dock is disabled.                                                                                             |
-| `loudnessProfileActive`                                                                                     | Normalised on both sides: an id no longer in the library compares as Off, matching what apply leaves selected.                                                                                                |
+| Field                                                                                        | Rule                                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tree`, `panelsById`, `panelOrder`, `panelControlsById`, `pinnedPanelsById`, `axisViewports` | Preset side through `presetWorkspaceView`; current side through the same normalizers. Both sides use today's normalizers, so a normalizer that gains a default key does not make every older Preset modified. |
+| `focusView`, `panelPresentation`, `surfaceOpacity`, `glassEnabled`, `windowPinned`           | Compared only when the Preset stores the field. Apply leaves an absent field alone, so an older Preset must not diverge on it.                                                                                |
+| `panelPresentation.dock`                                                                     | Ignored when the Preset's Dock is disabled: apply keeps the current Dock presentation.                                                                                                                        |
+| Dock, Preset enabled                                                                         | Compare `enabled`, `edge`, `monitor`, `reserveSpace`, `height` and the strip layout (`panelsById`, `panelOrder`, `panelSizesById`, `controlsByPanelId`).                                                      |
+| Dock, Preset disabled                                                                        | Compare only `enabled === false`. A Dock-disabled Preset deliberately does not restore the strip layout in its snapshot.                                                                                      |
+| `windowBounds`                                                                               | Compared exactly (physical pixels and `isMaximized`) only when the Preset stores bounds and its Dock is disabled. Two maximised windows match whatever normal rectangle each keeps.                           |
+| `loudnessProfileActive`                                                                      | Always compared: apply always restores it, and an older Preset without it restores Off. An id no longer in the library compares as Off, matching what apply leaves selected.                                  |
 
 ### Window bounds source
 
@@ -93,6 +95,10 @@ same bounds and compares clean, with no suppression window.
 
 Decision: bounds take part in the comparison, exactly. A move that really changes the window is a
 real divergence from a Preset that restores bounds.
+
+While maximised, Rust persists the last normal rectangle with `isMaximized: true`, whereas the live
+read that Save captures reports the maximised rectangle. Two maximised windows look the same, so
+when both sides are maximised only that flag is compared.
 
 ### Channel clamp
 
@@ -109,7 +115,9 @@ requested from an effective channel selection is follow-up work.
 
 - `markPresetDirty` wrappers in `WorkspaceContext.jsx`, `useViewSettings.js`,
   `useWindowPinnedSetting.js`, `useDockLayout.js` and the five marks in `useDockMode.js`.
-- The `presetDirty` option of `LoudnessProfileContext`'s `commit`.
+- The `presetDirty` option of `LoudnessProfileContext`'s `commit`, and the `dirty` writes and
+  `presets.dirty` change entries in the Loudness Profile select, create and delete plans
+  (`loudnessProfileLibrary.js`).
 - `markDirty`, `suppressPresetDivergence` and its 1.5 s window in `usePresets.js`, and the
   `dirty: false` members of the Apply, Save, Update, activate, delete and failed-apply writes.
 - `dirty` from the presets domain. Existing stored values are ignored on read.
@@ -120,8 +128,9 @@ The `usePresets` API keeps its `dirty` member, now derived, so `App.jsx` (window
 `PresetsPopover.jsx`, the Dock Preset row and `useTray.js` need no change. The Agent Control bridge
 already receives that API object (`useAgentControlBridge.js`), so `appSnapshot.js`,
 `handlers/preset.js` and `bridge/signatures.js` read the derived value too. Any path that reads
-`presetsStore.read().dirty` directly must move to the API. In `presetLibrary.js` the delete plan's
-`presets.dirty` effect disappears, since there is no stored flag to reset.
+`presetsStore.read().dirty` directly must move to the API. The Preset plans in `presetScene.js` and
+`presetLibrary.js` keep reporting `presets.dirty` when an operation clears it, which stays accurate
+against the derived value.
 
 `dirty` stays in the Agent Control result shape and the revision signature, so CLI consumers see the
 same field with corrected values. The synchronisation checklist in `docs/agent-control/README.md`
@@ -153,8 +162,9 @@ and after. If the comparison shows up, defer it with `useDeferredValue` rather t
 marks.
 
 Real-app verification: repeat the 2026-10-27 table above in the dev app. Expected afterwards:
-minimise/restore and the 1 px round trip clean; time axis changed and back clean; channel clamp and
-deleted active profile still modified.
+minimise/restore and the 1 px round trip clean; time axis changed and back clean; channel clamp still
+modified. Deleting the active Loudness Profile is clean when the active Preset referenced it, because
+the delete rewrites that Preset's reference to Off as well, and modified otherwise.
 
 ## Documentation
 

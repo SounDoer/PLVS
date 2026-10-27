@@ -15,8 +15,10 @@ import { SCENE_OPERATIONS, SceneOperationUnavailableError } from "../lib/sceneOp
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 import { DEFAULT_PRESET_NAME } from "../lib/defaultPreset.js";
+import { presetDiverges } from "../lib/presetDivergence.js";
+import { isMacOS, isWindows } from "../lib/platform.js";
 
-const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
+const EMPTY_PRESETS = { list: [], activeId: null };
 
 function clone(value) {
   if (typeof structuredClone === "function") return structuredClone(value);
@@ -25,14 +27,13 @@ function clone(value) {
 
 /// The Presets state as the app renders it, which is not the stored record verbatim: Presets
 /// built from modules this build does not know are hidden, an `activeId` naming none of the rest
-/// is no selection, and `dirty` means nothing without one.
+/// is no selection. Whether the active one is modified is not stored: `usePresets` derives it.
 export function normalizePresets(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return EMPTY_PRESETS;
   const list = (Array.isArray(raw.list) ? raw.list : []).filter(hasKnownModulesOnly);
   const rawActiveId = typeof raw.activeId === "string" ? raw.activeId : null;
   const activeId = list.some((preset) => preset.id === rawActiveId) ? rawActiveId : null;
-  const dirty = activeId !== null && raw.dirty === true;
-  return { list, activeId, dirty };
+  return { list, activeId };
 }
 
 /// First run: no workspace has been stored, the library holds no preset, and the installation has
@@ -115,6 +116,7 @@ async function readWindowBounds() {
  *   onApplyError?: (...args: any[]) => any,
  *   snapshotLoudnessProfile?: (...args: any[]) => any,
  *   applyLoudnessProfileSnapshot?: (...args: any[]) => any,
+ *   normalizeLoudnessProfileActive?: (raw: unknown) => string,
  *   assertSceneOperationAllowed?: (...args: any[]) => any,
  *   blockingEditors?: any,
  * }} [options]
@@ -152,6 +154,9 @@ export function usePresets({
   // records the active theme rather than every theme.
   snapshotLoudnessProfile = () => ({}),
   applyLoudnessProfileSnapshot = () => {},
+  // The selection applying a stored one leaves behind, given the library as it is now. Without it the
+  // modified state does not compare the Loudness Profile.
+  normalizeLoudnessProfileActive = undefined,
   // Apply, Save and Update are scene operations: the first replaces the scene, the other two
   // capture it. All three are refused while a draft-style editor is open, and refused here rather
   // than in the popover so the dock, the tray and Agent Control get the same answer. Throws a
@@ -161,7 +166,9 @@ export function usePresets({
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
-  const suppressPresetDivergenceUntilRef = useRef(0);
+  // The bounds Rust last persisted, which already leave out minimised and docked windows. Undefined
+  // outside Tauri, where bounds are not compared.
+  const [windowBounds, setWindowBounds] = useState(undefined);
 
   useEffect(
     () =>
@@ -177,27 +184,17 @@ export function usePresets({
   }, []);
 
   const clearActive = useCallback(() => {
-    write({ activeId: null, dirty: false });
+    write({ activeId: null });
   }, [write]);
-
-  const markDirty = useCallback(() => {
-    write({ dirty: true });
-  }, [write]);
-  const suppressPresetDivergence = useCallback((durationMs = 1500) => {
-    suppressPresetDivergenceUntilRef.current = Date.now() + durationMs;
-  }, []);
-
-  useEffect(() => {
-    suppressPresetDivergence();
-  }, [suppressPresetDivergence]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;
     let disposed = false;
     let unlisten = null;
-    onWindowBoundsChanged(() => {
-      if (Date.now() < suppressPresetDivergenceUntilRef.current) return;
-      markDirty();
+    let heardEvent = false;
+    onWindowBoundsChanged((bounds) => {
+      heardEvent = true;
+      if (bounds) setWindowBounds(bounds);
     }).then((fn) => {
       if (disposed) {
         fn();
@@ -205,18 +202,22 @@ export function usePresets({
         unlisten = fn;
       }
     });
+    readWindowBounds().then((bounds) => {
+      if (!disposed && !heardEvent && bounds) setWindowBounds(bounds);
+    });
     return () => {
       disposed = true;
       if (unlisten) unlisten();
     };
-  }, [markDirty]);
+  }, []);
 
-  const captureSnapshot = useCallback(async () => {
-    const windowBounds = await readWindowBounds();
-    const snapshot = {
-      tree: clone(workspaceState.tree),
-      panelsById: clone(workspaceState.panelsById),
-      panelOrder: [...workspaceState.panelOrder],
+  // Everything a snapshot captures except window bounds, which are only known asynchronously.
+  // Uncloned: Save and Update clone it, and the modified state only reads it.
+  const scene = useMemo(
+    () => ({
+      tree: workspaceState.tree,
+      panelsById: workspaceState.panelsById,
+      panelOrder: workspaceState.panelOrder,
       panelControlsById: normalizePanelControlsById(
         workspaceState.panelsById,
         workspaceState.panelControlsById
@@ -237,29 +238,53 @@ export function usePresets({
         monitor: typeof dock.monitor === "string" ? dock.monitor : null,
         reserveSpace: dock.reserveSpace === true,
         height: Number.isFinite(dock.height) ? dock.height : 72,
-        panelsById: clone(dock.panelsById ?? {}),
-        panelOrder: Array.isArray(dock.panelOrder) ? [...dock.panelOrder] : [],
-        panelSizesById: clone(dock.panelSizesById ?? {}),
-        controlsByPanelId: clone(dock.controlsByPanelId ?? {}),
+        panelsById: dock.panelsById ?? {},
+        panelOrder: Array.isArray(dock.panelOrder) ? dock.panelOrder : [],
+        panelSizesById: dock.panelSizesById ?? {},
+        controlsByPanelId: dock.controlsByPanelId ?? {},
       },
       ...snapshotLoudnessProfile(),
-    };
-    return windowBounds ? { ...snapshot, windowBounds } : snapshot;
-  }, [
-    snapshotLoudnessProfile,
-    windowPinned,
-    focusView,
-    panelPresentation,
-    surfaceOpacity,
-    glassEnabled,
-    dock,
-    workspaceState.axisViewports,
-    workspaceState.panelControlsById,
-    workspaceState.panelOrder,
-    workspaceState.panelsById,
-    workspaceState.pinnedPanelsById,
-    workspaceState.tree,
-  ]);
+    }),
+    [
+      snapshotLoudnessProfile,
+      windowPinned,
+      focusView,
+      panelPresentation,
+      surfaceOpacity,
+      glassEnabled,
+      dock,
+      workspaceState.axisViewports,
+      workspaceState.panelControlsById,
+      workspaceState.panelOrder,
+      workspaceState.panelsById,
+      workspaceState.pinnedPanelsById,
+      workspaceState.tree,
+    ]
+  );
+
+  const captureSnapshot = useCallback(async () => {
+    const bounds = await readWindowBounds();
+    const snapshot = clone(scene);
+    return bounds ? { ...snapshot, windowBounds: bounds } : snapshot;
+  }, [scene]);
+
+  const activePreset = useMemo(
+    () => presets.list.find((preset) => preset.id === presets.activeId) ?? null,
+    [presets.activeId, presets.list]
+  );
+  const dirty = useMemo(
+    () =>
+      activePreset !== null &&
+      presetDiverges(
+        activePreset,
+        { ...scene, windowBounds },
+        {
+          dockReserveSpaceSupported: isWindows() || isMacOS(),
+          normalizeLoudnessProfileActive,
+        }
+      ),
+    [activePreset, normalizeLoudnessProfileActive, scene, windowBounds]
+  );
 
   const saveSnapshot = useCallback(
     (name, snapshot) => {
@@ -271,7 +296,7 @@ export function usePresets({
         ...snapshot,
       };
       const current = normalizePresets(presetsStore.read());
-      write({ list: [...current.list, preset], activeId: preset.id, dirty: false });
+      write({ list: [...current.list, preset], activeId: preset.id });
       return preset;
     },
     [write]
@@ -339,9 +364,6 @@ export function usePresets({
       const preflight = preflightApplySnapshot(id, { presetOverride });
       if (!preflight) return false;
       const { preset, presetDock } = preflight;
-      if (preset.windowBounds && isTauri()) {
-        suppressPresetDivergence();
-      }
       if (applyWorkspace) {
         setView(presetWorkspaceView(preset));
       }
@@ -356,7 +378,7 @@ export function usePresets({
         try {
           surfaceOpacityShadowApplied = await applySurfaceOpacity(presetSurfaceOpacity);
         } catch (error) {
-          write({ activeId: null, dirty: false });
+          write({ activeId: null });
           error.stage = "window";
           throw error;
         }
@@ -379,7 +401,7 @@ export function usePresets({
         });
       } catch (error) {
         await rollbackSurfaceOpacityShadow();
-        write({ activeId: null, dirty: false });
+        write({ activeId: null });
         error.stage = "dock";
         throw error;
       }
@@ -405,7 +427,7 @@ export function usePresets({
           await applyWindowBounds(preset.windowBounds);
         } catch (error) {
           await rollbackSurfaceOpacityShadow();
-          write({ activeId: null, dirty: false });
+          write({ activeId: null });
           error.stage = "window";
           throw error;
         }
@@ -430,7 +452,7 @@ export function usePresets({
         setGlassEnabled(preset.glassEnabled);
       }
       applyLoudnessProfileSnapshot(preset);
-      write({ activeId: id, dirty: false });
+      write({ activeId: id });
       return true;
     },
     [
@@ -445,7 +467,6 @@ export function usePresets({
       applyDockPreset,
       applySurfaceOpacity,
       surfaceOpacity,
-      suppressPresetDivergence,
       applyLoudnessProfileSnapshot,
       preflightApplySnapshot,
       write,
@@ -456,7 +477,7 @@ export function usePresets({
     (id) => {
       const current = normalizePresets(presetsStore.read());
       if (!current.list.some((preset) => preset.id === id)) return false;
-      write({ activeId: id, dirty: false });
+      write({ activeId: id });
       return true;
     },
     [write]
@@ -486,7 +507,6 @@ export function usePresets({
       write({
         list: current.list.map((p) => (p.id === id ? updated : p)),
         activeId: id,
-        dirty: false,
       });
       return updated;
     },
@@ -521,7 +541,6 @@ export function usePresets({
       write({
         list: current.list.filter((p) => p.id !== id),
         activeId: current.activeId === id ? null : current.activeId,
-        dirty: current.activeId === id ? false : current.dirty,
       });
     },
     [write]
@@ -542,7 +561,7 @@ export function usePresets({
     () => ({
       list: presets.list,
       activeId: presets.activeId,
-      dirty: presets.dirty,
+      dirty,
       // What the popover, the dock row and the tray grey out. The refusal above is the guard;
       // this only makes it legible.
       blocked: blockingEditors.length > 0,
@@ -553,7 +572,6 @@ export function usePresets({
       remove,
       reorder,
       clearActive,
-      markDirty,
       captureSnapshot,
       assertSceneOperationAllowed,
       saveSnapshot,
@@ -570,10 +588,9 @@ export function usePresets({
       blockingEditors,
       captureSnapshot,
       clearActive,
-      markDirty,
+      dirty,
       preflightApplySnapshot,
       presets.activeId,
-      presets.dirty,
       presets.list,
       remove,
       reorder,

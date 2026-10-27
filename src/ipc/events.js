@@ -51,10 +51,14 @@ export async function onMeterHistoryCleared(handler) {
   });
 }
 
-/** @param {() => void} handler @returns {Promise<() => void>} */
+/**
+ * The bounds Rust just persisted for the normal window.
+ * @param {(bounds: { x: number, y: number, width: number, height: number, isMaximized: boolean }) => void} handler
+ * @returns {Promise<() => void>}
+ */
 export async function onWindowBoundsChanged(handler) {
-  return listen("window-bounds-changed", () => {
-    handler();
+  return listen("window-bounds-changed", (e) => {
+    handler(/** @type {any} */ (e.payload));
   });
 }
 

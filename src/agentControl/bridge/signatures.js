@@ -42,6 +42,16 @@ export function controllableWorkspaceMatches(left, right) {
   );
 }
 
+/// What a Preset or Loudness Profile command decides: the library and the selection. `dirty` is
+/// derived by comparing the scene with the active Preset, so no plan can predict it; a command waits
+/// on this and reports `dirty` as it renders.
+export function presetLibrarySignature(presets) {
+  return JSON.stringify({
+    list: Array.isArray(presets?.list) ? presets.list : [],
+    activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+  });
+}
+
 export function presetStateSignature(presets) {
   return JSON.stringify({
     list: Array.isArray(presets?.list) ? presets.list : [],

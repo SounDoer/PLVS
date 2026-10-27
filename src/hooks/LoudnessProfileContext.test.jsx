@@ -659,11 +659,11 @@ describe("profile deletion", () => {
   });
 });
 
-describe("preset snapshots and dirty state", () => {
-  it("writes settings and preset dirty exactly once for one StrictMode selection commit", () => {
+describe("preset snapshots", () => {
+  it("writes settings exactly once and leaves the presets domain alone for one StrictMode selection commit", () => {
     const mine = profile("mine", "Mine");
     seed([mine]);
-    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
+    presetsStore.patch({ list: [], activeId: "preset" });
     const settingsPatch = vi.spyOn(settingsStore, "patch");
     const presetsPatch = vi.spyOn(presetsStore, "patch");
     const strictWrapper = ({ children }) => (
@@ -678,8 +678,7 @@ describe("preset snapshots and dirty state", () => {
     act(() => result.current.select(profileSelectionId(mine.id)));
 
     expect(settingsPatch).toHaveBeenCalledTimes(1);
-    expect(presetsPatch).toHaveBeenCalledTimes(1);
-    expect(presetsPatch).toHaveBeenCalledWith({ dirty: true });
+    expect(presetsPatch).not.toHaveBeenCalled();
   });
 
   it("round-trips an opaque active selection and normalizes a dangling one to Off", () => {
@@ -698,38 +697,18 @@ describe("preset snapshots and dirty state", () => {
     expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
   });
 
-  it("marks selection changes dirty but not rule edits or preset restore", () => {
+  it("predicts the selection restoring a stored one leaves behind", () => {
     const mine = profile("mine", "Mine");
     seed([mine]);
-    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
 
-    act(() => result.current.select(profileSelectionId(mine.id)));
-    expect(presetsStore.read().dirty).toBe(true);
-    act(() => presetsStore.patch({ dirty: false }));
-    act(() => result.current.beginEdit(mine.id));
-    act(() => result.current.editDraft((document) => ({ ...document, name: "Renamed" })));
-    act(() => result.current.saveDraft());
-    expect(presetsStore.read().dirty).toBe(false);
-
-    act(() => result.current.selectOff());
-    expect(presetsStore.read().dirty).toBe(true);
-    act(() => presetsStore.patch({ dirty: false }));
-    act(() =>
-      result.current.applyPresetSnapshot({
-        loudnessProfileActive: profileSelectionId(mine.id),
-      })
+    expect(result.current.normalizePresetSelection(profileSelectionId(mine.id))).toBe(
+      profileSelectionId(mine.id)
     );
-    expect(presetsStore.read().dirty).toBe(false);
-  });
-
-  it("marks deleting the active profile dirty without a second updater side effect", () => {
-    const mine = profile("mine", "Mine");
-    seed([mine], profileSelectionId(mine.id));
-    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.removeProfile(mine.id));
-    expect(presetsStore.read().dirty).toBe(true);
+    expect(result.current.normalizePresetSelection(profileSelectionId("gone"))).toBe(
+      LOUDNESS_PROFILE_OFF
+    );
+    expect(result.current.normalizePresetSelection(undefined)).toBe(LOUDNESS_PROFILE_OFF);
   });
 });
 

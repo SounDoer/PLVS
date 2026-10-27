@@ -8,7 +8,6 @@ import {
   setDockSuspended,
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
 import { isDockSupported, isWindows, isMacOS } from "../lib/platform.js";
@@ -94,7 +93,6 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     if (!isTauri()) return;
     let cancelled = false;
     let retryTimer = null;
-    let reconciled = false;
     const reconcile = () => {
       getDockState()
         .then((snapshot) => {
@@ -105,11 +103,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           }
           if (!snapshot.state || typeof snapshot.state !== "object") return;
           const normalized = normalizeDockState(snapshot.state);
-          if (reconciled && dockRef.current.reserveSpace !== normalized.reserveSpace) {
-            presetsStore.patch({ dirty: true });
-          }
           commitDock(normalized);
-          reconciled = true;
           if (!normalized.enabled) setDockSuspendedState(false);
           if (isMacOS()) retryTimer = window.setTimeout(reconcile, 1000);
         })
@@ -157,12 +151,6 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
             : typeof monitorOverride === "string"
               ? monitorOverride
               : current.monitor;
-        const changed =
-          !current.enabled ||
-          current.edge !== edge ||
-          (typeof monitorOverride === "string" && current.monitor !== monitorOverride) ||
-          (hasReserveOverride && current.reserveSpace !== normalizedReserveOverride) ||
-          (hasHeightOverride && current.height !== clampDockHeight(heightOverride));
         const effective = commitDock((latest) => ({
           ...latest,
           enabled: true,
@@ -177,7 +165,6 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
         }));
         setDockSuspendedState(false);
-        if (changed) presetsStore.patch({ dirty: true });
         return effective;
       });
     },
@@ -188,11 +175,9 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     ({ decorations, alwaysOnTop, bounds, origin = undefined }) => {
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
-        const wasEnabled = dockRef.current.enabled;
         await exitDock({ decorations, alwaysOnTop, bounds, ...(origin ? { origin } : {}) });
         commitDock((latest) => ({ ...latest, enabled: false }));
         setDockSuspendedState(false);
-        if (wasEnabled) presetsStore.patch({ dirty: true });
       });
     },
     [commitDock, enqueueTransition]
@@ -211,9 +196,6 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       }
       await setDockReserveSpace({ enabled, edge, ...(origin ? { origin } : {}) });
       commitDock((latest) => ({ ...latest, edge, reserveSpace: enabled }));
-      if (current.reserveSpace !== enabled || current.edge !== edge) {
-        presetsStore.patch({ dirty: true });
-      }
     },
     [commitDock]
   );
@@ -253,7 +235,6 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
             commitDock((latest) => ({ ...latest, height: clampDockHeight(resolved) }));
             setDockPreviewHeight(null);
           }
-          if (persist && previousHeight !== nextHeight) presetsStore.patch({ dirty: true });
         } catch (error) {
           if (request === heightRequestRef.current) {
             commitDock((latest) => ({ ...latest, height: previousHeight }));

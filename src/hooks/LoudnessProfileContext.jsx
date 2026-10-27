@@ -28,6 +28,7 @@ import {
   planLoudnessProfileUpdate,
 } from "../lib/loudnessProfileLibrary.js";
 import {
+  normalizeLoudnessProfileSelection,
   normalizeLoudnessProfiles,
   normalizeRuleDocument,
 } from "../lib/loudnessProfileNormalize.js";
@@ -82,6 +83,7 @@ import {
  *   reorderProfiles: (...args: any[]) => any,
  *   snapshotForPreset: (...args: any[]) => any,
  *   applyPresetSnapshot: (...args: any[]) => any,
+ *   normalizePresetSelection: (raw: unknown) => string,
  *   control: Record<
  *     | "assertAllowed" | "planSelect" | "planCreate" | "planUpdate" | "planRename" | "planDelete"
  *     | "planReorder" | "commit" | "select" | "create" | "update" | "rename" | "delete" | "reorder",
@@ -106,7 +108,6 @@ function readPresets() {
     ...raw,
     list: Array.isArray(raw.list) ? raw.list : [],
     activeId: typeof raw.activeId === "string" ? raw.activeId : null,
-    dirty: raw.dirty === true,
   };
 }
 
@@ -162,23 +163,12 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     return unsubscribe;
   }, [seedColdStart]);
 
-  /// Layout presets snapshot which profile is active and nothing else, so only a change of
-  /// selection diverges from the preset -- editing a profile's rules does not.
-  ///
-  /// Comparing `active` before and after is what makes that correct: two library operations move
-  /// the selection as a side effect, and a per-call-site flag gets both wrong. Saving a draft
-  /// selects what it saved; deleting the active profile falls back to Off.
-  ///
-  /// `presetDirty: false` is for the one selection change that is not a divergence: restoring a
-  /// snapshot.
-  const commit = useCallback((updater, { presetDirty = true } = {}) => {
-    const prev = stateRef.current;
-    const next = normalizeLoudnessProfiles(updater(prev));
+  const commit = useCallback((updater) => {
+    const next = normalizeLoudnessProfiles(updater(stateRef.current));
     stateRef.current = next;
     setState(next);
     setActiveDocumentSnapshot(resolveActiveDocument(next));
     writeState(next);
-    if (presetDirty && next.active !== prev.active) presetsStore.patch({ dirty: true });
   }, []);
 
   /// The preview overlay: a draft that outranks the persisted selection for every reader without
@@ -632,11 +622,16 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       if (draftRef.current) {
         throw new SceneOperationBlockedError(SCENE_OPERATIONS.presetApply, ["loudnessProfile"]);
       }
-      commit((prev) => (snapshot ? { ...prev, active: snapshot.loudnessProfileActive } : prev), {
-        presetDirty: false,
-      });
+      commit((prev) => (snapshot ? { ...prev, active: snapshot.loudnessProfileActive } : prev));
     },
     [commit]
+  );
+
+  /// The selection `applyPresetSnapshot` would leave for a stored one: a profile no longer in the
+  /// library falls back to Off. The preset modified state compares against this.
+  const normalizePresetSelection = useCallback(
+    (raw) => normalizeLoudnessProfileSelection(raw, state.profiles),
+    [state.profiles]
   );
 
   const value = useMemo(
@@ -674,6 +669,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       reorderProfiles,
       snapshotForPreset,
       applyPresetSnapshot,
+      normalizePresetSelection,
       control: {
         assertAllowed: assertProfileActionAllowed,
         planSelect,
@@ -720,6 +716,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       reorderProfiles,
       snapshotForPreset,
       applyPresetSnapshot,
+      normalizePresetSelection,
       assertProfileActionAllowed,
       planSelect,
       planCreate,

@@ -480,9 +480,13 @@ describe("App smoke", () => {
     expect(await screen.findByText("mix.wav")).toBeTruthy();
   });
 
-  it("marks the active preset dirty after manual window bounds changes", async () => {
+  it("marks the active preset modified while the window bounds differ from it", async () => {
     vi.mocked(isTauri).mockReturnValue(true);
     vi.spyOn(Date, "now").mockReturnValue(1_000);
+    const saved = { x: 10, y: 20, width: 800, height: 600, isMaximized: false };
+    vi.mocked(invoke).mockImplementation(async (command) =>
+      command === "current_window_bounds" ? saved : undefined
+    );
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Presets" }));
@@ -494,10 +498,11 @@ describe("App smoke", () => {
     expect((await screen.findAllByText("Mix")).length).toBeGreaterThan(0);
     await waitFor(() => expect(tauriEventHandlers.has("window-bounds-changed")).toBe(true));
 
-    vi.mocked(Date.now).mockReturnValue(3_000);
-    tauriEventHandlers.get("window-bounds-changed")();
-
+    act(() => tauriEventHandlers.get("window-bounds-changed")({ payload: { ...saved, x: 40 } }));
     expect((await screen.findAllByText("Mix *")).length).toBeGreaterThan(0);
+
+    act(() => tauriEventHandlers.get("window-bounds-changed")({ payload: saved }));
+    await waitFor(() => expect(screen.queryAllByText("Mix *")).toHaveLength(0));
   });
 
   it("reveals auto-hidden Focus View controls with Escape", async () => {

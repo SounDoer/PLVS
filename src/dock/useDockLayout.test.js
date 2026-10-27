@@ -121,21 +121,6 @@ describe("useDockLayout", () => {
     );
   });
 
-  it("marks the active preset dirty when the layout changes", () => {
-    // Dock layout is part of the preset snapshot, so strip edits must dirty
-    // the active preset like every other captured field. Assert on the raw
-    // store patch (mirrors useAlwaysOnTop's dirty test).
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1", dirty: false });
-    const { result } = renderHook(() => useDockLayout());
-
-    act(() => result.current.toggle("spectrum"));
-    expect(presetsStore.read().dirty).toBe(true);
-
-    presetsStore.patch({ dirty: false });
-    act(() => result.current.reorder(0, 2));
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
   it("drops stale legacy dock fields when writing panel order", () => {
     workspaceStore.patch({
       dock: {

@@ -2,7 +2,7 @@ import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { settingsStore } from "../persistence/index.js";
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { useCallback, useMemo, useState } from "react";
-import { presetsStore, workspaceStore } from "../persistence/index.js";
+import { workspaceStore } from "../persistence/index.js";
 import {
   addDockPanel,
   DEFAULT_DOCK_PANEL_SIZES,
@@ -81,9 +81,6 @@ export function useDockLayout() {
         controlsByPanelId: next.controlsByPanelId,
       },
     });
-    // Dock layout is part of the preset snapshot, so edits dirty the active
-    // preset (usePresets.apply clears the flag when it finishes).
-    presetsStore.patch({ dirty: true });
     setState(next);
   }, []);
 

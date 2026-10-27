@@ -5,6 +5,7 @@ import {
   controllableWorkspaceMatches,
   measuredAudioState,
   ordinarySettingsStateSignature,
+  presetLibrarySignature,
   presetStateSignature,
   requestedDeviceSignature,
   settingsStateSignature,
@@ -113,9 +114,10 @@ const presets = {
       clock.scheduleWake();
       resolveLibrary(settlement, "preset");
     }
+    const librarySignature = presetLibrarySignature(inputs.presets);
     const pending = settlement.peek("presets");
-    if (pending && signature === pending.signature) settlement.resolve("presets");
-    observeLoudnessProfileStore(settlement, "presets", signature);
+    if (pending && librarySignature === pending.signature) settlement.resolve("presets");
+    observeLoudnessProfileStore(settlement, "presets", librarySignature);
   },
 };
 

@@ -1,6 +1,6 @@
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { useEffect, useState } from "react";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { settingsStore } from "../persistence/index.js";
 import {
   normalizeGlassEnabled,
   normalizeSurfaceOpacity,
@@ -22,10 +22,6 @@ export function useViewSettings() {
     normalizeGlassEnabled(settingsStore.read().glassEnabled)
   );
 
-  function markPresetDirty() {
-    presetsStore.patch({ dirty: true });
-  }
-
   function setFocusView(nextFocusView) {
     const next = normalizeSettingsFocusView(nextFocusView);
     const stored = settingsStore.read();
@@ -33,7 +29,6 @@ export function useViewSettings() {
     presentation.workspace.hidePanelHeaders = next.compactPanels;
     settingsStore.patch({ focusView: next, panelPresentation: presentation });
     setPanelPresentationState(presentation);
-    markPresetDirty();
     setFocusViewState(next);
   }
 
@@ -42,7 +37,6 @@ export function useViewSettings() {
     const focus = normalizeSettingsFocusView(settingsStore.read().focusView);
     focus.compactPanels = next.workspace.hidePanelHeaders;
     settingsStore.patch({ panelPresentation: next, focusView: focus });
-    markPresetDirty();
     setPanelPresentationState(next);
     setFocusViewState(focus);
   }
@@ -72,14 +66,12 @@ export function useViewSettings() {
     const next = normalizeSurfaceOpacity(value);
     // Driven by a range input's `onInput`, so this runs on every pixel of a drag.
     settingsStore.patchCoalesced({ surfaceOpacity: next });
-    markPresetDirty();
     setSurfaceOpacityState(next);
   }
 
   function setGlassEnabled(value) {
     const next = normalizeGlassEnabled(value);
     settingsStore.patch({ glassEnabled: next });
-    markPresetDirty();
     setGlassEnabledState(next);
   }
 

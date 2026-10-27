@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { settingsStore } from "../persistence/index.js";
 
 /**
  * The stored always-on-top preference. Applying it to the window is `useAlwaysOnTop`, which has a
@@ -12,7 +12,6 @@ export function useWindowPinnedSetting() {
   const setWindowPinned = useCallback((nextPinned) => {
     const next = nextPinned === true;
     settingsStore.patch({ windowPinned: next });
-    presetsStore.patch({ dirty: true });
     setPinned(next);
   }, []);
 

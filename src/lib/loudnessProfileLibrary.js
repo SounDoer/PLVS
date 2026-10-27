@@ -132,14 +132,6 @@ function validatedPlan(loudnessProfiles, presets, rawDocument, build) {
 }
 
 /**
- * @param {boolean} selectionChanged
- */
-function withDirtyPreset(presets, selectionChanged) {
-  if (!selectionChanged || presets?.activeId == null || presets.dirty === true) return presets;
-  return { ...presets, dirty: true };
-}
-
-/**
  * @param {string} selection
  */
 function profileIdFromSelection(selection) {
@@ -163,11 +155,10 @@ export function planLoudnessProfileSelect(loudnessProfiles, presets, selection) 
       to: profileId,
     };
   }
-  const nextPresets = withDirtyPreset(presets, true);
   return {
     loudnessProfiles: { ...loudnessProfiles, active: nextActive },
-    presets: nextPresets,
-    changed: ["loudnessProfiles.active", ...(nextPresets !== presets ? ["presets.dirty"] : [])],
+    presets,
+    changed: ["loudnessProfiles.active"],
     warnings: [],
     issues: [],
     from:
@@ -205,18 +196,13 @@ export function planLoudnessProfileCreate(loudnessProfiles, presets, rawDocument
       ]);
     }
     const profile = { id, ...document };
-    const nextPresets = withDirtyPreset(presets, true);
     return {
       loudnessProfiles: {
         active: profileSelectionId(id),
         profiles: [...loudnessProfiles.profiles, profile],
       },
-      presets: nextPresets,
-      changed: [
-        "loudnessProfiles.library",
-        "loudnessProfiles.active",
-        ...(nextPresets !== presets ? ["presets.dirty"] : []),
-      ],
+      presets,
+      changed: ["loudnessProfiles.library", "loudnessProfiles.active"],
       warnings: [],
       issues: [],
       document,
@@ -293,28 +279,16 @@ export function planLoudnessProfileDelete(loudnessProfiles, presets, profileId) 
     affectedPresetIds.push(preset.id);
     return { ...preset, loudnessProfileActive: LOUDNESS_PROFILE_OFF };
   });
-  const nextPresets = {
-    ...presets,
-    ...(affectedPresetIds.length > 0 ? { list: nextList } : {}),
-    ...(selectionFallsBackToOff && presets.activeId != null ? { dirty: true } : {}),
-  };
   return {
     loudnessProfiles: {
       active: selectionFallsBackToOff ? LOUDNESS_PROFILE_OFF : loudnessProfiles.active,
       profiles: loudnessProfiles.profiles.filter(({ id }) => id !== profileId),
     },
-    presets:
-      affectedPresetIds.length > 0 ||
-      (selectionFallsBackToOff && presets.activeId != null && presets.dirty !== true)
-        ? nextPresets
-        : presets,
+    presets: affectedPresetIds.length > 0 ? { ...presets, list: nextList } : presets,
     changed: [
       "loudnessProfiles.library",
       ...(selectionFallsBackToOff ? ["loudnessProfiles.active"] : []),
       ...affectedPresetIds.map((id) => `presets.${id}.loudnessProfileActive`),
-      ...(selectionFallsBackToOff && presets.activeId != null && presets.dirty !== true
-        ? ["presets.dirty"]
-        : []),
     ],
     warnings: [],
     issues: [],

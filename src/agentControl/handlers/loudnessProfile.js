@@ -2,7 +2,7 @@ import { normalizePresets } from "../../hooks/usePresets.js";
 import { normalizeRuleDocument } from "../../lib/loudnessProfileNormalize.js";
 import { semanticFailure } from "../bridge/failures.js";
 import {
-  presetStateSignature,
+  presetLibrarySignature,
   loudnessProfileStateSignature,
   activeLoudnessProfileId,
 } from "../bridge/signatures.js";
@@ -149,16 +149,15 @@ async function mutate(ctx) {
       ),
     };
     // The plan carries the stored Preset record; the watcher sees the Presets state the app renders.
-    // They differ whenever the record holds something the app does not show -- `dirty` with no
-    // active Preset, an `activeId` naming a Preset that is gone -- and a signature taken from the
-    // record would then describe a state no render produces: the command times out on a commit
-    // that succeeded.
+    // They differ whenever the record holds something the app does not show -- an `activeId` naming
+    // a Preset that is gone -- and a signature taken from the record would then describe a state no
+    // render produces: the command times out on a commit that succeeded.
     const renderedPresets = commitPlan.presets ? normalizePresets(commitPlan.presets) : null;
     if (
       renderedPresets &&
-      presetStateSignature(renderedPresets) !== presetStateSignature(presets)
+      presetLibrarySignature(renderedPresets) !== presetLibrarySignature(presets)
     ) {
-      expected.presets = presetStateSignature(renderedPresets);
+      expected.presets = presetLibrarySignature(renderedPresets);
     }
     const committed = settlement.arm("loudnessProfile", { expected, observed: new Set() });
     return committed;

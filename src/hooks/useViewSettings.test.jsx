@@ -1,7 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { presetsStore } from "../persistence/index.js";
 import { useViewSettings } from "./useViewSettings.js";
 
 describe("useViewSettings", () => {
@@ -21,8 +20,7 @@ describe("useViewSettings", () => {
     expect(result.current.glassEnabled).toBe(false);
   });
 
-  it("persists view settings and marks the active preset dirty", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1", dirty: false });
+  it("persists view settings", () => {
     const { result } = renderHook(() => useViewSettings());
 
     act(() => {
@@ -40,7 +38,6 @@ describe("useViewSettings", () => {
       surfaceOpacity: 72,
       glassEnabled: true,
     });
-    expect(presetsStore.read().dirty).toBe(true);
   });
 
   it("updates from settings storage events", async () => {

@@ -13,7 +13,7 @@ import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { normalizePanelControlsById } from "./panelControlInstances.js";
 import { normalizeAxisViewportsState } from "./axisViewports.js";
 import { hasKnownModulesOnly } from "./panelInstances.js";
-import { presetsStore, workspaceStore } from "../persistence/index.js";
+import { workspaceStore } from "../persistence/index.js";
 
 const WorkspaceContext = createContext(null);
 
@@ -86,80 +86,16 @@ export function WorkspaceProvider({ children }) {
   const persistenceWaitersRef = useRef(new Set());
   const actions = useMemo(() => {
     const bound = bindWorkspaceActions(dispatch);
-    // Fires on every gesture, including each pointer move of a slider drag, so an unguarded
-    // patch serialised the whole presets domain a hundred times a second to re-assert a flag
-    // that was already set. The transition is what matters; the read is the cheap half.
-    const markPresetDirty = () => {
-      if (presetsStore.read().dirty === true) return;
-      presetsStore.patch({ dirty: true });
-    };
     return {
       ...bound,
       // Whole-workspace callers (imports, live control, and future restore flows) get one semantic
-      // action instead of access to the reducer dispatcher. Preset application intentionally keeps
-      // using the neutral setView action because it restores its own active/dirty metadata.
-      replaceWorkspace: (view) => {
-        markPresetDirty();
-        bound.setView(view);
-      },
-      setTree: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.setTree(...args);
-      },
-      moveTab: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.moveTab(...args);
-      },
-      resizeChildren: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.resizeChildren(...args);
-      },
-      addPanel: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.addPanel(...args);
-      },
-      addPanelAt: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.addPanelAt(...args);
-      },
-      removePanel: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.removePanel(...args);
-      },
-      renamePanel: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.renamePanel(...args);
-      },
-      setPanelPinned: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.setPanelPinned(...args);
-      },
-      setPanelControlsForPanel: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.setPanelControlsForPanel(...args);
-      },
-      resetPanelControlsForPanel: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.resetPanelControlsForPanel(...args);
-      },
-      setAxisViewport: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.setAxisViewport(...args);
-      },
+      // action instead of access to the reducer dispatcher.
+      replaceWorkspace: (view) => bound.setView(view),
       joinAxisViewport: (/** @type {any} */ ...args) => {
-        markPresetDirty();
         dispatch({
           type: "JOIN_AXIS_VIEWPORT",
           payload: { kindId: args[0], panelId: args[1], dock: workspaceStore.read().dock },
         });
-      },
-      leaveAxisViewport: (/** @type {any} */ ...args) => {
-        markPresetDirty();
-        bound.leaveAxisViewport(...args);
-      },
-      resetWorkspace: () => {
-        markPresetDirty();
-        bound.resetWorkspace();
       },
     };
   }, []);

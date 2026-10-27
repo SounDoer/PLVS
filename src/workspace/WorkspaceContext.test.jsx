@@ -104,7 +104,7 @@ describe("WorkspaceContext initState unknown module guard", () => {
   });
 });
 
-describe("WorkspaceContext active preset divergence", () => {
+describe("WorkspaceContext workspace replacement", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
@@ -120,82 +120,6 @@ describe("WorkspaceContext active preset divergence", () => {
     return actions;
   }
 
-  it("marks presets dirty on manual setTree", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.setTree(leaf(["levelMeter"])));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty on manual moveTab", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.moveTab("levelMeter", { targetPath: [1, 0], zone: "tabs", tabIndex: 0 }));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty on manual addPanel", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.addPanel("levelMeter"));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty on manual resetWorkspace", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.resetWorkspace());
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty on manual removePanel", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.removePanel("levelMeter"));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty on manual renamePanel", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.renamePanel("levelMeter", "Main Meter"));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty on manual panel pin changes", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.setPanelPinned("spectrum", { width: 640, height: 260 }));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks presets dirty when one panel instance is reset", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
-    const actions = renderActions();
-    act(() => actions.resetPanelControlsForPanel("levelMeter"));
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it.each([
-    ["frequency", { min: 200, max: 5000 }],
-    ["time", { windowSec: 20, offsetSec: 4 }],
-  ])("marks presets dirty when the shared %s viewport changes", (kindId, viewport) => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1", dirty: false });
-    const actions = renderActions();
-
-    act(() => actions.setAxisViewport(kindId, viewport));
-
-    expect(presetsStore.read()).toMatchObject({ activeId: "p1", dirty: true });
-  });
-
   it("does not clear presets.activeId when applying setView", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
@@ -210,13 +134,7 @@ describe("WorkspaceContext active preset divergence", () => {
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
-  it("replaces an externally supplied workspace in one state transition and marks a clean preset dirty once", () => {
-    presetsStore.patch({
-      list: [{ id: "p1", name: "Preset" }],
-      activeId: "p1",
-      dirty: false,
-    });
-    const presetPatch = vi.spyOn(presetsStore, "patch");
+  it("replaces an externally supplied workspace in one state transition", () => {
     const persistedPatch = vi.spyOn(workspaceStore, "patchCoalesced");
     const snapshots = [];
     /** @type {any} */
@@ -231,7 +149,6 @@ describe("WorkspaceContext active preset divergence", () => {
         />
       </WorkspaceProvider>
     );
-    presetPatch.mockClear();
     persistedPatch.mockClear();
 
     const view = {
@@ -249,8 +166,6 @@ describe("WorkspaceContext active preset divergence", () => {
 
     expect(snapshots).toHaveLength(beforeCount + 1);
     expect(actions.state.tree).toEqual(view.tree);
-    expect(presetPatch).toHaveBeenCalledTimes(1);
-    expect(presetPatch).toHaveBeenCalledWith({ dirty: true });
     expect(persistedPatch).toHaveBeenCalledTimes(1);
     expect(persistedPatch).toHaveBeenCalledWith(
       expect.objectContaining({ tree: view.tree, panelOrder: ["spectrum"] })
@@ -284,38 +199,6 @@ describe("WorkspaceContext active preset divergence", () => {
     expect(settled).toBe(false);
     act(() => actions.setPanelControlsForPanel("levelMeter", nextControls));
     await waitFor(() => expect(settled).toBe(true));
-  });
-
-  it("does not rewrite an already-dirty preset when replacing a workspace", () => {
-    presetsStore.patch({
-      list: [{ id: "p1", name: "Preset" }],
-      activeId: "p1",
-      dirty: true,
-    });
-    const presetPatch = vi.spyOn(presetsStore, "patch");
-    const actions = renderActions();
-    presetPatch.mockClear();
-
-    act(() => actions.replaceWorkspace(DEFAULT_WORKSPACE_STATE));
-
-    expect(presetPatch).not.toHaveBeenCalled();
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("keeps setView neutral so preset application can restore a clean preset", () => {
-    presetsStore.patch({
-      list: [{ id: "p1", name: "Preset" }],
-      activeId: "p1",
-      dirty: false,
-    });
-    const presetPatch = vi.spyOn(presetsStore, "patch");
-    const actions = renderActions();
-    presetPatch.mockClear();
-
-    act(() => actions.setView(DEFAULT_WORKSPACE_STATE));
-
-    expect(presetPatch).not.toHaveBeenCalled();
-    expect(presetsStore.read()).toMatchObject({ activeId: "p1", dirty: false });
   });
 
   it("does not overwrite a Dock preset applied alongside the main workspace view", () => {

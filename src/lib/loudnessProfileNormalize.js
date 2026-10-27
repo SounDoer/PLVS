@@ -75,8 +75,9 @@ export function normalizeRuleDocument(raw) {
 /// Resolves the persisted selection, falling back to Off whenever the selected profile is absent.
 /**
  * @param {string} raw
+ * @param {{ id: string }[]} profiles
  */
-function normalizeActive(raw, profiles) {
+export function normalizeLoudnessProfileSelection(raw, profiles) {
   const { kind, id } = parseSelection(raw);
   if (kind !== "profile") return LOUDNESS_PROFILE_OFF;
   return profiles.some((profile) => profile.id === id) ? raw : LOUDNESS_PROFILE_OFF;
@@ -104,7 +105,7 @@ export function normalizeLoudnessProfiles(raw, { makeId } = {}) {
     });
 
   return {
-    active: normalizeActive(raw.active, profiles),
+    active: normalizeLoudnessProfileSelection(raw.active, profiles),
     profiles,
   };
 }

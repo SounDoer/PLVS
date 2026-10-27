@@ -179,6 +179,7 @@ export function PresetsProvider({ children }) {
     onApplyError: onPresetApplyError,
     snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
     applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
+    normalizeLoudnessProfileActive: loudnessProfile.normalizePresetSelection,
     assertSceneOperationAllowed,
     blockingEditors: activeBlockingEditors,
   });

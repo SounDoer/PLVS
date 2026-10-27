@@ -110,13 +110,24 @@ describe("createDomainRunner", () => {
     expect(settlement.peek("library")).not.toBeNull();
   });
 
+  it("settles a Preset command on the library even when the applied scene renders modified", async () => {
+    const { settlement, inputs, observeCommit } = setup();
+    const committed = settlement.arm("presets", {
+      signature: JSON.stringify({ list: [{ id: "p1" }], activeId: "p1" }),
+    });
+    // A device clamp rewrote a channel right after Apply, so the Preset already reads modified.
+    observeCommit({ ...inputs, presets: { list: [{ id: "p1" }], activeId: "p1", dirty: true } });
+    await expect(committed).resolves.toEqual(expect.any(Number));
+  });
+
   it("waits for both stores of a Loudness Profile change that also rewrites Presets", async () => {
     const { settlement, inputs, observeCommit } = setup();
-    const presets = { list: [{ id: "p1" }], activeId: null, dirty: false };
+    // The rendered state is modified; the plan cannot know that, so it expects the library alone.
+    const presets = { list: [{ id: "p1" }], activeId: "p1", dirty: true };
     const committed = settlement.arm("loudnessProfile", {
       expected: {
         loudnessProfile: "loudness-1",
-        presets: JSON.stringify({ list: presets.list, activeId: null, dirty: false }),
+        presets: JSON.stringify({ list: presets.list, activeId: "p1" }),
       },
       observed: new Set(),
     });

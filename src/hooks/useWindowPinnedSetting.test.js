@@ -13,7 +13,7 @@ vi.mock("../persistence/index.js", () => {
     },
     subscribe: () => () => {},
   });
-  return { presetsStore: store("plvs:presets"), settingsStore: store("plvs:settings") };
+  return { settingsStore: store("plvs:settings") };
 });
 
 describe("useWindowPinnedSetting", () => {
@@ -49,19 +49,5 @@ describe("useWindowPinnedSetting", () => {
 
     expect(result.current.windowPinned).toBe(false);
     expect(JSON.parse(localStorage.getItem("plvs:settings")).windowPinned).toBe(false);
-  });
-
-  it("marks the active preset dirty when pin state changes", () => {
-    localStorage.setItem(
-      "plvs:presets",
-      JSON.stringify({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" })
-    );
-    const { result } = renderHook(() => useWindowPinnedSetting());
-
-    act(() => result.current.setWindowPinned(true));
-
-    const stored = JSON.parse(localStorage.getItem("plvs:presets"));
-    expect(stored.activeId).toBe("p1");
-    expect(stored.dirty).toBe(true);
   });
 });

@@ -114,16 +114,16 @@ describe("Loudness Profile authoring validation", () => {
 });
 
 describe("Loudness Profile library planning", () => {
-  it("selects a Profile or Off, dirties an active Preset, and detects no-ops", () => {
-    const presets = { list: [], activeId: "preset-a", dirty: false };
+  it("selects a Profile or Off, leaves Presets alone, and detects no-ops", () => {
+    const presets = { list: [], activeId: "preset-a" };
     const selected = planLoudnessProfileSelect(state(), presets, "profile-a");
     expect(selected).toMatchObject({
       issues: [],
-      changed: ["loudnessProfiles.active", "presets.dirty"],
+      changed: ["loudnessProfiles.active"],
       from: null,
       to: "profile-a",
-      presets: { activeId: "preset-a", dirty: true },
     });
+    expect(selected.presets).toBe(presets);
     expect(selected.loudnessProfiles.active).toBe(profileSelectionId("profile-a"));
 
     const noOp = planLoudnessProfileSelect(
@@ -144,34 +144,26 @@ describe("Loudness Profile library planning", () => {
   it("plans dry-run create without allocating an ID and real create with an injected unique ID", () => {
     const makeId = vi.fn(() => "profile-new");
     const current = state();
-    const preview = planLoudnessProfileCreate(
-      current,
-      { list: [], activeId: null, dirty: false },
-      authoring()
-    );
+    const preview = planLoudnessProfileCreate(current, { list: [], activeId: null }, authoring());
     expect(preview.issues).toEqual([]);
     expect(preview.profile).toBeUndefined();
     expect(preview.document).toMatchObject({ name: "Broadcast" });
     expect(preview.selectCreated).toBe(true);
     expect(preview.loudnessProfiles).toBe(current);
 
-    const planned = planLoudnessProfileCreate(
-      state(),
-      { list: [], activeId: "preset-a", dirty: false },
-      authoring(),
-      { makeId }
-    );
+    const createPresets = { list: [], activeId: "preset-a" };
+    const planned = planLoudnessProfileCreate(state(), createPresets, authoring(), { makeId });
     expect(makeId).toHaveBeenCalledTimes(1);
     expect(planned.profile).toMatchObject({ id: "profile-new", name: "Broadcast" });
     expect(planned.loudnessProfiles.profiles).toHaveLength(3);
     expect(planned.loudnessProfiles.active).toBe(profileSelectionId("profile-new"));
-    expect(planned.presets.dirty).toBe(true);
+    expect(planned.presets).toBe(createPresets);
     expect(state().profiles).toEqual([PROFILE_A, PROFILE_B]);
   });
 
   it("refuses a generated duplicate ID without changing either input", () => {
     const current = state();
-    const presets = { list: [], activeId: null, dirty: false };
+    const presets = { list: [], activeId: null };
     const planned = planLoudnessProfileCreate(current, presets, authoring(), {
       makeId: () => "profile-a",
     });
@@ -226,7 +218,6 @@ describe("Loudness Profile library planning", () => {
         { id: "preset-c", name: "C", loudnessProfileActive: profileSelectionId("profile-a") },
       ],
       activeId: "preset-b",
-      dirty: false,
     };
     const planned = planLoudnessProfileDelete(current, presets, "profile-a");
     expect(planned).toMatchObject({
@@ -234,8 +225,9 @@ describe("Loudness Profile library planning", () => {
       selectionFallsBackToOff: true,
       affectedPresetIds: ["preset-a", "preset-c"],
       deletedProfile: PROFILE_A,
-      presets: { activeId: "preset-b", dirty: true },
+      presets: { activeId: "preset-b" },
     });
+    expect(planned.presets).not.toHaveProperty("dirty");
     expect(planned.loudnessProfiles).toEqual({ active: "off", profiles: [PROFILE_B] });
     expect(planned.presets.list.map(({ loudnessProfileActive }) => loudnessProfileActive)).toEqual([
       "off",
@@ -246,11 +238,10 @@ describe("Loudness Profile library planning", () => {
     expect(presets.list[0].loudnessProfileActive).toBe(profileSelectionId("profile-a"));
   });
 
-  it("deletes an inactive Profile without changing selection or dirty state", () => {
+  it("deletes an inactive Profile without changing the selection", () => {
     const presets = {
       list: [{ id: "preset-a", loudnessProfileActive: profileSelectionId("profile-a") }],
       activeId: "preset-a",
-      dirty: false,
     };
     const planned = planLoudnessProfileDelete(
       state(profileSelectionId("profile-b")),
@@ -258,7 +249,6 @@ describe("Loudness Profile library planning", () => {
       "profile-a"
     );
     expect(planned.selectionFallsBackToOff).toBe(false);
-    expect(planned.presets.dirty).toBe(false);
     expect(planLoudnessProfileDelete(state(), presets, "missing").issues[0].code).toBe(
       "loudnessProfileNotFound"
     );

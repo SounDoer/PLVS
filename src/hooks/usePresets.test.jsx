@@ -40,6 +40,8 @@ vi.mock("../ipc/events.js", () => ({
 
 import { useState } from "react";
 import { usePresets } from "./usePresets.js";
+import { useViewSettings } from "./useViewSettings.js";
+import { useWindowPinnedSetting } from "./useWindowPinnedSetting.js";
 import { invoke } from "@tauri-apps/api/core";
 import {
   BlockingEditorsProvider,
@@ -399,38 +401,29 @@ describe("usePresets", () => {
       expect.objectContaining({ bounds: windowBounds })
     );
     expect(mocks.applyWindowBounds).not.toHaveBeenCalled();
-    expect(presetsStore.read()).toMatchObject({ activeId: "p1", dirty: false });
+    expect(presetsStore.read().activeId).toBe("p1");
   });
 
-  it("marks the active preset dirty when window bounds change in Tauri", async () => {
+  it("derives the modified state from the bounds Rust persists, clean again once they match", async () => {
     mocks.isTauri.mockReturnValue(true);
-    presetsStore.patch({
-      list: [
-        {
-          id: "p1",
-          name: "Preset",
-          tree: leaf(["spectrum"]),
-          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
-          panelOrder: ["spectrum"],
-        },
-      ],
-      activeId: "p1",
-      dirty: false,
+    const saved = { x: 10, y: 20, width: 800, height: 600, isMaximized: false };
+    const { result } = renderPresetHook();
+    await act(async () => {
+      await result.current.presets.save("Bounds");
     });
+    expect(result.current.presets.dirty).toBe(false);
 
-    renderPresetHook();
-    await act(async () => {});
+    act(() => mocks.windowBoundsHandler({ ...saved, x: 11 }));
+    expect(result.current.presets.dirty).toBe(true);
 
-    vi.mocked(Date.now).mockReturnValue(2000);
-    act(() => {
-      mocks.windowBoundsHandler();
-    });
-
-    expect(presetsStore.read().dirty).toBe(true);
+    // A minimise and restore, or a move and back, ends on the same bounds.
+    act(() => mocks.windowBoundsHandler(saved));
+    expect(result.current.presets.dirty).toBe(false);
   });
 
-  it("suppresses preset dirty marking while applying stored window bounds", async () => {
+  it("is clean right after applying a preset whose bounds Rust then reports back", async () => {
     mocks.isTauri.mockReturnValue(true);
+    const windowBounds = { x: 1, y: 2, width: 300, height: 200, isMaximized: false };
     presetsStore.patch({
       list: [
         {
@@ -440,11 +433,10 @@ describe("usePresets", () => {
           panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
           panelOrder: ["spectrum"],
           panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
-          windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
+          windowBounds,
         },
       ],
       activeId: null,
-      dirty: false,
     });
     const { result } = renderPresetHook();
     await act(async () => {});
@@ -452,17 +444,10 @@ describe("usePresets", () => {
     await act(async () => {
       await result.current.presets.apply("p1");
     });
+    act(() => mocks.windowBoundsHandler(windowBounds));
 
-    act(() => {
-      mocks.windowBoundsHandler();
-    });
-    expect(presetsStore.read().dirty).toBe(false);
-
-    vi.mocked(Date.now).mockReturnValue(2000);
-    act(() => {
-      mocks.windowBoundsHandler();
-    });
-    expect(presetsStore.read().dirty).toBe(true);
+    expect(result.current.presets).toMatchObject({ activeId: "p1", dirty: false });
+    expect(presetsStore.read()).not.toHaveProperty("dirty");
   });
 
   it("does not change Focus View when applying an older preset", async () => {
@@ -730,13 +715,12 @@ describe("usePresets", () => {
         },
       ],
       activeId: "p1",
-      dirty: true,
     });
     const { result } = renderPresetHook();
     act(() => result.current.presets.rename("p1", "Renamed"));
     expect(presetsStore.read().list[0].name).toBe("Renamed");
     act(() => result.current.presets.remove("p1"));
-    expect(presetsStore.read()).toEqual({ list: [], activeId: null, dirty: false, version: 1 });
+    expect(presetsStore.read()).toEqual({ list: [], activeId: null, version: 1 });
   });
 
   describe("dock in presets", () => {
@@ -1344,5 +1328,121 @@ describe("usePresets first-run PLVS Default preset", () => {
       values: { starterItemsSeeded: true },
       expectedRevisions: { starterItemsSeeded: 0 },
     });
+  });
+});
+
+/// Presets wired to the real view settings, pin and profile, so Apply changes what the modified
+/// state reads instead of calling inert setters.
+function renderWiredPresets() {
+  return renderHook(
+    () => {
+      const view = useViewSettings();
+      const pin = useWindowPinnedSetting();
+      const profile = useLoudnessProfile();
+      return {
+        workspace: useWorkspaceStore(),
+        view,
+        presets: usePresets({
+          ...view,
+          ...pin,
+          snapshotLoudnessProfile: profile.snapshotForPreset,
+          applyLoudnessProfileSnapshot: profile.applyPresetSnapshot,
+          normalizeLoudnessProfileActive: profile.normalizePresetSelection,
+        }),
+      };
+    },
+    { wrapper }
+  );
+}
+
+describe("usePresets modified state", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    storeExistingWorkspace();
+    vi.spyOn(Date, "now").mockReturnValue(123);
+    mocks.isTauri.mockReset().mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it("is clean right after Save and Update", async () => {
+    const { result } = renderWiredPresets();
+    await act(async () => {
+      await result.current.presets.save("Saved");
+    });
+    expect(result.current.presets.dirty).toBe(false);
+
+    act(() => result.current.view.setSurfaceOpacity(60));
+    expect(result.current.presets.dirty).toBe(true);
+    await act(async () => {
+      await result.current.presets.update(result.current.presets.activeId);
+    });
+    expect(result.current.presets.dirty).toBe(false);
+  });
+
+  it("returns to clean when a change is undone", async () => {
+    const { result } = renderWiredPresets();
+    await act(async () => {
+      await result.current.presets.save("Saved");
+    });
+    const [panelId] = result.current.workspace.state.panelOrder;
+    const original = result.current.workspace.state.panelControlsById[panelId];
+
+    act(() => result.current.view.setAutoHideControls(true));
+    expect(result.current.presets.dirty).toBe(true);
+    act(() => result.current.view.setAutoHideControls(false));
+    expect(result.current.presets.dirty).toBe(false);
+
+    act(() => result.current.workspace.setAxisViewport("time", { windowSec: 20, offsetSec: 4 }));
+    expect(result.current.presets.dirty).toBe(true);
+    act(() => result.current.workspace.resetPanelControlsForPanel(panelId));
+    act(() => result.current.workspace.setPanelControlsForPanel(panelId, original));
+    act(() =>
+      result.current.workspace.setAxisViewport(
+        "time",
+        presetsStore.read().list[0].axisViewports.time
+      )
+    );
+    expect(result.current.presets.dirty).toBe(false);
+  });
+
+  it.each([
+    [
+      "an older preset that stored only the layout",
+      {
+        tree: leaf(["spectrum"]),
+        panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+        panelOrder: ["spectrum"],
+      },
+    ],
+    [
+      "a preset with view settings and a dangling profile",
+      {
+        ...DEFAULT_WORKSPACE_STATE,
+        windowPinned: true,
+        focusView: { autoHideControls: true, compactPanels: true, borderless: true },
+        panelPresentation: {
+          workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+          dock: { hideAxesAndLabels: true },
+        },
+        surfaceOpacity: 70,
+        glassEnabled: true,
+        loudnessProfileActive: profileSelectionId("gone"),
+        dock: { enabled: false, edge: "top", height: 140, panelOrder: [], panelsById: {} },
+      },
+    ],
+  ])("is clean right after applying %s", async (_name, stored) => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset", ...stored }], activeId: null });
+    const { result } = renderWiredPresets();
+    act(() => result.current.view.setSurfaceOpacity(40));
+
+    await act(async () => {
+      await result.current.presets.apply("p1");
+    });
+
+    expect(result.current.presets).toMatchObject({ activeId: "p1", dirty: false });
   });
 });

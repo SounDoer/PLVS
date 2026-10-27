@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { presetsStore, themesStore } from "../persistence/index.js";
+import { themesStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 import { useSettings } from "./useSettings.js";
@@ -265,8 +265,7 @@ describe("useSettings", () => {
     });
   });
 
-  it("persists Focus View toggles and marks the active preset dirty", () => {
-    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+  it("persists Focus View toggles", () => {
     const { result } = renderHook(() => useSettings());
 
     act(() => {
@@ -278,9 +277,6 @@ describe("useSettings", () => {
       compactPanels: false,
       borderless: false,
     });
-    expect(presetsStore.read().activeId).toBe("p1");
-    expect(presetsStore.read().dirty).toBe(true);
-
     act(() => {
       result.current.setCompactPanels(true);
     });
