@@ -322,7 +322,7 @@ export function computeStereoMapHoverIndex(xFrac, bandCentersHz, minHz = 20, max
 }
 
 /**
- * Formats a Position value as the selected channel's share, e.g. "42% L" or "68% R". Equal energy
+ * Formats a Position value as the selected channel's share, e.g. "L 42%" or "R 68%". Equal energy
  * is always "0%" and never says "Center".
  * @param {number} value - Position in [-1, 1]; +1 is fully `firstLabel`, -1 is fully `secondLabel`.
  */
@@ -330,7 +330,7 @@ export function formatStereoMapPositionValue(value, firstLabel, secondLabel) {
   if (!Number.isFinite(value)) return "-";
   const pct = Math.round(Math.abs(value) * 100);
   if (pct === 0) return "0%";
-  return `${pct}% ${value > 0 ? firstLabel : secondLabel}`;
+  return `${value > 0 ? firstLabel : secondLabel} ${pct}%`;
 }
 
 /**
@@ -378,7 +378,12 @@ export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = 
   if (mode === STEREO_MAP_MODES.CORRELATION) {
     return formatStereoMapCorrelationValue(point.value);
   }
-  return formatStereoMapDbValue(point);
+  return labelMsRatio(mode, formatStereoMapDbValue(point));
+}
+
+/** M/S Ratio compares two channels, so its reading names them, like Position and Spectrum. */
+function labelMsRatio(mode, text) {
+  return mode === STEREO_MAP_MODES.MS_RATIO_DB && text !== "-" ? `M/S ${text}` : text;
 }
 
 /**
@@ -408,5 +413,5 @@ export function formatStereoMapHoldValue(mode, rawValue, range, labels = {}) {
   if (mode === STEREO_MAP_MODES.CORRELATION) {
     return formatStereoMapCorrelationValue(clipped.value);
   }
-  return formatStereoMapDbValue(clipped);
+  return labelMsRatio(mode, formatStereoMapDbValue(clipped));
 }

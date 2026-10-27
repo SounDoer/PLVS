@@ -508,7 +508,7 @@ describe("StereoMapPanel", () => {
     // infinity there, which clips to the configured -48 dB lower bound.
     fireEvent.pointerMove(chart, { clientX: 10, clientY: 130 });
 
-    expect(container.textContent).toContain("<= -48.0 dB");
+    expect(container.textContent).toContain("M/S <= -48.0 dB");
   });
 
   it("shows the mono empty state and never the Center pair state for a single channel", () => {

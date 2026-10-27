@@ -27,6 +27,8 @@ import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
+import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
+import { spectrumViewLegend } from "../../math/spectrumChannelViewOptions.js";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import {
@@ -112,7 +114,7 @@ function smoothSpectrumResult(previous, next) {
 /** @param {{ showAxes?: boolean, className?: string, compact?: boolean }} [props] */
 export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   const { showAxes, fitContainer } = usePanelPresentation(axesOverride);
-  const { displayAudio } = useFrameData();
+  const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
   const {
     selectedOffset,
     resolveSpectrumSnapshotForKey,
@@ -130,6 +132,12 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   const spectrumMaxMode = normalizedPanelControls.spectrumMaxMode;
   const maxHoldEnabled = spectrumMaxMode === "hold";
   const spectrumPeakLabels = normalizedPanelControls.spectrumPeakLabels;
+  // Two overlaid curves name their channel in the hover readout; colour alone is not a label.
+  const hoverLegend = spectrumViewLegend(
+    normalizedPanelControls.spectrumView,
+    normalizedPanelControls.spectrumChannel,
+    getPeakMeterChannelLabels(channelCount >= 2 ? channelCount : 2, peakLabelContext || {})
+  );
   const gradientId = useId().replaceAll(":", "");
   const fillIds = {
     live: `spectrum-live-${gradientId}`,
@@ -1050,7 +1058,9 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
                           : undefined
                       }
                     >
-                      {spectrumHover.dbLabel}
+                      {spectrumHover.dbLabelB && hoverLegend
+                        ? `${hoverLegend[0].label} ${spectrumHover.dbLabel}`
+                        : spectrumHover.dbLabel}
                     </div>
                     {spectrumHover.dbLabelB ? (
                       <div
@@ -1062,7 +1072,9 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
                               : "var(--ui-spectrum-secondary)",
                         }}
                       >
-                        {spectrumHover.dbLabelB}
+                        {hoverLegend
+                          ? `${hoverLegend[1].label} ${spectrumHover.dbLabelB}`
+                          : spectrumHover.dbLabelB}
                       </div>
                     ) : null}
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">

@@ -73,6 +73,29 @@ function liveAudioData(result, rest = {}) {
   };
 }
 
+/** Runs hover frames synchronously over a 400 x 240 chart. */
+function stubHoverLayout() {
+  vi.stubGlobal(
+    "requestAnimationFrame",
+    vi.fn((cb) => {
+      cb();
+      return 1;
+    })
+  );
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+    width: 400,
+    height: 240,
+    top: 0,
+    right: 400,
+    bottom: 240,
+    left: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
+}
+
 function primaryPath(container) {
   return container.querySelector('path[stroke="var(--ui-spectrum-primary)"]')?.getAttribute("d");
 }
@@ -394,6 +417,37 @@ describe("SpectrumPanel", () => {
     expect(spectrumRequestKeyFromControls({ spectrumTiltDbPerOctave: 0 })).toBe(
       spectrumRequestKeyFromControls({ spectrumTiltDbPerOctave: 6 })
     );
+  });
+
+  it.each([
+    ["lr", "L -40.0 dB", "R -45.0 dB"],
+    ["ms", "M -40.0 dB", "S -45.0 dB"],
+  ])("labels each %s hover reading with its channel", (spectrumView, primary, secondary) => {
+    stubHoverLayout();
+    const key = spectrumRequestKeyFromControls({ spectrumView });
+    renderPanel({
+      selectedOffset: -1,
+      panelControls: { spectrumView },
+      displayAudio: {
+        spectrumResultsByKey: {
+          [key]: liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -40], smoothDbB: [-45, -45] }),
+        },
+      },
+    });
+
+    fireEvent.pointerMove(screen.getByTestId("spectrum-chart"), { clientX: 0, clientY: 120 });
+
+    expect(screen.getByText(primary)).toBeTruthy();
+    expect(screen.getByText(secondary)).toBeTruthy();
+  });
+
+  it("leaves a single-curve hover reading unlabelled", () => {
+    stubHoverLayout();
+    renderPanel(liveAudioData(liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -40] })));
+
+    fireEvent.pointerMove(screen.getByTestId("spectrum-chart"), { clientX: 0, clientY: 120 });
+
+    expect(screen.getByText("-40.0 dB")).toBeTruthy();
   });
 
   it("refreshes the live hover value when spectrum data changes without pointer movement", () => {
