@@ -43,7 +43,8 @@ describe("ChartHoverHud", () => {
   it("is a translucent, blurred overlay", () => {
     renderHud();
     const hud = screen.getByText("359 Hz").closest("[data-chart-hover-hud]");
-    expect(hud.className).toContain("bg-secondary/50");
+    expect(hud.className).toContain("bg-secondary/40");
+    expect(hud.className.split(" ")).not.toContain("border");
     expect(hud.className).toContain("backdrop-blur-[2px]");
   });
 

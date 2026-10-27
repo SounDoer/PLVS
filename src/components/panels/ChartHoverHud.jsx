@@ -86,7 +86,7 @@ export function ChartHoverHud({ children, channelOverflow = false }) {
       data-chart-hover-hud
       data-layout={layout.horizontal ? "horizontal" : "vertical"}
       data-side={side}
-      className="pointer-events-none absolute z-40 rounded-xs border border-border bg-secondary/50 backdrop-blur-[2px] px-2 py-1 font-[family-name:var(--ui-font-mono)] tabular-nums text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]"
+      className="pointer-events-none absolute z-40 rounded-xs bg-secondary/40 backdrop-blur-[2px] px-2 py-1 font-[family-name:var(--ui-font-mono)] tabular-nums text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]"
       style={{
         ...(side === "right" ? { right: geometry?.right ?? 4 } : { left: geometry?.left ?? 4 }),
         top: geometry?.top ?? 4,
