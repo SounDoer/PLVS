@@ -47,6 +47,30 @@ describe("ChartHoverHud", () => {
     expect(hud.className).toContain("backdrop-blur-[2px]");
   });
 
+  it("fits fields to their text and never shrinks them while the hover lasts", () => {
+    const hud = (dbLabel) => (
+      <div data-chart-hud-boundary>
+        <div>
+          <ChartHoverHud>
+            <div>483 Hz</div>
+            <div>{dbLabel}</div>
+          </ChartHoverHud>
+        </div>
+      </div>
+    );
+    const { rerender } = render(hud("-40.7 dB"));
+    const width = (text) => parseFloat(screen.getByText(text).parentElement.style.width).toFixed(1);
+    // 12 px fallback font, 0.6 em per monospace character, 8-character floor.
+    expect(width("483 Hz")).toBe("57.6");
+    expect(width("-40.7 dB")).toBe("57.6");
+
+    rerender(hud("-100.7 dB"));
+    expect(width("-100.7 dB")).toBe("64.8");
+
+    rerender(hud("-4.7 dB"));
+    expect(width("-4.7 dB")).toBe("64.8");
+  });
+
   it("moves to the right corner while the cursor is near the left one, and back", () => {
     const boundary = renderHud();
     const hud = () => screen.getByText("359 Hz").closest("[data-chart-hover-hud]");

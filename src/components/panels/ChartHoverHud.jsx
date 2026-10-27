@@ -68,12 +68,14 @@ export function ChartHoverHud({ children, channelOverflow = false }) {
     root.addEventListener("pointermove", follow);
     return () => root.removeEventListener("pointermove", follow);
   }, [geometry]);
-  // Reserve the normal reading range so live digits do not move fields between rows. Longer
-  // labels get their full width: the fitter can omit a field, but never split its number/unit.
-  const widths = fields.map(
-    (field, index) =>
-      Math.max(index === 0 ? 8 : 13, fieldText(field).length) * (geometry?.font ?? 12) * 0.6
-  );
+  // Fit each field to the longest text it has shown during this hover, so live digits never
+  // shrink the box or move fields between rows. The fitter can omit a field, but never split its
+  // number/unit.
+  const lengths = fields.map((field) => fieldText(field).length);
+  const [reserved, setReserved] = useState(lengths);
+  const grown = lengths.map((length, index) => Math.max(length, reserved[index] ?? 0));
+  if (grown.some((length, index) => length !== reserved[index])) setReserved(grown);
+  const widths = grown.map((length) => Math.max(8, length) * (geometry?.font ?? 12) * 0.6);
   const layout =
     geometry?.width > 0
       ? fitChartHud(widths, geometry.width, geometry.height, geometry.font * 1.5, channelOverflow)
