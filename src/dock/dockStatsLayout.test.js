@@ -7,7 +7,11 @@ import {
   fitDockStatsColumns,
   DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
+  recommendedDockStatsWidth,
 } from "./dockStatsLayout.js";
+import { dockMinHeight, dockStatsRowHeight, DOCK_STATS_ROW_GAP } from "./dockSizing.js";
+import { UI_PREFERENCES } from "../preferences/data.js";
+import { resolveInterfacePreferences } from "../preferences/interfaceSize.js";
 
 describe("computeDockStatsColumnCount", () => {
   it("adds columns only after accounting for the wider group gutters", () => {
@@ -65,3 +69,26 @@ it("uses both width and height without forcing a fixed row count", () => {
   expect(fitDockStatsColumns(300, 108, 12, 60, 18)).toBe(2);
   expect(fitDockStatsColumns(60, 36, 12, 60, 18)).toBe(1);
 });
+
+it.each(["small", "default", "large", "extra-large"])(
+  "fits exactly three full Stats rows at the %s minimum without charging a trailing gap",
+  (size) => {
+    const font = resolveInterfacePreferences(UI_PREFERENCES, size).typography.sizesPx;
+    const height = dockMinHeight(size);
+    const rowHeight = dockStatsRowHeight(font);
+    const width = recommendedDockStatsWidth(height, 15, font);
+    const columns = fitDockStatsColumns(
+      width - 12,
+      height - 8,
+      15,
+      (DOCK_STATS_MIN_CELL_WIDTH_PX * font.metricValue) / 13,
+      rowHeight + DOCK_STATS_ROW_GAP,
+      DOCK_STATS_ROW_GAP
+    );
+    expect(columns).toBe(5);
+    expect(3 * rowHeight + 2 * DOCK_STATS_ROW_GAP).toBeLessThanOrEqual(height - 8);
+    // A wider viewport must still choose three rows, rather than wasting space on two.
+    expect(fitDockStatsColumns(2000, height - 8, 15, 84, rowHeight + 3, 3)).toBe(5);
+    expect(fitDockStatsColumns(2000, height - 9, 15, 84, rowHeight + 3, 3)).toBe(8);
+  }
+);

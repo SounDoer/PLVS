@@ -1,14 +1,19 @@
 import { UI_PREFERENCES } from "../preferences/data.js";
 import { resolveInterfacePreferences } from "../preferences/interfaceSize.js";
 
-/// The smallest strip any interface size allows: three Stats rows at the default size. Matches
-/// Rust's DOCK_MIN_LOGICAL_HEIGHT and is the wire-format lower bound. Larger interface sizes raise
-/// the minimum through dockMinHeight().
+/// Legacy wire-format lower bound, matching Rust's DOCK_MIN_LOGICAL_HEIGHT. The rendered strip
+/// uses dockMinHeight() to reserve three complete Stats rows at the current Interface Size.
 export const DOCK_MIN_HEIGHT = 68;
 /// Dock module padding and Stats row gap, in CSS px. Shared by the CSS tokens and the minimum.
 export const DOCK_PAD_X = 6;
 export const DOCK_PAD_Y = 4;
 export const DOCK_STATS_ROW_GAP = 3;
+// Room for a normal label line box beside the larger numeric readout, at every Interface Size.
+export const DOCK_STATS_ROW_EXTRA_PX = 4;
+
+export function dockStatsRowHeight(font) {
+  return font.metricValue + DOCK_STATS_ROW_EXTRA_PX;
+}
 /// First-run Dock height. Matches Rust's DOCK_DEFAULT_LOGICAL_HEIGHT, which first entry uses
 /// because the GUI passes no height.
 export const DOCK_DEFAULT_HEIGHT = 180;
@@ -27,7 +32,10 @@ export const DOCK_HEADER_HEIGHT = 36;
 export function dockMinHeight(interfaceSize) {
   const { metricValue } = resolveInterfacePreferences(UI_PREFERENCES, interfaceSize).typography
     .sizesPx;
-  return Math.max(DOCK_MIN_HEIGHT, 3 * metricValue + 2 * DOCK_STATS_ROW_GAP + 2 * DOCK_PAD_Y);
+  return Math.max(
+    DOCK_MIN_HEIGHT,
+    3 * dockStatsRowHeight({ metricValue }) + 2 * DOCK_STATS_ROW_GAP + 2 * DOCK_PAD_Y
+  );
 }
 
 /**

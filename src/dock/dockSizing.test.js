@@ -6,7 +6,6 @@ import { UI_PREFERENCES } from "../preferences/data.js";
 import { resolveInterfacePreferencesForSurface } from "../preferences/interfaceSize.js";
 import {
   DOCK_DEFAULT_HEIGHT,
-  DOCK_MIN_HEIGHT,
   DOCK_HEADER_HEIGHT,
   clampDockHeight,
   dockHeightFromPointer,
@@ -52,20 +51,20 @@ describe("dock sizing", () => {
   });
 
   it("derives the minimum from three single-line Stats rows at the interface size", () => {
-    expect(dockMinHeight("small")).toBe(DOCK_MIN_HEIGHT);
-    expect(dockMinHeight("default")).toBe(68);
-    expect(dockMinHeight("large")).toBe(77);
-    expect(dockMinHeight("extra-large")).toBe(86);
-    expect(clampDockHeight(70, dockMinHeight("large"))).toBe(77);
+    expect(dockMinHeight("small")).toBe(74);
+    expect(dockMinHeight("default")).toBe(80);
+    expect(dockMinHeight("large")).toBe(89);
+    expect(dockMinHeight("extra-large")).toBe(98);
+    expect(clampDockHeight(70, dockMinHeight("large"))).toBe(89);
     expect(
       dockHeightFromPointer({
         edge: "bottom",
         startHeight: 90,
         startY: 0,
         currentY: 40,
-        minHeight: 86,
+        minHeight: 98,
       })
-    ).toBe(86);
+    ).toBe(98);
   });
 });
 

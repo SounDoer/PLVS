@@ -1,4 +1,4 @@
-import { DOCK_PAD_X, DOCK_PAD_Y, DOCK_STATS_ROW_GAP } from "./dockSizing.js";
+import { DOCK_PAD_X, DOCK_PAD_Y, DOCK_STATS_ROW_GAP, dockStatsRowHeight } from "./dockSizing.js";
 
 // Widths at a 13px value font, scaled by the rendered font. Single-line cells must hold the
 // longest short label (7 characters, e.g. "Dlg Rng") beside a 5ch readout without truncation.
@@ -12,7 +12,8 @@ export function recommendedDockStatsWidth(height, count, font) {
   const rows = Math.max(
     1,
     Math.floor(
-      (height - 2 * DOCK_PAD_Y + DOCK_STATS_ROW_GAP) / (font.metricValue + DOCK_STATS_ROW_GAP)
+      (height - 2 * DOCK_PAD_Y + DOCK_STATS_ROW_GAP) /
+        (dockStatsRowHeight(font) + DOCK_STATS_ROW_GAP)
     )
   );
   const columns = Math.max(1, Math.ceil(count / rows));
@@ -78,8 +79,8 @@ export function dockStatsGridTemplate(
 }
 
 /** Choose readable columns using both dimensions; overflow is handled by the scroll container. */
-export function fitDockStatsColumns(width, height, count, minCellWidth, minRowHeight) {
+export function fitDockStatsColumns(width, height, count, minCellWidth, minRowHeight, rowGap = 0) {
   const maxColumns = computeDockStatsColumnCount(width, undefined, minCellWidth);
-  const rows = Math.max(1, Math.floor(height / minRowHeight));
+  const rows = Math.max(1, Math.floor((height + rowGap) / minRowHeight));
   return Math.min(maxColumns, Math.max(1, Math.ceil(count / rows)));
 }

@@ -108,9 +108,9 @@ describe("DockStrip", () => {
   it("raises a strip below the interface size's three-row minimum", () => {
     const onHeightChange = vi.fn();
     renderStrip({ height: 70, interfaceSize: "large", onHeightChange });
-    expect(onHeightChange).toHaveBeenCalledWith(77, { persist: true });
+    expect(onHeightChange).toHaveBeenCalledWith(89, { persist: true });
     expect(screen.getByTestId("dock-height-resize-handle").getAttribute("aria-valuemin")).toBe(
-      "77"
+      "89"
     );
   });
 
@@ -135,7 +135,7 @@ describe("DockStrip", () => {
     expect(onHeightChange).not.toHaveBeenCalled();
 
     rerender(tree(false));
-    expect(onHeightChange).toHaveBeenCalledWith(77, { persist: true });
+    expect(onHeightChange).toHaveBeenCalledWith(89, { persist: true });
   });
 
   it("reserves the horizontal scrollbar when the panels overflow the screen", () => {
@@ -158,7 +158,7 @@ describe("DockStrip", () => {
     try {
       const onHeightChange = vi.fn();
       renderStrip({ height: 68, interfaceSize: "default", onHeightChange });
-      expect(onHeightChange).toHaveBeenCalledWith(80, { persist: true });
+      expect(onHeightChange).toHaveBeenCalledWith(92, { persist: true });
     } finally {
       Object.defineProperty(HTMLElement.prototype, "offsetHeight", offset);
       Object.defineProperty(Element.prototype, "clientHeight", client);
@@ -167,7 +167,7 @@ describe("DockStrip", () => {
 
   it("leaves a strip at or above the minimum and never reports a height tier", () => {
     const onHeightChange = vi.fn();
-    renderStrip({ height: 68, interfaceSize: "default", onHeightChange });
+    renderStrip({ height: 80, interfaceSize: "default", onHeightChange });
     expect(onHeightChange).not.toHaveBeenCalled();
     expect(screen.getByTestId("dock-strip").dataset.heightMode).toBeUndefined();
   });
@@ -236,13 +236,13 @@ describe("DockStrip", () => {
 
   it("exposes an edge-aware keyboard height resize handle", () => {
     const onHeightChange = vi.fn();
-    renderStrip({ edge: "bottom", height: 72, onHeightChange });
+    renderStrip({ edge: "bottom", height: 80, onHeightChange });
     const handle = screen.getByRole("separator", { name: /resize dock height/i });
     fireEvent.keyDown(handle, { key: "ArrowUp" });
     fireEvent.keyDown(handle, { key: "ArrowDown", shiftKey: true });
     fireEvent.doubleClick(handle);
-    expect(onHeightChange).toHaveBeenNthCalledWith(1, 76, { persist: true });
-    expect(onHeightChange).toHaveBeenNthCalledWith(2, 68, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(1, 84, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(2, 80, { persist: true });
     expect(onHeightChange).toHaveBeenNthCalledWith(3, 180, { persist: true });
   });
 

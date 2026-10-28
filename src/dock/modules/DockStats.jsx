@@ -22,6 +22,7 @@ import {
   visibleDockStats,
 } from "../dockStatsLayout.js";
 import { useHoverTip } from "../../components/HoverTip.jsx";
+import { DOCK_STATS_ROW_EXTRA_PX } from "../dockSizing.js";
 
 const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
@@ -44,7 +45,8 @@ function useDockStatsColumnCount(containerRef, count) {
         height,
         count,
         DOCK_STATS_MIN_CELL_WIDTH_PX * fontScale,
-        minRowHeight
+        minRowHeight,
+        rowGap
       );
       setLayout((current) =>
         current.columnCount === columnCount && current.fontScale === fontScale
@@ -89,11 +91,12 @@ function DockStatCell({
     <div
       ref={anchorRef}
       data-testid="dock-stat"
-      className="flex min-w-0 items-baseline"
+      className="flex min-w-0 items-center overflow-hidden"
       style={{
         gridColumn: position.cellColumn,
         gridRow: position.row,
         gap: `${DOCK_STATS_INNER_GAP_PX}px`,
+        height: `calc(var(--ui-fs-metric-value) + ${DOCK_STATS_ROW_EXTRA_PX}px)`,
       }}
       aria-label={`${accessibleLabel} ${value}`}
       onMouseEnter={hint ? showTip : undefined}
@@ -102,7 +105,7 @@ function DockStatCell({
       <span
         data-testid="dock-stat-label"
         data-loudness-watched={watched ? "true" : "false"}
-        className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-none ${loudnessLabelClass(watched)}`}
+        className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-normal ${loudnessLabelClass(watched)}`}
       >
         {id === "dialogueCoverage" ? (
           <span

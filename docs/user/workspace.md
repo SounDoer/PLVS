@@ -126,7 +126,7 @@ Dock's module-width and height resize lines stay hidden while idle, appear in Bo
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
 and the new height is saved when you release the pointer. Height starts at 180 CSS pixels. The
-minimum fits three rows of Stats at the current **Interface Size**: 68 CSS pixels at the default
+minimum fits three rows of Stats at the current **Interface Size**: 80 CSS pixels at the default
 size, more at larger sizes. When the panels are wider than the screen, the minimum also leaves
 room for the horizontal scrollbar. A strip shorter than the new minimum grows to it. The strip can grow up to the current display's available space minus room for the toolbar
 and editor.
@@ -134,10 +134,13 @@ Oversized heights are fitted again when entering Dock on another display or rest
 
 Dock text follows **Interface Size**, using the same readout and label sizes as the normal
 workspace. Resizing the strip changes the available chart space and spacing, not the font size.
+Stats labels leave room for descenders, including the “g” in **Dlg Rng** and **Dlg Cov**,
+with a normal label line height. The strip's minimum height and automatic Stats width account for
+the full row height.
 The toolbar and panel settings also follow the selected text size. Stats adapts its columns and
 rows to the available space and text size, with scrolling when all selected readings cannot fit.
 Stats automatically requests enough width for its selected readings at the current height and
-text size. At the default text size and 180-pixel height, all 15 readings use a 440-pixel preference.
+text size. At the default text size and 180-pixel height, all 15 readings use a 420-pixel preference.
 Dragging a divider beside Stats sets a manual preference; double-click that divider to restore
 automatic sizing. A narrow display can still require vertical scrolling inside Stats.
 The initial layout places Stats, Level Meter, Loudness, Waveform, Spectrogram, Spectrum,
