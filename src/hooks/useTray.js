@@ -235,7 +235,6 @@ async function buildMenu(cfg) {
   const ownerId = window.__PLVS_INITIAL_STATE__?.instanceId;
   const multi = cfg.instances.length > 1;
   if (multi) {
-    const workbenches = [];
     for (const instance of cfg.instances) {
       const local = instance.instanceId === ownerId;
       const inputs = local ? cfg : peerInputs(instance, cfg);
@@ -267,7 +266,7 @@ async function buildMenu(cfg) {
           }),
         ],
       });
-      workbenches.push(parent);
+      items.push(parent);
       sourceControls.push({
         instanceId: instance.instanceId,
         local,
@@ -275,7 +274,6 @@ async function buildMenu(cfg) {
         controls: group.sourceControls,
       });
     }
-    items.push(await Submenu.new({ text: "Workbenches", items: workbenches }));
   } else {
     const group = await buildWorkbenchItems(cfg);
     items.push(...group.items);

@@ -58,9 +58,9 @@ tray host; use the menu's **Show** or **Hide**, available on all three platforms
 normal window first; if restoration fails, Settings stays closed.
 
 With one workbench open, its window, Start / Stop, Source, Preset and Settings controls appear
-directly in the Tray menu. With several open, **Workbenches** groups those same controls under each
-workbench's Source-derived name, followed by **Quit Workbench**. There are no duplicate workbench
-controls at the top level. Each Source and Preset submenu shows that workbench's choices and current
+directly in the Tray menu. With several open, each workbench's Source-derived name appears directly
+at the top level. Its submenu contains those same controls, followed by **Quit Workbench**, without
+an intermediate Workbenches menu. Each Source and Preset submenu shows that workbench's choices and current
 selection; Settings opens in that workbench. Update actions and **Quit PLVS** remain at the top
 level because they affect the application as a whole. **Show** brings the selected workbench
 to the front, restoring it if minimized. A workbench with an open editor or dialog refuses to quit

@@ -298,13 +298,13 @@ describe("useTray", () => {
           .mock.calls.at(-1)[0]
           .items.map((item) => item.text)
           .filter(Boolean);
-      expect(rootTexts()).not.toContain("Workbenches");
+      expect(rootTexts()).not.toContain("Peer");
       expect(rootTexts()).toContain("Quit");
 
       await act(async () => {
         stale.resolve([owner, peer]);
       });
-      expect(rootTexts()).not.toContain("Workbenches");
+      expect(rootTexts()).not.toContain("Peer");
       // The acknowledgement precedes process exit. A fresh read can still contain its last
       // heartbeat, but opening the menu must not resurrect the acknowledged departure.
       await act(async () => {
@@ -316,12 +316,12 @@ describe("useTray", () => {
           })
         );
       });
-      expect(rootTexts()).not.toContain("Workbenches");
+      expect(rootTexts()).not.toContain("Peer");
       invoke.mockResolvedValue([owner]);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2000);
       });
-      expect(rootTexts()).not.toContain("Workbenches");
+      expect(rootTexts()).not.toContain("Peer");
       unmount();
     } finally {
       vi.useRealTimers();
@@ -345,7 +345,7 @@ describe("useTray", () => {
           .action();
       });
       const root = vi.mocked(Menu.new).mock.calls.at(-1)[0].items;
-      expect(root.map((item) => item.text)).toContain("Workbenches");
+      expect(root.map((item) => item.text)).toContain("Peer");
       expect(warn).toHaveBeenCalled();
     } finally {
       warn.mockRestore();
@@ -367,7 +367,8 @@ describe("useTray", () => {
       trayAction(/** @type {Parameters<typeof trayAction>[0]} */ ({ type: "Enter" }));
     });
     const root = vi.mocked(Menu.new).mock.calls.at(-1)[0].items;
-    expect(root.map((item) => item.text)).not.toContain("Workbenches");
+    expect(root.map((item) => item.text)).not.toContain("Peer");
+    expect(root.map((item) => item.text)).toContain("Quit");
   });
 
   it("creates TrayIcon with iconAsTemplate true", async () => {
@@ -497,16 +498,27 @@ describe("useTray", () => {
     expect(onQuit).toHaveBeenCalledOnce();
   });
 
-  it("nests the same complete controls under every workbench with only app actions at the root", async () => {
+  it("puts each workbench directly at the root with its complete controls one level below", async () => {
     window.__PLVS_INITIAL_STATE__ = { instanceId: "two" };
     invoke.mockResolvedValue([
       { instanceId: "one", displayName: "Spotify", captureStatus: "running", visible: false },
       { instanceId: "two", displayName: "VLC", captureStatus: "stopped", visible: true },
     ]);
-    renderHook(() => useTray(defaultProps));
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        updateMenu: { text: "Check for Updates…", enabled: true, action: vi.fn() },
+      })
+    );
     await act(async () => {});
     const root = vi.mocked(Menu.new).mock.calls.at(-1)[0].items;
-    expect(root.map((item) => item.text).filter(Boolean)).toEqual(["Workbenches", "Quit PLVS"]);
+    expect(root.map((item) => item.text).filter(Boolean)).toEqual([
+      "Spotify",
+      "VLC",
+      "Check for Updates…",
+      "Quit PLVS",
+    ]);
+    expect(findText(submenuOptions(), "Workbenches")).toBeUndefined();
     const peer = findText(submenuOptions(), "Spotify");
     const owner = findText(submenuOptions(), "VLC");
     expect(peer.items.map((item) => item.text).filter(Boolean)).toEqual([
