@@ -62,7 +62,7 @@ describe("real PLVS visual automation boundary", () => {
     );
     expect(validateWalkthroughManifest(manifest)).toEqual([]);
     const fixtureScenarios = manifest.scenarios.filter(({ ui }) => ui.kind === "eventFixture");
-    expect(fixtureScenarios.map(({ ui }) => ui.name).sort()).toEqual(
+    expect([...new Set(fixtureScenarios.map(({ ui }) => ui.name))].sort()).toEqual(
       [...DEVELOPMENT_EVENT_FIXTURE_NAMES].sort()
     );
     for (const { ui } of fixtureScenarios) {
@@ -71,4 +71,25 @@ describe("real PLVS visual automation boundary", () => {
     expect(manifest.scenarios.map(({ id }) => id)).toContain("file-analysis");
     expect(manifest.scenarios.map(({ ui }) => ui.kind)).toContain("themeEditor");
   });
+
+  it.each(["dock-status", "dock-bottom-status"])(
+    "keeps %s on the semantic status fixture contract",
+    async (name) => {
+      const manifest = JSON.parse(
+        await readFile(join(scripts, "ui-walkthrough", `${name}.example.json`), "utf8")
+      );
+      expect(validateWalkthroughManifest(manifest)).toEqual([]);
+      const fixtures = manifest.scenarios.filter(({ ui }) => ui.kind === "eventFixture");
+      for (const { ui } of fixtures) {
+        expect(ui.name).toMatch(/^status\./);
+        expect(ui.action).toBe("reset");
+      }
+      expect(fixtures.find(({ ui }) => ui.name === "status.details").screenshot.target).toBe(
+        "dock-editor"
+      );
+      expect(fixtures.find(({ ui }) => ui.name === "status.capture-failed").screenshot.target).toBe(
+        "dock-header"
+      );
+    }
+  );
 });
