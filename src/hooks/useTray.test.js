@@ -8,6 +8,27 @@ const coordination = vi.hoisted(() => ({
   issue: vi.fn(),
   quitAll: vi.fn(),
 }));
+const { nativeHandle } = vi.hoisted(() => ({
+  nativeHandle: (options) =>
+    Object.assign(options, {
+      setText: vi.fn(async (text) => {
+        options.text = text;
+      }),
+      setEnabled: vi.fn(async (enabled) => {
+        options.enabled = enabled;
+      }),
+      setChecked: vi.fn(async (checked) => {
+        options.checked = checked;
+      }),
+      close: vi.fn(),
+      insert: vi.fn(async (item, position) => {
+        options.items.splice(position, 0, item);
+      }),
+      remove: vi.fn(async (item) => {
+        options.items.splice(options.items.indexOf(item), 1);
+      }),
+    }),
+}));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.mock("../runtime/coordination.js", () => ({
   issueInstanceCommand: (...args) => coordination.issue(...args),
@@ -22,20 +43,15 @@ vi.mock("@tauri-apps/api/tray", () => ({
   },
 }));
 vi.mock("@tauri-apps/api/menu", () => ({
-  Menu: { new: vi.fn().mockResolvedValue({}) },
+  Menu: { new: vi.fn(async (options) => nativeHandle(options)) },
   Submenu: {
-    new: vi.fn(async (options) => ({ ...options, setText: vi.fn(), setEnabled: vi.fn() })),
+    new: vi.fn(async (options) => nativeHandle(options)),
   },
-  MenuItem: { new: vi.fn(async (options) => ({ ...options })) },
+  MenuItem: { new: vi.fn(async (options) => nativeHandle(options)) },
   CheckMenuItem: {
-    new: vi.fn(async (options) => ({
-      ...options,
-      setChecked: vi.fn(),
-      setText: vi.fn(),
-      setEnabled: vi.fn(),
-    })),
+    new: vi.fn(async (options) => nativeHandle(options)),
   },
-  PredefinedMenuItem: { new: vi.fn().mockResolvedValue({}) },
+  PredefinedMenuItem: { new: vi.fn(async (options) => nativeHandle(options)) },
 }));
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ isVisible: vi.fn().mockResolvedValue(true) }),
@@ -481,11 +497,10 @@ describe("useTray", () => {
     await act(async () => {});
     expect(findText(menuItemOptions(), "Hide")).toBeTruthy();
 
-    vi.mocked(MenuItem.new).mockClear();
     rerender({ windowVisible: false });
     await act(async () => {});
     expect(findText(menuItemOptions(), "Show")).toBeTruthy();
-    expect(setMenu).toHaveBeenCalled();
+    expect(setMenu).not.toHaveBeenCalled();
   });
 
   it("delegates Quit to the app close workflow", async () => {
@@ -496,6 +511,93 @@ describe("useTray", () => {
     findText(menuItemOptions(), "Quit").action();
 
     expect(onQuit).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the same native Show/Hide action live through its own state changes", async () => {
+    const toggle = vi.fn();
+    const tray = { setMenu: vi.fn(), close: vi.fn() };
+    vi.mocked(TrayIcon.new).mockResolvedValue(standIn(tray));
+    renderHook(() => {
+      const [visible, setVisible] = useState(true);
+      useTray({
+        ...defaultProps,
+        windowVisible: visible,
+        onToggleWindow: () => {
+          toggle();
+          setVisible((value) => !value);
+        },
+      });
+    });
+    await act(async () => {});
+    const windowItem = findText(menuItemOptions(), "Hide");
+    const attachedMenu = vi.mocked(TrayIcon.new).mock.calls[0][0].menu;
+    await act(async () => windowItem.action());
+    expect(toggle).toHaveBeenCalledTimes(1);
+    expect(windowItem.text).toBe("Show");
+    await act(async () => windowItem.action());
+    expect(toggle).toHaveBeenCalledTimes(2);
+    expect(windowItem.text).toBe("Hide");
+    expect(windowItem.close).not.toHaveBeenCalled();
+    expect(Menu.new).toHaveBeenCalledTimes(1);
+    expect(attachedMenu).toBe(await vi.mocked(Menu.new).mock.results[0].value);
+    expect(tray.setMenu).not.toHaveBeenCalled();
+  });
+
+  it("preserves the native Quit action when inventories and update labels change", async () => {
+    const onQuit = vi.fn();
+    const setMenu = vi.fn();
+    vi.mocked(TrayIcon.new).mockResolvedValue(standIn({ setMenu, close: vi.fn() }));
+    const { rerender } = renderHook((props) => useTray({ ...defaultProps, onQuit, ...props }), {
+      initialProps: { running: false, audioOutputs: [], updateMenu: null },
+    });
+    await act(async () => {});
+    const quit = findText(menuItemOptions(), "Quit");
+    rerender({
+      running: true,
+      audioOutputs: [{ id: "new-output", label: "New Output" }],
+      updateMenu: { text: "Update Ready: v1.2.3…", enabled: true, action: vi.fn() },
+    });
+    await act(async () => {});
+    await act(async () => quit.action());
+    expect(onQuit).toHaveBeenCalledOnce();
+    expect(quit.close).not.toHaveBeenCalled();
+    expect(Menu.new).toHaveBeenCalledTimes(1);
+    expect(setMenu).not.toHaveBeenCalled();
+  });
+
+  it("keeps a peer's first Show click live when its visibility changes during an open menu", async () => {
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    const owner = {
+      instanceId: "owner",
+      displayName: "Owner",
+      captureStatus: "stopped",
+      visible: true,
+    };
+    const peer = {
+      instanceId: "peer",
+      displayName: "Peer",
+      captureStatus: "stopped",
+      visible: true,
+    };
+    invoke.mockResolvedValue([owner, peer]);
+    const setMenu = vi.fn();
+    vi.mocked(TrayIcon.new).mockResolvedValue(standIn({ setMenu, close: vi.fn() }));
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    const windowItem = findText(submenuOptions(), "Peer").items.find(
+      (item) => item.text === "Hide"
+    );
+    const trayAction = vi.mocked(TrayIcon.new).mock.calls[0][0].action;
+    invoke.mockResolvedValue([owner, { ...peer, visible: false }]);
+    await act(async () => {
+      trayAction(/** @type {Parameters<typeof trayAction>[0]} */ ({ type: "Enter" }));
+    });
+    expect(windowItem.text).toBe("Show");
+    await act(async () => windowItem.action());
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "show", null);
+    expect(windowItem.close).not.toHaveBeenCalled();
+    expect(Menu.new).toHaveBeenCalledTimes(1);
+    expect(setMenu).not.toHaveBeenCalled();
   });
 
   it("puts each workbench directly at the root with its complete controls one level below", async () => {
@@ -697,12 +799,13 @@ describe("useTray", () => {
     });
     await act(async () => {});
     const staleAction = findText(menuItemOptions(), "Check for Updates…").action;
-    vi.mocked(MenuItem.new).mockClear();
     rerender({ updateMenu: null });
     await act(async () => {});
     staleAction();
     expect(action).not.toHaveBeenCalled();
-    expect(findText(menuItemOptions(), "Check for Updates…")).toBeUndefined();
+    const root = vi.mocked(Menu.new).mock.calls[0][0].items;
+    expect(findText(root, "Check for Updates…")).toBeUndefined();
+    expect(findText(menuItemOptions(), "Check for Updates…").close).toHaveBeenCalledOnce();
   });
 
   it("builds the Source submenu with the current source type labelled and checked", async () => {
@@ -769,7 +872,7 @@ describe("useTray", () => {
     expect(result.current).toBe("out-1");
     expect(tray.setMenu).not.toHaveBeenCalled();
     expect(speakersHandle.setChecked).toHaveBeenLastCalledWith(true);
-    expect(headphonesHandle.setChecked).toHaveBeenLastCalledWith(false);
+    expect(headphonesHandle.checked).toBe(false);
     expect(sourceHandle.setText).toHaveBeenLastCalledWith("Source: Output · Speakers");
 
     await act(async () => headphones.action());
@@ -955,7 +1058,7 @@ describe("useTray", () => {
     expect(findText(checkItemOptions(), "Mixing")).toMatchObject({ enabled: false });
   });
 
-  it("drops the rejection from a click that beat the menu rebuild", async () => {
+  it("drops the rejection from a click that beat the menu availability update", async () => {
     const blocked = Object.assign(new Error("Finish or cancel the active editor first."), {
       code: "editorActive",
     });
@@ -1018,8 +1121,6 @@ describe("useTray", () => {
     await act(async () => {});
     const staleQuit = findText(menuItemOptions(), "Quit").action;
     const staleToggleWindow = findText(menuItemOptions(), "Hide").action;
-    vi.mocked(MenuItem.new).mockClear();
-    vi.mocked(Submenu.new).mockClear();
 
     rerender({ updateBusy: true });
     await act(async () => {});
@@ -1033,7 +1134,7 @@ describe("useTray", () => {
     expect(findText(items, "Start")).not.toMatchObject({ enabled: false });
     // Source submenu is never gated.
     expect(findText(subs, "Source: Output · Automatic")).not.toMatchObject({ enabled: false });
-    expect(setMenu).toHaveBeenCalled();
+    expect(setMenu).not.toHaveBeenCalled();
 
     // Double-guard: stale gated callbacks are no-ops while busy.
     staleToggleWindow();
@@ -1058,6 +1159,22 @@ describe("useTray", () => {
       resolveTrayNew();
     });
     expect(orphanClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the retained native menu and item resources when the tray is disposed", async () => {
+    const { unmount } = renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    const menu = await vi.mocked(Menu.new).mock.results[0].value;
+    const handles = await Promise.all(
+      [
+        ...vi.mocked(MenuItem.new).mock.results,
+        ...vi.mocked(CheckMenuItem.new).mock.results,
+        ...vi.mocked(Submenu.new).mock.results,
+      ].map((result) => result.value)
+    );
+    await act(async () => unmount());
+    expect(menu.close).toHaveBeenCalledOnce();
+    for (const handle of handles) expect(handle.close).toHaveBeenCalledOnce();
   });
 
   it("closes the singleton tray before a profile reload", async () => {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { TrayIcon } from "@tauri-apps/api/tray";
-import { Menu, Submenu, MenuItem, CheckMenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
+import { createNativeTrayMenu } from "../lib/nativeTrayMenu.js";
 import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isTauri } from "../ipc/env.js";
@@ -55,53 +55,6 @@ function sourceLabelFor({
   return input ? `Input · ${menuDeviceText(input.label)}` : "Not connected";
 }
 
-async function buildSourceItems({
-  audioOutputs,
-  audioInputs,
-  captureApplications,
-  safeAudioDeviceId,
-  onSelectSource,
-}) {
-  const handles = new Map();
-  const automatic = await CheckMenuItem.new({
-    text: "Automatic",
-    checked: safeAudioDeviceId === "default",
-    action: () => onSelectSource("default"),
-  });
-  handles.set("default", automatic);
-  /** @type {Array<CheckMenuItem | PredefinedMenuItem | MenuItem>} */
-  const items = [automatic];
-  for (const [header, sources] of [
-    ["Output", audioOutputs],
-    ["Input", audioInputs],
-    ["Applications", captureApplications],
-  ]) {
-    if (!sources.length) continue;
-    items.push(await PredefinedMenuItem.new({ item: "Separator" }));
-    items.push(await MenuItem.new({ text: header, enabled: false }));
-    for (const source of sources) {
-      const isApplication = header === "Applications";
-      const item = await CheckMenuItem.new({
-        text: isApplication ? source.label : menuDeviceText(source.label),
-        checked: safeAudioDeviceId === source.id,
-        action: () => onSelectSource(source.id),
-      });
-      handles.set(source.id, item);
-      items.push(item);
-    }
-  }
-  return { items, handles };
-}
-
-async function syncSourceMenu(controls, inputs) {
-  if (!controls) return;
-  await Promise.all([
-    controls.submenu.setText(`Source: ${sourceLabelFor(inputs)}`),
-    controls.submenu.setEnabled(!inputs.sourceBusy),
-    ...[...controls.items].map(([id, item]) => item.setChecked(id === inputs.safeAudioDeviceId)),
-  ]);
-}
-
 function sameTrayInstances(current, next) {
   return (
     current.length === next.length &&
@@ -124,64 +77,79 @@ function presetLabelFor({ presetList, presetActiveId, presetDirty }) {
   return presetDirty ? `${active.name} (modified)` : active.name;
 }
 
-async function buildPresetItems({
-  presetList,
-  presetActiveId,
-  presetDirty,
-  presetsBlocked,
-  onApplyPreset,
-}) {
-  if (!presetList.length) {
-    return [await MenuItem.new({ text: "No presets", enabled: false })];
-  }
-  const items = [];
-  for (const p of presetList) {
-    const active = p.id === presetActiveId;
-    items.push(
-      await CheckMenuItem.new({
-        text: active && presetDirty ? `${p.name} (modified)` : p.name,
-        checked: active,
-        // Applying a preset replaces the scene, so it is refused while a draft-style editor is
-        // open. The tray has nowhere to show a caption, so the submenu title carries the reason.
-        enabled: !presetsBlocked,
-        action: () => onApplyPreset(p.id),
-      })
-    );
+const menuItem = (key, text, action, enabled = true) => ({ key, text, action, enabled });
+const separator = (key) => ({ key, kind: "separator" });
+
+function sourceDefinitions(cfg, prefix) {
+  /** @type {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} */
+  const items = [
+    {
+      ...menuItem(`${prefix}:default`, "Automatic", () => cfg.onSelectSource("default")),
+      kind: "check",
+      checked: cfg.safeAudioDeviceId === "default",
+    },
+  ];
+  for (const [group, sources] of [
+    ["Output", cfg.audioOutputs],
+    ["Input", cfg.audioInputs],
+    ["Applications", cfg.captureApplications],
+  ]) {
+    if (!sources.length) continue;
+    items.push(separator(`${prefix}:${group}:separator`));
+    items.push(menuItem(`${prefix}:${group}:header`, group, null, false));
+    for (const source of sources)
+      items.push({
+        ...menuItem(
+          `${prefix}:source:${source.id}`,
+          group === "Applications" ? source.label : menuDeviceText(source.label),
+          () => cfg.onSelectSource(source.id)
+        ),
+        kind: "check",
+        checked: cfg.safeAudioDeviceId === source.id,
+      });
   }
   return items;
 }
 
-// Every workbench uses this same group, whether flat or nested.
-async function buildWorkbenchItems(cfg) {
-  const sourceItems = await buildSourceItems(cfg);
-  const sourceSubmenu = await Submenu.new({
-    text: `Source: ${sourceLabelFor(cfg)}`,
-    enabled: !cfg.sourceBusy,
-    items: sourceItems.items,
-  });
-  return {
-    items: [
-      await MenuItem.new({
-        text: cfg.windowVisible ? "Hide" : "Show",
-        enabled: !cfg.updateBusy,
-        action: cfg.onToggleWindow,
-      }),
-      await MenuItem.new({ text: cfg.running ? "Stop" : "Start", action: cfg.onToggleCapture }),
-      await PredefinedMenuItem.new({ item: "Separator" }),
-      sourceSubmenu,
-      await Submenu.new({
-        text: cfg.presetsBlocked ? "Preset: Editing…" : `Preset: ${presetLabelFor(cfg)}`,
-        enabled: !cfg.updateBusy,
-        items: await buildPresetItems(cfg),
-      }),
-      await MenuItem.new({
-        text: "Settings…",
-        enabled: !cfg.updateBusy,
-        action: cfg.onOpenSettings,
-      }),
-    ],
-    sourceControls: { submenu: sourceSubmenu, items: sourceItems.handles },
-  };
+function workbenchDefinitions(cfg, prefix) {
+  return [
+    menuItem(
+      `${prefix}:window`,
+      cfg.windowVisible ? "Hide" : "Show",
+      cfg.onToggleWindow,
+      !cfg.updateBusy
+    ),
+    menuItem(`${prefix}:transport`, cfg.running ? "Stop" : "Start", cfg.onToggleCapture),
+    separator(`${prefix}:source-separator`),
+    {
+      key: `${prefix}:source`,
+      kind: "submenu",
+      text: `Source: ${sourceLabelFor(cfg)}`,
+      enabled: !cfg.sourceBusy,
+      items: sourceDefinitions(cfg, `${prefix}:source`),
+    },
+    {
+      key: `${prefix}:preset`,
+      kind: "submenu",
+      text: cfg.presetsBlocked ? "Preset: Editing…" : `Preset: ${presetLabelFor(cfg)}`,
+      enabled: !cfg.updateBusy,
+      items: cfg.presetList.length
+        ? cfg.presetList.map((preset) => ({
+            ...menuItem(
+              `${prefix}:preset:${preset.id}`,
+              preset.id === cfg.presetActiveId && cfg.presetDirty
+                ? `${preset.name} (modified)`
+                : preset.name,
+              () => cfg.onApplyPreset(preset.id),
+              !cfg.presetsBlocked
+            ),
+            kind: "check",
+            checked: preset.id === cfg.presetActiveId,
+          }))
+        : [menuItem(`${prefix}:no-presets`, "No presets", null, false)],
+    },
+    menuItem(`${prefix}:settings`, "Settings…", cfg.onOpenSettings, !cfg.updateBusy),
+  ];
 }
 
 function peerInputs(instance, cfg) {
@@ -203,101 +171,70 @@ function peerInputs(instance, cfg) {
   };
 }
 
-async function syncWorkbenchSources(controls, cfg) {
-  for (const entry of controls ?? []) {
-    const instance = cfg.instances.find((item) => item.instanceId === entry.instanceId);
-    const inputs = entry.local ? cfg : instance ? peerInputs(instance, cfg) : null;
-    if (!inputs) continue;
-    if (entry.parent && instance) await entry.parent.setText(instance.displayName);
-    await syncSourceMenu(entry.controls, inputs);
-  }
-}
-
-// Source selection and Source-derived workbench names are updated in place. Replacing a native
-// menu in response to its source action can disconnect the next action on Windows.
-function instanceStructureKey(instances) {
-  return JSON.stringify(
-    instances.map(({ instanceId, captureStatus, visible, trayState }) => ({
-      instanceId,
-      captureStatus,
-      visible,
-      ...trayState,
-      safeAudioDeviceId: undefined,
-      defaultOutputLabel: undefined,
-      sourceBusy: undefined,
-    }))
-  );
-}
-
-async function buildMenu(cfg) {
-  const items = [];
-  const sourceControls = [];
-  const ownerId = window.__PLVS_INITIAL_STATE__?.instanceId;
+function menuDefinitions(cfg) {
+  const ownerId = window.__PLVS_INITIAL_STATE__?.instanceId ?? "local";
   const multi = cfg.instances.length > 1;
-  if (multi) {
-    for (const instance of cfg.instances) {
-      const local = instance.instanceId === ownerId;
-      const inputs = local ? cfg : peerInputs(instance, cfg);
-      const group = await buildWorkbenchItems({
-        ...inputs,
-        onToggleWindow: local
-          ? cfg.onToggleWindow
-          : () => cfg.onInstanceAction(instance, instance.visible ? "hide" : "show"),
-        onToggleCapture: () => cfg.onToggleInstance(instance),
-        onSelectSource: local
-          ? cfg.onSelectSource
-          : (id) => cfg.onInstanceAction(instance, "selectSource", id),
-        onApplyPreset: local
-          ? cfg.onApplyPreset
-          : (id) => cfg.onInstanceAction(instance, "applyPreset", id),
-        onOpenSettings: local
-          ? cfg.onOpenSettings
-          : () => cfg.onInstanceAction(instance, "settings"),
-      });
-      const parent = await Submenu.new({
-        text: instance.displayName,
-        items: [
-          ...group.items,
-          await PredefinedMenuItem.new({ item: "Separator" }),
-          await MenuItem.new({
-            text: "Quit Workbench",
-            enabled: !cfg.updateBusy,
-            action: () => cfg.onQuitInstance(instance),
-          }),
-        ],
-      });
-      items.push(parent);
-      sourceControls.push({
-        instanceId: instance.instanceId,
-        local,
-        parent,
-        controls: group.sourceControls,
-      });
-    }
-  } else {
-    const group = await buildWorkbenchItems(cfg);
-    items.push(...group.items);
-    sourceControls.push({ local: true, controls: group.sourceControls });
-  }
-  items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+  const items = multi
+    ? cfg.instances.map((instance) => {
+        const local = instance.instanceId === ownerId;
+        const prefix = `workbench:${instance.instanceId}`;
+        const inputs = local ? cfg : peerInputs(instance, cfg);
+        return {
+          key: prefix,
+          kind: "submenu",
+          text: instance.displayName,
+          items: [
+            ...workbenchDefinitions(
+              {
+                ...inputs,
+                onToggleWindow: local
+                  ? cfg.onToggleWindow
+                  : () => cfg.onInstanceAction(instance, instance.visible ? "hide" : "show"),
+                onToggleCapture: () => cfg.onToggleInstance(instance),
+                onSelectSource: local
+                  ? cfg.onSelectSource
+                  : (id) => cfg.onInstanceAction(instance, "selectSource", id),
+                onApplyPreset: local
+                  ? cfg.onApplyPreset
+                  : (id) => cfg.onInstanceAction(instance, "applyPreset", id),
+                onOpenSettings: local
+                  ? cfg.onOpenSettings
+                  : () => cfg.onInstanceAction(instance, "settings"),
+              },
+              prefix
+            ),
+            separator(`${prefix}:quit-separator`),
+            menuItem(
+              `${prefix}:quit`,
+              "Quit Workbench",
+              () => cfg.onQuitInstance(instance),
+              !cfg.updateBusy
+            ),
+          ],
+        };
+      })
+    : workbenchDefinitions(cfg, `workbench:${ownerId}`);
+  items.push(separator("app:separator"));
   if (cfg.updateMenu) {
     items.push(
-      await MenuItem.new({
-        text: cfg.updateMenu.text,
-        enabled: !cfg.updateBusy && cfg.updateMenu.enabled,
-        action: cfg.onOpenUpdate,
-      })
+      menuItem(
+        "app:update",
+        cfg.updateMenu.text,
+        cfg.onOpenUpdate,
+        !cfg.updateBusy && cfg.updateMenu.enabled
+      )
     );
-    items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+    items.push(separator("app:update-separator"));
   }
   items.push(
-    await MenuItem.new({
-      text: multi ? "Quit PLVS" : "Quit",
-      enabled: !cfg.updateBusy,
-      action: multi ? cfg.onQuitAll : cfg.onQuit,
-    })
+    menuItem(
+      "app:quit",
+      multi ? "Quit PLVS" : "Quit",
+      multi ? cfg.onQuitAll : cfg.onQuit,
+      !cfg.updateBusy
+    )
   );
-  return { menu: await Menu.new({ items }), sourceControls };
+  return items;
 }
 
 /**
@@ -351,8 +288,7 @@ export function useTray({
     iconSchemeRef.current = iconScheme;
   }, [iconScheme]);
   const trayRef = useRef(null);
-  const sourceControlsRef = useRef(null);
-  const sourceSyncQueueRef = useRef(Promise.resolve());
+  const nativeMenuRef = useRef(null);
   const [instances, setInstances] = useState([]);
   const refreshInstancesRef = useRef(() => {});
   const inventoryGenerationRef = useRef(0);
@@ -411,18 +347,11 @@ export function useTray({
   const stableSelectSource = useCallback((id) => onSelectSourceRef.current(id), []);
   const stableApplyPreset = useCallback((id) => {
     if (updateBusyRef.current) return;
-    // The items are disabled while the guard is up, but the menu is rebuilt asynchronously and a
-    // click can land against the previous one. The controller refuses it either way; the tray has
+    // The items are disabled while the guard is up, but native updates are asynchronous and a
+    // click can beat the update. The controller refuses it either way; the tray has
     // no surface to report that on, so the rejection is dropped here rather than left unhandled.
     const result = onApplyPresetRef.current(id);
     if (result && typeof result.catch === "function") result.catch(() => {});
-  }, []);
-  const queueSourceSync = useCallback((controls, inputs) => {
-    const sync = sourceSyncQueueRef.current
-      .catch(() => {})
-      .then(() => syncWorkbenchSources(controls, inputs));
-    sourceSyncQueueRef.current = sync;
-    return sync;
   }, []);
   const stableToggleInstance = useCallback(
     (instance) => {
@@ -507,7 +436,7 @@ export function useTray({
     };
   }, [isCoordinator]);
 
-  // Everything buildMenu reads that can change after creation. The ref keeps the
+  // Everything menuDefinitions reads that can change after creation. The ref keeps the
   // creation effect current if state changes while TrayIcon.new is still pending.
   const menuInputs = {
     windowVisible,
@@ -530,7 +459,6 @@ export function useTray({
   useEffect(() => {
     menuInputsRef.current = menuInputs;
   });
-  const peerStructureKey = instanceStructureKey(instances);
   const sourceStructureKey = JSON.stringify({
     outputs: audioOutputs.map(({ id, label }) => [id, label]),
     inputs: audioInputs.map(({ id, label }) => [id, label]),
@@ -574,19 +502,22 @@ export function useTray({
 
     (async () => {
       const snapshot = menuInputsRef.current;
-      const built = await buildMenu(menuConfig(snapshot));
+      const nativeMenu = await createNativeTrayMenu(menuDefinitions(menuConfig(snapshot)));
 
       const createdScheme = iconSchemeRef.current;
       const icon = await loadTrayIcon(createdScheme);
 
       await closeTrayIcon();
-      if (cancelled) return;
+      if (cancelled) {
+        await nativeMenu.close();
+        return;
+      }
       const tray = await TrayIcon.new({
         id: PLVS_TRAY_ID,
         icon,
         iconAsTemplate: true,
         tooltip: "PLVS",
-        menu: built.menu,
+        menu: nativeMenu.menu,
         showMenuOnLeftClick: false,
         action: (event) => {
           if (event.type === "Enter" || (event.type === "Click" && event.buttonState === "Down")) {
@@ -599,23 +530,18 @@ export function useTray({
       });
 
       if (cancelled) {
+        await nativeMenu.close();
         tray.close();
       } else {
         setCurrentTrayIcon(tray);
         trayRef.current = tray;
-        sourceControlsRef.current = built.sourceControls;
+        nativeMenuRef.current = nativeMenu;
         // The icon effect skipped any scheme change made before trayRef was set.
         if (iconSchemeRef.current !== createdScheme) {
           await tray.setIcon(await loadTrayIcon(iconSchemeRef.current));
         }
-        // State may have changed while the tray was being created; rebuild once
-        // with whatever is current so no stale value shows.
-        if (menuInputsRef.current !== snapshot) {
-          const updated = await buildMenu(menuConfig(menuInputsRef.current));
-          await tray.setMenu(updated.menu);
-          sourceControlsRef.current = updated.sourceControls;
-          await queueSourceSync(updated.sourceControls, menuInputsRef.current);
-        }
+        // Reconcile anything that changed during async creation without replacing the menu.
+        await nativeMenu.update(menuDefinitions(menuConfig(menuInputsRef.current)));
       }
     })();
 
@@ -624,29 +550,18 @@ export function useTray({
       trayRef.current?.close();
       clearCurrentTrayIcon(trayRef.current);
       trayRef.current = null;
-      sourceControlsRef.current = null;
+      void nativeMenuRef.current?.close();
+      nativeMenuRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCoordinator]);
 
-  // Rebuild only when menu structure or non-source state changes. Replacing a Windows tray menu
-  // from the selection event that belongs to the old menu can leave the replacement visible but
-  // disconnected from its action channels. Source selection is therefore synchronized in place.
+  // The attached menu and surviving action channels stay stable for every state change.
   useEffect(() => {
-    if (!isTauri() || !trayRef.current) return;
-    let cancelled = false;
-    (async () => {
-      const built = await buildMenu(menuConfig(menuInputsRef.current));
-      if (cancelled || !trayRef.current) return;
-      // trayRef may have been cleared by unmount cleanup during the await above.
-      await trayRef.current?.setMenu(built.menu);
-      if (cancelled || !trayRef.current) return;
-      sourceControlsRef.current = built.sourceControls;
-      await queueSourceSync(built.sourceControls, menuInputsRef.current);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (!isTauri() || !nativeMenuRef.current) return;
+    void nativeMenuRef.current
+      .update(menuDefinitions(menuConfig(menuInputsRef.current)))
+      .catch((error) => console.warn("Unable to update PLVS Tray menu", error));
   }, [
     menuConfig,
     windowVisible,
@@ -655,18 +570,15 @@ export function useTray({
     updateMenu?.text,
     updateMenu?.enabled,
     sourceStructureKey,
-    queueSourceSync,
+    safeAudioDeviceId,
+    defaultOutputLabel,
+    sourceBusy,
     presets.list,
     presets.activeId,
     presets.dirty,
     presets.blocked,
-    peerStructureKey,
+    instances,
   ]);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    void queueSourceSync(sourceControlsRef.current, menuInputsRef.current);
-  }, [safeAudioDeviceId, defaultOutputLabel, sourceBusy, instances, queueSourceSync]);
 
   // Update tray icon when the scheme it sits on changes.
   useEffect(() => {

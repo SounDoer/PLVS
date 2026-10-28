@@ -69,6 +69,8 @@ so you can finish or close what is open first. **Quit PLVS** flushes and closes 
 workbench set; quitting one workbench does not close its peers.
 After **Quit Workbench** succeeds, its Tray entry is removed immediately. If only one workbench
 remains, its controls return to the top level. A refused quit keeps the workbench in the menu.
+Tray actions use the latest workbench state, including when background status changes while the
+menu is open.
 
 The Tray also offers **Check for Updates…** when updates are enabled for the running app identity.
 It opens Settings at the version and update status row and starts a manual check, even when

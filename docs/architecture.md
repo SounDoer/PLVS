@@ -93,8 +93,11 @@ namespaces.
 The heartbeat descriptor also carries a frontend-owned Tray snapshot: source choices and selection,
 preset labels and selection, and availability guards. Only the internal Tray inventory includes
 this presentation data; public CLI instance summaries retain their existing shape. With multiple
-workbenches the Tray builds the same complete control group for each instance. Source selection
-and Source-derived menu names are synchronized in place to preserve native Windows action channels.
+workbenches the Tray builds the same complete control group for each instance. The attached native
+menu lives for the Tray's lifetime. Keyed reconciliation updates labels, checks, enabled state and
+child membership while retaining surviving item handles and their action channels. Callbacks read
+the latest workbench state. Replacing the attached menu can detach the Windows command handler
+while an older popup is still open; see [ADR 0041](adr/0041-retain-native-tray-menu-handles.md).
 Targeted hide, Settings, source selection and preset actions use the existing instance mailbox with
 an optional selection ID; the receiving React runtime calls its own window, source or preset
 business function. Native coordination relays these actions without mutating frontend stores.
