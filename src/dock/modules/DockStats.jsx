@@ -21,6 +21,7 @@ import {
 } from "../dockStatsLayout.js";
 import { useHoverTip } from "../../components/HoverTip.jsx";
 import { DOCK_STATS_ROW_EXTRA_PX } from "../dockSizing.js";
+import { DialogueActivityDot } from "../../components/DialogueActivityDot.jsx";
 
 const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
@@ -82,7 +83,6 @@ function DockStatCell({
   position,
   watched,
   status,
-  showActivitySlot,
 }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
     tip: hint,
@@ -110,20 +110,8 @@ function DockStatCell({
         data-loudness-watched={watched ? "true" : "false"}
         className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-normal ${loudnessLabelClass(watched)}`}
       >
-        {showActivitySlot ? (
-          <span className="flex w-1.5 shrink-0 items-center">
-            {id === "dialogueCoverage" ? (
-              <span
-                data-testid="dock-dialogue-active-dot"
-                data-active={dialogueActive ? "true" : "false"}
-                className={`size-1.5 shrink-0 rounded-full border ${
-                  dialogueActive
-                    ? "border-foreground bg-foreground"
-                    : "border-muted-foreground bg-transparent"
-                }`}
-              />
-            ) : null}
-          </span>
+        {id === "dialogueCoverage" ? (
+          <DialogueActivityDot active={dialogueActive} testId="dock-dialogue-active-dot" />
         ) : null}
         <span className="min-w-0 truncate">{label}</span>
       </span>
@@ -213,7 +201,6 @@ export function DockStats({ controls }) {
               position={position}
               watched={watchedIds.has(id)}
               status={statuses[id]}
-              showActivitySlot={selected.has("dialogueCoverage")}
             />
           );
         })}

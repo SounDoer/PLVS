@@ -163,6 +163,20 @@ const STEREO_MAP_PRIMARY_CSS = hexToRgb(
 );
 
 describe("StereoMapPanel", () => {
+  it.each([
+    [STEREO_MAP_MODES.POSITION, "fixed", false],
+    [STEREO_MAP_MODES.CORRELATION, "fixed", false],
+    [STEREO_MAP_MODES.MONO_LOSS_DB, "range", true],
+    [STEREO_MAP_MODES.MS_RATIO_DB, "range", true],
+  ])("declares the axis semantics for %s", (mode, policy, reference) => {
+    const { container } = renderPanel(
+      baseAudioData({ panelControls: { stereoMapPair: { x: 0, y: 1 }, stereoMapMode: mode } })
+    );
+    const rail = container.querySelector(`[data-axis-label-policy="${policy}"]`);
+    expect(rail).not.toBeNull();
+    expect(rail.getAttribute("data-axis-reference-key")).toBe(reference ? "0" : null);
+  });
+
   function mockCanvas() {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));

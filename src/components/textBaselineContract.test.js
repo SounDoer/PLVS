@@ -19,7 +19,7 @@ describe("text baseline contract", () => {
     expect(statsPanel).toContain(
       'className="flex shrink-0 items-baseline gap-[var(--ui-metric-row-gap)]"'
     );
-    expect(statsPanel).toContain(
+    expect(readFileSync(new URL("./DialogueActivityDot.jsx", import.meta.url), "utf8")).toContain(
       '"inline-block h-1.5 w-1.5 shrink-0 self-center rounded-full border"'
     );
   });

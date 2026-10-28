@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { DialogueActivityDot } from "../DialogueActivityDot.jsx";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import {
   useFrameData,
@@ -50,16 +51,7 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, w
     "@max-[180px]:hidden shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
   const content = (
     <>
-      {id === "dialogueCoverage" && (
-        <span
-          data-testid="dialogue-active-dot"
-          data-active={active ? "true" : "false"}
-          className={cn(
-            "inline-block h-1.5 w-1.5 shrink-0 self-center rounded-full border",
-            active ? "border-foreground bg-foreground" : "border-muted-foreground bg-transparent"
-          )}
-        />
-      )}
+      {id === "dialogueCoverage" && <DialogueActivityDot active={active} />}
       <span className={labelClass} data-loudness-watched={watched ? "true" : "false"}>
         <span className="@max-[240px]:hidden">{label}</span>
         <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>

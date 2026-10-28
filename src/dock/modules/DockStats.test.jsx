@@ -181,6 +181,21 @@ describe("DockStats", () => {
     expect(screen.getByTestId("dock-dialogue-active-dot").getAttribute("data-active")).toBe("true");
   });
 
+  it("keeps the activity dot inside the Coverage row without indenting other labels", () => {
+    renderWith([], statsControls(["momentary", "dialogueCoverage"]));
+    const [plain, coverage] = screen.getAllByTestId("dock-stat-label");
+    expect(plain.children).toHaveLength(1);
+    expect(plain.firstElementChild.textContent).toBe("M");
+    const dot = screen.getByTestId("dock-dialogue-active-dot");
+    expect(coverage.firstElementChild).toBe(dot);
+    expect(coverage.lastElementChild.textContent).toBe("Dlg Cov");
+    expect(
+      screen
+        .getAllByTestId("dock-stat")
+        .map((cell) => cell.querySelector("[data-stat-value]").textContent)
+    ).toEqual(["-", "-"]);
+  });
+
   it("retains all metrics as the available width changes", () => {
     const ids = STATS_CANONICAL_ORDER.slice(0, 10);
     const metrics = ids.map((id, index) => ({

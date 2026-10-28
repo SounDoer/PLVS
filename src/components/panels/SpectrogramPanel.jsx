@@ -12,7 +12,7 @@ import { PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
-import { AxisRail, TimeAxisRail, fitTimeTicks, timeAxisInteraction } from "./AxisRail.jsx";
+import { AxisRail, TimeAxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
@@ -597,17 +597,13 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
               className={cn(!vertical && W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
               interaction={spectrogramYAxis}
               active={chartYAxisActive}
-              ticks={fitTimeTicks(
-                spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
-                  key: hz,
-                  label,
-                  frac: vertical
-                    ? 1 - rangedFreqToYFrac(hz, yMinFreq, yMaxFreq)
-                    : rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
-                })),
-                spectrogramYAxis.axisPx,
-                vertical ? 40 : 0
-              )}
+              ticks={spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
+                key: hz,
+                label,
+                frac: vertical
+                  ? 1 - rangedFreqToYFrac(hz, yMinFreq, yMaxFreq)
+                  : rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
+              }))}
             />
           )}
 

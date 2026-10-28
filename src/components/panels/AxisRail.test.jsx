@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
-import { AxisRail, tickPosition, fitTimeTicks } from "./AxisRail.jsx";
+import { act, render } from "@testing-library/react";
+import { AxisRail, tickPosition } from "./AxisRail.jsx";
 
 const TICKS = [
   { key: "top", label: "0", frac: 0 },
@@ -116,10 +116,55 @@ describe("AxisRail", () => {
   });
 });
 
-it("reduces time labels on short and reversed rails without moving their values", () => {
-  const ticks = Array.from({ length: 5 }, (_, i) => ({ key: i, label: `${i}s`, frac: i / 4 }));
-  expect(fitTimeTicks(ticks, 30, 24)).toEqual([ticks[4]]);
-  expect(fitTimeTicks(ticks, 60, 24)).toEqual([ticks[0], ticks[2], ticks[4]]);
-  const reversed = ticks.map((tick) => ({ ...tick, frac: 1 - tick.frac }));
-  expect(fitTimeTicks(reversed, 60, 24)).toEqual([reversed[0], reversed[2], reversed[4]]);
+it("refits measured labels on resize and text-size changes without moving ticks or caller refs", () => {
+  let extent = 126;
+  let fontSize = 12;
+  let resize;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback) {
+        resize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    }
+  );
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    () => new DOMRect(0, 0, 200, extent)
+  );
+  const realStyle = window.getComputedStyle.bind(window);
+  vi.spyOn(window, "getComputedStyle").mockImplementation((element) => {
+    const style = realStyle(element);
+    style.fontSize = `${fontSize}px`;
+    style.lineHeight = `${fontSize}px`;
+    return style;
+  });
+  const ref = vi.fn();
+  const { container } = render(
+    <AxisRail
+      axis="y"
+      referenceKey={0}
+      scaleProps={{ ref }}
+      ticks={[
+        { key: 3, label: "+3", frac: 0 },
+        { key: 0, label: "0", frac: 3 / 63 },
+        { key: -60, label: "-60", frac: 1 },
+      ]}
+    />
+  );
+  const [top, zero] = labels(container);
+  expect(top.style.visibility).toBe("hidden");
+  expect(top.getAttribute("aria-hidden")).toBe("true");
+  expect(zero.style.top).toBe(`${(3 / 63) * 100}%`);
+  const position = zero.style.top;
+  extent = 630;
+  act(() => resize());
+  expect(top.style.visibility).toBe("");
+  fontSize = 40;
+  act(() => resize());
+  expect(top.style.visibility).toBe("hidden");
+  expect(zero.style.top).toBe(position);
+  expect(ref).toHaveBeenCalledWith(container.firstChild.firstChild);
+  vi.unstubAllGlobals();
 });

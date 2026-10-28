@@ -40,14 +40,17 @@ export function dockStatsCellWidth(font, ids = Object.keys(STATS_META)) {
   };
   const labelWidth = Math.max(
     0,
-    ...ids.map((id) => measure(STATS_META[id]?.shortLabel ?? id, font.metricMeta, 500, sans))
+    ...ids.map(
+      (id) =>
+        measure(STATS_META[id]?.shortLabel ?? id, font.metricMeta, 500, sans) +
+        (id === "dialogueCoverage" ? DOCK_STATS_ACTIVITY_SLOT_PX : 0)
+    )
   );
   if (ids.length === 0) {
     return Math.ceil(measure("No stats selected", font.metricMeta, 500, sans)) + 2;
   }
-  const activityWidth = ids.includes("dialogueCoverage") ? DOCK_STATS_ACTIVITY_SLOT_PX : 0;
   const readoutWidth = 5 * measure("0", font.metricValue, 600, mono);
-  const width = Math.ceil(labelWidth + activityWidth + DOCK_STATS_INNER_GAP_PX + readoutWidth + 2);
+  const width = Math.ceil(labelWidth + DOCK_STATS_INNER_GAP_PX + readoutWidth + 2);
   if (measuredWidths.size > 256) measuredWidths.clear();
   measuredWidths.set(key, width);
   return width;

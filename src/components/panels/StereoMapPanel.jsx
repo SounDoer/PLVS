@@ -512,6 +512,16 @@ export function StereoMapPanel({ showAxes: axesOverride, className } = {}) {
           {showAxes && (
             <AxisRail
               axis="y"
+              labelPolicy={
+                mode === STEREO_MAP_MODES.POSITION || mode === STEREO_MAP_MODES.CORRELATION
+                  ? "fixed"
+                  : "range"
+              }
+              referenceKey={
+                mode === STEREO_MAP_MODES.MONO_LOSS_DB || mode === STEREO_MAP_MODES.MS_RATIO_DB
+                  ? 0
+                  : undefined
+              }
               className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
               interaction={yViewport ? editableYAxis : undefined}
               railRef={passiveYAxis.axisRef}

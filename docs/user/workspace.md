@@ -95,6 +95,24 @@ switches default to Off in Workspace. Dock has no Panel Headers and offers only 
 defaulting to Off. Each surface remembers its annotation choice; switching surfaces does not copy
 or reset it. Hidden labels give their space back to the plot.
 
+## Axis Labels
+
+Axis labels use the same collision rules in the workspace and Dock. Labels are measured at the
+current text size, including their positions when tucked against an edge. When space is tight,
+lower-priority text is hidden without changing the range, tick positions, grid, or plotted data.
+Labels return when space becomes available.
+
+- Peak and RMS dBFS axes prioritize the 0 dB reference, then range endpoints, then intermediate labels.
+- LUFS, spectrum amplitude, and frequency axes prioritize endpoints. Frequency labels retain their
+  logarithmic positions; zero has no automatic priority on these axes.
+- Time axes prioritize the newest end of the visible window, including in Snapshot and reversed views.
+- Stereo Map's M/S Ratio and Mono Loss modes prioritize their 0 dB reference.
+- Fixed channel labels and correlation labels such as L/R and -1/0/+1 stay together, with a readable
+  minimum size reserved for the complete group.
+
+Live readout markers and loudness target lines keep their existing behavior; their own label
+avoidance does not add extra axis ticks.
+
 ## Dock
 
 The Dock toolbar offers **Device** for the same live device/application selection as the normal
@@ -161,8 +179,9 @@ text size. Stats fills as many readable columns as its width permits, then wraps
 Changing Dock height keeps both panel widths and Stats columns stable; it changes the space around
 the readings and whether vertical scrolling is needed.
 Automatic width measures the selected labels and reserves a stable five-character
-numeric column. All cells share the same label and numeric widths; an activity-dot slot is reserved
-throughout when Dialogue Coverage is selected, keeping labels aligned. Live value changes do not
+numeric column. All cells share the same label and numeric widths. Dialogue Coverage's activity dot
+sits inside its row before the label, matching the normal Stats panel, without extending beyond
+the column's left edge. Live value changes do not
 change column widths. Channel-layout warnings do not take space from the three rows.
 Dragging a divider beside Stats sets a manual preference; double-click that divider to restore
 automatic sizing. A narrow display can still require vertical scrolling inside Stats.
@@ -176,7 +195,9 @@ their preferred widths. There is no fixed 360-, 420-, or 960-pixel limit on wide
 
 The five time/frequency plots and horizontal Level Meter start with a 180-pixel minimum, increased
 for larger axis text. Vertical Level Meter reserves space for each channel's reading, and
-Vectorscope reserves its correlation ticks. Automatic Stats has priority when space is tight,
+Vectorscope reserves its correlation ticks. On short Peak/RMS Level Meters, the 0 dB reference label takes
+priority over a nearby range-end label such as +3 so their text does not overlap; the range is unchanged.
+Automatic Stats has priority when space is tight,
 but can shrink once other panels reach their minimums. If all minimums exceed the display width,
 the panel row scrolls horizontally; the toolbar button stays visible outside that row.
 

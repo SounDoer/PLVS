@@ -62,6 +62,24 @@ afterEach(() => {
 });
 
 describe("LevelMeterPanel", () => {
+  it.each([
+    ["peak", "bottom-to-top", true],
+    ["rms", "top-to-bottom", true],
+    ["peak", "left-to-right", true],
+    ["rms", "right-to-left", true],
+    ["momentary", "bottom-to-top", false],
+    ["shortTerm", "left-to-right", false],
+  ])("declares the semantic reference for %s / %s", (mode, orientation, reference) => {
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: mode, levelMeterOrientation: orientation },
+    });
+    const rails = container.querySelectorAll("[data-axis-label-policy]");
+    expect(rails.length).toBeGreaterThan(0);
+    expect([...rails].some((rail) => rail.getAttribute("data-axis-reference-key") === "0")).toBe(
+      reference
+    );
+  });
+
   it("renders peak values in fixed-width nowrap slots separate from channel labels", () => {
     renderPanel();
 
@@ -565,13 +583,13 @@ describe("LevelMeterPanel", () => {
   describe("ticks near a readout marker", () => {
     // jsdom does no layout: give the axis a 630px track (10px per dB over the default Peak range)
     // and the default interface size's label fonts, 12px ticks and a 14px marker.
-    function stubAxisLayout() {
+    function stubAxisLayout(height = 630) {
       vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
         width: 40,
-        height: 630,
+        height,
         top: 0,
         right: 40,
-        bottom: 630,
+        bottom: height,
         left: 0,
         x: 0,
         y: 0,
@@ -595,6 +613,24 @@ describe("LevelMeterPanel", () => {
         (child) => child.textContent === label && !child.hasAttribute("data-level-tp-max-marker")
       );
     }
+
+    it.each(["bottom-to-top", "top-to-bottom"])(
+      "keeps zero legible when the pinned +3 label collides on a short %s meter",
+      async (orientation) => {
+        stubAxisLayout(126);
+        const { container } = renderPanel({
+          displayAudio: { peakDb: [-9, -9] },
+          panelControls: {
+            levelMeterMode: "peak",
+            levelMeterOrientation: orientation,
+            levelMeterTpMaxMarker: false,
+          },
+        });
+        await waitFor(() => expect(tickByLabel(container, "+3").style.visibility).toBe("hidden"));
+        expect(tickByLabel(container, "0").style.opacity).toBe("");
+        expect(tickByLabel(container, "-60").style.opacity).toBe("");
+      }
+    );
 
     it("fades the tick under the TP Max marker by how far it clears the reading", async () => {
       stubAxisLayout();

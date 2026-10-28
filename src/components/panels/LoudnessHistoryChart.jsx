@@ -9,7 +9,7 @@ import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
-import { AxisRail, TimeAxisRail, fitTimeTicks, timeAxisInteraction } from "./AxisRail.jsx";
+import { AxisRail, TimeAxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
@@ -317,11 +317,7 @@ export function LoudnessHistoryChart({
           active={chartYAxisActive}
           ticks={
             vertical
-              ? fitTimeTicks(
-                  historyYAxisAxisTicks.map((tick) => ({ ...tick, frac: 1 - tick.frac })),
-                  loudnessYAxis.axisPx,
-                  40
-                )
+              ? historyYAxisAxisTicks.map((tick) => ({ ...tick, frac: 1 - tick.frac }))
               : historyYAxisAxisTicks
           }
         />

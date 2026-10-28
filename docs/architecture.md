@@ -542,6 +542,18 @@ resolution along time, retaining full resolution across amplitude. Spectrogram k
 cache in chronological coordinates and transforms its presentation to the chosen direction. The
 3D renderer keeps its own floor unprojection and does not consume Heatmap orientation.
 
+### Axis label layout
+
+`AxisRail` owns measured label selection for both workspace and Dock, including X/Y, reversed, and
+rotated axes. `axisLabelLayout.js` computes collisions from each label's extent and its original
+edge/center anchor. Range endpoints outrank ordinary labels; time axes protect the latest semantic
+entry; callers explicitly declare reference keys for dBFS, M/S Ratio, and Mono Loss. Fixed channel
+and correlation groups reserve their measured minimum extent instead of dropping members.
+
+Hidden text retains its original DOM geometry and is hidden from accessibility. Tick candidates
+remain unchanged for grids and plotting. Resize and font changes remeasure labels; live frame
+opacity changes alone do not. Marker fading remains separate from axis-label selection.
+
 ### Screen-space sizes (CSS px vs device px)
 
 Every visual size PLVS specifies (stroke-width tokens such as `--ui-spectrum-stroke-width`, grid

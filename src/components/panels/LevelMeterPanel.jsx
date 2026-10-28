@@ -26,7 +26,6 @@ import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { levelMeterBackground, levelMeterMarkerStatus } from "../../lib/levelMeterColors.js";
 import { loudnessMeterMarkerClass } from "../../lib/loudnessProfileStatusClasses.js";
 import { axisLabelCenterPx, tickOpacityNearMarker } from "../../lib/axisMarkerFade.js";
-import { fitHorizontalTicks } from "../../lib/fitHorizontalTicks.js";
 import { AxisRail, tickPosition } from "./AxisRail.jsx";
 
 const LEVEL_MODE_META = {
@@ -149,10 +148,10 @@ function axisMarkerPlacement(value, yRange, reversed = false) {
   };
 }
 
-/// Measures axis tracks for marker fading and horizontal text collision avoidance. Both label kinds are
+/// Measures the vertical track for marker fading. Both label kinds are
 /// `leading-none`, so each is exactly as tall as its font size; reading those off the track keeps
 /// the fade in step with the interface size setting. Pass `trackRef` as the track's ref.
-function useAxisTrackMetrics(axis = "y", labels = "") {
+function useAxisTrackMetrics() {
   const [track, trackRef] = useState(null);
   const [metrics, setMetrics] = useState(null);
 
@@ -160,23 +159,14 @@ function useAxisTrackMetrics(axis = "y", labels = "") {
     if (!track) return undefined;
     const measure = () => {
       const style = getComputedStyle(track);
-      const trackPx = track.getBoundingClientRect()[axis === "x" ? "width" : "height"];
-      const labelWidth = Math.max(
-        0,
-        ...Array.from(track.querySelectorAll("span")).map(
-          (label) => label.getBoundingClientRect().width
-        )
-      );
+      const trackPx = track.getBoundingClientRect().height;
       const tickPx = parseFloat(style.fontSize);
       const markerPx = parseFloat(style.getPropertyValue("--ui-fs-display"));
       if (!(trackPx > 0 && tickPx > 0 && markerPx > 0)) return;
       setMetrics((prev) =>
-        prev?.trackPx === trackPx &&
-        prev.tickPx === tickPx &&
-        prev.markerPx === markerPx &&
-        prev.labelWidth === labelWidth
+        prev?.trackPx === trackPx && prev.tickPx === tickPx && prev.markerPx === markerPx
           ? prev
-          : { trackPx, tickPx, markerPx, labelWidth }
+          : { trackPx, tickPx, markerPx }
       );
     };
     measure();
@@ -185,7 +175,7 @@ function useAxisTrackMetrics(axis = "y", labels = "") {
     const ro = new ResizeObserver(measure);
     ro.observe(track);
     return () => ro.disconnect();
-  }, [track, axis, labels]);
+  }, [track]);
 
   return { trackRef, metrics };
 }
@@ -198,9 +188,12 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics, reversed = false) {
     marker && metrics
       ? axisLabelCenterPx(marker.position, marker.frac, metrics.trackPx, metrics.markerPx)
       : null;
+  const fraction = (value) => {
+    const top = rangedFromTopFrac(value, yRange.min, yRange.max);
+    return reversed ? 1 - top : top;
+  };
   return ticks.map(({ v, lb }, index) => {
-    const topFrac = rangedFromTopFrac(v, yRange.min, yRange.max);
-    const frac = reversed ? 1 - topFrac : topFrac;
+    const frac = fraction(v);
     const tick = { key: v, label: lb, frac };
     if (markerCenterPx == null) return tick;
     const tickCenterPx = axisLabelCenterPx(
@@ -450,6 +443,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
           >
             <AxisRail
               axis="y"
+              referenceKey={isPeakFamily ? 0 : undefined}
               inset
               data-level-meter-y-axis
               scaleProps={{ "data-level-meter-y-axis-scale": true, ref: levelMeterTrackRef }}
@@ -561,6 +555,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
         >
           <AxisRail
             axis="y"
+            referenceKey={isPeakFamily ? 0 : undefined}
             inset
             data-level-meter-y-axis
             scaleProps={{ "data-level-meter-y-axis-scale": true, ref: levelMeterTrackRef }}
@@ -719,13 +714,6 @@ function HorizontalLevelMeter({
       ? 1 - (v - range.min) / (range.max - range.min)
       : (v - range.min) / (range.max - range.min),
   }));
-  const { trackRef, metrics } = useAxisTrackMetrics(
-    "x",
-    candidates.map((tick) => tick.label).join(",")
-  );
-  const ticks = metrics
-    ? fitHorizontalTicks(candidates, metrics.trackPx, metrics.labelWidth, metrics.tickPx / 2)
-    : candidates;
   const rows = isPeakFamily ? channels : [{ label: modeMeta.meterLabel, valueDb: liveLevelValue }];
   const [scrollRows, setScrollRows] = useState(null);
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
@@ -896,11 +884,11 @@ function HorizontalLevelMeter({
       {showAxes && (
         <AxisRail
           axis="x"
+          referenceKey={isPeakFamily ? 0 : undefined}
           className="col-start-2 h-[var(--ui-chart-x-axis-row-h)] shrink-0"
           style={{ marginRight: scrollbarWidth }}
           interaction={axis}
-          scaleProps={{ ref: trackRef }}
-          ticks={ticks}
+          ticks={candidates}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 import { usePanelPresentation } from "../../workspace/AudioDataContext.jsx";
 import { VECTOR_CORRELATION_MIN_EM } from "../../lib/vectorscopeSizing.js";
 import { cn } from "@/lib/utils";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { AxisRail } from "./AxisRail.jsx";
 import { ANNOTATION_TEXT, CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { VectorscopeLissajousGrid } from "./VectorscopeLissajousGrid.jsx";
 import { VectorscopePolarPlot, VectorscopePolarStage } from "./VectorscopePolarPlot.jsx";
@@ -213,22 +213,22 @@ export function VectorscopePanel({ compact = false, showAxes: axesOverride, clas
             </div>
           </div>
           {showAxes && (
-            <div
+            <AxisRail
+              axis="x"
+              labelPolicy="fixed"
+              ticks={[
+                { key: -1, label: "-1", frac: 0 },
+                { key: 0, label: "0", frac: 0.5 },
+                { key: 1, label: "+1", frac: 1 },
+              ]}
+              aria-hidden
               data-vectorscope-correlation-axis
               className={cn(
                 CAPTION_TEXT,
                 "font-[family-name:var(--ui-font-mono)] tabular-nums",
                 "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0"
               )}
-            >
-              <div className="relative h-full w-full" aria-hidden>
-                <span className={axisLabelClass("x", "start")}>-1</span>
-                <span className={axisLabelClass("x", "middle")} style={{ left: "50%" }}>
-                  0
-                </span>
-                <span className={axisLabelClass("x", "end")}>+1</span>
-              </div>
-            </div>
+            />
           )}
         </div>
       </div>
