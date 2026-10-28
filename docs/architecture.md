@@ -90,6 +90,15 @@ instance; the identity-wide compatibility endpoint follows the coordinator. Dev,
 and Stable application identifiers therefore produce separate data, lock, registry and endpoint
 namespaces.
 
+The heartbeat descriptor also carries a frontend-owned Tray snapshot: source choices and selection,
+preset labels and selection, and availability guards. Only the internal Tray inventory includes
+this presentation data; public CLI instance summaries retain their existing shape. With multiple
+workbenches the Tray builds the same complete control group for each instance. Source selection
+and Source-derived menu names are synchronized in place to preserve native Windows action channels.
+Targeted hide, Settings, source selection and preset actions use the existing instance mailbox with
+an optional selection ID; the receiving React runtime calls its own window, source or preset
+business function. Native coordination relays these actions without mutating frontend stores.
+
 Configurable keyboard shortcuts are defined by one action catalogue shared by Settings, focused
 window matching, portable configuration profiles, and Agent Control. The identity-wide
 `keyboardShortcuts` global preference stores every known action in one revisioned object. Only the

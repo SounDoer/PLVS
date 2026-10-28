@@ -16,10 +16,157 @@ vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 import {
   commitGlobalOperation,
   prepareGlobalOperation,
+  issueInstanceCommand,
   useRuntimeCoordination,
 } from "./coordination.js";
 
 describe("runtime coordination", () => {
+  it.each([
+    ["hide", null],
+    ["settings", null],
+    ["selectSource", "output-peer"],
+    ["applyPreset", "preset-peer"],
+  ])("dispatches %s to the receiving workbench's business action", async (action, payload) => {
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const command = { commandId: "tray-command", operationId: "tray-operation", action, payload };
+    mocks.invoke.mockImplementation((name) =>
+      Promise.resolve(name === "runtime_poll_command" ? command : null)
+    );
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: false,
+        stop: vi.fn(),
+        start: vi.fn(),
+        show: vi.fn(),
+        actions: { [action]: handler },
+      })
+    );
+    await act(async () => {});
+    expect(handler).toHaveBeenCalledWith(payload);
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "tray-command",
+      outcome: "completed",
+      detail: null,
+    });
+    expect(mocks.flush).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("acknowledges a preset guard refusal without mutating the scene", async () => {
+    const mutate = vi.fn();
+    const guard = () => {
+      throw new Error("Close the open editor first.");
+    };
+    const applyPreset = vi.fn(() => {
+      guard();
+      mutate();
+    });
+    mocks.invoke.mockImplementation((name) =>
+      Promise.resolve(
+        name === "runtime_poll_command"
+          ? { commandId: "blocked-preset", action: "applyPreset", payload: "preset-peer" }
+          : null
+      )
+    );
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: ["theme"],
+        running: false,
+        stop: vi.fn(),
+        start: vi.fn(),
+        show: vi.fn(),
+        actions: { applyPreset },
+      })
+    );
+    await act(async () => {});
+    expect(applyPreset).toHaveBeenCalledWith("preset-peer");
+    expect(mutate).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "blocked-preset",
+      outcome: "failed",
+      detail: "Error: Close the open editor first.",
+    });
+    unmount();
+  });
+
+  it("refuses peer actions while installation owns the workbench", async () => {
+    const settings = vi.fn();
+    mocks.invoke.mockImplementation((name) =>
+      Promise.resolve(
+        name === "runtime_poll_command" ? { commandId: "busy-settings", action: "settings" } : null
+      )
+    );
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: false,
+        stop: vi.fn(),
+        start: vi.fn(),
+        show: vi.fn(),
+        actions: { settings },
+        busy: true,
+      })
+    );
+    await act(async () => {});
+    expect(settings).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "runtime_ack_command",
+      expect.objectContaining({ outcome: "failed" })
+    );
+    unmount();
+  });
+
+  it("reports a source action that already presented its own failure notice as refused", async () => {
+    const selectSource = vi.fn().mockResolvedValue(false);
+    mocks.invoke.mockImplementation((name) =>
+      Promise.resolve(
+        name === "runtime_poll_command"
+          ? { commandId: "missing-source", action: "selectSource", payload: "removed-output" }
+          : null
+      )
+    );
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: false,
+        stop: vi.fn(),
+        start: vi.fn(),
+        show: vi.fn(),
+        actions: { selectSource },
+      })
+    );
+    await act(async () => {});
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "runtime_ack_command",
+      expect.objectContaining({
+        commandId: "missing-source",
+        outcome: "failed",
+      })
+    );
+    unmount();
+  });
+
+  it("passes a targeted source ID through the mailbox and reports a peer refusal", async () => {
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_issue_commands")
+        return Promise.resolve([{ instanceId: "peer", commandId: "source" }]);
+      if (name === "runtime_wait_commands")
+        return Promise.resolve([{ outcome: "failed", detail: "Device unavailable" }]);
+      return Promise.resolve(null);
+    });
+    await expect(issueInstanceCommand("peer", "selectSource", "output-peer")).rejects.toThrow(
+      "Device unavailable"
+    );
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "runtime_issue_commands",
+      expect.objectContaining({
+        instanceIds: ["peer"],
+        action: "selectSource",
+        payload: "output-peer",
+      })
+    );
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();

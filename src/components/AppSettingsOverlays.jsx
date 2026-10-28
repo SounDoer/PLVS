@@ -331,6 +331,7 @@ export function AppSettingsOverlays({
   return (
     <>
       <SettingsPanel
+        sectionRequest={settings.settingsSectionRequest}
         settingsOpen={settings.settingsOpen}
         setSettingsOpen={settings.setSettingsOpen}
         appearance={settings.appearance}

@@ -52,6 +52,32 @@ function hexToRgb(hex) {
 }
 
 describe("SettingsPanel", () => {
+  it("focuses the version/update feedback for a tray section request, including repeated requests", async () => {
+    const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
+    const { rerender } = render(
+      <SettingsPanel {...BASE_PROPS} appVersion="0.23.3" sectionRequest={{ section: "about" }} />
+    );
+    await waitFor(() => {
+      expect(document.activeElement?.getAttribute("data-settings-section-id")).toBe("about");
+    });
+    expect(scroll).toHaveBeenCalled();
+    const calls = scroll.mock.calls.length;
+    rerender(
+      <SettingsPanel {...BASE_PROPS} appVersion="0.23.3" sectionRequest={{ section: "about" }} />
+    );
+    await waitFor(() => expect(scroll.mock.calls.length).toBeGreaterThan(calls));
+    scroll.mockRestore();
+  });
+
+  it("waits for version information before focusing a pending update section request", async () => {
+    const sectionRequest = { section: "about" };
+    const { rerender } = render(<SettingsPanel {...BASE_PROPS} sectionRequest={sectionRequest} />);
+    rerender(<SettingsPanel {...BASE_PROPS} appVersion="0.23.3" sectionRequest={sectionRequest} />);
+    await waitFor(() => {
+      expect(document.activeElement?.getAttribute("data-settings-section-id")).toBe("about");
+    });
+  });
+
   it("opens Sharesets categories without changing appearance and hides Theme browsing in system mode", () => {
     const openExternalUrl = vi.fn();
     const setAppearanceMode = vi.fn();

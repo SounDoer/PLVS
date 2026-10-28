@@ -51,13 +51,34 @@ the saved set is restored instead of leaving those workbenches closed. If the co
 disappears while workbenches are waiting at the save barrier, they resume any capture that the
 barrier stopped.
 
-PLVS also keeps one system Tray. Left-clicking its icon shows or hides the main window, while
-right-clicking opens the menu. On macOS, **Show Window** or **Hide Window** in that menu provides the
-same control. Its **Workbenches** submenu uses Source-derived names and can show, start, stop or
-quit a specific running workbench. **Show** brings that workbench to the front, restoring it if
-minimized. A workbench with an open editor or dialog refuses to quit and comes to the front instead,
+PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
+main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's
+tray host; use the menu's **Show** or **Hide**, available on all three platforms.
+**Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it restores the
+normal window first; if restoration fails, Settings stays closed.
+
+With one workbench open, its window, Start / Stop, Source, Preset and Settings controls appear
+directly in the Tray menu. With several open, **Workbenches** groups those same controls under each
+workbench's Source-derived name, followed by **Quit Workbench**. There are no duplicate workbench
+controls at the top level. Each Source and Preset submenu shows that workbench's choices and current
+selection; Settings opens in that workbench. Update actions and **Quit PLVS** remain at the top
+level because they affect the application as a whole. **Show** brings the selected workbench
+to the front, restoring it if minimized. A workbench with an open editor or dialog refuses to quit
+and comes to the front instead,
 so you can finish or close what is open first. **Quit PLVS** flushes and closes the complete
 workbench set; quitting one workbench does not close its peers.
+After **Quit Workbench** succeeds, its Tray entry is removed immediately. If only one workbench
+remains, its controls return to the top level. A refused quit keeps the workbench in the menu.
+
+The Tray also offers **Check for Updates…** when updates are enabled for the running app identity.
+It opens Settings at the version and update status row and starts a manual check, even when
+automatic checking is off. The menu shows
+checking or retry status, **Update Available: vX.Y.Z…**, **Downloading Update…**, or
+**Update Ready: vX.Y.Z…** as appropriate. When an update is known, selecting its entry opens the
+existing update details instead of installing immediately. In Dock mode, details use the existing
+update accessory; a hidden Dock is shown first. Portable copies retain the manual download flow,
+and Preview has no update entry. During installation or restart, Settings and update entry points
+are disabled along with window hiding, preset switching and quitting.
 
 ## Updates
 

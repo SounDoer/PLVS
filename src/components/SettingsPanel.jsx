@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleHelp, ExternalLink, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -158,6 +158,7 @@ function IconButton({ children, className, ...props }) {
 /**
  * @param {{
  *   settingsOpen: boolean,
+ *   sectionRequest?: { section: string } | null,
  *   setSettingsOpen: (...args: any[]) => any,
  *   appearance: string,
  *   setAppearanceMode: (...args: any[]) => any,
@@ -229,6 +230,7 @@ function IconButton({ children, className, ...props }) {
  */
 export function SettingsPanel({
   settingsOpen,
+  sectionRequest = null,
   setSettingsOpen,
   appearance,
   setAppearanceMode,
@@ -445,6 +447,16 @@ export function SettingsPanel({
     [appVersion, setSettingsOpen, settlePendingSection, showAgentControl]
   );
   useUiNavigationTarget("settings", { show: showSection });
+  const handledSectionRequestRef = useRef(null);
+  useEffect(() => {
+    if (!settingsOpen || !sectionRequest || handledSectionRequestRef.current === sectionRequest)
+      return;
+    if (sectionRequest.section === "about" && !appVersion) return;
+    handledSectionRequestRef.current = sectionRequest;
+    void showSection(sectionRequest).catch((error) =>
+      console.warn("Unable to show the requested Settings section", error)
+    );
+  }, [appVersion, sectionRequest, settingsOpen, showSection]);
   useUiSurface({
     active: settingsOpen,
     kind: "settings",

@@ -15,6 +15,9 @@ import { useUpdatePreferences } from "./useUpdatePreferences.js";
 /** @param {{ shortcutActionRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
 export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSectionRequest, setSettingsSectionRequest] = useState(
+    /** @type {{ section: string } | null} */ (null)
+  );
   const { autostartEnabled, setAutostartEnabled, setAutostartEnabledForControl, autostartReady } =
     useAutostart();
   const shortcutState = useKeyboardShortcuts(shortcutActionRef);
@@ -34,6 +37,8 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
   return {
     settingsOpen,
     setSettingsOpen,
+    settingsSectionRequest,
+    setSettingsSectionRequest,
     appearance: themeSettings.appearance,
     setAppearance: themeSettings.setAppearance,
     themeId: themeSettings.themeId,

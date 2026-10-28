@@ -29,11 +29,12 @@ async function acknowledge(command, outcome, detail = null) {
  * @param {string} action
  * @param {string} id
  */
-async function issue(action, id, instanceIds = null) {
+async function issue(action, id, instanceIds = null, payload = null) {
   return invoke("runtime_issue_commands", {
     action,
     operationId: id,
     instanceIds,
+    ...(payload === null ? {} : { payload }),
   });
 }
 
@@ -69,6 +70,16 @@ async function handleRuntimeCommand(command, prepared) {
   try {
     if (command.action === "show") {
       await current.show();
+      await acknowledge(command, "completed");
+      return;
+    }
+    if (["hide", "settings", "selectSource", "applyPreset"].includes(command.action)) {
+      if (current.busy || prepared.size)
+        throw new Error("PLVS is preparing an application operation.");
+      const handler = current.actions?.[command.action];
+      if (!handler) throw new Error("The workbench action is not available.");
+      const accepted = await handler(command.payload);
+      if (accepted === false) throw new Error("The workbench refused the action.");
       await acknowledge(command, "completed");
       return;
     }
@@ -133,11 +144,19 @@ async function handleRuntimeCommand(command, prepared) {
   }
 }
 
-export function useRuntimeCoordination({ blockingEditors, running, stop, start, show }) {
-  const currentRef = useRef({ blockingEditors, running, stop, start, show });
+export function useRuntimeCoordination({
+  blockingEditors,
+  running,
+  stop,
+  start,
+  show,
+  actions = null,
+  busy = false,
+}) {
+  const currentRef = useRef({ blockingEditors, running, stop, start, show, actions, busy });
   useLayoutEffect(() => {
-    currentRef.current = { blockingEditors, running, stop, start, show };
-  }, [blockingEditors, running, start, stop, show]);
+    currentRef.current = { blockingEditors, running, stop, start, show, actions, busy };
+  }, [blockingEditors, running, start, stop, show, actions, busy]);
 
   useEffect(() => {
     lifecycle = new Proxy(
@@ -240,9 +259,10 @@ export async function commitGlobalOperation(operation) {
 /**
  * @param {string} action
  */
-export async function issueInstanceCommand(instanceId, action) {
+export async function issueInstanceCommand(instanceId, action, payload = null) {
   const id = operationId();
-  const issued = await issue(action, id, [instanceId]);
+  const issued = await issue(action, id, [instanceId], payload);
+  if (issued.length !== 1) throw new Error("The selected PLVS workbench is no longer running.");
   const acknowledgements = await waitFor(issued);
   const failed = acknowledgements.find((ack) => ack.outcome !== "completed");
   if (failed) throw new Error(failed.detail ?? "The selected PLVS workbench refused the action.");

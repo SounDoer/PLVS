@@ -26,6 +26,7 @@ pub struct InstanceRuntimeState {
   pub capture_status: CaptureStatus,
   pub visible: bool,
   pub focus_sequence: u64,
+  pub tray_state: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,6 +43,8 @@ pub struct InstanceDescriptor {
   pub capture_status: CaptureStatus,
   pub visible: bool,
   pub focus_sequence: u64,
+  #[serde(default)]
+  pub tray_state: Option<serde_json::Value>,
   registration_token: String,
 }
 
@@ -100,6 +103,7 @@ impl InstanceRegistry {
       capture_status: state.capture_status,
       visible: state.visible,
       focus_sequence: state.focus_sequence,
+      tray_state: state.tray_state.clone(),
       registration_token: registration_token.clone(),
     };
     let descriptor_path = self
@@ -195,6 +199,7 @@ impl InstanceRegistration {
     descriptor.capture_status = state.capture_status;
     descriptor.visible = state.visible;
     descriptor.focus_sequence = state.focus_sequence;
+    descriptor.tray_state = state.tray_state.clone();
     descriptor.heartbeat_unix_ms = unix_time_ms()?;
     write_descriptor(&self.descriptor_path, &descriptor)
   }

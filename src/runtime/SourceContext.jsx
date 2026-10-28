@@ -10,7 +10,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  * @typedef {ReturnType<typeof useAudioDevices> & {
  *   audioOutputs: any[],
  *   audioInputs: any[],
- *   onSelectCaptureDevice: (deviceId: string) => Promise<void>,
+ *   onSelectCaptureDevice: (deviceId: string) => Promise<boolean>,
  *   captureFormatSignature: string,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
@@ -48,12 +48,14 @@ export function SourceProvider({ children }) {
       clearNotice();
       try {
         await selectCaptureDevice(deviceId);
+        return true;
       } catch (error) {
         raiseNotice(
           "error",
           "Could not switch the audio device.",
           errorDetails("Device selection failed", error)
         );
+        return false;
       }
     },
     [clearNotice, raiseNotice, selectCaptureDevice]

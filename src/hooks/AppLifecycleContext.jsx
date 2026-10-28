@@ -20,6 +20,7 @@ import { useUpdateController } from "./useUpdateController.js";
 import { useCloseConfirm } from "./useCloseConfirm.js";
 import { useInstanceIdentity } from "./useInstanceIdentity.js";
 import { useTray } from "./useTray.js";
+import { useTrayActions } from "./useTrayActions.js";
 import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts.js";
 
 /**
@@ -50,6 +51,7 @@ const AppLifecycleContext = createContext(/** @type {AppLifecycle | null} */ (nu
 export function AppLifecycleProvider({ children }) {
   const {
     setSettingsOpen,
+    setSettingsSectionRequest,
     keyboardShortcuts,
     shortcutCapturing,
     shortcutActionRef,
@@ -178,7 +180,26 @@ export function AppLifecycleProvider({ children }) {
     void exitDockRestoringAttributes();
   }, [crashReporting.pendingReport, docked, exitDockRestoringAttributes]);
 
-  useInstanceIdentity({ sourceLabel: sourceDisplayName, running });
+  const sourceBusy =
+    ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
+    meterRuntime.liveDeviceTransition !== null;
+  useInstanceIdentity({
+    sourceLabel: sourceDisplayName,
+    running,
+    trayState: {
+      audioOutputs: audioOutputs.map(({ id, label }) => ({ id, label })),
+      audioInputs: audioInputs.map(({ id, label }) => ({ id, label })),
+      captureApplications: captureApplications.map(({ id, label }) => ({ id, label })),
+      safeAudioDeviceId,
+      defaultOutputLabel,
+      sourceBusy,
+      presetList: presets.list.map(({ id, name }) => ({ id, name })),
+      presetActiveId: presets.activeId,
+      presetDirty: presets.dirty,
+      presetsBlocked: presets.blocked,
+      updateBusy,
+    },
+  });
   const stopRuntimeForCoordination = useCallback(async () => {
     if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
     if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
@@ -187,15 +208,31 @@ export function AppLifecycleProvider({ children }) {
     switchSource("live");
     await startLiveForControl();
   }, [startLiveForControl, switchSource]);
+  const trayActions = useTrayActions({
+    docked,
+    onShowWindow,
+    exitDockRestoringAttributes,
+    setSettingsOpen,
+    focusUpdateSettings: () => setSettingsSectionRequest({ section: "about" }),
+    updates: updateControls,
+    updateBusy,
+  });
   useRuntimeCoordination({
     blockingEditors: activeBlockingEditors,
     running: meterRuntime.liveLifecycle === "running",
     stop: stopRuntimeForCoordination,
     start: startRuntimeAfterCoordination,
     show: onShowWindow,
+    busy: updateBusy,
+    actions: {
+      hide: () => requestCloseAction("tray"),
+      settings: trayActions.onOpenSettings,
+      selectSource: onSelectCaptureDevice,
+      applyPreset: presets.apply,
+    },
   });
-
   useTray({
+    ...trayActions,
     running,
     windowVisible,
     onStartClick,
@@ -208,9 +245,7 @@ export function AppLifecycleProvider({ children }) {
     captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
-    sourceBusy:
-      ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
-      meterRuntime.liveDeviceTransition !== null,
+    sourceBusy,
     onSelectSource: onSelectCaptureDevice,
     presets,
   });

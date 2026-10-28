@@ -58,4 +58,25 @@ describe("useInstanceIdentity", () => {
     });
     await waitFor(() => expect(ownsCoordinatorResources()).toBe(true));
   });
+
+  it("publishes workbench menu state without losing its last focus when that state changes", async () => {
+    const { rerender } = renderHook(
+      ({ trayState }) =>
+        useInstanceIdentity({
+          sourceLabel: "VLC",
+          running: false,
+          trayState,
+        }),
+      { initialProps: { trayState: { safeAudioDeviceId: "default" } } }
+    );
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    const focus = invoke.mock.calls[0][1].update.focusSequence;
+    isFocused.mockResolvedValue(false);
+    rerender({ trayState: { safeAudioDeviceId: "peer-output" } });
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
+    expect(invoke.mock.calls[1][1].update).toMatchObject({
+      focusSequence: focus,
+      trayState: { safeAudioDeviceId: "peer-output" },
+    });
+  });
 });

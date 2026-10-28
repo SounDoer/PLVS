@@ -24,11 +24,16 @@ vi.mock("@tauri-apps/api/tray", () => ({
 vi.mock("@tauri-apps/api/menu", () => ({
   Menu: { new: vi.fn().mockResolvedValue({}) },
   Submenu: {
-    new: vi.fn(async () => ({ setText: vi.fn(), setEnabled: vi.fn() })),
+    new: vi.fn(async (options) => ({ ...options, setText: vi.fn(), setEnabled: vi.fn() })),
   },
-  MenuItem: { new: vi.fn().mockResolvedValue({}) },
+  MenuItem: { new: vi.fn(async (options) => ({ ...options })) },
   CheckMenuItem: {
-    new: vi.fn(async () => ({ setChecked: vi.fn(), setText: vi.fn(), setEnabled: vi.fn() })),
+    new: vi.fn(async (options) => ({
+      ...options,
+      setChecked: vi.fn(),
+      setText: vi.fn(),
+      setEnabled: vi.fn(),
+    })),
   },
   PredefinedMenuItem: { new: vi.fn().mockResolvedValue({}) },
 }));
@@ -52,7 +57,7 @@ import { closeTrayIcon, PLVS_TRAY_ID } from "../lib/trayIconLifecycle.js";
 import { useTray } from "./useTray.js";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Image } from "@tauri-apps/api/image";
-import { MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
+import { Menu, MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isMacOS } from "../lib/platform.js";
 import { setCoordinatorRole } from "../lib/runtimeRole.js";
@@ -253,9 +258,116 @@ describe("useTray", () => {
       .action("quit");
     findText(menuItemOptions(), "Quit PLVS").action();
 
-    expect(coordination.issue).toHaveBeenNthCalledWith(1, "one", "show");
+    expect(coordination.issue).toHaveBeenNthCalledWith(1, "one", "show", null);
     expect(coordination.issue).toHaveBeenNthCalledWith(2, "one", "quitInstance");
     expect(coordination.quitAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("flattens the menu immediately after peer quit and ignores stale inventory reads", async () => {
+    vi.useFakeTimers();
+    try {
+      window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+      const owner = {
+        instanceId: "owner",
+        displayName: "Owner",
+        captureStatus: "stopped",
+        visible: true,
+      };
+      const peer = {
+        instanceId: "peer",
+        displayName: "Peer",
+        captureStatus: "stopped",
+        visible: true,
+      };
+      invoke.mockResolvedValue([owner, peer]);
+      const { unmount } = renderHook(() => useTray(defaultProps));
+      await act(async () => {});
+      const trayAction = vi.mocked(TrayIcon.new).mock.calls[0][0].action;
+      const stale = deferred();
+      invoke.mockReturnValueOnce(stale.promise);
+      trayAction(/** @type {Parameters<typeof trayAction>[0]} */ ({ type: "Enter" }));
+
+      await act(async () => {
+        findText(submenuOptions(), "Peer")
+          .items.find((item) => item.text === "Quit Workbench")
+          .action();
+      });
+      const rootTexts = () =>
+        vi
+          .mocked(Menu.new)
+          .mock.calls.at(-1)[0]
+          .items.map((item) => item.text)
+          .filter(Boolean);
+      expect(rootTexts()).not.toContain("Workbenches");
+      expect(rootTexts()).toContain("Quit");
+
+      await act(async () => {
+        stale.resolve([owner, peer]);
+      });
+      expect(rootTexts()).not.toContain("Workbenches");
+      // The acknowledgement precedes process exit. A fresh read can still contain its last
+      // heartbeat, but opening the menu must not resurrect the acknowledged departure.
+      await act(async () => {
+        trayAction(
+          /** @type {Parameters<typeof trayAction>[0]} */ ({
+            type: "Click",
+            button: "Right",
+            buttonState: "Down",
+          })
+        );
+      });
+      expect(rootTexts()).not.toContain("Workbenches");
+      invoke.mockResolvedValue([owner]);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(rootTexts()).not.toContain("Workbenches");
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a peer in the menu when quit is refused", async () => {
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    invoke.mockResolvedValue([
+      { instanceId: "owner", displayName: "Owner", captureStatus: "stopped" },
+      { instanceId: "peer", displayName: "Peer", captureStatus: "stopped" },
+    ]);
+    coordination.issue.mockRejectedValueOnce(new Error("An editor is open."));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      renderHook(() => useTray(defaultProps));
+      await act(async () => {});
+      await act(async () => {
+        findText(submenuOptions(), "Peer")
+          .items.find((item) => item.text === "Quit Workbench")
+          .action();
+      });
+      const root = vi.mocked(Menu.new).mock.calls.at(-1)[0].items;
+      expect(root.map((item) => item.text)).toContain("Workbenches");
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("refreshes external exits when the tray is entered without waiting for the heartbeat", async () => {
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    const owner = { instanceId: "owner", displayName: "Owner", captureStatus: "stopped" };
+    invoke.mockResolvedValue([
+      owner,
+      { instanceId: "peer", displayName: "Peer", captureStatus: "stopped" },
+    ]);
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    invoke.mockResolvedValue([owner]);
+    const trayAction = vi.mocked(TrayIcon.new).mock.calls[0][0].action;
+    await act(async () => {
+      trayAction(/** @type {Parameters<typeof trayAction>[0]} */ ({ type: "Enter" }));
+    });
+    const root = vi.mocked(Menu.new).mock.calls.at(-1)[0].items;
+    expect(root.map((item) => item.text)).not.toContain("Workbenches");
   });
 
   it("creates TrayIcon with iconAsTemplate true", async () => {
@@ -337,7 +449,7 @@ describe("useTray", () => {
       { initialProps: { onToggleWindow: firstToggleWindow } }
     );
     await act(async () => {});
-    const windowAction = findText(menuItemOptions(), "Hide Window").action;
+    const windowAction = findText(menuItemOptions(), "Hide").action;
 
     rerender({ onToggleWindow: secondToggleWindow });
     await act(async () => {});
@@ -347,18 +459,18 @@ describe("useTray", () => {
     expect(secondToggleWindow).toHaveBeenCalledOnce();
   });
 
-  it("omits Show/Hide and Pin items on Windows", async () => {
+  it("includes Show/Hide on Windows without adding Pin items", async () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     const texts = menuItemOptions().map((o) => o.text);
-    expect(texts).not.toContain("Hide Window");
-    expect(texts).not.toContain("Show Window");
+    expect(texts).toContain("Hide");
+    expect(texts).not.toContain("Show");
     expect(texts).not.toContain("Pin Window");
     expect(texts).not.toContain("Unpin Window");
   });
 
-  it("includes a platform Show/Hide item on macOS", async () => {
-    vi.mocked(isMacOS).mockReturnValue(true);
+  it.each([false, true])("keeps Show/Hide current with isMacOS=%s", async (isMac) => {
+    vi.mocked(isMacOS).mockReturnValue(isMac);
     const setMenu = vi.fn();
     vi.mocked(TrayIcon.new).mockResolvedValue(standIn({ setMenu, close: vi.fn() }));
     const { rerender } = renderHook(
@@ -366,12 +478,12 @@ describe("useTray", () => {
       { initialProps: { windowVisible: true } }
     );
     await act(async () => {});
-    expect(findText(menuItemOptions(), "Hide Window")).toBeTruthy();
+    expect(findText(menuItemOptions(), "Hide")).toBeTruthy();
 
     vi.mocked(MenuItem.new).mockClear();
     rerender({ windowVisible: false });
     await act(async () => {});
-    expect(findText(menuItemOptions(), "Show Window")).toBeTruthy();
+    expect(findText(menuItemOptions(), "Show")).toBeTruthy();
     expect(setMenu).toHaveBeenCalled();
   });
 
@@ -383,6 +495,202 @@ describe("useTray", () => {
     findText(menuItemOptions(), "Quit").action();
 
     expect(onQuit).toHaveBeenCalledOnce();
+  });
+
+  it("nests the same complete controls under every workbench with only app actions at the root", async () => {
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "two" };
+    invoke.mockResolvedValue([
+      { instanceId: "one", displayName: "Spotify", captureStatus: "running", visible: false },
+      { instanceId: "two", displayName: "VLC", captureStatus: "stopped", visible: true },
+    ]);
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    const root = vi.mocked(Menu.new).mock.calls.at(-1)[0].items;
+    expect(root.map((item) => item.text).filter(Boolean)).toEqual(["Workbenches", "Quit PLVS"]);
+    const peer = findText(submenuOptions(), "Spotify");
+    const owner = findText(submenuOptions(), "VLC");
+    expect(peer.items.map((item) => item.text).filter(Boolean)).toEqual([
+      "Show",
+      "Stop",
+      "Source: Output · Automatic",
+      "Preset: Editing…",
+      "Settings…",
+      "Quit Workbench",
+    ]);
+    expect(owner.items.map((item) => item.text).filter(Boolean)).toEqual([
+      "Hide",
+      "Start",
+      "Source: Output · Automatic",
+      "Preset: None",
+      "Settings…",
+      "Quit Workbench",
+    ]);
+    expect(menuItemOptions().some((item) => item.text.startsWith("Workbench:"))).toBe(false);
+  });
+
+  it("routes a peer's Source, Preset, Settings and Hide to that peer", async () => {
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    invoke.mockResolvedValue([
+      { instanceId: "owner", displayName: "Owner", captureStatus: "stopped", visible: true },
+      {
+        instanceId: "peer",
+        displayName: "Peer",
+        captureStatus: "running",
+        visible: true,
+        trayState: {
+          audioOutputs: [{ id: "peer-output", label: "Peer Output" }],
+          audioInputs: [],
+          captureApplications: [],
+          safeAudioDeviceId: "peer-output",
+          defaultOutputLabel: "",
+          sourceBusy: false,
+          presetList: [{ id: "peer-preset", name: "Peer Preset" }],
+          presetActiveId: "peer-preset",
+          presetDirty: false,
+          presetsBlocked: false,
+        },
+      },
+    ]);
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    findText(checkItemOptions(), "Peer Output").action();
+    findText(checkItemOptions(), "Peer Preset").action();
+    const peer = findText(submenuOptions(), "Peer");
+    peer.items.find((item) => item.text === "Settings…").action();
+    peer.items.find((item) => item.text === "Hide").action();
+    expect(coordination.issue.mock.calls).toEqual([
+      ["peer", "selectSource", "peer-output"],
+      ["peer", "applyPreset", "peer-preset"],
+      ["peer", "settings", null],
+      ["peer", "hide", null],
+    ]);
+    expect(defaultProps.onSelectSource).not.toHaveBeenCalled();
+    expect(defaultProps.presets.apply).not.toHaveBeenCalled();
+  });
+
+  it("updates a peer's source selection and name in place without disconnecting its next action", async () => {
+    vi.useFakeTimers();
+    try {
+      window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+      const snapshot = {
+        audioOutputs: [
+          { id: "out-a", label: "Output A" },
+          { id: "out-b", label: "Output B" },
+        ],
+        audioInputs: [],
+        captureApplications: [],
+        safeAudioDeviceId: "out-a",
+        defaultOutputLabel: "",
+        sourceBusy: false,
+        presetList: [],
+        presetActiveId: null,
+        presetDirty: false,
+        presetsBlocked: false,
+      };
+      let inventory = [
+        { instanceId: "owner", displayName: "Owner", captureStatus: "stopped", visible: true },
+        {
+          instanceId: "peer",
+          displayName: "Output A",
+          captureStatus: "running",
+          visible: true,
+          trayState: snapshot,
+        },
+      ];
+      invoke.mockImplementation((command) =>
+        Promise.resolve(command === "runtime_list_instances" ? inventory : true)
+      );
+      const setMenu = vi.fn();
+      vi.mocked(TrayIcon.new).mockResolvedValue(standIn({ setMenu, close: vi.fn() }));
+      const { unmount } = renderHook(() => useTray(defaultProps));
+      await act(async () => {});
+      const outputA = await createdHandleForText(vi.mocked(CheckMenuItem.new), "Output A");
+      const outputB = await createdHandleForText(vi.mocked(CheckMenuItem.new), "Output B");
+      const parent = await createdHandleForText(vi.mocked(Submenu.new), "Output A");
+      setMenu.mockClear();
+      inventory = [
+        inventory[0],
+        {
+          ...inventory[1],
+          displayName: "Output B",
+          trayState: { ...snapshot, safeAudioDeviceId: "out-b" },
+        },
+      ];
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(setMenu).not.toHaveBeenCalled();
+      expect(outputA.setChecked).toHaveBeenLastCalledWith(false);
+      expect(outputB.setChecked).toHaveBeenLastCalledWith(true);
+      expect(parent.setText).toHaveBeenLastCalledWith("Output B");
+      findText(checkItemOptions(), "Output A").action();
+      expect(coordination.issue).toHaveBeenCalledWith("peer", "selectSource", "out-a");
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses current Settings/update actions and refuses stale actions during installation", async () => {
+    const oldSettings = vi.fn();
+    const newSettings = vi.fn();
+    const oldUpdate = vi.fn();
+    const newUpdate = vi.fn();
+    const { rerender } = renderHook((props) => useTray({ ...defaultProps, ...props }), {
+      initialProps: {
+        onOpenSettings: oldSettings,
+        updateMenu: { text: "Check for Updates…", enabled: true, action: oldUpdate },
+        updateBusy: false,
+      },
+    });
+    await act(async () => {});
+    const settingsAction = findText(menuItemOptions(), "Settings…").action;
+    const updateAction = findText(menuItemOptions(), "Check for Updates…").action;
+    rerender({
+      onOpenSettings: newSettings,
+      updateMenu: { text: "Update Ready: v1.2.3…", enabled: true, action: newUpdate },
+      updateBusy: false,
+    });
+    await act(async () => {});
+    settingsAction();
+    updateAction();
+    expect(oldSettings).not.toHaveBeenCalled();
+    expect(oldUpdate).not.toHaveBeenCalled();
+    expect(newSettings).toHaveBeenCalledOnce();
+    expect(newUpdate).toHaveBeenCalledOnce();
+    expect(findText(menuItemOptions(), "Update Ready: v1.2.3…")).toBeTruthy();
+
+    rerender({
+      onOpenSettings: newSettings,
+      updateMenu: { text: "Installing Update…", enabled: false, action: newUpdate },
+      updateBusy: true,
+    });
+    await act(async () => {});
+    settingsAction();
+    updateAction();
+    expect(newSettings).toHaveBeenCalledOnce();
+    expect(newUpdate).toHaveBeenCalledOnce();
+    expect(
+      menuItemOptions()
+        .filter((item) => item.text === "Settings…")
+        .at(-1).enabled
+    ).toBe(false);
+    expect(findText(menuItemOptions(), "Installing Update…").enabled).toBe(false);
+  });
+
+  it("removes disabled update capabilities and refuses their old action", async () => {
+    const action = vi.fn();
+    const { rerender } = renderHook(({ updateMenu }) => useTray({ ...defaultProps, updateMenu }), {
+      initialProps: { updateMenu: { text: "Check for Updates…", enabled: true, action } },
+    });
+    await act(async () => {});
+    const staleAction = findText(menuItemOptions(), "Check for Updates…").action;
+    vi.mocked(MenuItem.new).mockClear();
+    rerender({ updateMenu: null });
+    await act(async () => {});
+    staleAction();
+    expect(action).not.toHaveBeenCalled();
+    expect(findText(menuItemOptions(), "Check for Updates…")).toBeUndefined();
   });
 
   it("builds the Source submenu with the current source type labelled and checked", async () => {
@@ -697,7 +1005,7 @@ describe("useTray", () => {
     );
     await act(async () => {});
     const staleQuit = findText(menuItemOptions(), "Quit").action;
-    const staleToggleWindow = findText(menuItemOptions(), "Hide Window").action;
+    const staleToggleWindow = findText(menuItemOptions(), "Hide").action;
     vi.mocked(MenuItem.new).mockClear();
     vi.mocked(Submenu.new).mockClear();
 
@@ -706,7 +1014,7 @@ describe("useTray", () => {
 
     const items = menuItemOptions();
     const subs = submenuOptions();
-    expect(findText(items, "Hide Window")).toMatchObject({ enabled: false });
+    expect(findText(items, "Hide")).toMatchObject({ enabled: false });
     expect(findText(items, "Quit")).toMatchObject({ enabled: false });
     expect(findText(subs, "Preset: None")).toMatchObject({ enabled: false });
     // Start/Stop is never gated.

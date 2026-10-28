@@ -368,6 +368,7 @@ pub fn run() {
           capture_status: coordinator::CaptureStatus::Stopped,
           visible: true,
           focus_sequence: 0,
+          tray_state: None,
         },
       )?;
       app.manage(runtime_identity);

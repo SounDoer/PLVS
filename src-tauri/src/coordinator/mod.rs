@@ -137,6 +137,7 @@ pub struct InstanceStateUpdate {
   capture_status: String,
   visible: bool,
   focus_sequence: u64,
+  tray_state: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -307,6 +308,7 @@ pub fn runtime_publish_instance_state(
     capture_status,
     visible: update.visible,
     focus_sequence: update.focus_sequence,
+    tray_state: update.tray_state,
   })?;
   let identity_root = persistence.identity_root()?;
   if role.try_promote(&identity_root, &identity)? {
@@ -328,12 +330,35 @@ pub fn runtime_publish_instance_state(
 #[tauri::command]
 pub fn runtime_list_instances(
   registry: State<'_, InstanceRegistry>,
-) -> Result<Vec<InstanceSummary>, String> {
+) -> Result<Vec<TrayInstanceSummary>, String> {
   let _ = registry.remove_stale()?;
-  Ok(summarize_instances(registry.list()?))
+  let mut descriptors = registry.list()?;
+  let mut snapshots: std::collections::HashMap<_, _> = descriptors
+    .iter_mut()
+    .map(|descriptor| (descriptor.instance_id.clone(), descriptor.tray_state.take()))
+    .collect();
+  Ok(
+    summarize_instances(descriptors)
+      .into_iter()
+      .map(|summary| TrayInstanceSummary {
+        tray_state: snapshots.remove(&summary.instance_id).flatten(),
+        summary,
+      })
+      .collect(),
+  )
+}
+
+/// Frontend menu presentation is private to the Tray, not part of CLI instance inspection.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayInstanceSummary {
+  #[serde(flatten)]
+  summary: InstanceSummary,
+  tray_state: Option<serde_json::Value>,
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Tauri injects four independent runtime services.
 pub fn runtime_issue_commands(
   identity: State<'_, RuntimeIdentity>,
   registry: State<'_, InstanceRegistry>,
@@ -342,6 +367,7 @@ pub fn runtime_issue_commands(
   instance_ids: Option<Vec<String>>,
   operation_id: String,
   action: String,
+  payload: Option<String>,
 ) -> Result<Vec<IssuedRuntimeCommand>, String> {
   if action == "prepareGlobal" {
     operations.begin(&persistence.identity_root()?, &operation_id)?;
@@ -366,7 +392,12 @@ pub fn runtime_issue_commands(
     return Err("A selected PLVS instance is no longer running.".to_string());
   }
   let mailbox = RuntimeCommandMailbox::open(&persistence.identity_root()?)?;
-  let issued = mailbox.issue_many(&targets, &operation_id, &action);
+  let issued = match payload {
+    Some(payload) => {
+      mailbox.issue_many_with_payload(&targets, &operation_id, &action, Some(&payload))
+    }
+    None => mailbox.issue_many(&targets, &operation_id, &action),
+  };
   if issued.is_err() && action == "prepareGlobal" {
     let _ = operations.finish(&operation_id);
   }
@@ -907,6 +938,7 @@ pub fn run_registry_test_host(args: &[String]) -> std::process::ExitCode {
       capture_status: CaptureStatus::Stopped,
       visible: true,
       focus_sequence: 0,
+      tray_state: None,
     },
   ) {
     Ok(registration) => registration,
@@ -1042,6 +1074,7 @@ mod tests {
           capture_status: CaptureStatus::Stopped,
           visible: true,
           focus_sequence: 0,
+          tray_state: None,
         },
       )
       .unwrap();

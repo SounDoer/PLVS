@@ -25,6 +25,7 @@ fn live_workbenches_register_and_unregister_independently() {
         capture_status: CaptureStatus::Stopped,
         visible: true,
         focus_sequence: 1,
+        tray_state: None,
       },
     )
     .expect("register default workbench");
@@ -36,6 +37,7 @@ fn live_workbenches_register_and_unregister_independently() {
         capture_status: CaptureStatus::Running,
         visible: false,
         focus_sequence: 2,
+        tray_state: None,
       },
     )
     .expect("register Spotify workbench");
@@ -88,6 +90,7 @@ fn source_names_are_disambiguated_without_creating_user_managed_names() {
             capture_status: CaptureStatus::Stopped,
             visible: true,
             focus_sequence: 0,
+            tray_state: None,
           },
         )
         .unwrap(),
@@ -128,6 +131,7 @@ fn an_instance_can_publish_source_capture_visibility_and_focus_changes() {
         capture_status: CaptureStatus::Stopped,
         visible: true,
         focus_sequence: 0,
+        tray_state: None,
       },
     )
     .unwrap();
@@ -138,6 +142,7 @@ fn an_instance_can_publish_source_capture_visibility_and_focus_changes() {
       capture_status: CaptureStatus::Running,
       visible: false,
       focus_sequence: 27,
+      tray_state: Some(serde_json::json!({"safeAudioDeviceId": "vlc", "presetActiveId": "side"})),
     })
     .expect("publish changed runtime state");
 
@@ -146,6 +151,12 @@ fn an_instance_can_publish_source_capture_visibility_and_focus_changes() {
   assert_eq!(current.capture_status, CaptureStatus::Running);
   assert!(!current.visible);
   assert_eq!(current.focus_sequence, 27);
+  assert_eq!(
+    current.tray_state.as_ref().unwrap()["safeAudioDeviceId"],
+    "vlc"
+  );
+  let public_summary = serde_json::to_value(summarize_instances(vec![current])).unwrap();
+  assert!(public_summary[0].get("trayState").is_none());
 
   drop(registration);
   let _ = std::fs::remove_dir_all(root);
@@ -167,6 +178,7 @@ fn stale_cleanup_rejects_pid_reuse_by_checking_process_start_identity() {
         capture_status: CaptureStatus::Running,
         visible: true,
         focus_sequence: 1,
+        tray_state: None,
       },
     )
     .unwrap();

@@ -19,6 +19,8 @@ pub struct RuntimeCommand {
   pub operation_id: String,
   pub instance_id: String,
   pub action: String,
+  #[serde(default)]
+  pub payload: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -144,13 +146,37 @@ impl RuntimeCommandMailbox {
     operation_id: &str,
     action: &str,
   ) -> Result<IssuedRuntimeCommand, String> {
+    self.issue_with_payload(instance_id, operation_id, action, None)
+  }
+
+  pub fn issue_with_payload(
+    &self,
+    instance_id: &str,
+    operation_id: &str,
+    action: &str,
+    payload: Option<&str>,
+  ) -> Result<IssuedRuntimeCommand, String> {
     validate_component(instance_id)?;
     validate_component(operation_id)?;
     if !matches!(
       action,
-      "show" | "quitInstance" | "prepareGlobal" | "abortGlobal" | "commitGlobal"
+      "show"
+        | "hide"
+        | "settings"
+        | "selectSource"
+        | "applyPreset"
+        | "quitInstance"
+        | "prepareGlobal"
+        | "abortGlobal"
+        | "commitGlobal"
     ) {
       return Err("Unknown runtime coordination action.".to_string());
+    }
+    let needs_payload = matches!(action, "selectSource" | "applyPreset");
+    if needs_payload != payload.is_some()
+      || payload.is_some_and(|value| value.is_empty() || value.len() > 4096)
+    {
+      return Err("Invalid runtime coordination payload.".to_string());
     }
     let _lock = self.lock_mailbox()?;
     if let Some(pending) = self.poll(instance_id)? {
@@ -169,6 +195,7 @@ impl RuntimeCommandMailbox {
       operation_id: operation_id.to_string(),
       instance_id: instance_id.to_string(),
       action: action.to_string(),
+      payload: payload.map(str::to_string),
     };
     write_json_atomic(&self.pending_path(instance_id), &command)?;
     Ok(IssuedRuntimeCommand {
@@ -183,9 +210,19 @@ impl RuntimeCommandMailbox {
     operation_id: &str,
     action: &str,
   ) -> Result<Vec<IssuedRuntimeCommand>, String> {
+    self.issue_many_with_payload(instance_ids, operation_id, action, None)
+  }
+
+  pub fn issue_many_with_payload(
+    &self,
+    instance_ids: &[String],
+    operation_id: &str,
+    action: &str,
+    payload: Option<&str>,
+  ) -> Result<Vec<IssuedRuntimeCommand>, String> {
     let mut issued = Vec::with_capacity(instance_ids.len());
     for instance_id in instance_ids {
-      match self.issue(instance_id, operation_id, action) {
+      match self.issue_with_payload(instance_id, operation_id, action, payload) {
         Ok(command) => issued.push(command),
         Err(error) => {
           if action == "prepareGlobal" {
@@ -372,6 +409,34 @@ mod tests {
   use std::sync::{Mutex, OnceLock};
 
   use super::*;
+
+  #[test]
+  fn tray_commands_preserve_target_payloads_and_reject_invalid_shapes() {
+    let root = test_root("tray-payload");
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    for action in ["selectSource", "applyPreset"] {
+      assert!(mailbox.issue("instance-a", "operation-a", action).is_err());
+      mailbox
+        .issue_with_payload("instance-a", "operation-a", action, Some("selected-id"))
+        .unwrap();
+      let command = mailbox.poll("instance-a").unwrap().unwrap();
+      assert_eq!(command.payload.as_deref(), Some("selected-id"));
+      assert_eq!(command.action, action);
+      mailbox.acknowledge(&command, "completed", None).unwrap();
+    }
+    for action in ["hide", "settings"] {
+      assert!(mailbox
+        .issue_with_payload("instance-a", "operation-a", action, Some("unexpected"))
+        .is_err());
+      mailbox.issue("instance-a", "operation-a", action).unwrap();
+      let command = mailbox.poll("instance-a").unwrap().unwrap();
+      mailbox.acknowledge(&command, "completed", None).unwrap();
+    }
+    assert!(mailbox
+      .issue_with_payload("instance-a", "operation-a", "selectSource", Some(""))
+      .is_err());
+    let _ = fs::remove_dir_all(root);
+  }
 
   fn matched_command_pause() -> &'static Mutex<Option<(String, Duration)>> {
     static PAUSE: OnceLock<Mutex<Option<(String, Duration)>>> = OnceLock::new();
