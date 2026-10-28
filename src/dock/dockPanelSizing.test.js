@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { computeDockStatsColumnCount, dockStatsCellWidth } from "./dockStatsLayout.js";
 import {
   getDockPanelSizing,
   fitDockPanelWidths,
@@ -38,7 +39,7 @@ describe("dock panel sizing", () => {
     ).toBeLessThan(140);
   });
 
-  it("recommends more Stats space for shorter strips, larger text and more readings", () => {
+  it("keeps automatic Stats width stable across heights and reserves three readable rows", () => {
     const controls = {
       statsVisibleIds: [
         "momentary",
@@ -60,10 +61,18 @@ describe("dock panel sizing", () => {
     };
     const size = (height, interfaceSize = "default") =>
       getDockPanelSizing("stats", interfaceSize, true, { height, controls });
-    // Normal label line boxes: seven rows fit at 180px, so fifteen readings need three columns.
     expect(size(180).defaultWidth).toBeGreaterThan(size(180).minWidth);
-    expect(size(56).defaultWidth).toBeGreaterThan(size(180).defaultWidth);
+    expect(size(56).defaultWidth).toBe(size(180).defaultWidth);
+    expect(size(320).defaultWidth).toBe(size(180).defaultWidth);
     expect(size(180, "extra-large").defaultWidth).toBeGreaterThan(size(180).defaultWidth);
+    // A native resize may round the usable content width down by one CSS pixel.
+    expect(
+      computeDockStatsColumnCount(
+        size(180).defaultWidth - 12 - 1,
+        undefined,
+        dockStatsCellWidth({ metricMeta: 13, metricValue: 18 }, controls.statsVisibleIds)
+      )
+    ).toBe(5);
   });
   it.each([
     ["small", 71],

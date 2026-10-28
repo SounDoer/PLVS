@@ -3,7 +3,7 @@ import { resolveInterfacePreferences } from "../preferences/interfaceSize.js";
 import { vectorDockMinWidth } from "../lib/vectorscopeSizing.js";
 import { normalizeDockModuleControls } from "./dockModuleControls.js";
 import { dockStatsCellWidth, recommendedDockStatsWidth } from "./dockStatsLayout.js";
-import { DOCK_DEFAULT_HEIGHT } from "./dockSizing.js";
+import { dockMinHeight } from "./dockSizing.js";
 
 // Serialization bound, not a layout cap. Rendered widths are fitted to the viewport.
 export const DOCK_MAX_PREFERRED_WIDTH = 0xffffffff;
@@ -109,12 +109,14 @@ export function getDockPanelSizing(
     return {
       ...base,
       minWidth: dockStatsCellWidth(font, controls.statsVisibleIds) + 12,
-      defaultWidth: recommendedDockStatsWidth(
-        options.height ?? DOCK_DEFAULT_HEIGHT,
-        controls.statsVisibleIds.length,
-        font,
-        controls.statsVisibleIds
-      ),
+      // Keep the last column across fractional CSS/device-pixel rounding during native resizing.
+      defaultWidth:
+        recommendedDockStatsWidth(
+          dockMinHeight(interfaceSize),
+          controls.statsVisibleIds.length,
+          font,
+          controls.statsVisibleIds
+        ) + 2,
     };
   }
   return { ...base, minWidth: base.growthPolicy === "flexible" ? plotMinimum : base.minWidth };

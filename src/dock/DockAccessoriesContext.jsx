@@ -89,6 +89,8 @@ export function DockAccessoriesProvider({ children }) {
     toggleReserveSpace,
     exitDockRestoringAttributes,
     onDockChange,
+    resetDockLayout,
+    layoutIsDefault,
     layout: dockLayout,
   } = useDock();
   const dockPanels = dockLayout.panels;
@@ -305,7 +307,7 @@ export function DockAccessoriesProvider({ children }) {
         maxWindowSec: historyRetentionSec,
         totalSamples: historyTotalSamples,
       },
-      isDefault: dockLayout.isDefault,
+      isDefault: layoutIsDefault,
       vectorscopeOptions: vectorscopePairOptions,
       spectrumOptions: spectrumChannelOptions,
       channelCount,
@@ -339,7 +341,7 @@ export function DockAccessoriesProvider({ children }) {
       historyRetentionSec,
       historyTotalSamples,
       dockLayout.controlsByPanelId,
-      dockLayout.isDefault,
+      layoutIsDefault,
       dockLayout.panelOrder,
       dockLayout.panels,
       dockLayout.panelsById,
@@ -414,7 +416,7 @@ export function DockAccessoriesProvider({ children }) {
         if (Array.isArray(payload.panelOrder)) dockLayout.setPanelOrder(payload.panelOrder);
         else dockLayout.reorder(payload.from, payload.to);
       } else if (type === "reset-modules") {
-        dockLayout.resetLayout();
+        void resetDockLayout();
       } else if (type === "hover-module") {
         setHoveredDockPanelId(typeof payload.panelId === "string" ? payload.panelId : null);
       } else if (type === "open-module-settings") {
@@ -489,6 +491,7 @@ export function DockAccessoriesProvider({ children }) {
       raiseNotice,
       reserveSpace,
       toggleReserveSpace,
+      resetDockLayout,
       openUpdateDetails,
       updateControls,
     ]

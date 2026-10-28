@@ -52,6 +52,31 @@ function renderStrip(props = {}) {
 }
 
 describe("DockStrip", () => {
+  it("keeps Stats and neighboring panel widths stable when only the strip height changes", () => {
+    const tree = (height) => (
+      <LoudnessProfileProvider>
+        <FrameDataProvider value={{}}>
+          <HistoryDataProvider value={{}}>
+            <DockStrip
+              panels={[
+                { id: "stats", moduleId: "stats" },
+                { id: "spectrum", moduleId: "spectrum" },
+              ]}
+              controls={{}}
+              height={height}
+            />
+          </HistoryDataProvider>
+        </FrameDataProvider>
+      </LoudnessProfileProvider>
+    );
+    const { rerender } = render(tree(80));
+    const widths = () =>
+      screen.getAllByTestId("dock-module").map((element) => element.style.flexBasis);
+    const before = widths();
+    rerender(tree(240));
+    expect(widths()).toEqual(before);
+  });
+
   it("updates the Vector minimum with Interface Size without replacing its preferred width", () => {
     const tree = (interfaceSize) => (
       <LoudnessProfileProvider>

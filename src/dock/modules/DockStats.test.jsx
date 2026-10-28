@@ -89,6 +89,21 @@ function renderWith(statsMetrics, controls, shared = {}, displayAudio) {
 }
 
 describe("DockStats", () => {
+  it("fills five readable columns at every height instead of spreading two columns apart", () => {
+    const ids = STATS_CANONICAL_ORDER;
+    renderWith(
+      ids.map((id) => ({ id, shortLabel: STATS_META[id].shortLabel, value: "-18.1" })),
+      statsControls(ids)
+    );
+    const grid = screen.getByTestId("dock-stats-grid");
+    const width = 5 * testCellWidth(ids) + 48;
+    for (const height of [72, 240, 160, 48]) {
+      act(() => triggerResize([{ target: grid, contentRect: { width, height } }]));
+      expect(grid.getAttribute("data-column-count")).toBe("5");
+      expect(screen.getAllByTestId("dock-stat").at(-1).style.gridRow).toBe("3");
+    }
+  });
+
   it("escapes an initial native scrollbar gutter to fit five columns and three full rows", () => {
     const ids = STATS_CANONICAL_ORDER;
     renderWith(

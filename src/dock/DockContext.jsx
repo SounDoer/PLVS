@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useDockMode } from "../hooks/useDockMode.js";
+import { DOCK_DEFAULT_HEIGHT } from "./dockSizing.js";
 import { useSceneGuard } from "../hooks/SceneGuardContext.jsx";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useMeterDisplayState } from "../runtime/MeterRuntimeContext.jsx";
@@ -17,6 +18,8 @@ import { useDockLayout } from "./useDockLayout.js";
  *     reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any, origin?: string,
  *   }) => Promise<{ ok: boolean, error: any }>,
  *   onDockChange: (edgeOrNull: string | null) => Promise<void>,
+ *   resetDockLayout: () => Promise<void>,
+ *   layoutIsDefault: boolean,
  *   onDockHeightChange: (height: number, options?: { persist?: boolean, cancelled?: boolean, origin?: string }) => Promise<void>,
  *   executeDockForControl: (method: string, projected: any) => Promise<any>,
  * }} DockOwner
@@ -194,6 +197,21 @@ export function DockProvider({ children }) {
     [clearNotice, raiseNotice, resizeDockHeight]
   );
 
+  const resetDockLayout = useCallback(async () => {
+    clearNotice();
+    try {
+      // Complete native geometry first: a rejected resize must not partially reset the layout.
+      await resizeDockHeight(DOCK_DEFAULT_HEIGHT, { persist: true });
+      dockLayout.resetLayout();
+    } catch (error) {
+      raiseNotice(
+        "error",
+        "Dock layout could not be reset. The previous layout was kept.",
+        errorDetails("Dock reset failed", error)
+      );
+    }
+  }, [clearNotice, resizeDockHeight, dockLayout, raiseNotice]);
+
   return (
     <DockContext.Provider
       value={{
@@ -217,6 +235,8 @@ export function DockProvider({ children }) {
         exitDockRestoringAttributes,
         onDockChange,
         onDockHeightChange,
+        resetDockLayout,
+        layoutIsDefault: dockLayout.isDefault && dockHeight === DOCK_DEFAULT_HEIGHT,
         executeDockForControl,
       }}
     >

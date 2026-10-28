@@ -123,9 +123,8 @@ export function dockStatsGridTemplate(
   ).join(" ");
 }
 
-/** Choose readable columns using both dimensions; overflow is handled by the scroll container. */
-export function fitDockStatsColumns(width, height, count, minCellWidth, minRowHeight, rowGap = 0) {
+/** Fill the available width with readable columns; height only affects vertical overflow. */
+export function fitDockStatsColumns(width, count, minCellWidth) {
   const maxColumns = computeDockStatsColumnCount(width, undefined, minCellWidth);
-  const rows = Math.max(1, Math.floor((height + rowGap) / minRowHeight));
-  return Math.min(maxColumns, Math.max(1, Math.ceil(count / rows)));
+  return Math.min(maxColumns, Math.max(1, count));
 }

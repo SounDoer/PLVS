@@ -36,12 +36,7 @@ function useDockStatsColumnCount(containerRef, ids) {
     const selectedIds = idsKey ? idsKey.split(",") : [];
     if (!element || !selectedIds.length) return undefined;
 
-    const measure = (width = element.clientWidth, height = element.clientHeight) => {
-      const cellHeight = element
-        .querySelector("[data-testid='dock-stat']")
-        ?.getBoundingClientRect().height;
-      const rowGap = parseFloat(getComputedStyle(element).rowGap) || 0;
-      const minRowHeight = cellHeight > 0 ? cellHeight + rowGap : 18;
+    const measure = (width = element.clientWidth) => {
       const metricValue = parseFloat(getComputedStyle(element).fontSize) || 16;
       const label = element.querySelector("[data-testid='dock-stat-label']");
       const metricMeta = label ? parseFloat(getComputedStyle(label).fontSize) || 12 : 12;
@@ -49,14 +44,7 @@ function useDockStatsColumnCount(containerRef, ids) {
       // The first one-column pass can have a native vertical scrollbar. Fit against the width
       // available after it disappears, or its gutter can permanently prevent the final column.
       const availableWidth = width + Math.max(0, element.offsetWidth - element.clientWidth);
-      const columnCount = fitDockStatsColumns(
-        availableWidth,
-        height,
-        selectedIds.length,
-        cellWidth,
-        minRowHeight,
-        rowGap
-      );
+      const columnCount = fitDockStatsColumns(availableWidth, selectedIds.length, cellWidth);
       setLayout((current) =>
         current.columnCount === columnCount && current.cellWidth === cellWidth
           ? current
@@ -70,7 +58,7 @@ function useDockStatsColumnCount(containerRef, ids) {
     if (typeof ResizeObserver !== "function") return undefined;
     const observer = new ResizeObserver((entries) => {
       const containerEntry = entries.find((entry) => entry.target === element);
-      measure(containerEntry?.contentRect?.width, containerEntry?.contentRect?.height);
+      measure(containerEntry?.contentRect?.width);
     });
     observer.observe(element);
     const cell = element.querySelector("[data-testid='dock-stat']");

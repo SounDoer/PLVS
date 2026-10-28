@@ -41,7 +41,7 @@ export const DEFAULT_DOCK_MODULES = [
 export const DEFAULT_DOCK_PANEL_SIZES = Object.freeze({
   level: 150,
   loudness: 260,
-  // Stats has no saved width until resized; its readable width follows height and text size.
+  // Stats has no saved width until resized; reserve three readable rows at the current text size.
   correlation: 190,
   waveform: 260,
   spectrogram: 260,

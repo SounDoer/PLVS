@@ -156,8 +156,11 @@ Stats labels leave room for descenders, including the “g” in **Dlg Rng** and
 with a normal label line height. The strip's minimum height accounts for the full row height.
 The toolbar and panel settings also follow the selected text size. Stats adapts its columns and
 rows to the available space and text size, with scrolling when all selected readings cannot fit.
-Stats automatically requests enough width for its selected readings at the current height and
-text size. Automatic width measures the selected labels and reserves a stable five-character
+Stats automatically reserves enough width for three rows of its selected readings at the current
+text size. Stats fills as many readable columns as its width permits, then wraps into additional rows.
+Changing Dock height keeps both panel widths and Stats columns stable; it changes the space around
+the readings and whether vertical scrolling is needed.
+Automatic width measures the selected labels and reserves a stable five-character
 numeric column. All cells share the same label and numeric widths; an activity-dot slot is reserved
 throughout when Dialogue Coverage is selected, keeping labels aligned. Live value changes do not
 change column widths. Channel-layout warnings do not take space from the three rows.
@@ -189,7 +192,9 @@ Map use crosshairs and readouts without an extra hover dot.
 Dragging a divider starts from the displayed widths and changes only the adjacent pair on screen.
 Double-clicking restores the pair's module defaults. Display and text-size changes fit saved
 preferences without overwriting them, so returning to a wider display restores the preferred
-layout. Saved layouts and heights keep their existing values; Reset Layout adopts the new defaults.
+layout. Reset Layout restores the default modules, order, widths, controls, and 180-pixel Dock height,
+while preserving the selected edge, monitor, and space reservation. Saved layouts and heights otherwise
+keep their existing values.
 
 Spectrum shares the normal panel's range zoom/pan, press-and-hold smoothing, and Max Hold
 contour-click reset. Grid, Peak Labels and hover readouts remain available at every Dock height. X/Y axes follow **Hide Axes & Labels** in Views.
@@ -219,8 +224,9 @@ preserves the window and offset. Unlink Time Range to keep that Dock panel's own
 panels with an unlinked range remain independent. Snapshot selection is shared regardless of linking.
 
 Level Meter uses the same settings and layout in both forms, including Vertical or Horizontal
-Orientation. Stats shows each reading on one line, label beside value, at every height. It adjusts its column and row counts to the available width and height; when all
-selected metrics cannot fit legibly, scroll within Stats to see the remaining rows. No selected
+Orientation. Stats shows each reading on one line, label beside value, at every height. It fills
+readable columns across the available width and wraps additional readings into rows; when the
+height cannot fit those rows, scroll within Stats to see the remaining readings. No selected
 metric is dropped. The separate Timecode module has been removed; transport actions remain in the
 right control area, and the timecode is available in the normal window. Saved layouts automatically
 discard old Timecode instances.

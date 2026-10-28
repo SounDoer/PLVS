@@ -84,7 +84,6 @@ export function DockStrip({
     const sizing = getDockPanelSizing(panel.moduleId, interfaceSize, showAxes, {
       controls: controls.controlsByPanelId?.[panel.id],
       channelCount,
-      height: height - scrollbarHeight,
     });
     return {
       id: panel.id,

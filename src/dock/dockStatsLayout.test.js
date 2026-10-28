@@ -82,10 +82,10 @@ describe("dockStatsGridTemplate", () => {
   });
 });
 
-it("uses both width and height without forcing a fixed row count", () => {
-  expect(fitDockStatsColumns(300, 36, 12, 60, 18)).toBe(4);
-  expect(fitDockStatsColumns(300, 108, 12, 60, 18)).toBe(2);
-  expect(fitDockStatsColumns(60, 36, 12, 60, 18)).toBe(1);
+it("fills readable columns across the width before wrapping and never creates empty columns", () => {
+  expect(fitDockStatsColumns(300, 12, 60)).toBe(4);
+  expect(fitDockStatsColumns(60, 12, 60)).toBe(1);
+  expect(fitDockStatsColumns(2000, 3, 60)).toBe(3);
 });
 
 it.each(["small", "default", "large", "extra-large"])(
@@ -97,16 +97,11 @@ it.each(["small", "default", "large", "extra-large"])(
     const width = recommendedDockStatsWidth(height, 15, font);
     const columns = fitDockStatsColumns(
       width - 12,
-      height - 8,
       15,
-      (DOCK_STATS_MIN_CELL_WIDTH_PX * font.metricValue) / 13,
-      rowHeight + DOCK_STATS_ROW_GAP,
-      DOCK_STATS_ROW_GAP
+      (DOCK_STATS_MIN_CELL_WIDTH_PX * font.metricValue) / 13
     );
     expect(columns).toBe(5);
     expect(3 * rowHeight + 2 * DOCK_STATS_ROW_GAP).toBeLessThanOrEqual(height - 8);
-    // A wider viewport must still choose three rows, rather than wasting space on two.
-    expect(fitDockStatsColumns(2000, height - 8, 15, 84, rowHeight + 3, 3)).toBe(5);
-    expect(fitDockStatsColumns(2000, height - 9, 15, 84, rowHeight + 3, 3)).toBe(8);
+    expect(fitDockStatsColumns(2000, 15, 84)).toBe(15);
   }
 );
