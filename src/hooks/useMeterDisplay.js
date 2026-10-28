@@ -140,12 +140,18 @@ export function useMeterDisplay() {
   }, [clearGuardTimer]);
 
   const raiseNotice = useCallback(
-    (/** @type {string} */ kind, text, details) => {
+    (
+      /** @type {string} */ kind,
+      text,
+      details,
+      options = /** @type {{requiresAttention?: boolean}} */ ({})
+    ) => {
       clearGuardTimer();
       setNotice({
         kind,
         text,
         ...(typeof details === "string" && details ? { details } : null),
+        ...(options.requiresAttention === true ? { requiresAttention: true } : null),
       });
       // Refusals and informational notices describe a moment rather than a state to act on, so
       // they clear themselves; errors stay until the next action.

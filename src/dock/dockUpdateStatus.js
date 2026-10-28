@@ -2,12 +2,22 @@
  * Dock's compact update state. `label` is the stable phase name for the toolbar toggle's badge
  * tip; `text` is the toolbar entry and adds the version or download progress.
  *
- * @param {{ updateInfo?: { hasUpdate?: boolean, latestVersion?: string }, error?: any,
+ * @param {{ updateInfo?: { hasUpdate?: boolean, latestVersion?: string, status?: string, activity?: {downloadError?: string} }, error?: any,
  *   downloading?: boolean, downloadProgress?: number | null, ready?: any }} updates
- * @returns {{ phase: string, label: string, text: string } | null}
+ * @returns {{ phase: string, label: string, text: string, action?: string } | null}
  */
 export function dockUpdateStatus(updates) {
-  if (!updates?.updateInfo?.hasUpdate) return null;
+  if (!updates) return null;
+  if (updates.updateInfo?.status === "unavailable" && !updates.updateInfo?.hasUpdate)
+    return {
+      phase: "error",
+      label: "Update Check Failed",
+      text: "Update Check Failed",
+      action: "check-update",
+    };
+  if (updates.error || updates.updateInfo?.activity?.downloadError)
+    return { phase: "error", label: "Update Failed", text: "Update Failed" };
+  if (!updates.updateInfo?.hasUpdate) return null;
   const version = updates.updateInfo.latestVersion ? ` · v${updates.updateInfo.latestVersion}` : "";
   if (updates.error) return { phase: "error", label: "Update Failed", text: "Update Failed" };
   if (updates.downloading) {

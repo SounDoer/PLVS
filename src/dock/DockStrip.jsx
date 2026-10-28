@@ -31,6 +31,7 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
  *   onToolbarToggle?: () => void,
  *   onRestoreWindow?: () => void,
  *   updateStatus?: { phase: string, label: string } | null,
+ *   statusItems?: import("../lib/appStatus.js").AppStatusItem[],
  *   recordingState?: string | null,
  * }} props
  */
@@ -51,6 +52,7 @@ export function DockStrip({
   onToolbarToggle,
   onRestoreWindow,
   updateStatus = null,
+  statusItems = [],
   recordingState = null,
 }) {
   const chrome = usePanelChromeData();
@@ -58,6 +60,7 @@ export function DockStrip({
   const channelCount = chrome?.channelCount ?? 2;
   const viewportRef = useRef(null);
   const [availableWidth, setAvailableWidth] = useState(0);
+  const [, refreshFontMetrics] = useState(0);
   // Height of the horizontal scrollbar that appears when the panels are wider than the screen.
   const [scrollbarHeight, setScrollbarHeight] = useState(0);
   useLayoutEffect(() => {
@@ -70,7 +73,12 @@ export function DockStrip({
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
-    return () => observer.disconnect();
+    const onFontsLoaded = () => refreshFontMetrics((revision) => revision + 1);
+    document.fonts?.addEventListener("loadingdone", onFontsLoaded);
+    return () => {
+      observer.disconnect();
+      document.fonts?.removeEventListener("loadingdone", onFontsLoaded);
+    };
   }, []);
   const entries = panels.map((panel) => {
     const sizing = getDockPanelSizing(panel.moduleId, interfaceSize, showAxes, {
@@ -188,6 +196,7 @@ export function DockStrip({
           transport={controls.sourceTransportState}
           onTransport={controls.onSourceTransportAction}
           update={updateStatus}
+          statusItems={statusItems}
         />
       </div>
       <RecordingIndicator

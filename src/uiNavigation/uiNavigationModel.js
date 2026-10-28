@@ -23,6 +23,7 @@ export const UI_SURFACE_KINDS = Object.freeze([
   "libraryExport",
   "importReview",
   "importComplete",
+  "status",
 ]);
 
 export const UI_SURFACE_ORIGINS = Object.freeze(["navigable", "event", "nested"]);

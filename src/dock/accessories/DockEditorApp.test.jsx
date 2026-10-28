@@ -31,6 +31,28 @@ vi.mock("./useAccessoryClient.js", () => ({
 }));
 
 describe("DockEditorApp window behavior", () => {
+  it("routes status actions through the main window and keeps read-only details dismissible", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "status",
+      statusItems: [
+        {
+          id: "update",
+          kind: "update",
+          text: "Update Available",
+          details: "Version 1",
+          action: "update",
+        },
+      ],
+    };
+    render(<DockEditorApp />);
+    fireEvent.click(screen.getByRole("button", { name: "View Update Details" }));
+    expect(measureDockEditorContent(screen.getByTestId("dock-editor"))).not.toBeNull();
+    expect(screen.getAllByText("Status")).toHaveLength(1);
+    expect(action).toHaveBeenCalledWith("status-action", { action: "update" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(action).toHaveBeenCalledWith("close-editor");
+  });
   beforeEach(() => {
     action.mockClear();
     client.payload = PRESETS_PAYLOAD;

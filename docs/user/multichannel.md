@@ -17,7 +17,8 @@ When only one standard layout applies, its name is shown as text. The layout cho
 there are multiple standards to choose from, or when a Custom or unknown layout can be replaced.
 
 When PLVS cannot identify a layout, it says so, and loudness uses channels 1 and 2 only until you set
-one. Channels above 8 are never guessed from the count alone.
+one. The toolbar status entry explains this condition in both normal and Dock modes, without
+occupying space inside Stats or Loudness. Channels above 8 are never guessed from the count alone.
 
 ## Per-panel behaviour
 

@@ -1,14 +1,60 @@
 import { DOCK_PAD_X, DOCK_PAD_Y, DOCK_STATS_ROW_GAP, dockStatsRowHeight } from "./dockSizing.js";
+import { STATS_META } from "../lib/statsCatalog.js";
 
-// Widths at a 13px value font, scaled by the rendered font. Single-line cells must hold the
-// longest short label (7 characters, e.g. "Dlg Rng") beside a 5ch readout without truncation.
+// Fallback geometry before a layout is measured. Running panels pass selected-label measurements.
 export const DOCK_STATS_MIN_CELL_WIDTH_PX = 84;
 export const DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX = 92;
 export const DOCK_STATS_INNER_GAP_PX = 2;
 export const DOCK_STATS_GROUP_GAP_PX = 12;
+export const DOCK_STATS_ACTIVITY_SLOT_PX = 10;
+const measuredWidths = new Map();
+const observedDocuments = new WeakSet();
 
-/** Include scrollbar clearance so an initially overflowing grid can reach the fitted column count. */
-export function recommendedDockStatsWidth(height, count, font) {
+/** Measure the selected labels once per layout; values always reserve five mono characters. */
+export function dockStatsCellWidth(font, ids = Object.keys(STATS_META)) {
+  const styles =
+    typeof document !== "undefined" ? getComputedStyle(document.documentElement) : null;
+  const sans = styles?.getPropertyValue("--ui-font-sans").trim() || "Inter, sans-serif";
+  const mono = styles?.getPropertyValue("--ui-font-mono").trim() || '"JetBrains Mono", monospace';
+  const key = JSON.stringify([
+    font.metricMeta,
+    font.metricValue,
+    sans,
+    mono,
+    ids,
+    typeof document !== "undefined" ? document.fonts?.status : "fallback",
+  ]);
+  if (measuredWidths.has(key)) return measuredWidths.get(key);
+  if (typeof document !== "undefined" && document.fonts && !observedDocuments.has(document)) {
+    observedDocuments.add(document);
+    document.fonts.addEventListener("loadingdone", () => measuredWidths.clear());
+  }
+  let context = null;
+  if (typeof document !== "undefined" && typeof CanvasRenderingContext2D !== "undefined") {
+    context = document.createElement("canvas").getContext("2d");
+  }
+  const measure = (text, size, weight, family) => {
+    if (!context) return text.length * size * 0.65;
+    context.font = `${weight} ${size}px ${family}`;
+    return context.measureText(text).width;
+  };
+  const labelWidth = Math.max(
+    0,
+    ...ids.map((id) => measure(STATS_META[id]?.shortLabel ?? id, font.metricMeta, 500, sans))
+  );
+  if (ids.length === 0) {
+    return Math.ceil(measure("No stats selected", font.metricMeta, 500, sans)) + 2;
+  }
+  const activityWidth = ids.includes("dialogueCoverage") ? DOCK_STATS_ACTIVITY_SLOT_PX : 0;
+  const readoutWidth = 5 * measure("0", font.metricValue, 600, mono);
+  const width = Math.ceil(labelWidth + activityWidth + DOCK_STATS_INNER_GAP_PX + readoutWidth + 2);
+  if (measuredWidths.size > 256) measuredWidths.clear();
+  measuredWidths.set(key, width);
+  return width;
+}
+
+/** Reserve complete rows, selected labels and a shared numeric track without speculative clearance. */
+export function recommendedDockStatsWidth(height, count, font, ids = Object.keys(STATS_META)) {
   const rows = Math.max(
     1,
     Math.floor(
@@ -17,9 +63,8 @@ export function recommendedDockStatsWidth(height, count, font) {
     )
   );
   const columns = Math.max(1, Math.ceil(count / rows));
-  const cellWidth = (DOCK_STATS_MIN_CELL_WIDTH_PX * font.metricValue) / 13;
-  const width = columns * cellWidth + (columns - 1) * DOCK_STATS_GROUP_GAP_PX + 2 * DOCK_PAD_X + 24;
-  return Math.max(Math.ceil((160 * font.metricValue) / 16), Math.ceil(width / 20) * 20);
+  const cellWidth = dockStatsCellWidth(font, ids);
+  return columns * cellWidth + (columns - 1) * DOCK_STATS_GROUP_GAP_PX + 2 * DOCK_PAD_X;
 }
 
 /**

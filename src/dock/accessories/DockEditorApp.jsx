@@ -1,4 +1,5 @@
 import { DockViews } from "../editors/DockViews.jsx";
+import { AppStatusList } from "../../components/AppStatus.jsx";
 import { DockEditorShell } from "../editors/DockEditorShell.jsx";
 import { DeviceSelectionContent } from "../../components/DeviceSelectionContent.jsx";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
@@ -211,7 +212,16 @@ export function DockEditorApp() {
             : "w-max min-w-48 max-w-[400px]"
       )}
     >
-      {payload.view === "modules" ? (
+      {payload.view === "status" ? (
+        <DockEditorShell title="Status">
+          <AppStatusList
+            accessory
+            showTitle={false}
+            items={payload.statusItems ?? []}
+            onAction={(value) => action("status-action", { action: value })}
+          />
+        </DockEditorShell>
+      ) : payload.view === "modules" ? (
         <DockModulesEditor
           panels={payload.panels}
           vectorscopeSettingsAvailable={payload.vectorscopeSettingsAvailable}

@@ -4,6 +4,17 @@ import { dockUpdateStatus } from "./dockUpdateStatus.js";
 const base = { updateInfo: { hasUpdate: true, latestVersion: "0.22.0" } };
 
 describe("dockUpdateStatus", () => {
+  it("offers an update-check retry even when no candidate was found", () => {
+    expect(
+      dockUpdateStatus({ updateInfo: { status: "unavailable", hasUpdate: false } })
+    ).toMatchObject({ phase: "error", text: "Update Check Failed", action: "check-update" });
+    expect(
+      dockUpdateStatus({
+        ...base,
+        updateInfo: { ...base.updateInfo, activity: { downloadError: "Download interrupted" } },
+      })
+    ).toMatchObject({ phase: "error", text: "Update Failed" });
+  });
   it("is absent without an update", () => {
     expect(dockUpdateStatus({ updateInfo: { hasUpdate: false } })).toBeNull();
   });

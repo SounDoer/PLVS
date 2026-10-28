@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "workbench": {
+    "instanceId": "REPLACE-WITH-INSTANCE-ID"
+  },
+  "scenarios": [
+    {
+      "id": "dock-clean",
+      "durable": [],
+      "ui": {
+        "kind": "workspace"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "dock-clean.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-layout",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.layout",
+        "surfaceKind": "status",
+        "phase": "layout",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "dock-layout.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-summary",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.summary",
+        "surfaceKind": "status",
+        "phase": "summary",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "dock-summary.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-details",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.details",
+        "surfaceKind": "status",
+        "phase": "details",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "dock-editor",
+        "output": "dock-details.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-capture-failed",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.capture-failed",
+        "surfaceKind": "status",
+        "phase": "capture-failed",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "dock-header",
+        "output": "dock-capture-failed.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-update",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.update",
+        "surfaceKind": "status",
+        "phase": "update",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "dock-update.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-update-ready",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.update-ready",
+        "surfaceKind": "status",
+        "phase": "update-ready",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "dock-update-ready.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-update-failed",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.update-failed",
+        "surfaceKind": "status",
+        "phase": "update-failed",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "dock-update-failed.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "dock-details-extra-large",
+      "durable": [
+        {
+          "family": "settings",
+          "patch": {
+            "interfaceSize": "extra-large"
+          }
+        }
+      ],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.details",
+        "surfaceKind": "status",
+        "phase": "details",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "dock-editor",
+        "output": "dock-details-extra-large.png"
+      },
+      "touches": ["settings.interfaceSize"]
+    }
+  ]
+}

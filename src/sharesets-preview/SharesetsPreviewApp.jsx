@@ -208,10 +208,8 @@ function FullWorkspaceExample({
           }
           footer={{
             sourceLabel: "Preview Audio",
-            audioDrop: null,
             loudnessProfileName: profile?.name ?? null,
             activePresetName: presetName,
-            hasUpdate: false,
           }}
         />
       </WorkspacePreviewProvider>

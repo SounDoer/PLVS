@@ -15,6 +15,7 @@ import { HoverTip } from "../../components/HoverTip.jsx";
 import { LinkButton } from "../../components/ui/link-button.jsx";
 import { cn } from "../../lib/utils.js";
 import { SHELL_HEADER_ACTIONS, SHELL_HEADER_BAR } from "../../lib/shellLayout.js";
+import { AppStatusSummary } from "../../components/AppStatus.jsx";
 
 const ACTION_ICON_CLASS = "size-[length:var(--ui-icon-shell-action)]";
 const UPDATE_ICONS = {
@@ -48,7 +49,16 @@ export function DockHeader({ state, onAction }) {
       )}
     >
       <div data-testid="dock-header-trailing" className="flex min-w-0 flex-1 items-center gap-3">
-        {state.notice ? (
+        {state.statusItems ? (
+          <AppStatusSummary
+            items={state.statusItems}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              onAction("open-editor", { view: "status", anchorX: rect.left + rect.width / 2 });
+            }}
+          />
+        ) : null}
+        {!state.statusItems && state.notice ? (
           <HoverTip
             tip={state.notice.details ?? state.notice.text}
             side="left"
@@ -69,7 +79,9 @@ export function DockHeader({ state, onAction }) {
           </HoverTip>
         ) : null}
         <div className="flex-1" />
-        {state.update ? <DockHeaderUpdate update={state.update} onAction={onAction} /> : null}
+        {!state.statusItems && state.update ? (
+          <DockHeaderUpdate update={state.update} onAction={onAction} />
+        ) : null}
         <div data-testid="dock-header-actions" className={cn(SHELL_HEADER_ACTIONS, "shrink-0")}>
           <IconButton
             icon={<Trash2 className={ACTION_ICON_CLASS} />}
@@ -130,7 +142,7 @@ export function DockHeader({ state, onAction }) {
 
 /**
  * Dock's update entry: the strip shows only a badge, so the toolbar names the state in words,
- * like the normal window's footer link, with the same LinkButton. It opens the shared update details.
+ * with the same LinkButton as the normal toolbar. It opens the shared update details.
  *
  * @param {{ update: { phase: string, text: string }, onAction: (...args: any[]) => any }} props
  */

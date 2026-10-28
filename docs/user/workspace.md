@@ -42,6 +42,24 @@ The same convention applies in Dock. Direct feature toggles retain their on/off 
 Dock window placement and screen reservation are configured in Views.
 Both states use the same neutral icon color at rest, without a persistent highlight.
 
+## Status Notices
+
+The top toolbar groups current measurement warnings, operation errors and update state into one
+status entry. It names the highest-priority condition and shows a count when several are active.
+Hover for a short explanation; click for the full list, including affected readings and available
+actions. Click outside or press Escape to close the list. Resolved conditions disappear; the list
+is not a notification history. The footer keeps Source, Loudness and Preset information.
+
+In Dock, the toolbar button in the right control column shows a status icon while closed. Open the
+toolbar to see the summary, then click it for the same list in a floating window toward the inside
+of the screen. Capture interruptions and failures of enabled dialogue detection show the toolbar
+automatically. Channel-layout limits, screen-space reservation failures and update state do not.
+Opening Settings from the list returns Dock to the normal window first.
+
+An unknown channel layout means loudness uses channels 1–2 only until you set a layout in Settings.
+This condition and **Audio Dropped** appear in the shared status list rather than inside individual
+panels. Metric threshold colors remain attached to their readings.
+
 ## Snapshot
 
 Click any point on a history chart to freeze every meter at that moment, then return to live with one
@@ -135,12 +153,14 @@ Oversized heights are fitted again when entering Dock on another display or rest
 Dock text follows **Interface Size**, using the same readout and label sizes as the normal
 workspace. Resizing the strip changes the available chart space and spacing, not the font size.
 Stats labels leave room for descenders, including the “g” in **Dlg Rng** and **Dlg Cov**,
-with a normal label line height. The strip's minimum height and automatic Stats width account for
-the full row height.
+with a normal label line height. The strip's minimum height accounts for the full row height.
 The toolbar and panel settings also follow the selected text size. Stats adapts its columns and
 rows to the available space and text size, with scrolling when all selected readings cannot fit.
 Stats automatically requests enough width for its selected readings at the current height and
-text size. At the default text size and 180-pixel height, all 15 readings use a 420-pixel preference.
+text size. Automatic width measures the selected labels and reserves a stable five-character
+numeric column. All cells share the same label and numeric widths; an activity-dot slot is reserved
+throughout when Dialogue Coverage is selected, keeping labels aligned. Live value changes do not
+change column widths. Channel-layout warnings do not take space from the three rows.
 Dragging a divider beside Stats sets a manual preference; double-click that divider to restore
 automatic sizing. A narrow display can still require vertical scrolling inside Stats.
 The initial layout places Stats, Level Meter, Loudness, Waveform, Spectrogram, Spectrum,

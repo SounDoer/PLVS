@@ -20,6 +20,29 @@ const STATE = {
 };
 
 describe("DockHeader", () => {
+  it("opens current status details in the native accessory instead of clipping a popover into the toolbar", () => {
+    const onAction = vi.fn();
+    render(
+      <DockHeader
+        state={{
+          ...STATE,
+          statusItems: [
+            {
+              id: "channel-layout",
+              kind: "warning",
+              text: "Channel Layout Unknown",
+              details: "Loudness uses channels 1–2 only.",
+            },
+            { id: "update", kind: "update", text: "Update Available", details: "Update Available" },
+          ],
+        }}
+        onAction={onAction}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));
+    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "status", anchorX: 0 });
+    expect(screen.queryByTestId("dock-header-update")).toBeNull();
+  });
   it("keeps the settings tools without a duplicate transport or central spacer", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     render(<DockHeader state={STATE} onAction={vi.fn()} />);

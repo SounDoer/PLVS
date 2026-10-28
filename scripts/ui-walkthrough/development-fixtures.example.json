@@ -1,6 +1,8 @@
 {
   "version": 1,
-  "workbench": { "instanceId": "REPLACE-WITH-INSTANCE-ID" },
+  "workbench": {
+    "instanceId": "REPLACE-WITH-INSTANCE-ID"
+  },
   "fixture": {
     "audio": {
       "id": "ui-review-stereo",
@@ -20,7 +22,10 @@
         "phase": "idle",
         "action": "cancel"
       },
-      "screenshot": { "target": "main", "output": "update-dialog.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "update-dialog.png"
+      },
       "touches": []
     },
     {
@@ -33,7 +38,10 @@
         "phase": "preferences",
         "action": "reset"
       },
-      "screenshot": { "target": "main", "output": "update-preferences.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "update-preferences.png"
+      },
       "touches": []
     },
     {
@@ -46,7 +54,10 @@
         "phase": "review",
         "action": "cancel"
       },
-      "screenshot": { "target": "main", "output": "import-review.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "import-review.png"
+      },
       "touches": []
     },
     {
@@ -59,7 +70,10 @@
         "phase": "complete",
         "action": "close"
       },
-      "screenshot": { "target": "main", "output": "import-complete.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "import-complete.png"
+      },
       "touches": []
     },
     {
@@ -72,7 +86,10 @@
         "phase": "chooseType",
         "action": "cancel"
       },
-      "screenshot": { "target": "main", "output": "library-export.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "library-export.png"
+      },
       "touches": []
     },
     {
@@ -85,7 +102,10 @@
         "phase": "decision",
         "action": "cancel"
       },
-      "screenshot": { "target": "main", "output": "close-confirmation.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "close-confirmation.png"
+      },
       "touches": []
     },
     {
@@ -98,7 +118,10 @@
         "phase": "decision",
         "action": "close"
       },
-      "screenshot": { "target": "main", "output": "crash-report.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "crash-report.png"
+      },
       "touches": []
     },
     {
@@ -111,28 +134,48 @@
         "phase": "decision",
         "action": "reset"
       },
-      "screenshot": { "target": "main", "output": "library-conflict.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "library-conflict.png"
+      },
       "touches": []
     },
     {
       "id": "file-analysis",
       "durable": [],
-      "ui": { "kind": "workspace" },
-      "screenshot": { "target": "main", "output": "file-analysis.png" },
+      "ui": {
+        "kind": "workspace"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "file-analysis.png"
+      },
       "touches": []
     },
     {
       "id": "settings-appearance",
       "durable": [],
-      "ui": { "kind": "settings", "section": "appearance" },
-      "screenshot": { "target": "main", "output": "settings-appearance.png" },
+      "ui": {
+        "kind": "settings",
+        "section": "appearance"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "settings-appearance.png"
+      },
       "touches": []
     },
     {
       "id": "spectrum-settings",
       "durable": [],
-      "ui": { "kind": "panelSettings", "panelId": "spectrum" },
-      "screenshot": { "target": "main", "output": "spectrum-settings.png" },
+      "ui": {
+        "kind": "panelSettings",
+        "panelId": "spectrum"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "spectrum-settings.png"
+      },
       "touches": []
     },
     {
@@ -144,22 +187,171 @@
         "themeId": "plvs-dark",
         "page": "core"
       },
-      "screenshot": { "target": "main", "output": "theme-customize.png" },
+      "screenshot": {
+        "target": "main",
+        "output": "theme-customize.png"
+      },
       "touches": []
     },
     {
       "id": "profile-create",
       "durable": [],
-      "ui": { "kind": "loudnessProfileEditor", "mode": "create" },
-      "screenshot": { "target": "main", "output": "profile-create.png" },
+      "ui": {
+        "kind": "loudnessProfileEditor",
+        "mode": "create"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "profile-create.png"
+      },
       "touches": []
     },
     {
       "id": "feedback-blank",
       "durable": [],
-      "ui": { "kind": "feedback" },
-      "screenshot": { "target": "main", "output": "feedback-blank.png" },
+      "ui": {
+        "kind": "feedback"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "feedback-blank.png"
+      },
       "touches": []
+    },
+    {
+      "id": "normal-layout",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.layout",
+        "surfaceKind": "status",
+        "phase": "layout",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-layout.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-summary",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.summary",
+        "surfaceKind": "status",
+        "phase": "summary",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-summary.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-details",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.details",
+        "surfaceKind": "status",
+        "phase": "details",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-details.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-capture-failed",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.capture-failed",
+        "surfaceKind": "status",
+        "phase": "capture-failed",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-capture-failed.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-update",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.update",
+        "surfaceKind": "status",
+        "phase": "update",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-update.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-update-ready",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.update-ready",
+        "surfaceKind": "status",
+        "phase": "update-ready",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-update-ready.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-update-failed",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.update-failed",
+        "surfaceKind": "status",
+        "phase": "update-failed",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-update-failed.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "normal-details-extra-large",
+      "durable": [
+        {
+          "family": "settings",
+          "patch": {
+            "interfaceSize": "extra-large"
+          }
+        }
+      ],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.details",
+        "surfaceKind": "status",
+        "phase": "details",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-details-extra-large.png"
+      },
+      "touches": ["settings.interfaceSize"]
     }
   ]
 }

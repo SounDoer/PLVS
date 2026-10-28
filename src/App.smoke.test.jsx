@@ -791,7 +791,31 @@ describe("App smoke", () => {
     expect(setDockReserveSpace).toHaveBeenLastCalledWith({ enabled: false, edge: "bottom" });
   });
 
-  it("keeps the Dock header visible with actionable reserve-space errors", async () => {
+  it("shows Dock controls automatically when capture cannot start", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    render(<App />);
+    const start = await screen.findByRole("button", { name: /^start$/i });
+    vi.mocked(listAudioDevices).mockRejectedValueOnce(new Error("Capture source disconnected"));
+    fireEvent.click(start);
+    await waitFor(() => {
+      const snapshot = /** @type {{payload?: any}} */ (
+        vi
+          .mocked(emitTo)
+          .mock.calls.filter(
+            ([surface, eventName]) =>
+              surface === "dock-header" && eventName === "dock-accessory://state"
+          )
+          .at(-1)?.[2]
+      );
+      expect(snapshot?.payload?.visible).toBe(true);
+      expect(snapshot?.payload?.statusItems?.[0]?.requiresAttention).toBe(true);
+    });
+  });
+
+  it("keeps reserve-space errors in status without forcing the Dock header open", async () => {
     vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
@@ -823,11 +847,27 @@ describe("App smoke", () => {
             surface === "dock-header" && eventName === "dock-accessory://state"
         )
         .at(-1)?.[2];
-      expect(headerSnapshot?.payload?.visible).toBe(true);
+      expect(headerSnapshot?.payload?.statusItems?.[0]?.text).toBe(
+        "Could not reserve screen space. Dock remains an overlay."
+      );
+      expect(headerSnapshot?.payload?.visible).toBe(false);
     });
     expect(setDockAccessories).not.toHaveBeenCalledWith(
       expect.objectContaining({ headerVisible: true })
     );
+    fireEvent.click(
+      screen.getByRole("button", { name: /show toolbar.*could not reserve screen space/i })
+    );
+    await waitFor(() => {
+      headerSnapshot = vi
+        .mocked(emitTo)
+        .mock.calls.filter(
+          ([surface, eventName]) =>
+            surface === "dock-header" && eventName === "dock-accessory://state"
+        )
+        .at(-1)?.[2];
+      expect(headerSnapshot?.payload?.visible).toBe(true);
+    });
     act(() => {
       tauriEventHandlers.get("dock-accessory://action")({
         payload: {

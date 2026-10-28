@@ -28,7 +28,7 @@ export function automaticOutputChangeNotice({
 }
 
 /**
- * Footer tooltip for audio dropped before analysis in the current Live session.
+ * Status details for audio dropped before analysis in the current Live session.
  *
  * @param {{ chunks: number, since: number }} audioDrop
  * @returns {string}

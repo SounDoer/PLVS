@@ -246,7 +246,12 @@ describe("useAudioEngine", () => {
     });
 
     await waitFor(() =>
-      expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: Audio unavailable")
+      expect(props.raiseNotice).toHaveBeenCalledWith(
+        "error",
+        "Error: Audio unavailable",
+        undefined,
+        { requiresAttention: true }
+      )
     );
   });
 
@@ -273,7 +278,9 @@ describe("useAudioEngine", () => {
     expect(props.halt).toHaveBeenCalledWith(expect.objectContaining({ message: reason }));
     expect(props.stopTimer).toHaveBeenCalled();
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(props.raiseNotice).toHaveBeenCalledWith("error", `Error: ${reason}`);
+    expect(props.raiseNotice).toHaveBeenCalledWith("error", `Error: ${reason}`, undefined, {
+      requiresAttention: true,
+    });
   });
 
   it("rebuilds an invalidated device stream once and clears the Live measurement", async () => {
@@ -350,7 +357,12 @@ describe("useAudioEngine", () => {
       expect.objectContaining({ message: "replacement invalidated" })
     );
     expect(startAudioCapture).toHaveBeenCalledOnce();
-    expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: replacement invalidated");
+    expect(props.raiseNotice).toHaveBeenCalledWith(
+      "error",
+      "Error: replacement invalidated",
+      undefined,
+      { requiresAttention: true }
+    );
   });
 
   it("records audio the engine dropped before analysis", async () => {

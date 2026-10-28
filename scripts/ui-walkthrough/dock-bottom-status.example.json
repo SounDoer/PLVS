@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "workbench": {
+    "instanceId": "REPLACE-WITH-INSTANCE-ID"
+  },
+  "scenarios": [
+    {
+      "id": "bottom-clean",
+      "durable": [],
+      "ui": {
+        "kind": "workspace"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "bottom-clean.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "bottom-summary",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.summary",
+        "surfaceKind": "status",
+        "phase": "summary",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "bottom-summary.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "bottom-details",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.details",
+        "surfaceKind": "status",
+        "phase": "details",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "dock-editor",
+        "output": "bottom-details.png"
+      },
+      "touches": []
+    },
+    {
+      "id": "bottom-capture-failed",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.capture-failed",
+        "surfaceKind": "status",
+        "phase": "capture-failed",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "dock-header",
+        "output": "bottom-capture-failed.png"
+      },
+      "touches": []
+    }
+  ]
+}

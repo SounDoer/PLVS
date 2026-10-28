@@ -2,7 +2,7 @@ import { UI_PREFERENCES } from "../preferences/data.js";
 import { resolveInterfacePreferences } from "../preferences/interfaceSize.js";
 import { vectorDockMinWidth } from "../lib/vectorscopeSizing.js";
 import { normalizeDockModuleControls } from "./dockModuleControls.js";
-import { recommendedDockStatsWidth } from "./dockStatsLayout.js";
+import { dockStatsCellWidth, recommendedDockStatsWidth } from "./dockStatsLayout.js";
 import { DOCK_DEFAULT_HEIGHT } from "./dockSizing.js";
 
 // Serialization bound, not a layout cap. Rendered widths are fitted to the viewport.
@@ -108,11 +108,12 @@ export function getDockPanelSizing(
     const controls = normalizeDockModuleControls("stats", options.controls);
     return {
       ...base,
-      minWidth: Math.ceil((160 * font.metricValue) / 16),
+      minWidth: dockStatsCellWidth(font, controls.statsVisibleIds) + 12,
       defaultWidth: recommendedDockStatsWidth(
         options.height ?? DOCK_DEFAULT_HEIGHT,
         controls.statsVisibleIds.length,
-        font
+        font,
+        controls.statsVisibleIds
       ),
     };
   }

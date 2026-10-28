@@ -1,6 +1,4 @@
 import { useCallback } from "react";
-import { TriangleAlert } from "lucide-react";
-import { describeAudioDrop } from "../lib/captureHealth.js";
 import { MeterRuntimeEngines } from "../runtime/MeterRuntimeEngines.jsx";
 import { AppHeader } from "./AppHeader.jsx";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
@@ -23,7 +21,6 @@ import {
   SHELL_PAGE,
   SHELL_TOP_REVEAL_HOT_ZONE,
 } from "@/lib/shellLayout";
-import { LinkButton } from "@/components/ui/link-button";
 
 /**
  * @param {{
@@ -39,7 +36,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   showFileAnalysisResult: boolean,
  *   fileSummaryProps: Parameters<typeof FileAnalysisSummary>[0] | null,
  *   panelChromeData: Partial<import("../workspace/AudioDataContext.jsx").PanelChromeData>,
- *   footer: { sourceLabel: string, audioDrop: any, loudnessProfileName: string | null, activePresetName: string | null, hasUpdate: boolean, layoutUnknown?: boolean, onOpenSettings?: (...args: any[]) => any, onOpenUpdate?: () => void },
+ *   footer: { sourceLabel: string, loudnessProfileName: string | null, activePresetName: string | null },
  *   docked?: boolean,
  *   dockProps?: Omit<Parameters<typeof DockStrip>[0], "recordingState"> | null,
  *   children?: import("react").ReactNode,
@@ -142,17 +139,6 @@ export function AppShell({
                   >
                     <span className={FOOTER_LABEL}>Source</span>
                     <span className={FOOTER_VALUE}>{footer.sourceLabel}</span>
-                    {/* Beside Source because it is the capture's health, and it does not shrink:
-                      the source name truncates first so the warning stays readable. */}
-                    {footer.audioDrop ? (
-                      <span
-                        title={describeAudioDrop(footer.audioDrop)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-xs bg-[color:var(--ui-interface-warning)] px-1 text-[color:var(--ui-content-on-warning)]"
-                      >
-                        <TriangleAlert className="size-[1em]" aria-hidden="true" />
-                        Audio Dropped
-                      </span>
-                    ) : null}
                     {/* Which regime you are monitoring under is the fact worth a permanent slot;
                       the reference value is already drawn on the chart as the line it describes.
                       Labelled Loudness, not Profile: that word belongs to Configuration Profile,
@@ -169,28 +155,6 @@ export function AppShell({
                         <div className={FOOTER_DIVIDER} />
                         <span className={FOOTER_LABEL}>Preset</span>
                         <span className={FOOTER_VALUE}>{footer.activePresetName}</span>
-                      </>
-                    ) : null}
-                    {footer.hasUpdate ? (
-                      <>
-                        <div className={FOOTER_DIVIDER} />
-                        <LinkButton
-                          onClick={footer.onOpenUpdate}
-                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:text-primary hover:underline"
-                        >
-                          Update Available · View Release Notes
-                        </LinkButton>
-                      </>
-                    ) : null}
-                    {footer.layoutUnknown ? (
-                      <>
-                        <div className={FOOTER_DIVIDER} />
-                        <LinkButton
-                          onClick={footer.onOpenSettings}
-                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:text-primary hover:underline"
-                        >
-                          Channel layout unknown · Set in Settings
-                        </LinkButton>
                       </>
                     ) : null}
                   </footer>

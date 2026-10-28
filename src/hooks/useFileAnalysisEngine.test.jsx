@@ -325,7 +325,9 @@ describe("useFileAnalysisEngine", () => {
     expect(setAnalyzingFileId).toHaveBeenLastCalledWith(expect.any(Function));
     expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-a")).toBeNull();
     expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-b")).toBe("session-b");
-    expect(raiseNotice).toHaveBeenCalledWith("error", "Error: decode failed");
+    expect(raiseNotice).toHaveBeenCalledWith("error", "Error: decode failed", undefined, {
+      requiresAttention: true,
+    });
   });
 
   it("stops the active file analysis without mutating a single file session", async () => {

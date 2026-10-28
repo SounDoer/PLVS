@@ -8,12 +8,30 @@ import {
   DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
   recommendedDockStatsWidth,
+  dockStatsCellWidth,
 } from "./dockStatsLayout.js";
 import { dockMinHeight, dockStatsRowHeight, DOCK_STATS_ROW_GAP } from "./dockSizing.js";
 import { UI_PREFERENCES } from "../preferences/data.js";
 import { resolveInterfacePreferences } from "../preferences/interfaceSize.js";
 
 describe("computeDockStatsColumnCount", () => {
+  it("sizes a shared column from selected labels, with an aligned activity slot only when needed", () => {
+    const font = { metricMeta: 13, metricValue: 18 };
+    const short = dockStatsCellWidth(font, ["momentary", "shortTerm", "integrated"]);
+    const long = dockStatsCellWidth(font, ["dialogueRange"]);
+    const withDot = dockStatsCellWidth(font, ["dialogueRange", "dialogueCoverage"]);
+    expect(short).toBeLessThan(long);
+    expect(dockStatsCellWidth(font, [])).toBeGreaterThan(short);
+    expect(withDot).toBeGreaterThan(long);
+    expect(
+      dockStatsCellWidth({ metricMeta: 17, metricValue: 24 }, ["dialogueRange", "dialogueCoverage"])
+    ).toBeGreaterThan(withDot);
+    expect(
+      recommendedDockStatsWidth(80, 3, font, ["momentary", "shortTerm", "integrated"])
+    ).toBeLessThan(
+      recommendedDockStatsWidth(80, 3, font, ["dialogueRange", "dialogueCoverage", "truePeak"])
+    );
+  });
   it("adds columns only after accounting for the wider group gutters", () => {
     expect(DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX).toBe(92);
     expect(DOCK_STATS_MIN_CELL_WIDTH_PX).toBe(84);

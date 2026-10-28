@@ -202,13 +202,13 @@ describe("StatsPanel", () => {
     expect(labels).toEqual(["Short-term Dynamics", "Integrated", "Momentary"]);
   });
 
-  it("marks Ch1/Ch2 loudness only when a loudness stat is visible", () => {
+  it("leaves layout warnings to the shared status area", () => {
     renderStatsPanel({
       shared: { statsMetrics, dialogueActiveNow: false },
       panelControls: { statsVisibleIds: ["integrated"] },
       displayAudio: { integrated: -20, loudnessLayoutKnown: false },
     });
-    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
+    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
   });
 
   it("does not mark stats while the layout is known", () => {

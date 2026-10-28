@@ -5,7 +5,8 @@ import { DockToolbarToggle } from "./DockToolbarToggle.jsx";
 
 /** @param {{ edge: string, toolbarOpen: boolean, onToolbarToggle?: () => void,
  * onRestore?: () => void, transport?: any, onTransport?: (action: string) => void,
- * update?: { phase: string, label: string } | null }} props */
+ * update?: { phase: string, label: string } | null,
+ * statusItems?: import("../lib/appStatus.js").AppStatusItem[] }} props */
 export function DockControlArea({
   edge,
   toolbarOpen,
@@ -14,6 +15,7 @@ export function DockControlArea({
   transport,
   onTransport,
   update = null,
+  statusItems = [],
 }) {
   return (
     <div className="dock-control-area" data-testid="dock-control-area">
@@ -32,6 +34,7 @@ export function DockControlArea({
         open={toolbarOpen}
         onToggle={onToolbarToggle}
         update={update}
+        statusItems={statusItems}
       />
       <IconButton
         icon={<Maximize2 className="size-3.5" absoluteStrokeWidth strokeWidth={1.75} />}

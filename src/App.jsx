@@ -164,7 +164,12 @@ function AppContent() {
   const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
     useMeterDisplayState();
   const { state: workspaceState, setAxisViewport } = useWorkspaceStore();
-  const { visibility: dockAccessoryVisibility, hoveredDockPanelId } = useDockAccessories();
+  const {
+    visibility: dockAccessoryVisibility,
+    hoveredDockPanelId,
+    statusItems,
+    statusOpen,
+  } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
   const { sourceMode, running, fileSessions, activeFileSession, activeFileId, analyzingFileId } =
@@ -537,6 +542,13 @@ function AppContent() {
     onPointerCancel: frameless ? releaseFocusControlsHold : undefined,
     sourceTransportState,
     notice,
+    statusItems,
+    statusOpen,
+    onStatusAction: (action) => {
+      if (action === "update") updateControls.openDetails();
+      else if (action === "check-update") void updateControls.refreshUpdateCheck();
+      else if (action === "settings") setSettingsOpen(true);
+    },
     sourceMode,
     onSourceModeChange,
     onSourceTransportAction,
@@ -591,17 +603,12 @@ function AppContent() {
   };
   const footer = {
     sourceLabel: footerSourceLabel,
-    audioDrop: sourceMode === "live" ? meterRuntime.liveAudioDrop : null,
     // The draft outranks the selection, so a profile being edited names the footer too. An
     // unnamed new profile reads Untitled, matching normalizeRuleDocument's fallback.
     loudnessProfileName: loudnessProfile.document
       ? loudnessProfile.document.name || "Untitled"
       : null,
     activePresetName,
-    hasUpdate: updateControls.updateInfo?.hasUpdate,
-    layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
-    onOpenSettings: () => setSettingsOpen(true),
-    onOpenUpdate: () => updateControls.openDetails(),
   };
   const dockProps = docked
     ? {
@@ -613,6 +620,7 @@ function AppContent() {
         toolbarOpen: dockAccessoryVisibility.headerVisible,
         onToolbarToggle: dockAccessoryVisibility.toggleToolbar,
         updateStatus: dockUpdateStatus(updateControls),
+        statusItems,
         onRestoreWindow: () => {
           void exitDockRestoringAttributes();
         },

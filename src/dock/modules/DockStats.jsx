@@ -1,5 +1,3 @@
-import { LoudnessLayoutMarker } from "../../components/LoudnessLayoutMarker.jsx";
-import { LAYOUT_DEPENDENT_STAT_IDS } from "../../components/panels/StatsPanel.jsx";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
 import { STATS_META, buildStatsValues } from "../../lib/statsCatalog.js";
@@ -18,20 +16,25 @@ import {
   dockStatsGridTemplate,
   DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
   DOCK_STATS_INNER_GAP_PX,
-  DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
+  dockStatsCellWidth,
 } from "../dockStatsLayout.js";
 import { useHoverTip } from "../../components/HoverTip.jsx";
 import { DOCK_STATS_ROW_EXTRA_PX } from "../dockSizing.js";
 
 const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
-function useDockStatsColumnCount(containerRef, count) {
-  const [layout, setLayout] = useState({ columnCount: 1, fontScale: 1 });
+function useDockStatsColumnCount(containerRef, ids) {
+  const idsKey = ids.join(",");
+  const [layout, setLayout] = useState({
+    columnCount: 1,
+    cellWidth: DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
+  });
 
   useLayoutEffect(() => {
     const element = containerRef.current;
-    if (!element || !count) return undefined;
+    const selectedIds = idsKey ? idsKey.split(",") : [];
+    if (!element || !selectedIds.length) return undefined;
 
     const measure = (width = element.clientWidth, height = element.clientHeight) => {
       const cellHeight = element
@@ -39,23 +42,31 @@ function useDockStatsColumnCount(containerRef, count) {
         ?.getBoundingClientRect().height;
       const rowGap = parseFloat(getComputedStyle(element).rowGap) || 0;
       const minRowHeight = cellHeight > 0 ? cellHeight + rowGap : 18;
-      const fontScale = (parseFloat(getComputedStyle(element).fontSize) || 13) / 13;
+      const metricValue = parseFloat(getComputedStyle(element).fontSize) || 16;
+      const label = element.querySelector("[data-testid='dock-stat-label']");
+      const metricMeta = label ? parseFloat(getComputedStyle(label).fontSize) || 12 : 12;
+      const cellWidth = dockStatsCellWidth({ metricValue, metricMeta }, selectedIds);
+      // The first one-column pass can have a native vertical scrollbar. Fit against the width
+      // available after it disappears, or its gutter can permanently prevent the final column.
+      const availableWidth = width + Math.max(0, element.offsetWidth - element.clientWidth);
       const columnCount = fitDockStatsColumns(
-        width,
+        availableWidth,
         height,
-        count,
-        DOCK_STATS_MIN_CELL_WIDTH_PX * fontScale,
+        selectedIds.length,
+        cellWidth,
         minRowHeight,
         rowGap
       );
       setLayout((current) =>
-        current.columnCount === columnCount && current.fontScale === fontScale
+        current.columnCount === columnCount && current.cellWidth === cellWidth
           ? current
-          : { columnCount, fontScale }
+          : { columnCount, cellWidth }
       );
     };
 
     measure();
+    const fontMeasure = () => measure();
+    document.fonts?.addEventListener("loadingdone", fontMeasure);
     if (typeof ResizeObserver !== "function") return undefined;
     const observer = new ResizeObserver((entries) => {
       const containerEntry = entries.find((entry) => entry.target === element);
@@ -64,8 +75,11 @@ function useDockStatsColumnCount(containerRef, count) {
     observer.observe(element);
     const cell = element.querySelector("[data-testid='dock-stat']");
     if (cell) observer.observe(cell);
-    return () => observer.disconnect();
-  }, [containerRef, count]);
+    return () => {
+      observer.disconnect();
+      document.fonts?.removeEventListener("loadingdone", fontMeasure);
+    };
+  }, [containerRef, idsKey]);
 
   return layout;
 }
@@ -80,6 +94,7 @@ function DockStatCell({
   position,
   watched,
   status,
+  showActivitySlot,
 }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
     tip: hint,
@@ -107,16 +122,20 @@ function DockStatCell({
         data-loudness-watched={watched ? "true" : "false"}
         className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-metric-meta)] font-medium leading-normal ${loudnessLabelClass(watched)}`}
       >
-        {id === "dialogueCoverage" ? (
-          <span
-            data-testid="dock-dialogue-active-dot"
-            data-active={dialogueActive ? "true" : "false"}
-            className={`size-1.5 shrink-0 rounded-full border ${
-              dialogueActive
-                ? "border-foreground bg-foreground"
-                : "border-muted-foreground bg-transparent"
-            }`}
-          />
+        {showActivitySlot ? (
+          <span className="flex w-1.5 shrink-0 items-center">
+            {id === "dialogueCoverage" ? (
+              <span
+                data-testid="dock-dialogue-active-dot"
+                data-active={dialogueActive ? "true" : "false"}
+                className={`size-1.5 shrink-0 rounded-full border ${
+                  dialogueActive
+                    ? "border-foreground bg-foreground"
+                    : "border-muted-foreground bg-transparent"
+                }`}
+              />
+            ) : null}
+          </span>
         ) : null}
         <span className="min-w-0 truncate">{label}</span>
       </span>
@@ -157,7 +176,10 @@ export function DockStats({ controls }) {
     .filter((id) => selected.has(id))
     .map((id) => ({ id, metric: byId.get(id), meta: STATS_META[id] }));
   const containerRef = useRef(null);
-  const { columnCount, fontScale } = useDockStatsColumnCount(containerRef, orderedMetrics.length);
+  const { columnCount, cellWidth } = useDockStatsColumnCount(
+    containerRef,
+    orderedMetrics.map(({ id }) => id)
+  );
   const visibleMetrics = visibleDockStats(orderedMetrics, columnCount);
 
   if (orderedMetrics.length === 0) {
@@ -173,23 +195,13 @@ export function DockStats({ controls }) {
       className="flex h-full min-h-0 min-w-0 flex-col"
       style={{ padding: "var(--ui-dock-pad-y) var(--ui-dock-pad-x)" }}
     >
-      {orderedMetrics.some(({ id }) => LAYOUT_DEPENDENT_STAT_IDS.has(id)) && (
-        <LoudnessLayoutMarker
-          known={displayAudio?.loudnessLayoutKnown}
-          dense
-          className="self-end"
-        />
-      )}
       <div
         ref={containerRef}
         data-testid="dock-stats-grid"
         data-column-count={columnCount}
         className="grid min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden text-[length:var(--ui-fs-metric-value)]"
         style={{
-          gridTemplateColumns: dockStatsGridTemplate(
-            columnCount,
-            DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX * fontScale
-          ),
+          gridTemplateColumns: dockStatsGridTemplate(columnCount, cellWidth),
           gridTemplateRows: `repeat(${Math.ceil(visibleMetrics.length / columnCount)}, max-content)`,
           alignContent: "safe center",
           justifyContent: "center",
@@ -213,6 +225,7 @@ export function DockStats({ controls }) {
               position={position}
               watched={watchedIds.has(id)}
               status={statuses[id]}
+              showActivitySlot={selected.has("dialogueCoverage")}
             />
           );
         })}

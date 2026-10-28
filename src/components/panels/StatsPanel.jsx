@@ -6,7 +6,6 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { HoverTip } from "@/components/HoverTip";
-import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { watchedMetricIds } from "../../lib/loudnessProfileCatalog.js";
@@ -104,9 +103,6 @@ export function StatsPanel() {
     ? statsOrder.map((id) => metricById.get(id)).filter(Boolean)
     : allMetrics;
   const visibleMetrics = orderedMetrics.filter((metric) => visibleIds.includes(metric.id));
-  const showsLayoutDependentStat = visibleMetrics.some((metric) =>
-    LAYOUT_DEPENDENT_STAT_IDS.has(metric.id)
-  );
 
   const values = displayAudio ? buildStatsValues(displayAudio) : {};
   const statuses = loudnessProfileEvaluate(loudnessProfileDocument, {
@@ -118,12 +114,6 @@ export function StatsPanel() {
   return (
     <div className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
-        {showsLayoutDependentStat ? (
-          <LoudnessLayoutMarker
-            known={displayAudio?.loudnessLayoutKnown}
-            className="self-end px-[var(--ui-metric-row-pad-x)] pb-[var(--ui-metric-list-gap)]"
-          />
-        ) : null}
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--ui-metric-list-gap)] overflow-y-auto">
           {visibleMetrics.length > 0 ? (
             visibleMetrics.map((metric) => (

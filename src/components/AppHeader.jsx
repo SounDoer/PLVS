@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { SHELL_HEADER, SHELL_HEADER_ACTIONS, SHELL_HEADER_OVERLAY } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
+import { AppStatusPopover } from "./AppStatus.jsx";
 
 const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
 const SOURCES_POPOVER_CLASS =
@@ -43,6 +44,9 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   onPointerCancel: (...args: any[]) => any,
  *   sourceTransportState: ReturnType<typeof import("../lib/sourceTransportState.js").deriveSourceTransportState>,
  *   notice: { kind?: string, text: string, details?: string } | null,
+ *   statusItems?: import("../lib/appStatus.js").AppStatusItem[],
+ *   statusOpen?: boolean,
+ *   onStatusAction?: (action: string) => void,
  *   sourceMode: string,
  *   onSourceModeChange: (...args: any[]) => any,
  *   onSourceTransportAction: (...args: any[]) => any,
@@ -90,6 +94,9 @@ export function AppHeader({
   onPointerCancel,
   sourceTransportState,
   notice,
+  statusItems = [],
+  statusOpen = false,
+  onStatusAction,
   sourceMode,
   onSourceModeChange,
   onSourceTransportAction,
@@ -150,7 +157,13 @@ export function AppHeader({
         onSourceModeChange={onSourceModeChange}
         onPrimaryAction={handlePrimaryAction}
       />
-      {notice ? (
+      <AppStatusPopover
+        requestedOpen={statusOpen}
+        items={statusItems}
+        onAction={onStatusAction}
+        onOpenChange={autoHideControls ? holdFocusControls : undefined}
+      />
+      {notice && statusItems.length === 0 ? (
         <HoverTip
           tip={notice.details ?? notice.text}
           align="start"

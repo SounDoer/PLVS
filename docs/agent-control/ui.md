@@ -18,6 +18,11 @@ This is intentionally separate from `app.inspect`. The application snapshot owns
 state and the global `revision`; `ui inspect` owns temporary presentation state. Callers normally
 retain both tokens before navigation.
 
+Development status walkthroughs register a read-only `status` event surface with only its named
+fixture phase. It has no public show command or result action; the exact private fixture reset token
+restores the real status presentation. Measurement values and notice contents remain outside UI
+inspection.
+
 The public `show` targets are:
 
 - `settings` opens Settings and selects one of `behavior`, `shortcuts`, `appearance`, `analysis`,

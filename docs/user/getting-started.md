@@ -103,8 +103,10 @@ choice. **Skip** turns both off. Existing users retain checking on and downloadi
 first-launch prompt. These preferences can be changed in Settings.
 
 When checking is enabled, PLVS checks at startup and every 12 hours. Manual checks remain available
-with automatic checking off. The footer's **Update Available · View Release Notes** link opens the
-shared update details; in Dock, a dot on the toolbar arrow marks an update and the toolbar names it.
+with automatic checking off. Update state appears in the toolbar's shared status area. Open its
+status list and choose **View Update Details** for release notes, download progress and installation.
+In Dock, the toolbar button shows a status icon while closed, and the toolbar names the state when
+opened. Update checks and downloads never force the Dock toolbar open.
 
 With automatic downloading enabled, PLVS verifies and keeps an update locally without interrupting
 your work. On a later fresh launch, it offers **Update and Restart** or **Skip This Time**. Skipping

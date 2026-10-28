@@ -248,7 +248,7 @@ describe("FileAnalysisSummary", () => {
     expect(onSelectFile).toHaveBeenCalledWith("complete");
   });
 
-  it("marks a completed summary measured on an unrecognized layout", () => {
+  it("leaves an unrecognized layout warning to the shared status area", () => {
     render(
       <FileAnalysisSummary
         {...menuProps}
@@ -269,6 +269,6 @@ describe("FileAnalysisSummary", () => {
         }}
       />
     );
-    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
+    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
   });
 });

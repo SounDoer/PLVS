@@ -5,7 +5,6 @@ import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDisplay";
 import { SHELL_SURFACE_BASE } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
-import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 import { MenuRow } from "@/components/ui/row";
 import { Button } from "@/components/ui/button";
 
@@ -82,7 +81,6 @@ export function FileAnalysisSummary({
               value={formatMetric(summary.truePeakMaxDbtp, "dBTP")}
             />
           </dl>
-          <LoudnessLayoutMarker known={summary.loudnessLayoutKnown} className="self-center" />
         </>
       ) : null}
       {isComplete ? (

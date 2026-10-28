@@ -31,6 +31,7 @@ const ACTION_TYPES = new Set([
   "source-primary",
   "clear",
   "open-update",
+  "status-action",
   "open-editor",
   "close-editor",
   "dismiss-toolbar",

@@ -8,6 +8,8 @@ import {
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
 import { DockStats } from "./DockStats.jsx";
+import { dockStatsCellWidth } from "../dockStatsLayout.js";
+const testCellWidth = (ids) => dockStatsCellWidth({ metricValue: 16, metricMeta: 12 }, ids);
 import { StatsPanel } from "../../components/panels/StatsPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
@@ -87,6 +89,24 @@ function renderWith(statsMetrics, controls, shared = {}, displayAudio) {
 }
 
 describe("DockStats", () => {
+  it("escapes an initial native scrollbar gutter to fit five columns and three full rows", () => {
+    const ids = STATS_CANONICAL_ORDER;
+    renderWith(
+      ids.map((id) => ({ id, shortLabel: STATS_META[id].shortLabel, value: "-99.9" })),
+      statsControls(ids)
+    );
+    const grid = screen.getByTestId("dock-stats-grid");
+    const width = 5 * testCellWidth(ids) + 48;
+    Object.defineProperty(grid, "offsetWidth", { value: width });
+    Object.defineProperty(grid, "clientWidth", { value: width - 10 });
+    grid.style.rowGap = "3px";
+    vi.spyOn(screen.getAllByTestId("dock-stat")[0], "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 0, width, 22)
+    );
+    act(() => triggerResize([{ target: grid, contentRect: { width: width - 10, height: 72 } }]));
+    expect(grid.getAttribute("data-column-count")).toBe("5");
+    expect(screen.getAllByTestId("dock-stat").at(-1).style.gridRow).toBe("3");
+  });
   it("renders the normal Stats defaults in canonical order", () => {
     renderWith(METRICS);
     const stats = screen.getAllByTestId("dock-stat");
@@ -96,7 +116,9 @@ describe("DockStats", () => {
       "ST-19.2",
       "I-20.1",
     ]);
-    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 92px)");
+    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe(
+      `minmax(0, ${testCellWidth(STATS_CANONICAL_ORDER.slice(0, 8))}px)`
+    );
 
     expect(stats[0].style.gap).toBe("2px");
     expect(
@@ -155,7 +177,10 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 180 } },
+        {
+          target: screen.getByTestId("dock-stats-grid"),
+          contentRect: { width: testCellWidth(ids) * 2 + 12 },
+        },
       ])
     );
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("2");
@@ -164,7 +189,10 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 276 } },
+        {
+          target: screen.getByTestId("dock-stats-grid"),
+          contentRect: { width: testCellWidth(ids) * 3 + 24 },
+        },
       ])
     );
     expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("3");
@@ -187,7 +215,10 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 564 } },
+        {
+          target: screen.getByTestId("dock-stats-grid"),
+          contentRect: { width: testCellWidth(ids) * 6 + 60 },
+        },
       ])
     );
 
@@ -227,7 +258,10 @@ describe("DockStats", () => {
 
     act(() =>
       triggerResize([
-        { target: screen.getByTestId("dock-stats-grid"), contentRect: { width: 468 } },
+        {
+          target: screen.getByTestId("dock-stats-grid"),
+          contentRect: { width: testCellWidth(ids) * 5 + 48 },
+        },
       ])
     );
 

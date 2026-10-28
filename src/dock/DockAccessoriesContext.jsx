@@ -21,6 +21,19 @@ import { useDock } from "./DockContext.jsx";
 import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
 import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
+import { buildAppStatusItems } from "../lib/appStatus.js";
+import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { developmentStatusItems } from "../dev/developmentStatusFixtureData.js";
+
+const STATUS_FIXTURE_NAMES = {
+  layout: "status.layout",
+  summary: "status.summary",
+  details: "status.details",
+  capturefailed: "status.capture-failed",
+  update: "status.update",
+  updateready: "status.update-ready",
+  updatefailed: "status.update-failed",
+};
 
 /**
  * @typedef {{
@@ -29,6 +42,8 @@ import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
  *   visualRuntimeRef: import("react").MutableRefObject<any>,
  *   setUpdateGeometry: (value: any) => void,
  *   setImportActive: (value: boolean) => void,
+ *   statusItems: import("../lib/appStatus.js").AppStatusItem[],
+ *   statusOpen: boolean,
  * }} DockAccessories
  */
 const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} */ (null));
@@ -46,7 +61,7 @@ const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} 
 export function DockAccessoriesProvider({ children }) {
   const { updateControls } = useAppLifecycle();
   const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
-  const { historyRetentionSec, interfaceSize } = useAppSettings();
+  const { historyRetentionSec, interfaceSize, setSettingsOpen } = useAppSettings();
   const { view, setPanelPresentation } = useWindowChrome();
   const presentation = normalizePanelPresentation(view.panelPresentation, view.focusView);
   const {
@@ -57,9 +72,9 @@ export function DockAccessoriesProvider({ children }) {
     refreshInventory,
     onSelectCaptureDevice,
   } = useSource();
-  const { sourceMode, running } = useMeterRuntime();
+  const { sourceMode, running, liveAudioDrop } = useMeterRuntime();
   const { notice, raiseNotice, clearNotice, showClock } = useMeterDisplayState();
-  const { sourceTransportState, histSourceList } = useDisplaySnapshot();
+  const { sourceTransportState, histSourceList, displayAudio } = useDisplaySnapshot();
   const historyTotalSamples = histSourceList?.length ?? 0;
   const { channelCount, vectorscopePairOptions, spectrumChannelOptions } = useAnalysisSession();
   const { clearAll, onSourceTransportAction } = useSourceActions();
@@ -82,6 +97,7 @@ export function DockAccessoriesProvider({ children }) {
   const visualRuntimeRef = useRef(null);
   const [updateGeometry, setUpdateGeometry] = useState(null);
   const [importActive, setImportActive] = useState(false);
+  const [statusFixture, setStatusFixture] = useState(null);
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {
@@ -111,7 +127,9 @@ export function DockAccessoriesProvider({ children }) {
     active: docked && !dockSuspended,
     edge: dockEdge,
     geometryVersion: dockHeight,
-    forceHeaderVisible: notice?.kind === "error",
+    forceHeaderVisible: statusFixture
+      ? statusFixture.phase === "capture-failed"
+      : notice?.requiresAttention === true,
     // Snapshot transport is now always available in the strip; no automatic toolbar reveal.
     snapshotActive: false,
     waitForHeaderReady: true,
@@ -180,6 +198,59 @@ export function DockAccessoriesProvider({ children }) {
   const openUpdateDetails = updateControls.openDetails;
   const dockUpdate = dockUpdateStatus(updateControls);
   const dockUpdateKey = JSON.stringify(dockUpdate);
+  const statusKey = JSON.stringify(
+    statusFixture
+      ? developmentStatusItems(statusFixture.phase)
+      : buildAppStatusItems({
+          notice,
+          layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
+          audioDrop: sourceMode === "live" ? liveAudioDrop : null,
+          update: dockUpdate,
+        })
+  );
+  const statusItems = useMemo(() => JSON.parse(statusKey), [statusKey]);
+  const statusAdapter = (phase) => ({
+    canEstablish: () =>
+      !statusFixture &&
+      !notice &&
+      !dockAccessoryVisibility.editorView &&
+      !updateControls.details &&
+      !importActive,
+    establish: async (fixtureId) => {
+      setStatusFixture({ fixtureId, phase });
+      if (docked && phase === "details") dockAccessoryVisibility.openEditor("status");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    },
+    matches: (id) => statusFixture?.fixtureId === id,
+    reset: async (id) => {
+      if (statusFixture?.fixtureId !== id) return;
+      if (docked && dockAccessoryVisibility.editorView === "status")
+        dockAccessoryVisibility.closeEditor("status");
+      setStatusFixture(null);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    },
+    surface: { kind: "status", target: { phase } },
+  });
+  useDevelopmentEventFixtureAdapter("status.layout", statusAdapter("layout"));
+  useDevelopmentEventFixtureAdapter("status.summary", statusAdapter("summary"));
+  useDevelopmentEventFixtureAdapter("status.details", statusAdapter("details"));
+  useDevelopmentEventFixtureAdapter("status.capture-failed", statusAdapter("capture-failed"));
+  useDevelopmentEventFixtureAdapter("status.update", statusAdapter("update"));
+  useDevelopmentEventFixtureAdapter("status.update-ready", statusAdapter("update-ready"));
+  useDevelopmentEventFixtureAdapter("status.update-failed", statusAdapter("update-failed"));
+  useUiSurface({
+    active:
+      Boolean(statusFixture) &&
+      (!docked || statusFixture.phase !== "details" || dockAccessoryVisibility.editorVisible),
+    kind: "status",
+    origin: "event",
+    developmentFixture: STATUS_FIXTURE_NAMES[statusFixture?.phase.replaceAll("-", "")],
+    lifetimeKey: statusFixture?.fixtureId,
+    blocking: false,
+    dismissible: false,
+    supportedActions: [],
+    target: { phase: statusFixture?.phase },
+  });
   const dockHeaderState = useMemo(
     () => ({
       interfaceSize,
@@ -188,6 +259,7 @@ export function DockAccessoriesProvider({ children }) {
       sourceTransportState,
       clearDisabled: !running && !showClock,
       notice,
+      statusItems,
       update: JSON.parse(dockUpdateKey),
       edge: dockEdge,
       reserveSpace,
@@ -205,6 +277,7 @@ export function DockAccessoriesProvider({ children }) {
       dockUpdateKey,
       loudnessProfile.active,
       notice,
+      statusItems,
       presets.activeId,
       presets.dirty,
       reserveSpace,
@@ -217,6 +290,7 @@ export function DockAccessoriesProvider({ children }) {
     () => ({
       interfaceSize,
       view: dockAccessoryVisibility.editorView,
+      statusItems,
       edge: dockEdge,
       reserveSpace,
       hideAxesAndLabels: presentation.dock.hideAxesAndLabels,
@@ -251,6 +325,7 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       interfaceSize,
+      statusItems,
       reserveSpace,
       presentation.dock.hideAxesAndLabels,
       audioOutputs,
@@ -287,7 +362,16 @@ export function DockAccessoriesProvider({ children }) {
       else if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
       else if (type === "open-update") openUpdateDetails();
-      else if (type === "open-editor") {
+      else if (type === "status-action") {
+        dockAccessoryVisibility.closeEditor();
+        if (payload.action === "update") openUpdateDetails();
+        else if (payload.action === "check-update") void updateControls.refreshUpdateCheck();
+        else if (payload.action === "settings") {
+          void exitDockRestoringAttributes().then((result) => {
+            if (result.ok) setSettingsOpen(true);
+          });
+        }
+      } else if (type === "open-editor") {
         setHoveredDockPanelId(null);
         if (payload.view === "device") void refreshInventory();
         dockAccessoryVisibility.openEditor(payload.view, payload.anchorX);
@@ -387,6 +471,7 @@ export function DockAccessoriesProvider({ children }) {
     },
     [
       importActive,
+      setSettingsOpen,
       setAxisViewport,
       presentation,
       setPanelPresentation,
@@ -405,6 +490,7 @@ export function DockAccessoriesProvider({ children }) {
       reserveSpace,
       toggleReserveSpace,
       openUpdateDetails,
+      updateControls,
     ]
   );
   useDockAccessoryBridge({
@@ -423,6 +509,8 @@ export function DockAccessoriesProvider({ children }) {
         visualRuntimeRef,
         setUpdateGeometry,
         setImportActive,
+        statusItems,
+        statusOpen: statusFixture?.phase === "details",
       }}
     >
       {children}

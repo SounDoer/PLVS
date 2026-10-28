@@ -133,7 +133,9 @@ export function useFileAnalysisEngine({
               analyzedAt: Date.now(),
             }));
             setAnalyzingFileId((current) => (current === sessionId ? null : current));
-            raiseNotice("error", `Error: ${payload.message}`);
+            raiseNotice("error", `Error: ${payload.message}`, undefined, {
+              requiresAttention: true,
+            });
           })
         );
 
@@ -154,7 +156,7 @@ export function useFileAnalysisEngine({
               ...current,
               dialogueDetectionError: code,
             }));
-            raiseNotice("error", `Error: ${message}`, code);
+            raiseNotice("error", `Error: ${message}`, code, { requiresAttention: true });
           },
         });
         stage = "start";
@@ -180,7 +182,7 @@ export function useFileAnalysisEngine({
           analyzedAt: Date.now(),
         }));
         setAnalyzingFileId((current) => (current === sessionId ? null : current));
-        raiseNotice("error", `Error: ${message}`);
+        raiseNotice("error", `Error: ${message}`, undefined, { requiresAttention: true });
         const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
         fileAnalysisAcceptanceRef?.current.delete(sessionId);
         if (acceptance) {
