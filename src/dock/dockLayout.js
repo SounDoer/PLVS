@@ -36,17 +36,17 @@ export const DEFAULT_DOCK_MODULES = [
   "correlation",
 ];
 
-/// First-run preferred widths (CSS px). Reserve four readable Stats columns at the default
-/// Interface Size; timeline and frequency plots share the remaining strip width.
+/// First-run preferred widths (CSS px). Stats starts at three columns at the default Interface
+/// Size. The five plots share a common baseline and divide the remaining strip width equally.
 export const DEFAULT_DOCK_PANEL_SIZES = Object.freeze({
-  level: 150,
-  loudness: 260,
-  // Stats has no saved width until resized; reserve three readable rows at the current text size.
-  correlation: 190,
-  waveform: 260,
-  spectrogram: 260,
-  spectrum: 260,
-  stereoMap: 260,
+  stats: 400,
+  level: 180,
+  loudness: 180,
+  correlation: 180,
+  waveform: 180,
+  spectrogram: 180,
+  spectrum: 180,
+  stereoMap: 180,
 });
 
 export const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({

@@ -42,7 +42,7 @@ describe("DockProvider", () => {
     settingsStore.reset();
     workspaceStore.reset();
     presetsStore.reset();
-    resizeDockHeight.mockReset().mockResolvedValue(180);
+    resizeDockHeight.mockReset().mockResolvedValue(150);
     delete window.__PLVS_INITIAL_STATE__;
   });
 
@@ -81,13 +81,23 @@ describe("DockProvider", () => {
     act(() => {
       pending = result.current.resetDockLayout();
     });
-    expect(resizeDockHeight).toHaveBeenCalledWith(180, { persist: true });
+    expect(resizeDockHeight).toHaveBeenCalledWith(150, { persist: true });
     expect(result.current.layout.panels.some(({ id }) => id === "stats")).toBe(false);
     await act(async () => {
-      resolveHeight(180);
+      resolveHeight(150);
       await pending;
     });
     expect(result.current.layout.panels.some(({ id }) => id === "stats")).toBe(true);
+    expect(result.current.layout.panelSizesById).toEqual({
+      stats: 400,
+      level: 180,
+      correlation: 180,
+      loudness: 180,
+      waveform: 180,
+      spectrogram: 180,
+      spectrum: 180,
+      stereoMap: 180,
+    });
   });
 
   it("keeps the module layout when restoring the native height fails", async () => {

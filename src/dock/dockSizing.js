@@ -16,7 +16,7 @@ export function dockStatsRowHeight(font) {
 }
 /// First-run Dock height. Matches Rust's DOCK_DEFAULT_LOGICAL_HEIGHT, which first entry uses
 /// because the GUI passes no height.
-export const DOCK_DEFAULT_HEIGHT = 180;
+export const DOCK_DEFAULT_HEIGHT = 150;
 // Wire-format bound only; native geometry fits requests to the current display.
 export const DOCK_MAX_HEIGHT = 0xffffffff;
 /// Height of the Dock toolbar window. Matches Rust's DOCK_HEADER_LOGICAL_HEIGHT, and is what the

@@ -197,7 +197,7 @@ describe("useDockMode", () => {
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(false);
     expect(result.current.dockEdge).toBe("top");
-    expect(result.current.dockHeight).toBe(180);
+    expect(result.current.dockHeight).toBe(150);
     expect(result.current.reserveSpace).toBe(true);
   });
 

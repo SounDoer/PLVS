@@ -17,13 +17,14 @@ const FIRST_RUN_MODULES = [
 ];
 
 const FIRST_RUN_SIZES = {
-  level: 150,
-  loudness: 260,
-  correlation: 190,
-  waveform: 260,
-  spectrogram: 260,
-  spectrum: 260,
-  stereoMap: 260,
+  stats: 400,
+  level: 180,
+  loudness: 180,
+  correlation: 180,
+  waveform: 180,
+  spectrogram: 180,
+  spectrum: 180,
+  stereoMap: 180,
 };
 
 describe("useDockLayout", () => {

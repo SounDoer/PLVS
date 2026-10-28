@@ -143,7 +143,7 @@ readout or an icon-only Dock action for the same themed explanation shown in the
 Dock's module-width and height resize lines stay hidden while idle, appear in Border Color on
 hover or keyboard focus, and use Accent while you hold and drag them, matching Workspace split lines.
 Drag the strip's inner edge to adjust its height; the outer edge stays anchored to the screen,
-and the new height is saved when you release the pointer. Height starts at 180 CSS pixels. The
+and the new height is saved when you release the pointer. Height starts at 150 CSS pixels. The
 minimum fits three rows of Stats at the current **Interface Size**: 80 CSS pixels at the default
 size, more at larger sizes. When the panels are wider than the screen, the minimum also leaves
 room for the horizontal scrollbar. A strip shorter than the new minimum grows to it. The strip can grow up to the current display's available space minus room for the toolbar
@@ -167,8 +167,10 @@ change column widths. Channel-layout warnings do not take space from the three r
 Dragging a divider beside Stats sets a manual preference; double-click that divider to restore
 automatic sizing. A narrow display can still require vertical scrolling inside Stats.
 The initial layout places Stats, Level Meter, Loudness, Waveform, Spectrogram, Spectrum,
-Stereo Map and Vectorscope from left to right. All five timeline and frequency plots start with
-the same 260-pixel preferred width and share extra width equally;
+Stereo Map and Vectorscope from left to right. Stats starts at 400 CSS pixels, with three columns
+and five rows at the default Interface Size. Level Meter and Vectorscope start at 180 CSS pixels
+each. The five timeline and frequency plots share the remaining width equally, starting from a
+common 180-pixel preferred width;
 Level Meter joins them when its bars run horizontally. Vertical Level Meter and Vectorscope retain
 their preferred widths. There is no fixed 360-, 420-, or 960-pixel limit on widening a panel.
 
@@ -192,7 +194,7 @@ Map use crosshairs and readouts without an extra hover dot.
 Dragging a divider starts from the displayed widths and changes only the adjacent pair on screen.
 Double-clicking restores the pair's module defaults. Display and text-size changes fit saved
 preferences without overwriting them, so returning to a wider display restores the preferred
-layout. Reset Layout restores the default modules, order, widths, controls, and 180-pixel Dock height,
+layout. Reset Layout restores the default modules, order, widths, controls, and 150-pixel Dock height,
 while preserving the selected edge, monitor, and space reservation. Saved layouts and heights otherwise
 keep their existing values.
 

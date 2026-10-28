@@ -23,7 +23,7 @@ use crate::window_state::{
 /// Logical (DPI-independent) strip height. Single source of truth: the
 /// frontend strip simply fills the viewport, so no JS copy of this number.
 pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 68;
-pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 180;
+pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 150;
 // Transport bound only. The actual limit is derived from the destination work area.
 pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = u32::MAX;
 pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 36.0;
@@ -1166,7 +1166,7 @@ mod tests {
 
   #[test]
   fn first_run_dock_height_leaves_room_for_expanded_stats() {
-    assert_eq!(DOCK_DEFAULT_LOGICAL_HEIGHT, 180);
+    assert_eq!(DOCK_DEFAULT_LOGICAL_HEIGHT, 150);
   }
 
   #[test]

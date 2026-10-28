@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { fitDockPanelWidths, getDockPanelSizing } from "./dockPanelSizing.js";
 import {
   DEFAULT_DOCK_MODULES,
   DEFAULT_DOCK_PANEL_SIZES,
@@ -32,15 +33,34 @@ describe("normalizeDockLayout", () => {
 });
 
 describe("DEFAULT_DOCK_PANEL_SIZES", () => {
+  it.each([1800, 2024, 2560])(
+    "divides the remaining %i-pixel viewport equally among five plots",
+    (width) => {
+      const layout = normalizeDockLayout(undefined);
+      const entries = layout.panelOrder.map((id) => ({
+        id,
+        ...getDockPanelSizing(layout.panelsById[id].moduleId, "default"),
+        preferredWidth: DEFAULT_DOCK_PANEL_SIZES[id],
+      }));
+      const fitted = fitDockPanelWidths(entries, width);
+      expect(fitted.stats).toBe(400);
+      expect(fitted.level).toBe(180);
+      expect(fitted.correlation).toBe(180);
+      for (const id of ["loudness", "waveform", "spectrogram", "spectrum", "stereoMap"])
+        expect(fitted[id]).toBeCloseTo((width - 760) / 5);
+    }
+  );
+
   it("pins the eight tuned first-run widths", () => {
     expect(DEFAULT_DOCK_PANEL_SIZES).toEqual({
-      level: 150,
-      loudness: 260,
-      correlation: 190,
-      waveform: 260,
-      spectrogram: 260,
-      spectrum: 260,
-      stereoMap: 260,
+      stats: 400,
+      level: 180,
+      loudness: 180,
+      correlation: 180,
+      waveform: 180,
+      spectrogram: 180,
+      spectrum: 180,
+      stereoMap: 180,
     });
   });
 });
