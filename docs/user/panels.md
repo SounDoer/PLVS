@@ -122,6 +122,10 @@ pair applies to Primary, Secondary, and Snapshot fills in Workspace and Dock.
 Frequency content over time, as a **2D Heatmap**, **3D Lines**, or **3D Surface**, coloured by your
 theme. Choose the channel, tilt, smoothing, and level floor.
 
+In 2D Heatmap, the hover age follows the cursor's time-axis position relative to the latest
+history time, including any time scrolled out of view. It stays fixed when the history is frozen.
+Frequency and level readings use the nearest available spectrum frame; gaps show no readout.
+
 In Heatmap, **Orientation** appears above Frequency Range and offers the same four time directions
 as Loudness, defaulting to Right to Left. High frequencies stay at the top with horizontal time and
 at the right with vertical time. Lines and Surface hide this setting and keep their camera controls;

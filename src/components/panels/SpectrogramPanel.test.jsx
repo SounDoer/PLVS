@@ -441,6 +441,75 @@ describe("SpectrogramPanel", () => {
     expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
 
+  it.each([
+    ["live scrolling", -1, true],
+    ["paused capture", -1, false],
+    ["frozen history", 2, true],
+  ])("keeps hover age aligned with the master timeline during %s", (_, selectedOffset, running) => {
+    const callbacks = [];
+    vi.stubGlobal("requestAnimationFrame", (cb) => {
+      callbacks.push(cb);
+      return callbacks.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const rectSpy = vi.spyOn(HTMLCanvasElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 100,
+      x: 0,
+      y: 0,
+      right: 1000,
+      bottom: 100,
+      toJSON: () => ({}),
+    });
+    try {
+      const rows = [];
+      for (let timestampMs = 0; timestampMs <= 10000; timestampMs += 40) {
+        rows.push({ timestampMs, bands: [{ fCenter: 1000 }], dbList: [-31.25] });
+      }
+      const snaps = viewOf(rows);
+      const histSourceList = Array.from({ length: 101 }, (_, i) => ({ timestampMs: i * 100 }));
+      const key = spectrumRequestKeyFromControls({});
+      const props = {
+        selectedOffset,
+        running,
+        sourceMode: "live",
+        historyChartInteractive: true,
+        histSourceList,
+        visibleSamples: 101,
+        effectiveOffsetSamples: 0,
+        getSpectrogramSnapsForKey: () => snaps,
+        snapshotSpectrumByKey: { [key]: snaps },
+      };
+      const { container, rerender, unmount } = renderPanel(props);
+      act(() => {
+        fireEvent.pointerMove(container.querySelector("canvas"), { clientX: 495, clientY: 50 });
+        callbacks.splice(0).forEach((cb) => cb());
+      });
+      expect(screen.getByText("5.0s ago")).toBeTruthy();
+      expect(screen.getByText("-31.3 dB")).toBeTruthy();
+      // A visual row arrives before the master clock. Paused/frozen views receive no new rows.
+      if (running && selectedOffset < 0) {
+        rows.push({ timestampMs: 10040, bands: [{ fCenter: 1000 }], dbList: [-90] });
+        snaps.version += 1;
+      }
+      rerender(spectrogramPanelTree(props));
+      expect(screen.getByText("5.0s ago")).toBeTruthy();
+      expect(screen.getByText("-31.3 dB")).toBeTruthy();
+      // Pan back without moving the pointer: age must include the offscreen second.
+      rerender(spectrogramPanelTree({ ...props, effectiveOffsetSamples: 10 }));
+      expect(screen.getByText("6.0s ago")).toBeTruthy();
+      // Zoom the same history window without a pointer move.
+      rerender(spectrogramPanelTree({ ...props, effectiveOffsetSamples: 10, visibleSamples: 51 }));
+      expect(screen.getByText("3.5s ago")).toBeTruthy();
+      unmount();
+    } finally {
+      rectSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("suppresses the hover readout in 3D but shows it in 2D", () => {
     // useChartHover coalesces pointer moves into a requestAnimationFrame callback; stub rAF with a
     // manually-flushed queue (same pattern as useChartHover.test.js) so the hover state update can

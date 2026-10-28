@@ -206,6 +206,7 @@ export function findMarkerNoteAtX(xFrac, markers, hitFrac = 0.015) {
  *
  * The cursor X maps to a real timestamp within the visible window; the nearest in-window frame
  * within one sample period is used. Hovering a time gap (no frame near the cursor) returns null.
+ * Age follows the cursor timestamp against the master timeline, independently of row cadence.
  *
  * @param {number} xFrac - normalized X (0=left/oldest, 1=right/newest)
  * @param {number} yFrac - normalized Y (0=top=20kHz, 1=bottom=20Hz)
@@ -214,6 +215,9 @@ export function findMarkerNoteAtX(xFrac, markers, hitFrac = 0.015) {
  * @param {number} newestMs - visible window end
  * @param {number} sampleMs - nominal visual sample period (ms); also the hover tolerance
  * @param {{ xFrac: number, label: string }[]} [markerNotes] marker notes shown near vertical markers
+ * @param {number} [minHz]
+ * @param {number} [maxHz]
+ * @param {number} [ageReferenceMs] newest master-history timestamp, including offscreen history
  * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string, noteLabel?: string, markerNoteLabel?: string } | null}
  */
 export function computeSpectrogramHoverPoint(
@@ -225,7 +229,8 @@ export function computeSpectrogramHoverPoint(
   sampleMs,
   markerNotes,
   minHz = 20,
-  maxHz = 20000
+  maxHz = 20000,
+  ageReferenceMs = newestMs
 ) {
   if (!snaps || !snaps.length || !(newestMs > oldestMs)) return null;
 
@@ -244,8 +249,11 @@ export function computeSpectrogramHoverPoint(
   if (hoverIndex < 0 || bestDist > sampleMs) return null; // hovering a gap
   const snap = snaps.rowAt(hoverIndex);
   if (!snap) return null;
-  const newestTs = snaps.timestampAt(snaps.length - 1);
-  const offsetSec = Math.max(0, (newestTs - snap.timestampMs) / 1000);
+  // Work in relative durations so a large absolute timestamp cannot perturb decimal rounding.
+  const offsetSec = Math.max(
+    0,
+    (ageReferenceMs - newestMs + (1 - xFrac) * (newestMs - oldestMs)) / 1000
+  );
 
   const { bands, dbList } = snap;
   if (!bands?.length || !dbList?.length) return null;

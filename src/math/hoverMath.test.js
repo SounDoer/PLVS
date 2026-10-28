@@ -234,6 +234,60 @@ describe("computeSpectrogramHoverPoint", () => {
     expect(r.timeLabel).toMatch(/ago/);
   });
 
+  it("keeps cursor age stable across asynchronous visual and master-clock updates", () => {
+    for (const newestRow of [10000, 10040, 10080, 10120, 10160, 10200, 10240, 10280]) {
+      const rows = [];
+      for (let timestampMs = 0; timestampMs <= newestRow; timestampMs += SMS) {
+        rows.push({ timestampMs, bands: testBands, dbList: testDbList });
+      }
+      const newestMs = Math.floor(newestRow / 100) * 100;
+      const point = computeSpectrogramHoverPoint(
+        0.495,
+        0.5,
+        viewOf(rows),
+        newestMs - 10000,
+        newestMs,
+        SMS
+      );
+      expect(point.timeLabel).toBe("5.0s ago");
+      expect(point.dbLabel).toBe("-30.0 dB");
+    }
+  });
+
+  it("includes offscreen history in age without using the nearest row's timestamp", () => {
+    const frozen = viewOf([
+      { timestampMs: 4960, bands: testBands, dbList: [-50, -31.25, -20] },
+      { timestampMs: 20080, bands: testBands, dbList: [-50, -90, -20] },
+    ]);
+    const point = computeSpectrogramHoverPoint(
+      0.495,
+      0.5,
+      frozen,
+      0,
+      10000,
+      SMS,
+      undefined,
+      20,
+      20000,
+      20000
+    );
+    expect(point.timeLabel).toBe("15s ago");
+    expect(point.dbLabel).toBe("-31.3 dB");
+    expect(
+      computeSpectrogramHoverPoint(0.8, 0.5, frozen, 0, 10000, SMS, undefined, 20, 20000, 20000)
+    ).toBeNull();
+  });
+
+  it("keeps decimal rounding stable with large fractional absolute timestamps", () => {
+    for (let i = 0; i < 20; i += 1) {
+      const newestMs = 1793100000000.125 + i * 100.1;
+      const rows = viewOf([{ timestampMs: newestMs - 5040, bands: testBands, dbList: testDbList }]);
+      expect(
+        computeSpectrogramHoverPoint(0.495, 0.5, rows, newestMs - 10000, newestMs, SMS).timeLabel
+      ).toBe("5.0s ago");
+    }
+  });
+
   it("freqLabel is a string containing Hz or kHz", () => {
     const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, OLD, NEW, SMS);
     expect(r).not.toBeNull();

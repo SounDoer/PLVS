@@ -47,6 +47,7 @@ import { selectSpectrogramCanvasTheme } from "../../theme/themeCanvasSelectors.j
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
+import { latestHistoryTimestampMs } from "../../lib/historyTimestamps.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelControls.js";
 import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 
@@ -343,6 +344,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
   );
   const oldestMs = timeWindow?.oldestMs ?? NaN;
   const newestMs = timeWindow?.newestMs ?? NaN;
+  const ageReferenceMs = latestHistoryTimestampMs(histSourceList) ?? newestMs;
   // The shared timeline advances at ~10 Hz, while this panel already receives timestamped visual
   // rows at 25 Hz. At the live edge only, let the canvas use that finer clock (bounded to one
   // history interval) so motion does not wait for the next master row. Axes, hover, markers, file
@@ -403,32 +405,28 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
     hover: spectrogramHover,
     onMove: onSpectrogramHoverMove,
     onLeave: onSpectrogramHoverLeave,
-  } = useChartHover(
-    (xFrac, yFrac) => {
-      if (is3d) return null;
-      if (!historyChartInteractive) return null;
-      const markerNotes = [
-        ...visibleFrequencyMarkers.map(({ marker, x }) => ({
-          xFrac: x / 1000,
-          label: `${marker.from} -> ${marker.to}`,
-        })),
-      ];
-      return computeSpectrogramHoverPoint(
-        geometry.fromScreen(xFrac, yFrac).time,
-        1 - geometry.fromScreen(xFrac, yFrac).value,
-        spectrogramSnaps,
-        oldestMs,
-        newestMs,
-        sampleMs,
-        markerNotes,
-        yMinFreq,
-        yMaxFreq
-      );
-    },
-    selectedOffset < 0
-      ? `${orientation}:${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`
-      : orientation
-  );
+  } = useChartHover((xFrac, yFrac) => {
+    if (is3d) return null;
+    if (!historyChartInteractive) return null;
+    const markerNotes = [
+      ...visibleFrequencyMarkers.map(({ marker, x }) => ({
+        xFrac: x / 1000,
+        label: `${marker.from} -> ${marker.to}`,
+      })),
+    ];
+    return computeSpectrogramHoverPoint(
+      geometry.fromScreen(xFrac, yFrac).time,
+      1 - geometry.fromScreen(xFrac, yFrac).value,
+      spectrogramSnaps,
+      oldestMs,
+      newestMs,
+      sampleMs,
+      markerNotes,
+      yMinFreq,
+      yMaxFreq,
+      ageReferenceMs
+    );
+  }, `${orientation}:${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${ageReferenceMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`);
   const onSpectrogramChartPointerDown = useCallback(
     (e) => {
       if (is3d && e.button === 2) {
