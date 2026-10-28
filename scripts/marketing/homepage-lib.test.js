@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { DOCK_DEFAULT_HEIGHT } from "../../src/dock/dockSizing.js";
 import {
   DOCK_RECIPE,
   FEATURES_RECIPE,
@@ -116,7 +117,12 @@ describe("Dock recipe", () => {
       ["dock-custom", "snapshot"],
     ]);
     expect(dock.strips[1].snapshotOffsetSec).toBe(0);
-    expect(dock.environment).toMatchObject({ width: 2560, height: 225, windowDpi: 120 });
+    expect(dock.capture.dock.height).toBe(DOCK_DEFAULT_HEIGHT);
+    expect(dock.environment).toMatchObject({
+      width: 2560,
+      height: Math.round(DOCK_DEFAULT_HEIGHT * 1.25),
+      windowDpi: 120,
+    });
     expect(dock.strips[1].layout.panels.map((p) => p.panelId ?? p.key)).toEqual([
       "level",
       "rms",

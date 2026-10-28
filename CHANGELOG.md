@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.4] - 2026-10-28
+
+### Added
+
+- Tray menus offer Settings and update checks, download status, and update details. Each workbench
+  has its own complete controls directly under its name when several are open; a single workbench
+  keeps its controls at the top level.
+
+### Changed
+
+- Measurement warnings, operation errors, and update state share one toolbar status list. Dock
+  shows a compact status icon and opens its toolbar automatically for capture interruptions and
+  dialogue-detection failures, while background update checks stay unobtrusive.
+- Dock starts at 150 CSS pixels with a compact Stats panel and equal widths for its five timeline
+  and frequency plots. Stats keeps readable columns as the strip height changes, and Reset Layout
+  restores the default height as well as its panels and controls.
+- Axis labels use consistent collision rules across Workspace and Dock, preserving reference
+  labels and range endpoints when space is tight. Dialogue activity indicators use the same
+  placement in Stats and the compact meters.
+
+### Fixed
+
+- Tray actions remain connected while background state changes, preventing a first Show, Hide,
+  or Quit selection from dismissing the menu without performing the action. A successfully closed
+  workbench disappears immediately without being restored by an older inventory response.
+- Dock Stats labels retain their descenders, its minimum height fits three complete rows, and
+  automatic width gives readings priority when the strip is crowded.
+- Spectrogram Heatmap hover age follows the cursor on the full history timeline and stays fixed
+  when history is frozen; frequency and level values continue to use the nearest available frame.
+
 ## [0.23.3] - 2026-10-27
 
 ### Added

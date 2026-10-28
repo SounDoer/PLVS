@@ -9,7 +9,7 @@
   "environment": {
     "platform": "win32",
     "width": 2560,
-    "height": 225,
+    "height": 188,
     "windowDpi": 120,
     "textScalePercent": 100
   },
@@ -23,7 +23,7 @@
     "inputLabel": "CABLE Output (VB-Audio Virtual Cable)",
     "renderEndpointName": "CABLE Input",
     "historySeconds": 65,
-    "dock": { "edge": "top", "reserveSpace": false, "height": 180 }
+    "dock": { "edge": "top", "reserveSpace": false, "height": 150 }
   },
   "strips": [
     {
