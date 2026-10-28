@@ -1,50 +1,52 @@
 {
   "schemaVersion": 1,
-  "version": "0.23.3",
-  "baselineTag": "v0.23.2",
-  "baselineRevision": "f5ebdec9d46cd9f1954a956f6c54b99c79c9d686",
-  "candidateRevision": "8802313b25686610fb0c283cf7de9d0f6ec99f19",
-  "contentSha256": "2162cd5f99e57c6601bae938fd6a1bf95d699094f13e05ee61f0626b16332280",
+  "version": "0.23.4",
+  "baselineTag": "v0.23.3",
+  "baselineRevision": "aa71586e617324501428269c65bd7c9035147839",
+  "candidateRevision": "db932761032a0c8aa01307730e1e29ad9c6f47b8",
+  "contentSha256": "0029abfea89a98b9782fbb6e6c30e1dcc193a34c4eb3d73a1bae269b0a9d67e0",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The release changes the Dock paste, duplicate review, channel fallback, preset modified marker, and hover readouts; the corresponding user chapters were updated with those changes.",
+      "rationale": "Reviewed the complete v0.23.3-to-candidate range against the 0.23.4 release notes. The user guide describes toolbar status notices, Dock attention behavior, 150 CSS px defaults and Reset Layout, Stats sizing, axis-label priorities, Heatmap hover age, and per-workbench Tray controls. No changed product promise or non-goal requires a PRD change.",
       "evidence": [
-        "git diff v0.23.2..4aac5b45 -- docs/user/system-settings.md docs/user/multichannel.md docs/user/workspace.md docs/user/panels.md",
-        "src/transfer/usePackTransfer.js and src/dock/DockImportSurface.jsx compared with the Sharesets paste guide",
-        "src/analysis/effectiveChannels.js and src/lib/presetDivergence.js compared with the channel and Preset descriptions",
-        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
+        "git diff v0.23.3..db932761 -- docs/user/getting-started.md docs/user/multichannel.md docs/user/panels.md docs/user/system-settings.md docs/user/workspace.md",
+        "src/components/AppStatus.jsx, src/lib/appStatus.js and src/dock/DockAccessoriesContext.jsx compared with Status Notices in docs/user/workspace.md",
+        "src/dock/dockSizing.js, dockLayout.js, dockPanelSizing.js and dockStatsLayout.js compared with Dock layout, height, Stats and reset descriptions",
+        "src/lib/axisLabelLayout.js and src/math/hoverMath.js compared with Axis Labels and Spectrogram Heatmap hover documentation",
+        "src/hooks/useTray.js, useTrayActions.js, src/lib/nativeTrayMenu.js and src/runtime/coordination.js compared with the System Settings Tray chapter"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "README highlights describe Dock, saved Presets and Sharesets generally; none makes a conflicting claim about the new paste interaction, channel fallback, or hover behavior.",
+      "rationale": "README highlights remain accurate for the meter inventory, read-only local analysis, Dock, multiple workbenches, shared Library, platforms and updater. This release changes presentation and shortcuts into existing flows rather than those promises. The shared hero image still requires a new capture; its known differences are recorded in the screenshots decision.",
       "evidence": [
-        "README.md highlights and platform table read against CHANGELOG.md 0.23.3",
-        "git diff v0.23.2..4aac5b45 -- README.md is empty",
-        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
+        "README.md What is PLVS, Download, platform table and shared landing-hero.webp reference read against CHANGELOG.md 0.23.4",
+        "git diff v0.23.3..db932761 -- README.md is empty; docs/prd.md product scope compared with the release change range"
       ]
     },
     "website": {
       "status": "unchanged",
-      "rationale": "The homepage describes the existing Workspace, Dock and Presets without specifying paste or hover behavior. Privacy review found no new collection, transmission, recipient, service, retention or deletion: clipboard text is processed locally in the main application and passed to the local Dock WebView; the Library change affects local SQLite lock waiting only. Policy text and effective date remain unchanged.",
+      "rationale": "Homepage product copy remains accurate; the generated user guide receives the updated chapters when the release tag deploys. Privacy review found no new external collection, upload payload, consent trigger, recipient/provider, service configuration or retention/deletion policy. Tray manual checks reuse the existing explicit updater action; automatic preferences and request cadence are unchanged. New workbench menu snapshots and command selection IDs are local identity-scoped runtime metadata only, containing source/preset labels and availability, with no audio or measurement payload. Status presentation and Dock geometry do not add diagnostics fields or transmissions. The privacy wording and October 16, 2026 effective date are retained. Website screenshots are explicitly deferred below.",
       "evidence": [
-        "website/index.html Workspace and Dock sections and website/privacy/index.html compared with the complete v0.23.2..4aac5b45 change range",
-        "src/dock/DockImportSurface.jsx, src/dock/accessories/useAccessoryClient.js, src/ipc/dockAccessoryEvents.js and src/transfer/usePackTransfer.js: local paste and in-app event routing",
-        "src-tauri/src/persistence/library.rs: local lock retry behavior; no network service change",
-        "node scripts/privacy-review.mjs check passed; git diff v0.23.2..4aac5b45 -- website is empty",
-        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
+        "website/index.html Arrange Your Meters, Explore Every Detail, Dock pair and platform copy read against the complete v0.23.3..db932761 change range",
+        "website/privacy/index.html Update Checks and Downloads, Feedback and crash-report sections reviewed; docs/website-and-sharesets.md privacy review followed",
+        "git diff v0.23.3..db932761 -- src/hooks/useTrayActions.js src/hooks/AppLifecycleContext.jsx src/hooks/useInstanceIdentity.js src/runtime/coordination.js src-tauri/src/coordinator/registry.rs src-tauri/src/coordinator/commands.rs",
+        "src-tauri/src/coordinator/registry.rs publishes local runtime descriptors and removes owned registrations on teardown; existing stale-process cleanup remains active",
+        "git diff v0.23.3..db932761 -- src/hooks/useAudioEngine.js src/hooks/useFileAnalysisEngine.js src/lib/appStatus.js: status severity and presentation only; no new remote service changes",
+        "node scripts/privacy-review.mjs check passed; website/privacy/index.html and docs/privacy-review.json are unchanged"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "Inspected the homepage hero, both Dock strips and all eleven homepage feature images: the changed paste dialog, channel fallback and hover readout are not shown in these static views. Existing stale labels remain visible: landing-hero.webp and the amber, graphite, night and paper Theme images show Preset Default instead of PLVS Default; this predates this release and remains an explicit deferred update. Retaking the hero needs the recipe-driven Windows capture rig and review; these images are not silently represented as current in this record.",
+      "rationale": "Viewed the published hero, both Dock strips and all eleven homepage feature images. Images remain illustrative but are not a current 0.23.4 capture: the default Dock still shows its older Stats widths and 180 CSS px height, versus the new 150 CSS px default, and axis-label/indicator presentation can differ across the hero and panel images. The hero and amber/graphite/night/paper images retain the previously recorded Preset Default label. Retaking is deferred because the active RDP desktop is 1470x923 at 100% text scaling, below the official 1600x1000 hero and 2560-pixel-wide Dock capture requirements. No capture was substituted or represented as fresh. The Dock recipe and its regression test now follow the real 150 CSS px default (188 physical pixels at 125%); published images and their actual 2560x225 HTML dimensions remain unchanged until a valid recipe-driven capture and visual review can be completed.",
       "evidence": [
-        "Viewed website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp",
-        "Viewed website/assets/homepage/{amber,frequency,graphite,history,meter-bridge,multichannel,night,paper,rules,spectral,stereo}.webp",
-        "git diff v0.23.2..4aac5b45 -- website/assets is empty; compared changed UI scope with docs/user chapters and CHANGELOG.md 0.23.3",
-        "Prior 0.23.2 release-content record already identified landing-hero.webp Preset Default as stale",
-        "git diff 4aac5b45..8802313b: only release-package download timeout and its contract test changed; reviewed as no product, copy, image, privacy or service change"
+        "Viewed website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp; compared with src/dock/dockSizing.js, dockLayout.js and dockStatsLayout.js",
+        "Viewed website/assets/homepage/{amber,frequency,graphite,history,meter-bridge,multichannel,night,paper,rules,spectral,stereo}.webp in artifacts/marketing/release-0.23.4-feature-review.png",
+        "quser: active rdp-tcp#0 session; System.Windows.Forms.Screen.AllScreens: one 1470x923 display; Accessibility TextScaleFactor: 100",
+        "docs/marketing-screenshots.md, scripts/marketing/recipes/homepage-hero.json and homepage-dock.json define the required capture environments; no display or RDP settings were changed",
+        "scripts/marketing/homepage-lib.test.js now verifies the Dock recipe height against DOCK_DEFAULT_HEIGHT; npm run test:marketing passed 37 tests",
+        "git diff v0.23.3..db932761 -- website/assets is empty; website/index.html retains the dimensions of the existing assets"
       ]
     }
   }
