@@ -3,6 +3,22 @@
 Eight meter panels read the same signal at once. Each panel's settings menu holds the options listed
 here.
 
+Hover a panel's question mark to preview its gesture reference. Click it to keep the reference
+open; the question mark stays highlighted. Click it again, click outside, or press Escape to close.
+Enter or Space also pins the reference and focuses it for keyboard scrolling. Long references
+scroll inside the window, and each row pairs an operation with its effect. Mouse icons distinguish
+left and right buttons from the wheel; Ctrl and Shift appear as keycaps. Target areas are part of
+the operation text, such as **Time Axis · Wheel**, rather than separate secondary labels.
+The reference sizes its columns to their contents, with effects aligned across sections. Operations
+wrap only when the window is too narrow to fit the complete reference.
+Section headings use Primary Text; operations, effects, keycaps and gesture icons use Secondary
+Text to keep the reference visually quiet while making its sections easy to scan.
+
+The reference follows the panel's mode, enabled features, Live or Snapshot state, and axis
+visibility. Inapplicable operations and empty sections disappear; panels with no applicable
+gestures have no question mark. Silence and empty history do not change the reference. Stats
+explains each metric through its own hover tip.
+
 Single-choice settings open floating dropdown menus, like System Settings, without moving the
 rows below them. Use the arrow keys to navigate, Enter to select, or Escape to dismiss the menu.
 Channel choices retain their group headings, including All Pairs, in one scrollable menu.

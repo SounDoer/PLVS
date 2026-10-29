@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { HelpPopover } from "./HelpPopover.jsx";
+import { resolvePanelHelpItems } from "./panels/chartHelp.js";
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -11,82 +12,157 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
   }));
 });
+afterEach(() => vi.useRealTimers());
+
+const help = () => screen.getByRole("dialog", { name: "Panel gestures" });
+const trigger = () => screen.getByRole("button", { name: "Shortcuts and gestures" });
+const spectrum = (controls = {}, context = {}) =>
+  resolvePanelHelpItems("spectrum", controls, context);
 
 describe("HelpPopover", () => {
-  it("renders the trigger button", () => {
-    render(<HelpPopover items={["Scroll wheel to zoom"]} />);
-    expect(screen.getByRole("button", { name: /shortcuts/i })).toBeTruthy();
+  it("starts closed and previews on hover without pinning", () => {
+    render(<HelpPopover items={spectrum()} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.mouseEnter(trigger());
+    expect(help()).toBeTruthy();
+    expect(trigger().getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("popover content is not visible before trigger click", () => {
-    render(<HelpPopover items={["Scroll wheel to zoom"]} />);
-    expect(screen.queryByText("Scroll wheel to zoom")).toBeNull();
+  it("allows crossing the gap to read and scroll, then closes after pointer exit", () => {
+    vi.useFakeTimers();
+    render(<HelpPopover items={spectrum()} />);
+    fireEvent.mouseEnter(trigger());
+    fireEvent.mouseLeave(trigger());
+    act(() => vi.advanceTimersByTime(100));
+    fireEvent.mouseEnter(help());
+    act(() => vi.advanceTimersByTime(300));
+    expect(help()).toBeTruthy();
+    fireEvent.mouseLeave(help());
+    act(() => vi.advanceTimersByTime(200));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("shows item text after trigger click", () => {
-    render(<HelpPopover items={["Scroll wheel to zoom"]} />);
-    fireEvent.click(screen.getByRole("button", { name: /shortcuts/i }));
-    expect(screen.getByText("Scroll wheel to zoom")).toBeTruthy();
+  it("pins a preview on its first click, cancels pending close, and toggles closed on its next click", () => {
+    vi.useFakeTimers();
+    render(<HelpPopover items={spectrum()} />);
+    fireEvent.mouseEnter(trigger());
+    fireEvent.mouseLeave(trigger());
+    fireEvent.click(trigger());
+    expect(trigger().getAttribute("aria-pressed")).toBe("true");
+    fireEvent.mouseLeave(help());
+    act(() => vi.advanceTimersByTime(500));
+    expect(help()).toBeTruthy();
+    fireEvent.click(trigger());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(trigger().getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("renders multiple items", () => {
-    render(<HelpPopover items={["Left click to select", "Right click to pan"]} />);
-    fireEvent.click(screen.getByRole("button", { name: /shortcuts/i }));
-    expect(screen.getByText("Left click to select")).toBeTruthy();
-    expect(screen.getByText("Right click to pan")).toBeTruthy();
+  it("focuses pinned content for keyboard scrolling and handles Escape before its parent", async () => {
+    const parentKeyDown = vi.fn();
+    render(
+      <div onKeyDown={parentKeyDown}>
+        <HelpPopover items={spectrum()} />
+      </div>
+    );
+    fireEvent.click(trigger());
+    expect(document.activeElement).toBe(help());
+    fireEvent.keyDown(help(), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(parentKeyDown).not.toHaveBeenCalled();
+    await waitFor(() => expect(document.activeElement).toBe(trigger()));
   });
 
-  it("renders grouped items with headings", () => {
+  it("dismisses pinned help on an outside pointer press", async () => {
+    render(<HelpPopover items={spectrum()} />);
+    fireEvent.click(trigger());
+    // Radix installs its document pointer listener on the next task.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.pointerDown(document.body, { button: 0 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("dismisses on window blur", () => {
+    render(<HelpPopover items={spectrum()} />);
+    fireEvent.click(trigger());
+    fireEvent.blur(window);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("updates pinned content in place and clears its pin if the final gesture disappears", () => {
+    const { rerender } = render(<HelpPopover items={spectrum({ spectrumMaxMode: "hold" })} />);
+    fireEvent.click(trigger());
+    expect(screen.getByText("Clear Max Hold")).toBeTruthy();
+    rerender(<HelpPopover items={spectrum({ spectrumMaxMode: "hold" }, { isSnapshot: true })} />);
+    expect(screen.queryByText("Clear Max Hold")).toBeNull();
+    expect(screen.queryByText("Slow Trace")).toBeNull();
+    expect(trigger().getAttribute("aria-pressed")).toBe("true");
+    rerender(<HelpPopover items={[]} />);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    rerender(<HelpPopover items={spectrum()} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(trigger().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("renders modifiers once and uses explicit gesture metadata rather than effect text", () => {
     render(
       <HelpPopover
         items={[
-          { title: "Snapshot", items: ["Left click - Select snapshot"] },
-          { title: "Viewport", items: ["Ctrl + wheel - Zoom Y"] },
+          {
+            title: "Viewport",
+            items: [
+              {
+                id: "wheel",
+                gesture: "wheel",
+                modifiers: ["Shift"],
+                target: "",
+                effect: "Adjust Height Scale",
+              },
+              {
+                id: "drag",
+                gesture: "left-drag",
+                modifiers: ["Ctrl"],
+                target: "Time Axis",
+                effect: "Move Right",
+              },
+              { id: "right", gesture: "right-drag", modifiers: [], target: "", effect: "Rotate" },
+              {
+                id: "swipe",
+                gesture: "trackpad-swipe",
+                modifiers: [],
+                target: "",
+                effect: "Pan Frequency",
+              },
+            ],
+          },
         ]}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: /shortcuts/i }));
-    expect(screen.getByText("Snapshot")).toBeTruthy();
-    expect(screen.getByText("Viewport")).toBeTruthy();
-    expect(screen.getByText("Ctrl + wheel - Zoom Y")).toBeTruthy();
+    fireEvent.click(trigger());
+    expect(screen.getAllByText("Shift")).toHaveLength(1);
+    expect(screen.getAllByText("Ctrl")).toHaveLength(1);
+    expect(screen.getByText("Time Axis · Left Drag")).toBeTruthy();
+    expect(screen.queryByText("Time Axis", { exact: true })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Viewport" })).toBeTruthy();
+    expect(document.querySelector('[data-gesture-icon="left-drag"]')).toBeTruthy();
+    expect(document.querySelector('[data-gesture-icon="right-drag"]')).toBeTruthy();
+    expect(document.querySelector('[data-gesture-icon="wheel"]')).toBeTruthy();
+    expect(document.querySelector('[data-gesture-icon="trackpad-swipe"]')).toBeTruthy();
+    expect(screen.getAllByRole("term")).toHaveLength(4);
+    expect(screen.getAllByRole("definition")).toHaveLength(4);
   });
 
-  it("uses the left mouse icon for drag gestures unless right is specified", () => {
+  it("does not bubble help scrolling into chart or workspace handlers", () => {
+    const onWheel = vi.fn();
     render(
-      <HelpPopover
-        items={[
-          "Ctrl + drag - Pan viewport",
-          "Time axis drag - Pan time",
-          "Y axis drag - Pan level",
-          "Right drag - Pan timeline",
-        ]}
-      />
+      <div onWheel={onWheel}>
+        <HelpPopover items={spectrum()} />
+      </div>
     );
-    fireEvent.click(screen.getByRole("button", { name: /shortcuts/i }));
-
-    expect(document.querySelectorAll('[data-gesture-icon="left-mouse"]')).toHaveLength(3);
-    expect(document.querySelectorAll('[data-gesture-icon="right-mouse"]')).toHaveLength(1);
-  });
-
-  it("uses hover and left mouse icons for inspect click gestures", () => {
-    render(
-      <HelpPopover
-        items={[
-          "Hover - Inspect value",
-          "Click - Capture snapshot",
-          "Double-click - Return to live",
-          "Double-click axis - Reset axis",
-        ]}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: /shortcuts/i }));
-
-    expect(document.querySelectorAll('[data-gesture-icon="hover"]')).toHaveLength(1);
-    expect(document.querySelectorAll('[data-gesture-icon="left-mouse"]')).toHaveLength(3);
-  });
-
-  it("renders an empty list without error", () => {
-    render(<HelpPopover items={[]} />);
-    expect(screen.getByRole("button")).toBeTruthy();
+    fireEvent.click(trigger());
+    fireEvent.wheel(help(), { deltaY: 100 });
+    expect(onWheel).not.toHaveBeenCalled();
   });
 });

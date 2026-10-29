@@ -368,9 +368,6 @@ function FullscreenOverlay() {
   const Component = def?.Component ?? null;
   const fullscreenModuleId = fullscreenId ? resolvePanelModuleId(state, fullscreenId) : null;
   const panelControls = fullscreenId ? getPanelControls(state, fullscreenId) : null;
-  const helpItems = fullscreenModuleId
-    ? resolvePanelHelpItems(fullscreenModuleId, panelControls)
-    : null;
   const isPinned = Boolean(fullscreenId && state.pinnedPanelsById?.[fullscreenId]);
   const onPanelControlsChange = useCallback(
     (nextPanelControls) => {
@@ -385,6 +382,12 @@ function FullscreenOverlay() {
   }, [fullscreenId, resetPanelControlsForPanel]);
   const axisViewportData = usePanelAxisViewports(fullscreenId);
   const panelHistoryData = usePanelHistoryData(fullscreenModuleId, axisViewportData, panelControls);
+  const helpItems = fullscreenModuleId
+    ? resolvePanelHelpItems(fullscreenModuleId, panelControls, {
+        isSnapshot: panelHistoryData?.selectedOffset >= 0,
+        hideAxesAndLabels: chromeData?.hideAxesAndLabels,
+      })
+    : null;
   const panelInstanceData = useMemo(
     () => ({
       panelControls,
@@ -431,7 +434,7 @@ function FullscreenOverlay() {
                 onPanelControlsReset={onPanelControlsReset}
               />
             </PanelInstanceProvider>
-            {helpItems ? <HelpPopover items={helpItems} /> : null}
+            {helpItems ? <HelpPopover key={fullscreenId} items={helpItems} /> : null}
             <HoverTip
               tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
             >

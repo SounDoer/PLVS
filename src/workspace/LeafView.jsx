@@ -209,7 +209,6 @@ export function LeafView({ node, path, style }) {
   const ActiveComponent = activeTab ? resolvePanelDefinition(state, activeTab)?.Component : null;
   const activeModuleId = activeTab ? resolvePanelModuleId(state, activeTab) : null;
   const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
-  const helpItems = activeModuleId ? resolvePanelHelpItems(activeModuleId, panelControls) : null;
   const onPanelControlsChange = useCallback(
     (nextPanelControls) => {
       if (!activeTab) return;
@@ -233,6 +232,12 @@ export function LeafView({ node, path, style }) {
   const pathAttr = JSON.stringify(path);
   const axisViewportData = usePanelAxisViewports(activeTab);
   const panelHistoryData = usePanelHistoryData(activeModuleId, axisViewportData, panelControls);
+  const helpItems = activeModuleId
+    ? resolvePanelHelpItems(activeModuleId, panelControls, {
+        isSnapshot: panelHistoryData?.selectedOffset >= 0,
+        hideAxesAndLabels: chromeData?.hideAxesAndLabels,
+      })
+    : null;
   const panelInstanceData = useMemo(
     () => ({
       panelControls,
@@ -381,7 +386,7 @@ export function LeafView({ node, path, style }) {
                 onPanelControlsReset={onPanelControlsReset}
               />
             </PanelInstanceProvider>
-            {helpItems ? <HelpPopover items={helpItems} /> : null}
+            {helpItems ? <HelpPopover key={activeTab} items={helpItems} /> : null}
             <HoverTip
               tip={
                 slotPinnedByOther

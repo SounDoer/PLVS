@@ -30,6 +30,7 @@ import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../..
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { spectrumViewLegend } from "../../math/spectrumChannelViewOptions.js";
 import { cn } from "@/lib/utils";
+import { spectrumGestureAvailability } from "./panelGestureAvailability.js";
 import { PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import {
   buildAdaptiveDbTicks,
@@ -352,7 +353,10 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
 
   // Live only: in a snapshot the fill is reconstructed from history, so there is nothing here to
   // clear.
-  const clearMaxHoldOnClick = maxHoldEnabled && !isSnapshot;
+  const { clearMaxHold: clearMaxHoldOnClick, holdSlow: canHoldSlow } = spectrumGestureAvailability(
+    normalizedPanelControls,
+    isSnapshot
+  );
   const onMaxHoldClearClick = useCallback((event) => {
     // The chart's own click captures a snapshot; this click is not that one.
     event.stopPropagation();
@@ -458,7 +462,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   const scheduleHoldSmoothing = useCallback(
     (e) => {
       if (
-        selectedOffset >= 0 ||
+        !canHoldSlow ||
         !historyChartInteractive ||
         (e.button != null && e.button !== 0) ||
         e.ctrlKey
@@ -479,7 +483,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
         suppressChartClickRef.current = true;
       }, HOLD_SMOOTHING_DELAY_MS);
     },
-    [clearPendingHoldSmoothing, historyChartInteractive, selectedOffset]
+    [canHoldSlow, clearPendingHoldSmoothing, historyChartInteractive]
   );
   const { active: chartAxisActive, pulse: pulseAxes } = useAxisActivePulse(NO_AXIS_ACTIVE);
   const pulseChartAxis = useCallback(

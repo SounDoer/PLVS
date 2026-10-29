@@ -2867,12 +2867,12 @@ describe("PanelSettingsContent", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts and gestures" }));
 
-    expect(screen.getByText("Level axis wheel - Zoom level")).toBeTruthy();
-    expect(screen.getByText("Level axis drag - Pan level")).toBeTruthy();
-    expect(screen.getByText("Double-click axis - Reset axis")).toBeTruthy();
+    expect(screen.getByText("Zoom Level")).toBeTruthy();
+    expect(screen.getByText("Pan Level")).toBeTruthy();
+    expect(screen.getByText("Reset Axis")).toBeTruthy();
     // Off by default (DEFAULT_PANEL_CONTROLS.levelMeterTpMaxMarker is false), so the marker the
     // popover would document isn't on the panel.
-    expect(screen.queryByText("Click marker - Reset TP Max")).toBeNull();
+    expect(screen.queryByText("Reset TP Max")).toBeNull();
   });
 
   it("adds the TP Max Markers section only in Peak mode with the marker switched on", () => {
@@ -2911,11 +2911,9 @@ describe("PanelSettingsContent", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts and gestures" }));
 
-    expect(screen.getByText("Click marker - Reset TP Max")).toBeTruthy();
+    expect(screen.getByText("Reset TP Max")).toBeTruthy();
     expect(
-      screen
-        .getByText("Double-click axis - Reset axis")
-        .compareDocumentPosition(screen.getByText("Click marker - Reset TP Max"))
+      screen.getByText("Reset Axis").compareDocumentPosition(screen.getByText("Reset TP Max"))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 

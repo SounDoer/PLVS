@@ -17,6 +17,7 @@ import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
+import { vectorscopeGestureAvailability } from "./panelGestureAvailability.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -91,6 +92,9 @@ export function useVectorscopeDisplay() {
   const effectivePanelControls = useEffectiveChannelControls("vectorscope", panelControls);
   const vectorscopeKey = vectorscopeRequestKeyFromControls(effectivePanelControls);
   const isSnapshot = selectedOffset >= 0;
+  const gestureAvailability = vectorscopeGestureAvailability(normalizedPanelControls, isSnapshot);
+  const canHoldSlow = gestureAvailability.holdSlow === true;
+  const canResetMaxHold = gestureAvailability.resetMaxHold === true;
   const [holdSlowActive, setHoldSlowActive] = useState(false);
   const holdSlowTimerRef = useRef(null);
   const holdSlowPointerRef = useRef(null);
@@ -113,8 +117,7 @@ export function useVectorscopeDisplay() {
   const onTracePointerDown = useCallback(
     (e) => {
       if (
-        !isLissajous ||
-        isSnapshot ||
+        !canHoldSlow ||
         !historyChartInteractive ||
         (e.button != null && e.button !== 0) ||
         e.ctrlKey
@@ -130,7 +133,7 @@ export function useVectorscopeDisplay() {
         setHoldSlowActive(true);
       }, HOLD_SLOW_DELAY_MS);
     },
-    [clearPendingHoldSlow, historyChartInteractive, isLissajous, isSnapshot]
+    [canHoldSlow, clearPendingHoldSlow, historyChartInteractive]
   );
   const onTracePointerMove = useCallback(
     (e) => {
@@ -149,10 +152,6 @@ export function useVectorscopeDisplay() {
     releaseHoldSlow();
   }, [releaseHoldSlow]);
   const [maxHoldResetKey, setMaxHoldResetKey] = useState(0);
-  const canResetMaxHold =
-    !isSnapshot &&
-    vectorscopeMode === "polarLevel" &&
-    normalizedPanelControls.vectorscopePolarLevelMaxHold;
   const snapResolved = isSnapshot
     ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey, {
         withMaxHold:

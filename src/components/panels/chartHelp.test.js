@@ -1,109 +1,156 @@
 import { describe, expect, it } from "vitest";
+import { resolvePanelHelpItems } from "./chartHelp.js";
+import { MODULE_CATALOG } from "../../workspace/moduleCatalog.js";
+import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 
-import {
-  PANEL_HELP_BY_MODULE_ID,
-  SPECTROGRAM_2D_HELP,
-  SPECTROGRAM_3D_HELP,
-  resolvePanelHelpItems,
-} from "./chartHelp.js";
+const rows = (id, controls = {}, context = {}) =>
+  (resolvePanelHelpItems(id, controls, context) ?? []).flatMap((section) => section.items);
+const effects = (...args) => rows(...args).map((item) => item.effect);
 
-function itemsOf(sections) {
-  return sections.flatMap((section) => section.items);
-}
-
-describe("spectrogram panel help", () => {
-  it("resolves gestures from the active view mode", () => {
-    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "lines" })).toBe(
-      SPECTROGRAM_3D_HELP
-    );
-    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "surface" })).toBe(
-      SPECTROGRAM_3D_HELP
-    );
-    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "heatmap" })).toBe(
-      SPECTROGRAM_2D_HELP
-    );
-    // Absent is 2D: panelControls reaches here unnormalised, so a panel that never touched the
-    // toggle must not be told about a mode it is not in.
-    expect(resolvePanelHelpItems("spectrogram", {})).toBe(SPECTROGRAM_2D_HELP);
-    expect(resolvePanelHelpItems("spectrogram", undefined)).toBe(SPECTROGRAM_2D_HELP);
-  });
-
-  it("never lists both meanings of the right button at once", () => {
-    // The whole reason this help is mode-resolved. The right button pans and resets the timeline in
-    // 2D and rotates and resets the viewpoint in 3D, so showing both leaves one of them wrong.
-    const twoD = itemsOf(SPECTROGRAM_2D_HELP);
-    const threeD = itemsOf(SPECTROGRAM_3D_HELP);
-
-    expect(twoD).toContain("Right drag - Pan timeline");
-    expect(twoD.some((item) => item.includes("Rotate"))).toBe(false);
-
-    expect(threeD).toContain("Right drag - Rotate");
-    expect(threeD.some((item) => item.includes("Pan timeline"))).toBe(false);
-  });
-
-  it("mentions Shift+wheel only in 3D", () => {
-    expect(itemsOf(SPECTROGRAM_3D_HELP).some((item) => item.startsWith("Shift + wheel"))).toBe(
-      true
-    );
-    expect(itemsOf(SPECTROGRAM_2D_HELP).some((item) => item.startsWith("Shift + wheel"))).toBe(
-      false
-    );
-  });
-
-  it("lists gestures only, in the shape every other panel uses", () => {
-    // This is a gesture reference, not documentation. Settings entries and prose caveats belong in
-    // the design docs; earlier revisions carried a "Display Range" section and a "3D limitations"
-    // section, and they overflowed the popover while telling the reader nothing to press.
-    for (const sections of [SPECTROGRAM_2D_HELP, SPECTROGRAM_3D_HELP]) {
-      for (const item of itemsOf(sections)) {
-        // "gesture - effect". Not anchored on the gesture half: "Left double-click" carries its own
-        // hyphen, so the separator is the spaced one, not the first one.
-        expect(item).toContain(" - ");
-        expect(item).not.toMatch(/\(settings\)/);
-        expect(item.length).toBeLessThanOrEqual(40);
+describe("contextual panel gestures", () => {
+  it.each(["heatmap", "lines", "surface"])(
+    "keeps Spectrogram %s right-button meanings separate",
+    (spectrogramMode) => {
+      const items = rows("spectrogram", { spectrogramMode });
+      if (spectrogramMode === "heatmap") {
+        expect(items.find((item) => item.gesture === "right-drag")?.effect).toBe("Pan Timeline");
+        expect(items.find((item) => item.gesture === "right-double-click")?.effect).toBe(
+          "Reset Timeline"
+        );
+        expect(items.some((item) => item.modifiers.includes("Shift"))).toBe(false);
+        expect(items.some((item) => item.gesture === "hover")).toBe(true);
+      } else {
+        expect(items.find((item) => item.gesture === "right-drag")?.effect).toBe("Rotate");
+        expect(items.find((item) => item.gesture === "right-double-click")?.effect).toBe(
+          "Reset Viewpoint"
+        );
+        expect(items.find((item) => item.modifiers.includes("Shift"))?.effect).toBe(
+          "Adjust Height Scale"
+        );
+        expect(items.some((item) => item.gesture === "hover")).toBe(false);
       }
     }
+  );
+
+  it("normalizes omitted controls just like the panels", () => {
+    expect(resolvePanelHelpItems("spectrogram", undefined)).toEqual(
+      resolvePanelHelpItems("spectrogram", { spectrogramMode: "heatmap" })
+    );
+    expect(effects("vectorscope")).toContain("Slow Trace Decay");
+    expect(effects("spectrum")).not.toContain("Clear Max Hold");
   });
-});
 
-describe("level meter panel help", () => {
-  it("only adds the Markers section in Peak mode with the TP Max marker switched on", () => {
-    const resolveHelp = PANEL_HELP_BY_MODULE_ID.levelMeter;
+  it.each(["off", "decay", "hold"])(
+    "only offers Spectrum %s clear and hold-slow when usable",
+    (spectrumMaxMode) => {
+      expect(effects("spectrum", { spectrumMaxMode }).includes("Clear Max Hold")).toBe(
+        spectrumMaxMode === "hold"
+      );
+      expect(effects("spectrum", { spectrumMaxMode })).toContain("Slow Trace");
+      const snapshotEffects = effects("spectrum", { spectrumMaxMode }, { isSnapshot: true });
+      expect(snapshotEffects).not.toContain("Clear Max Hold");
+      expect(snapshotEffects).not.toContain("Slow Trace");
+      expect(snapshotEffects).toContain("Return to Live");
+    }
+  );
 
-    expect(typeof resolveHelp).toBe("function");
-    const axesOnly = resolveHelp({ levelMeterMode: "peak", levelMeterTpMaxMarker: false });
-    expect(axesOnly.map((section) => section.title)).toEqual(["Axes"]);
+  it.each(["lissajous", "polarSample", "polarLevel"])(
+    "filters Vectorscope %s with mode, switch and snapshot",
+    (vectorscopeMode) => {
+      const controls = { vectorscopeMode, vectorscopePolarLevelMaxHold: true };
+      expect(effects("vectorscope", controls)).toEqual(
+        vectorscopeMode === "lissajous"
+          ? ["Slow Trace Decay"]
+          : vectorscopeMode === "polarLevel"
+            ? ["Reset Max Hold"]
+            : []
+      );
+      expect(resolvePanelHelpItems("vectorscope", controls, { isSnapshot: true })).toBeNull();
+      expect(
+        resolvePanelHelpItems("vectorscope", {
+          vectorscopeMode: "polarLevel",
+          vectorscopePolarLevelMaxHold: false,
+        })
+      ).toBeNull();
+    }
+  );
 
-    const withMarker = resolveHelp({ levelMeterMode: "peak", levelMeterTpMaxMarker: true });
-    expect(withMarker.map((section) => section.title)).toEqual(["Axes", "Markers"]);
-    expect(itemsOf(withMarker)).toContain("Click marker - Reset TP Max");
+  it.each(["peak", "rms", "momentary", "shortTerm"])(
+    "only offers the TP Max marker in Peak, not %s modes",
+    (levelMeterMode) => {
+      expect(
+        effects("levelMeter", { levelMeterMode, levelMeterTpMaxMarker: true }).includes(
+          "Reset TP Max"
+        )
+      ).toBe(levelMeterMode === "peak");
+      expect(effects("levelMeter", { levelMeterMode, levelMeterTpMaxMarker: false })).not.toContain(
+        "Reset TP Max"
+      );
+    }
+  );
 
-    // The marker itself doesn't render outside Peak mode, so the switch being on is not enough.
-    expect(resolveHelp({ levelMeterMode: "rms", levelMeterTpMaxMarker: true })).toBe(axesOnly);
-    expect(resolveHelp(undefined)).toBe(axesOnly);
+  it.each(Object.keys(MODULE_CATALOG))("removes hidden axis instructions for %s", (moduleId) => {
+    const groups = resolvePanelHelpItems(moduleId, {}, { hideAxesAndLabels: true }) ?? [];
+    expect(groups.some((group) => group.title === "Axes")).toBe(false);
+    expect(groups.every((group) => group.items.length > 0)).toBe(true);
   });
-});
 
-describe("vectorscope panel help", () => {
-  it("resolves gestures from the active vectorscope mode", () => {
-    const resolveHelp = PANEL_HELP_BY_MODULE_ID.vectorscope;
-
-    expect(typeof resolveHelp).toBe("function");
-    expect(resolveHelp({ vectorscopeMode: "lissajous" })[0].items).toEqual([
-      "Left hold - Slow trace decay",
-    ]);
-    expect(resolveHelp({ vectorscopeMode: "polarSample" })).toBeNull();
+  it("hides the Level Meter button when only hidden axes remain", () => {
     expect(
-      resolveHelp({
-        vectorscopeMode: "polarLevel",
-        vectorscopePolarLevelMaxHold: true,
-      })[0].items
-    ).toEqual(["Click plot - Reset Max hold"]);
-    expect(
-      resolveHelp({
-        vectorscopeMode: "polarLevel",
-        vectorscopePolarLevelMaxHold: false,
-      })
+      resolvePanelHelpItems(
+        "levelMeter",
+        { levelMeterTpMaxMarker: false },
+        { hideAxesAndLabels: true }
+      )
     ).toBeNull();
+    expect(
+      effects(
+        "levelMeter",
+        { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+        { hideAxesAndLabels: true }
+      )
+    ).toEqual(["Reset TP Max"]);
+  });
+
+  it.each(Object.values(STEREO_MAP_MODES))(
+    "names Stereo Map %s chart panning accurately and limits level axes",
+    (stereoMapMode) => {
+      const items = rows("stereo-map", { stereoMapMode });
+      expect(
+        items.find((item) => item.gesture === "left-drag" && item.modifiers.includes("Ctrl"))
+          ?.effect
+      ).toBe("Pan Frequency");
+      const hasLevelAxis =
+        stereoMapMode === STEREO_MAP_MODES.MONO_LOSS_DB ||
+        stereoMapMode === STEREO_MAP_MODES.MS_RATIO_DB;
+      expect(items.some((item) => item.target === "Level Axis")).toBe(hasLevelAxis);
+    }
+  );
+
+  it.each(["loudness", "waveform", "spectrum", "spectrogram", "stereo-map"])(
+    "includes the %s hover probe",
+    (moduleId) => {
+      expect(rows(moduleId).some((item) => item.gesture === "hover")).toBe(true);
+    }
+  );
+
+  it("has no empty Stats reference or reference for unknown modules", () => {
+    expect(resolvePanelHelpItems("stats", {})).toBeNull();
+    expect(resolvePanelHelpItems("unknown", {})).toBeNull();
+  });
+
+  it("provides stable identifiers, explicit operations and no duplicated modifiers in prose", () => {
+    for (const moduleId of Object.keys(MODULE_CATALOG)) {
+      for (const section of resolvePanelHelpItems(moduleId, {}) ?? []) {
+        const ids = section.items.map((item) => item.id);
+        expect(new Set(ids).size).toBe(ids.length);
+        for (const item of section.items) {
+          expect(item.gesture).toBeTruthy();
+          expect(item.effect).toBeTruthy();
+          expect(Array.isArray(item.modifiers)).toBe(true);
+          expect(item.effect).not.toMatch(/Ctrl|Shift|Max hold/);
+        }
+      }
+    }
   });
 });
