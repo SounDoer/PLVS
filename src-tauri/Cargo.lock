@@ -3742,7 +3742,7 @@ dependencies = [
 name = "plvs-update-installer"
 version = "0.23.4"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "minisign-verify",
  "semver",
  "serde",
