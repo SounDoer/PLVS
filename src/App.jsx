@@ -1,6 +1,7 @@
 import { normalizePanelPresentation } from "./lib/panelPresentation.js";
 import { isDockSupported } from "./lib/platform.js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { QuickTour } from "./onboarding/QuickTour.jsx";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -159,6 +160,7 @@ export default function App() {
 }
 
 function AppContent() {
+  const [quickTourRequest, setQuickTourRequest] = useState(0);
   const settingsOverlaysRef = useRef(null);
   const meterRuntime = useMeterRuntime();
   const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
@@ -649,6 +651,22 @@ function AppContent() {
     <>
       <AgentControlBridge />
       <UpdateSurfaces currentVersion={APP_VERSION} />
+      <QuickTour
+        requestId={quickTourRequest}
+        running={running}
+        snapshot={selectedOffset >= 0}
+        hasHistory={hasHistoryData}
+        sourceMode={sourceMode}
+        docked={docked}
+        dockSupported={isTauri() && isDockSupported()}
+        applicationsSupported={isTauri() && isDockSupported()}
+        settingsOpen={settings.settingsOpen}
+        updateSetupPending={
+          isTauri() &&
+          (!updateControls.initialized ||
+            (updateControls.enabled && !settings.updatePreferences.choiceMade))
+        }
+      />
       <DockImportSurface
         pack={packTransfer}
         settings={settings}
@@ -693,6 +711,10 @@ function AppContent() {
           updateControls={updateControls}
           appVersion={APP_VERSION}
           onAgentControlEnabledChange={setAgentControlEnabled}
+          onOpenQuickTour={() => {
+            setSettingsOpen(false);
+            setQuickTourRequest((value) => value + 1);
+          }}
         />
 
         <CloseConfirmDialog

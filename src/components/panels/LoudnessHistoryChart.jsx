@@ -325,6 +325,7 @@ export function LoudnessHistoryChart({
 
       {/* Chart area */}
       <div
+        data-tour-target="history"
         ref={(node) => {
           if (plotAreaRef) plotAreaRef.current = node;
           if (!showAxes) loudnessYAxis.axisRef(node);

@@ -87,6 +87,29 @@ stable packages install side by side with Preview.
 
 ## First launch
 
+### Quick Tour
+
+After the first-launch update preferences are settled, **Quick Tour** offers a short introduction
+to Start, Sources, Loudness Profile, Modules, Views, Presets, Panel Settings, Snapshot, and
+Clear / Settings. Choose **Start Tour** or **Not Now**. You can also close it at any time.
+
+The tour highlights real controls without blocking the rest of the interface. Every step has a
+**Next** button; starting capture, changing settings, and entering Snapshot are optional. Opening a
+menu or editor pauses the tour. Once that surface closes, choose **Resume Tour** when ready.
+Changes you make remain in place when you continue, finish, or close the tour.
+
+The pointers follow controls when panels or the window move. If an entry is hidden or its panel
+has been removed, the tour explains how to find it and still lets you continue. The tour covers
+the normal Live workspace; File mode and Dock pause it until you return. It never switches modes
+or restores your layout for you.
+
+The invitation appears only for new installations, not on upgrade or in additional workbenches.
+Your choice is stored locally for the application identity, with no tour telemetry. To view it
+again, open **Settings** and choose **Quick Tour** beside **Docs** and **Feedback** at the bottom.
+Reopening starts from the first step while keeping your measurement and settings.
+
+### Initial Workspace and Update Preferences
+
 A new installation opens with a starter workspace and a starter Loudness Profile. The workspace is
 saved as the **PLVS Default** Preset, while the Profile is also named **PLVS Default**. The Preset lets you
 return to the initial layout after rearranging it. **PLVS Default** is a general starting point, not

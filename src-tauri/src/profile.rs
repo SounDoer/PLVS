@@ -257,12 +257,19 @@ pub fn write_store_map(path: &Path, map: &Map<String, Value>) -> Result<(), Stri
 }
 
 pub fn build_profile_snapshot_from_store(store: &Map<String, Value>) -> Value {
+  let mut settings = store
+    .get("plvs:settings")
+    .cloned()
+    .unwrap_or_else(|| json!({}));
+  if let Some(settings) = settings.as_object_mut() {
+    settings.remove("quickTour");
+  }
   json!({
     "app": PROFILE_APP,
     "kind": PROFILE_KIND,
     "version": PROFILE_VERSION,
     "exportedAt": chrono_like_utc_now(),
-    "settings": store.get("plvs:settings").cloned().unwrap_or_else(|| json!({})),
+    "settings": settings,
     "workspace": store.get("plvs:workspace").cloned().unwrap_or_else(|| json!({})),
     "presets": store.get("plvs:presets").cloned().unwrap_or_else(|| json!({})),
     "themes": store.get("plvs:themes").cloned().unwrap_or_else(|| json!({})),
@@ -272,7 +279,10 @@ pub fn build_profile_snapshot_from_store(store: &Map<String, Value>) -> Value {
   })
 }
 
-fn profile_from_hydrated(hydrated: crate::persistence::HydratedWorkspace) -> Value {
+fn profile_from_hydrated(mut hydrated: crate::persistence::HydratedWorkspace) -> Value {
+  if let Some(settings) = hydrated.settings.as_object_mut() {
+    settings.remove("quickTour");
+  }
   json!({
     "settings": hydrated.settings,
     "workspace": hydrated.workspace,
@@ -745,6 +755,14 @@ fn reset_session(session: &crate::persistence::WorkspacePersistenceSession) -> R
     json!({ "app": PROFILE_APP, "kind": PROFILE_KIND, "version": PROFILE_VERSION }),
   )?;
   let library = session.library();
+  let tour_revision = library
+    .read_global_preference("quickTour")
+    .map_err(|error| error.to_string())?
+    .map(|preference| preference.revision)
+    .unwrap_or(0);
+  library
+    .set_global_preference("quickTour", tour_revision, &json!("pending"))
+    .map_err(|error| error.to_string())?;
   if let Some(seeded) = library
     .read_global_preference(STARTER_ITEMS_SEEDED_KEY)
     .map_err(|error| error.to_string())?

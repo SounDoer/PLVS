@@ -84,6 +84,7 @@ export function SourceTransportCluster({
     <button
       type="button"
       disabled={state.primaryActionDisabled}
+      data-tour-target={vertical ? undefined : "transport"}
       aria-label={vertical ? state.actionLabel.toLowerCase() : undefined}
       onClick={() => onPrimaryAction(state.actionKind)}
       className={cn(

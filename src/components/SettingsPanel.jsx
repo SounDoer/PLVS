@@ -226,6 +226,7 @@ function IconButton({ children, className, ...props }) {
  *   crashReportSettingError?: string,
  *   onAskToSendCrashReports?: (...args: any[]) => any,
  *   onOpenFeedback?: (...args: any[]) => any,
+ *   onOpenQuickTour?: () => void,
  * }} props
  */
 export function SettingsPanel({
@@ -298,6 +299,7 @@ export function SettingsPanel({
   crashReportSettingError = "",
   onAskToSendCrashReports = () => {},
   onOpenFeedback = () => {},
+  onOpenQuickTour,
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
@@ -1064,6 +1066,11 @@ export function SettingsPanel({
                           Docs
                           <ExternalLink className="size-[1em]" />
                         </LinkButton>
+                        {onOpenQuickTour ? (
+                          <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenQuickTour}>
+                            Quick Tour
+                          </LinkButton>
+                        ) : null}
                         <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenFeedback}>
                           Feedback
                         </LinkButton>

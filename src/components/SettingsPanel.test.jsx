@@ -15,6 +15,16 @@ const CUSTOM_THEME = {
 };
 const CUSTOM_THEME_OPTION = { id: CUSTOM_THEME.id, label: CUSTOM_THEME.name, theme: CUSTOM_THEME };
 
+it("offers Quick Tour between Docs and Feedback using an internal action", () => {
+  const onOpenQuickTour = vi.fn();
+  render(<SettingsPanel {...BASE_PROPS} appVersion="0.23.4" onOpenQuickTour={onOpenQuickTour} />);
+  const button = screen.getByRole("button", { name: "Quick Tour" });
+  expect(button.previousElementSibling.textContent).toBe("Docs");
+  expect(button.nextElementSibling.textContent).toBe("Feedback");
+  fireEvent.click(button);
+  expect(onOpenQuickTour).toHaveBeenCalledOnce();
+});
+
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,

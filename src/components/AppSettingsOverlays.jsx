@@ -36,6 +36,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  *   crashReporting: Pick<ReturnType<typeof import("../hooks/useCrashReporting.js").useCrashReporting>, "pendingReport" | "dismissPending">,
  *   packTransfer?: ReturnType<typeof import("../transfer/usePackTransfer.js").usePackTransfer>,
  *   onAgentControlEnabledChange?: (...args: any[]) => any,
+ *   onOpenQuickTour?: () => void,
  * }} props
  */
 export function AppSettingsOverlays({
@@ -50,6 +51,7 @@ export function AppSettingsOverlays({
   crashReporting,
   packTransfer = null,
   onAgentControlEnabledChange = () => {},
+  onOpenQuickTour,
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackDirty, setFeedbackDirty] = useState(false);
@@ -403,6 +405,7 @@ export function AppSettingsOverlays({
         crashReportSettingError={crashReportSetting.error}
         onAskToSendCrashReports={crashReportSetting.setEnabled}
         onOpenFeedback={openFeedback}
+        onOpenQuickTour={onOpenQuickTour}
       />
 
       <UpdateDialog

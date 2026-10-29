@@ -37,6 +37,21 @@ function seed() {
 }
 
 describe("multiInstanceBackend", () => {
+  it("persists the tour disposition as an identity-wide preference with its revision", async () => {
+    window.__PLVS_INITIAL_STATE__["plvs:settings"].quickTour = "pending";
+    window.__PLVS_INITIAL_STATE__.globalPreferences.quickTour = "pending";
+    window.__PLVS_INITIAL_STATE__.multiInstancePersistence.globalPreferenceRevisions.quickTour = 3;
+    invoke.mockResolvedValueOnce({ quickTour: 4 }).mockResolvedValue(undefined);
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    backend.set("plvs:settings", { ...backend.get("plvs:settings"), quickTour: "dismissed" });
+    await backend.flush();
+    expect(invoke).toHaveBeenNthCalledWith(1, "persistence_save_global_preferences", {
+      values: { quickTour: "dismissed" },
+      expectedRevisions: { quickTour: 3 },
+    });
+  });
+
   it("applies peer update preferences without overwriting local workspace settings", async () => {
     const updatePreferences = { choiceMade: true, autoCheck: false, autoDownload: false };
     invoke.mockResolvedValueOnce({
@@ -51,7 +66,7 @@ describe("multiInstanceBackend", () => {
         referenceLufs: -10,
         loudnessProfiles: { profiles: [{ id: "broadcast", name: "Broadcast" }] },
       },
-      globalPreferences: { askToSendCrashReports: true, updatePreferences },
+      globalPreferences: { askToSendCrashReports: true, updatePreferences, quickTour: "completed" },
       globalPreferenceRevisions: { askToSendCrashReports: 5, updatePreferences: 2 },
       libraryItemRevisions: {
         preset: { one: 3, two: 4 },
@@ -65,7 +80,11 @@ describe("multiInstanceBackend", () => {
     const changed = vi.fn();
     const unsubscribe = backend.subscribe("plvs:settings", changed);
     await backend.refresh();
-    expect(backend.get("plvs:settings")).toMatchObject({ referenceLufs: -23, updatePreferences });
+    expect(backend.get("plvs:settings")).toMatchObject({
+      referenceLufs: -23,
+      updatePreferences,
+      quickTour: "completed",
+    });
     expect(changed).toHaveBeenCalledWith({ origin: "remote" });
     expect(invoke).not.toHaveBeenCalledWith("persistence_save_domain", expect.anything());
     unsubscribe();

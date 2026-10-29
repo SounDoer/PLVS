@@ -69,7 +69,11 @@ export function PanelSettingsMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <IconAction aria-label="Panel settings" className={PANEL_HEADER_ACTION_BUTTON}>
+        <IconAction
+          aria-label="Panel settings"
+          data-tour-target="panel-settings"
+          className={PANEL_HEADER_ACTION_BUTTON}
+        >
           <Settings2 className="size-[length:var(--ui-icon-panel-action)]" />
         </IconAction>
       </PopoverTrigger>

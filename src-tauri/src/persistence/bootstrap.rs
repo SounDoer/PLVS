@@ -27,6 +27,24 @@ pub fn prepare_identity_storage(
   // Fresh stores seed an unresolved choice inside their atomic initialization. An existing
   // store lacking this key predates update preferences and retains automatic checking only.
   let library = LibraryRepository::open(&root).map_err(|error| error.to_string())?;
+  // Only atomic fresh initialization seeds an invitation. Missing on upgrade means suppressed.
+  if library
+    .read_global_preference("quickTour")
+    .map_err(|error| error.to_string())?
+    .is_none()
+  {
+    if let Err(error) =
+      library.set_global_preference("quickTour", 0, &serde_json::json!("dismissed"))
+    {
+      if library
+        .read_global_preference("quickTour")
+        .map_err(|error| error.to_string())?
+        .is_none()
+      {
+        return Err(error.to_string());
+      }
+    }
+  }
   if library
     .read_global_preference("updatePreferences")
     .map_err(|error| error.to_string())?
@@ -68,6 +86,47 @@ pub fn open_ordinary_launch_workspace(
 mod tests {
   use super::*;
   use serde_json::json;
+
+  #[test]
+  fn quick_tour_is_invited_only_for_fresh_identities_and_remembers_disposition() {
+    let directory = tempfile::tempdir().unwrap();
+    let legacy = directory.path().join("plvs-settings.json");
+    let prepared = prepare_identity_storage(directory.path(), &legacy).unwrap();
+    let library = LibraryRepository::open(&prepared.root).unwrap();
+    let preference = library
+      .read_global_preference("quickTour")
+      .unwrap()
+      .unwrap();
+    assert_eq!(preference.value, json!("pending"));
+    library
+      .set_global_preference("quickTour", preference.revision, &json!("completed"))
+      .unwrap();
+    prepare_identity_storage(directory.path(), &legacy).unwrap();
+    assert_eq!(
+      library
+        .read_global_preference("quickTour")
+        .unwrap()
+        .unwrap()
+        .value,
+      json!("completed")
+    );
+    let preference = library
+      .read_global_preference("quickTour")
+      .unwrap()
+      .unwrap();
+    library
+      .delete_global_preference("quickTour", preference.revision)
+      .unwrap();
+    prepare_identity_storage(directory.path(), &legacy).unwrap();
+    assert_eq!(
+      library
+        .read_global_preference("quickTour")
+        .unwrap()
+        .unwrap()
+        .value,
+      json!("dismissed")
+    );
+  }
 
   #[test]
   fn a_fresh_identity_waits_for_a_choice_and_preserves_it_on_restart() {
@@ -129,6 +188,14 @@ mod tests {
     std::fs::write(&legacy, "{}").unwrap();
     let prepared = prepare_identity_storage(directory.path(), &legacy).unwrap();
     let library = LibraryRepository::open(&prepared.root).unwrap();
+    assert_eq!(
+      library
+        .read_global_preference("quickTour")
+        .unwrap()
+        .unwrap()
+        .value,
+      json!("dismissed")
+    );
     assert_eq!(
       library
         .read_global_preference("updatePreferences")

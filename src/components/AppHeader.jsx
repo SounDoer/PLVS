@@ -187,6 +187,7 @@ export function AppHeader({
         <IconButton
           icon={<Trash2 className="size-[length:var(--ui-icon-shell-action)]" />}
           tip="Clear"
+          data-tour-target="clear"
           disabled={clearDisabled}
           onClick={onClear}
         />
@@ -216,6 +217,7 @@ export function AppHeader({
                       <Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />
                     }
                     tip="Sources"
+                    data-tour-target="sources"
                     disabled={!audioDevices.length && !captureApplications.length}
                     className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
@@ -239,6 +241,7 @@ export function AppHeader({
               <IconButton
                 icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Loudness Profile"
+                data-tour-target="profile"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -257,6 +260,7 @@ export function AppHeader({
               <IconButton
                 icon={<LayoutGrid className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Modules"
+                data-tour-target="modules"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -271,6 +275,7 @@ export function AppHeader({
               <IconButton
                 icon={<Focus className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Views"
+                data-tour-target="views"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -302,6 +307,7 @@ export function AppHeader({
               <IconButton
                 icon={<Bookmark className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Presets"
+                data-tour-target="presets"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -320,6 +326,7 @@ export function AppHeader({
         <IconButton
           icon={<Settings className="size-[length:var(--ui-icon-shell-action)]" />}
           tip="Settings"
+          data-tour-target="settings"
           onClick={() => setSettingsOpen(true)}
         />
       </div>

@@ -44,6 +44,7 @@ pub fn hydrate_workspace(
     "openAtLogin",
     "starterItemsSeeded",
     "updatePreferences",
+    "quickTour",
   ] {
     if let Some(preference) = repository
       .read_global_preference(key)
@@ -65,6 +66,9 @@ pub fn hydrate_workspace(
     .map_err(|error| error.to_string())?;
 
   let mut settings = object_at(state, "plvs:settings");
+  if let Some(preference) = global_preferences.get("quickTour") {
+    settings.insert("quickTour".to_string(), preference.clone());
+  }
   if let Some(preferences) = global_preferences.get("updatePreferences") {
     settings.insert("updatePreferences".to_string(), preferences.clone());
   }

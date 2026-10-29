@@ -22,6 +22,8 @@ fn fresh_identity_storage_starts_with_one_empty_default_workspace() {
   let session = WorkspacePersistenceSession::open(&prepared.root, "default").unwrap();
   let hydrated = session.hydrate().unwrap();
   assert_eq!(hydrated.capture_device_id, "default");
+  assert_eq!(hydrated.settings["quickTour"], "pending");
+  assert_eq!(hydrated.global_preferences["quickTour"], "pending");
   drop(session);
 
   let reopened = prepare_identity_storage(&app_data, &legacy).unwrap();

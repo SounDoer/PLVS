@@ -245,6 +245,9 @@ export function createMultiInstanceBackend() {
     if (key === "plvs:settings" && Object.hasOwn(value, "updatePreferences")) {
       await persistGlobalPreferences({ updatePreferences: value.updatePreferences });
     }
+    if (key === "plvs:settings" && Object.hasOwn(value, "quickTour")) {
+      await persistGlobalPreferences({ quickTour: value.quickTour });
+    }
     const kind = kindFor(key);
     if (kind) await persistCollection(kind, documentsFor(key, value));
     const domain = domainFor(key);
@@ -362,10 +365,14 @@ export function createMultiInstanceBackend() {
           seed.globalPreferences = clone(nextGlobals);
           metadata.globalPreferenceRevisions = clone(hydrated.globalPreferenceRevisions || {});
           const settings = cache.get("plvs:settings") || {};
-          if (signature(settings.updatePreferences) !== signature(nextGlobals.updatePreferences)) {
+          if (
+            signature(settings.updatePreferences) !== signature(nextGlobals.updatePreferences) ||
+            signature(settings.quickTour) !== signature(nextGlobals.quickTour)
+          ) {
             cache.set("plvs:settings", {
               ...settings,
               updatePreferences: clone(nextGlobals.updatePreferences),
+              quickTour: clone(nextGlobals.quickTour),
             });
             notify("plvs:settings", { origin: "remote" });
           }

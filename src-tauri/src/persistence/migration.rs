@@ -174,6 +174,10 @@ pub(super) fn initialize_empty_store(new_root: &Path) -> Result<(), String> {
   let result = (|| {
     LibraryRepository::open(&staging_root)
       .map_err(|error| error.to_string())?
+      .set_global_preference("quickTour", 0, &serde_json::json!("pending"))
+      .map_err(|error| error.to_string())?;
+    LibraryRepository::open(&staging_root)
+      .map_err(|error| error.to_string())?
       .set_global_preference(
         "updatePreferences",
         0,

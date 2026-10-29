@@ -453,6 +453,7 @@ function WaveformPanelContent({
         />
       )}
       <div
+        data-tour-target="history"
         className={cn(
           "relative isolate flex min-h-0 min-w-0 flex-1 gap-0",
           vertical ? "flex-row" : "flex-col"
