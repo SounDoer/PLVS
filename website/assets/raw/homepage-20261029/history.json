@@ -4,7 +4,7 @@
       "identifier": "com.soundoer.plvs.dev",
       "name": "PLVS Dev",
       "platform": "windows",
-      "version": "0.20.0"
+      "version": "0.23.4"
     },
     "appearance": {
       "mode": "fixed",
@@ -18,7 +18,7 @@
         "transition": null,
         "usingRequestedSelection": true
       },
-      "observedAt": "2026-10-16T04:08:17.053Z",
+      "observedAt": "2026-10-29T04:53:38.117Z",
       "selection": {
         "available": true,
         "mode": "exact",
@@ -36,68 +36,9 @@
     "dock": {
       "edge": "top",
       "enabled": false,
-      "height": 180,
-      "heightMode": "expanded",
+      "height": 150,
       "monitor": null,
       "panels": [
-        {
-          "analysis": {
-            "status": "active"
-          },
-          "controls": {
-            "barColors": "gradient",
-            "floatingValue": false,
-            "levelRangeDbfs": {
-              "max": 3,
-              "min": -60
-            },
-            "loudnessRangeLufs": {
-              "max": 0,
-              "min": -64
-            },
-            "mode": "peak",
-            "orientation": "bottom-to-top",
-            "peakThresholdsDbfs": {
-              "critical": -1,
-              "warning": -6
-            },
-            "playbackMax": false,
-            "readout": "live",
-            "rmsThresholdsDbfs": {
-              "critical": -9,
-              "warning": -18
-            },
-            "tpMaxMarker": false
-          },
-          "customTitle": null,
-          "id": "level",
-          "moduleId": "levelMeter",
-          "title": "Level Meter",
-          "width": 150
-        },
-        {
-          "analysis": {
-            "status": "active"
-          },
-          "controls": {
-            "grid": false,
-            "layers": [
-              "momentary",
-              "shortTerm",
-              "reference"
-            ],
-            "loudnessRangeLufs": {
-              "max": -6,
-              "min": -48
-            },
-            "orientation": "right-to-left"
-          },
-          "customTitle": null,
-          "id": "loudness",
-          "moduleId": "loudness",
-          "title": "Loudness",
-          "width": 210
-        },
         {
           "analysis": {
             "dialogueDetection": {
@@ -147,32 +88,74 @@
           "id": "stats",
           "moduleId": "stats",
           "title": "Stats",
-          "width": 440
+          "width": 400,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
             "status": "active"
           },
           "controls": {
-            "channelPair": {
-              "x": 0,
-              "y": 1
+            "barColors": "gradient",
+            "floatingValue": false,
+            "levelRangeDbfs": {
+              "max": 3,
+              "min": -60
             },
-            "maxHold": true,
-            "mode": "polarLevel",
-            "persistenceMs": 400
+            "loudnessRangeLufs": {
+              "max": 0,
+              "min": -64
+            },
+            "mode": "peak",
+            "orientation": "bottom-to-top",
+            "peakThresholdsDbfs": {
+              "critical": -1,
+              "warning": -6
+            },
+            "playbackMax": false,
+            "readout": "live",
+            "rmsThresholdsDbfs": {
+              "critical": -9,
+              "warning": -18
+            },
+            "tpMaxMarker": false
           },
           "customTitle": null,
-          "id": "correlation",
-          "moduleId": "vectorscope",
-          "title": "Vectorscope",
-          "width": 190
+          "id": "level",
+          "moduleId": "levelMeter",
+          "title": "Level Meter",
+          "width": 180,
+          "widthMode": "preferred"
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "grid": false,
+            "layers": [
+              "momentary",
+              "shortTerm",
+              "reference"
+            ],
+            "loudnessRangeLufs": {
+              "max": -6,
+              "min": -48
+            },
+            "orientation": "right-to-left"
+          },
+          "customTitle": null,
+          "id": "loudness",
+          "moduleId": "loudness",
+          "title": "Loudness",
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
             "spectralWaveform": {
               "requestedByPanel": true,
-              "runtime": "notRequested"
+              "runtime": "active"
             }
           },
           "controls": {
@@ -188,7 +171,8 @@
           "id": "waveform",
           "moduleId": "waveform",
           "title": "Waveform",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -231,7 +215,8 @@
           "id": "spectrogram",
           "moduleId": "spectrogram",
           "title": "Spectrogram",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -273,7 +258,8 @@
           "id": "spectrum",
           "moduleId": "spectrum",
           "title": "Spectrum",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -315,7 +301,28 @@
           "id": "stereoMap",
           "moduleId": "stereo-map",
           "title": "Stereo Map",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "channelPair": {
+              "x": 0,
+              "y": 1
+            },
+            "maxHold": true,
+            "mode": "polarLevel",
+            "persistenceMs": 400
+          },
+          "customTitle": null,
+          "id": "correlation",
+          "moduleId": "vectorscope",
+          "title": "Vectorscope",
+          "width": 180,
+          "widthMode": "preferred"
         }
       ],
       "reserveSpace": true,
@@ -323,21 +330,21 @@
       "suspended": false
     },
     "loudnessProfile": {
-      "activeId": "c77c5a77-9258-4b32-8480-45511f94e8a9"
+      "activeId": "108694d4-a6f3-447e-8cab-3a6c8420ea4e"
     },
     "preset": {
-      "activeId": "preset-1792123696912",
+      "activeId": "preset-1793249617969",
       "dirty": true
     },
     "protocolVersion": 1,
-    "revision": 21,
+    "revision": 18,
     "runtime": {
       "channelTopology": {
         "channelCount": 2,
         "status": "detected"
       },
       "dialogueDetection": "active",
-      "spectralWaveform": "notRequested"
+      "spectralWaveform": "active"
     },
     "settings": {
       "channelLabels": {
@@ -349,19 +356,29 @@
           "R"
         ]
       },
-      "clearShortcut": {
-        "accelerator": "CmdOrCtrl+K",
-        "global": false
-      },
       "closeBehavior": "ask",
       "dialogueVadEngine": "firered",
       "historyRetentionSec": 3600,
       "interfaceSize": "large",
+      "keyboardShortcuts": {
+        "clear": {
+          "accelerator": "CmdOrCtrl+3",
+          "global": false
+        },
+        "toggleLiveCapture": {
+          "accelerator": "CmdOrCtrl+1",
+          "global": false
+        },
+        "toggleLiveSnapshot": {
+          "accelerator": "CmdOrCtrl+2",
+          "global": false
+        }
+      },
       "openAtLogin": false
     },
     "transport": {
       "files": {
-        "activeId": "file-analysis-1792123724592-1",
+        "activeId": "file-analysis-1793249621382-1",
         "analyzingId": null,
         "sessions": [
           {
@@ -373,12 +390,12 @@
                 "multichannelFusion": "center-priority-fallback-v1"
               }
             },
-            "analyzedAt": 1792123874930,
-            "createdAt": 1792123724592,
+            "analyzedAt": 1793249704690,
+            "createdAt": 1793249621382,
             "decodedFrames": 1155072,
             "error": null,
             "fileName": "monitor-714.wav",
-            "id": "file-analysis-1792123724592-1",
+            "id": "file-analysis-1793249621382-1",
             "path": "\\\\?\\C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\homepage-proposal\\monitor-714.wav",
             "probe": {
               "container": "wav",
@@ -419,12 +436,12 @@
         "error": null,
         "requestedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
         "resolvedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
-        "startedAt": 1792123896326,
+        "startedAt": 1793249708588,
         "state": "running"
       },
       "snapshot": {
         "active": true,
-        "offsetSec": 5
+        "offsetSec": 22
       },
       "source": "live"
     },
@@ -451,11 +468,21 @@
       "layout": {
         "children": [
           {
-            "panelId": "spectrum",
-            "type": "panel"
+            "children": [
+              {
+                "panelId": "loudness",
+                "type": "panel"
+              },
+              {
+                "panelId": "waveform",
+                "type": "panel"
+              }
+            ],
+            "direction": "horizontal",
+            "type": "split"
           },
           {
-            "panelId": "loudness",
+            "panelId": "spectrum",
             "type": "panel"
           }
         ],
@@ -463,43 +490,6 @@
         "type": "split"
       },
       "panels": [
-        {
-          "analysis": {
-            "status": "active"
-          },
-          "axes": {
-            "frequency": {
-              "linked": true,
-              "range": {
-                "maxHz": 20000,
-                "minHz": 20
-              },
-              "source": "workspace",
-              "writable": true
-            }
-          },
-          "controls": {
-            "channel": {
-              "type": "pair",
-              "x": 0,
-              "y": 1
-            },
-            "grid": true,
-            "levelRangeDb": {
-              "max": -12,
-              "min": -84
-            },
-            "maxMode": "decay",
-            "octaveSmoothing": "off",
-            "peakLabels": true,
-            "speedPercent": 25,
-            "tiltDbPerOctave": 3,
-            "view": "ms"
-          },
-          "id": "spectrum",
-          "moduleId": "spectrum",
-          "title": "Spectrum"
-        },
         {
           "analysis": {},
           "axes": {
@@ -529,48 +519,122 @@
           "id": "loudness",
           "moduleId": "loudness",
           "title": "Loudness"
+        },
+        {
+          "analysis": {
+            "spectralWaveform": {
+              "requestedByPanel": true,
+              "runtime": "active"
+            }
+          },
+          "axes": {
+            "time": {
+              "linked": true,
+              "range": {
+                "offsetSec": 0,
+                "windowSec": 60
+              },
+              "source": "workspace",
+              "writable": true
+            }
+          },
+          "controls": {
+            "centroid": true,
+            "frequencyBandsHz": {
+              "lowMid": 200,
+              "midHigh": 2000
+            },
+            "frequencyColor": true,
+            "orientation": "right-to-left"
+          },
+          "id": "waveform",
+          "moduleId": "waveform",
+          "title": "Waveform"
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "axes": {
+            "frequency": {
+              "linked": true,
+              "range": {
+                "maxHz": 20000,
+                "minHz": 20
+              },
+              "source": "workspace",
+              "writable": true
+            }
+          },
+          "controls": {
+            "channel": {
+              "type": "pair",
+              "x": 0,
+              "y": 1
+            },
+            "grid": false,
+            "levelRangeDb": {
+              "max": -12,
+              "min": -84
+            },
+            "maxMode": "decay",
+            "octaveSmoothing": "off",
+            "peakLabels": false,
+            "speedPercent": 25,
+            "tiltDbPerOctave": 3,
+            "view": "ms"
+          },
+          "id": "spectrum",
+          "moduleId": "spectrum",
+          "title": "Spectrum"
         }
       ]
     }
   },
   "ui": {
     "activeBlockingEditors": [],
-    "revision": 21,
+    "revision": 18,
     "surfaces": [],
     "topSurfaceId": null,
-    "uiGeneration": 0,
+    "uiGeneration": 3,
     "window": {
       "form": "normal",
       "visible": true
     },
     "workbench": {
       "displayName": "PLVS",
-      "instanceId": "fce0f43c-7f44-4d4c-b3bd-aded15e62c80",
+      "instanceId": "ed220611-46af-4997-a9d4-e3bc913cba72",
       "workspaceId": "default"
     }
   },
   "capture": {
     "artifact": {
-      "artifactId": "art-87478b9719a71d0033dbf367ee33f0bb",
-      "bytes": 265115,
-      "createdAt": "2026-10-16T04:12:45.2083635Z",
-      "expiresAt": "2026-10-17T04:12:45.2083635Z",
-      "height": 438,
+      "artifactId": "art-fd78fcd924948d1f283544187c72d133",
+      "bytes": 394672,
+      "createdAt": "2026-10-29T04:56:15.5772212Z",
+      "expiresAt": "2026-10-30T04:56:15.5772212Z",
+      "height": 880,
       "kind": "screenshot",
       "mediaType": "image/png",
-      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792123687096\\frequency-full-current.png",
-      "sha256": "8675bd6210e08da17a9918d9a554c6f221d09b545b9f060732d33d9985bef61d",
+      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-features-1793249602348\\history.png",
+      "sha256": "4af98279a7596a66caabe2f26c8c57201805f0a2930ef524d806262f64ca7203",
       "width": 1590
     },
     "measurement": {
       "generation": 2,
-      "sequence": 2731
+      "sequence": 3335
     },
-    "revision": 21,
+    "revision": 18,
     "target": {
-      "kind": "panel",
-      "panelId": "spectrum"
+      "kind": "workspace"
     },
-    "uiGeneration": 0
-  }
+    "uiGeneration": 3
+  },
+  "actual": {
+    "width": 1590,
+    "height": 880,
+    "windowDpi": 120,
+    "textScalePercent": 100
+  },
+  "sha256": "4af98279a7596a66caabe2f26c8c57201805f0a2930ef524d806262f64ca7203"
 }

@@ -4,7 +4,7 @@
       "identifier": "com.soundoer.plvs.dev",
       "name": "PLVS Dev",
       "platform": "windows",
-      "version": "0.20.0"
+      "version": "0.23.4"
     },
     "appearance": {
       "mode": "fixed",
@@ -18,7 +18,7 @@
         "transition": null,
         "usingRequestedSelection": true
       },
-      "observedAt": "2026-10-16T04:08:17.053Z",
+      "observedAt": "2026-10-29T04:53:38.117Z",
       "selection": {
         "available": true,
         "mode": "exact",
@@ -36,68 +36,9 @@
     "dock": {
       "edge": "top",
       "enabled": false,
-      "height": 180,
-      "heightMode": "expanded",
+      "height": 150,
       "monitor": null,
       "panels": [
-        {
-          "analysis": {
-            "status": "active"
-          },
-          "controls": {
-            "barColors": "gradient",
-            "floatingValue": false,
-            "levelRangeDbfs": {
-              "max": 3,
-              "min": -60
-            },
-            "loudnessRangeLufs": {
-              "max": 0,
-              "min": -64
-            },
-            "mode": "peak",
-            "orientation": "bottom-to-top",
-            "peakThresholdsDbfs": {
-              "critical": -1,
-              "warning": -6
-            },
-            "playbackMax": false,
-            "readout": "live",
-            "rmsThresholdsDbfs": {
-              "critical": -9,
-              "warning": -18
-            },
-            "tpMaxMarker": false
-          },
-          "customTitle": null,
-          "id": "level",
-          "moduleId": "levelMeter",
-          "title": "Level Meter",
-          "width": 150
-        },
-        {
-          "analysis": {
-            "status": "active"
-          },
-          "controls": {
-            "grid": false,
-            "layers": [
-              "momentary",
-              "shortTerm",
-              "reference"
-            ],
-            "loudnessRangeLufs": {
-              "max": -6,
-              "min": -48
-            },
-            "orientation": "right-to-left"
-          },
-          "customTitle": null,
-          "id": "loudness",
-          "moduleId": "loudness",
-          "title": "Loudness",
-          "width": 210
-        },
         {
           "analysis": {
             "dialogueDetection": {
@@ -147,26 +88,68 @@
           "id": "stats",
           "moduleId": "stats",
           "title": "Stats",
-          "width": 440
+          "width": 400,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
             "status": "active"
           },
           "controls": {
-            "channelPair": {
-              "x": 0,
-              "y": 1
+            "barColors": "gradient",
+            "floatingValue": false,
+            "levelRangeDbfs": {
+              "max": 3,
+              "min": -60
             },
-            "maxHold": true,
-            "mode": "polarLevel",
-            "persistenceMs": 400
+            "loudnessRangeLufs": {
+              "max": 0,
+              "min": -64
+            },
+            "mode": "peak",
+            "orientation": "bottom-to-top",
+            "peakThresholdsDbfs": {
+              "critical": -1,
+              "warning": -6
+            },
+            "playbackMax": false,
+            "readout": "live",
+            "rmsThresholdsDbfs": {
+              "critical": -9,
+              "warning": -18
+            },
+            "tpMaxMarker": false
           },
           "customTitle": null,
-          "id": "correlation",
-          "moduleId": "vectorscope",
-          "title": "Vectorscope",
-          "width": 190
+          "id": "level",
+          "moduleId": "levelMeter",
+          "title": "Level Meter",
+          "width": 180,
+          "widthMode": "preferred"
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "grid": false,
+            "layers": [
+              "momentary",
+              "shortTerm",
+              "reference"
+            ],
+            "loudnessRangeLufs": {
+              "max": -6,
+              "min": -48
+            },
+            "orientation": "right-to-left"
+          },
+          "customTitle": null,
+          "id": "loudness",
+          "moduleId": "loudness",
+          "title": "Loudness",
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -188,7 +171,8 @@
           "id": "waveform",
           "moduleId": "waveform",
           "title": "Waveform",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -231,7 +215,8 @@
           "id": "spectrogram",
           "moduleId": "spectrogram",
           "title": "Spectrogram",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -273,7 +258,8 @@
           "id": "spectrum",
           "moduleId": "spectrum",
           "title": "Spectrum",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -315,7 +301,28 @@
           "id": "stereoMap",
           "moduleId": "stereo-map",
           "title": "Stereo Map",
-          "width": 260
+          "width": 180,
+          "widthMode": "preferred"
+        },
+        {
+          "analysis": {
+            "status": "active"
+          },
+          "controls": {
+            "channelPair": {
+              "x": 0,
+              "y": 1
+            },
+            "maxHold": true,
+            "mode": "polarLevel",
+            "persistenceMs": 400
+          },
+          "customTitle": null,
+          "id": "correlation",
+          "moduleId": "vectorscope",
+          "title": "Vectorscope",
+          "width": 180,
+          "widthMode": "preferred"
         }
       ],
       "reserveSpace": true,
@@ -323,10 +330,10 @@
       "suspended": false
     },
     "loudnessProfile": {
-      "activeId": "c77c5a77-9258-4b32-8480-45511f94e8a9"
+      "activeId": "108694d4-a6f3-447e-8cab-3a6c8420ea4e"
     },
     "preset": {
-      "activeId": "preset-1792123696912",
+      "activeId": "preset-1793249617969",
       "dirty": true
     },
     "protocolVersion": 1,
@@ -349,19 +356,29 @@
           "R"
         ]
       },
-      "clearShortcut": {
-        "accelerator": "CmdOrCtrl+K",
-        "global": false
-      },
       "closeBehavior": "ask",
       "dialogueVadEngine": "firered",
       "historyRetentionSec": 3600,
       "interfaceSize": "large",
+      "keyboardShortcuts": {
+        "clear": {
+          "accelerator": "CmdOrCtrl+3",
+          "global": false
+        },
+        "toggleLiveCapture": {
+          "accelerator": "CmdOrCtrl+1",
+          "global": false
+        },
+        "toggleLiveSnapshot": {
+          "accelerator": "CmdOrCtrl+2",
+          "global": false
+        }
+      },
       "openAtLogin": false
     },
     "transport": {
       "files": {
-        "activeId": "file-analysis-1792123724592-1",
+        "activeId": "file-analysis-1793249621382-1",
         "analyzingId": null,
         "sessions": [
           {
@@ -373,12 +390,12 @@
                 "multichannelFusion": "center-priority-fallback-v1"
               }
             },
-            "analyzedAt": 1792123874930,
-            "createdAt": 1792123724592,
+            "analyzedAt": 1793249704690,
+            "createdAt": 1793249621382,
             "decodedFrames": 1155072,
             "error": null,
             "fileName": "monitor-714.wav",
-            "id": "file-analysis-1792123724592-1",
+            "id": "file-analysis-1793249621382-1",
             "path": "\\\\?\\C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\homepage-proposal\\monitor-714.wav",
             "probe": {
               "container": "wav",
@@ -419,7 +436,7 @@
         "error": null,
         "requestedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
         "resolvedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
-        "startedAt": 1792123896326,
+        "startedAt": 1793249708588,
         "state": "running"
       },
       "snapshot": {
@@ -538,39 +555,46 @@
     "revision": 22,
     "surfaces": [],
     "topSurfaceId": null,
-    "uiGeneration": 0,
+    "uiGeneration": 3,
     "window": {
       "form": "normal",
       "visible": true
     },
     "workbench": {
       "displayName": "PLVS",
-      "instanceId": "fce0f43c-7f44-4d4c-b3bd-aded15e62c80",
+      "instanceId": "ed220611-46af-4997-a9d4-e3bc913cba72",
       "workspaceId": "default"
     }
   },
   "capture": {
     "artifact": {
-      "artifactId": "art-6938826f26fb3c4dc8621fdfb631aec2",
-      "bytes": 212000,
-      "createdAt": "2026-10-16T04:12:46.5664487Z",
-      "expiresAt": "2026-10-17T04:12:46.5664487Z",
+      "artifactId": "art-e657c6285797fbdaeaafecae5b543c1c",
+      "bytes": 216129,
+      "createdAt": "2026-10-29T04:56:20.2282581Z",
+      "expiresAt": "2026-10-30T04:56:20.2282581Z",
       "height": 438,
       "kind": "screenshot",
       "mediaType": "image/png",
-      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792123687096\\frequency-detail-current.png",
-      "sha256": "9fed1716e459b348ce05a6deaa04c78617a1a962a3eef165707d342faec7d1b6",
+      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-features-1793249602348\\frequency-detail.png",
+      "sha256": "49154733520e53437e05fdcab2b7e7c445ed92a1bce591b680ad1b16fded1937",
       "width": 1590
     },
     "measurement": {
       "generation": 2,
-      "sequence": 2785
+      "sequence": 3567
     },
     "revision": 22,
     "target": {
       "kind": "panel",
       "panelId": "spectrum"
     },
-    "uiGeneration": 0
-  }
+    "uiGeneration": 3
+  },
+  "actual": {
+    "width": 1590,
+    "height": 438,
+    "windowDpi": 120,
+    "textScalePercent": 100
+  },
+  "sha256": "49154733520e53437e05fdcab2b7e7c445ed92a1bce591b680ad1b16fded1937"
 }

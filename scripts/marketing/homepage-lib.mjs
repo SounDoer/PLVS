@@ -163,11 +163,17 @@ export function validateDockRecipe(recipe) {
   for (const key of ["width", "height"])
     if (!Number.isInteger(environment[key]) || environment[key] <= 0)
       throw new Error(`Invalid ${key}`);
+  // Windows rounds the native strip to physical pixels, then WebView2 rounds its CSS viewport
+  // up to whole pixels before CapturePreview exports it at the window DPI (150 -> 188 -> 151 -> 189).
+  const scale = environment.windowDpi / 96;
+  const previewHeight = Math.ceil(
+    Math.ceil(Math.round(capture.dock?.height * scale) / scale) * scale
+  );
   if (
     !["top", "bottom"].includes(capture.dock?.edge) ||
     typeof capture.dock.reserveSpace !== "boolean" ||
     !Number.isInteger(capture.dock.height) ||
-    Math.round((capture.dock.height * environment.windowDpi) / 96) !== environment.height
+    previewHeight !== environment.height
   )
     throw new Error("Dock height at the recipe DPI must produce the recipe image height.");
   const [live, custom] = recipe.strips ?? [];

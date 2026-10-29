@@ -64,6 +64,28 @@
               "path": "previews/control-room-amber/v1/revisions/r1/semantic-overview.png"
             }
           ]
+        },
+        {
+          "number": 2,
+          "publishedAt": "2026-10-29",
+          "previews": [
+            {
+              "id": "product-workspace-file",
+              "path": "previews/control-room-amber/v1/revisions/r2/product-workspace-file.png"
+            },
+            {
+              "id": "product-multichannel-monitoring",
+              "path": "previews/control-room-amber/v1/revisions/r2/product-multichannel-monitoring.png"
+            },
+            {
+              "id": "product-workspace-snapshot",
+              "path": "previews/control-room-amber/v1/revisions/r2/product-workspace-snapshot.png"
+            },
+            {
+              "id": "semantic-overview",
+              "path": "previews/control-room-amber/v1/revisions/r2/semantic-overview.png"
+            }
+          ]
         }
       ]
     }

@@ -14,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { buildSharesetsSite } from "./build-sharesets-site.mjs";
 import { readSharesetsSource, readSharesetsSourceRecords } from "./sharesets-catalogue-source.mjs";
 import {
@@ -33,6 +34,19 @@ export class SharesetsCurationError extends Error {
     this.name = "SharesetsCurationError";
     this.code = "invalidSharesetsCuration";
     this.issues = issues;
+  }
+}
+
+// Windows can briefly lock the newly written site while its PNGs are being scanned.
+export async function renameReviewWithRetry(source, target, move = rename, pause = delay) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await move(source, target);
+      return;
+    } catch (error) {
+      if (!["EACCES", "EBUSY", "EPERM"].includes(error?.code) || attempt === 7) throw error;
+      await pause(40 * (attempt + 1));
+    }
   }
 }
 
@@ -495,7 +509,7 @@ export async function curateSharesetsCatalogue({
     const report = publicReport("write", published, candidate, changes, output);
     await writeFile(join(staging, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
     await writeFile(join(staging, "report.md"), markdownReport(report));
-    await rename(staging, output);
+    await renameReviewWithRetry(staging, output);
     return report;
   } catch (error) {
     await Promise.all(generatedFiles.map((path) => rm(path, { force: true })));

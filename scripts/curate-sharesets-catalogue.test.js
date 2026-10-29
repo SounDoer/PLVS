@@ -4,7 +4,29 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildPack } from "../src/transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../src/workspace/constants.js";
-import { curateSharesetsCatalogue } from "./curate-sharesets-catalogue.mjs";
+import { curateSharesetsCatalogue, renameReviewWithRetry } from "./curate-sharesets-catalogue.mjs";
+
+describe("review directory publication", () => {
+  it("retains the completed review through a transient Windows lock", async () => {
+    const move = vi.fn().mockRejectedValueOnce({ code: "EPERM" }).mockResolvedValue(undefined);
+    await renameReviewWithRetry("staging", "review", move, vi.fn());
+    expect(move).toHaveBeenCalledTimes(2);
+    expect(move).toHaveBeenLastCalledWith("staging", "review");
+  });
+
+  it("bounds lock retries and preserves other filesystem failures", async () => {
+    const locked = Object.assign(new Error("locked"), { code: "EPERM" });
+    const move = vi.fn().mockRejectedValue(locked);
+    await expect(renameReviewWithRetry("staging", "review", move, vi.fn())).rejects.toBe(locked);
+    expect(move).toHaveBeenCalledTimes(8);
+    const exists = Object.assign(new Error("exists"), { code: "EEXIST" });
+    const collision = vi.fn().mockRejectedValue(exists);
+    await expect(renameReviewWithRetry("staging", "review", collision, vi.fn())).rejects.toBe(
+      exists
+    );
+    expect(collision).toHaveBeenCalledTimes(1);
+  });
+});
 
 const temporaryDirectories = [];
 const PNG = Buffer.from(

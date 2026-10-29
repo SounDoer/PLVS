@@ -114,8 +114,8 @@ Keep the source metadata and attribution with any deliberately revised master.
 
 The homepage shows two Dock strips: `landing-dock.webp` (the current first-run Dock) and
 `landing-dock-custom.webp` (a custom layout). `recipes/homepage-dock.json` records how both are
-made. Prepare the machine as for the hero; the Dock spans the display it opens on, so the 2560 × 188
-output needs a 2560-pixel-wide display at 125% scaling (a 150 px Dock at 120 DPI, rounded to 188 physical pixels).
+made. Prepare the machine as for the hero; the Dock spans the display it opens on, so the 2560 × 189
+output needs a 2560-pixel-wide display at 125% scaling (a 150 px Dock at 120 DPI; Windows rounds the native height to 188 pixels, then WebView2 exports its rounded CSS viewport at 189 pixels).
 
 ```sh
 node scripts/marketing/capture-dock-pair.mjs
@@ -135,7 +135,7 @@ without reserving space, plays the master into CABLE Input and waits for 65 seco
 
 Keep the machine otherwise idle during the run. Under heavy CPU load (a parallel `npm test`, for
 example) the strip showed only about 45 of its 65 seconds of history, and the workbench can miss
-its 45-second start deadline. Each screenshot must be 2560 × 188 from a window at 120 DPI with 100% text scaling. Review
+its 45-second start deadline. Each screenshot must be 2560 × 189 from a window at 120 DPI with 100% text scaling. Review
 `comparison.html` in the run directory, which places each new strip under the published one.
 Add `--wait` to queue for the capture rig when another run holds it.
 
@@ -153,7 +153,7 @@ it answers before the first build finishes):
 node scripts/marketing/review-dock-pair.mjs
 ```
 
-It loads the homepage at 1440, 820 and 390 px. It checks that both strips decode at 2560 × 188 and the
+It loads the homepage at 1440, 820 and 390 px. It checks that both strips decode at 2560 × 189 and the
 page has no horizontal overflow, and that the strips scroll sideways at 390 px. Its section
 screenshots go to a new `artifacts/marketing/homepage-dock-review-*` directory.
 

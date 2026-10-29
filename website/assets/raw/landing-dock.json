@@ -1,17 +1,29 @@
 {
-  "capturedAt": "2026-10-19T02:31:33.247Z",
-  "commit": "9ea50057bbff16ab96db94841d8a18957944c4c1",
+  "version": 1,
+  "capturedAt": "2026-10-29T04:51:16.272Z",
+  "commit": "66b9eff962567b769d8f77b012724895c048c2af",
+  "appVersion": "0.23.4",
+  "nativeBinarySha256": "13464e2556f05a6f70ad4923576364c987ea8a145c2731a6ec961039aa5e15fc",
+  "recipe": "scripts/marketing/recipes/homepage-dock.json",
+  "strip": "dock-default",
+  "transport": "live-edge",
   "sourceAudio": "assets/marketing/audio/discovery-hero.wav",
-  "recipe": "dock-default",
-  "sha256": "141d003bcd290e0c7758289d065a62443e90f9a9413a88ce913f29a5211d461a",
+  "sha256": "b31980feeb932480b7a5ae5771c1d163d196b8377b473ee82510dcad369b270e",
+  "rawSha256": "47abe7a3699706f06136e1dd48f8c81ca6e3c1fd835b5600f27926dfdd7211d0",
   "width": 2560,
-  "height": 225,
+  "height": 189,
+  "geometry": {
+    "width": 2560,
+    "height": 189,
+    "windowDpi": 120,
+    "textScalePercent": 100
+  },
   "state": {
     "app": {
       "identifier": "com.soundoer.plvs.dev",
       "name": "PLVS Dev",
       "platform": "windows",
-      "version": "0.22.0"
+      "version": "0.23.4"
     },
     "appearance": {
       "mode": "fixed",
@@ -25,7 +37,7 @@
         "transition": null,
         "usingRequestedSelection": true
       },
-      "observedAt": "2026-10-19T02:28:29.608Z",
+      "observedAt": "2026-10-29T04:51:32.714Z",
       "selection": {
         "available": true,
         "mode": "exact",
@@ -43,7 +55,7 @@
     "dock": {
       "edge": "top",
       "enabled": true,
-      "height": 180,
+      "height": 150,
       "monitor": "\\\\.\\DISPLAY3",
       "panels": [
         {
@@ -95,8 +107,8 @@
           "id": "stats",
           "moduleId": "stats",
           "title": "Stats",
-          "width": 300,
-          "widthMode": "automatic"
+          "width": 400,
+          "widthMode": "preferred"
         },
         {
           "analysis": {
@@ -131,7 +143,7 @@
           "id": "level",
           "moduleId": "levelMeter",
           "title": "Level Meter",
-          "width": 150,
+          "width": 180,
           "widthMode": "preferred"
         },
         {
@@ -155,7 +167,7 @@
           "id": "loudness",
           "moduleId": "loudness",
           "title": "Loudness",
-          "width": 260,
+          "width": 180,
           "widthMode": "preferred"
         },
         {
@@ -178,7 +190,7 @@
           "id": "waveform",
           "moduleId": "waveform",
           "title": "Waveform",
-          "width": 260,
+          "width": 180,
           "widthMode": "preferred"
         },
         {
@@ -222,7 +234,7 @@
           "id": "spectrogram",
           "moduleId": "spectrogram",
           "title": "Spectrogram",
-          "width": 260,
+          "width": 180,
           "widthMode": "preferred"
         },
         {
@@ -265,7 +277,7 @@
           "id": "spectrum",
           "moduleId": "spectrum",
           "title": "Spectrum",
-          "width": 260,
+          "width": 180,
           "widthMode": "preferred"
         },
         {
@@ -308,7 +320,7 @@
           "id": "stereoMap",
           "moduleId": "stereo-map",
           "title": "Stereo Map",
-          "width": 260,
+          "width": 180,
           "widthMode": "preferred"
         },
         {
@@ -328,7 +340,7 @@
           "id": "correlation",
           "moduleId": "vectorscope",
           "title": "Vectorscope",
-          "width": 190,
+          "width": 180,
           "widthMode": "preferred"
         }
       ],
@@ -337,14 +349,14 @@
       "suspended": false
     },
     "loudnessProfile": {
-      "activeId": "f8efaf3c-5f4a-4a1e-a1ea-23c94eaf1b47"
+      "activeId": "b6690a2f-3901-4b43-be25-c4abdbc9401b"
     },
     "preset": {
-      "activeId": "preset-1792376909452",
+      "activeId": "preset-1793249492573",
       "dirty": true
     },
     "protocolVersion": 1,
-    "revision": 5,
+    "revision": 6,
     "runtime": {
       "channelTopology": {
         "channelCount": 2,
@@ -363,14 +375,24 @@
           "R"
         ]
       },
-      "clearShortcut": {
-        "accelerator": "CmdOrCtrl+K",
-        "global": false
-      },
       "closeBehavior": "ask",
       "dialogueVadEngine": "firered",
       "historyRetentionSec": 3600,
       "interfaceSize": "default",
+      "keyboardShortcuts": {
+        "clear": {
+          "accelerator": "CmdOrCtrl+3",
+          "global": false
+        },
+        "toggleLiveCapture": {
+          "accelerator": "CmdOrCtrl+1",
+          "global": false
+        },
+        "toggleLiveSnapshot": {
+          "accelerator": "CmdOrCtrl+2",
+          "global": false
+        }
+      },
       "openAtLogin": false
     },
     "transport": {
@@ -384,7 +406,7 @@
         "error": null,
         "requestedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
         "resolvedDeviceId": "cap-62f66c3297d809f7d6f2b582729aba26",
-        "startedAt": 1792376919421,
+        "startedAt": 1793249496530,
         "state": "running"
       },
       "snapshot": {
@@ -765,7 +787,7 @@
   },
   "ui": {
     "activeBlockingEditors": [],
-    "revision": 5,
+    "revision": 6,
     "surfaces": [],
     "topSurfaceId": null,
     "uiGeneration": 3,
@@ -775,31 +797,32 @@
     },
     "workbench": {
       "displayName": "PLVS",
-      "instanceId": "0b06d5de-5498-4779-9041-093e39323c3c",
+      "instanceId": "9b41b5c3-0334-4236-8570-ebaaa7be825a",
       "workspaceId": "default"
     }
   },
   "capture": {
     "artifact": {
-      "artifactId": "art-e15d6582a2fae30650df7955772bdfe7",
-      "bytes": 279874,
-      "createdAt": "2026-10-19T02:29:46.4600118Z",
-      "expiresAt": "2026-10-20T02:29:46.4600118Z",
-      "height": 225,
+      "artifactId": "art-4da5ffc9009ff58fc039bb3e0c49a29a",
+      "bytes": 235667,
+      "createdAt": "2026-10-29T04:52:42.615425Z",
+      "expiresAt": "2026-10-30T04:52:42.615425Z",
+      "height": 189,
       "kind": "screenshot",
       "mediaType": "image/png",
-      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792376896570\\dock-default.png",
-      "sha256": "8f78cec217d6cc96a106ec2b12b98c07aace0c24df95d9bf8d3397648257e3ea",
+      "out": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-dock-1793249476271\\dock-default.png",
+      "sha256": "47abe7a3699706f06136e1dd48f8c81ca6e3c1fd835b5600f27926dfdd7211d0",
       "width": 2560
     },
     "measurement": {
-      "generation": 1,
-      "sequence": 2633
+      "generation": 2,
+      "sequence": 3033
     },
-    "revision": 5,
+    "revision": 6,
     "target": {
       "kind": "main"
     },
     "uiGeneration": 3
-  }
+  },
+  "reviewedAt": "2026-10-29T04:53:21.480Z"
 }

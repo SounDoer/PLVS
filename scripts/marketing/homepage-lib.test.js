@@ -120,7 +120,7 @@ describe("Dock recipe", () => {
     expect(dock.capture.dock.height).toBe(DOCK_DEFAULT_HEIGHT);
     expect(dock.environment).toMatchObject({
       width: 2560,
-      height: Math.round(DOCK_DEFAULT_HEIGHT * 1.25),
+      height: 189,
       windowDpi: 120,
     });
     expect(dock.strips[1].layout.panels.map((p) => p.panelId ?? p.key)).toEqual([
@@ -141,6 +141,9 @@ describe("Dock recipe", () => {
     const dpi = copy(dock);
     dpi.environment.windowDpi = 96;
     expect(() => validateDockRecipe(dpi)).toThrow("Dock height");
+    const nativeHeight = copy(dock);
+    nativeHeight.environment.height = 188;
+    expect(() => validateDockRecipe(nativeHeight)).toThrow("Dock height");
   });
   it("requires the first-run surface to be cancelled and outputs inside the repository", () => {
     const confirm = copy(dock);

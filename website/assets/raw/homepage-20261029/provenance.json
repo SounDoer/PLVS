@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-10-16",
-  "appVersion": "0.20.0",
+  "capturedAt": "2026-10-29T04:53:22.349Z",
+  "appVersion": "0.23.4",
   "identity": "dev",
   "captureMethod": "Agent Control visual screenshot in disposable workbenches",
   "history": {
@@ -14,14 +14,8 @@
     "snapshotOffsetSec": 5,
     "view": "ms",
     "rangesHz": [
-      [
-        20,
-        20000
-      ],
-      [
-        20,
-        250
-      ]
+      [20, 20000],
+      [20, 250]
     ]
   },
   "rules": {
@@ -80,20 +74,7 @@
     "sourceAudio": "PLVS_Promo_v10_Archive_2026-10-09/capture/mixes/future-funk-714.wav",
     "source": "file",
     "provenance": "7.1.4 demonstration bed assembled from promo music stems; not a native immersive production",
-    "channelRoles": [
-      "L",
-      "R",
-      "C",
-      "LFE",
-      "Lb",
-      "Rb",
-      "Ls",
-      "Rs",
-      "Ltf",
-      "Rtf",
-      "Ltr",
-      "Rtr"
-    ],
+    "channelRoles": ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"],
     "snapshotOffsetSec": 8,
     "clip": {
       "requestedStartSec": 20,
@@ -106,6 +87,8 @@
   },
   "deliveryScript": "scripts/marketing/prepare-homepage-assets.mjs",
   "editing": "WebP encoding and explicitly defined crops/composites only; chart data and UI labels unretouched",
-  "sourceCommit": "50fe23087c16d5558d4c7ac08f311f66fde9b98d",
-  "captureRun": "C:\\Users\\shenxichen\\repos\\PLVS\\artifacts\\marketing\\homepage-refresh-1792123687096"
+  "sourceCommit": "66b9eff962567b769d8f77b012724895c048c2af",
+  "captureRun": "artifacts/marketing/homepage-features-1793249602348",
+  "commit": "66b9eff962567b769d8f77b012724895c048c2af",
+  "recipe": "scripts/marketing/recipes/homepage-features.json"
 }
