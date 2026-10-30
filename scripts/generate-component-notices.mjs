@@ -14,6 +14,8 @@ export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex"
 const normalize = (text) => text.replace(/\r\n/g, "\n");
 const licenseName =
   /^(licen[cs]e|copying|notice|copyright|unlicense|third[-_]?party[-_]?notices)([._-]|$)/i;
+// Source files can share those names (lucide's copyright icon, objc2's NSCopying module).
+const sourceCodeName = /\.([cm]?js|[cm]?ts|map|rs)$/i;
 
 // Preserve nested notices too (e.g. ring's BoringSSL and fiat code). Do not follow symlinks.
 export async function collectNoticeFiles(directory, prefix = "") {
@@ -22,7 +24,7 @@ export async function collectNoticeFiles(directory, prefix = "") {
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory() && !["node_modules", ".git", "target"].includes(entry.name)) {
       files.push(...(await collectNoticeFiles(directory, relative)));
-    } else if (entry.isFile() && licenseName.test(entry.name)) {
+    } else if (entry.isFile() && licenseName.test(entry.name) && !sourceCodeName.test(entry.name)) {
       files.push(relative);
     }
   }

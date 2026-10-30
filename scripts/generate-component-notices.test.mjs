@@ -70,4 +70,23 @@ describe("component notice review gate", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+  it("ignores source files that merely share a notice name", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "plvs-notice-source-"));
+    try {
+      await mkdir(join(directory, "dist", "icons"), { recursive: true });
+      await mkdir(join(directory, "src"), { recursive: true });
+      for (const file of [
+        "LICENSE.txt",
+        "dist/icons/copyright.mjs",
+        "dist/icons/copyright.mjs.map",
+        "dist/icons/copyright.d.ts",
+        "src/copying.rs",
+      ]) {
+        await writeFile(join(directory, file), "fixture");
+      }
+      expect(await collectNoticeFiles(directory)).toEqual(["LICENSE.txt"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });

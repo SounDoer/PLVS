@@ -1438,7 +1438,12 @@
     },
     "rust:objc2-foundation@0.3.2": {
       "license": "MIT",
-      "noticeSha256": "603492da1fa1f3e231c2023f65e5f3ea09d8709f4b14fbaf55f02849e1abd99c"
+      "localFiles": [
+        "Cargo.toml.orig",
+        "README.md"
+      ],
+      "reason": "Upstream package omits a standalone license file. Preserve its original license declaration and attribution verbatim; standard license text is shipped separately. r-efi AUTHORS includes full terms; selectors source header explicitly grants MPL-2.0. Android package is conservatively inventoried but not shipped on supported targets.",
+      "noticeSha256": "dec62782439a8e61119a1e47c019c61e40c806d43c7fae012d982dbb4479f408"
     },
     "rust:objc2-io-surface@0.3.2": {
       "license": "Zlib OR Apache-2.0 OR MIT",
@@ -3133,9 +3138,9 @@
       "license": "MIT",
       "noticeSha256": "8bd87392e43eb4b3c280b524d1a942afe1386cfb27d92596b8b4e318b98a1b9e"
     },
-    "npm:lucide-react@1.48.0": {
+    "npm:lucide-react@1.65.0": {
       "license": "ISC",
-      "noticeSha256": "251fe1bb0d6f38821a9e1e7d3f95e7db607f324ed7ae2fc6616e14028a538001"
+      "noticeSha256": "f1baa6938c4a4ebf345e5bbec966787283dcd8376bc9dd2c52a6d185f3688a0d"
     },
     "npm:mdast-util-from-markdown@2.0.3": {
       "license": "MIT",
@@ -3409,14 +3414,9 @@
       "reason": "Upstream package omits a standalone license file. Preserve its original license declaration and attribution verbatim; standard license text is shipped separately. r-efi AUTHORS includes full terms; selectors source header explicitly grants MPL-2.0. Android package is conservatively inventoried but not shipped on supported targets.",
       "noticeSha256": "a6a962998ebfb110193b4b9e988da3e231510884f7a1b9d2b6b5d45fa74a4d91"
     },
-    "rust:realfft@3.5.0": {
+    "rust:realfft@3.5.1": {
       "license": "MIT",
-      "localFiles": [
-        "Cargo.toml.orig",
-        "README.md"
-      ],
-      "reason": "Upstream package omits a standalone license file. Preserve its original license declaration and attribution verbatim; standard license text is shipped separately. r-efi AUTHORS includes full terms; selectors source header explicitly grants MPL-2.0. Android package is conservatively inventoried but not shipped on supported targets.",
-      "noticeSha256": "85990ff52ec343d81b52d0b0b1f7ac44030af9c721f70a96171e21a686099927"
+      "noticeSha256": "9d9a04be28fb0f317208165461dc250fd9c156a732638fb25a7db28ae4b5316e"
     },
     "rust:selectors@0.38.0": {
       "license": "MPL-2.0",
