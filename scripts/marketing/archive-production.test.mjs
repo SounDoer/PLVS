@@ -4,6 +4,7 @@ import {
   mkdir,
   writeFile,
   readFile,
+  realpath,
   rm,
   symlink,
   unlink,
@@ -16,7 +17,9 @@ import { planArchive, applyArchive, verifyArchive } from "./archive-production.m
 describe("production archive", () => {
   let root, source, destination;
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), "plvs-archive-"));
+    // macOS's default temp directory goes through /var, itself a symlink. Use its physical
+    // path so the archive's intentional no-symlink guard can test our fixture trees.
+    root = await mkdtemp(join(await realpath(tmpdir()), "plvs-archive-"));
     source = join(root, "production");
     destination = join(root, "archive");
     await mkdir(source);
