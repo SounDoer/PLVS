@@ -50,15 +50,27 @@ The branch is temporary: the commit lands on main by pushing `HEAD:main`, and th
 branch are removed at the end.
 
 Use the Node version in `.nvmrc`. Check GitHub authentication and registry/network access before
-installing. If no proposals remain, report that and release the lease without creating a worktree.
+installing. Before exiting for an empty proposal list, read the recorded backlog decisions and
+check their reassessment conditions. If there are neither proposals nor authorized repository changes,
+report any due decisions and release the lease without creating a worktree.
 
 ## 2. Collect and classify
 
 ```bash
-gh pr list --author app/dependabot --state open --json number,title,files,body
+gh pr list --author app/dependabot --state open --limit 1000 --json number,title,files,body,createdAt,url
 ```
 
-A grouped pull request lists several packages; classify each package separately.
+Collect the complete inventory, paginating if necessary. A grouped pull request lists several
+packages; classify each package separately, but count the pull request once for backlog reporting.
+
+Read each update entry's current `open-pull-requests-limit` from `.github/dependabot.yml` (use
+Dependabot's documented default when omitted). Report open version-update PRs and the limit for
+each ecosystem/directory entry; distinguish security-update PRs, which have a separate limit. Do
+not infer security status from a major/minor version bump; inspect the PR's metadata or update
+details, and mark uncertain counts explicitly. Warn when an entry reaches 80% of its limit, has
+only one slot left, or is full; at full capacity, new version-update proposals can be blocked.
+For a limit of one, warn only when occupied. Never raise limits or close PRs merely to clear a
+warning.
 
 - **Compatible** — the new version stays in the same semver-compatible range: same major for
   `>= 1.0`, same minor for `0.x`, same patch for `0.0.x`. Apply it. A newer release in the same
@@ -186,9 +198,53 @@ git worktree remove <worktree-path>
 git branch -d deps/<run-id>
 ```
 
-Dependabot closes the applied pull requests by itself. Leave the incompatible ones open: they are
-the reminder list. Close a pull request by hand only when it is permanently unwanted, and add an
-`ignore` rule to `.github/dependabot.yml` for it in the same change.
+Dependabot closes the applied pull requests by itself. Leave unapplied pull requests open unless
+the maintainer has authorized the specific disposition under [Backlog decisions](#backlog-decisions).
+
+## Backlog decisions
+
+Keep newly discovered incompatible updates and license/native-review stops as proposals. Present
+the affected versions, reason, effort or review needed, and the options: schedule dedicated work,
+defer until a stated date/condition, or reject a precisely scoped version range. Do not ask the
+maintainer to approve each compatible update already covered by this skill's authority, or to
+bypass a failed gate.
+
+A proposal left open for 30 days is a candidate for long-term deferral, not permission to close it.
+When capacity warnings occur, include the oldest unresolved proposals in the report even if they
+are younger. Recommend a disposition; do not perform migrations, accept license stops, or create
+or change tracking issues without the maintainer's authorization for that work.
+
+After the maintainer approves a specific backlog plan:
+
+- Find and reuse its tracking issue, or create one if authorized. Record ecosystem/directory,
+  package and installed/proposed versions, PR links, the decision and its source/date, the exact
+  deferred version range, and a reassessment date or concrete trigger. An agent-written summary
+  alone is not evidence of maintainer approval; do not invent missing scope or an expiry.
+- For an approved long-term deferral or rejection, prepare the narrow matching `ignore` rule in
+  `.github/dependabot.yml`. Follow the repository's commit/check/push rules for this configuration
+  change, within the maintainer's explicit authorization; the dependency-only push authority above
+  does not cover it. Do not widen a version-specific decision into ignoring the whole package or
+  all future major versions.
+- Close only the approved PRs after the tracking issue exists and the matching ignore rule has
+  landed on `origin/main` and passed CI. Link the issue and the configuration commit in the closure
+  explanation. On any failure, keep the PR open and report the incomplete step. For grouped PRs,
+  do not close a group while it still contains unapplied updates outside the approved disposition.
+
+On every run, read the linked decision records as well as open proposals. Preserve existing
+decisions and include their issue links in the report; do not ask for the same decision again while
+its scope and reassessment condition remain unchanged. Reassess when its date/trigger is reached,
+the proposal falls outside its approved range, or new security/license/native evidence changes the
+basis of the decision. Report that change and request a new decision; do not silently remove or
+extend ignore rules. Do not repeat an unchanged capacity warning as a new decision request.
+Once a due decision has been reported, keep it pending without repeating the request unless new
+evidence changes the options or urgency.
+
+Keep decision records discoverable after PR closure: when creating an authorized tracking issue,
+use a title starting with `Dependency deferral:`; put its issue URL in a YAML comment next to the
+matching ignore rule. At the start of later runs, follow those links and search open and closed
+tracking issues with that title prefix. Closing an issue alone does not revoke or extend its
+recorded decision. Handle approved backlog configuration changes separately from the automatic
+dependency commit, so their authorization and validation remain clear.
 
 ## Report
 
@@ -199,8 +255,11 @@ End with a short report in the maintainer's language:
 2. **Needs a decision** — license stop conditions, with what changed and the options.
 3. **Not applied (incompatible)** — each with a one-line effort estimate.
 4. **Capture layer** — affected crates and the reminder to run `smoke:capture` and `soak:capture`.
+5. **Backlog** — open PRs / limit by update entry, capacity warnings, oldest long-lived proposals,
+   and links to recorded decisions. Separate new or due decisions from unchanged deferred items.
 
-When there were no open Dependabot pull requests, say so in one line.
+When there are no open Dependabot pull requests and no recorded decisions due for reassessment,
+say so in one line. Otherwise report due decisions even when ignored versions have no open PR.
 
 ## Scheduled run
 
