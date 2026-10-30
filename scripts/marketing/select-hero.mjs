@@ -22,13 +22,13 @@ const report = JSON.parse(await readFile(join(run, "capture-report.json"), "utf8
 const recipe = await loadRecipe();
 if (report.status !== "reviewRequired" || !isDeepStrictEqual(report.recipe, recipe))
   throw new Error("Run is incomplete, failed, or uses a different recipe.");
-verifyAudio(await readFile(contained(ROOT, recipe.audio.path)), recipe);
 const candidate = report.captures.find((c) => c.file === file);
 if (!candidate?.eligible || candidate.issues.length)
   throw new Error("Only an eligible candidate can be selected.");
 const pngPath = contained(run, file);
 const png = await readFile(pngPath);
 if (sha256(png) !== candidate.sha256) throw new Error("Candidate image changed after capture.");
+verifyAudio(await readFile(contained(ROOT, recipe.audio.path)), recipe);
 assertGeometry(candidate.actual, recipe.environment);
 const dimensions = await sharp(png).metadata();
 if (

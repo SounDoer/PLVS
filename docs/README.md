@@ -28,7 +28,9 @@ from fixtures, reviewed and published, the music beds behind them, and the relea
 with real-app captures.
 
 [Video production](promo-video.md) documents the reusable capture, alignment, editing, validation
-and archival workflow, independent of any video's creative direction.
+and archival workflow, independent of any video's creative direction. Its
+[archive location](promo-video.md#maintainers-production-archive) points to the external NAS
+production archive; fixture audio locations live in Marketing screenshots above.
 
 Maintainer workflows are also current-state documents, but stay separate so that ordinary
 contributors do not have to read low-frequency release and review procedures:

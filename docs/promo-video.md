@@ -104,6 +104,29 @@ maintained tools into the repository; retain footage, one-off patch scripts and 
 with the production archive. New work should be able to reproduce the accepted state without
 replaying the conversation.
 
+### Maintainer's Production Archive
+
+External media archives live on the maintainer's NAS at
+`smb://QNAP00._smb._tcp.local/xichen/PLVS` (private SMB access required). On macOS, when the
+`xichen` share is mounted at `/Volumes/xichen`, the root is `/Volumes/xichen/PLVS`.
+
+The approved promo production is in `PLVS_Promo_Video_20261022/`. Start with its `README.md`
+and `HANDOVER.md`: it contains the v20 film, English and Chinese posters, covers, the Remotion
+project and footage, music, historical revisions and capture/review records. Approved exports
+are under `deliverables/`; the editable project is under `video/`. Keep the whole archive
+together, including `video/public/`, when restoring it to a local working directory.
+
+The archive includes `SHA256SUMS.json` and its own `verify-archive.ps1`; run that script with
+PowerShell to check the archived files. It uses a different layout from the repository archive
+tool's `files/` layout below, so use its bundled verifier rather than `archive-production.mjs verify`.
+The NAS location and top-level documentation were checked on 2026-10-31; this was not a full
+payload checksum verification or a render check.
+
+The separate `PLVS_Audio_Archive/` holds the audio sources for homepage and Sharesets fixtures;
+see [Marketing screenshots](marketing-screenshots.md#change-the-music-or-the-fixtures) for
+restore paths and fixture commands. Large production media remains outside Git; maintain these
+locations here when an archive moves.
+
 ## Repository Tools
 
 Run the tools below from the repository root after `npm ci`. Production media and configuration

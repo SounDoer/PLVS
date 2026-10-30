@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   ROOT,
+  sha256,
   loadRecipe,
   verifyAudio,
   validateRecipe,
@@ -59,14 +60,36 @@ function scene() {
   };
 }
 describe("marketing capture safeguards", () => {
-  it("pins the approved audio bytes and provenance", async () => {
-    const bytes = await readFile(join(ROOT, recipe.audio.path));
-    verifyAudio(bytes, recipe);
+  it("pins the approved audio provenance without requiring external media", async () => {
     const provenance = JSON.parse(await readFile(join(ROOT, recipe.audio.provenancePath), "utf8"));
     expect(provenance.excerpt.sha256).toBe(recipe.audio.sha256);
+  });
+  it("accepts canonical WAV properties and rejects changed bytes or format", () => {
+    const bytes = Buffer.alloc(44 + 90 * 48000 * 6);
+    bytes.write("RIFF", 0);
+    bytes.writeUInt32LE(bytes.length - 8, 4);
+    bytes.write("WAVEfmt ", 8);
+    bytes.writeUInt32LE(16, 16);
+    bytes.writeUInt16LE(1, 20);
+    bytes.writeUInt16LE(2, 22);
+    bytes.writeUInt32LE(48000, 24);
+    bytes.writeUInt32LE(48000 * 6, 28);
+    bytes.writeUInt16LE(6, 32);
+    bytes.writeUInt16LE(24, 34);
+    bytes.write("data", 36);
+    bytes.writeUInt32LE(bytes.length - 44, 40);
+    const testRecipe = { ...recipe, audio: { ...recipe.audio, sha256: sha256(bytes) } };
+    verifyAudio(bytes, testRecipe);
     const changed = Buffer.from(bytes);
     changed[100] ^= 1;
-    expect(() => verifyAudio(changed, recipe)).toThrow("checksum");
+    expect(() => verifyAudio(changed, testRecipe)).toThrow("checksum");
+    changed.writeUInt32LE(44100, 24);
+    expect(() =>
+      verifyAudio(changed, {
+        ...testRecipe,
+        audio: { ...testRecipe.audio, sha256: sha256(changed) },
+      })
+    ).toThrow("canonical");
   });
   it("rejects FILE recipes and unsafe output paths", () => {
     expect(() =>
