@@ -41,8 +41,13 @@ export const QUICK_TOUR_STEPS = Object.freeze([
   },
   {
     target: "clear",
-    title: "Clear and Settings",
-    body: "Clear resets the current measurement data. Settings opens application preferences, including Quick Tour if you'd like to view this guide again.",
+    title: "Clear Measurement",
+    body: "Clear resets the current measurement data so you can begin a fresh measurement. You don't need to clear anything to continue the tour.",
+  },
+  {
+    target: "settings",
+    title: "Application Settings",
+    body: "Open Settings for application preferences. Quick Tour is at the bottom if you'd like to view this guide again.",
   },
 ]);
 

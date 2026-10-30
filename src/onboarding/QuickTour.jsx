@@ -13,7 +13,7 @@ import { QUICK_TOUR_STEPS, positionTourCard, tourStepContent } from "./quickTour
 const SURFACES =
   '[data-slot="popover-content"], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
 
-function visible(element) {
+function visible(element, includeTransparent = false) {
   if (
     !element ||
     !element.isConnected ||
@@ -32,15 +32,28 @@ function visible(element) {
     return false;
   for (let node = element; node instanceof HTMLElement; node = node.parentElement) {
     const style = getComputedStyle(node);
-    if (style.visibility === "hidden" || style.display === "none" || style.opacity === "0")
+    if (
+      style.visibility === "hidden" ||
+      style.display === "none" ||
+      (!includeTransparent && style.opacity === "0")
+    )
       return false;
   }
   return true;
 }
 
+function hasOpenSurface() {
+  // Opening/closing animations still occupy the UI even at their transparent endpoints.
+  return [...document.querySelectorAll(SURFACES)].some((element) => visible(element, true));
+}
+
 function readTarget(name, previous) {
   if (previous?.dataset.tourTarget === name && visible(previous)) return previous;
-  return [...document.querySelectorAll(`[data-tour-target="${name}"]`)].find(visible) ?? null;
+  return (
+    [...document.querySelectorAll(`[data-tour-target="${name}"]`)].find((element) =>
+      visible(element)
+    ) ?? null
+  );
 }
 
 /**
@@ -79,6 +92,7 @@ export function QuickTour({
   const previousTargetRef = useRef(null);
   const lastRequestRef = useRef(0);
   const focusRequested = useRef(false);
+  const settlingRef = useRef({ interrupted: false, clearSince: null });
   const titleId = useId();
   const bodyId = useId();
   const content = tourStepContent(step, {
@@ -104,18 +118,27 @@ export function QuickTour({
     if (phase === "inactive") return undefined;
     let frame;
     let lastSample = -Infinity;
-    const sample = (time) => {
-      frame = requestAnimationFrame(sample);
-      if (time - lastSample < 100) return;
-      lastSample = time;
+    const measure = (time) => {
       const current = refs.current;
-      const obstructed = current.blocked || [...document.querySelectorAll(SURFACES)].some(visible);
+      const interrupted = !current.supported || current.blocked || hasOpenSurface();
+      const settling = settlingRef.current;
+      if (interrupted) {
+        settling.interrupted = true;
+        settling.clearSince = null;
+        // Automatic return never reclaims focus from the user's controls or editor.
+        if (current.phase === "active") focusRequested.current = false;
+      } else if (settling.interrupted) {
+        settling.clearSince ??= time;
+        if (time - settling.clearSince >= 180) {
+          settling.interrupted = false;
+          settling.clearSince = null;
+        }
+      }
+      const obstructed = interrupted || settling.interrupted;
       const target =
         current.phase === "active" ? readTarget(current.target, previousTargetRef.current) : null;
       previousTargetRef.current = target;
       const targets = [target];
-      if (current.phase === "active" && current.step === 8)
-        targets.push(readTarget("settings", null));
       const rects = targets.filter(Boolean).map((element) => {
         const r = element.getBoundingClientRect();
         return {
@@ -123,6 +146,7 @@ export function QuickTour({
           top: Math.max(0, r.top),
           right: Math.min(window.innerWidth, r.right),
           bottom: Math.min(window.innerHeight, r.bottom),
+          borderRadius: getComputedStyle(element).borderRadius,
         };
       });
       const size = cardRef.current?.getBoundingClientRect() ?? { width: 320, height: 180 };
@@ -134,13 +158,29 @@ export function QuickTour({
       setEnvironment((previous) =>
         JSON.stringify(previous) === JSON.stringify(next) ? previous : next
       );
-      if (current.phase === "waiting" && !obstructed)
-        setPhase(current.supported ? "active" : "paused");
-      if (current.phase === "active" && (obstructed || !current.supported)) setPhase("paused");
+      if (current.phase === "waiting" && !obstructed) setPhase("active");
     };
+    const sample = (time) => {
+      frame = requestAnimationFrame(sample);
+      if (time - lastSample < 100) return;
+      lastSample = time;
+      measure(time);
+    };
+    // Portaled menus may open without changing the tour's React props. Observe their lifetime
+    // immediately; the quiet interval prevents flashes between a menu and its nested editor.
+    const observer = new MutationObserver(() => measure(performance.now()));
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state", "aria-hidden", "hidden"],
+    });
     sample(performance.now());
-    return () => cancelAnimationFrame(frame);
-  }, [phase, content.target, step]);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [phase, content.target, step, blocked, supported]);
 
   useEffect(() => {
     if (
@@ -207,53 +247,10 @@ export function QuickTour({
     setPhase("active");
   }
 
-  if (phase === "inactive" || phase === "waiting" || docked) return null;
-  const obstructed =
-    blocked || environment.obstructed || [...document.querySelectorAll(SURFACES)].some(visible);
-  // Never compete with modal focus or obscure an open menu/editor. Resume appears after it closes.
+  if (phase === "inactive" || phase === "waiting" || !supported) return null;
+  const obstructed = blocked || environment.obstructed || hasOpenSurface();
+  // Return automatically to this same step once the user's menu/editor interaction has settled.
   if (obstructed || (phase === "invitation" && (!supported || updateSetupPending))) return null;
-
-  if (phase === "paused" || !supported)
-    return createPortal(
-      <div
-        className={`fixed bottom-2 right-2 ${LAYER_FLOATING} max-w-[calc(100vw-1rem)]`}
-        data-quick-tour
-      >
-        <div
-          className={`${POPOVER_SURFACE_CLASS} flex flex-wrap items-center gap-2 p-2 text-[length:var(--ui-fs-control)]`}
-        >
-          {!supported ? (
-            <span className="text-muted-foreground">
-              Return to the normal Live workspace to continue.
-            </span>
-          ) : null}
-          <Button
-            disabled={!supported || busy}
-            onClick={async () => {
-              if (disposition !== "started" && !(await record("started"))) return;
-              focusRequested.current = true;
-              setPhase("active");
-            }}
-          >
-            Resume Tour
-          </Button>
-          <IconAction
-            aria-label="close quick tour"
-            disabled={busy}
-            onClick={() => void close()}
-            className="p-1"
-          >
-            <X className="size-[1em]" />
-          </IconAction>
-        </div>
-        {error ? (
-          <p role="alert" className="text-[length:var(--ui-fs-control)] text-destructive">
-            {error}
-          </p>
-        ) : null}
-      </div>,
-      document.body
-    );
 
   const invitation = phase === "invitation";
   const missing = !invitation && !environment.rects.length;
@@ -276,12 +273,17 @@ export function QuickTour({
               key={index}
               aria-hidden="true"
               data-tour-highlight
-              className={`pointer-events-none fixed ${LAYER_FLOATING} rounded-md border border-primary`}
+              className={`pointer-events-none fixed ${LAYER_FLOATING}`}
               style={{
                 left: rect.left - 2,
                 top: rect.top - 2,
                 width: rect.right - rect.left + 4,
                 height: rect.bottom - rect.top + 4,
+                borderRadius: rect.borderRadius,
+                boxShadow:
+                  content.target === "history"
+                    ? "0 0 10px 2px color-mix(in srgb, var(--primary) 24%, transparent), 0 0 18px 4px color-mix(in srgb, var(--primary) 10%, transparent)"
+                    : "0 0 6px 3px color-mix(in srgb, var(--primary) 38%, transparent), 0 0 14px 6px color-mix(in srgb, var(--primary) 16%, transparent)",
               }}
             />
           ))

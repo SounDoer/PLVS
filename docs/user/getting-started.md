@@ -91,11 +91,12 @@ stable packages install side by side with Preview.
 
 After the first-launch update preferences are settled, **Quick Tour** offers a short introduction
 to Start, Sources, Loudness Profile, Modules, Views, Presets, Panel Settings, Snapshot, and
-Clear / Settings. Choose **Start Tour** or **Not Now**. You can also close it at any time.
+Clear, and Settings in ten steps. Choose **Start Tour** or **Not Now**. You can also close it at any time.
 
-The tour highlights real controls without blocking the rest of the interface. Every step has a
+The tour highlights real controls with a soft glow without blocking the rest of the interface. Every step has a
 **Next** button; starting capture, changing settings, and entering Snapshot are optional. Opening a
-menu or editor pauses the tour. Once that surface closes, choose **Resume Tour** when ready.
+menu or editor temporarily hides the tour. Once all menus and editors close, the same step returns
+automatically without moving keyboard focus. Switching from a menu into an editor keeps the tour hidden.
 Changes you make remain in place when you continue, finish, or close the tour.
 
 The pointers follow controls when panels or the window move. If an entry is hidden or its panel

@@ -20,6 +20,12 @@ async function sample() {
   });
 }
 
+async function settle() {
+  await sample();
+  await sample();
+  await sample();
+}
+
 const BASE = {
   running: false,
   snapshot: false,
@@ -112,7 +118,7 @@ describe("Quick Tour", () => {
     action.onclick = onStart;
     mount();
     await start();
-    for (let step = 1; step < 9; step++) fireEvent.click(screen.getByText("Next"));
+    for (let step = 1; step < 10; step++) fireEvent.click(screen.getByText("Next"));
     fireEvent.click(screen.getByText("Finish"));
     await act(async () => {});
     expect(settingsStore.read()).toMatchObject({ quickTour: "completed", untouchedSetting: 17 });
@@ -135,7 +141,7 @@ describe("Quick Tour", () => {
       </BlockingEditorsProvider>
     );
     expect(screen.getByText(/Metering is running/)).toBeTruthy();
-    expect(screen.getByText("1 / 9")).toBeTruthy();
+    expect(screen.getByText("1 / 10")).toBeTruthy();
     for (let step = 1; step < 8; step++) fireEvent.click(screen.getByText("Next"));
     view.rerender(
       <BlockingEditorsProvider>
@@ -194,22 +200,28 @@ describe("Quick Tour", () => {
     expect(screen.getByText("Next").hasAttribute("disabled")).toBe(false);
   });
 
-  it("pauses for menus and preserves user edits until explicit resume", async () => {
+  it("automatically returns to the same step after a menu closes without reclaiming focus", async () => {
     target("transport");
     mount();
     await start();
     const menu = target("test-menu");
     menu.setAttribute("role", "menu");
+    menu.style.opacity = "0";
     await sample();
     expect(screen.queryByRole("region")).toBeNull();
     expect(screen.queryByText("Resume Tour")).toBeNull();
     settingsStore.patch({ untouchedSetting: 42 });
+    const input = document.createElement("input");
+    document.body.append(input);
+    input.focus();
     menu.remove();
     await sample();
     expect(screen.queryByRole("region")).toBeNull();
-    fireEvent.click(screen.getByText("Resume Tour"));
-    await act(async () => {});
+    await settle();
     expect(screen.getByText("Start Monitoring")).toBeTruthy();
+    expect(screen.getByText("1 / 10")).toBeTruthy();
+    expect(document.activeElement).toBe(input);
+    expect(screen.queryByText("Resume Tour")).toBeNull();
     expect(settingsStore.read().untouchedSetting).toBe(42);
   });
 
@@ -231,8 +243,9 @@ describe("Quick Tour", () => {
     await sample();
     expect(screen.queryByText("Resume Tour")).toBeNull();
     act(() => setEditor(false));
-    await sample();
-    expect(screen.getByText("Resume Tour")).toBeTruthy();
+    await settle();
+    expect(screen.getByText("Start Monitoring")).toBeTruthy();
+    expect(screen.queryByText("Resume Tour")).toBeNull();
   });
 
   it("manually replays from step one after Settings closes and respects File mode", async () => {
@@ -245,22 +258,73 @@ describe("Quick Tour", () => {
         <QuickTour {...BASE} requestId={1} />
       </BlockingEditorsProvider>
     );
-    await sample();
-    expect(screen.getByText("1 / 9")).toBeTruthy();
+    await settle();
+    expect(screen.getByText("1 / 10")).toBeTruthy();
     view.rerender(
       <BlockingEditorsProvider>
         <QuickTour {...BASE} requestId={1} sourceMode="file" />
       </BlockingEditorsProvider>
     );
     await sample();
-    expect(screen.getByText("Resume Tour").hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("region")).toBeNull();
+    expect(screen.queryByText("Resume Tour")).toBeNull();
     view.rerender(
       <BlockingEditorsProvider>
         <QuickTour {...BASE} requestId={1} />
       </BlockingEditorsProvider>
     );
+    await settle();
+    expect(screen.getByText("1 / 10")).toBeTruthy();
+  });
+
+  it("does not flash the card between a menu and a nested editor, or reopen after dismissal", async () => {
+    mount();
+    await start();
+    fireEvent.click(screen.getByText("Next"));
+    const menu = target("menu");
+    menu.setAttribute("role", "menu");
     await sample();
-    expect(screen.getByText("Resume Tour").hasAttribute("disabled")).toBe(false);
+    menu.remove();
+    await sample();
     expect(screen.queryByRole("region")).toBeNull();
+    const editor = target("editor");
+    editor.setAttribute("role", "dialog");
+    await settle();
+    expect(screen.queryByRole("region")).toBeNull();
+    editor.remove();
+    await settle();
+    expect(screen.getByText("Choose Your Source")).toBeTruthy();
+    expect(screen.getByText("2 / 10")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("close quick tour"));
+    await act(async () => {});
+    const anotherMenu = target("menu");
+    anotherMenu.setAttribute("role", "menu");
+    await sample();
+    anotherMenu.remove();
+    await settle();
+    expect(screen.queryByRole("region")).toBeNull();
+  });
+
+  it("introduces Clear and Settings separately without invoking either control", async () => {
+    const clear = target("clear");
+    const settings = target("settings");
+    const onClear = vi.fn();
+    const onSettings = vi.fn();
+    clear.onclick = onClear;
+    settings.onclick = onSettings;
+    mount();
+    await start();
+    for (let step = 1; step < 9; step++) fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Clear Measurement")).toBeTruthy();
+    expect(screen.getByText("9 / 10")).toBeTruthy();
+    expect(screen.queryByText("Finish")).toBeNull();
+    expect(document.querySelectorAll("[data-tour-highlight]")).toHaveLength(1);
+    fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Application Settings")).toBeTruthy();
+    expect(screen.getByText("10 / 10")).toBeTruthy();
+    expect(screen.getByText("Finish")).toBeTruthy();
+    expect(document.querySelectorAll("[data-tour-highlight]")).toHaveLength(1);
+    expect(onClear).not.toHaveBeenCalled();
+    expect(onSettings).not.toHaveBeenCalled();
   });
 });

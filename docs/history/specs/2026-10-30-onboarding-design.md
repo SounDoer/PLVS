@@ -13,12 +13,12 @@ the main controls. Do not teach audio terminology or require changes to finish t
 
 ## Agreed experience
 
-- Nine steps: Start, Sources, Loudness Profile, Modules, Views, Presets, Panel Settings, Snapshot,
-  Clear / Settings.
-- A small anchored card and a thin target outline; no full-screen scrim or interaction shield.
+- Ten steps: Start, Sources, Loudness Profile, Modules, Views, Presets, Panel Settings, Snapshot,
+  Clear, Settings.
+- A small anchored card and a soft target glow; no full-screen scrim or interaction shield.
 - Users can operate the application, change settings, and rearrange panels throughout the tour.
-- Opening a menu or settings surface collapses the tour. Resume is explicit, not triggered by
-  closing the surface.
+- Opening a menu or settings surface hides the tour. The same step returns automatically after
+  all menus/editors close and a short quiet interval; there is no Resume Tour control.
 - Panel Settings introduces the existing entry point without requiring it to be opened or changed.
 - Start and Snapshot recognize actual application state; every step can be continued without
   performing an action. No automatic capture, clearing, source changes, or layout restoration.
@@ -33,7 +33,9 @@ buttons and icon actions, and the existing typography and control-height scales.
 uses secondary text, not annotation text. Text containers must grow with Interface Size and fit
 within the viewport. Honor reduced motion.
 
-Use an existing accent role for target emphasis, with a treatment distinct from keyboard focus.
+Use an existing accent role for static, soft target emphasis, following the control's corner shape.
+The glow has no hard border or interior fill and is lighter around a large history chart.
+Keep the treatment distinct from keyboard focus.
 Do not introduce a second focus ring or new palette values. No new design tokens are anticipated.
 The highlight layer must not intercept pointer input, obscure readings, or change layout geometry.
 
@@ -42,7 +44,7 @@ Back; the final step uses Finish. Actions and progress labels use existing Title
 aria-labels follow the repository's lowercase convention.
 
 The tour is non-modal: no focus trap and no repeated focus stealing as targets move or app state
-changes. Provide keyboard access to the card and resume control. Escape dismisses the active menu
+changes. Provide keyboard access to the card. Automatic return does not move focus. Escape dismisses the active menu
 or dialog first; when interacting with the tour, Escape can close the tour. Avoid global keyboard
 handlers that consume application shortcuts or interrupt text editing.
 
@@ -69,24 +71,26 @@ link-style button without an external-link icon. Activating it closes Settings t
 path, then starts at step 1 with current app state intact. If an existing editor or guard prevents
 the transition, preserve the editor and defer the tour rather than discarding a draft.
 
-Runtime states: inactive, invitation, active(step), paused(step), finished/dismissed. Active steps
+Runtime states: inactive, invitation, waiting for explicit launch, active(step), finished/dismissed.
+An active step may be temporarily hidden while the application is occupied or unsupported. Active steps
 are session state; reopening after a restart need not restore a partially completed tour.
 
 ## Step script
 
 Copy is a draft; validate against actual business behavior while implementing.
 
-| Step | Title               | Body                                                                                                                 | Preferred anchor                                |
-| ---- | ------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1    | Start Monitoring    | Play some audio, then click Start to begin metering your selected source. Automatic uses your default system output. | Start control                                   |
-| 2    | Choose Your Source  | Choose a system output, an input device, or a supported application. Automatic follows your default system output.   | Sources                                         |
-| 3    | Loudness Profile    | Choose reference lines and warning thresholds for your session. Edit a profile to match your requirements.           | Loudness Profile                                |
-| 4    | Manage Your Panels  | Add, rename, or remove panels. Add multiple instances to view the same meter in different ways.                      | Modules                                         |
-| 5    | Adjust Your View    | Keep PLVS on top, simplify the interface, or adjust transparency.                                                    | Views                                           |
-| 6    | Save Your Workspace | Save your layout and configuration as a Preset, then switch between setups for different tasks.                      | Presets                                         |
-| 7    | Panel Settings      | Each panel has its own settings. Open this menu to adjust its analysis and display options.                          | A visible panel settings control                |
-| 8    | Inspect a Moment    | Click a history chart to inspect that moment across all meters. Live capture continues in the background.            | A visible history chart                         |
-| 9    | Clear and Settings  | Clear resets the current measurement data. Settings opens application preferences.                                   | Clear and Settings, each identified in the card |
+| Step | Title                | Body                                                                                                                                   | Preferred anchor                 |
+| ---- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 1    | Start Monitoring     | Play some audio, then click Start to begin metering your selected source. Automatic uses your default system output.                   | Start control                    |
+| 2    | Choose Your Source   | Choose a system output, an input device, or a supported application. Automatic follows your default system output.                     | Sources                          |
+| 3    | Loudness Profile     | Choose reference lines and warning thresholds for your session. Edit a profile to match your requirements.                             | Loudness Profile                 |
+| 4    | Manage Your Panels   | Add, rename, or remove panels. Add multiple instances to view the same meter in different ways.                                        | Modules                          |
+| 5    | Adjust Your View     | Keep PLVS on top, simplify the interface, or adjust transparency.                                                                      | Views                            |
+| 6    | Save Your Workspace  | Save your layout and configuration as a Preset, then switch between setups for different tasks.                                        | Presets                          |
+| 7    | Panel Settings       | Each panel has its own settings. Open this menu to adjust its analysis and display options.                                            | A visible panel settings control |
+| 8    | Inspect a Moment     | Click a history chart to inspect that moment across all meters. Live capture continues in the background.                              | A visible history chart          |
+| 9    | Clear Measurement    | Clear resets the current measurement data so you can begin a fresh measurement. You don't need to clear anything to continue the tour. | Clear                            |
+| 10   | Application Settings | Open Settings for application preferences. Quick Tour is at the bottom if you'd like to view this guide again.                         | Settings                         |
 
 On platforms with Dock, append to Views: “Use Dock for a slim meter strip at the screen edge.”
 On Linux, omit that sentence. Sources wording must reflect platform-supported choices.
@@ -118,14 +122,14 @@ coordinates, translated text matching, or fragile DOM child indices. Reuse exist
 facilities where suitable. Clamp/flip placement within the viewport and avoid covering the target.
 
 Moving/resizing a panel, resizing the window, and changing Interface Size update the anchor and card
-position. During an active drag or resize, the card may collapse to avoid interference; resume
-explicitly rather than fighting the user's pointer.
+position. During an active drag or resize, the card may collapse to avoid interference, then return
+without fighting the user's pointer.
 
-Opening a menu, editor, or Settings pauses at the current step and removes the highlight/card.
-Keep a compact **Resume Tour** control in a non-obstructive shell location. Respect existing modal
-focus and stacking: never put an interactive resume control above a blocking dialog. It may remain
-temporarily unavailable until that dialog closes. Resume re-evaluates current state and targets;
-it does not close menus or cancel drafts to force the tour back onto the screen.
+Opening a menu, editor, or Settings removes the glow/card without changing the current step.
+After all surfaces close, wait for a 180 ms quiet interval and return automatically, re-evaluating
+the current state and target. Opening an editor from a menu restarts that interval, so the card
+does not flash between the two. Return never advances the step, takes keyboard focus, closes a
+surface, or cancels a draft. Explicitly exiting the tour prevents any later automatic return.
 
 Distinguish moved targets from missing targets:
 
@@ -136,8 +140,8 @@ Distinguish moved targets from missing targets:
 - No eligible history chart: explain the history-panel prerequisite and allow Next.
 - Other missing targets: show an informative fallback card instead of a floating orphan highlight.
 
-Proposed v1 scope is the normal Live workspace. Entering Dock or File mode pauses the tour. Explain
-that it can continue after returning to the normal Live workspace. Do not automatically exit Dock,
+Proposed v1 scope is the normal Live workspace. Entering Dock or File mode hides the tour; it returns
+automatically on returning to the normal Live workspace. Do not automatically exit Dock,
 switch mode, or introduce extra cross-window tour infrastructure in v1.
 
 ## Validation and implementation follow-through
@@ -206,3 +210,14 @@ Agent Control inspection/capture for desktop review.
   focused tests. No update-consent UI was automated.
 - Mac/Linux native visuals and physical-device capture acceptance were not run. This change does
   not modify the capture layer. No push, merge, or stable-release gate was performed.
+
+### Feedback revision on 2026-10-30
+
+Replaced the outline with a static accent glow, separated Clear and Settings into steps 9 and 10,
+and removed manual resume. Tests cover automatic return to the same step without focus changes,
+transparent opening/closing surfaces, nested-editor handoffs without flashes, explicit dismissal,
+and independent final controls. The 36 tour/design-contract tests and 109 application/Settings/
+documentation tests passed; the final transparent-surface refinement passed all 15 tour tests.
+Type checking, focused lint, formatting, and the production Vite build passed. Windows review
+verified the glow and automatic return after closing Sources, plus Light/Extra Large presentation.
+Review captures include `artifacts/onboarding-review/glow-start.png` and `auto-return.png`.
