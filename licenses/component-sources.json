@@ -3090,7 +3090,7 @@
       "license": "MIT",
       "noticeSha256": "583e52de7792e92fae191a6fee7378ed7b403a72aa965b51a5cbd074d2740336"
     },
-    "npm:framer-motion@12.40.0": {
+    "npm:framer-motion@14.7.1": {
       "license": "MIT",
       "noticeSha256": "81255b590f4df6c5e25389f40a13b806640a0a7fb0a49b2bb8b7d9efed0b11ee"
     },
@@ -3258,11 +3258,11 @@
       "license": "MIT",
       "noticeSha256": "343a84583134924730d7c026670d5c7ccf6c95d53ff3d8abc6e65feaf52c3ee2"
     },
-    "npm:motion-dom@12.40.0": {
+    "npm:motion-dom@14.7.1": {
       "license": "MIT",
       "noticeSha256": "5287dea71b53362935100691a1f68bcfb5c517728139224a1f2fcc7336dbfb85"
     },
-    "npm:motion-utils@12.39.0": {
+    "npm:motion-utils@14.7.0": {
       "license": "MIT",
       "noticeSha256": "5287dea71b53362935100691a1f68bcfb5c517728139224a1f2fcc7336dbfb85"
     },

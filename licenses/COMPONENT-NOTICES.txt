@@ -2382,9 +2382,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:framer-motion@12.40.0
+npm:framer-motion@14.7.1
 Declared license: MIT
-Source: https://registry.npmjs.org/framer-motion/-/framer-motion-12.40.0.tgz
+Source: https://registry.npmjs.org/framer-motion/-/framer-motion-14.7.1.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
@@ -3635,9 +3635,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:motion-dom@12.40.0
+npm:motion-dom@14.7.1
 Declared license: MIT
-Source: https://registry.npmjs.org/motion-dom/-/motion-dom-12.40.0.tgz
+Source: https://registry.npmjs.org/motion-dom/-/motion-dom-14.7.1.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
@@ -3664,9 +3664,9 @@ SOFTWARE.
 
 
 ========================================================================
-npm:motion-utils@12.39.0
+npm:motion-utils@14.7.0
 Declared license: MIT
-Source: https://registry.npmjs.org/motion-utils/-/motion-utils-12.39.0.tgz
+Source: https://registry.npmjs.org/motion-utils/-/motion-utils-14.7.0.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
