@@ -7,6 +7,7 @@ import {
   imageModuleIds,
   portableDockPanels,
   portableWorkspace,
+  publicationTarget,
   statusMismatches,
 } from "./homepage-render-lib.mjs";
 
@@ -89,6 +90,26 @@ describe("homepage image recipe", () => {
     expect(imageModuleIds(recipe, byName["landing-dock-custom"])).toContain("vectorscope");
     expect(imageModuleIds(recipe, byName["landing-hero"])).toContain("stats");
     expect(imageModuleIds(recipe, byName["landing-dock"]).length).toBeGreaterThan(4);
+  });
+});
+
+describe("publication", () => {
+  it("publishes the hero and Dock strips directly and the features into the raw directory", () => {
+    expect(publicationTarget(recipe, "landing-hero")).toMatchObject({
+      kind: "own",
+      png: "website/assets/raw/landing-hero.png",
+      webp: "website/assets/landing-hero.webp",
+    });
+    expect(publicationTarget(recipe, "rules-editor")).toEqual({
+      kind: "feature",
+      png: "website/assets/raw/homepage-rendered/rules-editor.png",
+    });
+  });
+
+  it("refuses an own publication without all three paths", () => {
+    const copy = structuredClone(recipe);
+    delete copy.publication.images["landing-dock"].metadata;
+    expect(homepageRecipeProblems(copy).join()).toMatch(/landing-dock: its publication needs/);
   });
 });
 

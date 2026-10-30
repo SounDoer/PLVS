@@ -3,6 +3,7 @@
 // Chromium. Writes PNGs, report.json and comparison.html into a new
 // artifacts/marketing/homepage-render-<timestamp>/ directory; nothing under website/ changes.
 //   node scripts/marketing/render-homepage-images.mjs [--only name,name]
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -25,6 +26,7 @@ import {
   imageWorkspace,
   portableDockPanels,
   portableWorkspace,
+  publicationTarget,
   statusMismatches,
 } from "./homepage-render-lib.mjs";
 
@@ -210,7 +212,11 @@ async function main() {
   const site = join(runtime, "site");
   let server;
   let browser;
+  const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
   const report = {
+    renderedAt: new Date().toISOString(),
+    commit: git("rev-parse", "HEAD"),
+    worktreeClean: git("status", "--porcelain") === "",
     recipeSha256: createHash("sha256")
       .update(await readFile(RECIPE))
       .digest("hex"),
@@ -297,8 +303,12 @@ async function main() {
       const note = size === expected ? null : `expected ${expected}`;
       const path = join(out, `${image.name}.png`);
       await writeFile(path, raw);
+      const original = await readFile(join(ROOT, publicationTarget(recipe, image.name).png)).catch(
+        () => null
+      );
       report.images.push({
         name: image.name,
+        originalSha256: original ? createHash("sha256").update(original).digest("hex") : null,
         file: `${image.name}.png`,
         width: metadata.width,
         height: metadata.height,
@@ -326,7 +336,10 @@ async function main() {
         return {
           name: entry.name,
           rendered: entry.file,
-          original: relative(out, join(ROOT, image.original)).replaceAll("\\", "/"),
+          original: relative(out, join(ROOT, publicationTarget(recipe, image.name).png)).replaceAll(
+            "\\",
+            "/"
+          ),
           size: `${entry.width} × ${entry.height}`,
           note: entry.sizeMatches
             ? null

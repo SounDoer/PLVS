@@ -52,6 +52,17 @@ export function imageModuleIds(recipe, image) {
   return layoutModuleIds(imageWorkspace(recipe, image)?.layout);
 }
 
+/**
+ * Where an image's original is published: its own PNG, WebP and metadata for the hero and Dock
+ * strips, which the site shows directly, or `<rawDirectory>/<name>.png` for the feature images that
+ * prepare-homepage-assets.mjs encodes.
+ */
+export function publicationTarget(recipe, name) {
+  const own = recipe.publication?.images?.[name];
+  if (own) return { kind: "own", ...own };
+  return { kind: "feature", png: `${recipe.publication?.rawDirectory}/${name}.png` };
+}
+
 /** Every problem with a recipe, as messages; an empty list means it is valid. */
 export function homepageRecipeProblems(recipe) {
   const problems = [];
@@ -111,6 +122,13 @@ export function homepageRecipeProblems(recipe) {
     }
     if (image?.shell && image.scene !== "workspace") {
       problems.push(`${at}: only a workspace scene takes shell.`);
+    }
+    const own = recipe.publication?.images?.[image?.name];
+    if (own && !(own.png && own.webp && own.metadata)) {
+      problems.push(`${at}: its publication needs png, webp and metadata paths.`);
+    }
+    if (!own && !recipe.publication?.rawDirectory) {
+      problems.push(`${at}: the recipe names no publication rawDirectory.`);
     }
     if (image?.crop?.type === "panel" && !image.crop.moduleId) {
       problems.push(`${at}: a panel crop names its moduleId.`);

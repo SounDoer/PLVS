@@ -1,14 +1,13 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { readSharesetsSource } from "../sharesets-catalogue-source.mjs";
-import { FEATURES_RECIPE, loadRecipeFile, validateFeaturesRecipe } from "./homepage-lib.mjs";
 const output = resolve("website/assets/homepage");
-// The feature originals live where capture-homepage-features.mjs publishes them.
+// The feature originals live where publish-homepage-images.mjs writes them.
 const raw = resolve(
-  (await loadRecipeFile(FEATURES_RECIPE, validateFeaturesRecipe)).publication.rawDirectory
+  JSON.parse(await readFile(resolve("scripts/marketing/recipes/homepage-images.json"), "utf8"))
+    .publication.rawDirectory
 );
-const rulesRaw = resolve("website/assets/raw/homepage-20261014");
 await mkdir(output, { recursive: true });
 const previews = {
   spectral: ["spectral-inspection", "preset-workspace"],
@@ -51,10 +50,8 @@ await sharp({
   ])
   .webp({ quality: 90, effort: 6 })
   .toFile(resolve(output, "frequency.webp"));
-// Retain the unchanged Profile editor; the refreshed multichannel capture uses the same
-// seven rules and reference. UI and data are unretouched.
-await sharp(resolve(rulesRaw, "rules-editor.png"))
-  .extract({ left: 150, top: 150, width: 560, height: 500 })
+// The Profile editor original is rendered at its published crop. UI and data are unretouched.
+await sharp(resolve(raw, "rules-editor.png"))
   .webp({ quality: 95, effort: 6 })
   .toFile(resolve(output, "rules.webp"));
 console.log("Homepage previews prepared.");

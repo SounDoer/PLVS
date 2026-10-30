@@ -32,8 +32,7 @@
       "output": {
         "width": 1600,
         "height": 1000
-      },
-      "original": "website/assets/raw/landing-hero.png"
+      }
     },
     {
       "name": "landing-dock",
@@ -52,8 +51,7 @@
       "output": {
         "width": 2560,
         "height": 189
-      },
-      "original": "website/assets/raw/landing-dock.png"
+      }
     },
     {
       "name": "landing-dock-custom",
@@ -114,8 +112,7 @@
       "output": {
         "width": 2560,
         "height": 189
-      },
-      "original": "website/assets/raw/landing-dock-custom.png"
+      }
     },
     {
       "name": "history",
@@ -218,8 +215,7 @@
       "output": {
         "width": 1590,
         "height": 880
-      },
-      "original": "website/assets/raw/homepage-20261029/history.png"
+      }
     },
     {
       "name": "frequency-full",
@@ -243,8 +239,7 @@
       "output": {
         "width": 1590,
         "height": 438
-      },
-      "original": "website/assets/raw/homepage-20261029/frequency-full.png"
+      }
     },
     {
       "name": "frequency-detail",
@@ -268,8 +263,7 @@
       "output": {
         "width": 1590,
         "height": 438
-      },
-      "original": "website/assets/raw/homepage-20261029/frequency-detail.png"
+      }
     },
     {
       "name": "multichannel",
@@ -288,8 +282,7 @@
       "output": {
         "width": 1590,
         "height": 795
-      },
-      "original": "website/assets/raw/homepage-20261029/multichannel.png"
+      }
     },
     {
       "name": "rules-editor",
@@ -320,8 +313,7 @@
       "output": {
         "width": 560,
         "height": 500
-      },
-      "original": "website/assets/raw/homepage-20261014/rules-editor.png"
+      }
     }
   ],
   "workspaces": {
@@ -530,6 +522,26 @@
           "severity": "warn"
         }
       ]
+    }
+  },
+  "publication": {
+    "rawDirectory": "website/assets/raw/homepage-rendered",
+    "images": {
+      "landing-hero": {
+        "png": "website/assets/raw/landing-hero.png",
+        "webp": "website/assets/landing-hero.webp",
+        "metadata": "website/assets/raw/landing-hero.json"
+      },
+      "landing-dock": {
+        "png": "website/assets/raw/landing-dock.png",
+        "webp": "website/assets/landing-dock.webp",
+        "metadata": "website/assets/raw/landing-dock.json"
+      },
+      "landing-dock-custom": {
+        "png": "website/assets/raw/landing-dock-custom.png",
+        "webp": "website/assets/landing-dock-custom.webp",
+        "metadata": "website/assets/raw/landing-dock-custom.json"
+      }
     }
   }
 }
