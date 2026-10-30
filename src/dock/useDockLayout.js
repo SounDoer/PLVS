@@ -3,9 +3,9 @@ import { settingsStore } from "../persistence/index.js";
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
 import { useCallback, useMemo, useState } from "react";
 import { workspaceStore } from "../persistence/index.js";
+import { firstRunDockState } from "./firstRunDock.js";
 import {
   addDockPanel,
-  DEFAULT_DOCK_PANEL_SIZES,
   dockModuleIdForPanelModuleId,
   normalizeDockLayout,
   removeDockPanel,
@@ -17,7 +17,6 @@ import {
 import {
   controlsByModuleIdFromPanels,
   dockControlModuleIdForPanel,
-  firstRunDockControlsByModuleId,
   normalizeDockControlsByModuleId,
   normalizeDockControlsByPanelId,
   updateDockPanelControls,
@@ -27,25 +26,6 @@ import {
   resetDockPanelPair,
   resizeDockPanelPair,
 } from "./dockPanelSizing.js";
-
-/// The first-run strip: tuned modules, widths and controls. Only a store with no Dock yet and
-/// Reset Layout use it — every other path (a stored layout, or a modules-only legacy/preset
-/// object with no panelsById) keeps responsive sizing and the module defaults.
-function firstRunDockState() {
-  const base = normalizeDockLayout(undefined);
-  const layout = {
-    ...base,
-    panelSizesById: normalizeDockPanelSizes(base.panelsById, DEFAULT_DOCK_PANEL_SIZES),
-  };
-  return {
-    layout,
-    controlsByPanelId: normalizeDockControlsByPanelId(
-      layout.panelsById,
-      undefined,
-      firstRunDockControlsByModuleId()
-    ),
-  };
-}
 
 function readDockState() {
   const raw = workspaceStore.read().dock;
