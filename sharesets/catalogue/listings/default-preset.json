@@ -35,6 +35,16 @@
             "path": "previews/default-preset/revisions/r1/preset-workspace.png"
           }
         ]
+      },
+      {
+        "number": 2,
+        "publishedAt": "2026-10-30",
+        "previews": [
+          {
+            "id": "preset-workspace",
+            "path": "previews/default-preset/revisions/r2/preset-workspace.png"
+          }
+        ]
       }
     ]
   }

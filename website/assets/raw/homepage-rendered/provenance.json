@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
+  "renderedAt": "2026-10-30T04:05:54.110Z",
+  "commit": "00f64308063bb6f06b6791ed0dd9bc3a98dd3cd4",
+  "chromium": "156.0.8078.4",
+  "recipe": "scripts/marketing/recipes/homepage-images.json",
+  "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",
+  "fixtureSha256": {
+    "stereo": "434c803b1b8e93670fa54604de9393d67bc2bf4cc8184ae2765958c7c00b7eac",
+    "7.1.4": "c487d974cd7c49b7d62e402872a504f7759ae4edc6e91c6bda2cabe45767b828"
+  },
+  "images": {
+    "history": {
+      "scene": "workspace",
+      "fixture": "stereo",
+      "interfaceSize": "large",
+      "snapshotOffsetSec": 22,
+      "width": 1590,
+      "height": 880,
+      "rawSha256": "cdc2be2aa17dab057b436fc5e0bc4feabdeabae8e7d4e4ee95b23e22e0c35928"
+    },
+    "frequency-full": {
+      "scene": "workspace",
+      "fixture": "stereo",
+      "interfaceSize": "large",
+      "snapshotOffsetSec": 5,
+      "width": 1590,
+      "height": 438,
+      "rawSha256": "47d4695026a8b07800ef250f965f72edc3ef85aefa3ab7e524376586fc978618"
+    },
+    "frequency-detail": {
+      "scene": "workspace",
+      "fixture": "stereo",
+      "interfaceSize": "large",
+      "snapshotOffsetSec": 5,
+      "width": 1590,
+      "height": 438,
+      "rawSha256": "f9f753905a86ef21f15982508019abdaa107c7775c8dd4771efa24cbb4a3f577"
+    },
+    "multichannel": {
+      "scene": "workspace",
+      "fixture": "7.1.4",
+      "interfaceSize": "large",
+      "width": 1590,
+      "height": 795,
+      "rawSha256": "0099b6545a055b2646b2e02b4ca221cdaf7ce8df7c94fc36f1659ce126447d8d"
+    },
+    "rules-editor": {
+      "scene": "workspace",
+      "fixture": "7.1.4",
+      "interfaceSize": "default",
+      "width": 560,
+      "height": 500,
+      "rawSha256": "336287738544c76dc9a240f8812c7b4a66bd48fa615d684256c1c31da8487e01"
+    }
+  }
+}

@@ -15,6 +15,11 @@ function commands(job) {
 }
 
 describe("ordinary CI lanes", () => {
+  it("runs push CI on main and website hotfix branches only", () => {
+    expect(workflow.on.push).toEqual({ branches: ["main", "website-hotfix/**"] });
+    expect(workflow.on.pull_request).toEqual({ branches: ["main"] });
+  });
+
   it("cancels superseded work and exports every classifier lane", () => {
     expect(workflow.concurrency).toEqual({
       group: "ci-${{ github.workflow }}-${{ github.ref }}",

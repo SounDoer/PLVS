@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # A website-hotfix branch needs push CI so deploy-website.yml can publish its exact commit
+    # (docs/website-and-sharesets.md, "Website hotfix from a release").
+    branches: [main, "website-hotfix/**"]
   pull_request:
     branches: [main]
 

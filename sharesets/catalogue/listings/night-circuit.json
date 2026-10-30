@@ -64,6 +64,50 @@
               "path": "previews/night-circuit/v1/revisions/r1/semantic-overview.png"
             }
           ]
+        },
+        {
+          "number": 2,
+          "publishedAt": "2026-10-29",
+          "previews": [
+            {
+              "id": "product-workspace-file",
+              "path": "previews/night-circuit/v1/revisions/r2/product-workspace-file.png"
+            },
+            {
+              "id": "product-multichannel-monitoring",
+              "path": "previews/night-circuit/v1/revisions/r2/product-multichannel-monitoring.png"
+            },
+            {
+              "id": "product-workspace-snapshot",
+              "path": "previews/night-circuit/v1/revisions/r2/product-workspace-snapshot.png"
+            },
+            {
+              "id": "semantic-overview",
+              "path": "previews/night-circuit/v1/revisions/r2/semantic-overview.png"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "publishedAt": "2026-10-30",
+          "previews": [
+            {
+              "id": "product-workspace-file",
+              "path": "previews/night-circuit/v1/revisions/r3/product-workspace-file.png"
+            },
+            {
+              "id": "product-multichannel-monitoring",
+              "path": "previews/night-circuit/v1/revisions/r3/product-multichannel-monitoring.png"
+            },
+            {
+              "id": "product-workspace-snapshot",
+              "path": "previews/night-circuit/v1/revisions/r3/product-workspace-snapshot.png"
+            },
+            {
+              "id": "semantic-overview",
+              "path": "previews/night-circuit/v1/revisions/r3/semantic-overview.png"
+            }
+          ]
         }
       ]
     }

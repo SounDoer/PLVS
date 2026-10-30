@@ -51,6 +51,36 @@
           "id": "preset-workspace-5-1",
           "path": "previews/meter-bridge/v2/preset-workspace-5-1.png"
         }
+      ],
+      "previewRevisions": [
+        {
+          "number": 1,
+          "publishedAt": "2026-10-29",
+          "previews": [
+            {
+              "id": "preset-workspace-stereo",
+              "path": "previews/meter-bridge/v2/revisions/r1/preset-workspace-stereo.png"
+            },
+            {
+              "id": "preset-workspace-5-1",
+              "path": "previews/meter-bridge/v2/revisions/r1/preset-workspace-5-1.png"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "publishedAt": "2026-10-30",
+          "previews": [
+            {
+              "id": "preset-workspace-stereo",
+              "path": "previews/meter-bridge/v2/revisions/r2/preset-workspace-stereo.png"
+            },
+            {
+              "id": "preset-workspace-5-1",
+              "path": "previews/meter-bridge/v2/revisions/r2/preset-workspace-5-1.png"
+            }
+          ]
+        }
       ]
     }
   ]
