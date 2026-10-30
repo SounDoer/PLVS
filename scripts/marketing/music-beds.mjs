@@ -1,6 +1,8 @@
 // Multichannel beds mixed from the "Full Band Crescendo" Suno stems. The placement follows the
 // promo film's make_mc.py so each channel carries different instruments rather than an upmix.
 // Unlike make_mc.py, Synth also feeds the backs: percussion and Other are sparse in this song.
+// Keyboard and Strings, the only stems playing from the start, also feed C, the sides, the backs
+// and the rear heights, so no channel but LFE is silent before the later groups enter.
 // The FFmpeg sidecar has no filters, so mixing and the Butterworth filters are done here.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -38,6 +40,7 @@ export const BED_714_PLACEMENT = Object.freeze({
   C: [
     ["Bass", "mono", 0.8],
     ["Brass", "mono", 0.5],
+    ["Keyboard", "mono", 0.5],
   ],
   LFE: [
     ["Bass", "mono", 1, "low"],
@@ -47,19 +50,23 @@ export const BED_714_PLACEMENT = Object.freeze({
     ["Percussion", "L", 1],
     ["Other", "L", 0.7],
     ["Synth", "L", 0.5],
+    ["Strings", "L", 0.5],
   ],
   Rb: [
     ["Percussion", "R", 1],
     ["Other", "R", 0.7],
     ["Synth", "R", 0.5],
+    ["Strings", "R", 0.5],
   ],
   Ls: [
     ["Guitar", "L", 1],
     ["Synth", "L", 0.7],
+    ["Strings", "L", 0.6],
   ],
   Rs: [
     ["Guitar", "R", 1],
     ["Synth", "R", 0.7],
+    ["Strings", "R", 0.6],
   ],
   Ltf: [
     ["Brass", "L", 0.8],
@@ -75,20 +82,22 @@ export const BED_714_PLACEMENT = Object.freeze({
     ["Synth", "L", 0.6],
     ["Woodwinds", "L", 1],
     ["Percussion", "L", 1, "high"],
+    ["Keyboard", "L", 0.6, "high"],
   ],
   Rtr: [
     ["Synth", "R", 0.6],
     ["Woodwinds", "R", 1],
     ["Percussion", "R", 1, "high"],
+    ["Keyboard", "R", 0.6, "high"],
   ],
 });
 
 export const BED_51_CHANNELS = Object.freeze(["L", "R", "C", "LFE", "Ls", "Rs"]);
 
 // The 7.1.4 placement folded to 5.1: front heights into L/R, backs and rear heights into Ls/Rs.
-// A stem folded from several channels keeps its largest gain, and the high-passed Keyboard and
-// Percussion terms are dropped because their channel already carries the full-band stem. Unlike
-// make_mc.py the heights are not dropped, which would lose Strings and Woodwinds.
+// A stem folded from several channels keeps its largest gain, and a high-passed term is dropped
+// where its channel already carries the same stem full-band. Unlike make_mc.py the heights are
+// not dropped, which would lose Strings and Woodwinds.
 export const BED_51_PLACEMENT = Object.freeze({
   L: [
     ["Drums", "L", 1],
@@ -109,16 +118,20 @@ export const BED_51_PLACEMENT = Object.freeze({
   Ls: [
     ["Guitar", "L", 1],
     ["Synth", "L", 0.7],
+    ["Strings", "L", 0.6],
     ["Percussion", "L", 1],
     ["Other", "L", 0.7],
     ["Woodwinds", "L", 1],
+    ["Keyboard", "L", 0.6, "high"],
   ],
   Rs: [
     ["Guitar", "R", 1],
     ["Synth", "R", 0.7],
+    ["Strings", "R", 0.6],
     ["Percussion", "R", 1],
     ["Other", "R", 0.7],
     ["Woodwinds", "R", 1],
+    ["Keyboard", "R", 0.6, "high"],
   ],
 });
 
@@ -147,11 +160,35 @@ export const HOMEPAGE_ARRANGEMENT = Object.freeze({
 
 export const BED_STEREO_CHANNELS = Object.freeze(["L", "R"]);
 
-/** Every arranged stem on its own side at unity: the stereo sum of the arrangement. */
-export const BED_STEREO_PLACEMENT = Object.freeze({
-  L: Object.keys(HOMEPAGE_ARRANGEMENT.entryMs).map((stem) => [stem, "L", 1]),
-  R: Object.keys(HOMEPAGE_ARRANGEMENT.entryMs).map((stem) => [stem, "R", 1]),
+// Pan positions (-1 left, +1 right) for the narrower stems, so Stereo Map Position shows their
+// bands off centre; the stems not listed stay where Suno placed them.
+export const STEREO_PAN = Object.freeze({
+  Guitar: -0.7,
+  Brass: -0.4,
+  Percussion: 0.7,
+  Woodwinds: 0.5,
+  Other: 0.5,
 });
+
+/** Constant-power side gains for pan position `pan`, unity at centre. */
+export function panGains(pan) {
+  const angle = ((pan + 1) * Math.PI) / 4;
+  return { L: Math.SQRT2 * Math.cos(angle), R: Math.SQRT2 * Math.sin(angle) };
+}
+
+/** Every arranged stem on its own side, panned by `STEREO_PAN`: the stereo sum of the arrangement. */
+export const BED_STEREO_PLACEMENT = Object.freeze(
+  Object.fromEntries(
+    BED_STEREO_CHANNELS.map((side) => [
+      side,
+      Object.keys(HOMEPAGE_ARRANGEMENT.entryMs).map((stem) => [
+        stem,
+        side,
+        panGains(STEREO_PAN[stem] ?? 0)[side],
+      ]),
+    ])
+  )
+);
 
 /** Gain of a stem entering at `entryMs`: silent before, a linear fade over `rampMs`, then 1. */
 export function entryGain(timeMs, entryMs, rampMs) {
@@ -178,13 +215,26 @@ export function applyArrangement(stems, { entryMs, rampMs }, sampleRateHz) {
 
 // The stereo bed is mastered like a release: the stem sum has drum transients well above its
 // body, so a make-up gain and a peak limiter bring Short-term up to the hero's warning without
-// pushing True Peak past 0 dBTP.
+// pushing True Peak past 0 dBTP. Drums and Bass are nearly mono and dominate the sum, so a side
+// gain widens the image (the wide stems spread further) before the limiter.
 export const STEREO_MASTER = Object.freeze({
+  sideGain: 1.5,
   makeupGainDb: 3,
   ceilingDbfs: -1,
   lookaheadMs: 5,
   releaseMs: 80,
 });
+
+/** Mid/side widening in place on interleaved stereo: the side signal is scaled by `sideGain`. */
+export function widenStereo(samples, sideGain) {
+  for (let index = 0; index < samples.length; index += 2) {
+    const mid = (samples[index] + samples[index + 1]) / 2;
+    const side = ((samples[index] - samples[index + 1]) / 2) * sideGain;
+    samples[index] = mid + side;
+    samples[index + 1] = mid - side;
+  }
+  return samples;
+}
 
 /**
  * Linked lookahead peak limiter, in place on interleaved samples. Gain reduction reaches the

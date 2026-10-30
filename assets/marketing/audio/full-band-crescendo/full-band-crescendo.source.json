@@ -80,10 +80,10 @@
   },
   "arranged": {
     "fileName": "full-band-crescendo-arranged.wav",
-    "sha256": "64a58d2420a3a49e505dd1c228b84f9251f59e754d3554ddbbf975a5cbb2f1d9",
+    "sha256": "3ebf579ffeedbb6ed8b47fd4f89b4bab991c20b8e2463d38fde7270224dfe707",
     "sampleRateHz": 48000,
     "channels": 2,
     "bits": 24,
-    "description": "An arrangement of the stems, not the song's master: song time 113-188 s with the stems entering in groups (keys and strings, then synth, percussion and guitar at 30 s, bass and drums at 45 s, brass, woodwinds and Other at 60 s, each over a 2 s fade), summed to stereo and scaled to a -1 dBFS sample peak. Built by scripts/marketing/build-music-beds.mjs."
+    "description": "An arrangement of the stems, not the song's master: song time 113-188 s with the stems entering in groups (keys and strings, then synth, percussion and guitar at 30 s, bass and drums at 45 s, brass, woodwinds and Other at 60 s, each over a 2 s fade), summed to stereo with the narrower stems panned (STEREO_PAN), scaled to a -1 dBFS sample peak, widened (side gain 1.5) and limited as STEREO_MASTER in scripts/marketing/music-beds.mjs. Built by scripts/marketing/build-music-beds.mjs."
   }
 }

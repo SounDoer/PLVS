@@ -14,6 +14,8 @@ import {
   filtfilt,
   limitPeaks,
   mixBed,
+  panGains,
+  widenStereo,
   parsePcm16Stereo,
   pcm24Wav,
 } from "./music-beds.mjs";
@@ -224,7 +226,22 @@ describe("arrangement", () => {
     );
     expect(arranged).toEqual([...placed].sort());
     expect(BED_STEREO_PLACEMENT.L.map(([stem]) => stem).sort()).toEqual(arranged);
-    expect(BED_STEREO_PLACEMENT.R.every(([, side, gain]) => side === "R" && gain === 1)).toBe(true);
+    expect(BED_STEREO_PLACEMENT.R.every(([, side]) => side === "R")).toBe(true);
+    for (const side of ["L", "R"]) {
+      const gains = Object.fromEntries(
+        BED_STEREO_PLACEMENT[side].map(([stem, , gain]) => [stem, gain])
+      );
+      expect(gains.Drums).toBeCloseTo(1, 12);
+      expect(gains.Guitar).toBeCloseTo(panGains(-0.7)[side], 12);
+    }
+  });
+
+  it("pans with constant power", () => {
+    for (const pan of [-1, -0.4, 0, 0.7, 1]) {
+      const { L, R } = panGains(pan);
+      expect(L ** 2 + R ** 2).toBeCloseTo(2, 12);
+    }
+    expect(panGains(-1).R).toBeCloseTo(0, 12);
   });
 });
 
@@ -253,6 +270,19 @@ describe("limitPeaks", () => {
 
   it("has the documented master settings", () => {
     expect(STEREO_MASTER).toMatchObject({ ceilingDbfs: -1 });
+  });
+});
+
+describe("widenStereo", () => {
+  it("scales the side signal and keeps the mid", () => {
+    const samples = Float32Array.of(1, 0, 0.5, 0.5, 0.2, -0.2);
+    widenStereo(samples, 1.5);
+    const expected = [1.25, -0.25, 0.5, 0.5, 0.3, -0.3];
+    samples.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 6));
+  });
+
+  it("is applied by the stereo master", () => {
+    expect(STEREO_MASTER.sideGain).toBe(1.5);
   });
 });
 

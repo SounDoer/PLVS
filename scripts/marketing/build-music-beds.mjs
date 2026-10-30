@@ -14,6 +14,7 @@ import {
   mixBed,
   pcm24Wav,
   readArrangedStems,
+  widenStereo,
 } from "./music-beds.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -42,6 +43,7 @@ const { samples, gain } = mixBed(stems, {
   channels: BED_STEREO_CHANNELS,
   sampleRateHz,
 });
+widenStereo(samples, STEREO_MASTER.sideGain);
 limitPeaks(samples, BED_STEREO_CHANNELS.length, sampleRateHz, STEREO_MASTER);
 const wav = pcm24Wav(samples, BED_STEREO_CHANNELS.length, sampleRateHz);
 const path = join(SOURCE_DIR, source.arranged.fileName);

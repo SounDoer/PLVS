@@ -84,15 +84,18 @@ The stems are kept by the owner outside the repository and identified by hash. W
 ```sh
 node scripts/marketing/build-music-beds.mjs --stems <stem-directory>
 npm run homepage:fixture -- --stems <stem-directory>
+npm run sharesets:fixture -- --stems <stem-directory>
 ```
 
-Without `--write` both only check that the committed files match. With `--write`,
+Without `--write` they only check that the committed files match. With `--write`,
 `build-music-beds.mjs` rebuilds the stereo bed (then update `arranged.sha256` in the source JSON),
-and `homepage:fixture` regenerates both fixtures. Without the stems, `homepage:fixture` still checks
-the stereo fixture and reports the 7.1.4 fixture as source unavailable. The arrangement, the
-7.1.4 placement and the stereo master settings live in `scripts/marketing/music-beds.mjs`. When the
-hero verdicts no longer hold after a change, adjust the arrangement or master there; never edit a
-fixture.
+and the two fixture commands regenerate their fixtures; the Sharesets fixtures share the stereo bed
+and the arrangement, so a music change refreshes the Sharesets previews too
+(`docs/website-and-sharesets.md`). Without the stems, the fixture commands still check the stereo
+fixtures and report the 7.1.4 and 5.1 fixtures as source unavailable. The arrangement, the 7.1.4
+and 5.1 placements, the stereo pan positions and the stereo master settings (including its side
+gain) live in `scripts/marketing/music-beds.mjs`. When the hero verdicts no longer hold after a
+change, adjust the arrangement or master there; never edit a fixture.
 
 ## Release cross-check with real-app captures
 

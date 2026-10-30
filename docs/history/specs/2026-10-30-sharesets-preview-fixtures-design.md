@@ -45,17 +45,17 @@ music, and the 5.1 previews show a real channel-by-channel mix instead of an upm
   no limiter (as 7.1.4).
 - Placement `BED_51_PLACEMENT`, folded from `BED_714_PLACEMENT` by three rules: front heights fold
   into L/R, backs and rear heights into Ls/Rs; a stem folded from several channels keeps its
-  largest gain rather than the sum; the high-passed Keyboard and Percussion terms are dropped,
-  since they exist only to give the heights content and the full-band term is already present.
+  largest gain rather than the sum; a high-passed term is dropped where its channel already
+  carries the same stem full-band, since it exists only to give the heights content.
   The promo `make_mc.py` dropped the heights instead; here that would lose Strings and Woodwinds
   completely, and Strings is half of the first group.
 
-  | Channel | Terms                                                                |
-  | ------- | -------------------------------------------------------------------- |
-  | L / R   | Drums 1, Keyboard 0.5, Bass 0.4, Brass 0.8, Strings 0.7 (own side)   |
-  | C       | Bass 0.8, Brass 0.5 (mono)                                           |
-  | LFE     | Bass 1, Drums 0.7 (mono, 120 Hz low-pass)                            |
-  | Ls / Rs | Guitar 1, Synth 0.7, Percussion 1, Other 0.7, Woodwinds 1 (own side) |
+  | Channel | Terms                                                                                                       |
+  | ------- | ----------------------------------------------------------------------------------------------------------- |
+  | L / R   | Drums 1, Keyboard 0.5, Bass 0.4, Brass 0.8, Strings 0.7 (own side)                                          |
+  | C       | Bass 0.8, Brass 0.5, Keyboard 0.5 (mono)                                                                    |
+  | LFE     | Bass 1, Drums 0.7 (mono, 120 Hz low-pass)                                                                   |
+  | Ls / Rs | Guitar 1, Synth 0.7, Strings 0.6, Percussion 1, Other 0.7, Woodwinds 1, Keyboard 0.6 high-passed (own side) |
 
 - Window and analysis requests as the stereo fixture (the 5.1 previews show Spectrum and the other
   full-request panels today, so the request set stays the default one). Loudness layout 5.1.
@@ -75,6 +75,34 @@ drifted against today's analyzer (measured on f6b14ff5). In the first ~20 histor
 reads up to about 15 LU lower than the committed values (warm-up handling), and Momentary up to
 6 LU lower; LRA moves from 5.68 to 5.50 LU (stereo) and from 1.27 to 0.94 LU (5.1); the max values
 move by less than 0.13 LU. Dialogue Delivery Review therefore gets a preview revision too.
+
+## Width and early fill (added after the first review)
+
+The first review renders showed two weaknesses shared with the homepage images, so both beds
+change for both sites:
+
+- Stereo image. Drums (L/R correlation 0.98) and Bass (0.95) are nearly mono and dominate the sum;
+  the end of the window read Corr 0.80 against Discovery's 0.15, with a mostly flat Stereo Map.
+  Two changes, compared in hero renders: `STEREO_MASTER` gains `sideGain: 1.5`, a mid/side
+  widening of the normalised sum before the limiter (`widenStereo`), which brought Corr to 0.59;
+  and `STEREO_PAN` pans the narrower stems (Guitar −0.7, Brass −0.4, Percussion +0.7, Woodwinds
+  +0.5, Other +0.5, constant power), which brought it to 0.54 and moves some upper bands of the
+  Stereo Map off centre. Stereo Map Position shows where each band sits, which widening cannot
+  move; above 2 kHz the centred Drums dominate, so it stays close to centre there. A larger side
+  gain was rejected: at 1.6 the quiet start of the window already reads Corr −0.08. Measured on
+  the homepage stereo fixture: Momentary −11.3, Short-term −10.8, Integrated −12.9 LUFS and True
+  Peak −0.71 dBTP, so the hero verdicts still hold. The committed stereo bed and its hash change.
+- Blank multichannel start. Only Keyboard and Strings play in the first part of the window, and
+  they fed L/R (and the front heights) only, so C, LFE, the sides, the backs and the rear heights
+  were blank for the first quarter or half of the Waveform. Keyboard and Strings now also feed C
+  (Keyboard 0.5), the sides (Strings 0.6), the backs (Strings 0.5) and the rear heights (high-passed
+  Keyboard 0.6) of `BED_714_PLACEMENT`; the 5.1 table follows from the fold rules above, so Ls/Rs
+  gain Strings 0.6 and high-passed Keyboard 0.6. LFE stays empty until Bass and Drums enter: the
+  two early stems carry almost nothing under 120 Hz (about −54 dBFS RMS), and bringing Bass in
+  earlier would change the loudness build of every image.
+
+The homepage stereo and 7.1.4 fixtures and every homepage image are therefore regenerated and
+republished in the same change.
 
 ## Producer
 
