@@ -204,7 +204,7 @@ When there were no open Dependabot pull requests, say so in one line.
 
 ## Scheduled run
 
-The weekly run is a local scheduled task on the maintainer's always-on Mac, Monday 09:00
+The weekly run is a local scheduled task on the maintainer's always-on Mac, Monday 06:00
 (Asia/Shanghai), with this repository as its folder. Read the latest skill on every run rather
 than copying its procedure into the schedule. Use a prompt such as:
 
