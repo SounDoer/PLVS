@@ -2,7 +2,7 @@
   "version": 2,
   "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
   "renderedAt": "2026-10-30T04:05:54.110Z",
-  "commit": "8fa2cc18f816b4ca626848bd801b90500638f38f",
+  "commit": "00f64308063bb6f06b6791ed0dd9bc3a98dd3cd4",
   "chromium": "156.0.8078.4",
   "recipe": "scripts/marketing/recipes/homepage-images.json",
   "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",

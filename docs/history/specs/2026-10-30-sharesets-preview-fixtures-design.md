@@ -71,7 +71,7 @@ music, and the 5.1 previews show a real channel-by-channel mix instead of an upm
 
 `sharesetsPreviewDialogueStereoV1` and `sharesetsPreviewDialogueMultichannelV1` keep their source
 (the dialogue benchmark corpus) and recipe, and are regenerated in this change because they have
-drifted against today's analyzer (measured on f6b14ff5). In the first ~20 history rows, Short-term
+drifted against today's analyzer (measured on 214457a4). In the first ~20 history rows, Short-term
 reads up to about 15 LU lower than the committed values (warm-up handling), and Momentary up to
 6 LU lower; LRA moves from 5.68 to 5.50 LU (stereo) and from 1.27 to 0.94 LU (5.1); the max values
 move by less than 0.13 LU. Dialogue Delivery Review therefore gets a preview revision too.
@@ -144,7 +144,7 @@ the audio). The fixture's own `id` carries the change.
 
 ## Frequency-bin stride and bundle size
 
-Measured on `main` (f6b14ff5) with `vite build`: the app `dist` is 12 MB, of which the
+Measured on `main` (214457a4) with `vite build`: the app `dist` is 12 MB, of which the
 `sharesetsPreview` chunk is 9.26 MB (all four Sharesets fixtures, about 11.8 MB of JSON before
 minification). `sharesets-preview.html` is an app build input only because
 `generate-sharesets-previews.mjs` builds the app's `vite.config.js`; the app never loads the page
