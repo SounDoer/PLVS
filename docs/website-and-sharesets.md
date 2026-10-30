@@ -101,8 +101,38 @@ The review command reads `/publication.json`, reports every changed file from th
 website SHA, and separately lists guide differences from the latest stable desktop release. Read
 the actual diff, including website generator/shared inputs and generated guide output. Text
 corrections may ship independently; descriptions of unshipped app features must not silently go
-live. Resolve such differences before dispatch, or discuss a narrowly scoped hotfix checkout with
-the user (the normal rule requiring approval to move work off `main` still applies).
+live. Resolve such differences before dispatch, or, with the user's approval (the normal rule
+against moving work off `main` still applies), publish from a website hotfix branch.
+
+### Website hotfix from a release
+
+A hotfix branch starts from the latest stable release tag, so it holds exactly the released site
+and guide; only what is copied into it changes. Push CI runs for branches named
+`website-hotfix/**`, which `deploy-website.yml` requires.
+
+```powershell
+git worktree add .claude/worktrees/website-hotfix-<topic> -b website-hotfix/<date>-<topic> v<latest>
+# In the worktree: npm run worktree:setup, then copy only what should ship, for example
+git checkout main -- website/assets sharesets/catalogue
+# A release tag older than this procedure lacks the CI trigger; carry it along:
+git checkout main -- .github/workflows/ci.yml scripts/ciWorkflowContract.test.js
+npm run website:check
+git commit -m "fix(website): ..."
+npm run website:review -- (git rev-parse HEAD)
+git push -u origin website-hotfix/<date>-<topic>
+```
+
+- Copy only the files that should go live. Leave `docs/user/` and website pages describing
+  unreleased features on `main`; the review's guide differences since the release must be empty
+  or pure corrections.
+- Carry the current `sharesets/catalogue` from `main` whenever it is ahead of the live Catalogue:
+  publication validates the branch's content against live history and rejects older content.
+- `npm run website:check` builds the complete site from the branch, so a copied file that depends
+  on unreleased code fails there rather than live. Push CI on the branch runs the full gate.
+- After that run succeeds, dispatch `deploy-website.yml` with the branch commit's full SHA and
+  verify as below. Everything copied already exists on `main`, so nothing merges back.
+- Keep the branch until a later website deployment replaces it on the live site:
+  `website:review` must still fetch the live website SHA. Then delete the branch and worktree.
 
 The deployment workflow resolves the requested ref once, requires successful push CI for that
 exact SHA, then passes that SHA to the shared publication workflow. The existing live Sharesets

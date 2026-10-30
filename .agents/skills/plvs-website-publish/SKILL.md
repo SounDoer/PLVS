@@ -33,7 +33,8 @@ and marker recovery. This skill coordinates those commands; it does not replace 
   whole website and generated `docs/user/` ship together. Inspect guide differences from the latest
   stable app release for descriptions of unshipped features. Corrections can ship; do not quietly
   publish future behavior. If isolating the fix is necessary, explain the concrete conflict and
-  ask before moving work off `main`. Do not revert unrelated pending product documentation.
+  ask before moving work off `main`; with approval, follow "Website hotfix from a release" in
+  `docs/website-and-sharesets.md`. Do not revert unrelated pending product documentation.
 - The report is evidence for semantic review, not automatic authorization. Review shared source
   and generator changes too. Missing-marker bootstrap requires evidence from the previous
   successful deployment, as documented in `docs/website-and-sharesets.md`; never guess from a content-only SHA.
