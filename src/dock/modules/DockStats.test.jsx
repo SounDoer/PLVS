@@ -51,8 +51,16 @@ const METRICS = [
 ];
 
 let triggerResize;
+let typography;
 
 beforeEach(() => {
+  // Utility styles are not loaded in this suite; make its font measurements explicit.
+  typography = document.createElement("style");
+  typography.textContent = `
+    [data-testid="dock-stats-grid"] { font-size: 16px; }
+    [data-testid="dock-stat-label"] { font-size: 12px; }
+  `;
+  document.head.append(typography);
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -66,6 +74,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  typography.remove();
   vi.unstubAllGlobals();
 });
 

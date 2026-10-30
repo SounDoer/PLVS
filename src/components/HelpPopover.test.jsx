@@ -72,7 +72,7 @@ describe("HelpPopover", () => {
     await waitFor(() => expect(document.activeElement).toBe(trigger()));
   });
 
-  it("dismisses pinned help on an outside pointer press", async () => {
+  it("dismisses pinned help on an outside pointer click", async () => {
     render(<HelpPopover items={spectrum()} />);
     fireEvent.click(trigger());
     // Radix installs its document pointer listener on the next task.
@@ -80,6 +80,8 @@ describe("HelpPopover", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     fireEvent.pointerDown(document.body, { button: 0 });
+    fireEvent.pointerUp(document.body, { button: 0 });
+    fireEvent.click(document.body, { button: 0 });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

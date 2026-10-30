@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { JSDOM } from "jsdom";
+import { generate, lexer, parse, walk } from "css-tree";
 import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("./", import.meta.url));
@@ -27,25 +28,29 @@ function styles(directory) {
   });
 }
 
-const sheets = styles(root);
-const declarations = sheets.flatMap(({ path, source }) => {
-  const dom = new JSDOM(`<style>${source}</style>`, { url: "https://website.test/" });
+function declarationsFromSource({ path, source }) {
   const result = [];
-  function walk(rules) {
-    for (const rule of rules) {
-      if (rule.style) {
-        for (let index = 0; index < rule.style.length; index++) {
-          const property = rule.style[index];
-          result.push({ path, property, value: rule.style.getPropertyValue(property).trim() });
-        }
-      }
-      if (rule.cssRules) walk(rule.cssRules);
-    }
-  }
-  walk(dom.window.document.styleSheets[0].cssRules);
-  dom.window.close();
+  // This contract checks authored values. CSSOM expands shorthands and supplies defaults,
+  // so `border: none` can otherwise look like an authored `medium` border width.
+  const ast = parse(source, {
+    onParseError(error) {
+      throw new Error(`${path}: ${error.message}`, { cause: error });
+    },
+  });
+  walk(ast, {
+    visit: "Declaration",
+    enter(node) {
+      result.push({
+        path,
+        property: node.property,
+        value: generate(node.value).trim(),
+      });
+    },
+  });
   return result;
-});
+}
+
+const declarations = styles(root).flatMap(declarationsFromSource);
 const tokenPath = "assets/site-tokens.css";
 const shared = new Set(
   declarations
@@ -58,7 +63,9 @@ const shared = new Set(
 function hasLiteralVisualValue(property, value) {
   // Radius roles and the circular-control exception are checked separately below.
   if (property === "border-radius") return false;
-  const stripped = value.replace(/var\(\s*--[\w-]+\s*\)/g, "").trim();
+  const stripped = normalizeZeroDimensions(value)
+    .replace(/var\(\s*--[\w-]+\s*\)/g, "")
+    .trim();
   const visual =
     /^(?:(?:row-|column-)?gap|(?:margin|padding)(?:-[\w-]+)?|(?:border|outline)(?:-[\w-]+)?|(?:box|text)-shadow|letter-spacing|text-underline-offset|(?:scroll-margin|scroll-padding)(?:-[\w-]+)?)$/;
   if (
@@ -66,6 +73,18 @@ function hasLiteralVisualValue(property, value) {
     /(?:\d*\.)?\d+(?:(?:px|r?em|vh|vw|ch)\b|%)|#[\da-f]+|(?:rgb|hsl|oklch|color)\(/i.test(stripped)
   )
     return true;
+  if (/^(?:box|text)-shadow$/.test(property)) {
+    let literalColor = false;
+    walk(parse(stripped, { context: "value" }), (node) => {
+      if (
+        node.type === "Identifier" &&
+        !/^(?:transparent|currentColor)$/i.test(node.name) &&
+        lexer.matchType("color", node.name).matched
+      )
+        literalColor = true;
+    });
+    if (literalColor) return true;
+  }
   if (
     /^(?:color|background(?:-color)?|(?:border(?:-[\w]+)?|outline)-color|fill|stroke)$/.test(
       property
@@ -86,6 +105,13 @@ function hasLiteralVisualValue(property, value) {
     return /\d(?:ms|s)\b/.test(stripped.replaceAll("0.01ms", ""));
   }
   return false;
+}
+
+function normalizeZeroDimensions(value) {
+  return value.replace(
+    /(?<![\w.-])[+-]?(?:\d*\.)?\d+(?:e[+-]?\d+)?(?:(?:px|r?em|vh|vw|ch)\b|%)/gi,
+    (dimension) => (parseFloat(dimension) === 0 ? "0" : dimension)
+  );
 }
 
 describe("public website design contract", () => {
@@ -116,7 +142,10 @@ describe("public website design contract", () => {
     };
     expect(
       declarations.filter(
-        (d) => d.path !== tokenPath && roles[d.property] && !roles[d.property].test(d.value)
+        (d) =>
+          d.path !== tokenPath &&
+          roles[d.property] &&
+          !roles[d.property].test(normalizeZeroDimensions(d.value))
       )
     ).toEqual([]);
   });
@@ -128,6 +157,11 @@ describe("public website design contract", () => {
   });
 
   it.each([
+    ["gap", "1px"],
+    ["padding", "0px 1px"],
+    ["border", "0px solid red"],
+    ["box-shadow", "0px 0px 0px black"],
+    ["letter-spacing", "0.001em"],
     ["gap", "13px"],
     ["gap", "5%"],
     ["font", "18px/1.6 Arial"],
@@ -145,5 +179,32 @@ describe("public website design contract", () => {
     ["transition", "color 150ms ease"],
   ])("detects accidental literals in %s: %s", (property, value) => {
     expect(hasLiteralVisualValue(property, value)).toBe(true);
+  });
+
+  it.each([
+    ["margin", "0px auto"],
+    ["padding", "0px 0rem"],
+    ["border", "0px solid var(--color-divider)"],
+    ["border", "none"],
+    ["letter-spacing", "0em"],
+  ])("allows zero resets in %s: %s", (property, value) => {
+    expect(hasLiteralVisualValue(property, value)).toBe(false);
+  });
+
+  it("reads authored declarations inside nested rules without adding shorthand defaults", () => {
+    const source = `@media (min-width: 1px) {
+      .reset { border: none; margin: 0px /* not a 13px literal */ auto; border-radius: 0; }
+      @supports (display: grid) { .bad { padding: 0px 1px !important; } }
+    }`;
+    const parsed = declarationsFromSource({ path: "fixture.css", source });
+    expect(parsed).toEqual([
+      { path: "fixture.css", property: "border", value: "none" },
+      { path: "fixture.css", property: "margin", value: "0px auto" },
+      { path: "fixture.css", property: "border-radius", value: "0" },
+      { path: "fixture.css", property: "padding", value: "0px 1px" },
+    ]);
+    expect(parsed.filter((d) => hasLiteralVisualValue(d.property, d.value))).toEqual([
+      { path: "fixture.css", property: "padding", value: "0px 1px" },
+    ]);
   });
 });

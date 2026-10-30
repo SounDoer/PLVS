@@ -27,7 +27,7 @@ function renderHud() {
   return screen.getByTestId("boundary");
 }
 
-// jsdom has no PointerEvent, and its generic fallback drops the coordinates.
+// A MouseEvent also carries the coordinates consumed by the native pointer listener.
 function pointerMove(target, clientX, clientY) {
   act(() => {
     target.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX, clientY }));
@@ -42,7 +42,7 @@ afterEach(() => {
 describe("ChartHoverHud", () => {
   it("fits fields to their text and never shrinks them while the hover lasts", () => {
     const hud = (dbLabel) => (
-      <div data-chart-hud-boundary>
+      <div data-chart-hud-boundary style={{ fontSize: "12px" }}>
         <div>
           <ChartHoverHud>
             <div>483 Hz</div>
@@ -53,7 +53,7 @@ describe("ChartHoverHud", () => {
     );
     const { rerender } = render(hud("-40.7 dB"));
     const width = (text) => parseFloat(screen.getByText(text).parentElement.style.width).toFixed(1);
-    // 12 px fallback font, 0.6 em per monospace character, 8-character floor.
+    // 12 px fixture font, 0.6 em per monospace character, 8-character floor.
     expect(width("483 Hz")).toBe("57.6");
     expect(width("-40.7 dB")).toBe("57.6");
 

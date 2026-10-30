@@ -170,6 +170,8 @@ describe("DockEditorApp window behavior", () => {
     root.style.paddingBottom = "4px";
     root.style.borderTopWidth = "1px";
     root.style.borderBottomWidth = "1px";
+    root.style.borderTopStyle = "solid";
+    root.style.borderBottomStyle = "solid";
     Object.defineProperties(root, { scrollWidth: { configurable: true, value: 190 } });
     Object.defineProperties(shell, { scrollWidth: { configurable: true, value: 190 } });
     Object.defineProperties(content, {

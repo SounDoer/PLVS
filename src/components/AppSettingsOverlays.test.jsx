@@ -595,7 +595,7 @@ describe("AppSettingsOverlays", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export saved items" }));
 
     expect(screen.getByRole("dialog", { name: "Export Saved Items" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Presets 1 item/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Presets\s*1 item/ }));
     expect(screen.getByRole("dialog", { name: "Export Presets" })).toBeTruthy();
   });
 
@@ -620,7 +620,7 @@ describe("AppSettingsOverlays", () => {
 
     renderOverlays();
     fireEvent.click(screen.getByRole("button", { name: "Export saved items" }));
-    fireEvent.click(screen.getByRole("button", { name: /Presets 1 item/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Presets\s*1 item/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "P1" }));
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 

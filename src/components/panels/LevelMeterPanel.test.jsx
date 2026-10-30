@@ -927,7 +927,8 @@ describe("Level Meter readout visibility", () => {
       });
       const marker = container.querySelector("[data-level-tp-max-marker]");
       expect(marker.getAttribute("style")).toContain("clamp(0px");
-      expect(marker.getAttribute("style")).toContain("calc(100% - 40px)");
+      // CSSOM may omit a redundant calc() wrapper inside clamp().
+      expect(marker.getAttribute("style")).toContain("100% - 40px");
       expect(marker.textContent).toContain(tpMax.toFixed(1));
     }
   );
