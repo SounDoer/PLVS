@@ -700,6 +700,11 @@ website keeps describing the previous version. Redeploy from the tag with:
 gh workflow run deploy-website.yml -f ref=vX.Y.Z
 ```
 
+Once the live `/publication.json` names the release, delete any `website-hotfix-*` tag left by an
+earlier website hotfix, locally and on origin (`git tag -l "website-hotfix-*"`,
+`git push origin --delete <tag>`, `git tag -d <tag>`). It only kept the previously live commit
+reachable (`docs/website-and-sharesets.md`, "Website hotfix from a release").
+
 ---
 
 ## Build Artifacts
