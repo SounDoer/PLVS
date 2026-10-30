@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "song": {
+    "title": "Full Band Crescendo",
+    "owner": "SounDoer",
+    "generator": "Suno (paid subscription), candidate v1 of two",
+    "createdOn": "2026-10-30",
+    "originalFileName": "Full Band Crescendo v1.wav",
+    "originalSha256": "330919971c720fb75e4423da2380635a42daae96c92cf0009fec1a546b0df672",
+    "sampleRateHz": 48000,
+    "channels": 2,
+    "bits": 16,
+    "frames": 12120960,
+    "modifications": "Not committed; kept by the owner with the stems and identified by hash."
+  },
+  "stems": {
+    "note": "Suno's split, WAV, tempo 'Follow tempo changes'. Each stem has the song's frame count and starts at offset 0, but the stems are a re-performance, not a decomposition: they do not sum to the song above about 250 Hz. The two vocal stems hold separation residue of an instrumental and are not used. The stems are kept by the owner outside the repository and identified here by hash only.",
+    "files": [
+      {
+        "fileName": "0 Lead Vocals.wav",
+        "sha256": "0ea7b52bcfd84c5513ef2f08b1670670ce326d90d2ada6b8651b090a4cc53304",
+        "used": false
+      },
+      {
+        "fileName": "1 Backing Vocals.wav",
+        "sha256": "a1d5109655ae1417731d9ccc67242853f90eedb0fa7861773836b50150dfd291",
+        "used": false
+      },
+      {
+        "fileName": "2 Drums.wav",
+        "sha256": "d0ab2578f6053287735d7fa27366c588ebf8405440780c58b18c7747e50e1b49",
+        "used": true
+      },
+      {
+        "fileName": "3 Bass.wav",
+        "sha256": "191ea5ada5d41d34590ae1520d3df50132fc9ea3dd484363be7f9eb130346473",
+        "used": true
+      },
+      {
+        "fileName": "4 Guitar.wav",
+        "sha256": "ea6174f3dd185d34e2adb0af3348a281c777489412024f3200dbebd945c76470",
+        "used": true
+      },
+      {
+        "fileName": "5 Keyboard.wav",
+        "sha256": "dc7833e824175c31b04dfab56101133c8b93b912d99caf62b78182e623e458b9",
+        "used": true
+      },
+      {
+        "fileName": "6 Percussion.wav",
+        "sha256": "adc30e38f58954c459515ab6b5e7960615c8f19081d1bfa800b2ba74f1db6091",
+        "used": true
+      },
+      {
+        "fileName": "7 Strings.wav",
+        "sha256": "705226fd364d29d3e4be0ac33c9f78873b640bf5727fa2fd97eac7cb68ad8d91",
+        "used": true
+      },
+      {
+        "fileName": "8 Synth.wav",
+        "sha256": "06bbe9224bc14da4b04c80887e70d9c07b5b6fb871d85a9b845ff8f571ddaf7b",
+        "used": true
+      },
+      {
+        "fileName": "9 Other.wav",
+        "sha256": "52a1a11807bb02d98cf8253a739426b48a0a6c6bd842b4c1988937be58246c8e",
+        "used": true
+      },
+      {
+        "fileName": "10 Brass.wav",
+        "sha256": "90cc93589d308e47854f97ab56eea735d19dcae951e377a66045b57e731087cd",
+        "used": true
+      },
+      {
+        "fileName": "11 Woodwinds.wav",
+        "sha256": "adda874993b57b393ba6c6d9c913f920fd60ed5bed0f7d99fc8832ad304000be",
+        "used": true
+      }
+    ]
+  },
+  "arranged": {
+    "fileName": "full-band-crescendo-arranged.wav",
+    "sha256": "64a58d2420a3a49e505dd1c228b84f9251f59e754d3554ddbbf975a5cbb2f1d9",
+    "sampleRateHz": 48000,
+    "channels": 2,
+    "bits": 24,
+    "description": "An arrangement of the stems, not the song's master: song time 113-188 s with the stems entering in groups (keys and strings, then synth, percussion and guitar at 30 s, bass and drums at 45 s, brass, woodwinds and Other at 60 s, each over a 2 s fade), summed to stereo and scaled to a -1 dBFS sample peak. Built by scripts/marketing/build-music-beds.mjs."
+  }
+}
