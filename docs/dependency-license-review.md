@@ -44,3 +44,23 @@ For historical releases, prepare supplements against each release's exact lockfi
 provenance. Never apply today's dependency list to an old installer, overwrite an existing binary,
 or claim unavailable historical provenance has been verified. Additional release attachments must
 identify their scope and remaining limitations.
+
+## Unattended weekly updates
+
+The `plvs-deps-update` skill (`.agents/skills/plvs-deps-update/`) applies Dependabot's proposals
+without a maintainer reading each notice. It may record a change on its own only when every added
+entry in the candidate satisfies one of these:
+
+- **Runtime component, new version of a recorded package:** the previous version's `license`
+  expression and `noticeSha256` are identical, so the shipped notice text is unchanged.
+- **Runtime component, new package:** `noticeSha256` is not `null`, and the expression uses only
+  MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Zlib, Unlicense or CC0-1.0.
+- **Tool:** the previous version of the same package has an identical license expression, or a new
+  package uses only the licenses listed above.
+- **Native component:** the previous version's key is renamed only after comparing the two
+  published sources and finding no added or changed build script, native source, bundled binary,
+  model or download.
+
+Everything else stops that package at its current version and goes to a maintainer: a changed
+expression, a copyleft or non-commercial license, `UNKNOWN`, a `null` notice, a hit in
+`restrictedPackages`, or any new native code or download.

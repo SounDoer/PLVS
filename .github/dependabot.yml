@@ -1,10 +1,18 @@
 version: 2
+# The plvs-deps-update skill applies these proposals on main every Monday morning; the pull requests
+# themselves are never merged. Monday 03:00 keeps them open before that run starts.
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: monday
+      time: "03:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
     ignore:
       # Node types track the runtime pinned in .nvmrc; bump the major with the runtime.
       - dependency-name: "@types/node"
@@ -14,10 +22,19 @@ updates:
     directory: /src-tauri
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: monday
+      time: "03:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 10
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: rust-toolchain
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "03:00"
+      timezone: Asia/Shanghai
     open-pull-requests-limit: 1

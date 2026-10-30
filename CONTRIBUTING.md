@@ -100,8 +100,10 @@ the executable end-to-end release sequence.
 
 ## Dependency updates
 
-[Dependabot](.github/dependabot.yml) is enabled (npm and cargo, weekly). Run `npm run check:changes`
-before merging.
+[Dependabot](.github/dependabot.yml) proposes npm, cargo and Rust toolchain updates every Monday. Its
+pull requests are never merged: the
+[`plvs-deps-update`](.agents/skills/plvs-deps-update/SKILL.md) skill applies the compatible ones to
+main as one commit, normally from a weekly scheduled run, and reports the rest.
 
 ## Line endings and encoding
 
