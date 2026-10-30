@@ -131,8 +131,13 @@ git push -u origin website-hotfix/<date>-<topic>
   on unreleased code fails there rather than live. Push CI on the branch runs the full gate.
 - After that run succeeds, dispatch `deploy-website.yml` with the branch commit's full SHA and
   verify as below. Everything copied already exists on `main`, so nothing merges back.
-- Keep the branch until a later website deployment replaces it on the live site:
-  `website:review` must still fetch the live website SHA. Then delete the branch and worktree.
+- After the deployment is verified, tag the deployed commit and push the tag, then delete the
+  branch (local and remote) and its worktree:
+  `git tag -a website-hotfix-<date> <sha> -m "..."`. The next publication checks out the live
+  Sharesets content and reviews from the live website SHA, so that commit must stay reachable;
+  the tag keeps it without a branch. No workflow runs on tag pushes.
+- Delete the tag (local and remote) once a later website deployment has replaced that SHA in the
+  live `/publication.json` and `/sharesets/publication.json`, normally after the next release.
 
 The deployment workflow resolves the requested ref once, requires successful push CI for that
 exact SHA, then passes that SHA to the shared publication workflow. The existing live Sharesets
