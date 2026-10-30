@@ -38,3 +38,6 @@ soak-*.jsonl
 
 # Dev app data of a linked worktree (ADR 0028)
 .dev-data/
+
+# Music sources live in the owner's audio archive (docs/marketing-screenshots.md), not in Git
+assets/marketing/audio/**/*.wav

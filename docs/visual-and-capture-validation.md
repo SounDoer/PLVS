@@ -36,8 +36,8 @@ Library. This keeps the Loudness reference, Stats verdict colours, and Level Met
 visible while making repeated exports reproducible.
 
 Product previews use a committed 60-second Fixture measured by the production file-analysis
-pipeline from `assets/marketing/audio/full-band-crescendo/full-band-crescendo-arranged.wav`, the
-arrangement of the "Full Band Crescendo" stems that the homepage images also use. Theme Lab reads
+pipeline from the stereo arrangement of the "Full Band Crescendo" stems that the homepage images
+also use (`scripts/marketing/music-beds.mjs`). Theme Lab reads
 that Fixture; it does not decode audio, so adding variants does not make screenshot capture
 slower. The selected window is 15–75 seconds, ending at the last frame of the arrangement, as in
 the homepage stereo fixture. Screenshots present those deterministic measurements through the
@@ -51,7 +51,7 @@ Multichannel preview review uses a sibling 5.1 Fixture over the same window, mea
 7.1.4 homepage placement folded to `L, R, C, LFE, Ls, Rs`). The generator mixes that bed from the
 stem archive, which is kept outside the repository and checked against the hashes in
 `full-band-crescendo.source.json`, and sends the temporary WAV through the same Rust analysis
-pipeline. The bed is never committed. The stem hashes, recipe identity, layout, and analysed
+pipeline. No bed is ever committed. The stem hashes, recipe identity, layout, and analysed
 output are sealed in `src/transfer/fixtures/sharesetsPreviewMultichannelV1.json`.
 
 The Fixtures are maintainer-owned input, not part of a Theme manifest. Regenerate them only after
@@ -59,15 +59,16 @@ an intentional source-audio or analysis change, then review the resulting produc
 
 ```powershell
 npm run ffmpeg:fetch
-npm run sharesets:fixture -- --write --stems <stem-directory>
-npm run sharesets:fixture -- --stems <stem-directory>
+npm run sharesets:fixture -- --write --archive <audio-archive>
+npm run sharesets:fixture -- --archive <audio-archive>
 ```
 
 The first Fixture command runs the real Rust analyzer and writes every Sharesets Fixture; the
-second repeats the analyses and fails if any committed JSON differs. `PLVS_HOMEPAGE_STEMS` can
-stand in for `--stems`. Without the stem archive the 5.1 Fixture is reported as "source
-unavailable" and skipped; the stereo and dialogue Fixtures are still checked. The generator
-verifies the stereo bed and every stem against their pinned SHA-256 and records explicit
+second repeats the analyses and fails if any committed JSON differs. `PLVS_AUDIO_ARCHIVE` can
+stand in for `--archive`; the archive is described in `docs/marketing-screenshots.md`. Without it
+the stereo and 5.1 Fixtures are reported as "source unavailable" and skipped; the dialogue
+Fixtures are still checked. The generator verifies every stem and the stereo bed mixed from them
+against their pinned SHA-256 and records explicit
 Spectrum, Vectorscope, and Stereo Map requests, so replacing the audio or changing those controls
 requires a deliberate Fixture regeneration. Never hand-edit a file under `src/transfer/fixtures/`.
 The generator derives its analysis requests from the production `DEFAULT_WORKSPACE_STATE`, records

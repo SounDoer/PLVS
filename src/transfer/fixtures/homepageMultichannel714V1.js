@@ -9,5 +9,5 @@ function deepFreeze(value) {
 }
 
 // Generated from the production file-analysis pipeline. Regenerate only with
-// `npm run homepage:fixture -- --write --stems <dir>`; never hand-edit the JSON payload.
+// `npm run homepage:fixture -- --write --archive <dir>`; never hand-edit the JSON payload.
 export const HOMEPAGE_MULTICHANNEL_714_V1 = deepFreeze(fixture);

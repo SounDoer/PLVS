@@ -79,23 +79,28 @@ and, with `npm run website:dev` running in another terminal,
 
 ## Change the music or the fixtures
 
-The stems are kept by the owner outside the repository and identified by hash. With them:
+No audio is stored in Git. The song, its stems and the Discovery excerpt live in the owner's
+audio archive (`PLVS_Audio_Archive`, kept outside the repository and synced to the owner's NAS),
+laid out as `full-band-crescendo/stems/` and `discovery/discovery-hero.wav`, with a README
+naming each file; `full-band-crescendo.source.json` and `discovery-hero.source.json` pin them by
+SHA-256. With the archive:
 
 ```sh
-node scripts/marketing/build-music-beds.mjs --stems <stem-directory>
-npm run homepage:fixture -- --stems <stem-directory>
-npm run sharesets:fixture -- --stems <stem-directory>
+npm run homepage:fixture -- --archive <audio-archive>
+npm run sharesets:fixture -- --archive <audio-archive>
 ```
 
-Without `--write` they only check that the committed files match. With `--write`,
-`build-music-beds.mjs` rebuilds the stereo bed (then update `arranged.sha256` in the source JSON),
-and the two fixture commands regenerate their fixtures; the Sharesets fixtures share the stereo bed
-and the arrangement, so a music change refreshes the Sharesets previews too
-(`docs/website-and-sharesets.md`). Without the stems, the fixture commands still check the stereo
-fixtures and report the 7.1.4 and 5.1 fixtures as source unavailable. The arrangement, the 7.1.4
-and 5.1 placements, the stereo pan positions and the stereo master settings (including its side
-gain) live in `scripts/marketing/music-beds.mjs`. When the hero verdicts no longer hold after a
-change, adjust the arrangement or master there; never edit a fixture.
+`PLVS_AUDIO_ARCHIVE` can stand in for `--archive`. Without `--write` they only check that the
+committed fixtures match; with it they regenerate them. Both commands mix every bed in memory from
+the stems: the stereo bed is refused unless its 24-bit WAV bytes match `arranged.sha256` in the
+source JSON, so after an intentional change to the arrangement, pan positions or master, update
+that hash from the error message. The Sharesets fixtures share the stereo bed and the arrangement,
+so a music change refreshes the Sharesets previews too (`docs/website-and-sharesets.md`). Without
+the archive the music fixtures are reported as source unavailable; `sharesets:fixture` still
+checks its dialogue fixtures. The arrangement, the 7.1.4 and 5.1 placements, the stereo pan
+positions and the stereo master settings (including its side gain) live in
+`scripts/marketing/music-beds.mjs`. When the hero verdicts no longer hold after a change, adjust
+the arrangement or master there; never edit a fixture.
 
 ## Release cross-check with real-app captures
 
@@ -104,8 +109,10 @@ commands stay: `capture-live-hero.mjs` (with `select-hero.mjs`), `capture-dock-p
 `export-dock-pair.mjs`) and `capture-homepage-features.mjs`, with their recipes
 `homepage-hero.json`, `homepage-dock.json` and `homepage-features.json`. They need Windows at 125 %
 display scaling and 100 % text scaling, VB-Cable, VLC, an idle machine and, for the Dock, a
-2560-pixel-wide display; they play the Discovery master (`assets/marketing/audio/discovery-hero.wav`,
-Scott Buckley, CC BY 4.0) through CABLE Input and capture the dev app through Agent Control.
+2560-pixel-wide display; they play the Discovery master (`discovery-hero.wav`, Scott Buckley,
+CC BY 4.0) through CABLE Input and capture the dev app through Agent Control. Copy it from the
+audio archive to `assets/marketing/audio/` first (Git ignores it there), or rebuild it from the
+public MP3 with `scripts/marketing/prepare-live-hero-audio.mjs`.
 
 Use them only to compare. Do not run their publication steps (`select-hero.mjs --publish`,
 `export-dock-pair.mjs --publish`, `export-homepage-features.mjs --publish`): they would replace

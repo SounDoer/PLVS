@@ -104,6 +104,19 @@ change for both sites:
 The homepage stereo and 7.1.4 fixtures and every homepage image are therefore regenerated and
 republished in the same change.
 
+## Audio out of Git (added at the owner's request)
+
+No WAV stays in the repository. The arranged stereo bed is no longer committed: both fixture
+drivers mix it in memory from the stems and refuse it unless its 24-bit WAV bytes match
+`arranged.sha256`, so `build-music-beds.mjs` is removed. `discovery-hero.wav` leaves Git too (it
+was pushed before, so its history stays); the capture commands still read it from
+`assets/marketing/audio/`, where Git now ignores WAVs, after it is copied from the archive. The
+song, the stems and Discovery live in the owner's `PLVS_Audio_Archive` (`full-band-crescendo/`,
+`full-band-crescendo/stems/`, `discovery/`, with a README); the fixture drivers take
+`--archive <dir>` or `PLVS_AUDIO_ARCHIVE` instead of `--stems` / `PLVS_HOMEPAGE_STEMS`, and
+without it check only the dialogue fixtures. The rejected candidates (Brass and Sax Together,
+Full Band Crescendo v2) and the stem ZIPs were removed from the archive.
+
 ## Producer
 
 `src-tauri/src/sharesets_preview_fixture.rs`: the `stereo` and `5.1` layouts change instead of

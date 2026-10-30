@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 // Homepage image fixtures: the real meter pipeline run offline over an arrangement of the
 // "Full Band Crescendo" stems. Check mode (default) fails when a committed fixture differs from
-// the producer; `--write` replaces it. The stereo bed is committed (build it with
-// scripts/marketing/build-music-beds.mjs); the 7.1.4 bed is mixed here from the stem archive.
+// the producer; `--write` replaces it. Both beds are mixed here from the stems in the audio
+// archive; without it both fixtures are reported as source unavailable.
 // See docs/history/specs/2026-10-29-homepage-images-renderer-design.md.
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "../src/sharesets-preview/defaultAnalysisRequests.js";
-import { floatWav, sha256Hex } from "./marketing/homepage-audio.mjs";
+import { floatWav } from "./marketing/homepage-audio.mjs";
 import {
   BED_714_CHANNELS,
   BED_714_PLACEMENT,
   BED_PEAK_DBFS,
   HOMEPAGE_ARRANGEMENT,
   mixBed,
-  readArrangedStems,
+  parseFixtureArgs,
+  readArchivedBeds,
 } from "./marketing/music-beds.mjs";
 import {
   repositoryRoot as root,
@@ -39,27 +40,21 @@ const HOMEPAGE_714 = Object.freeze({
   output: "homepageMultichannel714V1.json",
 });
 
-const USAGE = "Usage: npm run homepage:fixture -- [--write] [--stems <stem-directory>]";
-const args = process.argv.slice(2);
-const write = args.includes("--write");
-const stemsIndex = args.indexOf("--stems");
-const stemsDir = stemsIndex >= 0 ? args[stemsIndex + 1] : process.env.PLVS_HOMEPAGE_STEMS;
-const unknown = args.filter(
-  (argument, index) => argument !== "--write" && index !== stemsIndex && index !== stemsIndex + 1
-);
-if (unknown.length > 0 || (stemsIndex >= 0 && !stemsDir)) {
-  console.error(unknown.length > 0 ? `Unknown option: ${unknown[0]}` : USAGE);
-  process.exit(2);
+const USAGE = "Usage: npm run homepage:fixture -- [--write] [--archive <audio-archive>]";
+const { write, archiveDir } = parseFixtureArgs(process.argv.slice(2), USAGE);
+if (!archiveDir) {
+  for (const { output } of [HOMEPAGE_STEREO, HOMEPAGE_714]) {
+    console.log(
+      `${output}: source unavailable (pass --archive or set PLVS_AUDIO_ARCHIVE); skipped.`
+    );
+  }
+  process.exit(0);
 }
 
 const source = JSON.parse(
   await readFile(join(sourceDir, "full-band-crescendo.source.json"), "utf8")
 );
-const stereoPath = join(sourceDir, source.arranged.fileName);
-const stereoHash = sha256Hex(await readFile(stereoPath));
-if (stereoHash !== source.arranged.sha256) {
-  throw new Error(`${stereoPath} does not match its source.json (got ${stereoHash}).`);
-}
+const { stems, sampleRateHz, stereoWav } = await readArchivedBeds(archiveDir, source);
 
 const sidecars = await stageFfmpegSidecars("plvs-homepage-fixture-");
 try {
@@ -77,6 +72,8 @@ try {
     "utf8"
   );
 
+  const stereoPath = join(sidecars.dir, source.arranged.fileName);
+  await writeFile(stereoPath, stereoWav);
   const fixture = runPreviewFixtureProducer({
     audioPath: stereoPath,
     requestsPath,
@@ -97,43 +94,36 @@ try {
     command: "npm run homepage:fixture",
   });
 
-  if (!stemsDir) {
-    console.log(
-      `${HOMEPAGE_714.output}: source unavailable (pass --stems or set PLVS_HOMEPAGE_STEMS); skipped.`
-    );
-  } else {
-    const { stems, sampleRateHz } = await readArrangedStems(stemsDir, source);
-    const bed = mixBed(stems, {
-      placement: BED_714_PLACEMENT,
-      channels: BED_714_CHANNELS,
-      sampleRateHz,
-    });
-    const bedPath = join(sidecars.dir, "full-band-crescendo-7-1-4.wav");
-    await writeFile(bedPath, floatWav(bed.samples, BED_714_CHANNELS.length, sampleRateHz));
-    const multichannel = runPreviewFixtureProducer({
-      audioPath: bedPath,
-      requestsPath: multichannelRequestsPath,
-      layout: HOMEPAGE_714.layout,
-      windowEndMs: WINDOW_END_MS,
-      ffmpegDir: sidecars.dir,
-    });
-    multichannel.source.derivation = {
-      sourceFileName: "Suno stems of full-band-crescendo",
-      stemSha256: Object.fromEntries(
-        source.stems.files
-          .filter(({ used }) => used)
-          .map(({ fileName, sha256 }) => [fileName, sha256])
-      ),
-      recipe: "plvs-homepage-arranged-stems-7-1-4",
-      recipeVersion: 1,
-      songStartMs: HOMEPAGE_ARRANGEMENT.songStartMs,
-      peakDbfs: BED_PEAK_DBFS,
-    };
-    await writeOrCheckFixture(multichannel, join(fixturesDir, HOMEPAGE_714.output), {
-      write,
-      command: "npm run homepage:fixture -- --stems <dir>",
-    });
-  }
+  const bed = mixBed(stems, {
+    placement: BED_714_PLACEMENT,
+    channels: BED_714_CHANNELS,
+    sampleRateHz,
+  });
+  const bedPath = join(sidecars.dir, "full-band-crescendo-7-1-4.wav");
+  await writeFile(bedPath, floatWav(bed.samples, BED_714_CHANNELS.length, sampleRateHz));
+  const multichannel = runPreviewFixtureProducer({
+    audioPath: bedPath,
+    requestsPath: multichannelRequestsPath,
+    layout: HOMEPAGE_714.layout,
+    windowEndMs: WINDOW_END_MS,
+    ffmpegDir: sidecars.dir,
+  });
+  multichannel.source.derivation = {
+    sourceFileName: "Suno stems of full-band-crescendo",
+    stemSha256: Object.fromEntries(
+      source.stems.files
+        .filter(({ used }) => used)
+        .map(({ fileName, sha256 }) => [fileName, sha256])
+    ),
+    recipe: "plvs-homepage-arranged-stems-7-1-4",
+    recipeVersion: 1,
+    songStartMs: HOMEPAGE_ARRANGEMENT.songStartMs,
+    peakDbfs: BED_PEAK_DBFS,
+  };
+  await writeOrCheckFixture(multichannel, join(fixturesDir, HOMEPAGE_714.output), {
+    write,
+    command: "npm run homepage:fixture",
+  });
 } finally {
   await sidecars.cleanup();
 }

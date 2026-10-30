@@ -11,10 +11,10 @@
     "channels": 2,
     "bits": 16,
     "frames": 12120960,
-    "modifications": "Not committed; kept by the owner with the stems and identified by hash."
+    "modifications": "Not committed; kept in the owner's audio archive at full-band-crescendo/ and identified by hash."
   },
   "stems": {
-    "note": "Suno's split, WAV, tempo 'Follow tempo changes'. Each stem has the song's frame count and starts at offset 0, but the stems are a re-performance, not a decomposition: they do not sum to the song above about 250 Hz. The two vocal stems hold separation residue of an instrumental and are not used. The stems are kept by the owner outside the repository and identified here by hash only.",
+    "note": "Suno's split, WAV, tempo 'Follow tempo changes'. Each stem has the song's frame count and starts at offset 0, but the stems are a re-performance, not a decomposition: they do not sum to the song above about 250 Hz. The two vocal stems hold separation residue of an instrumental and are not used. The stems are kept in the owner's audio archive at full-band-crescendo/stems/ and identified here by hash only.",
     "files": [
       {
         "fileName": "0 Lead Vocals.wav",
@@ -84,6 +84,6 @@
     "sampleRateHz": 48000,
     "channels": 2,
     "bits": 24,
-    "description": "An arrangement of the stems, not the song's master: song time 113-188 s with the stems entering in groups (keys and strings, then synth, percussion and guitar at 30 s, bass and drums at 45 s, brass, woodwinds and Other at 60 s, each over a 2 s fade), summed to stereo with the narrower stems panned (STEREO_PAN), scaled to a -1 dBFS sample peak, widened (side gain 1.5) and limited as STEREO_MASTER in scripts/marketing/music-beds.mjs. Built by scripts/marketing/build-music-beds.mjs."
+    "description": "An arrangement of the stems, not the song's master: song time 113-188 s with the stems entering in groups (keys and strings, then synth, percussion and guitar at 30 s, bass and drums at 45 s, brass, woodwinds and Other at 60 s, each over a 2 s fade), summed to stereo with the narrower stems panned (STEREO_PAN), scaled to a -1 dBFS sample peak, widened (side gain 1.5) and limited as STEREO_MASTER in scripts/marketing/music-beds.mjs. Not stored: the fixture drivers mix it in memory from the stems and refuse it unless its 24-bit WAV bytes match this hash."
   }
 }

@@ -474,3 +474,52 @@ export async function readVerifiedStems(stemsDir, source, range) {
   }
   return { stems, sampleRateHz };
 }
+
+// The audio archive is kept by the owner outside the repository (see
+// docs/marketing-screenshots.md); the stems sit under this path inside it.
+export const ARCHIVE_STEMS_DIR = join("full-band-crescendo", "stems");
+
+/**
+ * Parse `[--write] [--archive <dir>]` for a fixture driver; the archive falls back to
+ * `PLVS_AUDIO_ARCHIVE`. Exits with the usage line on an unknown or incomplete option.
+ */
+export function parseFixtureArgs(args, usage) {
+  const archiveIndex = args.indexOf("--archive");
+  const archiveDir = archiveIndex >= 0 ? args[archiveIndex + 1] : process.env.PLVS_AUDIO_ARCHIVE;
+  const unknown = args.filter(
+    (argument, index) =>
+      argument !== "--write" && index !== archiveIndex && index !== archiveIndex + 1
+  );
+  if (unknown.length > 0 || (archiveIndex >= 0 && !archiveDir)) {
+    console.error(unknown.length > 0 ? `Unknown option: ${unknown[0]}\n${usage}` : usage);
+    process.exit(2);
+  }
+  return { write: args.includes("--write"), archiveDir: archiveDir || null };
+}
+
+/**
+ * The arranged stems from the archive and the mastered stereo bed mixed from them, as 24-bit WAV
+ * bytes. The bed is refused unless it matches `source.arranged.sha256`; after an intentional
+ * change to the arrangement, pan or master, update that hash.
+ */
+export async function readArchivedBeds(archiveDir, source) {
+  const { stems, sampleRateHz } = await readArrangedStems(
+    join(archiveDir, ARCHIVE_STEMS_DIR),
+    source
+  );
+  const { samples } = mixBed(stems, {
+    placement: BED_STEREO_PLACEMENT,
+    channels: BED_STEREO_CHANNELS,
+    sampleRateHz,
+  });
+  widenStereo(samples, STEREO_MASTER.sideGain);
+  limitPeaks(samples, BED_STEREO_CHANNELS.length, sampleRateHz, STEREO_MASTER);
+  const stereoWav = pcm24Wav(samples, BED_STEREO_CHANNELS.length, sampleRateHz);
+  const hash = sha256Hex(stereoWav);
+  if (hash !== source.arranged.sha256) {
+    throw new Error(
+      `The stereo bed mixed from the stems does not match arranged.sha256 (got ${hash}).`
+    );
+  }
+  return { stems, sampleRateHz, stereoWav };
+}

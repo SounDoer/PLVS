@@ -1,21 +1,23 @@
 #!/usr/bin/env node
 // Sharesets preview fixtures: the real meter pipeline run offline over the arranged "Full Band
 // Crescendo" stems (stereo and 5.1) and the dialogue benchmark corpus. Check mode (default) fails
-// when a committed fixture differs from the producer; `--write` replaces it. The stereo bed is
-// committed; the 5.1 bed is mixed here from the stem archive.
+// when a committed fixture differs from the producer; `--write` replaces it. Both music beds are
+// mixed here from the stems in the audio archive; without it they are reported as source
+// unavailable and only the dialogue fixtures are checked or written.
 // See docs/history/specs/2026-10-30-sharesets-preview-fixtures-design.md.
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "../src/sharesets-preview/defaultAnalysisRequests.js";
 import { generateDialogueBenchmarkFixtures } from "./dialogue-benchmark-fixtures.mjs";
-import { floatWav, sha256Hex } from "./marketing/homepage-audio.mjs";
+import { floatWav } from "./marketing/homepage-audio.mjs";
 import {
   BED_51_CHANNELS,
   BED_51_PLACEMENT,
   BED_PEAK_DBFS,
   HOMEPAGE_ARRANGEMENT,
   mixBed,
-  readArrangedStems,
+  parseFixtureArgs,
+  readArchivedBeds,
 } from "./marketing/music-beds.mjs";
 import {
   repositoryRoot as root,
@@ -50,14 +52,8 @@ const dialogueMultichannelFixturePath = join(
 // Both music beds are the homepage arrangement; each fixture meters its last 60 s.
 const WINDOW_END_MS = HOMEPAGE_ARRANGEMENT.durationMs;
 
-const USAGE = "Usage: npm run sharesets:fixture -- [--write] [--stems <stem-directory>]";
-const args = process.argv.slice(2);
-const write = args.includes("--write");
-const stemsIndex = args.indexOf("--stems");
-const stemsDir = stemsIndex >= 0 ? args[stemsIndex + 1] : process.env.PLVS_HOMEPAGE_STEMS;
-const unknown = args.filter(
-  (argument, index) => argument !== "--write" && index !== stemsIndex && index !== stemsIndex + 1
-);
+const USAGE = "Usage: npm run sharesets:fixture -- [--write] [--archive <audio-archive>]";
+const { write, archiveDir } = parseFixtureArgs(process.argv.slice(2), USAGE);
 
 async function buildDialogueSurroundPreview(sourcePath, outputPath) {
   const wav = Buffer.from(await readFile(sourcePath));
@@ -82,19 +78,10 @@ async function buildDialogueSurroundPreview(sourcePath, outputPath) {
   await writeFile(outputPath, wav);
 }
 
-if (unknown.length > 0 || (stemsIndex >= 0 && !stemsDir)) {
-  console.error(unknown.length > 0 ? `Unknown option: ${unknown[0]}` : USAGE);
-  process.exit(2);
-}
-
 const source = JSON.parse(
   await readFile(join(sourceDir, "full-band-crescendo.source.json"), "utf8")
 );
-const audioPath = join(sourceDir, source.arranged.fileName);
-const audioHash = sha256Hex(await readFile(audioPath));
-if (audioHash !== source.arranged.sha256) {
-  throw new Error(`${audioPath} does not match its source.json (got ${audioHash}).`);
-}
+const beds = archiveDir ? await readArchivedBeds(archiveDir, source) : null;
 
 const sidecars = await stageFfmpegSidecars("plvs-sharesets-preview-");
 const staged = sidecars.dir;
@@ -128,23 +115,27 @@ try {
     });
   }
 
-  await generateFixture(audioPath, "stereo", fixturePath, {
-    windowEndMs: WINDOW_END_MS,
-    derivation: {
-      sourceFileName: source.arranged.fileName,
-      sourceSha256: source.arranged.sha256,
-      songSha256: source.song.originalSha256,
-      recipe: "plvs-homepage-arranged-stems",
-      recipeVersion: 1,
-      songStartMs: HOMEPAGE_ARRANGEMENT.songStartMs,
-    },
-  });
-  if (!stemsDir) {
-    console.log(
-      "sharesetsPreviewMultichannelV1.json: source unavailable (pass --stems or set PLVS_HOMEPAGE_STEMS); skipped."
-    );
+  if (!beds) {
+    for (const path of [fixturePath, multichannelFixturePath]) {
+      console.log(
+        `${path}: source unavailable (pass --archive or set PLVS_AUDIO_ARCHIVE); skipped.`
+      );
+    }
   } else {
-    const { stems, sampleRateHz } = await readArrangedStems(stemsDir, source);
+    const { stems, sampleRateHz, stereoWav } = beds;
+    const stereoPath = join(staged, source.arranged.fileName);
+    await writeFile(stereoPath, stereoWav);
+    await generateFixture(stereoPath, "stereo", fixturePath, {
+      windowEndMs: WINDOW_END_MS,
+      derivation: {
+        sourceFileName: source.arranged.fileName,
+        sourceSha256: source.arranged.sha256,
+        songSha256: source.song.originalSha256,
+        recipe: "plvs-homepage-arranged-stems",
+        recipeVersion: 1,
+        songStartMs: HOMEPAGE_ARRANGEMENT.songStartMs,
+      },
+    });
     const bed = mixBed(stems, {
       placement: BED_51_PLACEMENT,
       channels: BED_51_CHANNELS,
