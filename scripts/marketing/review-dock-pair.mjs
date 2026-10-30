@@ -1,14 +1,21 @@
 // Responsive check of the homepage Dock pair against a running `npm run website:dev`.
 import process from "node:process";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { chromium } from "playwright";
-import { ROOT } from "./hero-lib.mjs";
-import { DOCK_RECIPE, loadRecipeFile, validateDockRecipe } from "./homepage-lib.mjs";
+import { homepageRecipeProblems, publicationTarget } from "./homepage-render-lib.mjs";
 
 if (process.argv.length > 2) throw new Error("Usage: node scripts/marketing/review-dock-pair.mjs");
-const recipe = await loadRecipeFile(DOCK_RECIPE, validateDockRecipe);
-const { url, viewports, scrollViewport } = recipe.review;
+const ROOT = resolve(import.meta.dirname, "../..");
+const recipe = JSON.parse(
+  await readFile(join(ROOT, "scripts/marketing/recipes/homepage-images.json"), "utf8")
+);
+const problems = homepageRecipeProblems(recipe);
+if (problems.length) throw new Error(problems.join("\n"));
+const strips = recipe.images.filter(({ scene }) => scene === "dock");
+const url = "http://127.0.0.1:4173/";
+const viewports = [1440, 820, 390];
+const scrollViewport = 390;
 try {
   await fetch(url, { signal: AbortSignal.timeout(3000) });
 } catch {
@@ -25,8 +32,8 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(url, { waitUntil: "networkidle" });
     const docks = page.locator(".workspace-dock");
-    if ((await docks.count()) !== recipe.strips.length)
-      throw new Error(`Expected ${recipe.strips.length} Dock images at ${width}px.`);
+    if ((await docks.count()) !== strips.length)
+      throw new Error(`Expected ${strips.length} Dock images at ${width}px.`);
     for (const img of await docks.locator("img").all()) {
       await img.scrollIntoViewIfNeeded();
       await img.evaluate((i) => i.decode());
@@ -43,9 +50,15 @@ try {
       }))
     );
     if (
-      geometry.some(
-        (i) => i.width !== recipe.environment.width || i.height !== recipe.environment.height
-      )
+      geometry.some((image, index) => {
+        const strip = strips[index];
+        const target = publicationTarget(recipe, strip.name);
+        return (
+          image.src !== target.webp.replace(/^website\//, "") ||
+          image.width !== strip.output.width ||
+          image.height !== strip.output.height
+        );
+      })
     )
       throw new Error(`Wrong Dock image dimensions at ${width}px: ${JSON.stringify(geometry)}`);
     await page

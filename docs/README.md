@@ -24,8 +24,7 @@ alone makes them wrong, so they are updated in the same commit as the change.
 Keep this group small. Every file added here is one more thing that can go stale.
 
 [Marketing screenshots](marketing-screenshots.md) documents how the homepage images are rendered
-from fixtures, reviewed and published, the music beds behind them, and the release cross-check
-with real-app captures.
+from fixtures, reviewed and published, and the archived music sources behind them.
 
 [Video production](promo-video.md) documents the reusable capture, alignment, editing, validation
 and archival workflow, independent of any video's creative direction. Its

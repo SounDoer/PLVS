@@ -9,7 +9,8 @@ display scaling or idle machine is involved. The homepage and README share
 What the images are: real PLVS panels and real measurements of real audio, at a fixed moment.
 What they are not: screenshots of a running app. Window chrome, OS fonts and LIVE scheduling are
 outside them. The rendered images replace the earlier rule that the hero must come from the
-Windows app; one release cross-check against real-app captures still follows (below).
+Windows app. Native screenshots can be reviewed separately when needed; the retired capture
+scripts are not part of the image generation or publication workflow.
 
 ## Files maintained in Git
 
@@ -79,11 +80,10 @@ and, with `npm run website:dev` running in another terminal,
 
 ## Change the music or the fixtures
 
-No audio is stored in Git. The song, its stems and the Discovery excerpt live in the owner's
+No audio is stored in Git. The song and its stems live in the owner's
 audio archive at `smb://QNAP00._smb._tcp.local/xichen/PLVS/PLVS_Audio_Archive`,
-laid out as `full-band-crescendo/stems/` and `discovery/discovery-hero.wav`, with a README
-naming each file; `full-band-crescendo.source.json` and `discovery-hero.source.json` pin them by
-SHA-256. With the archive:
+with stems under `full-band-crescendo/stems/` and a README naming each file.
+`full-band-crescendo.source.json` pins the song, stems and arranged bed by SHA-256. With the archive:
 
 ```sh
 npm run homepage:fixture -- --archive /Volumes/xichen/PLVS/PLVS_Audio_Archive
@@ -108,26 +108,10 @@ positions and the stereo master settings (including its side gain) live in
 `scripts/marketing/music-beds.mjs`. When the hero verdicts no longer hold after a change, adjust
 the arrangement or master there; never edit a fixture.
 
-## Release cross-check with real-app captures
+## Historical capture audio
 
-Until one release has compared the rendered images with captures of the real app, the capture
-commands stay: `capture-live-hero.mjs` (with `select-hero.mjs`), `capture-dock-pair.mjs` (with
-`export-dock-pair.mjs`) and `capture-homepage-features.mjs`, with their recipes
-`homepage-hero.json`, `homepage-dock.json` and `homepage-features.json`. They need Windows at 125 %
-display scaling and 100 % text scaling, VB-Cable, VLC, an idle machine and, for the Dock, a
-2560-pixel-wide display; they play the Discovery master (`discovery-hero.wav`, Scott Buckley,
-CC BY 4.0) through CABLE Input and capture the dev app through Agent Control. Copy it from the
-audio archive to `assets/marketing/audio/` first (Git ignores it there), or rebuild it from the
-public MP3 with `scripts/marketing/prepare-live-hero-audio.mjs`.
-
-`discovery-hero.wav` is not tracked in Git. Capture commands still verify its SHA-256 and WAV
-properties before use. The marketing unit tests check the committed provenance and exercise
-checksum and format rejection with generated test bytes, so a fresh checkout needs no audio
-archive to run them. Removing the WAV from the current tree does not remove it from Git history.
-
-Use them only to compare. Do not run their publication steps (`select-hero.mjs --publish`,
-`export-dock-pair.mjs --publish`, `export-homepage-features.mjs --publish`): they would replace
-rendered originals with captures, and the feature export no longer has a raw directory to write
-to. Compare composition, typography, panel chrome and colour against the rendered images; the
-music and therefore every curve differ by design. Record the result in the release review; after
-that release the capture commands and their recipes are removed.
+The NAS audio archive also retains `discovery/discovery-hero.wav` (Discovery by Scott Buckley,
+CC BY 4.0), used by the retired real-app homepage capture workflow. Its provenance and credit
+remain in `assets/marketing/audio/discovery-hero.source.json` and `ATTRIBUTION.txt` for archive
+identification and attribution. It is not an input to the current homepage or Sharesets images.
+The WAV remains outside Git; removing it from the current tree does not remove it from Git history.
