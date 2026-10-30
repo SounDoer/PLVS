@@ -1,0 +1,535 @@
+{
+  "version": 1,
+  "id": "homepage-images",
+  "deviceScaleFactor": 1.25,
+  "themeId": "plvs-dark",
+  "shell": {
+    "sourceLabel": "Output · Speakers",
+    "deviceLabel": "Speakers"
+  },
+  "fixtures": {
+    "stereo": "src/transfer/fixtures/homepageStereoV1.json",
+    "7.1.4": "src/transfer/fixtures/homepageMultichannel714V1.json"
+  },
+  "images": [
+    {
+      "name": "landing-hero",
+      "scene": "workspace-shell",
+      "fixture": "stereo",
+      "interfaceSize": "default",
+      "requiredStatuses": {
+        "integrated": "warn",
+        "shortTerm": "warn",
+        "truePeak": "fail"
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "crop": {
+        "type": "viewport"
+      },
+      "output": {
+        "width": 1600,
+        "height": 1000
+      },
+      "original": "website/assets/raw/landing-hero.png"
+    },
+    {
+      "name": "landing-dock",
+      "scene": "dock",
+      "dock": "first-run",
+      "fixture": "stereo",
+      "interfaceSize": "default",
+      "viewport": {
+        "width": 2048,
+        "height": 152
+      },
+      "crop": {
+        "type": "rows",
+        "height": 189
+      },
+      "output": {
+        "width": 2560,
+        "height": 189
+      },
+      "original": "website/assets/raw/landing-dock.png"
+    },
+    {
+      "name": "landing-dock-custom",
+      "scene": "dock",
+      "fixture": "stereo",
+      "interfaceSize": "default",
+      "snapshotOffsetSec": 0,
+      "dock": {
+        "panels": [
+          {
+            "moduleId": "levelMeter",
+            "title": "Peak",
+            "width": 330,
+            "firstRunControls": true,
+            "controls": {
+              "orientation": "left-to-right",
+              "mode": "peak",
+              "tpMaxMarker": true
+            }
+          },
+          {
+            "moduleId": "levelMeter",
+            "title": "RMS",
+            "width": 330,
+            "controls": {
+              "orientation": "left-to-right",
+              "mode": "rms"
+            }
+          },
+          {
+            "moduleId": "loudness",
+            "width": 300,
+            "firstRunControls": true,
+            "controls": {
+              "orientation": "top-to-bottom"
+            }
+          },
+          {
+            "moduleId": "spectrum",
+            "width": 800,
+            "firstRunControls": true
+          },
+          {
+            "moduleId": "vectorscope",
+            "width": 240,
+            "firstRunControls": true
+          }
+        ]
+      },
+      "viewport": {
+        "width": 2048,
+        "height": 152
+      },
+      "crop": {
+        "type": "rows",
+        "height": 189
+      },
+      "output": {
+        "width": 2560,
+        "height": 189
+      },
+      "original": "website/assets/raw/landing-dock-custom.png"
+    },
+    {
+      "name": "history",
+      "scene": "workspace",
+      "fixture": "stereo",
+      "interfaceSize": "large",
+      "snapshotOffsetSec": 22,
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "vertical",
+          "children": [
+            {
+              "type": "split",
+              "direction": "horizontal",
+              "children": [
+                {
+                  "type": "panel",
+                  "panelId": "loudness"
+                },
+                {
+                  "type": "panel",
+                  "panelId": "waveform"
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "panelId": "spectrum"
+            }
+          ]
+        },
+        "panels": {
+          "loudness": {
+            "grid": false,
+            "layers": ["momentary", "shortTerm", "reference"],
+            "loudnessRangeLufs": {
+              "max": -6,
+              "min": -48
+            },
+            "orientation": "right-to-left"
+          },
+          "waveform": {
+            "centroid": true,
+            "frequencyBandsHz": {
+              "lowMid": 200,
+              "midHigh": 2000
+            },
+            "frequencyColor": true,
+            "orientation": "right-to-left"
+          },
+          "spectrum": {
+            "channel": {
+              "type": "pair",
+              "x": 0,
+              "y": 1
+            },
+            "grid": false,
+            "levelRangeDb": {
+              "max": -12,
+              "min": -84
+            },
+            "maxMode": "decay",
+            "octaveSmoothing": "off",
+            "peakLabels": false,
+            "speedPercent": 25,
+            "tiltDbPerOctave": 3,
+            "view": "ms"
+          }
+        },
+        "axes": {
+          "loudness": {
+            "time": {
+              "linked": true,
+              "windowSec": 60
+            }
+          },
+          "waveform": {
+            "time": {
+              "linked": true,
+              "windowSec": 60
+            }
+          },
+          "spectrum": {
+            "frequency": {
+              "linked": true,
+              "minHz": 20,
+              "maxHz": 20000
+            }
+          }
+        }
+      },
+      "viewport": {
+        "width": 1272,
+        "height": 704
+      },
+      "crop": {
+        "type": "viewport"
+      },
+      "output": {
+        "width": 1590,
+        "height": 880
+      },
+      "original": "website/assets/raw/homepage-20261029/history.png"
+    },
+    {
+      "name": "frequency-full",
+      "scene": "workspace",
+      "fixture": "stereo",
+      "interfaceSize": "large",
+      "snapshotOffsetSec": 5,
+      "workspace": "frequency",
+      "frequencyRangeHz": {
+        "minHz": 20,
+        "maxHz": 20000
+      },
+      "viewport": {
+        "width": 1272,
+        "height": 704
+      },
+      "crop": {
+        "type": "panel",
+        "moduleId": "spectrum"
+      },
+      "output": {
+        "width": 1590,
+        "height": 438
+      },
+      "original": "website/assets/raw/homepage-20261029/frequency-full.png"
+    },
+    {
+      "name": "frequency-detail",
+      "scene": "workspace",
+      "fixture": "stereo",
+      "interfaceSize": "large",
+      "snapshotOffsetSec": 5,
+      "workspace": "frequency",
+      "frequencyRangeHz": {
+        "minHz": 20,
+        "maxHz": 250
+      },
+      "viewport": {
+        "width": 1272,
+        "height": 704
+      },
+      "crop": {
+        "type": "panel",
+        "moduleId": "spectrum"
+      },
+      "output": {
+        "width": 1590,
+        "height": 438
+      },
+      "original": "website/assets/raw/homepage-20261029/frequency-detail.png"
+    },
+    {
+      "name": "multichannel",
+      "scene": "workspace",
+      "fixture": "7.1.4",
+      "interfaceSize": "large",
+      "loudnessProfile": "my-delivery",
+      "workspace": "multichannel",
+      "viewport": {
+        "width": 1272,
+        "height": 636
+      },
+      "crop": {
+        "type": "viewport"
+      },
+      "output": {
+        "width": 1590,
+        "height": 795
+      },
+      "original": "website/assets/raw/homepage-20261029/multichannel.png"
+    },
+    {
+      "name": "rules-editor",
+      "scene": "workspace",
+      "shell": true,
+      "fixture": "7.1.4",
+      "interfaceSize": "default",
+      "loudnessProfile": "my-delivery",
+      "workspace": "multichannel",
+      "overlay": {
+        "type": "loudness-profile-editor",
+        "pos": {
+          "x": 136,
+          "y": 139
+        }
+      },
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "crop": {
+        "type": "rect",
+        "x": 120,
+        "y": 120,
+        "width": 448,
+        "height": 400
+      },
+      "output": {
+        "width": 560,
+        "height": 500
+      },
+      "original": "website/assets/raw/homepage-20261014/rules-editor.png"
+    }
+  ],
+  "workspaces": {
+    "frequency": {
+      "layout": {
+        "type": "split",
+        "direction": "vertical",
+        "children": [
+          {
+            "type": "panel",
+            "panelId": "spectrum"
+          },
+          {
+            "type": "panel",
+            "panelId": "loudness"
+          }
+        ]
+      },
+      "panels": {
+        "spectrum": {
+          "channel": {
+            "type": "pair",
+            "x": 0,
+            "y": 1
+          },
+          "grid": true,
+          "levelRangeDb": {
+            "max": -12,
+            "min": -84
+          },
+          "maxMode": "decay",
+          "octaveSmoothing": "off",
+          "peakLabels": true,
+          "speedPercent": 25,
+          "tiltDbPerOctave": 3,
+          "view": "ms"
+        },
+        "loudness": {
+          "grid": false,
+          "layers": ["momentary", "shortTerm", "reference"],
+          "loudnessRangeLufs": {
+            "max": -6,
+            "min": -48
+          },
+          "orientation": "right-to-left"
+        }
+      },
+      "axes": {
+        "loudness": {
+          "time": {
+            "linked": true,
+            "windowSec": 60
+          }
+        }
+      }
+    },
+    "multichannel": {
+      "layout": {
+        "type": "split",
+        "direction": "vertical",
+        "weights": [0.48, 0.52],
+        "children": [
+          {
+            "type": "split",
+            "direction": "horizontal",
+            "weights": [0.64, 0.36],
+            "children": [
+              {
+                "type": "panel",
+                "panelId": "levelMeter"
+              },
+              {
+                "type": "panel",
+                "panelId": "stats"
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "panelId": "waveform"
+          }
+        ]
+      },
+      "panels": {
+        "levelMeter": {
+          "barColors": "gradient",
+          "floatingValue": false,
+          "levelRangeDbfs": {
+            "max": 0,
+            "min": -60
+          },
+          "loudnessRangeLufs": {
+            "max": 0,
+            "min": -64
+          },
+          "mode": "peak",
+          "orientation": "bottom-to-top",
+          "peakThresholdsDbfs": {
+            "critical": -1,
+            "warning": -6
+          },
+          "playbackMax": false,
+          "rmsThresholdsDbfs": {
+            "critical": -9,
+            "warning": -18
+          },
+          "tpMaxMarker": true
+        },
+        "stats": {
+          "metrics": {
+            "order": [
+              "momentary",
+              "shortTerm",
+              "integrated",
+              "momentaryMax",
+              "shortTermMax",
+              "lra",
+              "psr",
+              "plr",
+              "dialogueCoverage",
+              "dialogueIntegrated",
+              "dialogueRange",
+              "loudnessToDialogueRatio",
+              "truePeak",
+              "correlation",
+              "sideToMid"
+            ],
+            "visible": [
+              "momentary",
+              "shortTerm",
+              "integrated",
+              "momentaryMax",
+              "shortTermMax",
+              "lra",
+              "psr",
+              "plr",
+              "truePeak"
+            ]
+          }
+        },
+        "waveform": {
+          "centroid": true,
+          "frequencyBandsHz": {
+            "lowMid": 200,
+            "midHigh": 2000
+          },
+          "frequencyColor": true,
+          "orientation": "right-to-left"
+        }
+      },
+      "axes": {
+        "waveform": {
+          "time": {
+            "linked": true,
+            "windowSec": 60
+          }
+        }
+      }
+    }
+  },
+  "loudnessProfiles": {
+    "my-delivery": {
+      "name": "My Delivery Profile",
+      "referenceLufs": -16,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -16,
+          "severity": "fail"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -6,
+          "severity": "fail"
+        },
+        {
+          "metricId": "shortTermMax",
+          "op": ">",
+          "value": -14,
+          "severity": "warn"
+        },
+        {
+          "metricId": "momentaryMax",
+          "op": ">",
+          "value": -12,
+          "severity": "warn"
+        },
+        {
+          "metricId": "lra",
+          "op": ">",
+          "value": 6,
+          "severity": "warn"
+        },
+        {
+          "metricId": "plr",
+          "op": "<",
+          "value": 10,
+          "severity": "warn"
+        },
+        {
+          "metricId": "psr",
+          "op": "<",
+          "value": 8,
+          "severity": "warn"
+        }
+      ]
+    }
+  }
+}
