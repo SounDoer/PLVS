@@ -10,6 +10,7 @@ import { selectSpectrogramCanvasTheme } from "../theme/themeCanvasSelectors.js";
 import { validatePublishablePack } from "../transfer/sharesetsPack.js";
 import { buildSharesetsPreviewPlan } from "../transfer/sharesetsPreview.js";
 import { SHARESETS_PREVIEW_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewStereoV1.js";
+import { HOMEPAGE_STEREO_V1 } from "../transfer/fixtures/homepageStereoV1.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SharesetsPreviewApp } from "./SharesetsPreviewApp.jsx";
@@ -180,6 +181,86 @@ describe("Sharesets preview browser harness", () => {
 
     render(<SharesetsPreviewApp plan={plan} asset={snapshotAsset} />);
     expect(screen.getByRole("button", { name: "LIVE" })).toBeTruthy();
+  });
+
+  it("takes the homepage shell labels and elapsed time from the scene", async () => {
+    const plan = await buildSharesetsThemePreviewPlan({
+      theme: themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]),
+    });
+    const asset = plan.assets.find(({ id }) => id === "product-workspace-file");
+    render(
+      <SharesetsPreviewApp
+        plan={{ ...plan, fixture: HOMEPAGE_STEREO_V1 }}
+        asset={asset}
+        scene={{ elapsedMs: 150_000, sourceLabel: "Output · Speakers", deviceLabel: "Speakers" }}
+      />
+    );
+    expect(screen.getByText("00:02:30")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "STOP" })).toBeTruthy();
+    expect(screen.getByText("Output · Speakers")).toBeTruthy();
+    expect(screen.queryByText("Preview Audio")).toBeNull();
+  });
+
+  it("puts a Preset workspace inside the Header and Footer when the scene asks", async () => {
+    const preset = {
+      id: "preview-preset",
+      name: "Preview Preset",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
+    const bare = render(<SharesetsPreviewApp plan={plan} asset={plan.assets[0]} />);
+    expect(screen.queryByRole("button", { name: "STOP" })).toBeNull();
+    bare.unmount();
+
+    render(
+      <SharesetsPreviewApp
+        plan={plan}
+        asset={plan.assets[0]}
+        scene={{ fullShell: true, sourceLabel: "Output · Speakers" }}
+      />
+    );
+    expect(screen.getByRole("button", { name: "STOP" })).toBeTruthy();
+    expect(screen.getByText("Output · Speakers")).toBeTruthy();
+  });
+
+  it("shows a Dock Snapshot at the scene offset", async () => {
+    const preset = {
+      id: "preview-preset",
+      name: "Preview Preset",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: {
+        enabled: true,
+        edge: "top",
+        reserveSpace: false,
+        height: 150,
+        panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+        panelOrder: ["loudness"],
+        panelSizesById: { loudness: 360 },
+        controlsByPanelId: {
+          loudness: DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+        },
+      },
+      loudnessProfileActive: "off",
+    };
+    const plan = await buildSharesetsPreviewPlan(buildPack("presets", [preset]), "presets");
+    const dockAsset = plan.assets.find(({ renderer }) => renderer === "preset-dock");
+
+    const live = render(
+      <SharesetsPreviewApp plan={{ ...plan, fixture: HOMEPAGE_STEREO_V1 }} asset={dockAsset} />
+    );
+    expect(screen.getByTestId("dock-strip").hasAttribute("data-history")).toBe(false);
+    live.unmount();
+
+    render(
+      <SharesetsPreviewApp
+        plan={{ ...plan, fixture: HOMEPAGE_STEREO_V1 }}
+        asset={dockAsset}
+        scene={{ snapshotOffsetSec: 0 }}
+      />
+    );
+    expect(screen.getByTestId("dock-strip").hasAttribute("data-history")).toBe(true);
   });
 
   it("renders product scenes with the previewed Theme's panel surface and Canvas colours", async () => {

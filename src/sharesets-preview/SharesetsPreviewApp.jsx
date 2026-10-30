@@ -25,17 +25,44 @@ import { DEFAULT_PRESET_NAME } from "../lib/defaultPreset.js";
 
 const noop = () => {};
 
+/**
+ * Optional inputs used by the homepage renderer; Sharesets assets never pass them, and the empty
+ * scene reproduces their output exactly.
+ * @typedef {{
+ *   snapshotOffsetSec?: number,
+ *   elapsedMs?: number,
+ *   sourceLabel?: string,
+ *   deviceLabel?: string,
+ *   fullShell?: boolean,
+ * }} PreviewScene
+ */
+const EMPTY_SCENE = Object.freeze({});
+
+/** Transport state for a LIVE session, at the final frame or at a Snapshot offset. */
+function liveTransportState(fixture, snapshot, scene) {
+  const elapsedMs = scene.elapsedMs ?? fixture.clock.durationMs;
+  const offsetSec = scene.snapshotOffsetSec ?? (snapshot ? 0 : -1);
+  return deriveSourceTransportState({
+    sourceMode: "live",
+    running: true,
+    elapsedMs,
+    selectedOffset: offsetSec,
+    selectedSnapshotTimeMs: offsetSec >= 0 ? elapsedMs - offsetSec * 1000 : undefined,
+  });
+}
+
 function FixedProviders({
   fixture,
   profile,
   snapshot = false,
+  snapshotOffsetSec = undefined,
   presentation = undefined,
   docked = false,
   children,
 }) {
   const values = useMemo(
-    () => buildSharesetsPreviewFixtureValues(fixture, { snapshot }),
-    [fixture, snapshot]
+    () => buildSharesetsPreviewFixtureValues(fixture, { snapshot, snapshotOffsetSec }),
+    [fixture, snapshot, snapshotOffsetSec]
   );
   const historyData = useMemo(
     () => ({ ...values.historyData, referenceLufs: profile?.referenceLufs ?? null }),
@@ -112,26 +139,22 @@ function FullWorkspaceExample({
   snapshot,
   state,
   presetName = DEFAULT_PRESET_NAME,
+  scene = EMPTY_SCENE,
 }) {
+  const snapshotOffsetSec = scene.snapshotOffsetSec;
   const values = useMemo(
-    () => buildSharesetsPreviewFixtureValues(fixture, { snapshot }),
-    [fixture, snapshot]
+    () => buildSharesetsPreviewFixtureValues(fixture, { snapshot, snapshotOffsetSec }),
+    [fixture, snapshot, snapshotOffsetSec]
   );
   const historyData = useMemo(
     () => ({ ...values.historyData, referenceLufs: profile?.referenceLufs ?? null }),
     [values.historyData, profile]
   );
   const sourceTransportState = useMemo(
-    () =>
-      deriveSourceTransportState({
-        sourceMode: "live",
-        running: true,
-        elapsedMs: fixture.clock.durationMs,
-        selectedOffset: snapshot ? 0 : -1,
-        selectedSnapshotTimeMs: snapshot ? fixture.clock.durationMs : undefined,
-      }),
-    [fixture.clock.durationMs, snapshot]
+    () => liveTransportState(fixture, snapshot, scene),
+    [fixture, snapshot, scene]
   );
+  const deviceLabel = scene.deviceLabel ?? "Preview Audio";
   const loudnessProfile = useMemo(() => previewLibrary(profile), [profile]);
   const shellHandlers = useMemo(
     () => ({
@@ -159,8 +182,8 @@ function FullWorkspaceExample({
     clearDisabled: false,
     isTauriApp: true,
     onOpenFile: noop,
-    audioDevices: [{ id: "sharesets-preview-audio", label: "Preview Audio" }],
-    audioOutputs: [{ id: "sharesets-preview-audio", label: "Preview Audio" }],
+    audioDevices: [{ id: "sharesets-preview-audio", label: deviceLabel }],
+    audioOutputs: [{ id: "sharesets-preview-audio", label: deviceLabel }],
     audioInputs: [],
     captureApplications: [],
     onRefreshSources: noop,
@@ -207,7 +230,7 @@ function FullWorkspaceExample({
             normalizePanelPresentation(state?.panelPresentation, state?.focusView).workspace
           }
           footer={{
-            sourceLabel: "Preview Audio",
+            sourceLabel: scene.sourceLabel ?? "Preview Audio",
             loudnessProfileName: profile?.name ?? null,
             activePresetName: presetName,
           }}
@@ -217,7 +240,7 @@ function FullWorkspaceExample({
   );
 }
 
-/** @param {{ plan: any, state?: any, profile?: any, snapshot?: boolean, fullShell?: boolean, presetName?: string }} props */
+/** @param {{ plan: any, state?: any, profile?: any, snapshot?: boolean, fullShell?: boolean, presetName?: string, scene?: PreviewScene }} props */
 function WorkspaceExample({
   plan,
   state: stateOverride,
@@ -225,6 +248,7 @@ function WorkspaceExample({
   snapshot = false,
   fullShell = false,
   presetName,
+  scene = EMPTY_SCENE,
 }) {
   const preset = useMemo(() => (stateOverride ? null : compilePreset(plan)), [plan, stateOverride]);
   const state = stateOverride ?? preset;
@@ -237,6 +261,7 @@ function WorkspaceExample({
         snapshot={snapshot}
         state={state}
         presetName={presetName}
+        scene={scene}
       />
     );
   }
@@ -245,6 +270,7 @@ function WorkspaceExample({
       fixture={plan.fixture}
       profile={profile}
       snapshot={snapshot}
+      snapshotOffsetSec={scene.snapshotOffsetSec}
       presentation={normalizePanelPresentation(state?.panelPresentation, state?.focusView)}
     >
       <WorkspacePreviewProvider state={state}>
@@ -258,20 +284,17 @@ function WorkspaceExample({
   );
 }
 
-function DockExample({ plan }) {
+function DockExample({ plan, scene = EMPTY_SCENE }) {
   const preset = useMemo(() => compilePreset(plan), [plan]);
   const profile = profileForPreset(plan);
   const dock = preset.dock;
   const panels = dock.panelOrder.map((id) => dock.panelsById[id]);
-  const sourceTransportState = deriveSourceTransportState({
-    sourceMode: "live",
-    running: true,
-    elapsedMs: plan.fixture.clock.durationMs,
-  });
+  const sourceTransportState = liveTransportState(plan.fixture, false, scene);
   return (
     <FixedProviders
       fixture={plan.fixture}
       profile={profile}
+      snapshotOffsetSec={scene.snapshotOffsetSec}
       presentation={preset.panelPresentation}
       docked
     >
@@ -316,7 +339,7 @@ function singlePanelState(moduleId) {
   };
 }
 
-function ThemeProductExample({ plan, sceneId }) {
+function ThemeProductExample({ plan, sceneId, scene }) {
   const moduleId =
     sceneId === "spectrogram-heatmap" ? "spectrogram" : sceneId.replace(/-file$/, "");
   const normalizedModuleId =
@@ -339,11 +362,12 @@ function ThemeProductExample({ plan, sceneId }) {
       profile={profile}
       snapshot={sceneId === "workspace-snapshot"}
       fullShell={isWorkspace}
+      scene={scene}
     />
   );
 }
 
-function MultichannelMonitoringExample({ plan, fullShell }) {
+function MultichannelMonitoringExample({ plan, fullShell, scene }) {
   const state = useMemo(
     () => portableToStoredPreset(MULTICHANNEL_MONITORING_PRESET, "multichannel-preview"),
     []
@@ -360,26 +384,40 @@ function MultichannelMonitoringExample({ plan, fullShell }) {
       profile={null}
       fullShell={fullShell}
       presetName="Multichannel Monitoring"
+      scene={scene}
     />
   );
 }
 
-export function SharesetsPreviewApp({ plan, asset }) {
+/** @param {{ plan: any, asset: any, scene?: PreviewScene }} props */
+export function SharesetsPreviewApp({ plan, asset, scene = EMPTY_SCENE }) {
   if (asset.renderer === "preset-workspace") {
     const fixture =
       asset.fixtureKey === "5.1" ? (plan.multichannelFixture ?? plan.fixture) : plan.fixture;
-    return <WorkspaceExample plan={{ ...plan, fixture }} />;
+    return (
+      <WorkspaceExample
+        plan={{ ...plan, fixture }}
+        fullShell={scene.fullShell === true}
+        scene={scene}
+      />
+    );
   }
-  if (asset.renderer === "preset-dock") return <DockExample plan={plan} />;
+  if (asset.renderer === "preset-dock") return <DockExample plan={plan} scene={scene} />;
   if (asset.renderer === "semantic-gallery") return <ThemeSemanticExample plan={plan} />;
   if (
     asset.renderer === "multichannel-monitoring-prototype" ||
     asset.renderer === "multichannel-monitoring"
   ) {
-    return <MultichannelMonitoringExample plan={plan} fullShell={asset.surface === "theme"} />;
+    return (
+      <MultichannelMonitoringExample
+        plan={plan}
+        fullShell={asset.surface === "theme"}
+        scene={scene}
+      />
+    );
   }
   if (asset.renderer === "product-gallery") {
-    return <ThemeProductExample plan={plan} sceneId={asset.sceneId} />;
+    return <ThemeProductExample plan={plan} sceneId={asset.sceneId} scene={scene} />;
   }
   throw new Error(`Unsupported Sharesets preview renderer: ${asset.renderer}.`);
 }

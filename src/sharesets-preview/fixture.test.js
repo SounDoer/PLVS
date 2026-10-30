@@ -8,6 +8,7 @@ import {
 import { SHARESETS_PREVIEW_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewStereoV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_STEREO_V1 } from "../transfer/fixtures/sharesetsPreviewDialogueStereoV1.js";
 import { SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1 } from "../transfer/fixtures/sharesetsPreviewDialogueMultichannelV1.js";
+import { HOMEPAGE_STEREO_V1 } from "../transfer/fixtures/homepageStereoV1.js";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "./defaultAnalysisRequests.js";
 import { buildSharesetsPreviewFixtureValues } from "./fixture.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
@@ -154,5 +155,67 @@ describe("Sharesets Dialogue preview data", () => {
     expect(SHARESETS_PREVIEW_DIALOGUE_MULTICHANNEL_V1.measurementFrame.peaksDbfs[3]).toBeLessThan(
       -18
     );
+  });
+});
+
+describe("Snapshot at an offset", () => {
+  const stripFunctions = (value) =>
+    JSON.parse(JSON.stringify(value, (_, inner) => (typeof inner === "function" ? "fn" : inner)));
+
+  it("leaves the default values unchanged when no offset is given", () => {
+    for (const snapshot of [false, true]) {
+      const before = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1, { snapshot });
+      const after = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1, {
+        snapshot,
+        snapshotOffsetSec: undefined,
+      });
+      expect(stripFunctions(after)).toEqual(stripFunctions(before));
+      expect(after.historyData.resolveSpectrumSnapshotForKey(msKey)).toEqual(
+        before.historyData.resolveSpectrumSnapshotForKey(msKey)
+      );
+    }
+  });
+
+  it("selects the offset and resolves both Spectrum curves from the row at that time", () => {
+    const values = buildSharesetsPreviewFixtureValues(HOMEPAGE_STEREO_V1, {
+      snapshotOffsetSec: 22,
+    });
+    expect(values.historyData.selectedOffset).toBe(22);
+    const rows = HOMEPAGE_STEREO_V1.visuals.spectrogramByKey[msKey];
+    const expected = rows.find(({ atMs }) => atMs === 60_000 - 22_000);
+    const resolved = values.historyData.resolveSpectrumSnapshotForKey(msKey);
+    expect(resolved.missing).toBe(false);
+    expect(resolved.data.dbList).toEqual(expected.db);
+    expect(resolved.data.dbListB).toEqual(expected.dbB);
+    expect(resolved.data.dbList).not.toEqual(rows.at(-1).db);
+    expect(values.historyData.snapshotSpectrumByKey[msKey].length).toBe(rows.length);
+  });
+
+  it("resolves offset 0 to the final row and reports keys without history as missing", () => {
+    const values = buildSharesetsPreviewFixtureValues(HOMEPAGE_STEREO_V1, {
+      snapshotOffsetSec: 0,
+    });
+    const rows = HOMEPAGE_STEREO_V1.visuals.spectrogramByKey[combinedKey];
+    expect(values.historyData.resolveSpectrumSnapshotForKey(combinedKey).data.dbList).toEqual(
+      rows.at(-1).db
+    );
+    expect(values.historyData.resolveSpectrumSnapshotForKey(combinedKey).data.dbListB).toEqual([]);
+    expect(
+      values.historyData.resolveSpectrumSnapshotForKey("spectrum:pair:0:1:lr:sp25:smoff")
+    ).toMatchObject({ missing: true });
+  });
+
+  it("clamps an offset beyond the window to the first row and rejects invalid offsets", () => {
+    const values = buildSharesetsPreviewFixtureValues(HOMEPAGE_STEREO_V1, {
+      snapshotOffsetSec: 600,
+    });
+    expect(values.historyData.resolveSpectrumSnapshotForKey(combinedKey).data.dbList).toEqual(
+      HOMEPAGE_STEREO_V1.visuals.spectrogramByKey[combinedKey][0].db
+    );
+    for (const snapshotOffsetSec of [-1, Number.NaN, Infinity]) {
+      expect(() =>
+        buildSharesetsPreviewFixtureValues(HOMEPAGE_STEREO_V1, { snapshotOffsetSec })
+      ).toThrow(/snapshotOffsetSec/);
+    }
   });
 });

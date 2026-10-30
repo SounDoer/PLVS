@@ -1,3 +1,5 @@
+import { VISUAL_HIST_SAMPLE_SEC } from "../hooks/useLoudnessHistory.js";
+import { resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 import { buildStatsMetrics } from "../lib/statsCatalog.js";
 import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 
@@ -21,7 +23,20 @@ function vectorscopeHistory(rows) {
   );
 }
 
-export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false } = {}) {
+/**
+ * `snapshot` selects the Snapshot at the final frame. `snapshotOffsetSec` (seconds back from the
+ * final frame) selects a Snapshot anywhere in the window and resolves keyed Spectrum rows at that
+ * time, as `useSnapshot` does. Scalar readings exist only for the final frame, so callers must not
+ * show meters, Stats, Vectorscope or Stereo Map at a non-zero offset.
+ */
+export function buildSharesetsPreviewFixtureValues(
+  fixture,
+  { snapshot = false, snapshotOffsetSec = undefined } = {}
+) {
+  const offsetSelected = snapshotOffsetSec !== undefined;
+  if (offsetSelected && !(Number.isFinite(snapshotOffsetSec) && snapshotOffsetSec >= 0)) {
+    throw new Error("snapshotOffsetSec must be a finite, non-negative number of seconds.");
+  }
   const frame = fixture.measurementFrame;
   const bands = fixture.visuals.bandCentersHz.map((fCenter) => ({ fCenter }));
   const spectrumResultsByKey = Object.fromEntries(
@@ -50,9 +65,10 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
     Object.entries(fixture.visuals.spectrogramByKey).map(([key, rows]) => [
       key,
       indexedView(
-        rows.map(({ atMs, db }) => ({
+        rows.map(({ atMs, db, dbB }) => ({
           bands,
           dbList: db,
+          ...(dbB ? { dbListB: dbB } : {}),
           timestampMs: atMs,
         }))
       ),
@@ -99,7 +115,26 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
     tonality: row.tonality,
   }));
   const totalSamples = histSourceList.length;
+  const lastHistoryMs = histSourceList.at(-1)?.timestampMs ?? fixture.clock.durationMs;
+  const targetTimestampMs = offsetSelected
+    ? Math.max(histSourceList[0]?.timestampMs ?? 0, lastHistoryMs - snapshotOffsetSec * 1000)
+    : null;
   const resolveSpectrumSnapshotForKey = (key) => {
+    if (offsetSelected) {
+      const rows = spectrogramByKey[key];
+      const { index, missing } = resolveKeyedVisualIndex(
+        rows,
+        targetTimestampMs,
+        VISUAL_HIST_SAMPLE_SEC * 1000
+      );
+      if (missing) return { missing: true, data: null, maxHold: null };
+      const row = rows.rowAt(index);
+      return {
+        missing: false,
+        data: { bands, dbList: row.dbList, dbListB: row.dbListB ?? [] },
+        maxHold: null,
+      };
+    }
     const result = spectrumResultsByKey[key];
     if (!result) return { missing: true, data: null, maxHold: null };
     return {
@@ -157,7 +192,7 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
       hasHistoryData: true,
       historyChartInteractive: false,
       running: true,
-      selectedOffset: snapshot ? 0 : -1,
+      selectedOffset: offsetSelected ? snapshotOffsetSec : snapshot ? 0 : -1,
       setSelectedOffset: noop,
       holdHistoryHud: noop,
       showHistoryHud: noop,
@@ -184,7 +219,7 @@ export function buildSharesetsPreviewFixtureValues(fixture, { snapshot = false }
       frequencyMarkerRef: { current: null },
       frequencyMarkerIndex: -1,
       getSpectrogramSnapsForKey: (key) => spectrogramByKey[key] ?? indexedView([]),
-      snapshotSpectrumByKey: snapshot ? spectrogramByKey : {},
+      snapshotSpectrumByKey: snapshot || offsetSelected ? spectrogramByKey : {},
       resolveSpectrumSnapshotForKey,
       resolveVectorscopeSnapshotForKey,
       resolveStereoMapSnapshotForKey,
