@@ -1,14 +1,14 @@
 {
   "version": 2,
   "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
-  "renderedAt": "2026-10-30T02:34:43.626Z",
-  "commit": "fa048bf5f9f8204021c8278aa117a31e0241bede",
+  "renderedAt": "2026-10-30T04:05:54.110Z",
+  "commit": "8fa2cc18f816b4ca626848bd801b90500638f38f",
   "chromium": "156.0.8078.4",
   "recipe": "scripts/marketing/recipes/homepage-images.json",
   "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",
   "fixtureSha256": {
-    "stereo": "f2dec1a2101c35b451ecb4483f5c7d12a1fa7b239f33b1183057794cef6b93ae",
-    "7.1.4": "25905f771778daa5c408c0b572652070d66b259aef9b8eb86ac7bd56bb9b9245"
+    "stereo": "434c803b1b8e93670fa54604de9393d67bc2bf4cc8184ae2765958c7c00b7eac",
+    "7.1.4": "c487d974cd7c49b7d62e402872a504f7759ae4edc6e91c6bda2cabe45767b828"
   },
   "images": {
     "history": {
@@ -18,7 +18,7 @@
       "snapshotOffsetSec": 22,
       "width": 1590,
       "height": 880,
-      "rawSha256": "30dcdde31058b3ee3b7b0f42f9c2307d51d55dc824757fb7decaaddb281f840e"
+      "rawSha256": "cdc2be2aa17dab057b436fc5e0bc4feabdeabae8e7d4e4ee95b23e22e0c35928"
     },
     "frequency-full": {
       "scene": "workspace",
@@ -27,7 +27,7 @@
       "snapshotOffsetSec": 5,
       "width": 1590,
       "height": 438,
-      "rawSha256": "d3a6645072d05eda57dd47daeca07fed512cf5d9f81ca5c112ed3eedfa9f4972"
+      "rawSha256": "47d4695026a8b07800ef250f965f72edc3ef85aefa3ab7e524376586fc978618"
     },
     "frequency-detail": {
       "scene": "workspace",
@@ -36,7 +36,7 @@
       "snapshotOffsetSec": 5,
       "width": 1590,
       "height": 438,
-      "rawSha256": "3e36f411e19b446f9a45b8251e5a71ca2b48ce875025dc2b257ae0518cecf1b8"
+      "rawSha256": "f9f753905a86ef21f15982508019abdaa107c7775c8dd4771efa24cbb4a3f577"
     },
     "multichannel": {
       "scene": "workspace",
@@ -44,7 +44,7 @@
       "interfaceSize": "large",
       "width": 1590,
       "height": 795,
-      "rawSha256": "70e3b749b011a423f74b862f592367993b13a25d22cc1a1008b9c2fae5fe2a7f"
+      "rawSha256": "0099b6545a055b2646b2e02b4ca221cdaf7ce8df7c94fc36f1659ce126447d8d"
     },
     "rules-editor": {
       "scene": "workspace",
@@ -52,7 +52,7 @@
       "interfaceSize": "default",
       "width": 560,
       "height": 500,
-      "rawSha256": "b67f5df077df66ce61c72798cee89c55d979788ee174e7463ec0b1f47c662b4c"
+      "rawSha256": "336287738544c76dc9a240f8812c7b4a66bd48fa615d684256c1c31da8487e01"
     }
   }
 }

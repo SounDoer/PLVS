@@ -1,14 +1,14 @@
 {
   "version": 2,
   "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
-  "renderedAt": "2026-10-30T02:34:43.626Z",
-  "commit": "fa048bf5f9f8204021c8278aa117a31e0241bede",
+  "renderedAt": "2026-10-30T04:05:54.110Z",
+  "commit": "8fa2cc18f816b4ca626848bd801b90500638f38f",
   "chromium": "156.0.8078.4",
   "recipe": "scripts/marketing/recipes/homepage-images.json",
   "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",
   "fixtureSha256": {
-    "stereo": "f2dec1a2101c35b451ecb4483f5c7d12a1fa7b239f33b1183057794cef6b93ae",
-    "7.1.4": "25905f771778daa5c408c0b572652070d66b259aef9b8eb86ac7bd56bb9b9245"
+    "stereo": "434c803b1b8e93670fa54604de9393d67bc2bf4cc8184ae2765958c7c00b7eac",
+    "7.1.4": "c487d974cd7c49b7d62e402872a504f7759ae4edc6e91c6bda2cabe45767b828"
   },
   "image": "landing-dock-custom",
   "scene": "dock",
@@ -17,6 +17,6 @@
   "snapshotOffsetSec": 0,
   "width": 2560,
   "height": 189,
-  "rawSha256": "194529f1ef3f1cbb35daf2f9072e4724ae7803f12ea0dfdd8e9adb45915f783f",
-  "sha256": "16a70434de74aec71fe12b454d2900b0e465a95c49fc682072220fd423df7c4a"
+  "rawSha256": "66d786fa73cf984ee05f0c66c3d65b3980d41127eaef94463fb118713fbdc3f3",
+  "sha256": "acc870888c4f049da8b8e362aa9241ba18c6f8e21b0cb681c2e09936dc4e93e4"
 }
