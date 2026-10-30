@@ -7,7 +7,13 @@
   "title": "Dialogue Delivery Review",
   "summary": "Review dialogue level, programme relationship, coverage, and range alongside programme structure.",
   "descriptionMarkdown": "Review spoken delivery and its relationship to the full programme in one workspace. A large channel-aware Waveform preserves dialogue structure and routing context, while linked Momentary and Short-term loudness history sits beside Dialogue Loudness, LDR, Dialogue Coverage, Dialogue Range, Integrated Loudness, and True Peak. Stereo and 5.1 previews use PLVS's dialogue benchmark to show antiphase, centre, off-centre, and surround speech handling.",
-  "tags": ["Dialogue", "Speech", "Loudness", "Broadcast", "Multichannel"],
+  "tags": [
+    "Dialogue",
+    "Speech",
+    "Loudness",
+    "Broadcast",
+    "Multichannel"
+  ],
   "author": {
     "name": "PLVS",
     "url": "https://github.com/SounDoer/PLVS"
@@ -27,6 +33,22 @@
         {
           "id": "preset-workspace-5-1",
           "path": "previews/dialogue-delivery-review/v1/preset-workspace-5-1.png"
+        }
+      ],
+      "previewRevisions": [
+        {
+          "number": 1,
+          "publishedAt": "2026-10-30",
+          "previews": [
+            {
+              "id": "preset-workspace-stereo",
+              "path": "previews/dialogue-delivery-review/v1/revisions/r1/preset-workspace-stereo.png"
+            },
+            {
+              "id": "preset-workspace-5-1",
+              "path": "previews/dialogue-delivery-review/v1/revisions/r1/preset-workspace-5-1.png"
+            }
+          ]
         }
       ]
     }

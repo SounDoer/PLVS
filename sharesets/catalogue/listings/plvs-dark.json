@@ -59,6 +59,28 @@
             "path": "previews/plvs-dark/revisions/r1/semantic-overview.png"
           }
         ]
+      },
+      {
+        "number": 2,
+        "publishedAt": "2026-10-30",
+        "previews": [
+          {
+            "id": "product-workspace-file",
+            "path": "previews/plvs-dark/revisions/r2/product-workspace-file.png"
+          },
+          {
+            "id": "product-multichannel-monitoring",
+            "path": "previews/plvs-dark/revisions/r2/product-multichannel-monitoring.png"
+          },
+          {
+            "id": "product-workspace-snapshot",
+            "path": "previews/plvs-dark/revisions/r2/product-workspace-snapshot.png"
+          },
+          {
+            "id": "semantic-overview",
+            "path": "previews/plvs-dark/revisions/r2/semantic-overview.png"
+          }
+        ]
       }
     ]
   }
