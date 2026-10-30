@@ -2553,9 +2553,9 @@ Creator: Person: Daniel Thompson-Yvetot
 
 
 ========================================================================
-npm:@tauri-apps/plugin-clipboard-manager@2.4.1
+npm:@tauri-apps/plugin-clipboard-manager@2.5.0
 Declared license: MIT OR Apache-2.0
-Source: https://registry.npmjs.org/@tauri-apps/plugin-clipboard-manager/-/plugin-clipboard-manager-2.4.1.tgz
+Source: https://registry.npmjs.org/@tauri-apps/plugin-clipboard-manager/-/plugin-clipboard-manager-2.5.0.tgz
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1

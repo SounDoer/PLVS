@@ -25,6 +25,29 @@ describe("Tauri dependency contracts", () => {
     expect(versions).toEqual(["0.8.1"]);
   });
 
+  it("keeps Tauri npm packages on the major/minor release of their crates", () => {
+    // `tauri build` refuses mismatched pairs; only package-check in CI runs it.
+    const packageLock = JSON.parse(readFileSync(join(process.cwd(), "package-lock.json"), "utf8"));
+    const crateVersion = (name) =>
+      cargoLock.match(
+        new RegExp(`\\[\\[package\\]\\]\\r?\\nname = "${name}"\\r?\\nversion = "([^"]+)"`)
+      )?.[1];
+    const majorMinor = (version) => version?.split(".").slice(0, 2).join(".");
+    const pairs = Object.keys(packageJson.dependencies)
+      .filter((name) => name.startsWith("@tauri-apps/"))
+      .map((name) => {
+        const crate = name === "@tauri-apps/api" ? "tauri" : `tauri-${name.slice(12)}`;
+        return {
+          name,
+          npm: majorMinor(packageLock.packages[`node_modules/${name}`].version),
+          crate: majorMinor(crateVersion(crate)),
+        };
+      });
+
+    expect(pairs.length).toBeGreaterThan(1);
+    expect(pairs.filter(({ npm, crate }) => npm !== crate)).toEqual([]);
+  });
+
   it("keeps the Agent Control forwarder isolated from the application crate", () => {
     expect(cargoToml).toMatch(
       /members\s*=\s*\[[^\]]*"linux-update-installer"[^\]]*"plvs-cli"[^\]]*\]/

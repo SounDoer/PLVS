@@ -57,7 +57,13 @@ cargo update --manifest-path src-tauri/Cargo.toml -p <crate> --precise <version>
 ```
 
 Raise the requirement in a `Cargo.toml` only when the lockfile cannot reach the version otherwise.
-For `rust-toolchain`, edit `channel` in `rust-toolchain.toml`. Then confirm with a lockfile diff that
+For `rust-toolchain`, edit `channel` in `rust-toolchain.toml`.
+
+Tauri pairs move together: `tauri-plugin-<x>` with `@tauri-apps/plugin-<x>`, and `tauri` with
+`@tauri-apps/api`, on the same major/minor release, or `tauri build` refuses to package. When one
+side has no matching release yet, hold both. `scripts/tauriDependencyContract.test.js` enforces this.
+
+Then confirm with a lockfile diff that
 nothing beyond the intended packages and their transitive dependencies moved.
 
 **Capture layer.** An update to a crate imported under `src-tauri/src/audio`, `dsp` or `engine`
