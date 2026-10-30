@@ -29,7 +29,7 @@
     "sqlite-wasm-rs@0.5.5": "System/platform binding not bundled as a third-party native library on Windows/macOS; review on target changes.",
     "tauri@2.12.2": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-autostart@2.7.0": "Cargo links namespace / integration code; package notices retained.",
-    "tauri-plugin-clipboard-manager@2.4.1": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-clipboard-manager@2.5.0": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-dialog@2.8.3": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-fs@2.7.1": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-global-shortcut@2.4.1": "Cargo links namespace / integration code; package notices retained.",

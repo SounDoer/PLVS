@@ -2580,9 +2580,9 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 
 ========================================================================
-npm:@tauri-apps/plugin-dialog@2.8.1
+npm:@tauri-apps/plugin-dialog@2.8.4
 Declared license: MIT OR Apache-2.0
-Source: https://registry.npmjs.org/@tauri-apps/plugin-dialog/-/plugin-dialog-2.8.1.tgz
+Source: https://registry.npmjs.org/@tauri-apps/plugin-dialog/-/plugin-dialog-2.8.4.tgz
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -82166,9 +82166,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-clipboard-manager@2.4.1
+rust:tauri-plugin-clipboard-manager@2.5.0
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-clipboard-manager/2.4.1/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-clipboard-manager/2.5.0/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
