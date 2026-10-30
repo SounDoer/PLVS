@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { commandPlanForPaths } from "./pre-commit.mjs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { commandPlanForPaths, runPreCommit } from "./pre-commit.mjs";
 
 describe("pre-commit command selection", () => {
   it("does no repository-wide work for unrelated staged files", () => {
@@ -17,7 +21,10 @@ describe("pre-commit command selection", () => {
       "package.json",
     ]) {
       expect(commandPlanForPaths([file], { nodeExecutable: "/node" })).toEqual([
-        { command: "/node", args: ["node_modules/lint-staged/bin/lint-staged.js"] },
+        {
+          command: "/node",
+          args: ["node_modules/lint-staged/bin/lint-staged.js", "--hide-unstaged"],
+        },
       ]);
     }
   });
@@ -49,5 +56,53 @@ describe("pre-commit command selection", () => {
       "cargo fmt",
       "cargo metadata",
     ]);
+  });
+
+  it("formats the index while preserving partially and fully unstaged edits", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plvs-pre-commit-"));
+    const git = (...args) => execFileSync("git", args, { cwd, encoding: "utf8" });
+    try {
+      git("init", "--quiet");
+      git("config", "user.name", "PLVS Test");
+      git("config", "user.email", "test@example.invalid");
+      git("config", "commit.gpgsign", "false");
+      git("config", "core.hooksPath", join(cwd, "no-hooks"));
+      mkdirSync(join(cwd, "scripts"));
+      const partial = join(cwd, "scripts/partial.js");
+      const unstaged = join(cwd, "scripts/unstaged.js");
+      const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+      writeFileSync(
+        join(cwd, "package.json"),
+        JSON.stringify({
+          private: true,
+          "lint-staged": {
+            "scripts/*.js": `${quote(process.execPath)} ${quote(resolve("node_modules/prettier/bin/prettier.cjs"))} --write`,
+          },
+        })
+      );
+      writeFileSync(partial, "const staged = 0;\n\nconst draft = 0;\n");
+      writeFileSync(unstaged, "const unrelated = 0;\n");
+      git("add", ".");
+      git("commit", "--quiet", "-m", "fixture");
+      symlinkSync(
+        resolve("node_modules"),
+        join(cwd, "node_modules"),
+        process.platform === "win32" ? "junction" : "dir"
+      );
+      writeFileSync(partial, "const staged=1;\n\nconst draft = 0;\n");
+      git("add", "scripts/partial.js");
+      writeFileSync(partial, "const staged=1;\n\nconst draft = 2;\n");
+      writeFileSync(unstaged, "const unrelated=7;\n");
+
+      runPreCommit({ cwd });
+
+      expect(git("show", ":scripts/partial.js")).toBe("const staged = 1;\n\nconst draft = 0;\n");
+      expect(readFileSync(partial, "utf8")).toBe("const staged = 1;\n\nconst draft = 2;\n");
+      expect(git("show", ":scripts/unstaged.js")).toBe("const unrelated = 0;\n");
+      expect(readFileSync(unstaged, "utf8")).toBe("const unrelated=7;\n");
+      expect(git("diff", "--cached", "--name-only").trim()).toBe("scripts/partial.js");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });

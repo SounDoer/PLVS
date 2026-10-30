@@ -12,7 +12,7 @@ export function commandPlanForPaths(paths, { nodeExecutable = process.execPath }
   if (files.some((file) => prettierPath.test(file))) {
     commands.push({
       command: nodeExecutable,
-      args: ["node_modules/lint-staged/bin/lint-staged.js"],
+      args: ["node_modules/lint-staged/bin/lint-staged.js", "--hide-unstaged"],
     });
   }
   if (files.some((file) => file.startsWith("src-tauri/") && file.endsWith(".rs"))) {

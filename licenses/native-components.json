@@ -10,7 +10,7 @@
     "FFmpeg 7.1.5 is shipped as independent executables under LGPL-2.1-or-later. Windows x86_64, macOS Apple Silicon and Linux x86_64 use one audio-only recipe with GPL, nonfree and external codec libraries disabled. Complete corresponding source, build records and binary hashes are provided at the immutable download below. Codec license compliance does not grant patent rights.",
     "Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.",
     "Rust standard library 1.99.1: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.",
-    "Windows installers use unmodified NSIS 3.11, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/kichik/nsis/tree/v311 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades.",
+    "Windows installers use unmodified NSIS 3.13, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/nsis-dev/nsis/tree/a4ba28e60bd9e7c271cd2bfc1558889ce3355653 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades.",
     "Ubuntu stable and Preview debs dynamically use distribution ALSA, PulseAudio, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries. FFmpeg/FFprobe are separate package-private executables and depend only on the distribution glibc, libm and ELF loader. The stable package's update installer is a separate Rust executable built only from dependencies already present in this reviewed Cargo graph; it invokes distribution Polkit, dpkg and APT tools rather than bundling them."
   ],
   "bindings": {
@@ -135,11 +135,11 @@
       "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
     },
     {
-      "name": "NSIS 3.11 installer engine and compression modules",
+      "name": "NSIS 3.13 installer engine and compression modules",
       "license": "Zlib; bzip2; CPL-1.0 with the NSIS LZMA exception",
-      "url": "https://github.com/kichik/nsis/blob/v311/COPYING",
-      "file": "licenses/upstream/e7dd514003ab96cb3ddccbc028fe5c795fccf57dc41f21cfb9d4dd16ead23bf5.txt",
-      "sha256": "e7dd514003ab96cb3ddccbc028fe5c795fccf57dc41f21cfb9d4dd16ead23bf5"
+      "url": "https://github.com/nsis-dev/nsis/blob/a4ba28e60bd9e7c271cd2bfc1558889ce3355653/COPYING",
+      "file": "licenses/upstream/6cc665347be5c84b76bf0fd6f85fbb0c33261e89b3408aa3e3e55dbe95e12d89.txt",
+      "sha256": "6cc665347be5c84b76bf0fd6f85fbb0c33261e89b3408aa3e3e55dbe95e12d89"
     },
     {
       "name": "nsis-tauri-utils 0.5.3 LICENSE_MIT",
@@ -165,6 +165,6 @@
   ],
   "rustVersion": "1.99.1",
   "npmVersions": {
-    "@tauri-apps/cli": "2.12.1"
+    "@tauri-apps/cli": "2.12.4"
   }
 }
