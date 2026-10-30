@@ -734,7 +734,7 @@ impl LibraryRepository {
   }
 
   pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
-    let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
+    let mut connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
       .busy_handler(Some(wait_while_busy))
       .map_err(map_sqlite_error)?;

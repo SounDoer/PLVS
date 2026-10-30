@@ -1103,9 +1103,9 @@
       "license": "MIT",
       "noticeSha256": "30f0694d86c8d132d0e35cdd11c1d583d70f165be30d6822038e7ee1db26169b"
     },
-    "rust:libsqlite3-sys@0.38.2": {
+    "rust:libsqlite3-sys@0.39.1": {
       "license": "MIT",
-      "noticeSha256": "f4046f6854d47ff0027a73a194cbc6f4204ed6aead6b76d1e57b6d85e5aef91a"
+      "noticeSha256": "b8964f3b2ea5b58a50554201c28cdd3bf842ba748bb2ca353b39273d65bed955"
     },
     "rust:linux-raw-sys@0.12.1": {
       "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
@@ -1801,7 +1801,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "74f23b5edd51e77b6e1711f8bbc1bf219bc3faedf763fb2e56092842a4258dab"
     },
-    "rust:rusqlite@0.40.2": {
+    "rust:rusqlite@0.41.1": {
       "license": "MIT",
       "noticeSha256": "b8964f3b2ea5b58a50554201c28cdd3bf842ba748bb2ca353b39273d65bed955"
     },

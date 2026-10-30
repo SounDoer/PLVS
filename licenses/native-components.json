@@ -6,7 +6,7 @@
     "macOS CPU archive: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.24.2/aarch64-apple-darwin.tar.lzma2 ; SHA-256 612739f75438dc0a075461e1fb454226b4a1eb175e60a7271ba966bbbb972cd4.",
     "The upstream runtime notice is a conservative superset, not a claim that every listed execution provider ships. PLVS selects the CPU backend; enabling another provider requires a fresh distribution review.",
     "Silero VAD v6.2 model: SHA-256 1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3; original license reproduced below. FireRedVAD model and CMVN notices are preserved verbatim in COMPONENT-NOTICES.txt under firered-vad@0.1.0.",
-    "SQLite is compiled from libsqlite3-sys bundled sources. SQLite itself is public domain; its original source dedication is retained in the corresponding source package. Rust wrapper notices are in COMPONENT-NOTICES.txt.",
+    "SQLite 3.54.1 is compiled from libsqlite3-sys 0.39.1 bundled sources (rusqlite source revision fb7c711f4e988db149f43cac68f7865b25d0b10e). SQLite itself is public domain; its original source dedication is retained in the corresponding source package. Rust wrapper MIT notices are unchanged. The new package removes unused SQLCipher sources and their notice; PLVS does not enable SQLCipher. The bundled build removes SQLITE_ENABLE_MEMORY_MANAGEMENT; persistence and concurrent-writer behavior are reviewed separately.",
     "FFmpeg 7.1.5 is shipped as independent executables under LGPL-2.1-or-later. Windows x86_64, macOS Apple Silicon and Linux x86_64 use one audio-only recipe with GPL, nonfree and external codec libraries disabled. Complete corresponding source, build records and binary hashes are provided at the immutable download below. Codec license compliance does not grant patent rights.",
     "Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.",
     "Rust standard library 1.99.1: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.",
@@ -20,7 +20,7 @@
     "gdk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
     "gtk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
     "libdbus-sys@0.2.7": "System/platform binding; Linux uses the distribution D-Bus library rather than bundling it.",
-    "libsqlite3-sys@0.38.2": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
+    "libsqlite3-sys@0.39.1": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
     "objc2-exception-helper@0.1.1": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
     "openssl-sys@0.9.117": "System/platform binding; Linux uses the distribution OpenSSL library rather than bundling it.",
     "ort-sys@2.0.0-rc.12": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
@@ -44,7 +44,7 @@
   "inputs": [
     {
       "path": "src-tauri/Cargo.toml",
-      "sha256": "1068f682918ba89fecba211992caa41e70b74c593631b93701ac20e351db18b7"
+      "sha256": "a163d9af81ea0701ae4a5e51f607070df719e3a5c7928e9432fbc5cbcf9dcaf3"
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",
@@ -89,6 +89,21 @@
     {
       "path": "rust-toolchain.toml",
       "sha256": "c979a7d4d66b770a4d59d6d56e3c078aeab1993af658480bfd1f89f90220457d"
+    },
+    {
+      "package": "libsqlite3-sys@0.39.1",
+      "path": "build.rs",
+      "sha256": "769b31370a41aa722e1d5a530012432c985bb142eab34d095481ffd1a3436e1b"
+    },
+    {
+      "package": "libsqlite3-sys@0.39.1",
+      "path": "sqlite3/sqlite3.c",
+      "sha256": "0c657666d819f261cc4007526ad57e1669de9949df7a8ea847aa284a2bf0ee52"
+    },
+    {
+      "package": "libsqlite3-sys@0.39.1",
+      "path": "sqlite3/sqlite3.h",
+      "sha256": "d6c84557261893439b341d2e6c35187ae3ea24fbfd843ad94616f72d89242b8c"
     }
   ],
   "documents": [
