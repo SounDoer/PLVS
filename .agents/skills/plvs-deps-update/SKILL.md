@@ -11,7 +11,7 @@ record the license review that `npm run licenses:check` requires, so their CI is
 skill applies the proposals as one commit on main and lets Dependabot close its own pull requests
 once main is up to date.
 
-It normally runs unattended every Monday morning as a Claude desktop scheduled task (see
+It normally runs unattended every Monday morning as a local scheduled task (see
 [Scheduled run](#scheduled-run)). The maintainer reads the report afterwards.
 
 ## Authority
@@ -24,15 +24,33 @@ commit this skill produces. Anything outside the rules below is reported, not de
 
 Other sessions may be working in the main checkout. Never apply updates there.
 
+Before changing anything, inspect the checkout, linked worktrees, and open Dependabot proposals.
+Acquire a repository-wide lease with an atomic `mkdir` at
+`<absolute-git-common-dir>/plvs-deps-update.lock` (resolve the common directory with
+`git rev-parse --path-format=absolute --git-common-dir`). Record the host, process/session, start
+time, branch and worktree there. Hold it through push verification and cleanup. If it exists,
+report the owner and stop; never delete another run's lease or bypass it. A maintainer must verify
+an abandoned lease before removing it. Release only this run's lease when the run ends, including
+on failure; keep failed branches and worktrees for investigation.
+
+Choose a writable worktree location appropriate to the execution environment, outside the main
+checkout; do not bind it to an agent-specific directory. Use a unique run ID including the date
+and a random suffix, so a same-day retry cannot overwrite an earlier run. Inspect retained runs
+and report them; do not reset, reuse or delete them automatically. The isolated branch/worktree
+and its removal after a verified successful push are authorized by this skill.
+
 ```bash
 git fetch origin
-git worktree add .claude/worktrees/deps-<yyyy-mm-dd> -b deps/<yyyy-mm-dd> origin/main
-cd .claude/worktrees/deps-<yyyy-mm-dd>
+git worktree add <worktree-path> -b deps/<run-id> origin/main
+cd <worktree-path>
 npm run worktree:setup
 ```
 
 The branch is temporary: the commit lands on main by pushing `HEAD:main`, and the worktree and
 branch are removed at the end.
+
+Use the Node version in `.nvmrc`. Check GitHub authentication and registry/network access before
+installing. If no proposals remain, report that and release the lease without creating a worktree.
 
 ## 2. Collect and classify
 
@@ -103,17 +121,7 @@ npm run licenses:check
 
 Check the exit status of every command; do not pipe a gate through `tail` without `pipefail`.
 
-## 4. Gate
-
-```bash
-npm run check:changes
-```
-
-A dependency change selects the full gate. If it fails, find the update responsible (bisect by
-reverting packages), revert that one, record why, and run the gate again. Give up after three
-rounds and report instead of pushing.
-
-## 5. Commit
+## 4. Commit
 
 One commit, Conventional Commits with scope:
 
@@ -130,7 +138,24 @@ Not applied: <pkg> <old> → <new> (incompatible), ...
 Supersedes #<n>, #<n>, ...
 ```
 
-End with the co-author line the session's attribution instructions give.
+End with the co-author line the session's attribution instructions give, if any; do not invent one.
+If no applicable changes remain, do not create an empty commit.
+Remove this run's clean worktree and temporary branch, release its lease, and report the skipped
+packages. Do not run a full dependency gate when no dependency files changed.
+
+## 5. Gate the final commit
+
+After committing and allowing the pre-commit hook to finish, run:
+
+```bash
+npm run check:changes
+```
+
+A dependency change selects the full gate. If it fails, find the update responsible (bisect by
+reverting packages), revert that one, record why, amend the dependency commit, and run the gate
+again. Give up after three rounds and report instead of pushing. A passed gate remains valid only
+while HEAD, the index and the worktree are unchanged; every amendment, rebase or generated-file
+change requires a fresh gate before pushing. Do not modify unrelated product code to pass a gate.
 
 ## Push
 
@@ -147,12 +172,18 @@ git push origin HEAD:main
 
 If any condition fails, do not push. Keep the branch and worktree, and say so in the report.
 
-After a successful push, remove the worktree and the temporary branch:
+After pushing, fetch and verify that the pushed SHA is on `origin/main` (equal to its tip, or an
+ancestor if another session has since pushed). Inspect GitHub Actions for that exact SHA and wait
+for the applicable push workflows to finish. Report every failure, timeout, or missing run as
+unverified; a successful push alone is not a successful CI result. Do not force-push or automatically
+revert a published commit. Keep the worktree and branch if verification fails or remains pending.
+
+After verifying the push and its CI, remove only this run's clean worktree and temporary branch:
 
 ```bash
 cd <repository root>
-git worktree remove .claude/worktrees/deps-<yyyy-mm-dd>
-git branch -D deps/<yyyy-mm-dd>
+git worktree remove <worktree-path>
+git branch -d deps/<run-id>
 ```
 
 Dependabot closes the applied pull requests by itself. Leave the incompatible ones open: they are
@@ -163,7 +194,8 @@ the reminder list. Close a pull request by hand only when it is permanently unwa
 
 End with a short report in the maintainer's language:
 
-1. **Applied** — packages and versions; the pushed commit SHA, or why nothing was pushed.
+1. **Applied** — packages and versions; the pushed commit SHA and CI result, or why nothing was
+   pushed. Include retained branch/worktree paths when cleanup was not possible.
 2. **Needs a decision** — license stop conditions, with what changed and the options.
 3. **Not applied (incompatible)** — each with a one-line effort estimate.
 4. **Capture layer** — affected crates and the reminder to run `smoke:capture` and `soak:capture`.
@@ -172,10 +204,19 @@ When there were no open Dependabot pull requests, say so in one line.
 
 ## Scheduled run
 
-The weekly run is a Claude desktop scheduled task on the maintainer's Mac, Monday 09:00 local
-time, with this repository as its folder and a prompt such as:
+The weekly run is a local scheduled task on the maintainer's always-on Mac, Monday 09:00
+(Asia/Shanghai), with this repository as its folder. Read the latest skill on every run rather
+than copying its procedure into the schedule. Use a prompt such as:
 
-> Use the plvs-deps-update skill to handle this week's Dependabot pull requests.
+> Use $plvs-deps-update to handle this week's Dependabot pull requests. Follow the latest skill
+> and repository instructions, acquire its repository-wide lease, and isolate dependency edits
+> from the main checkout. Push only within the skill's authority after its final-commit gates
+> pass, verify the pushed SHA and CI, and report the result in Chinese.
 
-A scheduled task runs only on the machine where it was created, while that machine is awake and the
-Claude app is running. When moving to another machine, create the task there and delete the old one.
+For a desktop scheduler, keep that machine awake, the scheduling application running, and the
+repository available. Verify the scheduled execution environment can create its worktree, install
+dependencies, run the gates, and authenticate to GitHub without interactive approval. A prose
+authorization does not override sandbox/network restrictions. Test the prompt manually before
+enabling the weekly run, then review the first scheduled results. Ensure only one scheduler owns
+this weekly job; when moving it, disable the old schedule. An execution needing a decision stops
+the affected package and reports it; it must not wait indefinitely for an unattended answer.
