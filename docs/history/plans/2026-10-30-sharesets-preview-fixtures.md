@@ -31,6 +31,9 @@ deploying and dispatching the Sharesets deployment wait for the user.
 - Delete `scripts/sharesets-preview-audio.mjs` and its test.
 - Verify: `npm run sharesets:fixture -- --write --stems "<archive>"`, then check mode passes.
   Record both fixture sizes and the `sharesetsPreview` chunk size from `vite build`.
+  Measured: stereo 4.27 MB (was 4.28), 5.1 4.42 MB (was 4.48); `sharesetsPreview` chunk 9.20 MB
+  (was 9.26). Readings at the window end match `homepageStereoV1`: Short-term −11.1, Integrated
+  −13.2, True Peak −0.70.
 
 ## 4. Fixture-dependent tests and docs
 

@@ -11,14 +11,10 @@ use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, SpectrumFrameResult, VisualHistEntry,
 };
 
-const STEREO_SOURCE_SHA256: &str =
-  "8cff42b901afc810d101298b0424b3bbde472f4f6551bcc8732de0d57984d988";
-const SURROUND_51_SOURCE_SHA256: &str =
-  "877339010e236b200839faea257271c5917506fe1e6125405b07aeaadb979488";
 const DIALOGUE_SURROUND_SOURCE_SHA256: &str =
   "bff057f193f46cdf466f00968ac46a3ea6e4a4713ee8ef07d74a232fa8fbb8a5";
-const DISCOVERY_WINDOW_START_MS: u64 = 18_000;
-const DISCOVERY_WINDOW_END_MS: u64 = 78_000;
+// The dialogue layouts select their frame by speech, so they retain frames up to this bound.
+const DIALOGUE_RETAIN_UNTIL_MS: u64 = 78_000;
 const FREQUENCY_BIN_STRIDE: usize = 4;
 const HISTORY_WINDOW_MS: u64 = 60_000;
 // Visual rows trail their frame by less than this, so earlier frames cannot contribute rows.
@@ -103,8 +99,8 @@ impl PreviewFixtureLayout {
 
   fn id(self) -> &'static str {
     match self {
-      Self::Stereo => "plvs-sharesets-discovery-stereo-v1",
-      Self::Surround51 => "plvs-sharesets-discovery-5-1-v1",
+      Self::Stereo => "plvs-sharesets-crescendo-stereo-v1",
+      Self::Surround51 => "plvs-sharesets-crescendo-5-1-v1",
       Self::DialogueStereo => "plvs-sharesets-dialogue-stereo-v1",
       Self::DialogueSurround51 => "plvs-sharesets-dialogue-5-1-v1",
       Self::HomepageStereo => "plvs-homepage-stereo-v1",
@@ -123,8 +119,8 @@ impl PreviewFixtureLayout {
 
   fn file_name(self) -> &'static str {
     match self {
-      Self::Stereo => "discovery-hero.wav",
-      Self::Surround51 => "discovery-hero-5-1-derived.wav",
+      Self::Stereo => "full-band-crescendo-arranged.wav",
+      Self::Surround51 => "full-band-crescendo-5-1.wav",
       Self::DialogueStereo => "stereo-antiphase.wav",
       Self::DialogueSurround51 => "surround-dialogue-preview.wav",
       Self::HomepageStereo => "full-band-crescendo-stereo.wav",
@@ -134,8 +130,8 @@ impl PreviewFixtureLayout {
 
   fn title(self) -> &'static str {
     match self {
-      Self::Stereo => "Discovery",
-      Self::Surround51 => "Discovery — deterministic 5.1 derivative",
+      Self::Stereo => "Full Band Crescendo",
+      Self::Surround51 => "Full Band Crescendo — 5.1 stem mix",
       Self::DialogueStereo => "PLVS dialogue benchmark — stereo antiphase",
       Self::DialogueSurround51 => "PLVS dialogue benchmark — surround dialogue preview",
       Self::HomepageStereo => "Full Band Crescendo",
@@ -155,10 +151,10 @@ impl PreviewFixtureLayout {
 
   fn expected_source_sha256(self) -> Option<&'static str> {
     match self {
-      Self::Stereo => Some(STEREO_SOURCE_SHA256),
-      Self::Surround51 => Some(SURROUND_51_SOURCE_SHA256),
-      // The homepage driver verifies its committed or archived source before deriving this input.
-      Self::DialogueStereo
+      // The music drivers verify their committed or archived source before deriving this input.
+      Self::Stereo
+      | Self::Surround51
+      | Self::DialogueStereo
       | Self::DialogueSurround51
       | Self::HomepageStereo
       | Self::Homepage714 => None,
@@ -183,41 +179,36 @@ impl PreviewFixtureLayout {
     matches!(self, Self::DialogueStereo | Self::DialogueSurround51)
   }
 
-  /// Resolves the window end: fixed for Discovery, required from the caller for the homepage, and
-  /// unused for the dialogue layouts.
+  /// Resolves the window end: required from the caller for the music layouts, and unused for the
+  /// dialogue layouts.
   fn window_end_ms(self, requested: Option<u64>) -> Result<Option<u64>, String> {
     match (self, requested) {
-      (Self::HomepageStereo | Self::Homepage714, Some(end)) if end >= HISTORY_WINDOW_MS => {
-        Ok(Some(end))
-      }
-      (Self::HomepageStereo | Self::Homepage714, Some(end)) => Err(format!(
-        "Homepage window end {end} ms leaves less than {HISTORY_WINDOW_MS} ms of history"
-      )),
-      (Self::HomepageStereo | Self::Homepage714, None) => {
-        Err("Homepage layouts need a window end in milliseconds".to_string())
-      }
-      (Self::Stereo | Self::Surround51, None) => Ok(Some(DISCOVERY_WINDOW_END_MS)),
       (Self::DialogueStereo | Self::DialogueSurround51, None) => Ok(None),
-      (_, Some(_)) => Err(format!("{self:?} has a fixed window; drop the window end")),
+      (Self::DialogueStereo | Self::DialogueSurround51, Some(_)) => {
+        Err(format!("{self:?} has a fixed window; drop the window end"))
+      }
+      (_, Some(end)) if end >= HISTORY_WINDOW_MS => Ok(Some(end)),
+      (_, Some(end)) => Err(format!(
+        "Window end {end} ms leaves less than {HISTORY_WINDOW_MS} ms of history"
+      )),
+      (_, None) => Err(format!("{self:?} needs a window end in milliseconds")),
     }
   }
 
   fn derivation(self) -> Option<FixtureDerivation> {
     match self {
-      Self::Surround51 => Some(FixtureDerivation {
-        source_file_name: "discovery-hero.wav".to_string(),
-        source_sha256: STEREO_SOURCE_SHA256.to_string(),
-        recipe: "plvs-sharesets-stereo-to-5-1".to_string(),
-        recipe_version: 1,
-      }),
       Self::DialogueSurround51 => Some(FixtureDerivation {
         source_file_name: "surround-dialogue.wav".to_string(),
         source_sha256: DIALOGUE_SURROUND_SOURCE_SHA256.to_string(),
         recipe: "plvs-sharesets-dialogue-preview-lfe-minus-18db".to_string(),
         recipe_version: 1,
       }),
-      // The homepage driver records its own derivation (source hash, gain, stem mix).
-      Self::Stereo | Self::DialogueStereo | Self::HomepageStereo | Self::Homepage714 => None,
+      // The music drivers record their own derivation (source hash, gain, stem mix).
+      Self::Stereo
+      | Self::Surround51
+      | Self::DialogueStereo
+      | Self::HomepageStereo
+      | Self::Homepage714 => None,
     }
   }
 
@@ -233,16 +224,18 @@ impl PreviewFixtureLayout {
   fn artist(self) -> &'static str {
     match self {
       Self::DialogueStereo | Self::DialogueSurround51 => "PLVS dialogue benchmark / LibriSpeech",
-      Self::HomepageStereo | Self::Homepage714 => "SounDoer (generated with Suno)",
-      Self::Stereo | Self::Surround51 => "Scott Buckley",
+      Self::Stereo | Self::Surround51 | Self::HomepageStereo | Self::Homepage714 => {
+        "SounDoer (generated with Suno)"
+      }
     }
   }
 
   fn license(self) -> &'static str {
-    if self.is_homepage() {
-      "All rights reserved by SounDoer"
-    } else {
-      "CC BY 4.0"
+    match self {
+      Self::DialogueStereo | Self::DialogueSurround51 => "CC BY 4.0",
+      Self::Stereo | Self::Surround51 | Self::HomepageStereo | Self::Homepage714 => {
+        "All rights reserved by SounDoer"
+      }
     }
   }
 }
@@ -466,7 +459,7 @@ pub fn generate_sharesets_preview_fixture(
     dialogue_vad_engine: VadEngineKind::default(),
     deterministic_spectral_time: true,
   };
-  let retain_until_ms = fixed_window_end_ms.unwrap_or(DISCOVERY_WINDOW_END_MS);
+  let retain_until_ms = fixed_window_end_ms.unwrap_or(DIALOGUE_RETAIN_UNTIL_MS);
   // Homepage sources are long; frames well before the window cannot contribute and are dropped
   // to bound memory. The Sharesets layouts keep their original retention exactly.
   let retain_from_ms = if layout.is_homepage() {
@@ -507,10 +500,7 @@ pub fn generate_sharesets_preview_fixture(
       .ok_or_else(|| "Sharesets preview analysis produced no selected frame".to_string())?
   };
   let window_end_ms = fixed_window_end_ms.unwrap_or(frame.timestamp_ms);
-  let window_start_ms = match layout {
-    PreviewFixtureLayout::Stereo | PreviewFixtureLayout::Surround51 => DISCOVERY_WINDOW_START_MS,
-    _ => window_end_ms.saturating_sub(HISTORY_WINDOW_MS),
-  };
+  let window_start_ms = window_end_ms.saturating_sub(HISTORY_WINDOW_MS);
   let band_centers_hz = frames
     .iter()
     .filter(|frame| frame.timestamp_ms <= window_end_ms)
@@ -754,24 +744,17 @@ mod tests {
   }
 
   #[test]
-  fn selected_window_is_sixty_seconds_ending_at_the_hero_frame() {
-    assert_eq!(DISCOVERY_WINDOW_START_MS, 18_000);
-    assert_eq!(DISCOVERY_WINDOW_END_MS - DISCOVERY_WINDOW_START_MS, 60_000);
-  }
-
-  #[test]
-  fn window_end_is_fixed_for_discovery_and_required_for_the_homepage() {
+  fn window_end_is_required_for_the_music_layouts_and_unused_for_dialogue() {
     use PreviewFixtureLayout::*;
-    assert_eq!(
-      Stereo.window_end_ms(None),
-      Ok(Some(DISCOVERY_WINDOW_END_MS))
-    );
-    assert_eq!(
-      Surround51.window_end_ms(None),
-      Ok(Some(DISCOVERY_WINDOW_END_MS))
-    );
+    for layout in [Stereo, Surround51] {
+      assert!(layout.window_end_ms(None).is_err());
+      assert!(layout.window_end_ms(Some(59_999)).is_err());
+      assert_eq!(layout.window_end_ms(Some(75_000)), Ok(Some(75_000)));
+      assert_eq!(layout.expected_source_sha256(), None);
+      assert!(layout.id().starts_with("plvs-sharesets-crescendo-"));
+      assert_eq!(layout.license(), "All rights reserved by SounDoer");
+    }
     assert_eq!(DialogueStereo.window_end_ms(None), Ok(None));
-    assert!(Stereo.window_end_ms(Some(90_000)).is_err());
     assert!(DialogueSurround51.window_end_ms(Some(90_000)).is_err());
     assert!(HomepageStereo.window_end_ms(None).is_err());
     assert!(Homepage714.window_end_ms(Some(59_999)).is_err());

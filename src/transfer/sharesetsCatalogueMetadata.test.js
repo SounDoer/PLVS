@@ -48,7 +48,7 @@ describe("Sharesets Catalogue metadata", () => {
         contractVersion: 1,
         renderer: { name: "plvs-sharesets-preview", version: 1 },
         fixture: {
-          id: "plvs-sharesets-discovery-stereo-v1",
+          id: "plvs-sharesets-crescendo-stereo-v1",
           version: 1,
           sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         },
@@ -119,7 +119,7 @@ describe("Sharesets Catalogue metadata", () => {
       expect.objectContaining({
         id: "preset-workspace-5-1",
         fixtureKey: "5.1",
-        fixtureHash: "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1",
+        fixtureHash: "sha256:9a9c0fcd70ef57aeef0d3817fa38f1d466fe09a2691da58f151b29bb493e9703",
       }),
     ]);
   });
@@ -138,7 +138,7 @@ describe("Sharesets Catalogue metadata", () => {
     expect(metadata.preview).toMatchObject({
       renderer: { name: "plvs-theme-gallery", version: 1 },
       fixture: {
-        id: "plvs-sharesets-discovery-stereo-v1",
+        id: "plvs-sharesets-crescendo-stereo-v1",
         version: 1,
         sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
       },

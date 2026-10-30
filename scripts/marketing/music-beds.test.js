@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  BED_51_CHANNELS,
+  BED_51_PLACEMENT,
   BED_714_CHANNELS,
   BED_714_PLACEMENT,
   BED_STEREO_PLACEMENT,
@@ -152,6 +154,44 @@ describe("mixBed", () => {
       "Synth",
       "Woodwinds",
     ]);
+  });
+
+  it("folds the 7.1.4 placement into 5.1 without losing a stem", () => {
+    // Front heights fold into L/R, backs and rear heights into Ls/Rs; a stem keeps its largest
+    // gain; a filtered term is dropped where the channel already carries that stem unfiltered.
+    const fold = { Ltf: "L", Rtf: "R", Lb: "Ls", Rb: "Rs", Ltr: "Ls", Rtr: "Rs" };
+    const expected = {};
+    for (const [channel, terms] of Object.entries(BED_714_PLACEMENT)) {
+      const target = (expected[fold[channel] ?? channel] ??= new Map());
+      for (const [stem, side, gain, filter] of terms) {
+        const key = `${stem}|${side}|${filter ?? ""}`;
+        target.set(key, Math.max(target.get(key) ?? 0, gain));
+      }
+    }
+    for (const [channel, terms] of Object.entries(expected)) {
+      if (channel === "LFE") continue;
+      for (const key of [...terms.keys()]) {
+        const [stem, side, filter] = key.split("|");
+        if (filter && terms.has(`${stem}|${side}|`)) terms.delete(key);
+      }
+    }
+    const asSorted = (placement) =>
+      Object.fromEntries(
+        Object.entries(placement).map(([channel, terms]) => [
+          channel,
+          [...terms].map(([key, gain]) => `${key}|${gain}`).sort(),
+        ])
+      );
+    const actual = Object.fromEntries(
+      Object.entries(BED_51_PLACEMENT).map(([channel, terms]) => [
+        channel,
+        new Map(
+          terms.map(([stem, side, gain, filter]) => [`${stem}|${side}|${filter ?? ""}`, gain])
+        ),
+      ])
+    );
+    expect(Object.keys(BED_51_PLACEMENT).sort()).toEqual([...BED_51_CHANNELS].sort());
+    expect(asSorted(actual)).toEqual(asSorted(expected));
   });
 });
 

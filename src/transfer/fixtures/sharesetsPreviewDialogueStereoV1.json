@@ -53,13 +53,13 @@
       "momentaryLufs": -23.1188614557382,
       "shortTermLufs": -23.208868903625564,
       "integratedLufs": -20.558325043177923,
-      "rangeLu": 5.683055765274371,
+      "rangeLu": 5.502764550832243,
       "truePeakDbtp": -2.9901214562969827
     },
     "correlation": 0.9993833146437535,
     "sideToMidDb": -21.51027404900439,
-    "mMaxLufs": -14.23585116211315,
-    "stMaxLufs": -17.95509954861618,
+    "mMaxLufs": -14.230736102914591,
+    "stMaxLufs": -17.933857989502748,
     "dialogue": {
       "integratedLufs": -19.855604243239338,
       "rangeLu": 6.862806655605166,
@@ -70,8 +70,8 @@
   "loudnessHistory": [
     {
       "atMs": 100,
-      "momentaryLufs": -22.63207722838715,
-      "shortTermLufs": -22.63207722838715,
+      "momentaryLufs": -28.652677141666775,
+      "shortTermLufs": -37.40328977558377,
       "waveformMin": [-0.13737804, -0.11677133],
       "waveformMax": [0.13952124, 0.11859306],
       "waveformSubPairs": [
@@ -91,8 +91,8 @@
     },
     {
       "atMs": 200,
-      "momentaryLufs": -22.366213653438205,
-      "shortTermLufs": -22.366213653438205,
+      "momentaryLufs": -25.376513610078018,
+      "shortTermLufs": -34.12712624399502,
       "waveformMin": [-0.1345756, -0.11438927],
       "waveformMax": [0.14471574, 0.123008385],
       "waveformSubPairs": [
@@ -112,8 +112,8 @@
     },
     {
       "atMs": 300,
-      "momentaryLufs": -23.260800783844974,
-      "shortTermLufs": -23.260800783844974,
+      "momentaryLufs": -24.510188149927973,
+      "shortTermLufs": -33.26080078384498,
       "waveformMin": [-0.11613794, -0.09871725],
       "waveformMax": [0.12509677, 0.10633224],
       "waveformSubPairs": [
@@ -134,7 +134,7 @@
     {
       "atMs": 400,
       "momentaryLufs": -24.056708456934047,
-      "shortTermLufs": -24.056708456934047,
+      "shortTermLufs": -32.80732109085105,
       "waveformMin": [-0.08154895, -0.06931661],
       "waveformMax": [0.08547229, 0.072651446],
       "waveformSubPairs": [
@@ -155,7 +155,7 @@
     {
       "atMs": 500,
       "momentaryLufs": -24.391758788208115,
-      "shortTermLufs": -23.978167637676744,
+      "shortTermLufs": -31.759680141513176,
       "waveformMin": [-0.12561265, -0.10677075],
       "waveformMax": [0.13739288, 0.11678393],
       "waveformSubPairs": [
@@ -176,7 +176,7 @@
     {
       "atMs": 600,
       "momentaryLufs": -24.22628938886371,
-      "shortTermLufs": -23.514045456188533,
+      "shortTermLufs": -30.50374549954872,
       "waveformMin": [-0.14260584, -0.121214956],
       "waveformMax": [0.14687045, 0.12483988],
       "waveformSubPairs": [
@@ -197,7 +197,7 @@
     {
       "atMs": 700,
       "momentaryLufs": -23.92711693367877,
-      "shortTermLufs": -23.62895523029079,
+      "shortTermLufs": -29.949187377344842,
       "waveformMin": [-0.13822104, -0.11748788],
       "waveformMax": [0.14212164, 0.12080339],
       "waveformSubPairs": [
@@ -218,7 +218,7 @@
     {
       "atMs": 800,
       "momentaryLufs": -23.93898761012953,
-      "shortTermLufs": -23.997449174747338,
+      "shortTermLufs": -29.737761852024526,
       "waveformMin": [-0.07680897, -0.06528762],
       "waveformMax": [0.07803296, 0.06632802],
       "waveformSubPairs": [
@@ -240,7 +240,7 @@
     {
       "atMs": 900,
       "momentaryLufs": -24.2696310679133,
-      "shortTermLufs": -24.105298478056486,
+      "shortTermLufs": -29.33408593085986,
       "waveformMin": [-0.1288205, -0.10949742],
       "waveformMax": [0.11814525, 0.10042347],
       "waveformSubPairs": [
@@ -261,7 +261,7 @@
     {
       "atMs": 1000,
       "momentaryLufs": -24.361567816795016,
-      "shortTermLufs": -23.833492147055576,
+      "shortTermLufs": -28.604704694252195,
       "waveformMin": [-0.15125984, -0.12857085],
       "waveformMax": [0.13214359, 0.112322055],
       "waveformSubPairs": [
@@ -282,7 +282,7 @@
     {
       "atMs": 1100,
       "momentaryLufs": -24.00512045297963,
-      "shortTermLufs": -23.762003386240693,
+      "shortTermLufs": -28.11928908185507,
       "waveformMin": [-0.15124641, -0.13479193],
       "waveformMax": [0.1375445, 0.11551542],
       "waveformSubPairs": [
@@ -303,7 +303,7 @@
     {
       "atMs": 1200,
       "momentaryLufs": -23.85763864202411,
-      "shortTermLufs": -23.95034379405716,
+      "shortTermLufs": -27.929743880777536,
       "waveformMin": [-0.1047247, -0.091992706],
       "waveformMax": [0.09612983, 0.082418695],
       "waveformSubPairs": [
@@ -324,7 +324,7 @@
     {
       "atMs": 1300,
       "momentaryLufs": -24.04295381945203,
-      "shortTermLufs": -24.08602000769711,
+      "shortTermLufs": -27.71779903182536,
       "waveformMin": [-0.118308604, -0.10072057],
       "waveformMax": [0.13068849, 0.10177199],
       "waveformSubPairs": [
@@ -345,7 +345,7 @@
     {
       "atMs": 1400,
       "momentaryLufs": -24.260947320701906,
-      "shortTermLufs": -23.951390198969797,
+      "shortTermLufs": -27.26132238938404,
       "waveformMin": [-0.14684555, -0.11651336],
       "waveformMax": [0.1464417, 0.12601666],
       "waveformSubPairs": [
@@ -366,7 +366,7 @@
     {
       "atMs": 1500,
       "momentaryLufs": -23.94289046064858,
-      "shortTermLufs": -23.809508063690277,
+      "shortTermLufs": -26.819808020330083,
       "waveformMin": [-0.16338672, -0.13206342],
       "waveformMax": [0.15592563, 0.139149],
       "waveformSubPairs": [
@@ -387,7 +387,7 @@
     {
       "atMs": 1600,
       "momentaryLufs": -22.62370205593151,
-      "shortTermLufs": -23.578805454229162,
+      "shortTermLufs": -26.308818174866538,
       "waveformMin": [-0.18710774, -0.21951422],
       "waveformMax": [0.23579976, 0.15615052],
       "waveformSubPairs": [
@@ -408,7 +408,7 @@
     {
       "atMs": 1700,
       "momentaryLufs": -17.898637243606224,
-      "shortTermLufs": -21.673720157863226,
+      "shortTermLufs": -24.14044349127711,
       "waveformMin": [-0.37934235, -0.44299054],
       "waveformMax": [0.42106268, 0.38380453],
       "waveformSubPairs": [
@@ -429,7 +429,7 @@
     {
       "atMs": 1800,
       "momentaryLufs": -17.276504668341175,
-      "shortTermLufs": -21.371736128197373,
+      "shortTermLufs": -23.590223624360934,
       "waveformMin": [-0.3567893, -0.3602941],
       "waveformMax": [0.3355473, 0.38863403],
       "waveformSubPairs": [
@@ -450,7 +450,7 @@
     {
       "atMs": 1900,
       "momentaryLufs": -14.591732598035815,
-      "shortTermLufs": -19.747961970623116,
+      "shortTermLufs": -21.731638508291454,
       "waveformMin": [-0.496761, -0.6173827],
       "waveformMax": [0.70794576, 0.5372587],
       "waveformSubPairs": [
@@ -471,7 +471,7 @@
     {
       "atMs": 2000,
       "momentaryLufs": -14.620537829199282,
-      "shortTermLufs": -19.82497931555192,
+      "shortTermLufs": -21.58589190610873,
       "waveformMin": [-0.19267811, -0.16708641],
       "waveformMax": [0.21156111, 0.17979102],
       "waveformSubPairs": [
@@ -492,7 +492,7 @@
     {
       "atMs": 2100,
       "momentaryLufs": -15.065944101850429,
-      "shortTermLufs": -19.416161916064485,
+      "shortTermLufs": -20.96518151592192,
       "waveformMin": [-0.38088277, -0.5588573],
       "waveformMax": [0.5301324, 0.37961265],
       "waveformSubPairs": [
@@ -513,7 +513,7 @@
     {
       "atMs": 2200,
       "momentaryLufs": -14.23585116211315,
-      "shortTermLufs": -18.920574552995937,
+      "shortTermLufs": -20.267560291970497,
       "waveformMin": [-0.2882696, -0.56848955],
       "waveformMax": [0.55942094, 0.28234142],
       "waveformSubPairs": [
@@ -534,7 +534,7 @@
     {
       "atMs": 2300,
       "momentaryLufs": -15.812048064873457,
-      "shortTermLufs": -18.756206451231236,
+      "shortTermLufs": -19.910140638251935,
       "waveformMin": [-0.28918397, -0.41189605],
       "waveformMax": [0.42371157, 0.23124057],
       "waveformSubPairs": [
@@ -555,7 +555,7 @@
     {
       "atMs": 2400,
       "momentaryLufs": -15.61021081027707,
-      "shortTermLufs": -18.775997303557208,
+      "shortTermLufs": -19.74509743363777,
       "waveformMin": [-0.24969274, -0.24245912],
       "waveformMax": [0.292639, 0.12728733],
       "waveformSubPairs": [
@@ -576,7 +576,7 @@
     {
       "atMs": 2500,
       "momentaryLufs": -16.49033518146538,
-      "shortTermLufs": -18.79472134881409,
+      "shortTermLufs": -19.58653380929034,
       "waveformMin": [-0.20559159, -0.32944098],
       "waveformMax": [0.30790722, 0.23573744],
       "waveformSubPairs": [
@@ -597,7 +597,7 @@
     {
       "atMs": 2600,
       "momentaryLufs": -18.321400920902306,
-      "shortTermLufs": -18.82284036105189,
+      "shortTermLufs": -19.44431942854034,
       "waveformMin": [-0.1905364, -0.30692965],
       "waveformMax": [0.2742716, 0.16386618],
       "waveformSubPairs": [
@@ -618,7 +618,7 @@
     {
       "atMs": 2700,
       "momentaryLufs": -18.01899727221106,
-      "shortTermLufs": -18.638775138193665,
+      "shortTermLufs": -19.096350043800417,
       "waveformMin": [-0.34023008, -0.40669873],
       "waveformMax": [0.4373796, 0.3322657],
       "waveformSubPairs": [
@@ -639,7 +639,7 @@
     {
       "atMs": 2800,
       "momentaryLufs": -17.46700240261802,
-      "shortTermLufs": -18.56306467975735,
+      "shortTermLufs": -18.86269691353178,
       "waveformMin": [-0.26461425, -0.29271263],
       "waveformMax": [0.41135076, 0.24345738],
       "waveformSubPairs": [
@@ -660,7 +660,7 @@
     {
       "atMs": 2900,
       "momentaryLufs": -17.33685557943245,
-      "shortTermLufs": -18.562111754133113,
+      "shortTermLufs": -18.709344322340176,
       "waveformMin": [-0.2563155, -0.35207936],
       "waveformMax": [0.25531736, 0.2776684],
       "waveformSubPairs": [

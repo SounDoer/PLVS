@@ -28,9 +28,9 @@ describe("sharesets Theme preview contract", () => {
       generatorSource: "plvs",
       acceptsPublisherMedia: false,
       interactivePreview: false,
-      fixture: expect.objectContaining({ id: "plvs-sharesets-discovery-stereo-v1", version: 1 }),
+      fixture: expect.objectContaining({ id: "plvs-sharesets-crescendo-stereo-v1", version: 1 }),
       multichannelFixture: expect.objectContaining({
-        id: "plvs-sharesets-discovery-5-1-v1",
+        id: "plvs-sharesets-crescendo-5-1-v1",
         version: 1,
       }),
       fixtureHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),

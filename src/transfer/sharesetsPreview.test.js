@@ -120,7 +120,7 @@ describe("Sharesets preview input contract", () => {
         id: "preset-workspace-5-1",
         fixtureKey: "5.1",
         source: expect.objectContaining({
-          fixtureHash: "sha256:76c5a1b2826d8574668b4b5819689851f43038369f3e39ce14a89068d68f85d1",
+          fixtureHash: "sha256:9a9c0fcd70ef57aeef0d3817fa38f1d466fe09a2691da58f151b29bb493e9703",
         }),
       }),
     ]);

@@ -45,12 +45,13 @@ describe("Sharesets Vectorscope preview data", () => {
     expect(history.rowAt(0).pairs[2]).not.toBe(history.rowAt(0).pairs[3]);
   });
 
-  it("uses measured Discovery data instead of interpolated display curves", () => {
+  it("uses measured Full Band Crescendo data instead of interpolated display curves", () => {
     const values = buildSharesetsPreviewFixtureValues(SHARESETS_PREVIEW_STEREO_V1);
     expect(SHARESETS_PREVIEW_STEREO_V1.source).toMatchObject({
-      fileName: "discovery-hero.wav",
-      windowStartMs: 18000,
-      windowEndMs: 78000,
+      fileName: "full-band-crescendo-arranged.wav",
+      windowStartMs: 15000,
+      windowEndMs: 75000,
+      frequencyBinStride: 4,
     });
     expect(values.historyData.histSourceList).toHaveLength(601);
     expect(values.historyData.visualWaveformHist).toHaveLength(601);

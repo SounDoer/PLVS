@@ -83,6 +83,45 @@ export const BED_714_PLACEMENT = Object.freeze({
   ],
 });
 
+export const BED_51_CHANNELS = Object.freeze(["L", "R", "C", "LFE", "Ls", "Rs"]);
+
+// The 7.1.4 placement folded to 5.1: front heights into L/R, backs and rear heights into Ls/Rs.
+// A stem folded from several channels keeps its largest gain, and the high-passed Keyboard and
+// Percussion terms are dropped because their channel already carries the full-band stem. Unlike
+// make_mc.py the heights are not dropped, which would lose Strings and Woodwinds.
+export const BED_51_PLACEMENT = Object.freeze({
+  L: [
+    ["Drums", "L", 1],
+    ["Keyboard", "L", 0.5],
+    ["Bass", "L", 0.4],
+    ["Brass", "L", 0.8],
+    ["Strings", "L", 0.7],
+  ],
+  R: [
+    ["Drums", "R", 1],
+    ["Keyboard", "R", 0.5],
+    ["Bass", "R", 0.4],
+    ["Brass", "R", 0.8],
+    ["Strings", "R", 0.7],
+  ],
+  C: BED_714_PLACEMENT.C,
+  LFE: BED_714_PLACEMENT.LFE,
+  Ls: [
+    ["Guitar", "L", 1],
+    ["Synth", "L", 0.7],
+    ["Percussion", "L", 1],
+    ["Other", "L", 0.7],
+    ["Woodwinds", "L", 1],
+  ],
+  Rs: [
+    ["Guitar", "R", 1],
+    ["Synth", "R", 0.7],
+    ["Percussion", "R", 1],
+    ["Other", "R", 0.7],
+    ["Woodwinds", "R", 1],
+  ],
+});
+
 export const BED_PEAK_DBFS = -1;
 
 // The homepage beds are an arrangement of the stems, not the song's master: the source span is
