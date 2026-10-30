@@ -19,7 +19,7 @@ const noop = () => {};
 /**
  * A surface the app opens over the workspace. Only the Loudness Profile editor is supported: it is
  * presentational, so a draft of the scene's Profile shows it exactly as the app's Edit does.
- * @param {{ type: string, profile: any, pos: { x: number, y: number } }} overlay
+ * @param {{ overlay: { type: string, profile: any, pos: { x: number, y: number } } }} props
  */
 function Overlay({ overlay }) {
   if (overlay.type !== "loudness-profile-editor") {

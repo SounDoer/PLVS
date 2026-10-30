@@ -16,6 +16,8 @@ declare global {
     /** Per-panel CPU counters for profiling sessions (`src/dev/panelCpuProfiler.js`). */
     __PLVS_PANEL_CPU__?: Record<string, any>;
     __PLVS_SHARESETS_PREVIEW__?: Readonly<Record<string, (...args: any[]) => any>>;
+    /** Render entry point the homepage image renderer page exposes to its Node generator. */
+    __PLVS_HOMEPAGE_PREVIEW__?: Readonly<Record<string, (...args: any[]) => any>>;
   }
 }
 

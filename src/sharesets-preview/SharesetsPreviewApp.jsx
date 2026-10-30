@@ -36,7 +36,7 @@ const noop = () => {};
  *   fullShell?: boolean,
  * }} PreviewScene
  */
-const EMPTY_SCENE = Object.freeze({});
+const EMPTY_SCENE = /** @type {PreviewScene} */ (Object.freeze({}));
 
 /** Transport state for a LIVE session, at the final frame or at a Snapshot offset. */
 function liveTransportState(fixture, snapshot, scene) {
