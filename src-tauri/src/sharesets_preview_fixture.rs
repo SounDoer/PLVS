@@ -20,6 +20,9 @@ const DIALOGUE_SURROUND_SOURCE_SHA256: &str =
 const DISCOVERY_WINDOW_START_MS: u64 = 18_000;
 const DISCOVERY_WINDOW_END_MS: u64 = 78_000;
 const FREQUENCY_BIN_STRIDE: usize = 4;
+const HISTORY_WINDOW_MS: u64 = 60_000;
+// Visual rows trail their frame by less than this, so earlier frames cannot contribute rows.
+const HOMEPAGE_FRAME_LEAD_MS: u64 = 1_000;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -81,6 +84,8 @@ pub enum PreviewFixtureLayout {
   Surround51,
   DialogueStereo,
   DialogueSurround51,
+  HomepageStereo,
+  Homepage714,
 }
 
 impl PreviewFixtureLayout {
@@ -90,6 +95,8 @@ impl PreviewFixtureLayout {
       "5.1" => Ok(Self::Surround51),
       "dialogue-stereo" => Ok(Self::DialogueStereo),
       "dialogue-5.1" => Ok(Self::DialogueSurround51),
+      "homepage-stereo" => Ok(Self::HomepageStereo),
+      "homepage-7.1.4" => Ok(Self::Homepage714),
       _ => Err(format!("Unsupported Sharesets preview layout: {id}")),
     }
   }
@@ -100,6 +107,8 @@ impl PreviewFixtureLayout {
       Self::Surround51 => "plvs-sharesets-discovery-5-1-v1",
       Self::DialogueStereo => "plvs-sharesets-dialogue-stereo-v1",
       Self::DialogueSurround51 => "plvs-sharesets-dialogue-5-1-v1",
+      Self::HomepageStereo => "plvs-homepage-stereo-v1",
+      Self::Homepage714 => "plvs-homepage-7-1-4-v1",
     }
   }
 
@@ -108,6 +117,7 @@ impl PreviewFixtureLayout {
       Self::Stereo => 1,
       Self::Surround51 => 1,
       Self::DialogueStereo | Self::DialogueSurround51 => 1,
+      Self::HomepageStereo | Self::Homepage714 => 1,
     }
   }
 
@@ -117,6 +127,8 @@ impl PreviewFixtureLayout {
       Self::Surround51 => "discovery-hero-5-1-derived.wav",
       Self::DialogueStereo => "stereo-antiphase.wav",
       Self::DialogueSurround51 => "surround-dialogue-preview.wav",
+      Self::HomepageStereo => "full-band-crescendo-stereo.wav",
+      Self::Homepage714 => "full-band-crescendo-7-1-4.wav",
     }
   }
 
@@ -126,13 +138,18 @@ impl PreviewFixtureLayout {
       Self::Surround51 => "Discovery — deterministic 5.1 derivative",
       Self::DialogueStereo => "PLVS dialogue benchmark — stereo antiphase",
       Self::DialogueSurround51 => "PLVS dialogue benchmark — surround dialogue preview",
+      Self::HomepageStereo => "Full Band Crescendo",
+      Self::Homepage714 => "Full Band Crescendo — 7.1.4 stem mix",
     }
   }
 
   fn channel_labels(self) -> &'static [&'static str] {
     match self {
-      Self::Stereo | Self::DialogueStereo => &["L", "R"],
+      Self::Stereo | Self::DialogueStereo | Self::HomepageStereo => &["L", "R"],
       Self::Surround51 | Self::DialogueSurround51 => &["L", "R", "C", "LFE", "Ls", "Rs"],
+      Self::Homepage714 => &[
+        "L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr",
+      ],
     }
   }
 
@@ -140,7 +157,48 @@ impl PreviewFixtureLayout {
     match self {
       Self::Stereo => Some(STEREO_SOURCE_SHA256),
       Self::Surround51 => Some(SURROUND_51_SOURCE_SHA256),
-      Self::DialogueStereo | Self::DialogueSurround51 => None,
+      // The homepage driver verifies its committed or archived source before deriving this input.
+      Self::DialogueStereo
+      | Self::DialogueSurround51
+      | Self::HomepageStereo
+      | Self::Homepage714 => None,
+    }
+  }
+
+  fn is_homepage(self) -> bool {
+    matches!(self, Self::HomepageStereo | Self::Homepage714)
+  }
+
+  fn frequency_bin_stride(self) -> usize {
+    if self.is_homepage() {
+      1
+    } else {
+      FREQUENCY_BIN_STRIDE
+    }
+  }
+
+  /// The dialogue benchmark layouts select the last frame with active speech; every other layout
+  /// selects the frame at its window end.
+  fn selects_last_speech(self) -> bool {
+    matches!(self, Self::DialogueStereo | Self::DialogueSurround51)
+  }
+
+  /// Resolves the window end: fixed for Discovery, required from the caller for the homepage, and
+  /// unused for the dialogue layouts.
+  fn window_end_ms(self, requested: Option<u64>) -> Result<Option<u64>, String> {
+    match (self, requested) {
+      (Self::HomepageStereo | Self::Homepage714, Some(end)) if end >= HISTORY_WINDOW_MS => {
+        Ok(Some(end))
+      }
+      (Self::HomepageStereo | Self::Homepage714, Some(end)) => Err(format!(
+        "Homepage window end {end} ms leaves less than {HISTORY_WINDOW_MS} ms of history"
+      )),
+      (Self::HomepageStereo | Self::Homepage714, None) => {
+        Err("Homepage layouts need a window end in milliseconds".to_string())
+      }
+      (Self::Stereo | Self::Surround51, None) => Ok(Some(DISCOVERY_WINDOW_END_MS)),
+      (Self::DialogueStereo | Self::DialogueSurround51, None) => Ok(None),
+      (_, Some(_)) => Err(format!("{self:?} has a fixed window; drop the window end")),
     }
   }
 
@@ -158,24 +216,34 @@ impl PreviewFixtureLayout {
         recipe: "plvs-sharesets-dialogue-preview-lfe-minus-18db".to_string(),
         recipe_version: 1,
       }),
-      Self::Stereo | Self::DialogueStereo => None,
+      // The homepage driver records its own derivation (source hash, gain, stem mix).
+      Self::Stereo | Self::DialogueStereo | Self::HomepageStereo | Self::Homepage714 => None,
     }
   }
 
+  /// Dialogue analysis runs for the dialogue benchmark and, as in the app's LIVE default, for the
+  /// homepage stereo scenes.
   fn dialogue_gating(self) -> bool {
-    matches!(self, Self::DialogueStereo | Self::DialogueSurround51)
+    matches!(
+      self,
+      Self::DialogueStereo | Self::DialogueSurround51 | Self::HomepageStereo
+    )
   }
 
   fn artist(self) -> &'static str {
-    if self.dialogue_gating() {
-      "PLVS dialogue benchmark / LibriSpeech"
-    } else {
-      "Scott Buckley"
+    match self {
+      Self::DialogueStereo | Self::DialogueSurround51 => "PLVS dialogue benchmark / LibriSpeech",
+      Self::HomepageStereo | Self::Homepage714 => "SounDoer (generated with Suno)",
+      Self::Stereo | Self::Surround51 => "Scott Buckley",
     }
   }
 
   fn license(self) -> &'static str {
-    "CC BY 4.0"
+    if self.is_homepage() {
+      "All rights reserved by SounDoer"
+    } else {
+      "CC BY 4.0"
+    }
   }
 }
 
@@ -293,6 +361,8 @@ struct FixtureWaveformRow {
 struct FixtureSpectrogramRow {
   at_ms: u64,
   db: Vec<f32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  db_b: Option<Vec<f32>>,
 }
 
 fn sha256(path: &Path) -> Result<String, String> {
@@ -331,8 +401,8 @@ fn selected_visual_rows(
     .collect()
 }
 
-fn frequency_indices(length: usize) -> Vec<usize> {
-  let mut indices: Vec<usize> = (0..length).step_by(FREQUENCY_BIN_STRIDE).collect();
+fn frequency_indices(length: usize, stride: usize) -> Vec<usize> {
+  let mut indices: Vec<usize> = (0..length).step_by(stride).collect();
   if length > 0 && indices.last().copied() != Some(length - 1) {
     indices.push(length - 1);
   }
@@ -362,7 +432,9 @@ pub fn generate_sharesets_preview_fixture(
   audio_path: &Path,
   analysis_requests: AnalysisRequests,
   layout: PreviewFixtureLayout,
+  requested_window_end_ms: Option<u64>,
 ) -> Result<SharesetsPreviewFixture, String> {
+  let fixed_window_end_ms = layout.window_end_ms(requested_window_end_ms)?;
   let actual_hash = sha256(audio_path)?;
   if layout
     .expected_source_sha256()
@@ -394,13 +466,23 @@ pub fn generate_sharesets_preview_fixture(
     dialogue_vad_engine: VadEngineKind::default(),
     deterministic_spectral_time: true,
   };
+  let retain_until_ms = fixed_window_end_ms.unwrap_or(DISCOVERY_WINDOW_END_MS);
+  // Homepage sources are long; frames well before the window cannot contribute and are dropped
+  // to bound memory. The Sharesets layouts keep their original retention exactly.
+  let retain_from_ms = if layout.is_homepage() {
+    retain_until_ms.saturating_sub(HISTORY_WINDOW_MS + HOMEPAGE_FRAME_LEAD_MS)
+  } else {
+    0
+  };
   let mut frames = Vec::new();
   let outcome = analyze_file_core(
     path,
     Some(&probe),
     &config,
     |frame| {
-      if frame.timestamp_ms <= DISCOVERY_WINDOW_END_MS || !frame.loudness_hist_batch.is_empty() {
+      if frame.timestamp_ms >= retain_from_ms
+        && (frame.timestamp_ms <= retain_until_ms || !frame.loudness_hist_batch.is_empty())
+      {
         frames.push(frame);
       }
       Ok(())
@@ -411,7 +493,7 @@ pub fn generate_sharesets_preview_fixture(
   if outcome.is_none() {
     return Err("Sharesets preview analysis was cancelled".to_string());
   }
-  let frame = if layout.dialogue_gating() {
+  let frame = if layout.selects_last_speech() {
     frames
       .iter()
       .filter(|frame| frame.dialogue_active_now)
@@ -420,19 +502,14 @@ pub fn generate_sharesets_preview_fixture(
   } else {
     frames
       .iter()
-      .filter(|frame| frame.timestamp_ms <= DISCOVERY_WINDOW_END_MS)
+      .filter(|frame| frame.timestamp_ms <= retain_until_ms)
       .max_by_key(|frame| frame.timestamp_ms)
       .ok_or_else(|| "Sharesets preview analysis produced no selected frame".to_string())?
   };
-  let window_end_ms = if layout.dialogue_gating() {
-    frame.timestamp_ms
-  } else {
-    DISCOVERY_WINDOW_END_MS
-  };
-  let window_start_ms = if layout.dialogue_gating() {
-    window_end_ms.saturating_sub(60_000)
-  } else {
-    DISCOVERY_WINDOW_START_MS
+  let window_end_ms = fixed_window_end_ms.unwrap_or(frame.timestamp_ms);
+  let window_start_ms = match layout {
+    PreviewFixtureLayout::Stereo | PreviewFixtureLayout::Surround51 => DISCOVERY_WINDOW_START_MS,
+    _ => window_end_ms.saturating_sub(HISTORY_WINDOW_MS),
   };
   let band_centers_hz = frames
     .iter()
@@ -440,9 +517,16 @@ pub fn generate_sharesets_preview_fixture(
     .rev()
     .find_map(|frame| {
       (!frame.band_grid_centers_hz.is_empty()).then(|| frame.band_grid_centers_hz.clone())
-    })
-    .ok_or_else(|| "Sharesets preview analysis produced no frequency grid".to_string())?;
-  let frequency_indices = frequency_indices(band_centers_hz.len());
+    });
+  // Only Spectrum and Stereo Map need the grid; a meters-only request set has none.
+  let band_centers_hz = match band_centers_hz {
+    Some(centers) => centers,
+    None if analysis_requests.spectrum.is_empty() && analysis_requests.stereo_map.is_empty() => {
+      Vec::new()
+    }
+    None => return Err("Sharesets preview analysis produced no frequency grid".to_string()),
+  };
+  let frequency_indices = frequency_indices(band_centers_hz.len(), layout.frequency_bin_stride());
   let spectrum_results_by_key = analysis_requests
     .spectrum
     .iter()
@@ -505,6 +589,9 @@ pub fn generate_sharesets_preview_fixture(
             .map(|entry| FixtureSpectrogramRow {
               at_ms: relative_time(row.timestamp_ms, window_start_ms),
               db: select_frequency_values(&entry.smooth_db, &frequency_indices),
+              // Homepage Snapshots in L/R or M/S views resolve the second curve from the row.
+              db_b: (layout.is_homepage() && !entry.smooth_db_b.is_empty())
+                .then(|| select_frequency_values(&entry.smooth_db_b, &frequency_indices)),
             })
         })
         .collect();
@@ -587,7 +674,7 @@ pub fn generate_sharesets_preview_fixture(
       window_start_ms,
       window_end_ms,
       analyzer: "plvs-meter-pipeline-v1".to_string(),
-      frequency_bin_stride: FREQUENCY_BIN_STRIDE,
+      frequency_bin_stride: layout.frequency_bin_stride(),
       derivation: layout.derivation(),
     },
     clock: FixtureClock {
@@ -670,6 +757,58 @@ mod tests {
   fn selected_window_is_sixty_seconds_ending_at_the_hero_frame() {
     assert_eq!(DISCOVERY_WINDOW_START_MS, 18_000);
     assert_eq!(DISCOVERY_WINDOW_END_MS - DISCOVERY_WINDOW_START_MS, 60_000);
+  }
+
+  #[test]
+  fn window_end_is_fixed_for_discovery_and_required_for_the_homepage() {
+    use PreviewFixtureLayout::*;
+    assert_eq!(
+      Stereo.window_end_ms(None),
+      Ok(Some(DISCOVERY_WINDOW_END_MS))
+    );
+    assert_eq!(
+      Surround51.window_end_ms(None),
+      Ok(Some(DISCOVERY_WINDOW_END_MS))
+    );
+    assert_eq!(DialogueStereo.window_end_ms(None), Ok(None));
+    assert!(Stereo.window_end_ms(Some(90_000)).is_err());
+    assert!(DialogueSurround51.window_end_ms(Some(90_000)).is_err());
+    assert!(HomepageStereo.window_end_ms(None).is_err());
+    assert!(Homepage714.window_end_ms(Some(59_999)).is_err());
+    assert_eq!(
+      HomepageStereo.window_end_ms(Some(150_000)),
+      Ok(Some(150_000))
+    );
+  }
+
+  #[test]
+  fn homepage_layouts_keep_every_bin_and_select_the_window_end_frame() {
+    use PreviewFixtureLayout::*;
+    for layout in [HomepageStereo, Homepage714] {
+      assert_eq!(layout.frequency_bin_stride(), 1);
+      assert!(!layout.selects_last_speech());
+      assert_eq!(
+        PreviewFixtureLayout::from_id(match layout {
+          HomepageStereo => "homepage-stereo",
+          _ => "homepage-7.1.4",
+        }),
+        Ok(layout)
+      );
+    }
+    assert!(HomepageStereo.dialogue_gating());
+    assert!(!Homepage714.dialogue_gating());
+    assert_eq!(Homepage714.channel_labels().len(), 12);
+    for layout in [Stereo, Surround51, DialogueStereo, DialogueSurround51] {
+      assert_eq!(layout.frequency_bin_stride(), FREQUENCY_BIN_STRIDE);
+    }
+    assert!(DialogueStereo.selects_last_speech() && DialogueStereo.dialogue_gating());
+  }
+
+  #[test]
+  fn frequency_indices_always_keep_the_last_bin() {
+    assert_eq!(frequency_indices(10, 4), vec![0, 4, 8, 9]);
+    assert_eq!(frequency_indices(9, 4), vec![0, 4, 8]);
+    assert_eq!(frequency_indices(3, 1), vec![0, 1, 2]);
   }
 
   #[test]

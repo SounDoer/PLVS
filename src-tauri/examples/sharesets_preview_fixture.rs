@@ -1,23 +1,25 @@
 use std::path::Path;
 use std::process::ExitCode;
 
+const USAGE: &str = "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1|dialogue-stereo|dialogue-5.1|homepage-stereo|homepage-7.1.4] [window-end-ms]";
+
 fn main() -> ExitCode {
   let mut args = std::env::args().skip(1);
-  let Some(audio_path) = args.next() else {
-    eprintln!("Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path>");
-    return ExitCode::from(2);
-  };
-  let Some(requests_path) = args.next() else {
-    eprintln!(
-      "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1|dialogue-stereo|dialogue-5.1]"
-    );
+  let (Some(audio_path), Some(requests_path)) = (args.next(), args.next()) else {
+    eprintln!("{USAGE}");
     return ExitCode::from(2);
   };
   let layout_id = args.next().unwrap_or_else(|| "stereo".to_string());
+  let window_end_ms = match args.next().map(|value| value.parse::<u64>()) {
+    None => None,
+    Some(Ok(value)) => Some(value),
+    Some(Err(_)) => {
+      eprintln!("{USAGE}");
+      return ExitCode::from(2);
+    }
+  };
   if args.next().is_some() {
-    eprintln!(
-      "Usage: sharesets_preview_fixture <audio-path> <analysis-requests-path> [stereo|5.1|dialogue-stereo|dialogue-5.1]"
-    );
+    eprintln!("{USAGE}");
     return ExitCode::from(2);
   }
   let layout = match app_lib::sharesets_preview_fixture::PreviewFixtureLayout::from_id(&layout_id) {
@@ -41,6 +43,7 @@ fn main() -> ExitCode {
     Path::new(&audio_path),
     requests,
     layout,
+    window_end_ms,
   ) {
     Ok(fixture) => match serde_json::to_string_pretty(&fixture) {
       Ok(json) => {
