@@ -1087,7 +1087,7 @@
       ],
       "noticeSha256": "a528f058925454a0a44abba58938cba3803ac956a37ac96906ccc7c796a75cce"
     },
-    "rust:libc@0.2.190": {
+    "rust:libc@0.2.191": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "6eb3ea83098040d871989f1c13af61e155b29349ab3a1cc3c2646a47dcbeba90"
     },
@@ -1892,7 +1892,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
     },
-    "rust:serde_json@1.0.151": {
+    "rust:serde_json@1.0.154": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
     },
@@ -2829,19 +2829,19 @@
       "license": "MIT",
       "noticeSha256": "62e9ceb179dda002607a604dbd13bf93dd18854ae012277e742bdc0061ecbbd8"
     },
-    "npm:@floating-ui/core@1.7.5": {
+    "npm:@floating-ui/core@1.8.0": {
       "license": "MIT",
       "noticeSha256": "18e22c57b354c4da3b7479f1e99c171e55e32396f68e78c0b8a9d65ea26ab2ab"
     },
-    "npm:@floating-ui/dom@1.7.6": {
+    "npm:@floating-ui/dom@1.8.0": {
       "license": "MIT",
       "noticeSha256": "18e22c57b354c4da3b7479f1e99c171e55e32396f68e78c0b8a9d65ea26ab2ab"
     },
-    "npm:@floating-ui/react-dom@2.1.8": {
+    "npm:@floating-ui/react-dom@2.1.9": {
       "license": "MIT",
       "noticeSha256": "18e22c57b354c4da3b7479f1e99c171e55e32396f68e78c0b8a9d65ea26ab2ab"
     },
-    "npm:@floating-ui/utils@0.2.11": {
+    "npm:@floating-ui/utils@0.2.12": {
       "license": "MIT",
       "noticeSha256": "18e22c57b354c4da3b7479f1e99c171e55e32396f68e78c0b8a9d65ea26ab2ab"
     },
@@ -2849,42 +2849,11 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/primitive@1.1.3": {
+    "npm:@radix-ui/react-arrow@1.1.17": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/primitive@1.1.4": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/primitive@1.1.7": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-arrow@1.1.7": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-arrow@1.1.15": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-collection@1.1.15": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-compose-refs@1.1.2": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-compose-refs@1.1.3": {
+    "npm:@radix-ui/react-collection@1.2.0": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
@@ -2892,81 +2861,23 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-context@1.1.2": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-context@1.1.4": {
+    "npm:@radix-ui/react-dialog@1.3.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-context@1.2.2": {
+    "npm:@radix-ui/react-direction@1.2.0": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-dialog@1.1.17": {
+    "npm:@radix-ui/react-dismissable-layer@1.2.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-direction@1.1.4": {
+    "npm:@radix-ui/react-focus-guards@1.2.0": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-dismissable-layer@1.1.11": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-dismissable-layer@1.1.13": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-dismissable-layer@1.1.19": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-focus-guards@1.1.3": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-focus-guards@1.1.4": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-focus-guards@1.1.6": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-focus-scope@1.1.7": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-focus-scope@1.1.10": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-focus-scope@1.1.16": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-id@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-id@1.1.2": {
+    "npm:@radix-ui/react-focus-scope@1.3.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
@@ -2974,83 +2885,31 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-label@2.1.16": {
+    "npm:@radix-ui/react-label@2.1.17": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-popover@1.1.15": {
+    "npm:@radix-ui/react-popover@1.3.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-popper@1.2.8": {
+    "npm:@radix-ui/react-popper@1.4.0": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-popper@1.3.7": {
+    "npm:@radix-ui/react-portal@1.2.0": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-portal@1.1.9": {
+    "npm:@radix-ui/react-presence@1.1.11": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-portal@1.1.12": {
+    "npm:@radix-ui/react-select@2.4.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-portal@1.1.17": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-presence@1.1.5": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-presence@1.1.6": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-presence@1.1.10": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-primitive@2.1.3": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-primitive@2.1.6": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-primitive@2.1.10": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-primitive@2.1.11": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-select@2.3.7": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-separator@1.1.10": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-slot@1.2.3": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-slot@1.3.0": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-slot@1.3.3": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-slot@1.4.0": {
+    "npm:@radix-ui/react-separator@1.2.0": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
@@ -3058,42 +2917,7 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-use-callback-ref@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-use-callback-ref@1.1.2": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-callback-ref@1.1.4": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-controllable-state@1.2.2": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-controllable-state@1.2.3": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-controllable-state@1.2.6": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-effect-event@0.0.2": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-effect-event@0.0.3": {
+    "npm:@radix-ui/react-use-callback-ref@1.1.5": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
@@ -3101,88 +2925,17 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-use-escape-keydown@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-use-escape-keydown@1.1.2": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-layout-effect@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-use-layout-effect@1.1.2": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
     "npm:@radix-ui/react-use-layout-effect@1.1.4": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-previous@1.1.4": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-use-rect@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
     },
     "npm:@radix-ui/react-use-rect@1.1.4": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-use-size@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
-    },
-    "npm:@radix-ui/react-use-size@1.1.4": {
+    "npm:@radix-ui/react-visually-hidden@1.2.13": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/react-visually-hidden@1.2.11": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
-    "npm:@radix-ui/rect@1.1.1": {
-      "license": "MIT",
-      "supplements": [
-        {
-          "file": "licenses/upstream/0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138.txt",
-          "url": "https://raw.githubusercontent.com/radix-ui/primitives/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE",
-          "sha256": "0e80a2d229d2fd4fc7e8636142ec5d0ff0bc031f14c15b682e2ac01dfd5b5138"
-        }
-      ],
-      "noticeSha256": "4e9dea22818e57126a28e3b953af0489eebef4f76a3b8af44f7eeef70865f86f"
     },
     "npm:@radix-ui/rect@1.1.3": {
       "license": "MIT",
@@ -3204,7 +2957,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
-    "npm:@tauri-apps/plugin-opener@2.7.0": {
+    "npm:@tauri-apps/plugin-opener@2.7.2": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
@@ -3883,7 +3636,7 @@
     "npm:@types/deep-eql@4.0.2": "MIT",
     "npm:@types/esrecurse@4.3.1": "MIT",
     "npm:@types/json-schema@7.0.15": "MIT",
-    "npm:@types/node@24.19.1": "MIT",
+    "npm:@types/node@24.19.2": "MIT",
     "npm:@vitejs/plugin-react@6.1.2": "MIT",
     "npm:@vitest/coverage-v8@4.1.8": "MIT",
     "npm:@vitest/expect@4.1.8": "MIT",
@@ -4035,7 +3788,7 @@
     "npm:magic-string@0.30.21": "MIT",
     "npm:magicast@0.5.2": "MIT",
     "npm:make-dir@4.0.0": "MIT",
-    "npm:marked@18.0.14": "MIT",
+    "npm:marked@18.1.2": "MIT",
     "npm:merge-stream@2.0.0": "MIT",
     "npm:micromatch@4.0.8": "MIT",
     "npm:mimic-fn@4.0.0": "MIT",
@@ -4065,7 +3818,7 @@
     "npm:playwright@1.64.1": "Apache-2.0",
     "npm:postcss@8.5.32": "MIT",
     "npm:prelude-ls@1.2.1": "MIT",
-    "npm:prettier@3.9.5": "MIT",
+    "npm:prettier@3.9.10": "MIT",
     "npm:pretty-format@27.5.1": "MIT",
     "npm:punycode@2.3.1": "MIT",
     "npm:qified@0.10.1": "MIT",
@@ -4138,7 +3891,7 @@
     "rust:autocfg@1.5.1": "Apache-2.0 OR MIT",
     "rust:cargo_toml@1.0.1": "Apache-2.0 OR MIT",
     "rust:cast@0.3.0": "MIT OR Apache-2.0",
-    "rust:cc@1.9.0": "MIT OR Apache-2.0",
+    "rust:cc@1.10.0": "MIT OR Apache-2.0",
     "rust:cfg_aliases@0.2.2": "MIT",
     "rust:cfg-expr@0.15.8": "MIT OR Apache-2.0",
     "rust:ciborium-io@0.2.2": "Apache-2.0",
