@@ -6,9 +6,12 @@ describe("Sharesets preview browser entry", () => {
     const html = readFileSync("sharesets-preview.html", "utf8");
     const entry = readFileSync("src/sharesets-preview/main.jsx", "utf8");
     const vite = readFileSync("vite.config.js", "utf8");
+    const generator = readFileSync("scripts/generate-sharesets-previews.mjs", "utf8");
 
     expect(html).toContain('src="/src/sharesets-preview/main.jsx"');
-    expect(vite).toContain('sharesetsPreview: fileURLToPath(new URL("./sharesets-preview.html"');
+    // The generator builds the entry alone, so the app bundle never carries the preview fixtures.
+    expect(vite).not.toContain("sharesets-preview.html");
+    expect(generator).toContain('input: { sharesetsPreview: resolve("sharesets-preview.html") }');
     expect(entry).not.toMatch(/from ["']\.\.\/main/);
     expect(entry).not.toMatch(/from ["']\.\.\/App/);
     expect(entry).not.toContain("@tauri-apps");

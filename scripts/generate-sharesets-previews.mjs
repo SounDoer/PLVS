@@ -159,7 +159,13 @@ export async function createSharesetsPreviewBrowserRuntime() {
     await build({
       configFile: resolve("vite.config.js"),
       logLevel: "silent",
-      build: { outDir: site, emptyOutDir: true },
+      // The preview entry is built alone: it is not an app build input, so the app bundle never
+      // carries the preview fixtures.
+      build: {
+        outDir: site,
+        emptyOutDir: true,
+        rollupOptions: { input: { sharesetsPreview: resolve("sharesets-preview.html") } },
+      },
     });
     server = await startStaticServer(site);
     browser = await chromium.launch({ headless: true });

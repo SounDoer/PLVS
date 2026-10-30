@@ -96,7 +96,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL("./index.html", import.meta.url)),
-        sharesetsPreview: fileURLToPath(new URL("./sharesets-preview.html", import.meta.url)),
       },
     },
     // PLVS is a local Tauri app with one primary route; keep the warning for real growth.
