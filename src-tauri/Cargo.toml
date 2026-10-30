@@ -96,7 +96,7 @@ window-vibrancy = "0.8"
 cairo-rs = { version = "0.18.5", features = ["png"] }
 cpal = { version = "0.18.1", features = ["pulseaudio"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
-libloading = "0.7.4"
+libloading = "0.9.0"
 pulseaudio = "0.3"
 futures = "0.3"
 libc = "0.2"
