@@ -91,6 +91,45 @@ describe("self-hosted runners on a public repository", () => {
     expect(workflow).not.toContain("secrets.");
   });
 
+  it("runs weekly four-hour capture diagnostics without weakening release gates", () => {
+    const text = workflows["capture-soak.yml"];
+    const workflow = parse(text);
+    expect(workflow.on.schedule).toEqual([{ cron: "0 18 * * 1" }]);
+    expect(workflow.on).toHaveProperty("workflow_dispatch");
+    expect(workflow.concurrency).toEqual({ group: "capture-soak", "cancel-in-progress": false });
+    const job = workflow.jobs["capture-soak"];
+    expect(job.strategy["fail-fast"]).toBe(false);
+    expect(job.strategy.matrix.include.map(({ platform }) => platform)).toEqual([
+      "windows",
+      "macos",
+      "linux",
+    ]);
+    expect(job["timeout-minutes"]).toBeGreaterThan(240);
+    const steps = job.steps;
+    const index = (name) => steps.findIndex((step) => step.name === name);
+    expect(index("Require the commit on main")).toBe(index("Checkout the exact commit") + 1);
+    expect(text).toContain(BUILD_HARNESS);
+    expect(index("Capture smoke")).toBeGreaterThan(index("Build the capture harness"));
+    expect(index("Four-hour capture soak")).toBeGreaterThan(
+      index("Verify exact-commit smoke evidence")
+    );
+    expect(steps[index("Capture smoke")].run).toContain("npm run smoke:capture -- --wait");
+    expect(steps[index("Four-hour capture soak")].run).toContain(
+      "npm run soak:capture -- --seconds 14400 --every 10 --wait"
+    );
+    for (const name of ["Capture smoke", "Four-hour capture soak"]) {
+      expect(steps[index(name)]).not.toHaveProperty("if");
+      expect(steps[index(name)]).not.toHaveProperty("continue-on-error");
+    }
+    // Explicit bash uses pipefail, so tee cannot turn a failed diagnostic green.
+    expect(job.defaults.run.shell).toBe("bash");
+    const upload = steps[index("Upload capture diagnostics")];
+    expect(upload.if).toBe("always()");
+    expect(upload.with.path).toContain("artifacts/soak/");
+    expect(upload.with["retention-days"]).toBe(90);
+    expect(workflows["release.yml"]).not.toContain("capture-soak.yml");
+  });
+
   it.each(["release-package-smoke.yml", "capture-acceptance.yml", "update-acceptance.yml"])(
     "%s bounds every artifact download",
     (file) => {

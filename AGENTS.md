@@ -108,7 +108,7 @@ the release when it fails. It has no bypass flag, deliberately: a gate you can w
 gate. Fixing it means fixing the harness build or the rig. A runner that is off makes the release
 wait and then fail; never add a way to skip a platform.
 
-After capture-layer work, remind the user to run `npm run soak:capture` (4 hours by default). It is the only thing that surfaces leaks and metric drift, it does not gate releases, and it will therefore never run unless someone asks for it. Complete runs are kept in `artifacts/soak/` as the baseline: read a new run's drift against the spread of those runs, recomputed from the files, not only against the script's 0.01 dB limit — a value well under the limit but far outside the usual spread still deserves a look. Treat a red soak as a lead, not a verdict.
+After capture-layer work, remind the user to run `npm run soak:capture` (4 hours by default). It is the only thing that surfaces leaks and metric drift and does not gate releases. `capture-soak.yml` also runs it weekly on all three home runners (Tuesday 02:00 Asia/Shanghai); a scheduled run is not evidence for a later commit. Complete runs are kept in `artifacts/soak/` and weekly Actions artifacts as the baseline: read a new run's drift against the spread of complete runs on the same platform, recomputed from the files, not only against the script's 0.01 dB limit — a value well under the limit but far outside the usual spread still deserves a look. Treat a red soak as a lead, not a verdict.
 
 ## Git workflow
 

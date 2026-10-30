@@ -34,7 +34,7 @@ describe("update acceptance change classification", () => {
     ).toEqual(["src-tauri/vendor/tauri-plugin-updater/src/updater.rs"]);
   });
 
-  it("watches the acceptance harness only when asked, as the nightly run does", () => {
+  it("watches the acceptance harness only when asked, as the scheduled run does", () => {
     const harness = [
       "scripts/run-update-acceptance.mjs",
       "src/agentControl/AgentControlBridge.jsx",

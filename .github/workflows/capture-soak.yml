@@ -1,0 +1,124 @@
+# Weekly diagnostics, independent of the release gates. Only trusted main commits may run on
+# the home rigs; smoke and soak both wait for the machine-wide audio-device lease.
+name: Capture Soak
+
+on:
+  schedule:
+    - cron: "0 18 * * 1" # Tuesday 02:00 Asia/Shanghai (Monday 18:00 UTC).
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full main commit SHA to verify (defaults to the triggering commit)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capture-soak
+  cancel-in-progress: false
+
+jobs:
+  capture-soak:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            labels: [self-hosted, plvs-rig, windows]
+          - platform: macos
+            labels: [self-hosted, plvs-rig, macos]
+          - platform: linux
+            labels: [self-hosted, plvs-rig, linux]
+    runs-on: ${{ matrix.labels }}
+    # Four hours of sampling plus build, smoke, lease waiting and artifact upload.
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
+      COREPACK_ENABLE_AUTO_PIN: 0
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Validate the commit
+        run: |
+          [[ "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid commit SHA" >&2; exit 1; }
+
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require the commit on main
+        run: |
+          git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main || {
+            echo "commit_sha is not reachable from main" >&2
+            exit 1
+          }
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Record run identity
+        run: |
+          mkdir -p artifacts/soak
+          node --input-type=module -e '
+            import { writeFileSync } from "node:fs";
+            writeFileSync("artifacts/soak/run.json", JSON.stringify({
+              sourceSha: process.env.COMMIT_SHA,
+              platform: process.env.PLATFORM,
+              runId: process.env.GITHUB_RUN_ID,
+              runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+              seconds: 14400,
+              every: 10,
+              startedAt: new Date().toISOString()
+            }, null, 2) + "\n");
+          '
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch FFmpeg sidecars
+        run: npm run ffmpeg:fetch
+
+      - name: Build the capture harness
+        run: cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness
+
+      - name: Capture smoke
+        run: npm run smoke:capture -- --wait 2>&1 | tee artifacts/soak/smoke.log
+
+      - name: Verify exact-commit smoke evidence
+        run: node scripts/verify-capture-evidence.mjs --sha "$COMMIT_SHA" --platform "$PLATFORM"
+
+      - name: Four-hour capture soak
+        run: npm run soak:capture -- --seconds 14400 --every 10 --wait 2>&1 | tee artifacts/soak/soak.log
+
+      - name: Summarize the run
+        if: always()
+        run: |
+          echo "Capture diagnostics for $PLATFORM at $COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f artifacts/soak/soak.log ]]; then
+            echo '```text' >> "$GITHUB_STEP_SUMMARY"
+            tail -40 artifacts/soak/soak.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload capture diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: capture-soak-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/soak/
+            artifacts/capture-smoke/
+          if-no-files-found: warn
+          retention-days: 90

@@ -4,7 +4,7 @@
  * Two layers. `UPDATE_ACCEPTANCE_PATHS` is the product update chain: code that downloads,
  * coordinates, signs, packages, launches or installs an update. A release requires acceptance
  * only when it changed. `UPDATE_ACCEPTANCE_HARNESS_PATHS` is what drives the acceptance run
- * itself; changing it cannot change what users receive, so only the nightly run (and a standalone
+ * itself; changing it cannot change what users receive, so only the scheduled run (and a standalone
  * dispatch) also watches it, and a broken harness still fails before release day.
  *
  * Version-only release files are deliberately absent. `lib.rs` is too: most releases touch it, so
@@ -99,7 +99,7 @@ export function normalizeUpdateAcceptanceContent(file, contents) {
 }
 
 /**
- * `since` replaces the last stable tag as the baseline, for the nightly run. `includeHarness` also
+ * `since` replaces the last stable tag as the baseline, for the scheduled run. `includeHarness` also
  * counts changes to the acceptance harness.
  */
 export function updateAcceptanceChangesSinceLastTag({

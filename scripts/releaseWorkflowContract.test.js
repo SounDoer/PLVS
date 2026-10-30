@@ -209,8 +209,8 @@ describe("Immutable Release promotion", () => {
     );
   });
 
-  it("runs nightly update acceptance only for updater changes since the last success", () => {
-    expect(updateAcceptanceWorkflow).toContain('\n  schedule:\n    - cron: "0 18 * * *"\n');
+  it("runs weekly update acceptance only for updater changes since the last success", () => {
+    expect(parse(updateAcceptanceWorkflow).on.schedule).toEqual([{ cron: "0 18 * * 2" }]);
     expect(updateAcceptanceWorkflow).not.toContain("${{ inputs.commit_sha }}");
     expect(updateAcceptanceWorkflow).toContain(
       "actions/workflows/update-acceptance.yml/runs?status=success&per_page=1"

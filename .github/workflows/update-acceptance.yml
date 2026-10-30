@@ -1,7 +1,7 @@
 # Fully automated packaged updater acceptance on the maintainer's logged-in desktop runners.
 # The acceptance-only Agent Control methods drive the real update UI; Actions artifacts carry the
 # exact-SHA evidence between machines and the aggregate verifier. No signing secret is used here.
-# A release call requires the run only when the product update chain changed. The nightly schedule
+# A release call requires the run only when the product update chain changed. The weekly schedule
 # and standalone dispatches also watch the acceptance harness, and a scheduled run tests main's tip
 # only when either changed since the last successful run, so a broken harness surfaces before
 # release day. Linux has no isolated install location: its job installs the real `plvs` package
@@ -11,7 +11,7 @@ name: Update Acceptance
 
 on:
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "0 18 * * 2" # Wednesday 02:00 Asia/Shanghai (Tuesday 18:00 UTC).
   workflow_dispatch:
     inputs:
       commit_sha:

@@ -67,14 +67,32 @@ the ephemeral private key or build cache, upload it as short-lived Actions artif
 three platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
 assembling the Draft, so maintainers never copy acceptance files between machines.
 
-The same workflow also runs nightly (18:00 UTC) against the tip of `main`. A scheduled run compares
+The same workflow also runs weekly on Wednesday at 02:00 Asia/Shanghai (Tuesday 18:00 UTC)
+against the tip of `main`. A scheduled run compares
 with the head commit of the latest successful `update-acceptance.yml` run instead of the last
 release tag, and it also counts the acceptance harness (`UPDATE_ACCEPTANCE_HARNESS_PATHS`: the
 acceptance-only Agent Control surface, the acceptance scripts and workflows). It reaches the runners
 only when either changed since then. A release does not wait for a harness-only change, because the
-harness cannot change what users receive; a broken harness instead fails overnight, and GitHub's
+harness cannot change what users receive; a broken harness instead fails in the weekly run, and GitHub's
 failure notification for the scheduled run is the signal. A standalone dispatch watches both by
 default (`include_harness`).
+
+`capture-soak.yml` runs independently every Tuesday at 02:00 Asia/Shanghai (Monday 18:00 UTC).
+It tests the triggering `main` commit on all three home runners, building the current capture
+harness, passing capture smoke and then running `soak:capture` for 14,400 seconds with 10-second
+sampling. A manual dispatch can select a full commit SHA reachable from `main`. Both diagnostics
+wait for the machine-wide rig lease; the six-hour job timeout includes build and lease waiting.
+Soak is diagnostic and does not gate a release. A busy runner can delay a release until its soak
+job finishes; a scheduled soak never cancels a running release or another soak.
+
+Each platform uploads raw JSONL, smoke evidence, console logs (including drift and RSS summaries),
+and the source SHA/run identity for 90 days, including available partial output on failure.
+The Actions job summary includes the soak log tail. Failed jobs use normal GitHub Actions failure
+notifications; maintainers must enable their Actions notification preferences. Download earlier
+complete runs for the same platform to compare post-warmup spreads against the historical baseline;
+this comparison remains a maintainer review, not an automated cross-run verdict. Partial runs are
+diagnostic only. The computers must be awake with their runner and audio route available.
+This schedule exercises capture stability, not continuous visible UI rendering.
 
 The macOS runner stages the older app in a writable path containing spaces and launches that exact
 bundle executable as a background child of the long-lived runner. This keeps the update helper's
@@ -186,7 +204,7 @@ once on `renderNotSettled` only, recording the retry in `warnings`; a second uns
 other failure still fails. On macOS this script and `run-update-acceptance.mjs` hold
 `caffeinate -d -i` for their own lifetime. That cannot unlock a locked screen or render without a
 display, so the Mac runner must not auto-lock or sleep and needs an active display (a monitor that
-is on, or an HDMI dummy plug) whenever release or nightly acceptance can run; the first nightly
+is on, or an HDMI dummy plug) whenever release or scheduled update acceptance can run; the first nightly
 update acceptance failed on the Mac at 05:19 with the frontend no longer answering.
 
 Check the runners against an earlier release run's candidates without a release:
