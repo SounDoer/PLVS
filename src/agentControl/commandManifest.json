@@ -1916,7 +1916,7 @@
       "id": "axis.shared.update",
       "family": "axis",
       "path": ["axis", "shared", "update"],
-      "usage": "plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision <n> [--dry-run]",
+      "usage": "plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]",
       "summary": "Update a shared workspace axis.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -1930,44 +1930,40 @@
           "name": "frequency|time",
           "mapsTo": "kind",
           "required": true,
-          "value": {
-            "type": "string"
-          }
+          "value": { "type": "string" }
         },
         {
           "name": "file|-",
           "mapsTo": "range",
           "required": true,
-          "value": {
-            "type": "string",
-            "schemaRef": "axis.patch.runtime"
-          }
+          "value": { "type": "string", "schemaRef": "axis.patch.runtime" }
         }
       ],
       "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } },
         {
           "name": "--expected-revision",
           "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
+          "value": { "type": "integer", "minimum": 0 },
           "mapsTo": "expectedRevision"
         },
         {
           "name": "--dry-run",
           "required": false,
-          "value": {
-            "type": "boolean"
-          },
+          "value": { "type": "boolean" },
           "mapsTo": "dryRun"
+        },
+        {
+          "name": "--steps",
+          "mapsTo": "steps",
+          "required": false,
+          "value": { "type": "integer", "minimum": 2, "maximum": 60 }
+        },
+        {
+          "name": "--duration-ms",
+          "mapsTo": "durationMs",
+          "required": false,
+          "value": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       ],
       "wireParams": {
@@ -1975,18 +1971,12 @@
         "additionalProperties": false,
         "required": ["kind", "range", "expectedRevision"],
         "properties": {
-          "kind": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          },
-          "range": {
-            "schemaRef": "axis.patch.runtime"
-          }
+          "kind": { "type": "string" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "dryRun": { "type": "boolean" },
+          "range": { "schemaRef": "axis.patch.runtime" },
+          "steps": { "type": "integer", "minimum": 2, "maximum": 60 },
+          "durationMs": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       }
     },
@@ -2060,7 +2050,7 @@
       "id": "axis.panel.update",
       "family": "axis",
       "path": ["axis", "panel", "update"],
-      "usage": "plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expected-revision <n> [--dry-run]",
+      "usage": "plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]",
       "summary": "Update a panel-local axis.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -2074,52 +2064,46 @@
           "name": "panel-id",
           "mapsTo": "panelId",
           "required": true,
-          "value": {
-            "type": "string"
-          }
+          "value": { "type": "string" }
         },
         {
           "name": "frequency|time",
           "mapsTo": "kind",
           "required": true,
-          "value": {
-            "type": "string"
-          }
+          "value": { "type": "string" }
         },
         {
           "name": "file|-",
           "mapsTo": "patch",
           "required": true,
-          "value": {
-            "type": "string",
-            "schemaRef": "axis.patch.runtime"
-          }
+          "value": { "type": "string", "schemaRef": "axis.patch.runtime" }
         }
       ],
       "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } },
         {
           "name": "--expected-revision",
           "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
+          "value": { "type": "integer", "minimum": 0 },
           "mapsTo": "expectedRevision"
         },
         {
           "name": "--dry-run",
           "required": false,
-          "value": {
-            "type": "boolean"
-          },
+          "value": { "type": "boolean" },
           "mapsTo": "dryRun"
+        },
+        {
+          "name": "--steps",
+          "mapsTo": "steps",
+          "required": false,
+          "value": { "type": "integer", "minimum": 2, "maximum": 60 }
+        },
+        {
+          "name": "--duration-ms",
+          "mapsTo": "durationMs",
+          "required": false,
+          "value": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       ],
       "wireParams": {
@@ -2127,21 +2111,13 @@
         "additionalProperties": false,
         "required": ["panelId", "kind", "patch", "expectedRevision"],
         "properties": {
-          "panelId": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          },
-          "patch": {
-            "schemaRef": "axis.patch.runtime"
-          }
+          "panelId": { "type": "string" },
+          "kind": { "type": "string" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "dryRun": { "type": "boolean" },
+          "patch": { "schemaRef": "axis.patch.runtime" },
+          "steps": { "type": "integer", "minimum": 2, "maximum": 60 },
+          "durationMs": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       }
     },
@@ -2277,7 +2253,7 @@
       "id": "panel.update",
       "family": "panel",
       "path": ["panel", "update"],
-      "usage": "plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run]",
+      "usage": "plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]",
       "summary": "Update one live panel's public controls.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -2291,44 +2267,40 @@
           "name": "panel-id",
           "mapsTo": "panelId",
           "required": true,
-          "value": {
-            "type": "string"
-          }
+          "value": { "type": "string" }
         },
         {
           "name": "file|-",
           "mapsTo": "patch",
           "required": true,
-          "value": {
-            "type": "string",
-            "schemaRef": "panel.patch.runtime"
-          }
+          "value": { "type": "string", "schemaRef": "panel.patch.runtime" }
         }
       ],
       "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } },
         {
           "name": "--expected-revision",
           "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
+          "value": { "type": "integer", "minimum": 0 },
           "mapsTo": "expectedRevision"
         },
         {
           "name": "--dry-run",
           "required": false,
-          "value": {
-            "type": "boolean"
-          },
+          "value": { "type": "boolean" },
           "mapsTo": "dryRun"
+        },
+        {
+          "name": "--steps",
+          "mapsTo": "steps",
+          "required": false,
+          "value": { "type": "integer", "minimum": 2, "maximum": 60 }
+        },
+        {
+          "name": "--duration-ms",
+          "mapsTo": "durationMs",
+          "required": false,
+          "value": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       ],
       "wireParams": {
@@ -2336,18 +2308,12 @@
         "additionalProperties": false,
         "required": ["panelId", "patch", "expectedRevision"],
         "properties": {
-          "panelId": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          },
-          "patch": {
-            "schemaRef": "panel.patch.runtime"
-          }
+          "panelId": { "type": "string" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "dryRun": { "type": "boolean" },
+          "patch": { "schemaRef": "panel.patch.runtime" },
+          "steps": { "type": "integer", "minimum": 2, "maximum": 60 },
+          "durationMs": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       }
     },
@@ -5071,7 +5037,7 @@
       "id": "transport.snapshot.select",
       "family": "transport",
       "path": ["transport", "snapshot", "select"],
-      "usage": "plvs-cli transport snapshot select --offset-sec <n> --json --expected-revision <n> [--dry-run]",
+      "usage": "plvs-cli transport snapshot select --offset-sec <n> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]",
       "summary": "Select a retained history snapshot.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -5086,35 +5052,32 @@
           "name": "--offset-sec",
           "mapsTo": "offsetSec",
           "required": true,
-          "value": {
-            "type": "number",
-            "minimum": 0,
-            "unit": "s"
-          }
+          "value": { "type": "number", "minimum": 0, "unit": "s" }
         },
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } },
         {
           "name": "--expected-revision",
           "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
+          "value": { "type": "integer", "minimum": 0 },
           "mapsTo": "expectedRevision"
         },
         {
           "name": "--dry-run",
           "required": false,
-          "value": {
-            "type": "boolean"
-          },
+          "value": { "type": "boolean" },
           "mapsTo": "dryRun"
+        },
+        {
+          "name": "--steps",
+          "mapsTo": "steps",
+          "required": false,
+          "value": { "type": "integer", "minimum": 2, "maximum": 60 }
+        },
+        {
+          "name": "--duration-ms",
+          "mapsTo": "durationMs",
+          "required": false,
+          "value": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       ],
       "wireParams": {
@@ -5122,17 +5085,11 @@
         "additionalProperties": false,
         "required": ["offsetSec", "expectedRevision"],
         "properties": {
-          "offsetSec": {
-            "type": "number",
-            "minimum": 0,
-            "unit": "s"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          }
+          "offsetSec": { "type": "number", "minimum": 0, "unit": "s" },
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "dryRun": { "type": "boolean" },
+          "steps": { "type": "integer", "minimum": 2, "maximum": 60 },
+          "durationMs": { "type": "integer", "minimum": 0, "maximum": 10000 }
         }
       }
     },

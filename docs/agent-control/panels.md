@@ -51,6 +51,11 @@ values, removes the panel, changes the active Loudness Profile, or clears measur
 maxima. Transient chart actions — clearing Max Hold, TP Max, or all measurements — are not Panel
 Control at all.
 
+## Paced changes
+
+Updates accept `--steps` and `--duration-ms` to apply a change as evenly spaced steps for a
+recording; see [Axis Control](axes.md#paced-changes) for the rules, which are shared.
+
 ## Slow Trace
 
 `panel hold-slow --panel-id --duration-ms <100..10000>` presses and holds Slow Trace on a Spectrum, or

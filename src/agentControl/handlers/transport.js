@@ -4,6 +4,7 @@ import { renderFileAnalysisReportMarkdown } from "../../lib/fileAnalysisReportMa
 import { isTransportAction } from "../protocol.js";
 import { planTransportMutation, projectTransportMutation } from "../transportControl.js";
 import { semanticFailure } from "../bridge/failures.js";
+import { paced } from "./paced.js";
 
 /**
  * @param {string} method
@@ -262,7 +263,7 @@ export const transportHandlers = {
   "transport.live.start": { run: mutate },
   "transport.live.stop": { run: mutate },
   "transport.snapshot.clear": { run: mutate },
-  "transport.snapshot.select": { run: mutate },
+  "transport.snapshot.select": { run: paced(mutate) },
   "transport.source.file": { run: mutate },
   "transport.source.live": { run: mutate },
 };

@@ -103,6 +103,11 @@ pub enum ControlCommand {
     duration_ms: Option<u64>,
     expected_revision: u64,
   },
+  Paced {
+    inner: Box<ControlCommand>,
+    steps: u64,
+    duration_ms: u64,
+  },
   PanelGesture {
     method: String,
     panel_id: String,
@@ -417,7 +422,76 @@ pub enum ControlCommand {
   },
 }
 
+/// Commands whose change can be applied in evenly spaced steps for a recording.
+fn is_paced_command(args: &[String]) -> bool {
+  let words: Vec<&str> = args.iter().take(3).map(String::as_str).collect();
+  matches!(
+    words.as_slice(),
+    ["axis", "shared", "update"]
+      | ["axis", "panel", "update"]
+      | ["panel", "update", ..]
+      | ["transport", "snapshot", "select"]
+  )
+}
+
+/// Takes `--steps` and `--duration-ms` off a paced command, parses the rest as usual and wraps it.
+fn parse_paced_args(args: &[String]) -> Result<Option<ControlCommand>, String> {
+  if !is_paced_command(args)
+    || !args
+      .iter()
+      .any(|arg| arg == "--steps" || arg == "--duration-ms")
+  {
+    return Ok(None);
+  }
+  let mut rest = Vec::new();
+  let mut steps = None;
+  let mut duration_ms = None;
+  let mut index = 0;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--steps" if steps.is_none() => {
+        steps = Some(
+          args
+            .get(index + 1)
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .filter(|value| (2..=60).contains(value))
+            .ok_or_else(|| "The --steps value must be an integer from 2 to 60.".to_string())?,
+        );
+        index += 2;
+      }
+      "--duration-ms" if duration_ms.is_none() => {
+        duration_ms = Some(
+          args
+            .get(index + 1)
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .filter(|value| *value <= 10_000)
+            .ok_or_else(|| {
+              "The --duration-ms value must be an integer from 0 to 10000.".to_string()
+            })?,
+        );
+        index += 2;
+      }
+      value => {
+        rest.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  let steps = steps.ok_or_else(|| "--duration-ms requires --steps.".to_string())?;
+  if rest.iter().any(|arg| arg == "--dry-run") {
+    return Err("--steps cannot be combined with --dry-run.".to_string());
+  }
+  Ok(Some(ControlCommand::Paced {
+    inner: Box::new(parse_control_args(&rest)?),
+    steps,
+    duration_ms: duration_ms.unwrap_or(0),
+  }))
+}
+
 pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
+  if let Some(command) = parse_paced_args(args)? {
+    return Ok(command);
+  }
   if args.iter().any(|argument| argument == "--format") {
     return parse_text_control_args(args);
   }
@@ -3873,6 +3947,7 @@ struct ControlReport {
 fn command_name(command: &ControlCommand) -> String {
   match command {
     ControlCommand::Text(command) => command_name(command),
+    ControlCommand::Paced { inner, .. } => command_name(inner),
     ControlCommand::Help | ControlCommand::FamilyHelp(_) => {
       unreachable!("help does not have a wire method")
     }
@@ -3992,6 +4067,19 @@ fn request_for_command<R: Read>(
 ) -> Result<JsonRpcRequest, ControlFailure> {
   if let ControlCommand::Text(command) = command {
     return request_for_command(command, stdin);
+  }
+  if let ControlCommand::Paced {
+    inner,
+    steps,
+    duration_ms,
+  } = command
+  {
+    let mut request = request_for_command(inner, stdin)?;
+    if let Some(params) = request.params.as_object_mut() {
+      params.insert("steps".to_string(), Value::from(*steps));
+      params.insert("durationMs".to_string(), Value::from(*duration_ms));
+    }
+    return Ok(request);
   }
   let method = command_name(command);
   let params = match command {
@@ -4840,7 +4928,10 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    ControlCommand::Help | ControlCommand::FamilyHelp(_) | ControlCommand::Text(_) => {
+    ControlCommand::Help
+    | ControlCommand::FamilyHelp(_)
+    | ControlCommand::Text(_)
+    | ControlCommand::Paced { .. } => {
       unreachable!("help does not create a request")
     }
   };
@@ -5944,6 +6035,42 @@ mod tests {
     ]))
     .is_err());
 
+    let paced = parse_control_args(&args(&[
+      "transport",
+      "snapshot",
+      "select",
+      "--offset-sec",
+      "12",
+      "--steps",
+      "6",
+      "--duration-ms",
+      "900",
+      "--json",
+      "--expected-revision",
+      "4",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&paced), "transport.snapshot.select");
+    let params = request_for_command(&paced, &mut Cursor::new([]))
+      .unwrap()
+      .params;
+    assert_eq!(params["steps"], 6);
+    assert_eq!(params["durationMs"], 900);
+    assert!(parse_control_args(&args(&[
+      "transport",
+      "snapshot",
+      "select",
+      "--offset-sec",
+      "12",
+      "--steps",
+      "6",
+      "--json",
+      "--expected-revision",
+      "4",
+      "--dry-run",
+    ]))
+    .is_err());
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -6297,6 +6424,8 @@ mod tests {
       "css-px" => "800".to_string(),
       "target-id" => "toolbar:presets".to_string(),
       "100..10000" => "1500".to_string(),
+      "2..60" => "4".to_string(),
+      "0..10000" => "0".to_string(),
       "start|next|back" => "next".to_string(),
       "output|input|applications" => "output".to_string(),
       other => panic!("missing canonical argument for <{other}>"),

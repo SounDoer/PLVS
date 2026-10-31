@@ -138,6 +138,12 @@ readings are judged; a rule on a momentary or derived metric, or on a reading th
 have, is `notEvaluated`. Adding optional fields such as this block does not change
 `schemaVersion`; consumers ignore fields they do not know.
 
+## Paced scrubbing
+
+`transport snapshot select` accepts `--steps` and `--duration-ms` to move the Snapshot in evenly
+spaced steps, starting from the Live edge when no Snapshot is selected; see
+[Axis Control](axes.md#paced-changes) for the shared rules.
+
 ## Revision and waiting
 
 Transport changes use the application's single process-local revision. It increments on source

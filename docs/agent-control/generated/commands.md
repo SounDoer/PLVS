@@ -1263,7 +1263,7 @@ Update a shared workspace axis.
 - Schema references: `agentControl.revision`, `axis.patch.runtime`
 
 ```text
-plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision <n> [--dry-run]
+plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]
 ```
 
 ### Positionals
@@ -1280,6 +1280,8 @@ plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+| `--steps` | `steps` | no | integer; 2 to 60 |
+| `--duration-ms` | `durationMs` | no | integer; 0 to 10000 |
 
 ## `axis.shared.reset`
 
@@ -1320,7 +1322,7 @@ Update a panel-local axis.
 - Schema references: `agentControl.revision`, `axis.patch.runtime`
 
 ```text
-plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expected-revision <n> [--dry-run]
+plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]
 ```
 
 ### Positionals
@@ -1338,6 +1340,8 @@ plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expecte
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+| `--steps` | `steps` | no | integer; 2 to 60 |
+| `--duration-ms` | `durationMs` | no | integer; 0 to 10000 |
 
 ## `axis.panel.reset`
 
@@ -1405,7 +1409,7 @@ Update one live panel's public controls.
 - Schema references: `agentControl.revision`, `panel.patch.runtime`
 
 ```text
-plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run]
+plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]
 ```
 
 ### Positionals
@@ -1422,6 +1426,8 @@ plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+| `--steps` | `steps` | no | integer; 2 to 60 |
+| `--duration-ms` | `durationMs` | no | integer; 0 to 10000 |
 
 ## `panel.reset`
 
@@ -2644,7 +2650,7 @@ Select a retained history snapshot.
 - Schema references: `agentControl.revision`
 
 ```text
-plvs-cli transport snapshot select --offset-sec <n> --json --expected-revision <n> [--dry-run]
+plvs-cli transport snapshot select --offset-sec <n> --json --expected-revision <n> [--dry-run] [--steps <2..60> [--duration-ms <0..10000>]]
 ```
 
 ### Positionals
@@ -2659,6 +2665,8 @@ None.
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+| `--steps` | `steps` | no | integer; 2 to 60 |
+| `--duration-ms` | `durationMs` | no | integer; 0 to 10000 |
 
 ## `transport.snapshot.clear`
 

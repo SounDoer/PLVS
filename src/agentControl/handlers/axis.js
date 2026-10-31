@@ -8,6 +8,7 @@ import {
 } from "../axisControl.js";
 import { panelResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";
+import { paced } from "./paced.js";
 import { axisStateMatches } from "../bridge/signatures.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -135,8 +136,8 @@ async function updateOrReset(ctx) {
 export const axisHandlers = {
   "axis.describe": { run: describeOrInspect },
   "axis.inspect": { run: describeOrInspect },
-  "axis.shared.update": { run: updateOrReset },
+  "axis.shared.update": { run: paced(updateOrReset) },
   "axis.shared.reset": { run: updateOrReset },
-  "axis.panel.update": { run: updateOrReset },
+  "axis.panel.update": { run: paced(updateOrReset) },
   "axis.panel.reset": { run: updateOrReset },
 };

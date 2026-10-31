@@ -220,6 +220,10 @@ plvs-cli measurement reset-true-peak-max --panel-id <id> --expected-revision <n>
 plvs-cli panel hold-slow --panel-id <id> --duration-ms <100..10000> --expected-revision <n> --json
 ```
 
+Axis updates, panel updates and Snapshot selection also accept `--steps <2..60>` and
+`--duration-ms <0..10000>`, which apply the change as evenly spaced steps so a recording shows a
+zoom, pan or scrub as motion; see [Axis Control](../agent-control/axes.md#paced-changes).
+
 The two resets and Slow Trace reproduce chart clicks and press-and-hold on a panel; see
 [Measurement Control](../agent-control/measurements.md#chart-gesture-resets).
 

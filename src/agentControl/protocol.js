@@ -130,7 +130,58 @@ function validateExpectedDraftGeneration(params) {
   return null;
 }
 
+/** Methods whose change can be applied as evenly spaced steps, so a recording shows motion. */
+export const PACED_METHODS = Object.freeze([
+  "axis.shared.update",
+  "axis.panel.update",
+  "panel.update",
+  "transport.snapshot.select",
+]);
+export const PACED_STEPS_MAX = 60;
+export const PACED_DURATION_MAX_MS = 10000;
+
+/**
+ * `steps` and `durationMs` are validated here and taken off the request, so each paced method's own
+ * validation stays unchanged; they are put back on the normalized params afterwards.
+ */
+function normalizePacedRequest(input) {
+  const { steps, durationMs, ...params } = input.params;
+  if (steps !== undefined && (!Number.isInteger(steps) || steps < 2 || steps > PACED_STEPS_MAX)) {
+    return invalidParams(
+      "$.params.steps",
+      `steps must be an integer from 2 to ${PACED_STEPS_MAX}.`
+    );
+  }
+  if (
+    durationMs !== undefined &&
+    (!Number.isInteger(durationMs) || durationMs < 0 || durationMs > PACED_DURATION_MAX_MS)
+  ) {
+    return invalidParams(
+      "$.params.durationMs",
+      `durationMs must be an integer from 0 to ${PACED_DURATION_MAX_MS}.`
+    );
+  }
+  if (durationMs !== undefined && steps === undefined) {
+    return invalidParams("$.params.durationMs", "durationMs requires steps.");
+  }
+  if (steps !== undefined && params.dryRun === true) {
+    return invalidParams("$.params.steps", "steps cannot be combined with dryRun.");
+  }
+  const normalized = normalizeAgentControlRequest({ ...input, params });
+  if (!normalized.ok || steps === undefined) return normalized;
+  normalized.request.params = { ...normalized.request.params, steps, durationMs: durationMs ?? 0 };
+  return normalized;
+}
+
 export function normalizeAgentControlRequest(input) {
+  if (
+    isPlainJsonObject(input) &&
+    PACED_METHODS.includes(input.method) &&
+    isPlainJsonObject(input.params) &&
+    ("steps" in input.params || "durationMs" in input.params)
+  ) {
+    return normalizePacedRequest(input);
+  }
   if (!isPlainJsonObject(input)) {
     return error("invalidRequest", "$", "Request must be a plain JSON object.", -32600);
   }

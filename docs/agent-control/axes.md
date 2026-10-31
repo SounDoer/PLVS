@@ -75,6 +75,18 @@ The axis objects embedded in `app.inspect` and panel snapshots use the same effe
 `writable: true` once Axis Control is implemented. `panel.describe` continues to identify the
 matching axis and constraints, but `panel update` does not accept axis fields.
 
+## Paced changes
+
+`axis shared update`, `axis panel update`, `panel update` and `transport snapshot select` accept
+`--steps <2..60>` and an optional `--duration-ms <0..10000>`. The change is then applied as that many
+evenly spaced requests from the current values to the requested ones, spread over the duration, and
+the last step is exactly the request. Numbers move linearly, frequencies geometrically so a zoom
+reads evenly on the logarithmic axis, integer controls stay integers, and anything else switches on
+the last step. A Snapshot request without a Snapshot starts from the Live edge. Every step is an
+ordinary change through the same validation, commit and persistence as a single request, so each one
+advances the revision and the result reports the last. Paced requests cannot be dry runs. They exist
+so a recording shows a zoom, pan, rotation or scrub as motion.
+
 ## Effects, revision, and persistence
 
 Frequency and time viewport edits change display navigation only. They do not restart capture,

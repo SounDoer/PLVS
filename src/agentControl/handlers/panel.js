@@ -3,6 +3,7 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "../panelContr
 import { buildPublicPanelControlSchema } from "../panelControlSchema.js";
 import { panelResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";
+import { paced } from "./paced.js";
 import { panelControlsMatch } from "../bridge/signatures.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -145,6 +146,6 @@ async function updateOrReset(ctx) {
 /** @type {Record<string, import("../bridge/types.js").HandlerEntry>} */
 export const panelHandlers = {
   "panel.describe": { run: describe },
-  "panel.update": { run: updateOrReset },
+  "panel.update": { run: paced(updateOrReset) },
   "panel.reset": { run: updateOrReset },
 };
