@@ -1151,6 +1151,10 @@
       "license": "MIT",
       "noticeSha256": "c938a6625b8c50f4678b04bde255d066933f1febd9a9e3e328aceff22b445d8b"
     },
+    "rust:minisign-verify@0.3.0": {
+      "license": "MIT",
+      "noticeSha256": "c938a6625b8c50f4678b04bde255d066933f1febd9a9e3e328aceff22b445d8b"
+    },
     "rust:miniz_oxide@0.8.9": {
       "license": "MIT OR Zlib OR Apache-2.0",
       "noticeSha256": "7090ceb32c486d7a405931fee6e9c576af247bbfcdd58f188ef3469acba92071"

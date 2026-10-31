@@ -45,6 +45,42 @@ describe("dependency license inventory", () => {
     ]);
   });
 
+  it("includes independently versioned installer runtime dependencies but excludes its build tools", () => {
+    const metadata = {
+      packages: [
+        { id: "app", name: "plvs", version: "1" },
+        { id: "installer", name: "plvs-update-installer", version: "1" },
+        { id: "old", name: "verifier", version: "0.2" },
+        { id: "new", name: "verifier", version: "0.3" },
+        { id: "helper", name: "helper", version: "1" },
+        { id: "build", name: "build", version: "1" },
+        { id: "dev", name: "dev", version: "1" },
+      ],
+      workspace_members: ["app", "installer"],
+      resolve: {
+        nodes: [
+          { id: "app", deps: [{ pkg: "old", dep_kinds: [{ kind: null }] }] },
+          {
+            id: "installer",
+            deps: [
+              { pkg: "new", dep_kinds: [{ kind: null, target: "cfg(target_os = linux)" }] },
+              { pkg: "build", dep_kinds: [{ kind: "build" }] },
+              { pkg: "dev", dep_kinds: [{ kind: "dev" }] },
+            ],
+          },
+          { id: "new", deps: [{ pkg: "helper", dep_kinds: [{ kind: null }] }] },
+        ],
+      },
+    };
+    expect(collectRustRuntimePackages(metadata).map(({ id }) => id)).toEqual([
+      "helper",
+      "app",
+      "installer",
+      "old",
+      "new",
+    ]);
+  });
+
   it("keeps nested production npm packages and excludes the app root and dev-only entries", () => {
     const packageLock = {
       packages: {

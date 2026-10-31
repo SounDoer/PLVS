@@ -361,6 +361,19 @@ mod installer {
       let mut damaged = bytes.to_vec();
       damaged[0] ^= 1;
       assert!(verify_package_with_key(&ticket, &damaged, public_key).is_err());
+      // A download response can replace both the bytes and their advertised digest. The
+      // signature must still reject the changed package after the digest check succeeds.
+      ticket.package_sha256 = Sha256::digest(&damaged)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+      assert!(verify_package_with_key(&ticket, &damaged, public_key)
+        .unwrap_err()
+        .starts_with("The update signature is invalid:"));
+      ticket.package_sha256 = Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
       ticket.version = "0.23.0".into();
       assert!(verify_package_with_key(&ticket, bytes, public_key).is_err());
     }

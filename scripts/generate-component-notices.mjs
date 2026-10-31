@@ -89,7 +89,7 @@ export async function generateComponentNotices({ candidate = false } = {}) {
     );
   }
   const components = collectRustRuntimePackages(metadata)
-    .filter((pkg) => pkg.name !== "plvs")
+    .filter((pkg) => !metadata.workspace_members.includes(pkg.id))
     .map((pkg) => ({
       id: `rust:${pkg.name}@${pkg.version}`,
       license:

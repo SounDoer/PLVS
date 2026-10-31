@@ -29,8 +29,10 @@ export function collectRustRuntimePackages(metadata) {
   );
   if (!appPackage) throw new Error("Cargo metadata does not contain the PLVS workspace package");
 
-  const included = new Set([appPackage.id]);
-  const pending = [appPackage.id];
+  // The CLI and Linux update installer ship alongside the app. Their independent dependency
+  // versions must stay in the runtime inventory even when the app uses another version.
+  const included = new Set(metadata.workspace_members);
+  const pending = [...included];
   while (pending.length > 0) {
     const id = pending.pop();
     for (const dependency of nodeById.get(id)?.deps || []) {
