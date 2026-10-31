@@ -286,7 +286,14 @@ export function UiNavigationProvider({
             currentUiGeneration: before.uiGeneration,
           });
         }
-        const controller = targetsRef.current.get(kind)?.current;
+        // A target owned by one of many instances is registered under its key: a Panel's gesture
+        // reference by Panel ID, a dropdown by its control name, a Sources group by its group.
+        const instanceKey = target.panelId ?? target.control ?? target.group;
+        const controller =
+          targetsRef.current.get(kind)?.current ??
+          (instanceKey === undefined
+            ? undefined
+            : targetsRef.current.get(`${kind}:${instanceKey}`)?.current);
         if (!controller) {
           throw createUiNavigationError("surfaceUnavailable", { kind });
         }
@@ -460,6 +467,44 @@ export function UiNavigationProvider({
       ),
     [showTarget]
   );
+  const showPanelHelp = useCallback(
+    ({ panelId, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "panelHelp",
+        { panelId },
+        "ui.show.panel-help",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
+  const showAddPanel = useCallback(
+    ({ expectedRevision, expectedUiGeneration }) =>
+      showTarget("addPanel", {}, "ui.show.add-panel", expectedRevision, expectedUiGeneration),
+    [showTarget]
+  );
+  const showSourceGroup = useCallback(
+    ({ group, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "sourceGroup",
+        { group },
+        "ui.show.source-group",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
+  const showDropdown = useCallback(
+    ({ control, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "dropdown",
+        { control },
+        "ui.show.dropdown",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
   const showDockToolbar = useCallback(
     ({ expectedRevision, expectedUiGeneration }) =>
       showTarget("dockToolbar", {}, "ui.show.dock-toolbar", expectedRevision, expectedUiGeneration),
@@ -507,6 +552,10 @@ export function UiNavigationProvider({
       showDockToolbar,
       stepQuickTour,
       getPanelGestures,
+      showPanelHelp,
+      showAddPanel,
+      showSourceGroup,
+      showDropdown,
       closeSurface,
       cancelSurface,
       updateEnvironment,
@@ -524,6 +573,10 @@ export function UiNavigationProvider({
       showDockToolbar,
       stepQuickTour,
       getPanelGestures,
+      showPanelHelp,
+      showAddPanel,
+      showSourceGroup,
+      showDropdown,
       state.uiGeneration,
       updateEnvironment,
     ]

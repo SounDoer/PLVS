@@ -39,6 +39,7 @@ import { IconAction } from "@/components/ui/icon-action";
 import { LinkButton } from "@/components/ui/link-button";
 import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
 import { UI_SETTINGS_SECTIONS, createUiNavigationError } from "@/uiNavigation/uiNavigationModel.js";
+import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
@@ -86,6 +87,7 @@ function SettingsSection({ children, className, sectionId, sectionRef }) {
       tabIndex={-1}
       data-settings-section
       data-settings-section-id={sectionId}
+      data-ui-target={`settings-section:${sectionId}`}
       className={cn(SECTION_CLASS, className)}
     >
       {children}
@@ -102,11 +104,11 @@ function SettingsSection({ children, className, sectionId, sectionRef }) {
  *   [key: string]: any,
  * }} props
  */
-function SettingsRow({ children, label, labelNode, className, ...props }) {
+function SettingsRow({ children, label, labelNode, className, uiTarget, ...props }) {
   return (
     <div data-settings-row className={cn(ROW_CLASS, className)} {...props}>
       {labelNode ?? <span className={ROW_LABEL_CLASS}>{label}</span>}
-      <div data-settings-row-value className={ROW_VALUE_CLASS}>
+      <div data-settings-row-value data-ui-target={uiTarget} className={ROW_VALUE_CLASS}>
         {children}
       </div>
     </div>
@@ -313,6 +315,13 @@ export function SettingsPanel({
   const sectionNodesRef = useRef(new Map());
   const pendingSectionRef = useRef(null);
   const [activeSection, setActiveSection] = useState("behavior");
+  // Single-choice controls the pointer can reach and `ui show dropdown` can open.
+  const closeBehaviorDropdown = useDropdownNavigation("setting:behavior.closeBehavior");
+  const interfaceSizeDropdown = useDropdownNavigation("setting:appearance.interfaceSize");
+  const appearanceDropdown = useDropdownNavigation("setting:appearance.mode");
+  const historyDropdown = useDropdownNavigation("setting:analysis.historyRetention");
+  const dialogueDropdown = useDropdownNavigation("setting:analysis.dialogueVadEngine");
+  const layoutDropdown = useDropdownNavigation("setting:channels.layout");
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = ["checking", "disabled", "managed"].includes(updateStatus);
   let updateStatusText = "Checking...";
@@ -510,7 +519,7 @@ export function SettingsPanel({
               <SettingsBody>
                 {/* Behavior */}
                 <SettingsSection sectionId="behavior" sectionRef={bindSection("behavior")}>
-                  <SettingsRow label="Open at Login">
+                  <SettingsRow label="Open at Login" uiTarget="setting:behavior.openAtLogin">
                     <SettingsSwitch
                       aria-label="Open at Login"
                       checked={autostartEnabled}
@@ -519,8 +528,16 @@ export function SettingsPanel({
                     />
                   </SettingsRow>
                   <SettingsRow label="Close Behavior">
-                    <Select value={closeAction} onValueChange={setCloseAction}>
-                      <SelectTrigger aria-label="Close Behavior" variant="flush">
+                    <Select
+                      value={closeAction}
+                      onValueChange={setCloseAction}
+                      {...closeBehaviorDropdown.rootProps}
+                    >
+                      <SelectTrigger
+                        aria-label="Close Behavior"
+                        variant="flush"
+                        {...closeBehaviorDropdown.triggerProps}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper" variant="flush">
@@ -544,7 +561,11 @@ export function SettingsPanel({
                       binding.accelerator === defaultBinding.accelerator &&
                       binding.global === defaultBinding.global;
                     return (
-                      <SettingsRow key={action.id} label={action.label}>
+                      <SettingsRow
+                        key={action.id}
+                        label={action.label}
+                        uiTarget={`setting:shortcuts.${action.id}`}
+                      >
                         <div className="flex flex-col items-end gap-0">
                           <div className="flex items-center gap-2">
                             <ShortcutCapture
@@ -613,8 +634,16 @@ export function SettingsPanel({
                       />
                     }
                   >
-                    <Select value={interfaceSize} onValueChange={setInterfaceSize}>
-                      <SelectTrigger aria-label="Interface Size" variant="flush">
+                    <Select
+                      value={interfaceSize}
+                      onValueChange={setInterfaceSize}
+                      {...interfaceSizeDropdown.rootProps}
+                    >
+                      <SelectTrigger
+                        aria-label="Interface Size"
+                        variant="flush"
+                        {...interfaceSizeDropdown.triggerProps}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper" variant="flush">
@@ -636,11 +665,13 @@ export function SettingsPanel({
                       value={appearance}
                       onValueChange={setAppearanceMode}
                       disabled={themeControlsDisabled}
+                      {...appearanceDropdown.rootProps}
                     >
                       <SelectTrigger
                         aria-label="Appearance"
                         variant="flush"
                         disabled={themeControlsDisabled}
+                        {...appearanceDropdown.triggerProps}
                       >
                         <SelectValue placeholder="Appearance" />
                       </SelectTrigger>
@@ -698,8 +729,13 @@ export function SettingsPanel({
                     <Select
                       value={String(historyRetentionSec)}
                       onValueChange={setHistoryRetentionSec}
+                      {...historyDropdown.rootProps}
                     >
-                      <SelectTrigger aria-label="History Length" variant="flush">
+                      <SelectTrigger
+                        aria-label="History Length"
+                        variant="flush"
+                        {...historyDropdown.triggerProps}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper" variant="flush">
@@ -718,7 +754,11 @@ export function SettingsPanel({
                       />
                     }
                   >
-                    <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
+                    <Select
+                      value={dialogueVadEngine}
+                      onValueChange={setDialogueVadEngine}
+                      {...dialogueDropdown.rootProps}
+                    >
                       <div
                         data-integrated-select-action
                         className="group relative rounded-md hover:bg-ui-hover has-[[data-state=open]]:bg-ui-hover"
@@ -726,6 +766,7 @@ export function SettingsPanel({
                         <SelectTrigger
                           aria-label="Dialogue Detection"
                           variant="flush"
+                          {...dialogueDropdown.triggerProps}
                           className="!gap-1 !pl-2 hover:bg-transparent"
                         >
                           <SelectValue />
@@ -775,8 +816,16 @@ export function SettingsPanel({
                     <div className="flex flex-col gap-0">
                       <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
                         {showChannelLayoutSelect ? (
-                          <Select value={selectedLayoutId ?? ""} onValueChange={setChannelLayout}>
-                            <SelectTrigger variant="flush" aria-label="channel layout">
+                          <Select
+                            value={selectedLayoutId ?? ""}
+                            onValueChange={setChannelLayout}
+                            {...layoutDropdown.rootProps}
+                          >
+                            <SelectTrigger
+                              variant="flush"
+                              aria-label="channel layout"
+                              {...layoutDropdown.triggerProps}
+                            >
                               <SelectValue placeholder="Unknown" />
                             </SelectTrigger>
                             <SelectContent position="popper" variant="flush">
@@ -806,7 +855,11 @@ export function SettingsPanel({
                           }
                         >
                           <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
-                            <SelectTrigger variant="flush" aria-label={`Channel ${i + 1} role`}>
+                            <SelectTrigger
+                              variant="flush"
+                              aria-label={`Channel ${i + 1} role`}
+                              data-ui-target={`setting:channels.role.${i + 1}`}
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent position="popper" variant="flush">
@@ -846,6 +899,7 @@ export function SettingsPanel({
                         onClick={onLibraryExport}
                         disabled={packBusy}
                         aria-label="Export saved items"
+                        data-ui-target="setting:transfer.libraryExport"
                       >
                         Export…
                       </Button>
@@ -854,6 +908,7 @@ export function SettingsPanel({
                         onClick={onSharedPackImport}
                         disabled={packBusy}
                         aria-label="Import saved items"
+                        data-ui-target="setting:transfer.libraryImport"
                       >
                         Import…
                       </Button>
@@ -879,6 +934,7 @@ export function SettingsPanel({
                         onClick={onExportConfiguration}
                         disabled={configurationBusy}
                         aria-label="Export complete setup"
+                        data-ui-target="setting:transfer.configurationExport"
                       >
                         Export…
                       </Button>
@@ -887,6 +943,7 @@ export function SettingsPanel({
                         onClick={onImportConfiguration}
                         disabled={configurationBusy}
                         aria-label="Import complete setup"
+                        data-ui-target="setting:transfer.configurationImport"
                       >
                         Import…
                       </Button>
@@ -900,6 +957,7 @@ export function SettingsPanel({
                       onClick={() => setResetConfirmOpen(true)}
                       disabled={configurationBusy}
                       aria-label="Reset PLVS to default"
+                      data-ui-target="setting:transfer.configurationReset"
                       className="text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
                     >
                       Reset PLVS to Default
@@ -928,6 +986,7 @@ export function SettingsPanel({
                       >
                         <SettingsSwitch
                           aria-label="Agent Control"
+                          data-ui-target="setting:agentControl.enabled"
                           checked={agentControlEnabled}
                           disabled={agentControlDisabled}
                           onCheckedChange={(next) => onSetAgentControlEnabled(next)}
@@ -973,6 +1032,7 @@ export function SettingsPanel({
                   >
                     <SettingsSwitch
                       aria-label="ask to send crash reports"
+                      data-ui-target="setting:updates.askToSendCrashReports"
                       checked={askToSendCrashReports}
                       disabled={crashReportSettingBusy}
                       onCheckedChange={(next) => {

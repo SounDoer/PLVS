@@ -6,6 +6,7 @@ import {
   panelControlUiRows,
 } from "@/lib/panelControls.js";
 import { axisKindForRangeRow } from "@/workspace/axisViewports.js";
+import { usePanelInstanceData } from "@/workspace/AudioDataContext.jsx";
 
 import { AxisViewportRangeInput, RangeRowLinkToggle } from "./AxisRangeRows.jsx";
 import {
@@ -18,6 +19,9 @@ import {
   SettingsSwitch,
   SettingsThresholdInputs,
 } from "./SettingsWidgets.jsx";
+
+/** Widgets that open a dropdown; their trigger, not the row, carries the target name. */
+const SELECT_WIDGETS = new Set(["select", "choiceSelect"]);
 
 /** Widgets the table declares but does not draw: the settings surface passes them in `slots`. */
 const SLOT_WIDGETS = new Set(["custom", "customRow"]);
@@ -38,6 +42,9 @@ const SLOT_WIDGETS = new Set(["custom", "customRow"]);
  */
 export function ControlRows({ rows, tab, controls, onChange: commit, slots = {} }) {
   const [openKey, setOpenKey] = useState(null);
+  // Workspace Panels name their rows so the pointer can reach them; Dock editors carry no Panel ID.
+  const { panelId } = usePanelInstanceData() ?? {};
+  const targetFor = (rowKey) => (panelId ? `panel-control:${panelId}:${rowKey}` : undefined);
 
   return rows
     .filter((row) => !row.ui.showWhen || row.ui.showWhen(controls))
@@ -73,8 +80,18 @@ export function ControlRows({ rows, tab, controls, onChange: commit, slots = {} 
           tooltip={ui.tooltip}
           action={action}
           controlAction={controlAction}
+          // A dropdown names its own trigger, so `ui show dropdown` and the pointer agree.
+          uiTarget={SELECT_WIDGETS.has(ui.widget) ? undefined : targetFor(rowKey)}
         >
-          {renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKey)}
+          {renderPanelControlWidget(
+            row,
+            tab,
+            controls,
+            commit,
+            openKey,
+            setOpenKey,
+            targetFor(rowKey)
+          )}
         </SettingsRow>
       );
     });
@@ -96,7 +113,7 @@ export function PanelControlRows({ tab, controls, onChange, slots }) {
   );
 }
 
-function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKey) {
+function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKey, uiTarget) {
   const { ui } = row;
   const rowKey = row.key ?? row.minKey;
   const open = openKey === rowKey;
@@ -121,6 +138,7 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
         value={selected.id}
         open={open}
         onOpenChange={onOpenChange}
+        uiTarget={uiTarget}
         onChange={(id) => commit({ [row.key]: id })}
       />
     );
@@ -133,6 +151,7 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
         value={controls[row.key]}
         open={open}
         onOpenChange={onOpenChange}
+        uiTarget={uiTarget}
         onChange={(id) => commit({ [row.key]: id })}
       />
     );

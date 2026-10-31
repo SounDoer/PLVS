@@ -14,8 +14,10 @@ import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { isMacOS } from "@/lib/platform.js";
+import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
 
-export function FocusSwitch({ id, label, checked, onCheckedChange }) {
+/** @param {{ id: string, label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, uiTarget?: string }} props */
+export function FocusSwitch({ id, label, checked, onCheckedChange, uiTarget }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1">
       <Label
@@ -26,6 +28,7 @@ export function FocusSwitch({ id, label, checked, onCheckedChange }) {
       </Label>
       <Switch
         id={id}
+        data-ui-target={uiTarget}
         checked={checked}
         onCheckedChange={onCheckedChange}
         className={COMPACT_SWITCH_CLASS}
@@ -77,18 +80,21 @@ export function FocusViewPopoverContent({
   const isMac = isMacOS();
   const presentation = normalizePanelPresentation(panelPresentation, normalized);
 
+  const dockDropdown = useDropdownNavigation("view:dock");
   return (
     <div className="grid gap-1">
       <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Views</p>
       <FocusSwitch
         id="focus-view-always-on-top"
         label="Always on Top"
+        uiTarget="view:alwaysOnTop"
         checked={pinned === true}
         onCheckedChange={setPinned}
       />
       <FocusSwitch
         id="focus-view-compact-panels"
         label="Hide Panel Headers"
+        uiTarget="view:hidePanelHeaders"
         checked={presentation.workspace.hidePanelHeaders}
         onCheckedChange={(value) =>
           setPanelPresentation
@@ -102,6 +108,7 @@ export function FocusViewPopoverContent({
       <FocusSwitch
         id="focus-view-hide-axes-labels"
         label="Hide Axes & Labels"
+        uiTarget="view:hideAxesAndLabels"
         checked={presentation.workspace.hideAxesAndLabels}
         onCheckedChange={(value) =>
           setPanelPresentation?.({
@@ -113,12 +120,14 @@ export function FocusViewPopoverContent({
       <FocusSwitch
         id="focus-view-borderless"
         label="Hide Window Frame"
+        uiTarget="view:hideWindowFrame"
         checked={normalized.borderless}
         onCheckedChange={setBorderless}
       />
       <FocusSwitch
         id="focus-view-auto-hide-controls"
         label="Auto-hide Controls"
+        uiTarget="view:autoHideControls"
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />
@@ -133,6 +142,7 @@ export function FocusViewPopoverContent({
           valueLabel={`${surfaceOpacity}%`}
           id="surface-opacity"
           aria-label="Surface opacity"
+          data-ui-target="view:surfaceOpacity"
           type="range"
           min={0}
           max={100}
@@ -149,6 +159,7 @@ export function FocusViewPopoverContent({
         <FocusSwitch
           id="focus-view-glass"
           label="Glass"
+          uiTarget="view:glass"
           checked={glassEnabled === true}
           onCheckedChange={setGlassEnabled}
         />
@@ -167,8 +178,10 @@ export function FocusViewPopoverContent({
               value={dockEdge ?? "off"}
               onValueChange={(value) => onDockChange(value === "off" ? null : value)}
               disabled={dockDisabled}
+              {...dockDropdown.rootProps}
             >
               <SelectTrigger
+                {...dockDropdown.triggerProps}
                 id="focus-view-dock"
                 aria-label="Dock position"
                 variant="inline"

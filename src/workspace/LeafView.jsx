@@ -389,7 +389,9 @@ export function LeafView({ node, path, style }) {
                 onPanelControlsReset={onPanelControlsReset}
               />
             </PanelInstanceProvider>
-            {helpItems ? <HelpPopover key={activeTab} items={helpItems} /> : null}
+            {helpItems ? (
+              <HelpPopover key={activeTab} items={helpItems} panelId={activeTab} />
+            ) : null}
             <HoverTip
               tip={
                 slotPinnedByOther

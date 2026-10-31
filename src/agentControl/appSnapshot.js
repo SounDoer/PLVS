@@ -118,6 +118,12 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 feedback: hasMethod("ui.show.feedback"),
                 toolbarMenu: hasMethod("ui.show.toolbarMenu") ? { menus: TOOLBAR_MENUS } : false,
                 dockToolbar: hasMethod("ui.show.dockToolbar"),
+                panelHelp: hasMethod("ui.show.panelHelp"),
+                addPanel: hasMethod("ui.show.addPanel"),
+                sourceGroup: hasMethod("ui.show.sourceGroup")
+                  ? { groups: ["output", "input", "applications"] }
+                  : false,
+                dropdown: hasMethod("ui.show.dropdown"),
               },
             },
           }

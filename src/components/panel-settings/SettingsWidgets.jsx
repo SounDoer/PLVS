@@ -18,6 +18,7 @@ import { POPOVER_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useHoverTip } from "@/components/HoverTip.jsx";
 import { IconAction } from "@/components/ui/icon-action";
 import { MenuRow } from "@/components/ui/row";
+import { useDropdownNavigation } from "../../uiNavigation/useDropdownNavigation.js";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-[var(--ui-control-h)] max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none";
@@ -54,10 +55,11 @@ export function SettingsGroup({ children }) {
  *   tooltip?: string,
  *   action?: import("react").ReactNode,
  *   controlAction?: import("react").ReactNode,
+ *   uiTarget?: string,
  *   children: import("react").ReactNode,
  * }} props
  */
-export function SettingsRow({ label, tooltip, action, controlAction, children }) {
+export function SettingsRow({ label, tooltip, action, controlAction, uiTarget, children }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
     tip: tooltip,
     side: "top",
@@ -77,7 +79,10 @@ export function SettingsRow({ label, tooltip, action, controlAction, children })
         {action}
         {tipNode}
       </span>
-      <div className="flex min-h-[var(--ui-shell-h)] min-w-0 items-center justify-end gap-2">
+      <div
+        data-ui-target={uiTarget}
+        className="flex min-h-[var(--ui-shell-h)] min-w-0 items-center justify-end gap-2"
+      >
         {controlAction}
         {children}
       </div>
@@ -465,9 +470,20 @@ export function SettingsOptionRow({
  *   onChange?: (...args: any[]) => any,
  *   open?: boolean,
  *   onOpenChange?: (...args: any[]) => any,
+ *   uiTarget?: string,
  * }} props
  */
-export function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOpenChange }) {
+export function SettingsSelect({
+  label,
+  ariaLabel,
+  options,
+  value,
+  onChange,
+  open,
+  onOpenChange,
+  uiTarget,
+}) {
+  const dropdown = useDropdownNavigation(uiTarget, { open, onOpenChange });
   const groups = [];
   for (const option of options) {
     let group = groups.at(-1);
@@ -480,8 +496,7 @@ export function SettingsSelect({ label, ariaLabel, options, value, onChange, ope
   return (
     <Select
       value={String(value)}
-      open={open}
-      onOpenChange={onOpenChange}
+      {...dropdown.rootProps}
       onValueChange={(key) => {
         const option = options.find((item) => String(item.key ?? item.id) === key);
         if (option) onChange(option.key ?? option.id);
@@ -491,6 +506,7 @@ export function SettingsSelect({ label, ariaLabel, options, value, onChange, ope
         aria-label={ariaLabel}
         variant="inline"
         className="max-w-none text-popover-foreground hover:text-foreground"
+        {...dropdown.triggerProps}
       >
         <SelectValue>{label}</SelectValue>
       </SelectTrigger>

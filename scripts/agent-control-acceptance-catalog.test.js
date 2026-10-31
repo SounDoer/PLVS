@@ -8,11 +8,11 @@ import {
 
 describe("Agent Control acceptance catalogue", () => {
   it("assigns every public command exactly once", () => {
-    expect(agentControlAcceptanceCatalog).toHaveLength(132);
+    expect(agentControlAcceptanceCatalog).toHaveLength(136);
     expect(agentControlAcceptanceCatalog.map(({ commandId }) => commandId)).toEqual(
       manifest.commands.map(({ id }) => id)
     );
-    expect(new Set(agentControlAcceptanceCatalog.map(({ commandId }) => commandId)).size).toBe(132);
+    expect(new Set(agentControlAcceptanceCatalog.map(({ commandId }) => commandId)).size).toBe(136);
   });
 
   it("uses only closed dispositions and gives external commands an owning domain", () => {

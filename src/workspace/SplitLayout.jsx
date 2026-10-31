@@ -405,6 +405,7 @@ function FullscreenOverlay() {
   return (
     <div
       data-visual-panel-id={fullscreenId}
+      data-ui-panel={fullscreenId}
       data-visual-capture-ready="true"
       className={cn(
         "absolute inset-0 flex flex-col outline-none",
@@ -435,7 +436,9 @@ function FullscreenOverlay() {
                 onPanelControlsReset={onPanelControlsReset}
               />
             </PanelInstanceProvider>
-            {helpItems ? <HelpPopover key={fullscreenId} items={helpItems} /> : null}
+            {helpItems ? (
+              <HelpPopover key={fullscreenId} items={helpItems} panelId={fullscreenId} />
+            ) : null}
             <HoverTip
               tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
             >
@@ -446,6 +449,7 @@ function FullscreenOverlay() {
                   isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"
                 }
                 aria-pressed={isPinned}
+                data-ui-part="pin"
                 disabled={!isPinned}
               >
                 <Pin className={PANEL_HEADER_PIN_ICON} fill={isPinned ? "currentColor" : "none"} />
@@ -455,13 +459,14 @@ function FullscreenOverlay() {
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => setFullscreen(null)}
               aria-label="Exit fullscreen"
+              data-ui-part="fullscreen"
             >
               <Minimize2 className="size-[length:var(--ui-icon-panel-action)]" />
             </IconAction>
           </div>
         </div>
       )}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div data-ui-part="body" className="flex min-h-0 flex-1 overflow-hidden">
         <PanelInstanceProvider value={panelInstanceData}>
           <Component />
         </PanelInstanceProvider>

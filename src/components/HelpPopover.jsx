@@ -6,6 +6,7 @@ import { CircleHelp } from "lucide-react";
 import { IconAction } from "@/components/ui/icon-action";
 import { UI_PREFERENCES } from "@/uiPreferences.js";
 import { helpPopoverPlacement } from "./helpPopoverPosition.js";
+import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
 
 const GESTURE_LABELS = {
   hover: "Hover",
@@ -101,7 +102,7 @@ function Operation({ item }) {
   );
 }
 
-function PanelHelp({ items }) {
+function PanelHelp({ items, panelId }) {
   const [mode, setMode] = useState("closed");
   const modeRef = useRef("closed");
   const closeTimer = useRef(null);
@@ -160,6 +161,23 @@ function PanelHelp({ items }) {
   useEffect(() => {
     if (mode === "pinned") contentRef.current?.focus({ preventScroll: true });
   }, [mode]);
+
+  // `ui show panel-help` pins the reference as a click does; a hover preview is visible too.
+  useUiNavigationTarget(
+    "panelHelp",
+    panelId ?? "",
+    panelId ? { show: () => changeMode("pinned") } : {}
+  );
+  useUiSurface({
+    active: Boolean(panelId) && mode !== "closed",
+    kind: "panelHelp",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { panelId },
+    onClose: () => changeMode("closed"),
+  });
 
   const onEscape = (event) => {
     if (event.key !== "Escape" || modeRef.current === "closed") return;
@@ -259,9 +277,9 @@ function PanelHelp({ items }) {
   );
 }
 
-/** @param {{ items: import('./panels/chartHelp.js').PanelHelpGroup[] }} props */
-export function HelpPopover({ items }) {
+/** @param {{ items: import('./panels/chartHelp.js').PanelHelpGroup[], panelId?: string }} props */
+export function HelpPopover({ items, panelId }) {
   // Unmount the stateful child when the last applicable gesture disappears, clearing timers and
   // any pin. Reappearing help starts closed rather than resurrecting an obsolete preview.
-  return items?.length ? <PanelHelp items={items} /> : null;
+  return items?.length ? <PanelHelp items={items} panelId={panelId} /> : null;
 }

@@ -13,12 +13,20 @@ are a kind and a key, such as `toolbar:presets`, `panel:<panelId>:settings` or `
 `ui targets` lists the names currently on screen and `ui locate --target` reports one target's
 rectangle in CSS pixels relative to the main WebView; see [UI Navigation](ui.md).
 
-| Kind         | Names                                                                                                                           |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `toolbar`    | `transport`, `clear`, `sources`, `loudness-profile`, `panels`, `views`, `presets`, `settings`, `status`                         |
-| `panel`      | `panel:<panelId>` and its parts `settings`, `help`, `pin`, `fullscreen`, `close`, `body`, `history`, plus `panel:<panelId>:tab` |
-| `quick-tour` | `primary` (Start Tour, Next or Finish), `back`, `close`, `dismiss` (Not Now)                                                    |
-| `dock`       | `transport`, `toolbar`, `restore` in the strip's right control column                                                           |
+| Kind                                        | Names                                                                                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `toolbar`                                   | `transport`, `clear`, `sources`, `open-file`, `loudness-profile`, `panels`, `views`, `presets`, `settings`, `status`             |
+| `panel`                                     | `panel:<panelId>` and its parts `settings`, `help`, `pin`, `fullscreen`, `close`, `body`, `history`, plus `panel:<panelId>:tab`  |
+| `panel-control`                             | `panel-control:<panelId>:<control>`, one per Panel Settings row; a dropdown row names its trigger                                |
+| `source-group`, `source`                    | Sources groups `output`, `input`, `applications`; `source:<deviceId>` rows as `device list` reports them, and `source:default`   |
+| `panels-menu`, `add-panel`                  | `panels-menu:<panelId>` rows and `panels-menu:add`; `add-panel:<moduleId>` in the Add Panel list                                 |
+| `preset`, `presets-menu`                    | `preset:<presetId>` rows; `presets-menu:name` and `presets-menu:add`                                                             |
+| `loudness-profile`, `loudness-profile-menu` | `loudness-profile:<profileId>` and `loudness-profile:off` rows; `loudness-profile-menu:add`                                      |
+| `view`                                      | `alwaysOnTop`, `hidePanelHeaders`, `hideAxesAndLabels`, `hideWindowFrame`, `autoHideControls`, `surfaceOpacity`, `glass`, `dock` |
+| `settings-section`, `setting`               | One per Settings section; `setting:<id>` uses the Settings control catalogue ids, such as `setting:appearance.interfaceSize`     |
+| `file-report`                               | `export`                                                                                                                         |
+| `quick-tour`                                | `primary` (Start Tour, Next or Finish), `back`, `close`, `dismiss` (Not Now)                                                     |
+| `dock`                                      | `transport`, `toolbar`, `restore` in the strip's right control column                                                            |
 
 ## Moving
 

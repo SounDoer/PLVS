@@ -106,6 +106,7 @@ export function PresetsPopoverContent({
         <input
           type="text"
           aria-label="New preset name"
+          data-ui-target="presets-menu:name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -119,6 +120,7 @@ export function PresetsPopoverContent({
         <AddButton
           label="Add"
           aria-label="Add preset"
+          data-ui-target="presets-menu:add"
           className={cn("w-auto shrink-0", blockedClass)}
           onClick={handleSave}
           disabled={blocked || !name.trim()}
@@ -169,6 +171,7 @@ export function PresetsPopoverContent({
                   </div>
                 ) : (
                   <div
+                    data-ui-target={`preset:${preset.id}`}
                     className={cn(
                       "flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover",
                       draggingId === preset.id && "z-10 ring-1 ring-primary"

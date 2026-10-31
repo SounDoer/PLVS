@@ -127,6 +127,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
       <PopoverTrigger asChild>
         <Button
           variant="secondary"
+          data-ui-target="file-report:export"
           className={cn(
             "border border-border px-2",
             copied

@@ -8,6 +8,7 @@ function sampleForProperty(entry, name, schema) {
     document: {},
     expectedGeneration: 1,
     expectedDraftGeneration: 1,
+    control: "setting:appearance.interfaceSize",
     durationMs: entry.id === "panel.holdSlow" ? 100 : 600,
     expectedRevision: 0,
     expectedUiGeneration: 0,

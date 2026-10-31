@@ -92,7 +92,7 @@ export function LoudnessProfilePopoverContent({
         </header>
       ) : null}
 
-      <div className={ROW_CLASS}>
+      <div data-ui-target="loudness-profile:off" className={ROW_CLASS}>
         {/* Same box as the drag handle below, just invisible: Off isn't reorderable, but its
             label still needs to line up under the profiles' labels, not their handles. */}
         <span className="size-5 shrink-0" aria-hidden="true" />
@@ -114,6 +114,7 @@ export function LoudnessProfilePopoverContent({
           return (
             <div
               key={entry.id}
+              data-ui-target={`loudness-profile:${entry.id}`}
               className={cn(
                 ROW_CLASS,
                 "group",
@@ -183,6 +184,7 @@ export function LoudnessProfilePopoverContent({
           <AddButton
             label="Add Profile"
             aria-label="Add Loudness Profile"
+            data-ui-target="loudness-profile-menu:add"
             onClick={profile.beginCreate}
             disabled={blocked}
           />

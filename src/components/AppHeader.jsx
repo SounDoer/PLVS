@@ -201,6 +201,7 @@ export function AppHeader({
             <IconButton
               icon={<FolderOpen className="size-[length:var(--ui-icon-shell-action)] shrink-0" />}
               tip="Open file"
+              data-ui-target="toolbar:open-file"
               onClick={onOpenFile}
             />
           ) : (

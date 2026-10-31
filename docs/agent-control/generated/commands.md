@@ -17,6 +17,10 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.show.feedback` | `ui show feedback` | runningApp / action | required | no | none |
 | `ui.show.toolbarMenu` | `ui show toolbar-menu` | runningApp / action | required | no | none |
 | `ui.show.dockToolbar` | `ui show dock-toolbar` | runningApp / action | required | no | none |
+| `ui.show.panelHelp` | `ui show panel-help` | runningApp / action | required | no | none |
+| `ui.show.addPanel` | `ui show add-panel` | runningApp / action | required | no | none |
+| `ui.show.sourceGroup` | `ui show source-group` | runningApp / action | required | no | none |
+| `ui.show.dropdown` | `ui show dropdown` | runningApp / action | required | no | none |
 | `ui.quickTour.start` | `ui quick-tour start` | runningApp / action | required | no | none |
 | `ui.quickTour.next` | `ui quick-tour next` | runningApp / action | required | no | none |
 | `ui.quickTour.back` | `ui quick-tour back` | runningApp / action | required | no | none |
@@ -390,6 +394,109 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.panelHelp`
+
+Open a panel's gesture reference as clicking its question mark does.
+
+- CLI path: `ui show panel-help`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.panelHelp`
+
+```text
+plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.addPanel`
+
+Open the Panels menu's Add Panel list as its button does.
+
+- CLI path: `ui show add-panel`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.addPanel`
+
+```text
+plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.sourceGroup`
+
+Expand a Sources group as clicking its heading does.
+
+- CLI path: `ui show source-group`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.sourceGroup`
+
+```text
+plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--group` | `group` | yes | string; one of "output", "input", "applications" |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.dropdown`
+
+Open a named single-choice dropdown as clicking it does.
+
+- CLI path: `ui show dropdown`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.dropdown`
+
+```text
+plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--control` | `control` | yes | string |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |

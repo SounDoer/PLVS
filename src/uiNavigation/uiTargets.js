@@ -6,7 +6,9 @@
  * coordinates.
  */
 
-const TARGET_ID = /^[a-z][a-z-]*(?::[A-Za-z0-9._-]{1,128}){1,3}$/;
+// A kind, then the owner's own key: Device and Preset IDs keep whatever characters their family
+// reports. Matching is an exact string comparison, never a selector, so the key needs no escaping.
+const TARGET_ID = /^[a-z][a-z-]*:[^\s"'`\\<>]{1,256}$/;
 
 export function isUiTargetId(value) {
   return typeof value === "string" && value.length <= 256 && TARGET_ID.test(value);

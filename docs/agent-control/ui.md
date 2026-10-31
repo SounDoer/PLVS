@@ -38,7 +38,11 @@ The public `show` targets are:
 - `feedback` opens or focuses a blank, unsent Feedback draft;
 - `toolbar-menu` opens one toolbar menu: `sources`, `loudness-profile`, `panels`, `views`,
   `presets`, or `status`;
-- `dock-toolbar` reveals the Dock toolbar.
+- `dock-toolbar` reveals the Dock toolbar;
+- `panel-help` pins a panel's gesture reference, as clicking its question mark does;
+- `add-panel` opens the Panels menu's Add Panel list;
+- `source-group` expands the Sources menu's `output`, `input` or `applications` group;
+- `dropdown` opens a named single-choice dropdown in Settings, Panel Settings or Views.
 
 A toolbar menu opens through the same path as a click on its button, so Sources refreshes its
 source list and Auto-hide Controls keeps the toolbar shown while the menu is open. Opening one menu
@@ -50,6 +54,13 @@ the button opens, anchored to that button, with `presentation: "dock"`. Sources 
 `uiTargetNotVisible` while there are no conditions. `ui close` closes the menu as a click outside
 does. Menu contents are not reported; select an item through its owning family, such as `device`,
 `preset`, or `loudness-profile`.
+
+`add-panel` and `source-group` act inside an open menu: open the Panels or Sources menu first, or
+the request is `surfaceUnavailable`. `dropdown` takes a target id from `ui targets`, such as
+`setting:appearance.interfaceSize` or `panel-control:<panelId>:<control>`; its surface closes as a
+click outside does. `panel-help` is available for the rendered tab of a normal or fullscreen panel.
+A hover preview of the gesture reference, opened by the pointer resting on the question mark, is
+the same surface.
 
 `dock-toolbar` reveals the toolbar as the strip's arrow button does and is `surfaceUnavailable`
 outside Dock. Its `dockToolbar` surface closes through the arrow's Hide intent, which also closes

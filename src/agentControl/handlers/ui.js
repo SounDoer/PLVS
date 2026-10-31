@@ -89,14 +89,22 @@ async function navigate(ctx) {
                   ? await uiNavigation.showToolbarMenu(request.params)
                   : request.method === "ui.show.dockToolbar"
                     ? await uiNavigation.showDockToolbar(request.params)
-                    : request.method.startsWith("ui.quickTour.")
-                      ? await uiNavigation.stepQuickTour({
-                          ...request.params,
-                          action: request.method.slice("ui.quickTour.".length),
-                        })
-                      : request.method === "ui.close"
-                        ? await uiNavigation.closeSurface(request.params)
-                        : await uiNavigation.cancelSurface(request.params);
+                    : request.method === "ui.show.panelHelp"
+                      ? await uiNavigation.showPanelHelp(request.params)
+                      : request.method === "ui.show.addPanel"
+                        ? await uiNavigation.showAddPanel(request.params)
+                        : request.method === "ui.show.sourceGroup"
+                          ? await uiNavigation.showSourceGroup(request.params)
+                          : request.method === "ui.show.dropdown"
+                            ? await uiNavigation.showDropdown(request.params)
+                            : request.method.startsWith("ui.quickTour.")
+                              ? await uiNavigation.stepQuickTour({
+                                  ...request.params,
+                                  action: request.method.slice("ui.quickTour.".length),
+                                })
+                              : request.method === "ui.close"
+                                ? await uiNavigation.closeSurface(request.params)
+                                : await uiNavigation.cancelSurface(request.params);
     const ui = uiNavigation.inspectUi();
     return {
       requestId,
@@ -135,6 +143,10 @@ export const uiHandlers = {
   "ui.show.feedback": { run: navigate },
   "ui.show.toolbarMenu": { run: navigate },
   "ui.show.dockToolbar": { run: navigate },
+  "ui.show.panelHelp": { run: navigate },
+  "ui.show.addPanel": { run: navigate },
+  "ui.show.sourceGroup": { run: navigate },
+  "ui.show.dropdown": { run: navigate },
   "ui.quickTour.start": { run: navigate },
   "ui.quickTour.next": { run: navigate },
   "ui.quickTour.back": { run: navigate },

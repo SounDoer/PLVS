@@ -3,11 +3,12 @@ import { ChevronRight } from "lucide-react";
 import { formatAudioDeviceLabel } from "../lib/audioDeviceLabels.js";
 import { cn } from "../lib/utils.js";
 import { MenuRow } from "./ui/row";
+import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
-/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string }} props */
-function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
+/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string }} props */
+function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget }) {
   return (
-    <MenuRow aria-label={ariaLabel} onClick={onSelect}>
+    <MenuRow aria-label={ariaLabel} data-ui-target={uiTarget} onClick={onSelect}>
       <span
         aria-hidden="true"
         className={cn(
@@ -29,6 +30,7 @@ function AudioDeviceOption({ device, selected, onSelect }) {
   const label = formatAudioDeviceLabel(device.label);
   return (
     <SourceRow
+      uiTarget={`source:${device.id}`}
       ariaLabel={label.full}
       primary={label.primary}
       secondary={label.secondary}
@@ -49,10 +51,23 @@ function selectedApplicationSummary(applications, selectedId) {
   return selected ? `${selected.label} Selected` : null;
 }
 
-function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, children }) {
+function SourceSection({ id, group, label, count, open, onOpenChange, selectedSummary, children }) {
+  // `ui show source-group` expands a group as clicking its heading does.
+  useUiNavigationTarget("sourceGroup", group, { show: () => onOpenChange(true) });
+  useUiSurface({
+    active: open,
+    kind: "sourceGroup",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { group },
+    onClose: () => onOpenChange(false),
+  });
   return (
     <section>
       <MenuRow
+        data-ui-target={`source-group:${group}`}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
@@ -119,6 +134,7 @@ export function DeviceSelectionContent({
   return (
     <>
       <SourceRow
+        uiTarget="source:default"
         ariaLabel="Automatic"
         primary="Automatic"
         selected={safeAudioDeviceId === "default"}
@@ -131,6 +147,7 @@ export function DeviceSelectionContent({
         {audioOutputs.length ? (
           <SourceSection
             id="source-output-list"
+            group="output"
             label="Output"
             count={audioOutputs.length}
             open={sourceSectionsOpen.output}
@@ -150,6 +167,7 @@ export function DeviceSelectionContent({
         {audioInputs.length ? (
           <SourceSection
             id="source-input-list"
+            group="input"
             label="Input"
             count={audioInputs.length}
             open={sourceSectionsOpen.input}
@@ -169,6 +187,7 @@ export function DeviceSelectionContent({
         {captureApplications.length ? (
           <SourceSection
             id="source-application-list"
+            group="applications"
             label="Applications"
             count={captureApplications.length}
             open={sourceSectionsOpen.applications}
@@ -178,6 +197,7 @@ export function DeviceSelectionContent({
             {captureApplications.map((application) => (
               <SourceRow
                 key={application.id}
+                uiTarget={`source:${application.id}`}
                 ariaLabel={`${application.label} application audio`}
                 primary={application.label}
                 secondary={application.windowTitle}

@@ -286,6 +286,10 @@ plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>
 plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui targets --json
 plvs-cli ui locate --target <target-id> --json

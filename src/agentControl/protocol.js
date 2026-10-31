@@ -4,6 +4,8 @@ import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
 import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 import { isUiTargetId } from "../uiNavigation/uiTargets.js";
+
+const SOURCE_GROUPS = Object.freeze(["output", "input", "applications"]);
 import { POINTER_DURATION_MAX_MS } from "./handlers/pointer.js";
 import { HOLD_SLOW_MAX_MS } from "./handlers/gestures.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
@@ -366,6 +368,44 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (["ui.show.panelHelp", "ui.show.sourceGroup", "ui.show.dropdown"].includes(input.method)) {
+    const name =
+      input.method === "ui.show.panelHelp"
+        ? "panelId"
+        : input.method === "ui.show.sourceGroup"
+          ? "group"
+          : "control";
+    const field = unknownField(
+      input.params,
+      new Set([name, "expectedRevision", "expectedUiGeneration"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const generationError = validateExpectedUiGeneration(input.params);
+    if (generationError) return generationError;
+    const value = input.params[name];
+    const valid =
+      name === "group"
+        ? SOURCE_GROUPS.includes(value)
+        : name === "control"
+          ? isUiTargetId(value)
+          : typeof value === "string" && value.trim() !== "";
+    if (!valid) return invalidParams(`$.params.${name}`, `${name} is invalid.`);
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          [name]: value,
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
+  }
+
   if (input.method === "ui.locate") {
     const field = unknownField(input.params, new Set(["target"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
@@ -453,6 +493,7 @@ export function normalizeAgentControlRequest(input) {
   if (
     input.method === "ui.show.feedback" ||
     input.method === "ui.show.dockToolbar" ||
+    input.method === "ui.show.addPanel" ||
     ["ui.quickTour.start", "ui.quickTour.next", "ui.quickTour.back"].includes(input.method)
   ) {
     const field = unknownField(input.params, new Set(["expectedRevision", "expectedUiGeneration"]));

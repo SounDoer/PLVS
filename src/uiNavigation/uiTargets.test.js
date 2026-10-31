@@ -18,6 +18,8 @@ describe("UI targets", () => {
     expect(isUiTargetId("button.primary")).toBe(false);
     expect(isUiTargetId("[data-ui-target]")).toBe(false);
     expect(isUiTargetId("toolbar")).toBe(false);
+    expect(isUiTargetId("source:{0.0.0.00000000}.{9b1c}")).toBe(true);
+    expect(isUiTargetId('toolbar:"x"')).toBe(false);
   });
 
   it("lists declared targets and panel parts that are on screen", () => {

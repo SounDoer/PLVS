@@ -17,6 +17,7 @@ import { MODULE_REGISTRY, resolvePanelDefinition } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDisplayName } from "./panelInstances.js";
 import { workspaceUsesDefaults } from "./constants.js";
+import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
 
@@ -74,6 +75,7 @@ function PanelRow({ panelId }) {
 
   return (
     <div
+      data-ui-target={`panels-menu:${panelId}`}
       className={cn(MANAGEMENT_ROW_CLASS, "min-w-44")}
       onMouseEnter={() => setHoveredPanelId(panelId)}
       onMouseLeave={() => setHoveredPanelId(null)}
@@ -112,7 +114,7 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
   const { onCreateMouseDown } = useDrag();
 
   return (
-    <div className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}>
+    <div data-ui-target={`add-panel:${id}`} className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}>
       <RowAction onClick={() => onAdd(id)}>
         <span className="flex shrink-0 text-muted-foreground">
           <Icon className="size-[1.25em]" />
@@ -157,6 +159,18 @@ export function ModulesPopoverContent() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => () => setHoveredPanelId(null), [setHoveredPanelId]);
+  // `ui show add-panel` opens the list the Add Panel button opens; the Panels menu must be open.
+  useUiNavigationTarget("addPanel", { show: () => setAdding(true) });
+  useUiSurface({
+    active: adding,
+    kind: "addPanel",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: {},
+    onClose: () => setAdding(false),
+  });
 
   if (adding) {
     return <AddModuleView onAdd={addPanel} onBack={() => setAdding(false)} />;
@@ -179,7 +193,12 @@ export function ModulesPopoverContent() {
         ) : null}
       </div>
       <div className="mt-1 flex items-center gap-1 pt-1">
-        <AddButton label="Add Panel" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
+        <AddButton
+          label="Add Panel"
+          data-ui-target="panels-menu:add"
+          className="min-w-0 flex-1"
+          onClick={() => setAdding(true)}
+        />
         <ResetAction
           label="Reset layout"
           tip="Reset Layout"

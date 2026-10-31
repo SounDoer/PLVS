@@ -36,6 +36,10 @@ export const UI_SURFACE_KINDS = Object.freeze([
   "quickTour",
   "toolbarMenu",
   "dockToolbar",
+  "panelHelp",
+  "addPanel",
+  "sourceGroup",
+  "dropdown",
 ]);
 
 export const UI_SURFACE_ORIGINS = Object.freeze(["navigable", "event", "nested"]);
@@ -77,6 +81,8 @@ const UI_ERROR_DETAIL_FIELDS = Object.freeze([
   "profileId",
   "section",
   "menu",
+  "group",
+  "control",
   "windowForm",
   "editors",
 ]);
@@ -127,6 +133,8 @@ const PUBLIC_TARGET_FIELDS = Object.freeze([
   "phase",
   "step",
   "menu",
+  "group",
+  "control",
   "presentation",
   "purpose",
   "editorKind",
