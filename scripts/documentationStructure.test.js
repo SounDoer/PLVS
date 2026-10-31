@@ -124,7 +124,8 @@ describe("public documents state what the code ships", () => {
 
   it("names exactly the shipped panels in the glossary", () => {
     const body = sectionBody(read("docs", "glossary.md"), "## Panels") ?? "";
-    const rows = body.trim().split("\n\n")[0].split("\n").slice(2);
+    const table = body.slice(body.indexOf("| Term"));
+    const rows = table.trim().split("\n\n")[0].split("\n").slice(2);
     const documented = rows.map((row) => row.split("|")[1].trim());
     const shipped = Object.values(MODULE_CATALOG).map((module) => module.title);
 
