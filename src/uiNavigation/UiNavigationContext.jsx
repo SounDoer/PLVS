@@ -465,6 +465,10 @@ export function UiNavigationProvider({
       showTarget("dockToolbar", {}, "ui.show.dock-toolbar", expectedRevision, expectedUiGeneration),
     [showTarget]
   );
+  const getPanelGestures = useCallback(
+    (panelId) => targetsRef.current.get(`panelGestures:${panelId}`)?.current ?? null,
+    []
+  );
   const inspectUi = useCallback(
     () =>
       projectUiInspection(stateRef.current, {
@@ -502,6 +506,7 @@ export function UiNavigationProvider({
       showToolbarMenu,
       showDockToolbar,
       stepQuickTour,
+      getPanelGestures,
       closeSurface,
       cancelSurface,
       updateEnvironment,
@@ -518,6 +523,7 @@ export function UiNavigationProvider({
       showToolbarMenu,
       showDockToolbar,
       stepQuickTour,
+      getPanelGestures,
       state.uiGeneration,
       updateEnvironment,
     ]

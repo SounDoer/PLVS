@@ -8,6 +8,7 @@ function sampleForProperty(entry, name, schema) {
     document: {},
     expectedGeneration: 1,
     expectedDraftGeneration: 1,
+    durationMs: entry.id === "panel.holdSlow" ? 100 : 600,
     expectedRevision: 0,
     expectedUiGeneration: 0,
     kind: entry.family === "editor-draft" ? "theme" : "frequency",

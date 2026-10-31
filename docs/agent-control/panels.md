@@ -51,6 +51,13 @@ values, removes the panel, changes the active Loudness Profile, or clears measur
 maxima. Transient chart actions — clearing Max Hold, TP Max, or all measurements — are not Panel
 Control at all.
 
+## Slow Trace
+
+`panel hold-slow --panel-id --duration-ms <100..10000>` presses and holds Slow Trace on a Spectrum, or
+on a Vectorscope in Lissajous mode, for the given time, then releases it, through the same handlers
+as pressing and holding the chart. It is `controlUnavailable` in a Snapshot or another mode, leaves
+the revision unchanged, and keeps the command queue busy while it holds.
+
 ## Errors and warnings
 
 Panel-specific error codes are `panelNotFound` and `invalidControls`. The issues inside

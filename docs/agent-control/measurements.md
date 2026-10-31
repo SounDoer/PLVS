@@ -87,3 +87,19 @@ judgement the GUI shows. `overall` uses `fail > warn > pending > ok`.
 Measurement frames, age changes, session generation, and these queries do not change the global
 revision and do not wake `app.wait`. Repeated inspection also performs no persistence write and
 posts no GUI notice.
+
+## Chart gesture resets
+
+Two clicks on a chart reset measurement state rather than read it. `measurement reset-hold
+--panel-id` clears a Spectrum's held curve or a Vectorscope's Polar Level Max Hold, as clicking the
+held curve or plot does. `measurement reset-true-peak-max --panel-id` resets TP Max, as clicking a
+peak Level Meter's TP Max marker does. Each is available exactly when the panel's gesture
+reference lists it; otherwise it fails with `controlUnavailable`. A panel that is not rendered
+fails with `panelNotFound`. Neither advances the global revision, and both require
+`--expected-revision`.
+
+Every gesture in the gesture reference has a reproduction through Agent Control, listed in
+`src/agentControl/chartGestureCoverage.js` and guarded by its test: axis zoom, pan and reset through
+Axis Control, Snapshot through Transport Control, the 3D view through Panel Control, Slow Trace
+through `panel hold-slow` ([Panel Control](panels.md)), and the hover probe through the pointer
+([Pointer Control](pointer.md)).

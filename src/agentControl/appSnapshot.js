@@ -134,6 +134,15 @@ export function buildAgentControlCapabilities(runtime, revision) {
             },
           }
         : {}),
+      ...(hasMethod("measurement.resetHold")
+        ? {
+            chartGestures: {
+              resetHold: true,
+              resetTruePeakMax: hasMethod("measurement.resetTruePeakMax"),
+              holdSlow: hasMethod("panel.holdSlow") ? { maximumDurationMs: 10000 } : false,
+            },
+          }
+        : {}),
       ...(hasMethod("pointer.move")
         ? {
             pointer: {

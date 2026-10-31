@@ -18,6 +18,7 @@ import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 import { vectorscopeGestureAvailability } from "./panelGestureAvailability.js";
+import { usePanelGestures } from "../../uiNavigation/usePanelGestures.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -152,6 +153,19 @@ export function useVectorscopeDisplay() {
     releaseHoldSlow();
   }, [releaseHoldSlow]);
   const [maxHoldResetKey, setMaxHoldResetKey] = useState(0);
+  usePanelGestures({
+    holdSlow: canHoldSlow
+      ? {
+          start: () => {
+            clearPendingHoldSlow();
+            holdSlowActiveRef.current = true;
+            setHoldSlowActive(true);
+          },
+          stop: () => releaseHoldSlow(),
+        }
+      : null,
+    clearMaxHold: canResetMaxHold ? () => setMaxHoldResetKey((key) => key + 1) : null,
+  });
   const snapResolved = isSnapshot
     ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey, {
         withMaxHold:

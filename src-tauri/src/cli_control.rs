@@ -97,6 +97,12 @@ pub enum ControlCommand {
     duration_ms: Option<u64>,
     expected_revision: u64,
   },
+  PanelGesture {
+    method: String,
+    panel_id: String,
+    duration_ms: Option<u64>,
+    expected_revision: u64,
+  },
   UiClose {
     surface_id: String,
     expected_revision: u64,
@@ -1643,9 +1649,78 @@ fn parse_module_args(args: &[String]) -> Result<ControlCommand, String> {
   }
 }
 
+/// Chart gestures with no other command: `measurement reset-hold`, `measurement
+/// reset-true-peak-max` and `panel hold-slow`.
+fn parse_panel_gesture_args(method: &str, options: &[String]) -> Result<ControlCommand, String> {
+  let hold = method == "panel.holdSlow";
+  let mut panel_id = None;
+  let mut duration_ms = None;
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--panel-id" if panel_id.is_none() => {
+        panel_id = Some(
+          options
+            .get(index + 1)
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "Missing value for --panel-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--duration-ms" if hold && duration_ms.is_none() => {
+        duration_ms = Some(
+          options
+            .get(index + 1)
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .filter(|value| (100..=10_000).contains(value))
+            .ok_or_else(|| {
+              "The --duration-ms value must be an integer from 100 to 10000.".to_string()
+            })?,
+        );
+        index += 2;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          options.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      value => return Err(format!("Unknown or duplicate option: {value}")),
+    }
+  }
+  if !json {
+    return Err("Chart gesture commands require --json.".to_string());
+  }
+  if hold && duration_ms.is_none() {
+    return Err("The panel hold-slow command requires --duration-ms.".to_string());
+  }
+  Ok(ControlCommand::PanelGesture {
+    method: method.to_string(),
+    panel_id: panel_id.ok_or_else(|| "Chart gesture commands require --panel-id.".to_string())?,
+    duration_ms,
+    expected_revision: expected_revision
+      .ok_or_else(|| "Chart gesture commands require --expected-revision.".to_string())?,
+  })
+}
+
 fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|argument| is_help(argument)) {
     return Ok(ControlCommand::FamilyHelp("measurement".to_string()));
+  }
+  match args.first().map(String::as_str) {
+    Some("reset-hold") => return parse_panel_gesture_args("measurement.resetHold", &args[1..]),
+    Some("reset-true-peak-max") => {
+      return parse_panel_gesture_args("measurement.resetTruePeakMax", &args[1..])
+    }
+    _ => {}
   }
   if let [action, flag] = args {
     if matches!(action.as_str(), "describe" | "inspect") && flag == "--json" {
@@ -2625,6 +2700,9 @@ fn parse_workspace_args(args: &[String]) -> Result<ControlCommand, String> {
 fn parse_panel_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::Help);
+  }
+  if args.first().map(String::as_str) == Some("hold-slow") {
+    return parse_panel_gesture_args("panel.holdSlow", &args[1..]);
   }
   const UPDATE_USAGE: &str =
     "Usage: plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
@@ -3746,6 +3824,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiTargets => "ui.targets".to_string(),
     ControlCommand::UiLocate { .. } => "ui.locate".to_string(),
     ControlCommand::PointerMove { .. } => "pointer.move".to_string(),
+    ControlCommand::PanelGesture { method, .. } => method.clone(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::WindowInspect => "window.inspect".to_string(),
     ControlCommand::WindowResize { .. } => "window.resize".to_string(),
@@ -4001,6 +4080,21 @@ fn request_for_command<R: Read>(
       "expectedUiGeneration": expected_ui_generation,
     }),
     ControlCommand::UiLocate { target } => serde_json::json!({ "target": target }),
+    ControlCommand::PanelGesture {
+      panel_id,
+      duration_ms,
+      expected_revision,
+      ..
+    } => {
+      let mut params = serde_json::json!({
+        "panelId": panel_id,
+        "expectedRevision": expected_revision,
+      });
+      if let Some(duration_ms) = duration_ms {
+        params["durationMs"] = Value::from(*duration_ms);
+      }
+      params
+    }
     ControlCommand::PointerMove {
       target,
       duration_ms,
@@ -5685,6 +5779,49 @@ mod tests {
       })
     );
 
+    let hold = parse_control_args(&args(&[
+      "panel",
+      "hold-slow",
+      "--panel-id",
+      "spectrum",
+      "--duration-ms",
+      "1500",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&hold), "panel.holdSlow");
+    assert_eq!(
+      request_for_command(&hold, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "panelId": "spectrum", "durationMs": 1500, "expectedRevision": 4 })
+    );
+    let reset = parse_control_args(&args(&[
+      "measurement",
+      "reset-hold",
+      "--panel-id",
+      "spectrum",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&reset), "measurement.resetHold");
+    assert!(parse_control_args(&args(&[
+      "measurement",
+      "reset-hold",
+      "--panel-id",
+      "spectrum",
+      "--duration-ms",
+      "500",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -6037,6 +6174,7 @@ mod tests {
       "n" => "0".to_string(),
       "css-px" => "800".to_string(),
       "target-id" => "toolbar:presets".to_string(),
+      "100..10000" => "1500".to_string(),
       "start|next|back" => "next".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
     }

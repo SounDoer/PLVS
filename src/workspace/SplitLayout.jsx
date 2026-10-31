@@ -395,6 +395,7 @@ function FullscreenOverlay() {
       ...axisViewportData,
       historyData: panelHistoryData,
       panelVisible: true,
+      panelId: fullscreenId,
     }),
     [axisViewportData, fullscreenId, onPanelControlsChange, panelControls, panelHistoryData]
   );

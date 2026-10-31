@@ -1196,6 +1196,82 @@
       }
     },
     {
+      "id": "measurement.resetHold",
+      "family": "measurement",
+      "path": ["measurement", "reset-hold"],
+      "usage": "plvs-cli measurement reset-hold --panel-id <id> --expected-revision <n> --json",
+      "summary": "Clear a panel's Max Hold as clicking the held curve does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "measurement.resetHold",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "measurement.resetTruePeakMax",
+      "family": "measurement",
+      "path": ["measurement", "reset-true-peak-max"],
+      "usage": "plvs-cli measurement reset-true-peak-max --panel-id <id> --expected-revision <n> --json",
+      "summary": "Reset TP Max as clicking a Level Meter's TP Max marker does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "measurement.resetTruePeakMax",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "view.describe",
       "family": "view",
       "path": ["view", "describe"],
@@ -2165,6 +2241,51 @@
           "dryRun": {
             "type": "boolean"
           }
+        }
+      }
+    },
+    {
+      "id": "panel.holdSlow",
+      "family": "panel",
+      "path": ["panel", "hold-slow"],
+      "usage": "plvs-cli panel hold-slow --panel-id <id> --duration-ms <100..10000> --expected-revision <n> --json",
+      "summary": "Hold Slow Trace for a time, as pressing and holding the chart does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "panel.holdSlow",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--duration-ms",
+          "mapsTo": "durationMs",
+          "required": true,
+          "value": { "type": "integer", "minimum": 100, "maximum": 10000 }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "durationMs", "expectedRevision"],
+        "properties": {
+          "panelId": { "type": "string" },
+          "durationMs": { "type": "integer", "minimum": 100, "maximum": 10000 },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
         }
       }
     },

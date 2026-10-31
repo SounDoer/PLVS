@@ -246,6 +246,7 @@ export function LeafView({ node, path, style }) {
       ...axisViewportData,
       historyData: panelHistoryData,
       panelVisible: !state.fullscreenId,
+      panelId: activeTab,
     }),
     [
       activeTab,

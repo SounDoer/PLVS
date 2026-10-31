@@ -50,6 +50,7 @@ import {
 } from "../../math/axisInteractionMath.js";
 import { beginPanelCpuSample, finishPanelCpuSample } from "../../dev/panelCpuProfiler.js";
 import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
+import { usePanelGestures } from "../../uiNavigation/usePanelGestures.js";
 
 // Shared by the axis rails and the plot area, which edit the same two ranges. The y rail resets to
 // -96 rather than to absMin -- a default, not a bound, so it stays out of this.
@@ -459,6 +460,19 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
     }
   }, [clearPendingHoldSmoothing]);
   useEffect(() => releaseHoldSmoothing, [releaseHoldSmoothing]);
+  usePanelGestures({
+    holdSlow: canHoldSlow
+      ? {
+          start: () => {
+            clearPendingHoldSmoothing();
+            holdSmoothingActiveRef.current = true;
+            setHoldSmoothingActive(true);
+          },
+          stop: () => releaseHoldSmoothing(),
+        }
+      : null,
+    clearMaxHold: clearMaxHoldOnClick ? () => setMaxHoldClearKey((key) => key + 1) : null,
+  });
   const scheduleHoldSmoothing = useCallback(
     (e) => {
       if (

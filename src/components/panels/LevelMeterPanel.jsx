@@ -27,6 +27,7 @@ import { levelMeterBackground, levelMeterMarkerStatus } from "../../lib/levelMet
 import { loudnessMeterMarkerClass } from "../../lib/loudnessProfileStatusClasses.js";
 import { axisLabelCenterPx, tickOpacityNearMarker } from "../../lib/axisMarkerFade.js";
 import { AxisRail, tickPosition } from "./AxisRail.jsx";
+import { usePanelGestures } from "../../uiNavigation/usePanelGestures.js";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -312,6 +313,10 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
   const isPeak = levelMeterMode === "peak";
   const isRms = levelMeterMode === "rms";
   const isPeakFamily = isPeak || isRms;
+  // The gesture reference offers Reset TP Max exactly when the marker can be clicked.
+  usePanelGestures({
+    resetTruePeakMax: isPeak && showTpMaxMarkerSetting && onResetTpMax ? onResetTpMax : null,
+  });
   // Peak-family modes keep their own dBFS range; the loudness-family modes (M/ST) share the
   // LoudnessPanel's LUFS Y range so zooming one rescales the other.
   const modeDefaults = isPeakFamily

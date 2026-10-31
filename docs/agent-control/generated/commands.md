@@ -35,6 +35,8 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
 | `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
 | `measurement.waitUntil` | `measurement wait-until` | runningApp / wait | none | no | none |
+| `measurement.resetHold` | `measurement reset-hold` | runningApp / action | required | no | none |
+| `measurement.resetTruePeakMax` | `measurement reset-true-peak-max` | runningApp / action | required | no | none |
 | `view.describe` | `view describe` | runningApp / query | none | no | none |
 | `view.inspect` | `view inspect` | runningApp / query | none | no | none |
 | `view.update` | `view update` | runningApp / mutation | required | yes | none |
@@ -52,6 +54,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `panel.describe` | `panel describe` | runningApp / query | none | no | none |
 | `panel.update` | `panel update` | runningApp / mutation | required | yes | none |
 | `panel.reset` | `panel reset` | runningApp / mutation | required | yes | none |
+| `panel.holdSlow` | `panel hold-slow` | runningApp / action | required | no | none |
 | `preset.list` | `preset list` | runningApp / query | none | no | none |
 | `preset.describe` | `preset describe` | runningApp / query | none | no | none |
 | `preset.rename` | `preset rename` | runningApp / mutation | required | yes | none |
@@ -838,6 +841,56 @@ plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
 | `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
 | `--json` | local only | yes | boolean |
 
+## `measurement.resetHold`
+
+Clear a panel's Max Hold as clicking the held curve does.
+
+- CLI path: `measurement reset-hold`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `measurement.resetHold`
+
+```text
+plvs-cli measurement reset-hold --panel-id <id> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `measurement.resetTruePeakMax`
+
+Reset TP Max as clicking a Level Meter's TP Max marker does.
+
+- CLI path: `measurement reset-true-peak-max`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `measurement.resetTruePeakMax`
+
+```text
+plvs-cli measurement reset-true-peak-max --panel-id <id> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
 ## `view.describe`
 
 Describe public view controls.
@@ -1290,6 +1343,32 @@ plvs-cli panel reset <panel-id> --json --expected-revision <n> [--dry-run]
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+
+## `panel.holdSlow`
+
+Hold Slow Trace for a time, as pressing and holding the chart does.
+
+- CLI path: `panel hold-slow`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `panel.holdSlow`
+
+```text
+plvs-cli panel hold-slow --panel-id <id> --duration-ms <100..10000> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--duration-ms` | `durationMs` | yes | integer; 100 to 10000 |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
 
 ## `preset.list`
 

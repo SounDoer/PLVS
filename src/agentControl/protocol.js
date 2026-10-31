@@ -5,6 +5,7 @@ import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
 import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 import { isUiTargetId } from "../uiNavigation/uiTargets.js";
 import { POINTER_DURATION_MAX_MS } from "./handlers/pointer.js";
+import { HOLD_SLOW_MAX_MS } from "./handlers/gestures.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
@@ -374,6 +375,46 @@ export function normalizeAgentControlRequest(input) {
     return {
       ok: true,
       request: { id: input.id, method: input.method, params: { target: input.params.target } },
+    };
+  }
+
+  if (
+    ["measurement.resetHold", "measurement.resetTruePeakMax", "panel.holdSlow"].includes(
+      input.method
+    )
+  ) {
+    const hold = input.method === "panel.holdSlow";
+    const field = unknownField(
+      input.params,
+      new Set(["panelId", ...(hold ? ["durationMs"] : []), "expectedRevision"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "") {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    const { durationMs } = input.params;
+    if (
+      hold &&
+      (!Number.isInteger(durationMs) || durationMs < 100 || durationMs > HOLD_SLOW_MAX_MS)
+    ) {
+      return invalidParams(
+        "$.params.durationMs",
+        `durationMs must be an integer from 100 to ${HOLD_SLOW_MAX_MS}.`
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          panelId: input.params.panelId,
+          ...(hold ? { durationMs } : {}),
+          expectedRevision: input.params.expectedRevision,
+        },
+      },
     };
   }
 
