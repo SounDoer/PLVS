@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { format, resolveConfig } from "prettier";
+import { comparePreviewFixtures, describeFixtureComparison } from "./preview-fixture-compare.mjs";
 import {
   buildPolarLevelMaxHoldTable,
   polarLevelMaxHoldAt,
@@ -121,20 +122,45 @@ export function runPreviewFixtureProducer({
 }
 
 /**
- * Format a fixture as the committed JSON and either write it or check that the committed file
- * matches. `command` names the script to rerun with `--write`.
+ * Write explicitly requested JSON, or compare against the committed fixture with narrow visual
+ * floating-point allowances. Check mode never rewrites the baseline or its provenance hash.
  */
 export async function writeOrCheckFixture(fixture, outputPath, { write, command }) {
-  const prettierConfig = (await resolveConfig(outputPath)) ?? {};
-  const generated = await format(JSON.stringify(fixture), { ...prettierConfig, parser: "json" });
   if (write) {
+    const validation = comparePreviewFixtures(fixture, fixture);
+    if (!validation.matches)
+      throw new Error(`Invalid generated fixture:\n${describeFixtureComparison(validation)}`);
+    const prettierConfig = (await resolveConfig(outputPath)) ?? {};
+    const generated = await format(JSON.stringify(fixture), { ...prettierConfig, parser: "json" });
     await writeFile(outputPath, generated, "utf8");
     console.log(`Wrote ${outputPath}`);
     return;
   }
-  const current = await readFile(outputPath, "utf8").catch(() => null);
-  if (current !== generated) {
-    throw new Error(`${outputPath} is stale. Run \`${command} -- --write\`.`);
+  const current = await readFile(outputPath, "utf8").catch((error) => {
+    if (error.code === "ENOENT")
+      throw new Error(
+        `${outputPath} is missing. Review inputs before running \`${command} -- --write\`.`
+      );
+    throw error;
+  });
+  let expected;
+  try {
+    expected = JSON.parse(current);
+  } catch {
+    throw new Error(
+      `${outputPath} is not valid JSON. Restore or review the baseline before regenerating it.`
+    );
   }
-  console.log(`${outputPath} matches the production analyzer.`);
+  const comparison = comparePreviewFixtures(expected, fixture);
+  if (!comparison.matches) {
+    throw new Error(
+      `${outputPath} differs from the production analyzer (${comparison.mismatchCount} mismatches).\n` +
+        `${describeFixtureComparison(comparison)}\n` +
+        `Investigate these differences before intentionally regenerating with \`${command} -- --write\`.`
+    );
+  }
+  console.log(
+    `${outputPath} matches the production analyzer${comparison.toleratedCount ? ` with ${comparison.toleratedCount} bounded visual floating-point differences` : " exactly"}.`
+  );
+  if (comparison.toleratedCount) console.log(describeFixtureComparison(comparison));
 }

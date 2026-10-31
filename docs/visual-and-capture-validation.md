@@ -64,7 +64,10 @@ npm run sharesets:fixture -- --archive <audio-archive>
 ```
 
 The first Fixture command runs the real Rust analyzer and writes every Sharesets Fixture; the
-second repeats the analyses and fails if any committed JSON differs. `PLVS_AUDIO_ARCHIVE` can
+second repeats the analyses and compares the committed JSON values. Source identity, requests,
+structure, timestamps, measurements and loudness history must match exactly. Only explicitly
+listed visual floating-point arrays accept small absolute differences; JSON formatting and object
+key order do not affect the check. `PLVS_AUDIO_ARCHIVE` can
 stand in for `--archive`; the archive is described in `docs/marketing-screenshots.md`. Without it
 the stereo and 5.1 Fixtures are reported as "source unavailable" and skipped; the dialogue
 Fixtures are still checked. The generator verifies every stem and the stereo bed mixed from them
@@ -75,6 +78,28 @@ The generator derives its analysis requests from the production `DEFAULT_WORKSPA
 those requests in each Fixture, and stores every result under its real request key. A PLVS Default
 Preset change therefore makes the committed Fixtures stale instead of silently substituting data
 measured with different controls.
+
+The homepage and Sharesets commands share `scripts/preview-fixture-producer.mjs`, with comparison
+policy in `scripts/preview-fixture-compare.mjs`. Its absolute visual limits are:
+
+| Visual values                    | Maximum absolute difference |
+| -------------------------------- | --------------------------- |
+| Frequency grids                  | 0.000000001 Hz              |
+| Final Spectrum curves and peaks  | 0.0001 dB                   |
+| Spectrogram history bins         | 0.002 dB                    |
+| Waveform spectral centroid       | 0.002 Hz                    |
+| Waveform tonality                | 0.0000002                   |
+| Stereo Map power and cross-power | 0.000000001                 |
+
+These are narrowly scoped comparison allowances, not product accuracy claims. All other fields,
+including unknown visual fields, remain exact. Invalid JSON or non-finite numbers fail. A successful
+check reports the count and largest accepted difference per visual category and leaves the
+committed file and its provenance hash unchanged. A failure reports up to five field paths,
+expected/actual values and numerical limits where applicable. Investigate failures before using
+`--write`; it still writes the full generated precision only when explicitly requested.
+
+The comparison and file-write boundary tests run in the normal repository suite. Run them alone
+with `npx vitest run scripts/preview-fixture-compare.test.js scripts/preview-fixture-producer.test.js`.
 
 Generate the current Multichannel Monitoring review surfaces before regenerating the public Theme
 gallery and Preset preview:
