@@ -2,7 +2,7 @@ import { DOCK_MIN_HEIGHT, DOCK_MAX_HEIGHT } from "../dock/dockSizing.js";
 import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
-import { UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
+import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const TRANSPORT_ACTIONS = new Set([
@@ -335,7 +335,34 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (input.method === "ui.show.feedback") {
+  if (input.method === "ui.show.toolbarMenu") {
+    const field = unknownField(
+      input.params,
+      new Set(["menu", "expectedRevision", "expectedUiGeneration"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const generationError = validateExpectedUiGeneration(input.params);
+    if (generationError) return generationError;
+    if (!TOOLBAR_MENUS.includes(input.params.menu)) {
+      return invalidParams("$.params.menu", `menu must be one of ${TOOLBAR_MENUS.join(", ")}.`);
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          menu: input.params.menu,
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
+  }
+
+  if (input.method === "ui.show.feedback" || input.method === "ui.show.dockToolbar") {
     const field = unknownField(input.params, new Set(["expectedRevision", "expectedUiGeneration"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     const revisionError = validateExpectedRevision(input.params);

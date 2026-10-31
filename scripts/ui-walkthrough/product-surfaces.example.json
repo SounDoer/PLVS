@@ -32,6 +32,34 @@
       "touches": []
     },
     {
+      "id": "toolbar-loudness-profile",
+      "durable": [],
+      "ui": { "kind": "toolbarMenu", "menu": "loudness-profile" },
+      "screenshot": { "target": "main", "output": "toolbar-loudness-profile.png" },
+      "touches": []
+    },
+    {
+      "id": "toolbar-panels",
+      "durable": [],
+      "ui": { "kind": "toolbarMenu", "menu": "panels" },
+      "screenshot": { "target": "main", "output": "toolbar-panels.png" },
+      "touches": []
+    },
+    {
+      "id": "toolbar-views",
+      "durable": [],
+      "ui": { "kind": "toolbarMenu", "menu": "views" },
+      "screenshot": { "target": "main", "output": "toolbar-views.png" },
+      "touches": []
+    },
+    {
+      "id": "toolbar-presets",
+      "durable": [],
+      "ui": { "kind": "toolbarMenu", "menu": "presets" },
+      "screenshot": { "target": "main", "output": "toolbar-presets.png" },
+      "touches": []
+    },
+    {
       "id": "theme-customize",
       "durable": [],
       "ui": {

@@ -5,121 +5,123 @@
 
 Manifest version `1`. Entries are shown in stable presentation order.
 
-| Command ID | CLI path | Execution / operation | Revision | Dry run | Output file |
-| --- | --- | --- | --- | --- | --- |
-| `app.capabilities` | `capabilities` | runningApp / query | none | no | none |
-| `app.inspect` | `inspect` | runningApp / query | none | no | none |
-| `ui.inspect` | `ui inspect` | runningApp / query | none | no | none |
-| `ui.show.settings` | `ui show settings` | runningApp / action | required | no | none |
-| `ui.show.panelSettings` | `ui show panel-settings` | runningApp / action | required | no | none |
-| `ui.show.themeEditor` | `ui show theme-editor` | runningApp / action | required | no | none |
-| `ui.show.loudnessProfileEditor` | `ui show loudness-profile-editor` | runningApp / action | required | no | none |
-| `ui.show.feedback` | `ui show feedback` | runningApp / action | required | no | none |
-| `ui.close` | `ui close` | runningApp / action | required | no | none |
-| `ui.cancel` | `ui cancel` | runningApp / action | required | no | none |
-| `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
-| `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
-| `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
-| `measurement.waitUntil` | `measurement wait-until` | runningApp / wait | none | no | none |
-| `view.describe` | `view describe` | runningApp / query | none | no | none |
-| `view.inspect` | `view inspect` | runningApp / query | none | no | none |
-| `view.update` | `view update` | runningApp / mutation | required | yes | none |
-| `view.reset` | `view reset` | runningApp / mutation | required | yes | none |
-| `module.list` | `module list` | runningApp / query | none | no | none |
-| `module.describe` | `module describe` | runningApp / query | none | no | none |
-| `workspace.applyLayout` | `workspace apply` | runningApp / mutation | required | yes | none |
-| `axis.describe` | `axis describe` | runningApp / query | none | no | none |
-| `axis.inspect` | `axis inspect` | runningApp / query | none | no | none |
-| `axis.shared.update` | `axis shared update` | runningApp / mutation | required | yes | none |
-| `axis.shared.reset` | `axis shared reset` | runningApp / mutation | required | yes | none |
-| `axis.panel.update` | `axis panel update` | runningApp / mutation | required | yes | none |
-| `axis.panel.reset` | `axis panel reset` | runningApp / mutation | required | yes | none |
-| `panel.describe` | `panel describe` | runningApp / query | none | no | none |
-| `panel.update` | `panel update` | runningApp / mutation | required | yes | none |
-| `panel.reset` | `panel reset` | runningApp / mutation | required | yes | none |
-| `preset.list` | `preset list` | runningApp / query | none | no | none |
-| `preset.describe` | `preset describe` | runningApp / query | none | no | none |
-| `preset.rename` | `preset rename` | runningApp / mutation | required | yes | none |
-| `preset.delete` | `preset delete` | runningApp / mutation | required | yes | none |
-| `preset.reorder` | `preset reorder` | runningApp / mutation | required | yes | none |
-| `preset.save` | `preset save` | runningApp / mutation | required | yes | none |
-| `preset.update` | `preset update` | runningApp / mutation | required | yes | none |
-| `preset.apply` | `preset apply` | runningApp / mutation | required | yes | none |
-| `preset.export` | `preset export` | runningApp / query | none | no | optional |
-| `preset.import` | `preset import` | runningApp / mutation | required | yes | none |
-| `theme.list` | `theme list` | runningApp / query | none | no | none |
-| `theme.inspect` | `theme inspect` | runningApp / query | none | no | none |
-| `theme.describe` | `theme describe` | runningApp / query | none | no | none |
-| `theme.select` | `theme select` | runningApp / mutation | required | yes | none |
-| `theme.followSystem` | `theme follow-system` | runningApp / mutation | required | yes | none |
-| `theme.create` | `theme create` | runningApp / mutation | required | yes | none |
-| `theme.update` | `theme update` | runningApp / mutation | required | yes | none |
-| `theme.rename` | `theme rename` | runningApp / mutation | required | yes | none |
-| `theme.duplicate` | `theme duplicate` | runningApp / mutation | required | yes | none |
-| `theme.delete` | `theme delete` | runningApp / mutation | required | yes | none |
-| `theme.reorder` | `theme reorder` | runningApp / mutation | required | yes | none |
-| `theme.export` | `theme export` | runningApp / query | none | no | optional |
-| `theme.import` | `theme import` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.list` | `loudness-profile list` | runningApp / query | none | no | none |
-| `loudnessProfile.describe` | `loudness-profile describe` | runningApp / query | none | no | none |
-| `loudnessProfile.select` | `loudness-profile select` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.create` | `loudness-profile create` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.update` | `loudness-profile update` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.rename` | `loudness-profile rename` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.delete` | `loudness-profile delete` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.reorder` | `loudness-profile reorder` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.export` | `loudness-profile export` | runningApp / query | none | no | optional |
-| `loudnessProfile.import` | `loudness-profile import` | runningApp / mutation | required | yes | none |
-| `config.export` | `config export` | runningApp / query | none | no | optional |
-| `config.import` | `config import` | runningApp / mutation | required | yes | none |
-| `settings.describe` | `settings describe` | runningApp / query | none | no | none |
-| `settings.inspect` | `settings inspect` | runningApp / query | none | no | none |
-| `settings.update` | `settings update` | runningApp / mutation | required | yes | none |
-| `device.list` | `device list` | runningApp / query | none | no | none |
-| `device.inspect` | `device inspect` | runningApp / query | none | no | none |
-| `device.select` | `device select` | runningApp / mutation | required | yes | none |
-| `app.wait` | `wait` | runningApp / wait | none | no | none |
-| `transport.inspect` | `transport inspect` | runningApp / query | none | no | none |
-| `transport.snapshot.select` | `transport snapshot select` | runningApp / mutation | required | yes | none |
-| `transport.snapshot.clear` | `transport snapshot clear` | runningApp / mutation | required | yes | none |
-| `transport.source.live` | `transport source live` | runningApp / mutation | required | yes | none |
-| `transport.source.file` | `transport source file` | runningApp / mutation | required | yes | none |
-| `transport.live.start` | `transport live start` | runningApp / action | required | no | none |
-| `transport.live.stop` | `transport live stop` | runningApp / action | required | no | none |
-| `transport.live.clear` | `transport live clear` | runningApp / mutation | required | yes | none |
-| `transport.file.analyze` | `transport file analyze` | runningApp / action | required | no | none |
-| `transport.file.reanalyze` | `transport file reanalyze` | runningApp / action | required | no | none |
-| `transport.file.stop` | `transport file stop` | runningApp / action | required | no | none |
-| `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none |
-| `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none |
-| `transport.file.clear` | `transport file clear` | runningApp / mutation | required | yes | none |
-| `transport.file.report` | `transport file report` | runningApp / query | none | no | optional |
-| `dock.describe` | `dock describe` | runningApp / query | none | no | none |
-| `dock.inspect` | `dock inspect` | runningApp / query | none | no | none |
-| `dock.enter` | `dock enter` | runningApp / mutation | required | yes | none |
-| `dock.exit` | `dock exit` | runningApp / mutation | required | yes | none |
-| `dock.layout.apply` | `dock layout apply` | runningApp / mutation | required | yes | none |
-| `dock.panel.describe` | `dock panel describe` | runningApp / query | none | no | none |
-| `dock.panel.update` | `dock panel update` | runningApp / mutation | required | yes | none |
-| `dock.panel.reset` | `dock panel reset` | runningApp / mutation | required | yes | none |
-| `visual.describe` | `visual describe` | runningApp / query | none | no | none |
-| `visual.screenshot` | `visual screenshot` | runningApp / action | optional | no | required |
-| `visual.recording.start` | `visual recording start` | runningApp / action | optional | no | none |
-| `visual.recording.inspect` | `visual recording inspect` | runningApp / query | none | no | none |
-| `visual.recording.wait` | `visual recording wait` | runningApp / wait | none | no | optional |
-| `visual.recording.stop` | `visual recording stop` | runningApp / action | none | no | optional |
-| `editorDraft.describe` | `editor-draft describe` | runningApp / query | none | no | none |
-| `editorDraft.inspect` | `editor-draft inspect` | runningApp / query | none | no | none |
-| `editorDraft.patch` | `editor-draft patch` | runningApp / mutation | required | no | none |
-| `editorDraft.undo` | `editor-draft undo` | runningApp / mutation | required | no | none |
-| `editorDraft.redo` | `editor-draft redo` | runningApp / mutation | required | no | none |
-| `editorDraft.save` | `editor-draft save` | runningApp / action | required | no | none |
-| `editorDraft.discard` | `editor-draft discard` | runningApp / mutation | required | no | none |
-| `instances.list` | `instances` | offline / query | none | no | none |
-| `doctor` | `doctor` | offline / query | none | no | optional |
-| `schema.list` | `schema list` | offline / query | none | no | none |
-| `schema.get` | `schema get` | offline / query | none | no | none |
-| `completion` | `completion` | offline / query | none | no | none |
+| Command ID                      | CLI path                          | Execution / operation | Revision | Dry run | Output file |
+| ------------------------------- | --------------------------------- | --------------------- | -------- | ------- | ----------- |
+| `app.capabilities`              | `capabilities`                    | runningApp / query    | none     | no      | none        |
+| `app.inspect`                   | `inspect`                         | runningApp / query    | none     | no      | none        |
+| `ui.inspect`                    | `ui inspect`                      | runningApp / query    | none     | no      | none        |
+| `ui.show.settings`              | `ui show settings`                | runningApp / action   | required | no      | none        |
+| `ui.show.panelSettings`         | `ui show panel-settings`          | runningApp / action   | required | no      | none        |
+| `ui.show.themeEditor`           | `ui show theme-editor`            | runningApp / action   | required | no      | none        |
+| `ui.show.loudnessProfileEditor` | `ui show loudness-profile-editor` | runningApp / action   | required | no      | none        |
+| `ui.show.feedback`              | `ui show feedback`                | runningApp / action   | required | no      | none        |
+| `ui.show.toolbarMenu`           | `ui show toolbar-menu`            | runningApp / action   | required | no      | none        |
+| `ui.show.dockToolbar`           | `ui show dock-toolbar`            | runningApp / action   | required | no      | none        |
+| `ui.close`                      | `ui close`                        | runningApp / action   | required | no      | none        |
+| `ui.cancel`                     | `ui cancel`                       | runningApp / action   | required | no      | none        |
+| `measurement.describe`          | `measurement describe`            | runningApp / query    | none     | no      | none        |
+| `measurement.inspect`           | `measurement inspect`             | runningApp / query    | none     | no      | none        |
+| `measurement.wait`              | `measurement wait`                | runningApp / wait     | none     | no      | none        |
+| `measurement.waitUntil`         | `measurement wait-until`          | runningApp / wait     | none     | no      | none        |
+| `view.describe`                 | `view describe`                   | runningApp / query    | none     | no      | none        |
+| `view.inspect`                  | `view inspect`                    | runningApp / query    | none     | no      | none        |
+| `view.update`                   | `view update`                     | runningApp / mutation | required | yes     | none        |
+| `view.reset`                    | `view reset`                      | runningApp / mutation | required | yes     | none        |
+| `module.list`                   | `module list`                     | runningApp / query    | none     | no      | none        |
+| `module.describe`               | `module describe`                 | runningApp / query    | none     | no      | none        |
+| `workspace.applyLayout`         | `workspace apply`                 | runningApp / mutation | required | yes     | none        |
+| `axis.describe`                 | `axis describe`                   | runningApp / query    | none     | no      | none        |
+| `axis.inspect`                  | `axis inspect`                    | runningApp / query    | none     | no      | none        |
+| `axis.shared.update`            | `axis shared update`              | runningApp / mutation | required | yes     | none        |
+| `axis.shared.reset`             | `axis shared reset`               | runningApp / mutation | required | yes     | none        |
+| `axis.panel.update`             | `axis panel update`               | runningApp / mutation | required | yes     | none        |
+| `axis.panel.reset`              | `axis panel reset`                | runningApp / mutation | required | yes     | none        |
+| `panel.describe`                | `panel describe`                  | runningApp / query    | none     | no      | none        |
+| `panel.update`                  | `panel update`                    | runningApp / mutation | required | yes     | none        |
+| `panel.reset`                   | `panel reset`                     | runningApp / mutation | required | yes     | none        |
+| `preset.list`                   | `preset list`                     | runningApp / query    | none     | no      | none        |
+| `preset.describe`               | `preset describe`                 | runningApp / query    | none     | no      | none        |
+| `preset.rename`                 | `preset rename`                   | runningApp / mutation | required | yes     | none        |
+| `preset.delete`                 | `preset delete`                   | runningApp / mutation | required | yes     | none        |
+| `preset.reorder`                | `preset reorder`                  | runningApp / mutation | required | yes     | none        |
+| `preset.save`                   | `preset save`                     | runningApp / mutation | required | yes     | none        |
+| `preset.update`                 | `preset update`                   | runningApp / mutation | required | yes     | none        |
+| `preset.apply`                  | `preset apply`                    | runningApp / mutation | required | yes     | none        |
+| `preset.export`                 | `preset export`                   | runningApp / query    | none     | no      | optional    |
+| `preset.import`                 | `preset import`                   | runningApp / mutation | required | yes     | none        |
+| `theme.list`                    | `theme list`                      | runningApp / query    | none     | no      | none        |
+| `theme.inspect`                 | `theme inspect`                   | runningApp / query    | none     | no      | none        |
+| `theme.describe`                | `theme describe`                  | runningApp / query    | none     | no      | none        |
+| `theme.select`                  | `theme select`                    | runningApp / mutation | required | yes     | none        |
+| `theme.followSystem`            | `theme follow-system`             | runningApp / mutation | required | yes     | none        |
+| `theme.create`                  | `theme create`                    | runningApp / mutation | required | yes     | none        |
+| `theme.update`                  | `theme update`                    | runningApp / mutation | required | yes     | none        |
+| `theme.rename`                  | `theme rename`                    | runningApp / mutation | required | yes     | none        |
+| `theme.duplicate`               | `theme duplicate`                 | runningApp / mutation | required | yes     | none        |
+| `theme.delete`                  | `theme delete`                    | runningApp / mutation | required | yes     | none        |
+| `theme.reorder`                 | `theme reorder`                   | runningApp / mutation | required | yes     | none        |
+| `theme.export`                  | `theme export`                    | runningApp / query    | none     | no      | optional    |
+| `theme.import`                  | `theme import`                    | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.list`          | `loudness-profile list`           | runningApp / query    | none     | no      | none        |
+| `loudnessProfile.describe`      | `loudness-profile describe`       | runningApp / query    | none     | no      | none        |
+| `loudnessProfile.select`        | `loudness-profile select`         | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.create`        | `loudness-profile create`         | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.update`        | `loudness-profile update`         | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.rename`        | `loudness-profile rename`         | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.delete`        | `loudness-profile delete`         | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.reorder`       | `loudness-profile reorder`        | runningApp / mutation | required | yes     | none        |
+| `loudnessProfile.export`        | `loudness-profile export`         | runningApp / query    | none     | no      | optional    |
+| `loudnessProfile.import`        | `loudness-profile import`         | runningApp / mutation | required | yes     | none        |
+| `config.export`                 | `config export`                   | runningApp / query    | none     | no      | optional    |
+| `config.import`                 | `config import`                   | runningApp / mutation | required | yes     | none        |
+| `settings.describe`             | `settings describe`               | runningApp / query    | none     | no      | none        |
+| `settings.inspect`              | `settings inspect`                | runningApp / query    | none     | no      | none        |
+| `settings.update`               | `settings update`                 | runningApp / mutation | required | yes     | none        |
+| `device.list`                   | `device list`                     | runningApp / query    | none     | no      | none        |
+| `device.inspect`                | `device inspect`                  | runningApp / query    | none     | no      | none        |
+| `device.select`                 | `device select`                   | runningApp / mutation | required | yes     | none        |
+| `app.wait`                      | `wait`                            | runningApp / wait     | none     | no      | none        |
+| `transport.inspect`             | `transport inspect`               | runningApp / query    | none     | no      | none        |
+| `transport.snapshot.select`     | `transport snapshot select`       | runningApp / mutation | required | yes     | none        |
+| `transport.snapshot.clear`      | `transport snapshot clear`        | runningApp / mutation | required | yes     | none        |
+| `transport.source.live`         | `transport source live`           | runningApp / mutation | required | yes     | none        |
+| `transport.source.file`         | `transport source file`           | runningApp / mutation | required | yes     | none        |
+| `transport.live.start`          | `transport live start`            | runningApp / action   | required | no      | none        |
+| `transport.live.stop`           | `transport live stop`             | runningApp / action   | required | no      | none        |
+| `transport.live.clear`          | `transport live clear`            | runningApp / mutation | required | yes     | none        |
+| `transport.file.analyze`        | `transport file analyze`          | runningApp / action   | required | no      | none        |
+| `transport.file.reanalyze`      | `transport file reanalyze`        | runningApp / action   | required | no      | none        |
+| `transport.file.stop`           | `transport file stop`             | runningApp / action   | required | no      | none        |
+| `transport.file.select`         | `transport file select`           | runningApp / mutation | required | yes     | none        |
+| `transport.file.remove`         | `transport file remove`           | runningApp / mutation | required | yes     | none        |
+| `transport.file.clear`          | `transport file clear`            | runningApp / mutation | required | yes     | none        |
+| `transport.file.report`         | `transport file report`           | runningApp / query    | none     | no      | optional    |
+| `dock.describe`                 | `dock describe`                   | runningApp / query    | none     | no      | none        |
+| `dock.inspect`                  | `dock inspect`                    | runningApp / query    | none     | no      | none        |
+| `dock.enter`                    | `dock enter`                      | runningApp / mutation | required | yes     | none        |
+| `dock.exit`                     | `dock exit`                       | runningApp / mutation | required | yes     | none        |
+| `dock.layout.apply`             | `dock layout apply`               | runningApp / mutation | required | yes     | none        |
+| `dock.panel.describe`           | `dock panel describe`             | runningApp / query    | none     | no      | none        |
+| `dock.panel.update`             | `dock panel update`               | runningApp / mutation | required | yes     | none        |
+| `dock.panel.reset`              | `dock panel reset`                | runningApp / mutation | required | yes     | none        |
+| `visual.describe`               | `visual describe`                 | runningApp / query    | none     | no      | none        |
+| `visual.screenshot`             | `visual screenshot`               | runningApp / action   | optional | no      | required    |
+| `visual.recording.start`        | `visual recording start`          | runningApp / action   | optional | no      | none        |
+| `visual.recording.inspect`      | `visual recording inspect`        | runningApp / query    | none     | no      | none        |
+| `visual.recording.wait`         | `visual recording wait`           | runningApp / wait     | none     | no      | optional    |
+| `visual.recording.stop`         | `visual recording stop`           | runningApp / action   | none     | no      | optional    |
+| `editorDraft.describe`          | `editor-draft describe`           | runningApp / query    | none     | no      | none        |
+| `editorDraft.inspect`           | `editor-draft inspect`            | runningApp / query    | none     | no      | none        |
+| `editorDraft.patch`             | `editor-draft patch`              | runningApp / mutation | required | no      | none        |
+| `editorDraft.undo`              | `editor-draft undo`               | runningApp / mutation | required | no      | none        |
+| `editorDraft.redo`              | `editor-draft redo`               | runningApp / mutation | required | no      | none        |
+| `editorDraft.save`              | `editor-draft save`               | runningApp / action   | required | no      | none        |
+| `editorDraft.discard`           | `editor-draft discard`            | runningApp / mutation | required | no      | none        |
+| `instances.list`                | `instances`                       | offline / query       | none     | no      | none        |
+| `doctor`                        | `doctor`                          | offline / query       | none     | no      | optional    |
+| `schema.list`                   | `schema list`                     | offline / query       | none     | no      | none        |
+| `schema.get`                    | `schema get`                      | offline / query       | none     | no      | none        |
+| `completion`                    | `completion`                      | offline / query       | none     | no      | none        |
 
 ## `app.capabilities`
 
@@ -140,10 +142,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `app.inspect`
 
@@ -164,10 +166,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `ui.inspect`
 
@@ -188,9 +190,9 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
 
 ## `ui.show.settings`
 
@@ -211,12 +213,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--section` | local only | yes | string; one of "behavior", "shortcuts", "appearance", "analysis", "channels", "transfer", "agent-control", "about" |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                                                                                                              |
+| -------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `--section`                | local only             | yes      | string; one of "behavior", "shortcuts", "appearance", "analysis", "channels", "transfer", "agent-control", "about" |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991                                                                                     |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991                                                                                     |
+| `--json`                   | local only             | yes      | boolean                                                                                                            |
 
 ## `ui.show.panelSettings`
 
@@ -237,12 +239,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--panel-id` | `panelId` | yes | string |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                          |
+| -------------------------- | ---------------------- | -------- | ------------------------------ |
+| `--panel-id`               | `panelId`              | yes      | string                         |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991 |
+| `--json`                   | local only             | yes      | boolean                        |
 
 ## `ui.show.themeEditor`
 
@@ -263,14 +265,14 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--mode` | `mode` | yes | string; one of "create", "edit", "customize", "duplicate" |
-| `--theme-id` | `themeId` | no | string |
-| `--page` | `page` | no | string; one of "core", "palettes", "advanced" |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                                                     |
+| -------------------------- | ---------------------- | -------- | --------------------------------------------------------- |
+| `--mode`                   | `mode`                 | yes      | string; one of "create", "edit", "customize", "duplicate" |
+| `--theme-id`               | `themeId`              | no       | string                                                    |
+| `--page`                   | `page`                 | no       | string; one of "core", "palettes", "advanced"             |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991                            |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991                            |
+| `--json`                   | local only             | yes      | boolean                                                   |
 
 ## `ui.show.loudnessProfileEditor`
 
@@ -291,13 +293,13 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--mode` | `mode` | yes | string; one of "create", "edit" |
-| `--profile-id` | `profileId` | no | string |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                           |
+| -------------------------- | ---------------------- | -------- | ------------------------------- |
+| `--mode`                   | `mode`                 | yes      | string; one of "create", "edit" |
+| `--profile-id`             | `profileId`            | no       | string                          |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991  |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991  |
+| `--json`                   | local only             | yes      | boolean                         |
 
 ## `ui.show.feedback`
 
@@ -318,11 +320,62 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                          |
+| -------------------------- | ---------------------- | -------- | ------------------------------ |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991 |
+| `--json`                   | local only             | yes      | boolean                        |
+
+## `ui.show.toolbarMenu`
+
+Open one toolbar menu in the normal window or Dock as its toolbar button does.
+
+- CLI path: `ui show toolbar-menu`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.toolbarMenu`
+
+```text
+plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name                       | Maps to                | Required | Value                                                                                |
+| -------------------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `--menu`                   | `menu`                 | yes      | string; one of "sources", "loudness-profile", "panels", "views", "presets", "status" |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991                                                       |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991                                                       |
+| `--json`                   | local only             | yes      | boolean                                                                              |
+
+## `ui.show.dockToolbar`
+
+Reveal the Dock toolbar as its arrow button does.
+
+- CLI path: `ui show dock-toolbar`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.dockToolbar`
+
+```text
+plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name                       | Maps to                | Required | Value                          |
+| -------------------------- | ---------------------- | -------- | ------------------------------ |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991 |
+| `--json`                   | local only             | yes      | boolean                        |
 
 ## `ui.close`
 
@@ -339,17 +392,17 @@ plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation 
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `surface-id` | `surfaceId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                          |
+| -------------------------- | ---------------------- | -------- | ------------------------------ |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991 |
+| `--json`                   | local only             | yes      | boolean                        |
 
 ## `ui.cancel`
 
@@ -366,17 +419,17 @@ plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `surface-id` | `surfaceId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                          |
+| -------------------------- | ---------------------- | -------- | ------------------------------ |
+| `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991 |
+| `--json`                   | local only             | yes      | boolean                        |
 
 ## `measurement.describe`
 
@@ -397,10 +450,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `measurement.inspect`
 
@@ -421,10 +474,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `measurement.wait`
 
@@ -445,12 +498,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--after-generation` | `afterGeneration` | yes | integer; 0 to inf |
-| `--after-sequence` | `afterSequence` | no | integer; 0 to inf |
-| `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
-| `--json` | local only | yes | boolean |
+| Name                 | Maps to           | Required | Value                                 |
+| -------------------- | ----------------- | -------- | ------------------------------------- |
+| `--after-generation` | `afterGeneration` | yes      | integer; 0 to inf                     |
+| `--after-sequence`   | `afterSequence`   | no       | integer; 0 to inf                     |
+| `--timeout-ms`       | `timeoutMs`       | no       | integer; 100 to 300000; default 30000 |
+| `--json`             | local only        | yes      | boolean                               |
 
 ## `measurement.waitUntil`
 
@@ -468,16 +521,16 @@ plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `predicate` | yes | ref measurement.predicate |
+| Name      | Maps to     | Required | Value                     |
+| --------- | ----------- | -------- | ------------------------- |
+| `file\|-` | `predicate` | yes      | ref measurement.predicate |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
-| `--json` | local only | yes | boolean |
+| Name           | Maps to     | Required | Value                                 |
+| -------------- | ----------- | -------- | ------------------------------------- |
+| `--timeout-ms` | `timeoutMs` | no       | integer; 100 to 300000; default 30000 |
+| `--json`       | local only  | yes      | boolean                               |
 
 ## `view.describe`
 
@@ -498,10 +551,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `view.inspect`
 
@@ -522,10 +575,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `view.update`
 
@@ -543,17 +596,17 @@ plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `patch` | yes | string; ref view.patch |
+| Name      | Maps to | Required | Value                  |
+| --------- | ------- | -------- | ---------------------- |
+| `file\|-` | `patch` | yes      | string; ref view.patch |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `view.reset`
 
@@ -575,11 +628,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `module.list`
 
@@ -600,10 +653,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `module.describe`
 
@@ -620,16 +673,16 @@ plvs-cli module describe <module-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `module-id` | `moduleId` | yes | string |
+| Name        | Maps to    | Required | Value  |
+| ----------- | ---------- | -------- | ------ |
+| `module-id` | `moduleId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `workspace.applyLayout`
 
@@ -647,17 +700,17 @@ plvs-cli workspace apply <file|-> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `layout` | yes | string; ref workspace.layout |
+| Name      | Maps to  | Required | Value                        |
+| --------- | -------- | -------- | ---------------------------- |
+| `file\|-` | `layout` | yes      | string; ref workspace.layout |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `axis.describe`
 
@@ -678,10 +731,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `axis.inspect`
 
@@ -702,10 +755,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `axis.shared.update`
 
@@ -723,18 +776,18 @@ plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `frequency\|time` | `kind` | yes | string |
-| `file\|-` | `range` | yes | string; ref axis.patch.runtime |
+| Name              | Maps to | Required | Value                          |
+| ----------------- | ------- | -------- | ------------------------------ |
+| `frequency\|time` | `kind`  | yes      | string                         |
+| `file\|-`         | `range` | yes      | string; ref axis.patch.runtime |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `axis.shared.reset`
 
@@ -752,17 +805,17 @@ plvs-cli axis shared reset <frequency|time> --json --expected-revision <n> [--dr
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `frequency\|time` | `kind` | yes | string |
+| Name              | Maps to | Required | Value  |
+| ----------------- | ------- | -------- | ------ |
+| `frequency\|time` | `kind`  | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `axis.panel.update`
 
@@ -780,19 +833,19 @@ plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expecte
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
-| `frequency\|time` | `kind` | yes | string |
-| `file\|-` | `patch` | yes | string; ref axis.patch.runtime |
+| Name              | Maps to   | Required | Value                          |
+| ----------------- | --------- | -------- | ------------------------------ |
+| `panel-id`        | `panelId` | yes      | string                         |
+| `frequency\|time` | `kind`    | yes      | string                         |
+| `file\|-`         | `patch`   | yes      | string; ref axis.patch.runtime |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `axis.panel.reset`
 
@@ -810,18 +863,18 @@ plvs-cli axis panel reset <panel-id> <frequency|time> --json --expected-revision
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
-| `frequency\|time` | `kind` | yes | string |
+| Name              | Maps to   | Required | Value  |
+| ----------------- | --------- | -------- | ------ |
+| `panel-id`        | `panelId` | yes      | string |
+| `frequency\|time` | `kind`    | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `panel.describe`
 
@@ -838,16 +891,16 @@ plvs-cli panel describe <panel-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `panel-id` | `panelId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `panel.update`
 
@@ -865,18 +918,18 @@ plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
-| `file\|-` | `patch` | yes | string; ref panel.patch.runtime |
+| Name       | Maps to   | Required | Value                           |
+| ---------- | --------- | -------- | ------------------------------- |
+| `panel-id` | `panelId` | yes      | string                          |
+| `file\|-`  | `patch`   | yes      | string; ref panel.patch.runtime |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `panel.reset`
 
@@ -894,17 +947,17 @@ plvs-cli panel reset <panel-id> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `panel-id` | `panelId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.list`
 
@@ -925,10 +978,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `preset.describe`
 
@@ -945,16 +998,16 @@ plvs-cli preset describe <preset-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `preset-id` | `presetId` | yes | string |
+| Name        | Maps to    | Required | Value  |
+| ----------- | ---------- | -------- | ------ |
+| `preset-id` | `presetId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `preset.rename`
 
@@ -972,18 +1025,18 @@ plvs-cli preset rename <preset-id> <name> --json --expected-revision <n> [--dry-
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `preset-id` | `presetId` | yes | string |
-| `name` | `name` | yes | string |
+| Name        | Maps to    | Required | Value  |
+| ----------- | ---------- | -------- | ------ |
+| `preset-id` | `presetId` | yes      | string |
+| `name`      | `name`     | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.delete`
 
@@ -1001,17 +1054,17 @@ plvs-cli preset delete <preset-id> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `preset-id` | `presetId` | yes | string |
+| Name        | Maps to    | Required | Value  |
+| ----------- | ---------- | -------- | ------ |
+| `preset-id` | `presetId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.reorder`
 
@@ -1029,17 +1082,17 @@ plvs-cli preset reorder <file|-> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `presetIds` | yes | string; ref preset.order |
+| Name      | Maps to     | Required | Value                    |
+| --------- | ----------- | -------- | ------------------------ |
+| `file\|-` | `presetIds` | yes      | string; ref preset.order |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.save`
 
@@ -1057,17 +1110,17 @@ plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `name` | `name` | yes | string |
+| Name   | Maps to | Required | Value  |
+| ------ | ------- | -------- | ------ |
+| `name` | `name`  | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.update`
 
@@ -1085,17 +1138,17 @@ plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `preset-id` | `presetId` | yes | string |
+| Name        | Maps to    | Required | Value  |
+| ----------- | ---------- | -------- | ------ |
+| `preset-id` | `presetId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.apply`
 
@@ -1113,17 +1166,17 @@ plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `preset-id` | `presetId` | yes | string |
+| Name        | Maps to    | Required | Value  |
+| ----------- | ---------- | -------- | ------ |
+| `preset-id` | `presetId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `preset.export`
 
@@ -1144,12 +1197,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--all` | local only | no | boolean |
-| `--ids` | `ids` | no | array |
-| `--json` | local only | yes | boolean |
-| `--out` | local only | no | string |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--all`  | local only | no       | boolean |
+| `--ids`  | `ids`      | no       | array   |
+| `--json` | local only | yes      | boolean |
+| `--out`  | local only | no       | string  |
 
 ## `preset.import`
 
@@ -1167,17 +1220,17 @@ plvs-cli preset import <file|-> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `pack` | yes | string; ref preset.pack |
+| Name      | Maps to | Required | Value                   |
+| --------- | ------- | -------- | ----------------------- |
+| `file\|-` | `pack`  | yes      | string; ref preset.pack |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.list`
 
@@ -1198,10 +1251,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `theme.inspect`
 
@@ -1222,10 +1275,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `theme.describe`
 
@@ -1242,16 +1295,16 @@ plvs-cli theme describe <theme-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `theme-id` | `themeId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `theme-id` | `themeId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `theme.select`
 
@@ -1269,17 +1322,17 @@ plvs-cli theme select <theme-id> --expected-revision <n> --json [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `theme-id` | `themeId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `theme-id` | `themeId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.followSystem`
 
@@ -1301,11 +1354,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.create`
 
@@ -1323,17 +1376,17 @@ plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `document` | yes | string; ref theme.document.v2 |
+| Name      | Maps to    | Required | Value                         |
+| --------- | ---------- | -------- | ----------------------------- |
+| `file\|-` | `document` | yes      | string; ref theme.document.v2 |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.update`
 
@@ -1351,18 +1404,18 @@ plvs-cli theme update <theme-id> <file|-> --expected-revision <n> --json [--dry-
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `theme-id` | `themeId` | yes | string |
-| `file\|-` | `document` | yes | string; ref theme.document.v2 |
+| Name       | Maps to    | Required | Value                         |
+| ---------- | ---------- | -------- | ----------------------------- |
+| `theme-id` | `themeId`  | yes      | string                        |
+| `file\|-`  | `document` | yes      | string; ref theme.document.v2 |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.rename`
 
@@ -1380,18 +1433,18 @@ plvs-cli theme rename <theme-id> <name> --expected-revision <n> --json [--dry-ru
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `theme-id` | `themeId` | yes | string |
-| `name` | `name` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `theme-id` | `themeId` | yes      | string |
+| `name`     | `name`    | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.duplicate`
 
@@ -1409,18 +1462,18 @@ plvs-cli theme duplicate <theme-id> <name> --expected-revision <n> --json [--dry
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `theme-id` | `themeId` | yes | string |
-| `name` | `name` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `theme-id` | `themeId` | yes      | string |
+| `name`     | `name`    | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.delete`
 
@@ -1438,17 +1491,17 @@ plvs-cli theme delete <theme-id> --expected-revision <n> --json [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `theme-id` | `themeId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `theme-id` | `themeId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.reorder`
 
@@ -1466,17 +1519,17 @@ plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `themeIds` | yes | string; ref theme.order |
+| Name      | Maps to    | Required | Value                   |
+| --------- | ---------- | -------- | ----------------------- |
+| `file\|-` | `themeIds` | yes      | string; ref theme.order |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `theme.export`
 
@@ -1497,12 +1550,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--all` | local only | no | boolean |
-| `--ids` | `ids` | no | array |
-| `--json` | local only | yes | boolean |
-| `--out` | local only | no | string |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--all`  | local only | no       | boolean |
+| `--ids`  | `ids`      | no       | array   |
+| `--json` | local only | yes      | boolean |
+| `--out`  | local only | no       | string  |
 
 ## `theme.import`
 
@@ -1520,17 +1573,17 @@ plvs-cli theme import <file|-> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `pack` | yes | string; ref theme.pack |
+| Name      | Maps to | Required | Value                  |
+| --------- | ------- | -------- | ---------------------- |
+| `file\|-` | `pack`  | yes      | string; ref theme.pack |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.list`
 
@@ -1551,10 +1604,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `loudnessProfile.describe`
 
@@ -1571,16 +1624,16 @@ plvs-cli loudness-profile describe <profile-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `profile-id` | `profileId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `profile-id` | `profileId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `loudnessProfile.select`
 
@@ -1598,17 +1651,17 @@ plvs-cli loudness-profile select <profile-id|off> --expected-revision <n> --json
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `profile-id\|off` | `profileId` | yes | string |
+| Name              | Maps to     | Required | Value  |
+| ----------------- | ----------- | -------- | ------ |
+| `profile-id\|off` | `profileId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.create`
 
@@ -1626,17 +1679,17 @@ plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `document` | yes | string; ref loudnessProfile.document |
+| Name      | Maps to    | Required | Value                                |
+| --------- | ---------- | -------- | ------------------------------------ |
+| `file\|-` | `document` | yes      | string; ref loudnessProfile.document |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.update`
 
@@ -1654,18 +1707,18 @@ plvs-cli loudness-profile update <profile-id> <file|-> --expected-revision <n> -
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `profile-id` | `profileId` | yes | string |
-| `file\|-` | `document` | yes | string; ref loudnessProfile.document |
+| Name         | Maps to     | Required | Value                                |
+| ------------ | ----------- | -------- | ------------------------------------ |
+| `profile-id` | `profileId` | yes      | string                               |
+| `file\|-`    | `document`  | yes      | string; ref loudnessProfile.document |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.rename`
 
@@ -1683,18 +1736,18 @@ plvs-cli loudness-profile rename <profile-id> <name> --expected-revision <n> --j
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `profile-id` | `profileId` | yes | string |
-| `name` | `name` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `profile-id` | `profileId` | yes      | string |
+| `name`       | `name`      | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.delete`
 
@@ -1712,17 +1765,17 @@ plvs-cli loudness-profile delete <profile-id> --expected-revision <n> --json [--
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `profile-id` | `profileId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `profile-id` | `profileId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.reorder`
 
@@ -1740,17 +1793,17 @@ plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `profileIds` | yes | string; ref loudnessProfile.order |
+| Name      | Maps to      | Required | Value                             |
+| --------- | ------------ | -------- | --------------------------------- |
+| `file\|-` | `profileIds` | yes      | string; ref loudnessProfile.order |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `loudnessProfile.export`
 
@@ -1771,12 +1824,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--all` | local only | no | boolean |
-| `--ids` | `ids` | no | array |
-| `--json` | local only | yes | boolean |
-| `--out` | local only | no | string |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--all`  | local only | no       | boolean |
+| `--ids`  | `ids`      | no       | array   |
+| `--json` | local only | yes      | boolean |
+| `--out`  | local only | no       | string  |
 
 ## `loudnessProfile.import`
 
@@ -1794,17 +1847,17 @@ plvs-cli loudness-profile import <file|-> --json --expected-revision <n> [--dry-
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `pack` | yes | string; ref loudnessProfile.pack |
+| Name      | Maps to | Required | Value                            |
+| --------- | ------- | -------- | -------------------------------- |
+| `file\|-` | `pack`  | yes      | string; ref loudnessProfile.pack |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `config.export`
 
@@ -1825,10 +1878,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--out` | local only | no | string |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
+| `--out`  | local only | no       | string  |
 
 ## `config.import`
 
@@ -1846,17 +1899,17 @@ plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `configuration` | yes | string; ref configurationProfile.v1 |
+| Name      | Maps to         | Required | Value                               |
+| --------- | --------------- | -------- | ----------------------------------- |
+| `file\|-` | `configuration` | yes      | string; ref configurationProfile.v1 |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--json`              | local only         | yes      | boolean           |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `settings.describe`
 
@@ -1877,10 +1930,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `settings.inspect`
 
@@ -1901,10 +1954,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `settings.update`
 
@@ -1922,18 +1975,18 @@ plvs-cli settings update <file|-> --json --expected-revision <n> [--allow-measur
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `patch` | yes | string; ref settings.patch |
+| Name      | Maps to | Required | Value                      |
+| --------- | ------- | -------- | -------------------------- |
+| `file\|-` | `patch` | yes      | string; ref settings.patch |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--allow-measurement-restart` | `allowMeasurementRestart` | no | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                          | Maps to                   | Required | Value             |
+| ----------------------------- | ------------------------- | -------- | ----------------- |
+| `--json`                      | local only                | yes      | boolean           |
+| `--expected-revision`         | `expectedRevision`        | yes      | integer; 0 to inf |
+| `--allow-measurement-restart` | `allowMeasurementRestart` | no       | boolean           |
+| `--dry-run`                   | `dryRun`                  | no       | boolean           |
 
 ## `device.list`
 
@@ -1954,10 +2007,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `device.inspect`
 
@@ -1978,10 +2031,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `device.select`
 
@@ -1999,19 +2052,19 @@ plvs-cli device select <device-id|default> --expected-revision <n> --expected-ge
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `device-id\|default` | `deviceId` | yes | string |
+| Name                 | Maps to    | Required | Value  |
+| -------------------- | ---------- | -------- | ------ |
+| `device-id\|default` | `deviceId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--expected-generation` | `expectedGeneration` | yes | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--allow-measurement-restart` | `allowMeasurementRestart` | no | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                          | Maps to                   | Required | Value             |
+| ----------------------------- | ------------------------- | -------- | ----------------- |
+| `--expected-revision`         | `expectedRevision`        | yes      | integer; 0 to inf |
+| `--expected-generation`       | `expectedGeneration`      | yes      | integer; 0 to inf |
+| `--json`                      | local only                | yes      | boolean           |
+| `--allow-measurement-restart` | `allowMeasurementRestart` | no       | boolean           |
+| `--dry-run`                   | `dryRun`                  | no       | boolean           |
 
 ## `app.wait`
 
@@ -2032,11 +2085,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--after-revision` | `afterRevision` | yes | integer; 0 to inf |
-| `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
-| `--json` | local only | yes | boolean |
+| Name               | Maps to         | Required | Value                                 |
+| ------------------ | --------------- | -------- | ------------------------------------- |
+| `--after-revision` | `afterRevision` | yes      | integer; 0 to inf                     |
+| `--timeout-ms`     | `timeoutMs`     | no       | integer; 100 to 300000; default 30000 |
+| `--json`           | local only      | yes      | boolean                               |
 
 ## `transport.inspect`
 
@@ -2057,10 +2110,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `transport.snapshot.select`
 
@@ -2082,12 +2135,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--offset-sec` | `offsetSec` | yes | number; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--offset-sec`        | `offsetSec`        | yes      | number; 0 to inf  |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `transport.snapshot.clear`
 
@@ -2109,11 +2162,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `transport.source.live`
 
@@ -2135,12 +2188,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                         | Maps to                 | Required | Value             |
+| ---------------------------- | ----------------------- | -------- | ----------------- |
+| `--json`                     | local only              | yes      | boolean           |
+| `--expected-revision`        | `expectedRevision`      | yes      | integer; 0 to inf |
+| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no       | boolean           |
+| `--dry-run`                  | `dryRun`                | no       | boolean           |
 
 ## `transport.source.file`
 
@@ -2162,12 +2215,12 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no | boolean |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                         | Maps to                 | Required | Value             |
+| ---------------------------- | ----------------------- | -------- | ----------------- |
+| `--json`                     | local only              | yes      | boolean           |
+| `--expected-revision`        | `expectedRevision`      | yes      | integer; 0 to inf |
+| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no       | boolean           |
+| `--dry-run`                  | `dryRun`                | no       | boolean           |
 
 ## `transport.live.start`
 
@@ -2189,11 +2242,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no | boolean |
+| Name                         | Maps to                 | Required | Value             |
+| ---------------------------- | ----------------------- | -------- | ----------------- |
+| `--json`                     | local only              | yes      | boolean           |
+| `--expected-revision`        | `expectedRevision`      | yes      | integer; 0 to inf |
+| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no       | boolean           |
 
 ## `transport.live.stop`
 
@@ -2215,11 +2268,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no | boolean |
+| Name                         | Maps to                 | Required | Value             |
+| ---------------------------- | ----------------------- | -------- | ----------------- |
+| `--json`                     | local only              | yes      | boolean           |
+| `--expected-revision`        | `expectedRevision`      | yes      | integer; 0 to inf |
+| `--allow-stop-file-analysis` | `allowStopFileAnalysis` | no       | boolean           |
 
 ## `transport.live.clear`
 
@@ -2241,11 +2294,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `transport.file.analyze`
 
@@ -2263,16 +2316,16 @@ plvs-cli transport file analyze <path> --json --expected-revision <n>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `path` | `path` | yes | string |
+| Name   | Maps to | Required | Value  |
+| ------ | ------- | -------- | ------ |
+| `path` | `path`  | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
 
 ## `transport.file.reanalyze`
 
@@ -2290,16 +2343,16 @@ plvs-cli transport file reanalyze <session-id> --json --expected-revision <n>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `session-id` | `sessionId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `session-id` | `sessionId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
 
 ## `transport.file.stop`
 
@@ -2317,16 +2370,16 @@ plvs-cli transport file stop <session-id> --json --expected-revision <n>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `session-id` | `sessionId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `session-id` | `sessionId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
 
 ## `transport.file.select`
 
@@ -2344,17 +2397,17 @@ plvs-cli transport file select <session-id> --json --expected-revision <n> [--dr
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `session-id` | `sessionId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `session-id` | `sessionId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `transport.file.remove`
 
@@ -2372,17 +2425,17 @@ plvs-cli transport file remove <session-id> --json --expected-revision <n> [--dr
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `session-id` | `sessionId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `session-id` | `sessionId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `transport.file.clear`
 
@@ -2404,11 +2457,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `transport.file.report`
 
@@ -2425,17 +2478,17 @@ plvs-cli transport file report <session-id> --json [--report-format <json|markdo
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `session-id` | `sessionId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `session-id` | `sessionId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--report-format` | `reportFormat` | no | string; one of "json", "markdown" |
-| `--out` | local only | no | string |
+| Name              | Maps to        | Required | Value                             |
+| ----------------- | -------------- | -------- | --------------------------------- |
+| `--json`          | local only     | yes      | boolean                           |
+| `--report-format` | `reportFormat` | no       | string; one of "json", "markdown" |
+| `--out`           | local only     | no       | string                            |
 
 ## `dock.describe`
 
@@ -2456,10 +2509,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `dock.inspect`
 
@@ -2480,10 +2533,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `dock.enter`
 
@@ -2505,15 +2558,15 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--edge` | `edge` | no | string; one of "top", "bottom" |
-| `--monitor` | `monitor` | no | string |
-| `--reserve-space` | `reserveSpace` | no | string; one of "true", "false" |
-| `--height` | `height` | no | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value                          |
+| --------------------- | ------------------ | -------- | ------------------------------ |
+| `--edge`              | `edge`             | no       | string; one of "top", "bottom" |
+| `--monitor`           | `monitor`          | no       | string                         |
+| `--reserve-space`     | `reserveSpace`     | no       | string; one of "true", "false" |
+| `--height`            | `height`           | no       | integer; 0 to inf              |
+| `--json`              | local only         | yes      | boolean                        |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf              |
+| `--dry-run`           | `dryRun`           | no       | boolean                        |
 
 ## `dock.exit`
 
@@ -2535,11 +2588,11 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `dock.layout.apply`
 
@@ -2557,17 +2610,17 @@ plvs-cli dock layout apply <file|-> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `file\|-` | `layout` | yes | string; ref dock.layout |
+| Name      | Maps to  | Required | Value                   |
+| --------- | -------- | -------- | ----------------------- |
+| `file\|-` | `layout` | yes      | string; ref dock.layout |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `dock.panel.describe`
 
@@ -2584,16 +2637,16 @@ plvs-cli dock panel describe <panel-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `panel-id` | `panelId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `dock.panel.update`
 
@@ -2611,18 +2664,18 @@ plvs-cli dock panel update <panel-id> <file|-> --json --expected-revision <n> [-
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
-| `file\|-` | `patch` | yes | string; ref dock.panel.patch |
+| Name       | Maps to   | Required | Value                        |
+| ---------- | --------- | -------- | ---------------------------- |
+| `panel-id` | `panelId` | yes      | string                       |
+| `file\|-`  | `patch`   | yes      | string; ref dock.panel.patch |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `dock.panel.reset`
 
@@ -2640,17 +2693,17 @@ plvs-cli dock panel reset <panel-id> --json --expected-revision <n> [--dry-run]
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `panel-id` | `panelId` | yes | string |
+| Name       | Maps to   | Required | Value  |
+| ---------- | --------- | -------- | ------ |
+| `panel-id` | `panelId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
-| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
-| `--dry-run` | `dryRun` | no | boolean |
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
 
 ## `visual.describe`
 
@@ -2672,10 +2725,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `visual.screenshot`
 
@@ -2698,14 +2751,14 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--target` | `target.kind` | yes | string; one of "main", "workspace", "panel", "dock-header", "dock-editor", "dock-update" |
-| `--panel-id` | `target.panelId` | no | string |
-| `--expected-revision` | `expectedRevision` | no | integer; 0 to inf |
-| `--expected-ui-generation` | `expectedUiGeneration` | no | integer; 0 to 9007199254740991 |
-| `--out` | local only | yes | string |
-| `--json` | local only | yes | boolean |
+| Name                       | Maps to                | Required | Value                                                                                    |
+| -------------------------- | ---------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `--target`                 | `target.kind`          | yes      | string; one of "main", "workspace", "panel", "dock-header", "dock-editor", "dock-update" |
+| `--panel-id`               | `target.panelId`       | no       | string                                                                                   |
+| `--expected-revision`      | `expectedRevision`     | no       | integer; 0 to inf                                                                        |
+| `--expected-ui-generation` | `expectedUiGeneration` | no       | integer; 0 to 9007199254740991                                                           |
+| `--out`                    | local only             | yes      | string                                                                                   |
+| `--json`                   | local only             | yes      | boolean                                                                                  |
 
 ## `visual.recording.start`
 
@@ -2728,15 +2781,15 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--target` | `target.kind` | yes | string; one of "main", "workspace" |
-| `--audio` | `audio` | no | string; one of "none", "measured-source" |
-| `--cursor` | `cursor` | no | string; one of "none", "visible"; default "none" |
-| `--fps` | `fps` | no | integer; one of 15, 30, 60; default 30 |
-| `--max-duration-seconds` | `maxDurationSeconds` | no | integer; 1 to 1800; default 60 |
-| `--expected-revision` | `expectedRevision` | no | integer; 0 to inf |
-| `--json` | local only | yes | boolean |
+| Name                     | Maps to              | Required | Value                                            |
+| ------------------------ | -------------------- | -------- | ------------------------------------------------ |
+| `--target`               | `target.kind`        | yes      | string; one of "main", "workspace"               |
+| `--audio`                | `audio`              | no       | string; one of "none", "measured-source"         |
+| `--cursor`               | `cursor`             | no       | string; one of "none", "visible"; default "none" |
+| `--fps`                  | `fps`                | no       | integer; one of 15, 30, 60; default 30           |
+| `--max-duration-seconds` | `maxDurationSeconds` | no       | integer; 1 to 1800; default 60                   |
+| `--expected-revision`    | `expectedRevision`   | no       | integer; 0 to inf                                |
+| `--json`                 | local only           | yes      | boolean                                          |
 
 ## `visual.recording.inspect`
 
@@ -2754,16 +2807,16 @@ plvs-cli visual recording inspect <recording-id> <--json|--format text>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `recording-id` | `recordingId` | yes | string |
+| Name           | Maps to       | Required | Value  |
+| -------------- | ------------- | -------- | ------ |
+| `recording-id` | `recordingId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `visual.recording.wait`
 
@@ -2781,17 +2834,17 @@ plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--ou
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `recording-id` | `recordingId` | yes | string |
+| Name           | Maps to       | Required | Value  |
+| -------------- | ------------- | -------- | ------ |
+| `recording-id` | `recordingId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
-| `--out` | local only | no | string |
-| `--json` | local only | yes | boolean |
+| Name           | Maps to     | Required | Value                                 |
+| -------------- | ----------- | -------- | ------------------------------------- |
+| `--timeout-ms` | `timeoutMs` | no       | integer; 100 to 300000; default 30000 |
+| `--out`        | local only  | no       | string                                |
+| `--json`       | local only  | yes      | boolean                               |
 
 ## `visual.recording.stop`
 
@@ -2809,16 +2862,16 @@ plvs-cli visual recording stop <recording-id> [--out <file>] --json
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `recording-id` | `recordingId` | yes | string |
+| Name           | Maps to       | Required | Value  |
+| -------------- | ------------- | -------- | ------ |
+| `recording-id` | `recordingId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--out` | local only | no | string |
-| `--json` | local only | yes | boolean |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--out`  | local only | no       | string  |
+| `--json` | local only | yes      | boolean |
 
 ## `editorDraft.describe`
 
@@ -2835,15 +2888,15 @@ plvs-cli editor-draft describe <theme|loudness-profile> --json
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| Name   | Maps to    | Required | Value                                      |
+| ------ | ---------- | -------- | ------------------------------------------ |
+| `kind` | local only | yes      | string; one of "theme", "loudness-profile" |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
 
 ## `editorDraft.inspect`
 
@@ -2860,16 +2913,16 @@ plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value                                      |
+| ------------ | ----------- | -------- | ------------------------------------------ |
+| `kind`       | local only  | yes      | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes      | string                                     |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
 
 ## `editorDraft.patch`
 
@@ -2887,20 +2940,20 @@ plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --exp
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
-| `surface-id` | `surfaceId` | yes | string |
-| `file` | `patch` | yes | string |
+| Name         | Maps to     | Required | Value                                      |
+| ------------ | ----------- | -------- | ------------------------------------------ |
+| `kind`       | local only  | yes      | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes      | string                                     |
+| `file`       | `patch`     | yes      | string                                     |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
-| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
-| `--json` | local only | yes | boolean |
+| Name                          | Maps to                   | Required | Value                         |
+| ----------------------------- | ------------------------- | -------- | ----------------------------- |
+| `--expected-revision`         | `expectedRevision`        | yes      | ref agentControl.revision     |
+| `--expected-ui-generation`    | `expectedUiGeneration`    | yes      | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes      | ref editorDraft.generation    |
+| `--json`                      | local only                | yes      | boolean                       |
 
 ## `editorDraft.undo`
 
@@ -2918,19 +2971,19 @@ plvs-cli editor-draft undo theme <surface-id> --expected-revision <n> --expected
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme" |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value                  |
+| ------------ | ----------- | -------- | ---------------------- |
+| `kind`       | local only  | yes      | string; one of "theme" |
+| `surface-id` | `surfaceId` | yes      | string                 |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
-| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
-| `--json` | local only | yes | boolean |
+| Name                          | Maps to                   | Required | Value                         |
+| ----------------------------- | ------------------------- | -------- | ----------------------------- |
+| `--expected-revision`         | `expectedRevision`        | yes      | ref agentControl.revision     |
+| `--expected-ui-generation`    | `expectedUiGeneration`    | yes      | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes      | ref editorDraft.generation    |
+| `--json`                      | local only                | yes      | boolean                       |
 
 ## `editorDraft.redo`
 
@@ -2948,19 +3001,19 @@ plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme" |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value                  |
+| ------------ | ----------- | -------- | ---------------------- |
+| `kind`       | local only  | yes      | string; one of "theme" |
+| `surface-id` | `surfaceId` | yes      | string                 |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
-| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
-| `--json` | local only | yes | boolean |
+| Name                          | Maps to                   | Required | Value                         |
+| ----------------------------- | ------------------------- | -------- | ----------------------------- |
+| `--expected-revision`         | `expectedRevision`        | yes      | ref agentControl.revision     |
+| `--expected-ui-generation`    | `expectedUiGeneration`    | yes      | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes      | ref editorDraft.generation    |
+| `--json`                      | local only                | yes      | boolean                       |
 
 ## `editorDraft.save`
 
@@ -2978,19 +3031,19 @@ plvs-cli editor-draft save <theme|loudness-profile> <surface-id> --expected-revi
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value                                      |
+| ------------ | ----------- | -------- | ------------------------------------------ |
+| `kind`       | local only  | yes      | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes      | string                                     |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
-| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
-| `--json` | local only | yes | boolean |
+| Name                          | Maps to                   | Required | Value                         |
+| ----------------------------- | ------------------------- | -------- | ----------------------------- |
+| `--expected-revision`         | `expectedRevision`        | yes      | ref agentControl.revision     |
+| `--expected-ui-generation`    | `expectedUiGeneration`    | yes      | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes      | ref editorDraft.generation    |
+| `--json`                      | local only                | yes      | boolean                       |
 
 ## `editorDraft.discard`
 
@@ -3008,20 +3061,20 @@ plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-s
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
-| `surface-id` | `surfaceId` | yes | string |
+| Name         | Maps to     | Required | Value                                      |
+| ------------ | ----------- | -------- | ------------------------------------------ |
+| `kind`       | local only  | yes      | string; one of "theme", "loudness-profile" |
+| `surface-id` | `surfaceId` | yes      | string                                     |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--decision-surface-id` | `decisionSurfaceId` | yes | string |
-| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
-| `--expected-ui-generation` | `expectedUiGeneration` | yes | ref agentControl.uiGeneration |
-| `--expected-draft-generation` | `expectedDraftGeneration` | yes | ref editorDraft.generation |
-| `--json` | local only | yes | boolean |
+| Name                          | Maps to                   | Required | Value                         |
+| ----------------------------- | ------------------------- | -------- | ----------------------------- |
+| `--decision-surface-id`       | `decisionSurfaceId`       | yes      | string                        |
+| `--expected-revision`         | `expectedRevision`        | yes      | ref agentControl.revision     |
+| `--expected-ui-generation`    | `expectedUiGeneration`    | yes      | ref agentControl.uiGeneration |
+| `--expected-draft-generation` | `expectedDraftGeneration` | yes      | ref editorDraft.generation    |
+| `--json`                      | local only                | yes      | boolean                       |
 
 ## `instances.list`
 
@@ -3041,10 +3094,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--format` | local only | no | string; one of "text" |
+| Name       | Maps to    | Required | Value                 |
+| ---------- | ---------- | -------- | --------------------- |
+| `--json`   | local only | no       | boolean               |
+| `--format` | local only | no       | string; one of "text" |
 
 ## `doctor`
 
@@ -3064,10 +3117,10 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | no | boolean |
-| `--out` | local only | no | string |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | no       | boolean |
+| `--out`  | local only | no       | string  |
 
 ## `schema.list`
 
@@ -3087,9 +3140,9 @@ None.
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
 
 ## `schema.get`
 
@@ -3105,15 +3158,15 @@ plvs-cli schema get <command-id> --json
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `command-id` | `commandId` | yes | string |
+| Name         | Maps to     | Required | Value  |
+| ------------ | ----------- | -------- | ------ |
+| `command-id` | `commandId` | yes      | string |
 
 ### Options
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
 
 ## `completion`
 
@@ -3129,9 +3182,9 @@ plvs-cli completion <powershell|bash|zsh>
 
 ### Positionals
 
-| Name | Maps to | Required | Value |
-| --- | --- | --- | --- |
-| `shell` | local only | yes | string; one of "powershell", "bash", "zsh" |
+| Name    | Maps to    | Required | Value                                      |
+| ------- | ---------- | -------- | ------------------------------------------ |
+| `shell` | local only | yes      | string; one of "powershell", "bash", "zsh" |
 
 ### Options
 

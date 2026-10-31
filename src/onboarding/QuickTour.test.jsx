@@ -104,6 +104,7 @@ describe("Quick Tour", () => {
 
   it("is visible to UI Navigation and dismissed through its own close intent", async () => {
     target("transport");
+    /** @type {any} */
     let navigation;
     function Probe() {
       navigation = useUiNavigation();

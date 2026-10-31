@@ -9,6 +9,15 @@ export const UI_SETTINGS_SECTIONS = Object.freeze([
   "about",
 ]);
 
+export const TOOLBAR_MENUS = Object.freeze([
+  "sources",
+  "loudness-profile",
+  "panels",
+  "views",
+  "presets",
+  "status",
+]);
+
 export const UI_SURFACE_KINDS = Object.freeze([
   "settings",
   "panelSettings",
@@ -67,6 +76,7 @@ const UI_ERROR_DETAIL_FIELDS = Object.freeze([
   "themeId",
   "profileId",
   "section",
+  "menu",
   "windowForm",
   "editors",
 ]);

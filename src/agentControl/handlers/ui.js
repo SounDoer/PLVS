@@ -52,9 +52,13 @@ async function navigate(ctx) {
               ? await uiNavigation.showLoudnessProfileEditor(request.params)
               : request.method === "ui.show.feedback"
                 ? await uiNavigation.showFeedback(request.params)
-                : request.method === "ui.close"
-                  ? await uiNavigation.closeSurface(request.params)
-                  : await uiNavigation.cancelSurface(request.params);
+                : request.method === "ui.show.toolbarMenu"
+                  ? await uiNavigation.showToolbarMenu(request.params)
+                  : request.method === "ui.show.dockToolbar"
+                    ? await uiNavigation.showDockToolbar(request.params)
+                    : request.method === "ui.close"
+                      ? await uiNavigation.closeSurface(request.params)
+                      : await uiNavigation.cancelSurface(request.params);
     const ui = uiNavigation.inspectUi();
     return {
       requestId,
@@ -91,6 +95,8 @@ export const uiHandlers = {
   "ui.show.themeEditor": { run: navigate },
   "ui.show.loudnessProfileEditor": { run: navigate },
   "ui.show.feedback": { run: navigate },
+  "ui.show.toolbarMenu": { run: navigate },
+  "ui.show.dockToolbar": { run: navigate },
   "ui.close": { run: navigate },
   "ui.cancel": { run: navigate },
 };

@@ -22,6 +22,7 @@ import {
   buildScenarioRestorationLedger,
   classifyRestorationField,
   requiredWalkthroughMethods,
+  UI_CLOSE_KINDS,
   uiShowArguments,
   validateWalkthroughManifest,
 } from "./ui-visual-walkthrough-lib.mjs";
@@ -270,7 +271,7 @@ export async function runUiVisualWalkthrough({
             .resources.push({
               type: scenario.ui.kind === "eventFixture" ? "eventFixture" : "surface",
               kind: scenario.ui.kind,
-              dismiss: ["settings", "panelSettings"].includes(scenario.ui.kind)
+              dismiss: UI_CLOSE_KINDS.has(scenario.ui.kind)
                 ? "close"
                 : scenario.ui.kind === "eventFixture"
                   ? scenario.ui.action
@@ -494,7 +495,7 @@ export async function runUiVisualWalkthrough({
             }
           });
         } else {
-          const dismiss = ["settings", "panelSettings"].includes(scenario.ui.kind)
+          const dismiss = UI_CLOSE_KINDS.has(scenario.ui.kind)
             ? "close"
             : scenario.ui.kind === "eventFixture"
               ? scenario.ui.action

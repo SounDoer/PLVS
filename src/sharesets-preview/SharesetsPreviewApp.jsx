@@ -1,5 +1,5 @@
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell.jsx";
 import { ThemePreview } from "../components/theme-editor/ThemePreview.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
@@ -155,6 +155,7 @@ function FullWorkspaceExample({
     [fixture, snapshot, scene]
   );
   const deviceLabel = scene.deviceLabel ?? "Preview Audio";
+  const [openMenu, setOpenMenu] = useState(null);
   const loudnessProfile = useMemo(() => previewLibrary(profile), [profile]);
   const shellHandlers = useMemo(
     () => ({
@@ -186,10 +187,11 @@ function FullWorkspaceExample({
     audioOutputs: [{ id: "sharesets-preview-audio", label: deviceLabel }],
     audioInputs: [],
     captureApplications: [],
-    onRefreshSources: noop,
     safeAudioDeviceId: "sharesets-preview-audio",
     setCaptureDeviceId: noop,
-    holdFocusControls: noop,
+    openMenu,
+    onMenuOpenChange: (menu, open) =>
+      setOpenMenu((current) => (open ? menu : current === menu ? null : current)),
     focusView: DEFAULT_FOCUS_VIEW,
     pinned: false,
     setPinned: noop,

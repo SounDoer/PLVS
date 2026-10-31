@@ -144,6 +144,7 @@ const groups = [
       "ui.show.themeEditor",
       "ui.show.loudnessProfileEditor",
       "ui.show.feedback",
+      "ui.show.toolbarMenu",
       "ui.cancel",
       "editorDraft.patch",
       "editorDraft.undo",
@@ -164,6 +165,7 @@ const groups = [
       "dock.panel.describe",
       "dock.panel.update",
       "dock.panel.reset",
+      "ui.show.dockToolbar",
     ],
   },
   {

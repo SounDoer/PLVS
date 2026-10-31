@@ -28,6 +28,18 @@ import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
 import { buildAppStatusItems } from "../lib/appStatus.js";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { developmentStatusItems } from "../dev/developmentStatusFixtureData.js";
+import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
+
+/** The toolbar menu each Dock editor view is, and the header button that opens it. */
+const DOCK_MENUS = {
+  device: { menu: "sources", button: "sources" },
+  "loudness-profile": { menu: "loudness-profile", button: "profile" },
+  modules: { menu: "panels", button: "modules" },
+  views: { menu: "views", button: "views" },
+  presets: { menu: "presets", button: "presets" },
+  status: { menu: "status", button: "status" },
+};
+const HEADER_ANCHOR_WAIT_MS = 1500;
 
 const STATUS_FIXTURE_NAMES = {
   layout: "status.layout",
@@ -48,6 +60,7 @@ const STATUS_FIXTURE_NAMES = {
  *   setImportActive: (value: boolean) => void,
  *   statusItems: import("../lib/appStatus.js").AppStatusItem[],
  *   statusOpen: boolean,
+ *   openDockMenu: (view: string) => Promise<void>,
  * }} DockAccessories
  */
 const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} */ (null));
@@ -128,14 +141,15 @@ export function DockAccessoriesProvider({ children }) {
     },
     [docked, exitDockRestoringAttributes, raiseNotice]
   );
+  const headerForced = statusFixture
+    ? statusFixture.phase === "capture-failed"
+    : notice?.requiresAttention === true;
   const dockAccessoryVisibility = useDockAccessoryVisibility({
     preserveOnBlur: Boolean(updateControls.details) || importActive,
     active: docked && !dockSuspended,
     edge: dockEdge,
     geometryVersion: dockHeight,
-    forceHeaderVisible: statusFixture
-      ? statusFixture.phase === "capture-failed"
-      : notice?.requiresAttention === true,
+    forceHeaderVisible: headerForced,
     // Snapshot transport is now always available in the strip; no automatic toolbar reveal.
     snapshotActive: false,
     waitForHeaderReady: true,
@@ -174,6 +188,65 @@ export function DockAccessoriesProvider({ children }) {
     target: { panelId: dockPanelSettingsId, presentation: "dock" },
     onClose: () => dockAccessoryVisibility.closeEditor(dockPanelSettingsView),
   });
+
+  const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
+
+  // Toolbar navigation follows the same path as the header buttons. The header reports where its
+  // buttons are each time it is shown, so a menu opened from here anchors where a click would.
+  const headerAnchorsRef = useRef(/** @type {Record<string, number>} */ ({}));
+  const visibilityRef = useRef(dockAccessoryVisibility);
+  visibilityRef.current = dockAccessoryVisibility;
+  const dockToolbarShown = docked && !dockSuspended && dockAccessoryVisibility.headerVisible;
+  const openDockMenu = useCallback(
+    async (/** @type {string} */ view) => {
+      if (!docked || dockSuspended) {
+        throw createUiNavigationError("surfaceUnavailable", { kind: "toolbarMenu" });
+      }
+      if (!visibilityRef.current.headerVisible) visibilityRef.current.toggleToolbar();
+      const button = DOCK_MENUS[view].button;
+      const deadline = Date.now() + HEADER_ANCHOR_WAIT_MS;
+      while (!Number.isFinite(headerAnchorsRef.current[button]) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 16));
+      }
+      setHoveredDockPanelId(null);
+      if (view === "device") void refreshInventory();
+      visibilityRef.current.openEditor(view, headerAnchorsRef.current[button]);
+    },
+    [docked, dockSuspended, refreshInventory]
+  );
+  const dockMenu =
+    docked && dockAccessoryVisibility.editorVisible
+      ? DOCK_MENUS[dockAccessoryVisibility.editorView]?.menu
+      : undefined;
+  useUiSurface({
+    active: Boolean(dockMenu),
+    kind: "toolbarMenu",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { menu: dockMenu, presentation: "dock" },
+    onClose: () => dockAccessoryVisibility.closeEditor(dockAccessoryVisibility.editorView),
+  });
+  useUiNavigationTarget("dockToolbar", {
+    show: () => {
+      if (!docked || dockSuspended) {
+        throw createUiNavigationError("surfaceUnavailable", { kind: "dockToolbar" });
+      }
+      if (!visibilityRef.current.headerVisible) visibilityRef.current.toggleToolbar();
+    },
+  });
+  useUiSurface({
+    active: dockToolbarShown,
+    kind: "dockToolbar",
+    origin: "navigable",
+    blocking: false,
+    // While an error holds the toolbar open, the arrow cannot hide it either.
+    dismissible: !headerForced,
+    supportedActions: headerForced ? [] : ["close"],
+    target: {},
+    onClose: () => visibilityRef.current.toggleToolbar(),
+  });
   visualRuntimeRef.current = {
     windowForm: docked ? "dock" : "normal",
     sourceMode,
@@ -200,7 +273,6 @@ export function DockAccessoriesProvider({ children }) {
       },
     },
   };
-  const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
   const openUpdateDetails = updateControls.openDetails;
   const dockUpdate = dockUpdateStatus(updateControls);
   const dockUpdateKey = JSON.stringify(dockUpdate);
@@ -364,9 +436,16 @@ export function DockAccessoriesProvider({ children }) {
   );
   const onDockAccessoryAction = useCallback(
     ({ type, payload }) => {
-      if (type === "header-ready")
+      if (type === "header-ready") {
         dockAccessoryVisibility.confirmHeaderReady(payload.presentationId);
-      else if (type === "source-primary") onSourceTransportAction(payload.actionKind);
+        if (payload.anchors && typeof payload.anchors === "object") {
+          headerAnchorsRef.current = Object.fromEntries(
+            Object.entries(payload.anchors).filter(
+              ([button, x]) => typeof button === "string" && Number.isFinite(x)
+            )
+          );
+        }
+      } else if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
       else if (type === "open-update") openUpdateDetails();
       else if (type === "status-action") {
@@ -519,6 +598,7 @@ export function DockAccessoriesProvider({ children }) {
         setImportActive,
         statusItems,
         statusOpen: statusFixture?.phase === "details",
+        openDockMenu,
       }}
     >
       {children}

@@ -6,7 +6,7 @@ import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { runningAppCommandEntries } from "./commandManifest.js";
 import { buildModuleList } from "./moduleControl.js";
-import { UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
+import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 /**
  * @param {string} featureGate
@@ -110,6 +110,8 @@ export function buildAgentControlCapabilities(runtime, revision) {
                   ? { modes: ["create", "edit"] }
                   : false,
                 feedback: hasMethod("ui.show.feedback"),
+                toolbarMenu: hasMethod("ui.show.toolbarMenu") ? { menus: TOOLBAR_MENUS } : false,
+                dockToolbar: hasMethod("ui.show.dockToolbar"),
               },
             },
           }

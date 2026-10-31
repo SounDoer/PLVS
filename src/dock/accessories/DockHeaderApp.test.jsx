@@ -10,6 +10,28 @@ vi.mock("./useAccessoryClient.js", () => ({
 }));
 
 describe("DockHeaderApp", () => {
+  it("reports where each editor button is whenever the toolbar is shown", () => {
+    const rect = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function () {
+        const left = { sources: 600, presets: 700 }[this.dataset?.tourTarget] ?? 0;
+        return new DOMRect(left, 0, left ? 24 : 0, 24);
+      });
+    client.action.mockClear();
+    client.payload = { visible: true, presentationId: 3 };
+
+    const { unmount } = render(<DockHeaderApp />);
+
+    expect(client.action).toHaveBeenCalledWith("header-ready", {
+      presentationId: 3,
+      anchors: { sources: 612, presets: 712 },
+    });
+    unmount();
+    rect.mockRestore();
+    client.payload = null;
+    client.action.mockClear();
+  });
+
   it("asks the main window to dismiss on Escape", () => {
     const { unmount } = render(<DockHeaderApp />);
 
@@ -39,7 +61,7 @@ describe("DockHeaderApp", () => {
       notice: { kind: "error", text: "Existing notice" },
     };
     const { rerender, container } = render(<DockHeaderApp />);
-    expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 7 });
+    expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 7, anchors: {} });
     const before = container.innerHTML;
     client.payload = {
       visible: false,
@@ -54,11 +76,14 @@ describe("DockHeaderApp", () => {
     };
     rerender(<DockHeaderApp />);
     expect(container.innerHTML).toBe(before);
-    expect(client.action).not.toHaveBeenCalledWith("header-ready", { presentationId: 8 });
+    expect(client.action).not.toHaveBeenCalledWith(
+      "header-ready",
+      expect.objectContaining({ presentationId: 8 })
+    );
     client.payload = { ...client.payload, visible: true, presentationId: 9 };
     rerender(<DockHeaderApp />);
     expect(container.textContent).toContain("New notice");
-    expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 9 });
+    expect(client.action).toHaveBeenCalledWith("header-ready", { presentationId: 9, anchors: {} });
     client.payload = null;
   });
 

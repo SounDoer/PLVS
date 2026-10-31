@@ -41,6 +41,8 @@ describe("agent-control app snapshots", () => {
         "ui.show.themeEditor",
         "ui.show.loudnessProfileEditor",
         "ui.show.feedback",
+        "ui.show.toolbarMenu",
+        "ui.show.dockToolbar",
         "ui.close",
         "ui.cancel",
         "measurement.describe",

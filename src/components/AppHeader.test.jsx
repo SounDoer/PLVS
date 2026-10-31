@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { AppHeader } from "./AppHeader.jsx";
+import { useToolbarMenuNavigation } from "../uiNavigation/useToolbarMenuNavigation.js";
 
 vi.mock("../workspace/WorkspaceToolbar.jsx", () => ({
   ModulesPopoverContent: () => (
@@ -79,7 +80,32 @@ function renderHeader(overrides = {}) {
     ...overrides,
   };
 
-  return { ...render(<AppHeader {...props} />), props };
+  return { ...render(<HeaderWithMenus {...props} />), props };
+}
+
+/**
+ * The header with the real menu state its parent owns in the app.
+ * @param {any} props
+ */
+function HeaderWithMenus({ holdFocusControls = vi.fn(), onRefreshSources, ...props }) {
+  const toolbarMenu = useToolbarMenuNavigation({
+    docked: false,
+    settingsOpen: false,
+    sourcesAvailable: true,
+    statusAvailable: true,
+    autoHideControls: props.autoHideControls,
+    controlsVisible: true,
+    holdControls: holdFocusControls,
+    refreshSources: onRefreshSources,
+    openDockMenu: async () => {},
+  });
+  return (
+    <AppHeader
+      {...props}
+      openMenu={toolbarMenu.openMenu}
+      onMenuOpenChange={toolbarMenu.changeMenu}
+    />
+  );
 }
 
 describe("AppHeader", () => {

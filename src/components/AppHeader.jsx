@@ -1,5 +1,4 @@
 import { DeviceSelectionContent } from "./DeviceSelectionContent.jsx";
-import { useState } from "react";
 import {
   Bookmark,
   Focus,
@@ -58,10 +57,10 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   audioOutputs: any[],
  *   audioInputs: any[],
  *   captureApplications?: any[],
- *   onRefreshSources: (...args: any[]) => any,
  *   safeAudioDeviceId: string,
  *   setCaptureDeviceId: (...args: any[]) => any,
- *   holdFocusControls: (...args: any[]) => any,
+ *   openMenu?: string | null,
+ *   onMenuOpenChange?: (menu: string, open: boolean) => void,
  *   panelPresentation?: import("../lib/panelPresentation.js").PanelPresentation,
  *   setPanelPresentation?: (value: import("../lib/panelPresentation.js").PanelPresentation) => void,
  *   focusView: import("../lib/focusView.js").FocusView,
@@ -108,10 +107,10 @@ export function AppHeader({
   audioOutputs,
   audioInputs,
   captureApplications = [],
-  onRefreshSources,
   safeAudioDeviceId,
   setCaptureDeviceId,
-  holdFocusControls,
+  openMenu = null,
+  onMenuOpenChange = () => {},
   panelPresentation,
   setPanelPresentation,
   focusView,
@@ -132,10 +131,13 @@ export function AppHeader({
   onExportLibraryItem = () => {},
   setSettingsOpen,
 }) {
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const menuProps = (/** @type {string} */ menu) => ({
+    open: openMenu === menu,
+    onOpenChange: (/** @type {boolean} */ open) => onMenuOpenChange(menu, open),
+  });
   const handleSourceSelect = (/** @type {string} */ id) => {
     setCaptureDeviceId(id);
-    setSourcesOpen(false);
+    onMenuOpenChange("sources", false);
   };
 
   const handlePrimaryAction = (actionKind) => {
@@ -158,10 +160,10 @@ export function AppHeader({
         onPrimaryAction={handlePrimaryAction}
       />
       <AppStatusPopover
-        requestedOpen={statusOpen}
+        requestedOpen={statusOpen || openMenu === "status"}
         items={statusItems}
         onAction={onStatusAction}
-        onOpenChange={autoHideControls ? holdFocusControls : undefined}
+        onOpenChange={(open) => onMenuOpenChange("status", open)}
       />
       {notice && statusItems.length === 0 ? (
         <HoverTip
@@ -202,12 +204,10 @@ export function AppHeader({
             />
           ) : (
             <Popover
-              open={sourcesOpen}
+              open={openMenu === "sources"}
               onOpenChange={(open) => {
                 if (open && !audioDevices.length && !captureApplications.length) return;
-                if (open) void onRefreshSources?.();
-                setSourcesOpen(open);
-                if (autoHideControls) holdFocusControls(open);
+                onMenuOpenChange("sources", open);
               }}
             >
               <PopoverTrigger asChild>
@@ -235,7 +235,7 @@ export function AppHeader({
               </PopoverContent>
             </Popover>
           ))}
-        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
+        <Popover {...menuProps("loudness-profile")}>
           <PopoverTrigger asChild>
             <span className="group">
               <IconButton
@@ -254,7 +254,7 @@ export function AppHeader({
             />
           </PopoverContent>
         </Popover>
-        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
+        <Popover {...menuProps("panels")}>
           <PopoverTrigger asChild>
             <span className="group">
               <IconButton
@@ -269,7 +269,7 @@ export function AppHeader({
             <ModulesPopoverContent />
           </PopoverContent>
         </Popover>
-        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
+        <Popover {...menuProps("views")}>
           <PopoverTrigger asChild>
             <span className="group">
               <IconButton
@@ -301,7 +301,7 @@ export function AppHeader({
             />
           </PopoverContent>
         </Popover>
-        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
+        <Popover {...menuProps("presets")}>
           <PopoverTrigger asChild>
             <span className="group">
               <IconButton

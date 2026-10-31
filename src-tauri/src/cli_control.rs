@@ -74,6 +74,15 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  UiShowToolbarMenu {
+    menu: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  UiShowDockToolbar {
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
   UiClose {
     surface_id: String,
     expected_revision: u64,
@@ -798,7 +807,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -813,6 +822,8 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
       ("loudness-profile-editor", 2)
     }
     [show, target, ..] if show == "show" && target == "feedback" => ("feedback", 2),
+    [show, target, ..] if show == "show" && target == "toolbar-menu" => ("toolbar-menu", 2),
+    [show, target, ..] if show == "show" && target == "dock-toolbar" => ("dock-toolbar", 2),
     [close, ..] if close == "close" => ("close", 1),
     [cancel, ..] if cancel == "cancel" => ("cancel", 1),
     _ => return Err(USAGE.to_string()),
@@ -824,6 +835,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
   let mut theme_id = None;
   let mut profile_id = None;
   let mut page = None;
+  let mut menu = None;
   let mut expected_revision = None;
   let mut expected_ui_generation = None;
   let mut json = false;
@@ -875,6 +887,15 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
           args
             .get(index + 1)
             .ok_or_else(|| "Missing value for --profile-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--menu" if kind == "toolbar-menu" && menu.is_none() => {
+        menu = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --menu.".to_string())?
             .clone(),
         );
         index += 2;
@@ -1011,6 +1032,30 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
       })
     }
     "feedback" => Ok(ControlCommand::UiShowFeedback {
+      expected_revision,
+      expected_ui_generation,
+    }),
+    "toolbar-menu" => {
+      let menu = menu.ok_or_else(|| "The toolbar menu target requires --menu.".to_string())?;
+      if ![
+        "sources",
+        "loudness-profile",
+        "panels",
+        "views",
+        "presets",
+        "status",
+      ]
+      .contains(&menu.as_str())
+      {
+        return Err("Unknown toolbar menu.".to_string());
+      }
+      Ok(ControlCommand::UiShowToolbarMenu {
+        menu,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "dock-toolbar" => Ok(ControlCommand::UiShowDockToolbar {
       expected_revision,
       expected_ui_generation,
     }),
@@ -3422,6 +3467,8 @@ fn command_name(command: &ControlCommand) -> String {
       "ui.show.loudnessProfileEditor".to_string()
     }
     ControlCommand::UiShowFeedback { .. } => "ui.show.feedback".to_string(),
+    ControlCommand::UiShowToolbarMenu { .. } => "ui.show.toolbarMenu".to_string(),
+    ControlCommand::UiShowDockToolbar { .. } => "ui.show.dockToolbar".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
     ControlCommand::EditorDraftRead { method, .. }
@@ -3651,7 +3698,20 @@ fn request_for_command<R: Read>(
     ControlCommand::UiShowFeedback {
       expected_revision,
       expected_ui_generation,
+    }
+    | ControlCommand::UiShowDockToolbar {
+      expected_revision,
+      expected_ui_generation,
     } => serde_json::json!({
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::UiShowToolbarMenu {
+      menu,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "menu": menu,
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
@@ -5090,6 +5150,66 @@ mod tests {
       })
     );
 
+    let toolbar_menu = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "toolbar-menu",
+      "--menu",
+      "presets",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&toolbar_menu), "ui.show.toolbarMenu");
+    assert_eq!(
+      request_for_command(&toolbar_menu, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "menu": "presets",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+    assert!(parse_control_args(&args(&[
+      "ui",
+      "show",
+      "toolbar-menu",
+      "--menu",
+      "settings",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .is_err());
+
+    let dock_toolbar = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "dock-toolbar",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&dock_toolbar), "ui.show.dockToolbar");
+    assert_eq!(
+      request_for_command(&dock_toolbar, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -5431,6 +5551,7 @@ mod tests {
       "session-id" => "file-1".to_string(),
       "recording-id" => format!("rec-{}", "a".repeat(32)),
       "section" => "appearance".to_string(),
+      "sources|loudness-profile|panels|views|presets|status" => "presets".to_string(),
       "surface-id" => format!("ui-{}", "a".repeat(16)),
       "theme|loudness-profile" => "theme".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),

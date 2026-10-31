@@ -4,7 +4,7 @@ import { renderHook } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
 import { MeterRuntimeProvider } from "../runtime/MeterRuntimeContext.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
-import { UiNavigationProvider } from "../uiNavigation/UiNavigationContext.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { SettingsProvider } from "../settings/SettingsContext.jsx";
 import { SceneGuardProvider } from "../hooks/SceneGuardContext.jsx";
@@ -79,6 +79,21 @@ describe("DockAccessoriesProvider", () => {
     expect(result.current.visualRuntimeRef.current.accessoryGeometry.dockEditor.visible).toBe(
       false
     );
+  });
+
+  it("offers Dock toolbar navigation only in Dock", async () => {
+    const { result } = renderHook(
+      () => ({ accessories: useDockAccessories(), navigation: useUiNavigation() }),
+      { wrapper }
+    );
+
+    await expect(result.current.accessories.openDockMenu("views")).rejects.toMatchObject({
+      reason: "surfaceUnavailable",
+    });
+    await expect(
+      result.current.navigation.showDockToolbar({ expectedRevision: null, expectedUiGeneration: 0 })
+    ).rejects.toMatchObject({ reason: "surfaceUnavailable" });
+    expect(result.current.navigation.inspectUi().surfaces).toEqual([]);
   });
 
   it("refuses the hook outside the provider", () => {

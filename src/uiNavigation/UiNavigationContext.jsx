@@ -412,6 +412,22 @@ export function UiNavigationProvider({
       showTarget("feedback", {}, "ui.show.feedback", expectedRevision, expectedUiGeneration),
     [showTarget]
   );
+  const showToolbarMenu = useCallback(
+    ({ menu, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "toolbarMenu",
+        { menu },
+        "ui.show.toolbar-menu",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
+  const showDockToolbar = useCallback(
+    ({ expectedRevision, expectedUiGeneration }) =>
+      showTarget("dockToolbar", {}, "ui.show.dock-toolbar", expectedRevision, expectedUiGeneration),
+    [showTarget]
+  );
   const inspectUi = useCallback(
     () =>
       projectUiInspection(stateRef.current, {
@@ -446,6 +462,8 @@ export function UiNavigationProvider({
       showThemeEditor,
       showLoudnessProfileEditor,
       showFeedback,
+      showToolbarMenu,
+      showDockToolbar,
       closeSurface,
       cancelSurface,
       updateEnvironment,
@@ -459,6 +477,8 @@ export function UiNavigationProvider({
       showLoudnessProfileEditor,
       showFeedback,
       showSettings,
+      showToolbarMenu,
+      showDockToolbar,
       state.uiGeneration,
       updateEnvironment,
     ]

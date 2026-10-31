@@ -171,6 +171,8 @@ describe("normalizeAgentControlRequest", () => {
       ["ui.show.themeEditor", { mode: "customize", themeId: "plvs-light", page: "advanced" }],
       ["ui.show.loudnessProfileEditor", { mode: "edit", profileId: "broadcast" }],
       ["ui.show.feedback", {}],
+      ["ui.show.toolbarMenu", { menu: "presets" }],
+      ["ui.show.dockToolbar", {}],
       ["ui.close", { surfaceId: `ui-${"a".repeat(16)}` }],
       ["ui.cancel", { surfaceId: `ui-${"b".repeat(16)}` }],
     ])("requires and preserves both concurrency tokens for %s", (method, target) => {

@@ -243,13 +243,17 @@ plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expect
 plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 ```
 
 `app.inspect` remains the durable-state snapshot; `ui inspect` reports the selected workbench's
-transient window, blocking editors, mounted surfaces, and process-local `uiGeneration`. `show` only
-opens, locates, or focuses and is idempotent for an exact target. `close` and `cancel` invoke only
+transient window, blocking editors, mounted surfaces, status conditions, and process-local
+`uiGeneration`. `show` only opens, locates, or focuses and is idempotent for an exact target. A
+toolbar menu opens as its toolbar button opens it, in the normal window or Dock; the Quick Tour card
+is inspectable and closable but cannot be started or advanced. `close` and `cancel` invoke only
 the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
 only the exact linked `editor-draft discard` command can confirm that decision. Event-driven
 decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for

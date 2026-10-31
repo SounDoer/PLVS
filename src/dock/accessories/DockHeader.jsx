@@ -51,6 +51,7 @@ export function DockHeader({ state, onAction }) {
       <div data-testid="dock-header-trailing" className="flex min-w-0 flex-1 items-center gap-3">
         {state.statusItems ? (
           <AppStatusSummary
+            data-tour-target="status"
             items={state.statusItems}
             onClick={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
@@ -93,6 +94,7 @@ export function DockHeader({ state, onAction }) {
           <IconButton
             icon={<Volume2 className={ACTION_ICON_CLASS} />}
             tip="Sources"
+            data-tour-target="sources"
             {...toolTipProps}
             aria-pressed={state.editorView === "device"}
             className={state.editorView === "device" ? "bg-ui-hover text-foreground" : undefined}
@@ -101,6 +103,7 @@ export function DockHeader({ state, onAction }) {
           <IconButton
             icon={<Gauge className={ACTION_ICON_CLASS} />}
             tip="Loudness Profile"
+            data-tour-target="profile"
             {...toolTipProps}
             aria-pressed={state.editorView === "loudness-profile"}
             className={cn(
@@ -111,6 +114,7 @@ export function DockHeader({ state, onAction }) {
           <IconButton
             icon={<LayoutGrid className={ACTION_ICON_CLASS} />}
             tip="Panels"
+            data-tour-target="modules"
             {...toolTipProps}
             aria-pressed={state.editorView === "modules"}
             className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
@@ -119,6 +123,7 @@ export function DockHeader({ state, onAction }) {
           <IconButton
             icon={<Focus className={ACTION_ICON_CLASS} />}
             tip="Views"
+            data-tour-target="views"
             {...toolTipProps}
             aria-pressed={state.editorView === "views"}
             className={state.editorView === "views" ? "bg-ui-hover text-foreground" : undefined}
@@ -127,6 +132,7 @@ export function DockHeader({ state, onAction }) {
           <IconButton
             icon={<Bookmark className={ACTION_ICON_CLASS} />}
             tip="Presets"
+            data-tour-target="presets"
             {...toolTipProps}
             aria-pressed={state.editorView === "presets"}
             className={cn(

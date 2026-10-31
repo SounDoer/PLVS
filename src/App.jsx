@@ -21,6 +21,7 @@ import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessPro
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
 import { SceneGuardProvider } from "./hooks/SceneGuardContext.jsx";
 import { UiNavigationProvider } from "./uiNavigation/UiNavigationContext.jsx";
+import { useToolbarMenuNavigation } from "./uiNavigation/useToolbarMenuNavigation.js";
 import { EditorDraftProvider } from "./agentControl/EditorDraftContext.jsx";
 import { DevelopmentEventFixturesProvider } from "./dev/DevelopmentEventFixturesContext.jsx";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
@@ -171,6 +172,7 @@ function AppContent() {
     hoveredDockPanelId,
     statusItems,
     statusOpen,
+    openDockMenu,
   } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
@@ -261,6 +263,21 @@ function AppContent() {
     captureFormatSignature,
     footerSourceLabel,
   } = useSource();
+
+  const toolbarMenu = useToolbarMenuNavigation({
+    docked,
+    settingsOpen: settings.settingsOpen,
+    sourcesAvailable:
+      isTauri() &&
+      sourceMode === "live" &&
+      (audioDevices.length > 0 || captureApplications.length > 0),
+    statusAvailable: statusItems.length > 0,
+    autoHideControls: focusView.autoHideControls,
+    controlsVisible: !focusView.autoHideControls || focusControlsVisible,
+    holdControls: holdFocusControls,
+    refreshSources: refreshInventory,
+    openDockMenu,
+  });
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { setAudio } = display;
@@ -562,10 +579,10 @@ function AppContent() {
     audioOutputs,
     audioInputs,
     captureApplications,
-    onRefreshSources: refreshInventory,
     safeAudioDeviceId,
     setCaptureDeviceId: onSelectCaptureDevice,
-    holdFocusControls,
+    openMenu: toolbarMenu.openMenu,
+    onMenuOpenChange: toolbarMenu.changeMenu,
     focusView,
     focusViewActive,
     pinned,

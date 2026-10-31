@@ -26,7 +26,18 @@ const UI_TARGETS = Object.freeze({
     fields: new Set(["kind", "mode", "profileId"]),
   },
   feedback: { method: "ui.show.feedback", fields: new Set(["kind"]) },
+  toolbarMenu: { method: "ui.show.toolbarMenu", fields: new Set(["kind", "menu"]) },
 });
+const TOOLBAR_MENUS = new Set([
+  "sources",
+  "loudness-profile",
+  "panels",
+  "views",
+  "presets",
+  "status",
+]);
+/** Surfaces dismissed through their Close intent; every other shown surface uses Cancel. */
+export const UI_CLOSE_KINDS = new Set(["settings", "panelSettings", "toolbarMenu"]);
 const DURABLE_FIELDS = Object.freeze({
   view: new Set(["pinned", "focusView", "surfaceOpacity", "glassEnabled"]),
   settings: new Set([
@@ -164,6 +175,8 @@ export function validateWalkthroughManifest(manifest) {
       issues.push(`${path}.ui.section is required.`);
     if (scenario.ui?.kind === "panelSettings" && typeof scenario.ui.panelId !== "string")
       issues.push(`${path}.ui.panelId is required.`);
+    if (scenario.ui?.kind === "toolbarMenu" && !TOOLBAR_MENUS.has(scenario.ui.menu))
+      issues.push(`${path}.ui.menu is invalid.`);
     if (
       scenario.ui?.kind === "themeEditor" &&
       !["create", "edit", "customize", "duplicate"].includes(scenario.ui.mode)
@@ -263,9 +276,7 @@ export function requiredWalkthroughMethods(manifest) {
     if (scenario.ui.kind === "eventFixture") {
       if (scenario.ui.action !== "reset") methods.add(`ui.${scenario.ui.action}`);
     } else if (scenario.ui.kind !== "workspace") {
-      methods.add(
-        ["settings", "panelSettings"].includes(scenario.ui.kind) ? "ui.close" : "ui.cancel"
-      );
+      methods.add(UI_CLOSE_KINDS.has(scenario.ui.kind) ? "ui.close" : "ui.cancel");
     }
     for (const step of scenario.durable) {
       methods.add(`${step.family}.inspect`);
@@ -372,6 +383,7 @@ export function uiShowArguments(ui) {
   if (ui.kind === "settings") return ["ui", "show", "settings", "--section", ui.section];
   if (ui.kind === "panelSettings")
     return ["ui", "show", "panel-settings", "--panel-id", ui.panelId];
+  if (ui.kind === "toolbarMenu") return ["ui", "show", "toolbar-menu", "--menu", ui.menu];
   if (ui.kind === "themeEditor") {
     const args = ["ui", "show", "theme-editor", "--mode", ui.mode];
     if (ui.themeId) args.push("--theme-id", ui.themeId);

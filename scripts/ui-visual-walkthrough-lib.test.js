@@ -4,6 +4,8 @@ import {
   buildRestorationLedger,
   buildScenarioRestorationLedger,
   classifyRestorationField,
+  requiredWalkthroughMethods,
+  uiShowArguments,
   validateWalkthroughManifest,
 } from "./ui-visual-walkthrough-lib.mjs";
 
@@ -42,6 +44,34 @@ describe("UI visual walkthrough manifest", () => {
         verify: { surfaceOpacity: 72 },
       },
     ]);
+  });
+
+  it("opens a toolbar menu by name and closes it through its Close intent", () => {
+    const menu = {
+      ...manifest,
+      scenarios: [
+        {
+          id: "presets-menu",
+          durable: [],
+          ui: { kind: "toolbarMenu", menu: "presets" },
+          screenshot: { target: "main", output: "presets.png" },
+          touches: [],
+        },
+      ],
+    };
+    expect(validateWalkthroughManifest(menu)).toEqual([]);
+    expect(uiShowArguments(menu.scenarios[0].ui)).toEqual([
+      "ui",
+      "show",
+      "toolbar-menu",
+      "--menu",
+      "presets",
+    ]);
+    expect(requiredWalkthroughMethods(menu)).toEqual(
+      expect.arrayContaining(["ui.show.toolbarMenu", "ui.close"])
+    );
+    menu.scenarios[0].ui.menu = "settings";
+    expect(validateWalkthroughManifest(menu)).toContain("$.scenarios[0].ui.menu is invalid.");
   });
 
   it("accepts a discard-decision screenshot only for a scenario that dirties a draft", () => {

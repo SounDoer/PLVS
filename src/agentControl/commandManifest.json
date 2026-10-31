@@ -378,6 +378,95 @@
       }
     },
     {
+      "id": "ui.show.toolbarMenu",
+      "family": "ui",
+      "path": ["ui", "show", "toolbar-menu"],
+      "usage": "plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open one toolbar menu in the normal window or Dock as its toolbar button does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.toolbarMenu",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--menu",
+          "mapsTo": "menu",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["sources", "loudness-profile", "panels", "views", "presets", "status"]
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["menu", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "menu": {
+            "type": "string",
+            "enum": ["sources", "loudness-profile", "panels", "views", "presets", "status"]
+          },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.show.dockToolbar",
+      "family": "ui",
+      "path": ["ui", "show", "dock-toolbar"],
+      "usage": "plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Reveal the Dock toolbar as its arrow button does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.dockToolbar",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "ui.close",
       "family": "ui",
       "path": ["ui", "close"],

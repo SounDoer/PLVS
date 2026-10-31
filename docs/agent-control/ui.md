@@ -35,7 +35,25 @@ The public `show` targets are:
 - `theme-editor` starts or focuses `create`, `edit`, `customize`, or `duplicate` authoring and may
   select the `core`, `palettes`, or `advanced` page;
 - `loudness-profile-editor` starts or focuses `create` or `edit` authoring;
-- `feedback` opens or focuses a blank, unsent Feedback draft.
+- `feedback` opens or focuses a blank, unsent Feedback draft;
+- `toolbar-menu` opens one toolbar menu: `sources`, `loudness-profile`, `panels`, `views`,
+  `presets`, or `status`;
+- `dock-toolbar` reveals the Dock toolbar.
+
+A toolbar menu opens through the same path as a click on its button, so Sources refreshes its
+source list and Auto-hide Controls keeps the toolbar shown while the menu is open. Opening one menu
+replaces another. In the normal window and Fullscreen the surface is a `toolbarMenu` with target
+`{ menu, presentation: "window" }`; while Settings is open the request fails with `uiConflict`. In
+Dock the request first reveals the Dock toolbar, then opens the same editor beside the strip that
+the button opens, anchored to that button, with `presentation: "dock"`. Sources is
+`uiTargetNotVisible` in File source or when there is no source to choose, and Status is
+`uiTargetNotVisible` while there are no conditions. `ui close` closes the menu as a click outside
+does. Menu contents are not reported; select an item through its owning family, such as `device`,
+`preset`, or `loudness-profile`.
+
+`dock-toolbar` reveals the toolbar as the strip's arrow button does and is `surfaceUnavailable`
+outside Dock. Its `dockToolbar` surface closes through the arrow's Hide intent, which also closes
+any open Dock menu. While an error holds the toolbar open it offers no close action.
 
 Settings is unavailable in Dock form. Panel Settings follows the current form instead of changing
 it: in a normal window it may activate the containing Workspace tab through the existing Workspace
@@ -193,7 +211,7 @@ replacement resources, uncertain drafts, changed Manifests, and instance mismatc
 there is no force recovery. These are developer-tool modes, not public `plvs-cli` transaction or
 rollback commands, and they do not appear in public capabilities or generated CLI documentation.
 
-Settings, normal or Dock Panel Settings, clean Theme/Profile drafts, blank Feedback, and ordinary
+Settings, normal or Dock Panel Settings, toolbar menus, clean Theme/Profile drafts, blank Feedback, and ordinary
 Workspace/Dock captures belong on this path. Event-only Update, Crash Report, Close Confirmation,
 and Library Conflict screenshots use the dev-identity event-fixture protocol described in
 the implementation contract. A fixture establishes only the legal production scene; inspection,
