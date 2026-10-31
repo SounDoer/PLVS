@@ -1099,6 +1099,10 @@
       "license": "ISC",
       "noticeSha256": "afb6db6c1684f7cf6dede588d9a3414a47b702f123a137559acb7fa7d13fb816"
     },
+    "rust:libloading@0.9.0": {
+      "license": "ISC",
+      "noticeSha256": "afb6db6c1684f7cf6dede588d9a3414a47b702f123a137559acb7fa7d13fb816"
+    },
     "rust:libredox@0.1.21": {
       "license": "MIT",
       "noticeSha256": "30f0694d86c8d132d0e35cdd11c1d583d70f165be30d6822038e7ee1db26169b"
