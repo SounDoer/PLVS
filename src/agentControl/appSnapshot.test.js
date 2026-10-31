@@ -49,6 +49,8 @@ describe("agent-control app snapshots", () => {
         "window.resize",
         "window.hide",
         "window.show",
+        "update.inspect",
+        "update.check",
         "measurement.describe",
         "measurement.inspect",
         "measurement.wait",

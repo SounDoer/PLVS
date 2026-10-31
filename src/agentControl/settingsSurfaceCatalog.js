@@ -35,7 +35,7 @@ export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
   { id: "updates.autoDownload", owner: "userOnly", reason: "updatePolicy" },
   { id: "updates.askToSendCrashReports", owner: "userOnly", reason: "privacyChoice" },
   { id: "about.checkForUpdates", owner: "update" },
-  { id: "about.installUpdate", owner: "update" },
+  { id: "about.installUpdate", owner: "userOnly", reason: "updateInstall" },
   { id: "about.sharesets", owner: "external" },
   { id: "about.releases", owner: "external" },
   { id: "about.documentation", owner: "external" },

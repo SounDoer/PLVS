@@ -98,6 +98,10 @@ pub enum ControlCommand {
     method: String,
     expected_revision: u64,
   },
+  UpdateInspect,
+  UpdateCheck {
+    expected_revision: u64,
+  },
   UiCancel {
     surface_id: String,
     expected_revision: u64,
@@ -408,6 +412,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
     [command, rest @ ..] if command == "window" => return parse_window_args(rest),
+    [command, rest @ ..] if command == "update" => return parse_update_args(rest),
     [command, rest @ ..] if command == "editor-draft" => return parse_editor_draft_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "view" => return parse_view_args(rest),
@@ -429,7 +434,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|ui|window|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|ui|window|update|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
 }
 
 fn parse_development_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1167,6 +1172,48 @@ fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
     width: width.ok_or_else(|| "The window resize action requires --width.".to_string())?,
     height: height.ok_or_else(|| "The window resize action requires --height.".to_string())?,
     expected_revision,
+  })
+}
+
+fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage:\n  plvs-cli update inspect --json\n  plvs-cli update check --expected-revision <n> --json";
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(ControlCommand::FamilyHelp("update".to_string()));
+  }
+  if args == ["inspect", "--json"] {
+    return Ok(ControlCommand::UpdateInspect);
+  }
+  let [action, options @ ..] = args else {
+    return Err(USAGE.to_string());
+  };
+  if action != "check" {
+    return Err(USAGE.to_string());
+  }
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          options.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      value => return Err(format!("Unknown or duplicate update option: {value}")),
+    }
+  }
+  if !json {
+    return Err("The update check action requires --json.".to_string());
+  }
+  Ok(ControlCommand::UpdateCheck {
+    expected_revision: expected_revision
+      .ok_or_else(|| "The update check action requires --expected-revision.".to_string())?,
   })
 }
 
@@ -3509,7 +3556,8 @@ impl ControlFailure {
         | "fixtureUnavailable"
         | "fixtureConflict"
         | "fixtureResetUnsafe"
-        | "windowSizeUnavailable",
+        | "windowSizeUnavailable"
+        | "updateUnavailable",
       ) => 4,
       (_, "timeout" | "cancelled" | "uiNotSettled") => 5,
       _ => 1,
@@ -3554,6 +3602,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::WindowInspect => "window.inspect".to_string(),
     ControlCommand::WindowResize { .. } => "window.resize".to_string(),
     ControlCommand::WindowVisibility { method, .. } => method.clone(),
+    ControlCommand::UpdateInspect => "update.inspect".to_string(),
+    ControlCommand::UpdateCheck { .. } => "update.check".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
     ControlCommand::EditorDraftRead { method, .. }
     | ControlCommand::EditorDraftMutation { method, .. } => method.clone(),
@@ -3652,6 +3702,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::Inspect
     | ControlCommand::UiInspect
     | ControlCommand::WindowInspect
+    | ControlCommand::UpdateInspect
     | ControlCommand::MeasurementRead { .. }
     | ControlCommand::ViewRead { .. }
     | ControlCommand::ModuleList
@@ -3825,7 +3876,10 @@ fn request_for_command<R: Read>(
     }),
     ControlCommand::WindowVisibility {
       expected_revision, ..
-    } => serde_json::json!({ "expectedRevision": expected_revision }),
+    }
+    | ControlCommand::UpdateCheck { expected_revision } => {
+      serde_json::json!({ "expectedRevision": expected_revision })
+    }
     ControlCommand::DevFixtureEstablish {
       name,
       expected_revision,
@@ -5351,6 +5405,27 @@ mod tests {
       parse_control_args(&args(&["window", "inspect", "--json"])),
       Ok(ControlCommand::WindowInspect)
     );
+
+    let check = parse_control_args(&args(&[
+      "update",
+      "check",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&check), "update.check");
+    assert_eq!(
+      request_for_command(&check, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "expectedRevision": 4 })
+    );
+    assert_eq!(
+      parse_control_args(&args(&["update", "inspect", "--json"])),
+      Ok(ControlCommand::UpdateInspect)
+    );
+    assert!(parse_control_args(&args(&["update", "install", "--json"])).is_err());
 
     let close = parse_control_args(&args(&[
       "ui",

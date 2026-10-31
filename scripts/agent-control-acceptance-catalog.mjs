@@ -36,6 +36,7 @@ const groups = [
     disposition: "query",
     commands: [
       "window.inspect",
+      "update.inspect",
       "measurement.describe",
       "measurement.inspect",
       "view.describe",
@@ -193,6 +194,12 @@ const groups = [
     scenario: "revision-wait",
     disposition: "roundTrip",
     commands: ["app.wait"],
+  },
+  {
+    scenario: "update-check",
+    disposition: "external",
+    commands: ["update.check"],
+    owner: "update",
   },
   {
     scenario: "configuration-relaunch",

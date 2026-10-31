@@ -688,6 +688,59 @@
       }
     },
     {
+      "id": "update.inspect",
+      "family": "update",
+      "path": ["update", "inspect"],
+      "usage": "plvs-cli update inspect --json",
+      "summary": "Inspect whether this workbench updates itself and the current update state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "update.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [{ "name": "--json", "required": true, "value": { "type": "boolean" } }],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "update.check",
+      "family": "update",
+      "path": ["update", "check"],
+      "usage": "plvs-cli update check --expected-revision <n> --json",
+      "summary": "Check for updates once, as Check for Updates in About does, without downloading or installing.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "update.check",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "measurement.describe",
       "family": "measurement",
       "path": ["measurement", "describe"],

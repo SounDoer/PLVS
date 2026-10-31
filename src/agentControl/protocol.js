@@ -625,7 +625,8 @@ export function normalizeAgentControlRequest(input) {
     input.method === "transport.inspect" ||
     input.method === "dock.describe" ||
     input.method === "dock.inspect" ||
-    input.method === "window.inspect"
+    input.method === "window.inspect" ||
+    input.method === "update.inspect"
   ) {
     const field = Object.keys(input.params)[0];
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
@@ -635,7 +636,7 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (["window.resize", "window.hide", "window.show"].includes(input.method)) {
+  if (["window.resize", "window.hide", "window.show", "update.check"].includes(input.method)) {
     const resize = input.method === "window.resize";
     const field = unknownField(
       input.params,

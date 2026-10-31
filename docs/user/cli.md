@@ -246,6 +246,16 @@ plvs-cli window show --expected-revision <n> --json
 A size that does not fit the current monitor fails instead of being shrunk. See
 [Window Control](../agent-control/window.md).
 
+Update Control reads the update state and runs Check for Updates once; installing stays a user
+action:
+
+```powershell
+plvs-cli update inspect --json
+plvs-cli update check --expected-revision <n> --json
+```
+
+See [Update Control](../agent-control/update.md).
+
 UI Navigation inspects and opens temporary application surfaces without exposing clicks, DOM
 selectors, or confirmation actions:
 

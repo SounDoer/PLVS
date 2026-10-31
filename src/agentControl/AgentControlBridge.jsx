@@ -282,6 +282,15 @@ export function AgentControlBridge() {
   );
   const loudnessProfile = useLoudnessProfile();
   const settings = useAppSettings();
+  const updateControl = useMemo(
+    () => ({
+      initialized: updateControls.initialized,
+      info: updateControls.updateInfo,
+      installStatus: updateControls.installStatus,
+      check: updateControls.refreshUpdateCheck,
+    }),
+    [updateControls]
+  );
   const developmentUpdate = useMemo(
     () => ({
       enabled: runtime.identifier?.startsWith("com.soundoer.plvs.updatetest.h") === true,
@@ -561,6 +570,7 @@ export function AgentControlBridge() {
     developmentPerformance,
     developmentUpdate,
     windowControl,
+    updateControl,
     device: agentControlDevice,
     presets,
     loudnessProfile,

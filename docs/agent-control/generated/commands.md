@@ -23,6 +23,8 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `window.resize`                 | `window resize`                   | runningApp / action   | required | no      | none        |
 | `window.hide`                   | `window hide`                     | runningApp / action   | required | no      | none        |
 | `window.show`                   | `window show`                     | runningApp / action   | required | no      | none        |
+| `update.inspect`                | `update inspect`                  | runningApp / query    | none     | no      | none        |
+| `update.check`                  | `update check`                    | runningApp / action   | required | no      | none        |
 | `measurement.describe`          | `measurement describe`            | runningApp / query    | none     | no      | none        |
 | `measurement.inspect`           | `measurement inspect`             | runningApp / query    | none     | no      | none        |
 | `measurement.wait`              | `measurement wait`                | runningApp / wait     | none     | no      | none        |
@@ -519,6 +521,53 @@ Show and focus the window as the tray's Show does.
 
 ```text
 plvs-cli window show --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name                  | Maps to    | Required | Value                          |
+| --------------------- | ---------- | -------- | ------------------------------ |
+| `--expected-revision` | local only | yes      | integer; 0 to 9007199254740991 |
+| `--json`              | local only | yes      | boolean                        |
+
+## `update.inspect`
+
+Inspect whether this workbench updates itself and the current update state.
+
+- CLI path: `update inspect`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `update.inspect`
+
+```text
+plvs-cli update inspect --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
+
+## `update.check`
+
+Check for updates once, as Check for Updates in About does, without downloading or installing.
+
+- CLI path: `update check`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `update.check`
+
+```text
+plvs-cli update check --expected-revision <n> --json
 ```
 
 ### Positionals

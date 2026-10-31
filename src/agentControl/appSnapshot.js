@@ -129,6 +129,9 @@ export function buildAgentControlCapabilities(runtime, revision) {
             },
           }
         : {}),
+      ...(hasMethod("update.inspect")
+        ? { update: { inspect: true, check: hasMethod("update.check") } }
+        : {}),
       ...(visual
         ? {
             visual: {

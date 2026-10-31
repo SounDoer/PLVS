@@ -155,6 +155,7 @@ export async function runReadContract(run) {
   }
   for (const args of [
     ["window", "inspect"],
+    ["update", "inspect"],
     ["measurement", "describe"],
     ["measurement", "inspect"],
     ["view", "describe"],
