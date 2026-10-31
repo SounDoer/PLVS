@@ -14,6 +14,10 @@ of registered surfaces. Each surface has an opaque `surfaceId`, semantic kind an
 supported close/cancel actions, and only the state needed to navigate it safely. Draft field values,
 feedback text, diagnostics, DOM details, geometry, and other authored content are never returned.
 
+`status` lists the conditions behind the toolbar status entry, in the order it shows them, by
+`id` (`notice`, `audio-drop`, `channel-layout`, `update`) and `kind` only. Their wording and details
+stay out. A change in this list does not advance `uiGeneration`.
+
 This is intentionally separate from `app.inspect`. The application snapshot owns durable product
 state and the global `revision`; `ui inspect` owns temporary presentation state. Callers normally
 retain both tokens before navigation.
@@ -81,7 +85,8 @@ Panel is a real presentation change and advances `uiGeneration` once.
 
 An existing blocking editor is never discarded to satisfy navigation. A matching target may be a
 no-op; otherwise the request fails without closing or replacing the editor. Event-driven or nested
-decision surfaces likewise remain authoritative and can block navigation.
+decision surfaces likewise remain authoritative and can block navigation. The Quick Tour card is
+the exception: it steps aside for whatever opens and returns afterwards, so it never blocks `show`.
 
 For authoring, identity includes the mode and source Theme/Profile ID; Theme identity also includes
 the requested page. Create/customize/duplicate may create a transient draft and preview, but no
@@ -111,6 +116,12 @@ Close/Cancel action when the visible UI permits it. Busy phases advertise no dis
 public command to synthesize these surfaces and no generic Save, Send, Confirm, Install, Import,
 Export, Apply, or Retry operation. See [Editor Draft Control](editor-drafts.md) for the one linked
 discard exception.
+
+The Quick Tour card is observed the same way. While its invitation or a step is on screen it is a
+`quickTour` event surface with target `{ phase, step }`: `phase` is `invitation` or `tour`, and
+`step` counts from 1 (null on the invitation). Its card text is not reported. `ui close` is the
+card's own close intent: the tour is recorded as dismissed and does not return on the next launch,
+exactly as when the user closes it. There is no command to start, advance, or reopen the tour.
 
 ## Errors
 

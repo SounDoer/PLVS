@@ -24,6 +24,9 @@ export const UI_SURFACE_KINDS = Object.freeze([
   "importReview",
   "importComplete",
   "status",
+  "quickTour",
+  "toolbarMenu",
+  "dockToolbar",
 ]);
 
 export const UI_SURFACE_ORIGINS = Object.freeze(["navigable", "event", "nested"]);
@@ -112,6 +115,8 @@ const PUBLIC_TARGET_FIELDS = Object.freeze([
   "section",
   "page",
   "phase",
+  "step",
+  "menu",
   "presentation",
   "purpose",
   "editorKind",
@@ -194,12 +199,25 @@ export function focusUiSurface(state, surfaceId) {
   });
 }
 
-export function projectUiInspection(state, { workbench, window, activeBlockingEditors }) {
+export const UI_STATUS_IDS = Object.freeze(["notice", "audio-drop", "channel-layout", "update"]);
+
+/** The status entry's conditions by identity and kind only; texts and details stay private. */
+export function projectUiStatus(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => UI_STATUS_IDS.includes(item?.id))
+    .map((item) => ({ id: item.id, kind: String(item.kind ?? "info") }));
+}
+
+export function projectUiInspection(
+  state,
+  { workbench, window, activeBlockingEditors, status = [] }
+) {
   return {
     uiGeneration: state.uiGeneration,
     workbench,
     window,
     activeBlockingEditors,
+    status: projectUiStatus(status),
     topSurfaceId: state.surfaces.at(-1)?.surfaceId ?? null,
     surfaces: state.surfaces,
   };

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickTour } from "./QuickTour.jsx";
 import { BlockingEditorsProvider, useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { settingsStore } from "../persistence/index.js";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 
 vi.mock("../lib/runtimeRole.js", () => ({ useCoordinatorRole: () => role.coordinator }));
 const role = vi.hoisted(() => ({ coordinator: true }));
@@ -99,6 +100,53 @@ describe("Quick Tour", () => {
     mount();
     expect(screen.queryByText("Start Tour")).toBeNull();
     expect(settingsStore.read().untouchedSetting).toBe(17);
+  });
+
+  it("is visible to UI Navigation and dismissed through its own close intent", async () => {
+    target("transport");
+    let navigation;
+    function Probe() {
+      navigation = useUiNavigation();
+      return null;
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 3}>
+          <QuickTour {...BASE} />
+          <Probe />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    await act(async () => {});
+    let [surface] = navigation.inspectUi().surfaces;
+    expect(surface).toMatchObject({
+      kind: "quickTour",
+      origin: "event",
+      blocking: false,
+      supportedActions: ["close"],
+      target: { phase: "invitation", step: null },
+    });
+    await start();
+    fireEvent.click(screen.getByText("Next"));
+    await act(async () => {});
+    [surface] = navigation.inspectUi().surfaces;
+    expect(surface.target).toEqual({ phase: "tour", step: 2 });
+    expect(JSON.stringify(surface)).not.toContain("Source");
+
+    let pending;
+    await act(async () => {
+      pending = navigation.closeSurface({
+        surfaceId: surface.surfaceId,
+        expectedRevision: 3,
+        expectedUiGeneration: navigation.inspectUi().uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    await act(async () => {});
+    await expect(pending).resolves.toMatchObject({ action: "ui.close" });
+    expect(settingsStore.read().quickTour).toBe("dismissed");
+    expect(navigation.inspectUi().surfaces).toEqual([]);
+    expect(screen.queryByRole("region")).toBeNull();
   });
 
   it("never automatically invites established or participant workbenches", () => {

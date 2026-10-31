@@ -39,6 +39,7 @@ export function UiNavigationProvider({
   stateRef.current = state;
   const countsRef = useRef(new Map());
   const targetsRef = useRef(new Map());
+  const statusRef = useRef([]);
   const actionQueueRef = useRef(Promise.resolve());
   const { activeBlockingEditors } = useBlockingEditors();
   const activeBlockingEditorsRef = useRef(activeBlockingEditors);
@@ -59,6 +60,7 @@ export function UiNavigationProvider({
         ...current,
         count: (current?.count ?? 0) + 1,
         actionsRef,
+        yields: descriptor.yields === true,
         removal: null,
       });
       commitState((current) => mountUiSurface(current, { ...descriptor, surfaceId }));
@@ -88,6 +90,9 @@ export function UiNavigationProvider({
     },
     [commitState]
   );
+  const reportUiStatus = useCallback((items) => {
+    statusRef.current = items;
+  }, []);
   const registerUiTarget = useCallback((kind, controllerRef) => {
     targetsRef.current.set(kind, controllerRef);
     return () => {
@@ -296,7 +301,10 @@ export function UiNavigationProvider({
         }
         const obstructingSurface = [...before.surfaces]
           .reverse()
-          .find((surface) => surface.origin !== "navigable");
+          .find(
+            (surface) =>
+              surface.origin !== "navigable" && !countsRef.current.get(surface.surfaceId)?.yields
+          );
         if (obstructingSurface) {
           throw createUiNavigationError(obstructingSurface.busy ? "uiBusy" : "uiConflict", {
             kind: obstructingSurface.kind,
@@ -414,6 +422,7 @@ export function UiNavigationProvider({
         },
         window: { form: environment.windowForm, visible: environment.windowVisible },
         activeBlockingEditors: activeBlockingEditorsRef.current,
+        status: statusRef.current,
       }),
     [boot.instanceId, boot.workspaceId, environment]
   );
@@ -455,8 +464,8 @@ export function UiNavigationProvider({
     ]
   );
   const registry = useMemo(
-    () => ({ registerUiSurface, updateUiSurface, registerUiTarget }),
-    [registerUiSurface, registerUiTarget, updateUiSurface]
+    () => ({ registerUiSurface, updateUiSurface, registerUiTarget, reportUiStatus }),
+    [registerUiSurface, registerUiTarget, reportUiStatus, updateUiSurface]
   );
   return (
     <UiNavigationContext.Provider value={value}>
@@ -483,6 +492,14 @@ export function useUiNavigationEnvironment(environment) {
   }, [environmentKey, navigation.updateEnvironment]);
 }
 
+/** Reports the status entry's current conditions for `ui inspect`. */
+export function useUiStatusReport(items) {
+  const registry = useContext(UiSurfaceRegistryContext);
+  useEffect(() => {
+    registry?.reportUiStatus(items);
+  }, [items, registry]);
+}
+
 export function useUiSurface({
   active = true,
   lifetimeKey = undefined,
@@ -491,6 +508,8 @@ export function useUiSurface({
   // Read only by scripts/developmentFixtureCoverage.test.js: every event surface names the
   // development fixture that can show it, or { none: "<reason>" }.
   developmentFixture: _developmentFixture = undefined,
+  // `yields: true` marks a surface that hides itself while another opens, like the Quick Tour
+  // card; it does not obstruct navigation and is not projected into `ui inspect`.
   ...descriptor
 }) {
   const registry = useContext(UiSurfaceRegistryContext);

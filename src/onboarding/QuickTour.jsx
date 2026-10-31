@@ -8,6 +8,7 @@ import { LAYER_FLOATING } from "../components/ui/layers.js";
 import { settingsStore, flushPersistence } from "../persistence/index.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { QUICK_TOUR_STEPS, positionTourCard, tourStepContent } from "./quickTourModel.js";
 
 const SURFACES =
@@ -246,6 +247,25 @@ export function QuickTour({
     focusRequested.current = true;
     setPhase("active");
   }
+
+  // Visible to Agent Control like other dialogs that appear on their own: inspectable and
+  // dismissible through the card's own close intent, never shown or advanced from outside.
+  useUiSurface({
+    active: supported && (phase === "invitation" || phase === "active"),
+    kind: "quickTour",
+    origin: "event",
+    developmentFixture: { none: "Shown by first-run state on an empty isolated data root." },
+    yields: true,
+    blocking: false,
+    busy,
+    dismissible: !busy,
+    supportedActions: busy ? [] : ["close"],
+    target: {
+      phase: phase === "invitation" ? "invitation" : "tour",
+      step: phase === "active" ? step + 1 : null,
+    },
+    onClose: () => close(),
+  });
 
   if (phase === "inactive" || phase === "waiting" || !supported) return null;
   const obstructed = blocked || environment.obstructed || hasOpenSurface();

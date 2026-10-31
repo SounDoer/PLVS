@@ -11,7 +11,11 @@ import { useMeterDisplayState, useMeterRuntime } from "../runtime/MeterRuntimeCo
 import { useSourceActions } from "../runtime/SourceActionsContext.jsx";
 import { useDisplaySnapshot } from "../runtime/DisplaySnapshotContext.jsx";
 import { useAnalysisSession } from "../runtime/AnalysisSessionContext.jsx";
-import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import {
+  useUiNavigationTarget,
+  useUiStatusReport,
+  useUiSurface,
+} from "../uiNavigation/UiNavigationContext.jsx";
 import { preparePanelSettingsNavigation } from "../uiNavigation/panelSettingsNavigation.js";
 import { LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
 import { errorDetails } from "../lib/errorDetails.js";
@@ -211,6 +215,7 @@ export function DockAccessoriesProvider({ children }) {
         })
   );
   const statusItems = useMemo(() => JSON.parse(statusKey), [statusKey]);
+  useUiStatusReport(statusItems);
   const statusAdapter = (phase) => ({
     canEstablish: () =>
       !statusFixture &&

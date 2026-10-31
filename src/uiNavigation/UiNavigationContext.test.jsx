@@ -9,6 +9,7 @@ import {
   useUiNavigation,
   useUiNavigationEnvironment,
   useUiNavigationTarget,
+  useUiStatusReport,
   useUiSurface,
 } from "./UiNavigationContext.jsx";
 
@@ -64,9 +65,29 @@ describe("UiNavigationProvider", () => {
       },
       window: { form: "normal", visible: true },
       activeBlockingEditors: [],
+      status: [],
       topSurfaceId: null,
       surfaces: [],
     });
+  });
+
+  it("reports status conditions by identity and kind only", () => {
+    const items = [
+      { id: "audio-drop", kind: "warning", text: "Audio Dropped", details: "private" },
+      { id: "update", kind: "update", text: "Update Ready · v1.0.0", phase: "ready" },
+    ];
+    const { result } = renderHook(
+      () => {
+        useUiStatusReport(items);
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+
+    expect(result.current.inspectUi().status).toEqual([
+      { id: "audio-drop", kind: "warning" },
+      { id: "update", kind: "update" },
+    ]);
   });
 
   it("tracks the live window form and visibility owned by the app", () => {
@@ -415,6 +436,51 @@ describe("UiNavigationProvider", () => {
         expectedUiGeneration: 1,
       })
     ).rejects.toMatchObject({ reason: "surfaceUnavailable" });
+  });
+
+  it("does not let a yielding event surface obstruct navigation", async () => {
+    const { result } = renderHook(
+      () => {
+        const [open, setOpen] = useState(false);
+        useUiNavigationTarget("settings", { show: () => setOpen(true) });
+        useUiSurface({
+          kind: "quickTour",
+          origin: "event",
+          yields: true,
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { phase: "tour", step: 2 },
+          onClose: vi.fn(),
+        });
+        useUiSurface({
+          active: open,
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+        });
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+
+    expect(result.current.inspectUi().surfaces[0]).toEqual(
+      expect.objectContaining({ kind: "quickTour", target: { phase: "tour", step: 2 } })
+    );
+    expect(result.current.inspectUi().surfaces[0]).not.toHaveProperty("yields");
+    let pending;
+    await act(async () => {
+      pending = result.current.showSettings({
+        section: "appearance",
+        expectedRevision: 7,
+        expectedUiGeneration: 1,
+      });
+      await Promise.resolve();
+    });
+    await expect(pending).resolves.toMatchObject({ surface: { kind: "settings" } });
   });
 
   it("lets the window owner handle Dock Panel Settings without a popover target", async () => {

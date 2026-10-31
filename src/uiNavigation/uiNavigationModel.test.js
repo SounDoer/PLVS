@@ -118,6 +118,7 @@ describe("UI Navigation state", () => {
       },
       window: { form: "normal", visible: true },
       activeBlockingEditors: [],
+      status: [],
       topSurfaceId: "ui-opaque-lifetime-1",
       surfaces: [
         {
