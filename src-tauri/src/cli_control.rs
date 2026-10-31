@@ -189,6 +189,10 @@ pub enum ControlCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  WorkspaceReset {
+    expected_revision: u64,
+    dry_run: bool,
+  },
   PanelUpdate {
     panel_id: String,
     input: String,
@@ -1947,6 +1951,9 @@ fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
     [action, ..] if matches!(action.as_str(), "enter" | "exit") => {
       (format!("dock.{action}"), None, None, 1)
     }
+    [scope, action, ..] if scope == "layout" && action == "reset" => {
+      ("dock.layout.reset".to_string(), None, None, 2)
+    }
     [scope, action, value, ..] if scope == "layout" && action == "apply" => {
       ("dock.layout.apply".to_string(), None, Some(value.clone()), 3)
     }
@@ -1961,7 +1968,7 @@ fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
       Some(input.clone()),
       4,
     ),
-    _ => return Err("Usage: plvs-cli dock <describe|inspect|enter|exit|layout apply|panel describe|panel update|panel reset> ... --json".to_string()),
+    _ => return Err("Usage: plvs-cli dock <describe|inspect|enter|exit|layout apply|layout reset|panel describe|panel update|panel reset> ... --json".to_string()),
   };
   let read_panel = method == "dock.panel.describe";
   let enter = method == "dock.enter";
@@ -2415,6 +2422,44 @@ fn parse_settings_args(args: &[String]) -> Result<ControlCommand, String> {
 fn parse_workspace_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::Help);
+  }
+  if args.first().map(String::as_str) == Some("reset") {
+    let mut json = false;
+    let mut expected_revision = None;
+    let mut dry_run = false;
+    let mut index = 1;
+    while index < args.len() {
+      match args[index].as_str() {
+        "--json" if !json => {
+          json = true;
+          index += 1;
+        }
+        "--dry-run" if !dry_run => {
+          dry_run = true;
+          index += 1;
+        }
+        "--expected-revision" if expected_revision.is_none() => {
+          expected_revision = Some(parse_ui_safe_integer(
+            args.get(index + 1),
+            "--expected-revision",
+          )?);
+          index += 2;
+        }
+        value => {
+          return Err(format!(
+            "Unknown or duplicate workspace reset option: {value}"
+          ))
+        }
+      }
+    }
+    if !json {
+      return Err("The workspace reset command requires --json.".to_string());
+    }
+    return Ok(ControlCommand::WorkspaceReset {
+      expected_revision: expected_revision
+        .ok_or_else(|| "The workspace reset command requires --expected-revision.".to_string())?,
+      dry_run,
+    });
   }
   if args.first().map(String::as_str) != Some("apply") {
     return Err(
@@ -3625,6 +3670,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::ModuleDescribe { .. } => "module.describe".to_string(),
     ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
     ControlCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
+    ControlCommand::WorkspaceReset { .. } => "workspace.reset".to_string(),
     ControlCommand::PanelUpdate { .. } => "panel.update".to_string(),
     ControlCommand::PanelReset { .. } => "panel.reset".to_string(),
     ControlCommand::AxisDescribe => "axis.describe".to_string(),
@@ -4383,6 +4429,10 @@ fn request_for_command<R: Read>(
     ControlCommand::PanelDescribe { panel_id } => {
       serde_json::json!({ "panelId": panel_id })
     }
+    ControlCommand::WorkspaceReset {
+      expected_revision,
+      dry_run,
+    } => serde_json::json!({ "expectedRevision": expected_revision, "dryRun": dry_run }),
     ControlCommand::WorkspaceApply {
       input,
       expected_revision,
@@ -5426,6 +5476,33 @@ mod tests {
       Ok(ControlCommand::UpdateInspect)
     );
     assert!(parse_control_args(&args(&["update", "install", "--json"])).is_err());
+
+    let workspace_reset = parse_control_args(&args(&[
+      "workspace",
+      "reset",
+      "--json",
+      "--expected-revision",
+      "4",
+      "--dry-run",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&workspace_reset), "workspace.reset");
+    assert_eq!(
+      request_for_command(&workspace_reset, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "expectedRevision": 4, "dryRun": true })
+    );
+    let dock_reset = parse_control_args(&args(&[
+      "dock",
+      "layout",
+      "reset",
+      "--json",
+      "--expected-revision",
+      "4",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&dock_reset), "dock.layout.reset");
 
     let close = parse_control_args(&args(&[
       "ui",

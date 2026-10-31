@@ -16,25 +16,9 @@ import { useDrag } from "./DragContext.jsx";
 import { MODULE_REGISTRY, resolvePanelDefinition } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDisplayName } from "./panelInstances.js";
-import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
+import { workspaceUsesDefaults } from "./constants.js";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
-
-const RESET_WORKSPACE_KEYS = [
-  "tree",
-  "panelsById",
-  "panelOrder",
-  "fullscreenId",
-  "panelControlsById",
-  "pinnedPanelsById",
-  "axisViewports",
-];
-
-function workspaceUsesDefaults(state) {
-  return RESET_WORKSPACE_KEYS.every(
-    (key) => JSON.stringify(state[key]) === JSON.stringify(DEFAULT_WORKSPACE_STATE[key])
-  );
-}
 
 function PanelRow({ panelId }) {
   const { state, removePanel, renamePanel, setHoveredPanelId } = useWorkspaceStore();

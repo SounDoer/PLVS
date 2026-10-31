@@ -110,3 +110,20 @@ export const DEFAULT_WORKSPACE_STATE = {
   pinnedPanelsById: {},
   axisViewports: normalizeAxisViewportsState(),
 };
+
+const RESET_WORKSPACE_KEYS = [
+  "tree",
+  "panelsById",
+  "panelOrder",
+  "fullscreenId",
+  "panelControlsById",
+  "pinnedPanelsById",
+  "axisViewports",
+];
+
+/** Whether Reset Layout would change nothing: every field it restores already has its default. */
+export function workspaceUsesDefaults(state) {
+  return RESET_WORKSPACE_KEYS.every(
+    (key) => JSON.stringify(state[key]) === JSON.stringify(DEFAULT_WORKSPACE_STATE[key])
+  );
+}

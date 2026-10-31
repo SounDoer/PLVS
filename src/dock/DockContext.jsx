@@ -177,9 +177,17 @@ export function DockProvider({ children }) {
         if (!result.ok) throw result.error;
         return;
       }
+      if (method === "dock.layout.reset") {
+        // Reset Layout's own order: a rejected resize must not partially reset the layout.
+        if (projected.height !== dockHeight) {
+          await resizeDockHeight(projected.height, { persist: true });
+        }
+        dockLayout.resetLayout();
+        return;
+      }
       dockLayout.setPanels(projected);
     },
-    [dockLayout, enterDockMode, exitDockRestoringAttributes]
+    [dockHeight, dockLayout, enterDockMode, exitDockRestoringAttributes, resizeDockHeight]
   );
   const onDockHeightChange = useCallback(
     async (height, options) => {

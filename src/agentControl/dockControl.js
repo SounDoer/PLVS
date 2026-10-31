@@ -1,6 +1,7 @@
 import { readLocalRange, writeLocalRange } from "../workspace/axisViewports.js";
 import { readPersistedInterfaceSize } from "../preferences/interfaceSize.js";
-import { DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
+import { DOCK_DEFAULT_HEIGHT, DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
+import { firstRunDockState } from "../dock/firstRunDock.js";
 import { createDockPanelId, DOCK_PANEL_MODULE_IDS } from "../dock/dockLayout.js";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
@@ -411,6 +412,36 @@ export function compileDockLayout(dock, document, context = {}) {
       ? []
       : ["dock.panels"];
   return { dock: projected, createdPanels, changed, warnings, issues: [] };
+}
+
+/**
+ * The Dock modules editor's Reset Layout: the first-run modules, order, widths and controls, and
+ * the default height when the strip is showing. Edge, monitor and space reservation are kept.
+ * Outside Dock there is no strip to resize, so the saved height is kept, as it would be by the
+ * button's own height step.
+ */
+export function planDockLayoutReset(dock) {
+  const { layout, controlsByPanelId } = firstRunDockState();
+  const panels = {
+    panelsById: layout.panelsById,
+    panelOrder: layout.panelOrder,
+    panelSizesById: layout.panelSizesById,
+    controlsByPanelId,
+  };
+  const height = dock.enabled === true ? DOCK_DEFAULT_HEIGHT : dock.height;
+  const changed = [
+    ...(JSON.stringify(panels) ===
+    JSON.stringify({
+      panelsById: dock.panelsById,
+      panelOrder: dock.panelOrder,
+      panelSizesById: dock.panelSizesById,
+      controlsByPanelId: dock.controlsByPanelId,
+    })
+      ? []
+      : ["dock.panels"]),
+    ...(height === dock.height ? [] : ["dock.height"]),
+  ];
+  return { dock: { ...dock, ...panels, height }, changed, warnings: [], issues: [] };
 }
 
 function publicControls(panel, raw, context) {

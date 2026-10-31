@@ -5,10 +5,13 @@ import {
   buildDockSnapshot,
   compileDockLayout,
   planDockFormMutation,
+  planDockLayoutReset,
   planDockPanelPatch,
   planDockPanelReset,
   reconcileDockExecution,
 } from "./dockControl.js";
+import { firstRunDockState } from "../dock/firstRunDock.js";
+import { DOCK_DEFAULT_HEIGHT } from "../dock/dockSizing.js";
 
 const dock = {
   supported: true,
@@ -29,6 +32,24 @@ const dock = {
 };
 
 describe("Dock Control", () => {
+  it("resets to the first-run strip and keeps edge, monitor and reservation", () => {
+    const { layout, controlsByPanelId } = firstRunDockState();
+    const planned = planDockLayoutReset(dock);
+
+    expect(planned.changed).toEqual(["dock.panels", "dock.height"]);
+    expect(planned.dock).toMatchObject({
+      edge: "top",
+      monitor: "monitor-1",
+      reserveSpace: true,
+      height: DOCK_DEFAULT_HEIGHT,
+      panelOrder: layout.panelOrder,
+      panelSizesById: layout.panelSizesById,
+      controlsByPanelId,
+    });
+    expect(planDockLayoutReset(planned.dock).changed).toEqual([]);
+    expect(planDockLayoutReset({ ...dock, enabled: false }).dock.height).toBe(72);
+  });
+
   it("describes Level growth from its orientation and preserves width preferences", () => {
     const context = { channelCount: 8 };
     expect(buildDockPanelDescription(dock, "level", context).width.min).toBeGreaterThan(400);

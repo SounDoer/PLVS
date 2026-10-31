@@ -1348,6 +1348,45 @@
       }
     },
     {
+      "id": "workspace.reset",
+      "family": "workspace",
+      "path": ["workspace", "reset"],
+      "usage": "plvs-cli workspace reset --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset the Workspace layout as the Panels menu's Reset Layout does.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "workspace.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        { "name": "--json", "required": true, "value": { "type": "boolean" } },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0 },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": { "type": "boolean" },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "dryRun": { "type": "boolean" }
+        }
+      }
+    },
+    {
       "id": "axis.describe",
       "family": "axis",
       "path": ["axis", "describe"],
@@ -5659,6 +5698,45 @@
           "dryRun": {
             "type": "boolean"
           }
+        }
+      }
+    },
+    {
+      "id": "dock.layout.reset",
+      "family": "dock",
+      "path": ["dock", "layout", "reset"],
+      "usage": "plvs-cli dock layout reset --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset the Dock layout as the Dock Panels editor's Reset Layout does.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "dock.layout.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        { "name": "--json", "required": true, "value": { "type": "boolean" } },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0 },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": { "type": "boolean" },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "schemaRef": "agentControl.revision" },
+          "dryRun": { "type": "boolean" }
         }
       }
     },

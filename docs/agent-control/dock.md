@@ -172,6 +172,14 @@ panel references or request keys, unknown modules, invalid controls, invalid cha
 and out-of-range widths fail together as `invalidDockLayout` issues. Agent Control does not
 normalize, drop, clamp, or silently repair them.
 
+## Layout reset
+
+`dock layout reset` is the Dock Panels editor's Reset Layout. It restores the first-run modules,
+order, widths and controls and, while Dock is showing, the default height, which is fitted to the
+display like any Dock height. Edge, monitor and Reserve Space are kept. Outside Dock there is no
+strip to resize, so the saved height is kept. It supports `--dry-run`, and an unchanged layout
+returns `changed: false`.
+
 ## Individual panel control
 
 `dock panel describe` returns the selected instance, its control schema, current values,

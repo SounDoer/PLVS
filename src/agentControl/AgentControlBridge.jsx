@@ -305,6 +305,7 @@ export function AgentControlBridge() {
   const {
     state: workspaceState,
     replaceWorkspace,
+    resetWorkspace,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
   } = useWorkspaceStore();
@@ -551,6 +552,7 @@ export function AgentControlBridge() {
     measurementContext: agentControlMeasurementContext,
     workspace: workspaceState,
     replaceWorkspace,
+    resetWorkspace,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     settings: agentControlSettings,

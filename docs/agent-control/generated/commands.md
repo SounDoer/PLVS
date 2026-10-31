@@ -36,6 +36,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `module.list`                   | `module list`                     | runningApp / query    | none     | no      | none        |
 | `module.describe`               | `module describe`                 | runningApp / query    | none     | no      | none        |
 | `workspace.applyLayout`         | `workspace apply`                 | runningApp / mutation | required | yes     | none        |
+| `workspace.reset`               | `workspace reset`                 | runningApp / mutation | required | yes     | none        |
 | `axis.describe`                 | `axis describe`                   | runningApp / query    | none     | no      | none        |
 | `axis.inspect`                  | `axis inspect`                    | runningApp / query    | none     | no      | none        |
 | `axis.shared.update`            | `axis shared update`              | runningApp / mutation | required | yes     | none        |
@@ -107,6 +108,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `dock.enter`                    | `dock enter`                      | runningApp / mutation | required | yes     | none        |
 | `dock.exit`                     | `dock exit`                       | runningApp / mutation | required | yes     | none        |
 | `dock.layout.apply`             | `dock layout apply`               | runningApp / mutation | required | yes     | none        |
+| `dock.layout.reset`             | `dock layout reset`               | runningApp / mutation | required | yes     | none        |
 | `dock.panel.describe`           | `dock panel describe`             | runningApp / query    | none     | no      | none        |
 | `dock.panel.update`             | `dock panel update`               | runningApp / mutation | required | yes     | none        |
 | `dock.panel.reset`              | `dock panel reset`                | runningApp / mutation | required | yes     | none        |
@@ -853,6 +855,32 @@ plvs-cli workspace apply <file|-> --json --expected-revision <n> [--dry-run]
 | Name      | Maps to  | Required | Value                        |
 | --------- | -------- | -------- | ---------------------------- |
 | `file\|-` | `layout` | yes      | string; ref workspace.layout |
+
+### Options
+
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
+
+## `workspace.reset`
+
+Reset the Workspace layout as the Panels menu's Reset Layout does.
+
+- CLI path: `workspace reset`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `workspace.reset`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli workspace reset --json --expected-revision <n> [--dry-run]
+```
+
+### Positionals
+
+None.
 
 ### Options
 
@@ -2763,6 +2791,32 @@ plvs-cli dock layout apply <file|-> --json --expected-revision <n> [--dry-run]
 | Name      | Maps to  | Required | Value                   |
 | --------- | -------- | -------- | ----------------------- |
 | `file\|-` | `layout` | yes      | string; ref dock.layout |
+
+### Options
+
+| Name                  | Maps to            | Required | Value             |
+| --------------------- | ------------------ | -------- | ----------------- |
+| `--json`              | local only         | yes      | boolean           |
+| `--expected-revision` | `expectedRevision` | yes      | integer; 0 to inf |
+| `--dry-run`           | `dryRun`           | no       | boolean           |
+
+## `dock.layout.reset`
+
+Reset the Dock layout as the Dock Panels editor's Reset Layout does.
+
+- CLI path: `dock layout reset`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `dock.layout.reset`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli dock layout reset --json --expected-revision <n> [--dry-run]
+```
+
+### Positionals
+
+None.
 
 ### Options
 

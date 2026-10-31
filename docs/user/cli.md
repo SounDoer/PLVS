@@ -148,12 +148,15 @@ Use `plvs-cli --help` for the command families. The generated
 [command catalog](../agent-control/generated/commands.md) is the complete static reference for CLI
 paths, options, policies, and top-level wire parameters. The current families are:
 
-- `inspect`, `capabilities`, `measurement`, `view`, `ui`, `visual`, and `wait`;
+- `inspect`, `capabilities`, `measurement`, `view`, `window`, `ui`, `visual`, and `wait`;
 - `module`, `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
-- `config`;
+- `config` and `update`;
 - `transport`, `device`, and `dock`.
+
+`workspace reset` and `dock layout reset` are the Reset Layout actions of the Panels menu and the
+Dock Panels editor.
 
 ## Shell Completion
 

@@ -6,6 +6,7 @@ import {
   dockStateSignature,
   planDockFormMutation,
   planDockPanelPatch,
+  planDockLayoutReset,
   planDockPanelReset,
   reconcileDockExecution,
 } from "../dockControl.js";
@@ -67,6 +68,8 @@ async function mutate(ctx) {
   let createdPanels = {};
   if (request.method === "dock.enter" || request.method === "dock.exit") {
     planned = planDockFormMutation(dock, request.method, request.params, dockRequestContext);
+  } else if (request.method === "dock.layout.reset") {
+    planned = planDockLayoutReset(dock);
   } else if (request.method === "dock.layout.apply") {
     planned = compileDockLayout(dock, request.params.layout, dockRequestContext);
     createdPanels = planned.createdPanels;
@@ -134,7 +137,11 @@ async function mutate(ctx) {
           (request.params.monitor === undefined || candidate.monitor === planned.dock.monitor)
       : request.method === "dock.exit"
         ? (candidate) => candidate.enabled === false
-        : (candidate) => dockStateSignature(candidate) === plannedSignature;
+        : request.method === "dock.layout.reset"
+          ? // The height may be fitted to the display, as any Dock height is; the layout is exact.
+            (candidate) =>
+              dockStateSignature({ ...candidate, height: planned.dock.height }) === plannedSignature
+          : (candidate) => dockStateSignature(candidate) === plannedSignature;
   const committed = settlement.arm("dock", { matches });
   try {
     const effectiveDock = await executeDock(request.method, planned.dock);
@@ -198,6 +205,7 @@ export const dockHandlers = {
   "dock.panel.describe": { run: describePanel },
   "dock.enter": { run: mutate, monitorInventory: true },
   "dock.exit": { run: mutate },
+  "dock.layout.reset": { run: mutate },
   "dock.layout.apply": { run: mutate },
   "dock.panel.update": { run: mutate },
   "dock.panel.reset": { run: mutate },

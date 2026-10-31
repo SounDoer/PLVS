@@ -69,3 +69,10 @@ stay in `axis.describe`; `axisKinds` only declares membership.
 
 An unknown ID fails with `moduleNotFound` at `$.params.moduleId`. Successful queries report the
 current process-local revision but never increment it.
+
+## Workspace reset
+
+`workspace reset` is the Panels menu's Reset Layout. It restores the default panels, split layout,
+panel controls, pins and axis ranges through the same Workspace action, supports `--dry-run`, and
+returns `changed: false` when the Workspace already uses those defaults. Like `workspace apply`, it
+advances the revision and marks an active Preset modified when the result differs from it.
