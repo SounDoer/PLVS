@@ -165,7 +165,7 @@ export const THEME_CONTRAST_CHECKS = [
     targetRatio:
       foreground.startsWith("stats.") || foreground === "spectrogram.axisLabel" ? 4.5 : 3,
     target: targetFor(foreground),
-    section: "Modules",
+    section: "Panels",
     consumers: [label],
     standard:
       foreground.startsWith("stats.") || foreground === "spectrogram.axisLabel"
@@ -257,7 +257,7 @@ export function analyzeResolvedThemeVisuals(resolved) {
       label,
       targetDistance: 0.08,
       target,
-      section: target.page === "palettes" ? "Palettes" : "Modules",
+      section: target.page === "palettes" ? "Palettes" : "Panels",
       consumers: ["thin traces", "small markers", "overlapping data"],
     });
     if (result) warnings.push(result);

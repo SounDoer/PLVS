@@ -207,7 +207,7 @@ export function DockModulesEditor({
 
   if (adding) {
     return (
-      <DockEditorShell title="Add Module" onBack={() => setAdding(false)}>
+      <DockEditorShell title="Add Panel" onBack={() => setAdding(false)}>
         <div className="grid grid-cols-1 gap-0 p-1">
           {DOCK_PANEL_MODULE_IDS.map((id) => {
             const entry = MODULE_REGISTRY[id] ?? DOCK_ONLY_PANEL_META[id];
@@ -234,7 +234,7 @@ export function DockModulesEditor({
   }
 
   return (
-    <DockEditorShell title="Modules">
+    <DockEditorShell title="Panels">
       <div className="flex min-h-full flex-col p-1">
         {orderedPanels.length ? (
           <div
@@ -265,11 +265,7 @@ export function DockModulesEditor({
         )}
 
         <div className="mt-1 flex items-center gap-1">
-          <AddButton
-            label="Add Module"
-            className="min-w-0 flex-1"
-            onClick={() => setAdding(true)}
-          />
+          <AddButton label="Add Panel" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
           <ResetAction
             label="Reset layout"
             tip="Reset Layout"

@@ -78,9 +78,9 @@ describe("DockHeaderApp", () => {
       reserveSpace: false,
     };
     render(<DockHeaderApp />);
-    const modules = screen.getByRole("button", { name: "Edit modules" });
+    const modules = screen.getByRole("button", { name: "Panels" });
     act(() => modules.focus());
-    expect(screen.getByRole("tooltip").textContent).toBe("Edit modules");
+    expect(screen.getByRole("tooltip").textContent).toBe("Panels");
 
     fireEvent.blur(window);
 

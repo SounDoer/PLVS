@@ -208,7 +208,7 @@ function renderSummary(summary) {
 
 function renderCompatibility(metadata) {
   const entries = [
-    ["Modules", metadata.facets.moduleIds],
+    ["Panels", metadata.facets.moduleIds],
     ["Metrics", metadata.facets.metricIds],
     ["Theme scheme", metadata.facets.themeScheme ? [metadata.facets.themeScheme] : []],
     ["Optional features", metadata.facets.optionalCapabilities],
@@ -237,7 +237,7 @@ function renderPresetDetails(metadata) {
   const summary = metadata.content.summary;
   const entries = [
     ["Workspace Panels", summary.workspacePanelCount],
-    ["Modules", metadata.facets.moduleIds.map((id) => MODULE_CATALOG[id]?.title ?? id).join(", ")],
+    ["Panels", metadata.facets.moduleIds.map((id) => MODULE_CATALOG[id]?.title ?? id).join(", ")],
     ["Dock", summary.dockEnabled ? "On" : "Off"],
     ...(summary.dockEnabled ? [["Dock Panels", summary.dockPanelCount]] : []),
   ];

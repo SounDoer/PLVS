@@ -37,30 +37,30 @@ describe("DockModulesEditor", () => {
   it("adds from the available modules list", () => {
     const onAdd = vi.fn();
     render(<DockModulesEditor {...BASE_PROPS} onAdd={onAdd} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
     fireEvent.click(screen.getByRole("button", { name: "Loudness" }));
     expect(onAdd).toHaveBeenCalledWith("loudness");
     expect(screen.getByRole("button", { name: "Level Meter" })).toBeTruthy();
   });
 
-  it("swaps to a full Add Module view instead of expanding the current list, and Back returns to it", () => {
+  it("swaps to a full Add Panel view instead of expanding the current list, and Back returns to it", () => {
     render(<DockModulesEditor {...BASE_PROPS} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
 
-    expect(screen.getByText("Add Module")).toBeTruthy();
+    expect(screen.getByText("Add Panel")).toBeTruthy();
     expect(screen.queryByTestId("dock-panel-row-level")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add Module" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Panel" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
     expect(screen.getByTestId("dock-panel-row-level")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add Module" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Panel" })).toBeTruthy();
   });
 
   it("omits the removed Timecode module from the add list", () => {
     const onAdd = vi.fn();
     render(<DockModulesEditor {...BASE_PROPS} onAdd={onAdd} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
     expect(screen.queryByRole("button", { name: "Timecode" })).toBeNull();
   });
 

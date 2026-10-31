@@ -92,7 +92,7 @@ export function DockHeader({ state, onAction }) {
           />
           <IconButton
             icon={<Volume2 className={ACTION_ICON_CLASS} />}
-            tip="Device"
+            tip="Sources"
             {...toolTipProps}
             aria-pressed={state.editorView === "device"}
             className={state.editorView === "device" ? "bg-ui-hover text-foreground" : undefined}
@@ -110,7 +110,7 @@ export function DockHeader({ state, onAction }) {
           />
           <IconButton
             icon={<LayoutGrid className={ACTION_ICON_CLASS} />}
-            tip="Edit modules"
+            tip="Panels"
             {...toolTipProps}
             aria-pressed={state.editorView === "modules"}
             className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}

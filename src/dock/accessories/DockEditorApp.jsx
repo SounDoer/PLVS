@@ -241,7 +241,7 @@ export function DockEditorApp() {
       ) : payload.view === "views" ? (
         <DockViews state={payload} onAction={action} />
       ) : payload.view === "device" ? (
-        <DockEditorShell title="Device">
+        <DockEditorShell title="Sources">
           <DeviceSelectionContent
             {...payload.device}
             onSelect={(deviceId) => action("select-device", { deviceId })}

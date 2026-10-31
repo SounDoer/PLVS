@@ -257,10 +257,10 @@ export function QuickTour({
   let fallback = "";
   if (missing && step === 6)
     fallback =
-      "No panel settings control is visible. Show panel headers in Views, or add a panel from Modules. You can continue now.";
+      "No panel settings control is visible. Show panel headers in Views, or add a panel from Panels. You can continue now.";
   else if (missing && step === 7 && !snapshot)
     fallback =
-      "Add a Loudness or Waveform panel from Modules to try history selection. You can continue now.";
+      "Add a Loudness or Waveform panel from Panels to try history selection. You can continue now.";
   else if (missing)
     fallback =
       "This control is currently hidden. Reveal the toolbar to find it, or continue the tour.";

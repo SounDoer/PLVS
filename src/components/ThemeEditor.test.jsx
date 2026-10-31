@@ -62,7 +62,7 @@ describe("ThemeEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
     const preview = screen.getByRole("dialog", { name: "Theme Preview" });
     expect(preview.style.colorScheme).toBe("dark");
-    fireEvent.click(screen.getByRole("tab", { name: "Modules" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Panels" }));
     const spectrum = screen.getByText("Spectrum").closest("section");
     expect(spectrum.querySelector('stop[offset="0%"]').getAttribute("stop-opacity")).toBe("0.2");
     expect(spectrum.querySelector('stop[offset="100%"]').getAttribute("stop-opacity")).toBe("0.02");
@@ -315,7 +315,7 @@ describe("ThemeEditor", () => {
 
     expect(screen.getByRole("dialog", { name: "Theme Preview" })).toBeTruthy();
     expect(screen.getByText("Controlled scenes from the current unsaved Draft")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Modules" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Panels" }));
     expect(screen.getByText("Stereo Map")).toBeTruthy();
     expect(document.querySelectorAll("[data-theme-preview-grid]")).toHaveLength(4);
     expect(document.querySelector("[data-theme-preview-guides]")).toBeTruthy();

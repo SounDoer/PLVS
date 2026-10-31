@@ -259,7 +259,7 @@ export function AppHeader({
             <span className="group">
               <IconButton
                 icon={<LayoutGrid className="size-[length:var(--ui-icon-shell-action)]" />}
-                tip="Modules"
+                tip="Panels"
                 data-tour-target="modules"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />

@@ -112,7 +112,7 @@ export function FocusViewPopoverContent({
       />
       <FocusSwitch
         id="focus-view-borderless"
-        label="Hide Chrome"
+        label="Hide Window Frame"
         checked={normalized.borderless}
         onCheckedChange={setBorderless}
       />

@@ -693,7 +693,7 @@ and has no panel headers or header preference. `focusView.compactPanels` remains
 header alias. New canonical fields win when loading saved state; conflicting alias/canonical API
 patches are rejected. Rendering policy and container size constraints are independent.
 
-The Dock toolbar exposes Device and Views through the existing accessory editor window. Device
+The Dock toolbar exposes Sources and Views through the existing accessory editor window. Sources
 reuses the normal source selector and Source owner. Views routes Off/Top/Bottom and reservation
 through the existing Dock actions, and annotation changes through the View owner. Accessory roots
 receive state snapshots and send actions; they do not own capture or presentation persistence.

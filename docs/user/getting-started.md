@@ -90,7 +90,7 @@ stable packages install side by side with Preview.
 ### Quick Tour
 
 After the first-launch update preferences are settled, **Quick Tour** offers a short introduction
-to Start, Sources, Loudness Profile, Modules, Views, Presets, Panel Settings, Snapshot, and
+to Start, Sources, Loudness Profile, Panels, Views, Presets, Panel Settings, Snapshot, and
 Clear, and Settings in ten steps. Choose **Start Tour** or **Not Now**. You can also close it at any time.
 
 The tour highlights real controls with a soft glow without blocking the rest of the interface. Every step has a

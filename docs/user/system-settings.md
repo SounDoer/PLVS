@@ -221,7 +221,7 @@ Panel title-bar buttons use opaque secondary text by default, with primary text 
 background on hover, matching the header toolbar. Disabled buttons retain reduced opacity.
 The icons at the end of a row in the Presets, Loudness Profile, Theme, module, and file history
 lists appear together when the pointer or keyboard focus is on that row; Delete turns red on hover.
-When reordering Presets, Loudness Profiles, profile rules, or Dock modules, the dragged row has
+When reordering Presets, Loudness Profiles, profile rules, or Dock panels, the dragged row has
 a 1px opaque Accent outline and its grip stays in primary text colour until the drag ends.
 
 Imports and edits from another workbench refresh the Theme Library without replacing this

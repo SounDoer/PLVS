@@ -49,9 +49,9 @@ describe("DockHeader", () => {
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       "Clear",
-      "Device",
+      "Sources",
       "Loudness Profile",
-      "Edit modules",
+      "Panels",
       "Views",
       "Presets",
     ]);
@@ -95,7 +95,7 @@ describe("DockHeader", () => {
     const onAction = vi.fn();
     render(<DockHeader state={STATE} onAction={onAction} />);
     fireEvent.pointerEnter(screen.getByTestId("dock-header"));
-    const modulesButton = screen.getByRole("button", { name: "Edit modules" });
+    const modulesButton = screen.getByRole("button", { name: "Panels" });
     vi.spyOn(modulesButton, "getBoundingClientRect").mockReturnValue(
       /** @type {ReturnType<typeof modulesButton.getBoundingClientRect>} */ ({
         left: 320,
@@ -111,7 +111,7 @@ describe("DockHeader", () => {
     const onAction = vi.fn();
     render(<DockHeader state={{ ...STATE, editorView: "modules" }} onAction={onAction} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit modules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Panels" }));
 
     expect(onAction).toHaveBeenCalledWith("close-editor");
   });

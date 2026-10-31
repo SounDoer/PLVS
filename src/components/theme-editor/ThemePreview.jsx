@@ -272,7 +272,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
         >
           {[
             ["overview", "Overview"],
-            ["modules", "Modules"],
+            ["modules", "Panels"],
             ["review", "Visual Review"],
           ].map(([id, label]) => (
             <TabButton key={id} selected={page === id} onClick={() => setPage(id)} className="py-2">

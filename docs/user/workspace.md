@@ -27,9 +27,9 @@ When moving a panel, PLVS fills the space it will occupy after you release the p
 placement direction. Dropping on a panel title adds it as a tab; moving outside a valid panel shows
 **No Drop Target** and leaves the layout unchanged.
 
-## Modules and presets
+## Panels and presets
 
-The **Modules** menu adds panels, including a second instance of a meter you want to watch two ways
+The **Panels** menu adds panels, including a second instance of a meter you want to watch two ways
 at once. The **Presets** menu saves and switches between whole layouts. When none exist yet, name
 your first Preset in the create field and select **Add**. The selected Preset shows as modified
 while anything it restores differs from the current layout, and the mark clears as soon as you
@@ -75,7 +75,7 @@ start or stop, and Live / Snapshot is a no-op before Live history exists.
 ## Views
 
 The Views menu pares the window down for monitoring: **Always on Top**, **Hide Panel Headers**, **Hide Axes & Labels**,
-**Hide Chrome**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. The **Dock** selector
+**Hide Window Frame**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. The **Dock** selector
 below these controls offers **Off**, **Top**, and **Bottom** on Windows and macOS. Surface Opacity changes
 the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
 controls, and borders remain opaque for legibility.
@@ -84,7 +84,7 @@ On macOS, setting **Surface Opacity** to 0 also removes the native window shadow
 AppKit from drawing shadow-shaped outlines around the remaining opaque text and meter graphics;
 raising Surface Opacity above 0 restores the normal window shadow.
 
-On Windows 11, **Hide Chrome** also hides the outer system window outline; turning it off restores
+On Windows 11, **Hide Window Frame** also hides the outer system window outline; turning it off restores
 the system outline. **Auto-hide Controls** also uses a chromeless window, so the outline stays hidden
 while that mode is enabled. Normal windows retain their native shadow in either mode.
 
@@ -115,9 +115,9 @@ avoidance does not add extra axis ticks.
 
 ## Dock
 
-The Dock toolbar offers **Device** for the same live device/application selection as the normal
+The Dock toolbar offers **Sources** for the same live device/application selection as the normal
 window. **Views** groups **Hide Axes & Labels**, **Dock: Off / Top / Bottom**, and **Reserve Space**
-where supported. Select **Off** to restore the normal window. Device and Views open beside the strip;
+where supported. Select **Off** to restore the normal window. Sources and Views open beside the strip;
 opening either does not restart capture. Panel settings remain accessible through the panel editor.
 
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of

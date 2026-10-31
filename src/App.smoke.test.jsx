@@ -964,12 +964,12 @@ describe("App smoke", () => {
     await waitFor(() => expect(prepareDockAccessories).toHaveBeenCalled());
   });
 
-  it("lists Stereo Map immediately after Waveform in Add Module, and adds it independently", async () => {
+  it("lists Stereo Map immediately after Waveform in Add Panel, and adds it independently", async () => {
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Modules" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Panels" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
 
     const menuLabels = screen
       .getAllByRole("button")
@@ -979,9 +979,9 @@ describe("App smoke", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
 
-    // Add Module stays on its picker view after a selection, so a second add can follow without
+    // Add Panel stays on its picker view after a selection, so a second add can follow without
     // reopening it; go Back to confirm the new instance landed as a distinct, removable panel row
-    // — proof the Add Module action created an independent panel instance rather than reusing one.
+    // — proof the Add Panel action created an independent panel instance rather than reusing one.
     // Stereo Map is already in the first-run workspace, so this second instance gets the "2" suffix.
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByLabelText("Delete Stereo Map 2")).toBeTruthy();

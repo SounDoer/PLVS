@@ -7,7 +7,7 @@ import { AppHeader } from "./AppHeader.jsx";
 vi.mock("../workspace/WorkspaceToolbar.jsx", () => ({
   ModulesPopoverContent: () => (
     <div>
-      <p>Modules</p>
+      <p>Panels</p>
       <p>Mock modules menu</p>
     </div>
   ),
@@ -97,7 +97,7 @@ describe("AppHeader", () => {
 
     expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sources" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Modules" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Panels" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Views" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Presets" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Loudness Profile" })).toBeTruthy();
@@ -259,14 +259,14 @@ describe("AppHeader", () => {
     expect(applicationRows.hasAttribute("inert")).toBe(false);
   });
 
-  it("seats Loudness Profile between Sources and Modules", () => {
+  it("seats Loudness Profile between Sources and Panels", () => {
     const { container } = renderHeader();
     const buttons = within(container.querySelector("header"))
       .getAllByRole("button")
       .map((button) => button.ariaLabel);
 
     expect(buttons.indexOf("Sources")).toBeLessThan(buttons.indexOf("Loudness Profile"));
-    expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Modules"));
+    expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Panels"));
   });
 
   it("orders Views before Presets without highlighting active configuration", () => {
@@ -282,8 +282,8 @@ describe("AppHeader", () => {
   it("renders Modules and Presets popovers from toolbar triggers", () => {
     renderHeader();
 
-    fireEvent.click(screen.getByRole("button", { name: "Modules" }));
-    expect(screen.getByText("Modules")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Panels" }));
+    expect(screen.getByText("Panels")).toBeTruthy();
     expect(screen.getByText("Mock modules menu")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Presets" }));
@@ -294,7 +294,7 @@ describe("AppHeader", () => {
     const holdFocusControls = vi.fn();
     renderHeader({ autoHideControls: true, holdFocusControls });
 
-    fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Panels" }));
     fireEvent.click(screen.getByRole("button", { name: "Views" }));
     fireEvent.click(screen.getByRole("button", { name: "Presets" }));
 
@@ -314,7 +314,7 @@ describe("AppHeader", () => {
       },
     });
 
-    for (const name of ["Sources", "Loudness Profile", "Modules", "Views", "Presets"]) {
+    for (const name of ["Sources", "Loudness Profile", "Panels", "Views", "Presets"]) {
       const button = screen.getByRole("button", { name });
 
       const trigger = button.closest('[data-slot="popover-trigger"]');
@@ -336,7 +336,7 @@ describe("AppHeader", () => {
     expect(screen.getByRole("switch", { name: "Always on Top" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Auto-hide Controls" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Panel Headers" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Hide Chrome" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide Window Frame" })).toBeTruthy();
   });
 
   it("uses the Sources slot as Open file in File mode", () => {

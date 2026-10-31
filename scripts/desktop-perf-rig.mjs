@@ -182,10 +182,13 @@ function assertLinuxPerformanceIsolation(executable) {
     { encoding: "utf8" }
   );
   if (lock.status === 0 && /\(true,\)/.test(lock.stdout ?? "")) {
-    throw new RigError("the Linux session is locked; unlock it before desktop performance acceptance");
+    throw new RigError(
+      "the Linux session is locked; unlock it before desktop performance acceptance"
+    );
   }
   const list = spawnSync("ps", ["-axo", "pid=,command="], { encoding: "utf8" });
-  if (list.status !== 0) throw new Error(list.stderr?.trim() || "could not inspect Linux processes");
+  if (list.status !== 0)
+    throw new Error(list.stderr?.trim() || "could not inspect Linux processes");
   const exact = resolve(executable);
   const conflicts = String(list.stdout)
     .split(/\r?\n/)
@@ -296,7 +299,10 @@ export async function stopDesktopPerfRig(rig) {
       releaseError = error;
     }
     if (!safeTemporaryUserDataFolder(rig.userDataFolder)) {
-      throw releaseError ?? new Error(`refusing to remove unexpected temporary path: ${rig.userDataFolder}`);
+      throw (
+        releaseError ??
+        new Error(`refusing to remove unexpected temporary path: ${rig.userDataFolder}`)
+      );
     }
     await rm(rig.userDataFolder, { recursive: true, force: true });
     if (releaseError) throw releaseError;
@@ -327,7 +333,12 @@ function macControl(executable, identityRoot, args) {
   return parseControlReport(result, `plvs-cli ${args.slice(0, -1).join(" ")}`);
 }
 
-async function attachToMacAgentControl(executable, identityRoot, platform = "darwin", timeoutMs = 30_000) {
+async function attachToMacAgentControl(
+  executable,
+  identityRoot,
+  platform = "darwin",
+  timeoutMs = 30_000
+) {
   const deadline = Date.now() + timeoutMs;
   let lastError = null;
   while (Date.now() < deadline) {
@@ -441,11 +452,11 @@ export async function configureScenario(session, scenario) {
   const ready = await waitUntil(
     () =>
       session.evaluate(
-        'Boolean([...document.querySelectorAll("button")].find(button=>button.getAttribute("aria-label")==="Modules"))'
+        'Boolean([...document.querySelectorAll("button")].find(button=>button.getAttribute("aria-label")==="Panels"))'
       ),
     15_000
   );
-  if (!ready) throw new Error("PLVS frontend did not expose the Modules control");
+  if (!ready) throw new Error("PLVS frontend did not expose the Panels control");
   const layout =
     await session.evaluate(`(()=>{const leaves=[...document.querySelectorAll("[data-leaf-path]")];
     return {leafCount:leaves.length,titles:leaves.map(leaf=>(leaf.innerText||"").split("\\n")[0].trim())};})()`);

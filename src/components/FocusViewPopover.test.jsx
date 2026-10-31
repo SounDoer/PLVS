@@ -26,7 +26,7 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getByRole("switch", { name: "Always on Top" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Auto-hide Controls" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Panel Headers" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Hide Chrome" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide Window Frame" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Glass" })).toBeTruthy();
   });
 
@@ -74,9 +74,9 @@ describe("FocusViewPopoverContent", () => {
     expect(
       screen.getByRole("switch", { name: "Hide Panel Headers" }).getAttribute("data-state")
     ).toBe("unchecked");
-    expect(screen.getByRole("switch", { name: "Hide Chrome" }).getAttribute("data-state")).toBe(
-      "unchecked"
-    );
+    expect(
+      screen.getByRole("switch", { name: "Hide Window Frame" }).getAttribute("data-state")
+    ).toBe("unchecked");
     expect(screen.getByRole("switch", { name: "Glass" }).getAttribute("data-state")).toBe(
       "checked"
     );
@@ -111,7 +111,7 @@ describe("FocusViewPopoverContent", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Always on Top" }));
     fireEvent.click(screen.getByRole("switch", { name: "Auto-hide Controls" }));
     fireEvent.click(screen.getByRole("switch", { name: "Hide Panel Headers" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Hide Chrome" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Hide Window Frame" }));
     fireEvent.click(screen.getByRole("switch", { name: "Glass" }));
 
     expect(setPinned).toHaveBeenCalledWith(true);

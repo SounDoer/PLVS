@@ -149,7 +149,7 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
 function AddModuleView({ onAdd, onBack }) {
   return (
     <>
-      <PanelSettingsHeader title="Add Module" onBack={onBack} />
+      <PanelSettingsHeader title="Add Panel" onBack={onBack} />
       {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
           makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
           so `truncate` on the rows never kicks in. */}
@@ -163,7 +163,7 @@ function AddModuleView({ onAdd, onBack }) {
 }
 
 // ---------------------------------------------------------------------------
-// Modules Popover - manage panel instances from the header
+// Panels Popover - manage panel instances from the header
 // ---------------------------------------------------------------------------
 
 export function ModulesPopoverContent() {
@@ -180,7 +180,7 @@ export function ModulesPopoverContent() {
 
   return (
     <>
-      <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Modules</p>
+      <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Panels</p>
       {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
           makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
           so `truncate` on the rows never kicks in. */}
@@ -195,7 +195,7 @@ export function ModulesPopoverContent() {
         ) : null}
       </div>
       <div className="mt-1 flex items-center gap-1 pt-1">
-        <AddButton label="Add Module" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
+        <AddButton label="Add Panel" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
         <ResetAction
           label="Reset layout"
           tip="Reset Layout"

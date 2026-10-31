@@ -374,13 +374,13 @@ The report's `focusedMatrix` entries start as `notCaptured`, with no evidence. T
 not proof that those conditions were tested. Record screenshot paths and observations separately
 for the conditions relevant to the design:
 
-| Surface                  | Conditions                                                                               |
-| ------------------------ | ---------------------------------------------------------------------------------------- |
-| Theme Preview            | Overview controls, hover, disabled/selected controls, Modules fills, Visual Review links |
-| Actual menus and editors | Popover, Settings, Theme Editor, modal surface and text hierarchy                        |
-| Workspace                | Narrow/wide panels, Live/Snapshot distinction, mono/stereo/high channel counts           |
-| Dock                     | Live source, 56/82/160 CSS px; capture `main` after each acknowledged Dock transition    |
-| Native composition       | Supported OS/display scales, Glass and Surface Opacity, hide-chrome/fullscreen           |
+| Surface                  | Conditions                                                                              |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Theme Preview            | Overview controls, hover, disabled/selected controls, Panels fills, Visual Review links |
+| Actual menus and editors | Popover, Settings, Theme Editor, modal surface and text hierarchy                       |
+| Workspace                | Narrow/wide panels, Live/Snapshot distinction, mono/stereo/high channel counts          |
+| Dock                     | Live source, 56/82/160 CSS px; capture `main` after each acknowledged Dock transition   |
+| Native composition       | Supported OS/display scales, Glass and Surface Opacity, hide-chrome/fullscreen          |
 
 Use Agent Control for desktop captures and compare pixel values for changed renderers. The Theme
 Preview is illustrative and cannot replace real panel screenshots. Dock cannot enter from File

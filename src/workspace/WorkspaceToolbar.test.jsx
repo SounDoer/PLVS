@@ -73,7 +73,7 @@ describe("ModulesPopoverContent", () => {
     expect(screen.queryByText("Level Meter")).toBeNull();
   });
 
-  it("swaps to a full Add Module view instead of nesting a popover", () => {
+  it("swaps to a full Add Panel view instead of nesting a popover", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
@@ -82,15 +82,15 @@ describe("ModulesPopoverContent", () => {
       </WorkspaceProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
 
-    expect(screen.getByText("Add Module")).toBeTruthy();
+    expect(screen.getByText("Add Panel")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(screen.queryByLabelText("Delete Level Meter")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add Module" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Panel" })).toBeNull();
   });
 
-  it("stays on the Add Module view after a selection, then returns to the list via Back", () => {
+  it("stays on the Add Panel view after a selection, then returns to the list via Back", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
@@ -99,11 +99,11 @@ describe("ModulesPopoverContent", () => {
       </WorkspaceProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
     fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
 
     // A second add can follow immediately, without reopening the picker.
-    expect(screen.getByText("Add Module")).toBeTruthy();
+    expect(screen.getByText("Add Panel")).toBeTruthy();
     expect(screen.queryByLabelText("Delete Level Meter")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -124,7 +124,7 @@ describe("ModulesPopoverContent", () => {
       </WorkspaceProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
     const grip = screen.getByRole("button", { name: "Drag Waveform to place" });
 
     fireEvent.mouseDown(grip, { clientX: 100, clientY: 100 });
@@ -148,7 +148,7 @@ describe("ModulesPopoverContent", () => {
       </WorkspaceProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
     const grip = screen.getByRole("button", { name: "Drag Waveform to place" });
     fireEvent.mouseDown(grip, { clientX: 100, clientY: 100 });
     fireEvent.mouseMove(window, { clientX: 108, clientY: 100 });
