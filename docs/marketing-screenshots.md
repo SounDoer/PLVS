@@ -94,7 +94,7 @@ These examples assume the NAS's `xichen` share is mounted at `/Volumes/xichen` o
 On other machines, pass the local mount path or a restored copy of `PLVS_Audio_Archive`, not
 the SMB URL. The directory and its README were checked on 2026-10-31; this location check did
 not verify every audio file's checksum. The separate promo production archive is documented in
-[Video production](promo-video.md#maintainers-production-archive).
+the maintainer's private `PLVS-Promo` repository.
 
 `PLVS_AUDIO_ARCHIVE` can stand in for `--archive`. Without `--write` they only check that the
 committed fixtures match; with it they regenerate them. Both commands mix every bed in memory from
