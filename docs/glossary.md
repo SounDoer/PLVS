@@ -44,9 +44,9 @@ disagree, the UI on `main` wins and this file is corrected.
 | Surface Opacity    | Transparency of Workspace, panel and Dock fills; text and data stay opaque                          | 背景不透明度 |                             |
 | Glass              | The translucent macOS window material                                                               | 毛玻璃       |                             |
 | Theme              | The colours of the interface and of every meter                                                     | 主题         | skin                        |
-| Saved Items        | Settings for exporting and importing Loudness Profiles, Presets and Themes                          | 已保存项目   | library                     |
+| Saved Items        | Settings for exporting and importing Loudness Profiles, Presets and Themes                          | 已保存条目   | library                     |
 | Sharesets          | The website where users share Themes, Presets and Loudness Profiles                                 | Sharesets    |                             |
-| Item               | One shared entry on Sharesets                                                                       | 条目         |                             |
+| Item               | One Loudness Profile, Preset or Theme, saved locally or shared on Sharesets                         | 条目         | project                     |
 | Quick Tour         | The ten-step introduction offered after first launch and from Settings                              | 快速导览     | onboarding, tutorial        |
 | Settings           | Application preferences                                                                             | 设置         |                             |
 
