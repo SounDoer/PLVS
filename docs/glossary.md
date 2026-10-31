@@ -52,18 +52,19 @@ disagree, the UI on `main` wins and this file is corrected.
 
 ## Panels
 
-| Term        | Meaning                                                 | Chinese     |
-| ----------- | ------------------------------------------------------- | ----------- |
-| Level Meter | Per-channel level bars                                  | 电平表      |
-| Loudness    | Momentary and Short-term loudness history               | 响度        |
-| Stats       | Configurable numeric readouts                           | 统计        |
-| Spectrum    | FFT-based real-time analyzer                            | 频谱        |
-| Spectrogram | Time-frequency history                                  | 声谱图      |
-| Vectorscope | Phase and correlation of a channel pair                 | Vectorscope |
-| Stereo Map  | Stereo image across the frequency spectrum              | Stereo Map  |
-| Waveform    | Per-channel amplitude envelope over the session history | 波形        |
+Panel names are kept in English, in subtitles and voice-over: they are the names on screen, and
+translating some of them but not others reads as inconsistent.
 
-Spectrogram is 声谱图 rather than 频谱图 so it cannot be confused with Spectrum.
+| Term        | Meaning                                                 |
+| ----------- | ------------------------------------------------------- |
+| Level Meter | Per-channel level bars                                  |
+| Loudness    | Momentary and Short-term loudness history               |
+| Stats       | Configurable numeric readouts                           |
+| Spectrum    | FFT-based real-time analyzer                            |
+| Spectrogram | Time-frequency history                                  |
+| Vectorscope | Phase and correlation of a channel pair                 |
+| Stereo Map  | Stereo image across the frequency spectrum              |
+| Waveform    | Per-channel amplitude envelope over the session history |
 
 ## Readings
 
@@ -101,5 +102,5 @@ Compact surfaces abbreviate readings. The abbreviation always maps to exactly on
 
 ## Kept in English
 
-PLVS, Dock, Vectorscope, Stereo Map, Sharesets, Agent Control, `plvs-cli`, LUFS, LU, dBFS, dBTP,
+PLVS, Dock, every [panel name](#panels), Sharesets, Agent Control, `plvs-cli`, LUFS, LU, dBFS, dBTP,
 FFT, RTA, L/R, M/S, LFE, EBU R 128, ITU-R BS.1770, ATSC A/85, Silero VAD, FireRedVAD, Lissajous.
