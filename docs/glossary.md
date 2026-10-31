@@ -1,8 +1,8 @@
 # PLVS — Glossary
 
-The user-facing terms PLVS uses, what each one means, and the one Chinese form used for them in
-subtitles and voice-over. The English term is the label the app shows; when this file and the UI
-disagree, the UI on `main` wins and this file is corrected.
+The user-facing terms PLVS uses, what each one means, and the one Chinese form a core concept
+takes in subtitles and voice-over. The English term is the label the app shows; when this file and
+the UI disagree, the UI on `main` wins and this file is corrected.
 
 ## Rules
 
@@ -68,24 +68,30 @@ translating some of them but not others reads as inconsistent.
 
 ## Readings
 
-| Term                       | Meaning                                                                      | Chinese      |
-| -------------------------- | ---------------------------------------------------------------------------- | ------------ |
-| Integrated                 | Loudness of the whole measurement, gated per BS.1770                         | 综合响度     |
-| Momentary                  | Loudness over a 400 ms window                                                | 瞬时响度     |
-| Short-term                 | Loudness over a 3 s window                                                   | 短期响度     |
-| Loudness Range             | Spread of Short-term loudness across the measurement (LRA)                   | 响度范围     |
-| True Peak                  | Inter-sample peak level                                                      | 真峰值       |
-| Peak                       | Sample peak level                                                            | 峰值         |
-| Max Hold                   | Keeps the highest value reached on screen; Spectrum's Hold option does this  | 最大值保持   |
-| Playback Max               | Level Meter readout showing the latest playback max while the bar stays live | 播放最大值   |
-| Correlation                | Phase correlation of a channel pair, from −1 to +1                           | 相关度       |
-| Channel Pair               | The two channels a stereo panel reads                                        | 声道对       |
-| Dialogue-Gated Loudness    | The family of readouts based on detected speech                              | 对白门控响度 |
-| Dialogue Detection         | The on-device voice detector those readouts depend on                        | 对白检测     |
-| Dialogue Loudness          | BS.1770 loudness over detected dialogue (DL)                                 | 对白响度     |
-| Loudness-to-Dialogue Ratio | Programme loudness minus Dialogue Loudness (LDR)                             | 响度对白比   |
-| Dialogue Coverage          | Detected dialogue duration as a share of measurement time                    | 对白覆盖率   |
-| Dialogue Range             | Variation of dialogue loudness across the measurement                        | 对白范围     |
+Readings are kept in English, in subtitles and voice-over, like panel names: they are the labels on
+screen, and the abbreviations on compact surfaces only make sense against the English term.
+
+| Term                       | Meaning                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| Integrated                 | Loudness of the whole measurement, gated per BS.1770                         |
+| Momentary                  | Loudness over a 400 ms window                                                |
+| Momentary Max              | Highest Momentary loudness in the measurement                                |
+| Short-term                 | Loudness over a 3 s window                                                   |
+| Short-term Max             | Highest Short-term loudness in the measurement                               |
+| Loudness Range             | Spread of Short-term loudness across the measurement (LRA)                   |
+| True Peak                  | Inter-sample peak level                                                      |
+| True Peak Max              | Highest True Peak in the measurement                                         |
+| Peak                       | Sample peak level                                                            |
+| Max Hold                   | Keeps the highest value reached on screen; Spectrum's Hold option does this  |
+| Playback Max               | Level Meter readout showing the latest playback max while the bar stays live |
+| Correlation                | Phase correlation of a channel pair, from −1 to +1                           |
+| Channel Pair               | The two channels a stereo panel reads                                        |
+| Dialogue-Gated Loudness    | The family of readouts based on detected speech                              |
+| Dialogue Detection         | The on-device voice detector those readouts depend on                        |
+| Dialogue Loudness          | BS.1770 loudness over detected dialogue (DL)                                 |
+| Loudness-to-Dialogue Ratio | Programme loudness minus Dialogue Loudness (LDR)                             |
+| Dialogue Coverage          | Detected dialogue duration as a share of measurement time                    |
+| Dialogue Range             | Variation of dialogue loudness across the measurement                        |
 
 Compact surfaces abbreviate readings. The abbreviation always maps to exactly one term above:
 
@@ -102,5 +108,5 @@ Compact surfaces abbreviate readings. The abbreviation always maps to exactly on
 
 ## Kept in English
 
-PLVS, Dock, every [panel name](#panels), Sharesets, Agent Control, `plvs-cli`, LUFS, LU, dBFS, dBTP,
+PLVS, Dock, every [panel name](#panels) and [reading](#readings), Sharesets, Agent Control, `plvs-cli`, LUFS, LU, dBFS, dBTP,
 FFT, RTA, L/R, M/S, LFE, EBU R 128, ITU-R BS.1770, ATSC A/85, Silero VAD, FireRedVAD, Lissajous.
