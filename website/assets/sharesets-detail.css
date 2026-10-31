@@ -8,11 +8,6 @@
   font-size: var(--text-page);
   letter-spacing: var(--tracking-heading);
 }
-.eyebrow {
-  color: var(--color-link);
-  font-size: var(--text-small);
-  font-weight: var(--weight-heading);
-}
 .lede {
   color: var(--color-muted);
   font-size: var(--text-lead);
@@ -28,21 +23,6 @@
 .breadcrumb {
   margin: 0 0 var(--space-5);
   font-size: var(--text-small);
-}
-.detail-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
-  align-items: center;
-  gap: var(--space-6);
-}
-.detail-hero img {
-  width: 100%;
-  border: var(--border-width) solid var(--color-divider);
-  border-radius: var(--radius-preview);
-  background: var(--color-surface);
-}
-.detail-hero > div > .button {
-  margin-top: var(--space-5);
 }
 .actions {
   display: flex;
@@ -85,12 +65,6 @@
   display: grid;
   gap: var(--space-1);
 }
-.steps {
-  max-width: 760px;
-  padding-left: var(--space-5);
-  color: var(--color-muted);
-  line-height: var(--leading-body);
-}
 .detail h2 {
   margin: 0 0 var(--space-4);
   font-size: var(--text-section);
@@ -106,17 +80,12 @@
   margin-top: 0;
   margin-bottom: var(--space-4);
 }
-.detail .eyebrow {
-  margin-bottom: var(--space-3);
-  text-transform: none;
-  letter-spacing: normal;
-}
 .detail .byline,
 .detail figcaption,
 .release > div:first-child p {
   font-size: var(--text-small);
 }
-.detail :is(article, aside, .detail-hero > div, dd) {
+.detail :is(article, dd) {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -129,11 +98,6 @@
 .detail section {
   margin-top: var(--detail-section-gap);
 }
-.detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
-  gap: var(--space-6);
-}
 .markdown {
   color: var(--color-muted);
   line-height: var(--leading-body);
@@ -141,12 +105,6 @@
 .markdown a {
   color: var(--color-link);
   text-decoration: underline;
-}
-aside {
-  padding: var(--space-5);
-  border: var(--border-width) solid var(--color-divider);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface);
 }
 dl {
   margin: 0;
@@ -166,11 +124,6 @@ dd {
   overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: var(--text-small);
-}
-.preview-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-5);
 }
 figure {
   margin: 0;
@@ -209,8 +162,6 @@ figcaption {
   color: var(--color-error);
 }
 @media (max-width: 820px) {
-  .detail-hero,
-  .detail-grid,
   .release {
     grid-template-columns: 1fr;
   }
@@ -220,9 +171,6 @@ figcaption {
     width: calc(100% - 2 * var(--page-gutter));
     padding-top: var(--space-5);
     --detail-section-gap: var(--space-6);
-  }
-  .preview-grid {
-    grid-template-columns: 1fr;
   }
 }
 

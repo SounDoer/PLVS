@@ -206,18 +206,6 @@ function renderSummary(summary) {
     .join("");
 }
 
-function renderCompatibility(metadata) {
-  const entries = [
-    ["Panels", metadata.facets.moduleIds],
-    ["Metrics", metadata.facets.metricIds],
-    ["Theme scheme", metadata.facets.themeScheme ? [metadata.facets.themeScheme] : []],
-    ["Optional features", metadata.facets.optionalCapabilities],
-  ].filter(([, values]) => values.length > 0);
-  return entries.length > 0
-    ? `<dl>${entries.map(([label, values]) => `<div><dt>${label}</dt><dd>${values.map(escapeHtml).join(", ")}</dd></div>`).join("")}</dl>`
-    : `<p class="muted">No optional compatibility requirements.</p>`;
-}
-
 function renderDependencies(metadata) {
   if (metadata.dependencies.length === 0) return `<p class="muted">No bundled dependencies.</p>`;
   return `<ul class="dependency-list">${metadata.dependencies.map((dependency) => `<li><strong>${escapeHtml(dependency.name)}</strong><span>${escapeHtml({ "plvs-loudness-profile": "Loudness Profile", "plvs-theme": "Theme", "plvs-preset": "Preset" }[dependency.kind] ?? dependency.kind)}</span></li>`).join("")}</ul>`;
@@ -249,7 +237,6 @@ function renderPresetDetails(metadata) {
 function detailPage(listing, profile = null) {
   const isProfile = listing.type === "loudness";
   const isPreset = listing.type === "presets";
-  const compactDetail = listing.type === "themes" || isProfile || isPreset;
   const isIncluded = Boolean(listing.included);
   const current = currentContent(listing);
   const metadata = current?.metadata;
@@ -274,22 +261,19 @@ function detailPage(listing, profile = null) {
     .reverse()
     .map((release) => {
       const download = `/sharesets/files/${listing.id}/v${release.number}/${basename(release.artifact)}`;
-      const isCompact = compactDetail;
       const isCurrent = release.number === current?.number;
       const currentLabel =
-        isCompact && isCurrent && listing.releases.length > 1
+        isCurrent && listing.releases.length > 1
           ? `<span class="release-current">Current</span>`
           : "";
       const historicalLink =
-        isCompact && release.status === "published" && !isCurrent
+        release.status === "published" && !isCurrent
           ? `<a class="release-download" href="${download}" download>Download v${release.number}</a>`
           : "";
       const releaseAction =
         release.status !== "published"
           ? `<p class="withdrawn">Withdrawn: ${escapeHtml(release.withdrawalReason)}</p>`
-          : isCompact
-            ? ""
-            : `<a class="button secondary" href="${download}" download>Download</a>`;
+          : "";
       return `<article class="release">
         <div><h3>Release ${release.number}</h3>${currentLabel}<p>${escapeHtml(release.publishedAt)} · ${escapeHtml(release.status)}</p>${historicalLink}</div>
         <div class="markdown">${marked.parse(release.notesMarkdown)}</div>
@@ -297,53 +281,37 @@ function detailPage(listing, profile = null) {
       </article>`;
     })
     .join("\n");
-  if (compactDetail) {
-    const gallery = detailGallery(listing.type, previews);
-    const previewUrl = (preview) => `${contentFilesPath(listing, current)}/${preview.id}.png`;
-    return page(
-      `${listing.title} — PLVS Sharesets`,
-      listing.summary,
-      `<main class="detail theme-detail${isProfile ? " profile-detail" : ""}">
-        <p class="breadcrumb"><a href="/sharesets/">Sharesets</a> / <a href="/sharesets/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
-        <div class="theme-layout">
-          ${
-            isProfile && profile
-              ? profilePreview(profile, true)
-              : gallery.length
-                ? `<div class="theme-gallery" data-preview-gallery>
-            <figure><a data-preview-full href="${previewUrl(gallery[0])}" aria-label="Enlarge preview"><img class="theme-main-preview" data-preview-main src="${previewUrl(gallery[0])}" alt="${escapeHtml(previewLabel(gallery[0]))}" /></a><figcaption data-preview-caption>${escapeHtml(previewLabel(gallery[0]))}</figcaption></figure>
-            <div class="theme-thumbnails"${gallery.length === 1 ? " hidden" : ""} aria-label="${FAMILIES[listing.type].singular} previews">${gallery.map((preview, index) => `<a href="${previewUrl(preview)}" data-preview-choice data-preview-label="${escapeHtml(previewLabel(preview))}" aria-label="View ${escapeHtml(previewLabel(preview))}"${index === 0 ? ' aria-current="true"' : ""}><img src="${previewUrl(preview)}" alt="" loading="lazy" /></a>`).join("")}</div>
-          </div>`
-                : ""
-          }
-          <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<p class="lede">${escapeHtml(listing.summary)}</p>` : isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace(/Download \.\w+</, "Download<")}
-            ${!isIncluded && !current ? `<p class="withdrawn">No current release is available.</p>` : ""}
-            ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
-          </header>
-        </div>
-        <div class="theme-more">
-          ${!isIncluded && current ? `<section class="theme-how"><h2>How to Use</h2><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></section>` : ""}
-          <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${isProfile ? `<div class="markdown profile-guidance">${marked.parse(listing.descriptionMarkdown)}</div>` : ""}${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isIncluded ? "<div><dt>Availability</dt><dd>Included with PLVS</dd></div>" : ""}${isProfile ? "" : isPreset ? renderPresetDetails(metadata) : renderSummary(metadata.content.summary)}${isPreset && listing.presetPack ? presetExtraDetails(listing.presetPack) : ""}${isIncluded ? "" : `<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div>`}</dl></div>${isIncluded ? "" : `<details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>`}` : `<p class="muted">No current release is available.</p>`}</section>
-        </div>
-        ${renderReferences(listing.references)}
-        ${isPreset && listing.presetPack ? presetPanels(listing.presetPack) : ""}
-        ${isIncluded ? "" : `<section class="release-history" id="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>`}
-        ${gallery.length ? `<dialog class="preview-dialog" aria-label="${FAMILIES[listing.type].singular} preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous${gallery.length === 1 ? " hidden" : ""} aria-label="Previous image">←</button><span data-preview-position${gallery.length === 1 ? " hidden" : ""} aria-live="polite"></span><button class="button secondary" type="button" data-preview-next${gallery.length === 1 ? " hidden" : ""} aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
-      </main>`
-    );
-  }
+  const gallery = detailGallery(listing.type, previews);
+  const previewUrl = (preview) => `${contentFilesPath(listing, current)}/${preview.id}.png`;
   return page(
     `${listing.title} — PLVS Sharesets`,
     listing.summary,
-    `<main class="detail">
+    `<main class="detail theme-detail${isProfile ? " profile-detail" : ""}">
       <p class="breadcrumb"><a href="/sharesets/">Sharesets</a> / <a href="/sharesets/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
-      <header class="detail-hero"><div><p class="eyebrow">${FAMILIES[listing.type].singular} · ${escapeHtml(listing.classification)}</p><h1>${escapeHtml(listing.title)}</h1><p class="lede">${escapeHtml(listing.summary)}</p><p class="byline">By ${author}</p>${primaryAction}</div>${previews[0] ? `<img src="/sharesets/files/${listing.id}/v${current.number}/${previews[0].id}.png" alt="Preview of ${escapeHtml(listing.title)}" />` : ""}</header>
-      <section class="detail-grid"><article class="prose"><h2>About</h2><div class="markdown">${marked.parse(listing.descriptionMarkdown)}</div></article>${metadata ? `<aside><h2>Content</h2><dl>${renderSummary(metadata.content.summary)}</dl><dl><div><dt>File size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div><div><dt>SHA-256</dt><dd class="hash">${escapeHtml(metadata.artifact.sha256)}</dd></div></dl></aside>` : ""}</section>
-      ${metadata ? `<section class="detail-grid"><article><h2>Compatibility</h2>${renderCompatibility(metadata)}</article><article><h2>Dependencies</h2>${renderDependencies(metadata)}</article></section>` : ""}
+      <div class="theme-layout">
+        ${
+          isProfile && profile
+            ? profilePreview(profile, true)
+            : gallery.length
+              ? `<div class="theme-gallery" data-preview-gallery>
+          <figure><a data-preview-full href="${previewUrl(gallery[0])}" aria-label="Enlarge preview"><img class="theme-main-preview" data-preview-main src="${previewUrl(gallery[0])}" alt="${escapeHtml(previewLabel(gallery[0]))}" /></a><figcaption data-preview-caption>${escapeHtml(previewLabel(gallery[0]))}</figcaption></figure>
+          <div class="theme-thumbnails"${gallery.length === 1 ? " hidden" : ""} aria-label="${FAMILIES[listing.type].singular} previews">${gallery.map((preview, index) => `<a href="${previewUrl(preview)}" data-preview-choice data-preview-label="${escapeHtml(previewLabel(preview))}" aria-label="View ${escapeHtml(previewLabel(preview))}"${index === 0 ? ' aria-current="true"' : ""}><img src="${previewUrl(preview)}" alt="" loading="lazy" /></a>`).join("")}</div>
+        </div>`
+              : ""
+        }
+        <header class="theme-summary"><h1>${escapeHtml(listing.title)}</h1><p class="byline">By ${author}</p>${isProfile ? `<p class="lede">${escapeHtml(listing.summary)}</p>` : isPreset ? `<div class="lede profile-description">${marked.parse(listing.descriptionMarkdown)}</div>` : `<p class="lede">${escapeHtml(listing.summary)}</p>`}${listing.tags.length ? `<div class="theme-tags" aria-label="Tags">${listing.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}${primaryAction.replace(/Download \.\w+</, "Download<")}
+          ${!isIncluded && !current ? `<p class="withdrawn">No current release is available.</p>` : ""}
+          ${!isPreset && metadata?.dependencies.length ? `<div class="theme-requirements"><h2>Required Items</h2>${renderDependencies(metadata)}</div>` : ""}
+        </header>
+      </div>
+      <div class="theme-more">
+        ${!isIncluded && current ? `<section class="theme-how"><h2>How to Use</h2><p><strong>Copy ${copyNoun}</strong>, then paste in PLVS outside a text field to review the import.</p><p>Or download the file and choose <strong>Settings → Saved Items → Import…</strong>.</p><p>Confirm the import, then ${isPreset ? "apply the Preset from your Library" : isProfile ? "select the Profile in PLVS" : "apply the Theme from your Library"}.${isProfile || isPreset ? " Importing does not apply it automatically." : ""}</p></section>` : ""}
+        <section${isProfile ? ' id="profile-details"' : ""}><h2>Details</h2>${isProfile ? `<div class="markdown profile-guidance">${marked.parse(listing.descriptionMarkdown)}</div>` : ""}${metadata ? `<div class="theme-facts">${isProfile ? profileDetails(profile) : ""}<dl>${isIncluded ? "<div><dt>Availability</dt><dd>Included with PLVS</dd></div>" : ""}${isProfile ? "" : isPreset ? renderPresetDetails(metadata) : renderSummary(metadata.content.summary)}${isPreset && listing.presetPack ? presetExtraDetails(listing.presetPack) : ""}${isIncluded ? "" : `<div><dt>File Size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div>`}</dl></div>${isIncluded ? "" : `<details class="theme-checksum"><summary>File Checksum</summary><p class="hash">${escapeHtml(metadata.artifact.sha256)}</p></details>`}` : `<p class="muted">No current release is available.</p>`}</section>
+      </div>
       ${renderReferences(listing.references)}
-      ${current ? `<section><h2>Install in PLVS</h2><ol class="steps"><li>Download the current Release file.</li><li>Open PLVS Settings and choose <strong>Import…</strong> in the <strong>Saved Items</strong> row.</li><li>Review what will be added, then confirm the import. Applying or activating the Item is a separate choice.</li></ol></section>` : ""}
-      ${previews.length > 0 ? `<section><h2>Previews</h2><div class="preview-grid">${previews.map((preview) => `<figure><img src="/sharesets/files/${listing.id}/v${current.number}/${preview.id}.png" alt="${escapeHtml(previewLabel(preview))}" loading="lazy" /><figcaption>${escapeHtml(previewLabel(preview))}</figcaption></figure>`).join("")}</div></section>` : ""}
-      <section><h2>Release history</h2><div class="release-list">${releases}</div></section>
+      ${isPreset && listing.presetPack ? presetPanels(listing.presetPack) : ""}
+      ${isIncluded ? "" : `<section class="release-history" id="release-history"><h2>Release History</h2><div class="release-list">${releases}</div></section>`}
+      ${gallery.length ? `<dialog class="preview-dialog" aria-label="${FAMILIES[listing.type].singular} preview" data-preview-dialog><div class="preview-toolbar"><button class="button secondary" type="button" data-preview-previous${gallery.length === 1 ? " hidden" : ""} aria-label="Previous image">←</button><span data-preview-position${gallery.length === 1 ? " hidden" : ""} aria-live="polite"></span><button class="button secondary" type="button" data-preview-next${gallery.length === 1 ? " hidden" : ""} aria-label="Next image">→</button><button class="button secondary" type="button" data-preview-close autofocus>Close</button></div><img data-preview-enlarged alt="" /><p data-preview-enlarged-caption></p></dialog>` : ""}
     </main>`
   );
 }
