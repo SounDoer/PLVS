@@ -284,8 +284,9 @@ Patch uses closed editor-specific operations and never Saves. `revision` protect
 document. See [Editor Draft Control](../agent-control/editor-drafts.md) for atomicity, stale drafts,
 Theme-only history, and the Cancel/discard workflow.
 
-Visual Capture saves the actual rendered pixels of the running app. Screenshots and recording are
-available on Windows, macOS, and Linux:
+Visual Capture saves the actual rendered pixels of the running app. Dock accessory screenshots
+capture the complete visible client area, including when the screen constrains the editor's size.
+Screenshots and recording are available on Windows, macOS, and Linux:
 
 ```powershell
 plvs-cli visual describe --json

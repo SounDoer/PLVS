@@ -26,6 +26,7 @@ unsafe extern "C" {
     y: f64,
     width: f64,
     height: f64,
+    full_client_area: bool,
     path: *const u8,
     path_length: usize,
     context: *mut c_void,
@@ -163,6 +164,10 @@ async fn capture_webview_screenshot(
           request.rect.y,
           request.rect.width,
           request.rect.height,
+          matches!(
+            request.window_label.as_str(),
+            "dock-header" | "dock-editor" | "dock-update"
+          ),
           path.as_ptr(),
           path.len(),
           context,
@@ -181,6 +186,81 @@ async fn capture_webview_screenshot(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  unsafe extern "C" {
+    fn plvs_macos_resolve_snapshot_rect(
+      bounds: *const f64,
+      requested: *const f64,
+      full_client_area: bool,
+      resolved: *mut f64,
+    ) -> bool;
+  }
+
+  fn resolve_rect(bounds: [f64; 4], requested: [f64; 4], full_client: bool) -> Option<[f64; 4]> {
+    let mut resolved = [0.0; 4];
+    // SAFETY: all pointers address four initialized doubles, and the output is writable.
+    let valid = unsafe {
+      plvs_macos_resolve_snapshot_rect(
+        bounds.as_ptr(),
+        requested.as_ptr(),
+        full_client,
+        resolved.as_mut_ptr(),
+      )
+    };
+    valid.then_some(resolved)
+  }
+
+  #[test]
+  fn accessory_snapshot_uses_the_actual_clamped_client_bounds() {
+    assert_eq!(
+      resolve_rect([0.0, 0.0, 245.0, 509.0], [0.0, 0.0, 245.0, 547.0], true),
+      Some([0.0, 0.0, 245.0, 509.0])
+    );
+    assert_eq!(
+      resolve_rect([10.0, 20.0, 245.0, 509.0], [0.0, 0.0, 245.0, 547.0], true),
+      Some([10.0, 20.0, 245.0, 509.0])
+    );
+  }
+
+  #[test]
+  fn dom_snapshots_preserve_the_viewport_and_partial_crop_without_native_padding() {
+    // Decorated main windows can have native points outside the DOM viewport. Do not extend
+    // the requested image into that transparent padding as for a full accessory client.
+    assert_eq!(
+      resolve_rect([0.0, 0.0, 1001.0, 626.0], [0.0, 0.0, 1001.0, 598.0], false),
+      Some([0.0, 0.0, 1001.0, 598.0])
+    );
+    assert_eq!(
+      resolve_rect(
+        [0.0, 0.0, 1001.0, 626.0],
+        [200.0, 150.0, 400.0, 300.0],
+        false
+      ),
+      Some([200.0, 150.0, 400.0, 300.0])
+    );
+  }
+
+  #[test]
+  fn snapshot_rejects_invalid_geometry_and_outside_dom_crops() {
+    let bounds = [0.0, 0.0, 245.0, 509.0];
+    for requested in [
+      [-1.0, 0.0, 100.0, 100.0],
+      [0.0, 0.0, 245.0, 547.0],
+      [0.0, 500.0, 100.0, 100.0],
+    ] {
+      assert!(resolve_rect(bounds, requested, false).is_none());
+    }
+    for requested in [
+      [f64::NAN, 0.0, 100.0, 100.0],
+      [0.0, 0.0, 0.0, 100.0],
+      [0.0, 0.0, f64::INFINITY, 100.0],
+    ] {
+      for full_client in [false, true] {
+        assert!(resolve_rect(bounds, requested, full_client).is_none());
+      }
+    }
+    assert!(resolve_rect([0.0, 0.0, 0.0, 509.0], [0.0, 0.0, 100.0, 100.0], true).is_none());
+  }
 
   #[test]
   fn macos_capabilities_expose_measured_source_window_recording() {

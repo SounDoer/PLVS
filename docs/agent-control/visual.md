@@ -37,6 +37,10 @@ On macOS, screenshots use WebKit's app-owned snapshot path. They do not request 
 permission and do not include the native title bar, window shadow, desktop, or pixels from another
 application behind transparent PLVS content.
 
+On macOS, Dock accessory screenshots use the actual native client bounds even when the monitor
+constrains the editor's preferred size. Main-window, workspace, and Panel screenshots retain their
+DOM crop so native padding is excluded.
+
 On Linux, screenshots and recording frames use WebKitGTK's app-owned visible-WebView snapshot path.
 They require the PLVS window to remain visible in an unlocked display session, work under Wayland
 without a desktop-capture portal, and do not include native window chrome, the desktop, other

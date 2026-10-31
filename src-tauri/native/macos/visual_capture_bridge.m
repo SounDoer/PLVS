@@ -598,8 +598,29 @@ static void plvs_visual_snapshot_complete(PLVSVisualSnapshotCallback callback, v
   callback(context, status, width, height, utf8 ?: "");
 }
 
+// Shared with native geometry tests: accessory targets mean the whole actual client area,
+// whereas main/workspace/panel targets retain their DOM crop, excluding native padding.
+bool plvs_macos_resolve_snapshot_rect(const double *bounds_values, const double *requested_values,
+                                      bool full_client_area, double *resolved) {
+  for (size_t i = 0; i < 4; ++i) {
+    if (!isfinite(bounds_values[i]) || !isfinite(requested_values[i])) return false;
+  }
+  if (bounds_values[2] <= 0 || bounds_values[3] <= 0 ||
+      requested_values[2] <= 0 || requested_values[3] <= 0) return false;
+  CGRect bounds = CGRectMake(bounds_values[0], bounds_values[1], bounds_values[2], bounds_values[3]);
+  CGRect requested = full_client_area ? bounds : CGRectMake(
+      requested_values[0], requested_values[1], requested_values[2], requested_values[3]);
+  if (!CGRectContainsRect(bounds, requested)) return false;
+  resolved[0] = requested.origin.x;
+  resolved[1] = requested.origin.y;
+  resolved[2] = requested.size.width;
+  resolved[3] = requested.size.height;
+  return true;
+}
+
 void plvs_macos_capture_webview_png(void *raw_webview, double x, double y, double width,
-                                    double height, const uint8_t *path_bytes, size_t path_length,
+                                    double height, bool full_client_area,
+                                    const uint8_t *path_bytes, size_t path_length,
                                     void *context, PLVSVisualSnapshotCallback callback) {
   if (!callback) return;
   if (!raw_webview || !path_bytes || path_length == 0 || !isfinite(x) || !isfinite(y) ||
@@ -621,15 +642,21 @@ void plvs_macos_capture_webview_png(void *raw_webview, double x, double y, doubl
 
   WKWebView *webview = (__bridge WKWebView *)raw_webview;
   void (^capture)(void) = ^{
-    CGRect requested = CGRectMake(x, y, width, height);
-    if (!webview.window || !CGRectContainsRect(webview.bounds, requested)) {
+    CGRect bounds = webview.bounds;
+    double bounds_values[] = {bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height};
+    double requested_values[] = {x, y, width, height};
+    double resolved[4] = {0};
+    if (!webview.window || !plvs_macos_resolve_snapshot_rect(
+          bounds_values, requested_values, full_client_area, resolved)) {
       plvs_visual_snapshot_complete(callback, context, PLVS_VISUAL_SNAPSHOT_TARGET_UNAVAILABLE, 0,
-                                    0, @"The screenshot target left the WebView bounds.");
+                                    0, [NSString stringWithFormat:
+                                      @"The screenshot target left the WebView bounds (target %@, WebView %@).",
+                                      NSStringFromRect(CGRectMake(x, y, width, height)), NSStringFromRect(bounds)]);
       return;
     }
 
     WKSnapshotConfiguration *configuration = [[WKSnapshotConfiguration alloc] init];
-    configuration.rect = requested;
+    configuration.rect = CGRectMake(resolved[0], resolved[1], resolved[2], resolved[3]);
     configuration.afterScreenUpdates = YES;
     [webview takeSnapshotWithConfiguration:configuration
                          completionHandler:^(NSImage *image, NSError *error) {
