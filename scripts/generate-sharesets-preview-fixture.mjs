@@ -4,6 +4,7 @@
 // when a committed fixture differs from the producer; `--write` replaces it. Both music beds are
 // mixed here from the stems in the audio archive; without it they are reported as source
 // unavailable and only the dialogue fixtures are checked or written.
+// Dialogue inputs use the hash-pinned 48 kHz speech PCM; generation does not resample on this host.
 // See docs/history/specs/2026-10-30-sharesets-preview-fixtures-design.md.
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -92,7 +93,6 @@ try {
   const dialogueCorpusRoot = join(staged, "dialogue-corpus");
   await generateDialogueBenchmarkFixtures({
     outputRoot: dialogueCorpusRoot,
-    ffmpeg: sidecars.ffmpeg,
   });
   const dialogueSurroundPreviewPath = join(dialogueCorpusRoot, "surround-dialogue-preview.wav");
   await buildDialogueSurroundPreview(

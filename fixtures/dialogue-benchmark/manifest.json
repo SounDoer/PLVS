@@ -7,25 +7,53 @@
       "id": "clean-a",
       "path": "sources/6930-75918-0000.flac",
       "durationMs": 3505,
-      "sha256": "9ce35224156f071ab58eb7feb8a5ceae600f6f9f353da2a6cbf797b6b1ac8a23"
+      "sha256": "9ce35224156f071ab58eb7feb8a5ceae600f6f9f353da2a6cbf797b6b1ac8a23",
+      "canonicalPcm": {
+        "path": "pcm-48000/clean-a.f32.gz",
+        "sampleRateHz": 48000,
+        "frameCount": 168240,
+        "sha256": "3a468d2b17ec7e6df9a5f92b424b7b3b93e790b293f7225d1de6e01112134795",
+        "compressedSha256": "6f76891e603e8d76e239420337e496266d11014f7227ad3f4f0c4e4dc790aead"
+      }
     },
     {
       "id": "clean-b",
       "path": "sources/1320-122617-0000.flac",
       "durationMs": 7835,
-      "sha256": "8948a7773a0bf478d4aab72401532da7e5496eafd3c89d432ede3b599be6e0a9"
+      "sha256": "8948a7773a0bf478d4aab72401532da7e5496eafd3c89d432ede3b599be6e0a9",
+      "canonicalPcm": {
+        "path": "pcm-48000/clean-b.f32.gz",
+        "sampleRateHz": 48000,
+        "frameCount": 376080,
+        "sha256": "10b1e075d4fdf8c6b983b0cc7b1312dfdc363af9a4acf4e1945c82787b2d0e24",
+        "compressedSha256": "788024fb8e7238e0c5d8a8c3c54833c59cd640dc839d32923edbb2ed69d5e70d"
+      }
     },
     {
       "id": "other-a",
       "path": "sources/7902-96591-0000.flac",
       "durationMs": 2095,
-      "sha256": "955d0cc57211f03986124307ade29fbab521e26133caa2d2831b9a1b38c7a9b6"
+      "sha256": "955d0cc57211f03986124307ade29fbab521e26133caa2d2831b9a1b38c7a9b6",
+      "canonicalPcm": {
+        "path": "pcm-48000/other-a.f32.gz",
+        "sampleRateHz": 48000,
+        "frameCount": 100560,
+        "sha256": "13a0267403be6b1ce6a79bfafb8803be64ab55c7db9fbe4c68a441bff5eb0f05",
+        "compressedSha256": "e68f67c8e17118e80bc727f6906222ae1a877d2b20fbfdc4db7f449d234b9bc5"
+      }
     },
     {
       "id": "other-b",
       "path": "sources/5764-299665-0095.flac",
       "durationMs": 2040,
-      "sha256": "84fcade4a87b09be6bdbf95af8ccffaf73f6101c982fd47ca56ab878d13d2cdf"
+      "sha256": "84fcade4a87b09be6bdbf95af8ccffaf73f6101c982fd47ca56ab878d13d2cdf",
+      "canonicalPcm": {
+        "path": "pcm-48000/other-b.f32.gz",
+        "sampleRateHz": 48000,
+        "frameCount": 97920,
+        "sha256": "da801d855e9af2f5e8eaf77e633dd4dc0ca2893b20d4f424ebf34a2fdf337f73",
+        "compressedSha256": "243863a397bcabee8c9793550c87be3ef95ee8d08c7d97cd362c0413b4aca09a"
+      }
     }
   ],
   "cases": [
@@ -35,6 +63,7 @@
       "durationMs": 16000,
       "channelLabels": ["M"],
       "peakDbfs": -3,
+      "sha256": "16fb255119fc9ed4090ed92d371f4387e18bc8439ab626a652c2f2082eb82dd6",
       "validSpansMs": [[0, 16000]],
       "dialogueSpans": [
         { "startMs": 1000, "endMs": 4505, "tags": ["clean-speech"] },
@@ -54,6 +83,7 @@
       "durationMs": 16000,
       "channelLabels": ["L", "R"],
       "peakDbfs": -3,
+      "sha256": "e2d11c16394a9a46538d2deeeb06764014b1435d9598be756dea5beeea3a3d6e",
       "validSpansMs": [[0, 16000]],
       "dialogueSpans": [
         { "startMs": 1000, "endMs": 8835, "tags": ["antiphase-speech", "music"] },
@@ -71,6 +101,7 @@
       "durationMs": 20000,
       "channelLabels": ["L", "R", "C", "LFE", "Ls", "Rs"],
       "peakDbfs": -3,
+      "sha256": "bff057f193f46cdf466f00968ac46a3ea6e4a4713ee8ef07d74a232fa8fbb8a5",
       "validSpansMs": [[0, 20000]],
       "dialogueSpans": [
         { "startMs": 1000, "endMs": 4505, "tags": ["centre-speech", "music"] },
@@ -93,6 +124,7 @@
       "durationMs": 14000,
       "channelLabels": ["L", "R", "C", "LFE", "Ls", "Rs"],
       "peakDbfs": -3,
+      "sha256": "c4d78668d75df4b0e51e019acdac0729d05c4c4978c5653317d0a4dcf438180c",
       "validSpansMs": [[0, 14000]],
       "dialogueSpans": [
         { "startMs": 1000, "endMs": 4505, "tags": ["centre-speech", "music"] }
@@ -103,5 +135,25 @@
         { "kind": "source", "sourceId": "clean-a", "startMs": 1000, "gainDb": -9, "channels": [0, 0, 1, 0, 0, 0] }
       ]
     }
-  ]
+  ],
+  "canonicalPcmRecipe": {
+    "id": "plvs-librispeech-48k-f32-v1",
+    "ffmpegVersion": "7.1.5",
+    "ffmpegSourceSha256": "de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f",
+    "arithmetic": "scalar with separate multiply/add",
+    "compileFlags": [
+      "--disable-asm",
+      "-ffp-contract=off",
+      "-fno-vectorize",
+      "-fno-slp-vectorize"
+    ],
+    "decodeArgs": [
+      "-ar",
+      "48000",
+      "-ac",
+      "1",
+      "-f",
+      "f32le"
+    ]
+  }
 }

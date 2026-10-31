@@ -11,7 +11,7 @@ function fixture() {
     visuals: {
       bandCentersHz: [100],
       spectrumResultsByKey: { pair: { smoothDb: [-40], peakDbB: [-30] } },
-      spectrogramByKey: { pair: [{ atMs: 0, db: [-110], dbB: [-100] }] },
+      spectrogramByKey: { pair: [{ atMs: 0, db: [-60], dbB: [-55] }] },
       stereoMapResultsByKey: {
         pair: { bandCentersHz: [100], pl: [0.001], pr: [0.002], c: [-0.001] },
       },
@@ -84,7 +84,7 @@ describe("preview fixture comparison", () => {
       expect(failed).toMatchObject({
         matches: false,
         mismatchCount: 1,
-        examples: [{ reason: "visual difference exceeds limit" }],
+        examples: [{ reason: "numeric difference exceeds limit" }],
       });
       expect(describeFixtureComparison(failed)).toContain("limit");
     }
@@ -132,6 +132,66 @@ describe("preview fixture comparison", () => {
     }
   });
 
+  it.each([
+    [-178.84677, -182.36661],
+    [-117.91147, -117.93123],
+    [-100, -100.003],
+  ])("accepts only bounded absolute residue near silence (%s, %s)", (left, right) => {
+    const make = (value) => ({ visuals: { spectrogramByKey: { pair: [{ db: [value] }] } } });
+    for (const [a, b] of [
+      [left, right],
+      [right, left],
+    ]) {
+      const result = comparePreviewFixtures(make(a), make(b));
+      expect(result).toMatchObject({
+        matches: true,
+        toleratedCount: 1,
+        tolerated: { spectrogramNoise: { unit: "linear magnitude", limit: 5e-9 } },
+      });
+      expect(describeFixtureComparison(result)).toContain("dB delta");
+    }
+  });
+
+  it.each([
+    [-160, -130], // A new weak signal still exceeds the absolute noise allowance.
+    [-180, -90], // The signal cannot cross the noise ceiling.
+    [-180, -1000], // Implausible finite output is not classified as silence.
+    [-99, -99.001], // A tiny absolute error above the ceiling still uses the dB limit.
+    [-100.001, -99.999],
+    [-40, -39.99],
+  ])("rejects true spectral changes (%s, %s)", (left, right) => {
+    const make = (value) => ({
+      visuals: { spectrumResultsByKey: { pair: { smoothDb: [value] } } },
+    });
+    expect(comparePreviewFixtures(make(left), make(right)).matches).toBe(false);
+  });
+
+  it("allows Float64 history roundoff while keeping final readings and time exact", () => {
+    const expected = fixture();
+    expect(
+      comparePreviewFixtures(
+        expected,
+        change(expected, ["loudnessHistory", 0, "momentaryLufs"], 1e-13)
+      )
+    ).toMatchObject({ matches: true, toleratedCount: 1 });
+    expect(
+      comparePreviewFixtures(
+        expected,
+        change(expected, ["loudnessHistory", 0, "momentaryLufs"], 1e-10)
+      ).matches
+    ).toBe(false);
+    expect(
+      comparePreviewFixtures(
+        expected,
+        change(expected, ["measurementFrame", "loudness", "integratedLufs"], 1e-13)
+      ).matches
+    ).toBe(false);
+    expect(
+      comparePreviewFixtures(expected, change(expected, ["loudnessHistory", 0, "atMs"], 1e-13))
+        .matches
+    ).toBe(false);
+  });
+
   it("does not allow tolerances on unknown visual fields or object-shaped numeric arrays", () => {
     expect(
       comparePreviewFixtures({ visuals: { future: [1] } }, { visuals: { future: [1.000000001] } })
@@ -158,7 +218,7 @@ describe("preview fixture comparison", () => {
     const expected = fixture();
     const actual = structuredClone(expected);
     actual.visuals.spectrogramByKey.pair[0].db = [-109.9985, -110.0001];
-    expected.visuals.spectrogramByKey.pair[0].db.push(-110);
+    expected.visuals.spectrogramByKey.pair[0].db = [-110, -110];
     expected.extra = Array(20).fill(1);
     actual.extra = Array(20).fill(2);
     const result = comparePreviewFixtures(expected, actual);

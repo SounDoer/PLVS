@@ -122,8 +122,8 @@ export function runPreviewFixtureProducer({
 }
 
 /**
- * Write explicitly requested JSON, or compare against the committed fixture with narrow visual
- * floating-point allowances. Check mode never rewrites the baseline or its provenance hash.
+ * Write explicitly requested JSON, or compare against the committed fixture with field-specific
+ * numerical bounds. Check mode never rewrites the baseline or its provenance hash.
  */
 export async function writeOrCheckFixture(fixture, outputPath, { write, command }) {
   if (write) {
@@ -160,7 +160,7 @@ export async function writeOrCheckFixture(fixture, outputPath, { write, command 
     );
   }
   console.log(
-    `${outputPath} matches the production analyzer${comparison.toleratedCount ? ` with ${comparison.toleratedCount} bounded visual floating-point differences` : " exactly"}.`
+    `${outputPath} matches the production analyzer${comparison.toleratedCount ? ` with ${comparison.toleratedCount} bounded floating-point differences` : " exactly"}.`
   );
   if (comparison.toleratedCount) console.log(describeFixtureComparison(comparison));
 }

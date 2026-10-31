@@ -65,8 +65,8 @@ npm run sharesets:fixture -- --archive <audio-archive>
 
 The first Fixture command runs the real Rust analyzer and writes every Sharesets Fixture; the
 second repeats the analyses and compares the committed JSON values. Source identity, requests,
-structure, timestamps, measurements and loudness history must match exactly. Only explicitly
-listed visual floating-point arrays accept small absolute differences; JSON formatting and object
+structure, timestamps and final measurements must match exactly. Only explicitly listed numeric
+fields accept bounded floating-point differences; JSON formatting and object
 key order do not affect the check. `PLVS_AUDIO_ARCHIVE` can
 stand in for `--archive`; the archive is described in `docs/marketing-screenshots.md`. Without it
 the stereo and 5.1 Fixtures are reported as "source unavailable" and skipped; the dialogue
@@ -80,19 +80,27 @@ Preset change therefore makes the committed Fixtures stale instead of silently s
 measured with different controls.
 
 The homepage and Sharesets commands share `scripts/preview-fixture-producer.mjs`, with comparison
-policy in `scripts/preview-fixture-compare.mjs`. Its absolute visual limits are:
+policy in `scripts/preview-fixture-compare.mjs`. Its ordinary numeric limits are:
 
-| Visual values                    | Maximum absolute difference |
-| -------------------------------- | --------------------------- |
-| Frequency grids                  | 0.000000001 Hz              |
-| Final Spectrum curves and peaks  | 0.0001 dB                   |
-| Spectrogram history bins         | 0.002 dB                    |
-| Waveform spectral centroid       | 0.002 Hz                    |
-| Waveform tonality                | 0.0000002                   |
-| Stereo Map power and cross-power | 0.000000001                 |
+| Values                                | Maximum absolute difference |
+| ------------------------------------- | --------------------------- |
+| Frequency grids                       | 0.000000001 Hz              |
+| Final Spectrum curves and peaks       | 0.0001 dB                   |
+| Spectrogram history bins              | 0.002 dB                    |
+| Waveform spectral centroid            | 0.002 Hz                    |
+| Waveform tonality                     | 0.0000002                   |
+| Stereo Map power and cross-power      | 0.000000001                 |
+| Momentary/Short-term loudness history | 0.000000000001 LUFS         |
+
+For Spectrum/Spectrogram bins only, if both values are between -200 and -100 dB and the ordinary dB
+bound is exceeded, compare `10 ** (dB / 20)` instead. Its absolute difference must be at most
+0.000000005. This limits numerical residue near silence without accepting a new weak signal or
+a change crossing the ceiling. Reports distinguish these linear-magnitude allowances from dB
+differences. This scale is a display-magnitude comparison, not a PCM noise-floor accuracy claim.
 
 These are narrowly scoped comparison allowances, not product accuracy claims. All other fields,
-including unknown visual fields, remain exact. Invalid JSON or non-finite numbers fail. A successful
+including unknown visual fields, remain exact. Final measurement readings, speech decisions,
+coverage, sample peaks and time identity retain exact comparison. Invalid JSON or non-finite numbers fail. A successful
 check reports the count and largest accepted difference per visual category and leaves the
 committed file and its provenance hash unchanged. A failure reports up to five field paths,
 expected/actual values and numerical limits where applicable. Investigate failures before using
@@ -100,6 +108,12 @@ expected/actual values and numerical limits where applicable. Investigate failur
 
 The comparison and file-write boundary tests run in the normal repository suite. Run them alone
 with `npx vitest run scripts/preview-fixture-compare.test.js scripts/preview-fixture-producer.test.js`.
+
+The standard dialogue corpus uses the [canonical 48 kHz speech PCM](../fixtures/dialogue-benchmark/pcm-48000/README.md).
+The original recordings, compressed PCM and raw PCM are hash-checked, and each complete generated
+programme must match its pinned WAV hash before it is analyzed. Every machine therefore analyzes
+the same dialogue input instead of resampling its own version. Changes to a source, mixing recipe
+or generated programme fail even with `--write`; input changes require deliberate source review.
 
 Generate the current Multichannel Monitoring review surfaces before regenerating the public Theme
 gallery and Preset preview:

@@ -1,5 +1,5 @@
-// Absolute, field-specific allowances for visual floating-point output only. Source identity,
-// analysis requests, clocks, measurements, history shape and unknown fields remain exact.
+// Field-specific allowances for visual output and Float64 loudness-history roundoff. Source
+// identity, requests, clocks, final measurements, history shape and unknown fields remain exact.
 // Bounds follow the 2026-11-01 numerical and pixel comparisons; they are not audio tolerances.
 const RULES = {
   frequency: { limit: 1e-9, unit: "Hz" },
@@ -8,9 +8,22 @@ const RULES = {
   centroid: { limit: 0.002, unit: "Hz" },
   tonality: { limit: 2e-7, unit: "ratio" },
   power: { limit: 1e-9, unit: "power" },
+  loudnessHistory: { limit: 1e-12, unit: "LUFS" },
+  spectrumNoise: { limit: 5e-9, unit: "linear magnitude" },
+  spectrogramNoise: { limit: 5e-9, unit: "linear magnitude" },
 };
+const NOISE_CEILING_DB = -100;
+// The current PSD floor is -183.5 dB. Never classify arbitrary extreme finite output as noise.
+const NOISE_MIN_DB = -200;
 
-function visualRule(path) {
+function numericRule(path) {
+  if (
+    path.length === 3 &&
+    path[0] === "loudnessHistory" &&
+    typeof path[1] === "number" &&
+    ["momentaryLufs", "shortTermLufs"].includes(path[2])
+  )
+    return "loudnessHistory";
   if (path[0] !== "visuals" || typeof path.at(-1) !== "number") return null;
   if (path.length === 3 && path[1] === "bandCentersHz") return "frequency";
   if (path.length === 5) {
@@ -66,9 +79,26 @@ export function comparePreviewFixtures(expected, actual) {
         return mismatch(path, "non-finite number");
       }
       if (left === right) return;
-      const rule = visualRule(path);
-      const delta = Math.abs(left - right);
-      const details = { expected: left, actual: right, delta };
+      let rule = numericRule(path);
+      let delta = Math.abs(left - right);
+      const details = { expected: left, actual: right };
+      // Logarithms magnify insignificant FFT residuals near silence. Both values must remain
+      // below a fixed ceiling, and their absolute linear difference must independently be tiny.
+      if (
+        ["spectrum", "spectrogram"].includes(rule) &&
+        delta > RULES[rule].limit &&
+        Math.min(left, right) >= NOISE_MIN_DB &&
+        Math.max(left, right) <= NOISE_CEILING_DB
+      ) {
+        details.dbDelta = delta;
+        details.magnitudeDelta = Math.abs(10 ** (left / 20) - 10 ** (right / 20));
+        details.magnitudeLimit = RULES[`${rule}Noise`].limit;
+        if (details.magnitudeDelta <= details.magnitudeLimit) {
+          rule = `${rule}Noise`;
+          delta = details.magnitudeDelta;
+        }
+      }
+      details.delta = delta;
       if (rule && delta <= RULES[rule].limit) {
         result.toleratedCount++;
         const previous = result.tolerated[rule];
@@ -80,7 +110,7 @@ export function comparePreviewFixtures(expected, actual) {
         };
         return;
       }
-      return mismatch(path, rule ? "visual difference exceeds limit" : "exact number changed", {
+      return mismatch(path, rule ? "numeric difference exceeds limit" : "exact number changed", {
         ...details,
         ...(rule ? RULES[rule] : {}),
       });
@@ -118,14 +148,26 @@ export function comparePreviewFixtures(expected, actual) {
 
 export function describeFixtureComparison(result) {
   const failures = result.examples.map(
-    ({ path, reason, expected, actual, delta, limit, unit }) =>
+    ({
+      path,
+      reason,
+      expected,
+      actual,
+      delta,
+      limit,
+      unit,
+      dbDelta,
+      magnitudeDelta,
+      magnitudeLimit,
+    }) =>
       `${path}: ${reason}${expected !== undefined ? ` (expected ${expected}, actual ${actual})` : ""}` +
-      `${delta !== undefined ? `; delta ${delta}${limit !== undefined ? `, limit ${limit} ${unit}` : ""}` : ""}`
+      `${delta !== undefined ? `; delta ${delta}${limit !== undefined ? `, limit ${limit} ${unit}` : ""}` : ""}` +
+      `${dbDelta !== undefined ? `; dB delta ${dbDelta}, linear magnitude delta ${magnitudeDelta} (limit ${magnitudeLimit})` : ""}`
   );
   const tolerated = Object.entries(result.tolerated).map(
     ([rule, item]) =>
       `${rule}: ${item.count} values; max delta ${item.delta} ${item.unit} ` +
-      `(limit ${item.limit}) at ${item.path}`
+      `(limit ${item.limit}) at ${item.path}${item.dbDelta !== undefined ? `; dB delta ${item.dbDelta}` : ""}`
   );
   return [...failures, ...tolerated].join("\n");
 }

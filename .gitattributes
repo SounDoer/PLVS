@@ -10,6 +10,7 @@
 *.woff binary
 *.woff2 binary
 *.wav binary
+*.f32.gz binary
 *.webp binary
 # Preserve upstream notice bytes and whitespace, including generated verbatim collections.
 licenses/upstream/*.txt -text -whitespace

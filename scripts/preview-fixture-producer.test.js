@@ -25,7 +25,7 @@ describe("preview fixture check/write boundary", () => {
     await check({ visuals: { bandCentersHz: [100.0000000005] }, source: { sha256: "same" } }, path);
     expect(await readFile(path, "utf8")).toBe(text);
     expect(console.log.mock.calls.flat().join("\n")).toContain(
-      "bounded visual floating-point differences"
+      "bounded floating-point differences"
     );
     expect(console.log.mock.calls.flat().join("\n")).toContain("/visuals/bandCentersHz/0");
   });
@@ -34,7 +34,7 @@ describe("preview fixture check/write boundary", () => {
     const text = '{"visuals":{"bandCentersHz":[100]}}';
     await writeFile(path, text);
     await expect(check({ visuals: { bandCentersHz: [100.01] } }, path)).rejects.toThrow(
-      /\/visuals\/bandCentersHz\/0: visual difference exceeds limit.*delta.*limit/
+      /\/visuals\/bandCentersHz\/0: numeric difference exceeds limit.*delta.*limit/
     );
     expect(await readFile(path, "utf8")).toBe(text);
   });

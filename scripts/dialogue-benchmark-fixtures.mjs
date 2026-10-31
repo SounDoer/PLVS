@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { readCanonicalDialoguePcm } from "./dialogue-benchmark-pcm.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST_PATH = join(ROOT, "fixtures/dialogue-benchmark/manifest.json");
@@ -54,7 +55,9 @@ function decodeMono(ffmpeg, path, sampleRateHz) {
     { encoding: null, maxBuffer: 64 * 1024 * 1024 }
   );
   if (result.status !== 0) {
-    throw new Error(Buffer.from(result.stderr ?? []).toString("utf8") || `Unable to decode ${path}`);
+    throw new Error(
+      Buffer.from(result.stderr ?? []).toString("utf8") || `Unable to decode ${path}`
+    );
   }
   const buffer = Buffer.from(result.stdout);
   const samples = new Float32Array(buffer.byteLength / SAMPLE_BYTES);
@@ -114,13 +117,30 @@ export function validateDialogueBenchmarkManifest(manifest) {
   }
   const sourceIds = new Set();
   for (const source of manifest.sources ?? []) {
-    if (!source.id || sourceIds.has(source.id)) throw new Error(`Duplicate source id: ${source.id}`);
+    if (!source.id || sourceIds.has(source.id))
+      throw new Error(`Duplicate source id: ${source.id}`);
     if (!/^[a-f0-9]{64}$/.test(source.sha256)) throw new Error(`Invalid source hash: ${source.id}`);
+    if (manifest.canonicalPcmRecipe && !source.canonicalPcm) {
+      throw new Error(`Missing canonical PCM: ${source.id}`);
+    }
+    if (source.canonicalPcm) {
+      for (const key of ["sha256", "compressedSha256"]) {
+        if (!/^[a-f0-9]{64}$/.test(source.canonicalPcm[key])) {
+          throw new Error(`Invalid canonical PCM ${key}: ${source.id}`);
+        }
+      }
+    }
     sourceIds.add(source.id);
   }
   const caseIds = new Set();
   for (const fixture of manifest.cases ?? []) {
     if (!fixture.id || caseIds.has(fixture.id)) throw new Error(`Duplicate case id: ${fixture.id}`);
+    if (manifest.canonicalPcmRecipe && !fixture.sha256) {
+      throw new Error(`Missing programme hash: ${fixture.id}`);
+    }
+    if (fixture.sha256 && !/^[a-f0-9]{64}$/.test(fixture.sha256)) {
+      throw new Error(`Invalid programme hash: ${fixture.id}`);
+    }
     if (!Array.isArray(fixture.channelLabels) || fixture.channelLabels.length === 0) {
       throw new Error(`Case ${fixture.id} has no channel labels.`);
     }
@@ -153,8 +173,15 @@ export async function generateDialogueBenchmarkFixtures({
     if (actualHash !== source.sha256) {
       throw new Error(`Source ${source.id} hash ${actualHash} does not match ${source.sha256}.`);
     }
-    const pcm = decodeMono(ffmpeg, path, manifest.sampleRateHz);
     const expectedFrames = Math.round((source.durationMs * manifest.sampleRateHz) / 1000);
+    const pcm = source.canonicalPcm
+      ? await readCanonicalDialoguePcm(
+          join(fixtureRoot, source.canonicalPcm.path),
+          source.canonicalPcm,
+          manifest.sampleRateHz,
+          expectedFrames
+        )
+      : decodeMono(ffmpeg, path, manifest.sampleRateHz);
     if (pcm.length !== expectedFrames) {
       throw new Error(`Source ${source.id} has ${pcm.length} frames; expected ${expectedFrames}.`);
     }
@@ -200,16 +227,20 @@ export async function generateDialogueBenchmarkFixtures({
     for (let index = 0; index < pcm.length; index += 1) {
       payload.writeFloatLE(pcm[index] * normalization, index * SAMPLE_BYTES);
     }
-    const wav = Buffer.concat([
-      wavHeader(frames, channels, manifest.sampleRateHz),
-      payload,
-    ]);
+    const wav = Buffer.concat([wavHeader(frames, channels, manifest.sampleRateHz), payload]);
     const fileName = `${fixture.id}.wav`;
+    const programmeHash = sha256(wav);
+    if (fixture.sha256 && programmeHash !== fixture.sha256) {
+      throw new Error(
+        `Programme ${fixture.id} hash ${programmeHash} does not match ${fixture.sha256}. ` +
+          "Investigate source data, mixing recipe and runtime before updating the baseline."
+      );
+    }
     await writeFile(join(outputRoot, fileName), wav);
     outputs.push({
       id: fixture.id,
       path: fileName,
-      sha256: sha256(wav),
+      sha256: programmeHash,
       frameCount: frames,
       channelLabels: fixture.channelLabels,
       peakNormalization: normalization,
@@ -222,11 +253,16 @@ export async function generateDialogueBenchmarkFixtures({
     generatedAt: null,
     outputs,
   };
-  await writeFile(join(outputRoot, "manifest.resolved.json"), `${JSON.stringify(resolved, null, 2)}\n`);
+  await writeFile(
+    join(outputRoot, "manifest.resolved.json"),
+    `${JSON.stringify(resolved, null, 2)}\n`
+  );
   return resolved;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const result = await generateDialogueBenchmarkFixtures();
-  process.stdout.write(`${JSON.stringify({ corpusId: result.corpusId, outputs: result.outputs }, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ corpusId: result.corpusId, outputs: result.outputs }, null, 2)}\n`
+  );
 }

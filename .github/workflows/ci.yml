@@ -88,8 +88,8 @@ jobs:
       - name: Verify Sharesets source
         run: npm run sharesets:source:check
 
-      # The deterministic dialogue fixture test only decodes its attributed sources; use the
-      # reviewed decode-only sidecar instead of installing the distribution encoder through apt.
+      # Canonical dialogue generation needs no host resampling. Keep the reviewed decoder
+      # sidecars available to tooling that exercises the production file-analysis path.
       - name: Fetch FFmpeg decoder sidecar
         run: npm run ffmpeg:fetch
 
