@@ -1,6 +1,6 @@
 # Agent Control gap closure — design
 
-Status: approved scope (2026-10-31), implementation in progress.
+Status: implemented on 2026-10-31 (4369aa59 through 89b5e4a1). Verified in the Windows dev app through Agent Control; the Dock editor anchor was not checked by eye.
 
 ## Goal
 
