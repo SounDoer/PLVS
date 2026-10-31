@@ -81,19 +81,20 @@ and, with `npm run website:dev` running in another terminal,
 ## Change the music or the fixtures
 
 No audio is stored in Git. The song and its stems live in the owner's
-audio archive at `smb://QNAP00._smb._tcp.local/xichen/PLVS/PLVS_Audio_Archive`,
+audio archive at `smb://QNAP00._smb._tcp.local/xichen/PLVS/assets/audio`,
 with stems under `full-band-crescendo/stems/` and a README naming each file.
 `full-band-crescendo.source.json` pins the song, stems and arranged bed by SHA-256. With the archive:
 
 ```sh
-npm run homepage:fixture -- --archive /Volumes/xichen/PLVS/PLVS_Audio_Archive
-npm run sharesets:fixture -- --archive /Volumes/xichen/PLVS/PLVS_Audio_Archive
+npm run homepage:fixture -- --archive /Volumes/xichen/PLVS/assets/audio
+npm run sharesets:fixture -- --archive /Volumes/xichen/PLVS/assets/audio
 ```
 
 These examples assume the NAS's `xichen` share is mounted at `/Volumes/xichen` on macOS.
-On other machines, pass the local mount path or a restored copy of `PLVS_Audio_Archive`, not
-the SMB URL. The directory and its README were checked on 2026-10-31; this location check did
-not verify every audio file's checksum. The separate promo production archive is documented in
+On other machines, pass the local mount path or a restored copy of the `assets/audio/` directory, not
+the SMB URL. The audio library is shared across productions; the NAS `archives/` directory holds completed,
+published production packages, with no working-state backups. Storage and archiving conventions
+are maintained in `PLVS-Promo/docs/storage-and-archiving.md`. The separate promo production archive is documented in
 the maintainer's private `PLVS-Promo` repository.
 
 `PLVS_AUDIO_ARCHIVE` can stand in for `--archive`. Without `--write` they only check that the
