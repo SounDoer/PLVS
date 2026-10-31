@@ -80,6 +80,9 @@ describe("pre-commit command selection", () => {
           },
         })
       );
+      // Mirror the repository's line-ending rule; without it a machine with core.autocrlf=true
+      // gets CRLF back when lint-staged restores the unstaged edits.
+      writeFileSync(join(cwd, ".gitattributes"), "* text=auto eol=lf\n");
       writeFileSync(partial, "const staged = 0;\n\nconst draft = 0;\n");
       writeFileSync(unstaged, "const unrelated = 0;\n");
       git("add", ".");
