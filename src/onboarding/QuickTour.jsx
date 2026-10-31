@@ -8,7 +8,8 @@ import { LAYER_FLOATING } from "../components/ui/layers.js";
 import { settingsStore, flushPersistence } from "../persistence/index.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
-import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
 import { QUICK_TOUR_STEPS, positionTourCard, tourStepContent } from "./quickTourModel.js";
 
 const SURFACES =
@@ -248,6 +249,66 @@ export function QuickTour({
     setPhase("active");
   }
 
+  function goBack() {
+    focusRequested.current = true;
+    setStep(step - 1);
+  }
+
+  function goNext() {
+    if (step === QUICK_TOUR_STEPS.length - 1) void close("completed");
+    else {
+      focusRequested.current = true;
+      setStep(step + 1);
+    }
+  }
+
+  /// The Settings footer's Quick Tour link (the request effect above), for a tour not on screen.
+  function replay() {
+    setStep(0);
+    setError("");
+    focusRequested.current = true;
+    setPhase("waiting");
+    void record("started");
+  }
+
+  // Agent Control presses the tour's own buttons; it never jumps to a step or shows the card itself.
+  useUiNavigationTarget("quickTour", {
+    start: () => {
+      if (!supported) throw createUiNavigationError("surfaceUnavailable", { kind: "quickTour" });
+      if (blocked) throw createUiNavigationError("uiConflict", { kind: "quickTour" });
+      if (busy) throw createUiNavigationError("uiBusy", { kind: "quickTour" });
+      if (phase === "invitation") {
+        void begin();
+        return { phase: "tour", step: 1 };
+      }
+      if (phase !== "inactive") {
+        throw createUiNavigationError("uiActionUnavailable", {
+          kind: "quickTour",
+          action: "start",
+        });
+      }
+      replay();
+      return { phase: "tour", step: 1 };
+    },
+    next: () => {
+      if (phase !== "active") {
+        throw createUiNavigationError("uiActionUnavailable", { kind: "quickTour", action: "next" });
+      }
+      if (busy) throw createUiNavigationError("uiBusy", { kind: "quickTour" });
+      const finishing = step === QUICK_TOUR_STEPS.length - 1;
+      goNext();
+      return finishing ? null : { phase: "tour", step: step + 2 };
+    },
+    back: () => {
+      if (phase !== "active" || step === 0) {
+        throw createUiNavigationError("uiActionUnavailable", { kind: "quickTour", action: "back" });
+      }
+      if (busy) throw createUiNavigationError("uiBusy", { kind: "quickTour" });
+      goBack();
+      return { phase: "tour", step };
+    },
+  });
+
   // Visible to Agent Control like other dialogs that appear on their own: inspectable and
   // dismissible through the card's own close intent, never shown or advanced from outside.
   useUiSurface({
@@ -335,6 +396,7 @@ export function QuickTour({
           ) : null}
           <IconAction
             aria-label="close quick tour"
+            data-ui-target="quick-tour:close"
             disabled={busy}
             onClick={() => void close()}
             className="p-1"
@@ -354,10 +416,19 @@ export function QuickTour({
         <div className="mt-3 flex flex-wrap justify-end gap-2">
           {invitation ? (
             <>
-              <Button variant="ghost" disabled={busy} onClick={() => void close()}>
+              <Button
+                variant="ghost"
+                disabled={busy}
+                data-ui-target="quick-tour:dismiss"
+                onClick={() => void close()}
+              >
                 Not Now
               </Button>
-              <Button disabled={busy} onClick={() => void begin()}>
+              <Button
+                disabled={busy}
+                data-ui-target="quick-tour:primary"
+                onClick={() => void begin()}
+              >
                 Start Tour
               </Button>
             </>
@@ -367,24 +438,13 @@ export function QuickTour({
                 <Button
                   variant="ghost"
                   disabled={busy}
-                  onClick={() => {
-                    focusRequested.current = true;
-                    setStep(step - 1);
-                  }}
+                  data-ui-target="quick-tour:back"
+                  onClick={goBack}
                 >
                   Back
                 </Button>
               ) : null}
-              <Button
-                disabled={busy}
-                onClick={() => {
-                  if (step === QUICK_TOUR_STEPS.length - 1) void close("completed");
-                  else {
-                    focusRequested.current = true;
-                    setStep(step + 1);
-                  }
-                }}
-              >
+              <Button disabled={busy} data-ui-target="quick-tour:primary" onClick={goNext}>
                 {step === QUICK_TOUR_STEPS.length - 1 ? "Finish" : "Next"}
               </Button>
             </>

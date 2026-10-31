@@ -63,6 +63,7 @@ export function DockToolbarToggle({ edge, open, onToggle, update = null, statusI
       tipSide="left"
       aria-label={tip.toLowerCase()}
       aria-pressed={open}
+      data-ui-target="dock:toolbar"
       onClick={onToggle}
       className="dock-control-button"
     />

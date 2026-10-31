@@ -186,6 +186,7 @@ function PanelHelp({ items }) {
             mode === "pinned" && "bg-ui-hover text-foreground"
           )}
           aria-label="Shortcuts and gestures"
+          data-ui-part="help"
           aria-pressed={mode === "pinned"}
           onMouseEnter={() => {
             cancelClose();

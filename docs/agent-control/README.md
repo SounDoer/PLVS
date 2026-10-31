@@ -30,6 +30,7 @@ Three places divide the work, and nothing is said in two of them:
 | Dock Control             | [`dock.md`](dock.md)                           |
 | Window Control           | [`window.md`](window.md)                       |
 | Update Control           | [`update.md`](update.md)                       |
+| Pointer Control          | [`pointer.md`](pointer.md)                     |
 | Device Control           | [`devices.md`](devices.md)                     |
 | Transport Control        | [`transport.md`](transport.md)                 |
 | Measurement Control      | [`measurements.md`](measurements.md)           |

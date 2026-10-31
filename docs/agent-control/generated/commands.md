@@ -17,6 +17,11 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.show.feedback` | `ui show feedback` | runningApp / action | required | no | none |
 | `ui.show.toolbarMenu` | `ui show toolbar-menu` | runningApp / action | required | no | none |
 | `ui.show.dockToolbar` | `ui show dock-toolbar` | runningApp / action | required | no | none |
+| `ui.quickTour.start` | `ui quick-tour start` | runningApp / action | required | no | none |
+| `ui.quickTour.next` | `ui quick-tour next` | runningApp / action | required | no | none |
+| `ui.quickTour.back` | `ui quick-tour back` | runningApp / action | required | no | none |
+| `ui.targets` | `ui targets` | runningApp / query | none | no | none |
+| `ui.locate` | `ui locate` | runningApp / query | none | no | none |
 | `ui.close` | `ui close` | runningApp / action | required | no | none |
 | `ui.cancel` | `ui cancel` | runningApp / action | required | no | none |
 | `window.inspect` | `window inspect` | runningApp / query | none | no | none |
@@ -25,6 +30,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `window.show` | `window show` | runningApp / action | required | no | none |
 | `update.inspect` | `update inspect` | runningApp / query | none | no | none |
 | `update.check` | `update check` | runningApp / action | required | no | none |
+| `pointer.move` | `pointer move` | runningApp / action | required | no | none |
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
 | `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
@@ -385,6 +391,128 @@ None.
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 
+## `ui.quickTour.start`
+
+Start the Quick Tour as Start Tour or the Settings footer link does.
+
+- CLI path: `ui quick-tour start`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.quickTour.start`
+
+```text
+plvs-cli ui quick-tour start --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.quickTour.next`
+
+Advance the Quick Tour as Next or Finish does.
+
+- CLI path: `ui quick-tour next`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.quickTour.next`
+
+```text
+plvs-cli ui quick-tour next --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.quickTour.back`
+
+Go back one Quick Tour step as Back does.
+
+- CLI path: `ui quick-tour back`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.quickTour.back`
+
+```text
+plvs-cli ui quick-tour back --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.targets`
+
+List the named pointer targets currently on screen.
+
+- CLI path: `ui targets`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `ui.targets`
+
+```text
+plvs-cli ui targets --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `ui.locate`
+
+Report where a named target is in CSS pixels.
+
+- CLI path: `ui locate`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `ui.locate`
+
+```text
+plvs-cli ui locate --target <target-id> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--target` | `target` | yes | string |
+| `--json` | local only | yes | boolean |
+
 ## `ui.close`
 
 Close one exact non-draft UI surface through its normal Close intent.
@@ -580,6 +708,32 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `pointer.move`
+
+Move the system pointer onto a named target without pressing anything.
+
+- CLI path: `pointer move`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `pointer.move`
+
+```text
+plvs-cli pointer move --target <target-id> [--duration-ms <0..3000>] --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--target` | `target` | yes | string |
+| `--duration-ms` | `durationMs` | no | integer; 0 to 3000; default 600 |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 

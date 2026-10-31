@@ -16,6 +16,7 @@ import { HoverTip } from "@/components/HoverTip";
  *   "aria-label"?: string,
  *   "aria-pressed"?: boolean,
  *   "data-tour-target"?: string,
+ *   "data-ui-target"?: string,
  * }} props
  */
 export function IconButton({
@@ -30,12 +31,14 @@ export function IconButton({
   "aria-label": ariaLabel,
   "aria-pressed": ariaPressed,
   "data-tour-target": tourTarget,
+  "data-ui-target": uiTarget,
 }) {
   return (
     <HoverTip tip={tip} side={tipSide} align={tipAlign}>
       <button
         type="button"
         data-tour-target={tourTarget}
+        data-ui-target={uiTarget}
         aria-label={ariaLabel ?? tip}
         aria-pressed={ariaPressed}
         disabled={disabled}

@@ -95,6 +95,11 @@ export function buildAgentControlCapabilities(runtime, revision) {
             uiNavigation: {
               inspect: true,
               close: hasMethod("ui.close"),
+              targets: hasMethod("ui.targets"),
+              locate: hasMethod("ui.locate"),
+              quickTour: hasMethod("ui.quickTour.start")
+                ? { actions: ["start", "next", "back"] }
+                : false,
               cancel: hasMethod("ui.cancel"),
               show: {
                 settings: hasMethod("ui.show.settings")
@@ -126,6 +131,15 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 : false,
               hide: hasMethod("window.hide"),
               show: hasMethod("window.show"),
+            },
+          }
+        : {}),
+      ...(hasMethod("pointer.move")
+        ? {
+            pointer: {
+              move: ["windows", "macos"].includes(runtime.platform)
+                ? { maximumDurationMs: 3000, presses: false }
+                : false,
             },
           }
         : {}),

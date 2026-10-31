@@ -72,6 +72,7 @@ export function PanelSettingsMenu({
         <IconAction
           aria-label="Panel settings"
           data-tour-target="panel-settings"
+          data-ui-part="settings"
           className={PANEL_HEADER_ACTION_BUTTON}
         >
           <Settings2 className="size-[length:var(--ui-icon-panel-action)]" />

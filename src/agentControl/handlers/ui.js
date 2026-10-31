@@ -1,4 +1,5 @@
 import { semanticFailure } from "../bridge/failures.js";
+import { isUiTargetId, listUiTargets, locateUiTarget } from "../../uiNavigation/uiTargets.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function inspect(ctx) {
@@ -15,6 +16,38 @@ async function inspect(ctx) {
   return {
     requestId,
     result: { revision: clock.current(), ...uiNavigation.inspectUi() },
+  };
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+async function targets(ctx) {
+  const { requestId, clock } = ctx;
+  return { requestId, result: { revision: clock.current(), targets: listUiTargets() } };
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+async function locate(ctx) {
+  const { request, requestId, clock } = ctx;
+  const { target } = request.params;
+  const located = isUiTargetId(target) ? locateUiTarget(target) : { found: false };
+  if (!located.found) {
+    throw semanticFailure(
+      "uiTargetNotFound",
+      "$.params.target",
+      `No mounted control declares the target ${target}.`,
+      -32042,
+      { target }
+    );
+  }
+  return {
+    requestId,
+    result: {
+      revision: clock.current(),
+      target,
+      visible: located.visible,
+      rect: located.rect,
+      viewport: located.viewport,
+    },
   };
 }
 
@@ -56,9 +89,14 @@ async function navigate(ctx) {
                   ? await uiNavigation.showToolbarMenu(request.params)
                   : request.method === "ui.show.dockToolbar"
                     ? await uiNavigation.showDockToolbar(request.params)
-                    : request.method === "ui.close"
-                      ? await uiNavigation.closeSurface(request.params)
-                      : await uiNavigation.cancelSurface(request.params);
+                    : request.method.startsWith("ui.quickTour.")
+                      ? await uiNavigation.stepQuickTour({
+                          ...request.params,
+                          action: request.method.slice("ui.quickTour.".length),
+                        })
+                      : request.method === "ui.close"
+                        ? await uiNavigation.closeSurface(request.params)
+                        : await uiNavigation.cancelSurface(request.params);
     const ui = uiNavigation.inspectUi();
     return {
       requestId,
@@ -97,6 +135,11 @@ export const uiHandlers = {
   "ui.show.feedback": { run: navigate },
   "ui.show.toolbarMenu": { run: navigate },
   "ui.show.dockToolbar": { run: navigate },
+  "ui.quickTour.start": { run: navigate },
+  "ui.quickTour.next": { run: navigate },
+  "ui.quickTour.back": { run: navigate },
+  "ui.targets": { run: targets },
+  "ui.locate": { run: locate },
   "ui.close": { run: navigate },
   "ui.cancel": { run: navigate },
 };

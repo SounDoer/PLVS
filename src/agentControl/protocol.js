@@ -3,6 +3,8 @@ import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualCo
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
 import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
+import { isUiTargetId } from "../uiNavigation/uiTargets.js";
+import { POINTER_DURATION_MAX_MS } from "./handlers/pointer.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
@@ -363,7 +365,55 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (input.method === "ui.show.feedback" || input.method === "ui.show.dockToolbar") {
+  if (input.method === "ui.locate") {
+    const field = unknownField(input.params, new Set(["target"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!isUiTargetId(input.params.target)) {
+      return invalidParams("$.params.target", "target must be a declared UI target id.");
+    }
+    return {
+      ok: true,
+      request: { id: input.id, method: input.method, params: { target: input.params.target } },
+    };
+  }
+
+  if (input.method === "pointer.move") {
+    const field = unknownField(input.params, new Set(["target", "durationMs", "expectedRevision"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (!isUiTargetId(input.params.target)) {
+      return invalidParams("$.params.target", "target must be a declared UI target id.");
+    }
+    const { durationMs } = input.params;
+    if (
+      durationMs !== undefined &&
+      (!Number.isInteger(durationMs) || durationMs < 0 || durationMs > POINTER_DURATION_MAX_MS)
+    ) {
+      return invalidParams(
+        "$.params.durationMs",
+        `durationMs must be an integer from 0 to ${POINTER_DURATION_MAX_MS}.`
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          target: input.params.target,
+          ...(durationMs === undefined ? {} : { durationMs }),
+          expectedRevision: input.params.expectedRevision,
+        },
+      },
+    };
+  }
+
+  if (
+    input.method === "ui.show.feedback" ||
+    input.method === "ui.show.dockToolbar" ||
+    ["ui.quickTour.start", "ui.quickTour.next", "ui.quickTour.back"].includes(input.method)
+  ) {
     const field = unknownField(input.params, new Set(["expectedRevision", "expectedUiGeneration"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     const revisionError = validateExpectedRevision(input.params);
@@ -626,7 +676,8 @@ export function normalizeAgentControlRequest(input) {
     input.method === "dock.describe" ||
     input.method === "dock.inspect" ||
     input.method === "window.inspect" ||
-    input.method === "update.inspect"
+    input.method === "update.inspect" ||
+    input.method === "ui.targets"
   ) {
     const field = Object.keys(input.params)[0];
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

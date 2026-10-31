@@ -37,6 +37,8 @@ const groups = [
     commands: [
       "window.inspect",
       "update.inspect",
+      "ui.targets",
+      "ui.locate",
       "measurement.describe",
       "measurement.inspect",
       "view.describe",
@@ -148,6 +150,9 @@ const groups = [
       "ui.show.loudnessProfileEditor",
       "ui.show.feedback",
       "ui.show.toolbarMenu",
+      "ui.quickTour.start",
+      "ui.quickTour.next",
+      "ui.quickTour.back",
       "ui.cancel",
       "editorDraft.patch",
       "editorDraft.undo",
@@ -175,7 +180,7 @@ const groups = [
   {
     scenario: "window-platform-contract",
     disposition: "platformContract",
-    commands: ["window.resize", "window.hide", "window.show"],
+    commands: ["window.resize", "window.hide", "window.show", "pointer.move"],
   },
   {
     scenario: "capture-rig",

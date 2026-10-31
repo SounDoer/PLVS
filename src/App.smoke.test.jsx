@@ -49,6 +49,7 @@ vi.mock("./ipc/env.js", () => ({ isTauri: vi.fn(() => false) }));
 // "No export named X" — keep resolutions inert, do not weaken assertions instead.
 vi.mock("./ipc/commands.js", () => ({
   applyWindowBounds: vi.fn().mockResolvedValue(undefined),
+  movePointer: vi.fn().mockResolvedValue(undefined),
   currentWindowBounds: vi.fn().mockResolvedValue({
     x: 10,
     y: 20,

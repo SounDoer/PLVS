@@ -190,6 +190,7 @@ export function AppHeader({
           icon={<Trash2 className="size-[length:var(--ui-icon-shell-action)]" />}
           tip="Clear"
           data-tour-target="clear"
+          data-ui-target="toolbar:clear"
           disabled={clearDisabled}
           onClick={onClear}
         />
@@ -218,6 +219,7 @@ export function AppHeader({
                     }
                     tip="Sources"
                     data-tour-target="sources"
+                    data-ui-target="toolbar:sources"
                     disabled={!audioDevices.length && !captureApplications.length}
                     className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
@@ -242,6 +244,7 @@ export function AppHeader({
                 icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Loudness Profile"
                 data-tour-target="profile"
+                data-ui-target="toolbar:loudness-profile"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -261,6 +264,7 @@ export function AppHeader({
                 icon={<LayoutGrid className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Panels"
                 data-tour-target="modules"
+                data-ui-target="toolbar:panels"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -276,6 +280,7 @@ export function AppHeader({
                 icon={<Focus className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Views"
                 data-tour-target="views"
+                data-ui-target="toolbar:views"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -308,6 +313,7 @@ export function AppHeader({
                 icon={<Bookmark className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Presets"
                 data-tour-target="presets"
+                data-ui-target="toolbar:presets"
                 className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
@@ -327,6 +333,7 @@ export function AppHeader({
           icon={<Settings className="size-[length:var(--ui-icon-shell-action)]" />}
           tip="Settings"
           data-tour-target="settings"
+          data-ui-target="toolbar:settings"
           onClick={() => setSettingsOpen(true)}
         />
       </div>

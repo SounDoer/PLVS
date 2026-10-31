@@ -139,7 +139,21 @@ The Quick Tour card is observed the same way. While its invitation or a step is 
 `quickTour` event surface with target `{ phase, step }`: `phase` is `invitation` or `tour`, and
 `step` counts from 1 (null on the invitation). Its card text is not reported. `ui close` is the
 card's own close intent: the tour is recorded as dismissed and does not return on the next launch,
-exactly as when the user closes it. There is no command to start, advance, or reopen the tour.
+exactly as when the user closes it.
+
+`ui quick-tour start`, `next` and `back` press the tour's own buttons. `start` is Start Tour on the
+invitation, or the Settings footer's Quick Tour link when no tour is on screen; it is
+`surfaceUnavailable` outside the normal Live window and `uiConflict` while Settings or a blocking
+editor is open. `next` is Next, or Finish on the last step, which records the tour as completed and
+removes the surface. `back` is Back and is `uiActionUnavailable` on the first step. Each settles on
+the tour's next state. There is no command to jump to a step or to show the card by itself.
+
+## Targets and locate
+
+`ui targets` lists the named pointer targets currently on screen, and `ui locate --target <id>`
+reports whether one is visible and its rectangle in CSS pixels relative to the main WebView,
+together with the viewport size. Names are declared by the components that render them; see
+[Pointer Control](pointer.md) for the vocabulary. An undeclared name is `uiTargetNotFound`.
 
 ## Errors
 

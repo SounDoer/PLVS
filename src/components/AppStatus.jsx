@@ -128,7 +128,7 @@ export function AppStatusPopover({ items, onAction, onOpenChange, requestedOpen 
   return (
     <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>
-        <AppStatusSummary items={items} />
+        <AppStatusSummary data-ui-target="toolbar:status" items={items} />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-96 max-w-[calc(100vw-1rem)] p-0">
         <AppStatusList

@@ -36,6 +36,7 @@ import { isTauri } from "../ipc/env.js";
 import {
   applyWindowBounds,
   captureVisualScreenshot,
+  movePointer,
   inspectVisualRecording,
   startVisualRecording,
   stopVisualRecording,
@@ -282,6 +283,15 @@ export function AgentControlBridge() {
   );
   const loudnessProfile = useLoudnessProfile();
   const settings = useAppSettings();
+  const pointerControl = useMemo(
+    () => ({
+      available: isTauri() && ["windows", "macos"].includes(runtime.platform),
+      windowVisible,
+      scale: () => globalThis.devicePixelRatio || 1,
+      move: movePointer,
+    }),
+    [runtime.platform, windowVisible]
+  );
   const updateControl = useMemo(
     () => ({
       initialized: updateControls.initialized,
@@ -573,6 +583,7 @@ export function AgentControlBridge() {
     developmentUpdate,
     windowControl,
     updateControl,
+    pointerControl,
     device: agentControlDevice,
     presets,
     loudnessProfile,

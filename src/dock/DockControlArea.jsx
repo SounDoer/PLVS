@@ -40,6 +40,7 @@ export function DockControlArea({
         icon={<Maximize2 className="size-3.5" absoluteStrokeWidth strokeWidth={1.75} />}
         tip="Return to Normal Window"
         aria-label="return to normal window"
+        data-ui-target="dock:restore"
         tipSide="left"
         className="dock-control-button"
         onClick={onRestore}

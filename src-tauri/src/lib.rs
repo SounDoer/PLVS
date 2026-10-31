@@ -35,6 +35,7 @@ mod linux_update;
 #[cfg(target_os = "macos")]
 mod macos_dock;
 pub mod persistence;
+mod pointer;
 mod profile;
 pub mod runtime_diagnostics;
 pub mod runtime_identity;
@@ -285,6 +286,7 @@ pub fn run() {
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
+      pointer::move_pointer,
       dock::enter_dock,
       dock::exit_dock,
       dock::get_dock_state,

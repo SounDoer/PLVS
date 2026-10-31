@@ -83,6 +83,20 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  UiQuickTour {
+    action: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  UiTargets,
+  UiLocate {
+    target: String,
+  },
+  PointerMove {
+    target: String,
+    duration_ms: Option<u64>,
+    expected_revision: u64,
+  },
   UiClose {
     surface_id: String,
     expected_revision: u64,
@@ -417,6 +431,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
     [command, rest @ ..] if command == "window" => return parse_window_args(rest),
     [command, rest @ ..] if command == "update" => return parse_update_args(rest),
+    [command, rest @ ..] if command == "pointer" => return parse_pointer_args(rest),
     [command, rest @ ..] if command == "editor-draft" => return parse_editor_draft_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "view" => return parse_view_args(rest),
@@ -438,7 +453,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|ui|window|update|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|ui|window|update|pointer|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
 }
 
 fn parse_development_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -827,12 +842,22 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
   if args == ["inspect", "--json"] {
     return Ok(ControlCommand::UiInspect);
+  }
+  if args == ["targets", "--json"] {
+    return Ok(ControlCommand::UiTargets);
+  }
+  if let [locate, flag, target, json] = args {
+    if locate == "locate" && flag == "--target" && json == "--json" {
+      return Ok(ControlCommand::UiLocate {
+        target: target.clone(),
+      });
+    }
   }
   let (kind, mut index) = match args {
     [show, target, ..] if show == "show" && target == "settings" => ("settings", 2),
@@ -844,6 +869,11 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     [show, target, ..] if show == "show" && target == "feedback" => ("feedback", 2),
     [show, target, ..] if show == "show" && target == "toolbar-menu" => ("toolbar-menu", 2),
     [show, target, ..] if show == "show" && target == "dock-toolbar" => ("dock-toolbar", 2),
+    [tour, action, ..]
+      if tour == "quick-tour" && matches!(action.as_str(), "start" | "next" | "back") =>
+    {
+      ("quick-tour", 2)
+    }
     [close, ..] if close == "close" => ("close", 1),
     [cancel, ..] if cancel == "cancel" => ("cancel", 1),
     _ => return Err(USAGE.to_string()),
@@ -1079,6 +1109,11 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
       expected_revision,
       expected_ui_generation,
     }),
+    "quick-tour" => Ok(ControlCommand::UiQuickTour {
+      action: args[1].clone(),
+      expected_revision,
+      expected_ui_generation,
+    }),
     "close" | "cancel" => {
       let surface_id =
         surface_id.ok_or_else(|| format!("The UI {kind} action requires a surface ID."))?;
@@ -1218,6 +1253,70 @@ fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
   Ok(ControlCommand::UpdateCheck {
     expected_revision: expected_revision
       .ok_or_else(|| "The update check action requires --expected-revision.".to_string())?,
+  })
+}
+
+fn parse_pointer_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage: plvs-cli pointer move --target <target-id> [--duration-ms <0..3000>] --expected-revision <n> --json";
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(ControlCommand::FamilyHelp("pointer".to_string()));
+  }
+  let [action, options @ ..] = args else {
+    return Err(USAGE.to_string());
+  };
+  if action != "move" {
+    return Err(USAGE.to_string());
+  }
+  let mut target = None;
+  let mut duration_ms = None;
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--target" if target.is_none() => {
+        target = Some(
+          options
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --target.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--duration-ms" if duration_ms.is_none() => {
+        duration_ms = Some(
+          options
+            .get(index + 1)
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .filter(|value| *value <= 3000)
+            .ok_or_else(|| {
+              "The --duration-ms value must be an integer from 0 to 3000.".to_string()
+            })?,
+        );
+        index += 2;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          options.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      value => return Err(format!("Unknown or duplicate pointer option: {value}")),
+    }
+  }
+  if !json {
+    return Err("The pointer move action requires --json.".to_string());
+  }
+  Ok(ControlCommand::PointerMove {
+    target: target.ok_or_else(|| "The pointer move action requires --target.".to_string())?,
+    duration_ms,
+    expected_revision: expected_revision
+      .ok_or_else(|| "The pointer move action requires --expected-revision.".to_string())?,
   })
 }
 
@@ -3643,6 +3742,10 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiShowFeedback { .. } => "ui.show.feedback".to_string(),
     ControlCommand::UiShowToolbarMenu { .. } => "ui.show.toolbarMenu".to_string(),
     ControlCommand::UiShowDockToolbar { .. } => "ui.show.dockToolbar".to_string(),
+    ControlCommand::UiQuickTour { action, .. } => format!("ui.quickTour.{action}"),
+    ControlCommand::UiTargets => "ui.targets".to_string(),
+    ControlCommand::UiLocate { .. } => "ui.locate".to_string(),
+    ControlCommand::PointerMove { .. } => "pointer.move".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::WindowInspect => "window.inspect".to_string(),
     ControlCommand::WindowResize { .. } => "window.resize".to_string(),
@@ -3749,6 +3852,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::UiInspect
     | ControlCommand::WindowInspect
     | ControlCommand::UpdateInspect
+    | ControlCommand::UiTargets
     | ControlCommand::MeasurementRead { .. }
     | ControlCommand::ViewRead { .. }
     | ControlCommand::ModuleList
@@ -3888,6 +3992,29 @@ fn request_for_command<R: Read>(
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
+    ControlCommand::UiQuickTour {
+      expected_revision,
+      expected_ui_generation,
+      ..
+    } => serde_json::json!({
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
+    ControlCommand::UiLocate { target } => serde_json::json!({ "target": target }),
+    ControlCommand::PointerMove {
+      target,
+      duration_ms,
+      expected_revision,
+    } => {
+      let mut params = serde_json::json!({
+        "target": target,
+        "expectedRevision": expected_revision,
+      });
+      if let Some(duration_ms) = duration_ms {
+        params["durationMs"] = Value::from(*duration_ms);
+      }
+      params
+    }
     ControlCommand::UiShowToolbarMenu {
       menu,
       expected_revision,
@@ -5504,6 +5631,60 @@ mod tests {
     .unwrap();
     assert_eq!(command_name(&dock_reset), "dock.layout.reset");
 
+    let pointer = parse_control_args(&args(&[
+      "pointer",
+      "move",
+      "--target",
+      "toolbar:presets",
+      "--duration-ms",
+      "400",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&pointer), "pointer.move");
+    assert_eq!(
+      request_for_command(&pointer, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "target": "toolbar:presets", "durationMs": 400, "expectedRevision": 4 })
+    );
+    assert!(parse_control_args(&args(&[
+      "pointer",
+      "click",
+      "--target",
+      "toolbar:presets",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
+    let tour = parse_control_args(&args(&[
+      "ui",
+      "quick-tour",
+      "next",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&tour), "ui.quickTour.next");
+    assert_eq!(
+      parse_control_args(&args(&[
+        "ui",
+        "locate",
+        "--target",
+        "toolbar:views",
+        "--json"
+      ])),
+      Ok(ControlCommand::UiLocate {
+        target: "toolbar:views".to_string()
+      })
+    );
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -5855,6 +6036,8 @@ mod tests {
       }
       "n" => "0".to_string(),
       "css-px" => "800".to_string(),
+      "target-id" => "toolbar:presets".to_string(),
+      "start|next|back" => "next".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
     }
   }

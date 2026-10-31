@@ -164,6 +164,30 @@ describe("normalizeAgentControlRequest", () => {
     );
   });
 
+  describe("Pointer and target requests", () => {
+    it("accepts only declared target ids and bounded durations", () => {
+      const params = { target: "toolbar:presets", durationMs: 600, expectedRevision: 1 };
+      expect(normalizeAgentControlRequest(request("pointer.move", params))).toEqual({
+        ok: true,
+        request: { id: "req-1", method: "pointer.move", params },
+      });
+      for (const invalid of [{ target: "#presets" }, { durationMs: 3001 }, { durationMs: 1.5 }]) {
+        expect(
+          normalizeAgentControlRequest(request("pointer.move", { ...params, ...invalid }))
+        ).toMatchObject({ ok: false, error: { reason: "invalidParams" } });
+      }
+      expect(
+        normalizeAgentControlRequest(request("pointer.move", { ...params, button: "left" }))
+      ).toMatchObject({ ok: false, error: { path: "$.params.button" } });
+      expect(
+        normalizeAgentControlRequest(request("ui.locate", { target: "button.primary" }))
+      ).toMatchObject({ ok: false });
+      expect(normalizeAgentControlRequest(request("ui.quickTour.jump", {}))).toMatchObject({
+        ok: false,
+      });
+    });
+  });
+
   describe("Window Control requests", () => {
     it("accepts a CSS pixel size within bounds and refuses anything else", () => {
       const params = { width: 1280, height: 720, expectedRevision: 2 };

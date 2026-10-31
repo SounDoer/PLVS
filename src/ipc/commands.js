@@ -106,6 +106,14 @@ export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }
 
+/**
+ * Moves the system pointer to a point in CSS pixels inside the main WebView. It never presses.
+ * @param {{ x: number, y: number, durationMs: number, webviewScale: number }} request
+ */
+export function movePointer({ x, y, durationMs, webviewScale }) {
+  return invoke("move_pointer", { x, y, durationMs, webviewScale });
+}
+
 /** Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic. */
 /**
  * Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic.

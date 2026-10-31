@@ -150,6 +150,51 @@ describe("Quick Tour", () => {
     expect(screen.queryByRole("region")).toBeNull();
   });
 
+  it("is stepped through its own buttons by UI Navigation", async () => {
+    target("transport");
+    target("sources");
+    /** @type {any} */
+    let navigation;
+    function Probe() {
+      navigation = useUiNavigation();
+      return null;
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 3}>
+          <QuickTour {...BASE} />
+          <Probe />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    await act(async () => {});
+    const step = async (action) => {
+      let pending;
+      await act(async () => {
+        pending = navigation.stepQuickTour({
+          action,
+          expectedRevision: 3,
+          expectedUiGeneration: navigation.inspectUi().uiGeneration,
+        });
+        pending.catch(() => {});
+        await Promise.resolve();
+      });
+      await sample();
+      return pending;
+    };
+
+    await expect(step("start")).resolves.toMatchObject({
+      surface: { kind: "quickTour", target: { phase: "tour", step: 1 } },
+    });
+    expect(settingsStore.read().quickTour).toBe("started");
+    await expect(step("back")).rejects.toMatchObject({ reason: "uiActionUnavailable" });
+    await expect(step("next")).resolves.toMatchObject({ surface: { target: { step: 2 } } });
+    await expect(step("back")).resolves.toMatchObject({ surface: { target: { step: 1 } } });
+    for (let index = 1; index < 10; index++) await step("next");
+    await expect(step("next")).resolves.toMatchObject({ surface: null });
+    expect(settingsStore.read().quickTour).toBe("completed");
+  });
+
   it("never automatically invites established or participant workbenches", () => {
     settingsStore.patch({ quickTour: "dismissed" });
     const view = mount();

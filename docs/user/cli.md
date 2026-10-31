@@ -148,7 +148,7 @@ Use `plvs-cli --help` for the command families. The generated
 [command catalog](../agent-control/generated/commands.md) is the complete static reference for CLI
 paths, options, policies, and top-level wire parameters. The current families are:
 
-- `inspect`, `capabilities`, `measurement`, `view`, `window`, `ui`, `visual`, and `wait`;
+- `inspect`, `capabilities`, `measurement`, `view`, `window`, `pointer`, `ui`, `visual`, and `wait`;
 - `module`, `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
@@ -259,6 +259,15 @@ plvs-cli update check --expected-revision <n> --json
 
 See [Update Control](../agent-control/update.md).
 
+Pointer Control moves the system pointer onto a named control for unattended tutorial recording,
+without pressing anything; the operation itself is a separate command:
+
+```powershell
+plvs-cli pointer move --target <target-id> [--duration-ms <0..3000>] --expected-revision <n> --json
+```
+
+See [Pointer Control](../agent-control/pointer.md).
+
 UI Navigation inspects and opens temporary application surfaces without exposing clicks, DOM
 selectors, or confirmation actions:
 
@@ -271,6 +280,9 @@ plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>
 plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui targets --json
+plvs-cli ui locate --target <target-id> --json
 plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 ```

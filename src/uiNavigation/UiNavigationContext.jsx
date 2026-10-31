@@ -412,6 +412,43 @@ export function UiNavigationProvider({
       showTarget("feedback", {}, "ui.show.feedback", expectedRevision, expectedUiGeneration),
     [showTarget]
   );
+  /** Start Tour / Next / Back through the tour's own handlers; settles on the next card state. */
+  const stepQuickTour = useCallback(
+    ({ action, expectedRevision, expectedUiGeneration }) =>
+      enqueueAction(async () => {
+        const currentRevision = getRevision();
+        if (Number.isSafeInteger(currentRevision) && expectedRevision !== currentRevision) {
+          throw Object.assign(new Error("The Agent Control revision changed."), {
+            reason: "revisionConflict",
+            details: { expectedRevision, currentRevision },
+          });
+        }
+        const before = stateRef.current;
+        if (expectedUiGeneration !== before.uiGeneration) {
+          throw createUiNavigationError("uiGenerationConflict", {
+            expectedUiGeneration,
+            currentUiGeneration: before.uiGeneration,
+          });
+        }
+        const controller = targetsRef.current.get("quickTour")?.current;
+        if (typeof controller?.[action] !== "function") {
+          throw createUiNavigationError("surfaceUnavailable", { kind: "quickTour" });
+        }
+        const expected = controller[action]();
+        const previous = before.surfaces.find((surface) => surface.kind === "quickTour");
+        let surface = null;
+        if (expected) surface = await waitForSurface("quickTour", expected);
+        else if (previous) await waitForSurfaceAbsent(previous.surfaceId);
+        return {
+          changed: true,
+          revision: getRevision(),
+          uiGeneration: stateRef.current.uiGeneration,
+          action: `ui.quick-tour.${action}`,
+          surface,
+        };
+      }),
+    [enqueueAction, getRevision, waitForSurface, waitForSurfaceAbsent]
+  );
   const showToolbarMenu = useCallback(
     ({ menu, expectedRevision, expectedUiGeneration }) =>
       showTarget(
@@ -464,6 +501,7 @@ export function UiNavigationProvider({
       showFeedback,
       showToolbarMenu,
       showDockToolbar,
+      stepQuickTour,
       closeSurface,
       cancelSurface,
       updateEnvironment,
@@ -479,6 +517,7 @@ export function UiNavigationProvider({
       showSettings,
       showToolbarMenu,
       showDockToolbar,
+      stepQuickTour,
       state.uiGeneration,
       updateEnvironment,
     ]

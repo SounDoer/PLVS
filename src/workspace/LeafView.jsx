@@ -50,6 +50,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
     <div
       data-tab-pill
       data-tab-pill-index={slotTabIndex}
+      data-ui-target={`panel:${tabId}:tab`}
       className={cn(
         // `min-w-0` lets the title truncate before the header actions are pushed out of a narrow
         // panel, where they would be clipped and unreachable.
@@ -322,6 +323,7 @@ export function LeafView({ node, path, style }) {
       data-leaf
       data-leaf-path={pathAttr}
       data-visual-panel-id={activeTab}
+      data-ui-panel={activeTab}
       data-visual-capture-ready={activeTab ? "true" : undefined}
       className={cn(
         "relative flex min-h-0 flex-col overflow-hidden rounded-md",
@@ -398,6 +400,7 @@ export function LeafView({ node, path, style }) {
             >
               <IconAction
                 aria-label={isActivePinned ? "Unpin panel size" : "Pin panel size"}
+                data-ui-part="pin"
                 aria-pressed={isActivePinned}
                 className={cn(
                   PANEL_HEADER_ACTION_BUTTON,
@@ -414,6 +417,7 @@ export function LeafView({ node, path, style }) {
             </HoverTip>
             <IconAction
               aria-label="Fullscreen"
+              data-ui-part="fullscreen"
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => activeTab && setFullscreen(activeTab)}
             >
@@ -421,6 +425,7 @@ export function LeafView({ node, path, style }) {
             </IconAction>
             <IconAction
               aria-label="Hide all in panel"
+              data-ui-part="close"
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => visibleTabs.forEach((id) => removePanel(id))}
             >
@@ -430,7 +435,7 @@ export function LeafView({ node, path, style }) {
         </div>
       )}
       {/* Panel body */}
-      <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
+      <div data-leaf-body data-ui-part="body" className="flex min-h-0 flex-1 overflow-hidden">
         {ActiveComponent && (
           <PanelInstanceProvider value={panelInstanceData}>
             <ActiveComponent />

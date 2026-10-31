@@ -467,6 +467,167 @@
       }
     },
     {
+      "id": "ui.quickTour.start",
+      "family": "ui",
+      "path": ["ui", "quick-tour", "start"],
+      "usage": "plvs-cli ui quick-tour start --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Start the Quick Tour as Start Tour or the Settings footer link does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.quickTour.start",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.quickTour.next",
+      "family": "ui",
+      "path": ["ui", "quick-tour", "next"],
+      "usage": "plvs-cli ui quick-tour next --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Advance the Quick Tour as Next or Finish does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.quickTour.next",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.quickTour.back",
+      "family": "ui",
+      "path": ["ui", "quick-tour", "back"],
+      "usage": "plvs-cli ui quick-tour back --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Go back one Quick Tour step as Back does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.quickTour.back",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.targets",
+      "family": "ui",
+      "path": ["ui", "targets"],
+      "usage": "plvs-cli ui targets --json",
+      "summary": "List the named pointer targets currently on screen.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "ui.targets",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [{ "name": "--json", "required": true, "value": { "type": "boolean" } }],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "ui.locate",
+      "family": "ui",
+      "path": ["ui", "locate"],
+      "usage": "plvs-cli ui locate --target <target-id> --json",
+      "summary": "Report where a named target is in CSS pixels.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "ui.locate",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        { "name": "--target", "mapsTo": "target", "required": true, "value": { "type": "string" } },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target"],
+        "properties": { "target": { "type": "string" } }
+      }
+    },
+    {
       "id": "ui.close",
       "family": "ui",
       "path": ["ui", "close"],
@@ -736,6 +897,46 @@
         "additionalProperties": false,
         "required": ["expectedRevision"],
         "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "pointer.move",
+      "family": "pointer",
+      "path": ["pointer", "move"],
+      "usage": "plvs-cli pointer move --target <target-id> [--duration-ms <0..3000>] --expected-revision <n> --json",
+      "summary": "Move the system pointer onto a named target without pressing anything.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "pointer.move",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        { "name": "--target", "mapsTo": "target", "required": true, "value": { "type": "string" } },
+        {
+          "name": "--duration-ms",
+          "mapsTo": "durationMs",
+          "required": false,
+          "value": { "type": "integer", "minimum": 0, "maximum": 3000, "default": 600 }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "expectedRevision"],
+        "properties": {
+          "target": { "type": "string" },
+          "durationMs": { "type": "integer", "minimum": 0, "maximum": 3000 },
           "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
         }
       }

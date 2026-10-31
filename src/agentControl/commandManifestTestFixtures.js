@@ -28,7 +28,7 @@ function sampleForProperty(entry, name, schema) {
     sessionId: "file-1",
     section: "appearance",
     surfaceId: `ui-${"a".repeat(16)}`,
-    target: { kind: "main" },
+    target: ["ui.locate", "pointer.move"].includes(entry.id) ? "toolbar:presets" : { kind: "main" },
     themeId: "custom-1",
     themeIds: [],
     timeoutMs: 100,

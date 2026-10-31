@@ -316,6 +316,25 @@ describe("AppHeader", () => {
     expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
   });
 
+  it("names every toolbar control as a pointer target", () => {
+    const { container } = renderHeader();
+    const names = [...container.querySelectorAll("[data-ui-target]")].map((element) =>
+      element.getAttribute("data-ui-target")
+    );
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "toolbar:transport",
+        "toolbar:clear",
+        "toolbar:sources",
+        "toolbar:loudness-profile",
+        "toolbar:panels",
+        "toolbar:views",
+        "toolbar:presets",
+        "toolbar:settings",
+      ])
+    );
+  });
+
   it("holds auto-hidden controls while toolbar popovers are open", () => {
     const holdFocusControls = vi.fn();
     renderHeader({ autoHideControls: true, holdFocusControls });
