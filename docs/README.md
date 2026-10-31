@@ -16,6 +16,7 @@ alone makes them wrong, so they are updated in the same commit as the change.
 | -------------------------------------------------- | ----------------------------------------------------------------- |
 | [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system      |
 | [design-tokens.md](design-tokens.md)               | Desktop tokens, Theme structure and text casing                   |
+| [glossary.md](glossary.md)                         | User-facing terms and their Chinese subtitle and voice-over forms |
 | [website-design.md](website-design.md)             | Website tokens, layout rules and browsing patterns                |
 | [pitfalls.md](pitfalls.md)                         | Counter-intuitive behaviour and the incident context behind rules |
 | [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling       |

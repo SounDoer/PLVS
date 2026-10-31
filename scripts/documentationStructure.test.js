@@ -122,6 +122,15 @@ describe("public documents state what the code ships", () => {
     expect([...documented].sort()).toEqual([...shipped].sort());
   });
 
+  it("names exactly the shipped panels in the glossary", () => {
+    const body = sectionBody(read("docs", "glossary.md"), "## Panels") ?? "";
+    const rows = body.trim().split("\n\n")[0].split("\n").slice(2);
+    const documented = rows.map((row) => row.split("|")[1].trim());
+    const shipped = Object.values(MODULE_CATALOG).map((module) => module.title);
+
+    expect([...documented].sort()).toEqual([...shipped].sort());
+  });
+
   it("lists exactly the channel layouts detected automatically", () => {
     const body = sectionBody(
       read("docs", "user", "multichannel.md"),
