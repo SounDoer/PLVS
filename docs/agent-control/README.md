@@ -28,6 +28,7 @@ Three places divide the work, and nothing is said in two of them:
 | Settings Control         | [`settings.md`](settings.md)                   |
 | View Control             | [`view.md`](view.md)                           |
 | Dock Control             | [`dock.md`](dock.md)                           |
+| Window Control           | [`window.md`](window.md)                       |
 | Device Control           | [`devices.md`](devices.md)                     |
 | Transport Control        | [`transport.md`](transport.md)                 |
 | Measurement Control      | [`measurements.md`](measurements.md)           |

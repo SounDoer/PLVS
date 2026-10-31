@@ -2,6 +2,7 @@ import { DOCK_MIN_HEIGHT, DOCK_MAX_HEIGHT } from "../dock/dockSizing.js";
 import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
+import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
@@ -623,13 +624,47 @@ export function normalizeAgentControlRequest(input) {
     isDeviceQuery(input.method) ||
     input.method === "transport.inspect" ||
     input.method === "dock.describe" ||
-    input.method === "dock.inspect"
+    input.method === "dock.inspect" ||
+    input.method === "window.inspect"
   ) {
     const field = Object.keys(input.params)[0];
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     return {
       ok: true,
       request: { id: input.id, method: input.method, params: {} },
+    };
+  }
+
+  if (["window.resize", "window.hide", "window.show"].includes(input.method)) {
+    const resize = input.method === "window.resize";
+    const field = unknownField(
+      input.params,
+      new Set([...(resize ? ["width", "height"] : []), "expectedRevision"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (resize) {
+      for (const dimension of ["width", "height"]) {
+        const value = input.params[dimension];
+        if (!Number.isInteger(value) || value < WINDOW_SIZE_MIN || value > WINDOW_SIZE_MAX) {
+          return invalidParams(
+            `$.params.${dimension}`,
+            `${dimension} must be an integer from ${WINDOW_SIZE_MIN} to ${WINDOW_SIZE_MAX}.`
+          );
+        }
+      }
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          ...(resize ? { width: input.params.width, height: input.params.height } : {}),
+          expectedRevision: input.params.expectedRevision,
+        },
+      },
     };
   }
 

@@ -559,6 +559,135 @@
       }
     },
     {
+      "id": "window.inspect",
+      "family": "window",
+      "path": ["window", "inspect"],
+      "usage": "plvs-cli window inspect --json",
+      "summary": "Inspect the main window's form, visibility, size and work area.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "window.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [{ "name": "--json", "required": true, "value": { "type": "boolean" } }],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "window.resize",
+      "family": "window",
+      "path": ["window", "resize"],
+      "usage": "plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json",
+      "summary": "Set the normal window's inner size in CSS pixels, keeping its position.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.resize",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--width",
+          "mapsTo": "width",
+          "required": true,
+          "value": { "type": "integer", "minimum": 320, "maximum": 7680 }
+        },
+        {
+          "name": "--height",
+          "mapsTo": "height",
+          "required": true,
+          "value": { "type": "integer", "minimum": 320, "maximum": 7680 }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["width", "height", "expectedRevision"],
+        "properties": {
+          "width": { "type": "integer", "minimum": 320, "maximum": 7680 },
+          "height": { "type": "integer", "minimum": 320, "maximum": 7680 },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "window.hide",
+      "family": "window",
+      "path": ["window", "hide"],
+      "usage": "plvs-cli window hide --expected-revision <n> --json",
+      "summary": "Hide the window as the tray's Hide does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.hide",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "window.show",
+      "family": "window",
+      "path": ["window", "show"],
+      "usage": "plvs-cli window show --expected-revision <n> --json",
+      "summary": "Show and focus the window as the tray's Show does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.show",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "measurement.describe",
       "family": "measurement",
       "path": ["measurement", "describe"],

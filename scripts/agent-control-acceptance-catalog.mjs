@@ -35,6 +35,7 @@ const groups = [
     scenario: "read-contract",
     disposition: "query",
     commands: [
+      "window.inspect",
       "measurement.describe",
       "measurement.inspect",
       "view.describe",
@@ -167,6 +168,11 @@ const groups = [
       "dock.panel.reset",
       "ui.show.dockToolbar",
     ],
+  },
+  {
+    scenario: "window-platform-contract",
+    disposition: "platformContract",
+    commands: ["window.resize", "window.hide", "window.show"],
   },
   {
     scenario: "capture-rig",

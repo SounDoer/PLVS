@@ -31,7 +31,10 @@ import { isParticipantInstance } from "../lib/runtimeRole.js";
 import { useDevelopmentEventFixtures } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { useDevelopmentPerformance } from "../dev/useDevelopmentPerformance.js";
 import { useEditorDraftRegistry } from "./EditorDraftContext.jsx";
+import { readWindowGeometry } from "../lib/windowGeometry.js";
+import { isTauri } from "../ipc/env.js";
 import {
+  applyWindowBounds,
   captureVisualScreenshot,
   inspectVisualRecording,
   startVisualRecording,
@@ -136,7 +139,21 @@ export function AgentControlBridge() {
     commitCaptureDevice,
   } = useSource();
   const { beginDeviceRestartForControl } = meterRuntime;
-  const { updateBusy, updateControls, requestCloseAction } = useAppLifecycle();
+  const { updateBusy, updateControls, requestCloseAction, windowVisible, onShowWindow } =
+    useAppLifecycle();
+  const windowControl = useMemo(
+    () => ({
+      available: isTauri(),
+      form: docked ? "dock" : "normal",
+      visible: windowVisible,
+      readGeometry: readWindowGeometry,
+      applyBounds: applyWindowBounds,
+      show: onShowWindow,
+      // The tray's Hide: persistence is flushed first, and it is refused while an update installs.
+      hide: () => requestCloseAction("tray"),
+    }),
+    [docked, onShowWindow, requestCloseAction, windowVisible]
+  );
   const agentControlDevice = useMemo(
     () => ({
       snapshot: audioDeviceSnapshot,
@@ -543,6 +560,7 @@ export function AgentControlBridge() {
     developmentFixtures,
     developmentPerformance,
     developmentUpdate,
+    windowControl,
     device: agentControlDevice,
     presets,
     loudnessProfile,

@@ -19,6 +19,10 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.show.dockToolbar`           | `ui show dock-toolbar`            | runningApp / action   | required | no      | none        |
 | `ui.close`                      | `ui close`                        | runningApp / action   | required | no      | none        |
 | `ui.cancel`                     | `ui cancel`                       | runningApp / action   | required | no      | none        |
+| `window.inspect`                | `window inspect`                  | runningApp / query    | none     | no      | none        |
+| `window.resize`                 | `window resize`                   | runningApp / action   | required | no      | none        |
+| `window.hide`                   | `window hide`                     | runningApp / action   | required | no      | none        |
+| `window.show`                   | `window show`                     | runningApp / action   | required | no      | none        |
 | `measurement.describe`          | `measurement describe`            | runningApp / query    | none     | no      | none        |
 | `measurement.inspect`           | `measurement inspect`             | runningApp / query    | none     | no      | none        |
 | `measurement.wait`              | `measurement wait`                | runningApp / wait     | none     | no      | none        |
@@ -430,6 +434,103 @@ plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation
 | `--expected-revision`      | local only             | yes      | integer; 0 to 9007199254740991 |
 | `--expected-ui-generation` | `expectedUiGeneration` | yes      | integer; 0 to 9007199254740991 |
 | `--json`                   | local only             | yes      | boolean                        |
+
+## `window.inspect`
+
+Inspect the main window's form, visibility, size and work area.
+
+- CLI path: `window inspect`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `window.inspect`
+
+```text
+plvs-cli window inspect --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name     | Maps to    | Required | Value   |
+| -------- | ---------- | -------- | ------- |
+| `--json` | local only | yes      | boolean |
+
+## `window.resize`
+
+Set the normal window's inner size in CSS pixels, keeping its position.
+
+- CLI path: `window resize`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.resize`
+
+```text
+plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name                  | Maps to    | Required | Value                          |
+| --------------------- | ---------- | -------- | ------------------------------ |
+| `--width`             | `width`    | yes      | integer; 320 to 7680           |
+| `--height`            | `height`   | yes      | integer; 320 to 7680           |
+| `--expected-revision` | local only | yes      | integer; 0 to 9007199254740991 |
+| `--json`              | local only | yes      | boolean                        |
+
+## `window.hide`
+
+Hide the window as the tray's Hide does.
+
+- CLI path: `window hide`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.hide`
+
+```text
+plvs-cli window hide --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name                  | Maps to    | Required | Value                          |
+| --------------------- | ---------- | -------- | ------------------------------ |
+| `--expected-revision` | local only | yes      | integer; 0 to 9007199254740991 |
+| `--json`              | local only | yes      | boolean                        |
+
+## `window.show`
+
+Show and focus the window as the tray's Show does.
+
+- CLI path: `window show`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.show`
+
+```text
+plvs-cli window show --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name                  | Maps to    | Required | Value                          |
+| --------------------- | ---------- | -------- | ------------------------------ |
+| `--expected-revision` | local only | yes      | integer; 0 to 9007199254740991 |
+| `--json`              | local only | yes      | boolean                        |
 
 ## `measurement.describe`
 

@@ -233,6 +233,19 @@ It covers Always on Top (`pinned`), Focus View, surface opacity, and macOS Glass
 [View Control](../agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
 
+Window Control reads the main window and sets its inner size in CSS pixels or hides and shows it as
+the tray does:
+
+```powershell
+plvs-cli window inspect --json
+plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json
+plvs-cli window hide --expected-revision <n> --json
+plvs-cli window show --expected-revision <n> --json
+```
+
+A size that does not fit the current monitor fails instead of being shrunk. See
+[Window Control](../agent-control/window.md).
+
 UI Navigation inspects and opens temporary application surfaces without exposing clicks, DOM
 selectors, or confirmation actions:
 

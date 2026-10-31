@@ -20,6 +20,7 @@ import { viewHandlers } from "./view.js";
 import { settingsHandlers } from "./settings.js";
 import { moduleHandlers } from "./module.js";
 import { appHandlers } from "./app.js";
+import { windowHandlers } from "./window.js";
 /**
  * Every wire method a running app serves, mapped to its handler.
  *
@@ -43,6 +44,7 @@ export const METHOD_TABLE = Object.freeze({
   ...configHandlers,
   ...measurementHandlers,
   ...uiHandlers,
+  ...windowHandlers,
   ...visualHandlers,
   ...editorDraftHandlers,
   ...developmentFixtureHandlers,

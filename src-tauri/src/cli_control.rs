@@ -88,6 +88,16 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  WindowInspect,
+  WindowResize {
+    width: u64,
+    height: u64,
+    expected_revision: u64,
+  },
+  WindowVisibility {
+    method: String,
+    expected_revision: u64,
+  },
   UiCancel {
     surface_id: String,
     expected_revision: u64,
@@ -397,6 +407,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
+    [command, rest @ ..] if command == "window" => return parse_window_args(rest),
     [command, rest @ ..] if command == "editor-draft" => return parse_editor_draft_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "view" => return parse_view_args(rest),
@@ -418,7 +429,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|ui|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|ui|window|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
 }
 
 fn parse_development_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1088,6 +1099,75 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     _ => unreachable!("UI kind was validated above"),
   }
+}
+
+fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage:\n  plvs-cli window inspect --json\n  plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json\n  plvs-cli window hide --expected-revision <n> --json\n  plvs-cli window show --expected-revision <n> --json";
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(ControlCommand::FamilyHelp("window".to_string()));
+  }
+  if args == ["inspect", "--json"] {
+    return Ok(ControlCommand::WindowInspect);
+  }
+  let [action, options @ ..] = args else {
+    return Err(USAGE.to_string());
+  };
+  if !matches!(action.as_str(), "resize" | "hide" | "show") {
+    return Err(USAGE.to_string());
+  }
+  let resize = action == "resize";
+  let mut width = None;
+  let mut height = None;
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      option @ ("--width" | "--height")
+        if resize && (if option == "--width" { width } else { height }).is_none() =>
+      {
+        let value = options
+          .get(index + 1)
+          .and_then(|raw| raw.parse::<u64>().ok())
+          .filter(|value| (320..=7680).contains(value))
+          .ok_or_else(|| format!("The {option} value must be an integer from 320 to 7680."))?;
+        if option == "--width" {
+          width = Some(value);
+        } else {
+          height = Some(value);
+        }
+        index += 2;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          options.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      value => return Err(format!("Unknown or duplicate window option: {value}")),
+    }
+  }
+  if !json {
+    return Err("Window actions require --json.".to_string());
+  }
+  let expected_revision =
+    expected_revision.ok_or_else(|| "Window actions require --expected-revision.".to_string())?;
+  if !resize {
+    return Ok(ControlCommand::WindowVisibility {
+      method: format!("window.{action}"),
+      expected_revision,
+    });
+  }
+  Ok(ControlCommand::WindowResize {
+    width: width.ok_or_else(|| "The window resize action requires --width.".to_string())?,
+    height: height.ok_or_else(|| "The window resize action requires --height.".to_string())?,
+    expected_revision,
+  })
 }
 
 fn parse_text_control_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -3428,7 +3508,8 @@ impl ControlFailure {
         | "deviceUnavailable"
         | "fixtureUnavailable"
         | "fixtureConflict"
-        | "fixtureResetUnsafe",
+        | "fixtureResetUnsafe"
+        | "windowSizeUnavailable",
       ) => 4,
       (_, "timeout" | "cancelled" | "uiNotSettled") => 5,
       _ => 1,
@@ -3470,6 +3551,9 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiShowToolbarMenu { .. } => "ui.show.toolbarMenu".to_string(),
     ControlCommand::UiShowDockToolbar { .. } => "ui.show.dockToolbar".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
+    ControlCommand::WindowInspect => "window.inspect".to_string(),
+    ControlCommand::WindowResize { .. } => "window.resize".to_string(),
+    ControlCommand::WindowVisibility { method, .. } => method.clone(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
     ControlCommand::EditorDraftRead { method, .. }
     | ControlCommand::EditorDraftMutation { method, .. } => method.clone(),
@@ -3567,6 +3651,7 @@ fn request_for_command<R: Read>(
     ControlCommand::Capabilities
     | ControlCommand::Inspect
     | ControlCommand::UiInspect
+    | ControlCommand::WindowInspect
     | ControlCommand::MeasurementRead { .. }
     | ControlCommand::ViewRead { .. }
     | ControlCommand::ModuleList
@@ -3729,6 +3814,18 @@ fn request_for_command<R: Read>(
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
+    ControlCommand::WindowResize {
+      width,
+      height,
+      expected_revision,
+    } => serde_json::json!({
+      "width": width,
+      "height": height,
+      "expectedRevision": expected_revision,
+    }),
+    ControlCommand::WindowVisibility {
+      expected_revision, ..
+    } => serde_json::json!({ "expectedRevision": expected_revision }),
     ControlCommand::DevFixtureEstablish {
       name,
       expected_revision,
@@ -5210,6 +5307,51 @@ mod tests {
       })
     );
 
+    let resize = parse_control_args(&args(&[
+      "window",
+      "resize",
+      "--width",
+      "1600",
+      "--height",
+      "900",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&resize), "window.resize");
+    assert_eq!(
+      request_for_command(&resize, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "width": 1600, "height": 900, "expectedRevision": 4 })
+    );
+    assert!(parse_control_args(&args(&[
+      "window",
+      "resize",
+      "--width",
+      "100",
+      "--height",
+      "900",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
+    let hide = parse_control_args(&args(&[
+      "window",
+      "hide",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&hide), "window.hide");
+    assert_eq!(
+      parse_control_args(&args(&["window", "inspect", "--json"])),
+      Ok(ControlCommand::WindowInspect)
+    );
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -5560,6 +5702,7 @@ mod tests {
         "main".to_string()
       }
       "n" => "0".to_string(),
+      "css-px" => "800".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
     }
   }

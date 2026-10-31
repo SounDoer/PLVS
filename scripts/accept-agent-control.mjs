@@ -154,6 +154,7 @@ export async function runReadContract(run) {
     for (const item of entries) await run([family, "describe", item.id, "--json"]);
   }
   for (const args of [
+    ["window", "inspect"],
     ["measurement", "describe"],
     ["measurement", "inspect"],
     ["view", "describe"],

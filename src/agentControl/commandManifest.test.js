@@ -16,8 +16,8 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(115);
-    expect(runningAppCommandEntries).toHaveLength(110);
+    expect(commandEntries).toHaveLength(119);
+    expect(runningAppCommandEntries).toHaveLength(114);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
   });

@@ -164,6 +164,28 @@ describe("normalizeAgentControlRequest", () => {
     );
   });
 
+  describe("Window Control requests", () => {
+    it("accepts a CSS pixel size within bounds and refuses anything else", () => {
+      const params = { width: 1280, height: 720, expectedRevision: 2 };
+      expect(normalizeAgentControlRequest(request("window.resize", params))).toEqual({
+        ok: true,
+        request: { id: "req-1", method: "window.resize", params },
+      });
+      for (const invalid of [{ width: 319 }, { height: 7681 }, { width: 1280.5 }]) {
+        expect(
+          normalizeAgentControlRequest(request("window.resize", { ...params, ...invalid }))
+        ).toMatchObject({ ok: false, error: { reason: "invalidParams" } });
+      }
+      expect(
+        normalizeAgentControlRequest(request("window.hide", { expectedRevision: 2, width: 1 }))
+      ).toMatchObject({ ok: false, error: { path: "$.params.width" } });
+      expect(normalizeAgentControlRequest(request("window.show", {}))).toMatchObject({
+        ok: false,
+        error: { reason: "revisionRequired" },
+      });
+    });
+  });
+
   describe("UI navigation requests", () => {
     it.each([
       ["ui.show.settings", { section: "appearance" }],

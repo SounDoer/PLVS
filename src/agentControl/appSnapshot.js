@@ -7,6 +7,7 @@ import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { runningAppCommandEntries } from "./commandManifest.js";
 import { buildModuleList } from "./moduleControl.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
+import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 
 /**
  * @param {string} featureGate
@@ -113,6 +114,18 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 toolbarMenu: hasMethod("ui.show.toolbarMenu") ? { menus: TOOLBAR_MENUS } : false,
                 dockToolbar: hasMethod("ui.show.dockToolbar"),
               },
+            },
+          }
+        : {}),
+      ...(hasMethod("window.inspect")
+        ? {
+            window: {
+              inspect: true,
+              resize: hasMethod("window.resize")
+                ? { minimum: WINDOW_SIZE_MIN, maximum: WINDOW_SIZE_MAX, unit: "cssPx" }
+                : false,
+              hide: hasMethod("window.hide"),
+              show: hasMethod("window.show"),
             },
           }
         : {}),

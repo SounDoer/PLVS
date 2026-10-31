@@ -140,8 +140,8 @@ the complete resulting `state.view`, related runtime/availability, and compact P
 
 ## Deliberate exclusions
 
-- Window bounds, maximized state, monitor placement, and window movement. Native geometry and
-  chrome ordering require a separate Window Control decision.
+- Window size and visibility, which belong to [Window Control](window.md). Monitor placement and
+  window movement remain outside Agent Control.
 - Workspace panel-size pins. They belong to Workspace structure, despite sharing the word
   "pinned" internally.
 - Fullscreen, active tabs, open popovers/sheets/editors, hover state, and whether auto-hidden chrome
