@@ -12,15 +12,15 @@ the code wins — fix the document.
 These describe how PLVS works right now. Changing the behaviour they describe and leaving them
 alone makes them wrong, so they are updated in the same commit as the change.
 
-| File                                               | Covers                                                            |
-| -------------------------------------------------- | ----------------------------------------------------------------- |
-| [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system      |
-| [design-tokens.md](design-tokens.md)               | Desktop tokens, Theme structure and text casing                   |
-| [glossary.md](glossary.md)                         | User-facing terms and their Chinese subtitle and voice-over forms |
-| [website-design.md](website-design.md)             | Website tokens, layout rules and browsing patterns                |
-| [pitfalls.md](pitfalls.md)                         | Counter-intuitive behaviour and the incident context behind rules |
-| [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling       |
-| [ffmpeg-sidecar-build.md](ffmpeg-sidecar-build.md) | How the bundled FFmpeg sidecar is built and fetched               |
+| File                                               | Covers                                                                 |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system           |
+| [design-tokens.md](design-tokens.md)               | Desktop tokens, Theme structure and text casing                        |
+| [glossary.md](glossary.md)                         | User-facing terms and their Chinese forms for subtitles and voice-over |
+| [website-design.md](website-design.md)             | Website tokens, layout rules and browsing patterns                     |
+| [pitfalls.md](pitfalls.md)                         | Counter-intuitive behaviour and the incident context behind rules      |
+| [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling            |
+| [ffmpeg-sidecar-build.md](ffmpeg-sidecar-build.md) | How the bundled FFmpeg sidecar is built and fetched                    |
 
 Keep this group small. Every file added here is one more thing that can go stale.
 
