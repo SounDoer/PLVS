@@ -1,6 +1,6 @@
 //! Moves the operating-system pointer for Agent Control's tutorial recording.
 //!
-//! The pointer only travels: nothing here presses a button, scrolls or types (ADR 0042). The frontend
+//! The pointer only travels: nothing here presses a button, scrolls or types (ADR 0043). The frontend
 //! resolves a named PLVS target to a point in CSS pixels inside the main WebView; this module turns
 //! that into screen coordinates and moves the pointer there along an eased path.
 

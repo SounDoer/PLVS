@@ -1,4 +1,4 @@
-# ADR 0042: The Tutorial Pointer Moves but Never Clicks
+# ADR 0043: The Tutorial Pointer Moves but Never Clicks
 
 **Status:** Accepted
 

@@ -43,7 +43,7 @@ Finder, the system file dialog.
 never presses, scrolls or types. The action that follows goes through its Agent Control command, so
 the app changes state exactly as it does today, and hover feedback, hover tips and the chart hover
 probe appear in the recording by themselves. An ADR records the boundary
-(`docs/adr/0042-tutorial-pointer-moves-but-never-clicks.md`): Agent Control may move the pointer,
+(`docs/adr/0043-tutorial-pointer-moves-but-never-clicks.md`): Agent Control may move the pointer,
 never press, scroll or type, because injected presses can land in other applications.
 
 Windows moves the pointer with `SetCursorPos`, which the system follows with mouse-move messages. On

@@ -6,7 +6,7 @@ export const POINTER_DURATION_MAX_MS = 3000;
 
 /**
  * Moves the system pointer onto a named target for unattended tutorial recording. It never presses,
- * scrolls or types (ADR 0042): the action that follows is a separate Agent Control command.
+ * scrolls or types (ADR 0043): the action that follows is a separate Agent Control command.
  *
  * @param {import("../bridge/types.js").BridgeContext} ctx
  */
