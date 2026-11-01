@@ -15,6 +15,7 @@ function context(params, pointerControl) {
   });
 }
 
+/** @returns {any} */
 function control(overrides = {}) {
   return {
     available: true,
