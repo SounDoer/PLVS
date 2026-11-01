@@ -7,10 +7,13 @@
 use std::time::{Duration, Instant};
 use tauri::{Manager, Runtime, WebviewWindow};
 
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 const STEP: Duration = Duration::from_millis(8);
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 pub const MAX_DURATION_MS: u64 = 3000;
 
 /// Ease-in-out cubic: a person's pointer accelerates out of rest and settles onto the target.
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 pub fn ease(progress: f64) -> f64 {
   let t = progress.clamp(0.0, 1.0);
   if t < 0.5 {
@@ -21,6 +24,7 @@ pub fn ease(progress: f64) -> f64 {
 }
 
 /// The intermediate points of one move, ending exactly on the target.
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 pub fn path(from: (f64, f64), to: (f64, f64), duration_ms: u64) -> Vec<(f64, f64)> {
   let steps = (duration_ms.min(MAX_DURATION_MS) / STEP.as_millis() as u64).max(1);
   (1..=steps)
