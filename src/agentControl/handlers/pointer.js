@@ -35,9 +35,18 @@ async function move(ctx) {
     throw semanticFailure("uiTargetNotVisible", "$.params.target", "The window is hidden.", -32042);
   }
   const { target } = request.params;
-  const located = isUiTargetId(target)
+  let located = isUiTargetId(target)
     ? resolveUiTarget(target, pointerControl.accessoryTargets)
     : { found: false };
+  if (!located.found && target.startsWith("toolbar:") && pointerControl.revealToolbar) {
+    // Auto-hide Controls unmounts the toolbar; reveal it as the pointer heading there would.
+    pointerControl.revealToolbar();
+    const deadline = Date.now() + 1000;
+    while (!located.found && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 16));
+      located = resolveUiTarget(target, pointerControl.accessoryTargets);
+    }
+  }
   if (!located.found) {
     throw semanticFailure(
       "uiTargetNotFound",

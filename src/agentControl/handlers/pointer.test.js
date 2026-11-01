@@ -74,6 +74,22 @@ describe("pointer move", () => {
     expect(response.result.surface).toBe("dock-header");
   });
 
+  it("reveals an auto-hidden toolbar before moving onto its button", async () => {
+    const pointerControl = control({
+      revealToolbar: vi.fn(() => {
+        document.body.innerHTML = `<button data-ui-target="toolbar:views"></button>`;
+        document.querySelector("button").getBoundingClientRect = () => new DOMRect(650, 8, 28, 28);
+      }),
+    });
+
+    const response = await pointerHandlers["pointer.move"].run(
+      context({ target: "toolbar:views", expectedRevision: 0 }, pointerControl)
+    );
+
+    expect(pointerControl.revealToolbar).toHaveBeenCalledOnce();
+    expect(response.result.point).toEqual({ x: 664, y: 22 });
+  });
+
   it("uses the default duration and refuses undeclared or hidden targets", async () => {
     document.body.innerHTML = `<button data-ui-target="toolbar:clear"></button>`;
     document.querySelector("button").getBoundingClientRect = () => new DOMRect(0, 0, 0, 0);

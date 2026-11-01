@@ -39,7 +39,9 @@ that window's position. A Dock editor reuses the same row names as the normal me
 
 `pointer move --target <id> [--duration-ms <n>]` moves from wherever the pointer is to the centre
 of the target along an eased path and returns when it arrives. The default is 600 ms; 0 jumps.
-Hidden targets fail with `uiTargetNotVisible` and undeclared ones with `uiTargetNotFound`. A move
+With Auto-hide Controls on, a `toolbar:` target reveals the toolbar first, as a pointer reaching the
+top of the window does. Hidden targets fail with `uiTargetNotVisible` and undeclared ones with
+`uiTargetNotFound`. A move
 leaves the global revision and the UI generation unchanged, but requires `--expected-revision`.
 
 The pointer moves for real: hover feedback, hover tips and chart hover probes appear because the
