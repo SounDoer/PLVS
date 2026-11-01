@@ -1,8 +1,8 @@
 {
   "version": 2,
   "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
-  "renderedAt": "2026-10-30T04:05:54.110Z",
-  "commit": "00f64308063bb6f06b6791ed0dd9bc3a98dd3cd4",
+  "renderedAt": "2026-11-01T12:28:14.974Z",
+  "commit": "002c8cb81b8ee2d07482e4fa504fbb9438c157b9",
   "chromium": "156.0.8078.4",
   "recipe": "scripts/marketing/recipes/homepage-images.json",
   "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",
@@ -18,7 +18,7 @@
       "snapshotOffsetSec": 22,
       "width": 1590,
       "height": 880,
-      "rawSha256": "cdc2be2aa17dab057b436fc5e0bc4feabdeabae8e7d4e4ee95b23e22e0c35928"
+      "rawSha256": "40a493340c7e579dce2e847d49f68b298905ba0d52b7e382710f791e29ee419b"
     },
     "frequency-full": {
       "scene": "workspace",
@@ -27,7 +27,7 @@
       "snapshotOffsetSec": 5,
       "width": 1590,
       "height": 438,
-      "rawSha256": "47d4695026a8b07800ef250f965f72edc3ef85aefa3ab7e524376586fc978618"
+      "rawSha256": "ea1a413db14c470bf0caab1adbceda4a433a3a8c6814431ef8fa49a7a1f6f924"
     },
     "frequency-detail": {
       "scene": "workspace",
@@ -36,7 +36,7 @@
       "snapshotOffsetSec": 5,
       "width": 1590,
       "height": 438,
-      "rawSha256": "f9f753905a86ef21f15982508019abdaa107c7775c8dd4771efa24cbb4a3f577"
+      "rawSha256": "d0cbcac19570071da2d989a2808d80b6c1a7f2835d153c3afe2b774432fa8640"
     },
     "multichannel": {
       "scene": "workspace",
@@ -44,7 +44,7 @@
       "interfaceSize": "large",
       "width": 1590,
       "height": 795,
-      "rawSha256": "0099b6545a055b2646b2e02b4ca221cdaf7ce8df7c94fc36f1659ce126447d8d"
+      "rawSha256": "36fc2d913b004f2ae4c2e25d42a0a6b4108e63c86d9cbd56924619de09f87cdd"
     },
     "rules-editor": {
       "scene": "workspace",
@@ -52,7 +52,7 @@
       "interfaceSize": "default",
       "width": 560,
       "height": 500,
-      "rawSha256": "336287738544c76dc9a240f8812c7b4a66bd48fa615d684256c1c31da8487e01"
+      "rawSha256": "19232a21b0c062ea154479f1e728d638e9d7a70feb21f9a02e7ebe88160cff3a"
     }
   }
 }

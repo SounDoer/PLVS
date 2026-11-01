@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-01
+
+### Added
+
+- Quick Tour introduces the main Live workspace in ten steps without blocking normal operation.
+  New installations receive an invitation after choosing update preferences; existing users can
+  start it from Settings. Menus and editors temporarily pause the tour without losing its place.
+- Agent Control can inspect, resize, hide and show the main window, check for updates, reset
+  Workspace and Dock layouts, and open toolbar menus and named controls. Tutorial commands locate
+  controls, move the system pointer, step through Quick Tour, and reproduce chart gestures, with
+  paced axis, panel and Snapshot changes for recordings.
+- Dock recording on Windows and macOS includes the strip, toolbar and open editor in one frame.
+
+### Changed
+
+- Panel gesture help follows the current panel mode and visible controls. Hover previews the
+  reference; clicking pins it for reading and keyboard navigation.
+- Toolbar and settings labels consistently use Panels, Sources and Hide Window Frame.
+- Homepage and Sharesets images use refreshed measured audio fixtures. Homepage images are rendered
+  from the app's panels through a reproducible recipe, and preview-only code stays out of the app
+  bundle.
+
+### Fixed
+
+- On macOS, Agent Control screenshots include the complete visible Dock accessory when the screen
+  constrains its size. Pointer targets align with the actual webview client area in framed windows
+  and Dock accessories, and pointer movement reveals auto-hidden controls before targeting them.
+
 ## [0.23.4] - 2026-10-28
 
 ### Added

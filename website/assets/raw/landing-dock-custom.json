@@ -1,8 +1,8 @@
 {
   "version": 2,
   "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
-  "renderedAt": "2026-10-30T04:05:54.110Z",
-  "commit": "00f64308063bb6f06b6791ed0dd9bc3a98dd3cd4",
+  "renderedAt": "2026-11-01T12:28:14.974Z",
+  "commit": "002c8cb81b8ee2d07482e4fa504fbb9438c157b9",
   "chromium": "156.0.8078.4",
   "recipe": "scripts/marketing/recipes/homepage-images.json",
   "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",
@@ -17,6 +17,6 @@
   "snapshotOffsetSec": 0,
   "width": 2560,
   "height": 189,
-  "rawSha256": "66d786fa73cf984ee05f0c66c3d65b3980d41127eaef94463fb118713fbdc3f3",
-  "sha256": "acc870888c4f049da8b8e362aa9241ba18c6f8e21b0cb681c2e09936dc4e93e4"
+  "rawSha256": "156dcd22833ed9845ad2f65162cac6f406b15ac12e99d070af940deac0a5ae7d",
+  "sha256": "4dfead955e1c53eb1a591abfed61095928a367cdf4fc8163a4bf8940a17f8077"
 }
