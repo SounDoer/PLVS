@@ -31,7 +31,8 @@ pub fn path(from: (f64, f64), to: (f64, f64), duration_ms: u64) -> Vec<(f64, f64
     .collect()
 }
 
-/// Screen coordinates of a point given in CSS pixels inside the main WebView.
+/// Windows uses physical pixels, including the WebView's text scaling.
+#[cfg(not(target_os = "macos"))]
 fn screen_point<R: Runtime>(
   window: &WebviewWindow<R>,
   x: f64,
@@ -41,20 +42,44 @@ fn screen_point<R: Runtime>(
   let inner = window
     .inner_position()
     .map_err(|error| format!("window position: {error}"))?;
-  if cfg!(target_os = "macos") {
-    // Core Graphics works in points; CSS pixels are points in a macOS WebView.
-    let scale = window
-      .scale_factor()
-      .map_err(|error| format!("window scale: {error}"))?;
-    Ok((inner.x as f64 / scale + x, inner.y as f64 / scale + y))
-  } else {
-    // Windows works in physical pixels. The WebView's own scale includes text scaling, which the
-    // monitor scale factor does not, so the frontend provides it.
-    Ok((
-      inner.x as f64 + x * webview_scale,
-      inner.y as f64 + y * webview_scale,
-    ))
+  Ok((
+    inner.x as f64 + x * webview_scale,
+    inner.y as f64 + y * webview_scale,
+  ))
+}
+
+/// Resolve the real native client origin rather than treating the window's top as the WebView top.
+#[cfg(target_os = "macos")]
+async fn screen_point<R: Runtime>(
+  window: &WebviewWindow<R>,
+  x: f64,
+  y: f64,
+) -> Result<(f64, f64), String> {
+  unsafe extern "C" {
+    fn plvs_macos_pointer_screen_point(
+      webview: *mut std::ffi::c_void,
+      x: f64,
+      y: f64,
+      result: *mut f64,
+    ) -> bool;
   }
+  let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+  window
+    .with_webview(move |webview| {
+      let mut point = [0.0; 2];
+      let valid =
+        unsafe { plvs_macos_pointer_screen_point(webview.inner(), x, y, point.as_mut_ptr()) };
+      let _ = sender.send(if valid {
+        Ok((point[0], point[1]))
+      } else {
+        Err("pointer WebView geometry unavailable".to_string())
+      });
+    })
+    .map_err(|error| format!("pointer geometry: {error}"))?;
+  tauri::async_runtime::spawn_blocking(move || receiver.recv_timeout(Duration::from_secs(2)))
+    .await
+    .map_err(|error| format!("pointer geometry: {error}"))?
+    .map_err(|error| format!("pointer geometry: {error}"))?
 }
 
 #[tauri::command]
@@ -84,9 +109,16 @@ pub async fn move_pointer<R: Runtime>(
     .app_handle()
     .get_webview_window(&label)
     .ok_or_else(|| format!("{label} window unavailable"))?;
+  #[cfg(not(target_os = "macos"))]
   let scale = webview_scale
     .filter(|value| value.is_finite() && *value > 0.0)
     .unwrap_or(1.0);
+  #[cfg(target_os = "macos")]
+  let target = {
+    let _ = webview_scale;
+    screen_point(&window, x, y).await?
+  };
+  #[cfg(not(target_os = "macos"))]
   let target = screen_point(&window, x, y, scale)?;
   tauri::async_runtime::spawn_blocking(move || platform::travel(target, duration_ms))
     .await
@@ -234,5 +266,49 @@ mod tests {
     assert_eq!(*points.last().unwrap(), (100.0, 50.0));
     assert_eq!(path((5.0, 5.0), (9.0, 9.0), 0), vec![(9.0, 9.0)]);
     assert_eq!(path((0.0, 0.0), (1.0, 1.0), 60_000).len(), 375);
+  }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod macos_geometry_tests {
+  unsafe extern "C" {
+    fn plvs_macos_pointer_point_from_client(
+      client: *const f64,
+      x: f64,
+      y: f64,
+      primary_top: f64,
+      result: *mut f64,
+    );
+  }
+
+  #[test]
+  fn framed_window_targets_start_below_the_native_title_bar() {
+    // Outer frame top is 664; the visible WebView starts 28 points below it at 636.
+    let mut result = [0.0; 2];
+    unsafe {
+      plvs_macos_pointer_point_from_client(
+        [139.0, 38.0, 1001.0, 598.0].as_ptr(),
+        943.0,
+        22.0,
+        720.0,
+        result.as_mut_ptr(),
+      );
+    }
+    assert_eq!(result, [1082.0, 106.0]);
+  }
+
+  #[test]
+  fn frameless_dock_targets_keep_their_own_secondary_display_origin() {
+    let mut result = [0.0; 2];
+    unsafe {
+      plvs_macos_pointer_point_from_client(
+        [-1920.0, 200.0, 1920.0, 36.0].as_ptr(),
+        1800.0,
+        18.0,
+        1080.0,
+        result.as_mut_ptr(),
+      );
+    }
+    assert_eq!(result, [-120.0, 862.0]);
   }
 }

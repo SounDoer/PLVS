@@ -51,5 +51,7 @@ pointer rests there. While a move runs, the pointer is not the user's.
 
 Windows moves the pointer with `SetCursorPos`, which the system follows with ordinary mouse-move
 messages. macOS warps it and posts a mouse-moved event; the event, and with it hover, needs
-Accessibility permission for the running build. Linux reports the capability as unavailable,
+Accessibility permission for the running build. macOS resolves each target from its owning
+WebView's visible native client, so native title bars do not shift the pointer above its control.
+Linux reports the capability as unavailable,
 matching its recording, which cannot include the pointer.

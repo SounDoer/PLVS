@@ -269,6 +269,7 @@ plvs-cli update check --expected-revision <n> --json
 
 See [Update Control](../agent-control/update.md).
 
+On macOS, pointer targets align with the actual client area in framed windows and Dock accessories.
 Pointer Control moves the system pointer onto a named control for unattended tutorial recording,
 without pressing anything; the operation itself is a separate command:
 
@@ -342,7 +343,9 @@ Theme-only history, and the Cancel/discard workflow.
 
 Visual Capture saves the actual rendered pixels of the running app. Dock accessory screenshots
 capture the complete visible client area, including when the screen constrains the editor's size.
-Screenshots and recording are available on Windows, macOS, and Linux:
+Screenshots and recording are available on Windows, macOS, and Linux. The recording-only `dock`
+target is available on Windows and macOS and includes the strip, toolbar, open editor, and any
+desktop visible behind transparent surfaces:
 
 ```powershell
 plvs-cli visual describe --json

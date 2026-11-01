@@ -5,7 +5,8 @@ available for screenshots and recordings on Windows, macOS, and experimental Lin
 Screenshots are PNG files; recordings are H.264 MP4 files. Every platform supports either no
 audio or the same Live source PCM that PLVS measures. Linux recording excludes the system pointer
 and needs the distribution FFmpeg (see Audio). Visual Capture does not independently capture
-File-analysis audio, microphones, arbitrary system audio, other windows, or raw canvas/DOM data.
+File-analysis audio, microphones, arbitrary system audio, or raw canvas/DOM data. Dock region
+recordings also include any desktop or other windows visible within that region.
 
 ## Commands
 
@@ -27,11 +28,11 @@ artifact. `recording.unavailable` is `null` while recording is available; otherw
 - `panel` is one currently rendered Panel body selected by `--panel-id`; hidden inactive tabs fail.
 - `dock-header`, `dock-editor`, and `dock-update` are the complete client areas of those accessory WebViews. They
   are screenshot-only and must currently exist, be ready, and be visible.
-- `dock` is recording-only and Windows-only so far: the screen region of the Dock strip extended
+- `dock` is recording-only on Windows and macOS: the screen region of the Dock strip extended
   toward the middle of the screen by the toolbar and the tallest editor, so the toolbar and an
   open editor appear in the same take. The region is fixed for the take; it is screen pixels, so
-  whatever lies behind transparent Dock surfaces is recorded too. It requires Dock form. macOS and
-  Linux do not advertise it and refuse it with `targetUnavailable`.
+  whatever lies behind transparent Dock surfaces is recorded too. It requires Dock form.
+  Linux does not advertise it and refuses it with `targetUnavailable`.
 
 Capture preserves actual rendered pixels. Open menus, PLVS-rendered cursors, hover state, selection
 hints, overlays, and the recording indicator remain visible when they intersect the target. There

@@ -77,7 +77,7 @@ impl VisualCapturePlatform for MacOsPlatform {
       recording: RecordingCapabilities {
         available: true,
         permission: recording_permission(),
-        targets: vec!["main", "workspace"],
+        targets: vec!["main", "workspace", "dock"],
         audio_sources: vec!["none", "measuredSource"],
         cursor_modes: vec!["none", "visible"],
         unavailable: None,
@@ -263,11 +263,15 @@ mod tests {
   }
 
   #[test]
-  fn macos_capabilities_expose_measured_source_window_recording() {
+  fn macos_capabilities_expose_measured_source_window_and_dock_recording() {
     let capabilities = MacOsPlatform.capabilities();
     assert!(capabilities.screenshot.available);
     assert_eq!(capabilities.screenshot.targets.len(), 6);
     assert!(capabilities.recording.available);
+    assert_eq!(
+      capabilities.recording.targets,
+      vec!["main", "workspace", "dock"]
+    );
     assert_eq!(
       capabilities.recording.audio_sources,
       vec!["none", "measuredSource"]
@@ -310,7 +314,7 @@ mod tests {
   }
 
   #[test]
-  fn native_recording_stays_window_scoped_and_avoids_system_audio() {
+  fn native_recording_uses_owned_window_or_its_display_and_avoids_system_audio() {
     let source = include_str!(concat!(
       env!("CARGO_MANIFEST_DIR"),
       "/native/macos/visual_capture_bridge.m"
@@ -318,6 +322,8 @@ mod tests {
     assert!(source.contains("candidate.windowID == windowID"));
     assert!(source.contains("candidate.owningApplication.processID =="));
     assert!(source.contains("initWithDesktopIndependentWindow:source"));
+    assert!(source.contains("initWithDisplay:display excludingWindows:@[]"));
+    assert!(source.contains("candidate.displayID == displayID"));
     assert!(source.contains("configuration.capturesAudio = NO"));
     assert!(source.contains("SCStreamFrameInfoStatus"));
     assert!(source.contains("SCFrameStatusComplete"));
