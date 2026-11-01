@@ -68,18 +68,7 @@ jobs:
       - name: Record run identity
         run: |
           mkdir -p artifacts/soak
-          node --input-type=module -e '
-            import { writeFileSync } from "node:fs";
-            writeFileSync("artifacts/soak/run.json", JSON.stringify({
-              sourceSha: process.env.COMMIT_SHA,
-              platform: process.env.PLATFORM,
-              runId: process.env.GITHUB_RUN_ID,
-              runAttempt: process.env.GITHUB_RUN_ATTEMPT,
-              seconds: 14400,
-              every: 10,
-              startedAt: new Date().toISOString()
-            }, null, 2) + "\n");
-          '
+          node scripts/capture-soak-baselines.mjs record
 
       - name: Rust toolchain
         run: rustup toolchain install --no-self-update
@@ -101,6 +90,9 @@ jobs:
 
       - name: Four-hour capture soak
         run: npm run soak:capture -- --seconds 14400 --every 10 --wait 2>&1 | tee artifacts/soak/soak.log
+
+      - name: Compare archived capture baselines
+        run: node scripts/capture-soak-baselines.mjs compare --run-dir artifacts/soak
 
       - name: Summarize the run
         if: always()
