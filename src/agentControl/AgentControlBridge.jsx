@@ -92,7 +92,7 @@ export function AgentControlBridge() {
     ]
   );
 
-  const { view, applyViewState, reveal: chromeReveal } = useWindowChrome();
+  const { view, applyViewState, reveal: chromeReveal = null } = useWindowChrome();
   const { pinned, focusView, panelPresentation, surfaceOpacity, glassEnabled } = view;
   const agentControlViewContext = useMemo(
     () => ({
@@ -291,9 +291,9 @@ export function AgentControlBridge() {
       move: movePointer,
       accessoryTargets: getAccessoryTargets,
       // An auto-hidden toolbar appears when a person's pointer reaches the top of the window.
-      revealToolbar: chromeReveal.showControls,
+      revealToolbar: chromeReveal?.showControls,
     }),
-    [chromeReveal.showControls, getAccessoryTargets, runtime.platform, windowVisible]
+    [chromeReveal?.showControls, getAccessoryTargets, runtime.platform, windowVisible]
   );
   const updateControl = useMemo(
     () => ({
