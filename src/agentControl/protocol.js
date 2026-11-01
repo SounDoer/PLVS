@@ -1,5 +1,9 @@
 import { DOCK_MIN_HEIGHT, DOCK_MAX_HEIGHT } from "../dock/dockSizing.js";
-import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
+import {
+  VISUAL_RECORDING_TARGET_KINDS,
+  VISUAL_SCREENSHOT_TARGET_KINDS,
+  normalizeVisualTarget,
+} from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
 import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
@@ -636,6 +640,12 @@ export function normalizeAgentControlRequest(input) {
     if (!normalizedTarget.ok) {
       return invalidParams(`$.params.target${normalizedTarget.path}`, normalizedTarget.message);
     }
+    if (!VISUAL_SCREENSHOT_TARGET_KINDS.includes(normalizedTarget.target.kind)) {
+      return invalidParams(
+        "$.params.target.kind",
+        `Screenshot target.kind must be one of: ${VISUAL_SCREENSHOT_TARGET_KINDS.join(", ")}.`
+      );
+    }
     if (
       input.params.expectedRevision !== undefined &&
       (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
@@ -686,7 +696,7 @@ export function normalizeAgentControlRequest(input) {
     if (!VISUAL_RECORDING_TARGET_KINDS.includes(normalizedTarget.target.kind)) {
       return invalidParams(
         "$.params.target.kind",
-        "Recording target.kind must be one of: main, workspace."
+        `Recording target.kind must be one of: ${VISUAL_RECORDING_TARGET_KINDS.join(", ")}.`
       );
     }
     if (

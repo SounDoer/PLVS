@@ -230,6 +230,12 @@ pub async fn visual_recording_start(
       "Recordings can only capture the PLVS main window.",
     ));
   }
+  if request.screen_region && !cfg!(target_os = "windows") {
+    return Err(NativeCaptureError::recording(
+      "targetUnavailable",
+      "Recording the Dock is not supported on this platform yet.",
+    ));
+  }
   let audio_source = request.resolved_audio_source();
   if audio_source == RecordingAudioSource::MeasuredSource
     && request.source_mode == RecordingSourceMode::File
@@ -357,6 +363,7 @@ pub async fn visual_recording_start(
         audio_origin_ns,
         audio_receiver,
         request.audio_state.silence_reason(),
+        request.screen_region,
       )
     })
     .await;
@@ -693,6 +700,7 @@ mod tests {
       cursor: recording::state::RecordingCursorMode::None,
       source_mode: RecordingSourceMode::Live,
       audio_state: recording::RecordingAudioState::Active,
+      screen_region: false,
     };
     assert_eq!(output_canvas(&request).unwrap(), (126, 64));
   }

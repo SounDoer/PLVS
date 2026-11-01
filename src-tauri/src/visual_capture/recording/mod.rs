@@ -69,6 +69,10 @@ pub struct RecordingStartRequest {
   pub source_mode: RecordingSourceMode,
   #[serde(default)]
   pub audio_state: RecordingAudioState,
+  /// The rect is a screen region in main-client CSS pixels that may extend beyond the client area:
+  /// the Dock strip with its toolbar and editor. Windows only so far.
+  #[serde(default)]
+  pub screen_region: bool,
 }
 
 impl RecordingStartRequest {

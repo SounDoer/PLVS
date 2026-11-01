@@ -1559,6 +1559,7 @@ describe("useAgentControlBridge", () => {
         cursor: "none",
         sourceMode: "live",
         audioState: "liveStopped",
+        screenRegion: false,
       });
       expect(response.result.recording).toMatchObject({
         recordingId,

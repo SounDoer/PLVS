@@ -50,7 +50,7 @@ import {
  */
 export function AgentControlBridge() {
   const { runtime, enabled, platformCapabilities, setRecordingState } = useAgentControlState();
-  const { visualRuntimeRef } = useDockAccessories();
+  const { visualRuntimeRef, getAccessoryTargets } = useDockAccessories();
   const editorDraft = useEditorDraftRegistry();
   const {
     docked,
@@ -289,8 +289,9 @@ export function AgentControlBridge() {
       windowVisible,
       scale: () => globalThis.devicePixelRatio || 1,
       move: movePointer,
+      accessoryTargets: getAccessoryTargets,
     }),
-    [runtime.platform, windowVisible]
+    [getAccessoryTargets, runtime.platform, windowVisible]
   );
   const updateControl = useMemo(
     () => ({

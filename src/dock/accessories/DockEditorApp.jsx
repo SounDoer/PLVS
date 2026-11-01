@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { POPOVER_SURFACE_CLASS } from "../../components/ui/surfaceStyles.js";
 import { cn } from "../../lib/utils.js";
 import { useAccessoryClient } from "./useAccessoryClient.js";
+import { useAccessoryTargetReport } from "./useAccessoryTargetReport.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
 import { DockModuleSettings } from "../editors/DockModuleSettings.jsx";
 import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
@@ -77,6 +78,7 @@ export function DockEditorApp() {
   const lastSizeRef = useRef(null);
   const onHoverModule = useCallback((panelId) => action("hover-module", { panelId }), [action]);
   useSuppressNativeContextMenu();
+  useAccessoryTargetReport(action);
 
   useEffect(() => {
     const onKeyDown = (event) => {

@@ -1,5 +1,5 @@
 import { semanticFailure } from "../bridge/failures.js";
-import { isUiTargetId, locateUiTarget } from "../../uiNavigation/uiTargets.js";
+import { isUiTargetId, resolveUiTarget } from "../../uiNavigation/uiTargets.js";
 
 export const POINTER_DURATION_DEFAULT_MS = 600;
 export const POINTER_DURATION_MAX_MS = 3000;
@@ -35,7 +35,9 @@ async function move(ctx) {
     throw semanticFailure("uiTargetNotVisible", "$.params.target", "The window is hidden.", -32042);
   }
   const { target } = request.params;
-  const located = isUiTargetId(target) ? locateUiTarget(target) : { found: false };
+  const located = isUiTargetId(target)
+    ? resolveUiTarget(target, pointerControl.accessoryTargets)
+    : { found: false };
   if (!located.found) {
     throw semanticFailure(
       "uiTargetNotFound",
@@ -59,10 +61,22 @@ async function move(ctx) {
     y: located.rect.y + located.rect.height / 2,
   };
   const durationMs = request.params.durationMs ?? POINTER_DURATION_DEFAULT_MS;
-  await pointerControl.move({ ...point, durationMs, webviewScale: pointerControl.scale() });
+  await pointerControl.move({
+    ...point,
+    durationMs,
+    webviewScale: pointerControl.scale(),
+    windowLabel: located.surface,
+  });
   return {
     requestId,
-    result: { revision: clock.current(), target, point, durationMs, rect: located.rect },
+    result: {
+      revision: clock.current(),
+      target,
+      surface: located.surface,
+      point,
+      durationMs,
+      rect: located.rect,
+    },
   };
 }
 

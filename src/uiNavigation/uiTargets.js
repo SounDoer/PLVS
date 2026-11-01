@@ -62,6 +62,27 @@ export function listUiTargets(root = globalThis.document) {
 }
 
 /**
+ * Resolves a target in the main WebView first, then in the Dock toolbar and editor WebViews, whose
+ * targets those windows report themselves. `surface` names the WebView the rect belongs to.
+ *
+ * @param {string} id
+ * @param {() => { id: string, rect: any, surface: string }[]} [accessoryTargets]
+ */
+export function resolveUiTarget(id, accessoryTargets = () => []) {
+  const main = locateUiTarget(id);
+  if (main.found) return { ...main, surface: "main" };
+  const accessory = accessoryTargets().find((target) => target.id === id);
+  if (!accessory) return main;
+  return {
+    found: true,
+    visible: true,
+    rect: accessory.rect,
+    viewport: null,
+    surface: accessory.surface,
+  };
+}
+
+/**
  * Where a target is, in CSS pixels relative to the main WebView viewport. A declared but hidden
  * target reports `visible: false`; an undeclared one reports `found: false`.
  */

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { DockHeader } from "./DockHeader.jsx";
 import { useAccessoryClient } from "./useAccessoryClient.js";
+import { useAccessoryTargetReport } from "./useAccessoryTargetReport.js";
 import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
 
 /**
@@ -22,6 +23,7 @@ function readEditorAnchors() {
 export function DockHeaderApp() {
   const { payload, action } = useAccessoryClient("dock-header");
   useSuppressNativeContextMenu();
+  useAccessoryTargetReport(action);
   // Keep the last visible content while native hide is in flight. Publishing Ready/Start into
   // the still-visible window would flash the stopped transport on exit from Snapshot.
   const [visiblePayload, setVisiblePayload] = useState(payload);

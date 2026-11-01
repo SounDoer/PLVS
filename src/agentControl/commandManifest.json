@@ -6516,7 +6516,7 @@
       "id": "visual.recording.start",
       "family": "visual",
       "path": ["visual", "recording", "start"],
-      "usage": "plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json",
+      "usage": "plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json",
       "summary": "Start one bounded PLVS surface recording.",
       "execution": "runningApp",
       "operation": "action",
@@ -6533,7 +6533,7 @@
           "required": true,
           "value": {
             "type": "string",
-            "enum": ["main", "workspace"]
+            "enum": ["main", "workspace", "dock"]
           },
           "mapsTo": "target.kind"
         },

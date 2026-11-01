@@ -28,6 +28,7 @@ const ACTION_TYPES = new Set([
   "update-preferences-save",
   "update-preferences-skip",
   "header-ready",
+  "ui-targets",
   "source-primary",
   "clear",
   "open-update",

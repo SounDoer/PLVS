@@ -1,4 +1,4 @@
-export const VISUAL_TARGET_KINDS = Object.freeze([
+export const VISUAL_SCREENSHOT_TARGET_KINDS = Object.freeze([
   "main",
   "workspace",
   "panel",
@@ -6,10 +6,32 @@ export const VISUAL_TARGET_KINDS = Object.freeze([
   "dockEditor",
   "dockUpdate",
 ]);
-
-export const VISUAL_SCREENSHOT_TARGET_KINDS = VISUAL_TARGET_KINDS;
-export const VISUAL_RECORDING_TARGET_KINDS = Object.freeze(["main", "workspace"]);
+/** `dock` records the strip with its toolbar and editor as one screen region. */
+export const VISUAL_RECORDING_TARGET_KINDS = Object.freeze(["main", "workspace", "dock"]);
+export const VISUAL_TARGET_KINDS = Object.freeze([...VISUAL_SCREENSHOT_TARGET_KINDS, "dock"]);
 export const VISUAL_AUDIO_SOURCES = Object.freeze(["none", "measuredSource"]);
+
+/** Room above (or below) the strip for the Dock toolbar and the tallest Dock editor, in CSS px. */
+export const DOCK_RECORDING_EXTENT_PX = 36 + 640;
+
+/**
+ * The screen region a Dock recording covers, in the strip's own CSS pixels: the strip plus the
+ * toolbar and editor that open toward the middle of the screen. Fixed for the whole take, so an
+ * editor opening or closing never changes the video size.
+ *
+ * @param {{ rect: any, viewport: { width: number, height: number } }} strip
+ * @param {string} edge
+ */
+export function dockRecordingRegion(strip, edge) {
+  const { width, height } = strip.viewport;
+  return {
+    rect:
+      edge === "top"
+        ? { x: 0, y: 0, width, height: height + DOCK_RECORDING_EXTENT_PX }
+        : { x: 0, y: -DOCK_RECORDING_EXTENT_PX, width, height: height + DOCK_RECORDING_EXTENT_PX },
+    viewport: strip.viewport,
+  };
+}
 export const VISUAL_CURSOR_MODES = Object.freeze(["none", "visible"]);
 export const VISUAL_RECORDING_PERMISSIONS = Object.freeze(["granted", "required", "unsupported"]);
 export const VISUAL_RECORDING_STATES = Object.freeze([

@@ -5,6 +5,8 @@ import {
   VISUAL_RECORDING_PERMISSIONS,
   VISUAL_RECORDING_STATES,
   VISUAL_RECORDING_TARGET_KINDS,
+  DOCK_RECORDING_EXTENT_PX,
+  dockRecordingRegion,
   VISUAL_SCREENSHOT_METHODS,
   VISUAL_SCREENSHOT_TARGET_KINDS,
   buildVisualDescription,
@@ -13,6 +15,25 @@ import {
 } from "./visualControl.js";
 
 describe("visual control contract", () => {
+  it("records the Dock strip with room for its toolbar and editor toward the screen centre", () => {
+    const strip = {
+      rect: { x: 0, y: 0, width: 1920, height: 150 },
+      viewport: { width: 1920, height: 150 },
+    };
+    expect(dockRecordingRegion(strip, "bottom").rect).toEqual({
+      x: 0,
+      y: -DOCK_RECORDING_EXTENT_PX,
+      width: 1920,
+      height: 150 + DOCK_RECORDING_EXTENT_PX,
+    });
+    expect(dockRecordingRegion(strip, "top").rect).toEqual({
+      x: 0,
+      y: 0,
+      width: 1920,
+      height: 150 + DOCK_RECORDING_EXTENT_PX,
+    });
+  });
+
   it("freezes the public target, audio, and recording-state vocabularies", () => {
     expect(VISUAL_SCREENSHOT_TARGET_KINDS).toEqual([
       "main",
@@ -22,7 +43,7 @@ describe("visual control contract", () => {
       "dockEditor",
       "dockUpdate",
     ]);
-    expect(VISUAL_RECORDING_TARGET_KINDS).toEqual(["main", "workspace"]);
+    expect(VISUAL_RECORDING_TARGET_KINDS).toEqual(["main", "workspace", "dock"]);
     expect(VISUAL_AUDIO_SOURCES).toEqual(["none", "measuredSource"]);
     expect(VISUAL_RECORDING_PERMISSIONS).toEqual(["granted", "required", "unsupported"]);
     expect(VISUAL_RECORDING_STATES).toEqual([

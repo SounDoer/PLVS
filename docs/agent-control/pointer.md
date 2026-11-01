@@ -27,6 +27,13 @@ rectangle in CSS pixels relative to the main WebView; see [UI Navigation](ui.md)
 | `file-report`                               | `export`                                                                                                                         |
 | `quick-tour`                                | `primary` (Start Tour, Next or Finish), `back`, `close`, `dismiss` (Not Now)                                                     |
 | `dock`                                      | `transport`, `toolbar`, `restore` in the strip's right control column                                                            |
+| `dock-toolbar`                              | `clear`, `sources`, `loudness-profile`, `panels`, `views`, `presets`, `status` in the Dock toolbar                               |
+
+The Dock toolbar and editor are separate WebViews. They report their own named targets to the main
+window, so `ui targets` lists them with `surface: "dock-header"` or `"dock-editor"`, `ui locate`
+reports their rectangles in that WebView's CSS pixels, and `pointer move` places the pointer with
+that window's position. A Dock editor reuses the same row names as the normal menus, such as
+`preset:<presetId>` and `source:<deviceId>`.
 
 ## Moving
 

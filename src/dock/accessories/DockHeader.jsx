@@ -52,6 +52,7 @@ export function DockHeader({ state, onAction }) {
         {state.statusItems ? (
           <AppStatusSummary
             data-tour-target="status"
+            data-ui-target="dock-toolbar:status"
             items={state.statusItems}
             onClick={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
@@ -87,6 +88,7 @@ export function DockHeader({ state, onAction }) {
           <IconButton
             icon={<Trash2 className={ACTION_ICON_CLASS} />}
             tip="Clear"
+            data-ui-target="dock-toolbar:clear"
             {...toolTipProps}
             disabled={state.clearDisabled}
             onClick={() => onAction("clear")}
@@ -95,6 +97,7 @@ export function DockHeader({ state, onAction }) {
             icon={<Volume2 className={ACTION_ICON_CLASS} />}
             tip="Sources"
             data-tour-target="sources"
+            data-ui-target="dock-toolbar:sources"
             {...toolTipProps}
             aria-pressed={state.editorView === "device"}
             className={state.editorView === "device" ? "bg-ui-hover text-foreground" : undefined}
@@ -104,6 +107,7 @@ export function DockHeader({ state, onAction }) {
             icon={<Gauge className={ACTION_ICON_CLASS} />}
             tip="Loudness Profile"
             data-tour-target="profile"
+            data-ui-target="dock-toolbar:loudness-profile"
             {...toolTipProps}
             aria-pressed={state.editorView === "loudness-profile"}
             className={cn(
@@ -115,6 +119,7 @@ export function DockHeader({ state, onAction }) {
             icon={<LayoutGrid className={ACTION_ICON_CLASS} />}
             tip="Panels"
             data-tour-target="modules"
+            data-ui-target="dock-toolbar:panels"
             {...toolTipProps}
             aria-pressed={state.editorView === "modules"}
             className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
@@ -124,6 +129,7 @@ export function DockHeader({ state, onAction }) {
             icon={<Focus className={ACTION_ICON_CLASS} />}
             tip="Views"
             data-tour-target="views"
+            data-ui-target="dock-toolbar:views"
             {...toolTipProps}
             aria-pressed={state.editorView === "views"}
             className={state.editorView === "views" ? "bg-ui-hover text-foreground" : undefined}
@@ -133,6 +139,7 @@ export function DockHeader({ state, onAction }) {
             icon={<Bookmark className={ACTION_ICON_CLASS} />}
             tip="Presets"
             data-tour-target="presets"
+            data-ui-target="dock-toolbar:presets"
             {...toolTipProps}
             aria-pressed={state.editorView === "presets"}
             className={cn(

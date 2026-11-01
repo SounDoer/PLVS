@@ -5,7 +5,7 @@
 //! that into screen coordinates and moves the pointer there along an eased path.
 
 use std::time::{Duration, Instant};
-use tauri::{Runtime, WebviewWindow};
+use tauri::{Manager, Runtime, WebviewWindow};
 
 const STEP: Duration = Duration::from_millis(8);
 pub const MAX_DURATION_MS: u64 = 3000;
@@ -64,10 +64,26 @@ pub async fn move_pointer<R: Runtime>(
   y: f64,
   duration_ms: u64,
   webview_scale: Option<f64>,
+  window_label: Option<String>,
 ) -> Result<(), String> {
   if !x.is_finite() || !y.is_finite() {
     return Err("pointer target must be finite".to_string());
   }
+  // A Dock toolbar or editor target is measured in that WebView, so its own window places it.
+  let label = window_label.unwrap_or_else(|| "main".to_string());
+  if ![
+    "main",
+    crate::dock_accessories::DOCK_HEADER_LABEL,
+    crate::dock_accessories::DOCK_EDITOR_LABEL,
+  ]
+  .contains(&label.as_str())
+  {
+    return Err("pointer window is not a PLVS surface".to_string());
+  }
+  let window = window
+    .app_handle()
+    .get_webview_window(&label)
+    .ok_or_else(|| format!("{label} window unavailable"))?;
   let scale = webview_scale
     .filter(|value| value.is_finite() && *value > 0.0)
     .unwrap_or(1.0);

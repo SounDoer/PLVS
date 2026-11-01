@@ -1,6 +1,7 @@
 # Tutorial recording through Agent Control — design
 
-Status: proposed (2026-10-31), audit complete, scope awaiting approval.
+Status: approved 2026-10-31. Implemented on Windows except macOS Dock region recording (T9), which
+awaits the Mac; macOS refuses `--target dock` until then. Pointer movement on macOS is untested.
 
 ## Goal
 

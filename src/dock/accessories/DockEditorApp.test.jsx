@@ -247,10 +247,11 @@ describe("DockEditorApp window behavior", () => {
     await waitFor(() =>
       expect(action.mock.calls.filter(([type]) => type === "resize-editor")).toHaveLength(2)
     );
-    expect(action).toHaveBeenLastCalledWith(
+    // Target reports may follow on the next frame; the size report is what matters here.
+    expect(action.mock.calls.filter(([type]) => type === "resize-editor").at(-1)).toEqual([
       "resize-editor",
-      expect.objectContaining({ view: "presets" })
-    );
+      expect.objectContaining({ view: "presets" }),
+    ]);
   });
 
   it("publishes the initial size even when a hidden webview receives no animation frame", () => {

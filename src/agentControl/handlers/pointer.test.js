@@ -44,8 +44,34 @@ describe("pointer move", () => {
       y: 24,
       durationMs: 400,
       webviewScale: 1.5,
+      windowLabel: "main",
     });
     expect(response.result).toMatchObject({ target: "toolbar:presets", point: { x: 714, y: 24 } });
+  });
+
+  it("moves into a Dock toolbar WebView by the position that window reported", async () => {
+    const pointerControl = control({
+      accessoryTargets: () => [
+        {
+          id: "dock-toolbar:presets",
+          rect: { x: 1800, y: 4, width: 28, height: 28 },
+          surface: "dock-header",
+        },
+      ],
+    });
+
+    const response = await pointerHandlers["pointer.move"].run(
+      context({ target: "dock-toolbar:presets", expectedRevision: 0 }, pointerControl)
+    );
+
+    expect(pointerControl.move).toHaveBeenCalledWith({
+      x: 1814,
+      y: 18,
+      durationMs: 600,
+      webviewScale: 1.5,
+      windowLabel: "dock-header",
+    });
+    expect(response.result.surface).toBe("dock-header");
   });
 
   it("uses the default duration and refuses undeclared or hidden targets", async () => {

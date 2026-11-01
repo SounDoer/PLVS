@@ -1609,7 +1609,7 @@ fn valid_recording_id(value: &str) -> bool {
 }
 
 fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
+  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
   let Some(action) = args.first().map(String::as_str) else {
     return Err(USAGE.to_string());
   };
@@ -1722,8 +1722,8 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
     }
     let target =
       target.ok_or_else(|| "The visual recording start command requires --target.".to_string())?;
-    if !matches!(target.as_str(), "main" | "workspace") {
-      return Err("The recording target must be main or workspace.".to_string());
+    if !matches!(target.as_str(), "main" | "workspace" | "dock") {
+      return Err("The recording target must be main, workspace or dock.".to_string());
     }
     if !matches!(fps, 15 | 30 | 60) {
       return Err("The --fps value must be 15, 30, or 60.".to_string());
@@ -6417,9 +6417,9 @@ mod tests {
       "theme|loudness-profile" => "theme".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
-      "main|workspace" | "main|workspace|panel|dock-header|dock-editor|dock-update" => {
-        "main".to_string()
-      }
+      "main|workspace"
+      | "main|workspace|dock"
+      | "main|workspace|panel|dock-header|dock-editor|dock-update" => "main".to_string(),
       "n" => "0".to_string(),
       "css-px" => "800".to_string(),
       "target-id" => "toolbar:presets".to_string(),

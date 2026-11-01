@@ -42,13 +42,16 @@ mod windows_backend {
   use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
   use windows_capture::frame::Frame;
   use windows_capture::graphics_capture_api::InternalCaptureControl;
+  use windows_capture::monitor::Monitor;
   use windows_capture::settings::{
     ColorFormat, CursorCaptureSettings, DirtyRegionSettings, DrawBorderSettings,
     MinimumUpdateIntervalSettings, SecondaryWindowSettings, Settings,
   };
   use windows_capture::window::Window;
   use windows_sys::Win32::Foundation::{POINT, RECT as SysRect};
-  use windows_sys::Win32::Graphics::Gdi::ClientToScreen;
+  use windows_sys::Win32::Graphics::Gdi::{
+    ClientToScreen, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+  };
   use windows_sys::Win32::UI::WindowsAndMessaging::{GetClientRect, GetWindowRect};
 
   use super::super::super::artifacts::{ArtifactStore, PendingArtifact};
@@ -636,6 +639,7 @@ mod windows_backend {
     stop_reason: Arc<Mutex<Option<StopReason>>>,
     frames: SyncSender<Vec<u8>>,
     hwnd: usize,
+    monitor: Option<usize>,
   }
 
   struct ProductionCapture {
@@ -647,6 +651,7 @@ mod windows_backend {
     output_width: u32,
     output_height: u32,
     hwnd: usize,
+    monitor: Option<usize>,
     scratch: Vec<u8>,
   }
 
@@ -665,6 +670,7 @@ mod windows_backend {
         output_width: settings.output_width,
         output_height: settings.output_height,
         hwnd: settings.hwnd,
+        monitor: settings.monitor,
         scratch: Vec::new(),
       })
     }
@@ -678,7 +684,12 @@ mod windows_backend {
         .geometry
         .lock()
         .map_err(|_| "recording geometry lock poisoned")?;
-      let crop = window_client_crop(self.hwnd, frame.width(), frame.height(), geometry)?;
+      let crop = match self.monitor {
+        Some(monitor) => {
+          screen_region_crop(self.hwnd, monitor, frame.width(), frame.height(), geometry)?
+        }
+        None => window_client_crop(self.hwnd, frame.width(), frame.height(), geometry)?,
+      };
       composite_frame(
         frame,
         crop,
@@ -1012,6 +1023,74 @@ mod windows_backend {
     .map_err(Into::into)
   }
 
+  /// A screen region given in CSS pixels of the main client area, which may extend beyond it (the
+  /// Dock strip plus the toolbar and editor beside it), cropped from a capture of that monitor.
+  fn screen_region_crop(
+    hwnd: usize,
+    monitor: usize,
+    frame_width: u32,
+    frame_height: u32,
+    geometry: RecordingGeometry,
+  ) -> Result<PixelCrop, Box<dyn Error + Send + Sync>> {
+    let hwnd = hwnd as windows_sys::Win32::Foundation::HWND;
+    let mut client = SysRect::default();
+    let mut client_origin = POINT::default();
+    let mut info = MONITORINFO {
+      cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+      ..Default::default()
+    };
+    if unsafe { GetClientRect(hwnd, &mut client) } == 0
+      || unsafe { ClientToScreen(hwnd, &mut client_origin) } == 0
+      || unsafe { GetMonitorInfoW(monitor as _, &mut info) } == 0
+    {
+      return Err("The Dock recording geometry is unavailable.".into());
+    }
+    region_crop_on_monitor(
+      frame_width,
+      frame_height,
+      (
+        f64::from(client_origin.x - info.rcMonitor.left),
+        f64::from(client_origin.y - info.rcMonitor.top),
+        f64::from(client.right - client.left),
+        f64::from(client.bottom - client.top),
+      ),
+      geometry,
+    )
+    .map_err(Into::into)
+  }
+
+  fn region_crop_on_monitor(
+    frame_width: u32,
+    frame_height: u32,
+    client_on_monitor: (f64, f64, f64, f64),
+    geometry: RecordingGeometry,
+  ) -> Result<PixelCrop, super::super::super::platform::CaptureError> {
+    let (offset_x, offset_y, client_width, client_height) = client_on_monitor;
+    if client_width <= 0.0 || client_height <= 0.0 {
+      return Err(
+        super::super::super::platform::CaptureError::target_unavailable(
+          "The PLVS client area is empty.",
+        ),
+      );
+    }
+    let scale_x = client_width / geometry.viewport.width;
+    let scale_y = client_height / geometry.viewport.height;
+    calculate_pixel_crop(
+      frame_width,
+      frame_height,
+      CssViewport {
+        width: f64::from(frame_width),
+        height: f64::from(frame_height),
+      },
+      CssRect {
+        x: offset_x + geometry.rect.x * scale_x,
+        y: offset_y + geometry.rect.y * scale_y,
+        width: geometry.rect.width * scale_x,
+        height: geometry.rect.height * scale_y,
+      },
+    )
+  }
+
   fn pixel_crop_for_client(
     frame_width: u32,
     frame_height: u32,
@@ -1054,6 +1133,7 @@ mod windows_backend {
     audio_origin_ns: u64,
     audio_receiver: Option<MeasuredPcmReceiver>,
     initial_audio_silence_reason: SilenceReason,
+    screen_region: bool,
   ) -> Result<RecordingSession, String> {
     validate_geometry(geometry).map_err(str::to_owned)?;
     let stop_reason = Arc::new(Mutex::new(None));
@@ -1099,29 +1179,47 @@ mod windows_backend {
     initialized_receiver
       .recv_timeout(Duration::from_secs(5))
       .map_err(|_| "Media Foundation initialization timed out.".to_owned())??;
-    let settings = Settings::new(
-      Window::from_raw_hwnd(hwnd),
-      match cursor {
-        RecordingCursorMode::None => CursorCaptureSettings::WithoutCursor,
-        RecordingCursorMode::Visible => CursorCaptureSettings::WithCursor,
-      },
-      DrawBorderSettings::WithoutBorder,
-      SecondaryWindowSettings::Default,
-      MinimumUpdateIntervalSettings::Default,
-      DirtyRegionSettings::Default,
-      ColorFormat::Bgra8,
-      ProductionSettings {
-        recording_id: recording_id.clone(),
-        output_width,
-        output_height,
-        registry: registry.clone(),
-        geometry,
-        stop_reason: Arc::clone(&stop_reason),
-        frames: frame_sender,
-        hwnd: hwnd as usize,
-      },
-    );
-    let control = ProductionCapture::start_free_threaded(settings).map_err(|error| {
+    let cursor = match cursor {
+      RecordingCursorMode::None => CursorCaptureSettings::WithoutCursor,
+      RecordingCursorMode::Visible => CursorCaptureSettings::WithCursor,
+    };
+    // A Dock recording spans several PLVS windows, so it captures the strip's monitor and crops.
+    let monitor = screen_region
+      .then(|| unsafe { MonitorFromWindow(hwnd as _, MONITOR_DEFAULTTONEAREST) } as usize);
+    let production = ProductionSettings {
+      recording_id: recording_id.clone(),
+      output_width,
+      output_height,
+      registry: registry.clone(),
+      geometry,
+      stop_reason: Arc::clone(&stop_reason),
+      frames: frame_sender,
+      hwnd: hwnd as usize,
+      monitor,
+    };
+    let started = match monitor {
+      Some(monitor) => ProductionCapture::start_free_threaded(Settings::new(
+        Monitor::from_raw_hmonitor(monitor as *mut std::ffi::c_void),
+        cursor,
+        DrawBorderSettings::WithoutBorder,
+        SecondaryWindowSettings::Default,
+        MinimumUpdateIntervalSettings::Default,
+        DirtyRegionSettings::Default,
+        ColorFormat::Bgra8,
+        production,
+      )),
+      None => ProductionCapture::start_free_threaded(Settings::new(
+        Window::from_raw_hwnd(hwnd),
+        cursor,
+        DrawBorderSettings::WithoutBorder,
+        SecondaryWindowSettings::Default,
+        MinimumUpdateIntervalSettings::Default,
+        DirtyRegionSettings::Default,
+        ColorFormat::Bgra8,
+        production,
+      )),
+    };
+    let control = started.map_err(|error| {
       if let Ok(mut reason) = stop_reason.lock() {
         reason.get_or_insert(StopReason::CaptureFailure);
       }
@@ -1196,6 +1294,33 @@ mod windows_backend {
           width: 200,
           height: 100
         }
+      );
+    }
+
+    #[test]
+    fn screen_region_crop_extends_beyond_the_client_area_on_its_monitor() {
+      // A 2x bottom Dock strip at y=1800 on a 3840x2160 monitor, recording 400 CSS px above it.
+      let crop = region_crop_on_monitor(
+        3840,
+        2160,
+        (0.0, 1800.0, 3840.0, 300.0),
+        RecordingGeometry {
+          rect: CssRect {
+            x: 0.0,
+            y: -400.0,
+            width: 1920.0,
+            height: 550.0,
+          },
+          viewport: CssViewport {
+            width: 1920.0,
+            height: 150.0,
+          },
+        },
+      )
+      .unwrap();
+      assert_eq!(
+        (crop.x, crop.y, crop.width, crop.height),
+        (0, 1000, 3840, 1100)
       );
     }
 

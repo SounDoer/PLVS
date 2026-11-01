@@ -61,6 +61,7 @@ const STATUS_FIXTURE_NAMES = {
  *   statusItems: import("../lib/appStatus.js").AppStatusItem[],
  *   statusOpen: boolean,
  *   openDockMenu: (view: string) => Promise<void>,
+ *   getAccessoryTargets: () => { id: string, rect: any, surface: string }[],
  * }} DockAccessories
  */
 const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} */ (null));
@@ -196,6 +197,22 @@ export function DockAccessoriesProvider({ children }) {
   const headerAnchorsRef = useRef(/** @type {Record<string, number>} */ ({}));
   const visibilityRef = useRef(dockAccessoryVisibility);
   visibilityRef.current = dockAccessoryVisibility;
+  // Named pointer targets the toolbar and editor WebViews report, in their own CSS pixels.
+  const accessoryTargetsRef = useRef(
+    /** @type {Record<string, { id: string, rect: any }[]>} */ ({})
+  );
+  const getAccessoryTargets = useCallback(() => {
+    const visibility = visibilityRef.current;
+    if (!docked || dockSuspended) return [];
+    return [
+      ...(visibility.headerVisible ? (accessoryTargetsRef.current["dock-header"] ?? []) : []).map(
+        (target) => ({ ...target, surface: "dock-header" })
+      ),
+      ...(visibility.editorVisible ? (accessoryTargetsRef.current["dock-editor"] ?? []) : []).map(
+        (target) => ({ ...target, surface: "dock-editor" })
+      ),
+    ];
+  }, [docked, dockSuspended]);
   const dockToolbarShown = docked && !dockSuspended && dockAccessoryVisibility.headerVisible;
   const openDockMenu = useCallback(
     async (/** @type {string} */ view) => {
@@ -435,7 +452,16 @@ export function DockAccessoriesProvider({ children }) {
     ]
   );
   const onDockAccessoryAction = useCallback(
-    ({ type, payload }) => {
+    ({ surface, type, payload }) => {
+      if (type === "ui-targets") {
+        accessoryTargetsRef.current[surface] = Array.isArray(payload.targets)
+          ? payload.targets.filter(
+              (target) =>
+                typeof target?.id === "string" && target.rect && typeof target.rect === "object"
+            )
+          : [];
+        return;
+      }
       if (type === "header-ready") {
         dockAccessoryVisibility.confirmHeaderReady(payload.presentationId);
         if (payload.anchors && typeof payload.anchors === "object") {
@@ -599,6 +625,7 @@ export function DockAccessoriesProvider({ children }) {
         statusItems,
         statusOpen: statusFixture?.phase === "details",
         openDockMenu,
+        getAccessoryTargets,
       }}
     >
       {children}

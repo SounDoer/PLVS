@@ -1,5 +1,5 @@
 import { semanticFailure } from "../bridge/failures.js";
-import { isUiTargetId, listUiTargets, locateUiTarget } from "../../uiNavigation/uiTargets.js";
+import { isUiTargetId, listUiTargets, resolveUiTarget } from "../../uiNavigation/uiTargets.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function inspect(ctx) {
@@ -21,15 +21,28 @@ async function inspect(ctx) {
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function targets(ctx) {
-  const { requestId, clock } = ctx;
-  return { requestId, result: { revision: clock.current(), targets: listUiTargets() } };
+  const { requestId, clock, live } = ctx;
+  const accessory = (live().pointerControl?.accessoryTargets?.() ?? []).map(({ id, surface }) => ({
+    id,
+    kind: id.split(":")[0],
+    surface,
+  }));
+  return {
+    requestId,
+    result: {
+      revision: clock.current(),
+      targets: [...listUiTargets().map((target) => ({ ...target, surface: "main" })), ...accessory],
+    },
+  };
 }
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function locate(ctx) {
-  const { request, requestId, clock } = ctx;
+  const { request, requestId, clock, live } = ctx;
   const { target } = request.params;
-  const located = isUiTargetId(target) ? locateUiTarget(target) : { found: false };
+  const located = isUiTargetId(target)
+    ? resolveUiTarget(target, live().pointerControl?.accessoryTargets)
+    : { found: false };
   if (!located.found) {
     throw semanticFailure(
       "uiTargetNotFound",
@@ -44,6 +57,7 @@ async function locate(ctx) {
     result: {
       revision: clock.current(),
       target,
+      surface: located.surface,
       visible: located.visible,
       rect: located.rect,
       viewport: located.viewport,

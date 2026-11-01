@@ -1,4 +1,8 @@
-import { buildVisualDescription, recordingUnavailability } from "../visualControl.js";
+import {
+  buildVisualDescription,
+  dockRecordingRegion,
+  recordingUnavailability,
+} from "../visualControl.js";
 import { visualSemanticFailure } from "../bridge/failures.js";
 import { measuredAudioState } from "../bridge/signatures.js";
 
@@ -91,10 +95,21 @@ async function startRecording(ctx) {
   const unavailable = recordingUnavailability(visualControl?.platformCapabilities);
   if (unavailable) throw visualSemanticFailure(unavailable);
   const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
-  if (!availableTargets.includes(request.params.target.kind)) {
+  const runtime = visualControl.getRuntime?.() ?? {};
+  // `dock` records the strip's screen region, toolbar and editor included; it is not a WebView.
+  const dockTarget = request.params.target.kind === "dock";
+  const surfaceTarget = dockTarget ? { kind: "main" } : request.params.target;
+  const dockEdge = ctx.live().dock?.edge;
+  const region = (geometry) =>
+    dockTarget ? { ...geometry, ...dockRecordingRegion(geometry, dockEdge) } : geometry;
+  if (
+    dockTarget
+      ? runtime.windowForm !== "dock" ||
+        !(visualControl.platformCapabilities.recording.targets ?? []).includes("dock")
+      : !availableTargets.includes(request.params.target.kind)
+  ) {
     throw visualSemanticFailure({ reason: "targetUnavailable" });
   }
-  const runtime = visualControl.getRuntime?.() ?? {};
   if (
     !(visualControl.platformCapabilities.recording.cursorModes ?? []).includes(
       request.params.cursor
@@ -113,16 +128,19 @@ async function startRecording(ctx) {
   const controller = new AbortController();
   visual.captures.set(requestId, controller);
   try {
-    const settled = await visualControl.settle(request.params.target, {
-      expectedRevision: request.params.expectedRevision,
-      getRevision: () => clock.current(),
-      signal: controller.signal,
-    });
+    const settled = region(
+      await visualControl.settle(surfaceTarget, {
+        expectedRevision: request.params.expectedRevision,
+        getRevision: () => clock.current(),
+        signal: controller.signal,
+      })
+    );
     const recording = await visualControl.startRecording({
       windowLabel: settled.windowLabel,
       rect: settled.rect,
       viewport: settled.viewport,
       devicePixelRatio: settled.devicePixelRatio,
+      screenRegion: dockTarget,
       fps: request.params.fps,
       maxDurationSeconds: request.params.maxDurationSeconds,
       audio,
@@ -139,13 +157,14 @@ async function startRecording(ctx) {
     };
     visual.recordings.set(recording.recordingId, metadata);
     metadata.unsubscribe = visualControl.subscribe?.(
-      request.params.target,
+      surfaceTarget,
       (geometry) => {
+        const next = region(geometry);
         void visualControl
           .updateRecordingGeometry({
             recordingId: recording.recordingId,
-            rect: geometry.rect,
-            viewport: geometry.viewport,
+            rect: next.rect,
+            viewport: next.viewport,
           })
           .catch(() => undefined);
       },

@@ -3324,7 +3324,7 @@ Start one bounded PLVS surface recording.
 - Schema references: `visual.target`, `agentControl.revision`
 
 ```text
-plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
+plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 ```
 
 ### Positionals
@@ -3335,7 +3335,7 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--target` | `target.kind` | yes | string; one of "main", "workspace" |
+| `--target` | `target.kind` | yes | string; one of "main", "workspace", "dock" |
 | `--audio` | `audio` | no | string; one of "none", "measured-source" |
 | `--cursor` | `cursor` | no | string; one of "none", "visible"; default "none" |
 | `--fps` | `fps` | no | integer; one of 15, 30, 60; default 30 |

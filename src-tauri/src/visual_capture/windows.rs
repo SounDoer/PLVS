@@ -37,7 +37,7 @@ impl VisualCapturePlatform for WindowsPlatform {
       recording: RecordingCapabilities {
         available: true,
         permission: RecordingPermission::Granted,
-        targets: vec!["main", "workspace"],
+        targets: vec!["main", "workspace", "dock"],
         audio_sources: vec!["none", "measuredSource"],
         cursor_modes: vec!["none", "visible"],
         unavailable: None,
