@@ -159,6 +159,7 @@ export function AppHeader({
         onSourceModeChange={onSourceModeChange}
         onPrimaryAction={handlePrimaryAction}
       />
+      <div className="flex-1" />
       <AppStatusPopover
         requestedOpen={statusOpen || openMenu === "status"}
         items={statusItems}
@@ -168,7 +169,7 @@ export function AppHeader({
       {notice && statusItems.length === 0 ? (
         <HoverTip
           tip={notice.details ?? notice.text}
-          align="start"
+          align="end"
           className="min-w-0 max-w-[min(30rem,34vw)]"
           tipClassName="whitespace-normal max-w-[min(28rem,90vw)]"
         >
@@ -184,7 +185,6 @@ export function AppHeader({
           </div>
         </HoverTip>
       ) : null}
-      <div className="flex-1" />
       <div className={SHELL_HEADER_ACTIONS}>
         <IconButton
           icon={<Trash2 className="size-[length:var(--ui-icon-shell-action)]" />}

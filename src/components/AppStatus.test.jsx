@@ -26,6 +26,15 @@ describe("status details", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("region", { name: "status details" })).toBeNull();
   });
+  it("keeps the status colour while hovered or open", () => {
+    render(<AppStatusPopover items={buildAppStatusItems({ layoutUnknown: true })} />);
+    const trigger = screen.getByRole("button", { name: /status:/i });
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("data-state")).toBe("open");
+    // index.css paints an open button with `hover:text-foreground` as hovered, i.e. white.
+    expect(trigger.classList.contains("hover:text-foreground")).toBe(false);
+    expect(trigger.classList.contains("hover:text-[color:var(--ui-feedback-warning)]")).toBe(true);
+  });
   it("shows full details in the shared list used by the Dock accessory", () => {
     render(
       <AppStatusList

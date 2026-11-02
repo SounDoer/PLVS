@@ -92,11 +92,12 @@ export function AppStatusSummary({ items, onClick, ...props }) {
         onClick={onClick}
         className={cn(
           "flex min-w-0 max-w-full items-center gap-2 text-[length:var(--ui-fs-status)] font-medium hover:underline",
+          // Hover and open keep the status colour; the underline is the hover feedback.
           first.kind === "error"
-            ? "text-[color:var(--ui-feedback-danger)]"
+            ? "text-[color:var(--ui-feedback-danger)] hover:text-[color:var(--ui-feedback-danger)]"
             : first.kind === "warning"
-              ? "text-[color:var(--ui-interface-warning)]"
-              : "text-primary"
+              ? "text-[color:var(--ui-feedback-warning)] hover:text-[color:var(--ui-feedback-warning)]"
+              : "text-primary hover:text-primary"
         )}
         {...props}
       >
@@ -130,7 +131,7 @@ export function AppStatusPopover({ items, onAction, onOpenChange, requestedOpen 
       <PopoverTrigger asChild>
         <AppStatusSummary data-ui-target="toolbar:status" items={items} />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-96 max-w-[calc(100vw-1rem)] p-0">
+      <PopoverContent align="end" className="w-96 max-w-[calc(100vw-1rem)] p-0">
         <AppStatusList
           items={items}
           onAction={(action) => {

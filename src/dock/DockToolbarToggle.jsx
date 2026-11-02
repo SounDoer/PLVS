@@ -35,7 +35,7 @@ export function DockToolbarToggle({ edge, open, onToggle, update = null, statusI
                 firstStatus.kind === "error"
                   ? "text-[color:var(--ui-feedback-danger)]"
                   : firstStatus.kind === "warning"
-                    ? "text-[color:var(--ui-interface-warning)]"
+                    ? "text-[color:var(--ui-feedback-warning)]"
                     : "text-primary"
               )}
             />

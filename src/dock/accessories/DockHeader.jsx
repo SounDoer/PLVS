@@ -49,6 +49,7 @@ export function DockHeader({ state, onAction }) {
       )}
     >
       <div data-testid="dock-header-trailing" className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex-1" />
         {state.statusItems ? (
           <AppStatusSummary
             data-tour-target="status"
@@ -80,7 +81,6 @@ export function DockHeader({ state, onAction }) {
             </span>
           </HoverTip>
         ) : null}
-        <div className="flex-1" />
         {!state.statusItems && state.update ? (
           <DockHeaderUpdate update={state.update} onAction={onAction} />
         ) : null}
