@@ -110,8 +110,9 @@ change; the trailing `app.version` was the only visible clue.
 
 ### Soak runs are the drift baseline
 
-`soak:capture` and `soak:desktop` write to `artifacts/soak/`, which is gitignored and therefore local
-to one machine.
+`soak:capture` and `soak:desktop` write to ignored `artifacts/soak/`. Reviewed capture references
+are also archived in `fixtures/capture-soak-baselines/`; its README owns promotion and comparison.
+Routine CI diagnostics expire after 90 days and are not the permanent reference archive.
 
 A `soak:capture` run that reached its full duration ends with a summary line carrying the app
 version. Keep those: the drift of the next run is judged against them. Delete interrupted runs —

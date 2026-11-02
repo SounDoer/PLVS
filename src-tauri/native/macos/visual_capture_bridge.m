@@ -31,6 +31,26 @@ bool plvs_macos_screen_capture_request(void) {
   return CGRequestScreenCaptureAccess();
 }
 
+// Convert the actual visible native client, in Cocoa points, to Quartz's top-left screen origin.
+void plvs_macos_pointer_point_from_client(const double *client, double x, double y,
+                                          double primary_top, double *result) {
+  result[0] = client[0] + x;
+  result[1] = primary_top - (client[1] + client[3]) + y;
+}
+
+bool plvs_macos_pointer_screen_point(void *raw_webview, double x, double y, double *result) {
+  WKWebView *webview = (__bridge WKWebView *)raw_webview;
+  NSWindow *window = webview.window;
+  if (!window || !result || !isfinite(x) || !isfinite(y)) return false;
+  CGRect viewOnScreen = [window convertRectToScreen:[webview convertRect:webview.bounds toView:nil]];
+  CGRect contentOnScreen = [window convertRectToScreen:window.contentLayoutRect];
+  CGRect client = CGRectIntersection(viewOnScreen, contentOnScreen);
+  if (CGRectIsEmpty(client)) return false;
+  double bounds[] = {client.origin.x, client.origin.y, client.size.width, client.size.height};
+  plvs_macos_pointer_point_from_client(bounds, x, y, NSMaxY(NSScreen.screens.firstObject.frame), result);
+  return true;
+}
+
 enum {
   PLVS_VISUAL_RECORDING_STARTED = 0,
   PLVS_VISUAL_RECORDING_FRAME = 1,
@@ -40,6 +60,29 @@ enum {
   PLVS_VISUAL_RECORDING_FAILED = 6,
   PLVS_VISUAL_RECORDING_TIMELINE = 7,
 };
+
+// Shared by initial geometry and updates; arrays are x, y, width, height in Cocoa points,
+// except rect/viewport, which are CSS pixels. Negative Dock offsets are intentionally retained.
+void plvs_macos_recording_normalize_region(const double *webview, const double *frame,
+                                           const double *rect, const double *viewport,
+                                           double *result) {
+  result[0] = (webview[0] + rect[0] / viewport[0] * webview[2] - frame[0]) / frame[2];
+  result[1] = (webview[1] + (1.0 - (rect[1] + rect[3]) / viewport[1]) * webview[3] - frame[1]) / frame[3];
+  result[2] = rect[2] / viewport[0] * webview[2] / frame[2];
+  result[3] = rect[3] / viewport[1] * webview[3] / frame[3];
+}
+
+static CGRect PLVSNormalizedRecordingRegion(CGRect webview, CGRect frame, double x, double y,
+                                             double width, double height,
+                                             double viewportWidth, double viewportHeight) {
+  double view[] = {webview.origin.x, webview.origin.y, webview.size.width, webview.size.height};
+  double bounds[] = {frame.origin.x, frame.origin.y, frame.size.width, frame.size.height};
+  double rect[] = {x, y, width, height};
+  double viewport[] = {viewportWidth, viewportHeight};
+  double result[4];
+  plvs_macos_recording_normalize_region(view, bounds, rect, viewport, result);
+  return CGRectMake(result[0], result[1], result[2], result[3]);
+}
 
 @interface PLVSMacRecordingSession : NSObject <SCStreamOutput, SCStreamDelegate>
 - (instancetype)initWithWebView:(WKWebView *)webview
@@ -54,6 +97,7 @@ enum {
                       rectHeight:(double)rectHeight
                    viewportWidth:(double)viewportWidth
                   viewportHeight:(double)viewportHeight
+                    screenRegion:(BOOL)screenRegion
                       showCursor:(BOOL)showCursor
                          hasAudio:(BOOL)hasAudio
                          context:(void *)context
@@ -77,6 +121,7 @@ enum {
 @property(nonatomic) uint32_t fps;
 @property(nonatomic) uint32_t maxDuration;
 @property(nonatomic) BOOL showCursor;
+@property(nonatomic) BOOL screenRegion;
 @property(nonatomic) BOOL hasAudio;
 @property(nonatomic) CGRect normalizedTarget;
 @property(nonatomic) CGRect windowFrame;
@@ -121,6 +166,7 @@ enum {
                       rectHeight:(double)rectHeight
                    viewportWidth:(double)viewportWidth
                   viewportHeight:(double)viewportHeight
+                    screenRegion:(BOOL)screenRegion
                       showCursor:(BOOL)showCursor
                          hasAudio:(BOOL)hasAudio
                          context:(void *)context
@@ -134,6 +180,7 @@ enum {
     _fps = fps;
     _maxDuration = maxDuration;
     _showCursor = showCursor;
+    _screenRegion = screenRegion;
     _hasAudio = hasAudio;
     _callbackContext = context;
     _callback = callback;
@@ -268,16 +315,10 @@ enum {
   CGRect contentOnScreen = [window convertRectToScreen:window.contentLayoutRect];
   webviewOnScreen = CGRectIntersection(webviewOnScreen, contentOnScreen);
   if (CGRectIsEmpty(webviewOnScreen)) return;
-  CGRect frame = window.frame;
-  CGRect targetOnScreen = CGRectMake(
-      webviewOnScreen.origin.x + (x / viewportWidth) * webviewOnScreen.size.width,
-      webviewOnScreen.origin.y + (1.0 - ((y + rectHeight) / viewportHeight)) * webviewOnScreen.size.height,
-      (rectWidth / viewportWidth) * webviewOnScreen.size.width,
-      (rectHeight / viewportHeight) * webviewOnScreen.size.height);
-  _normalizedTarget = CGRectMake(
-      (targetOnScreen.origin.x - frame.origin.x) / frame.size.width,
-      (targetOnScreen.origin.y - frame.origin.y) / frame.size.height,
-      targetOnScreen.size.width / frame.size.width, targetOnScreen.size.height / frame.size.height);
+  // Cocoa screen coordinates and Core Image crops both use a bottom-left origin.
+  CGRect frame = _screenRegion ? window.screen.frame : window.frame;
+  _normalizedTarget = PLVSNormalizedRecordingRegion(webviewOnScreen, frame, x, y,
+      rectWidth, rectHeight, viewportWidth, viewportHeight);
   _windowFrame = frame;
 }
 
@@ -295,17 +336,10 @@ enum {
     CGRect contentOnScreen = [window convertRectToScreen:window.contentLayoutRect];
     webviewOnScreen = CGRectIntersection(webviewOnScreen, contentOnScreen);
     if (CGRectIsEmpty(webviewOnScreen)) return;
-    CGRect windowFrame = window.frame;
-    CGRect targetOnScreen = CGRectMake(
-        webviewOnScreen.origin.x + (x / viewportWidth) * webviewOnScreen.size.width,
-        webviewOnScreen.origin.y + (1.0 - ((y + rectHeight) / viewportHeight)) * webviewOnScreen.size.height,
-        (rectWidth / viewportWidth) * webviewOnScreen.size.width,
-        (rectHeight / viewportHeight) * webviewOnScreen.size.height);
-    CGRect normalized = CGRectMake(
-        (targetOnScreen.origin.x - windowFrame.origin.x) / windowFrame.size.width,
-        (targetOnScreen.origin.y - windowFrame.origin.y) / windowFrame.size.height,
-        targetOnScreen.size.width / windowFrame.size.width,
-        targetOnScreen.size.height / windowFrame.size.height);
+    // Keep the original display as the capture source throughout a Dock take.
+    CGRect windowFrame = self.screenRegion ? self.windowFrame : window.frame;
+    CGRect normalized = PLVSNormalizedRecordingRegion(webviewOnScreen, windowFrame, x, y,
+        rectWidth, rectHeight, viewportWidth, viewportHeight);
     dispatch_async(self.queue, ^{
       self.normalizedTarget = normalized;
       self.windowFrame = windowFrame;
@@ -328,10 +362,14 @@ enum {
       return;
     }
     CGWindowID windowID = (CGWindowID)window.windowNumber;
+    NSScreen *screen = window.screen;
+    CGDirectDisplayID displayID = [screen.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
     CGFloat scale = window.backingScaleFactor;
-    size_t captureWidth = MAX(2, (size_t)llround(window.frame.size.width * scale));
-    size_t captureHeight = MAX(2, (size_t)llround(window.frame.size.height * scale));
-    self.windowFrame = window.frame;
+    size_t captureWidth = self.screenRegion ? CGDisplayPixelsWide(displayID) :
+        MAX(2, (size_t)llround(window.frame.size.width * scale));
+    size_t captureHeight = self.screenRegion ? CGDisplayPixelsHigh(displayID) :
+        MAX(2, (size_t)llround(window.frame.size.height * scale));
+    self.windowFrame = self.screenRegion ? screen.frame : window.frame;
     [SCShareableContent getShareableContentExcludingDesktopWindows:YES
                                                onScreenWindowsOnly:YES
                                                 completionHandler:^(SCShareableContent *content,
@@ -347,6 +385,14 @@ enum {
           }
         }
         if (!source) { [self fail:@"The PLVS main window is not available to ScreenCaptureKit."]; return; }
+
+        SCDisplay *display = nil;
+        if (self.screenRegion) {
+          for (SCDisplay *candidate in content.displays) {
+            if (candidate.displayID == displayID) { display = candidate; break; }
+          }
+          if (!display) { [self fail:@"The Dock display is not available to ScreenCaptureKit."]; return; }
+        }
 
         [[NSFileManager defaultManager] removeItemAtPath:self.path error:nil];
         NSError *writerError = nil;
@@ -407,7 +453,9 @@ enum {
           }
         }
 
-        SCContentFilter *filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:source];
+        SCContentFilter *filter = self.screenRegion ?
+            [[SCContentFilter alloc] initWithDisplay:display excludingWindows:@[]] :
+            [[SCContentFilter alloc] initWithDesktopIndependentWindow:source];
         SCStreamConfiguration *configuration = [[SCStreamConfiguration alloc] init];
         configuration.width = captureWidth;
         configuration.height = captureHeight;
@@ -549,7 +597,7 @@ void *plvs_macos_recording_start(void *raw_webview, const uint8_t *path_bytes, s
                                  uint32_t width, uint32_t height, uint32_t fps,
                                  uint32_t max_duration, double x, double y, double rect_width,
                                  double rect_height, double viewport_width, double viewport_height,
-                                 bool show_cursor, bool has_audio, void *context,
+                                 bool show_cursor, bool screen_region, bool has_audio, void *context,
                                  PLVSVisualRecordingCallback callback) {
   if (!raw_webview || !path_bytes || path_length == 0 || !callback) return NULL;
   NSString *path = [[NSString alloc] initWithBytes:path_bytes length:path_length
@@ -558,7 +606,8 @@ void *plvs_macos_recording_start(void *raw_webview, const uint8_t *path_bytes, s
   PLVSMacRecordingSession *session = [[PLVSMacRecordingSession alloc]
       initWithWebView:(__bridge WKWebView *)raw_webview path:path width:width height:height fps:fps
       maxDuration:max_duration x:x y:y rectWidth:rect_width rectHeight:rect_height
-      viewportWidth:viewport_width viewportHeight:viewport_height showCursor:show_cursor
+      viewportWidth:viewport_width viewportHeight:viewport_height
+      screenRegion:screen_region showCursor:show_cursor
       hasAudio:has_audio context:context callback:callback];
   [session start];
   return (__bridge_retained void *)session;

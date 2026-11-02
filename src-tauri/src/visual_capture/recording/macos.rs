@@ -39,6 +39,7 @@ unsafe extern "C" {
     viewport_width: f64,
     viewport_height: f64,
     show_cursor: bool,
+    screen_region: bool,
     has_audio: bool,
     context: *mut c_void,
     callback: unsafe extern "C" fn(*mut c_void, i32, u64, *const c_char),
@@ -354,6 +355,7 @@ pub fn begin_recording(
   rect: CssRect,
   viewport: CssViewport,
   cursor: RecordingCursorMode,
+  screen_region: bool,
   audio_source: RecordingAudioSource,
   audio_origin_ns: u64,
   audio_receiver: Option<MeasuredPcmReceiver>,
@@ -396,6 +398,7 @@ pub fn begin_recording(
       viewport.width,
       viewport.height,
       cursor == RecordingCursorMode::Visible,
+      screen_region,
       audio_source == RecordingAudioSource::MeasuredSource,
       callback_context.cast_mut().cast::<c_void>(),
       recording_event,
@@ -442,5 +445,51 @@ pub fn wait_until_started(
       session.request_stop(StopReason::CaptureFailure);
       Err("The macOS recording session timed out while starting.".to_owned())
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  unsafe extern "C" {
+    fn plvs_macos_recording_normalize_region(
+      webview: *const f64,
+      frame: *const f64,
+      rect: *const f64,
+      viewport: *const f64,
+      result: *mut f64,
+    );
+  }
+
+  #[test]
+  fn dock_region_extends_above_the_strip_on_a_retina_secondary_display() {
+    // A 2x display left of the primary, with a 100-point bottom strip and 400 CSS px above it.
+    // Native geometry is in Cocoa points, with a bottom-left origin, even on Retina displays.
+    let mut result = [0.0; 4];
+    unsafe {
+      plvs_macos_recording_normalize_region(
+        [-1920.0, 0.0, 1920.0, 100.0].as_ptr(),
+        [-1920.0, 0.0, 1920.0, 1080.0].as_ptr(),
+        [0.0, -400.0, 1920.0, 500.0].as_ptr(),
+        [1920.0, 100.0].as_ptr(),
+        result.as_mut_ptr(),
+      );
+    }
+    assert_eq!(result, [0.0, 0.0, 1.0, 500.0 / 1080.0]);
+    assert_eq!(result[3] * 2160.0, 1000.0);
+  }
+
+  #[test]
+  fn dock_region_extends_inward_from_a_top_strip_with_css_scaling() {
+    let mut result = [0.0; 4];
+    unsafe {
+      plvs_macos_recording_normalize_region(
+        [200.0, 1000.0, 1920.0, 80.0].as_ptr(),
+        [200.0, 0.0, 1920.0, 1080.0].as_ptr(),
+        [0.0, 0.0, 960.0, 240.0].as_ptr(),
+        [960.0, 40.0].as_ptr(),
+        result.as_mut_ptr(),
+      );
+    }
+    assert_eq!(result, [0.0, 600.0 / 1080.0, 1.0, 480.0 / 1080.0]);
   }
 }

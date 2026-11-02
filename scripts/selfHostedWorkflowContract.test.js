@@ -113,6 +113,11 @@ describe("self-hosted runners on a public repository", () => {
     expect(index("Four-hour capture soak")).toBeGreaterThan(
       index("Verify exact-commit smoke evidence")
     );
+    expect(index("Compare archived capture baselines")).toBe(index("Four-hour capture soak") + 1);
+    expect(steps[index("Record run identity")].run).toContain("capture-soak-baselines.mjs record");
+    expect(steps[index("Compare archived capture baselines")].run).toContain(
+      "capture-soak-baselines.mjs compare"
+    );
     expect(steps[index("Capture smoke")].run).toContain("npm run smoke:capture -- --wait");
     expect(steps[index("Four-hour capture soak")].run).toContain(
       "npm run soak:capture -- --seconds 14400 --every 10 --wait"
@@ -180,8 +185,8 @@ jobs:
   });
 
   it("rejects one-line trigger forms that include an untrusted event", () => {
-    const list = selfHosted.replace(/on:\n(  .*\n)+/, "on: [push, workflow_dispatch]\n");
-    const scalar = selfHosted.replace(/on:\n(  .*\n)+/, "on: issue_comment\n");
+    const list = selfHosted.replace(/on:\n( {2}.*\n)+/, "on: [push, workflow_dispatch]\n");
+    const scalar = selfHosted.replace(/on:\n( {2}.*\n)+/, "on: issue_comment\n");
     expect(selfHostedViolations({ "a.yml": list, "b.yml": scalar })).toEqual([
       "a.yml reaches a self-hosted runner and is triggered by push",
       "b.yml reaches a self-hosted runner and is triggered by issue_comment",

@@ -230,7 +230,7 @@ pub async fn visual_recording_start(
       "Recordings can only capture the PLVS main window.",
     ));
   }
-  if request.screen_region && !cfg!(target_os = "windows") {
+  if request.screen_region && !cfg!(any(target_os = "windows", target_os = "macos")) {
     return Err(NativeCaptureError::recording(
       "targetUnavailable",
       "Recording the Dock is not supported on this platform yet.",
@@ -447,6 +447,7 @@ pub async fn visual_recording_start(
           request.rect,
           request.viewport,
           request.cursor,
+          request.screen_region,
           audio_source,
           audio_origin_ns,
           audio_receiver,

@@ -269,6 +269,7 @@ plvs-cli update check --expected-revision <n> --json
 
 See [Update Control](../agent-control/update.md).
 
+On macOS, pointer targets align with the actual client area in framed windows and Dock accessories.
 Pointer Control moves the system pointer onto a named control for unattended tutorial recording,
 without pressing anything; the operation itself is a separate command:
 
@@ -304,8 +305,8 @@ plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation
 `app.inspect` remains the durable-state snapshot; `ui inspect` reports the selected workbench's
 transient window, blocking editors, mounted surfaces, status conditions, and process-local
 `uiGeneration`. `show` only opens, locates, or focuses and is idempotent for an exact target. A
-toolbar menu opens as its toolbar button opens it, in the normal window or Dock; the Quick Tour card
-is inspectable and closable but cannot be started or advanced. `close` and `cancel` invoke only
+toolbar menu opens as its toolbar button opens it, in the normal window or Dock. The Quick Tour card
+is inspectable and closable; `ui quick-tour` starts it or moves between its steps. `close` and `cancel` invoke only
 the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
 only the exact linked `editor-draft discard` command can confirm that decision. Event-driven
 decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for
@@ -342,7 +343,9 @@ Theme-only history, and the Cancel/discard workflow.
 
 Visual Capture saves the actual rendered pixels of the running app. Dock accessory screenshots
 capture the complete visible client area, including when the screen constrains the editor's size.
-Screenshots and recording are available on Windows, macOS, and Linux:
+Screenshots and recording are available on Windows, macOS, and Linux. The recording-only `dock`
+target is available on Windows and macOS and includes the strip, toolbar, open editor, and any
+desktop visible behind transparent surfaces:
 
 ```powershell
 plvs-cli visual describe --json

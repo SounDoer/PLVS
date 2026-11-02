@@ -12,6 +12,8 @@
 import { existsSync, statSync, readdirSync } from "node:fs";
 import { open } from "node:fs/promises";
 import { spawnSync, spawn } from "node:child_process";
+import { Buffer } from "node:buffer";
+import process from "node:process";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -209,7 +211,12 @@ export function locateVlc(platform = process.platform) {
 }
 
 function parseLastJsonLine(text, label) {
-  const line = text.replace(/^﻿/, "").trim().split(/\r?\n/).filter(Boolean).at(-1);
+  const line = text
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .at(-1);
   try {
     return JSON.parse(line);
   } catch {
@@ -404,10 +411,15 @@ const SOAK_DRIFT_METRICS = [
 
 /** Judges a soak's periodic samples. `null` and missing readings fail rather than skip, for the
  *  reason `compareMetrics` gives. Returns each metric's post-warmup spread and every failure. */
-export function judgeSoak(samples) {
+export function judgeSoak(samples, policy = {}) {
+  const warmupSeconds = policy.warmupSeconds ?? SOAK_WARMUP_SECONDS;
+  const maximumWarmupSeconds = policy.maximumWarmupSeconds ?? SOAK_MAX_WARMUP_SECONDS;
+  const driftLimitDb = policy.driftLimitDb ?? SOAK_DRIFT_LIMIT_DB;
+  const maximumToIntegratedDb = policy.maximumToIntegratedDb ?? SOAK_MAX_TO_INTEGRATED_DB;
   const spreads = {};
   const failures = [];
-  for (const [field, warmup] of SOAK_DRIFT_METRICS) {
+  for (const [field, defaultWarmup] of SOAK_DRIFT_METRICS) {
+    const warmup = defaultWarmup === SOAK_WARMUP_SECONDS ? warmupSeconds : maximumWarmupSeconds;
     const settled = samples.filter((s) => s.t >= warmup);
     const missing = settled.find((s) => typeof s[field] !== "number" || !Number.isFinite(s[field]));
     if (missing) {
@@ -421,14 +433,14 @@ export function judgeSoak(samples) {
     const values = settled.map((s) => s[field]);
     const spread = Math.max(...values) - Math.min(...values);
     spreads[field] = spread;
-    if (spread > SOAK_DRIFT_LIMIT_DB) {
+    if (spread > driftLimitDb) {
       failures.push(`${field} drifted ${spread.toFixed(4)} dB over a constant signal`);
     }
   }
   const last = samples.at(-1);
   for (const field of ["mMaxLufs", "stMaxLufs"]) {
     const gap = last ? Math.abs(last[field] - last.integratedLufs) : NaN;
-    if (!(gap <= SOAK_MAX_TO_INTEGRATED_DB)) {
+    if (!(gap <= maximumToIntegratedDb)) {
       failures.push(
         `${field} sits ${gap.toFixed(4)} dB from integratedLufs; over a constant signal they agree`
       );

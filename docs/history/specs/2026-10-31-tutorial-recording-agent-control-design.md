@@ -1,7 +1,8 @@
 # Tutorial recording through Agent Control — design
 
-Status: approved 2026-10-31. Implemented on Windows except macOS Dock region recording (T9), which
-awaits the Mac; macOS refuses `--target dock` until then. Pointer movement on macOS is untested.
+Status: approved 2026-10-31. Implemented on Windows and macOS. macOS Dock region recording and
+pointer hover passed local native acceptance on 2026-11-01; evidence and validation boundaries are
+recorded in the [macOS hand-over](../notes/2026-11-01-tutorial-recording-macos-handoff.md).
 
 ## Goal
 

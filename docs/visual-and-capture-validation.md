@@ -373,6 +373,15 @@ bounded memory and the file is removed on normal teardown. Durations exceeding t
 silence and create real intersample peaks, invalidating the constant-signal drift check. The
 0.01 dB drift limit and historical warmup windows remain unchanged.
 
+Reviewed full-duration reference recordings are versioned under
+[`fixtures/capture-soak-baselines/`](../fixtures/capture-soak-baselines/README.md). The weekly
+capture-soak workflow records its runner and measurement contract, verifies complete evidence,
+and compares recomputed spreads against compatible references. Historical deviations are advisory;
+missing references and a single reference are reported explicitly, not presented as an established
+normal range. References are promoted only by reviewed repository changes, never automatically.
+The archive README owns the verification, cohort and update procedure. Routine output remains in
+ignored `artifacts/soak/` and the 90-day Actions artifacts.
+
 For an unexplained late True Peak jump, use `npm run soak:capture -- --evidence --wait`.
 The opt-in capture harness keeps the exact Float32 PCM passed to its summary meter,
 with approximately three seconds before and after a new maximum greater than 0.01 dB
