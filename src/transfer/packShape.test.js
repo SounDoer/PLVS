@@ -322,6 +322,26 @@ describe("parsePack", () => {
     );
   });
 
+  it("reports a Preset with an unknown field as needing a newer PLVS", () => {
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const pack = buildPack("presets", [preset]);
+    pack.items[0].dock.futureSwitch = true;
+    expect(() => parsePack(pack, "presets")).toThrowError(
+      expect.objectContaining({
+        message: "This Preset requires a newer version of PLVS.",
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "unknownField", path: "$.items[0].dock.futureSwitch" }),
+        ]),
+      })
+    );
+  });
+
   it("rejects a bundled Loudness Profile that no Portable Preset references", () => {
     const profile = { id: "broadcast", name: "Broadcast", referenceLufs: -23, rules: [] };
     const preset = {

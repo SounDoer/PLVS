@@ -326,6 +326,64 @@ describe("Portable Preset", () => {
     expect(stored.dock.panelOrder).toHaveLength(1);
   });
 
+  describe("Dock Above Full Screen", () => {
+    const dockedPreset = (dock = {}) =>
+      storedPreset({
+        dock: {
+          enabled: true,
+          edge: "top",
+          monitor: null,
+          reserveSpace: true,
+          height: 84,
+          panelsById: { meter: { id: "meter", moduleId: "levelMeter" } },
+          panelOrder: ["meter"],
+          panelSizesById: { meter: 180 },
+          controlsByPanelId: {},
+          ...dock,
+        },
+      });
+
+    it("omits aboveFullScreen when on", () => {
+      expect(
+        serializePortablePreset(presetToPortable(dockedPreset({ aboveFullScreen: true })))
+      ).toBe(serializePortablePreset(presetToPortable(dockedPreset())));
+      expect(presetToPortable(dockedPreset({ aboveFullScreen: true })).dock).not.toHaveProperty(
+        "aboveFullScreen"
+      );
+    });
+
+    it("writes aboveFullScreen false when off", () => {
+      const portable = presetToPortable(dockedPreset({ aboveFullScreen: false }));
+      expect(portable.dock.aboveFullScreen).toBe(false);
+      expect(portableToStoredPreset(portable, "imported").dock.aboveFullScreen).toBe(false);
+    });
+
+    it("compiles a missing aboveFullScreen to true", () => {
+      const portable = presetToPortable(dockedPreset());
+      expect(portableToStoredPreset(portable, "imported").dock.aboveFullScreen).toBe(true);
+    });
+
+    it("rejects a non-boolean aboveFullScreen", () => {
+      const portable = presetToPortable(dockedPreset());
+      portable.dock.aboveFullScreen = "no";
+      expect(() => portableToStoredPreset(portable, "imported")).toThrowError(
+        expect.objectContaining({
+          issues: expect.arrayContaining([
+            expect.objectContaining({ code: "invalidType", path: "$.dock.aboveFullScreen" }),
+          ]),
+        })
+      );
+    });
+
+    it("reports dockAboveFullScreen capability only when off", () => {
+      const capabilities = (dock) =>
+        assessPortablePresetSharesetsPublication(presetToPortable(dockedPreset(dock))).compatibility
+          .optionalCapabilities;
+      expect(capabilities({ aboveFullScreen: true })).not.toContain("dockAboveFullScreen");
+      expect(capabilities({ aboveFullScreen: false })).toContain("dockAboveFullScreen");
+    });
+  });
+
   it("round-trips Level Meter thresholds for both a Workspace panel and a Dock module", () => {
     const source = storedPreset({
       dock: {

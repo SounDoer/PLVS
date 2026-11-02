@@ -68,6 +68,7 @@ function buildSavedDock(preset, context) {
     edge: raw.edge === "top" ? "top" : "bottom",
     monitor: typeof raw.monitor === "string" ? raw.monitor : null,
     reserveSpace: raw.reserveSpace === true,
+    aboveFullScreen: raw.aboveFullScreen !== false,
     height: Number.isFinite(raw.height) ? raw.height : 72,
     panels: snapshot.panels.map(({ analysis: _analysis, ...panel }) => panel),
   };

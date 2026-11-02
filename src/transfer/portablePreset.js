@@ -50,7 +50,16 @@ const AXIS_FIELDS = Object.freeze({
 });
 const LOUDNESS_FIELDS = new Set(["dependencyId"]);
 const DOCK_DISABLED_FIELDS = new Set(["enabled"]);
-const DOCK_ENABLED_FIELDS = new Set(["enabled", "edge", "reserveSpace", "heightCssPx", "panels"]);
+// aboveFullScreen is optional and written only when false, so files that leave it on stay
+// readable by releases that predate it.
+const DOCK_ENABLED_FIELDS = new Set([
+  "enabled",
+  "edge",
+  "reserveSpace",
+  "aboveFullScreen",
+  "heightCssPx",
+  "panels",
+]);
 const DOCK_PANEL_FIELDS = new Set(["key", "moduleId", "title", "preferredWidthCssPx", "controls"]);
 
 function isPlainObject(value) {
@@ -237,6 +246,7 @@ export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
         enabled: true,
         edge: snapshot.dock.edge,
         reserveSpace: snapshot.dock.reserveSpace,
+        ...(snapshot.dock.aboveFullScreen === false ? { aboveFullScreen: false } : {}),
         heightCssPx: snapshot.dock.height,
         panels: snapshot.dock.panels.map((panel, index) => ({
           key: `dock-${index + 1}`,
@@ -621,6 +631,7 @@ function compileDock(raw, hasLoudnessReference, issues) {
     issues.push(packIssue("invalidDockEdge", `${path}.edge`, "edge must be top or bottom."));
   }
   booleanField(raw, "reserveSpace", path, issues);
+  if (raw.aboveFullScreen !== undefined) booleanField(raw, "aboveFullScreen", path, issues);
   if (
     !Number.isInteger(raw.heightCssPx) ||
     raw.heightCssPx < 56 ||
@@ -674,6 +685,7 @@ function compileDock(raw, hasLoudnessReference, issues) {
     edge: raw.edge,
     monitor: null,
     reserveSpace: raw.reserveSpace,
+    aboveFullScreen: raw.aboveFullScreen !== false,
     // Format v1 permits the old 56px minimum; normalize it for the current controls.
     height: Math.max(DOCK_MIN_HEIGHT, raw.heightCssPx),
     panelsById: planned.dock.panelsById,
@@ -835,6 +847,9 @@ export function assessPortablePresetSharesetsPublication(raw, { dependencyIds = 
       optionalCapabilities: [
         ...(canonical.dock.enabled ? ["dock"] : []),
         ...(canonical.dock.enabled && canonical.dock.reserveSpace ? ["dockReserveSpace"] : []),
+        ...(canonical.dock.enabled && canonical.dock.aboveFullScreen === false
+          ? ["dockAboveFullScreen"]
+          : []),
         ...(canonical.presentation.glassEnabled ? ["glass"] : []),
       ],
     },

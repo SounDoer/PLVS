@@ -411,7 +411,16 @@ function parsePortablePresetItems(raw) {
     }
   });
   if (issues.length > 0) {
-    throw new PackValidationError("This Preset file contains invalid portable content.", issues);
+    // Releases only add Preset fields, so an unknown one inside an item means a newer author.
+    const newer = issues.some(
+      (entry) => entry.code === "unknownField" && entry.path.startsWith("$.items[")
+    );
+    throw new PackValidationError(
+      newer
+        ? "This Preset requires a newer version of PLVS."
+        : "This Preset file contains invalid portable content.",
+      issues
+    );
   }
   return { items: presets.items, loudnessProfiles: profiles.items };
 }
