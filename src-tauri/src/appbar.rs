@@ -520,6 +520,11 @@ pub fn watch_fullscreen<R: tauri::Runtime>(
   Ok(())
 }
 
+/// Drop Shell's last full-screen report, which belongs to the monitor the Dock is leaving.
+pub fn forget_full_screen_report() {
+  FULLSCREEN_PRESENT.store(false, Ordering::Relaxed);
+}
+
 /// Set the Above Full Screen switch. While the strip follows Shell's
 /// notifications, the change applies at once against the last report.
 pub fn set_above_full_screen<R: tauri::Runtime>(

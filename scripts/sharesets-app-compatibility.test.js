@@ -39,6 +39,10 @@ describe("Sharesets app requirements", () => {
     expect(sharesetsAppRequirement(dockPack(false))).toBe("Requires upcoming PLVS");
   });
 
+  it("treats an explicit aboveFullScreen true as a use, since earlier releases reject it", () => {
+    expect(sharesetsAppRequirement(dockPack(true))).toBe("Requires upcoming PLVS");
+  });
+
   it("lets the highest assigned minimum win", () => {
     const both = {
       items: [{ ...pack.items[0], dock: { enabled: true, aboveFullScreen: false } }],

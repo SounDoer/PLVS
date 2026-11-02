@@ -44,9 +44,9 @@ export function presetUsesPanelOrientation(pack) {
   );
 }
 
-// Written only when off, so its presence is the use.
+// PLVS writes it only when off, but any explicit value is unknown to earlier releases.
 export function presetUsesDockAboveFullScreen(pack) {
-  return pack?.items?.[0]?.dock?.aboveFullScreen === false;
+  return pack?.items?.[0]?.dock?.aboveFullScreen !== undefined;
 }
 
 const words = (key) =>

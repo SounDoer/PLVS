@@ -73,6 +73,12 @@ fn default_above_full_screen() -> bool {
   true
 }
 
+/// Shell's last full-screen report belongs to the monitor it was sent for. A Dock that was not
+/// watching, or moves to another monitor, must not act on it.
+fn keeps_full_screen_report(was_docked: bool, previous: Option<&str>, next: Option<&str>) -> bool {
+  was_docked && previous == next
+}
+
 fn default_reserve_space() -> bool {
   cfg!(target_os = "windows")
 }
@@ -636,6 +642,13 @@ pub fn enter_dock<R: tauri::Runtime>(
         }
         #[cfg(target_os = "windows")]
         {
+          if !keeps_full_screen_report(
+            was_docked,
+            previous.as_ref().and_then(|state| state.monitor.as_deref()),
+            monitor.as_deref(),
+          ) {
+            crate::appbar::forget_full_screen_report();
+          }
           crate::appbar::set_above_full_screen(&window, above_full_screen)?;
           crate::appbar::watch_fullscreen(&window, true)?;
         }
@@ -1163,6 +1176,13 @@ mod tests {
     assert!(second.acquire(&root, "DISPLAY-1", DockEdge::Top).unwrap());
     second.release();
     let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn full_screen_report_survives_only_a_same_monitor_reentry() {
+    assert!(keeps_full_screen_report(true, Some("A"), Some("A")));
+    assert!(!keeps_full_screen_report(true, Some("A"), Some("B")));
+    assert!(!keeps_full_screen_report(false, Some("A"), Some("A")));
   }
 
   #[test]
