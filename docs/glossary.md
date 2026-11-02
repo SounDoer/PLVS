@@ -58,6 +58,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Surface Opacity    | Transparency of Workspace, panel and Dock fills; text and data stay opaque                          | 背景不透明度     |                             |
 | Glass              | The translucent macOS window material                                                               | 毛玻璃           |                             |
 | Reserve Space      | Keeps other windows from covering the Dock strip by reserving its screen edge                       | 预留屏幕空间     |                             |
+| Above Full Screen  | Keeps the Dock strip above full-screen windows instead of stepping aside like the taskbar           | 全屏时置顶       |                             |
 | Theme              | The colours of the interface and of every meter                                                     | 主题             | skin                        |
 | Saved Items        | Settings for exporting and importing Loudness Profiles, Presets and Themes                          | 已保存条目       | library                     |
 | Sharesets          | The website where users share Themes, Presets and Loudness Profiles                                 | Sharesets        |                             |

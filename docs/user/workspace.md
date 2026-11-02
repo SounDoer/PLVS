@@ -148,12 +148,14 @@ Turning reservation off, hiding Dock or quitting PLVS restores windows that rema
 them. Later user moves are preserved. After an abnormal exit, the next launch attempts guarded
 recovery when Accessibility permission is available; unresolved windows retain local recovery data.
 
-On Windows, the strip steps aside for full-screen windows the way the taskbar does. A full-screen
-video or a borderless full-screen game on the Dock's display covers the strip, with or without
-**Reserve Space**; the strip returns when that window leaves full screen or another window
-takes the foreground. A full-screen window uses the whole display, so it cannot be made to leave
-room for the strip. To watch the meters next to a video, keep the player in a maximised window —
-with **Reserve Space** on, it stops at the strip.
+On Windows, the strip stays above full-screen windows on its display, such as a full-screen video
+or a borderless full-screen game, covering an edge of that window. A full-screen window uses the
+whole display, so **Reserve Space** cannot make it leave room for the strip. Turn off **Above Full
+Screen** in Dock **Views** to have the strip step aside for full-screen windows the way the taskbar
+does; it returns when that window leaves full screen or another window takes the foreground. To
+watch the meters next to a video in that case, keep the player in a maximised window — with
+**Reserve Space** on, it stops at the strip. Games that use exclusive full screen draw over every
+window, including the strip.
 
 Hover a Stats
 readout or an icon-only Dock action for the same themed explanation shown in the normal workspace.
