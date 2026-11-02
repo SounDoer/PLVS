@@ -1668,7 +1668,7 @@ export function normalizeAgentControlRequest(input) {
     const panel = input.method.startsWith("dock.panel.");
     const update = input.method === "dock.panel.update";
     const allowed = new Set([
-      ...(enter ? ["edge", "monitor", "reserveSpace", "height"] : []),
+      ...(enter ? ["edge", "monitor", "reserveSpace", "aboveFullScreen", "height"] : []),
       ...(layout ? ["layout"] : []),
       ...(panel ? ["panelId"] : []),
       ...(update ? ["patch"] : []),
@@ -1698,6 +1698,12 @@ export function normalizeAgentControlRequest(input) {
     }
     if (input.params.reserveSpace !== undefined && typeof input.params.reserveSpace !== "boolean") {
       return invalidParams("$.params.reserveSpace", "reserveSpace must be a boolean.");
+    }
+    if (
+      input.params.aboveFullScreen !== undefined &&
+      typeof input.params.aboveFullScreen !== "boolean"
+    ) {
+      return invalidParams("$.params.aboveFullScreen", "aboveFullScreen must be a boolean.");
     }
     if (
       input.params.height !== undefined &&

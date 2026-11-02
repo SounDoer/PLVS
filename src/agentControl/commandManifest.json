@@ -5933,7 +5933,7 @@
       "id": "dock.enter",
       "family": "dock",
       "path": ["dock", "enter"],
-      "usage": "plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json --expected-revision <n> [--dry-run]",
+      "usage": "plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--above-full-screen true|false] [--height <n>] --json --expected-revision <n> [--dry-run]",
       "summary": "Enter Dock mode.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -5969,6 +5969,15 @@
             "enum": ["true", "false"]
           },
           "mapsTo": "reserveSpace"
+        },
+        {
+          "name": "--above-full-screen",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["true", "false"]
+          },
+          "mapsTo": "aboveFullScreen"
         },
         {
           "name": "--height",
@@ -6017,6 +6026,9 @@
             "type": "string"
           },
           "reserveSpace": {
+            "type": "boolean"
+          },
+          "aboveFullScreen": {
             "type": "boolean"
           },
           "height": {

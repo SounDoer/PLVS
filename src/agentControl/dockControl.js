@@ -575,6 +575,7 @@ export function buildDockSnapshot(dock, context = {}) {
     edge: dock.edge === "top" ? "top" : "bottom",
     monitor: typeof dock.monitor === "string" ? dock.monitor : null,
     reserveSpace: dock.reserveSpace === true,
+    aboveFullScreen: dock.aboveFullScreen !== false,
     height: dock.height,
     suspended: dock.suspended === true,
     panels: (dock.panelOrder ?? []).flatMap((panelId) => {
@@ -618,6 +619,10 @@ export function buildDockDescription(dock, context = {}) {
     reserveSpace: {
       writable: dock.supported === true && ["windows", "macos"].includes(context.platform),
       reason: ["windows", "macos"].includes(context.platform) ? null : "platformUnsupported",
+    },
+    aboveFullScreen: {
+      writable: dock.supported === true && context.platform === "windows",
+      reason: context.platform === "windows" ? null : "platformUnsupported",
     },
     height: { type: "integer", min: DOCK_MIN_HEIGHT, max: DOCK_MAX_HEIGHT, unit: "cssPx" },
     edges: ["top", "bottom"],
@@ -719,6 +724,21 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
         ),
       ],
     };
+  if (params.aboveFullScreen !== undefined && context.platform !== "windows")
+    return {
+      dock,
+      changed: [],
+      warnings: [],
+      effects: [],
+      refusal: null,
+      issues: [
+        issue(
+          "controlUnavailable",
+          "$.aboveFullScreen",
+          "aboveFullScreen is available only on Windows."
+        ),
+      ],
+    };
   if (
     params.monitor !== undefined &&
     Array.isArray(context.monitors) &&
@@ -754,11 +774,14 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
     edge: params.edge ?? dock.edge,
     monitor,
     reserveSpace: params.reserveSpace ?? dock.reserveSpace,
+    aboveFullScreen: params.aboveFullScreen ?? dock.aboveFullScreen !== false,
     height: params.height ?? dock.height,
     suspended: false,
   };
-  const changed = ["enabled", "edge", "monitor", "reserveSpace", "height"]
-    .filter((key) => projected[key] !== dock[key])
+  // A record that predates aboveFullScreen reads as on, so it is not a change.
+  const current = { ...dock, aboveFullScreen: dock.aboveFullScreen !== false };
+  const changed = ["enabled", "edge", "monitor", "reserveSpace", "aboveFullScreen", "height"]
+    .filter((key) => projected[key] !== current[key])
     .map((key) => `dock.${key}`);
   return {
     dock: projected,

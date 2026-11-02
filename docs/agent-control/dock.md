@@ -9,7 +9,7 @@ capture lifecycle; those remain Transport Control responsibilities.
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 Every mutation supports `--dry-run` and requires `--expected-revision`. Dock entry also accepts
-`--reserve-space true|false`. Agent Control uses the normal Workspace and Dock persistence paths; it
+`--reserve-space true|false` and `--above-full-screen true|false`. Agent Control uses the normal Workspace and Dock persistence paths; it
 does not edit either store from Rust behind the running frontend.
 
 The verbs deliberately separate configuration from window-mode transitions. `layout apply` may
@@ -34,7 +34,8 @@ a previous inventory is never used as a fallback. Monitor changes alone do not a
 `dock.inspect` remains available even when Dock is unsupported and returns:
 
 - top-level revision and compact active-Preset relationship;
-- `supported`, `enabled`, `edge`, resolved monitor, reserve-space setting, and height;
+- `supported`, `enabled`, `edge`, resolved monitor, reserve-space setting, Above Full Screen
+  setting (`aboveFullScreen`, default `true`), and height;
 - ordered Dock panels with ID, canonical module ID, resolved title, optional custom title, effective
   preferred width, `widthMode` (`automatic` or `preferred`), complete public Dock controls, and compact analysis status;
 - read-only runtime state such as temporary suspension while the application window is hidden.
@@ -54,6 +55,11 @@ Execution without permission fails with `applicationFailed` and leaves the previ
 the native error explains where to grant permission. Automatic boot restoration never prompts and
 falls back to an overlay if permission is unavailable. On other platforms, supplying reserve-space
 control is an error rather than silently coercing it.
+
+`aboveFullScreen` keeps the strip above full-screen windows on the Dock's display; `false` makes it
+step behind them as the taskbar does. It is writable only on Windows. Elsewhere `describe` reports
+it unavailable, supplying it fails with `controlUnavailable`, and the stored value is kept for
+Presets without native effect. Entering an enabled Dock with only this option changed updates it.
 
 On macOS, only one workbench can own avoidance on a display, even on opposite edges. A competing
 entry resolves to an overlay and reports the ordinary reservation fallback warning. Windows retains

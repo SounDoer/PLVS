@@ -60,6 +60,7 @@ export function AgentControlBridge() {
     dockSuspended,
     dockTransitioning,
     reserveSpace,
+    aboveFullScreen,
     layout: dockLayout,
     executeDockForControl,
   } = useDock();
@@ -71,6 +72,7 @@ export function AgentControlBridge() {
       edge: dockEdge,
       monitor: dockMonitor,
       reserveSpace,
+      aboveFullScreen,
       height: dockHeight,
       suspended: dockSuspended,
       panelsById: dockLayout.panelsById,
@@ -89,6 +91,7 @@ export function AgentControlBridge() {
       dockSuspended,
       docked,
       reserveSpace,
+      aboveFullScreen,
     ]
   );
 

@@ -168,7 +168,8 @@ export function DockProvider({ children }) {
           projected.reserveSpace,
           projected.monitor,
           projected.height,
-          "agentControl"
+          "agentControl",
+          projected.aboveFullScreen
         );
         return effective;
       }

@@ -271,3 +271,36 @@ describe("Preset scene capture planning", () => {
     });
   });
 });
+
+describe("Preset apply on platforms without Above Full Screen", () => {
+  it("keeps the stored aboveFullScreen without a warning", () => {
+    const preset = {
+      id: "stepping-aside",
+      name: "Stepping aside",
+      tree: { type: "leaf", tabs: [], activeTab: null },
+      panelsById: {},
+      panelOrder: [],
+      panelControlsById: {},
+      dock: {
+        enabled: true,
+        monitor: null,
+        reserveSpace: false,
+        aboveFullScreen: false,
+        panelOrder: [],
+        panelsById: {},
+        panelSizesById: {},
+        controlsByPanelId: {},
+      },
+    };
+    const planned = planPresetApplyResources(preset, {
+      dockSupported: true,
+      reserveSpaceSupported: true,
+      glassSupported: true,
+      channelCount: 2,
+      channelLabels: ["L", "R"],
+    });
+    expect(planned.issues).toEqual([]);
+    expect(planned.warnings).toEqual([]);
+    expect(planned.preset.dock.aboveFullScreen).toBe(false);
+  });
+});

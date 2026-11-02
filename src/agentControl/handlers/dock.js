@@ -133,6 +133,7 @@ async function mutate(ctx) {
           candidate.enabled === true &&
           candidate.edge === planned.dock.edge &&
           candidate.reserveSpace === planned.dock.reserveSpace &&
+          candidate.aboveFullScreen === planned.dock.aboveFullScreen &&
           candidate.height === planned.dock.height &&
           (request.params.monitor === undefined || candidate.monitor === planned.dock.monitor)
       : request.method === "dock.exit"

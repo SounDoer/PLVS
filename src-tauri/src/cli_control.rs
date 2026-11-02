@@ -378,6 +378,7 @@ pub enum ControlCommand {
     edge: Option<String>,
     monitor: Option<String>,
     reserve_space: Option<bool>,
+    above_full_screen: Option<bool>,
     height: Option<u64>,
     expected_revision: Option<u64>,
     dry_run: bool,
@@ -2291,6 +2292,7 @@ fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
   let mut edge = None;
   let mut monitor = None;
   let mut reserve_space = None;
+  let mut above_full_screen = None;
   let mut height = None;
   let mut expected_revision = None;
   let mut dry_run = false;
@@ -2334,6 +2336,17 @@ fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
           "true" => true,
           "false" => false,
           _ => return Err("The --reserve-space value must be true or false.".to_string()),
+        });
+        index += 2;
+      }
+      "--above-full-screen" if enter => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --above-full-screen.".to_string())?;
+        above_full_screen = Some(match value.as_str() {
+          "true" => true,
+          "false" => false,
+          _ => return Err("The --above-full-screen value must be true or false.".to_string()),
         });
         index += 2;
       }
@@ -2383,6 +2396,7 @@ fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
     edge,
     monitor,
     reserve_space,
+    above_full_screen,
     height,
     expected_revision,
     dry_run,
@@ -4501,6 +4515,7 @@ fn request_for_command<R: Read>(
       edge,
       monitor,
       reserve_space,
+      above_full_screen,
       height,
       expected_revision,
       dry_run,
@@ -4535,6 +4550,9 @@ fn request_for_command<R: Read>(
       }
       if let Some(value) = reserve_space {
         params.insert("reserveSpace".to_string(), Value::Bool(*value));
+      }
+      if let Some(value) = above_full_screen {
+        params.insert("aboveFullScreen".to_string(), Value::Bool(*value));
       }
       if let Some(value) = height {
         params.insert("height".to_string(), Value::from(*value));
@@ -7772,6 +7790,8 @@ mod tests {
       "DISPLAY1",
       "--reserve-space",
       "false",
+      "--above-full-screen",
+      "false",
       "--height",
       "72",
       "--expected-revision",
@@ -7785,6 +7805,7 @@ mod tests {
     assert_eq!(request.params["edge"], "top");
     assert_eq!(request.params["monitor"], "DISPLAY1");
     assert_eq!(request.params["reserveSpace"], false);
+    assert_eq!(request.params["aboveFullScreen"], false);
     assert_eq!(request.params["height"], 72);
     assert_eq!(request.params["expectedRevision"], 3);
 
@@ -7809,6 +7830,7 @@ mod tests {
       args(&["dock", "enter", "--edge", "left", "--json"]),
       args(&["dock", "enter", "--height", "55", "--json"]),
       args(&["dock", "enter", "--reserve-space", "yes", "--json"]),
+      args(&["dock", "enter", "--above-full-screen", "yes", "--json"]),
       args(&["dock", "layout", "apply", "--json"]),
       args(&["dock", "panel", "update", "level", "--json"]),
     ] {

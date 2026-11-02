@@ -3075,7 +3075,7 @@ Enter Dock mode.
 - Schema references: `agentControl.revision`
 
 ```text
-plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json --expected-revision <n> [--dry-run]
+plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--above-full-screen true|false] [--height <n>] --json --expected-revision <n> [--dry-run]
 ```
 
 ### Positionals
@@ -3089,6 +3089,7 @@ None.
 | `--edge` | `edge` | no | string; one of "top", "bottom" |
 | `--monitor` | `monitor` | no | string |
 | `--reserve-space` | `reserveSpace` | no | string; one of "true", "false" |
+| `--above-full-screen` | `aboveFullScreen` | no | string; one of "true", "false" |
 | `--height` | `height` | no | integer; 0 to inf |
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |

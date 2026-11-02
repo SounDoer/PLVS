@@ -142,6 +142,46 @@ describe("Dock Control", () => {
     });
   });
 
+  it("inspect reports aboveFullScreen, defaulting to on", () => {
+    expect(buildDockSnapshot(dock).aboveFullScreen).toBe(true);
+    expect(buildDockSnapshot({ ...dock, aboveFullScreen: false }).aboveFullScreen).toBe(false);
+  });
+
+  it("describes aboveFullScreen as writable on Windows only", () => {
+    expect(buildDockDescription(dock, { platform: "windows" }).aboveFullScreen).toEqual({
+      writable: true,
+      reason: null,
+    });
+    expect(buildDockDescription(dock, { platform: "macos" }).aboveFullScreen).toEqual({
+      writable: false,
+      reason: "platformUnsupported",
+    });
+  });
+
+  it("enter with only aboveFullScreen changed plans a change", () => {
+    const planned = planDockFormMutation(
+      dock,
+      "dock.enter",
+      { aboveFullScreen: false },
+      { platform: "windows", sourceMode: "live" }
+    );
+    expect(planned.issues).toEqual([]);
+    expect(planned.changed).toEqual(["dock.aboveFullScreen"]);
+    expect(planned.dock.aboveFullScreen).toBe(false);
+  });
+
+  it("refuses aboveFullScreen on macOS with controlUnavailable", () => {
+    const planned = planDockFormMutation(
+      dock,
+      "dock.enter",
+      { aboveFullScreen: false },
+      { platform: "macos", sourceMode: "live" }
+    );
+    expect(planned.issues).toEqual([
+      expect.objectContaining({ code: "controlUnavailable", path: "$.aboveFullScreen" }),
+    ]);
+  });
+
   it("allows macOS overlay entry and explicit opt-in reservation", () => {
     const current = { ...dock, enabled: false, reserveSpace: false };
     const context = { platform: "macos", sourceMode: "live" };

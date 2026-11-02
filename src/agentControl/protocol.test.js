@@ -937,6 +937,7 @@ describe("normalizeAgentControlRequest", () => {
         edge: "top",
         monitor: "monitor-1",
         reserveSpace: false,
+        aboveFullScreen: false,
         height: 72,
         expectedRevision: 2,
         dryRun: true,
@@ -954,6 +955,14 @@ describe("normalizeAgentControlRequest", () => {
       ok: true,
       request: { id: "req-1", method, params },
     });
+  });
+
+  it("rejects a non-boolean dock.enter aboveFullScreen", () => {
+    expect(
+      normalizeAgentControlRequest(
+        request("dock.enter", { aboveFullScreen: "no", expectedRevision: 2 })
+      )
+    ).toMatchObject({ ok: false, error: { path: "$.params.aboveFullScreen" } });
   });
 
   it("normalizes dock.panel.describe", () => {
