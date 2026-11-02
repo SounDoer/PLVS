@@ -45,7 +45,7 @@ fn dock_snapshot<R: Runtime>(app: &tauri::AppHandle<R>) -> Value {
       .and_then(|monitors| monitors.into_iter().find(|monitor| monitor.name() == dock.monitor.as_ref()))
       .map(|monitor| *monitor.position());
     json!({"enabled":dock.enabled, "edge":dock.edge, "height":dock.height,
-      "reserveSpace":dock.reserve_space,
+      "reserveSpace":dock.reserve_space, "aboveFullScreen":dock.above_full_screen,
       "monitorPosition":monitor_position,
       "nativeEnabled":app.state::<crate::dock::DockedFlag>().0.load(std::sync::atomic::Ordering::Relaxed)})
   })

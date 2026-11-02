@@ -291,6 +291,7 @@ pub fn run() {
       dock::exit_dock,
       dock::get_dock_state,
       dock::set_dock_reserve_space,
+      dock::set_dock_above_full_screen,
       dock::set_dock_suspended,
       dock::set_dock_height,
       dock_accessories::set_dock_accessories,
@@ -724,6 +725,10 @@ pub fn run() {
         .0
         .load(std::sync::atomic::Ordering::Relaxed)
       {
+        if let Some(dock) = boot_dock.as_ref() {
+          appbar::set_above_full_screen(&window, dock.above_full_screen)
+            .map_err(|e| format!("appbar above full screen: {e}"))?;
+        }
         appbar::watch_fullscreen(&window, true)
           .map_err(|e| format!("appbar fullscreen watch: {e}"))?;
       }
@@ -854,6 +859,7 @@ mod tests {
       monitor: Some("\\\\.\\DISPLAY1".into()),
       reserve_space: true,
       height: 96,
+      above_full_screen: true,
     }
   }
 
@@ -997,6 +1003,7 @@ mod tests {
         "monitor": "\\\\.\\DISPLAY1",
         "reserveSpace": true,
         "height": 96,
+        "aboveFullScreen": true,
       })
     );
   }

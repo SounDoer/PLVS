@@ -65,6 +65,11 @@ impl AppBarState {
 /// A full-screen window owns the Dock's monitor, so the strip has dropped out
 /// of the topmost band until Shell reports that window gone.
 static YIELDED: AtomicBool = AtomicBool::new(false);
+/// Shell's last full-screen report for the Dock's monitor. Shell reports only
+/// transitions, so this is what lets the switch below act while one is open.
+static FULLSCREEN_PRESENT: AtomicBool = AtomicBool::new(false);
+/// The Dock's Above Full Screen switch.
+static ABOVE_FULL_SCREEN: AtomicBool = AtomicBool::new(true);
 static RESTORE_ATTEMPTS: AtomicU32 = AtomicU32::new(0);
 static STATE: OnceLock<Mutex<AppBarState>> = OnceLock::new();
 static TRANSITION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -86,6 +91,20 @@ fn state() -> &'static Mutex<AppBarState> {
 
 fn is_yielded() -> bool {
   YIELDED.load(Ordering::Relaxed)
+}
+
+fn should_yield(fullscreen_present: bool, above_full_screen: bool) -> bool {
+  fullscreen_present && !above_full_screen
+}
+
+unsafe fn apply_yield(hwnd: HWND) {
+  set_yielded(
+    hwnd,
+    should_yield(
+      FULLSCREEN_PRESENT.load(Ordering::Relaxed),
+      ABOVE_FULL_SCREEN.load(Ordering::Relaxed),
+    ),
+  );
 }
 
 /// Step behind a full-screen window, or return to the topmost band. Shell lowers
@@ -406,8 +425,9 @@ unsafe extern "system" fn subclass_proc(
       "dock fullscreen notification: fullscreen={} applied={notified}",
       lparam != 0
     );
+    FULLSCREEN_PRESENT.store(lparam != 0, Ordering::Relaxed);
     if notified {
-      set_yielded(hwnd, lparam != 0);
+      apply_yield(hwnd);
     }
     return 0;
   }
@@ -489,12 +509,31 @@ pub fn watch_fullscreen<R: tauri::Runtime>(
   };
   if !enabled {
     YIELDED.store(false, Ordering::Relaxed);
+    FULLSCREEN_PRESENT.store(false, Ordering::Relaxed);
   }
   if changes_registration {
     let mut data = appbar_data(hwnd);
     unsafe {
       SHAppBarMessage(if enabled { ABM_NEW } else { ABM_REMOVE }, &mut data);
     }
+  }
+  Ok(())
+}
+
+/// Set the Above Full Screen switch. While the strip follows Shell's
+/// notifications, the change applies at once against the last report.
+pub fn set_above_full_screen<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  enabled: bool,
+) -> Result<(), String> {
+  let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
+  ABOVE_FULL_SCREEN.store(enabled, Ordering::Relaxed);
+  let notified = state()
+    .lock()
+    .map_err(|_| "appbar state poisoned")?
+    .receives_shell_notifications(hwnd as isize);
+  if notified {
+    unsafe { apply_yield(hwnd) };
   }
   Ok(())
 }
@@ -793,6 +832,14 @@ mod tests {
     assert!(!current.receives_shell_notifications(7));
     assert!(current.requested_position(42).is_none());
     assert!(!current.should_notify_window_position_changed(42));
+  }
+
+  #[test]
+  fn should_yield_only_when_full_screen_and_switch_off() {
+    assert!(should_yield(true, false));
+    assert!(!should_yield(true, true));
+    assert!(!should_yield(false, false));
+    assert!(!should_yield(false, true));
   }
 
   #[test]

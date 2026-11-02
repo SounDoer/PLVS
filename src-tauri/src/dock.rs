@@ -63,6 +63,14 @@ pub struct DockStateRecord {
   pub reserve_space: bool,
   #[serde(default = "default_dock_height")]
   pub height: u32,
+  /// Stays above full-screen windows instead of stepping aside like the taskbar.
+  /// Stored on every platform so Presets round-trip where it has no effect yet.
+  #[serde(default = "default_above_full_screen")]
+  pub above_full_screen: bool,
+}
+
+fn default_above_full_screen() -> bool {
+  true
 }
 
 fn default_reserve_space() -> bool {
@@ -526,6 +534,7 @@ pub fn enter_dock<R: tauri::Runtime>(
   monitor: Option<String>,
   height: Option<u32>,
   origin: Option<crate::feedback_diagnostics::Origin>,
+  above_full_screen: Option<bool>,
 ) -> Result<DockStateRecord, String> {
   if !is_supported_platform() {
     return Err("Dock is unavailable on this platform.".to_string());
@@ -535,7 +544,7 @@ pub fn enter_dock<R: tauri::Runtime>(
     &window,
     "dock.enter",
     origin,
-    serde_json::json!({"edge":edge,"reserveSpace":reserve_space,"height":height,"monitorSpecified":monitor.is_some()}),
+    serde_json::json!({"edge":edge,"reserveSpace":reserve_space,"aboveFullScreen":above_full_screen,"height":height,"monitorSpecified":monitor.is_some()}),
     true,
     false,
     || {
@@ -552,6 +561,12 @@ pub fn enter_dock<R: tauri::Runtime>(
         }),
         cfg!(any(target_os = "windows", target_os = "macos")),
       );
+      let above_full_screen = above_full_screen.unwrap_or_else(|| {
+        previous
+          .as_ref()
+          .map(|state| state.above_full_screen)
+          .unwrap_or_else(default_above_full_screen)
+      });
       let height = fitted_height(
         &window,
         monitor.as_deref(),
@@ -619,7 +634,10 @@ pub fn enter_dock<R: tauri::Runtime>(
           )?;
         }
         #[cfg(target_os = "windows")]
-        crate::appbar::watch_fullscreen(&window, true)?;
+        {
+          crate::appbar::set_above_full_screen(&window, above_full_screen)?;
+          crate::appbar::watch_fullscreen(&window, true)?;
+        }
         Ok((monitor, reserve_space))
       })();
       let (monitor, reserve_space) = match transition {
@@ -647,6 +665,7 @@ pub fn enter_dock<R: tauri::Runtime>(
         monitor,
         reserve_space,
         height,
+        above_full_screen,
       };
       write_dock_state(window.app_handle(), &next);
       Ok(next)
@@ -753,6 +772,10 @@ pub fn exit_dock<R: tauri::Runtime>(
             .as_ref()
             .map(|s| clamp_dock_height(s.height))
             .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+          above_full_screen: prev
+            .as_ref()
+            .map(|s| s.above_full_screen)
+            .unwrap_or_else(default_above_full_screen),
         },
       );
       flag.0.store(false, Ordering::Relaxed);
@@ -875,11 +898,52 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
         &DockStateRecord {
           enabled: true,
           edge,
+          above_full_screen: previous
+            .as_ref()
+            .map(|state| state.above_full_screen)
+            .unwrap_or_else(default_above_full_screen),
           monitor: previous.and_then(|state| state.monitor),
           reserve_space: enabled,
           height: read_dock_state(window.app_handle())
             .map(|state| clamp_dock_height(state.height))
             .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+        },
+      );
+      Ok(())
+    },
+  )
+}
+
+/// Change Above Full Screen while docked. Platforms without the native
+/// behaviour store the value so Presets round-trip.
+#[tauri::command]
+pub fn set_dock_above_full_screen<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  flag: tauri::State<'_, DockedFlag>,
+  enabled: bool,
+  origin: Option<crate::feedback_diagnostics::Origin>,
+) -> Result<(), String> {
+  crate::feedback_diagnostics::observe(
+    &window,
+    "dock.aboveFullScreen",
+    origin,
+    serde_json::json!({"enabled":enabled}),
+    true,
+    false,
+    || {
+      if !flag.0.load(Ordering::Relaxed) {
+        return Err("window is not docked".into());
+      }
+      #[cfg(target_os = "windows")]
+      crate::appbar::set_above_full_screen(&window, enabled)?;
+      let Some(previous) = read_dock_state(window.app_handle()) else {
+        return Err("dock state is unavailable".into());
+      };
+      write_dock_state(
+        window.app_handle(),
+        &DockStateRecord {
+          above_full_screen: enabled,
+          ..previous
         },
       );
       Ok(())
@@ -1006,6 +1070,7 @@ pub fn set_dock_height<R: tauri::Runtime>(
         monitor: None,
         reserve_space: true,
         height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+        above_full_screen: default_above_full_screen(),
       });
       let (work_area, scale, resolved_monitor) =
         work_area_and_scale(&window, previous.monitor.as_deref())?;
@@ -1053,6 +1118,7 @@ pub fn set_dock_height<R: tauri::Runtime>(
             monitor: resolved_monitor.or(previous.monitor),
             reserve_space: previous.reserve_space,
             height,
+            above_full_screen: previous.above_full_screen,
           },
         );
       }
@@ -1096,6 +1162,22 @@ mod tests {
     assert!(second.acquire(&root, "DISPLAY-1", DockEdge::Top).unwrap());
     second.release();
     let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn dock_state_without_above_full_screen_defaults_on() {
+    let state: DockStateRecord =
+      serde_json::from_value(serde_json::json!({"enabled":true,"edge":"top"})).unwrap();
+    assert!(state.above_full_screen);
+  }
+
+  #[test]
+  fn normalize_for_platform_keeps_above_full_screen() {
+    let state: DockStateRecord = serde_json::from_value(
+      serde_json::json!({"enabled":true,"edge":"top","aboveFullScreen":false}),
+    )
+    .unwrap();
+    assert!(!state.normalize_for_platform().above_full_screen);
   }
 
   fn wa() -> MonitorRect {
@@ -1153,6 +1235,7 @@ mod tests {
       monitor: Some("\\\\.\\DISPLAY1".into()),
       reserve_space: true,
       height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+      above_full_screen: false,
     };
     let v = serde_json::to_value(&s).unwrap();
     assert_eq!(v["enabled"], true);
@@ -1160,6 +1243,7 @@ mod tests {
     assert_eq!(v["monitor"], "\\\\.\\DISPLAY1");
     assert_eq!(v["reserveSpace"], true);
     assert_eq!(v["height"], DOCK_DEFAULT_LOGICAL_HEIGHT);
+    assert_eq!(v["aboveFullScreen"], false);
     let back: DockStateRecord = serde_json::from_value(v).unwrap();
     assert_eq!(back, s);
   }
@@ -1185,6 +1269,7 @@ mod tests {
       monitor: None,
       reserve_space: true,
       height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+      above_full_screen: true,
     };
 
     assert!(!state.with_reserve_space_support(false).reserve_space);
@@ -1198,6 +1283,7 @@ mod tests {
       monitor: None,
       reserve_space: false,
       height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+      above_full_screen: true,
     };
 
     assert!(state.with_reserve_space_support(false).enabled);
