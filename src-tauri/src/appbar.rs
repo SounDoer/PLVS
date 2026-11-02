@@ -13,9 +13,10 @@ use windows_sys::Win32::UI::Shell::{
   APPBARDATA,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  GetWindowLongW, KillTimer, MoveWindow, SetTimer, SetWindowPos, GWL_EXSTYLE, HWND_BOTTOM,
-  HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, WINDOWPOS, WM_APP, WM_NCDESTROY, WM_TIMER,
-  WM_WINDOWPOSCHANGED, WM_WINDOWPOSCHANGING, WS_EX_TOPMOST,
+  GetClassNameW, GetForegroundWindow, GetWindowLongW, GetWindowRect, KillTimer, MoveWindow,
+  SetTimer, SetWindowPos, GWL_EXSTYLE, HWND_BOTTOM, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE,
+  SWP_NOSIZE, WINDOWPOS, WM_APP, WM_NCDESTROY, WM_TIMER, WM_WINDOWPOSCHANGED, WM_WINDOWPOSCHANGING,
+  WS_EX_TOPMOST,
 };
 
 use crate::dock::DockEdge;
@@ -26,6 +27,8 @@ const APPBAR_SUBCLASS_ID: usize = 0x504c5653;
 const RESTORE_TIMER_ID: usize = 0x504c5654;
 const RESTORE_RETRY_MS: u32 = 250;
 const RESTORE_MAX_ATTEMPTS: u32 = 20;
+const FULLSCREEN_POLL_TIMER_ID: usize = 0x504c5655;
+const FULLSCREEN_POLL_MS: u32 = 500;
 
 #[derive(Clone, Copy)]
 struct AppBarState {
@@ -112,6 +115,11 @@ unsafe fn apply_yield(hwnd: HWND) {
 /// HWND_BOTTOM is what removes the topmost style.
 unsafe fn set_yielded(hwnd: HWND, yielded: bool) {
   YIELDED.store(yielded, Ordering::Relaxed);
+  if yielded {
+    SetTimer(hwnd, FULLSCREEN_POLL_TIMER_ID, FULLSCREEN_POLL_MS, None);
+  } else {
+    KillTimer(hwnd, FULLSCREEN_POLL_TIMER_ID);
+  }
   SetWindowPos(
     hwnd,
     if yielded { HWND_BOTTOM } else { HWND_TOPMOST },
@@ -127,6 +135,47 @@ unsafe fn set_yielded(hwnd: HWND, yielded: bool) {
     RESTORE_ATTEMPTS.store(0, Ordering::Relaxed);
     SetTimer(hwnd, RESTORE_TIMER_ID, RESTORE_RETRY_MS, None);
   }
+}
+
+fn covers_monitor(window: RECT, monitor: RECT) -> bool {
+  window.left <= monitor.left
+    && window.top <= monitor.top
+    && window.right >= monitor.right
+    && window.bottom >= monitor.bottom
+}
+
+/// The desktop's windows span every monitor but are never a full-screen application.
+fn is_desktop_class(class: &str) -> bool {
+  matches!(class, "Progman" | "WorkerW")
+}
+
+/// Whether the foreground window still covers the Dock's monitor. Shell sends
+/// no "gone" notification to a registration made while a full-screen window was
+/// open, so a yielded strip checks for itself.
+unsafe fn foreground_covers_monitor(hwnd: HWND) -> bool {
+  let foreground = GetForegroundWindow();
+  if foreground.is_null() || foreground == hwnd {
+    return false;
+  }
+  let mut class = [0u16; 64];
+  let length = GetClassNameW(foreground, class.as_mut_ptr(), class.len() as i32);
+  if length > 0 && is_desktop_class(&String::from_utf16_lossy(&class[..length as usize])) {
+    return false;
+  }
+  let mut window = RECT::default();
+  if GetWindowRect(foreground, &mut window) == 0 {
+    return false;
+  }
+  let mut info = MONITORINFO {
+    cbSize: size_of::<MONITORINFO>() as u32,
+    rcMonitor: RECT::default(),
+    rcWork: RECT::default(),
+    dwFlags: 0,
+  };
+  let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  !monitor.is_null()
+    && GetMonitorInfoW(monitor, &mut info) != 0
+    && covers_monitor(window, info.rcMonitor)
 }
 
 unsafe fn is_topmost(hwnd: HWND) -> bool {
@@ -435,6 +484,14 @@ unsafe extern "system" fn subclass_proc(
     retry_topmost(hwnd);
     return 0;
   }
+  if msg == WM_TIMER && wparam == FULLSCREEN_POLL_TIMER_ID {
+    if is_yielded() && !foreground_covers_monitor(hwnd) {
+      log::info!("dock full-screen window gone without a notification");
+      FULLSCREEN_PRESENT.store(false, Ordering::Relaxed);
+      apply_yield(hwnd);
+    }
+    return 0;
+  }
   if msg == WM_WINDOWPOSCHANGING {
     let requested = state()
       .lock()
@@ -510,6 +567,7 @@ pub fn watch_fullscreen<R: tauri::Runtime>(
   if !enabled {
     YIELDED.store(false, Ordering::Relaxed);
     FULLSCREEN_PRESENT.store(false, Ordering::Relaxed);
+    unsafe { KillTimer(hwnd, FULLSCREEN_POLL_TIMER_ID) };
   }
   if changes_registration {
     let mut data = appbar_data(hwnd);
@@ -837,6 +895,51 @@ mod tests {
     assert!(!current.receives_shell_notifications(7));
     assert!(current.requested_position(42).is_none());
     assert!(!current.should_notify_window_position_changed(42));
+  }
+
+  #[test]
+  fn a_window_counts_as_full_screen_only_when_it_covers_the_monitor() {
+    let monitor = RECT {
+      left: 0,
+      top: 0,
+      right: 2560,
+      bottom: 1440,
+    };
+    assert!(covers_monitor(monitor, monitor));
+    assert!(covers_monitor(
+      RECT {
+        left: -8,
+        top: -8,
+        right: 2568,
+        bottom: 1448
+      },
+      monitor
+    ));
+    assert!(!covers_monitor(
+      RECT {
+        left: 0,
+        top: 0,
+        right: 2560,
+        bottom: 1392
+      },
+      monitor
+    ));
+    assert!(!covers_monitor(
+      RECT {
+        left: 2560,
+        top: 0,
+        right: 5120,
+        bottom: 1440
+      },
+      monitor
+    ));
+  }
+
+  #[test]
+  fn the_desktop_is_never_a_full_screen_window() {
+    assert!(is_desktop_class("Progman"));
+    assert!(is_desktop_class("WorkerW"));
+    assert!(!is_desktop_class("Chrome_WidgetWin_1"));
   }
 
   #[test]
