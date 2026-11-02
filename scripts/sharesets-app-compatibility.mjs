@@ -1,14 +1,27 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { presetUsesPanelOrientation } from "./preset-presentation.mjs";
+import {
+  presetUsesDockAboveFullScreen,
+  presetUsesPanelOrientation,
+} from "./preset-presentation.mjs";
 
 export const SHARESETS_MINIMUM_APP_VERSION = "0.20.0";
 
 // Record the FIRST stable release supporting a feature; never track the latest app version.
-// null is allowed during development, but blocks a stable release.
+// null is allowed during development, but blocks a stable release. `uses` reads the saved content,
+// so an Item's requirement follows the features it actually uses.
 export const SHARESETS_APP_FEATURES = {
-  panelOrientation: { minimumAppVersion: "0.21.0", introducedAfter: "0.20.0" },
+  panelOrientation: {
+    minimumAppVersion: "0.21.0",
+    introducedAfter: "0.20.0",
+    uses: presetUsesPanelOrientation,
+  },
+  dockAboveFullScreen: {
+    minimumAppVersion: null,
+    introducedAfter: "0.24.0",
+    uses: presetUsesDockAboveFullScreen,
+  },
 };
 
 const validVersion = (value) =>
@@ -21,11 +34,14 @@ const compare = (left, right) => {
 };
 
 export function sharesetsAppRequirement(pack, features = SHARESETS_APP_FEATURES) {
-  if (!presetUsesPanelOrientation(pack)) return `Requires PLVS ${SHARESETS_MINIMUM_APP_VERSION}+`;
-  const minimum = features.panelOrientation?.minimumAppVersion;
-  if (minimum == null) return "Requires upcoming PLVS";
-  if (!validVersion(minimum)) throw new Error("Invalid panelOrientation minimumAppVersion");
-  return `Requires PLVS ${minimum}+`;
+  let highest = SHARESETS_MINIMUM_APP_VERSION;
+  for (const [feature, { minimumAppVersion: minimum, uses }] of Object.entries(features)) {
+    if (!uses(pack)) continue;
+    if (minimum == null) return "Requires upcoming PLVS";
+    if (!validVersion(minimum)) throw new Error(`Invalid ${feature} minimumAppVersion`);
+    if (compare(minimum, highest) > 0) highest = minimum;
+  }
+  return `Requires PLVS ${highest}+`;
 }
 
 export function checkSharesetsAppCompatibility({ appVersion, features = SHARESETS_APP_FEATURES }) {

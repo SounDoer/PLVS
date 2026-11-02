@@ -44,6 +44,11 @@ export function presetUsesPanelOrientation(pack) {
   );
 }
 
+// Written only when off, so its presence is the use.
+export function presetUsesDockAboveFullScreen(pack) {
+  return pack?.items?.[0]?.dock?.aboveFullScreen === false;
+}
+
 const words = (key) =>
   labels[key] ??
   key

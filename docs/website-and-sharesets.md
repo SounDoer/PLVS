@@ -164,6 +164,16 @@ Both the local release-state check and the stable Release workflow reject unassi
 or future minimum versions. Register the first supporting release before publishing; later releases
 retain that minimum. The published site changes only after its website deployment succeeds.
 
+Portable Preset fields that existed at format 1 are always written. A field added later follows
+four rules, so that Items which do not use it stay readable by every earlier release:
+
+1. It is optional and written only when it differs from its default; `formatVersion` stays.
+2. Its default is the same on every platform, because an omitted field must mean one thing. Once
+   shipped, the default cannot change without a format version change.
+3. It is registered in `SHARESETS_APP_FEATURES` with a `uses` detector and its first supporting
+   stable release. Each Item's requirement is the highest minimum among the features it uses.
+4. `formatVersion` changes only for breaking changes: renames, removals, or changed meaning.
+
 `sharesets:curate` is the maintainer path from a candidate content tree to a local review. The first
 form above is always a dry run: it validates the candidate records and new canonical artifacts,
 compares all existing Release records and bytes with the published baseline, and prints a concise
