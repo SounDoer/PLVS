@@ -650,11 +650,18 @@ work area, so opening the toolbar never reflows maximized windows.
 
 While the strip is on screen it stays registered with Shell even as an overlay: `ABM_NEW` without
 `ABM_SETPOS` reserves nothing but still delivers `ABN_FULLSCREENAPP`, which Shell sends only to
-registered appbars and only for the appbar's own monitor. On that notification `appbar.rs` moves the
-strip to the bottom of the z-order, which drops its topmost style, and restores it when the
-full-screen window goes away. Nothing raises the header meanwhile: it is opened only from the
-strip's entry, and the full-screen window taking the foreground closes a toolbar that was already
-open, through the same focus rule that closes it when the user clicks another application.
+registered appbars. `appbar.rs` treats the notification as a cue to look: a report starts only when
+the first ordinary window in the z-order on the Dock's own monitor covers that monitor, and Shell's
+"gone" always ends it. With **Above Full Screen** on, the strip stays topmost and lays out against
+the whole monitor, where the full-screen window has hidden the taskbar; the reservation itself is
+unchanged. With it off, the strip is hidden until the report ends. It is never dropped out of the
+topmost band, because Windows refuses to return a background process's window there (see
+[ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). While a
+report stands, a 500 ms timer repeats the same check, since Shell never reports a full-screen
+window gone to a registration made while it was open. Open accessories move with the strip. Nothing
+raises the header while the strip is hidden: it is opened only from the strip's entry, and the
+full-screen window taking the foreground closes a toolbar that was already open, through the same
+focus rule that closes it when the user clicks another application.
 
 None of the accessory windows exists at startup; each WebView renderer costs about 33 MB private and
 70 MB working set on Windows. `useDockAccessoryVisibility` creates `dock-header` and `dock-editor`

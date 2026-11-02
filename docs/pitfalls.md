@@ -71,6 +71,16 @@ React state is too late for this ordering: `setFocusView` schedules the decorati
 commit. The shadow is Rust-owned—normal windows have it and the docked strip does not—so JavaScript
 must not manage it independently.
 
+### Windows will not put a background window back on top
+
+`SetWindowPos(HWND_TOPMOST)` from a process that is not in the foreground returns success and does
+nothing once the window has left the topmost band. Tauri's `set_always_on_top` also skips a call that
+matches its own flag, so it cannot repair the state either. The Dock strip therefore never leaves
+the topmost band for a full-screen window: it hides instead
+([ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). Verify
+topmost changes with the window in the background, as it is when a full-screen window closes; a
+command typed while PLVS has focus passes either way.
+
 ## Capture verification
 
 ### Detached RDP setup can silently record silence

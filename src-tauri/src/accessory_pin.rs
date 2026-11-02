@@ -12,7 +12,10 @@ use std::sync::{Mutex, OnceLock};
 use tauri::WebviewWindow;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
-use windows_sys::Win32::UI::WindowsAndMessaging::{WINDOWPOS, WM_NCDESTROY, WM_WINDOWPOSCHANGING};
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+  SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, WINDOWPOS, WM_NCDESTROY,
+  WM_WINDOWPOSCHANGING,
+};
 
 use crate::appbar::enforce_window_position;
 use crate::window_state::WindowBounds;
@@ -52,6 +55,47 @@ pub fn pin<R: tauri::Runtime>(window: &WebviewWindow<R>, bounds: WindowBounds) {
   }
 }
 
+fn shifted(rect: RECT, dx: i32, dy: i32) -> RECT {
+  RECT {
+    left: rect.left + dx,
+    top: rect.top + dy,
+    right: rect.right + dx,
+    bottom: rect.bottom + dy,
+  }
+}
+
+/// Move every accessory by the strip's own move, so they stay attached to it.
+/// Must run on the thread that owns the windows.
+pub fn shift_all(dx: i32, dy: i32) {
+  if dx == 0 && dy == 0 {
+    return;
+  }
+  let moved: Vec<(isize, RECT)> = match pins().lock() {
+    Ok(mut pins) => pins
+      .iter_mut()
+      .map(|(hwnd, rect)| {
+        *rect = shifted(*rect, dx, dy);
+        (*hwnd, *rect)
+      })
+      .collect(),
+    Err(_) => return,
+  };
+  // The pin lock is released first: the move re-enters subclass_proc, which reads it.
+  for (hwnd, rect) in moved {
+    unsafe {
+      SetWindowPos(
+        hwnd as HWND,
+        std::ptr::null_mut(),
+        rect.left,
+        rect.top,
+        0,
+        0,
+        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+      );
+    }
+  }
+}
+
 unsafe extern "system" fn subclass_proc(
   hwnd: HWND,
   msg: u32,
@@ -80,6 +124,24 @@ unsafe extern "system" fn subclass_proc(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn an_accessory_moves_with_the_strip_without_resizing() {
+    let rect = shifted(
+      RECT {
+        left: 0,
+        top: 1100,
+        right: 400,
+        bottom: 1192,
+      },
+      0,
+      60,
+    );
+    assert_eq!(
+      (rect.left, rect.top, rect.right, rect.bottom),
+      (0, 1160, 400, 1252)
+    );
+  }
 
   #[test]
   fn the_first_show_shift_returns_to_the_placed_rect() {

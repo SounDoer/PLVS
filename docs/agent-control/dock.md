@@ -56,8 +56,8 @@ the native error explains where to grant permission. Automatic boot restoration 
 falls back to an overlay if permission is unavailable. On other platforms, supplying reserve-space
 control is an error rather than silently coercing it.
 
-`aboveFullScreen` keeps the strip above full-screen windows on the Dock's display; `false` makes it
-step behind them as the taskbar does. It is writable only on Windows. Elsewhere `describe` reports
+`aboveFullScreen` keeps the strip above full-screen windows on the Dock's display, moved to the
+display edge; `false` makes it step aside for them as the taskbar does. It is writable only on Windows. Elsewhere `describe` reports
 it unavailable, supplying it fails with `controlUnavailable`, and the stored value is kept for
 Presets without native effect. Entering an enabled Dock with only this option changed updates it.
 
