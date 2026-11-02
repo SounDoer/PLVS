@@ -526,6 +526,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn enter_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   flag: tauri::State<'_, DockedFlag>,
