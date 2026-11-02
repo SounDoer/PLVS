@@ -18,6 +18,9 @@ export function useViewSettings() {
   const [surfaceOpacity, setSurfaceOpacityState] = useState(() =>
     normalizeSurfaceOpacity(settingsStore.read().surfaceOpacity)
   );
+  const [dockSurfaceOpacity, setDockSurfaceOpacityState] = useState(() =>
+    normalizeSurfaceOpacity(settingsStore.read().dockSurfaceOpacity)
+  );
   const [glassEnabled, setGlassEnabledState] = useState(() =>
     normalizeGlassEnabled(settingsStore.read().glassEnabled)
   );
@@ -69,6 +72,12 @@ export function useViewSettings() {
     setSurfaceOpacityState(next);
   }
 
+  function setDockSurfaceOpacity(value) {
+    const next = normalizeSurfaceOpacity(value);
+    settingsStore.patchCoalesced({ dockSurfaceOpacity: next });
+    setDockSurfaceOpacityState(next);
+  }
+
   function setGlassEnabled(value) {
     const next = normalizeGlassEnabled(value);
     settingsStore.patch({ glassEnabled: next });
@@ -86,6 +95,7 @@ export function useViewSettings() {
           compactPanels: next.workspace.hidePanelHeaders,
         });
         setSurfaceOpacityState(normalizeSurfaceOpacity(settings.surfaceOpacity));
+        setDockSurfaceOpacityState(normalizeSurfaceOpacity(settings.dockSurfaceOpacity));
         setGlassEnabledState(normalizeGlassEnabled(settings.glassEnabled));
       }),
     []
@@ -101,6 +111,8 @@ export function useViewSettings() {
     setBorderless,
     surfaceOpacity,
     setSurfaceOpacity,
+    dockSurfaceOpacity,
+    setDockSurfaceOpacity,
     glassEnabled,
     setGlassEnabled,
   };

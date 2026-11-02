@@ -6,6 +6,7 @@ import { planPublicPanelControlPatch } from "../agentControl/panelControlPatch.j
 import { compileDockLayout } from "../agentControl/dockControl.js";
 import { DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
+import { DEFAULT_SURFACE_OPACITY } from "../settings/defaults.js";
 import { profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { createDefaultPanelControls } from "../workspace/panelControlInstances.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
@@ -50,13 +51,14 @@ const AXIS_FIELDS = Object.freeze({
 });
 const LOUDNESS_FIELDS = new Set(["dependencyId"]);
 const DOCK_DISABLED_FIELDS = new Set(["enabled"]);
-// aboveFullScreen is optional and written only when false, so files that leave it on stay
-// readable by releases that predate it.
+// aboveFullScreen and surfaceOpacityPercent are optional and written only when they differ from
+// their defaults (on, 100), so files that keep the defaults stay readable by earlier releases.
 const DOCK_ENABLED_FIELDS = new Set([
   "enabled",
   "edge",
   "reserveSpace",
   "aboveFullScreen",
+  "surfaceOpacityPercent",
   "heightCssPx",
   "panels",
 ]);
@@ -247,6 +249,9 @@ export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
         edge: snapshot.dock.edge,
         reserveSpace: snapshot.dock.reserveSpace,
         ...(snapshot.dock.aboveFullScreen === false ? { aboveFullScreen: false } : {}),
+        ...(snapshot.dock.surfaceOpacity !== DEFAULT_SURFACE_OPACITY
+          ? { surfaceOpacityPercent: snapshot.dock.surfaceOpacity }
+          : {}),
         heightCssPx: snapshot.dock.height,
         panels: snapshot.dock.panels.map((panel, index) => ({
           key: `dock-${index + 1}`,
@@ -633,6 +638,20 @@ function compileDock(raw, hasLoudnessReference, issues) {
   booleanField(raw, "reserveSpace", path, issues);
   if (raw.aboveFullScreen !== undefined) booleanField(raw, "aboveFullScreen", path, issues);
   if (
+    raw.surfaceOpacityPercent !== undefined &&
+    (!Number.isInteger(raw.surfaceOpacityPercent) ||
+      raw.surfaceOpacityPercent < 0 ||
+      raw.surfaceOpacityPercent > 100)
+  ) {
+    issues.push(
+      packIssue(
+        "invalidOpacity",
+        `${path}.surfaceOpacityPercent`,
+        "surfaceOpacityPercent must be an integer from 0 through 100."
+      )
+    );
+  }
+  if (
     !Number.isInteger(raw.heightCssPx) ||
     raw.heightCssPx < 56 ||
     raw.heightCssPx > DOCK_MAX_HEIGHT
@@ -686,6 +705,7 @@ function compileDock(raw, hasLoudnessReference, issues) {
     monitor: null,
     reserveSpace: raw.reserveSpace,
     aboveFullScreen: raw.aboveFullScreen !== false,
+    surfaceOpacity: raw.surfaceOpacityPercent ?? DEFAULT_SURFACE_OPACITY,
     // Format v1 permits the old 56px minimum; normalize it for the current controls.
     height: Math.max(DOCK_MIN_HEIGHT, raw.heightCssPx),
     panelsById: planned.dock.panelsById,

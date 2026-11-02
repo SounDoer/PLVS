@@ -77,8 +77,10 @@ start or stop, and Live / Snapshot is a no-op before Live history exists.
 The Views menu pares the window down for monitoring: **Always on Top**, **Hide Panel Headers**, **Hide Axes & Labels**,
 **Hide Window Frame**, **Auto-hide Controls**, **Surface Opacity**, and **Glass**. The **Dock** selector
 below these controls offers **Off**, **Top**, and **Bottom** on Windows and macOS. Surface Opacity changes
-the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
-controls, and borders remain opaque for legibility.
+the transparency of Workspace and panel fills; text, measurement data, states, focus rings,
+controls, and borders remain opaque for legibility. The Dock has its own **Surface Opacity** in Dock
+**Views**, which changes only the strip's fill in the same way. Over a full-screen window, lowering
+it lets that window show through the gaps between meters.
 
 On macOS, setting **Surface Opacity** to 0 also removes the native window shadow. This prevents
 AppKit from drawing shadow-shaped outlines around the remaining opaque text and meter graphics;

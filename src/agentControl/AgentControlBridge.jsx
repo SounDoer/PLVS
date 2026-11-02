@@ -96,10 +96,18 @@ export function AgentControlBridge() {
   );
 
   const { view, applyViewState, reveal: chromeReveal = null } = useWindowChrome();
-  const { pinned, focusView, panelPresentation, surfaceOpacity, glassEnabled } = view;
+  const { pinned, focusView, panelPresentation, surfaceOpacity, dockSurfaceOpacity, glassEnabled } =
+    view;
   const agentControlViewContext = useMemo(
     () => ({
-      view: { pinned, focusView, panelPresentation, surfaceOpacity, glassEnabled },
+      view: {
+        pinned,
+        focusView,
+        panelPresentation,
+        surfaceOpacity,
+        dockSurfaceOpacity,
+        glassEnabled,
+      },
       platform: runtime.platform,
       docked,
       applyView: applyViewState,
@@ -112,6 +120,7 @@ export function AgentControlBridge() {
       panelPresentation,
       glassEnabled,
       surfaceOpacity,
+      dockSurfaceOpacity,
       pinned,
     ]
   );

@@ -93,6 +93,20 @@ describe("buildPublicPresetSnapshot", () => {
     expect(result.window.bounds).toBeNull();
   });
 
+  it("reports the Dock's own surface opacity, opaque when the Preset predates it", () => {
+    const docked = (dock) =>
+      buildPublicPresetSnapshot({
+        id: "preset-1",
+        name: "Mixing",
+        ...DEFAULT_WORKSPACE_STATE,
+        surfaceOpacity: 80,
+        dock: { enabled: true, panelsById: {}, panelOrder: [], ...dock },
+      });
+
+    expect(docked({ surfaceOpacity: 40 }).dock.surfaceOpacity).toBe(40);
+    expect(docked({}).dock.surfaceOpacity).toBe(100);
+  });
+
   it("uses the Dock-only public controls and effective sizing", () => {
     const result = buildPublicPresetSnapshot({
       id: "preset-1",

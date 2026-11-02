@@ -95,6 +95,7 @@ export function presetRestoredScene(
       aboveFullScreen: dockAboveFullScreenSupported
         ? dock.aboveFullScreen !== false
         : scene.dock.aboveFullScreen !== false,
+      surfaceOpacity: normalizeSurfaceOpacity(dock.surfaceOpacity),
       height: Number.isFinite(dock.height) ? clampDockHeight(dock.height) : scene.dock.height,
     };
   } else {
@@ -131,6 +132,7 @@ function comparableDock(dock) {
     monitor: dock?.monitor ?? null,
     reserveSpace: dock?.reserveSpace === true,
     aboveFullScreen: dock?.aboveFullScreen !== false,
+    surfaceOpacity: normalizeSurfaceOpacity(dock?.surfaceOpacity),
     height: dock?.height,
     layout,
     controlsByPanelId: normalizeDockControlsByPanelId(layout.panelsById, dock?.controlsByPanelId),

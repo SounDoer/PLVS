@@ -55,7 +55,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Hide Axes & Labels | Hides chart scales and channel and mode labels; readings stay visible                               | 隐藏坐标轴与标签 |                             |
 | Hide Window Frame  | Removes the system title bar and window frame                                                       | 隐藏窗口边框     | Hide Chrome, borderless     |
 | Auto-hide Controls | Hides the toolbar until the pointer moves over the window                                           | 自动隐藏控件     |                             |
-| Surface Opacity    | Transparency of Workspace, panel and Dock fills; text and data stay opaque                          | 背景不透明度     |                             |
+| Surface Opacity    | Transparency of Workspace and panel fills, or of the Dock strip; text and data stay opaque          | 背景不透明度     |                             |
 | Glass              | The translucent macOS window material                                                               | 毛玻璃           |                             |
 | Reserve Space      | Keeps other windows from covering the Dock strip by reserving its screen edge                       | 预留屏幕空间     |                             |
 | Above Full Screen  | Keeps the Dock strip above full-screen windows instead of stepping aside like the taskbar           | 全屏时置顶       |                             |

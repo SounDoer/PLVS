@@ -1,5 +1,6 @@
 import { FocusSwitch } from "../../components/FocusViewPopover.jsx";
 import { Label } from "../../components/ui/label";
+import { RangeInput } from "../../components/ui/range-input.jsx";
 import { useState } from "react";
 import { SettingsSelect } from "../../components/panel-settings/SettingsWidgets.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
@@ -12,6 +13,7 @@ export function DockViews({ state, onAction }) {
     { key: "top", label: "Top" },
     { key: "bottom", label: "Bottom" },
   ];
+  const opacity = Number.isFinite(state.dockSurfaceOpacity) ? state.dockSurfaceOpacity : 100;
   const supportsReservation = /Win|Mac/i.test(navigator.platform || navigator.userAgent || "");
   return (
     <DockEditorShell title="Views">
@@ -22,6 +24,31 @@ export function DockViews({ state, onAction }) {
           checked={state.hideAxesAndLabels === true}
           onCheckedChange={(value) => onAction("set-hide-axes-labels", { value })}
         />
+        <div className="flex items-center justify-between gap-3 px-2 py-1">
+          <Label
+            htmlFor="dock-surface-opacity"
+            className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
+          >
+            Surface Opacity
+          </Label>
+          <RangeInput
+            valueLabel={`${opacity}%`}
+            id="dock-surface-opacity"
+            aria-label="Surface opacity"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={opacity}
+            onInput={(e) =>
+              onAction("set-dock-surface-opacity", {
+                value: Number(/** @type {HTMLInputElement} */ (e.target).value),
+              })
+            }
+            className="plvs-range w-20"
+            style={{ "--range-pct": `${opacity}%` }}
+          />
+        </div>
         <div className="flex items-center justify-between gap-3 px-2 py-1">
           <Label className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground">
             Dock

@@ -44,8 +44,9 @@ existing GUI:
    and axis-link state.
 2. **Window presentation:** bounds when they can be read, Always On Top, Focus View
    (`autoHideControls`, `compactPanels`, `borderless`), surface opacity, and glass state.
-3. **Dock:** enabled state, edge, monitor, reserve-space choice, Above Full Screen choice, height, Dock panels, order, sizes,
-   and controls.
+3. **Dock:** enabled state, edge, monitor, reserve-space choice, Above Full Screen choice, surface
+   opacity, height, Dock panels, order, sizes, and controls. Like the strip layout, the Dock surface
+   opacity is applied only by a Preset that enters Dock; one saved before it existed applies it opaque.
 4. **Loudness Profile selection:** only the selected Loudness Profile ID, not a copy of its rules or
    library.
 

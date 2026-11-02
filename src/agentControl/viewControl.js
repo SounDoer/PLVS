@@ -10,6 +10,7 @@ export const DEFAULT_VIEW = Object.freeze({
   pinned: false,
   focusView: Object.freeze({ ...DEFAULT_FOCUS_VIEW }),
   surfaceOpacity: DEFAULT_SURFACE_OPACITY,
+  dockSurfaceOpacity: DEFAULT_SURFACE_OPACITY,
   glassEnabled: DEFAULT_GLASS_ENABLED,
 });
 
@@ -18,6 +19,7 @@ const VIEW_FIELDS = new Set([
   "pinned",
   "focusView",
   "surfaceOpacity",
+  "dockSurfaceOpacity",
   "glassEnabled",
 ]);
 const FOCUS_FIELDS = new Set(["autoHideControls", "compactPanels", "borderless"]);
@@ -50,6 +52,7 @@ export function buildPublicView(view) {
       borderless: view?.focusView?.borderless === true,
     },
     surfaceOpacity: view?.surfaceOpacity ?? DEFAULT_SURFACE_OPACITY,
+    dockSurfaceOpacity: view?.dockSurfaceOpacity ?? DEFAULT_SURFACE_OPACITY,
     glassEnabled: view?.glassEnabled === true,
   };
 }
@@ -87,6 +90,11 @@ function availability(context) {
       ])
     ),
     surfaceOpacity: { writable: true, active: true, reason: null },
+    dockSurfaceOpacity: {
+      writable: true,
+      active: docked,
+      reason: docked ? null : "inactiveSurface",
+    },
     glassEnabled: {
       writable: glassWritable,
       active: glassWritable,
@@ -153,6 +161,14 @@ export function buildViewDescription(view, context = {}) {
         default: DEFAULT_SURFACE_OPACITY,
         current: inspection.view.surfaceOpacity,
       },
+      dockSurfaceOpacity: {
+        type: "integer",
+        minimum: 0,
+        maximum: 100,
+        unit: "percent",
+        default: DEFAULT_SURFACE_OPACITY,
+        current: inspection.view.dockSurfaceOpacity,
+      },
       glassEnabled: {
         type: "boolean",
         default: DEFAULT_GLASS_ENABLED,
@@ -216,15 +232,15 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
     } else nextPresentation.workspace.hidePanelHeaders = patch.focusView.compactPanels;
   }
   nextFocus = { ...nextFocus, compactPanels: nextPresentation.workspace.hidePanelHeaders };
-  if (
-    "surfaceOpacity" in patch &&
-    (!Number.isInteger(patch.surfaceOpacity) ||
-      patch.surfaceOpacity < 0 ||
-      patch.surfaceOpacity > 100)
-  ) {
-    issues.push(
-      issue("invalidRange", "$.surfaceOpacity", "surfaceOpacity must be an integer from 0 to 100.")
-    );
+  for (const field of ["surfaceOpacity", "dockSurfaceOpacity"]) {
+    if (
+      field in patch &&
+      (!Number.isInteger(patch[field]) || patch[field] < 0 || patch[field] > 100)
+    ) {
+      issues.push(
+        issue("invalidRange", `$.${field}`, `${field} must be an integer from 0 to 100.`)
+      );
+    }
   }
   if ("glassEnabled" in patch && typeof patch.glassEnabled !== "boolean") {
     issues.push(issue("invalidType", "$.glassEnabled", "glassEnabled must be a boolean."));
@@ -252,6 +268,8 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
     pinned: "pinned" in patch ? patch.pinned : current.pinned,
     focusView: nextFocus,
     surfaceOpacity: "surfaceOpacity" in patch ? patch.surfaceOpacity : current.surfaceOpacity,
+    dockSurfaceOpacity:
+      "dockSurfaceOpacity" in patch ? patch.dockSurfaceOpacity : current.dockSurfaceOpacity,
     glassEnabled: "glassEnabled" in patch ? patch.glassEnabled : current.glassEnabled,
   };
   const changed = [];
@@ -266,6 +284,8 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
     if (view.focusView[field] !== current.focusView[field]) changed.push(`view.focusView.${field}`);
   }
   if (view.surfaceOpacity !== current.surfaceOpacity) changed.push("view.surfaceOpacity");
+  if (view.dockSurfaceOpacity !== current.dockSurfaceOpacity)
+    changed.push("view.dockSurfaceOpacity");
   if (view.glassEnabled !== current.glassEnabled) changed.push("view.glassEnabled");
 
   const effects = [];
@@ -280,6 +300,7 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
   }
   if (changed.includes("view.focusView.compactPanels")) effects.push("compactPanels");
   if (changed.includes("view.surfaceOpacity")) effects.push("surfaceOpacity");
+  if (changed.includes("view.dockSurfaceOpacity")) effects.push("dockSurfaceOpacity");
   if (changed.includes("view.glassEnabled")) effects.push("glassEffect");
 
   const dormant = new Set([

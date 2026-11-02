@@ -80,7 +80,7 @@ export function DockAccessoriesProvider({ children }) {
   const { updateControls } = useAppLifecycle();
   const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
   const { historyRetentionSec, interfaceSize, setSettingsOpen } = useAppSettings();
-  const { view, setPanelPresentation } = useWindowChrome();
+  const { view, setPanelPresentation, setDockSurfaceOpacity } = useWindowChrome();
   const presentation = normalizePanelPresentation(view.panelPresentation, view.focusView);
   const {
     audioOutputs,
@@ -393,6 +393,7 @@ export function DockAccessoriesProvider({ children }) {
       reserveSpace,
       aboveFullScreen,
       hideAxesAndLabels: presentation.dock.hideAxesAndLabels,
+      dockSurfaceOpacity: view.dockSurfaceOpacity,
       device: { audioOutputs, audioInputs, captureApplications, safeAudioDeviceId },
       panels: dockLayout.panels,
       panelsById: dockLayout.panelsById,
@@ -428,6 +429,7 @@ export function DockAccessoriesProvider({ children }) {
       reserveSpace,
       aboveFullScreen,
       presentation.dock.hideAxesAndLabels,
+      view.dockSurfaceOpacity,
       audioOutputs,
       audioInputs,
       captureApplications,
@@ -501,6 +503,8 @@ export function DockAccessoriesProvider({ children }) {
       } else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
       else if (type === "set-hide-axes-labels" && typeof payload.value === "boolean") {
         setPanelPresentation({ ...presentation, dock: { hideAxesAndLabels: payload.value } });
+      } else if (type === "set-dock-surface-opacity" && Number.isFinite(payload.value)) {
+        setDockSurfaceOpacity(payload.value);
       } else if (type === "select-device" && typeof payload.deviceId === "string") {
         void onSelectCaptureDevice(payload.deviceId);
         dockAccessoryVisibility.closeEditor("device");
@@ -600,6 +604,7 @@ export function DockAccessoriesProvider({ children }) {
       setAxisViewport,
       presentation,
       setPanelPresentation,
+      setDockSurfaceOpacity,
       refreshInventory,
       onSelectCaptureDevice,
       clearAll,

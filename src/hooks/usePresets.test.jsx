@@ -748,7 +748,79 @@ describe("usePresets", () => {
       expect(preset.dock).toEqual({
         ...dock,
         aboveFullScreen: true,
+        surfaceOpacity: 100,
       });
+    });
+
+    it("captures the Dock's surface opacity with the strip", async () => {
+      const dock = { enabled: true, edge: "bottom", monitor: null, height: 96, surfaceOpacity: 40 };
+      const { result } = renderPresetHook({ dock });
+      /** @type {any} */
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Faded Dock");
+      });
+      expect(preset.dock.surfaceOpacity).toBe(40);
+    });
+
+    it("restores Dock surface opacity only from a docked preset", async () => {
+      const setDockSurfaceOpacity = vi.fn();
+      const docked = {
+        enabled: true,
+        edge: "bottom",
+        monitor: null,
+        height: 96,
+        surfaceOpacity: 40,
+      };
+      const { result } = renderPresetHook({ dock: docked, setDockSurfaceOpacity });
+      /** @type {any} */
+      let dockedPreset;
+      /** @type {any} */
+      let normalPreset;
+      await act(async () => {
+        dockedPreset = await result.current.presets.save("Faded Dock");
+      });
+      await act(async () => {
+        await result.current.presets.apply(dockedPreset.id);
+      });
+      expect(setDockSurfaceOpacity).toHaveBeenLastCalledWith(40);
+
+      // Preset ids come from Date.now, which this suite pins.
+      vi.spyOn(Date, "now").mockReturnValue(456);
+      const { result: normal } = renderPresetHook({
+        dock: { enabled: false, edge: "bottom", surfaceOpacity: 70 },
+        setDockSurfaceOpacity,
+      });
+      await act(async () => {
+        normalPreset = await normal.current.presets.save("Normal");
+      });
+      setDockSurfaceOpacity.mockClear();
+      await act(async () => {
+        await normal.current.presets.apply(normalPreset.id);
+      });
+      expect(setDockSurfaceOpacity).not.toHaveBeenCalled();
+    });
+
+    it("restores a docked preset without a Dock surface opacity as opaque", async () => {
+      const setDockSurfaceOpacity = vi.fn();
+      const dock = { enabled: true, edge: "bottom", monitor: null, height: 96 };
+      const { result } = renderPresetHook({ dock, setDockSurfaceOpacity });
+      /** @type {any} */
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Older");
+      });
+      const raw = presetsStore.read();
+      presetsStore.patch({
+        list: raw.list.map((p) => {
+          const { surfaceOpacity: _opacity, ...rest } = p.dock;
+          return { ...p, dock: rest };
+        }),
+      });
+      await act(async () => {
+        await result.current.presets.apply(preset.id);
+      });
+      expect(setDockSurfaceOpacity).toHaveBeenLastCalledWith(100);
     });
 
     it("captures dock.aboveFullScreen", async () => {
@@ -812,6 +884,7 @@ describe("usePresets", () => {
           monitor: null,
           reserveSpace: false,
           aboveFullScreen: true,
+          surfaceOpacity: 100,
           height: 72,
           panelsById: {},
           panelOrder: [],
@@ -929,6 +1002,7 @@ describe("usePresets", () => {
           monitor: null,
           reserveSpace: false,
           aboveFullScreen: true,
+          surfaceOpacity: 100,
           height: undefined,
           panelsById: undefined,
           panelOrder: undefined,

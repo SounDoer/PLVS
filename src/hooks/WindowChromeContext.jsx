@@ -21,6 +21,7 @@ import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
  *     pinned: boolean,
  *     focusView: import("../lib/focusView.js").FocusView,
  *     surfaceOpacity: number,
+ *     dockSurfaceOpacity: number,
  *     glassEnabled: boolean,
  *   },
  *   applyViewState: (next: any, options?: { changed?: string[] }) => Promise<void>,
@@ -30,6 +31,7 @@ import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
  *   setCompactPanels: (value: boolean) => void,
  *   setBorderless: (value: boolean) => void,
  *   setSurfaceOpacity: (value: number) => void,
+ *   setDockSurfaceOpacity: (value: number) => void,
  *   setGlassEnabled: (value: boolean) => void,
  *   focusViewActive: boolean,
  *   frameless: boolean,
@@ -57,6 +59,8 @@ export function WindowChromeProvider({ children }) {
     setPanelPresentation: setPanelPresentationStored,
     surfaceOpacity,
     setSurfaceOpacity: setSurfaceOpacityStored,
+    dockSurfaceOpacity,
+    setDockSurfaceOpacity: setDockSurfaceOpacityStored,
     glassEnabled,
     setGlassEnabled: setGlassEnabledStored,
     resolvedTheme,
@@ -139,6 +143,9 @@ export function WindowChromeProvider({ children }) {
       if (changed.includes("view.surfaceOpacity")) {
         setSurfaceOpacityStored(next.surfaceOpacity);
       }
+      if (changed.includes("view.dockSurfaceOpacity")) {
+        setDockSurfaceOpacityStored(next.dockSurfaceOpacity);
+      }
       if (changed.includes("view.glassEnabled")) setGlassEnabledStored(next.glassEnabled);
     },
     [
@@ -152,6 +159,7 @@ export function WindowChromeProvider({ children }) {
       setPanelPresentationStored,
       setGlassEnabledStored,
       setSurfaceOpacityStored,
+      setDockSurfaceOpacityStored,
       setPinnedStored,
     ]
   );
@@ -198,6 +206,15 @@ export function WindowChromeProvider({ children }) {
       ).catch(() => {}),
     [applyViewState, focusView, glassEnabled, pinned]
   );
+  // No native effect, so no other view value is needed: applyViewState reads only the changed path.
+  const setDockSurfaceOpacity = useCallback(
+    (value) =>
+      void applyViewState(
+        { dockSurfaceOpacity: value },
+        { changed: ["view.dockSurfaceOpacity"] }
+      ).catch(() => {}),
+    [applyViewState]
+  );
   const setGlassEnabled = useCallback(
     (/** @type {boolean} */ value) =>
       void applyViewState(
@@ -213,6 +230,14 @@ export function WindowChromeProvider({ children }) {
     const s = document.documentElement.style;
     s.setProperty("--surface-opacity", `${surfaceOpacity}%`);
   }, [surfaceOpacity]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--dock-surface-opacity", `${dockSurfaceOpacity}%`);
+  }, [dockSurfaceOpacity]);
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-docked", docked);
+  }, [docked]);
 
   const focusViewActive =
     pinned ||
@@ -230,7 +255,14 @@ export function WindowChromeProvider({ children }) {
   return (
     <WindowChromeContext.Provider
       value={{
-        view: { pinned, focusView, surfaceOpacity, glassEnabled, panelPresentation },
+        view: {
+          pinned,
+          focusView,
+          surfaceOpacity,
+          dockSurfaceOpacity,
+          glassEnabled,
+          panelPresentation,
+        },
         setPanelPresentation,
         applyViewState,
         setPinned,
@@ -238,6 +270,7 @@ export function WindowChromeProvider({ children }) {
         setCompactPanels,
         setBorderless,
         setSurfaceOpacity,
+        setDockSurfaceOpacity,
         setGlassEnabled,
         focusViewActive,
         frameless,

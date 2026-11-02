@@ -46,6 +46,14 @@ describe("Dock accessory protocol", () => {
     expect(
       normalizeAccessoryAction({
         surface: "dock-editor",
+        type: "set-dock-surface-opacity",
+        payload: { value: 40 },
+        revision: 5,
+      })
+    ).toMatchObject({ type: "set-dock-surface-opacity", payload: { value: 40 } });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-editor",
         type: "hover-module",
         payload: { panelId: "spectrum" },
       })

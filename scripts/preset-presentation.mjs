@@ -18,6 +18,7 @@ const labels = {
   speedPercent: "Speed",
   tiltDbPerOctave: "Tilt",
   panelOpacityPercent: "Panel Opacity",
+  surfaceOpacityPercent: "Surface Opacity",
   heightCssPx: "Height",
   preferredWidthCssPx: "Preferred Width",
   minHz: "Minimum Frequency",
@@ -47,6 +48,11 @@ export function presetUsesPanelOrientation(pack) {
 // PLVS writes it only when off, but any explicit value is unknown to earlier releases.
 export function presetUsesDockAboveFullScreen(pack) {
   return pack?.items?.[0]?.dock?.aboveFullScreen !== undefined;
+}
+
+// Written only when the Dock is not opaque; any explicit value is unknown to earlier releases.
+export function presetUsesDockSurfaceOpacity(pack) {
+  return pack?.items?.[0]?.dock?.surfaceOpacityPercent !== undefined;
 }
 
 const words = (key) =>

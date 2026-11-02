@@ -79,6 +79,9 @@ function normalizeSettings(settings) {
   if ("surfaceOpacity" in next) {
     next.surfaceOpacity = normalizeSurfaceOpacity(next.surfaceOpacity);
   }
+  if ("dockSurfaceOpacity" in next) {
+    next.dockSurfaceOpacity = normalizeSurfaceOpacity(next.dockSurfaceOpacity);
+  }
   if ("themeEditorPos" in next) next.themeEditorPos = normalizeThemeEditorPos(next.themeEditorPos);
   if ("interfaceSize" in next) next.interfaceSize = normalizeInterfaceSize(next.interfaceSize);
   if ("channelLabelOverrides" in next) {

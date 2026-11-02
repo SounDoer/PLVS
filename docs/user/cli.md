@@ -242,7 +242,8 @@ plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]
 plvs-cli view reset --expected-revision <n> --json [--dry-run]
 ```
 
-It covers Always on Top (`pinned`), Focus View, surface opacity, and macOS Glass. See
+It covers Always on Top (`pinned`), Focus View, surface opacity for the window and the Dock, and macOS
+Glass. See
 [View Control](../agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
 

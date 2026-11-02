@@ -384,6 +384,56 @@ describe("Portable Preset", () => {
     });
   });
 
+  describe("Dock surface opacity", () => {
+    const dockedPreset = (dock = {}) =>
+      storedPreset({
+        dock: {
+          enabled: true,
+          edge: "bottom",
+          monitor: null,
+          reserveSpace: true,
+          height: 84,
+          panelsById: { meter: { id: "meter", moduleId: "levelMeter" } },
+          panelOrder: ["meter"],
+          panelSizesById: { meter: 180 },
+          controlsByPanelId: {},
+          ...dock,
+        },
+      });
+
+    it("omits an opaque Dock, so the file stays readable by earlier releases", () => {
+      expect(presetToPortable(dockedPreset({ surfaceOpacity: 100 })).dock).not.toHaveProperty(
+        "surfaceOpacityPercent"
+      );
+    });
+
+    it("round-trips a faded Dock", () => {
+      const portable = presetToPortable(dockedPreset({ surfaceOpacity: 35 }));
+      expect(portable.dock.surfaceOpacityPercent).toBe(35);
+      expect(portableToStoredPreset(portable, "imported").dock.surfaceOpacity).toBe(35);
+    });
+
+    it("compiles a Dock without one as opaque", () => {
+      const portable = presetToPortable(dockedPreset());
+      expect(portableToStoredPreset(portable, "imported").dock.surfaceOpacity).toBe(100);
+    });
+
+    it.each([-1, 101, 40.5, "40"])("rejects surfaceOpacityPercent %j", (value) => {
+      const portable = presetToPortable(dockedPreset());
+      portable.dock.surfaceOpacityPercent = value;
+      expect(() => portableToStoredPreset(portable, "imported")).toThrowError(
+        expect.objectContaining({
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              code: "invalidOpacity",
+              path: "$.dock.surfaceOpacityPercent",
+            }),
+          ]),
+        })
+      );
+    });
+  });
+
   it("round-trips Level Meter thresholds for both a Workspace panel and a Dock module", () => {
     const source = storedPreset({
       dock: {

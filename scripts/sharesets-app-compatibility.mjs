@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   presetUsesDockAboveFullScreen,
+  presetUsesDockSurfaceOpacity,
   presetUsesPanelOrientation,
 } from "./preset-presentation.mjs";
 
@@ -21,6 +22,11 @@ export const SHARESETS_APP_FEATURES = {
     minimumAppVersion: null,
     introducedAfter: "0.24.0",
     uses: presetUsesDockAboveFullScreen,
+  },
+  dockSurfaceOpacity: {
+    minimumAppVersion: null,
+    introducedAfter: "0.24.0",
+    uses: presetUsesDockSurfaceOpacity,
   },
 };
 

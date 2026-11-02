@@ -39,6 +39,7 @@ const ACTION_TYPES = new Set([
   "resize-editor",
   "set-edge",
   "set-hide-axes-labels",
+  "set-dock-surface-opacity",
   "select-device",
   "toggle-reserve-space",
   "toggle-above-full-screen",

@@ -40,6 +40,8 @@ export function PresetsProvider({ children }) {
     setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
     setGlassEnabled: setGlassEnabledStored,
+    dockSurfaceOpacity,
+    setDockSurfaceOpacity,
   } = useAppSettings();
   const {
     dockEnabled,
@@ -148,6 +150,7 @@ export function PresetsProvider({ children }) {
       monitor: dockMonitor,
       reserveSpace,
       aboveFullScreen,
+      surfaceOpacity: dockSurfaceOpacity,
       height: dockHeight,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
@@ -165,6 +168,7 @@ export function PresetsProvider({ children }) {
       dockLayout.panelsById,
       reserveSpace,
       aboveFullScreen,
+      dockSurfaceOpacity,
     ]
   );
 
@@ -179,6 +183,7 @@ export function PresetsProvider({ children }) {
     setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
     setGlassEnabled: setGlassEnabledStored,
+    setDockSurfaceOpacity,
     dock: presetDockState,
     applyDockPreset,
     applySurfaceOpacity: syncSurfaceOpacityWindowShadow,

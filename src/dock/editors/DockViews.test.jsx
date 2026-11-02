@@ -12,6 +12,15 @@ describe("Dock Views", () => {
     expect(onAction).toHaveBeenCalledWith("set-hide-axes-labels", { value: false });
   });
 
+  it("sets the Dock's own surface opacity", () => {
+    const onAction = vi.fn();
+    render(<DockViews state={{ edge: "bottom", dockSurfaceOpacity: 60 }} onAction={onAction} />);
+    const slider = screen.getByRole("slider", { name: "Surface opacity" });
+    expect(/** @type {HTMLInputElement} */ (slider).value).toBe("60");
+    fireEvent.input(slider, { target: { value: "35" } });
+    expect(onAction).toHaveBeenCalledWith("set-dock-surface-opacity", { value: 35 });
+  });
+
   it("shows Above Full Screen on Windows and sends toggle-above-full-screen", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     const onAction = vi.fn();

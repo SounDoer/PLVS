@@ -20,4 +20,5 @@ Current values, platform writability, and Dock ownership are runtime state and a
 | `panelPresentation.dock` | object | - | - | - | - |
 | `panelPresentation.dock.hideAxesAndLabels` | boolean | - | `false` | - | - |
 | `surfaceOpacity` | integer | percent | `100` | 0 to 100 | - |
+| `dockSurfaceOpacity` | integer | percent | `100` | 0 to 100 | - |
 | `glassEnabled` | boolean | - | `false` | - | - |

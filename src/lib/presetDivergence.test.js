@@ -176,6 +176,28 @@ describe("presetDiverges", () => {
       expect(diverges(docked, scene)).toBe(true);
     });
 
+    it("differs when the Dock's surface opacity differs", () => {
+      const preset = { ...docked, dock: { ...docked.dock, surfaceOpacity: 40 } };
+      expect(diverges(preset, sceneOf(preset))).toBe(false);
+      expect(
+        diverges(preset, sceneOf(docked, { dock: { ...docked.dock, surfaceOpacity: 70 } }))
+      ).toBe(true);
+    });
+
+    it("treats a preset without a Dock surface opacity as opaque", () => {
+      expect(
+        diverges(docked, sceneOf(docked, { dock: { ...docked.dock, surfaceOpacity: 100 } }))
+      ).toBe(false);
+      expect(
+        diverges(docked, sceneOf(docked, { dock: { ...docked.dock, surfaceOpacity: 50 } }))
+      ).toBe(true);
+    });
+
+    it("leaves the Dock's surface opacity alone for a preset that does not dock", () => {
+      const scene = sceneOf(PRESET, { dock: { ...PRESET.dock, surfaceOpacity: 30 } });
+      expect(diverges(PRESET, scene)).toBe(false);
+    });
+
     it("treats a preset without aboveFullScreen as on", () => {
       const scene = sceneOf(docked, { dock: { ...docked.dock, aboveFullScreen: true } });
       expect(diverges(docked, scene)).toBe(false);

@@ -43,6 +43,17 @@ describe("Sharesets app requirements", () => {
     expect(sharesetsAppRequirement(dockPack(true))).toBe("Requires upcoming PLVS");
   });
 
+  it("reads Requires upcoming PLVS for a Dock surface opacity while unassigned", () => {
+    expect(SHARESETS_APP_FEATURES.dockSurfaceOpacity).toMatchObject({
+      minimumAppVersion: null,
+      introducedAfter: "0.24.0",
+    });
+    const faded = {
+      items: [{ workspace: { panels: [] }, dock: { enabled: true, surfaceOpacityPercent: 40 } }],
+    };
+    expect(sharesetsAppRequirement(faded)).toBe("Requires upcoming PLVS");
+  });
+
   it("lets the highest assigned minimum win", () => {
     const both = {
       items: [{ ...pack.items[0], dock: { enabled: true, aboveFullScreen: false } }],

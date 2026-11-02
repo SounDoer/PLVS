@@ -162,6 +162,7 @@ const defaultView = {
   pinned: false,
   focusView: { autoHideControls: false, compactPanels: false, borderless: false },
   surfaceOpacity: 100,
+  dockSurfaceOpacity: 100,
   glassEnabled: false,
 };
 

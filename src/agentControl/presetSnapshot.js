@@ -1,3 +1,4 @@
+import { normalizeSurfaceOpacity } from "../settings/defaults.js";
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { normalizeDockControlsByPanelId } from "../dock/dockModuleControls.js";
@@ -69,6 +70,7 @@ function buildSavedDock(preset, context) {
     monitor: typeof raw.monitor === "string" ? raw.monitor : null,
     reserveSpace: raw.reserveSpace === true,
     aboveFullScreen: raw.aboveFullScreen !== false,
+    surfaceOpacity: normalizeSurfaceOpacity(raw.surfaceOpacity),
     height: Number.isFinite(raw.height) ? raw.height : 72,
     panels: snapshot.panels.map(({ analysis: _analysis, ...panel }) => panel),
   };

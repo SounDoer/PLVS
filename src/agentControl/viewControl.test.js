@@ -11,6 +11,7 @@ const current = {
   pinned: false,
   focusView: { autoHideControls: false, compactPanels: false, borderless: false },
   surfaceOpacity: 100,
+  dockSurfaceOpacity: 100,
   glassEnabled: false,
 };
 
@@ -81,6 +82,37 @@ describe("View Control", () => {
       changed: ["view.pinned", "view.glassEnabled"],
       refusal: null,
     });
+  });
+
+  it("describes and plans the Dock's own surface opacity", () => {
+    const docked = buildViewDescription(current, { platform: "windows", docked: true });
+    expect(docked.availability.dockSurfaceOpacity).toEqual({
+      writable: true,
+      active: true,
+      reason: null,
+    });
+    expect(docked.schema.dockSurfaceOpacity).toMatchObject({
+      type: "integer",
+      minimum: 0,
+      maximum: 100,
+      default: 100,
+      current: 100,
+    });
+    expect(
+      buildViewInspection(current, { platform: "windows", docked: false }).availability
+        .dockSurfaceOpacity
+    ).toEqual({ writable: true, active: false, reason: "inactiveSurface" });
+
+    const planned = planViewUpdate(current, { dockSurfaceOpacity: 40 }, { platform: "windows" });
+    expect(planned).toMatchObject({
+      view: { surfaceOpacity: 100, dockSurfaceOpacity: 40 },
+      changed: ["view.dockSurfaceOpacity"],
+      effects: ["dockSurfaceOpacity"],
+      warnings: [],
+    });
+    expect(planViewUpdate(current, { dockSurfaceOpacity: 101 }, {}).issues).toEqual([
+      expect.objectContaining({ code: "invalidRange", path: "$.dockSurfaceOpacity" }),
+    ]);
   });
 
   it("warns for changed window presentation fields while Dock owns the form", () => {

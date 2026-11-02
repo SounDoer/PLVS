@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import { settingsStore } from "../persistence/index.js";
 import { useViewSettings } from "./useViewSettings.js";
 
 describe("useViewSettings", () => {
@@ -18,6 +19,18 @@ describe("useViewSettings", () => {
     });
     expect(result.current.surfaceOpacity).toBe(100);
     expect(result.current.glassEnabled).toBe(false);
+    expect(result.current.dockSurfaceOpacity).toBe(100);
+  });
+
+  it("keeps Dock surface opacity apart from the Workspace's", async () => {
+    const { result } = renderHook(() => useViewSettings());
+
+    act(() => result.current.setDockSurfaceOpacity(35.6));
+
+    expect(result.current.dockSurfaceOpacity).toBe(36);
+    expect(result.current.surfaceOpacity).toBe(100);
+    // A slider drag coalesces its writes.
+    await waitFor(() => expect(settingsStore.read()).toMatchObject({ dockSurfaceOpacity: 36 }));
   });
 
   it("persists view settings", () => {
@@ -48,6 +61,7 @@ describe("useViewSettings", () => {
       JSON.stringify({
         focusView: { autoHideControls: true, compactPanels: true, borderless: true },
         surfaceOpacity: 64,
+        dockSurfaceOpacity: 30,
         glassEnabled: true,
       })
     );
@@ -62,6 +76,7 @@ describe("useViewSettings", () => {
         borderless: true,
       });
       expect(result.current.surfaceOpacity).toBe(64);
+      expect(result.current.dockSurfaceOpacity).toBe(30);
       expect(result.current.glassEnabled).toBe(true);
     });
   });

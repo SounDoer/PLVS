@@ -39,7 +39,7 @@ const TOOLBAR_MENUS = new Set([
 /** Surfaces dismissed through their Close intent; every other shown surface uses Cancel. */
 export const UI_CLOSE_KINDS = new Set(["settings", "panelSettings", "toolbarMenu"]);
 const DURABLE_FIELDS = Object.freeze({
-  view: new Set(["pinned", "focusView", "surfaceOpacity", "glassEnabled"]),
+  view: new Set(["pinned", "focusView", "surfaceOpacity", "dockSurfaceOpacity", "glassEnabled"]),
   settings: new Set([
     "openAtLogin",
     "closeBehavior",

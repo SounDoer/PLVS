@@ -37,6 +37,7 @@ describe("WindowChromeProvider", () => {
     workspaceStore.reset();
     presetsStore.reset();
     document.documentElement.style.removeProperty("--surface-opacity");
+    document.documentElement.style.removeProperty("--dock-surface-opacity");
   });
 
   it("stores a view change through the settings owner", async () => {
@@ -62,6 +63,22 @@ describe("WindowChromeProvider", () => {
     await waitFor(() =>
       expect(document.documentElement.style.getPropertyValue("--surface-opacity")).toBe("40%")
     );
+  });
+
+  it("publishes Dock surface opacity as its own CSS variable", async () => {
+    const { result } = renderHook(
+      () => ({ chrome: useWindowChrome(), settings: useAppSettings() }),
+      { wrapper }
+    );
+
+    act(() => result.current.chrome.setDockSurfaceOpacity(25));
+
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue("--dock-surface-opacity")).toBe("25%")
+    );
+    expect(result.current.settings.dockSurfaceOpacity).toBe(25);
+    expect(result.current.chrome.view.dockSurfaceOpacity).toBe(25);
+    expect(result.current.chrome.view.surfaceOpacity).toBe(100);
   });
 
   it("refuses the hook outside the provider", () => {

@@ -30,6 +30,7 @@ View Control uses the same public names already returned by `preset describe`:
     "dock": { "hideAxesAndLabels": false }
   },
   "surfaceOpacity": 100,
+  "dockSurfaceOpacity": 100,
   "glassEnabled": false
 }
 ```
@@ -46,6 +47,9 @@ View Control uses the same public names already returned by `preset describe`:
   fills while text, measurement data, state, focus, and borders stay opaque. Strict writes reject fractions,
   numeric strings, and out-of-range values instead of using the persistence loader's rounding and
   clamping behavior.
+- `dockSurfaceOpacity` is the same percentage for the Dock strip's fill, kept apart from
+  `surfaceOpacity` and with the same strict validation. It is writable in either form and active
+  while docked; elsewhere it reports `inactiveSurface`.
 - `glassEnabled` is a boolean stored with the scene. It is writable only on macOS, where the GUI
   exposes Glass and the native effect exists.
 
@@ -114,6 +118,7 @@ as Settings Control. A persistence failure after committed View state reports
     "borderless": false
   },
   "surfaceOpacity": 100,
+  "dockSurfaceOpacity": 100,
   "glassEnabled": false
 }
 ```

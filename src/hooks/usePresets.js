@@ -17,6 +17,7 @@ import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 import { DEFAULT_PRESET_NAME } from "../lib/defaultPreset.js";
 import { presetDiverges } from "../lib/presetDivergence.js";
 import { isMacOS, isWindows } from "../lib/platform.js";
+import { normalizeSurfaceOpacity } from "../settings/defaults.js";
 
 const EMPTY_PRESETS = { list: [], activeId: null };
 
@@ -109,6 +110,7 @@ async function readWindowBounds() {
  *   setSurfaceOpacity?: (...args: any[]) => any,
  *   glassEnabled?: boolean,
  *   setGlassEnabled?: (...args: any[]) => any,
+ *   setDockSurfaceOpacity?: (value: number) => any,
  *   dock?: import("../workspace/types.js").DockScene,
  *   applyDockPreset?: (...args: any[]) => any,
  *   applySurfaceOpacity?: (...args: any[]) => any,
@@ -132,6 +134,7 @@ export function usePresets({
   setSurfaceOpacity = () => {},
   glassEnabled = false,
   setGlassEnabled = () => {},
+  setDockSurfaceOpacity = () => {},
   dock = {
     enabled: false,
     edge: "bottom",
@@ -238,6 +241,7 @@ export function usePresets({
         monitor: typeof dock.monitor === "string" ? dock.monitor : null,
         reserveSpace: dock.reserveSpace === true,
         aboveFullScreen: dock.aboveFullScreen !== false,
+        surfaceOpacity: normalizeSurfaceOpacity(dock.surfaceOpacity),
         height: Number.isFinite(dock.height) ? dock.height : 72,
         panelsById: dock.panelsById ?? {},
         panelOrder: Array.isArray(dock.panelOrder) ? dock.panelOrder : [],
@@ -342,6 +346,8 @@ export function usePresets({
         monitor: typeof preset.dock?.monitor === "string" ? preset.dock.monitor : null,
         reserveSpace: preset.dock?.reserveSpace === true,
         aboveFullScreen: preset.dock?.aboveFullScreen !== false,
+        // A docked preset that predates the field restores an opaque strip.
+        surfaceOpacity: normalizeSurfaceOpacity(preset.dock?.surfaceOpacity),
         height: Number.isFinite(preset.dock?.height) ? preset.dock.height : undefined,
         panelsById: preset.dock?.panelsById,
         panelOrder: preset.dock?.panelOrder,
@@ -454,6 +460,8 @@ export function usePresets({
       if (typeof preset.glassEnabled === "boolean") {
         setGlassEnabled(preset.glassEnabled);
       }
+      // Like the strip's layout, a preset that does not dock leaves the Dock's look alone.
+      if (presetDock.enabled) setDockSurfaceOpacity(presetDock.surfaceOpacity);
       applyLoudnessProfileSnapshot(preset);
       write({ activeId: id });
       return true;
@@ -467,6 +475,7 @@ export function usePresets({
       focusView,
       setSurfaceOpacity,
       setGlassEnabled,
+      setDockSurfaceOpacity,
       applyDockPreset,
       applySurfaceOpacity,
       surfaceOpacity,
