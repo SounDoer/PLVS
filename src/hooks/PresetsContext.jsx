@@ -47,8 +47,10 @@ export function PresetsProvider({ children }) {
     dockMonitor,
     dockHeight,
     reserveSpace,
+    aboveFullScreen,
     enterDockMode,
     setReserveSpace,
+    setAboveFullScreen,
     resizeDockHeight,
     exitDockRestoringAttributes,
     layout: dockLayout,
@@ -71,11 +73,15 @@ export function PresetsProvider({ children }) {
             presetDock.reserveSpace,
             presetDock.monitor,
             presetDock.height,
-            "preset"
+            "preset",
+            presetDock.aboveFullScreen
           );
         } else {
           if (presetDock.reserveSpace !== reserveSpace) {
             await setReserveSpace(presetDock.reserveSpace, presetDock.edge, "preset");
+          }
+          if (presetDock.aboveFullScreen !== aboveFullScreen) {
+            await setAboveFullScreen(presetDock.aboveFullScreen, "preset");
           }
           if (Number.isFinite(presetDock.height) && presetDock.height !== dockHeight) {
             await resizeDockHeight(presetDock.height, { persist: true, origin: "preset" });
@@ -107,8 +113,10 @@ export function PresetsProvider({ children }) {
       dockHeight,
       exitDockRestoringAttributes,
       reserveSpace,
+      aboveFullScreen,
       resizeDockHeight,
       setReserveSpace,
+      setAboveFullScreen,
       setSelectedOffset,
     ]
   );
@@ -139,6 +147,7 @@ export function PresetsProvider({ children }) {
       edge: dockEdge,
       monitor: dockMonitor,
       reserveSpace,
+      aboveFullScreen,
       height: dockHeight,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
@@ -155,6 +164,7 @@ export function PresetsProvider({ children }) {
       dockLayout.panelSizesById,
       dockLayout.panelsById,
       reserveSpace,
+      aboveFullScreen,
     ]
   );
 

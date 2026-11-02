@@ -237,6 +237,7 @@ export function usePresets({
         edge: dock.edge === "top" ? "top" : "bottom",
         monitor: typeof dock.monitor === "string" ? dock.monitor : null,
         reserveSpace: dock.reserveSpace === true,
+        aboveFullScreen: dock.aboveFullScreen !== false,
         height: Number.isFinite(dock.height) ? dock.height : 72,
         panelsById: dock.panelsById ?? {},
         panelOrder: Array.isArray(dock.panelOrder) ? dock.panelOrder : [],
@@ -280,6 +281,7 @@ export function usePresets({
         { ...scene, windowBounds },
         {
           dockReserveSpaceSupported: isWindows() || isMacOS(),
+          dockAboveFullScreenSupported: isWindows(),
           normalizeLoudnessProfileActive,
         }
       ),
@@ -339,6 +341,7 @@ export function usePresets({
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
         monitor: typeof preset.dock?.monitor === "string" ? preset.dock.monitor : null,
         reserveSpace: preset.dock?.reserveSpace === true,
+        aboveFullScreen: preset.dock?.aboveFullScreen !== false,
         height: Number.isFinite(preset.dock?.height) ? preset.dock.height : undefined,
         panelsById: preset.dock?.panelsById,
         panelOrder: preset.dock?.panelOrder,

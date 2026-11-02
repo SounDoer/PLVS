@@ -21,6 +21,7 @@ import {
   readPendingCrashReport,
   setDockAccessories,
   setDockReserveSpace,
+  setDockAboveFullScreen,
   setDockSuspended,
 } from "./ipc/commands.js";
 import { pickMediaFile } from "./ipc/fileDialog.js";
@@ -74,6 +75,7 @@ vi.mock("./ipc/commands.js", () => ({
   exitDock: vi.fn().mockResolvedValue(undefined),
   getDockState: vi.fn().mockResolvedValue(undefined),
   setDockReserveSpace: vi.fn().mockResolvedValue(undefined),
+  setDockAboveFullScreen: vi.fn().mockResolvedValue(undefined),
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
@@ -232,6 +234,7 @@ beforeEach(() => {
   vi.mocked(setDockAccessories).mockClear().mockResolvedValue(undefined);
   vi.mocked(prepareDockAccessories).mockClear().mockResolvedValue(undefined);
   vi.mocked(setDockReserveSpace).mockClear().mockResolvedValue(undefined);
+  vi.mocked(setDockAboveFullScreen).mockClear().mockResolvedValue(undefined);
   vi.mocked(setDockSuspended).mockClear().mockResolvedValue(undefined);
   vi.mocked(invoke).mockClear().mockResolvedValue(undefined);
   vi.mocked(pickMediaFile).mockResolvedValue(null);
@@ -670,11 +673,68 @@ describe("App smoke", () => {
     });
 
     await waitFor(() =>
-      expect(enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2", undefined, "preset")
+      expect(enterDock).toHaveBeenCalledWith(
+        "top",
+        true,
+        "\\\\.\\DISPLAY2",
+        undefined,
+        "preset",
+        true
+      )
     );
     expect(setDockReserveSpace).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(presetsStore.read()).toMatchObject({ activeId: "dock-reserved", dirty: false })
+    );
+  });
+
+  it("applies only Above Full Screen when nothing else in the Dock form differs", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY1", reserveSpace: true },
+    };
+    presetsStore.patch({
+      list: [
+        {
+          id: "dock-stepping-aside",
+          name: "Stepping aside",
+          tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: {},
+          dock: {
+            enabled: true,
+            edge: "top",
+            monitor: "\\\\.\\DISPLAY1",
+            reserveSpace: true,
+            aboveFullScreen: false,
+            modules: ["level"],
+          },
+        },
+      ],
+      activeId: null,
+      dirty: false,
+    });
+    render(<App />);
+    await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
+
+    await act(async () => {
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: {
+          surface: "dock-editor",
+          type: "apply-preset",
+          revision: 1,
+          payload: { presetId: "dock-stepping-aside" },
+        },
+      });
+    });
+
+    await waitFor(() =>
+      expect(setDockAboveFullScreen).toHaveBeenCalledWith({ enabled: false, origin: "preset" })
+    );
+    expect(enterDock).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(presetsStore.read()).toMatchObject({ activeId: "dock-stepping-aside", dirty: false })
     );
   });
 

@@ -747,7 +747,51 @@ describe("usePresets", () => {
       });
       expect(preset.dock).toEqual({
         ...dock,
+        aboveFullScreen: true,
       });
+    });
+
+    it("captures dock.aboveFullScreen", async () => {
+      const dock = {
+        enabled: true,
+        edge: "top",
+        monitor: null,
+        reserveSpace: true,
+        height: 96,
+        aboveFullScreen: false,
+      };
+      const { result } = renderPresetHook({ dock });
+      /** @type {any} */
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Stepping aside");
+      });
+      expect(preset.dock.aboveFullScreen).toBe(false);
+    });
+
+    it("normalizes a stored preset without aboveFullScreen to true", async () => {
+      const applyDockPreset = vi.fn(async () => {});
+      const dock = { enabled: true, edge: "top", monitor: null, reserveSpace: true, height: 96 };
+      const { result } = renderPresetHook({ dock, applyDockPreset });
+      /** @type {any} */
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Older");
+      });
+      const raw = presetsStore.read();
+      presetsStore.patch({
+        list: raw.list.map((p) => {
+          const { aboveFullScreen: _above, ...rest } = p.dock;
+          return { ...p, dock: rest };
+        }),
+      });
+      await act(async () => {
+        await result.current.presets.apply(preset.id);
+      });
+      expect(applyDockPreset).toHaveBeenCalledWith(
+        expect.objectContaining({ aboveFullScreen: true }),
+        expect.anything()
+      );
     });
 
     it("apply calls applyDockPreset with the preset dock (or a disabled default)", async () => {
@@ -767,6 +811,7 @@ describe("usePresets", () => {
           edge: "bottom",
           monitor: null,
           reserveSpace: false,
+          aboveFullScreen: true,
           height: 72,
           panelsById: {},
           panelOrder: [],
@@ -883,6 +928,7 @@ describe("usePresets", () => {
           edge: "bottom",
           monitor: null,
           reserveSpace: false,
+          aboveFullScreen: true,
           height: undefined,
           panelsById: undefined,
           panelOrder: undefined,

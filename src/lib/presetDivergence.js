@@ -31,6 +31,7 @@ import { normalizeSurfaceOpacity } from "../settings/defaults.js";
 /**
  * @typedef {{
  *   dockReserveSpaceSupported?: boolean,
+ *   dockAboveFullScreenSupported?: boolean,
  *   normalizeLoudnessProfileActive?: (raw: unknown) => string,
  * }} PresetDivergenceOptions
  */
@@ -47,7 +48,11 @@ import { normalizeSurfaceOpacity } from "../settings/defaults.js";
 export function presetRestoredScene(
   preset,
   scene,
-  { dockReserveSpaceSupported = true, normalizeLoudnessProfileActive } = {}
+  {
+    dockReserveSpaceSupported = true,
+    dockAboveFullScreenSupported = true,
+    normalizeLoudnessProfileActive,
+  } = {}
 ) {
   const presetDockEnabled = preset.dock?.enabled === true;
   const restored = { ...scene, ...presetWorkspaceView(preset) };
@@ -87,6 +92,9 @@ export function presetRestoredScene(
       reserveSpace: dockReserveSpaceSupported
         ? dock.reserveSpace === true
         : scene.dock.reserveSpace,
+      aboveFullScreen: dockAboveFullScreenSupported
+        ? dock.aboveFullScreen !== false
+        : scene.dock.aboveFullScreen !== false,
       height: Number.isFinite(dock.height) ? clampDockHeight(dock.height) : scene.dock.height,
     };
   } else {
@@ -122,6 +130,7 @@ function comparableDock(dock) {
     edge: dock?.edge,
     monitor: dock?.monitor ?? null,
     reserveSpace: dock?.reserveSpace === true,
+    aboveFullScreen: dock?.aboveFullScreen !== false,
     height: dock?.height,
     layout,
     controlsByPanelId: normalizeDockControlsByPanelId(layout.panelsById, dock?.controlsByPanelId),

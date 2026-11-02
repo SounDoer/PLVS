@@ -171,6 +171,24 @@ describe("presetDiverges", () => {
       expect(diverges(anyMonitor, sceneOf(docked))).toBe(false);
     });
 
+    it("differs when aboveFullScreen differs on Windows", () => {
+      const scene = sceneOf(docked, { dock: { ...docked.dock, aboveFullScreen: false } });
+      expect(diverges(docked, scene)).toBe(true);
+    });
+
+    it("treats a preset without aboveFullScreen as on", () => {
+      const scene = sceneOf(docked, { dock: { ...docked.dock, aboveFullScreen: true } });
+      expect(diverges(docked, scene)).toBe(false);
+    });
+
+    it("uses the stored scene value where the platform cannot apply it", () => {
+      const preset = { ...docked, dock: { ...docked.dock, aboveFullScreen: false } };
+      const scene = sceneOf(docked, { dock: { ...docked.dock, aboveFullScreen: true } });
+      expect(
+        presetDiverges(preset, scene, { ...options, dockAboveFullScreenSupported: false })
+      ).toBe(false);
+    });
+
     it("ignores reserve space where the platform cannot reserve", () => {
       const scene = sceneOf(docked, { dock: { ...docked.dock, reserveSpace: false } });
       expect(diverges(docked, scene)).toBe(true);
