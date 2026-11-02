@@ -4,6 +4,7 @@ import {
   exitDock,
   getDockState,
   setDockHeight,
+  setDockAboveFullScreen,
   setDockReserveSpace,
   setDockSuspended,
 } from "../ipc/commands.js";
@@ -30,6 +31,7 @@ function normalizeDockState(raw) {
       supportsDockReserveSpace() &&
       (isMacOS() ? raw?.reserveSpace === true : raw?.reserveSpace !== false),
     height: clampDockHeight(raw?.height),
+    aboveFullScreen: raw?.aboveFullScreen !== false,
   };
 }
 
@@ -122,7 +124,8 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       reserveSpaceOverride,
       monitorOverride,
       heightOverride,
-      origin = undefined
+      origin = undefined,
+      aboveFullScreenOverride = undefined
     ) => {
       // Before the platform checks so the refusal does not depend on where it runs, and before
       // enqueueTransition so a blocked entry never joins the transition chain.
@@ -138,12 +141,13 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           ? supportsDockReserveSpace() && reserveSpaceOverride
           : undefined;
         const hasHeightOverride = Number.isFinite(heightOverride);
+        const hasAboveOverride = typeof aboveFullScreenOverride === "boolean";
         const resolved = await enterDock(
           edge,
           normalizedReserveOverride,
           monitorOverride,
           hasHeightOverride ? clampDockHeight(heightOverride) : undefined,
-          ...(origin ? [origin] : [])
+          ...(hasAboveOverride ? [origin, aboveFullScreenOverride] : origin ? [origin] : [])
         );
         const monitor =
           typeof resolved?.monitor === "string"
@@ -163,6 +167,12 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
                 ? normalizedReserveOverride
                 : latest.reserveSpace,
           height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
+          aboveFullScreen:
+            typeof resolved?.aboveFullScreen === "boolean"
+              ? resolved.aboveFullScreen
+              : hasAboveOverride
+                ? aboveFullScreenOverride
+                : latest.aboveFullScreen,
         }));
         setDockSuspendedState(false);
         return effective;
@@ -212,6 +222,22 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     if (!isTauri()) return Promise.resolve();
     return enqueueTransition(() => applyReserveSpace(!dockRef.current.reserveSpace));
   }, [applyReserveSpace, enqueueTransition]);
+
+  const setAboveFullScreen = useCallback(
+    (/** @type {boolean} */ enabled, origin = undefined) => {
+      if (!isTauri()) return Promise.resolve();
+      return enqueueTransition(async () => {
+        await setDockAboveFullScreen({ enabled, ...(origin ? { origin } : {}) });
+        commitDock((latest) => ({ ...latest, aboveFullScreen: enabled }));
+      });
+    },
+    [commitDock, enqueueTransition]
+  );
+
+  const toggleAboveFullScreen = useCallback(
+    () => setAboveFullScreen(!dockRef.current.aboveFullScreen),
+    [setAboveFullScreen]
+  );
 
   const resizeDockHeight = useCallback(
     (height, { persist = true, cancelled = false, origin = undefined } = {}) => {
@@ -279,10 +305,13 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     dockSuspended,
     dockTransitioning,
     reserveSpace: dock.reserveSpace,
+    aboveFullScreen: dock.aboveFullScreen,
     enterDockMode,
     exitDockMode,
     setReserveSpace,
     toggleReserveSpace,
+    setAboveFullScreen,
+    toggleAboveFullScreen,
     resizeDockHeight,
     suspendDockMode,
     resumeDockMode,

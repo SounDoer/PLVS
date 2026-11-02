@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   exitDock: vi.fn(async () => {}),
   getDockState: vi.fn(async () => undefined),
   setDockReserveSpace: vi.fn(async () => {}),
+  setDockAboveFullScreen: vi.fn(async () => {}),
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
@@ -17,6 +18,7 @@ vi.mock("../ipc/commands.js", () => ({
   exitDock: mocks.exitDock,
   getDockState: mocks.getDockState,
   setDockReserveSpace: mocks.setDockReserveSpace,
+  setDockAboveFullScreen: mocks.setDockAboveFullScreen,
   setDockHeight: mocks.setDockHeight,
   setDockSuspended: mocks.setDockSuspended,
 }));
@@ -50,6 +52,7 @@ describe("useDockMode", () => {
     mocks.exitDock.mockClear();
     mocks.getDockState.mockReset().mockResolvedValue(undefined);
     mocks.setDockReserveSpace.mockReset().mockResolvedValue(undefined);
+    mocks.setDockAboveFullScreen.mockReset().mockResolvedValue(undefined);
     mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
     mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
@@ -81,6 +84,45 @@ describe("useDockMode", () => {
       await expect(result.current.setReserveSpace(true)).rejects.toThrow("Accessibility");
     });
     expect(result.current.reserveSpace).toBe(false);
+  });
+
+  it("normalizes a missing aboveFullScreen to true", () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    const { result } = renderHook(() => useDockMode());
+    expect(result.current.aboveFullScreen).toBe(true);
+  });
+
+  it("keeps a stored aboveFullScreen false", () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", aboveFullScreen: false },
+    };
+    const { result } = renderHook(() => useDockMode());
+    expect(result.current.aboveFullScreen).toBe(false);
+  });
+
+  it("toggleAboveFullScreen invokes set_dock_above_full_screen with the inverse", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    const { result } = renderHook(() => useDockMode());
+    await act(() => result.current.toggleAboveFullScreen());
+    expect(mocks.setDockAboveFullScreen).toHaveBeenCalledWith({ enabled: false });
+    expect(result.current.aboveFullScreen).toBe(false);
+  });
+
+  it("passes an aboveFullScreen override to enterDock", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: false, edge: "top" } };
+    const { result } = renderHook(() => useDockMode());
+    await act(() =>
+      result.current.enterDockMode("top", undefined, undefined, undefined, undefined, false)
+    );
+    expect(mocks.enterDock).toHaveBeenCalledWith(
+      "top",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false
+    );
+    expect(result.current.aboveFullScreen).toBe(false);
   });
 
   it("toggles reserve-space through IPC using the current edge", async () => {

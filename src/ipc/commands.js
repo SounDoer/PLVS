@@ -119,9 +119,10 @@ export function movePointer({ x, y, durationMs, webviewScale, windowLabel = "mai
  * Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic.
  * @param {boolean} reserveSpace
  * @param {number} height
+ * @param {boolean} [aboveFullScreen]
  */
-export function enterDock(edge, reserveSpace, monitor, height, origin = "ui") {
-  return invoke("enter_dock", { edge, reserveSpace, monitor, height, origin });
+export function enterDock(edge, reserveSpace, monitor, height, origin = "ui", aboveFullScreen) {
+  return invoke("enter_dock", { edge, reserveSpace, monitor, height, origin, aboveFullScreen });
 }
 
 /**
@@ -140,6 +141,11 @@ export function getDockState() {
 /** Windows-only: register or remove the dock strip as a Win32 AppBar. */
 export function setDockReserveSpace({ enabled, edge, origin = "ui" }) {
   return invoke("set_dock_reserve_space", { enabled, edge, origin });
+}
+
+/** Keep the dock strip above full-screen windows, or step aside like the taskbar. */
+export function setDockAboveFullScreen({ enabled, origin = "ui" }) {
+  return invoke("set_dock_above_full_screen", { enabled, origin });
 }
 
 /** Resize the dock strip in logical pixels. Preview updates are not persisted. */

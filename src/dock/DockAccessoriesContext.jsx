@@ -105,6 +105,8 @@ export function DockAccessoriesProvider({ children }) {
     dockSuspended,
     reserveSpace,
     toggleReserveSpace,
+    aboveFullScreen,
+    toggleAboveFullScreen,
     exitDockRestoringAttributes,
     onDockChange,
     resetDockLayout,
@@ -389,6 +391,7 @@ export function DockAccessoriesProvider({ children }) {
       statusItems,
       edge: dockEdge,
       reserveSpace,
+      aboveFullScreen,
       hideAxesAndLabels: presentation.dock.hideAxesAndLabels,
       device: { audioOutputs, audioInputs, captureApplications, safeAudioDeviceId },
       panels: dockLayout.panels,
@@ -423,6 +426,7 @@ export function DockAccessoriesProvider({ children }) {
       interfaceSize,
       statusItems,
       reserveSpace,
+      aboveFullScreen,
       presentation.dock.hideAxesAndLabels,
       audioOutputs,
       audioInputs,
@@ -510,6 +514,15 @@ export function DockAccessoriesProvider({ children }) {
               ? "Could not release reserved screen space. Dock remains reserved."
               : "Could not reserve screen space. Dock remains an overlay.",
             errorDetails("Reserve screen space failed", error)
+          )
+        );
+      } else if (type === "toggle-above-full-screen") {
+        clearNotice();
+        void toggleAboveFullScreen().catch((error) =>
+          raiseNotice(
+            "error",
+            "Could not change Above Full Screen.",
+            errorDetails("Above Full Screen failed", error)
           )
         );
       } else if (type === "restore-window") {
@@ -601,6 +614,7 @@ export function DockAccessoriesProvider({ children }) {
       raiseNotice,
       reserveSpace,
       toggleReserveSpace,
+      toggleAboveFullScreen,
       resetDockLayout,
       openUpdateDetails,
       updateControls,

@@ -39,6 +39,13 @@ describe("Dock accessory protocol", () => {
     expect(
       normalizeAccessoryAction({
         surface: "dock-editor",
+        type: "toggle-above-full-screen",
+        revision: 5,
+      })
+    ).toMatchObject({ type: "toggle-above-full-screen", payload: {} });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-editor",
         type: "hover-module",
         payload: { panelId: "spectrum" },
       })

@@ -3,6 +3,7 @@ import { Label } from "../../components/ui/label";
 import { useState } from "react";
 import { SettingsSelect } from "../../components/panel-settings/SettingsWidgets.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
+import { isWindows } from "../../lib/platform.js";
 
 export function DockViews({ state, onAction }) {
   const [positionOpen, setPositionOpen] = useState(false);
@@ -43,6 +44,14 @@ export function DockViews({ state, onAction }) {
             label="Reserve Space"
             checked={state.reserveSpace === true}
             onCheckedChange={() => onAction("toggle-reserve-space")}
+          />
+        )}
+        {isWindows() && (
+          <FocusSwitch
+            id="dock-above-full-screen"
+            label="Above Full Screen"
+            checked={state.aboveFullScreen !== false}
+            onCheckedChange={() => onAction("toggle-above-full-screen")}
           />
         )}
       </div>

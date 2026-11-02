@@ -41,6 +41,7 @@ const ACTION_TYPES = new Set([
   "set-hide-axes-labels",
   "select-device",
   "toggle-reserve-space",
+  "toggle-above-full-screen",
   "restore-window",
   "toggle-module",
   "add-module",
