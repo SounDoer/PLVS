@@ -621,7 +621,7 @@ cannot cover:
 | `scripts/verify-linux-deb-clean.sh`  | Linux     | Installs the exact deb into a fresh Ubuntu 24.04 root without system FFmpeg, decodes fixtures, launches app and CLI, then removes it cleanly       |
 
 In parallel, the `capture-acceptance` job calls `capture-acceptance.yml`, which runs
-`smoke:capture` for the exact SHA on the self-hosted `plvs-rig` runners (home PC or company PC,
+`smoke:capture` for the exact SHA on the self-hosted `plvs-rig` runners (Windows,
 Mac, Ubuntu). `prepare-draft` waits for it, so no draft exists unless real capture passed on all
 three platforms. It runs on every release; local preflight no longer runs capture smoke.
 
