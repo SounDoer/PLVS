@@ -546,7 +546,8 @@ pub fn install_window_subclass<R: tauri::Runtime>(window: &WebviewWindow<R>) -> 
 
 /// Start or stop following full-screen windows on the Dock's monitor. Turn it
 /// on once the strip is on screen and off before the strip goes away; the
-/// caller owns the window's topmost state on both sides of that.
+/// caller owns the window's topmost state on both sides of that, and turning it
+/// off hands back a strip that had yielded in the topmost band.
 pub fn watch_fullscreen<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   enabled: bool,
@@ -565,8 +566,14 @@ pub fn watch_fullscreen<R: tauri::Runtime>(
     changed && !current.registered
   };
   if !enabled {
-    YIELDED.store(false, Ordering::Relaxed);
     FULLSCREEN_PRESENT.store(false, Ordering::Relaxed);
+    if is_yielded() {
+      // A yielded strip sits at the bottom of the z-order, out of the topmost
+      // band the caller put it in. Return it there so the caller's next topmost
+      // change applies; Tauri skips one that matches its own flag, and Windows
+      // ignores HWND_NOTOPMOST for a window that is already not topmost.
+      unsafe { set_yielded(hwnd, false) };
+    }
     unsafe { KillTimer(hwnd, FULLSCREEN_POLL_TIMER_ID) };
   }
   if changes_registration {
