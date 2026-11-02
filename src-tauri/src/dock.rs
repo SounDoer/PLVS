@@ -75,6 +75,7 @@ fn default_above_full_screen() -> bool {
 
 /// Shell's last full-screen report belongs to the monitor it was sent for. A Dock that was not
 /// watching, or moves to another monitor, must not act on it.
+#[cfg(any(target_os = "windows", test))]
 fn keeps_full_screen_report(was_docked: bool, previous: Option<&str>, next: Option<&str>) -> bool {
   was_docked && previous == next
 }
