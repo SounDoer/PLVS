@@ -80,10 +80,15 @@ export function onFileAnalysisError(handler) {
 
 /**
  * The user clicked or switched to another application while the Dock strip refuses activation over
- * a full-screen window (Windows).
+ * a full-screen window, or the macOS Dock leaves the active Space.
  * @param {() => void} handler
  * @returns {Promise<() => void>}
  */
 export async function onDockInteractionElsewhere(handler) {
   return listen("dock-interaction-elsewhere", () => handler());
+}
+
+/** @param {() => void} handler @returns {Promise<() => void>} */
+export async function onDockNativeGeometryChanged(handler) {
+  return listen("dock-native-geometry-changed", () => handler());
 }

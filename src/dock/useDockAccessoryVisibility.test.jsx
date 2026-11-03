@@ -11,7 +11,14 @@ import {
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 /** @type {null | (() => void)} */
 let interactionElsewhere = null;
+let nativeGeometryChanged = null;
 vi.mock("../ipc/events.js", () => ({
+  onDockNativeGeometryChanged: vi.fn(async (handler) => {
+    nativeGeometryChanged = handler;
+    return () => {
+      nativeGeometryChanged = null;
+    };
+  }),
   onDockInteractionElsewhere: vi.fn(async (handler) => {
     interactionElsewhere = handler;
     return () => {
@@ -53,6 +60,25 @@ const blurStrip = () => act(() => void window.dispatchEvent(new Event("blur")));
 const focusStrip = () => act(() => void window.dispatchEvent(new Event("focus")));
 
 describe("useDockAccessoryVisibility", () => {
+  it("remeasures visible accessories when native Space geometry changes", async () => {
+    const { unmount } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: 150,
+        onError: vi.fn(),
+      })
+    );
+    await act(async () => {});
+    vi.mocked(setDockAccessories).mockClear();
+    await act(async () => {
+      nativeGeometryChanged?.();
+    });
+    expect(setDockAccessories).toHaveBeenCalled();
+    unmount();
+    expect(nativeGeometryChanged).toBeNull();
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
   });

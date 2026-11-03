@@ -4,7 +4,7 @@ import { RangeInput } from "../../components/ui/range-input.jsx";
 import { useState } from "react";
 import { SettingsSelect } from "../../components/panel-settings/SettingsWidgets.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
-import { isWindows } from "../../lib/platform.js";
+import { isDockSupported } from "../../lib/platform.js";
 
 export function DockViews({ state, onAction }) {
   const [positionOpen, setPositionOpen] = useState(false);
@@ -42,7 +42,7 @@ export function DockViews({ state, onAction }) {
             onCheckedChange={() => onAction("toggle-reserve-space")}
           />
         )}
-        {isWindows() && (
+        {isDockSupported() && (
           <FocusSwitch
             id="dock-above-full-screen"
             label="Above Full Screen"

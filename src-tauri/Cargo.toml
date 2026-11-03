@@ -89,6 +89,7 @@ hound = { version = "3.5.1", optional = true }
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.
 [target.'cfg(target_os = "macos")'.dependencies]
+tauri-nspanel = "=2.1.1"
 libc = "0.2"
 window-vibrancy = "0.8"
 

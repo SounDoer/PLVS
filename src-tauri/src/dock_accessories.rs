@@ -64,6 +64,8 @@ fn ensure_accessory<R: tauri::Runtime>(
   let window = accessory_builder(app, label, &init_script)
     .build()
     .map_err(|error| format!("{label} window: {error}"))?;
+  #[cfg(target_os = "macos")]
+  crate::macos_dock_window::configure_accessory(&window)?;
   // Subclassing must happen on the thread that owns the window; this command runs elsewhere.
   #[cfg(target_os = "windows")]
   {
@@ -139,11 +141,30 @@ fn set_rect<R: tauri::Runtime>(
   Ok(())
 }
 
+fn focus_window<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+  #[cfg(target_os = "macos")]
+  {
+    crate::macos_dock_window::present(window, true, true)
+  }
+  #[cfg(not(target_os = "macos"))]
+  {
+    window
+      .set_focus()
+      .map_err(|error| format!("{} focus: {error}", window.label()))
+  }
+}
+
 fn show_or_hide<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   visible: bool,
   focus_on_show: bool,
 ) -> Result<(), String> {
+  #[cfg(target_os = "macos")]
+  {
+    let was_visible = window.is_visible().map_err(|error| error.to_string())?;
+    crate::macos_dock_window::present(window, visible, focus_on_show && !was_visible)
+  }
+  #[cfg(not(target_os = "macos"))]
   if visible {
     let was_visible = window
       .is_visible()
@@ -152,9 +173,7 @@ fn show_or_hide<R: tauri::Runtime>(
       .show()
       .map_err(|e| format!("{} show: {e}", window.label()))?;
     if focus_on_show && !was_visible {
-      window
-        .set_focus()
-        .map_err(|e| format!("{} focus: {e}", window.label()))?;
+      focus_window(window)?;
     }
     Ok(())
   } else {
@@ -204,7 +223,7 @@ pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     DOCK_IMPORT_LABEL,
   ] {
     if let Some(window) = app.get_webview_window(label) {
-      let _ = window.hide();
+      let _ = show_or_hide(&window, false, false);
     }
   }
 }
@@ -357,7 +376,7 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
   // the header takes focus first and no other application is activated in between.
   if editor_had_focus && !editor_visible && header_visible {
     if let Some(header) = &header {
-      let _ = header.set_focus();
+      let _ = focus_window(header);
     }
   }
   if let Some(editor) = &editor {

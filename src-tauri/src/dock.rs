@@ -67,6 +67,10 @@ pub struct DockStateRecord {
   /// Stored on every platform so Presets round-trip where it has no effect yet.
   #[serde(default = "default_above_full_screen")]
   pub above_full_screen: bool,
+  /// Private native restore metadata: bit 0 FullSizeContentView, bit 1 transparent title bar.
+  /// Keep it with Dock state so boot does not substitute the new strip builder's chrome.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub macos_normal_chrome: Option<u8>,
 }
 
 fn default_above_full_screen() -> bool {
@@ -445,6 +449,8 @@ fn restore_window_form<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   snapshot: WindowFormSnapshot,
 ) {
+  #[cfg(target_os = "macos")]
+  let _ = crate::macos_dock_window::restore_host(window);
   if window.is_maximized().unwrap_or(false) {
     let _ = window.unmaximize();
   }
@@ -454,6 +460,8 @@ fn restore_window_form<R: tauri::Runtime>(
   crate::window_chrome::set_native_border(window, snapshot.decorations);
   let _ = window.set_shadow(snapshot.shadow);
   let _ = window.set_always_on_top(snapshot.always_on_top);
+  #[cfg(target_os = "macos")]
+  let _ = crate::macos_dock_window::restore_chrome(window);
   let _ = window.set_size(tauri::PhysicalSize::new(
     snapshot.bounds.width,
     snapshot.bounds.height,
@@ -465,6 +473,8 @@ fn restore_window_form<R: tauri::Runtime>(
   if snapshot.bounds.is_maximized {
     let _ = window.maximize();
   }
+  #[cfg(target_os = "macos")]
+  let _ = crate::macos_dock_window::sync_content(window);
 }
 
 /// Force the window into the docked strip form. Attribute overrides here are
@@ -483,6 +493,8 @@ pub fn apply_dock_form<R: tauri::Runtime>(
   logical_height: u32,
   previous_shadow: bool,
 ) -> Result<Option<String>, String> {
+  #[cfg(target_os = "macos")]
+  crate::macos_dock_window::remember_chrome(window)?;
   let previous_form = capture_window_form(window, previous_shadow)?;
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
   let logical_height = fit_dock_height(logical_height, wa.height, scale);
@@ -496,6 +508,10 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     let _ = window.unmaximize();
   }
   let applied = (|| -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    window
+      .set_resizable(false)
+      .map_err(|e| format!("resizable: {e}"))?;
     window
       .set_decorations(false)
       .map_err(|e| format!("decorations: {e}"))?;
@@ -505,6 +521,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     window
       .set_always_on_top(true)
       .map_err(|e| format!("always on top: {e}"))?;
+    #[cfg(not(target_os = "macos"))]
     window
       .set_resizable(false)
       .map_err(|e| format!("resizable: {e}"))?;
@@ -522,14 +539,14 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     Ok(())
   })();
   applied.inspect_err(|_| restore_window_form(window, previous_form))?;
+  #[cfg(target_os = "macos")]
+  crate::macos_dock_window::settle(window)?;
   Ok(resolved_monitor)
 }
 
-#[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub fn enter_dock<R: tauri::Runtime>(
+fn enter_dock_inner<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
-  flag: tauri::State<'_, DockedFlag>,
   edge: DockEdge,
   reserve_space: Option<bool>,
   monitor: Option<String>,
@@ -537,6 +554,7 @@ pub fn enter_dock<R: tauri::Runtime>(
   origin: Option<crate::feedback_diagnostics::Origin>,
   above_full_screen: Option<bool>,
 ) -> Result<DockStateRecord, String> {
+  let flag = window.state::<DockedFlag>();
   if !is_supported_platform() {
     return Err("Dock is unavailable on this platform.".to_string());
   }
@@ -639,6 +657,8 @@ pub fn enter_dock<R: tauri::Runtime>(
           crate::appbar::set_above_full_screen(&window, above_full_screen)?;
           crate::appbar::watch_fullscreen(&window, true)?;
         }
+        #[cfg(target_os = "macos")]
+        crate::macos_dock_window::configure(&window, true, edge, height, above_full_screen)?;
         Ok((monitor, reserve_space))
       })();
       let (monitor, reserve_space) = match transition {
@@ -646,6 +666,19 @@ pub fn enter_dock<R: tauri::Runtime>(
         Err(error) => {
           flag.0.store(was_docked, Ordering::Relaxed);
           restore_window_form(&window, previous_form);
+          #[cfg(target_os = "macos")]
+          if let Some(previous) = previous.as_ref().filter(|_| was_docked) {
+            let _ = crate::macos_dock_window::configure(
+              &window,
+              true,
+              previous.edge,
+              previous.height,
+              previous.above_full_screen,
+            );
+          } else {
+            let _ =
+              crate::macos_dock_window::configure(&window, false, edge, height, above_full_screen);
+          }
           #[cfg(target_os = "windows")]
           if was_docked {
             if let Some(previous) = previous.as_ref() {
@@ -660,7 +693,14 @@ pub fn enter_dock<R: tauri::Runtime>(
           return Err(error);
         }
       };
+      let macos_normal_chrome = previous
+        .as_ref()
+        .and_then(|state| state.macos_normal_chrome);
+      #[cfg(target_os = "macos")]
+      let macos_normal_chrome =
+        crate::macos_dock_window::saved_chrome(&window)?.or(macos_normal_chrome);
       let next = DockStateRecord {
+        macos_normal_chrome,
         enabled: true,
         edge,
         monitor,
@@ -674,16 +714,15 @@ pub fn enter_dock<R: tauri::Runtime>(
   )
 }
 
-#[tauri::command]
-pub fn exit_dock<R: tauri::Runtime>(
+fn exit_dock_inner<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
-  flag: tauri::State<'_, DockedFlag>,
-  normal_shadow: tauri::State<'_, crate::window_chrome::NormalWindowShadow>,
   decorations: bool,
   always_on_top: bool,
   bounds: Option<WindowBounds>,
   origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
+  let flag = window.state::<DockedFlag>();
+  let normal_shadow = window.state::<crate::window_chrome::NormalWindowShadow>();
   crate::feedback_diagnostics::observe(
     &window,
     "dock.exit",
@@ -694,7 +733,17 @@ pub fn exit_dock<R: tauri::Runtime>(
     || {
       crate::dock_accessories::hide_all(window.app_handle());
       #[cfg(target_os = "macos")]
+      crate::macos_dock_window::configure(
+        &window,
+        false,
+        DockEdge::Bottom,
+        DOCK_DEFAULT_LOGICAL_HEIGHT,
+        true,
+      )?;
+      #[cfg(target_os = "macos")]
       crate::macos_dock::stop()?;
+      #[cfg(target_os = "macos")]
+      crate::macos_dock_window::restore_host(&window)?;
       #[cfg(target_os = "windows")]
       crate::appbar::watch_fullscreen(&window, false)?;
       #[cfg(target_os = "windows")]
@@ -727,6 +776,8 @@ pub fn exit_dock<R: tauri::Runtime>(
       window
         .set_always_on_top(always_on_top)
         .map_err(|e| format!("always on top: {e}"))?;
+      #[cfg(target_os = "macos")]
+      crate::macos_dock_window::restore_chrome(&window)?;
       let saved: Option<WindowBounds> =
         bounds.or_else(|| read_persisted_window_bounds(window.app_handle()));
       let monitors: Vec<MonitorRect> = window
@@ -765,6 +816,7 @@ pub fn exit_dock<R: tauri::Runtime>(
       write_dock_state(
         app,
         &DockStateRecord {
+          macos_normal_chrome: prev.as_ref().and_then(|state| state.macos_normal_chrome),
           enabled: false,
           edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
           monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
@@ -780,6 +832,8 @@ pub fn exit_dock<R: tauri::Runtime>(
         },
       );
       flag.0.store(false, Ordering::Relaxed);
+      #[cfg(target_os = "macos")]
+      crate::macos_dock_window::normal(&window)?;
       Ok(())
     },
   )
@@ -894,9 +948,22 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
       }
 
       let previous = read_dock_state(window.app_handle());
+      #[cfg(target_os = "macos")]
+      if let Some(previous) = previous.as_ref() {
+        crate::macos_dock_window::configure(
+          &window,
+          true,
+          edge,
+          previous.height,
+          previous.above_full_screen,
+        )?;
+      }
       write_dock_state(
         window.app_handle(),
         &DockStateRecord {
+          macos_normal_chrome: previous
+            .as_ref()
+            .and_then(|state| state.macos_normal_chrome),
           enabled: true,
           edge,
           above_full_screen: previous
@@ -940,6 +1007,8 @@ pub fn set_dock_above_full_screen<R: tauri::Runtime>(
       let Some(previous) = read_dock_state(window.app_handle()) else {
         return Err("dock state is unavailable".into());
       };
+      #[cfg(target_os = "macos")]
+      crate::macos_dock_window::configure(&window, true, previous.edge, previous.height, enabled)?;
       write_dock_state(
         window.app_handle(),
         &DockStateRecord {
@@ -987,6 +1056,9 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         if state.reserve_space {
           crate::appbar::set_reserved(&window, false, state.edge, state.height)?;
         }
+        #[cfg(target_os = "macos")]
+        crate::macos_dock_window::present(&window, false, false)?;
+        #[cfg(not(target_os = "macos"))]
         window
           .hide()
           .map_err(|e| format!("suspend dock hide: {e}"))?;
@@ -1033,12 +1105,26 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
       window
         .set_skip_taskbar(false)
         .map_err(|e| format!("resume dock taskbar: {e}"))?;
-      window
-        .show()
-        .map_err(|e| format!("resume dock show: {e}"))?;
-      window
-        .set_focus()
-        .map_err(|e| format!("resume dock focus: {e}"))?;
+      #[cfg(target_os = "macos")]
+      {
+        crate::macos_dock_window::configure(
+          &window,
+          true,
+          state.edge,
+          state.height,
+          state.above_full_screen,
+        )?;
+        crate::macos_dock_window::present(&window, true, false)?;
+      }
+      #[cfg(not(target_os = "macos"))]
+      {
+        window
+          .show()
+          .map_err(|e| format!("resume dock show: {e}"))?;
+        window
+          .set_focus()
+          .map_err(|e| format!("resume dock focus: {e}"))?;
+      }
       Ok(state)
     },
   )
@@ -1066,6 +1152,7 @@ pub fn set_dock_height<R: tauri::Runtime>(
       }
       let height = clamp_dock_height(height);
       let previous = read_dock_state(window.app_handle()).unwrap_or(DockStateRecord {
+        macos_normal_chrome: None,
         enabled: true,
         edge: DockEdge::Bottom,
         monitor: None,
@@ -1110,10 +1197,19 @@ pub fn set_dock_height<R: tauri::Runtime>(
           false,
         )?;
       }
+      #[cfg(target_os = "macos")]
+      crate::macos_dock_window::configure(
+        &window,
+        true,
+        previous.edge,
+        height,
+        previous.above_full_screen,
+      )?;
       if persist {
         write_dock_state(
           window.app_handle(),
           &DockStateRecord {
+            macos_normal_chrome: previous.macos_normal_chrome,
             enabled: true,
             edge: previous.edge,
             monitor: resolved_monitor.or(previous.monitor),
@@ -1231,6 +1327,7 @@ mod tests {
   #[test]
   fn dock_state_serializes_camel_case_and_lowercase_edge() {
     let s = DockStateRecord {
+      macos_normal_chrome: None,
       enabled: true,
       edge: DockEdge::Bottom,
       monitor: Some("\\\\.\\DISPLAY1".into()),
@@ -1250,6 +1347,28 @@ mod tests {
   }
 
   #[test]
+  fn normal_macos_chrome_round_trips_without_changing_legacy_dock_records() {
+    let legacy = serde_json::json!({"enabled":true,"edge":"bottom"});
+    let mut state: DockStateRecord = serde_json::from_value(legacy).unwrap();
+    assert_eq!(state.macos_normal_chrome, None);
+    assert!(serde_json::to_value(&state)
+      .unwrap()
+      .get("macosNormalChrome")
+      .is_none());
+    // Zero is meaningful: an ordinary decorated window can have FullSizeContentView cleared.
+    for policy in 0..=3 {
+      state.macos_normal_chrome = Some(policy);
+      let restored: DockStateRecord =
+        serde_json::from_value(serde_json::to_value(&state).unwrap()).unwrap();
+      assert_eq!(restored.macos_normal_chrome, Some(policy));
+      assert_eq!(
+        restored.normalize_for_platform().macos_normal_chrome,
+        Some(policy)
+      );
+    }
+  }
+
+  #[test]
   fn first_run_dock_height_leaves_room_for_expanded_stats() {
     assert_eq!(DOCK_DEFAULT_LOGICAL_HEIGHT, 150);
   }
@@ -1265,6 +1384,7 @@ mod tests {
   #[test]
   fn dock_state_disables_reserve_space_on_unsupported_platforms() {
     let state = DockStateRecord {
+      macos_normal_chrome: None,
       enabled: true,
       edge: DockEdge::Bottom,
       monitor: None,
@@ -1279,6 +1399,7 @@ mod tests {
   #[test]
   fn dock_state_preserves_overlay_dock_without_reserve_space_support() {
     let state = DockStateRecord {
+      macos_normal_chrome: None,
       enabled: true,
       edge: DockEdge::Bottom,
       monitor: None,
@@ -1402,4 +1523,90 @@ mod tests {
     assert_eq!((rects.editor.x, rects.editor.y), (18, 20));
     assert_eq!((rects.editor.width, rects.editor.height), (304, 132));
   }
+}
+
+// Window transitions must yield AppKit while Tao's queued decoration changes settle. Keeping
+// their complete business operation on one worker also preserves diagnostics and rollback ordering.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn enter_dock<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  edge: DockEdge,
+  reserve_space: Option<bool>,
+  monitor: Option<String>,
+  height: Option<u32>,
+  origin: Option<crate::feedback_diagnostics::Origin>,
+  above_full_screen: Option<bool>,
+) -> Result<DockStateRecord, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    let _transition = MACOS_TRANSITION.lock().unwrap_or_else(|e| e.into_inner());
+    enter_dock_inner(
+      window,
+      edge,
+      reserve_space,
+      monitor,
+      height,
+      origin,
+      above_full_screen,
+    )
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn exit_dock<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  decorations: bool,
+  always_on_top: bool,
+  bounds: Option<WindowBounds>,
+  origin: Option<crate::feedback_diagnostics::Origin>,
+) -> Result<(), String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    let _transition = MACOS_TRANSITION.lock().unwrap_or_else(|e| e.into_inner());
+    exit_dock_inner(window, decorations, always_on_top, bounds, origin)
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "macos")]
+static MACOS_TRANSITION: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+// Preserve the existing synchronous command execution on other platforms.
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn enter_dock<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  edge: DockEdge,
+  reserve_space: Option<bool>,
+  monitor: Option<String>,
+  height: Option<u32>,
+  origin: Option<crate::feedback_diagnostics::Origin>,
+  above_full_screen: Option<bool>,
+) -> Result<DockStateRecord, String> {
+  enter_dock_inner(
+    window,
+    edge,
+    reserve_space,
+    monitor,
+    height,
+    origin,
+    above_full_screen,
+  )
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub fn exit_dock<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  decorations: bool,
+  always_on_top: bool,
+  bounds: Option<WindowBounds>,
+  origin: Option<crate::feedback_diagnostics::Origin>,
+) -> Result<(), String> {
+  exit_dock_inner(window, decorations, always_on_top, bounds, origin)
 }

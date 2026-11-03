@@ -146,10 +146,18 @@ Without permission, Dock remains an overlay.
 macOS avoidance waits for the window to settle after dragging or resizing. It affects standard,
 resizable foreground windows primarily on the Dock's display; full-screen, minimized and unsupported
 windows are skipped. An application's minimum window size may prevent avoidance. This feature does
-not change the system work area or make the strip appear over native full-screen Spaces.
+not change the system work area. Full-screen presentation is controlled separately by **Above Full Screen**.
 Turning reservation off, hiding Dock or quitting PLVS restores windows that remain where PLVS placed
 them. Later user moves are preserved. After an abnormal exit, the next launch attempts guarded
 recovery when Accessibility permission is available; unresolved windows retain local recovery data.
+
+On macOS, **Above Full Screen** is on by default. The strip, toolbar and editors can appear over
+another application's native full-screen Space without leaving it, including keyboard input in
+editors. Clicking outside PLVS closes the toolbar and its editor. The strip overlays the content;
+**Reserve Space** does not resize a native full-screen application. The top edge respects the
+screen's safe area around a camera notch. Turning **Above Full Screen** off hides Dock in native
+full-screen Spaces and restores it on returning to a desktop Space. Borderless windows occupying
+a desktop Space remain subject to ordinary overlay behavior.
 
 On Windows, the strip stays above full-screen windows on its display, such as a full-screen video
 or a borderless full-screen game, covering an edge of that window. It moves to the very edge of the

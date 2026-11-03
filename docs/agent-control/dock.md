@@ -57,7 +57,10 @@ falls back to an overlay if permission is unavailable. On other platforms, suppl
 control is an error rather than silently coercing it.
 
 `aboveFullScreen` keeps the strip above full-screen windows on the Dock's display, moved to the
-display edge; `false` makes it step aside for them as the taskbar does. It is writable only on Windows. Elsewhere `describe` reports
+display edge; `false` makes it step aside for them as the taskbar does. It is writable on Windows
+and macOS. On macOS, it overlays native full-screen Spaces; `false` hides Dock there until returning
+to a desktop Space. It does not resize full-screen applications or require Accessibility permission.
+On unsupported platforms `describe` reports
 it unavailable, supplying it fails with `controlUnavailable`, and the stored value is kept for
 Presets without native effect. Entering an enabled Dock with only this option changed updates it.
 

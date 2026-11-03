@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { prepareDockAccessories, setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { onDockInteractionElsewhere } from "../ipc/events.js";
+import { onDockInteractionElsewhere, onDockNativeGeometryChanged } from "../ipc/events.js";
 import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
 const ACCESSORY_READY_RETRY_MS = 50;
@@ -92,6 +92,7 @@ export function useDockAccessoryVisibility({
   waitForHeaderReady = false,
   onError,
 }) {
+  const [nativeGeometryVersion, setNativeGeometryVersion] = useState(0);
   const [toolbarOpen, setToolbarOpenState] = useState(false);
   const snapshotSession = active && snapshotActive;
   const [snapshotToolbar, setSnapshotToolbar] = useState({
@@ -320,6 +321,22 @@ export function useDockAccessoryVisibility({
   }, [active, leave]);
 
   useEffect(() => {
+    if (!isTauri() || !active) return;
+    let unlisten = null;
+    let disposed = false;
+    void onDockNativeGeometryChanged(() => setNativeGeometryVersion((version) => version + 1)).then(
+      (stop) => {
+        if (disposed) stop();
+        else unlisten = stop;
+      }
+    );
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [active]);
+
+  useEffect(() => {
     if (headerVisible) return;
     // A window hidden while it holds focus may never report the blur.
     focusRef.current["dock-header"] = false;
@@ -346,6 +363,7 @@ export function useDockAccessoryVisibility({
     editorAnchorX,
     editorView,
     geometryVersion,
+    nativeGeometryVersion,
     headerVisible,
     measuredEditorView,
     nativeHeaderVisible,

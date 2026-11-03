@@ -34,6 +34,8 @@ mod ipc;
 mod linux_update;
 #[cfg(target_os = "macos")]
 mod macos_dock;
+#[cfg(target_os = "macos")]
+mod macos_dock_window;
 pub mod persistence;
 mod pointer;
 mod profile;
@@ -94,8 +96,8 @@ enum MacosReopenAction {
 }
 
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-fn macos_reopen_action(has_visible_windows: bool) -> MacosReopenAction {
-  if has_visible_windows {
+fn macos_reopen_action(has_visible_windows: bool, main_window_visible: bool) -> MacosReopenAction {
+  if has_visible_windows && main_window_visible {
     MacosReopenAction::OpenAdditionalWorkbench
   } else {
     MacosReopenAction::ShowExistingWorkbench
@@ -187,6 +189,8 @@ pub fn run() {
   let builder = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init());
+  #[cfg(target_os = "macos")]
+  let builder = builder.plugin(tauri_nspanel::init());
   let builder = update_runtime::register_plugin(builder);
 
   builder
@@ -576,6 +580,10 @@ pub fn run() {
           .store(true, std::sync::atomic::Ordering::Relaxed);
         // Boot: the window was just built in normal form, so a failed Dock
         // restore rolls back to the shadow selected for the current opacity.
+        #[cfg(target_os = "macos")]
+        if let Some(policy) = d.macos_normal_chrome.filter(|policy| *policy <= 3) {
+          macos_dock_window::remember_boot_chrome(&window, policy)?;
+        }
         if let Err(e) = dock::apply_dock_form(
           &window,
           d.edge,
@@ -630,6 +638,15 @@ pub fn run() {
           let _ = window.set_size(tauri::PhysicalSize::new(placed.width, placed.height));
         }
       }
+      #[cfg(target_os = "macos")]
+      if !restore_normal {
+        let d = boot_dock.as_ref().expect("Dock boot state");
+        macos_dock_window::configure(&window, true, d.edge, d.height, d.above_full_screen)?;
+        macos_dock_window::present(&window, true, false)?;
+      } else {
+        let _ = window.show();
+      }
+      #[cfg(not(target_os = "macos"))]
       let _ = window.show();
 
       #[cfg(target_os = "macos")]
@@ -817,7 +834,14 @@ pub fn run() {
         ..
       } = event
       {
-        match macos_reopen_action(has_visible_windows) {
+        // AppKit also counts the transparent Space probe. Only an actual PLVS
+        // WebView can make Reopen mean "open another workbench". Preserve the
+        // system's hidden-application visibility veto as well.
+        let main_window_visible = app
+          .get_webview_window("main")
+          .and_then(|window| window.is_visible().ok())
+          .unwrap_or(has_visible_windows);
+        match macos_reopen_action(has_visible_windows, main_window_visible) {
           MacosReopenAction::OpenAdditionalWorkbench => {
             let context = app.state::<AppLaunchContext>();
             if let Err(error) =
@@ -828,8 +852,36 @@ pub fn run() {
           }
           MacosReopenAction::ShowExistingWorkbench => {
             if let Some(window) = app.get_webview_window("main") {
-              let _ = window.show();
-              let _ = window.set_focus();
+              if app
+                .state::<dock::DockedFlag>()
+                .0
+                .load(std::sync::atomic::Ordering::Relaxed)
+              {
+                // Resume through React's lifecycle owner, including AX reservation and
+                // suspended state, instead of showing a native window behind its back.
+                let result = app
+                  .state::<persistence::commands::PersistenceRuntime>()
+                  .identity_root()
+                  .and_then(|root| {
+                    let mut nonce = [0_u8; 8];
+                    getrandom::fill(&mut nonce).map_err(|error| error.to_string())?;
+                    coordinator::RuntimeCommandMailbox::open(&root)?
+                      .issue(
+                        app
+                          .state::<runtime_identity::RuntimeIdentity>()
+                          .instance_id(),
+                        &format!("reopen-{:016x}", u64::from_ne_bytes(nonce)),
+                        "show",
+                      )
+                      .map(|_| ())
+                  });
+                if let Err(error) = result {
+                  log::warn!("Unable to show the Dock workbench: {error}");
+                }
+              } else {
+                let _ = window.show();
+                let _ = window.set_focus();
+              }
             }
           }
         }
@@ -854,6 +906,7 @@ mod tests {
 
   fn dock_record() -> dock::DockStateRecord {
     dock::DockStateRecord {
+      macos_normal_chrome: None,
       enabled: true,
       edge: dock::DockEdge::Top,
       monitor: Some("\\\\.\\DISPLAY1".into()),
@@ -866,11 +919,20 @@ mod tests {
   #[test]
   fn macos_reopen_opens_an_additional_workbench_only_while_one_is_visible() {
     assert_eq!(
-      macos_reopen_action(true),
+      macos_reopen_action(true, true),
       MacosReopenAction::OpenAdditionalWorkbench
     );
     assert_eq!(
-      macos_reopen_action(false),
+      macos_reopen_action(true, false),
+      MacosReopenAction::ShowExistingWorkbench
+    );
+    // An ordered window must not override AppKit saying that the app has no visible windows.
+    assert_eq!(
+      macos_reopen_action(false, true),
+      MacosReopenAction::ShowExistingWorkbench
+    );
+    assert_eq!(
+      macos_reopen_action(false, false),
       MacosReopenAction::ShowExistingWorkbench
     );
   }

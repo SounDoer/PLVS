@@ -147,35 +147,38 @@ describe("Dock Control", () => {
     expect(buildDockSnapshot({ ...dock, aboveFullScreen: false }).aboveFullScreen).toBe(false);
   });
 
-  it("describes aboveFullScreen as writable on Windows only", () => {
+  it("describes aboveFullScreen as writable on Windows and macOS", () => {
     expect(buildDockDescription(dock, { platform: "windows" }).aboveFullScreen).toEqual({
       writable: true,
       reason: null,
     });
     expect(buildDockDescription(dock, { platform: "macos" }).aboveFullScreen).toEqual({
-      writable: false,
-      reason: "platformUnsupported",
+      writable: true,
+      reason: null,
     });
   });
 
-  it("enter with only aboveFullScreen changed plans a change", () => {
-    const planned = planDockFormMutation(
-      dock,
-      "dock.enter",
-      { aboveFullScreen: false },
-      { platform: "windows", sourceMode: "live" }
-    );
-    expect(planned.issues).toEqual([]);
-    expect(planned.changed).toEqual(["dock.aboveFullScreen"]);
-    expect(planned.dock.aboveFullScreen).toBe(false);
-  });
+  it.each(["windows", "macos"])(
+    "%s enter with only aboveFullScreen changed plans a change",
+    (platform) => {
+      const planned = planDockFormMutation(
+        dock,
+        "dock.enter",
+        { aboveFullScreen: false },
+        { platform, sourceMode: "live" }
+      );
+      expect(planned.issues).toEqual([]);
+      expect(planned.changed).toEqual(["dock.aboveFullScreen"]);
+      expect(planned.dock.aboveFullScreen).toBe(false);
+    }
+  );
 
-  it("refuses aboveFullScreen on macOS with controlUnavailable", () => {
+  it("refuses aboveFullScreen on Linux with controlUnavailable", () => {
     const planned = planDockFormMutation(
       dock,
       "dock.enter",
       { aboveFullScreen: false },
-      { platform: "macos", sourceMode: "live" }
+      { platform: "linux", sourceMode: "live" }
     );
     expect(planned.issues).toEqual([
       expect.objectContaining({ code: "controlUnavailable", path: "$.aboveFullScreen" }),

@@ -26,10 +26,11 @@ No. They are a monitoring estimate; see
 
 ## Is Dock available on macOS?
 
-Yes. macOS supports an always-on-top Dock strip at the top or bottom of the screen.
-**Reserve Screen Space** on macOS uses Accessibility permission to move or shrink the active
-application's window away from the strip. Applications with restrictive minimum sizes and native
-full-screen Spaces may not support avoidance. See [Dock](workspace.md#dock).
+Yes. macOS supports an always-on-top strip at the top or bottom of the screen, including over
+native full-screen Spaces with **Above Full Screen** enabled (the default). The toolbar and editors
+stay in that Space. This overlay needs no Accessibility permission. Optional **Reserve Space** uses
+Accessibility permission to move or shrink ordinary application windows away from the strip;
+native full-screen applications are not resized. See [Dock](workspace.md#dock).
 
 ## Is there a Linux build?
 

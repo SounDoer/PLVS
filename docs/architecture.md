@@ -703,8 +703,23 @@ of the foreground application's settled standard window. AppKit snapshots stay o
 and atomic recovery journals use a serial queue. A display-wide lease prevents competing
 workbenches from owning the same reservation. Suspend/exit restores only unchanged window geometry;
 startup recovers journals whose lease is free. Permission loss or display removal falls back to an
-overlay and reconciles the frontend. This service does not change `NSScreen.visibleFrame` or support
-native full-screen Spaces; see [ADR 0023](adr/0023-macos-dock-accessibility-avoidance.md).
+overlay and reconciles the frontend. This service does not change `NSScreen.visibleFrame` or resize
+native full-screen applications; see [ADR 0023](adr/0023-macos-dock-accessibility-avoidance.md).
+
+On macOS, `macos_dock_window.rs` and `native/macos/dock_window_bridge.m` own Panel presentation
+on AppKit's main thread. The macOS-only pinned `tauri-nspanel` plugin converts the existing window into a Panel;
+ordinary mode restores the original Tao class and activates normally. Deferred Tao decoration updates
+settle on the main queue before conversion. Private restore metadata in the existing Dock record
+preserves the actual pre-Dock content/title-bar policy across restarts; that policy is restored before
+bounds, followed by the existing WebView size synchronization. Dock and its accessories are nonactivating
+floating Panels that can accept editor keyboard input in another application's native full-screen
+Space. A transparent ordinary-window probe's public Space membership gates **Above Full Screen**
+off without replacing WebViews. Desktop geometry uses the work area; full-screen geometry uses the
+safe display frame. Notifications, bounded retries and a one-second fallback while wanted reconcile
+Space/display changes; suspend and exit stop polling. Accessory-only mouse/application observation
+emits `dock-interaction-elsewhere` into React's existing dismissal owner. Native geometry changes
+emit `dock-native-geometry-changed` to remeasure anchors. See
+[ADR 0048](adr/0048-macos-dock-uses-panel-hosts-and-space-membership.md) for the host conversion policy and maintenance scope.
 
 Rust's `dock.rs` / `dock_accessories.rs` own physical-pixel geometry and window lifecycle. The main
 React root owns the runtime, workspace, presets and Dock persistence; the two accessory roots receive

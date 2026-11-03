@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const cargoToml = readFileSync(join(process.cwd(), "src-tauri", "Cargo.toml"), "utf8");
@@ -15,6 +15,27 @@ const desktopControl = readFileSync(
 const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
 
 describe("Tauri dependency contracts", () => {
+  it("confines the Panel host to macOS and the reviewed window factories", () => {
+    const macDependencies = cargoToml
+      .split("[target.'cfg(target_os = \"macos\")'.dependencies]")[1]
+      ?.split("\n[")[0];
+    expect(macDependencies).toContain('tauri-nspanel = "=2.1.1"');
+    expect(cargoToml.match(/^tauri-nspanel =/gm)).toHaveLength(1);
+    expect(cargoToml).not.toContain("vendor/tao");
+    expect(cargoToml).not.toContain("[patch.crates-io]");
+    const nativeRoot = join(process.cwd(), "src-tauri", "src");
+    const constructors = readdirSync(nativeRoot, { recursive: true })
+      .filter((file) => file.endsWith(".rs"))
+      .filter((file) =>
+        /(?:WebviewWindowBuilder|WindowBuilder)::new\(/.test(
+          readFileSync(join(nativeRoot, file), "utf8")
+        )
+      )
+      .map((file) => file.replaceAll("\\", "/"))
+      .sort();
+    expect(constructors).toEqual(["dock_accessories.rs", "lib.rs"]);
+  });
+
   it("keeps the direct window-vibrancy dependency aligned with Tauri", () => {
     expect(cargoToml).toMatch(/window-vibrancy\s*=\s*"0\.8"/);
 

@@ -34,18 +34,21 @@ describe("Dock Views", () => {
     expect(onAction).toHaveBeenCalledWith("set-dock-surface-opacity", { value: 35 });
   });
 
-  it("shows Above Full Screen on Windows and sends toggle-above-full-screen", () => {
-    Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
-    const onAction = vi.fn();
-    render(<DockViews state={{ edge: "bottom", aboveFullScreen: true }} onAction={onAction} />);
-    const toggle = screen.getByRole("switch", { name: "Above Full Screen" });
-    expect(toggle.getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(toggle);
-    expect(onAction).toHaveBeenCalledWith("toggle-above-full-screen");
-  });
+  it.each(["Win32", "MacIntel"])(
+    "shows Above Full Screen on %s and sends toggle-above-full-screen",
+    (platform) => {
+      Object.defineProperty(navigator, "platform", { configurable: true, value: platform });
+      const onAction = vi.fn();
+      render(<DockViews state={{ edge: "bottom", aboveFullScreen: true }} onAction={onAction} />);
+      const toggle = screen.getByRole("switch", { name: "Above Full Screen" });
+      expect(toggle.getAttribute("aria-checked")).toBe("true");
+      fireEvent.click(toggle);
+      expect(onAction).toHaveBeenCalledWith("toggle-above-full-screen");
+    }
+  );
 
-  it("hides Above Full Screen on macOS", () => {
-    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+  it("hides Above Full Screen on Linux", () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Linux x86_64" });
     render(<DockViews state={{ edge: "bottom", aboveFullScreen: true }} onAction={vi.fn()} />);
     expect(screen.queryByRole("switch", { name: "Above Full Screen" })).toBeNull();
   });

@@ -621,8 +621,8 @@ export function buildDockDescription(dock, context = {}) {
       reason: ["windows", "macos"].includes(context.platform) ? null : "platformUnsupported",
     },
     aboveFullScreen: {
-      writable: dock.supported === true && context.platform === "windows",
-      reason: context.platform === "windows" ? null : "platformUnsupported",
+      writable: dock.supported === true && ["windows", "macos"].includes(context.platform),
+      reason: ["windows", "macos"].includes(context.platform) ? null : "platformUnsupported",
     },
     height: { type: "integer", min: DOCK_MIN_HEIGHT, max: DOCK_MAX_HEIGHT, unit: "cssPx" },
     edges: ["top", "bottom"],
@@ -724,7 +724,7 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
         ),
       ],
     };
-  if (params.aboveFullScreen !== undefined && context.platform !== "windows")
+  if (params.aboveFullScreen !== undefined && !["windows", "macos"].includes(context.platform))
     return {
       dock,
       changed: [],
@@ -735,7 +735,7 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
         issue(
           "controlUnavailable",
           "$.aboveFullScreen",
-          "aboveFullScreen is available only on Windows."
+          "aboveFullScreen is available only on Windows and macOS."
         ),
       ],
     };

@@ -579,12 +579,27 @@ impl FrontendEmitter for TauriFrontendEmitter {
   fn emit(&self, request: &JsonRpcRequest) -> Result<(), String> {
     if request_reveals_main_window(request) {
       if let Some(window) = self.app.get_webview_window("main") {
-        // UI navigation promises best-effort reveal and focus. Besides matching that public
-        // contract, activating a background macOS WebView lets its render barrier receive the
-        // animation frames required before an Agent Control screenshot.
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+        #[cfg(target_os = "macos")]
+        let docked = self
+          .app
+          .state::<crate::dock::DockedFlag>()
+          .0
+          .load(std::sync::atomic::Ordering::Relaxed);
+        #[cfg(not(target_os = "macos"))]
+        let docked = false;
+        if docked {
+          // Do not activate PLVS or bypass the Dock's Space gate. React's lifecycle
+          // business function still owns resuming a deliberately suspended Dock.
+          #[cfg(target_os = "macos")]
+          crate::macos_dock_window::reveal(&window)?;
+        } else {
+          // UI navigation promises best-effort reveal and focus. Besides matching that public
+          // contract, activating a background macOS WebView lets its render barrier receive the
+          // animation frames required before an Agent Control screenshot.
+          let _ = window.show();
+          let _ = window.unminimize();
+          let _ = window.set_focus();
+        }
       }
     }
     self

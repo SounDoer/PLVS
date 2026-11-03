@@ -69,10 +69,13 @@ fn main() {
     println!("cargo:rerun-if-changed=native/macos/tap_bridge.m");
     println!("cargo:rerun-if-changed=native/macos/visual_capture_bridge.m");
     println!("cargo:rerun-if-changed=native/macos/dock_reservation_bridge.m");
+    println!("cargo:rerun-if-changed=native/macos/dock_window_bridge.m");
+    println!("cargo:rerun-if-changed=native/macos/dock_window_policy.h");
     cc::Build::new()
       .file("native/macos/tap_bridge.m")
       .file("native/macos/visual_capture_bridge.m")
       .file("native/macos/dock_reservation_bridge.m")
+      .file("native/macos/dock_window_bridge.m")
       // `cc` may otherwise treat the TU as C99 → CATapDescription / tap APIs "undeclared".
       .flag("-x")
       .flag("objective-c")

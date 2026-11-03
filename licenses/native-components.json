@@ -11,7 +11,8 @@
     "Windows FFmpeg includes MinGW-w64/GCC runtime support. GCC runtime code is covered by GPL-3.0-or-later with the GCC Runtime Library Exception 3.1; the eligible GCC build does not make PLVS GPL-licensed. Original runtime notices and exception terms follow.",
     "Rust standard library 1.99.1: original standard-library copyright and dependency notices are in rust/COPYRIGHT-library.html, with the referenced license texts in rust/licenses/. These are copied from the pinned rustup toolchain distribution.",
     "Windows installers use unmodified NSIS 3.13, with the CPL-1.0 LZMA linking exception, and nsis-tauri-utils 0.5.3 (source revision 13d9edd27b69310e108d6fbd49f90992f8a05390). Their original notices follow. NSIS source is available at https://github.com/nsis-dev/nsis/tree/a4ba28e60bd9e7c271cd2bfc1558889ce3355653 and plugin source at https://github.com/tauri-apps/nsis-tauri-utils/tree/13d9edd27b69310e108d6fbd49f90992f8a05390. The installer tools are selected by the reviewed @tauri-apps/cli version; review their components on CLI upgrades.",
-    "Ubuntu stable and Preview debs dynamically use distribution ALSA, PulseAudio, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries. FFmpeg/FFprobe are separate package-private executables and depend only on the distribution glibc, libm and ELF loader. The stable package's update installer is a separate Rust executable reviewed independently alongside the application dependency graph; it invokes distribution Polkit, dpkg and APT tools rather than bundling them."
+    "Ubuntu stable and Preview debs dynamically use distribution ALSA, PulseAudio, GTK, WebKitGTK, AppIndicator, librsvg, OpenSSL and D-Bus libraries declared through package dependencies; PLVS does not bundle those native library binaries. FFmpeg/FFprobe are separate package-private executables and depend only on the distribution glibc, libm and ELF loader. The stable package's update installer is a separate Rust executable reviewed independently alongside the application dependency graph; it invokes distribution Polkit, dpkg and APT tools rather than bundling them.",
+    "macOS Dock uses the unmodified crates.io tauri-nspanel 2.1.1 community plugin (MIT OR Apache-2.0) and pastey 0.2.3 (MIT OR Apache-2.0). Their original license texts are included in component notices. They add no build script, bundled binary, model, download or native provider. The AppKit Dock bridge is PLVS application code using system frameworks. Tao remains the upstream registry package on every target."
   ],
   "bindings": {
     "alsa-sys@0.4.0": "System/platform binding; Linux uses the distribution ALSA library rather than bundling it.",
@@ -44,7 +45,7 @@
   "inputs": [
     {
       "path": "src-tauri/Cargo.toml",
-      "sha256": "f2e86a0869d27e7fd6084952a5647ed592c6bfdb53e923e1674311d70d3337e1"
+      "sha256": "6c3338dd65e349495b132769b638f2d485387d08005a0a28e25e72ffce7412cf"
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",
