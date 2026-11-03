@@ -1,51 +1,45 @@
 {
   "schemaVersion": 1,
-  "version": "0.24.0",
-  "baselineTag": "v0.23.4",
-  "baselineRevision": "66b9eff962567b769d8f77b012724895c048c2af",
-  "candidateRevision": "0a8f7857a67f0aa1d2803573e03d22a242c2c839",
-  "contentSha256": "9d9995ddac525de434989eaf88d2064e30707d1ab9795e02a8c64f61563bea65",
+  "version": "0.24.1",
+  "baselineTag": "v0.24.0",
+  "baselineRevision": "3ffe6f859fafd2affaeae592f96cfbef8a43e018",
+  "candidateRevision": "a8eb2c81c7b13e5a4810a0121d4f8b751deba00f",
+  "contentSha256": "7d9cc39d8dbd0a48166afd81ba71a02e753fd1b4c7fe17a4b78c1976c086034c",
   "reviews": {
     "userGuide": {
-      "status": "updated",
-      "rationale": "Reviewed the complete v0.23.4-to-candidate range against the 0.24.0 notes. The guide covers the ten-step non-modal Quick Tour, fresh-install invitation versus upgrade suppression, replay from Settings, contextual and pinnable panel gesture help, Panels/Sources/Hide Window Frame labels, and the new Agent Control window, update, target, pointer, gesture, paced-change and Dock recording commands. Corrected the obsolete CLI sentence that denied Quick Tour start/advance. The read-only audio product promise and platform boundaries remain unchanged; no PRD change is needed.",
+      "status": "unchanged",
+      "rationale": "Reviewed the complete v0.24.0-to-candidate range against the 0.24.1 notes. The guide was already updated in the feature commits: docs/user/workspace.md describes Above Full Screen on Windows and macOS, the Dock's own Surface Opacity and the Dock Views order; docs/user/faq.md describes the macOS full-screen Space overlay and Reserve Space boundaries; docs/user/cli.md covers Dock surface opacity. Status notice placement and the removed hover tip are not documented behaviour. No promise or non-goal changed, so docs/prd.md is unchanged. No further edit was needed in the release commit.",
       "evidence": [
-        "git diff v0.23.4..0a8f7857 -- docs/user/getting-started.md docs/user/panels.md docs/user/workspace.md docs/user/system-settings.md docs/user/cli.md compared with CHANGELOG.md 0.24.0",
-        "src/onboarding/QuickTour.jsx and quickTourModel.js; src-tauri/src/persistence/{bootstrap,migration,hydration,commands,session}.rs and profile.rs: invitation, local persistence, export exclusion and reset behavior",
-        "src/components/HelpPopover.jsx and panels/{chartHelp,panelGestureAvailability}.js compared with docs/user/panels.md",
-        "src/agentControl/handlers/{window,update,pointer,gestures,paced,ui,workspaceLayout}.js and docs/agent-control/{window,update,pointer,ui,visual,axes,measurements}.md",
-        "src-tauri/src/visual_capture/{macos.rs,recording/macos.rs,recording/windows.rs} and native/macos/visual_capture_bridge.m compared with documented platform and desktop-background boundaries"
+        "git diff v0.24.0..a8eb2c81 -- docs/user/workspace.md docs/user/faq.md docs/user/cli.md compared with CHANGELOG.md 0.24.1",
+        "src/dock/editors/DockViews.jsx, src/hooks/useDockMode.js and src/hooks/useViewSettings.js compared with docs/user/workspace.md Dock section",
+        "src/agentControl/handlers/dock.js and src/agentControl/viewControl.js compared with docs/user/cli.md and docs/agent-control/"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "The README still accurately summarizes the eight meters, native Sources, local analysis, Dock, multichannel, shared Library, CLI and supported packages. Quick Tour and additional automation extend those existing capabilities. Its shared hero image was refreshed with the reviewed current renderer, without changing the product claims.",
+      "rationale": "README summarises Dock mode and its platform limits in one line; Above Full Screen and Dock Surface Opacity extend Dock without contradicting that summary or the Linux limitation. No product claim, download name or documentation link changed.",
       "evidence": [
-        "README.md What is PLVS, Download, platform limitations and documentation links read against the full v0.23.4..0a8f7857 range and docs/prd.md",
-        "README.md shares website/assets/landing-hero.webp, refreshed by the official homepage render/publish commands in this candidate"
+        "README.md What is PLVS, Download and platform limitations read against the full v0.24.0..a8eb2c81 range",
+        "grep of README.md for Dock and full-screen claims"
       ]
     },
     "website": {
-      "status": "updated",
-      "rationale": "Homepage claims remain accurate; published hero, Dock and feature originals/exports/provenance were refreshed through the repository recipe, and generated Docs include the new guide chapters. Reviewed privacy impact over baseline 66b9eff962567b769d8f77b012724895c048c2af to candidate 0a8f7857a67f0aa1d2803573e03d22a242c2c839: Quick Tour disposition is identity-local, synchronized across local workbenches and excluded from configuration export; there is no tour telemetry. Update Control invokes the existing explicit Check for Updates and does not install or download. New target geometry and pointer actions are local. Dock recording now can include desktop/other-app pixels behind transparent surfaces, which is documented; captures are explicitly requested local artifacts, with no automatic upload or new recipient. No changed collection/consent/upload payload/provider/service configuration/remote retention or deletion behavior was found. Feedback, crash reporting, newsletter and update-service code/configuration are unchanged. The policy text and October 16, 2026 effective date are retained; no new live-service configuration uncertainty was introduced.",
+      "status": "unchanged",
+      "rationale": "Homepage copy makes no claim about full-screen windows or Dock opacity; its Dock section shows the default and custom strips, which remain accurate. Generated Docs pick up the already-updated guide chapters at deployment. Sharesets pages will render Requires PLVS 0.24.1+ for Items using dockAboveFullScreen or dockSurfaceOpacity, now registered at 0.24.1. Privacy impact over baseline 3ffe6f859fafd2affaeae592f96cfbef8a43e018 to candidate a8eb2c81c7b13e5a4810a0121d4f8b751deba00f: the new Preset and Dock fields are stored locally and exported only in user-initiated portable Presets; full-screen detection uses local Windows Shell, taskbar and WinEvent/mouse hooks to decide strip placement and keeps nothing; the macOS tauri-nspanel plugin is a local window class with no network use. No change to collection, consent, upload payloads, recipients, providers, storage outside the profile, retention or deletion. Feedback, crash reporting, newsletter and update-service code and configuration are unchanged; the policy text and its effective date are retained.",
       "evidence": [
-        "website/index.html product copy, README.md and docs/prd.md compared with CHANGELOG.md 0.24.0 and the complete git diff v0.23.4..0a8f7857",
-        "website/privacy/index.html and docs/website-and-sharesets.md Privacy policy review; node scripts/privacy-review.mjs check passed",
-        "git diff v0.23.4..0a8f7857 -- src/onboarding src/persistence/multiInstanceBackend.js src-tauri/src/persistence src-tauri/src/profile.rs src/agentControl/handlers/update.js",
-        "git diff v0.23.4..0a8f7857 -- src-tauri/src/visual_capture src-tauri/native/macos/visual_capture_bridge.m src-tauri/src/pointer.rs; docs/agent-control/visual.md explicitly describes Dock monitor capture and transparent-background exposure",
-        "git diff v0.23.4..0a8f7857 -- website/privacy/index.html docs/privacy-review.json scripts/fetch-ffmpeg-sidecar.mjs src-tauri/src/update_runtime.rs is empty; no newsletter/feedback/crash service implementation or configuration change in the release range",
-        "npm run website:verify passed (15 files, 116 tests); responsive homepage review at 1440, 820 and 390 pixels under artifacts/marketing/release-0.24.0-review/"
+        "website/index.html product copy compared with CHANGELOG.md 0.24.1 and git diff v0.24.0..a8eb2c81",
+        "git diff v0.24.0..a8eb2c81 -- website/privacy docs/privacy-review.json src-tauri/src/update_runtime.rs is empty; tauri.conf.json changed only its version; node scripts/privacy-review.mjs check passed",
+        "git diff v0.24.0..a8eb2c81 -- src/transfer src/persistence/profileShape.js scripts/sharesets-app-compatibility.mjs: local Preset fields and Sharesets minimum versions only",
+        "Commit bodies of 14993516, fc8520f3, cb78176d and af88e20e: Shell, taskbar, hooks and NSPanel used only for local window placement"
       ]
     },
     "screenshots": {
-      "status": "updated",
-      "rationale": "Followed the current docs/marketing-screenshots.md rendered-image workflow, which supersedes the retired native Windows capture recipe. Rendered all eight recipe outputs from clean source 002c8cb81b8ee2d07482e4fa504fbb9438c157b9, visually compared published/current hero, default/custom Dock, history, full/detail frequency, multichannel and rules editor, then published originals, WebP exports and provenance together. Layouts, values and fixture hashes remain coherent; current platform/browser text and icon rasterization is retained in the reviewed new images. Also viewed all homepage galleries in the responsive full-page screenshots, including the six unchanged Sharesets-derived images. These are app-panel renders of measured fixtures, not native acceptance screenshots. No outdated-image deferral remains from 0.23.4.",
+      "status": "unchanged",
+      "rationale": "The homepage images are recipe renders of app panels from measured fixtures. No panel renderer, theme or layout code changed in the range. The only shared CSS change routes the Dock fill through --dock-surface-opacity, which defaults to 100% like the previous --surface-opacity, and clears the body fill under a docked strip, so the rendered Default and Custom Dock and the hero are unchanged. Status notice placement and Dock Views order appear in no published image.",
       "evidence": [
-        "node scripts/marketing/render-homepage-images.mjs: artifacts/marketing/homepage-render-2026-11-01T12-28-14-972Z/report.json has all eight correct sizes, settled renders and no page errors",
-        "Viewed artifacts/marketing/homepage-render-2026-11-01T12-28-14-972Z/release-comparison.jpg, pairing each original with its current recipe render",
-        "node scripts/marketing/publish-homepage-images.mjs artifacts/marketing/homepage-render-2026-11-01T12-28-14-972Z; website/assets/raw/{landing-hero,landing-dock,landing-dock-custom}.json and homepage-rendered/provenance.json retain recipe, fixture and source hashes",
-        "node scripts/marketing/review-dock-pair.mjs passed all three viewports with correct strip dimensions, no horizontal page overflow and mobile strip scrolling",
-        "Viewed artifacts/marketing/release-0.24.0-review/responsive-overview.png and homepage-{1440,820,390}.png: responsive homepage, all eleven feature images, hero, both Dock strips and download section"
+        "git diff --name-only v0.24.0..a8eb2c81 -- src: no files under src/panels, src/theme or scripts/marketing",
+        "git diff v0.24.0..a8eb2c81 -- src/index.css: --dock-surface-opacity defaults to 100% and the docked body fill is transparent",
+        "website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp are referenced by website/index.html and README shares the hero; none shows the toolbar status area or Dock Views editor"
       ]
     }
   }
