@@ -1,25 +1,32 @@
 use std::mem::size_of;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-use tauri::WebviewWindow;
+use tauri::{Emitter, Manager, WebviewWindow};
 use windows_sys::core::BOOL;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
-use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+use windows_sys::Win32::Graphics::Dwm::{
+  DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS,
+};
 use windows_sys::Win32::Graphics::Gdi::{
   GetMonitorInfoW, MonitorFromRect, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
 };
 use windows_sys::Win32::System::Threading::GetCurrentProcessId;
+use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows_sys::Win32::UI::Shell::{
   DefSubclassProc, RemoveWindowSubclass, SHAppBarMessage, SetWindowSubclass, ABE_BOTTOM, ABE_TOP,
   ABM_NEW, ABM_REMOVE, ABM_SETPOS, ABM_WINDOWPOSCHANGED, ABN_FULLSCREENAPP, ABN_POSCHANGED,
   APPBARDATA,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-  EnumWindows, GetClassNameW, GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsIconic,
-  IsWindowVisible, KillTimer, MoveWindow, SendMessageW, SetTimer, ShowWindow, GWL_EXSTYLE,
-  SWP_NOMOVE, SWP_NOSIZE, SW_HIDE, SW_SHOWNOACTIVATE, WINDOWPOS, WM_APP, WM_NCDESTROY, WM_TIMER,
-  WM_WINDOWPOSCHANGED, WM_WINDOWPOSCHANGING, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
+  CallNextHookEx, EnumWindows, GetAncestor, GetClassNameW, GetWindowLongW, GetWindowRect,
+  GetWindowThreadProcessId, IsIconic, IsWindowVisible, KillTimer, MoveWindow, SendMessageW,
+  SetTimer, SetWindowsHookExW, ShowWindow, UnhookWindowsHookEx, WindowFromPoint,
+  EVENT_SYSTEM_FOREGROUND, GA_ROOT, GWL_EXSTYLE, HHOOK, MSLLHOOKSTRUCT, SWP_NOMOVE, SWP_NOSIZE,
+  SW_HIDE, SW_SHOWNOACTIVATE, WH_MOUSE_LL, WINDOWPOS, WINEVENT_OUTOFCONTEXT,
+  WINEVENT_SKIPOWNPROCESS, WM_APP, WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_NCDESTROY, WM_RBUTTONDOWN,
+  WM_TIMER, WM_WINDOWPOSCHANGED, WM_WINDOWPOSCHANGING, WM_XBUTTONDOWN, WS_EX_TOPMOST,
+  WS_EX_TRANSPARENT,
 };
 
 use crate::dock::DockEdge;
@@ -42,6 +49,35 @@ enum FullScreenMode {
   /// put it behind the full-screen window too, but Windows silently refuses to
   /// return a background process's window to that band afterwards.
   Hide,
+}
+
+/// While the strip fills a full-screen monitor, a PLVS window taking the foreground makes Shell
+/// end full screen and bring the taskbar back, moving the strip. The strip and the Dock toolbar
+/// refuse activation then; the editors take text and keep it.
+fn refuses_activation(mode: FullScreenMode) -> bool {
+  mode == FullScreenMode::Fill
+}
+
+/// A toolbar opened from a filling strip holds no focus, so no blur closes it when the user clicks
+/// the full-screen window again; the foreground does not change either. Watch clicks elsewhere for
+/// as long as both hold.
+fn watches_outside_clicks(mode: FullScreenMode, toolbar_visible: bool) -> bool {
+  refuses_activation(mode) && toolbar_visible
+}
+
+fn is_button_press(message: u32) -> bool {
+  matches!(
+    message,
+    WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN
+  )
+}
+
+/// Whether the Dock's strip and toolbar refuse activation now.
+pub fn dock_refuses_activation() -> bool {
+  state()
+    .lock()
+    .map(|current| refuses_activation(current.mode))
+    .unwrap_or(false)
 }
 
 fn full_screen_mode(present: bool, above_full_screen: bool) -> FullScreenMode {
@@ -69,8 +105,39 @@ struct AppBarState {
   positioning: bool,
   transitioning: bool,
   mode: FullScreenMode,
-  /// The Dock's monitor rect while a full-screen window owns that monitor.
-  full_screen: Option<RECT>,
+  /// Set while a full-screen window is on the Dock's monitor.
+  full_screen: Option<FullScreenReport>,
+}
+
+/// A full-screen window on the Dock's monitor, followed until it closes or stops covering the
+/// monitor. Shell does not report it again when it returns from under another window, so the
+/// report outlives the times it is covered.
+#[derive(Clone, Copy)]
+struct FullScreenReport {
+  /// The Dock's monitor rect.
+  monitor: RECT,
+  window: isize,
+  /// Another window is over it on the monitor, so the strip steps back for now.
+  covered: bool,
+}
+
+impl PartialEq for FullScreenReport {
+  fn eq(&self, other: &Self) -> bool {
+    same_rect(self.monitor, other.monitor)
+      && self.window == other.window
+      && self.covered == other.covered
+  }
+}
+
+impl std::fmt::Debug for FullScreenReport {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let m = self.monitor;
+    f.debug_struct("FullScreenReport")
+      .field("monitor", &(m.left, m.top, m.right, m.bottom))
+      .field("window", &self.window)
+      .field("covered", &self.covered)
+      .finish()
+  }
 }
 
 impl AppBarState {
@@ -81,6 +148,7 @@ impl AppBarState {
   fn fill_area(&self) -> Option<RECT> {
     self
       .full_screen
+      .map(|report| report.monitor)
       .filter(|_| self.mode == FullScreenMode::Fill)
   }
 
@@ -99,6 +167,15 @@ impl AppBarState {
 
 /// The Dock's Above Full Screen switch.
 static ABOVE_FULL_SCREEN: AtomicBool = AtomicBool::new(true);
+/// Tells the frontend the user went to another application; see `on_foreground_change` and
+/// `on_mouse`.
+static INTERACTION_ELSEWHERE: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+/// Whether the Dock toolbar shows; the outside-click hook runs only while it does.
+static TOOLBAR_VISIBLE: AtomicBool = AtomicBool::new(false);
+static MOUSE_HOOK: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(std::ptr::null_mut());
+/// Sets whether the strip and the Dock toolbar accept activation. Through Tauri, so the window's
+/// own style bookkeeping keeps WS_EX_NOACTIVATE when it rewrites the extended style.
+static SET_DOCK_FOCUSABLE: OnceLock<Box<dyn Fn(bool) + Send + Sync>> = OnceLock::new();
 static STATE: OnceLock<Mutex<AppBarState>> = OnceLock::new();
 static TRANSITION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -162,12 +239,26 @@ fn is_desktop_class(class: &str) -> bool {
   matches!(class, "Progman" | "WorkerW")
 }
 
+/// Shell's taskbars. Shell drops a taskbar's topmost style before moving it under a full-screen
+/// window, and notifies appbars in between, so one can sit above that window for a moment.
+fn is_shell_taskbar_class(class: &str) -> bool {
+  matches!(class, "Shell_TrayWnd" | "Shell_SecondaryTrayWnd")
+}
+
+/// What a window covers on screen. GetWindowRect includes the invisible resize border, which
+/// reaches about 8 px into the neighbouring display for a maximized window; DWM's frame bounds do
+/// not.
+fn visible_bounds(window_rect: RECT, frame_bounds: Option<RECT>) -> RECT {
+  frame_bounds.unwrap_or(window_rect)
+}
+
 #[derive(Clone, Copy)]
 struct StackedWindow {
+  hwnd: isize,
   rect: RECT,
   topmost: bool,
-  /// PLVS's own windows and click-through overlays, which say nothing about
-  /// what the user is looking at.
+  /// PLVS's own windows, click-through overlays and Shell's taskbars, which say
+  /// nothing about what the user is looking at.
   ignored: bool,
   desktop: bool,
 }
@@ -175,23 +266,80 @@ struct StackedWindow {
 /// Looking down the z-order at one monitor, past always-on-top windows that do
 /// not cover it, is the first ordinary window full screen? Shell judges alike:
 /// focusing the strip leaves the taskbar hidden, while raising any ordinary
-/// window over the full-screen one brings it back.
-fn full_screen_in_z_order(windows: impl IntoIterator<Item = StackedWindow>, monitor: RECT) -> bool {
+/// window over the full-screen one brings it back. Answers with that window.
+fn full_screen_window_in_z_order(
+  windows: impl IntoIterator<Item = StackedWindow>,
+  monitor: RECT,
+) -> Option<isize> {
   for window in windows {
     if window.desktop {
-      return false;
+      return None;
     }
     if window.ignored || !intersects(window.rect, monitor) {
       continue;
     }
     if covers_monitor(window.rect, monitor) {
-      return true;
+      return Some(window.hwnd);
     }
     if !window.topmost {
-      return false;
+      return None;
     }
   }
-  false
+  None
+}
+
+/// Whether a followed window is still a full-screen window: shown, and either minimized, from
+/// where it returns full screen, or covering the monitor.
+fn keeps_full_screen(iconic: bool, visible: bool, bounds: Option<RECT>, monitor: RECT) -> bool {
+  visible && (iconic || bounds.is_some_and(|bounds| covers_monitor(bounds, monitor)))
+}
+
+/// The report after a poll. Whichever full-screen window is on top owns it; without one, the
+/// followed window keeps it, covered, for as long as it stays full screen.
+fn report_after_check(
+  report: FullScreenReport,
+  followed_keeps_full_screen: bool,
+  on_top: Option<isize>,
+) -> Option<FullScreenReport> {
+  match on_top {
+    Some(window) => Some(FullScreenReport {
+      window,
+      covered: false,
+      ..report
+    }),
+    None if followed_keeps_full_screen => Some(FullScreenReport {
+      covered: true,
+      ..report
+    }),
+    None => None,
+  }
+}
+
+/// What a window covers on screen, from DWM's frame bounds where it has them.
+unsafe fn window_bounds(hwnd: HWND) -> Option<RECT> {
+  let mut rect = RECT::default();
+  if GetWindowRect(hwnd, &mut rect) == 0 {
+    return None;
+  }
+  let mut frame = RECT::default();
+  let frame = (DwmGetWindowAttribute(
+    hwnd,
+    DWMWA_EXTENDED_FRAME_BOUNDS as u32,
+    (&mut frame as *mut RECT).cast(),
+    size_of::<RECT>() as u32,
+  ) == 0)
+    .then_some(frame);
+  Some(visible_bounds(rect, frame))
+}
+
+unsafe fn followed_window_keeps_full_screen(report: FullScreenReport) -> bool {
+  let hwnd = report.window as HWND;
+  keeps_full_screen(
+    IsIconic(hwnd) != 0,
+    IsWindowVisible(hwnd) != 0,
+    window_bounds(hwnd),
+    report.monitor,
+  )
 }
 
 unsafe fn stacked_window(hwnd: HWND, process: u32) -> Option<StackedWindow> {
@@ -209,20 +357,21 @@ unsafe fn stacked_window(hwnd: HWND, process: u32) -> Option<StackedWindow> {
   {
     return None;
   }
-  let mut rect = RECT::default();
-  if GetWindowRect(hwnd, &mut rect) == 0 {
-    return None;
-  }
+  let rect = window_bounds(hwnd)?;
   let mut owner = 0u32;
   GetWindowThreadProcessId(hwnd, &mut owner);
   let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32;
   let mut class = [0u16; 64];
   let length = GetClassNameW(hwnd, class.as_mut_ptr(), class.len() as i32);
+  let class = String::from_utf16_lossy(&class[..length.max(0) as usize]);
   Some(StackedWindow {
+    hwnd: hwnd as isize,
     rect,
     topmost: ex_style & WS_EX_TOPMOST != 0,
-    ignored: owner == process || ex_style & WS_EX_TRANSPARENT != 0,
-    desktop: length > 0 && is_desktop_class(&String::from_utf16_lossy(&class[..length as usize])),
+    ignored: owner == process
+      || ex_style & WS_EX_TRANSPARENT != 0
+      || is_shell_taskbar_class(&class),
+    desktop: is_desktop_class(&class),
   })
 }
 
@@ -231,19 +380,19 @@ unsafe extern "system" fn collect_window(hwnd: HWND, windows: LPARAM) -> BOOL {
   1
 }
 
-/// Whether a full-screen window owns `monitor` now. EnumWindows walks the
-/// z-order from the top.
-unsafe fn full_screen_window_on(monitor: RECT) -> bool {
+/// The full-screen window that owns `monitor` now, if any. EnumWindows walks
+/// the z-order from the top.
+unsafe fn full_screen_window_on(monitor: RECT) -> Option<isize> {
   let mut windows: Vec<HWND> = Vec::new();
   if EnumWindows(
     Some(collect_window),
     &mut windows as *mut Vec<HWND> as LPARAM,
   ) == 0
   {
-    return false;
+    return None;
   }
   let process = GetCurrentProcessId();
-  full_screen_in_z_order(
+  full_screen_window_in_z_order(
     windows
       .into_iter()
       .filter_map(|hwnd| stacked_window(hwnd, process)),
@@ -267,28 +416,52 @@ unsafe fn dock_monitor() -> Option<RECT> {
 /// Start or end the full-screen report from a Shell notification.
 unsafe fn take_shell_report(hwnd: HWND, full_screen: bool) {
   let monitor = dock_monitor();
-  let seen = full_screen && monitor.is_some_and(|monitor| full_screen_window_on(monitor));
+  let window = monitor
+    .filter(|_| full_screen)
+    .and_then(|monitor| full_screen_window_on(monitor));
+  let seen = window.is_some();
   let reported = reports_full_screen(full_screen, seen);
-  log::info!("dock fullscreen notification: fullscreen={full_screen} on dock monitor={seen}");
+  let area = monitor.map(|m| (m.left, m.top, m.right, m.bottom));
+  log::info!(
+    "dock fullscreen notification: fullscreen={full_screen} on dock monitor={seen} monitor={area:?}"
+  );
   if let Ok(mut current) = state().lock() {
-    current.full_screen = monitor.filter(|_| reported);
+    current.full_screen = monitor
+      .zip(window)
+      .filter(|_| reported)
+      .map(|(monitor, window)| FullScreenReport {
+        monitor,
+        window,
+        covered: false,
+      });
   }
   apply_full_screen(hwnd);
 }
 
 /// Shell never reports a full-screen window gone to a registration made while
-/// it was open, so the strip checks for itself while a report stands.
+/// it was open, nor reports one again when it returns from under another
+/// window, so the strip checks for itself while a report stands.
 unsafe fn check_full_screen_report(hwnd: HWND) {
-  let Some(monitor) = state().lock().ok().and_then(|current| current.full_screen) else {
+  let Some(report) = state().lock().ok().and_then(|current| current.full_screen) else {
     return;
   };
-  if !full_screen_window_on(monitor) {
-    log::info!("dock full-screen window gone without a notification");
-    if let Ok(mut current) = state().lock() {
-      current.full_screen = None;
-    }
-    apply_full_screen(hwnd);
+  let next = report_after_check(
+    report,
+    followed_window_keeps_full_screen(report),
+    full_screen_window_on(report.monitor),
+  );
+  if next == Some(report) {
+    return;
   }
+  match next {
+    None => log::info!("dock full-screen window gone without a notification"),
+    Some(next) if next.covered => log::info!("dock full-screen window covered"),
+    Some(_) => log::info!("dock full-screen window on top"),
+  }
+  if let Ok(mut current) = state().lock() {
+    current.full_screen = next;
+  }
+  apply_full_screen(hwnd);
 }
 
 /// Bring the strip in line with the full-screen report and the switch. Runs on
@@ -298,15 +471,15 @@ unsafe fn apply_full_screen(hwnd: HWND) {
   let monitor = dock_monitor();
   let Some((before, after, reported)) = state().lock().ok().map(|mut current| {
     let on_dock_monitor = match (current.full_screen, monitor) {
-      (Some(report), Some(monitor)) => same_rect(report, monitor),
+      (Some(report), Some(monitor)) => same_rect(report.monitor, monitor),
       _ => false,
     };
     if current.full_screen.is_some() && !on_dock_monitor {
       // The Dock has moved off the monitor the report was for.
       current.full_screen = None;
     }
-    let present =
-      current.full_screen.is_some() && current.receives_shell_notifications(hwnd as isize);
+    let present = current.full_screen.is_some_and(|report| !report.covered)
+      && current.receives_shell_notifications(hwnd as isize);
     let before = current.mode;
     current.mode = full_screen_mode(present, ABOVE_FULL_SCREEN.load(Ordering::Relaxed));
     (before, current.mode, current.full_screen.is_some())
@@ -318,12 +491,16 @@ unsafe fn apply_full_screen(hwnd: HWND) {
   } else {
     KillTimer(hwnd, FULLSCREEN_POLL_TIMER_ID);
   }
+  sync_outside_click_watch(after);
   if before == after {
     return;
   }
   log::info!("dock full-screen mode: {before:?} -> {after:?}");
   if (before == FullScreenMode::Fill) != (after == FullScreenMode::Fill) {
     relayout(hwnd);
+    if let Some(set_focusable) = SET_DOCK_FOCUSABLE.get() {
+      set_focusable(!refuses_activation(after));
+    }
   }
   if after == FullScreenMode::Hide {
     ShowWindow(hwnd, SW_HIDE);
@@ -690,11 +867,108 @@ unsafe extern "system" fn subclass_proc(
   DefSubclassProc(hwnd, msg, wparam, lparam)
 }
 
+fn report_interaction_elsewhere() {
+  if let Some(report) = INTERACTION_ELSEWHERE.get() {
+    report();
+  }
+}
+
+/// Install or remove the outside-click hook. Runs on the strip's thread, whose message loop the
+/// low-level hook reports on.
+unsafe fn sync_outside_click_watch(mode: FullScreenMode) {
+  let wanted = watches_outside_clicks(mode, TOOLBAR_VISIBLE.load(Ordering::Relaxed));
+  let installed = MOUSE_HOOK.load(Ordering::Relaxed);
+  if wanted && installed.is_null() {
+    let hook = SetWindowsHookExW(WH_MOUSE_LL, Some(on_mouse), std::ptr::null_mut(), 0);
+    if hook.is_null() {
+      log::warn!("dock outside-click hook could not be installed");
+    } else {
+      log::info!("dock outside-click hook installed");
+    }
+    MOUSE_HOOK.store(hook, Ordering::Relaxed);
+  } else if !wanted && !installed.is_null() {
+    UnhookWindowsHookEx(installed as HHOOK);
+    MOUSE_HOOK.store(std::ptr::null_mut(), Ordering::Relaxed);
+    log::info!("dock outside-click hook removed");
+  }
+}
+
+/// Reports a press outside every PLVS window. Never consumes the input.
+unsafe extern "system" fn on_mouse(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+  if code >= 0 && is_button_press(wparam as u32) {
+    if let Some(event) = (lparam as *const MSLLHOOKSTRUCT).as_ref() {
+      let root = GetAncestor(WindowFromPoint(event.pt), GA_ROOT);
+      let mut owner = 0u32;
+      GetWindowThreadProcessId(root, &mut owner);
+      if owner != GetCurrentProcessId() {
+        report_interaction_elsewhere();
+      }
+    }
+  }
+  CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
+}
+
+/// Record whether the Dock toolbar shows, and start or stop watching clicks elsewhere.
+pub fn set_dock_toolbar_visible<R: tauri::Runtime>(window: &WebviewWindow<R>, visible: bool) {
+  TOOLBAR_VISIBLE.store(visible, Ordering::Relaxed);
+  if let Ok(hwnd) = window.hwnd() {
+    request_full_screen_apply(hwnd.0);
+  }
+}
+
+/// A filling strip refuses activation, so a toolbar opened from it never holds focus and the
+/// frontend's blur rule cannot close it. Report another process taking the foreground instead.
+unsafe extern "system" fn on_foreground_change(
+  _hook: HWINEVENTHOOK,
+  _event: u32,
+  _hwnd: HWND,
+  _object: i32,
+  _child: i32,
+  _thread: u32,
+  _time: u32,
+) {
+  let filling = state()
+    .lock()
+    .map(|current| current.mode == FullScreenMode::Fill)
+    .unwrap_or(false);
+  if filling {
+    report_interaction_elsewhere();
+  }
+}
+
+/// Must run on the thread that owns the window: the foreground hook reports on it.
 pub fn install_window_subclass<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
   let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
   let installed = unsafe { SetWindowSubclass(hwnd, Some(subclass_proc), APPBAR_SUBCLASS_ID, 0) };
   if installed == 0 {
     return Err("SetWindowSubclass failed".into());
+  }
+  let app = window.app_handle().clone();
+  let _ = INTERACTION_ELSEWHERE.set(Box::new(move || {
+    let _ = app.emit("dock-interaction-elsewhere", ());
+  }));
+  let app = window.app_handle().clone();
+  let _ = SET_DOCK_FOCUSABLE.set(Box::new(move |focusable| {
+    for label in ["main", crate::dock_accessories::DOCK_HEADER_LABEL] {
+      if let Some(window) = app.get_webview_window(label) {
+        let _ = window.set_focusable(focusable);
+      }
+    }
+  }));
+  // Skipping PLVS's own windows leaves only other applications taking the foreground.
+  let hook = unsafe {
+    SetWinEventHook(
+      EVENT_SYSTEM_FOREGROUND,
+      EVENT_SYSTEM_FOREGROUND,
+      std::ptr::null_mut(),
+      Some(on_foreground_change),
+      0,
+      0,
+      WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
+    )
+  };
+  if hook.is_null() {
+    log::warn!("dock foreground hook could not be installed");
   }
   state().lock().map_err(|_| "appbar state poisoned")?.hwnd = hwnd as isize;
   Ok(())
@@ -849,6 +1123,7 @@ fn set_reserved_inner<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use windows_sys::Win32::UI::WindowsAndMessaging::{WM_LBUTTONUP, WM_MOUSEMOVE};
 
   fn monitor_rect() -> RECT {
     RECT {
@@ -1061,7 +1336,7 @@ mod tests {
   fn a_filling_registered_strip_enforces_the_monitor_edge() {
     let current = AppBarState {
       mode: FullScreenMode::Fill,
-      full_screen: Some(screen()),
+      full_screen: Some(report(false)),
       ..appbar_state(true, work_area())
     };
     let (edge, height, area) = current.requested_position(42).unwrap();
@@ -1073,7 +1348,7 @@ mod tests {
   fn a_report_kept_while_hidden_does_not_move_the_strip() {
     let current = AppBarState {
       mode: FullScreenMode::Hide,
-      full_screen: Some(screen()),
+      full_screen: Some(report(false)),
       ..appbar_state(true, work_area())
     };
     let (_, _, area) = current.requested_position(42).unwrap();
@@ -1141,6 +1416,72 @@ mod tests {
   }
 
   #[test]
+  fn outside_clicks_are_watched_only_for_a_toolbar_over_a_full_screen_window() {
+    assert!(watches_outside_clicks(FullScreenMode::Fill, true));
+    assert!(!watches_outside_clicks(FullScreenMode::Fill, false));
+    assert!(!watches_outside_clicks(FullScreenMode::None, true));
+    assert!(!watches_outside_clicks(FullScreenMode::Hide, true));
+  }
+
+  #[test]
+  fn any_button_press_counts_as_a_click_elsewhere() {
+    for message in [
+      WM_LBUTTONDOWN,
+      WM_RBUTTONDOWN,
+      WM_MBUTTONDOWN,
+      WM_XBUTTONDOWN,
+    ] {
+      assert!(is_button_press(message));
+    }
+    assert!(!is_button_press(WM_LBUTTONUP));
+    assert!(!is_button_press(WM_MOUSEMOVE));
+  }
+
+  #[test]
+  fn only_a_filling_strip_refuses_activation() {
+    assert!(refuses_activation(FullScreenMode::Fill));
+    assert!(!refuses_activation(FullScreenMode::None));
+    assert!(!refuses_activation(FullScreenMode::Hide));
+  }
+
+  #[test]
+  fn a_maximized_window_next_door_does_not_reach_this_monitor() {
+    // A maximized window on the display below reports its invisible resize border 9 px into
+    // this one; DWM's frame bounds stop at its own display.
+    let with_border = RECT {
+      left: -9,
+      top: 1431,
+      right: 2569,
+      bottom: 2829,
+    };
+    let frame = RECT {
+      left: 0,
+      top: 1440,
+      right: 2560,
+      bottom: 2820,
+    };
+    assert_eq!(visible_bounds(with_border, Some(frame)).top, 1440);
+    assert_eq!(visible_bounds(with_border, None).top, 1431);
+    let neighbour = StackedWindow {
+      rect: visible_bounds(with_border, Some(frame)),
+      ..window(0, 0, 0, 0)
+    };
+    assert!(full_screen_in_z_order(
+      [neighbour, window(0, 0, 2560, 1440)],
+      screen()
+    ));
+  }
+
+  #[test]
+  fn shell_taskbars_are_looked_past() {
+    // Shell drops a taskbar's topmost style before moving it under the full-screen window, and
+    // notifies appbars in between.
+    assert!(is_shell_taskbar_class("Shell_TrayWnd"));
+    assert!(is_shell_taskbar_class("Shell_SecondaryTrayWnd"));
+    assert!(!is_shell_taskbar_class("Chrome_WidgetWin_1"));
+  }
+
+  #[test]
   fn shell_starts_a_full_screen_report_only_where_one_is_seen() {
     assert!(reports_full_screen(true, true));
     assert!(!reports_full_screen(true, false));
@@ -1191,8 +1532,16 @@ mod tests {
     assert_eq!(strip_area(work_area(), Some(other)).bottom, 1380);
   }
 
+  fn full_screen_in_z_order(
+    windows: impl IntoIterator<Item = StackedWindow>,
+    monitor: RECT,
+  ) -> bool {
+    full_screen_window_in_z_order(windows, monitor).is_some()
+  }
+
   fn window(left: i32, top: i32, right: i32, bottom: i32) -> StackedWindow {
     StackedWindow {
+      hwnd: 0,
       rect: RECT {
         left,
         top,
@@ -1236,6 +1585,76 @@ mod tests {
       [own, elsewhere, window(0, 0, 2560, 1440)],
       screen()
     ));
+  }
+
+  #[test]
+  fn the_covering_window_is_the_one_a_report_follows() {
+    let full = StackedWindow {
+      hwnd: 7,
+      ..window(0, 0, 2560, 1440)
+    };
+    let note = StackedWindow {
+      hwnd: 3,
+      topmost: true,
+      ..window(100, 100, 400, 400)
+    };
+    assert_eq!(
+      full_screen_window_in_z_order([note, full], screen()),
+      Some(7)
+    );
+    assert_eq!(
+      full_screen_window_in_z_order([window(0, 0, 900, 900), full], screen()),
+      None
+    );
+  }
+
+  fn report(covered: bool) -> FullScreenReport {
+    FullScreenReport {
+      monitor: screen(),
+      window: 7,
+      covered,
+    }
+  }
+
+  #[test]
+  fn a_covered_full_screen_window_keeps_its_report() {
+    // Another application's window over one corner: the strip steps back but keeps watching,
+    // because Shell does not report the full-screen window again when it returns.
+    assert_eq!(
+      report_after_check(report(false), true, None),
+      Some(report(true))
+    );
+    assert_eq!(
+      report_after_check(report(true), true, Some(7)),
+      Some(report(false))
+    );
+  }
+
+  #[test]
+  fn a_report_ends_when_its_window_stops_being_full_screen() {
+    assert_eq!(report_after_check(report(false), false, None), None);
+    assert_eq!(report_after_check(report(true), false, None), None);
+  }
+
+  #[test]
+  fn another_full_screen_window_on_top_takes_over_the_report() {
+    let next = FullScreenReport {
+      window: 9,
+      ..report(false)
+    };
+    assert_eq!(report_after_check(report(true), false, Some(9)), Some(next));
+  }
+
+  #[test]
+  fn a_minimized_full_screen_window_is_still_followed() {
+    let windowed = RECT {
+      right: 1280,
+      ..screen()
+    };
+    assert!(keeps_full_screen(true, true, None, screen()));
+    assert!(keeps_full_screen(false, true, Some(screen()), screen()));
+    assert!(!keeps_full_screen(false, true, Some(windowed), screen()));
+    assert!(!keeps_full_screen(false, false, Some(screen()), screen()));
   }
 
   #[test]

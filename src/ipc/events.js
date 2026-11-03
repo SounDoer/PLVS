@@ -77,3 +77,13 @@ export function onFileAnalysisCompleted(handler) {
 export function onFileAnalysisError(handler) {
   return listen("file-analysis-error", (event) => handler(unwrapEventPayload(event)));
 }
+
+/**
+ * The user clicked or switched to another application while the Dock strip refuses activation over
+ * a full-screen window (Windows).
+ * @param {() => void} handler
+ * @returns {Promise<() => void>}
+ */
+export async function onDockInteractionElsewhere(handler) {
+  return listen("dock-interaction-elsewhere", () => handler());
+}

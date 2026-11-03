@@ -345,8 +345,13 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     .is_some_and(|editor| editor.is_focused().unwrap_or(false));
   if let Some(header) = &header {
     set_rect(header, rects.header)?;
+    // Created on first use, so it may appear after the strip began refusing activation.
+    #[cfg(target_os = "windows")]
+    let _ = header.set_focusable(!crate::appbar::dock_refuses_activation());
     show_or_hide(header, header_visible, false)?;
   }
+  #[cfg(target_os = "windows")]
+  crate::appbar::set_dock_toolbar_visible(&main, header_visible);
   // Hiding the window that holds focus hands focus to whatever is behind PLVS. The
   // frontend would read that as the user leaving and close the toolbar under them, so
   // the header takes focus first and no other application is activated in between.

@@ -152,7 +152,13 @@ recovery when Accessibility permission is available; unresolved windows retain l
 
 On Windows, the strip stays above full-screen windows on its display, such as a full-screen video
 or a borderless full-screen game, covering an edge of that window. It moves to the very edge of the
-display, where the hidden taskbar was, and moves back when the full-screen window goes away. A
+display, where the hidden taskbar was, and moves back when the full-screen window goes away or
+another window comes in front of it, returning to the edge once the full-screen window is in front
+again.
+Clicking the meters, the Start / Stop button or the toolbar leaves the full-screen window in place,
+and clicking anywhere outside PLVS closes the toolbar and any editor opened from it. Opening an
+editor from the toolbar, such as the Source list or Views, may bring the taskbar back; the strip
+then moves above it until you return to the full-screen window. A
 full-screen window uses the whole display, so **Reserve Space** cannot make it leave room for the
 strip. Turn off **Above Full Screen** in Dock **Views** to have the strip step aside for full-screen
 windows the way the taskbar does; it returns when that window leaves full screen or another window

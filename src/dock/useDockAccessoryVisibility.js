@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { prepareDockAccessories, setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { onDockInteractionElsewhere } from "../ipc/events.js";
 import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
 const ACCESSORY_READY_RETRY_MS = 50;
@@ -235,6 +236,12 @@ export function useDockAccessoryVisibility({
     if (editorViewRef.current !== null) closeEditor();
     else setToolbarOpen(false);
   }, [closeEditor, setToolbarOpen]);
+  // The user left the Dock. An editor whose content a toolbar entry swapped never held focus, so
+  // it has no blur of its own to close it; it closes here as if it had blurred.
+  const leave = useCallback(() => {
+    closeEditor(undefined, "blur");
+    setToolbarOpen(false);
+  }, [closeEditor, setToolbarOpen]);
 
   const reportFocus = useCallback(
     (surface, focused) => {
@@ -247,10 +254,10 @@ export function useDockAccessoryVisibility({
       if (Object.values(focusRef.current).some(Boolean)) return;
       focusTimerRef.current = setTimeout(() => {
         focusTimerRef.current = null;
-        setToolbarOpen(false);
+        leave();
       }, TOOLBAR_FOCUS_GRACE_MS);
     },
-    [setToolbarOpen]
+    [leave]
   );
   const onAccessoryFocus = useCallback(
     ({ surface, focused }) => reportFocus(surface, focused),
@@ -293,6 +300,24 @@ export function useDockAccessoryVisibility({
       }
     };
   }, [active, dismiss, reportFocus]);
+
+  // Over a full-screen window the strip refuses activation, so a toolbar opened from it never has
+  // focus to lose. Rust reports a click in, or a switch to, another application instead. No Dock
+  // window can hold focus then, whatever a page reports: WebView2 can report focus in a window
+  // that was never activated, and one that refuses activation never sees the blur.
+  useEffect(() => {
+    if (!isTauri() || !active) return;
+    let unlisten = null;
+    let disposed = false;
+    void onDockInteractionElsewhere(leave).then((stop) => {
+      if (disposed) stop();
+      else unlisten = stop;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [active, leave]);
 
   useEffect(() => {
     if (headerVisible) return;

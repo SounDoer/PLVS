@@ -652,13 +652,24 @@ While the strip is on screen it stays registered with Shell even as an overlay: 
 `ABM_SETPOS` reserves nothing but still delivers `ABN_FULLSCREENAPP`, which Shell sends only to
 registered appbars. `appbar.rs` treats the notification as a cue to look: a report starts only when
 the first ordinary window in the z-order on the Dock's own monitor covers that monitor, and Shell's
-"gone" always ends it. With **Above Full Screen** on, the strip stays topmost and lays out against
+"gone" always ends it. The check looks past PLVS's own windows and Shell's taskbars: Shell drops a
+taskbar's topmost style before moving it under the full-screen window and notifies appbars in
+between. Window extents come from DWM's frame bounds: a maximized window's invisible resize
+border reaches into the neighbouring display. With **Above Full Screen** on, the strip stays topmost and lays out against
 the whole monitor, where the full-screen window has hidden the taskbar; the reservation itself is
-unchanged. With it off, the strip is hidden until the report ends. It is never dropped out of the
+unchanged, and the strip and toolbar refuse activation, because Shell ends full screen and brings
+the taskbar back when another application's window takes the foreground. A toolbar opened then holds
+no focus, so while it shows a low-level mouse hook and a foreground WinEvent hook report the user
+going elsewhere and the frontend closes it (see
+[ADR 0046](adr/0046-a-filling-dock-strip-refuses-activation.md)). With it off, the strip is hidden
+until the report ends. It is never dropped out of the
 topmost band, because Windows refuses to return a background process's window there (see
 [ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). While a
 report stands, a 500 ms timer repeats the same check, since Shell never reports a full-screen
-window gone to a registration made while it was open. Open accessories move with the strip. Nothing
+window gone to a registration made while it was open, nor reports one again when it returns from
+under another window. The report follows the full-screen window it found: another window over it
+on the monitor only steps the strip back, and the report ends when that window closes, hides or
+stops covering the monitor (a minimized one is still followed). Open accessories move with the strip. Nothing
 raises the header while the strip is hidden: it is opened only from the strip's entry, and the
 full-screen window taking the foreground closes a toolbar that was already open, through the same
 focus rule that closes it when the user clicks another application.

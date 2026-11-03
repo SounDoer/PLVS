@@ -9,6 +9,16 @@ import {
 } from "./useDockAccessoryVisibility.js";
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
+/** @type {null | (() => void)} */
+let interactionElsewhere = null;
+vi.mock("../ipc/events.js", () => ({
+  onDockInteractionElsewhere: vi.fn(async (handler) => {
+    interactionElsewhere = handler;
+    return () => {
+      interactionElsewhere = null;
+    };
+  }),
+}));
 vi.mock("../ipc/commands.js", () => ({
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
   prepareDockAccessories: vi.fn().mockResolvedValue(undefined),
@@ -248,6 +258,34 @@ describe("useDockAccessoryVisibility", () => {
     expect(result.current.headerVisible).toBe(false);
   });
 
+  it("closes when the user goes to another application while no Dock window has focus", async () => {
+    // Over a full-screen window the strip refuses activation, so the toolbar opens without focus
+    // and no blur will ever close it.
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const { result } = renderVisibility();
+    await act(async () => {});
+    act(() => result.current.toggleToolbar());
+
+    act(() => interactionElsewhere?.());
+
+    expect(result.current.headerVisible).toBe(false);
+    hasFocus.mockRestore();
+  });
+
+  it("closes even while a Dock page still reports focus", async () => {
+    // WebView2 can report focus in a window that was never activated, and a window that refuses
+    // activation never sees the blur that would clear it.
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    const { result } = renderVisibility();
+    await act(async () => {});
+    act(() => result.current.toggleToolbar());
+
+    act(() => interactionElsewhere?.());
+
+    expect(result.current.headerVisible).toBe(false);
+    hasFocus.mockRestore();
+  });
+
   it("stays open while focus moves between Dock windows", () => {
     const { result } = renderVisibility();
     act(() => result.current.toggleToolbar());
@@ -265,6 +303,50 @@ describe("useDockAccessoryVisibility", () => {
     blurStrip();
     act(() => vi.advanceTimersByTime(150));
     expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("closes an editor switched from the toolbar once focus leaves every Dock window", () => {
+    const { result } = renderVisibility();
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.openEditor("modules"));
+    act(() => result.current.onAccessoryFocus({ surface: "dock-editor", focused: true }));
+    // Another toolbar entry takes focus and swaps the editor's content; the editor window is
+    // never focused again, so it has no blur of its own left to close it.
+    act(() => result.current.onAccessoryFocus({ surface: "dock-editor", focused: false }));
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: true }));
+    act(() => result.current.openEditor("presets"));
+    act(() => result.current.resizeEditor({ view: "presets", width: 240, height: 560 }));
+    blurStrip();
+
+    act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: false }));
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(result.current.editorView).toBeNull();
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("closes an open editor too when the user goes to another application", async () => {
+    const { result } = renderVisibility();
+    await act(async () => {});
+    act(() => result.current.toggleToolbar());
+    act(() => result.current.openEditor("presets"));
+    act(() => result.current.resizeEditor({ view: "presets", width: 240, height: 560 }));
+
+    act(() => interactionElsewhere?.());
+
+    expect(result.current.editorView).toBeNull();
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("keeps an editor that is preserved on blur when the user goes elsewhere", async () => {
+    const { result } = renderVisibility({ preserveOnBlur: true });
+    await act(async () => {});
+    act(() => result.current.openEditor("presets"));
+    act(() => result.current.resizeEditor({ view: "presets", width: 240, height: 560 }));
+
+    act(() => interactionElsewhere?.());
+
+    expect(result.current.editorView).toBe("presets");
   });
 
   it("forgets an accessory's focus once the toolbar has closed", () => {
