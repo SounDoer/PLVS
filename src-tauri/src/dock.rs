@@ -605,6 +605,12 @@ fn enter_dock_inner<R: tauri::Runtime>(
           save_window_bounds(&window);
         }
         flag.0.store(true, Ordering::Relaxed);
+        // A docked strip's AppKit owner reconciles every Tao move; give it the new form first so
+        // it does not snap the strip back to the old edge in between.
+        #[cfg(target_os = "macos")]
+        if was_docked {
+          crate::macos_dock_window::configure(&window, true, edge, height, above_full_screen)?;
+        }
         let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, previous_shadow)?;
         let reserve_space = requested_reserve_space;
         #[cfg(any(target_os = "windows", target_os = "macos"))]
