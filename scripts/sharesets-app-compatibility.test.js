@@ -31,27 +31,27 @@ describe("Sharesets app requirements", () => {
     expect(sharesetsAppRequirement(pack)).toBe("Requires PLVS 0.21.0+");
   });
 
-  it("reads Requires upcoming PLVS for Dock aboveFullScreen false while unassigned", () => {
+  it("keeps Dock aboveFullScreen false at 0.24.1", () => {
     expect(SHARESETS_APP_FEATURES.dockAboveFullScreen).toMatchObject({
-      minimumAppVersion: null,
+      minimumAppVersion: "0.24.1",
       introducedAfter: "0.24.0",
     });
-    expect(sharesetsAppRequirement(dockPack(false))).toBe("Requires upcoming PLVS");
+    expect(sharesetsAppRequirement(dockPack(false))).toBe("Requires PLVS 0.24.1+");
   });
 
   it("treats an explicit aboveFullScreen true as a use, since earlier releases reject it", () => {
-    expect(sharesetsAppRequirement(dockPack(true))).toBe("Requires upcoming PLVS");
+    expect(sharesetsAppRequirement(dockPack(true))).toBe("Requires PLVS 0.24.1+");
   });
 
-  it("reads Requires upcoming PLVS for a Dock surface opacity while unassigned", () => {
+  it("keeps a Dock surface opacity at 0.24.1", () => {
     expect(SHARESETS_APP_FEATURES.dockSurfaceOpacity).toMatchObject({
-      minimumAppVersion: null,
+      minimumAppVersion: "0.24.1",
       introducedAfter: "0.24.0",
     });
     const faded = {
       items: [{ workspace: { panels: [] }, dock: { enabled: true, surfaceOpacityPercent: 40 } }],
     };
-    expect(sharesetsAppRequirement(faded)).toBe("Requires upcoming PLVS");
+    expect(sharesetsAppRequirement(faded)).toBe("Requires PLVS 0.24.1+");
   });
 
   it("lets the highest assigned minimum win", () => {
@@ -69,8 +69,9 @@ describe("Sharesets app requirements", () => {
     expect(sharesetsAppRequirement(pack, registry)).toBe("Requires PLVS 0.21.0+");
   });
 
-  it("blocks a stable release while dockAboveFullScreen is unassigned", () => {
-    expect(checkSharesetsAppCompatibility({ appVersion: "0.25.0" })).toMatchObject({ ok: false });
+  it("allows 0.24.1 and blocks a release older than the registered Dock features", () => {
+    expect(checkSharesetsAppCompatibility({ appVersion: "0.24.1" })).toMatchObject({ ok: true });
+    expect(checkSharesetsAppCompatibility({ appVersion: "0.24.0" })).toMatchObject({ ok: false });
   });
 
   it.each([null, "", "0.21", "v0.21.0", "0.20.0", "0.19.0", "0.22.0"])(
