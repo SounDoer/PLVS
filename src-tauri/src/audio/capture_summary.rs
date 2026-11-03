@@ -152,9 +152,23 @@ pub fn capture_device_to_summary_with_layout(
 
   // Drain sample lines while the capture runs; stop it once the duration elapses.
   let deadline = std::time::Instant::now() + Duration::from_secs(seconds);
-  while std::time::Instant::now() < deadline {
+  // The consumer's clock starts only once the device is open, after this one, so
+  // the last grid reading falls due just past the deadline. Keep the stream up
+  // briefly for it instead of stopping a few hundred ms early and losing it.
+  let last_due = every.map(|interval| seconds / interval * interval);
+  let grace_deadline = deadline + Duration::from_secs(5);
+  let mut last_seen = 0;
+  loop {
+    let now = std::time::Instant::now();
+    let awaiting_last = last_due.is_some_and(|due| last_seen < due);
+    if now >= grace_deadline || (now >= deadline && !awaiting_last) {
+      break;
+    }
     match sample_rx.recv_timeout(Duration::from_millis(200)) {
-      Ok(sample) => on_sample(sample),
+      Ok(sample) => {
+        last_seen = sample.t_seconds;
+        on_sample(sample);
+      }
       Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
       Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
     }
