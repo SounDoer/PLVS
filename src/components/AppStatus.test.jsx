@@ -12,11 +12,11 @@ describe("status details", () => {
       update: { phase: "available", text: "Update Available" },
     });
     render(<AppStatusPopover items={items} onAction={onAction} />);
-    fireEvent.mouseEnter(screen.getByRole("button", { name: /status:.*2 notices/i }).parentElement);
-    expect(screen.getByRole("tooltip")).toBeTruthy();
+    // No hover tip: the details live in the list, which a narrow Dock toolbar cannot clip.
+    fireEvent.mouseEnter(screen.getByRole("button", { name: /status:.*2 notices/i }));
+    expect(screen.queryByRole("tooltip")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));
     expect(screen.getByRole("region", { name: "status details" })).toBeTruthy();
-    expect(screen.queryByRole("tooltip")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open Settings" }));
     expect(onAction).toHaveBeenCalledWith("settings");
     fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));

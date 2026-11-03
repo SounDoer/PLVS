@@ -1,6 +1,5 @@
 import { TriangleAlert, CircleAlert, Info, Download, LoaderCircle, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
-import { HoverTip } from "./HoverTip.jsx";
 import { LinkButton } from "./ui/link-button.jsx";
 import { cn } from "../lib/utils.js";
 import { useCallback, useEffect, useState } from "react";
@@ -80,32 +79,27 @@ export function AppStatusList({ items, onAction = () => {}, accessory = false, s
 export function AppStatusSummary({ items, onClick, ...props }) {
   const first = items[0];
   if (!first) return null;
+  // No hover tip: a click opens the status details, which hold every notice in full.
   return (
-    <HoverTip
-      tip={props["aria-expanded"] ? undefined : first.details}
-      className="min-w-0 max-w-[min(32rem,38vw)]"
-      tipClassName="max-w-[min(28rem,90vw)] whitespace-normal"
+    <LinkButton
+      type="button"
+      aria-label={`status: ${first.text}${items.length > 1 ? `, ${items.length} notices` : ""}`}
+      onClick={onClick}
+      className={cn(
+        "flex min-w-0 max-w-[min(32rem,38vw)] items-center gap-2 text-[length:var(--ui-fs-status)] font-medium hover:underline",
+        // Hover and open keep the status colour; the underline is the hover feedback.
+        first.kind === "error"
+          ? "text-[color:var(--ui-feedback-danger)] hover:text-[color:var(--ui-feedback-danger)]"
+          : first.kind === "warning"
+            ? "text-[color:var(--ui-feedback-warning)] hover:text-[color:var(--ui-feedback-warning)]"
+            : "text-primary hover:text-primary"
+      )}
+      {...props}
     >
-      <LinkButton
-        type="button"
-        aria-label={`status: ${first.text}${items.length > 1 ? `, ${items.length} notices` : ""}`}
-        onClick={onClick}
-        className={cn(
-          "flex min-w-0 max-w-full items-center gap-2 text-[length:var(--ui-fs-status)] font-medium hover:underline",
-          // Hover and open keep the status colour; the underline is the hover feedback.
-          first.kind === "error"
-            ? "text-[color:var(--ui-feedback-danger)] hover:text-[color:var(--ui-feedback-danger)]"
-            : first.kind === "warning"
-              ? "text-[color:var(--ui-feedback-warning)] hover:text-[color:var(--ui-feedback-warning)]"
-              : "text-primary hover:text-primary"
-        )}
-        {...props}
-      >
-        <StatusIcon item={first} />
-        <span className="truncate">{first.text}</span>
-        {items.length > 1 ? <span className="shrink-0">· {items.length}</span> : null}
-      </LinkButton>
-    </HoverTip>
+      <StatusIcon item={first} />
+      <span className="truncate">{first.text}</span>
+      {items.length > 1 ? <span className="shrink-0">· {items.length}</span> : null}
+    </LinkButton>
   );
 }
 
