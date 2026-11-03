@@ -667,9 +667,14 @@ topmost band, because Windows refuses to return a background process's window th
 [ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). While a
 report stands, a 500 ms timer repeats the same check, since Shell never reports a full-screen
 window gone to a registration made while it was open, nor reports one again when it returns from
-under another window. The report follows the full-screen window it found: another window over it
-on the monitor only steps the strip back, and the report ends when that window closes, hides or
-stops covering the monitor (a minimized one is still followed). Open accessories move with the strip. Nothing
+under another window. The report follows the full-screen window it found until that window
+closes, hides or stops covering the monitor (a minimized one is still followed). Where a taskbar
+shows on the Dock's monitor, Shell's own state read from it decides whether the strip steps back:
+Shell keeps that taskbar out of the topmost band for exactly as long as it treats the monitor as
+full screen. Starting to watch looks once for a full-screen window Shell will not report, so
+entering Dock or moving it onto a full-screen monitor fills too (see
+[ADR 0047](adr/0047-dock-reads-shell-full-screen-from-the-taskbar.md)). Without a taskbar there,
+the z-order decides. Open accessories move with the strip. Nothing
 raises the header while the strip is hidden: it is opened only from the strip's entry, and the
 full-screen window taking the foreground closes a toolbar that was already open, through the same
 focus rule that closes it when the user clicks another application.
