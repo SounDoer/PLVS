@@ -591,7 +591,7 @@ impl FrontendEmitter for TauriFrontendEmitter {
           // Do not activate PLVS or bypass the Dock's Space gate. React's lifecycle
           // business function still owns resuming a deliberately suspended Dock.
           #[cfg(target_os = "macos")]
-          crate::macos_dock_window::reveal(&window)?;
+          let _ = crate::macos_dock_window::reveal(&window);
         } else {
           // UI navigation promises best-effort reveal and focus. Besides matching that public
           // contract, activating a background macOS WebView lets its render barrier receive the

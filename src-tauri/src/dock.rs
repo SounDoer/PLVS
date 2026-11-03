@@ -733,15 +733,8 @@ fn exit_dock_inner<R: tauri::Runtime>(
     || {
       crate::dock_accessories::hide_all(window.app_handle());
       #[cfg(target_os = "macos")]
-      crate::macos_dock_window::configure(
-        &window,
-        false,
-        DockEdge::Bottom,
-        DOCK_DEFAULT_LOGICAL_HEIGHT,
-        true,
-      )?;
-      #[cfg(target_os = "macos")]
       crate::macos_dock::stop()?;
+      // Also stops the AppKit presentation owner before the class is restored.
       #[cfg(target_os = "macos")]
       crate::macos_dock_window::restore_host(&window)?;
       #[cfg(target_os = "windows")]
@@ -1174,17 +1167,16 @@ pub fn set_dock_height<R: tauri::Runtime>(
       } else {
         crate::appbar::position_overlay(&window, previous.edge, work_area, scale, height)?;
       }
-      #[cfg(not(target_os = "windows"))]
-      {
-        let physical_height = (height as f64 * scale).round() as u32;
-        let rect = dock_strip_rect(work_area, previous.edge, physical_height);
-        window
-          .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
-          .map_err(|e| format!("size: {e}"))?;
-        window
-          .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
-          .map_err(|e| format!("position: {e}"))?;
-      }
+      // The AppKit owner places the strip itself, from the safe display frame in a full-screen
+      // Space. Resizing through Tao first would make it snap back to the old height in between.
+      #[cfg(target_os = "macos")]
+      crate::macos_dock_window::configure(
+        &window,
+        true,
+        previous.edge,
+        height,
+        previous.above_full_screen,
+      )?;
 
       #[cfg(target_os = "macos")]
       if persist && previous.reserve_space {
@@ -1197,14 +1189,6 @@ pub fn set_dock_height<R: tauri::Runtime>(
           false,
         )?;
       }
-      #[cfg(target_os = "macos")]
-      crate::macos_dock_window::configure(
-        &window,
-        true,
-        previous.edge,
-        height,
-        previous.above_full_screen,
-      )?;
       if persist {
         write_dock_state(
           window.app_handle(),
