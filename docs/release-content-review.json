@@ -3,16 +3,17 @@
   "version": "0.24.1",
   "baselineTag": "v0.24.0",
   "baselineRevision": "3ffe6f859fafd2affaeae592f96cfbef8a43e018",
-  "candidateRevision": "b0ab8ca6518cac0bdf406a215555b8eeb9f1c860",
-  "contentSha256": "79963e055e002e19c7afde77fc507a38486675cd783687935c3783b14a06811f",
+  "candidateRevision": "f94a18fa1f0c555672625db7871bb364973c4d96",
+  "contentSha256": "4dacc5145e62ccf8cd973e6b4be5cb5d96d858c584a46aa17495768154ed3be8",
   "reviews": {
     "userGuide": {
       "status": "unchanged",
-      "rationale": "Reviewed the complete v0.24.0-to-candidate range against the 0.24.1 notes. The guide was already updated in the feature commits: docs/user/workspace.md describes Above Full Screen on Windows and macOS, the Dock's own Surface Opacity and the Dock Views order; docs/user/faq.md describes the macOS full-screen Space overlay and Reserve Space boundaries; docs/user/cli.md covers Dock surface opacity. Status notice placement and the removed hover tip are not documented behaviour. No promise or non-goal changed, so docs/prd.md is unchanged. No further edit was needed in the release commit.",
+      "rationale": "Reviewed the complete v0.24.0-to-candidate range against the 0.24.1 notes. The guide was already updated in the feature commits: docs/user/workspace.md describes Above Full Screen on Windows and macOS, the Dock's own Surface Opacity and the Dock Views order; docs/user/faq.md describes the macOS full-screen Space overlay and Reserve Space boundaries; docs/user/cli.md covers Dock surface opacity. Status notice placement and the removed hover tip are not documented behaviour. No promise or non-goal changed, so docs/prd.md is unchanged. No further edit was needed in the release commit. Renewed over 331c898b..f94a18fa: 86f598c8 adds the transport pill and read-only Source, Loudness and Preset context to the expanded Dock toolbar, and docs/user/workspace.md describes it in the same commit; cf3b3789 adds soak baseline fixtures only.",
       "evidence": [
         "git diff v0.24.0..a8eb2c81 -- docs/user/workspace.md docs/user/faq.md docs/user/cli.md compared with CHANGELOG.md 0.24.1",
         "src/dock/editors/DockViews.jsx, src/hooks/useDockMode.js and src/hooks/useViewSettings.js compared with docs/user/workspace.md Dock section",
-        "src/agentControl/handlers/dock.js and src/agentControl/viewControl.js compared with docs/user/cli.md and docs/agent-control/"
+        "src/agentControl/handlers/dock.js and src/agentControl/viewControl.js compared with docs/user/cli.md and docs/agent-control/",
+        "git diff 331c898b..f94a18fa -- docs/user/workspace.md src/dock/accessories/DockHeader.jsx src/dock/DockAccessoriesContext.jsx compared with CHANGELOG.md 0.24.1"
       ]
     },
     "readme": {
@@ -20,26 +21,29 @@
       "rationale": "README summarises Dock mode and its platform limits in one line; Above Full Screen and Dock Surface Opacity extend Dock without contradicting that summary or the Linux limitation. No product claim, download name or documentation link changed.",
       "evidence": [
         "README.md What is PLVS, Download and platform limitations read against the full v0.24.0..a8eb2c81 range",
-        "grep of README.md for Dock and full-screen claims"
+        "grep of README.md for Dock and full-screen claims",
+        "Renewed over 331c898b..f94a18fa: the Dock toolbar context and soak fixtures change no README claim"
       ]
     },
     "website": {
       "status": "unchanged",
-      "rationale": "Homepage copy makes no claim about full-screen windows or Dock opacity; its Dock section shows the default and custom strips, which remain accurate. Generated Docs pick up the already-updated guide chapters at deployment. Sharesets pages will render Requires PLVS 0.24.1+ for Items using dockAboveFullScreen or dockSurfaceOpacity, now registered at 0.24.1. Privacy impact over baseline 3ffe6f859fafd2affaeae592f96cfbef8a43e018 to candidate a8eb2c81c7b13e5a4810a0121d4f8b751deba00f: the new Preset and Dock fields are stored locally and exported only in user-initiated portable Presets; full-screen detection uses local Windows Shell, taskbar and WinEvent/mouse hooks to decide strip placement and keeps nothing; the macOS tauri-nspanel plugin is a local window class with no network use. No change to collection, consent, upload payloads, recipients, providers, storage outside the profile, retention or deletion. Feedback, crash reporting, newsletter and update-service code and configuration are unchanged; the policy text and its effective date are retained.",
+      "rationale": "Homepage copy makes no claim about full-screen windows or Dock opacity; its Dock section shows the default and custom strips, which remain accurate. Generated Docs pick up the already-updated guide chapters at deployment. Sharesets pages will render Requires PLVS 0.24.1+ for Items using dockAboveFullScreen or dockSurfaceOpacity, now registered at 0.24.1. Privacy impact over baseline 3ffe6f859fafd2affaeae592f96cfbef8a43e018 to candidate a8eb2c81c7b13e5a4810a0121d4f8b751deba00f: the new Preset and Dock fields are stored locally and exported only in user-initiated portable Presets; full-screen detection uses local Windows Shell, taskbar and WinEvent/mouse hooks to decide strip placement and keeps nothing; the macOS tauri-nspanel plugin is a local window class with no network use. No change to collection, consent, upload payloads, recipients, providers, storage outside the profile, retention or deletion. Feedback, crash reporting, newsletter and update-service code and configuration are unchanged; the policy text and its effective date are retained. Renewed over 331c898b..f94a18fa: the Dock toolbar shows local session names already shown in the normal footer; no data leaves the app, no privacy impact.",
       "evidence": [
         "website/index.html product copy compared with CHANGELOG.md 0.24.1 and git diff v0.24.0..a8eb2c81",
         "git diff v0.24.0..a8eb2c81 -- website/privacy docs/privacy-review.json src-tauri/src/update_runtime.rs is empty; tauri.conf.json changed only its version; node scripts/privacy-review.mjs check passed",
         "git diff v0.24.0..a8eb2c81 -- src/transfer src/persistence/profileShape.js scripts/sharesets-app-compatibility.mjs: local Preset fields and Sharesets minimum versions only",
-        "Commit bodies of 14993516, fc8520f3, cb78176d and af88e20e: Shell, taskbar, hooks and NSPanel used only for local window placement"
+        "Commit bodies of 14993516, fc8520f3, cb78176d and af88e20e: Shell, taskbar, hooks and NSPanel used only for local window placement",
+        "git diff --stat 331c898b..f94a18fa: no website, privacy, update or service files changed"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The homepage images are recipe renders of app panels from measured fixtures. No panel renderer, theme or layout code changed in the range. The only shared CSS change routes the Dock fill through --dock-surface-opacity, which defaults to 100% like the previous --surface-opacity, and clears the body fill under a docked strip, so the rendered Default and Custom Dock and the hero are unchanged. Status notice placement and Dock Views order appear in no published image.",
+      "rationale": "The homepage images are recipe renders of app panels from measured fixtures. No panel renderer, theme or layout code changed in the range. The only shared CSS change routes the Dock fill through --dock-surface-opacity, which defaults to 100% like the previous --surface-opacity, and clears the body fill under a docked strip, so the rendered Default and Custom Dock and the hero are unchanged. Status notice placement and Dock Views order appear in no published image. Renewed over 331c898b..f94a18fa: the new context appears only in the expanded Dock toolbar, which no published image shows; no panel renderer changed.",
       "evidence": [
         "git diff --name-only v0.24.0..a8eb2c81 -- src: no files under src/panels, src/theme or scripts/marketing",
         "git diff v0.24.0..a8eb2c81 -- src/index.css: --dock-surface-opacity defaults to 100% and the docked body fill is transparent",
-        "website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp are referenced by website/index.html and README shares the hero; none shows the toolbar status area or Dock Views editor"
+        "website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp are referenced by website/index.html and README shares the hero; none shows the toolbar status area or Dock Views editor",
+        "git diff --stat 331c898b..f94a18fa: no files under src/panels, src/theme, scripts/marketing or website/assets"
       ]
     }
   }
