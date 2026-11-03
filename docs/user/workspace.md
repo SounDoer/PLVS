@@ -128,8 +128,13 @@ the screen, so the meters stay visible while you work in another app. A narrow c
 end of the strip holds three buttons, top to bottom: Start/Stop (Return to Live during a Snapshot),
 the toolbar arrow, and Return to Normal Window (two outward arrows). The buttons are matching rounded chips; Start/Stop is tinted by its state. The arrow points to where the
 toolbar opens and flips once it is open. The Dock toolbar lets you clear the session, switch the
-Loudness Profile, edit which modules the strip shows, and manage Presets. Dock omits the timecode
-and Ready label. Returning to the normal window preserves capture and history. The
+Loudness Profile, edit which modules the strip shows, and manage Presets. The expanded toolbar also
+shows the normal window's transport pill on the left, with the same elapsed time, Ready/Live/Snapshot
+states and Start/Stop/Return to Live actions. Dock supports Live only, so the pill has no source-mode
+dropdown. The strip's right-side transport shortcut remains available when the toolbar is closed.
+Beside the pill, read-only Source, Loudness and Preset names follow the normal footer, including the
+unsaved Preset marker. Long names shorten to fit; hover to read the full name. Closing the toolbar
+hides this context and the time display. Returning to the normal window preserves capture and history. The
 toolbar closes when you click the arrow again, press Escape, or click anywhere outside PLVS; moving
 the pointer over the strip never opens or closes it. While PLVS is showing an error, the toolbar
 stays open until the error clears. On macOS, controls respond to the first click when switching

@@ -15,6 +15,8 @@ import { HoverTip } from "../../components/HoverTip.jsx";
 import { LinkButton } from "../../components/ui/link-button.jsx";
 import { cn } from "../../lib/utils.js";
 import { SHELL_HEADER_ACTIONS, SHELL_HEADER_BAR } from "../../lib/shellLayout.js";
+import { SourceTransportCluster } from "../../components/SourceTransportCluster.jsx";
+import { FOOTER_LABEL, FOOTER_VALUE, FOOTER_DIVIDER } from "../../lib/shellLayout.js";
 import { AppStatusSummary } from "../../components/AppStatus.jsx";
 
 const ACTION_ICON_CLASS = "size-[length:var(--ui-icon-shell-action)]";
@@ -48,8 +50,18 @@ export function DockHeader({ state, onAction }) {
         "h-screen w-screen select-none px-[var(--ui-header-pad-x)] text-foreground"
       )}
     >
-      <div data-testid="dock-header-trailing" className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="flex-1" />
+      {state.sourceTransportState ? (
+        <SourceTransportCluster
+          state={state.sourceTransportState}
+          sourceMode="live"
+          sourceLocked
+          uiTarget="dock-toolbar:transport"
+          onSourceModeChange={() => {}}
+          onPrimaryAction={(actionKind) => onAction("source-primary", { actionKind })}
+        />
+      ) : null}
+      <DockContextSummary footer={state.footer} />
+      <div data-testid="dock-header-trailing" className="flex shrink-0 items-center gap-3">
         {state.statusItems ? (
           <AppStatusSummary
             data-tour-target="status"
@@ -178,5 +190,30 @@ function DockHeaderUpdate({ update, onAction }) {
       <Icon aria-hidden="true" className="size-[1.1em]" />
       <span className="tabular-nums">{update.text}</span>
     </LinkButton>
+  );
+}
+
+/** Read-only context; native tips can extend beyond the single-row accessory window. */
+function DockContextSummary({ footer }) {
+  const items = [
+    ["Source", footer?.sourceLabel],
+    ["Loudness", footer?.loudnessProfileName],
+    ["Preset", footer?.activePresetName],
+  ].filter(([, value]) => value);
+  return (
+    <div
+      data-testid="dock-header-context"
+      className="flex min-w-0 flex-1 items-center overflow-hidden text-[length:var(--ui-fs-status)]"
+    >
+      {items.map(([label, value], index) => (
+        <div key={label} className="flex min-w-0 items-center">
+          {index > 0 ? <div className={FOOTER_DIVIDER} /> : null}
+          <span className="flex min-w-0 items-center gap-2" title={`${label}: ${value}`}>
+            <span className={cn(FOOTER_LABEL, "shrink-0")}>{label}</span>
+            <span className={FOOTER_VALUE}>{value}</span>
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }

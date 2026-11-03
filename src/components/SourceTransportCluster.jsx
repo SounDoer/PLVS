@@ -61,6 +61,7 @@ export function SourceTransportCluster({
   onSourceModeChange,
   onPrimaryAction,
   presentation = "horizontal",
+  uiTarget = null,
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
@@ -85,7 +86,7 @@ export function SourceTransportCluster({
       type="button"
       disabled={state.primaryActionDisabled}
       data-tour-target={vertical ? undefined : "transport"}
-      data-ui-target={vertical ? "dock:transport" : "toolbar:transport"}
+      data-ui-target={uiTarget ?? (vertical ? "dock:transport" : "toolbar:transport")}
       aria-label={vertical ? state.actionLabel.toLowerCase() : undefined}
       onClick={() => onPrimaryAction(state.actionKind)}
       className={cn(

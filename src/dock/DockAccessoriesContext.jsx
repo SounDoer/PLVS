@@ -87,6 +87,7 @@ export function DockAccessoriesProvider({ children }) {
     audioInputs,
     captureApplications,
     safeAudioDeviceId,
+    footerSourceLabel,
     refreshInventory,
     onSelectCaptureDevice,
   } = useSource();
@@ -349,12 +350,22 @@ export function DockAccessoriesProvider({ children }) {
     supportedActions: [],
     target: { phase: statusFixture?.phase },
   });
+  const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
+  const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
+  const loudnessProfileName = loudnessProfile.document
+    ? loudnessProfile.document.name || "Untitled"
+    : null;
   const dockHeaderState = useMemo(
     () => ({
       interfaceSize,
       visible: dockAccessoryVisibility.headerVisible,
       presentationId: dockAccessoryVisibility.headerPresentationId,
       sourceTransportState,
+      footer: {
+        sourceLabel: footerSourceLabel,
+        loudnessProfileName,
+        activePresetName,
+      },
       clearDisabled: !running && !showClock,
       notice,
       statusItems,
@@ -368,6 +379,9 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       interfaceSize,
+      footerSourceLabel,
+      loudnessProfileName,
+      activePresetName,
       dockAccessoryVisibility.editorView,
       dockAccessoryVisibility.headerVisible,
       dockAccessoryVisibility.headerPresentationId,

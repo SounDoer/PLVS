@@ -43,24 +43,49 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "status", anchorX: 0 });
     expect(screen.queryByTestId("dock-header-update")).toBeNull();
   });
-  it("keeps the settings tools without a duplicate transport or central spacer", () => {
-    Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
+  it("keeps the full Live transport beside the context and existing tools", () => {
     render(<DockHeader state={STATE} onAction={vi.fn()} />);
-    const buttons = screen.getAllByRole("button");
-    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Clear",
-      "Sources",
-      "Loudness Profile",
-      "Panels",
-      "Views",
-      "Presets",
-    ]);
+    expect(screen.getByText("LIVE")).toBeTruthy();
+    expect(screen.getByText("00:00")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Source:/i })).toBeNull();
+    expect(screen.getByRole("button", { name: "START" }).dataset.uiTarget).toBe(
+      "dock-toolbar:transport"
+    );
     const actions = screen.getByTestId("dock-header-actions");
-    expect(buttons.every((button) => actions.contains(button))).toBe(true);
-    const [trailing] = screen.getByTestId("dock-header").children;
-    expect(screen.getByTestId("dock-header").children).toHaveLength(1);
-    expect(trailing).toBe(screen.getByTestId("dock-header-trailing"));
-    expect(actions.parentElement).toBe(trailing);
+    expect(
+      Array.from(actions.querySelectorAll("button")).map((button) =>
+        button.getAttribute("aria-label")
+      )
+    ).toEqual(["Clear", "Sources", "Loudness Profile", "Panels", "Views", "Presets"]);
+  });
+
+  it("shows read-only footer names with full native hover text and omits absent names", () => {
+    const { rerender } = render(
+      <DockHeader
+        state={{
+          ...STATE,
+          footer: {
+            sourceLabel: "Speakers",
+            loudnessProfileName: "EBU R128",
+            activePresetName: "Monitoring *",
+          },
+        }}
+        onAction={vi.fn()}
+      />
+    );
+    expect(screen.getByTitle("Source: Speakers").textContent).toBe("SourceSpeakers");
+    expect(screen.getByTitle("Loudness: EBU R128")).toBeTruthy();
+    expect(screen.getByTitle("Preset: Monitoring *")).toBeTruthy();
+    expect(screen.getByTestId("dock-header-context").querySelector("button")).toBeNull();
+    rerender(
+      <DockHeader
+        state={{ ...STATE, footer: { sourceLabel: "Not connected" } }}
+        onAction={vi.fn()}
+      />
+    );
+    expect(screen.getByText("Not connected")).toBeTruthy();
+    expect(screen.queryByText("Loudness")).toBeNull();
+    expect(screen.queryByText("Preset")).toBeNull();
   });
 
   it("names the update state in words just before the tools and opens details", () => {
@@ -188,6 +213,7 @@ describe("DockHeader", () => {
   it.each([
     ["startLive", "START"],
     ["stopLive", "STOP"],
+    ["returnToLive", "LIVE"],
   ])("forwards the %s transport action to main", (actionKind, actionLabel) => {
     const onAction = vi.fn();
     render(
@@ -204,7 +230,22 @@ describe("DockHeader", () => {
       />
     );
 
-    expect(screen.queryByRole("button", { name: actionLabel })).toBeNull();
-    expect(onAction).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: actionLabel }));
+    expect(onAction).toHaveBeenCalledWith("source-primary", { actionKind });
   });
+});
+
+it("refuses the toolbar transport action while disabled", () => {
+  const onAction = vi.fn();
+  render(
+    <DockHeader
+      state={{
+        ...STATE,
+        sourceTransportState: { ...STATE.sourceTransportState, primaryActionDisabled: true },
+      }}
+      onAction={onAction}
+    />
+  );
+  fireEvent.click(screen.getByRole("button", { name: "START" }));
+  expect(onAction).not.toHaveBeenCalled();
 });
