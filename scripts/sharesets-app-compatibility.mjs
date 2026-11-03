@@ -19,12 +19,12 @@ export const SHARESETS_APP_FEATURES = {
     uses: presetUsesPanelOrientation,
   },
   dockAboveFullScreen: {
-    minimumAppVersion: null,
+    minimumAppVersion: "0.24.1",
     introducedAfter: "0.24.0",
     uses: presetUsesDockAboveFullScreen,
   },
   dockSurfaceOpacity: {
-    minimumAppVersion: null,
+    minimumAppVersion: "0.24.1",
     introducedAfter: "0.24.0",
     uses: presetUsesDockSurfaceOpacity,
   },

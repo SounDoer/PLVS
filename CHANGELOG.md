@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-03
+
+### Added
+
+- Dock stays above full-screen windows on Windows and over native full-screen Spaces on macOS.
+  The **Above Full Screen** switch in Dock Views is on by default; turning it off lets the strip
+  step aside while a full-screen window is in front. On Windows the strip fills the display edge
+  over a full-screen window, and clicking the strip or its toolbar no longer ends full screen.
+- Dock Views has its own **Surface Opacity**, separate from the window's, so a Preset can carry a
+  faded Dock over an opaque Workspace.
+- Presets, portable Presets and Agent Control carry both Dock settings. A portable Preset writes
+  them only when they differ from the defaults, so ordinary Presets still import into earlier
+  releases, and a Preset rejected for an unknown field says it needs a newer PLVS. Sharesets shows
+  each Item's minimum PLVS version from the features it actually uses.
+
+### Changed
+
+- Dock Views lists placement first: Dock, Reserve Space and Above Full Screen, then Hide Axes &
+  Labels and Surface Opacity.
+- Status notices sit beside the toolbar buttons in the normal and Dock toolbars. The status summary
+  no longer shows a hover tip; clicking it opens every notice in full.
+
+### Fixed
+
+- On Windows, the Dock returns to the topmost band after a full-screen window closes, including
+  when Shell never reports the window gone, after leaving the Dock, and after moving the Dock to
+  another monitor.
+- On macOS, resizing or re-docking the strip no longer snaps it back to its previous height or edge.
+
 ## [0.24.0] - 2026-11-01
 
 ### Added
