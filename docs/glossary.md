@@ -24,47 +24,56 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 
 ## Core concepts
 
-| Term               | Meaning                                                                                             | Chinese          | Avoid                       |
-| ------------------ | --------------------------------------------------------------------------------------------------- | ---------------- | --------------------------- |
-| Workbench          | One running PLVS measurement unit with its own Source, Workspace and measurement; several can run   | 工作台           | window, instance (CLI only) |
-| Main Workbench     | The Workbench that owns application-wide work such as updates                                       | 主工作台         |                             |
-| Workspace          | The panels in the window, their arrangement and each panel's settings                               | 工作区           | layout                      |
-| Preset             | A saved Workspace that can be switched back to                                                      | 预设             | scene, saved layout         |
-| Panel              | One meter placed in the Workspace; the same meter can be added more than once                       | 面板             | module                      |
-| Panels             | The toolbar menu that adds, renames and removes panels                                              | 面板菜单         | Modules                     |
-| Panel Settings     | A panel's own analysis and display options                                                          | 面板设置         |                             |
-| Split              | Dividing the Workspace into side-by-side or stacked panels by dragging a panel to an edge           | 分屏             |                             |
-| Tab                | A panel dropped onto another panel's title, sharing its space                                       | 标签页           |                             |
-| Source             | What PLVS measures: system playback, a physical input, an application, or a file                    | 信号源           | device, input               |
-| Sources            | The toolbar menu that chooses the Source, in the window and in the Dock                             | 信号源菜单       | Device                      |
-| Automatic          | The Source that follows the default system output                                                   | 自动             |                             |
-| Live               | Metering the current signal as it arrives                                                           | 实时             |                             |
-| Snapshot           | Every meter frozen at one moment chosen from history; capture continues behind it                   | 快照             | inspect mode, freeze        |
-| History            | The retained past of a Live measurement that history charts scroll through                          | 历史             |                             |
-| History Length     | How far back Live history reaches: 30, 60, 120 or 240 minutes                                       | 历史时长         | retention                   |
-| File Mode          | Measuring a local audio file instead of a live Source                                               | 文件模式         |                             |
-| Scrubbing          | Moving through a file's timeline so every panel shows that position                                 | 拖动定位         | seeking                     |
-| Start / Stop       | Starts or stops Live capture                                                                        | 开始 / 停止      |                             |
-| Clear              | Discards the current measurement data and begins a fresh measurement                                | 清空             | reset                       |
-| Loudness Profile   | A set of reference lines and warning thresholds for a delivery target                               | 响度配置         | target, spec                |
-| Status Notices     | The toolbar entry that lists current measurement warnings, errors and update state                  | 状态提示         | notifications               |
-| Dock               | A slim, always-on-top meter strip parked at the top or bottom edge of the screen                    | Dock             |                             |
-| Views              | The toolbar menu for window presentation: Always on Top, Hide Window Frame, opacity, Dock placement | 视图             | Focus View (CLI only)       |
-| Always on Top      | Keeps the PLVS window above other windows                                                           | 窗口置顶         | pin                         |
-| Hide Panel Headers | Hides each panel's title, tabs and action row                                                       | 隐藏面板标题栏   | compact panels              |
-| Hide Axes & Labels | Hides chart scales and channel and mode labels; readings stay visible                               | 隐藏坐标轴与标签 |                             |
-| Hide Window Frame  | Removes the system title bar and window frame                                                       | 隐藏窗口边框     | Hide Chrome, borderless     |
-| Auto-hide Controls | Hides the toolbar until the pointer moves over the window                                           | 自动隐藏控件     |                             |
-| Surface Opacity    | Transparency of Workspace and panel fills, or of the Dock strip; text and data stay opaque          | 背景不透明度     |                             |
-| Glass              | The translucent macOS window material                                                               | 毛玻璃           |                             |
-| Reserve Space      | Keeps other windows from covering the Dock strip by reserving its screen edge                       | 预留屏幕空间     |                             |
-| Above Full Screen  | Keeps the Dock strip above full-screen windows instead of stepping aside like the taskbar           | 全屏时置顶       |                             |
-| Theme              | The colours of the interface and of every meter                                                     | 主题             | skin                        |
-| Saved Items        | Settings for exporting and importing Loudness Profiles, Presets and Themes                          | 已保存条目       | library                     |
-| Sharesets          | The website where users share Themes, Presets and Loudness Profiles                                 | Sharesets        |                             |
-| Item               | One Loudness Profile, Preset or Theme, saved locally or shared on Sharesets                         | 条目             | project                     |
-| Quick Tour         | The ten-step introduction offered after first launch and from Settings                              | 快速导览         | onboarding, tutorial        |
-| Settings           | Application preferences                                                                             | 设置             |                             |
+| Term                   | Meaning                                                                                             | Chinese          | Avoid                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | ---------------- | --------------------------- |
+| Workbench              | One running PLVS measurement unit with its own Source, Workspace and measurement; several can run   | 工作台           | window, instance (CLI only) |
+| Main Workbench         | The Workbench that owns application-wide work such as updates                                       | 主工作台         |                             |
+| Workspace              | The panels in the window, their arrangement and each panel's settings                               | 工作区           | layout                      |
+| Preset                 | A saved Workspace that can be switched back to                                                      | 预设             | scene, saved layout         |
+| Panel                  | One meter placed in the Workspace; the same meter can be added more than once                       | 面板             | module                      |
+| Panels                 | The toolbar menu that adds, renames and removes panels                                              | 面板菜单         | Modules                     |
+| Panel Settings         | A panel's own analysis and display options                                                          | 面板设置         |                             |
+| Split                  | Dividing the Workspace into side-by-side or stacked panels by dragging a panel to an edge           | 分屏             |                             |
+| Tab                    | A panel dropped onto another panel's title, sharing its space                                       | 标签页           |                             |
+| Source                 | What PLVS measures: system playback, a physical input, an application, or a file                    | 信号源           | device, input               |
+| Sources                | The toolbar menu that chooses the Source, in the window and in the Dock                             | 信号源菜单       | Device                      |
+| Automatic              | The Source that follows the default system output                                                   | 自动             |                             |
+| Live                   | Metering the current signal as it arrives                                                           | 实时             |                             |
+| Snapshot               | Every meter frozen at one moment chosen from history; capture continues behind it                   | 快照             | inspect mode, freeze        |
+| History                | The retained past of a Live measurement that history charts scroll through                          | 历史             |                             |
+| History Length         | How far back Live history reaches: 30, 60, 120 or 240 minutes                                       | 历史时长         | retention                   |
+| File Mode              | Measuring a local audio file instead of a live Source                                               | 文件模式         |                             |
+| Scrubbing              | Moving through a file's timeline so every panel shows that position                                 | 拖动定位         | seeking                     |
+| Start / Stop           | Starts or stops Live capture                                                                        | 开始 / 停止      |                             |
+| Clear                  | Discards the current measurement data and begins a fresh measurement                                | 清空             | reset                       |
+| Loudness Profile       | A set of reference lines and warning thresholds for a delivery target                               | 响度配置         | target, spec                |
+| Status Notices         | The toolbar entry that lists current measurement warnings, errors and update state                  | 状态提示         | notifications               |
+| Toolbar                | The row of controls along the top of the window: Start, Clear, Sources and the menus                | 工具栏           |                             |
+| Footer                 | The bar along the bottom of the window showing the current Source, Loudness Profile and Preset      | 底栏             |                             |
+| Dock                   | A slim, always-on-top meter strip parked at the top or bottom edge of the screen                    | Dock             |                             |
+| Views                  | The toolbar menu for window presentation: Always on Top, Hide Window Frame, opacity, Dock placement | 视图             | Focus View (CLI only)       |
+| Always on Top          | Keeps the PLVS window above other windows                                                           | 窗口置顶         | pin                         |
+| Hide Panel Headers     | Hides each panel's title, tabs and action row                                                       | 隐藏面板标题栏   | compact panels              |
+| Hide Axes & Labels     | Hides chart scales and channel and mode labels; readings stay visible                               | 隐藏坐标轴与标签 |                             |
+| Hide Window Frame      | Removes the system title bar and window frame                                                       | 隐藏窗口边框     | Hide Chrome, borderless     |
+| Auto-hide Controls     | Hides the toolbar until the pointer moves over the window                                           | 自动隐藏控件     |                             |
+| Surface Opacity        | Transparency of Workspace and panel fills, or of the Dock strip; text and data stay opaque          | 背景不透明度     |                             |
+| Glass                  | The translucent macOS window material                                                               | 毛玻璃           |                             |
+| Reserve Space          | Keeps other windows from covering the Dock strip by reserving its screen edge                       | 预留屏幕空间     |                             |
+| Above Full Screen      | Keeps the Dock strip above full-screen windows instead of stepping aside like the taskbar           | 全屏时置顶       |                             |
+| Theme                  | The colours of the interface and of every meter                                                     | 主题             | skin                        |
+| Saved Items            | Settings for exporting and importing Loudness Profiles, Presets and Themes                          | 已保存条目       | library                     |
+| Sharesets              | The website where users share Themes, Presets and Loudness Profiles                                 | Sharesets        |                             |
+| Item                   | One Loudness Profile, Preset or Theme, saved locally or shared on Sharesets                         | 条目             | project                     |
+| Quick Tour             | The ten-step introduction offered after first launch and from Settings                              | 快速导览         | onboarding, tutorial        |
+| Settings               | Application preferences                                                                             | 设置             |                             |
+| Portable               | The Windows ZIP package that runs without installation                                              | 便携版           |                             |
+| Update Preferences     | The first-launch choice of automatic update checking and downloading                                | 更新偏好         |                             |
+| Auto Check for Updates | The Settings option that checks for updates at startup and every 12 hours                           | 自动检查更新     |                             |
+| Auto Download Updates  | The Settings option that downloads and verifies an update in the background                         | 自动下载更新     |                             |
+| View Update Details    | Opens the release notes, download progress and installation for an update                           | 查看更新详情     |                             |
+| Update and Restart     | Installs a ready update after confirmation and reopens PLVS                                         | 更新并重启       |                             |
+| Skip This Time         | Declines the update offer for this launch and keeps the downloaded package                          | 本次跳过         |                             |
 
 ## Panels
 
