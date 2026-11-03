@@ -118,8 +118,9 @@ avoidance does not add extra axis ticks.
 ## Dock
 
 The Dock toolbar offers **Sources** for the same live device/application selection as the normal
-window. **Views** groups **Hide Axes & Labels**, **Dock: Off / Top / Bottom**, and **Reserve Space**
-where supported. Select **Off** to restore the normal window. Sources and Views open beside the strip;
+window. **Views** starts with where the strip sits, **Dock: Off / Top / Bottom**, then **Reserve
+Space** and **Above Full Screen** where supported, and ends with how it looks, **Hide Axes & Labels**
+and **Surface Opacity**. Select **Off** to restore the normal window. Sources and Views open beside the strip;
 opening either does not restart capture. Panel settings remain accessible through the panel editor.
 
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of

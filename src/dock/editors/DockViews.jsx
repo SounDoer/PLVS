@@ -18,37 +18,6 @@ export function DockViews({ state, onAction }) {
   return (
     <DockEditorShell title="Views">
       <div className="grid gap-1 p-1">
-        <FocusSwitch
-          id="dock-hide-axes-labels"
-          label="Hide Axes & Labels"
-          checked={state.hideAxesAndLabels === true}
-          onCheckedChange={(value) => onAction("set-hide-axes-labels", { value })}
-        />
-        <div className="flex items-center justify-between gap-3 px-2 py-1">
-          <Label
-            htmlFor="dock-surface-opacity"
-            className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
-          >
-            Surface Opacity
-          </Label>
-          <RangeInput
-            valueLabel={`${opacity}%`}
-            id="dock-surface-opacity"
-            aria-label="Surface opacity"
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={opacity}
-            onInput={(e) =>
-              onAction("set-dock-surface-opacity", {
-                value: Number(/** @type {HTMLInputElement} */ (e.target).value),
-              })
-            }
-            className="plvs-range w-20"
-            style={{ "--range-pct": `${opacity}%` }}
-          />
-        </div>
         <div className="flex items-center justify-between gap-3 px-2 py-1">
           <Label className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground">
             Dock
@@ -81,6 +50,37 @@ export function DockViews({ state, onAction }) {
             onCheckedChange={() => onAction("toggle-above-full-screen")}
           />
         )}
+        <FocusSwitch
+          id="dock-hide-axes-labels"
+          label="Hide Axes & Labels"
+          checked={state.hideAxesAndLabels === true}
+          onCheckedChange={(value) => onAction("set-hide-axes-labels", { value })}
+        />
+        <div className="flex items-center justify-between gap-3 px-2 py-1">
+          <Label
+            htmlFor="dock-surface-opacity"
+            className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
+          >
+            Surface Opacity
+          </Label>
+          <RangeInput
+            valueLabel={`${opacity}%`}
+            id="dock-surface-opacity"
+            aria-label="Surface opacity"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={opacity}
+            onInput={(e) =>
+              onAction("set-dock-surface-opacity", {
+                value: Number(/** @type {HTMLInputElement} */ (e.target).value),
+              })
+            }
+            className="plvs-range w-20"
+            style={{ "--range-pct": `${opacity}%` }}
+          />
+        </div>
       </div>
     </DockEditorShell>
   );

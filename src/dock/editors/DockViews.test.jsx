@@ -4,6 +4,19 @@ import { describe, expect, it, vi } from "vitest";
 import { DockViews } from "./DockViews.jsx";
 
 describe("Dock Views", () => {
+  it("puts where the strip sits before how it looks", () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
+    render(<DockViews state={{ edge: "bottom" }} onAction={vi.fn()} />);
+    const controls = [...document.querySelectorAll("[id^='dock-'], [aria-label='Dock position']")];
+    expect(controls.map((control) => control.id || control.getAttribute("aria-label"))).toEqual([
+      "Dock position",
+      "dock-reserve-space",
+      "dock-above-full-screen",
+      "dock-hide-axes-labels",
+      "dock-surface-opacity",
+    ]);
+  });
+
   it("offers annotations without inventing a panel header control", () => {
     const onAction = vi.fn();
     render(<DockViews state={{ edge: "bottom", hideAxesAndLabels: true }} onAction={onAction} />);
