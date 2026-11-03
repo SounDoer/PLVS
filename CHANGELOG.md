@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   over a full-screen window, and clicking the strip or its toolbar no longer ends full screen.
 - Dock Views has its own **Surface Opacity**, separate from the window's, so a Preset can carry a
   faded Dock over an opaque Workspace.
+- The expanded Dock toolbar shows the normal window's transport, with elapsed time and
+  Start/Stop, beside the current Source, Loudness Profile and Preset names, including the unsaved
+  Preset marker.
 - Presets, portable Presets and Agent Control carry both Dock settings. A portable Preset writes
   them only when they differ from the defaults, so ordinary Presets still import into earlier
   releases, and a Preset rejected for an unknown field says it needs a newer PLVS. Sharesets shows
