@@ -10,14 +10,15 @@ use windows_sys::Win32::Graphics::Dwm::{
   DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS,
 };
 use windows_sys::Win32::Graphics::Gdi::{
-  GetMonitorInfoW, MonitorFromRect, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+  GetMonitorInfoW, MonitorFromRect, MonitorFromWindow, HMONITOR, MONITORINFO,
+  MONITOR_DEFAULTTONEAREST, MONITOR_DEFAULTTONULL,
 };
 use windows_sys::Win32::System::Threading::GetCurrentProcessId;
 use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows_sys::Win32::UI::Shell::{
   DefSubclassProc, RemoveWindowSubclass, SHAppBarMessage, SetWindowSubclass, ABE_BOTTOM, ABE_TOP,
-  ABM_NEW, ABM_REMOVE, ABM_SETPOS, ABM_WINDOWPOSCHANGED, ABN_FULLSCREENAPP, ABN_POSCHANGED,
-  APPBARDATA,
+  ABM_GETSTATE, ABM_NEW, ABM_REMOVE, ABM_SETPOS, ABM_WINDOWPOSCHANGED, ABN_FULLSCREENAPP,
+  ABN_POSCHANGED, ABS_AUTOHIDE, APPBARDATA,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
   CallNextHookEx, EnumWindows, FindWindowExW, GetAncestor, GetClassNameW, GetWindowLongW,
@@ -35,11 +36,10 @@ use crate::window_state::MonitorRect;
 
 const APPBAR_CALLBACK_MESSAGE: u32 = WM_APP + 0x31;
 const APPLY_FULL_SCREEN_MESSAGE: u32 = WM_APP + 0x32;
+const RECONCILE_FULL_SCREEN_MESSAGE: u32 = WM_APP + 0x33;
 const APPBAR_SUBCLASS_ID: usize = 0x504c5653;
 const FULLSCREEN_POLL_TIMER_ID: usize = 0x504c5655;
 const FULLSCREEN_POLL_MS: u32 = 500;
-/// `APPLY_FULL_SCREEN_MESSAGE`'s wParam that looks for an unreported full-screen window first.
-const LOOK_FOR_FULL_SCREEN: WPARAM = 1;
 
 /// What the strip does while a full-screen window owns its monitor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -220,12 +220,6 @@ fn strip_area(work_area: RECT, fill: Option<RECT>) -> RECT {
   }
 }
 
-/// Shell reports full-screen windows on other monitors too, so a report starts
-/// only where one is seen. Its "gone" always ends one.
-fn reports_full_screen(shell_says_full_screen: bool, seen_on_dock_monitor: bool) -> bool {
-  shell_says_full_screen && seen_on_dock_monitor
-}
-
 fn covers_monitor(window: RECT, monitor: RECT) -> bool {
   window.left <= monitor.left
     && window.top <= monitor.top
@@ -266,13 +260,23 @@ struct StackedWindow {
   desktop: bool,
 }
 
-/// Looking down the z-order at one monitor, past always-on-top windows that do
-/// not cover it, is the first ordinary window full screen? Shell judges alike:
-/// focusing the strip leaves the taskbar hidden, while raising any ordinary
-/// window over the full-screen one brings it back. Answers with that window.
+/// How far down the z-order to look for a full-screen window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Search {
+  /// Only an uncovered one counts: the first ordinary window decides.
+  OnTop,
+  /// Shell already treats the monitor as full screen and only the window is wanted, so windows
+  /// that cover part of the monitor, such as another display's window reaching over the edge,
+  /// are looked past.
+  Below,
+}
+
+/// Looking down the z-order at one monitor, past PLVS's own windows and always-on-top windows
+/// that do not cover it, the full-screen window. Answers with that window.
 fn full_screen_window_in_z_order(
   windows: impl IntoIterator<Item = StackedWindow>,
   monitor: RECT,
+  search: Search,
 ) -> Option<isize> {
   for window in windows {
     if window.desktop {
@@ -284,85 +288,112 @@ fn full_screen_window_in_z_order(
     if covers_monitor(window.rect, monitor) {
       return Some(window.hwnd);
     }
-    if !window.topmost {
+    if !window.topmost && search == Search::OnTop {
       return None;
     }
   }
   None
 }
 
-/// Whether a followed window is still a full-screen window: shown, and either minimized, from
-/// where it returns full screen, or covering the monitor.
-fn keeps_full_screen(iconic: bool, visible: bool, bounds: Option<RECT>, monitor: RECT) -> bool {
-  visible && (iconic || bounds.is_some_and(|bounds| covers_monitor(bounds, monitor)))
+/// Whether a followed window is still a full-screen window: shown and covering the monitor. A
+/// minimized one is not; Shell reports it again when it is restored.
+fn keeps_full_screen(visible: bool, bounds: Option<RECT>, monitor: RECT) -> bool {
+  visible && bounds.is_some_and(|bounds| covers_monitor(bounds, monitor))
 }
 
-/// The report after a poll. Whichever full-screen window is on top owns it; without one, the
-/// followed window keeps it for as long as it stays full screen. Where a taskbar shows Shell's
-/// state, that state decides whether the strip steps back, so the strip takes the taskbar's place
-/// exactly while Shell keeps it empty: a window from the neighbouring display over one corner
-/// leaves Shell's full screen as it was, while going to another window on this monitor, even one
-/// of PLVS's own below which the full-screen window is still first, ends it. Elsewhere the
-/// z-order decides.
-fn report_after_check(
-  report: FullScreenReport,
-  followed_keeps_full_screen: bool,
-  on_top: Option<isize>,
+/// One look at the Dock's monitor.
+#[derive(Clone, Copy)]
+struct Observation {
+  /// Shell's own state read from the taskbar there; `None` where no taskbar shows it.
   shell_full_screen: Option<bool>,
-) -> Option<FullScreenReport> {
-  if on_top.is_none() && !followed_keeps_full_screen {
-    return None;
-  }
-  Some(FullScreenReport {
-    window: on_top.unwrap_or(report.window),
-    covered: match shell_full_screen {
-      Some(full_screen) => !full_screen,
-      None => on_top.is_none(),
-    },
-    ..report
-  })
+  /// The Shell notification that prompted the look, if one did.
+  notification: Option<bool>,
+  /// The standing report's window is still a full-screen window.
+  followed_keeps_full_screen: bool,
 }
 
-/// One of Shell's taskbars.
+/// The full-screen report after a look, prompted by Shell's notification, by the poll that runs
+/// while a report stands, or by the strip starting to watch. A report follows one full-screen
+/// window until that window closes, hides or stops covering the monitor, because Shell does not
+/// report it again when it returns from under another window; `covered` steps the strip back
+/// meanwhile. `find` walks the z-order for the full-screen window, and runs only when nothing else
+/// settles the answer.
+///
+/// Where a taskbar shows Shell's state, that state decides, so the strip takes the taskbar's place
+/// exactly while Shell keeps it empty: Shell lowers the taskbar for as long as it treats the
+/// monitor as full screen, which a window from the neighbouring display over one corner leaves as
+/// it was, and going to another window on this monitor ends, even one of PLVS's own below which
+/// the full-screen window is still first. Its notifications are then only cues to look. Elsewhere
+/// Shell's notification starts and ends a report, and the z-order decides between them.
+fn next_report(
+  report: Option<FullScreenReport>,
+  monitor: RECT,
+  observation: Observation,
+  find: impl FnOnce(Search) -> Option<isize>,
+) -> Option<FullScreenReport> {
+  let followed = report
+    .filter(|_| observation.followed_keeps_full_screen)
+    .map(|report| report.window);
+  let report_on = |window, covered| FullScreenReport {
+    monitor,
+    window,
+    covered,
+  };
+  match (observation.shell_full_screen, observation.notification) {
+    (Some(true), _) => followed
+      .or_else(|| find(Search::Below))
+      .map(|window| report_on(window, false)),
+    (Some(false), _) => followed.map(|window| report_on(window, true)),
+    (None, Some(false)) => None,
+    (None, Some(true)) => find(Search::OnTop)
+      .map(|window| report_on(window, false))
+      .or(report),
+    (None, None) => report.and_then(|_| match find(Search::OnTop) {
+      Some(window) => Some(report_on(window, false)),
+      None => followed.map(|window| report_on(window, true)),
+    }),
+  }
+}
+
+/// One of Shell's taskbars and the monitor it belongs to.
 #[derive(Clone, Copy)]
 struct Taskbar {
-  rect: RECT,
+  monitor: RECT,
   topmost: bool,
 }
 
 /// Shell's own full-screen state for a monitor, read from the taskbar there: Shell drops the
 /// taskbar's topmost style and moves it under the full-screen window for as long as it treats the
 /// monitor as full screen, wherever the foreground goes on other monitors. `None` where no
-/// taskbar shows on the monitor.
+/// taskbar shows on the monitor, and for auto-hidden taskbars, which leave no place for the strip
+/// to take and whose handling in full screen PLVS has not observed.
 fn taskbar_shows_full_screen(
+  auto_hide: bool,
   taskbars: impl IntoIterator<Item = Taskbar>,
   monitor: RECT,
 ) -> Option<bool> {
+  if auto_hide {
+    return None;
+  }
   taskbars
     .into_iter()
-    .find(|taskbar| intersects(taskbar.rect, monitor))
+    .find(|taskbar| same_rect(taskbar.monitor, monitor))
     .map(|taskbar| !taskbar.topmost)
 }
 
-/// A report started without Shell's notification, which Shell sends only when its state changes:
-/// the strip began watching after a full-screen window had already taken the monitor. Shell's
-/// state decides, because entering Dock by clicking PLVS over that window ends full screen while
-/// the window stays first below PLVS.
-fn report_without_notification(
-  monitor: RECT,
-  shell_full_screen: Option<bool>,
-  on_top: Option<isize>,
-) -> Option<FullScreenReport> {
-  on_top
-    .filter(|_| shell_full_screen == Some(true))
-    .map(|window| FullScreenReport {
-      monitor,
-      window,
-      covered: false,
-    })
+unsafe fn monitor_rect_of(monitor: HMONITOR) -> Option<RECT> {
+  let mut info = MONITORINFO {
+    cbSize: size_of::<MONITORINFO>() as u32,
+    rcMonitor: RECT::default(),
+    rcWork: RECT::default(),
+    dwFlags: 0,
+  };
+  (!monitor.is_null() && GetMonitorInfoW(monitor, &mut info) != 0).then_some(info.rcMonitor)
 }
 
 unsafe fn shell_full_screen_on(monitor: RECT) -> Option<bool> {
+  let mut state = appbar_data(std::ptr::null_mut());
+  let auto_hide = SHAppBarMessage(ABM_GETSTATE, &mut state) as u32 & ABS_AUTOHIDE != 0;
   let mut taskbars = Vec::new();
   for class in [w!("Shell_TrayWnd"), w!("Shell_SecondaryTrayWnd")] {
     let mut hwnd: HWND = std::ptr::null_mut();
@@ -371,16 +402,18 @@ unsafe fn shell_full_screen_on(monitor: RECT) -> Option<bool> {
       if hwnd.is_null() {
         break;
       }
-      let mut rect = RECT::default();
-      if IsWindowVisible(hwnd) != 0 && GetWindowRect(hwnd, &mut rect) != 0 {
+      if IsWindowVisible(hwnd) == 0 {
+        continue;
+      }
+      if let Some(monitor) = monitor_rect_of(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL)) {
         taskbars.push(Taskbar {
-          rect,
+          monitor,
           topmost: GetWindowLongW(hwnd, GWL_EXSTYLE) as u32 & WS_EX_TOPMOST != 0,
         });
       }
     }
   }
-  taskbar_shows_full_screen(taskbars, monitor)
+  taskbar_shows_full_screen(auto_hide, taskbars, monitor)
 }
 
 /// What a window covers on screen, from DWM's frame bounds where it has them.
@@ -403,7 +436,6 @@ unsafe fn window_bounds(hwnd: HWND) -> Option<RECT> {
 unsafe fn followed_window_keeps_full_screen(report: FullScreenReport) -> bool {
   let hwnd = report.window as HWND;
   keeps_full_screen(
-    IsIconic(hwnd) != 0,
     IsWindowVisible(hwnd) != 0,
     window_bounds(hwnd),
     report.monitor,
@@ -448,9 +480,8 @@ unsafe extern "system" fn collect_window(hwnd: HWND, windows: LPARAM) -> BOOL {
   1
 }
 
-/// The full-screen window that owns `monitor` now, if any. EnumWindows walks
-/// the z-order from the top.
-unsafe fn full_screen_window_on(monitor: RECT) -> Option<isize> {
+/// The full-screen window on `monitor` now, if any. EnumWindows walks the z-order from the top.
+unsafe fn full_screen_window_on(monitor: RECT, search: Search) -> Option<isize> {
   let mut windows: Vec<HWND> = Vec::new();
   if EnumWindows(
     Some(collect_window),
@@ -465,104 +496,56 @@ unsafe fn full_screen_window_on(monitor: RECT) -> Option<isize> {
       .into_iter()
       .filter_map(|hwnd| stacked_window(hwnd, process)),
     monitor,
+    search,
   )
 }
 
 /// The Dock's monitor rect, found from the work area the strip lays out against.
 unsafe fn dock_monitor() -> Option<RECT> {
   let work_area = state().lock().ok()?.target_work_area;
-  let monitor = MonitorFromRect(&work_area, MONITOR_DEFAULTTONEAREST);
-  let mut info = MONITORINFO {
-    cbSize: size_of::<MONITORINFO>() as u32,
-    rcMonitor: RECT::default(),
-    rcWork: RECT::default(),
-    dwFlags: 0,
-  };
-  (!monitor.is_null() && GetMonitorInfoW(monitor, &mut info) != 0).then_some(info.rcMonitor)
+  monitor_rect_of(MonitorFromRect(&work_area, MONITOR_DEFAULTTONEAREST))
 }
 
-/// Start or end the full-screen report from a Shell notification.
-unsafe fn take_shell_report(hwnd: HWND, full_screen: bool) {
-  let monitor = dock_monitor();
-  let window = monitor
-    .filter(|_| full_screen)
-    .and_then(|monitor| full_screen_window_on(monitor));
-  let seen = window.is_some();
-  let reported = reports_full_screen(full_screen, seen);
-  let area = monitor.map(|m| (m.left, m.top, m.right, m.bottom));
-  log::info!(
-    "dock fullscreen notification: fullscreen={full_screen} on dock monitor={seen} monitor={area:?}"
-  );
-  if let Ok(mut current) = state().lock() {
-    current.full_screen = monitor
-      .zip(window)
-      .filter(|_| reported)
-      .map(|(monitor, window)| FullScreenReport {
-        monitor,
-        window,
-        covered: false,
-      });
-  }
-  apply_full_screen(hwnd);
-}
-
-/// Shell never reports a full-screen window gone to a registration made while
-/// it was open, nor reports one again when it returns from under another
-/// window, so the strip checks for itself while a report stands.
-unsafe fn check_full_screen_report(hwnd: HWND) {
-  let Some(report) = state().lock().ok().and_then(|current| current.full_screen) else {
+/// Look at the Dock's monitor and bring the report and the strip up to date. Runs on the window's
+/// thread for Shell's notifications; for the poll that runs while a report stands, since Shell
+/// never reports a full-screen window gone to a registration made while it was open; and for the
+/// strip starting to watch, after which Shell reports nothing about a full-screen window that was
+/// already there.
+unsafe fn reconcile_full_screen(hwnd: HWND, notification: Option<bool>) {
+  let Some(monitor) = dock_monitor() else {
     return;
   };
-  let next = report_after_check(
-    report,
-    followed_window_keeps_full_screen(report),
-    full_screen_window_on(report.monitor),
-    shell_full_screen_on(report.monitor),
-  );
-  if next == Some(report) {
+  let Some(report) = state().lock().ok().map(|current| {
+    current
+      .full_screen
+      .filter(|report| same_rect(report.monitor, monitor))
+  }) else {
     return;
-  }
-  match next {
-    None => log::info!("dock full-screen window gone without a notification"),
-    Some(next) if next.covered => log::info!("dock full-screen window covered"),
-    Some(_) => log::info!("dock full-screen window on top"),
+  };
+  let observation = Observation {
+    shell_full_screen: shell_full_screen_on(monitor),
+    notification,
+    followed_keeps_full_screen: report
+      .is_some_and(|report| followed_window_keeps_full_screen(report)),
+  };
+  let next = next_report(report, monitor, observation, |search| {
+    full_screen_window_on(monitor, search)
+  });
+  if let Some(full_screen) = notification {
+    log::info!(
+      "dock fullscreen notification: fullscreen={full_screen} shell={:?} report={next:?}",
+      observation.shell_full_screen
+    );
+  } else if next != report {
+    log::info!(
+      "dock full-screen report without a notification: shell={:?} {report:?} -> {next:?}",
+      observation.shell_full_screen
+    );
   }
   if let Ok(mut current) = state().lock() {
     current.full_screen = next;
   }
   apply_full_screen(hwnd);
-}
-
-/// Start a report Shell will not send: the strip began watching, or moved to a monitor, after a
-/// full-screen window had already taken it. Only then: right after Shell reports full screen gone,
-/// its taskbar may not be topmost yet.
-unsafe fn look_for_unreported_full_screen(hwnd: HWND) {
-  let Some(monitor) = dock_monitor() else {
-    return;
-  };
-  let unreported = state().lock().is_ok_and(|current| {
-    current.receives_shell_notifications(hwnd as isize)
-      && current
-        .full_screen
-        .is_none_or(|report| !same_rect(report.monitor, monitor))
-  });
-  if !unreported {
-    return;
-  }
-  // The taskbar first: it is cheap, and settles the common case of no full screen at all.
-  let shell_full_screen = shell_full_screen_on(monitor);
-  if shell_full_screen != Some(true) {
-    return;
-  }
-  let Some(report) =
-    report_without_notification(monitor, shell_full_screen, full_screen_window_on(monitor))
-  else {
-    return;
-  };
-  log::info!("dock full-screen window found without a notification");
-  if let Ok(mut current) = state().lock() {
-    current.full_screen = Some(report);
-  }
 }
 
 /// Bring the strip in line with the full-screen report and the switch. Runs on
@@ -645,9 +628,9 @@ fn request_full_screen_apply(hwnd: HWND) {
   unsafe { SendMessageW(hwnd, APPLY_FULL_SCREEN_MESSAGE, 0, 0) };
 }
 
-/// Re-apply on the window's thread after looking for a full-screen window Shell will not report.
-fn request_full_screen_look(hwnd: HWND) {
-  unsafe { SendMessageW(hwnd, APPLY_FULL_SCREEN_MESSAGE, LOOK_FOR_FULL_SCREEN, 0) };
+/// Look at the Dock's monitor on the window's thread and wait for it.
+fn request_full_screen_reconcile(hwnd: HWND) {
+  unsafe { SendMessageW(hwnd, RECONCILE_FULL_SCREEN_MESSAGE, 0, 0) };
 }
 
 fn transition_lock() -> &'static Mutex<()> {
@@ -920,18 +903,16 @@ unsafe extern "system" fn subclass_proc(
     return 0;
   }
   if msg == APPBAR_CALLBACK_MESSAGE && wparam as u32 == ABN_FULLSCREENAPP {
-    take_shell_report(hwnd, lparam != 0);
+    reconcile_full_screen(hwnd, Some(lparam != 0));
     return 0;
   }
   if msg == APPLY_FULL_SCREEN_MESSAGE {
-    if wparam == LOOK_FOR_FULL_SCREEN {
-      look_for_unreported_full_screen(hwnd);
-    }
     apply_full_screen(hwnd);
     return 0;
   }
-  if msg == WM_TIMER && wparam == FULLSCREEN_POLL_TIMER_ID {
-    check_full_screen_report(hwnd);
+  if msg == RECONCILE_FULL_SCREEN_MESSAGE || (msg == WM_TIMER && wparam == FULLSCREEN_POLL_TIMER_ID)
+  {
+    reconcile_full_screen(hwnd, None);
     return 0;
   }
   if msg == WM_WINDOWPOSCHANGING {
@@ -1119,7 +1100,7 @@ pub fn watch_fullscreen<R: tauri::Runtime>(
   }
   if enabled {
     // Entering or resuming Dock, or moving it to another monitor or edge.
-    request_full_screen_look(hwnd);
+    request_full_screen_reconcile(hwnd);
   }
   Ok(())
 }
@@ -1595,15 +1576,6 @@ mod tests {
   }
 
   #[test]
-  fn shell_starts_a_full_screen_report_only_where_one_is_seen() {
-    assert!(reports_full_screen(true, true));
-    assert!(!reports_full_screen(true, false));
-    // Shell's "gone" is never second-guessed: a maximized window over an
-    // auto-hidden taskbar covers the monitor without being full screen.
-    assert!(!reports_full_screen(false, true));
-  }
-
-  #[test]
   fn a_full_screen_window_hides_or_fills_by_the_switch() {
     assert_eq!(full_screen_mode(false, true), FullScreenMode::None);
     assert_eq!(full_screen_mode(false, false), FullScreenMode::None);
@@ -1649,7 +1621,7 @@ mod tests {
     windows: impl IntoIterator<Item = StackedWindow>,
     monitor: RECT,
   ) -> bool {
-    full_screen_window_in_z_order(windows, monitor).is_some()
+    full_screen_window_in_z_order(windows, monitor, Search::OnTop).is_some()
   }
 
   fn window(left: i32, top: i32, right: i32, bottom: i32) -> StackedWindow {
@@ -1712,11 +1684,11 @@ mod tests {
       ..window(100, 100, 400, 400)
     };
     assert_eq!(
-      full_screen_window_in_z_order([note, full], screen()),
+      full_screen_window_in_z_order([note, full], screen(), Search::OnTop),
       Some(7)
     );
     assert_eq!(
-      full_screen_window_in_z_order([window(0, 0, 900, 900), full], screen()),
+      full_screen_window_in_z_order([window(0, 0, 900, 900), full], screen(), Search::OnTop),
       None
     );
   }
@@ -1729,125 +1701,249 @@ mod tests {
     }
   }
 
-  #[test]
-  fn shell_showing_the_taskbar_again_steps_the_strip_back() {
-    // The user went to another window on this monitor, an editor of PLVS's own included: Shell
-    // ended full screen though the full-screen window may still be first below PLVS. The report
-    // stays, because Shell does not report the window again when the user returns to it.
-    assert_eq!(
-      report_after_check(report(false), true, None, Some(false)),
-      Some(report(true))
-    );
-    assert_eq!(
-      report_after_check(report(false), true, Some(7), Some(false)),
-      Some(report(true))
-    );
-    assert_eq!(
-      report_after_check(report(true), true, Some(7), Some(true)),
-      Some(report(false))
-    );
+  /// One look at the monitor; `followed` says whether the standing report's window is still full
+  /// screen.
+  fn seen(shell: Option<bool>, notification: Option<bool>, followed: bool) -> Observation {
+    Observation {
+      shell_full_screen: shell,
+      notification,
+      followed_keeps_full_screen: followed,
+    }
+  }
+
+  fn next(
+    report: Option<FullScreenReport>,
+    observation: Observation,
+    on_top: Option<isize>,
+  ) -> Option<FullScreenReport> {
+    next_report(report, screen(), observation, |_| on_top)
+  }
+
+  fn never_looked(_: Search) -> Option<isize> {
+    panic!("the z-order was walked although Shell's state and the followed window settle it")
   }
 
   #[test]
-  fn a_covered_full_screen_window_still_fills_while_shell_hides_the_taskbar() {
-    // A window from the neighbouring display over one corner leaves Shell's full screen in place,
-    // and the taskbar's place empty.
+  fn once_shell_treats_the_monitor_as_full_screen_partly_covering_windows_are_looked_past() {
+    // Another display's window reaching a few pixels over the edge, above the full-screen window.
+    let full = StackedWindow {
+      hwnd: 7,
+      ..window(0, 0, 2560, 1440)
+    };
+    let neighbour = window(2552, -12, 4008, 1663);
     assert_eq!(
-      report_after_check(report(false), true, None, Some(true)),
-      Some(report(false))
-    );
-  }
-
-  #[test]
-  fn without_a_taskbar_the_z_order_decides_whether_it_is_covered() {
-    assert_eq!(
-      report_after_check(report(false), true, None, None),
-      Some(report(true))
-    );
-    assert_eq!(
-      report_after_check(report(true), true, Some(7), None),
-      Some(report(false))
-    );
-  }
-
-  #[test]
-  fn a_report_ends_when_its_window_stops_being_full_screen() {
-    assert_eq!(report_after_check(report(false), false, None, None), None);
-    assert_eq!(
-      report_after_check(report(true), false, None, Some(true)),
+      full_screen_window_in_z_order([neighbour, full], screen(), Search::OnTop),
       None
     );
-  }
-
-  fn taskbar(rect: RECT, topmost: bool) -> Taskbar {
-    Taskbar { rect, topmost }
+    assert_eq!(
+      full_screen_window_in_z_order([neighbour, full], screen(), Search::Below),
+      Some(7)
+    );
+    let mut searched = None;
+    let started = next_report(
+      None,
+      screen(),
+      seen(Some(true), Some(true), false),
+      |search| {
+        searched = Some(search);
+        Some(7)
+      },
+    );
+    assert_eq!(started, Some(report(false)));
+    assert_eq!(searched, Some(Search::Below));
   }
 
   #[test]
-  fn shell_full_screen_is_read_from_the_monitors_taskbar() {
-    let here = RECT {
-      top: 1392,
-      ..screen()
-    };
-    let elsewhere = RECT {
-      left: 2560,
-      right: 5120,
-      ..here
-    };
+  fn without_a_taskbar_only_an_uncovered_full_screen_window_counts() {
+    let mut searched = None;
+    next_report(
+      Some(report(false)),
+      screen(),
+      seen(None, None, true),
+      |search| {
+        searched = Some(search);
+        None
+      },
+    );
+    assert_eq!(searched, Some(Search::OnTop));
+  }
+
+  #[test]
+  fn shell_hiding_the_taskbar_fills_even_under_another_window() {
+    // A window from the neighbouring display over one corner leaves Shell's full screen, and the
+    // taskbar's place, as they were.
+    let observation = seen(Some(true), None, true);
     assert_eq!(
-      taskbar_shows_full_screen([taskbar(elsewhere, false), taskbar(here, true)], screen()),
-      Some(false)
+      next_report(Some(report(false)), screen(), observation, never_looked),
+      Some(report(false))
     );
     assert_eq!(
-      taskbar_shows_full_screen([taskbar(elsewhere, true), taskbar(here, false)], screen()),
-      Some(true)
+      next_report(Some(report(true)), screen(), observation, never_looked),
+      Some(report(false))
+    );
+  }
+
+  #[test]
+  fn shell_showing_the_taskbar_again_steps_the_strip_back() {
+    // The user went to another window on this monitor, an editor of PLVS's own included, though
+    // the full-screen window may still be first below PLVS. The report stays, because Shell does
+    // not report the window again when the user returns to it.
+    let observation = seen(Some(false), None, true);
+    assert_eq!(
+      next_report(Some(report(false)), screen(), observation, never_looked),
+      Some(report(true))
+    );
+  }
+
+  #[test]
+  fn shells_state_outweighs_its_notification_where_a_taskbar_shows_it() {
+    // A notification is only a cue to look: "gone" while the taskbar stays hidden keeps filling,
+    // and the next poll follows the taskbar if it was early.
+    assert_eq!(
+      next(
+        Some(report(false)),
+        seen(Some(true), Some(false), true),
+        None
+      ),
+      Some(report(false))
     );
     assert_eq!(
-      taskbar_shows_full_screen([taskbar(elsewhere, false)], screen()),
+      next(None, seen(Some(false), Some(true), false), Some(7)),
       None
     );
   }
 
   #[test]
   fn a_report_starts_without_a_notification_only_when_shell_agrees() {
-    let started = report_without_notification(screen(), Some(true), Some(7));
-    assert_eq!(started, Some(report(false)));
-    // The user clicked PLVS over the full-screen window to enter Dock: Shell ended full screen
-    // and the taskbar is back, though the full-screen window is still the first one below PLVS.
+    // Dock started watching after a full-screen window took the monitor: Shell sends nothing.
     assert_eq!(
-      report_without_notification(screen(), Some(false), Some(7)),
-      None
+      next(None, seen(Some(true), None, false), Some(7)),
+      Some(report(false))
     );
-    // Without a taskbar there, only Shell's notification starts a report.
-    assert_eq!(report_without_notification(screen(), None, Some(7)), None);
-    assert_eq!(
-      report_without_notification(screen(), Some(true), None),
-      None
-    );
+    // The user clicked PLVS over the full-screen window to enter Dock: Shell ended full screen,
+    // though the full-screen window is still the first one below PLVS.
+    assert_eq!(next(None, seen(Some(false), None, false), Some(7)), None);
+    assert_eq!(next(None, seen(Some(true), None, false), None), None);
   }
 
   #[test]
-  fn another_full_screen_window_on_top_takes_over_the_report() {
-    let next = FullScreenReport {
+  fn another_full_screen_window_takes_over_once_the_followed_one_is_gone() {
+    let next_window = FullScreenReport {
       window: 9,
       ..report(false)
     };
     assert_eq!(
-      report_after_check(report(true), false, Some(9), Some(true)),
-      Some(next)
+      next(Some(report(true)), seen(Some(true), None, false), Some(9)),
+      Some(next_window)
     );
   }
 
   #[test]
-  fn a_minimized_full_screen_window_is_still_followed() {
+  fn a_report_ends_when_its_window_stops_being_full_screen() {
+    assert_eq!(
+      next(Some(report(false)), seen(Some(false), None, false), Some(9)),
+      None
+    );
+    assert_eq!(
+      next(Some(report(false)), seen(Some(true), None, false), None),
+      None
+    );
+    assert_eq!(
+      next(Some(report(false)), seen(None, None, false), None),
+      None
+    );
+  }
+
+  #[test]
+  fn without_a_taskbar_shells_notification_and_the_z_order_decide() {
+    // Shell's "gone" ends a report: a maximized window over an auto-hidden taskbar covers the
+    // monitor without being full screen.
+    assert_eq!(
+      next(Some(report(false)), seen(None, Some(false), true), Some(7)),
+      None
+    );
+    assert_eq!(
+      next(None, seen(None, Some(true), false), Some(7)),
+      Some(report(false))
+    );
+    // A notification for a full-screen window not seen here leaves the standing report alone.
+    assert_eq!(
+      next(Some(report(true)), seen(None, Some(true), true), None),
+      Some(report(true))
+    );
+    // Between notifications the z-order decides whether the followed window is covered.
+    assert_eq!(
+      next(Some(report(false)), seen(None, None, true), None),
+      Some(report(true))
+    );
+    assert_eq!(
+      next(Some(report(true)), seen(None, None, true), Some(7)),
+      Some(report(false))
+    );
+    // Only a notification starts a report there.
+    assert_eq!(next(None, seen(None, None, false), Some(7)), None);
+  }
+
+  fn taskbar(monitor: RECT, topmost: bool) -> Taskbar {
+    Taskbar { monitor, topmost }
+  }
+
+  #[test]
+  fn shell_full_screen_is_read_from_the_monitors_own_taskbar() {
+    let elsewhere = RECT {
+      left: 2560,
+      right: 5120,
+      ..screen()
+    };
+    assert_eq!(
+      taskbar_shows_full_screen(
+        false,
+        [taskbar(elsewhere, false), taskbar(screen(), true)],
+        screen()
+      ),
+      Some(false)
+    );
+    assert_eq!(
+      taskbar_shows_full_screen(
+        false,
+        [taskbar(elsewhere, true), taskbar(screen(), false)],
+        screen()
+      ),
+      Some(true)
+    );
+    assert_eq!(
+      taskbar_shows_full_screen(false, [taskbar(elsewhere, false)], screen()),
+      None
+    );
+  }
+
+  #[test]
+  fn an_auto_hidden_taskbar_says_nothing_about_full_screen() {
+    // It leaves no place for the strip to take, and Shell's handling of its topmost style in full
+    // screen is not one PLVS has observed.
+    assert_eq!(
+      taskbar_shows_full_screen(true, [taskbar(screen(), false)], screen()),
+      None
+    );
+  }
+
+  #[test]
+  fn a_followed_window_stays_full_screen_while_shown_and_covering_the_monitor() {
     let windowed = RECT {
       right: 1280,
       ..screen()
     };
-    assert!(keeps_full_screen(true, true, None, screen()));
-    assert!(keeps_full_screen(false, true, Some(screen()), screen()));
-    assert!(!keeps_full_screen(false, true, Some(windowed), screen()));
-    assert!(!keeps_full_screen(false, false, Some(screen()), screen()));
+    assert!(keeps_full_screen(true, Some(screen()), screen()));
+    assert!(!keeps_full_screen(true, Some(windowed), screen()));
+    assert!(!keeps_full_screen(false, Some(screen()), screen()));
+    // A minimized window's rectangle is parked off screen.
+    let parked = RECT {
+      left: -32000,
+      top: -32000,
+      right: -31840,
+      bottom: -31972,
+    };
+    assert!(!keeps_full_screen(true, Some(parked), screen()));
   }
 
   #[test]

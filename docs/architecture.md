@@ -650,12 +650,28 @@ work area, so opening the toolbar never reflows maximized windows.
 
 While the strip is on screen it stays registered with Shell even as an overlay: `ABM_NEW` without
 `ABM_SETPOS` reserves nothing but still delivers `ABN_FULLSCREENAPP`, which Shell sends only to
-registered appbars. `appbar.rs` treats the notification as a cue to look: a report starts only when
-the first ordinary window in the z-order on the Dock's own monitor covers that monitor, and Shell's
-"gone" always ends it. The check looks past PLVS's own windows and Shell's taskbars: Shell drops a
-taskbar's topmost style before moving it under the full-screen window and notifies appbars in
-between. Window extents come from DWM's frame bounds: a maximized window's invisible resize
-border reaches into the neighbouring display. With **Above Full Screen** on, the strip stays topmost and lays out against
+registered appbars. `appbar.rs` keeps one full-screen report for the Dock's monitor and decides it
+in one place, `next_report`; Shell's notification, a 500 ms poll that runs while a report stands,
+and the strip starting to watch (entering or resuming Dock, or moving it to another monitor or
+edge) are only cues to look. Shell's notifications cannot carry it alone: Shell sends them only
+when its own state changes, never reports a full-screen window gone to a registration made while it
+was open, and does not report one again when it returns from under another window. A report
+therefore follows one full-screen window until it closes, hides or stops covering the monitor, and
+marks it covered meanwhile.
+
+Where a taskbar that does not auto-hide shows on the Dock's monitor, Shell's own state read from it
+decides: Shell keeps that taskbar out of the topmost band for exactly as long as it treats the
+monitor as full screen, so the strip takes the taskbar's place exactly while Shell keeps it empty
+(see [ADR 0047](adr/0047-dock-reads-shell-full-screen-from-the-taskbar.md)). Without such a
+taskbar, Shell's notification starts and ends a report and the z-order decides between them. The
+z-order walk finds the first ordinary window covering the monitor, looking past PLVS's own windows,
+click-through overlays, Shell's taskbars, which Shell can leave above the full-screen window for a
+moment while it lowers them, and always-on-top windows that do not cover the monitor. Once Shell
+treats the monitor as full screen it also looks past windows that cover only part of it, such as
+another display's window reaching over the edge. Window extents come from DWM's frame bounds: a
+maximized window's invisible resize border reaches into the neighbouring display.
+
+With **Above Full Screen** on, the strip stays topmost and lays out against
 the whole monitor, where the full-screen window has hidden the taskbar; the reservation itself is
 unchanged, and the strip and toolbar refuse activation, because Shell ends full screen and brings
 the taskbar back when another application's window takes the foreground. A toolbar opened then holds
@@ -664,17 +680,7 @@ going elsewhere and the frontend closes it (see
 [ADR 0046](adr/0046-a-filling-dock-strip-refuses-activation.md)). With it off, the strip is hidden
 until the report ends. It is never dropped out of the
 topmost band, because Windows refuses to return a background process's window there (see
-[ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). While a
-report stands, a 500 ms timer repeats the same check, since Shell never reports a full-screen
-window gone to a registration made while it was open, nor reports one again when it returns from
-under another window. The report follows the full-screen window it found until that window
-closes, hides or stops covering the monitor (a minimized one is still followed). Where a taskbar
-shows on the Dock's monitor, Shell's own state read from it decides whether the strip steps back:
-Shell keeps that taskbar out of the topmost band for exactly as long as it treats the monitor as
-full screen. Starting to watch looks once for a full-screen window Shell will not report, so
-entering Dock or moving it onto a full-screen monitor fills too (see
-[ADR 0047](adr/0047-dock-reads-shell-full-screen-from-the-taskbar.md)). Without a taskbar there,
-the z-order decides. Open accessories move with the strip. Nothing
+[ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). Open accessories move with the strip. Nothing
 raises the header while the strip is hidden: it is opened only from the strip's entry, and the
 full-screen window taking the foreground closes a toolbar that was already open, through the same
 focus rule that closes it when the user clicks another application.

@@ -24,18 +24,22 @@ full-screen window to enter Dock ends Shell's full screen with the same z-order.
 
 ## Decision
 
-Where a Shell taskbar shows on the Dock's monitor, Shell's state read from that taskbar decides:
-Shell drops the taskbar's topmost style and moves it under the full-screen window for exactly as
-long as it treats the monitor as full screen, wherever the foreground goes on other monitors. The
-strip fills, or hides, while the taskbar there is not topmost.
+Where a Shell taskbar that does not auto-hide shows on the Dock's monitor, Shell's state read from
+that taskbar decides: Shell drops the taskbar's topmost style and moves it under the full-screen
+window for exactly as long as it treats the monitor as full screen, wherever the foreground goes on
+other monitors. The strip fills, or hides, while the taskbar there is not topmost.
 
-- Starting to watch, which covers entering and resuming Dock and moving it to another monitor or
-  edge, looks once: a full-screen window first in the z-order and a lowered taskbar start a report
-  without a notification. The look does not run after Shell's "gone", when the taskbar may not be
-  topmost yet.
-- While a report stands, the 500 ms check follows the full-screen window until it closes, hides or
-  stops covering the monitor, and steps the strip back whenever the taskbar is topmost again.
-- On a monitor without a taskbar, Shell's notification and the z-order decide as before.
+- One function decides the report. Shell's notification, the 500 ms poll that runs while a report
+  stands, and the strip starting to watch, which covers entering and resuming Dock and moving it to
+  another monitor or edge, only prompt it to look; with the taskbar's state known, a notification
+  that disagrees with it changes nothing.
+- A report follows one full-screen window until it closes, hides or stops covering the monitor, and
+  the strip steps back whenever the taskbar is topmost again. Once Shell treats the monitor as full
+  screen, finding that window looks past windows that cover only part of the monitor, such as
+  another display's window reaching over the edge.
+- Auto-hidden taskbars are ignored: they leave no place for the strip to take, and Shell's handling
+  of their topmost style in full screen has not been observed. There, and on a monitor without a
+  taskbar, Shell's notification and the z-order decide as before.
 
 ## Alternatives
 
@@ -43,12 +47,14 @@ strip fills, or hides, while the taskbar there is not topmost.
 - **`SHQueryUserNotificationState`.** Describes the foreground application, not a monitor.
 - **Poll Shell's state for as long as Dock is on.** Catches every change, but keeps a timer running
   for hours with nothing on screen to follow; Shell notifies every change that starts full screen.
+- **Read every taskbar, auto-hidden ones included.** Rests on behaviour nobody has checked, for a
+  taskbar that never leaves a gap to fill.
 
 ## Consequences
 
 - PLVS depends on Shell's observable handling of its taskbars, not on a documented contract,
   observed on Windows 11 23H2. A Windows release that kept the taskbar topmost over full-screen
-  windows would make the strip step back from them within 500 ms of each report on monitors with a
-  taskbar; the `dock full-screen window covered` log line right after a report marks it.
-- A full-screen window covered by another window when Dock starts watching is not found until Shell
-  next reports full screen.
+  windows would keep the strip from filling or hiding on monitors with a taskbar; a
+  `dock fullscreen notification: fullscreen=true shell=Some(false)` log line marks it.
+- While a report stands the poll reads the taskbar's style every 500 ms, and walks the z-order only
+  when the followed window is gone or no taskbar shows Shell's state.
