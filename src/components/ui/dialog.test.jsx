@@ -5,10 +5,10 @@ import { expect, it, vi } from "vitest";
 import { FloatingPanelHostProvider } from "../../hooks/FloatingPanelHostContext.jsx";
 import { Dialog, DialogContent, DialogTitle } from "./dialog.jsx";
 
-function Content({ onClose = () => {} }) {
+function Content({ onClose = () => {}, dimmed = true }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent aria-describedby={undefined}>
+      <DialogContent aria-describedby={undefined} dimmed={dimmed}>
         <DialogTitle>Preview</DialogTitle>
         <button>Preview Control</button>
       </DialogContent>
@@ -23,6 +23,25 @@ it("keeps the ordinary application's backdrop scoped to its viewport", () => {
   );
   expect(overlay).toBeTruthy();
   expect(overlay.style.clipPath).toBe("");
+});
+
+it("keeps an undimmed modal independent of a floating host's backdrop adaptation", () => {
+  const getModalBackdropElement = vi.fn();
+  const onClose = vi.fn();
+  render(
+    <FloatingPanelHostProvider
+      startDragging={null}
+      getModalBackdropElement={getModalBackdropElement}
+    >
+      <Content dimmed={false} onClose={onClose} />
+    </FloatingPanelHostProvider>
+  );
+  expect(getModalBackdropElement).not.toHaveBeenCalled();
+  expect(document.querySelector('[data-modal-backdrop-scope="panel"]')).toBeNull();
+  expect(document.querySelector('[data-modal-backdrop-scope="viewport"]')).toBeNull();
+  expect(document.querySelector('[data-modal-backdrop-scope="none"]')).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+  expect(onClose).toHaveBeenCalledOnce();
 });
 
 it("attaches a transparent host's backdrop to its editor as the host repositions it", () => {

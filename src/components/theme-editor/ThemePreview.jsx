@@ -233,6 +233,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
+        dimmed={false}
         aria-label="Theme preview"
         size="custom"
         layer={LAYER_PRIORITY}

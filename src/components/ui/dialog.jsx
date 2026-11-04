@@ -29,14 +29,16 @@ function useBackdropContainer(getElement) {
  * `size` picks one of three widths; `custom` leaves the width to `className`. `layer` is a constant
  * from `layers.js` and applies to the scrim and the dialog together. `centered={false}` drops the
  * centring so a dragged dialog can place itself through `style`. `overlayProps` reach the scrim,
- * for dialogs that dismiss on a scrim click.
+ * for dialogs that dismiss on a scrim click. `dimmed={false}` keeps modal input/scroll handling
+ * without painting a backdrop or consulting a floating host backdrop container.
  */
-/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { size?: "sm" | "md" | "lg" | "custom", layer?: string, centered?: boolean, overlayProps?: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & { [key: `data-${string}`]: string } } & React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Content>>>} */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { size?: "sm" | "md" | "lg" | "custom", layer?: string, centered?: boolean, dimmed?: boolean, overlayProps?: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & { [key: `data-${string}`]: string } } & React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Content>>>} */
 const DialogContent = React.forwardRef(function DialogContent(
   {
     size = "md",
     layer = LAYER_FLOATING,
     centered = true,
+    dimmed = true,
     overlayProps,
     className,
     children,
@@ -45,22 +47,23 @@ const DialogContent = React.forwardRef(function DialogContent(
   ref
 ) {
   const backdropElement = useModalBackdropElement();
-  const backdropContainer = useBackdropContainer(backdropElement);
+  const scopedBackdrop = dimmed ? backdropElement : null;
+  const backdropContainer = useBackdropContainer(scopedBackdrop);
   const overlay = (
     <DialogPrimitive.Overlay
       {...overlayProps}
-      data-modal-backdrop-scope={backdropElement ? "panel" : "viewport"}
+      data-modal-backdrop-scope={!dimmed ? "none" : scopedBackdrop ? "panel" : "viewport"}
       className={cn(
-        SCRIM_CLASS,
+        dimmed ? SCRIM_CLASS : "fixed inset-0",
         layer,
         overlayProps?.className,
-        backdropElement && "absolute rounded-xl"
+        scopedBackdrop && "absolute"
       )}
     />
   );
   return (
     <>
-      {(!backdropElement || backdropContainer) && (
+      {(!scopedBackdrop || backdropContainer) && (
         <DialogPrimitive.Portal container={backdropContainer ?? undefined}>
           {overlay}
         </DialogPrimitive.Portal>

@@ -150,7 +150,8 @@ expose the native window compositor without weakening the foreground information
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
-carried by every modal and by the file-drop target. Callers add only their own layer (see Layers).
+used by dimmed modals and by the file-drop target. Theme Preview uses an unpainted modal overlay
+while temporarily hiding its editor. Callers add only their own layer (see Layers).
 The Settings Sheet adds `backdrop-blur-sm` to that scrim as modal focus feedback; its readable
 drawer remains opaque. Other scrim consumers do not inherit that blur.
 

@@ -16,10 +16,11 @@ In both modes, Theme and Loudness Profile editors keep short pages compact and l
 600 CSS pixels or 80% of the available height, whichever is smaller. Available height means the
 application viewport in the normal window and the editor's monitor in Dock. Long content scrolls
 inside the editor while its title, tabs, and Save / Cancel controls remain visible.
-Theme Preview remains the same modal preview as in the normal window: opening it temporarily expands
-the authoring window, and closing it restores the editor's size and position. It adds no extra WebView.
-In the transparent authoring window, modal dimming stays attached to the editor surface as the
-window expands or recenters; it does not darken other applications visible behind the window.
+In both modes, opening Theme Preview temporarily hides the Theme editor without dimming the
+background. Closing Preview restores the editor with its draft, selected page, scroll position, and
+position intact. In Dock, Preview temporarily expands the same authoring window and closing it
+restores the editor's window bounds; it adds no extra WebView. Preview remains modal. Unsaved-change
+confirmation dialogs retain their usual dimming.
 Switching between Dock and the normal window preserves the open editor, unsaved draft, and Theme
 Preview. Clicking another application leaves authoring open; Close or Escape uses the
 current surface's normal close or cancel rules, including unsaved-draft confirmation. Updates and

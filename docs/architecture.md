@@ -707,10 +707,15 @@ hosts budget against their monitor using the frontend WebView scale. The native 
 80% of its own changing viewport, which would recursively shrink the editor. The host adds its
 transparent frame gutter outside the panel budget. Theme Preview retains its separate viewport.
 
-Modal backdrops in a transparent authoring host are portalled into the floating editor surface
-through the host context. An absolute inset overlay follows its actual containing block, including
-position-only changes when Preview expands the native viewport; no cached clipping rectangle is used. Viewport-wide dimming would otherwise darken unrelated desktop applications
-behind the expanded preview window. Ordinary application dialogs keep their viewport backdrop.
+Theme Preview uses the shared Dialog shell with `dimmed={false}` in both presentations. It retains
+modal focus, pointer, and scroll handling through an unpainted overlay, while bypassing the host's
+backdrop container entirely. The Theme editor stays mounted with `visibility: hidden` and `inert`
+during Preview, preserving its layout, draft, page, scroll position, and position until Preview closes.
+
+Other modal dialogs retain their normal dimming. In a transparent authoring host, the shared Dialog
+shell portals a dimmed backdrop into the editor surface supplied by the host context, so confirmation
+dialogs cannot darken unrelated applications. The editor's existing overflow clipping owns the rounded
+edge; the backdrop does not duplicate its radius. No clipping coordinates or resize listeners are used.
 
 Authoring drafts, preview-open state, validation, and file operations remain in main. An inactive
 authoring client acknowledges receipt/completion of its outstanding operations before declaring

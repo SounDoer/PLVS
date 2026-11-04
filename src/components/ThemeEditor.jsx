@@ -244,7 +244,8 @@ export function ThemeEditor({
         data-settings-editor
         aria-label="Theme editor"
         className={FLOATING_EDITOR_CLASS}
-        style={{ left: pos.x, top: pos.y }}
+        inert={previewOpen}
+        style={{ left: pos.x, top: pos.y, visibility: previewOpen ? "hidden" : undefined }}
       >
         <div
           {...dragHandlers}

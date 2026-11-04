@@ -323,6 +323,35 @@ describe("ThemeEditor", () => {
     expect(screen.queryByRole("dialog", { name: "Theme Preview" })).toBeNull();
   });
 
+  it("hides the mounted editor during Preview and restores its page, scroll, draft, and position", () => {
+    const onSave = vi.fn();
+    const onCancel = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} dirty onSave={onSave} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
+    const editor = screen.getByRole("dialog", { name: "Theme editor" });
+    const body = editor.querySelector("[data-settings-editor-body]");
+    body.scrollTop = 240;
+    const position = [editor.style.left, editor.style.top];
+    fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
+    expect(editor.isConnected).toBe(true);
+    expect(editor.style.visibility).toBe("hidden");
+    expect(editor.hasAttribute("inert")).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Theme editor" })).toBeNull();
+    expect(document.querySelector('[data-modal-backdrop-scope="panel"]')).toBeNull();
+    expect(document.querySelector('[data-modal-backdrop-scope="viewport"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close theme preview" }));
+    expect(screen.getByRole("dialog", { name: "Theme editor" })).toBe(editor);
+    expect(editor.style.visibility).toBe("");
+    expect(editor.hasAttribute("inert")).toBe(false);
+    expect(body.scrollTop).toBe(240);
+    expect([editor.style.left, editor.style.top]).toEqual(position);
+    expect(screen.getByRole("tab", { name: "Palettes" }).getAttribute("aria-selected")).toBe(
+      "true"
+    );
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it("keeps visual findings in Preview and jumps back to the related role", async () => {
     const draft = structuredClone(DRAFT);
     draft.overrides["interface.surface.control"] = { kind: "color", value: "#222222" };
