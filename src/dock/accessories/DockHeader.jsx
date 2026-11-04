@@ -11,7 +11,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { IconButton } from "../../components/IconButton.jsx";
-import { HoverTip } from "../../components/HoverTip.jsx";
+import { HoverTip, useTruncationTip } from "../../components/HoverTip.jsx";
 import { LinkButton } from "../../components/ui/link-button.jsx";
 import { cn } from "../../lib/utils.js";
 import { SHELL_HEADER_ACTIONS, SHELL_HEADER_BAR } from "../../lib/shellLayout.js";
@@ -193,7 +193,35 @@ function DockHeaderUpdate({ update, onAction }) {
   );
 }
 
-/** Read-only context; native tips can extend beyond the single-row accessory window. */
+/**
+ * One read-only context name. The themed tip sits beside the item so it stays inside the
+ * single-row accessory window, and appears only when the value is cut off.
+ *
+ * @param {{ label: string, value: string }} props
+ */
+function DockContextItem({ label, value }) {
+  const { anchorRef, showIfClipped, hideTip, tipNode } = useTruncationTip({
+    tip: `${label}: ${value}`,
+    side: "right",
+    align: "center",
+  });
+  return (
+    <span
+      ref={anchorRef}
+      className="flex min-w-0 items-center gap-2"
+      onMouseEnter={() => showIfClipped(anchorRef.current?.querySelector("[data-context-value]"))}
+      onMouseLeave={hideTip}
+    >
+      <span className={cn(FOOTER_LABEL, "shrink-0")}>{label}</span>
+      <span data-context-value className={FOOTER_VALUE}>
+        {value}
+      </span>
+      {tipNode}
+    </span>
+  );
+}
+
+/** Read-only context names, as the normal footer shows them. */
 function DockContextSummary({ footer }) {
   const items = [
     ["Source", footer?.sourceLabel],
@@ -208,10 +236,7 @@ function DockContextSummary({ footer }) {
       {items.map(([label, value], index) => (
         <div key={label} className="flex min-w-0 items-center">
           {index > 0 ? <div className={FOOTER_DIVIDER} /> : null}
-          <span className="flex min-w-0 items-center gap-2" title={`${label}: ${value}`}>
-            <span className={cn(FOOTER_LABEL, "shrink-0")}>{label}</span>
-            <span className={FOOTER_VALUE}>{value}</span>
-          </span>
+          <DockContextItem label={label} value={value} />
         </div>
       ))}
     </div>

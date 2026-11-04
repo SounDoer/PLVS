@@ -59,7 +59,7 @@ describe("DockHeader", () => {
     ).toEqual(["Clear", "Sources", "Loudness Profile", "Panels", "Views", "Presets"]);
   });
 
-  it("shows read-only footer names with full native hover text and omits absent names", () => {
+  it("shows read-only footer names with a themed tip only when clipped and omits absent names", () => {
     const { rerender } = render(
       <DockHeader
         state={{
@@ -73,9 +73,18 @@ describe("DockHeader", () => {
         onAction={vi.fn()}
       />
     );
-    expect(screen.getByTitle("Source: Speakers").textContent).toBe("SourceSpeakers");
-    expect(screen.getByTitle("Loudness: EBU R128")).toBeTruthy();
-    expect(screen.getByTitle("Preset: Monitoring *")).toBeTruthy();
+    const context = screen.getByTestId("dock-header-context");
+    expect(context.textContent).toBe("SourceSpeakersLoudnessEBU R128PresetMonitoring *");
+    expect(context.querySelector("[title]")).toBeNull();
+
+    const value = screen.getByText("EBU R128");
+    fireEvent.mouseEnter(value);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.mouseLeave(value);
+    Object.defineProperty(value, "scrollWidth", { configurable: true, value: 120 });
+    Object.defineProperty(value, "clientWidth", { configurable: true, value: 40 });
+    fireEvent.mouseEnter(value);
+    expect(screen.getByRole("tooltip").textContent).toBe("Loudness: EBU R128");
     expect(screen.getByTestId("dock-header-context").querySelector("button")).toBeNull();
     rerender(
       <DockHeader
