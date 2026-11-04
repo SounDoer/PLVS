@@ -53,3 +53,16 @@ it("offers the existing Theme action in Dock review", () => {
   fireEvent.click(screen.getByRole("button", { name: "Use Theme" }));
   expect(client.action).toHaveBeenCalledWith("import-action", { key: "2:review" });
 });
+
+it.each([
+  ["file", "Import Theme"],
+  ["clipboard", "Paste Theme"],
+])("labels a %s review with the shared transfer terms", (origin, title) => {
+  client.payload = {
+    key: "3:review",
+    mode: "review",
+    review: { type: "themes", origin, itemPlan: [] },
+  };
+  render(<DockImportApp />);
+  expect(screen.getByRole("heading", { name: title })).toBeTruthy();
+});

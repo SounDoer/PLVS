@@ -1,4 +1,5 @@
 import {
+  Settings,
   Bookmark,
   Check,
   CircleAlert,
@@ -158,6 +159,13 @@ export function DockHeader({ state, onAction }) {
               state.editorView === "presets" ? "bg-ui-hover text-foreground" : undefined
             )}
             onClick={(event) => toggleEditor("presets", event)}
+          />
+          <IconButton
+            icon={<Settings className={ACTION_ICON_CLASS} />}
+            tip="Settings"
+            data-ui-target="dock-toolbar:settings"
+            {...toolTipProps}
+            onClick={() => onAction("open-settings")}
           />
         </div>
       </div>

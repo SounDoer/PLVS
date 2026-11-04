@@ -5,6 +5,7 @@ import {
   emitDockAccessoryReady,
   listenDockAccessoryState,
 } from "../../ipc/dockAccessoryEvents.js";
+import { useAccessoryKeyboardShortcuts } from "./useAccessoryKeyboardShortcuts.js";
 import { acceptAccessorySnapshot } from "../accessoryProtocol.js";
 import { applyResolvedThemeToDocument, isThemePublication } from "../../theme/themeRuntime.js";
 
@@ -97,5 +98,6 @@ export function useAccessoryClient(surface) {
     [surface]
   );
 
+  useAccessoryKeyboardShortcuts(payload?.keyboard, action);
   return { payload, action };
 }

@@ -233,6 +233,7 @@ export function ThemeEditor({
       <div
         ref={ref}
         role="dialog"
+        data-settings-editor
         aria-label="Theme editor"
         className={`${FLOATING_WINDOW_CLASS} max-h-[80vh] w-[var(--ui-editor-w)]`}
         style={{ left: pos.x, top: pos.y }}
@@ -368,7 +369,7 @@ export function ThemeEditor({
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
+        <div data-settings-editor-body className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
           {page === "core" ? (
             <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
               <div>

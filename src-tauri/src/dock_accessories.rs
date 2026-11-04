@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 use crate::dock::{dock_accessory_rects, DockEdge};
 use crate::window_state::{MonitorRect, WindowBounds};
@@ -9,6 +9,7 @@ pub const DOCK_HEADER_LABEL: &str = "dock-header";
 pub const DOCK_EDITOR_LABEL: &str = "dock-editor";
 pub const DOCK_UPDATE_LABEL: &str = "dock-update";
 pub const DOCK_IMPORT_LABEL: &str = "dock-import";
+pub const DOCK_SETTINGS_LABEL: &str = "dock-settings";
 
 fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   manager: &'a M,
@@ -21,7 +22,11 @@ fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
     label,
     WebviewUrl::App(format!("index.html?surface={label}").into()),
   )
-  .title("PLVS")
+  .title(if label == DOCK_SETTINGS_LABEL {
+    "PLVS — Settings"
+  } else {
+    "PLVS"
+  })
   .inner_size(1.0, 1.0)
   .initialization_script(init_script)
   .visible(false)
@@ -64,6 +69,21 @@ fn ensure_accessory<R: tauri::Runtime>(
   let window = accessory_builder(app, label, &init_script)
     .build()
     .map_err(|error| format!("{label} window: {error}"))?;
+  if label == DOCK_SETTINGS_LABEL {
+    let owner = app.clone();
+    window.on_window_event(move |event| {
+      if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        api.prevent_close();
+        let _ = owner.emit_to(
+          "main",
+          "dock-accessory://action",
+          serde_json::json!({
+            "surface": DOCK_SETTINGS_LABEL, "type": "settings-dismiss", "payload": {}
+          }),
+        );
+      }
+    });
+  }
   #[cfg(target_os = "macos")]
   crate::macos_dock_window::configure_accessory(&window)?;
   // Subclassing must happen on the thread that owns the window; this command runs elsewhere.
@@ -221,6 +241,7 @@ pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     DOCK_EDITOR_LABEL,
     DOCK_UPDATE_LABEL,
     DOCK_IMPORT_LABEL,
+    DOCK_SETTINGS_LABEL,
   ] {
     if let Some(window) = app.get_webview_window(label) {
       let _ = show_or_hide(&window, false, false);
@@ -384,4 +405,181 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     show_or_hide(editor, editor_visible, true)?;
   }
   Ok(())
+}
+
+/// Settings is a long-lived interaction, independent of transient toolbar/editor focus.
+#[tauri::command]
+pub async fn prepare_dock_settings_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+) -> Result<(), String> {
+  if window.label() != "main" {
+    return Err("Only main owns Settings presentation.".into());
+  }
+  if !cfg!(any(target_os = "windows", target_os = "macos")) {
+    return Err("Dock is unavailable on this platform.".into());
+  }
+  ensure_accessory(window.app_handle(), DOCK_SETTINGS_LABEL)
+}
+
+#[tauri::command]
+pub fn set_dock_settings_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+  visible: bool,
+  edge: DockEdge,
+  webview_scale: f64,
+  focus: bool,
+  logical_width: f64,
+) -> Result<Option<WindowBounds>, String> {
+  if window.label() != "main" {
+    return Err("Only main owns Settings presentation.".into());
+  }
+  let Some(settings) = window.app_handle().get_webview_window(DOCK_SETTINGS_LABEL) else {
+    return if visible {
+      Err("Dock Settings window unavailable.".into())
+    } else {
+      Ok(None)
+    };
+  };
+  if !visible {
+    show_or_hide(&settings, false, false)?;
+    return Ok(None);
+  }
+  if !webview_scale.is_finite() || webview_scale <= 0.0 {
+    return Err("Invalid Settings window scale.".into());
+  }
+  let (monitor, strip, _) = main_geometry(&window)?;
+  if !logical_width.is_finite() || logical_width <= 0.0 {
+    return Err("Invalid Settings window width.".into());
+  }
+  let rect = settings_window_bounds(monitor, strip, edge, webview_scale, logical_width);
+  set_rect(&settings, rect)?;
+  show_or_hide(&settings, true, true)?;
+  if focus {
+    focus_window(&settings)?;
+  }
+  Ok(Some(rect))
+}
+
+fn settings_window_bounds(
+  monitor: MonitorRect,
+  strip: WindowBounds,
+  edge: DockEdge,
+  scale: f64,
+  logical_width: f64,
+) -> WindowBounds {
+  let header = dock_accessory_rects(monitor, strip, edge, scale, 400.0, 400.0, None).header;
+  let inset = (8.0 * scale).round().max(1.0) as u32;
+  let width = ((logical_width * scale).round() as u32)
+    .min(monitor.width.saturating_sub(2 * inset))
+    .max(1);
+  let available = match edge {
+    DockEdge::Top => {
+      monitor.y + monitor.height as i32 - (header.y + header.height as i32) - inset as i32
+    }
+    DockEdge::Bottom => header.y - monitor.y - inset as i32,
+  }
+  .max(1) as u32;
+  let height = ((800.0 * scale).round() as u32).min(available).max(1);
+  WindowBounds {
+    x: monitor.x + monitor.width.saturating_sub(width + inset) as i32,
+    y: match edge {
+      DockEdge::Top => header.y + header.height as i32,
+      DockEdge::Bottom => header.y - height as i32,
+    },
+    width,
+    height,
+    is_maximized: false,
+  }
+}
+
+#[cfg(test)]
+mod settings_tests {
+  use super::*;
+  #[test]
+  fn settings_fits_each_edge_and_uses_webview_scale() {
+    let monitor = MonitorRect {
+      x: -1600,
+      y: 0,
+      width: 1600,
+      height: 1000,
+    };
+    for edge in [DockEdge::Top, DockEdge::Bottom] {
+      let strip = WindowBounds {
+        x: -1600,
+        y: if edge == DockEdge::Top { 0 } else { 850 },
+        width: 1600,
+        height: 150,
+        is_maximized: false,
+      };
+      let bounds = settings_window_bounds(monitor, strip, edge, 1.25, 640.0);
+      assert_eq!(bounds.width, 800);
+      assert!(bounds.height > 0 && bounds.y >= monitor.y);
+      assert!(
+        bounds.x >= monitor.x && bounds.x + bounds.width as i32 <= monitor.x + monitor.width as i32
+      );
+      assert!(bounds.y + bounds.height as i32 <= monitor.y + monitor.height as i32);
+    }
+  }
+}
+
+/// The main application's file actions keep their business owner, but their native dialog must
+/// belong to the visible Settings host. The strip can deliberately refuse activation.
+#[tauri::command]
+pub async fn settings_file_dialog<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+  save: bool,
+  filter_name: String,
+  extensions: Vec<String>,
+  default_path: Option<String>,
+) -> Result<Option<String>, String> {
+  use tauri_plugin_dialog::DialogExt;
+  if window.label() != "main" {
+    return Err("Only main owns Settings file operations.".into());
+  }
+  let app = window.app_handle();
+  let parent = app
+    .get_webview_window(DOCK_SETTINGS_LABEL)
+    .filter(|candidate| candidate.is_visible().unwrap_or(false))
+    .unwrap_or(window.clone());
+  let extension_refs: Vec<_> = extensions.iter().map(String::as_str).collect();
+  let mut builder = app.dialog().file().add_filter(filter_name, &extension_refs);
+  #[cfg(any(target_os = "windows", target_os = "macos"))]
+  {
+    builder = builder.set_parent(&parent);
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  let _ = parent;
+  if let Some(path) = default_path {
+    let path = std::path::PathBuf::from(path);
+    if path.is_dir() {
+      builder = builder.set_directory(path);
+    } else {
+      if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+      {
+        builder = builder.set_directory(parent);
+      }
+      if let Some(name) = path.file_name() {
+        builder = builder.set_file_name(name.to_string_lossy());
+      }
+    }
+  }
+  tauri::async_runtime::spawn_blocking(move || {
+    let selected = if save {
+      builder.blocking_save_file()
+    } else {
+      builder.blocking_pick_file()
+    };
+    selected
+      .map(|path| {
+        path
+          .into_path()
+          .map(|path| path.to_string_lossy().into_owned())
+          .map_err(|error| error.to_string())
+      })
+      .transpose()
+  })
+  .await
+  .map_err(|error| error.to_string())?
 }

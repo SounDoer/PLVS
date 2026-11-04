@@ -39,6 +39,7 @@ impl VisualCapturePlatform for LinuxPlatform {
           "dockHeader",
           "dockEditor",
           "dockUpdate",
+          "dockSettings",
         ],
       },
       recording: system_ffmpeg::linux_recording_capabilities(&system_ffmpeg::probe()),

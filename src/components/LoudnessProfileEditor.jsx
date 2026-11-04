@@ -449,6 +449,7 @@ export function LoudnessProfileEditor({
       <div
         ref={ref}
         role="dialog"
+        data-settings-editor
         aria-label="Loudness Profile editor"
         className={`${FLOATING_WINDOW_CLASS} max-h-[80vh] w-[var(--ui-editor-w)] gap-2`}
         style={{ left: pos.x, top: pos.y }}
@@ -528,7 +529,7 @@ export function LoudnessProfileEditor({
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
+        <div data-settings-editor-body className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
           {/* Reference is the profile's anchor, not a rule -- it can never be dragged, so it is its
               own grid instance rather than sharing a container with the reorderable rule list below
               (see GRID_TEMPLATE_CLASS for why every column but the flexible one still lines up). It

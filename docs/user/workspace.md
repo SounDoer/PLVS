@@ -54,7 +54,7 @@ In Dock, the toolbar button in the right control column shows a status icon whil
 toolbar to see the summary, then click it for the same list in a floating window toward the inside
 of the screen. Capture interruptions and failures of enabled dialogue detection show the toolbar
 automatically. Channel-layout limits, screen-space reservation failures and update state do not.
-Opening Settings from the list returns Dock to the normal window first.
+Opening Settings from the list opens the Dock Settings window and keeps Dock active.
 
 An unknown channel layout means loudness uses channels 1–2 only until you set a layout in Settings.
 This condition and **Audio Dropped** appear in the shared status list rather than inside individual
@@ -118,7 +118,8 @@ avoidance does not add extra axis ticks.
 ## Dock
 
 The Dock toolbar offers **Sources** for the same live device/application selection as the normal
-window. **Views** starts with where the strip sits, **Dock: Off / Top / Bottom**, then **Reserve
+window. **Settings** opens the same settings and authoring controls in one reusable window beside
+the strip. Opening it leaves capture and history running. **Views** starts with where the strip sits, **Dock: Off / Top / Bottom**, then **Reserve
 Space** and **Above Full Screen** where supported, and ends with how it looks, **Hide Axes & Labels**
 and **Surface Opacity**. Select **Off** to restore the normal window. Sources and Views open beside the strip;
 opening either does not restart capture. Panel settings remain accessible through the panel editor.

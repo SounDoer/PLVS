@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useThemeSettings } from "./useThemeSettings.js";
 import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useAutostart } from "./useAutostart.js";
@@ -14,7 +14,12 @@ import { useUpdatePreferences } from "./useUpdatePreferences.js";
 
 /** @param {{ shortcutActionRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
 export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } = {}) {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setOpen] = useState(false);
+  const [settingsOpenEpoch, setOpenEpoch] = useState(0);
+  const setSettingsOpen = useCallback((open) => {
+    setOpen(open);
+    if (open === true) setOpenEpoch((value) => value + 1);
+  }, []);
   const [settingsSectionRequest, setSettingsSectionRequest] = useState(
     /** @type {{ section: string } | null} */ (null)
   );
@@ -36,6 +41,7 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
 
   return {
     settingsOpen,
+    settingsOpenEpoch,
     setSettingsOpen,
     settingsSectionRequest,
     setSettingsSectionRequest,

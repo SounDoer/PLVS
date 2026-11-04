@@ -254,9 +254,7 @@ export function AppLifecycleProvider({ children }) {
     dispatchShortcutAction: (actionId) => shortcutActionRef.current?.(actionId),
     running,
     showClock,
-    // Settings dialog is normal-form only; ignore the shortcut while docked so
-    // exiting dock doesn't pop a dialog opened invisibly from the strip.
-    setSettingsOpen: docked ? () => {} : setSettingsOpen,
+    setSettingsOpen,
     keyboardShortcuts,
     shortcutCapturing,
     autoHideControls: focusView.autoHideControls,

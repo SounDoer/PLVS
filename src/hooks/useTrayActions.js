@@ -1,10 +1,9 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
 
 /** Tray navigation reuses the existing Settings and update surfaces, including Dock accessories. */
+/** @param {any} options */
 export function useTrayActions({
-  docked,
   onShowWindow,
-  exitDockRestoringAttributes,
   setSettingsOpen,
   focusUpdateSettings,
   updates,
@@ -18,14 +17,10 @@ export function useTrayActions({
     if (busyRef.current) return false;
     await onShowWindow();
     if (busyRef.current) return false;
-    if (docked) {
-      const result = await exitDockRestoringAttributes();
-      if (!result.ok) return false;
-    }
     if (busyRef.current) return false;
     setSettingsOpen(true);
     return true;
-  }, [docked, onShowWindow, exitDockRestoringAttributes, setSettingsOpen]);
+  }, [onShowWindow, setSettingsOpen]);
 
   const onOpenUpdate = useCallback(async () => {
     if (updateBusy || !updates.enabled) return;

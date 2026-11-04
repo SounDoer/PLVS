@@ -551,7 +551,7 @@ export function AgentControlBridge() {
       platformCapabilities,
       getRuntime: () => visualRuntimeRef.current,
       settle: (target, options) =>
-        ["dockHeader", "dockEditor", "dockUpdate"].includes(target.kind)
+        ["dockHeader", "dockEditor", "dockUpdate", "dockSettings"].includes(target.kind)
           ? settleDockAccessory(target, visualRuntimeRef.current, options)
           : visualCaptureSurfaces.settle(target, options),
       captureScreenshot: captureVisualScreenshot,

@@ -297,15 +297,6 @@ export function UiNavigationProvider({
         if (!controller) {
           throw createUiNavigationError("surfaceUnavailable", { kind });
         }
-        if (
-          ["themeEditor", "loudnessProfileEditor"].includes(kind) &&
-          environment.windowForm === "dock"
-        ) {
-          throw createUiNavigationError("surfaceUnavailable", {
-            kind,
-            windowForm: environment.windowForm,
-          });
-        }
         const obstructingSurface = [...before.surfaces]
           .reverse()
           .find(
@@ -361,7 +352,7 @@ export function UiNavigationProvider({
           surface,
         };
       }),
-    [commitState, enqueueAction, environment.windowForm, getRevision, waitForSurface, waitForTarget]
+    [commitState, enqueueAction, getRevision, waitForSurface, waitForTarget]
   );
   const showSettings = useCallback(
     ({ section, expectedRevision, expectedUiGeneration }) =>
@@ -633,11 +624,13 @@ export function useUiSurface({
   const registry = useContext(UiSurfaceRegistryContext);
   const surfaceIdRef = useRef(null);
   const lifetimeKeyRef = useRef(lifetimeKey);
+  const wasActiveRef = useRef(false);
   if (surfaceIdRef.current === null) {
     surfaceIdRef.current = createUiSurfaceId();
-  } else if (active && lifetimeKeyRef.current !== lifetimeKey) {
+  } else if (active && (!wasActiveRef.current || lifetimeKeyRef.current !== lifetimeKey)) {
     surfaceIdRef.current = createUiSurfaceId();
   }
+  wasActiveRef.current = active;
   if (active) lifetimeKeyRef.current = lifetimeKey;
   const surfaceId = surfaceIdRef.current;
   const descriptorKey = JSON.stringify(descriptor);
@@ -670,4 +663,17 @@ export function useUiNavigationTarget(kind, targetOrController, maybeController 
     if (!registry) return undefined;
     return registry.registerUiTarget(key, controllerRef);
   }, [key, registry]);
+}
+
+/** Internal adapter boundary for Settings rendered in its accessory WebView. */
+export function UiSurfaceRegistryProvider({ registry, children }) {
+  return (
+    <UiSurfaceRegistryContext.Provider value={registry}>
+      {children}
+    </UiSurfaceRegistryContext.Provider>
+  );
+}
+
+export function useUiSurfaceRegistry() {
+  return useContext(UiSurfaceRegistryContext);
 }

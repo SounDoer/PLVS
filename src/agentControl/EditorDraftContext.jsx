@@ -193,3 +193,12 @@ export function useEditorDraftDecision({
     );
   }, [active, decisionSurfaceId, editorKind, editorSurfaceId, registry]);
 }
+
+/** Internal presentation adapter; editor ownership remains in the main application. */
+export function EditorDraftRegistryProvider({ registry, children }) {
+  return <EditorDraftContext.Provider value={registry}>{children}</EditorDraftContext.Provider>;
+}
+
+export function useOptionalEditorDraftRegistry() {
+  return useContext(EditorDraftContext);
+}

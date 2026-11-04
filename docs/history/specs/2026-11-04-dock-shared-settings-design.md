@@ -1,8 +1,9 @@
 # Shared Settings in the Normal Window and Dock
 
 Date: 2026-11-04
-Status: In progress. Shared content and persistent ownership are implemented; the native Dock
-Settings host and its entry point are not yet exposed.
+Status: Implemented on `codex/dock-shared-settings`. Windows desktop acceptance is recorded in the
+implementation plan. macOS runtime, monitor migration, and additional display-scale acceptance remain
+platform checks; they have not been inferred from Windows tests.
 
 ## Intent
 
@@ -207,6 +208,7 @@ to add the gear; existing navigation commands should gain accurate Dock availabi
 - **Expand or overlay the Dock's main window:** entangles settings with reserved-edge geometry and
   risks covering other applications with a large transparent surface. Rejected.
 
-The main remaining implementation uncertainty is cross-platform focus and native dialog ownership,
-followed by the amount of controller extraction needed for complete authoring. Validate these with
-the vertical slice above. No runtime performance improvement is claimed by this design review.
+The implementation follows this owner/presentation split and records the host decision in ADR 0049.
+Windows validation covers the native host, persisted authoring, flow handoffs, dropdowns, and repeated
+open/close resource measurements. Cross-platform focus and native-dialog completion still require
+the platform checks recorded in the implementation plan. No performance improvement is claimed.

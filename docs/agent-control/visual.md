@@ -26,7 +26,7 @@ artifact. `recording.unavailable` is `null` while recording is available; otherw
 - `main` is the complete PLVS main WebView client area, excluding native window chrome.
 - `workspace` is the rendered workspace inside the main WebView. It is unavailable in Dock form.
 - `panel` is one currently rendered Panel body selected by `--panel-id`; hidden inactive tabs fail.
-- `dock-header`, `dock-editor`, and `dock-update` are the complete client areas of those accessory WebViews. They
+- `dock-header`, `dock-editor`, `dock-update`, and `dock-settings` are the complete client areas of those accessory WebViews. They
   are screenshot-only and must currently exist, be ready, and be visible.
 - `dock` is recording-only on Windows and macOS: the screen region of the Dock strip extended
   toward the middle of the screen by the toolbar and the tallest editor, so the toolbar and an

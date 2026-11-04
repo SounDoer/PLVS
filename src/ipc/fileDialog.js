@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 export const MEDIA_EXTENSIONS = [
@@ -39,7 +40,7 @@ export async function pickMediaFile() {
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 export async function pickConfigurationProfileFile() {
-  const selected = await open({
+  const selected = await settingsDialog(false, {
     multiple: false,
     directory: false,
     filters: [{ name: "PLVS Configuration", extensions: PROFILE_EXTENSIONS }],
@@ -49,7 +50,7 @@ export async function pickConfigurationProfileFile() {
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 export async function saveConfigurationProfileFile(defaultPath = "plvs-configuration.plvsconfig") {
-  const selected = await save({
+  const selected = await settingsDialog(true, {
     defaultPath,
     filters: [{ name: "PLVS Configuration", extensions: PROFILE_EXTENSIONS }],
   });
@@ -73,7 +74,7 @@ export async function saveFileAnalysisReportFile(
  * @returns {Promise<string | null>} Absolute path, or null if the user cancelled.
  */
 export async function pickPackFile(descriptor) {
-  const selected = await open({
+  const selected = await settingsDialog(false, {
     multiple: false,
     directory: false,
     filters: [{ name: descriptor.filterName, extensions: [descriptor.extension] }],
@@ -83,7 +84,7 @@ export async function pickPackFile(descriptor) {
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 export async function pickSharedPackFile() {
-  const selected = await open({
+  const selected = await settingsDialog(false, {
     multiple: false,
     directory: false,
     filters: [{ name: "PLVS Shared Item", extensions: SHARED_ITEM_EXTENSIONS }],
@@ -97,9 +98,23 @@ export async function pickSharedPackFile() {
  * @param {string} defaultPath
  */
 export async function savePackFile(descriptor, defaultPath) {
-  const selected = await save({
+  const selected = await settingsDialog(true, {
     defaultPath,
     filters: [{ name: descriptor.filterName, extensions: [descriptor.extension] }],
   });
   return typeof selected === "string" ? selected : null;
+}
+
+/**
+ * Route the native parent without moving file reading, writing, or persistence into an accessory.
+ * @param {boolean} save
+ * @param {{ filters: any[], defaultPath?: string | null, [key: string]: any }} options
+ */
+async function settingsDialog(save, { filters, defaultPath = null }) {
+  return invoke("settings_file_dialog", {
+    save,
+    filterName: filters[0].name,
+    extensions: filters[0].extensions,
+    defaultPath,
+  });
 }

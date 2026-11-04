@@ -16,6 +16,7 @@ import { listCustomThemes } from "./theme/customThemesRepo.js";
 import { DockHeaderApp } from "./dock/accessories/DockHeaderApp.jsx";
 import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
 import { DockImportApp } from "./dock/accessories/DockImportApp.jsx";
+import { DockSettingsApp } from "./dock/accessories/DockSettingsApp.jsx";
 import { DockUpdateApp } from "./dock/accessories/DockUpdateApp.jsx";
 import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
 import { DOCK_ACCESSORY_SURFACES } from "./dock/accessoryProtocol.js";
@@ -53,7 +54,9 @@ applyThemeToDocument(resolvedThemeId, customThemes);
 installKeyboardNavigationTracking();
 
 const root =
-  surface === "dock-header" ? (
+  surface === "dock-settings" ? (
+    <DockSettingsApp />
+  ) : surface === "dock-header" ? (
     <DockHeaderApp />
   ) : surface === "dock-editor" ? (
     <DockEditorApp />

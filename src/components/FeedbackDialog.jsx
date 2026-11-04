@@ -22,7 +22,11 @@ export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
   return <FeedbackContent controller={controller} onClose={onClose} />;
 }
 
-export function FeedbackContent({ controller, onClose }) {
+export function FeedbackContent({
+  controller,
+  onClose,
+  onPrivacy = () => openExternalUrl(PRIVACY_POLICY_URL),
+}) {
   const {
     content,
     setContent,
@@ -51,6 +55,7 @@ export function FeedbackContent({ controller, onClose }) {
     <div
       ref={ref}
       role="dialog"
+      data-settings-editor
       aria-label="Send feedback"
       className={`${FLOATING_WINDOW_CLASS} w-80 gap-2`}
       style={{ left: pos.x, top: pos.y, maxHeight: `calc(100vh - ${pos.y + 12}px)` }}
@@ -62,7 +67,10 @@ export function FeedbackContent({ controller, onClose }) {
         <span className="text-[length:var(--ui-fs-panel-title)] font-semibold">Send Feedback</span>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-2">
+      <div
+        data-settings-editor-body
+        className="flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-2"
+      >
         <textarea
           aria-label="Feedback content"
           value={content}
@@ -144,7 +152,7 @@ export function FeedbackContent({ controller, onClose }) {
         )}
         <LinkButton
           className="self-start text-[length:var(--ui-fs-axis)] underline-offset-4 hover:underline"
-          onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
+          onClick={onPrivacy}
         >
           Privacy Policy
         </LinkButton>

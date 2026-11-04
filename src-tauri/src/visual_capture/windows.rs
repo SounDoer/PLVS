@@ -32,6 +32,7 @@ impl VisualCapturePlatform for WindowsPlatform {
           "dockHeader",
           "dockEditor",
           "dockUpdate",
+          "dockSettings",
         ],
       },
       recording: RecordingCapabilities {

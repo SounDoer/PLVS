@@ -164,3 +164,9 @@ describe("interface size profiles", () => {
     }
   });
 });
+
+it("uses the normal Settings control and editor geometry in the stable Dock Settings host", () => {
+  expect(
+    resolveInterfacePreferencesForSurface(UI_PREFERENCES, "extra-large", "dock-settings")
+  ).toEqual(resolveInterfacePreferences(UI_PREFERENCES, "extra-large"));
+});

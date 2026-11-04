@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { MEDIA_EXTENSIONS, pickMediaFile, saveFileAnalysisReportFile } from "./fileDialog.js";
+import {
+  MEDIA_EXTENSIONS,
+  pickMediaFile,
+  saveFileAnalysisReportFile,
+  pickConfigurationProfileFile,
+  saveConfigurationProfileFile,
+  pickSharedPackFile,
+} from "./fileDialog.js";
 
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(),
   save: vi.fn(),
@@ -53,6 +62,36 @@ describe("saveFileAnalysisReportFile", () => {
     expect(save).toHaveBeenLastCalledWith({
       defaultPath: "mix-plvs-report.json",
       filters: [{ name: "PLVS Report", extensions: ["json"] }],
+    });
+  });
+});
+
+describe("Settings file dialog parent routing", () => {
+  it("keeps native picking in main and sends the existing configuration filters", async () => {
+    vi.mocked(invoke).mockResolvedValue("C:\\acceptance.plvsconfig");
+    await expect(saveConfigurationProfileFile("acceptance.plvsconfig")).resolves.toBe(
+      "C:\\acceptance.plvsconfig"
+    );
+    expect(invoke).toHaveBeenLastCalledWith("settings_file_dialog", {
+      save: true,
+      filterName: "PLVS Configuration",
+      extensions: ["plvsconfig"],
+      defaultPath: "acceptance.plvsconfig",
+    });
+    vi.mocked(invoke).mockResolvedValue(null);
+    await expect(pickConfigurationProfileFile()).resolves.toBeNull();
+    expect(invoke).toHaveBeenLastCalledWith("settings_file_dialog", {
+      save: false,
+      filterName: "PLVS Configuration",
+      extensions: ["plvsconfig"],
+      defaultPath: null,
+    });
+    await expect(pickSharedPackFile()).resolves.toBeNull();
+    expect(invoke).toHaveBeenLastCalledWith("settings_file_dialog", {
+      save: false,
+      filterName: "PLVS Shared Item",
+      extensions: ["plvsloudness", "plvspreset", "plvstheme"],
+      defaultPath: null,
     });
   });
 });

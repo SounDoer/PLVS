@@ -2,10 +2,17 @@
 
 Everything for making PLVS fit into how you work day to day.
 
-Opening Settings softly blurs and dims the workbench behind it while the Settings drawer stays
+In the normal window, opening Settings softly blurs and dims the workbench behind it while the Settings drawer stays
 opaque and clear.
 The drawer keeps a single border along its inner edge against the workbench. Floating menus and
 dialogs retain their full outlines and shadows.
+
+In Dock, **Settings** in the expanded toolbar opens the same controls in a separate window without
+leaving Dock or restarting capture. Theme and Loudness Profile editors, Feedback, and Saved Items
+export share that window. Clicking another application leaves it open; Close or Escape uses the
+current surface's normal close or cancel rules, including unsaved-draft confirmation. Updates and
+import review use their existing accessories, temporarily hiding Settings until the flow finishes.
+**Quick Tour** returns to the normal window before starting.
 
 ## Control feedback
 
@@ -54,8 +61,8 @@ barrier stopped.
 PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
 main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's
 tray host; use the menu's **Show** or **Hide**, available on all three platforms.
-**Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it restores the
-normal window first; if restoration fails, Settings stays closed.
+**Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
+Settings window while keeping Dock active. The Settings keyboard shortcut uses the same entry.
 
 With one workbench open, its window, Start / Stop, Source, Preset and Settings controls appear
 directly in the Tray menu. With several open, each workbench's Source-derived name appears directly
@@ -331,7 +338,7 @@ Theme. PLVS still imports older Theme pack files. If any Theme entry is damaged 
 the import reports the problem and adds nothing instead of silently skipping that entry.
 
 A Theme, Preset, or Loudness Profile copied as text can be pasted straight into PLVS: press
-**Ctrl+V** on Windows or **Command+V** on macOS outside a text field. In Dock mode, first focus the Dock strip, toolbar, or editor; the import review opens in a separate window. The text is the
+**Ctrl+V** on Windows or **Command+V** on macOS outside a text field. In Dock mode, first focus the Dock strip, toolbar, editor, or Settings window; the import review opens in a separate window. The text is the
 same content as the shared file, so anything **Import** accepts can also be pasted. PLVS opens the
 normal import review before adding anything; it never applies or overwrites an Item just because
 it was pasted. A copied or

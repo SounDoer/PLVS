@@ -173,6 +173,9 @@ function AppContent() {
     statusItems,
     statusOpen,
     openDockMenu,
+    setSettingsGeometry,
+    setSettingsTargets,
+    onSettingsError,
   } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
@@ -224,6 +227,7 @@ function AppContent() {
     dockHeight,
     dockPreviewHeight,
     dockTransitioning,
+    dockSuspended,
     layout: dockLayout,
     onDockChange,
     exitDockRestoringAttributes,
@@ -710,6 +714,16 @@ function AppContent() {
         settingsOverlays={
           <AppSettingsOverlays
             presentationEnabled={!docked}
+            dockPresentation={{
+              edge: dockEdge,
+              running,
+              showClock,
+              onShortcut: (actionId) => settings.shortcutActionRef.current?.(actionId),
+              suspended: dockSuspended,
+              onGeometry: setSettingsGeometry,
+              onTargets: setSettingsTargets,
+              onError: onSettingsError,
+            }}
             ref={settingsOverlaysRef}
             settings={settings}
             crashReportSetting={crashReportSetting}
@@ -729,7 +743,8 @@ function AppContent() {
             updateControls={updateControls}
             appVersion={APP_VERSION}
             onAgentControlEnabledChange={setAgentControlEnabled}
-            onOpenQuickTour={() => {
+            onOpenQuickTour={async () => {
+              if (docked && !(await exitDockRestoringAttributes()).ok) return;
               setSettingsOpen(false);
               setQuickTourRequest((value) => value + 1);
             }}

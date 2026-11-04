@@ -221,6 +221,7 @@ pub fn configure_accessory<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Resu
     "dock-editor" => 2,
     "dock-update" => 3,
     "dock-import" => 4,
+    "dock-settings" => 5,
     _ => return Err("Unknown macOS Dock accessory.".into()),
   };
   on_main(window, move |raw| {

@@ -1,6 +1,9 @@
 /** @vitest-environment jsdom */
+import { useState } from "react";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { DockImportSurface } from "./DockImportSurface.jsx";
 
 const mock = vi.hoisted(() => ({
@@ -174,4 +177,56 @@ it("uses the existing reviewed Theme without confirming an import", async () => 
   expect(pack.runReviewAction).toHaveBeenCalledOnce();
   expect(settings.setFixedThemeIdFromPicker).toHaveBeenCalledWith("saved");
   expect(pack.confirmImport).not.toHaveBeenCalled();
+});
+
+it("registers the visible import handoff and cancels through its production owner", async () => {
+  pack.review = { type: "themes", origin: "file", itemPlan: [] };
+  /** @type {ReturnType<typeof useUiNavigation>} */
+  let navigation;
+  function Probe() {
+    navigation = useUiNavigation();
+    return null;
+  }
+  function Owner() {
+    const [active, setActive] = useState(true);
+    return (
+      <DockImportSurface
+        {...{ settings, loudnessProfile, presets }}
+        pack={{
+          ...pack,
+          review: active ? pack.review : null,
+          cancelImport: () => {
+            pack.cancelImport();
+            setActive(false);
+          },
+        }}
+      />
+    );
+  }
+  render(
+    <BlockingEditorsProvider>
+      <UiNavigationProvider>
+        <Probe />
+        <Owner />
+      </UiNavigationProvider>
+    </BlockingEditorsProvider>
+  );
+  expect(navigation.inspectUi().surfaces).toEqual([]);
+  act(() => mock.options.onGeometry({ visible: true }));
+  await waitFor(() =>
+    expect(navigation.inspectUi().surfaces.some((s) => s.kind === "importReview")).toBe(true)
+  );
+  expect(mock.options.payload.review.origin).toBe("file");
+  const state = navigation.inspectUi();
+  let pending;
+  await act(async () => {
+    pending = navigation.cancelSurface({
+      surfaceId: state.topSurfaceId,
+      expectedRevision: state.revision,
+      expectedUiGeneration: state.uiGeneration,
+    });
+    await Promise.resolve();
+  });
+  await pending;
+  expect(pack.cancelImport).toHaveBeenCalledOnce();
 });

@@ -1,9 +1,18 @@
+import { KEYBOARD_SHORTCUT_ACTIONS } from "../data/keyboardShortcutActions.js";
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 import { dockUpdateStatus } from "./dockUpdateStatus.js";
 import { useSource } from "../runtime/SourceContext.jsx";
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { usePresetLibrary } from "../hooks/PresetsContext.jsx";
@@ -56,6 +65,9 @@ const STATUS_FIXTURE_NAMES = {
  *   visibility: ReturnType<typeof useDockAccessoryVisibility>,
  *   hoveredDockPanelId: string | null,
  *   visualRuntimeRef: import("react").MutableRefObject<any>,
+ *   onSettingsError: (value: any) => Promise<void>,
+ *   setSettingsGeometry: (value: any) => void,
+ *   setSettingsTargets: (value: any) => void,
  *   setUpdateGeometry: (value: any) => void,
  *   setImportActive: (value: boolean) => void,
  *   statusItems: import("../lib/appStatus.js").AppStatusItem[],
@@ -79,7 +91,16 @@ const DockAccessoriesContext = createContext(/** @type {DockAccessories | null} 
 export function DockAccessoriesProvider({ children }) {
   const { updateControls } = useAppLifecycle();
   const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
-  const { historyRetentionSec, interfaceSize, setSettingsOpen } = useAppSettings();
+  const {
+    historyRetentionSec,
+    interfaceSize,
+    settingsOpen,
+    settingsOpenEpoch,
+    keyboardShortcuts,
+    shortcutCapturing,
+    shortcutActionRef,
+    setSettingsOpen,
+  } = useAppSettings();
   const { view, setPanelPresentation, setDockSurfaceOpacity } = useWindowChrome();
   const presentation = normalizePanelPresentation(view.panelPresentation, view.focusView);
   const {
@@ -119,6 +140,11 @@ export function DockAccessoriesProvider({ children }) {
   // request arrives.
   const visualRuntimeRef = useRef(null);
   const [updateGeometry, setUpdateGeometry] = useState(null);
+  const [settingsGeometry, setSettingsGeometry] = useState(null);
+  const settingsTargetsRef = useRef([]);
+  const setSettingsTargets = useCallback((targets) => {
+    settingsTargetsRef.current = targets;
+  }, []);
   const [importActive, setImportActive] = useState(false);
   const [statusFixture, setStatusFixture] = useState(null);
 
@@ -159,6 +185,10 @@ export function DockAccessoriesProvider({ children }) {
     waitForHeaderReady: true,
     onError: onDockAccessoryError,
   });
+  const closeDockEditor = dockAccessoryVisibility.closeEditor;
+  useEffect(() => {
+    if (docked && settingsOpen) closeDockEditor();
+  }, [docked, settingsOpen, settingsOpenEpoch, closeDockEditor]);
   const preparePanelSettings = useCallback(
     ({ panelId }) =>
       preparePanelSettingsNavigation({
@@ -208,6 +238,9 @@ export function DockAccessoriesProvider({ children }) {
     const visibility = visibilityRef.current;
     if (!docked || dockSuspended) return [];
     return [
+      ...(settingsGeometry?.visible
+        ? settingsTargetsRef.current.map((target) => ({ ...target, surface: "dock-settings" }))
+        : []),
       ...(visibility.headerVisible ? (accessoryTargetsRef.current["dock-header"] ?? []) : []).map(
         (target) => ({ ...target, surface: "dock-header" })
       ),
@@ -215,7 +248,7 @@ export function DockAccessoriesProvider({ children }) {
         (target) => ({ ...target, surface: "dock-editor" })
       ),
     ];
-  }, [docked, dockSuspended]);
+  }, [docked, dockSuspended, settingsGeometry]);
   const dockToolbarShown = docked && !dockSuspended && dockAccessoryVisibility.headerVisible;
   const openDockMenu = useCallback(
     async (/** @type {string} */ view) => {
@@ -276,11 +309,13 @@ export function DockAccessoriesProvider({ children }) {
           ...(dockAccessoryVisibility.headerVisible ? ["dockHeader"] : []),
           ...(dockAccessoryVisibility.editorVisible ? ["dockEditor"] : []),
           ...(updateGeometry?.visible ? ["dockUpdate"] : []),
+          ...(settingsGeometry?.visible ? ["dockSettings"] : []),
         ]
       : ["main", "workspace", "panel"],
     availableAudioSources: sourceMode === "live" ? ["none", "measuredSource"] : ["none"],
     accessoryGeometry: {
       dockUpdate: updateGeometry,
+      dockSettings: settingsGeometry,
       dockHeader: {
         visible: docked && !dockSuspended && dockAccessoryVisibility.headerVisible,
         width: window.innerWidth,
@@ -358,6 +393,7 @@ export function DockAccessoriesProvider({ children }) {
   const dockHeaderState = useMemo(
     () => ({
       interfaceSize,
+      keyboard: { bindings: keyboardShortcuts, capturing: shortcutCapturing, running, showClock },
       visible: dockAccessoryVisibility.headerVisible,
       presentationId: dockAccessoryVisibility.headerPresentationId,
       sourceTransportState,
@@ -379,6 +415,8 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       interfaceSize,
+      keyboardShortcuts,
+      shortcutCapturing,
       footerSourceLabel,
       loudnessProfileName,
       activePresetName,
@@ -401,6 +439,7 @@ export function DockAccessoriesProvider({ children }) {
   const dockEditorState = useMemo(
     () => ({
       interfaceSize,
+      keyboard: { bindings: keyboardShortcuts, capturing: shortcutCapturing, running, showClock },
       view: dockAccessoryVisibility.editorView,
       statusItems,
       edge: dockEdge,
@@ -439,6 +478,10 @@ export function DockAccessoriesProvider({ children }) {
     }),
     [
       interfaceSize,
+      keyboardShortcuts,
+      shortcutCapturing,
+      running,
+      showClock,
       statusItems,
       reserveSpace,
       aboveFullScreen,
@@ -493,15 +536,21 @@ export function DockAccessoriesProvider({ children }) {
         }
       } else if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
-      else if (type === "open-update") openUpdateDetails();
+      else if (
+        type === "keyboard-shortcut" &&
+        KEYBOARD_SHORTCUT_ACTIONS.some(({ id }) => id === payload.actionId)
+      ) {
+        shortcutActionRef.current?.(payload.actionId);
+      } else if (type === "open-settings") {
+        dockAccessoryVisibility.closeEditor();
+        setSettingsOpen(true);
+      } else if (type === "open-update") openUpdateDetails();
       else if (type === "status-action") {
         dockAccessoryVisibility.closeEditor();
         if (payload.action === "update") openUpdateDetails();
         else if (payload.action === "check-update") void updateControls.refreshUpdateCheck();
         else if (payload.action === "settings") {
-          void exitDockRestoringAttributes().then((result) => {
-            if (result.ok) setSettingsOpen(true);
-          });
+          setSettingsOpen(true);
         }
       } else if (type === "open-editor") {
         setHoveredDockPanelId(null);
@@ -637,6 +686,7 @@ export function DockAccessoriesProvider({ children }) {
       resetDockLayout,
       openUpdateDetails,
       updateControls,
+      shortcutActionRef,
     ]
   );
   useDockAccessoryBridge({
@@ -654,6 +704,9 @@ export function DockAccessoriesProvider({ children }) {
         hoveredDockPanelId,
         visualRuntimeRef,
         setUpdateGeometry,
+        setSettingsGeometry,
+        onSettingsError: onDockAccessoryError,
+        setSettingsTargets,
         setImportActive,
         statusItems,
         statusOpen: statusFixture?.phase === "details",

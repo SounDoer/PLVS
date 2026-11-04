@@ -57,6 +57,7 @@ export const SCREENSHOT_TARGETS = new Set([
   "dock-header",
   "dock-editor",
   "dock-update",
+  "dock-settings",
 ]);
 export const EVENT_FIXTURES = Object.freeze({
   "status.layout": { surfaceKind: "status", phase: "layout", action: "reset" },

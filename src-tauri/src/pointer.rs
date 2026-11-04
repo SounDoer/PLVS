@@ -104,6 +104,7 @@ pub async fn move_pointer<R: Runtime>(
     "main",
     crate::dock_accessories::DOCK_HEADER_LABEL,
     crate::dock_accessories::DOCK_EDITOR_LABEL,
+    crate::dock_accessories::DOCK_SETTINGS_LABEL,
   ]
   .contains(&label.as_str())
   {

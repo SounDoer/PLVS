@@ -81,7 +81,7 @@ export function SettingsWindowFrame({
       <section
         role="dialog"
         aria-label="Settings"
-        className="flex h-screen min-h-0 flex-col overflow-hidden bg-card text-foreground"
+        className="flex h-screen min-h-0 flex-col overflow-hidden bg-card text-foreground [container-type:inline-size]"
       >
         <header data-settings-header className={HEADER_CLASS}>
           <h1 className="text-[length:var(--ui-fs-panel-title)]">Settings</h1>

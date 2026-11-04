@@ -1,5 +1,6 @@
-import { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { openExternalUrl } from "../ipc/openExternal.js";
+import { useMemo, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useDockSettingsWindow } from "../dock/useDockSettingsWindow.js";
+import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
@@ -27,10 +28,11 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 /**
  * @param {{
  *   presentationEnabled?: boolean,
+ *   dockPresentation?: any,
  *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
- *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloading?: boolean, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
+ *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloading?: boolean, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, details?: any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
  *   appVersion: string,
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
@@ -43,6 +45,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  */
 export function AppSettingsOverlays({
   presentationEnabled = true,
+  dockPresentation = null,
   ref,
   settings,
   channelSettings,
@@ -102,6 +105,32 @@ export function AppSettingsOverlays({
     resetInstall,
   } = updateControls;
   const { editor, editorPos, moveEditor } = settings;
+  const [remoteReady, setRemoteReady] = useState(null);
+  const view = libraryExportOpen
+    ? "libraryExport"
+    : feedbackOpen
+      ? "feedback"
+      : editor.isEditing
+        ? "theme"
+        : loudnessProfile?.draft
+          ? "profile"
+          : settings.settingsOpen
+            ? "settings"
+            : null;
+  const identity =
+    view === "theme"
+      ? `theme:${editor.authoring?.draftId ?? editor.draft?.id}`
+      : view === "profile"
+        ? `profile:${loudnessProfile.draft.authoring?.draftId}`
+        : view;
+  const handoff = Boolean(
+    updateControls.details || pack.review || pack.completion || dockPresentation?.suspended
+  );
+  const session = useMemo(
+    () => `${identity}:${handoff}:${presentationEnabled}:${crypto.randomUUID()}`,
+    [identity, handoff, presentationEnabled]
+  );
+  const presented = presentationEnabled || remoteReady === session;
 
   const themeAuthoring = editor.authoring;
   useUiNavigationTarget("themeEditor", {
@@ -147,7 +176,7 @@ export function AppSettingsOverlays({
     },
   });
   const themeEditorSurfaceId = useUiSurface({
-    active: editor.isEditing,
+    active: editor.isEditing && presented,
     lifetimeKey: themeAuthoring?.draftId,
     kind: "themeEditor",
     origin: "navigable",
@@ -167,7 +196,7 @@ export function AppSettingsOverlays({
     onCancel: editor.requestDismiss,
   });
   useEditorDraftSurface({
-    active: editor.isEditing,
+    active: editor.isEditing && presented,
     kind: "theme",
     surfaceId: themeEditorSurfaceId,
     controller: editor,
@@ -199,7 +228,7 @@ export function AppSettingsOverlays({
     },
   });
   const profileEditorSurfaceId = useUiSurface({
-    active: loudnessProfile?.draft != null,
+    active: loudnessProfile?.draft != null && presented,
     lifetimeKey: profileAuthoring?.draftId,
     kind: "loudnessProfileEditor",
     origin: "navigable",
@@ -218,7 +247,7 @@ export function AppSettingsOverlays({
     onCancel: loudnessProfile?.requestDismiss,
   });
   useEditorDraftSurface({
-    active: loudnessProfile?.draft != null,
+    active: loudnessProfile?.draft != null && presented,
     kind: "loudnessProfile",
     surfaceId: profileEditorSurfaceId,
     controller: loudnessProfile,
@@ -329,7 +358,7 @@ export function AppSettingsOverlays({
     show: openFeedback,
   });
   useUiSurface({
-    active: feedbackOpen,
+    active: feedbackOpen && presented,
     kind: "feedback",
     origin: "navigable",
     blocking: true,
@@ -489,6 +518,37 @@ export function AppSettingsOverlays({
       onMove: setLoudnessProfilePos,
     },
   };
+  const feedbackModel = {
+    ...feedback,
+    onClose: cancelFeedback,
+    onPrivacy: () => openExternalUrl(PRIVACY_POLICY_URL),
+  };
+  const selectedModel = view === "feedback" ? feedbackModel : views[view];
+  useDockSettingsWindow({
+    ...dockPresentation,
+    enabled: !presentationEnabled && Boolean(dockPresentation),
+    active: Boolean(view) && !handoff,
+    view,
+    session,
+    model: selectedModel,
+    interfaceSize: settings.interfaceSize,
+    focusEpoch: settings.settingsOpenEpoch,
+    keyboard: {
+      bindings: settings.keyboardShortcuts,
+      capturing: settings.shortcutCapturing,
+      running: dockPresentation?.running,
+      showClock: dockPresentation?.showClock,
+    },
+    onReady: setRemoteReady,
+    openSection: () => settings.setSettingsOpen(true),
+    onDismiss: () => {
+      if (view === "theme") editor.requestDismiss();
+      else if (view === "profile") loudnessProfile.requestDismiss();
+      else if (view === "feedback") cancelFeedback();
+      else if (view === "libraryExport") setLibraryExportOpen(false);
+      else settings.setSettingsOpen(false);
+    },
+  });
   if (!presentationEnabled) return null;
 
   return (

@@ -6,6 +6,7 @@ import { listenDockAccessoryAction } from "../ipc/dockAccessoryEvents.js";
 import { normalizeAccessoryAction } from "./accessoryProtocol.js";
 import { isTauri } from "../ipc/env.js";
 import { isSingleExistingReview } from "../components/ItemPickerDialog.jsx";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 
 export function DockImportSurface({ pack, settings, loudnessProfile, presets }) {
@@ -13,6 +14,7 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
   const { setImportActive } = useDockAccessories();
   const { updateControls } = useAppLifecycle();
   const [requested, setRequested] = useState(false);
+  const [presentedKey, setPresentedKey] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [sequence, setSequence] = useState(0);
   const latest = useRef(null);
@@ -66,7 +68,10 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
     let unlisten;
     void listenDockAccessoryAction((raw) => {
       const event = normalizeAccessoryAction(raw);
-      if (event?.type === "import-paste" && ["dock-header", "dock-editor"].includes(event.surface))
+      if (
+        event?.type === "import-paste" &&
+        ["dock-header", "dock-editor", "dock-settings"].includes(event.surface)
+      )
         acceptPaste(event.payload.text);
     }).then((stop) => {
       if (disposed) stop();
@@ -107,6 +112,7 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
     review: review
       ? {
           type: review.type,
+          origin: review.origin,
           itemPlan: review.itemPlan,
           profilePlan: review.profilePlan,
           warnings: review.warnings,
@@ -120,7 +126,10 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
     setImportActive(docked && Boolean(mode));
     return () => setImportActive(false);
   }, [docked, mode, setImportActive]);
-  const onGeometry = useCallback(() => {}, []);
+  const onGeometry = useCallback(
+    (geometry) => setPresentedKey(geometry?.visible ? key : null),
+    [key]
+  );
   const dockWindow = useDockImportWindow({
     active: visible,
     prepare: visible,
@@ -164,6 +173,30 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
         });
       }
     },
+  });
+  useUiSurface({
+    active: visible && presentedKey === key && mode === "review",
+    lifetimeKey: key,
+    kind: "importReview",
+    origin: "nested",
+    developmentFixture: "import-review.pending",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: { phase: "review" },
+    onCancel: pack.cancelImport,
+  });
+  useUiSurface({
+    active: visible && presentedKey === key && mode === "complete",
+    lifetimeKey: key,
+    kind: "importComplete",
+    origin: "nested",
+    developmentFixture: "import-complete.pending",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { phase: "complete" },
+    onClose: pack.dismissCompletion,
   });
   clearError.current = dockWindow.clearError;
   useEffect(() => {

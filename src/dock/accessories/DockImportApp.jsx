@@ -56,7 +56,9 @@ export function DockImportApp() {
       >
         <h1 className="font-semibold">
           {mode === "review"
-            ? `Paste ${descriptor.itemLabel}`
+            ? review.origin === "clipboard"
+              ? `Paste ${descriptor.itemLabel}`
+              : `Import ${descriptor.label}`
             : mode === "complete"
               ? "Import Complete"
               : "Paste"}

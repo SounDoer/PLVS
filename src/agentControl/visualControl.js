@@ -5,6 +5,7 @@ export const VISUAL_SCREENSHOT_TARGET_KINDS = Object.freeze([
   "dockHeader",
   "dockEditor",
   "dockUpdate",
+  "dockSettings",
 ]);
 /** `dock` records the strip with its toolbar and editor as one screen region. */
 export const VISUAL_RECORDING_TARGET_KINDS = Object.freeze(["main", "workspace", "dock"]);

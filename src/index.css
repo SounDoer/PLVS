@@ -429,3 +429,18 @@ html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover
     animation: none;
   }
 }
+
+/* The shared editors fill the stable Settings viewport; their controls remain unchanged. */
+html[data-surface="dock-settings"] [data-settings-editor] {
+  position: relative;
+  inset: 0 !important;
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh !important;
+  border-radius: 0;
+}
+
+html[data-surface="dock-settings"] [data-settings-editor-body] {
+  flex: 1;
+  min-height: 0;
+}

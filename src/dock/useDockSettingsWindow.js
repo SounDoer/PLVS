@@ -1,0 +1,378 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { invoke } from "@tauri-apps/api/core";
+import { UI_PREFERENCES, resolveInterfacePreferences } from "../uiPreferences.js";
+import { onDockNativeGeometryChanged } from "../ipc/events.js";
+import { KEYBOARD_SHORTCUT_ACTIONS } from "../data/keyboardShortcutActions.js";
+import { isTauri } from "../ipc/env.js";
+import {
+  emitDockAccessoryState,
+  listenDockAccessoryAction,
+  listenDockAccessoryReady,
+} from "../ipc/dockAccessoryEvents.js";
+import { createAccessorySnapshot, normalizeAccessoryAction } from "./accessoryProtocol.js";
+import { settingsViewSnapshot, createSettingsDispatcher } from "./settingsTransport.js";
+import { createThemePublication, themeRuntime } from "../theme/themeRuntime.js";
+import {
+  UI_SETTINGS_SECTIONS,
+  createUiNavigationError,
+} from "../uiNavigation/uiNavigationModel.js";
+import { useUiSurfaceRegistry } from "../uiNavigation/UiNavigationContext.jsx";
+import { useOptionalEditorDraftRegistry } from "../agentControl/EditorDraftContext.jsx";
+
+const SURFACE = "dock-settings";
+const REMOTE_KINDS = new Set([
+  "settings",
+  "confirmation",
+  "dropdown",
+  "libraryExport",
+  "libraryPicker",
+]);
+
+/** Main owns every operation. Only presentation data and explicitly named actions cross WebViews.
+ * @param {any} options
+ */
+export function useDockSettingsWindow(options) {
+  const registry = useUiSurfaceRegistry();
+  const drafts = useOptionalEditorDraftRegistry();
+  const latest = useRef(options);
+  const revision = useRef(0);
+  const clientReady = useRef(false);
+  const readySession = useRef(null);
+  const pending = useRef(new Map());
+  const serial = useRef(0);
+  const registrations = useRef([]);
+  const remoteRegistry = useRef(null);
+  const [prepared, setPrepared] = useState(false);
+  const [geometryEpoch, setGeometryEpoch] = useState(0);
+  const [ready, setReady] = useState(null);
+  const [error, setError] = useState("");
+  const [navigation, setNavigation] = useState(null);
+  const [reply, setReply] = useState(null);
+  useLayoutEffect(() => {
+    latest.current = options;
+  });
+
+  const reportError = useCallback((cause) => {
+    const message = String(cause);
+    setError(message);
+    if (latest.current.enabled)
+      void Promise.resolve(latest.current.onError?.(message)).catch(() => {});
+  }, []);
+
+  const clearRegistry = useCallback(() => {
+    for (const dispose of registrations.current) dispose();
+    registrations.current = [];
+  }, []);
+  const requestUi = useCallback(
+    (kind, id, method, target = {}) =>
+      new Promise((resolve, reject) => {
+        const idNumber = ++serial.current;
+        const timeout = setTimeout(() => {
+          pending.current.delete(idNumber);
+          reject(
+            Object.assign(new Error("Settings did not respond in time."), {
+              reason: "uiNotSettled",
+            })
+          );
+        }, 3500);
+        pending.current.set(idNumber, { resolve, reject, timeout });
+        setNavigation({ id: idNumber, kind, key: id, method, target });
+      }),
+    []
+  );
+  const mirrorRegistry = useCallback(
+    (snapshot) => {
+      clearRegistry();
+      if (
+        !registry ||
+        !snapshot ||
+        !readySession.current ||
+        snapshot.session !== latest.current.session
+      )
+        return;
+      for (const item of snapshot.surfaces ?? []) {
+        if (!REMOTE_KINDS.has(item.descriptor?.kind) || typeof item.id !== "string") continue;
+        registrations.current.push(
+          registry.registerUiSurface(item.id, item.descriptor, {
+            current: {
+              close: () => requestUi("surface", item.id, "close"),
+              cancel: () => requestUi("surface", item.id, "cancel"),
+            },
+          })
+        );
+      }
+      for (const key of snapshot.targets ?? []) {
+        if (!key.startsWith("dropdown:")) continue;
+        registrations.current.push(
+          registry.registerUiTarget(key, {
+            current: { show: (target) => requestUi("target", key, "show", target) },
+          })
+        );
+      }
+      for (const item of snapshot.decisions ?? []) {
+        if (!drafts || !["theme", "loudnessProfile"].includes(item.editorKind)) continue;
+        registrations.current.push(
+          drafts.registerDraftDecision(item.id, item.editorKind, item.editorSurfaceId, {
+            current: () => requestUi("decision", item.id, "discard"),
+          })
+        );
+      }
+    },
+    [clearRegistry, drafts, registry, requestUi]
+  );
+
+  const dispatch = useRef(null);
+  useEffect(() => {
+    dispatch.current = createSettingsDispatcher({
+      read: () => latest.current,
+      commit: (callback) => {
+        let returned;
+        flushSync(() => {
+          returned = callback();
+        });
+        return returned;
+      },
+    });
+  }, []);
+  const publish = useCallback(async () => {
+    if (!clientReady.current) return;
+    const current = latest.current;
+    const active = current.enabled && current.active;
+    const snapshot = active ? settingsViewSnapshot(current.view, current.model) : null;
+    await emitDockAccessoryState(
+      SURFACE,
+      createAccessorySnapshot(SURFACE, ++revision.current, {
+        session: active ? current.session : null,
+        view: active ? current.view : null,
+        snapshot,
+        interfaceSize: current.interfaceSize,
+        keyboard: current.keyboard,
+        theme: createThemePublication(themeRuntime.getSnapshot()),
+        navigation,
+        reply,
+      })
+    );
+  }, [navigation, reply]);
+  const publishRef = useRef(publish);
+  useLayoutEffect(() => {
+    publishRef.current = publish;
+  });
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    let disposed = false;
+    const requests = pending.current;
+    const disposers = [];
+    const result = (value) => {
+      if (!disposed) flushSync(() => setReply(value));
+    };
+    void Promise.allSettled([
+      listenDockAccessoryReady((event) => {
+        if (event?.surface !== SURFACE) return;
+        clientReady.current = true;
+        void publishRef.current().catch((error) => reportError(error));
+      }),
+      listenDockAccessoryAction((raw) => {
+        const action = normalizeAccessoryAction(raw);
+        if (action?.surface !== SURFACE) return;
+        const value = action.payload;
+        if (action.type === "settings-ui-result") {
+          const request = pending.current.get(value.id);
+          if (!request) return;
+          clearTimeout(request.timeout);
+          pending.current.delete(value.id);
+          if (value.error)
+            request.reject(Object.assign(new Error(value.error.message), value.error));
+          else request.resolve();
+          return;
+        }
+        if (action.type === "settings-dismiss") {
+          void latest.current.onDismiss();
+          return;
+        }
+        if (action.type === "settings-action") {
+          result({ sequence: value.sequence, session: value.session, pending: true });
+          void dispatch.current(value).then(
+            (returned) =>
+              result({
+                sequence: value.sequence,
+                session: value.session,
+                value: JSON.parse(JSON.stringify(returned ?? null)),
+              }),
+            (error) =>
+              result({
+                sequence: value.sequence,
+                session: value.session,
+                error: String(error.message ?? error),
+              })
+          );
+          return;
+        }
+        if (
+          value.session !== latest.current.session ||
+          !latest.current.active ||
+          !latest.current.enabled
+        )
+          return;
+        if (action.type === "open-settings") {
+          latest.current.openSection();
+          return;
+        }
+        if (
+          action.type === "keyboard-shortcut" &&
+          KEYBOARD_SHORTCUT_ACTIONS.some(({ id }) => id === value.actionId)
+        ) {
+          latest.current.onShortcut?.(value.actionId);
+          return;
+        }
+        if (action.type === "settings-ready") setReady(value.session);
+        else if (action.type === "settings-registry") {
+          remoteRegistry.current = { ...value.registry, session: value.session };
+          mirrorRegistry(remoteRegistry.current);
+        } else if (action.type === "ui-targets") latest.current.onTargets?.(value.targets ?? []);
+      }),
+    ]).then((results) => {
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          if (disposed) result.value();
+          else disposers.push(result.value);
+        } else if (!disposed) reportError(result.reason);
+      }
+    });
+    return () => {
+      disposed = true;
+      disposers.forEach((dispose) => dispose());
+      for (const request of requests.values()) {
+        clearTimeout(request.timeout);
+        request.reject(new Error("Settings host closed."));
+      }
+      requests.clear();
+    };
+  }, [mirrorRegistry, reportError]);
+
+  const needed = options.enabled && options.active;
+  useEffect(() => {
+    if (!isTauri() || !needed || prepared) return undefined;
+    let canceled = false;
+    void invoke("prepare_dock_settings_window")
+      .then(() => {
+        if (!canceled) setPrepared(true);
+      })
+      .catch((error) => {
+        if (!canceled) reportError(error);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [needed, prepared, reportError]);
+  // Only Settings data changes trigger publication; capture frames never cross this boundary.
+  const snapshotKey = JSON.stringify(
+    needed ? settingsViewSnapshot(options.view, options.model) : null
+  );
+  const keyboardKey = JSON.stringify(options.keyboard);
+  useEffect(() => {
+    if (clientReady.current) void publish().catch((error) => reportError(error));
+  }, [
+    snapshotKey,
+    keyboardKey,
+    options.session,
+    options.interfaceSize,
+    needed,
+    publish,
+    reportError,
+  ]);
+  useEffect(() => {
+    if (!needed) return undefined;
+    return themeRuntime.subscribe(
+      (value) => value,
+      () => void publishRef.current().catch((error) => reportError(error))
+    );
+  }, [needed, reportError]);
+
+  useEffect(() => {
+    if (!isTauri() || !needed) return undefined;
+    let disposed = false;
+    let stop;
+    void onDockNativeGeometryChanged(() => setGeometryEpoch((value) => value + 1))
+      .then((dispose) => {
+        if (disposed) dispose();
+        else stop = dispose;
+      })
+      .catch((error) => reportError(error));
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, [needed, reportError]);
+  const logicalWidth = Math.max(
+    640,
+    resolveInterfacePreferences(UI_PREFERENCES, options.interfaceSize).layout.editor
+      .preferredWidthPx
+  );
+  const visible = needed && !options.suspended && ready === options.session;
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    let canceled = false;
+    void invoke("set_dock_settings_window", {
+      visible,
+      edge: options.edge ?? "top",
+      webviewScale: window.devicePixelRatio,
+      focus: visible,
+      logicalWidth,
+    })
+      .then((rect) => {
+        if (canceled) return;
+        readySession.current = visible ? latest.current.session : null;
+        mirrorRegistry(visible ? remoteRegistry.current : null);
+        latest.current.onReady?.(visible ? latest.current.session : null);
+        latest.current.onGeometry?.(
+          rect
+            ? {
+                visible: true,
+                width: rect.width / window.devicePixelRatio,
+                height: rect.height / window.devicePixelRatio,
+              }
+            : null
+        );
+      })
+      .catch((error) => {
+        if (!canceled) reportError(error);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [
+    visible,
+    options.session,
+    options.edge,
+    options.focusEpoch,
+    geometryEpoch,
+    logicalWidth,
+    mirrorRegistry,
+    reportError,
+  ]);
+  useEffect(() => () => clearRegistry(), [clearRegistry]);
+  useEffect(() => {
+    if (!registry || !options.enabled) return undefined;
+    return registry.registerUiTarget("settings", {
+      current: {
+        show: async ({ section }) => {
+          if (!UI_SETTINGS_SECTIONS.includes(section))
+            throw createUiNavigationError("uiTargetNotFound", { kind: "settings", section });
+          latest.current.openSection(section);
+          const deadline = Date.now() + 3000;
+          while (!readySession.current || latest.current.view !== "settings") {
+            if (Date.now() >= deadline)
+              throw Object.assign(new Error("Settings did not become visible."), {
+                reason: "uiNotSettled",
+              });
+            await new Promise((resolve) => setTimeout(resolve, 16));
+          }
+          await requestUi("target", "settings", "show", { section });
+        },
+      },
+    });
+  }, [options.enabled, registry, requestUi]);
+  return { error };
+}

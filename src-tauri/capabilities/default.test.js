@@ -49,6 +49,7 @@ describe("Dock accessory Tauri capabilities", () => {
       "dock-editor",
       "dock-update",
       "dock-import",
+      "dock-settings",
     ]);
     expect(accessoryCapability.permissions).toEqual(["core:event:default"]);
   });

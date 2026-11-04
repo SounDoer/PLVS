@@ -1576,9 +1576,10 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
     Some("dock-header") => "dockHeader",
     Some("dock-editor") => "dockEditor",
     Some("dock-update") => "dockUpdate",
+    Some("dock-settings") => "dockSettings",
     Some(value) => {
       return Err(format!(
-        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, dock-editor, or dock-update."
+        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, dock-editor, dock-update, or dock-settings."
       ))
     }
     None => return Err("The visual screenshot command requires --target.".to_string()),
@@ -6450,7 +6451,9 @@ mod tests {
       "id" => "stats".to_string(),
       "main|workspace"
       | "main|workspace|dock"
-      | "main|workspace|panel|dock-header|dock-editor|dock-update" => "main".to_string(),
+      | "main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings" => {
+        "main".to_string()
+      }
       "n" => "0".to_string(),
       "css-px" => "800".to_string(),
       "target-id" => "toolbar:presets".to_string(),
@@ -9398,6 +9401,7 @@ mod tests {
       ("dock-header", "dockHeader"),
       ("dock-editor", "dockEditor"),
       ("dock-update", "dockUpdate"),
+      ("dock-settings", "dockSettings"),
     ] {
       let command = parse_control_args(&args(&[
         "visual",

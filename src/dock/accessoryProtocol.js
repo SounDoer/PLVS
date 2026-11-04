@@ -10,9 +10,17 @@ export const DOCK_ACCESSORY_SURFACES = Object.freeze([
   "dock-editor",
   "dock-update",
   "dock-import",
+  "dock-settings",
 ]);
 
 const ACTION_TYPES = new Set([
+  "open-settings",
+  "keyboard-shortcut",
+  "settings-action",
+  "settings-ready",
+  "settings-dismiss",
+  "settings-registry",
+  "settings-ui-result",
   "import-paste",
   "import-ready",
   "import-resize",

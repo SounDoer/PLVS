@@ -39,25 +39,14 @@ describe("tray navigation", () => {
     );
   });
 
-  it("resumes a hidden Dock, restores its normal window, then opens Settings", async () => {
+  it("resumes a hidden Dock and opens Settings without leaving Dock", async () => {
     const { props, result } = setup({ docked: true });
     await act(() => result.current.onOpenSettings());
+    expect(props.exitDockRestoringAttributes).not.toHaveBeenCalled();
+    expect(props.setSettingsOpen).toHaveBeenCalledWith(true);
     expect(props.onShowWindow.mock.invocationCallOrder[0]).toBeLessThan(
-      props.exitDockRestoringAttributes.mock.invocationCallOrder[0]
-    );
-    expect(props.exitDockRestoringAttributes.mock.invocationCallOrder[0]).toBeLessThan(
       props.setSettingsOpen.mock.invocationCallOrder[0]
     );
-  });
-
-  it("does not open Settings or start a check if restoring the window fails", async () => {
-    const { props, result } = setup({
-      docked: true,
-      exitDockRestoringAttributes: vi.fn().mockResolvedValue({ ok: false }),
-    });
-    await act(() => result.current.updateMenu.action());
-    expect(props.setSettingsOpen).not.toHaveBeenCalled();
-    expect(props.updates.refreshUpdateCheck).not.toHaveBeenCalled();
   });
 
   it("shows Settings before a manual check so all outcomes have visible feedback", async () => {

@@ -5,7 +5,7 @@
 // tauri-nspanel owns class conversion, retaining the Tauri delegate and WebView identity.
 // AppKit objects and every callback below are confined to main.
 static char roleKey, desiredKey, savedBehaviorKey, savedChromeKey;
-enum { MainRole = 0, HeaderRole = 1, EditorRole = 2, UpdateRole = 3, ImportRole = 4 };
+enum { MainRole = 0, HeaderRole = 1, EditorRole = 2, UpdateRole = 3, ImportRole = 4, SettingsRole = 5 };
 
 @interface PLVSDockWindows : NSObject
 @property (weak) NSWindow *main;
@@ -151,7 +151,7 @@ enum { MainRole = 0, HeaderRole = 1, EditorRole = 2, UpdateRole = 3, ImportRole 
       if (window == self.main) continue;
       NSInteger role = [objc_getAssociatedObject(window, &roleKey) integerValue];
       NSRect next = window.frame;
-      next.origin.x += dx + (role == HeaderRole ? 0 : role == EditorRole ? dw : dw / 2);
+      next.origin.x += dx + (role == HeaderRole ? 0 : (role == EditorRole || role == SettingsRole) ? dw : dw / 2);
       next.origin.y += dy;
       if (role == HeaderRole) next.size.width = frame.size.width;
       [window setFrame:next display:NO];
@@ -205,7 +205,7 @@ int32_t plvs_macos_dock_window_configure(void *raw, bool enabled, bool top, doub
 
 int32_t plvs_macos_dock_accessory_configure(void *raw, int32_t role) {
   NSWindow *window = (__bridge NSWindow *)raw;
-  if (![window isKindOfClass:NSPanel.class] || role < HeaderRole || role > ImportRole) return 1;
+  if (![window isKindOfClass:NSPanel.class] || role < HeaderRole || role > SettingsRole) return 1;
   PLVSDockWindows *state = windows();
   [state.members addObject:window];
   objc_setAssociatedObject(window, &roleKey, @(role), OBJC_ASSOCIATION_RETAIN_NONATOMIC);

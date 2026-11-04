@@ -306,7 +306,8 @@ plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation
 `app.inspect` remains the durable-state snapshot; `ui inspect` reports the selected workbench's
 transient window, blocking editors, mounted surfaces, status conditions, and process-local
 `uiGeneration`. `show` only opens, locates, or focuses and is idempotent for an exact target. A
-toolbar menu opens as its toolbar button opens it, in the normal window or Dock. The Quick Tour card
+toolbar menu opens as its toolbar button opens it, in the normal window or Dock. Settings and
+Theme/Profile authoring use the Dock Settings window while Dock stays active. The Quick Tour card
 is inspectable and closable; `ui quick-tour` starts it or moves between its steps. `close` and `cancel` invoke only
 the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
 only the exact linked `editor-draft discard` command can confirm that decision. Event-driven
@@ -350,7 +351,7 @@ desktop visible behind transparent surfaces:
 
 ```powershell
 plvs-cli visual describe --json
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
+plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
 plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--indicator <visible|hidden>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json

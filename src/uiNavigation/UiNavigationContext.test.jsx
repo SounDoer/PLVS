@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
-import { act, renderHook } from "@testing-library/react";
+import { render, act, renderHook } from "@testing-library/react";
 import { BlockingEditorsProvider, useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import {
   UiNavigationProvider,
@@ -673,4 +673,22 @@ describe("UiNavigationProvider", () => {
       "settings",
     ]);
   });
+});
+
+it("assigns a fresh surface identity when the same draft key is reopened", () => {
+  function Observer({ active }) {
+    const surfaceId = useUiSurface({
+      active,
+      lifetimeKey: "same-document",
+      kind: "themeEditor",
+      origin: "navigable",
+      target: {},
+    });
+    return <output>{surfaceId}</output>;
+  }
+  const view = render(<Observer active />);
+  const first = view.container.textContent;
+  view.rerender(<Observer active={false} />);
+  view.rerender(<Observer active />);
+  expect(view.container.textContent).not.toBe(first);
 });

@@ -56,7 +56,7 @@ describe("DockHeader", () => {
       Array.from(actions.querySelectorAll("button")).map((button) =>
         button.getAttribute("aria-label")
       )
-    ).toEqual(["Clear", "Sources", "Loudness Profile", "Panels", "Views", "Presets"]);
+    ).toEqual(["Clear", "Sources", "Loudness Profile", "Panels", "Views", "Presets", "Settings"]);
   });
 
   it("shows read-only footer names with a themed tip only when clipped and omits absent names", () => {
