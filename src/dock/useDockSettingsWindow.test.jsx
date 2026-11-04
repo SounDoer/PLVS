@@ -160,6 +160,18 @@ describe("Settings owner and accessory integration", () => {
     );
   });
 
+  it("routes native close through the ordered Settings business action", async () => {
+    const view = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }));
+    await screen.findByRole("dialog", { name: "Settings" });
+    await act(async () => {
+      for (const callback of [...bus.action])
+        callback({ surface: "dock-settings", type: "settings-dismiss", payload: {} });
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull());
+    await waitFor(() => expect(view.readUi().surfaces).toEqual([]));
+  });
+
   it("does not time out an acknowledged action while a native picker is waiting for the user", async () => {
     const view = setup();
     let finish;

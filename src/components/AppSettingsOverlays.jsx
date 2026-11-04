@@ -541,13 +541,6 @@ export function AppSettingsOverlays({
     },
     onReady: setRemoteReady,
     openSection: () => settings.setSettingsOpen(true),
-    onDismiss: () => {
-      if (view === "theme") editor.requestDismiss();
-      else if (view === "profile") loudnessProfile.requestDismiss();
-      else if (view === "feedback") cancelFeedback();
-      else if (view === "libraryExport") setLibraryExportOpen(false);
-      else settings.setSettingsOpen(false);
-    },
   });
   if (!presentationEnabled) return null;
 

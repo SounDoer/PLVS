@@ -14,7 +14,9 @@ Design: [Shared Settings in the Normal Window and Dock](../specs/2026-11-04-dock
   file operations, and scene guards in main. No accessory SettingsProvider or audio runtime exists.
 - Lazily create one fixed-label `dock-settings` WebView. Reuse it for Settings, Theme, Loudness
   Profile, Feedback, and Saved Items export. Native close uses the existing dismissal decision;
-  blur does not dismiss. Inactive content unmounts and stops its subscriptions and publication.
+  blur does not dismiss. Native close is received by the accessory and enters the same ordered
+  business-action stream as typing and Cancel. Inactive content unmounts and stops its subscriptions
+  and publication.
 - Use an explicit per-view action allowlist, session IDs, ordered callbacks, duplicate/stale refusal,
   and receipt/completion acknowledgements. Preserve typed values ahead of acknowledgements and
   explicitly encode clearing a Profile threshold. DOM events never enter the wire contract.

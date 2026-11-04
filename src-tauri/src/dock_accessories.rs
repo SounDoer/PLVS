@@ -75,7 +75,7 @@ fn ensure_accessory<R: tauri::Runtime>(
       if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         api.prevent_close();
         let _ = owner.emit_to(
-          "main",
+          DOCK_SETTINGS_LABEL,
           "dock-accessory://action",
           serde_json::json!({
             "surface": DOCK_SETTINGS_LABEL, "type": "settings-dismiss", "payload": {}

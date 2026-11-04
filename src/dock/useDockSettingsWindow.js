@@ -187,10 +187,6 @@ export function useDockSettingsWindow(options) {
           else request.resolve();
           return;
         }
-        if (action.type === "settings-dismiss") {
-          void latest.current.onDismiss();
-          return;
-        }
         if (action.type === "settings-action") {
           result({ sequence: value.sequence, session: value.session, pending: true });
           void dispatch.current(value).then(

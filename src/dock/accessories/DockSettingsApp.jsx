@@ -13,6 +13,7 @@ import {
   emitDockAccessoryAction,
   emitDockAccessoryReady,
   listenDockAccessoryState,
+  listenDockAccessoryAction,
 } from "../../ipc/dockAccessoryEvents.js";
 import { acceptAccessorySnapshot } from "../accessoryProtocol.js";
 import { applyResolvedThemeToDocument, isThemePublication } from "../../theme/themeRuntime.js";
@@ -253,6 +254,29 @@ function SettingsSession({ payload, model, send: sendToMain }) {
     report();
     void send("settings-ready");
   }, [report, send]);
+  const dismiss = useRef(null);
+  useLayoutEffect(() => {
+    dismiss.current = () => {
+      if (payload.view === "theme" || payload.view === "profile") return model.onDismiss?.();
+      if (payload.view === "feedback" || payload.view === "libraryExport") return model.onClose?.();
+      return model.setSettingsOpen?.(false);
+    };
+  });
+  useEffect(() => {
+    let disposed = false;
+    let stop;
+    // Native close enters the same ordered action stream as typing and the visible Cancel button.
+    void listenDockAccessoryAction((event) => {
+      if (event?.surface === SURFACE && event.type === "settings-dismiss") void dismiss.current?.();
+    }).then((dispose) => {
+      if (disposed) dispose();
+      else stop = dispose;
+    });
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, []);
   const handled = useRef(0);
   useEffect(() => {
     const request = payload.navigation;
@@ -312,13 +336,7 @@ function SettingsSession({ payload, model, send: sendToMain }) {
         )
       )
         return;
-      const close =
-        payload.view === "theme" || payload.view === "profile"
-          ? model.onDismiss
-          : payload.view === "feedback" || payload.view === "libraryExport"
-            ? model.onClose
-            : () => model.setSettingsOpen(false);
-      void close?.();
+      void dismiss.current?.();
     };
     window.addEventListener("keydown", onKey);
     return () => {
