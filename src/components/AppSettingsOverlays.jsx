@@ -5,7 +5,8 @@ import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 import { usePackTransfer } from "../transfer/usePackTransfer.js";
-import { FeedbackDialog } from "./FeedbackDialog.jsx";
+import { FeedbackContent } from "./FeedbackDialog.jsx";
+import { useFeedbackDraft } from "../hooks/useFeedbackDraft.js";
 import { CrashReportDialog } from "./CrashReportDialog.jsx";
 import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 import { LibraryExportDialog } from "./LibraryExportDialog.jsx";
@@ -25,6 +26,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 
 /**
  * @param {{
+ *   presentationEnabled?: boolean,
  *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
@@ -40,6 +42,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  * }} props
  */
 export function AppSettingsOverlays({
+  presentationEnabled = true,
   ref,
   settings,
   channelSettings,
@@ -222,6 +225,7 @@ export function AppSettingsOverlays({
   });
 
   useEffect(() => {
+    if (!presentationEnabled) return undefined;
     const onPaste = (event) => {
       const target = event.target;
       if (
@@ -238,7 +242,7 @@ export function AppSettingsOverlays({
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [beginPaste]);
+  }, [beginPaste, presentationEnabled]);
 
   function openUpdateDialogFromInfo(info, developmentFixtureId = null) {
     resetInstall();
@@ -313,6 +317,12 @@ export function AppSettingsOverlays({
     setFeedbackDirty(false);
   }
 
+  const feedback = useFeedbackDraft({
+    active: feedbackOpen,
+    onClose: cancelFeedback,
+    onDirtyChange: setFeedbackDirty,
+  });
+
   useUiNavigationTarget("feedback", {
     blockingEditorId: "feedback",
     matches: () => feedbackOpen,
@@ -330,83 +340,160 @@ export function AppSettingsOverlays({
     onCancel: cancelFeedback,
   });
 
+  const views = {
+    settings: {
+      sectionRequest: settings.settingsSectionRequest,
+      settingsOpen: settings.settingsOpen,
+      setSettingsOpen: settings.setSettingsOpen,
+      appearance: settings.appearance,
+      setAppearanceMode: settings.setAppearanceMode,
+      interfaceSize: settings.interfaceSize,
+      setInterfaceSize: settings.setInterfaceSize,
+      fixedThemeSelectValue: settings.fixedThemeSelectValue,
+      setFixedThemeIdFromPicker: settings.setFixedThemeIdFromPicker,
+      channelCount: channelSettings.channelCount,
+      channelLabelTokens: channelSettings.channelLabelTokens,
+      channelLabelHasOverride: channelSettings.channelLabelHasOverride,
+      selectedLayoutId: channelSettings.selectedLayoutId,
+      setChannelLayout: channelSettings.setChannelLayout,
+      setChannelLabelToken: channelSettings.setChannelLabelToken,
+      resetChannelLabels: channelSettings.resetChannelLabels,
+      appVersion: appVersion,
+      latestVersion: updateInfo?.latestVersion,
+      releaseUrl: updateInfo?.releaseUrl,
+      hasUpdate: updateInfo?.hasUpdate,
+      updateStatus: updateInfo?.status,
+      updateActivity: updateInfo?.activity,
+      onCheckForUpdate: refreshUpdateCheck,
+      onInstallUpdate: openUpdateDialog,
+      updatePreferences: updateControls.enabled ? settings.updatePreferences : null,
+      setUpdatePreferences: settings.setUpdatePreferences,
+      updateInstallationSupported: updateControls.installationSupported,
+      updateInstallationUnavailableReason: updateControls.installationUnavailableReason,
+      openExternalUrl: openExternalUrl,
+      autostartEnabled: settings.autostartEnabled,
+      setAutostartEnabled: settings.setAutostartEnabled,
+      autostartReady: settings.autostartReady,
+      closeAction: settings.closeAction,
+      setCloseAction: settings.setCloseAction,
+      historyRetentionSec: settings.historyRetentionSec,
+      setHistoryRetentionSec: settings.setHistoryRetentionSec,
+      dialogueVadEngine: settings.dialogueVadEngine,
+      setDialogueVadEngine: settings.setDialogueVadEngine,
+      keyboardShortcuts: settings.keyboardShortcuts,
+      setShortcutAccelerator: settings.setShortcutAccelerator,
+      setShortcutGlobal: settings.setShortcutGlobal,
+      setShortcutCapturing: settings.setShortcutCapturing,
+      shortcutsReady: settings.shortcutsReady,
+      shortcutRegistrationErrors: settings.shortcutRegistrationErrors,
+      customThemeOptions: settings.customThemeOptions,
+      createCustomTheme: settings.createCustomTheme,
+      editCustomTheme: settings.editCustomTheme,
+      customizeBuiltinTheme: settings.customizeBuiltinTheme,
+      duplicateCustomTheme: settings.duplicateCustomTheme,
+      deleteCustomTheme: settings.deleteCustomTheme,
+      onExportTheme: (id) => pack.exportSelection("themes", [id]),
+      themeControlsDisabled: editor.isEditing,
+      onExportConfiguration: exportConfiguration,
+      onImportConfiguration: importConfiguration,
+      onResetConfiguration: resetConfiguration,
+      configurationBusy: configurationBusy,
+      configurationStatus: configurationStatus,
+      onLibraryExport: () => setLibraryExportOpen(true),
+      onSharedPackImport: pack.beginSharedImport,
+      packBusy: pack.busy,
+      packStatus: pack.status,
+      agentControlStatus: agentControlStatus,
+      agentControlBusy: agentControlBusy,
+      onSetAgentControlEnabled: async (next) => {
+        const status = await setAgentControlEnabled(next);
+        onAgentControlEnabledChange(status?.enabled === true);
+      },
+      askToSendCrashReports: crashReportSetting.enabled,
+      crashReportSettingBusy: crashReportSetting.busy,
+      crashReportSettingError: crashReportSetting.error,
+      onAskToSendCrashReports: crashReportSetting.setEnabled,
+      onOpenFeedback: openFeedback,
+      onOpenQuickTour: onOpenQuickTour,
+    },
+    libraryExport: {
+      open: libraryExportOpen,
+      itemsByType: {
+        loudness: getAdapter("loudness").list(),
+        presets: getAdapter("presets").list(),
+        themes: getAdapter("themes").list(),
+      },
+      dependenciesByType: { presets: getAdapter("loudness").list() },
+      onExport: pack.exportSelection,
+      onClose: () => {
+        setLibraryExportOpen(false);
+        setLibraryExportFixtureId(null);
+      },
+    },
+    theme: {
+      draft: editor.draft,
+      onName: editor.setName,
+      onColorScheme: editor.updateColorScheme,
+      onCore: editor.updateCore,
+      onResetCore: editor.resetCore,
+      onPaletteColor: editor.updatePaletteColor,
+      onIntensityStop: editor.updateIntensityStop,
+      onIntensityStops: editor.updateIntensityStops,
+      onApplyPreset: editor.applyPreset,
+      onOverride: editor.updateOverride,
+      onResetOverrides: editor.resetOverrides,
+      onUndo: editor.undo,
+      onRedo: editor.redo,
+      canUndo: editor.canUndo,
+      canRedo: editor.canRedo,
+      canSave: editor.canSave,
+      onSave: editor.save,
+      onCancel: editor.cancel,
+      onDismiss: editor.requestDismiss,
+      discardOpen: editor.discardOpen,
+      onDiscardOpenChange: (open) => (open ? editor.requestDismiss() : editor.keepEditing()),
+      onConfirmDiscard: editor.confirmDiscard,
+      editorDraftDecision: {
+        editorKind: "theme",
+        editorSurfaceId: themeEditorSurfaceId,
+      },
+      page: editor.page,
+      onPageChange: editor.setPage,
+      onDelete: undefined,
+      dirty: editor.dirty,
+      stale: editor.stale,
+      pos: editorPos,
+      onMove: moveEditor,
+    },
+    profile: {
+      draft: loudnessProfile?.draft,
+      onEdit: loudnessProfile?.editDraft,
+      onName: loudnessProfile?.setDraftName,
+      onReference: loudnessProfile?.setDraftReference,
+      onAddRule: loudnessProfile?.addDraftRule,
+      onUpdateRule: loudnessProfile?.updateDraftRule,
+      onRemoveRule: loudnessProfile?.removeDraftRule,
+      onReorderRules: loudnessProfile?.reorderDraftRules,
+      onSave: loudnessProfile?.saveDraft,
+      onCancel: loudnessProfile?.cancelDraft,
+      onDismiss: loudnessProfile?.requestDismiss,
+      discardOpen: loudnessProfile?.discardOpen,
+      onDiscardOpenChange: (open) =>
+        open ? loudnessProfile?.requestDismiss() : loudnessProfile?.keepEditing(),
+      onConfirmDiscard: loudnessProfile?.confirmDiscard,
+      editorDraftDecision: {
+        editorKind: "loudnessProfile",
+        editorSurfaceId: profileEditorSurfaceId,
+      },
+      pos: loudnessProfilePos,
+      onMove: setLoudnessProfilePos,
+    },
+  };
+  if (!presentationEnabled) return null;
+
   return (
     <>
-      <SettingsPanel
-        sectionRequest={settings.settingsSectionRequest}
-        settingsOpen={settings.settingsOpen}
-        setSettingsOpen={settings.setSettingsOpen}
-        appearance={settings.appearance}
-        setAppearanceMode={settings.setAppearanceMode}
-        interfaceSize={settings.interfaceSize}
-        setInterfaceSize={settings.setInterfaceSize}
-        fixedThemeSelectValue={settings.fixedThemeSelectValue}
-        setFixedThemeIdFromPicker={settings.setFixedThemeIdFromPicker}
-        channelCount={channelSettings.channelCount}
-        channelLabelTokens={channelSettings.channelLabelTokens}
-        channelLabelHasOverride={channelSettings.channelLabelHasOverride}
-        selectedLayoutId={channelSettings.selectedLayoutId}
-        setChannelLayout={channelSettings.setChannelLayout}
-        setChannelLabelToken={channelSettings.setChannelLabelToken}
-        resetChannelLabels={channelSettings.resetChannelLabels}
-        appVersion={appVersion}
-        latestVersion={updateInfo?.latestVersion}
-        releaseUrl={updateInfo?.releaseUrl}
-        hasUpdate={updateInfo?.hasUpdate}
-        updateStatus={updateInfo?.status}
-        updateActivity={updateInfo?.activity}
-        onCheckForUpdate={refreshUpdateCheck}
-        onInstallUpdate={openUpdateDialog}
-        updatePreferences={updateControls.enabled ? settings.updatePreferences : null}
-        setUpdatePreferences={settings.setUpdatePreferences}
-        updateInstallationSupported={updateControls.installationSupported}
-        updateInstallationUnavailableReason={updateControls.installationUnavailableReason}
-        openExternalUrl={openExternalUrl}
-        autostartEnabled={settings.autostartEnabled}
-        setAutostartEnabled={settings.setAutostartEnabled}
-        autostartReady={settings.autostartReady}
-        closeAction={settings.closeAction}
-        setCloseAction={settings.setCloseAction}
-        historyRetentionSec={settings.historyRetentionSec}
-        setHistoryRetentionSec={settings.setHistoryRetentionSec}
-        dialogueVadEngine={settings.dialogueVadEngine}
-        setDialogueVadEngine={settings.setDialogueVadEngine}
-        keyboardShortcuts={settings.keyboardShortcuts}
-        setShortcutAccelerator={settings.setShortcutAccelerator}
-        setShortcutGlobal={settings.setShortcutGlobal}
-        setShortcutCapturing={settings.setShortcutCapturing}
-        shortcutsReady={settings.shortcutsReady}
-        shortcutRegistrationErrors={settings.shortcutRegistrationErrors}
-        customThemeOptions={settings.customThemeOptions}
-        createCustomTheme={settings.createCustomTheme}
-        editCustomTheme={settings.editCustomTheme}
-        customizeBuiltinTheme={settings.customizeBuiltinTheme}
-        duplicateCustomTheme={settings.duplicateCustomTheme}
-        deleteCustomTheme={settings.deleteCustomTheme}
-        onExportTheme={(id) => pack.exportSelection("themes", [id])}
-        themeControlsDisabled={editor.isEditing}
-        onExportConfiguration={exportConfiguration}
-        onImportConfiguration={importConfiguration}
-        onResetConfiguration={resetConfiguration}
-        configurationBusy={configurationBusy}
-        configurationStatus={configurationStatus}
-        onLibraryExport={() => setLibraryExportOpen(true)}
-        onSharedPackImport={pack.beginSharedImport}
-        packBusy={pack.busy}
-        packStatus={pack.status}
-        agentControlStatus={agentControlStatus}
-        agentControlBusy={agentControlBusy}
-        onSetAgentControlEnabled={async (next) => {
-          const status = await setAgentControlEnabled(next);
-          onAgentControlEnabledChange(status?.enabled === true);
-        }}
-        askToSendCrashReports={crashReportSetting.enabled}
-        crashReportSettingBusy={crashReportSetting.busy}
-        crashReportSettingError={crashReportSetting.error}
-        onAskToSendCrashReports={crashReportSetting.setEnabled}
-        onOpenFeedback={openFeedback}
-        onOpenQuickTour={onOpenQuickTour}
-      />
+      <SettingsPanel {...views.settings} />
 
       <UpdateDialog
         open={updateDialogOpen}
@@ -427,9 +514,7 @@ export function AppSettingsOverlays({
         openExternalUrl={openExternalUrl}
       />
 
-      {feedbackOpen ? (
-        <FeedbackDialog onClose={cancelFeedback} onDirtyChange={setFeedbackDirty} />
-      ) : null}
+      {feedbackOpen ? <FeedbackContent controller={feedback} onClose={cancelFeedback} /> : null}
 
       {crashReporting.pendingReport ? (
         <CrashReportDialog
@@ -439,20 +524,7 @@ export function AppSettingsOverlays({
         />
       ) : null}
 
-      <LibraryExportDialog
-        open={libraryExportOpen}
-        itemsByType={{
-          loudness: getAdapter("loudness").list(),
-          presets: getAdapter("presets").list(),
-          themes: getAdapter("themes").list(),
-        }}
-        dependenciesByType={{ presets: getAdapter("loudness").list() }}
-        onExport={pack.exportSelection}
-        onClose={() => {
-          setLibraryExportOpen(false);
-          setLibraryExportFixtureId(null);
-        }}
-      />
+      <LibraryExportDialog {...views.libraryExport} />
 
       {pack.review ? (
         <ItemPickerDialog
@@ -490,70 +562,9 @@ export function AppSettingsOverlays({
         </div>
       ) : null}
 
-      {editor.isEditing ? (
-        <ThemeEditor
-          draft={editor.draft}
-          onName={editor.setName}
-          onColorScheme={editor.updateColorScheme}
-          onCore={editor.updateCore}
-          onResetCore={editor.resetCore}
-          onPaletteColor={editor.updatePaletteColor}
-          onIntensityStop={editor.updateIntensityStop}
-          onIntensityStops={editor.updateIntensityStops}
-          onApplyPreset={editor.applyPreset}
-          onOverride={editor.updateOverride}
-          onResetOverrides={editor.resetOverrides}
-          onUndo={editor.undo}
-          onRedo={editor.redo}
-          canUndo={editor.canUndo}
-          canRedo={editor.canRedo}
-          canSave={editor.canSave}
-          onSave={editor.save}
-          onCancel={editor.cancel}
-          onDismiss={editor.requestDismiss}
-          discardOpen={editor.discardOpen}
-          onDiscardOpenChange={(open) => (open ? editor.requestDismiss() : editor.keepEditing())}
-          onConfirmDiscard={editor.confirmDiscard}
-          editorDraftDecision={{
-            editorKind: "theme",
-            editorSurfaceId: themeEditorSurfaceId,
-          }}
-          page={editor.page}
-          onPageChange={editor.setPage}
-          onDelete={undefined}
-          dirty={editor.dirty}
-          stale={editor.stale}
-          pos={editorPos}
-          onMove={moveEditor}
-        />
-      ) : null}
+      {editor.isEditing ? <ThemeEditor {...views.theme} /> : null}
 
-      {loudnessProfile?.draft ? (
-        <LoudnessProfileEditor
-          draft={loudnessProfile.draft}
-          onEdit={loudnessProfile.editDraft}
-          onName={loudnessProfile.setDraftName}
-          onReference={loudnessProfile.setDraftReference}
-          onAddRule={loudnessProfile.addDraftRule}
-          onUpdateRule={loudnessProfile.updateDraftRule}
-          onRemoveRule={loudnessProfile.removeDraftRule}
-          onReorderRules={loudnessProfile.reorderDraftRules}
-          onSave={loudnessProfile.saveDraft}
-          onCancel={loudnessProfile.cancelDraft}
-          onDismiss={loudnessProfile.requestDismiss}
-          discardOpen={loudnessProfile.discardOpen}
-          onDiscardOpenChange={(open) =>
-            open ? loudnessProfile.requestDismiss() : loudnessProfile.keepEditing()
-          }
-          onConfirmDiscard={loudnessProfile.confirmDiscard}
-          editorDraftDecision={{
-            editorKind: "loudnessProfile",
-            editorSurfaceId: profileEditorSurfaceId,
-          }}
-          pos={loudnessProfilePos}
-          onMove={setLoudnessProfilePos}
-        />
-      ) : null}
+      {loudnessProfile?.draft ? <LoudnessProfileEditor {...views.profile} /> : null}
     </>
   );
 }

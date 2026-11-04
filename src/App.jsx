@@ -707,33 +707,35 @@ function AppContent() {
         panelChromeData={panelChromeData}
         footer={footer}
         recordingState={visualRecordingState}
+        settingsOverlays={
+          <AppSettingsOverlays
+            presentationEnabled={!docked}
+            ref={settingsOverlaysRef}
+            settings={settings}
+            crashReportSetting={crashReportSetting}
+            crashReporting={crashReporting}
+            packTransfer={packTransfer}
+            presets={presets}
+            loudnessProfile={loudnessProfile}
+            channelSettings={{
+              channelCount,
+              channelLabelTokens,
+              channelLabelHasOverride: !!channelLabelOverride,
+              selectedLayoutId: channelLabelRuntime.selectedLayoutId,
+              setChannelLayout,
+              setChannelLabelToken,
+              resetChannelLabels,
+            }}
+            updateControls={updateControls}
+            appVersion={APP_VERSION}
+            onAgentControlEnabledChange={setAgentControlEnabled}
+            onOpenQuickTour={() => {
+              setSettingsOpen(false);
+              setQuickTourRequest((value) => value + 1);
+            }}
+          />
+        }
       >
-        <AppSettingsOverlays
-          ref={settingsOverlaysRef}
-          settings={settings}
-          crashReportSetting={crashReportSetting}
-          crashReporting={crashReporting}
-          packTransfer={packTransfer}
-          presets={presets}
-          loudnessProfile={loudnessProfile}
-          channelSettings={{
-            channelCount,
-            channelLabelTokens,
-            channelLabelHasOverride: !!channelLabelOverride,
-            selectedLayoutId: channelLabelRuntime.selectedLayoutId,
-            setChannelLayout,
-            setChannelLabelToken,
-            resetChannelLabels,
-          }}
-          updateControls={updateControls}
-          appVersion={APP_VERSION}
-          onAgentControlEnabledChange={setAgentControlEnabled}
-          onOpenQuickTour={() => {
-            setSettingsOpen(false);
-            setQuickTourRequest((value) => value + 1);
-          }}
-        />
-
         <CloseConfirmDialog
           open={closeDialogOpen}
           error={closeError}

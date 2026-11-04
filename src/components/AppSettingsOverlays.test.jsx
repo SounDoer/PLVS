@@ -115,7 +115,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
 }));
 
 vi.mock("./FeedbackDialog.jsx", () => ({
-  FeedbackDialog: ({ onClose }) => (
+  FeedbackContent: ({ onClose }) => (
     <div role="dialog" aria-label="feedback">
       <button type="button" onClick={onClose}>
         Close feedback

@@ -1,0 +1,1100 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CircleHelp, ExternalLink } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { ResetAction } from "@/components/ResetAction.jsx";
+import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
+import { HoverTip } from "@/components/HoverTip.jsx";
+import { ShortcutCapture } from "./ShortcutCapture.jsx";
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  KEYBOARD_SHORTCUT_ACTIONS,
+  configuredShortcutConflict,
+} from "@/data/keyboardShortcutActions.js";
+import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
+import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
+import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
+import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
+import { ThemePicker } from "./ThemePicker.jsx";
+import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
+import { SHARESETS_URL } from "../ipc/openExternal.js";
+import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
+import { UpdatePreferencesSettings } from "./UpdatePreferencesControls.jsx";
+import {
+  DIALOGUE_VAD_ENGINE_OPTIONS,
+  DEFAULT_DIALOGUE_VAD_ENGINE,
+} from "@/lib/dialogueVadEngines.js";
+import { LinkButton } from "@/components/ui/link-button";
+import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
+import { UI_SETTINGS_SECTIONS, createUiNavigationError } from "@/uiNavigation/uiNavigationModel.js";
+import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
+import { IconAction } from "@/components/ui/icon-action";
+const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
+const DOCS_URL = "https://plvs.soundoer.com/docs/";
+const AGENT_CONTROL_PROMPT_STARTER =
+  "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me...";
+
+const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-control)]";
+
+const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
+
+const ROW_CLASS =
+  "grid min-h-[var(--ui-shell-h)] grid-cols-[minmax(0,1fr)_max-content] items-center gap-2 rounded-xs px-2";
+
+const ROW_LABEL_CLASS =
+  "whitespace-nowrap text-[length:var(--ui-fs-control)] text-muted-foreground";
+
+const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
+
+const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
+
+const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
+
+const FOOTER_LINK_CLASS =
+  "inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-metric-meta)] cursor-pointer outline-none disabled:cursor-default disabled:opacity-50";
+
+function SettingsBody({ children }) {
+  return (
+    <div data-settings-body className={BODY_CLASS}>
+      {children}
+    </div>
+  );
+}
+
+/** @param {{ children: import("react").ReactNode, className?: string, sectionId: string, sectionRef?: import("react").Ref<HTMLDivElement> }} props */
+function SettingsSection({ children, className, sectionId, sectionRef }) {
+  return (
+    <div
+      ref={sectionRef}
+      tabIndex={-1}
+      data-settings-section
+      data-settings-section-id={sectionId}
+      data-ui-target={`settings-section:${sectionId}`}
+      className={cn(SECTION_CLASS, className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * @param {{
+ *   children: import("react").ReactNode,
+ *   label?: string,
+ *   labelNode?: import("react").ReactNode,
+ *   className?: string,
+ *   [key: string]: any,
+ * }} props
+ */
+function SettingsRow({ children, label, labelNode, className, uiTarget, ...props }) {
+  return (
+    <div data-settings-row className={cn(ROW_CLASS, className)} {...props}>
+      {labelNode ?? <span className={ROW_LABEL_CLASS}>{label}</span>}
+      <div data-settings-row-value data-ui-target={uiTarget} className={ROW_VALUE_CLASS}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SettingsLabelWithTip({ label, tip }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className={ROW_LABEL_CLASS}>{label}</span>
+      <HoverTip
+        tip={tip}
+        side="bottom"
+        align="start"
+        className="inline-flex shrink-0"
+        tipClassName="w-max max-w-[18rem] whitespace-normal"
+      >
+        <IconAction aria-label={`${label} help: ${tip}`} className="p-1">
+          <CircleHelp className="size-[1em]" aria-hidden />
+        </IconAction>
+      </HoverTip>
+    </div>
+  );
+}
+
+function SettingsDivider() {
+  return <div className="border-t border-border" />;
+}
+
+/** @param {{ className?: string, [key: string]: any }} props */
+function SettingsSwitch({ className, ...props }) {
+  return (
+    <Switch
+      className={cn(SWITCH_CLASS, className)}
+      thumbClassName={SWITCH_THUMB_CLASS}
+      {...props}
+    />
+  );
+}
+
+function IconButton({ children, className, ...props }) {
+  return (
+    <IconAction className={cn("p-1", className)} {...props}>
+      {children}
+    </IconAction>
+  );
+}
+
+/**
+ * @param {{
+ *   Frame: import("react").ComponentType<any>,
+ *   settingsOpen: boolean,
+ *   sectionRequest?: { section: string } | null,
+ *   setSettingsOpen: (...args: any[]) => any,
+ *   appearance: string,
+ *   setAppearanceMode: (...args: any[]) => any,
+ *   interfaceSize?: string,
+ *   setInterfaceSize?: (...args: any[]) => any,
+ *   fixedThemeSelectValue: string,
+ *   setFixedThemeIdFromPicker: (...args: any[]) => any,
+ *   appVersion: string,
+ *   latestVersion: string,
+ *   releaseUrl: string,
+ *   hasUpdate?: boolean,
+ *   updateStatus?: string,
+ *   updateActivity?: any,
+ *   updateInstallationUnavailableReason?: string | null,
+ *   updatePreferences?: any,
+ *   setUpdatePreferences?: (...args: any[]) => any,
+ *   updateInstallationSupported?: boolean,
+ *   onCheckForUpdate?: (...args: any[]) => any,
+ *   onInstallUpdate?: (...args: any[]) => any,
+ *   openExternalUrl?: (...args: any[]) => any,
+ *   autostartEnabled?: boolean,
+ *   setAutostartEnabled?: (...args: any[]) => any,
+ *   autostartReady?: boolean,
+ *   closeAction?: string,
+ *   setCloseAction?: (...args: any[]) => any,
+ *   historyRetentionSec?: number,
+ *   setHistoryRetentionSec?: (...args: any[]) => any,
+ *   dialogueVadEngine?: string,
+ *   setDialogueVadEngine?: (...args: any[]) => any,
+ *   keyboardShortcuts?: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["keyboardShortcuts"],
+ *   setShortcutAccelerator?: (...args: any[]) => any,
+ *   setShortcutGlobal?: (...args: any[]) => any,
+ *   setShortcutCapturing?: (...args: any[]) => any,
+ *   shortcutsReady?: boolean,
+ *   shortcutRegistrationErrors?: Record<string, string>,
+ *   channelCount?: number,
+ *   channelLabelTokens?: any[],
+ *   channelLabelHasOverride?: boolean,
+ *   selectedLayoutId?: string,
+ *   setChannelLayout?: (...args: any[]) => any,
+ *   setChannelLabelToken?: (...args: any[]) => any,
+ *   resetChannelLabels?: (...args: any[]) => any,
+ *   customThemeOptions?: any[],
+ *   createCustomTheme?: (...args: any[]) => any,
+ *   editCustomTheme?: (...args: any[]) => any,
+ *   customizeBuiltinTheme?: (...args: any[]) => any,
+ *   duplicateCustomTheme?: (...args: any[]) => any,
+ *   deleteCustomTheme?: (...args: any[]) => any,
+ *   onExportTheme?: (...args: any[]) => any,
+ *   themeControlsDisabled?: boolean,
+ *   onExportConfiguration?: (...args: any[]) => any,
+ *   onImportConfiguration?: (...args: any[]) => any,
+ *   onResetConfiguration?: (...args: any[]) => any,
+ *   configurationBusy?: boolean,
+ *   configurationStatus?: string,
+ *   onLibraryExport?: (...args: any[]) => any,
+ *   onSharedPackImport?: (...args: any[]) => any,
+ *   packBusy?: boolean,
+ *   packStatus?: string,
+ *   agentControlStatus?: ReturnType<typeof import("../hooks/useAgentControlSettings.js").useAgentControlSettings>["agentControlStatus"],
+ *   agentControlBusy?: boolean,
+ *   onSetAgentControlEnabled?: (...args: any[]) => any,
+ *   askToSendCrashReports?: boolean,
+ *   crashReportSettingBusy?: boolean,
+ *   crashReportSettingError?: string,
+ *   onAskToSendCrashReports?: (...args: any[]) => any,
+ *   onOpenFeedback?: (...args: any[]) => any,
+ *   onOpenQuickTour?: () => void,
+ * }} props
+ */
+export function SettingsContent({
+  Frame,
+  settingsOpen,
+  sectionRequest = null,
+  setSettingsOpen,
+  appearance,
+  setAppearanceMode,
+  interfaceSize = "default",
+  setInterfaceSize = () => {},
+  fixedThemeSelectValue,
+  setFixedThemeIdFromPicker,
+  appVersion,
+  latestVersion,
+  releaseUrl,
+  hasUpdate = false,
+  updateStatus = latestVersion ? "ok" : "checking",
+  updateActivity = null,
+  updateInstallationUnavailableReason = null,
+  updatePreferences = null,
+  setUpdatePreferences = () => {},
+  updateInstallationSupported = false,
+  onCheckForUpdate = () => {},
+  onInstallUpdate = () => {},
+  openExternalUrl = () => {},
+  autostartEnabled = false,
+  setAutostartEnabled = () => {},
+  autostartReady = false,
+  closeAction = "ask",
+  setCloseAction = () => {},
+  historyRetentionSec = 3600,
+  setHistoryRetentionSec = () => {},
+  dialogueVadEngine = DEFAULT_DIALOGUE_VAD_ENGINE,
+  setDialogueVadEngine = () => {},
+  keyboardShortcuts = DEFAULT_KEYBOARD_SHORTCUTS,
+  setShortcutAccelerator = () => {},
+  setShortcutGlobal = () => {},
+  setShortcutCapturing = () => {},
+  shortcutsReady = false,
+  shortcutRegistrationErrors = {},
+  channelCount = 0,
+  channelLabelTokens = [],
+  channelLabelHasOverride = false,
+  selectedLayoutId = null,
+  setChannelLayout = () => {},
+  setChannelLabelToken = () => {},
+  resetChannelLabels = () => {},
+  customThemeOptions = [],
+  createCustomTheme = () => {},
+  editCustomTheme = () => {},
+  customizeBuiltinTheme = () => {},
+  duplicateCustomTheme = () => {},
+  deleteCustomTheme = () => {},
+  onExportTheme = () => {},
+  themeControlsDisabled = false,
+  onExportConfiguration = () => {},
+  onImportConfiguration = () => {},
+  onResetConfiguration = () => {},
+  configurationBusy = false,
+  configurationStatus = "",
+  onLibraryExport = () => {},
+  onSharedPackImport = () => {},
+  packBusy = false,
+  packStatus = "",
+  agentControlStatus = undefined,
+  agentControlBusy = false,
+  onSetAgentControlEnabled = () => {},
+  askToSendCrashReports = true,
+  crashReportSettingBusy = false,
+  crashReportSettingError = "",
+  onAskToSendCrashReports = () => {},
+  onOpenFeedback = () => {},
+  onOpenQuickTour,
+}) {
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac/i.test(navigator.platform || navigator.userAgent || "");
+  const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
+  // Reset wipes every library and relaunches, so it gets a modal that can say so. Per-setting
+  // resets use the compact inline confirmation shared with the rest of the app.
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const closingIntentRef = useRef(false);
+  const sectionNodesRef = useRef(new Map());
+  const pendingSectionRef = useRef(null);
+  const [activeSection, setActiveSection] = useState("behavior");
+  // Single-choice controls the pointer can reach and `ui show dropdown` can open.
+  const closeBehaviorDropdown = useDropdownNavigation("setting:behavior.closeBehavior");
+  const interfaceSizeDropdown = useDropdownNavigation("setting:appearance.interfaceSize");
+  const appearanceDropdown = useDropdownNavigation("setting:appearance.mode");
+  const historyDropdown = useDropdownNavigation("setting:analysis.historyRetention");
+  const dialogueDropdown = useDropdownNavigation("setting:analysis.dialogueVadEngine");
+  const layoutDropdown = useDropdownNavigation("setting:channels.layout");
+  const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
+  const updateCheckDisabled = ["checking", "disabled", "managed"].includes(updateStatus);
+  let updateStatusText = "Checking...";
+  if (updateStatus === "idle") updateStatusText = "Not Checked";
+  if (updateStatus === "disabled") updateStatusText = "Updates Unavailable";
+  if (updateStatus === "managed") updateStatusText = "Managed by Main Workbench";
+  if (updateStatus === "unavailable") {
+    updateStatusText = "Update unavailable";
+  } else if (updateStatus === "ok") {
+    updateStatusText = hasUpdate && latestVersion ? `v${latestVersion} available` : "Up to date";
+  }
+  if (updateActivity?.downloading) {
+    const progress = updateActivity.progress;
+    updateStatusText =
+      typeof progress === "number" && Number.isFinite(progress)
+        ? `Downloading ${Math.round(Math.max(0, Math.min(1, progress)) * 100)}%`
+        : "Downloading…";
+  } else if (updateActivity?.downloadError) {
+    updateStatusText = updateActivity.readyVersion
+      ? "Update Ready · Download Failed"
+      : "Download Failed";
+  } else if (updateActivity?.readyVersion) {
+    updateStatusText = `v${updateActivity.readyVersion} Ready`;
+  }
+  const showAgentControl = agentControlStatus !== undefined;
+  const agentControlSupported = !!agentControlStatus?.supported;
+  const agentControlInstalled = !!agentControlStatus?.cliInstalled;
+  const agentControlEnabled = !!agentControlStatus?.enabled;
+  const agentControlDisabled = agentControlBusy || !agentControlSupported || !agentControlInstalled;
+  const agentControlMessage = agentControlStatus?.message ?? "Checking Agent Control...";
+  // The switch shows the permission the user granted; the endpoint can fail to open after it.
+  // Without this line the two disagree in silence.
+  const agentControlSilent = agentControlEnabled && !agentControlStatus?.listening;
+  const agentControlStartError = agentControlStatus?.startError ?? "";
+  const selectedDialogueVadEngine =
+    DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === dialogueVadEngine) ??
+    DIALOGUE_VAD_ENGINE_OPTIONS[0];
+  const channelLayouts = layoutsForChannelCount(channelCount);
+  const selectedStandardLayout = channelLayouts.find((layout) => layout.id === selectedLayoutId);
+  const showChannelLayoutSelect =
+    channelLayouts.length > 1 ||
+    (channelLayouts.length === 1 && (selectedLayoutId === null || selectedLayoutId === "custom"));
+  const channelLayoutLabel =
+    selectedLayoutId === "custom"
+      ? "Custom"
+      : (selectedStandardLayout?.name ?? selectedLayoutId ?? "Unknown");
+
+  const bindSection = useCallback(
+    (section) => (node) => {
+      if (node) sectionNodesRef.current.set(section, node);
+      else sectionNodesRef.current.delete(section);
+    },
+    []
+  );
+  const focusSection = useCallback((section) => {
+    const node = sectionNodesRef.current.get(section);
+    if (!node) return false;
+    node.scrollIntoView({ block: "start" });
+    node.focus({ preventScroll: true });
+    return true;
+  }, []);
+
+  const settlePendingSection = useCallback(() => {
+    const pending = pendingSectionRef.current;
+    if (!pending) return;
+    if (focusSection(pending.section)) {
+      pendingSectionRef.current = null;
+      queueMicrotask(pending.resolve);
+      return;
+    }
+    if (Date.now() >= pending.deadline) {
+      pendingSectionRef.current = null;
+      pending.reject(createUiNavigationError("uiNotSettled", { kind: "settings" }));
+      return;
+    }
+    if (pending.retryScheduled) return;
+    pending.retryScheduled = true;
+    setTimeout(() => {
+      if (pendingSectionRef.current === pending) pending.retryScheduled = false;
+      settlePendingSection();
+    }, 16);
+  }, [focusSection]);
+
+  useLayoutEffect(() => {
+    if (settingsOpen) {
+      closingIntentRef.current = false;
+      setSheetBodyVisible(true);
+      return;
+    }
+    if (!closingIntentRef.current) {
+      setSheetBodyVisible(false);
+    }
+  }, [settingsOpen]);
+
+  useLayoutEffect(() => {
+    if (settingsOpen && sheetBodyVisible) settlePendingSection();
+  }, [activeSection, settingsOpen, settlePendingSection, sheetBodyVisible]);
+
+  const handleOpenChange = (open) => {
+    if (open) {
+      closingIntentRef.current = false;
+      setSettingsOpen(true);
+      setSheetBodyVisible(true);
+      return;
+    }
+    closingIntentRef.current = true;
+    setSheetBodyVisible(false);
+  };
+
+  const showSection = useCallback(
+    ({ section }) => {
+      if (!UI_SETTINGS_SECTIONS.includes(section)) {
+        throw createUiNavigationError("uiTargetNotFound", { kind: "settings", section });
+      }
+      if (
+        (section === "agent-control" && !showAgentControl) ||
+        (section === "about" && !appVersion)
+      ) {
+        throw createUiNavigationError("surfaceUnavailable", { kind: "settings", section });
+      }
+      setActiveSection(section);
+      setSettingsOpen(true);
+      return new Promise((resolve, reject) => {
+        pendingSectionRef.current = {
+          section,
+          resolve,
+          reject,
+          deadline: Date.now() + 2500,
+          retryScheduled: false,
+        };
+        queueMicrotask(settlePendingSection);
+      });
+    },
+    [appVersion, setSettingsOpen, settlePendingSection, showAgentControl]
+  );
+  useUiNavigationTarget("settings", { show: showSection });
+  const handledSectionRequestRef = useRef(null);
+  useEffect(() => {
+    if (!settingsOpen || !sectionRequest || handledSectionRequestRef.current === sectionRequest)
+      return;
+    if (sectionRequest.section === "about" && !appVersion) return;
+    handledSectionRequestRef.current = sectionRequest;
+    void showSection(sectionRequest).catch((error) =>
+      console.warn("Unable to show the requested Settings section", error)
+    );
+  }, [appVersion, sectionRequest, settingsOpen, showSection]);
+  useUiSurface({
+    active: settingsOpen,
+    kind: "settings",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { section: activeSection },
+    onClose: () => handleOpenChange(false),
+  });
+
+  return (
+    <Frame
+      open={settingsOpen}
+      bodyVisible={sheetBodyVisible}
+      onOpenChange={handleOpenChange}
+      onExitComplete={() => {
+        if (closingIntentRef.current) {
+          closingIntentRef.current = false;
+          setSettingsOpen(false);
+        }
+      }}
+      confirmation={
+        <ConfirmDialog
+          open={resetConfirmOpen}
+          onOpenChange={setResetConfirmOpen}
+          title="Reset PLVS to Default?"
+          description="Every setting, preset, theme and loudness profile is erased and PLVS restarts. This cannot be undone."
+          confirmLabel="Reset PLVS"
+          onConfirm={onResetConfiguration}
+        />
+      }
+    >
+      <SettingsBody>
+        {/* Behavior */}
+        <SettingsSection sectionId="behavior" sectionRef={bindSection("behavior")}>
+          <SettingsRow label="Open at Login" uiTarget="setting:behavior.openAtLogin">
+            <SettingsSwitch
+              aria-label="Open at Login"
+              checked={autostartEnabled}
+              onCheckedChange={setAutostartEnabled}
+              disabled={!autostartReady}
+            />
+          </SettingsRow>
+          <SettingsRow label="Close Behavior">
+            <Select
+              value={closeAction}
+              onValueChange={setCloseAction}
+              {...closeBehaviorDropdown.rootProps}
+            >
+              <SelectTrigger
+                aria-label="Close Behavior"
+                variant="flush"
+                {...closeBehaviorDropdown.triggerProps}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" variant="flush">
+                <SelectItem value="ask">Ask Each Time</SelectItem>
+                <SelectItem value="tray">Minimize to Tray</SelectItem>
+                <SelectItem value="quit">Quit</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsDivider />
+
+        {/* Keyboard shortcuts */}
+        <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
+          {KEYBOARD_SHORTCUT_ACTIONS.map((action) => {
+            const defaultBinding = DEFAULT_KEYBOARD_SHORTCUTS[action.id];
+            const binding = keyboardShortcuts[action.id] ?? defaultBinding;
+            const registrationError = shortcutRegistrationErrors[action.id];
+            const isDefault =
+              binding.accelerator === defaultBinding.accelerator &&
+              binding.global === defaultBinding.global;
+            return (
+              <SettingsRow
+                key={action.id}
+                label={action.label}
+                uiTarget={`setting:shortcuts.${action.id}`}
+              >
+                <div className="flex flex-col items-end gap-0">
+                  <div className="flex items-center gap-2">
+                    <ShortcutCapture
+                      label={`${action.label} shortcut`}
+                      value={binding.accelerator}
+                      onChange={(accelerator) => setShortcutAccelerator(action.id, accelerator)}
+                      conflictForAccelerator={(accelerator) =>
+                        reservedComboConflict(accelerator) ??
+                        configuredShortcutConflict(keyboardShortcuts, action.id, accelerator)
+                      }
+                      onRecordingChange={setShortcutCapturing}
+                      isMac={isMac}
+                      disabled={!shortcutsReady}
+                    />
+                    <HoverTip tip="Works Outside PLVS" side="top" className="inline-flex shrink-0">
+                      <SettingsSwitch
+                        aria-label={`${action.label} works outside PLVS`}
+                        checked={binding.global}
+                        onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
+                        disabled={!shortcutsReady || binding.accelerator === null}
+                        className={cn(registrationError && "border-destructive")}
+                      />
+                    </HoverTip>
+                    <ResetAction
+                      compact
+                      label={`Reset ${action.label} shortcut settings`}
+                      isDefault={!shortcutsReady || isDefault}
+                      onReset={() => {
+                        setShortcutAccelerator(action.id, defaultBinding.accelerator);
+                        setShortcutGlobal(action.id, defaultBinding.global);
+                      }}
+                      confirmLabel={`Confirm reset ${action.label} shortcut settings`}
+                      cancelLabel={`Cancel reset ${action.label} shortcut settings`}
+                    />
+                  </div>
+                  {registrationError ? (
+                    <span className="text-[length:var(--ui-fs-axis)] text-destructive">
+                      Combo unavailable, try another
+                    </span>
+                  ) : null}
+                </div>
+              </SettingsRow>
+            );
+          })}
+        </SettingsSection>
+
+        <SettingsDivider />
+
+        {/* Appearance */}
+        <SettingsSection sectionId="appearance" sectionRef={bindSection("appearance")}>
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="Interface Size"
+                tip="Adjusts text and related interface icons. Dock is unaffected."
+              />
+            }
+          >
+            <Select
+              value={interfaceSize}
+              onValueChange={setInterfaceSize}
+              {...interfaceSizeDropdown.rootProps}
+            >
+              <SelectTrigger
+                aria-label="Interface Size"
+                variant="flush"
+                {...interfaceSizeDropdown.triggerProps}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" variant="flush">
+                {INTERFACE_SIZE_OPTIONS.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsRow>
+          {themeControlsDisabled ? (
+            <span className="px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              Finish editing the current theme before changing theme settings.
+            </span>
+          ) : null}
+          <SettingsRow label="Appearance">
+            <Select
+              value={appearance}
+              onValueChange={setAppearanceMode}
+              disabled={themeControlsDisabled}
+              {...appearanceDropdown.rootProps}
+            >
+              <SelectTrigger
+                aria-label="Appearance"
+                variant="flush"
+                disabled={themeControlsDisabled}
+                {...appearanceDropdown.triggerProps}
+              >
+                <SelectValue placeholder="Appearance" />
+              </SelectTrigger>
+              <SelectContent position="popper" variant="flush">
+                <SelectItem value="system">Follow System</SelectItem>
+                <SelectItem value="fixed">Fixed Theme</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingsRow>
+          {appearance === "fixed" ? (
+            <>
+              <div
+                role="group"
+                aria-label="Theme picker"
+                className="flex min-h-[var(--ui-control-h)] items-center gap-1 px-2"
+              >
+                <span className={ROW_LABEL_CLASS}>Theme</span>
+                <div className="flex-1" />
+                <ThemePicker
+                  value={fixedThemeSelectValue}
+                  onSelect={setFixedThemeIdFromPicker}
+                  customThemes={customThemeOptions.map((option) => option.theme).filter(Boolean)}
+                  onCustomize={customizeBuiltinTheme}
+                  onEdit={editCustomTheme}
+                  onDuplicate={duplicateCustomTheme}
+                  onExport={onExportTheme}
+                  onDelete={deleteCustomTheme}
+                  onCreate={createCustomTheme}
+                  disabled={themeControlsDisabled}
+                />
+              </div>
+              <SettingsRow label="">
+                <SharesetsBrowseButton category="themes" onOpen={openExternalUrl}>
+                  Browse Themes
+                </SharesetsBrowseButton>
+              </SettingsRow>
+            </>
+          ) : null}
+        </SettingsSection>
+
+        <SettingsDivider />
+
+        {/* History retention */}
+        <SettingsSection sectionId="analysis" sectionRef={bindSection("analysis")}>
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="History Length"
+                tip="How far back Live history can be inspected. Changing it clears the current Live measurement and starts again. File analysis is unaffected."
+              />
+            }
+          >
+            <Select
+              value={String(historyRetentionSec)}
+              onValueChange={setHistoryRetentionSec}
+              {...historyDropdown.rootProps}
+            >
+              <SelectTrigger
+                aria-label="History Length"
+                variant="flush"
+                {...historyDropdown.triggerProps}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" variant="flush">
+                <SelectItem value="1800">30 min</SelectItem>
+                <SelectItem value="3600">60 min</SelectItem>
+                <SelectItem value="7200">120 min</SelectItem>
+                <SelectItem value="14400">240 min</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingsRow>
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="Dialogue Detection"
+                tip="The detector behind the Stats dialogue metrics. Showing one of those metrics is what switches it on; changing the detector restarts the measurement."
+              />
+            }
+          >
+            <Select
+              value={dialogueVadEngine}
+              onValueChange={setDialogueVadEngine}
+              {...dialogueDropdown.rootProps}
+            >
+              <div
+                data-integrated-select-action
+                className="group relative rounded-md hover:bg-ui-hover has-[[data-state=open]]:bg-ui-hover"
+              >
+                <SelectTrigger
+                  aria-label="Dialogue Detection"
+                  variant="flush"
+                  {...dialogueDropdown.triggerProps}
+                  className="!gap-1 !pl-2 hover:bg-transparent"
+                >
+                  <SelectValue />
+                  <span aria-hidden className="size-[1em] shrink-0" />
+                </SelectTrigger>
+                <IconButton
+                  aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
+                  className="absolute top-1/2 right-[calc(1.15em+0.25rem)] -translate-y-1/2"
+                  onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
+                >
+                  <ExternalLink className="size-[1em]" />
+                </IconButton>
+              </div>
+              <SelectContent position="popper" variant="flush">
+                {DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsDivider />
+
+        {/* Channel labels */}
+        <SettingsSection sectionId="channels" sectionRef={bindSection("channels")}>
+          <SettingsRow
+            labelNode={
+              <span className={ROW_LABEL_CLASS}>
+                Channels{channelCount > 0 ? ` · ${channelCount}ch` : ""}
+              </span>
+            }
+          >
+            {channelCount > 0 ? (
+              <ResetAction
+                label="Reset channel labels"
+                isDefault={!channelLabelHasOverride}
+                onReset={resetChannelLabels}
+                confirmLabel="Confirm reset channel labels"
+                cancelLabel="Cancel reset channel labels"
+              />
+            ) : null}
+          </SettingsRow>
+          {channelCount > 0 ? (
+            <div className="flex flex-col gap-0">
+              <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
+                {showChannelLayoutSelect ? (
+                  <Select
+                    value={selectedLayoutId ?? ""}
+                    onValueChange={setChannelLayout}
+                    {...layoutDropdown.rootProps}
+                  >
+                    <SelectTrigger
+                      variant="flush"
+                      aria-label="channel layout"
+                      {...layoutDropdown.triggerProps}
+                    >
+                      <SelectValue placeholder="Unknown" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" variant="flush">
+                      {channelLayouts.map((layout) => (
+                        <SelectItem key={layout.id} value={layout.id}>
+                          {layout.name}
+                        </SelectItem>
+                      ))}
+                      {selectedLayoutId === "custom" ? (
+                        <SelectItem value="custom">Custom</SelectItem>
+                      ) : null}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span aria-label="channel layout" className="pl-2">
+                    {channelLayoutLabel}
+                  </span>
+                )}
+              </SettingsRow>
+              {channelLabelTokens.map((token, i) => (
+                <SettingsRow
+                  key={i}
+                  labelNode={
+                    <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                      {i + 1}
+                    </span>
+                  }
+                >
+                  <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
+                    <SelectTrigger
+                      variant="flush"
+                      aria-label={`Channel ${i + 1} role`}
+                      data-ui-target={`setting:channels.role.${i + 1}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" variant="flush">
+                      {CHANNEL_ROLE_VOCABULARY.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SettingsRow>
+              ))}
+            </div>
+          ) : (
+            <span className="px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              Connect an input to label its channels.
+            </span>
+          )}
+        </SettingsSection>
+
+        <SettingsDivider />
+
+        {/* Import, export and reset */}
+        <SettingsSection sectionId="transfer" sectionRef={bindSection("transfer")}>
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="Saved Items"
+                tip="Loudness Profiles, Presets and Themes. Export lets you choose saved items; Import adds them without replacing your current setup."
+              />
+            }
+            className="settings-row-stackable"
+          >
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={onLibraryExport}
+                disabled={packBusy}
+                aria-label="Export saved items"
+                data-ui-target="setting:transfer.libraryExport"
+              >
+                Export…
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={onSharedPackImport}
+                disabled={packBusy}
+                aria-label="Import saved items"
+                data-ui-target="setting:transfer.libraryImport"
+              >
+                Import…
+              </Button>
+            </div>
+          </SettingsRow>
+          {packStatus ? (
+            <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              {packStatus}
+            </div>
+          ) : null}
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="Complete Setup"
+                tip="One file containing all settings and saved items. Import replaces your current setup and restarts PLVS."
+              />
+            }
+            className="settings-row-stackable"
+          >
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={onExportConfiguration}
+                disabled={configurationBusy}
+                aria-label="Export complete setup"
+                data-ui-target="setting:transfer.configurationExport"
+              >
+                Export…
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={onImportConfiguration}
+                disabled={configurationBusy}
+                aria-label="Import complete setup"
+                data-ui-target="setting:transfer.configurationImport"
+              >
+                Import…
+              </Button>
+            </div>
+          </SettingsRow>
+          {/* No label: the button says what it does, and leaving the label column empty
+                      keeps it on the same right-hand column as the Import buttons above. */}
+          <SettingsRow label="" className="settings-row-stackable">
+            <Button
+              variant="ghost"
+              onClick={() => setResetConfirmOpen(true)}
+              disabled={configurationBusy}
+              aria-label="Reset PLVS to default"
+              data-ui-target="setting:transfer.configurationReset"
+              className="text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
+            >
+              Reset PLVS to Default
+            </Button>
+          </SettingsRow>
+          {configurationStatus ? (
+            <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              {configurationStatus}
+            </div>
+          ) : null}
+        </SettingsSection>
+
+        {showAgentControl ? (
+          <>
+            <SettingsDivider />
+
+            {/* Agent control */}
+            <SettingsSection sectionId="agent-control" sectionRef={bindSection("agent-control")}>
+              <SettingsRow
+                labelNode={<SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />}
+              >
+                <SettingsSwitch
+                  aria-label="Agent Control"
+                  data-ui-target="setting:agentControl.enabled"
+                  checked={agentControlEnabled}
+                  disabled={agentControlDisabled}
+                  onCheckedChange={(next) => onSetAgentControlEnabled(next)}
+                />
+              </SettingsRow>
+              {agentControlSilent ? (
+                <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                  {agentControlStartError
+                    ? `Enabled, but not listening: ${agentControlStartError}`
+                    : "Enabled, but not listening."}
+                </div>
+              ) : null}
+              {agentControlEnabled ? (
+                <div className="flex flex-col gap-1 px-2">
+                  <span className={ROW_LABEL_CLASS}>Prompt Starter</span>
+                  <CopyableTextBlock
+                    value={AGENT_CONTROL_PROMPT_STARTER}
+                    ariaLabel="copy agent control prompt starter"
+                  />
+                </div>
+              ) : null}
+            </SettingsSection>
+          </>
+        ) : null}
+
+        <SettingsDivider />
+        <section aria-label="updates and crash reports" className={SECTION_CLASS}>
+          {updatePreferences ? (
+            <UpdatePreferencesSettings
+              preferences={updatePreferences}
+              onChange={setUpdatePreferences}
+              installationSupported={updateInstallationSupported}
+              installationUnavailableReason={updateInstallationUnavailableReason}
+            />
+          ) : null}
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="Crash Report Prompt"
+                tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
+              />
+            }
+          >
+            <SettingsSwitch
+              aria-label="ask to send crash reports"
+              data-ui-target="setting:updates.askToSendCrashReports"
+              checked={askToSendCrashReports}
+              disabled={crashReportSettingBusy}
+              onCheckedChange={(next) => {
+                void Promise.resolve(onAskToSendCrashReports(next)).catch(() => {});
+              }}
+            />
+          </SettingsRow>
+          {crashReportSettingError ? (
+            <span className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+              Could not update crash-report settings.
+            </span>
+          ) : null}
+        </section>
+
+        {/* Footer */}
+        {appVersion ? (
+          <>
+            <SettingsDivider />
+            <div
+              ref={bindSection("about")}
+              tabIndex={-1}
+              data-settings-footer
+              data-settings-section-id="about"
+              className="flex flex-col gap-1 px-2 text-[length:var(--ui-fs-metric-meta)]"
+            >
+              <div
+                data-settings-footer-status
+                className="flex items-center justify-start gap-1 whitespace-nowrap"
+              >
+                <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
+                  v{appVersion}
+                </span>
+                <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                <HoverTip
+                  tip={updateActivity?.downloadError ?? undefined}
+                  side="top"
+                  className="min-w-0"
+                >
+                  <span
+                    className={cn(
+                      "block truncate",
+                      hasUpdate ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    {updateStatusText}
+                  </span>
+                </HoverTip>
+                <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  disabled={updateCheckDisabled}
+                  onClick={onCheckForUpdate}
+                >
+                  Check
+                </LinkButton>
+                {hasUpdate ? (
+                  <>
+                    <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                    <LinkButton
+                      className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
+                      onClick={onInstallUpdate}
+                    >
+                      Update
+                    </LinkButton>
+                  </>
+                ) : null}
+              </div>
+              <div
+                data-settings-footer-links
+                className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1"
+              >
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  onClick={() => openExternalUrl(SHARESETS_URL)}
+                >
+                  Sharesets
+                  <ExternalLink className="size-[1em]" />
+                </LinkButton>
+                <LinkButton
+                  className={cn(FOOTER_LINK_CLASS, hasUpdate && "text-primary hover:text-primary")}
+                  onClick={() => openExternalUrl(effectiveReleaseUrl)}
+                >
+                  Releases
+                  <ExternalLink className="size-[1em]" />
+                </LinkButton>
+                <LinkButton className={FOOTER_LINK_CLASS} onClick={() => openExternalUrl(DOCS_URL)}>
+                  Docs
+                  <ExternalLink className="size-[1em]" />
+                </LinkButton>
+                {onOpenQuickTour ? (
+                  <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenQuickTour}>
+                    Quick Tour
+                  </LinkButton>
+                ) : null}
+                <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenFeedback}>
+                  Feedback
+                </LinkButton>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </SettingsBody>
+    </Frame>
+  );
+}

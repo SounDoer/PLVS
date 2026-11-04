@@ -65,8 +65,8 @@ export function DockProvider({ children }) {
   // and preset capture/apply reads dock state. useDockMode depends only on the
   // profile controller above, so hoisting it above useAlwaysOnTop is safe.
   //
-  // The dock is a monitoring posture: AppShell renders the settings overlays
-  // (and so the profile editor) only when undocked, and the strip has no profile
+  // Settings ownership survives form changes, but its presentation (including
+  // the profile editor) is still normal-form only, and the strip has no profile
   // popover, so a draft carried in would keep outranking the persisted selection
   // for DockStats with no way to see, name, save or cancel it. Entry is therefore
   // refused while one is open -- the discard it used to do instead is exactly what

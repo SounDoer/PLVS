@@ -40,6 +40,7 @@ import {
  *   docked?: boolean,
  *   dockProps?: Omit<Parameters<typeof DockStrip>[0], "recordingState"> | null,
  *   children?: import("react").ReactNode,
+ *   settingsOverlays?: import("react").ReactNode,
  *   recordingState?: string | null,
  * }} props
  */
@@ -60,6 +61,7 @@ export function AppShell({
   docked = false,
   dockProps = null,
   children,
+  settingsOverlays = null,
   recordingState = null,
 }) {
   const autoHideControls = focusView.autoHideControls;
@@ -72,8 +74,9 @@ export function AppShell({
   );
 
   // Providers/engines stay mounted in both forms so dock modules read the same
-  // frame/history contexts as panels. Overlays and dialogs (children) are
-  // normal-form only by design: the settings dialog can't fit in the strip.
+  // frame/history contexts as panels. Settings ownership stays mounted across
+  // form changes; its presentation host decides where content can be shown.
+  // Other dialogs (children) remain normal-form only.
   return (
     <PanelDataProviders
       frameData={frameData}
@@ -81,6 +84,7 @@ export function AppShell({
       metricsData={metricsData}
       panelChromeData={panelChromeData}
     >
+      {settingsOverlays}
       {runtimeEnginesProps ? <MeterRuntimeEngines {...runtimeEnginesProps} /> : null}
       {docked ? (
         <DockStrip {...dockProps} recordingState={recordingState} />

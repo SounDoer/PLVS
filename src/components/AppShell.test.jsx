@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
 import { standIn } from "../testing/standIn.js";
+import { useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../runtime/MeterRuntimeEngines.jsx", () => ({ MeterRuntimeEngines: () => null }));
@@ -117,4 +118,23 @@ describe("AppShell footer", () => {
     rerender(<AppShell {...baseProps} footer={{ ...baseFooter, activePresetName: null }} />);
     expect(screen.queryByText("Preset")).toBeNull();
   });
+});
+
+it("keeps Settings ownership mounted while switching normal and Dock presentations", () => {
+  const mounted = vi.fn();
+  const unmounted = vi.fn();
+  function Owner() {
+    useEffect(() => {
+      mounted();
+      return unmounted;
+    }, []);
+    return null;
+  }
+  const view = render(<AppShell {...baseProps} footer={baseFooter} settingsOverlays={<Owner />} />);
+  view.rerender(
+    <AppShell {...baseProps} footer={baseFooter} docked settingsOverlays={<Owner />} />
+  );
+  view.rerender(<AppShell {...baseProps} footer={baseFooter} settingsOverlays={<Owner />} />);
+  expect(mounted).toHaveBeenCalledOnce();
+  expect(unmounted).not.toHaveBeenCalled();
 });
