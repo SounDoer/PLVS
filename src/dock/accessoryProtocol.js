@@ -11,6 +11,7 @@ export const DOCK_ACCESSORY_SURFACES = Object.freeze([
   "dock-update",
   "dock-import",
   "dock-settings",
+  "dock-authoring",
 ]);
 
 const ACTION_TYPES = new Set([
@@ -18,6 +19,8 @@ const ACTION_TYPES = new Set([
   "keyboard-shortcut",
   "settings-action",
   "settings-ready",
+  "settings-idle",
+  "settings-layout",
   "settings-dismiss",
   "settings-registry",
   "settings-ui-result",
@@ -71,6 +74,10 @@ const ACTION_TYPES = new Set([
   "delete-preset",
   "reorder-preset",
   "select-loudness-profile",
+  "create-loudness-profile",
+  "edit-loudness-profile",
+  "delete-loudness-profile",
+  "export-loudness-profile",
   "reorder-loudness-profiles",
 ]);
 

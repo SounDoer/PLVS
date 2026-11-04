@@ -1,6 +1,7 @@
 /// Scene operations are the ones that capture, replace or tear down the current editing scene:
 /// applying, saving or updating a layout preset, and entering the dock. They are refused while a
-/// blocking editor is open. See `hooks/BlockingEditorsContext.jsx` for the registry.
+/// blocking editor is open. Dock entry can transfer editors whose owners explicitly support both
+/// presentations. See `hooks/BlockingEditorsContext.jsx` for the registry.
 ///
 /// The refusal travels as an exception rather than a return value because these functions already
 /// use `true` / `false` / `null` for ordinary outcomes -- preset not found, nothing to do -- and a

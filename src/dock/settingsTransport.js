@@ -55,6 +55,7 @@ export const SETTINGS_ACTIONS = Object.freeze({
     "onDiscardOpenChange",
     "onConfirmDiscard",
     "onPageChange",
+    "onPreviewOpenChange",
     "onDelete",
   ],
   profile: [

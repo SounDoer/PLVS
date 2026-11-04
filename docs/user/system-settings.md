@@ -8,8 +8,14 @@ The drawer keeps a single border along its inner edge against the workbench. Flo
 dialogs retain their full outlines and shadows.
 
 In Dock, **Settings** in the expanded toolbar opens the same controls in a separate window without
-leaving Dock or restarting capture. Theme and Loudness Profile editors, Feedback, and Saved Items
-export share that window. Clicking another application leaves it open; Close or Escape uses the
+leaving Dock or restarting capture. Its width follows the same Interface Size setting as the normal
+drawer. Saved Items export uses that window. Theme and Loudness Profile editors and Feedback open in
+a separate, draggable authoring window with their ordinary rounded surfaces and content sizes.
+Closing an authoring flow destroys its native window after the existing save/cancel decision settles.
+Theme Preview remains the same modal preview as in the normal window: opening it temporarily expands
+the authoring window, and closing it restores the editor's size and position. It adds no extra WebView.
+Switching between Dock and the normal window preserves the open editor, unsaved draft, and Theme
+Preview. Clicking another application leaves authoring open; Close or Escape uses the
 current surface's normal close or cancel rules, including unsaved-draft confirmation. Updates and
 import review use their existing accessories, temporarily hiding Settings until the flow finishes.
 **Quick Tour** returns to the normal window before starting.

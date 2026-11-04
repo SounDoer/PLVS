@@ -299,13 +299,26 @@ export function AgentControlBridge() {
     () => ({
       available: isTauri() && ["windows", "macos"].includes(runtime.platform),
       windowVisible,
-      scale: () => globalThis.devicePixelRatio || 1,
+      scale: (surface) => {
+        const geometry = visualRuntimeRef.current?.accessoryGeometry?.dockSettings;
+        return (
+          (surface === geometry?.windowLabel && geometry?.devicePixelRatio) ||
+          globalThis.devicePixelRatio ||
+          1
+        );
+      },
       move: movePointer,
       accessoryTargets: getAccessoryTargets,
       // An auto-hidden toolbar appears when a person's pointer reaches the top of the window.
       revealToolbar: chromeReveal?.showControls,
     }),
-    [chromeReveal?.showControls, getAccessoryTargets, runtime.platform, windowVisible]
+    [
+      chromeReveal?.showControls,
+      getAccessoryTargets,
+      runtime.platform,
+      visualRuntimeRef,
+      windowVisible,
+    ]
   );
   const updateControl = useMemo(
     () => ({
@@ -345,7 +358,7 @@ export function AgentControlBridge() {
     channelTopology,
   } = useAnalysisSession();
   const { channelLabelOverride, channelRoles } = channelLabelRuntime;
-  const { activeBlockingEditors } = useSceneGuard();
+  const { activeBlockingEditors, getSceneOperationBlockers } = useSceneGuard();
   const { historyRetentionSec, channelLabelOverrides } = settings;
   const { sourceMode, running, fileSessions } = meterRuntime;
   const agentControlSettingsContext = useMemo(
@@ -613,6 +626,8 @@ export function AgentControlBridge() {
       ...agentControlAnalysisContext,
       sourceMode,
       activeEditors: activeBlockingEditors,
+      readDockEntryBlockingEditors: () =>
+        getSceneOperationBlockers?.("dock.enter") ?? activeBlockingEditors,
       transitioning: dockTransitioning,
       readMonitorInventory,
     },

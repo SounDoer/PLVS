@@ -67,6 +67,7 @@ const STATUS_FIXTURE_NAMES = {
  *   visualRuntimeRef: import("react").MutableRefObject<any>,
  *   onSettingsError: (value: any) => Promise<void>,
  *   setSettingsGeometry: (value: any) => void,
+ *   exportProfileRef: import("react").MutableRefObject<any>,
  *   setSettingsTargets: (value: any) => void,
  *   setUpdateGeometry: (value: any) => void,
  *   setImportActive: (value: boolean) => void,
@@ -119,6 +120,7 @@ export function DockAccessoriesProvider({ children }) {
   const { channelCount, vectorscopePairOptions, spectrumChannelOptions } = useAnalysisSession();
   const { clearAll, onSourceTransportAction } = useSourceActions();
   const presets = usePresetLibrary();
+  const exportProfileRef = useRef(null);
   const loudnessProfile = useLoudnessProfile();
   const {
     docked,
@@ -239,7 +241,10 @@ export function DockAccessoriesProvider({ children }) {
     if (!docked || dockSuspended) return [];
     return [
       ...(settingsGeometry?.visible
-        ? settingsTargetsRef.current.map((target) => ({ ...target, surface: "dock-settings" }))
+        ? settingsTargetsRef.current.map((target) => ({
+            ...target,
+            surface: settingsGeometry?.windowLabel ?? "dock-settings",
+          }))
         : []),
       ...(visibility.headerVisible ? (accessoryTargetsRef.current["dock-header"] ?? []) : []).map(
         (target) => ({ ...target, surface: "dock-header" })
@@ -656,6 +661,16 @@ export function DockAccessoriesProvider({ children }) {
       // writes the store itself: the choice lands here, in the provider that owns the state.
       else if (type === "select-loudness-profile") {
         if (typeof payload.selection === "string") loudnessProfile.select(payload.selection);
+      } else if (type === "create-loudness-profile" || type === "edit-loudness-profile") {
+        if (type === "create-loudness-profile") loudnessProfile.beginCreate();
+        else if (typeof payload.profileId === "string")
+          loudnessProfile.beginEdit(payload.profileId);
+        dockAccessoryVisibility.closeEditor("loudness-profile");
+      } else if (type === "delete-loudness-profile") {
+        loudnessProfile.removeProfile(payload.profileId);
+      } else if (type === "export-loudness-profile") {
+        dockAccessoryVisibility.closeEditor("loudness-profile");
+        void exportProfileRef.current?.(payload.profileId);
       } else if (type === "reorder-loudness-profiles") {
         if (Array.isArray(payload.profileIds)) loudnessProfile.reorderProfiles(payload.profileIds);
       } else if (type === "delete-preset") presets.remove(payload.presetId);
@@ -707,6 +722,7 @@ export function DockAccessoriesProvider({ children }) {
         setSettingsGeometry,
         onSettingsError: onDockAccessoryError,
         setSettingsTargets,
+        exportProfileRef,
         setImportActive,
         statusItems,
         statusOpen: statusFixture?.phase === "details",

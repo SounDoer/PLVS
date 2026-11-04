@@ -34,7 +34,7 @@ export function useFeedbackDraft({ active = true, onClose, onDirtyChange = () =>
     /** @type {"idle"|"preparing"|"sending"|"sent"|"error"|"diagnostics-error"} */ ("idle")
   );
 
-  useBlockingEditor("feedback", active);
+  useBlockingEditor("feedback", active, true);
 
   const dirty = content !== "" || email !== "" || attachDiagnostics;
   useEffect(() => {

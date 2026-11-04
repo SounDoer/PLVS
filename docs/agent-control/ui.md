@@ -67,9 +67,12 @@ outside Dock. Its `dockToolbar` surface closes through the arrow's Hide intent, 
 any open Dock menu. While an error holds the toolbar open it offers no close action.
 
 Settings, Theme/Profile authoring, and Feedback follow the current form. In Dock, their shared
-content uses the Settings accessory, and navigation settles after that window is ready and the
+content uses Settings or its separate authoring host, and navigation settles after that window is ready and the
 requested content is visible. Nested dropdowns and draft decisions remain registered with the same
-main-owned UI and Draft Control registries. Panel Settings follows the current form instead of changing
+main-owned UI and Draft Control registries. Shared Theme/Profile/Feedback editors explicitly support
+Dock entry without discarding their drafts; other blocking editors and preset operations retain their
+existing refusals. `visual screenshot --target dock-settings` captures whichever settings/authoring
+host presents the current flow. Panel Settings follows the current form instead of changing
 it: in a normal window it may activate the containing Workspace tab through the existing Workspace
 business operation, in Fullscreen it accepts only the currently rendered Panel, and in Dock it
 accepts only a Dock Panel ID and opens the existing Dock editor accessory. A normal Workspace Panel

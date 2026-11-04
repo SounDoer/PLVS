@@ -7,13 +7,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
+import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperations.js";
 
 /// The one place that knows whether a draft-style editor is open.
 ///
 /// A blocking editor is any surface with draft / preview / save / cancel semantics: what it shows
 /// is a preview that outranks the persisted state, and closing it without Save throws the user's
-/// work away. While one is open, every scene operation is refused -- see `lib/sceneOperations.js`.
+/// work away. Preset operations are refused while one is open. Dock entry may transfer an editor
+/// only when every registration explicitly supports both hosts; unknown editors remain blocked.
 ///
 /// The rule is "open", not "dirty", on purpose. Dirty is invisible to the user and flips mid-
 /// interaction; whether an editor is on screen is something both the user and a remote caller can
@@ -33,6 +34,7 @@ function sameIds(a, b) {
 
 export function BlockingEditorsProvider({ children }) {
   const countsRef = useRef(new Map());
+  const transferableRef = useRef(new Map());
   const [activeBlockingEditors, setActiveBlockingEditors] = useState(EMPTY_EDITORS);
 
   const sync = useCallback(() => {
@@ -43,11 +45,18 @@ export function BlockingEditorsProvider({ children }) {
   }, []);
 
   const registerBlockingEditor = useCallback(
-    (id) => {
+    (id, dockTransferable = false) => {
       const counts = countsRef.current;
       counts.set(id, (counts.get(id) ?? 0) + 1);
+      if (dockTransferable)
+        transferableRef.current.set(id, (transferableRef.current.get(id) ?? 0) + 1);
       sync();
       return () => {
+        if (dockTransferable) {
+          const remaining = (transferableRef.current.get(id) ?? 0) - 1;
+          if (remaining > 0) transferableRef.current.set(id, remaining);
+          else transferableRef.current.delete(id);
+        }
         const remaining = (counts.get(id) ?? 0) - 1;
         if (remaining > 0) counts.set(id, remaining);
         else counts.delete(id);
@@ -60,15 +69,36 @@ export function BlockingEditorsProvider({ children }) {
   /// Reads the ref, never the state: a scene operation can be dispatched from an async
   /// continuation or from a callback the tray captured a render ago, and both must see the
   /// registry as it is now.
-  const assertSceneOperationAllowed = useCallback((/** @type {string} */ operation) => {
-    const editors = [...countsRef.current.keys()];
-    if (editors.length === 0) return;
-    throw new SceneOperationBlockedError(operation, editors);
-  }, []);
+  const getSceneOperationBlockers = useCallback(
+    (operation) =>
+      [...countsRef.current.keys()].filter(
+        (id) =>
+          operation !== SCENE_OPERATIONS.dockEnter ||
+          countsRef.current.get(id) !== transferableRef.current.get(id)
+      ),
+    []
+  );
+  const assertSceneOperationAllowed = useCallback(
+    (operation) => {
+      const editors = getSceneOperationBlockers(operation);
+      if (editors.length) throw new SceneOperationBlockedError(operation, editors);
+    },
+    [getSceneOperationBlockers]
+  );
 
   const value = useMemo(
-    () => ({ activeBlockingEditors, registerBlockingEditor, assertSceneOperationAllowed }),
-    [activeBlockingEditors, assertSceneOperationAllowed, registerBlockingEditor]
+    () => ({
+      activeBlockingEditors,
+      registerBlockingEditor,
+      assertSceneOperationAllowed,
+      getSceneOperationBlockers,
+    }),
+    [
+      activeBlockingEditors,
+      assertSceneOperationAllowed,
+      registerBlockingEditor,
+      getSceneOperationBlockers,
+    ]
   );
 
   return (
@@ -91,11 +121,11 @@ export function useBlockingEditors() {
 /// its own in a test. That cannot cost the app its protection: the consumer side above throws, and
 /// AppContent reads it on every render, so a missing provider fails loudly at the one place a
 /// silent no-op would matter.
-export function useBlockingEditor(id, active) {
+export function useBlockingEditor(id, active, dockTransferable = false) {
   const registry = useContext(BlockingEditorsContext);
   const registerBlockingEditor = registry?.registerBlockingEditor;
   useEffect(() => {
     if (!active || !registerBlockingEditor) return undefined;
-    return registerBlockingEditor(id);
-  }, [active, id, registerBlockingEditor]);
+    return registerBlockingEditor(id, dockTransferable);
+  }, [active, id, dockTransferable, registerBlockingEditor]);
 }

@@ -20,7 +20,6 @@ import {
 import { useUiSurfaceRegistry } from "../uiNavigation/UiNavigationContext.jsx";
 import { useOptionalEditorDraftRegistry } from "../agentControl/EditorDraftContext.jsx";
 
-const SURFACE = "dock-settings";
 const REMOTE_KINDS = new Set([
   "settings",
   "confirmation",
@@ -33,6 +32,7 @@ const REMOTE_KINDS = new Set([
  * @param {any} options
  */
 export function useDockSettingsWindow(options) {
+  const surface = options.surface ?? "dock-settings";
   const registry = useUiSurfaceRegistry();
   const drafts = useOptionalEditorDraftRegistry();
   const latest = useRef(options);
@@ -44,6 +44,9 @@ export function useDockSettingsWindow(options) {
   const registrations = useRef([]);
   const remoteRegistry = useRef(null);
   const [prepared, setPrepared] = useState(false);
+  const [destroying, setDestroying] = useState(false);
+  const [layout, setLayout] = useState(null);
+  const retiring = useRef(false);
   const [geometryEpoch, setGeometryEpoch] = useState(0);
   const [ready, setReady] = useState(null);
   const [error, setError] = useState("");
@@ -141,8 +144,8 @@ export function useDockSettingsWindow(options) {
     const active = current.enabled && current.active;
     const snapshot = active ? settingsViewSnapshot(current.view, current.model) : null;
     await emitDockAccessoryState(
-      SURFACE,
-      createAccessorySnapshot(SURFACE, ++revision.current, {
+      surface,
+      createAccessorySnapshot(surface, ++revision.current, {
         session: active ? current.session : null,
         view: active ? current.view : null,
         snapshot,
@@ -153,7 +156,7 @@ export function useDockSettingsWindow(options) {
         reply,
       })
     );
-  }, [navigation, reply]);
+  }, [navigation, reply, surface]);
   const publishRef = useRef(publish);
   useLayoutEffect(() => {
     publishRef.current = publish;
@@ -169,14 +172,44 @@ export function useDockSettingsWindow(options) {
     };
     void Promise.allSettled([
       listenDockAccessoryReady((event) => {
-        if (event?.surface !== SURFACE) return;
+        if (event?.surface !== surface) return;
         clientReady.current = true;
         void publishRef.current().catch((error) => reportError(error));
       }),
       listenDockAccessoryAction((raw) => {
         const action = normalizeAccessoryAction(raw);
-        if (action?.surface !== SURFACE) return;
+        if (action?.surface !== surface) return;
         const value = action.payload;
+        if (action.type === "settings-idle") {
+          if (surface !== "dock-authoring") return;
+          if (
+            (latest.current.enabled && latest.current.active) ||
+            retiring.current ||
+            !clientReady.current
+          )
+            return;
+          retiring.current = true;
+          clientReady.current = false;
+          readySession.current = null;
+          clearRegistry();
+          setReady(null);
+          setDestroying(true);
+          void invoke("destroy_dock_settings_window", { surface })
+            .then(() => {
+              setPrepared(false);
+              remoteRegistry.current = null;
+            })
+            .catch((error) => {
+              clientReady.current = true;
+              reportError(error);
+            })
+            .finally(() => {
+              retiring.current = false;
+              setDestroying(false);
+            });
+          return;
+        }
+
         if (action.type === "settings-ui-result") {
           const request = pending.current.get(value.id);
           if (!request) return;
@@ -211,6 +244,25 @@ export function useDockSettingsWindow(options) {
           !latest.current.enabled
         )
           return;
+        if (action.type === "settings-layout") {
+          if (
+            Number.isFinite(value.width) &&
+            Number.isFinite(value.height) &&
+            value.width > 0 &&
+            value.height > 0
+          )
+            setLayout({
+              session: value.session,
+              width: value.width,
+              height: value.height,
+              preview: value.preview === true,
+              webviewScale:
+                Number.isFinite(value.webviewScale) && value.webviewScale > 0
+                  ? value.webviewScale
+                  : window.devicePixelRatio,
+            });
+          return;
+        }
         if (action.type === "open-settings") {
           latest.current.openSection();
           return;
@@ -245,13 +297,13 @@ export function useDockSettingsWindow(options) {
       }
       requests.clear();
     };
-  }, [mirrorRegistry, reportError]);
+  }, [clearRegistry, mirrorRegistry, reportError, surface]);
 
   const needed = options.enabled && options.active;
   useEffect(() => {
-    if (!isTauri() || !needed || prepared) return undefined;
+    if (!isTauri() || !needed || prepared || destroying) return undefined;
     let canceled = false;
-    void invoke("prepare_dock_settings_window")
+    void invoke("prepare_dock_settings_window", { surface })
       .then(() => {
         if (!canceled) setPrepared(true);
       })
@@ -261,7 +313,7 @@ export function useDockSettingsWindow(options) {
     return () => {
       canceled = true;
     };
-  }, [needed, prepared, reportError]);
+  }, [needed, prepared, destroying, reportError, surface]);
   // Only Settings data changes trigger publication; capture frames never cross this boundary.
   const snapshotKey = JSON.stringify(
     needed ? settingsViewSnapshot(options.view, options.model) : null
@@ -301,21 +353,26 @@ export function useDockSettingsWindow(options) {
       stop?.();
     };
   }, [needed, reportError]);
-  const logicalWidth = Math.max(
-    640,
-    resolveInterfacePreferences(UI_PREFERENCES, options.interfaceSize).layout.editor
-      .preferredWidthPx
-  );
+  const preferences = resolveInterfacePreferences(UI_PREFERENCES, options.interfaceSize);
+  const reportedLayout = layout?.session === options.session ? layout : null;
+  const logicalWidth =
+    surface === "dock-authoring"
+      ? (reportedLayout?.width ?? preferences.layout.editor.preferredWidthPx + 16)
+      : preferences.layout.drawer.preferredWidthPx;
+  const logicalHeight = surface === "dock-authoring" ? (reportedLayout?.height ?? 400) : 800;
+  const preview = reportedLayout?.preview ?? false;
+  const webviewScale = reportedLayout?.webviewScale ?? window.devicePixelRatio;
   const visible = needed && !options.suspended && ready === options.session;
   useEffect(() => {
     if (!isTauri()) return undefined;
     let canceled = false;
     void invoke("set_dock_settings_window", {
+      surface,
       visible,
+      layout: { logicalWidth, logicalHeight, preview },
       edge: options.edge ?? "top",
-      webviewScale: window.devicePixelRatio,
+      webviewScale,
       focus: visible,
-      logicalWidth,
     })
       .then((rect) => {
         if (canceled) return;
@@ -326,8 +383,10 @@ export function useDockSettingsWindow(options) {
           rect
             ? {
                 visible: true,
-                width: rect.width / window.devicePixelRatio,
-                height: rect.height / window.devicePixelRatio,
+                windowLabel: surface,
+                devicePixelRatio: webviewScale,
+                width: rect.width / webviewScale,
+                height: rect.height / webviewScale,
               }
             : null
         );
@@ -345,12 +404,16 @@ export function useDockSettingsWindow(options) {
     options.focusEpoch,
     geometryEpoch,
     logicalWidth,
+    logicalHeight,
+    webviewScale,
+    preview,
+    surface,
     mirrorRegistry,
     reportError,
   ]);
   useEffect(() => () => clearRegistry(), [clearRegistry]);
   useEffect(() => {
-    if (!registry || !options.enabled) return undefined;
+    if (!registry || !options.enabled || surface !== "dock-settings") return undefined;
     return registry.registerUiTarget("settings", {
       current: {
         show: async ({ section }) => {
@@ -369,6 +432,6 @@ export function useDockSettingsWindow(options) {
         },
       },
     });
-  }, [options.enabled, registry, requestUi]);
+  }, [options.enabled, registry, requestUi, surface]);
   return { error };
 }

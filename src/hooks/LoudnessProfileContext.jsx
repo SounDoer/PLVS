@@ -232,7 +232,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   /// This editor is a blocking editor: while a draft is open, preset apply / save / update and
   /// dock entry are all refused. Registered from the provider so it holds for every surface that
   /// can open the draft.
-  useBlockingEditor("loudnessProfile", draft != null);
+  useBlockingEditor("loudnessProfile", draft != null, true);
 
   const beginCreate = useCallback(() => {
     if (draftBlocks()) return;

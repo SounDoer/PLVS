@@ -95,3 +95,29 @@ describe("BlockingEditorsProvider", () => {
     expect(() => renderHook(() => useBlockingEditor("theme", true))).not.toThrow();
   });
 });
+
+it("allows Dock transfer only when every registration of an editor supports it", () => {
+  const { result, rerender } = renderHook(
+    ({ extra }) => {
+      useBlockingEditor("theme", true, true);
+      useBlockingEditor("theme", extra, false);
+      return useBlockingEditors();
+    },
+    { wrapper, initialProps: { extra: false } }
+  );
+  expect(() =>
+    result.current.assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter)
+  ).not.toThrow();
+  for (const operation of [
+    SCENE_OPERATIONS.presetApply,
+    SCENE_OPERATIONS.presetSave,
+    SCENE_OPERATIONS.presetUpdate,
+  ])
+    expect(() => result.current.assertSceneOperationAllowed(operation)).toThrow();
+  rerender({ extra: true });
+  expect(() => result.current.assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter)).toThrow();
+  rerender({ extra: false });
+  expect(() =>
+    result.current.assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter)
+  ).not.toThrow();
+});

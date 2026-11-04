@@ -9,6 +9,7 @@ import {
 /**
  * @typedef {{
  *   activeBlockingEditors: readonly string[],
+ *   getSceneOperationBlockers: (operation: string) => string[],
  *   assertSceneOperationAllowed: (operation: string) => void,
  * }} SceneGuard
  */
@@ -25,8 +26,11 @@ const SceneGuardContext = createContext(/** @type {SceneGuard | null} */ (null))
  */
 export function SceneGuardProvider({ children }) {
   const { sourceMode } = useMeterRuntime();
-  const { activeBlockingEditors, assertSceneOperationAllowed: assertNoBlockingEditor } =
-    useBlockingEditors();
+  const {
+    activeBlockingEditors,
+    getSceneOperationBlockers,
+    assertSceneOperationAllowed: assertNoBlockingEditor,
+  } = useBlockingEditors();
   // FILE mode forbids the dock outright: it is a state conflict, not a missing capability, so it
   // refuses rather than degrading the way a platform without dock support does. Enforced here and
   // not only on the disabled Dock control, so every entry point -- Agent Control included -- gets
@@ -40,8 +44,8 @@ export function SceneGuardProvider({ children }) {
     [assertNoBlockingEditor, sourceMode]
   );
   const value = useMemo(
-    () => ({ activeBlockingEditors, assertSceneOperationAllowed }),
-    [activeBlockingEditors, assertSceneOperationAllowed]
+    () => ({ activeBlockingEditors, assertSceneOperationAllowed, getSceneOperationBlockers }),
+    [activeBlockingEditors, assertSceneOperationAllowed, getSceneOperationBlockers]
   );
   return <SceneGuardContext.Provider value={value}>{children}</SceneGuardContext.Provider>;
 }

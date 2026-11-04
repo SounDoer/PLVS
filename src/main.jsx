@@ -53,21 +53,20 @@ applyLayoutToDocument(
 applyThemeToDocument(resolvedThemeId, customThemes);
 installKeyboardNavigationTracking();
 
-const root =
-  surface === "dock-settings" ? (
-    <DockSettingsApp />
-  ) : surface === "dock-header" ? (
-    <DockHeaderApp />
-  ) : surface === "dock-editor" ? (
-    <DockEditorApp />
-  ) : surface === "dock-import" ? (
-    <DockImportApp />
-  ) : surface === "dock-update" ? (
-    <DockUpdateApp />
-  ) : (
-    <AppCrashBoundary>
-      <App />
-    </AppCrashBoundary>
-  );
+const root = ["dock-settings", "dock-authoring"].includes(surface) ? (
+  <DockSettingsApp surface={surface} />
+) : surface === "dock-header" ? (
+  <DockHeaderApp />
+) : surface === "dock-editor" ? (
+  <DockEditorApp />
+) : surface === "dock-import" ? (
+  <DockImportApp />
+) : surface === "dock-update" ? (
+  <DockUpdateApp />
+) : (
+  <AppCrashBoundary>
+    <App />
+  </AppCrashBoundary>
+);
 
 createRoot(document.getElementById("root")).render(<React.StrictMode>{root}</React.StrictMode>);

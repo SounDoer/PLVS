@@ -691,14 +691,15 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
       issues: [],
       refusal: { code: "fileModeActive" },
     };
-  if ((context.activeEditors ?? []).length > 0)
+  const entryBlockers = context.readDockEntryBlockingEditors?.() ?? context.activeEditors ?? [];
+  if (entryBlockers.length > 0)
     return {
       dock,
       changed: [],
       warnings: [],
       effects: [],
       issues: [],
-      refusal: { code: "editorActive", editors: context.activeEditors },
+      refusal: { code: "editorActive", editors: entryBlockers },
     };
   if (context.transitioning === true)
     return {

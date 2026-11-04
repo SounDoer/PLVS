@@ -1,12 +1,15 @@
 import { useCallback, useRef } from "react";
+import { useFloatingPanelHost } from "./FloatingPanelHostContext.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
 
 export function useFloatingPanelDrag(panelRef, onMove) {
   const dragRef = useRef(null);
+  const startDragging = useFloatingPanelHost();
 
   const onPointerDown = useCallback(
     (event) => {
       if (event.button !== 0) return;
+      if (startDragging) return;
       const rect = panelRef.current?.getBoundingClientRect();
       if (!rect) return;
       dragRef.current = {
@@ -17,7 +20,22 @@ export function useFloatingPanelDrag(panelRef, onMove) {
       };
       event.currentTarget.setPointerCapture?.(event.pointerId);
     },
-    [panelRef]
+    [panelRef, startDragging]
+  );
+
+  // Native window dragging starts on mousedown, after the WebView has received its mouse press.
+  const onMouseDown = useCallback(
+    (event) => {
+      if (!startDragging || event.button !== 0) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest("button, input, textarea, select, a, [role=tab]")
+      )
+        return;
+      event.preventDefault();
+      void startDragging();
+    },
+    [startDragging]
   );
 
   const onPointerMove = useCallback(
@@ -40,6 +58,7 @@ export function useFloatingPanelDrag(panelRef, onMove) {
   }, []);
 
   return {
+    onMouseDown,
     onPointerDown,
     onPointerMove,
     onPointerUp: endDrag,

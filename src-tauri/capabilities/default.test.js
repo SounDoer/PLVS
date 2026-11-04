@@ -50,6 +50,7 @@ describe("Dock accessory Tauri capabilities", () => {
       "dock-update",
       "dock-import",
       "dock-settings",
+      "dock-authoring",
     ]);
     expect(accessoryCapability.permissions).toEqual(["core:event:default"]);
   });
@@ -57,4 +58,10 @@ describe("Dock accessory Tauri capabilities", () => {
   it("does not add accessory windows to the privileged main capability", () => {
     expect(capability.windows).toEqual(["main"]);
   });
+});
+
+it("grants native drag only to the authoring host", () => {
+  const authoring = JSON.parse(readFileSync(join(currentDir, "dock-authoring.json"), "utf8"));
+  expect(authoring.windows).toEqual(["dock-authoring"]);
+  expect(authoring.permissions).toEqual(["core:window:allow-start-dragging"]);
 });

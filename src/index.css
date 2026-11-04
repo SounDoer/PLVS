@@ -168,6 +168,9 @@ body {
   }
 }
 
+html[data-surface="dock-authoring"],
+html[data-surface="dock-authoring"] body,
+html[data-surface="dock-authoring"] #root,
 html[data-surface="dock-import"],
 html[data-surface="dock-import"] body,
 html[data-surface="dock-import"] #root,
@@ -430,17 +433,11 @@ html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover
   }
 }
 
-/* The shared editors fill the stable Settings viewport; their controls remain unchanged. */
-html[data-surface="dock-settings"] [data-settings-editor] {
+/* A native authoring host preserves the shared floating surface, including its rounded outline.
+ * Its transparent gutter leaves the border visible and the viewport free for nested dialogs. */
+html[data-surface="dock-authoring"] [data-settings-editor] {
   position: relative;
-  inset: 0 !important;
-  width: 100%;
-  height: 100vh;
-  max-height: 100vh !important;
-  border-radius: 0;
-}
-
-html[data-surface="dock-settings"] [data-settings-editor-body] {
-  flex: 1;
-  min-height: 0;
+  inset: auto !important;
+  max-width: 100%;
+  max-height: calc(100vh - 16px) !important;
 }

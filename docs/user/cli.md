@@ -306,8 +306,9 @@ plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation
 `app.inspect` remains the durable-state snapshot; `ui inspect` reports the selected workbench's
 transient window, blocking editors, mounted surfaces, status conditions, and process-local
 `uiGeneration`. `show` only opens, locates, or focuses and is idempotent for an exact target. A
-toolbar menu opens as its toolbar button opens it, in the normal window or Dock. Settings and
-Theme/Profile authoring use the Dock Settings window while Dock stays active. The Quick Tour card
+toolbar menu opens as its toolbar button opens it, in the normal window or Dock. Settings uses its
+Dock Settings window; Theme/Profile authoring uses a separate draggable window while Dock stays active. Open
+shared editors and their drafts survive switching between Dock and the normal window. The Quick Tour card
 is inspectable and closable; `ui quick-tour` starts it or moves between its steps. `close` and `cancel` invoke only
 the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
 only the exact linked `editor-draft discard` command can confirm that decision. Event-driven

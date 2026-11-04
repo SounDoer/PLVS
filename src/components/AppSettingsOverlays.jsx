@@ -78,6 +78,15 @@ export function AppSettingsOverlays({
   } = useConfigurationProfileActions();
   const localPack = usePackTransfer();
   const pack = packTransfer ?? localPack;
+  const exportProfileRef = dockPresentation?.exportProfileRef;
+  const { exportSelection } = pack;
+  useEffect(() => {
+    if (!exportProfileRef) return undefined;
+    exportProfileRef.current = (id) => exportSelection("loudness", [id]);
+    return () => {
+      exportProfileRef.current = null;
+    };
+  }, [exportProfileRef, exportSelection]);
   const { beginPaste } = pack;
   const applyImportedItem = async (type, id) => {
     if (type === "themes") {
@@ -105,7 +114,11 @@ export function AppSettingsOverlays({
     resetInstall,
   } = updateControls;
   const { editor, editorPos, moveEditor } = settings;
-  const [remoteReady, setRemoteReady] = useState(null);
+  const [settingsReady, setSettingsReady] = useState(null);
+  const [authoringReady, setAuthoringReady] = useState(null);
+  const [settingsGeometry, setSettingsGeometry] = useState(null);
+  const [authoringGeometry, setAuthoringGeometry] = useState(null);
+  const [previewState, setPreviewState] = useState(null);
   const view = libraryExportOpen
     ? "libraryExport"
     : feedbackOpen
@@ -130,7 +143,11 @@ export function AppSettingsOverlays({
     () => `${identity}:${handoff}:${presentationEnabled}:${crypto.randomUUID()}`,
     [identity, handoff, presentationEnabled]
   );
-  const presented = presentationEnabled || remoteReady === session;
+  const authoring = ["theme", "profile", "feedback"].includes(view);
+  const presented = presentationEnabled || (authoring ? authoringReady : settingsReady) === session;
+  useEffect(() => {
+    dockPresentation?.onGeometry?.(authoring ? authoringGeometry : settingsGeometry);
+  }, [authoring, authoringGeometry, settingsGeometry, dockPresentation]);
 
   const themeAuthoring = editor.authoring;
   useUiNavigationTarget("themeEditor", {
@@ -466,6 +483,8 @@ export function AppSettingsOverlays({
       onCore: editor.updateCore,
       onResetCore: editor.resetCore,
       onPaletteColor: editor.updatePaletteColor,
+      previewOpen: previewState?.draftId === identity && previewState.open,
+      onPreviewOpenChange: (open) => setPreviewState({ draftId: identity, open }),
       onIntensityStop: editor.updateIntensityStop,
       onIntensityStops: editor.updateIntensityStops,
       onApplyPreset: editor.applyPreset,
@@ -524,7 +543,7 @@ export function AppSettingsOverlays({
     onPrivacy: () => openExternalUrl(PRIVACY_POLICY_URL),
   };
   const selectedModel = view === "feedback" ? feedbackModel : views[view];
-  useDockSettingsWindow({
+  const hostOptions = {
     ...dockPresentation,
     enabled: !presentationEnabled && Boolean(dockPresentation),
     active: Boolean(view) && !handoff,
@@ -539,8 +558,21 @@ export function AppSettingsOverlays({
       running: dockPresentation?.running,
       showClock: dockPresentation?.showClock,
     },
-    onReady: setRemoteReady,
     openSection: () => settings.setSettingsOpen(true),
+  };
+  useDockSettingsWindow({
+    ...hostOptions,
+    surface: "dock-settings",
+    active: hostOptions.active && !authoring,
+    onReady: setSettingsReady,
+    onGeometry: setSettingsGeometry,
+  });
+  useDockSettingsWindow({
+    ...hostOptions,
+    surface: "dock-authoring",
+    active: hostOptions.active && authoring,
+    onReady: setAuthoringReady,
+    onGeometry: setAuthoringGeometry,
   });
   if (!presentationEnabled) return null;
 

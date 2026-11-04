@@ -118,8 +118,10 @@ avoidance does not add extra axis ticks.
 ## Dock
 
 The Dock toolbar offers **Sources** for the same live device/application selection as the normal
-window. **Settings** opens the same settings and authoring controls in one reusable window beside
-the strip. Opening it leaves capture and history running. **Views** starts with where the strip sits, **Dock: Off / Top / Bottom**, then **Reserve
+window. **Settings** opens the same settings controls beside the strip, at the ordinary drawer width.
+Theme and Loudness Profile editing uses a separate draggable window with the ordinary editor's
+rounded surface. Open drafts survive switching between Dock and the normal window. Opening these
+windows leaves capture and history running. **Views** starts with where the strip sits, **Dock: Off / Top / Bottom**, then **Reserve
 Space** and **Above Full Screen** where supported, and ends with how it looks, **Hide Axes & Labels**
 and **Surface Opacity**. Select **Off** to restore the normal window. Sources and Views open beside the strip;
 opening either does not restart capture. Panel settings remain accessible through the panel editor.

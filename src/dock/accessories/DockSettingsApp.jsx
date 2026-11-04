@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { FloatingPanelHostProvider } from "../../hooks/FloatingPanelHostContext.jsx";
+import { useAuthoringLayout } from "./useAuthoringLayout.js";
 import { LAYER_PRIORITY } from "../../components/ui/layers.js";
 import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
 import { SettingsContent } from "../../components/SettingsContent.jsx";
@@ -26,10 +29,8 @@ import { settingsActionArguments, optimisticSettingsValue } from "../settingsTra
 import { useAccessoryKeyboardShortcuts } from "./useAccessoryKeyboardShortcuts.js";
 import { useAccessoryTargetReport } from "./useAccessoryTargetReport.js";
 
-const SURFACE = "dock-settings";
-
 /** Presentation only: no settings stores, capture engines, shortcuts, or native file operations. */
-export function DockSettingsApp() {
+export function DockSettingsApp({ surface = "dock-settings" }) {
   useSuppressNativeContextMenu();
   const [payload, setPayload] = useState(null);
   const [error, setError] = useState("");
@@ -43,7 +44,7 @@ export function DockSettingsApp() {
     const operations = outstanding.current;
     let unlisten;
     void listenDockAccessoryState((snapshot) => {
-      const accepted = acceptAccessorySnapshot(revision.current, snapshot, SURFACE);
+      const accepted = acceptAccessorySnapshot(revision.current, snapshot, surface);
       if (!accepted) return;
       revision.current = accepted.revision;
       const value = accepted.payload;
@@ -53,7 +54,7 @@ export function DockSettingsApp() {
         resolveInterfacePreferencesForSurface(
           UI_PREFERENCES,
           value.interfaceSize ?? "default",
-          SURFACE
+          surface
         )
       );
       if (value.reply) {
@@ -90,7 +91,7 @@ export function DockSettingsApp() {
         if (disposed) dispose();
         else {
           unlisten = dispose;
-          void emitDockAccessoryReady(SURFACE);
+          void emitDockAccessoryReady(surface);
         }
       })
       .catch((error) => setError(String(error)));
@@ -103,15 +104,15 @@ export function DockSettingsApp() {
       }
       operations.clear();
     };
-  }, []);
+  }, [surface]);
   const send = useCallback(
     (type, values = {}) =>
       emitDockAccessoryAction({
-        surface: SURFACE,
+        surface: surface,
         type,
         payload: { ...values, session: values.session ?? latest.current?.session },
       }),
-    []
+    [surface]
   );
   const call = useCallback(
     (session, name, args) => {
@@ -144,6 +145,9 @@ export function DockSettingsApp() {
     },
     [send]
   );
+  useEffect(() => {
+    if (payload && !payload.session && outstanding.current.size === 0) void send("settings-idle");
+  }, [payload, send]);
   let model = payload?.snapshot?.values;
   if (model) {
     for (const operation of outstanding.current.values()) {
@@ -156,7 +160,7 @@ export function DockSettingsApp() {
   }
   return (
     <main
-      className="h-screen overflow-hidden bg-card text-foreground"
+      className={`h-screen overflow-hidden text-foreground ${surface === "dock-authoring" ? "grid place-items-center bg-transparent p-2" : "bg-card"}`}
       data-visual-capture-surface="dockSettings"
       data-visual-capture-ready={payload?.session ? "true" : "false"}
     >
@@ -169,13 +173,20 @@ export function DockSettingsApp() {
         </div>
       ) : null}
       {payload?.session && model ? (
-        <SettingsSession key={payload.session} payload={payload} model={model} send={send} />
+        <SettingsSession
+          key={payload.session}
+          surface={surface}
+          payload={payload}
+          model={model}
+          send={send}
+          onError={setError}
+        />
       ) : null}
     </main>
   );
 }
 
-function SettingsSession({ payload, model, send: sendToMain }) {
+function SettingsSession({ surface, payload, model, send: sendToMain, onError }) {
   const send = useCallback(
     (type, values = {}) => sendToMain(type, { ...values, session: payload.session }),
     [payload.session, sendToMain]
@@ -249,6 +260,7 @@ function SettingsSession({ payload, model, send: sendToMain }) {
   );
   const action = useCallback((type, values = {}) => send(type, values), [send]);
   useAccessoryTargetReport(action);
+  useAuthoringLayout(surface === "dock-authoring", payload.interfaceSize, action);
   useAccessoryKeyboardShortcuts(payload.keyboard, action);
   useLayoutEffect(() => {
     report();
@@ -267,7 +279,7 @@ function SettingsSession({ payload, model, send: sendToMain }) {
     let stop;
     // Native close enters the same ordered action stream as typing and the visible Cancel button.
     void listenDockAccessoryAction((event) => {
-      if (event?.surface === SURFACE && event.type === "settings-dismiss") void dismiss.current?.();
+      if (event?.surface === surface && event.type === "settings-dismiss") void dismiss.current?.();
     }).then((dispose) => {
       if (disposed) dispose();
       else stop = dispose;
@@ -276,7 +288,7 @@ function SettingsSession({ payload, model, send: sendToMain }) {
       disposed = true;
       stop?.();
     };
-  }, []);
+  }, [surface]);
   const handled = useRef(0);
   useEffect(() => {
     const request = payload.navigation;
@@ -348,15 +360,32 @@ function SettingsSession({ payload, model, send: sendToMain }) {
   return (
     <UiSurfaceRegistryProvider registry={registry}>
       <EditorDraftRegistryProvider registry={draftRegistry}>
-        {payload.view === "settings" ? (
-          <SettingsContent {...model} Frame={SettingsWindowFrame} />
-        ) : null}
-        {payload.view === "theme" ? <ThemeEditor {...model} onMove={() => {}} /> : null}
-        {payload.view === "profile" ? <LoudnessProfileEditor {...model} onMove={() => {}} /> : null}
-        {payload.view === "feedback" ? (
-          <FeedbackContent controller={model} onClose={model.onClose} onPrivacy={model.onPrivacy} />
-        ) : null}
-        {payload.view === "libraryExport" ? <LibraryExportDialog {...model} /> : null}
+        <FloatingPanelHostProvider
+          startDragging={
+            surface === "dock-authoring"
+              ? () =>
+                  getCurrentWindow()
+                    .startDragging()
+                    .catch((error) => onError(String(error)))
+              : null
+          }
+        >
+          {payload.view === "settings" ? (
+            <SettingsContent {...model} Frame={SettingsWindowFrame} />
+          ) : null}
+          {payload.view === "theme" ? <ThemeEditor {...model} onMove={() => {}} /> : null}
+          {payload.view === "profile" ? (
+            <LoudnessProfileEditor {...model} onMove={() => {}} />
+          ) : null}
+          {payload.view === "feedback" ? (
+            <FeedbackContent
+              controller={model}
+              onClose={model.onClose}
+              onPrivacy={model.onPrivacy}
+            />
+          ) : null}
+          {payload.view === "libraryExport" ? <LibraryExportDialog {...model} /> : null}
+        </FloatingPanelHostProvider>
       </EditorDraftRegistryProvider>
     </UiSurfaceRegistryProvider>
   );

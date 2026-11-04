@@ -202,7 +202,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     }
   }, [editorIsEditing, latestEditedThemeSignature, syncEditorSource]);
 
-  useBlockingEditor("theme", editor.isEditing);
+  useBlockingEditor("theme", editor.isEditing, true);
 
   const customThemeOptions = listCustomThemeDocumentsOrdered().map((theme) => ({
     id: theme.id,

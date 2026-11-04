@@ -316,7 +316,7 @@ describe("DockEditorApp window behavior", () => {
     expect(settingsStore.read().loudnessProfiles).toBeUndefined();
   });
 
-  it("switches Loudness Profiles through the main window without library management", () => {
+  it("routes Loudness Profile switching and management through the main window", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,
       view: "loudness-profile",
@@ -333,8 +333,12 @@ describe("DockEditorApp window behavior", () => {
     render(<DockEditorApp />);
 
     expect(screen.getByText("Loudness Profile")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Add Loudness Profile" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Edit Broadcast rules" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add Loudness Profile" }));
+    expect(action).toHaveBeenCalledWith("create-loudness-profile");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Broadcast rules" }));
+    expect(action).toHaveBeenCalledWith("edit-loudness-profile", { profileId: "a" });
+    fireEvent.click(screen.getByRole("button", { name: "Export Broadcast" }));
+    expect(action).toHaveBeenCalledWith("export-loudness-profile", { profileId: "a" });
 
     fireEvent.click(screen.getByRole("button", { name: "Use Streaming" }));
     expect(action).toHaveBeenCalledWith("select-loudness-profile", { selection: "profile:b" });

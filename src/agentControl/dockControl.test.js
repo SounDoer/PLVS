@@ -514,3 +514,25 @@ it("round-trips Dock frequency membership and preserves the visible range on unl
   expect(invalid.issues[0].code).toBe("invalidType");
   expect(invalid.dock).toBe(current);
 });
+
+it("uses the live Dock-entry blocker policy without relaxing other form validation", () => {
+  const dock = { supported: true, enabled: false, panels: [] };
+  const context = {
+    activeEditors: ["theme"],
+    readDockEntryBlockingEditors: () => [],
+    platform: "windows",
+  };
+  expect(planDockFormMutation(dock, "dock.enter", { edge: "top" }, context).refusal).toBeNull();
+  expect(
+    planDockFormMutation(
+      dock,
+      "dock.enter",
+      { edge: "top" },
+      { ...context, readDockEntryBlockingEditors: () => ["unsupported"] }
+    ).refusal
+  ).toEqual({ code: "editorActive", editors: ["unsupported"] });
+  expect(
+    planDockFormMutation(dock, "dock.enter", { edge: "top" }, { ...context, sourceMode: "file" })
+      .refusal.code
+  ).toBe("fileModeActive");
+});

@@ -693,6 +693,21 @@ WebViews. A new accessory announces readiness and receives the current state bef
 the header only after acknowledging its render, the editor only after reporting its measured size.
 Hiding an accessory that does not exist yet is a no-op; a failed creation exits Dock with a notice.
 
+Settings uses a narrow `dock-settings` host, following the ordinary drawer's Interface Size width.
+Theme/Profile/Feedback use the separate `dock-authoring` host, with the shared floating frame's
+intrinsic size and rounded border. A host service delegates title dragging to the native window;
+individual editor controls contain no Dock routing. Authoring geometry uses its own WebView scale,
+physical positions, and the monitor containing the editor. Theme Preview is the ordinary modal
+component: the host expands temporarily and restores its base bounds when the preview closes.
+
+Authoring drafts, preview-open state, validation, and file operations remain in main. An inactive
+authoring client acknowledges receipt/completion of its outstanding operations before declaring
+itself idle; main then destroys that WebView. Reopening creates a fresh renderer and readiness
+handshake. Hiding for a form change preserves the controller and draft. Settings remains reusable.
+Only owners with both presentations explicitly register Dock transferability; preset operations
+continue to refuse every open blocking editor. The Agent Control planner reads the same live blocker
+policy as the business guard. See [ADR 0050](adr/0050-dock-authoring-preserves-floating-editor-presentation.md).
+
 Toolbar visibility is owned by `useDockAccessoryVisibility`: an explicit open flag, or an open
 editor, or an error notice. Each of the three WebViews reports its own window focus — the strip
 directly, the accessories over `dock-accessory://focus` — and the toolbar closes once none of them

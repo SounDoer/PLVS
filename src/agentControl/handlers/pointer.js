@@ -73,7 +73,7 @@ async function move(ctx) {
   await pointerControl.move({
     ...point,
     durationMs,
-    webviewScale: pointerControl.scale(),
+    webviewScale: pointerControl.scale(located.surface),
     windowLabel: located.surface,
   });
   return {

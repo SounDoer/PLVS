@@ -41,8 +41,8 @@ function normalizeDockState(raw) {
  * Attribute restores (decorations / always-on-top) are passed by the caller so
  * stored user settings are never rewritten by the dock override.
  *
- * Dock entry is a scene operation: the strip replaces the whole UI, so a
- * draft-style editor open in the normal window would be stranded off screen.
+ * Dock entry asks the scene guard before changing the window form. An editor without a
+ * transferable presentation would otherwise be stranded off screen.
  * `assertSceneOperationAllowed` refuses the entry in that case -- it used to
  * cancel the profile draft instead, which is the silent discard this guard
  * exists to prevent. Passed in rather than reached for: the dock knows it is a

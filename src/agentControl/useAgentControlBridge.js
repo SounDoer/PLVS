@@ -67,6 +67,7 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  * @typedef {{
  *   sourceMode: any,
  *   activeEditors: any,
+ *   readDockEntryBlockingEditors?: () => readonly string[],
  *   transitioning: boolean,
  *   monitors: any[],
  *   fallbackMonitor: any,

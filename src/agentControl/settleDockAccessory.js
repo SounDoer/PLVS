@@ -50,13 +50,13 @@ export async function settleDockAccessory(target, runtime, options) {
       target.kind === "dockHeader"
         ? "dock-header"
         : target.kind === "dockSettings"
-          ? "dock-settings"
+          ? (geometry.windowLabel ?? "dock-settings")
           : target.kind === "dockUpdate"
             ? "dock-update"
             : "dock-editor",
     rect: { x: 0, y: 0, ...viewport },
     viewport,
-    devicePixelRatio: window.devicePixelRatio || 1,
+    devicePixelRatio: geometry.devicePixelRatio || window.devicePixelRatio || 1,
     revision,
     uiGeneration,
   };

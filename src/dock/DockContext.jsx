@@ -65,12 +65,8 @@ export function DockProvider({ children }) {
   // and preset capture/apply reads dock state. useDockMode depends only on the
   // profile controller above, so hoisting it above useAlwaysOnTop is safe.
   //
-  // Settings ownership survives form changes, but its presentation (including
-  // the profile editor) is still normal-form only, and the strip has no profile
-  // popover, so a draft carried in would keep outranking the persisted selection
-  // for DockStats with no way to see, name, save or cancel it. Entry is therefore
-  // refused while one is open -- the discard it used to do instead is exactly what
-  // the scene guard exists to prevent.
+  // Shared authoring controllers survive form changes. Their owners explicitly register Dock
+  // transferability; the scene guard still refuses entry for editors without a Dock host.
   const {
     dockEnabled,
     dockEdge,

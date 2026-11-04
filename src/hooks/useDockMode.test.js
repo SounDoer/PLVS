@@ -409,14 +409,8 @@ describe("useDockMode", () => {
   });
 });
 
-/// The dock is a monitoring posture, not a configuration one: the Loudness Profile editor is not
-/// rendered while docked and the strip has no profile popover, so a draft carried into the dock
-/// would keep outranking the persisted selection for DockStats and the dock's reference line with
-/// no way for the user to see, name, save or cancel it.
-///
-/// Entry is therefore refused while a draft is open. It used to cancel the draft instead, which
-/// destroyed user content on a path the user did not think of as destructive.
-describe("useDockMode refuses entry while a configuration draft is open", () => {
+// Shared Profile drafts migrate between hosts; unknown editors remain protected.
+describe("useDockMode preserves transferable drafts and refuses unsupported editors", () => {
   beforeEach(() => {
     mocks.enterDock.mockClear().mockResolvedValue(undefined);
     mocks.getDockState.mockReset().mockResolvedValue(undefined);
@@ -445,56 +439,38 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
     );
   }
 
-  function enterDockCatching(result) {
-    let thrown = null;
-    act(() => {
-      try {
-        result.current.dock.enterDockMode("bottom");
-      } catch (error) {
-        thrown = error;
-      }
-    });
-    return thrown;
-  }
-
-  it("refuses entry under a dirty draft and keeps the draft and the preview", () => {
-    settingsStore.patch({
-      loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
-    });
+  it("enters and exits Dock with the same dirty draft and preview", async () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const { result } = renderDockWithProfile();
     act(() => result.current.profile.select(profileSelectionId(TEST_PROFILE.id)));
     act(() => result.current.profile.beginCreate());
     act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+    const draft = result.current.profile.draft;
+    await act(() => result.current.dock.enterDockMode("bottom"));
+    expect(mocks.enterDock).toHaveBeenCalledOnce();
+    expect(result.current.dock.dockEnabled).toBe(true);
+    expect(result.current.profile.draft).toBe(draft);
     expect(result.current.profile.referenceLufs).toBe(-16);
-
-    const thrown = enterDockCatching(result);
-
-    expect(thrown?.code).toBe("editorActive");
-    expect(thrown?.operation).toBe("dock.enter");
-    expect(thrown?.editors).toEqual(["loudnessProfile"]);
-    // Refused before the transition: no IPC, no dock state, and the preview the user was reading
-    // is still the one on screen.
-    expect(mocks.enterDock).not.toHaveBeenCalled();
+    await act(() =>
+      result.current.dock.exitDockMode({ decorations: true, alwaysOnTop: false, bounds: null })
+    );
     expect(result.current.dock.dockEnabled).toBe(false);
-    expect(result.current.profile.draft.document.referenceLufs).toBe(-16);
-    expect(result.current.profile.referenceLufs).toBe(-16);
+    expect(result.current.profile.draft).toBe(draft);
   });
 
-  it("refuses entry under a clean draft too", () => {
+  it("keeps clean Profile drafts open on entry too", async () => {
     const { result } = renderDockWithProfile();
     act(() => result.current.profile.beginCreate());
-
-    const thrown = enterDockCatching(result);
-
-    expect(thrown?.code).toBe("editorActive");
-    expect(mocks.enterDock).not.toHaveBeenCalled();
-    expect(result.current.profile.draft).not.toBe(null);
+    const draft = result.current.profile.draft;
+    await act(() => result.current.dock.enterDockMode("bottom"));
+    expect(result.current.profile.draft).toBe(draft);
+    expect(result.current.dock.dockEnabled).toBe(true);
   });
 
-  it("refuses entry while the Feedback draft is open", () => {
+  it("refuses entry before mutation for an editor without a Dock presentation", () => {
     const { result } = renderHook(
       () => {
-        useBlockingEditor("feedback", true);
+        useBlockingEditor("unsupported-editor", true);
         const { assertSceneOperationAllowed } = useBlockingEditors();
         return useDockMode({ assertSceneOperationAllowed });
       },
@@ -513,7 +489,7 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
       }
     });
 
-    expect(thrown?.editors).toEqual(["feedback"]);
+    expect(thrown?.editors).toEqual(["unsupported-editor"]);
     expect(mocks.enterDock).not.toHaveBeenCalled();
     expect(result.current.dockEnabled).toBe(false);
   });

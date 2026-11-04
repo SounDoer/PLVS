@@ -176,6 +176,7 @@ function AppContent() {
     setSettingsGeometry,
     setSettingsTargets,
     onSettingsError,
+    exportProfileRef,
   } = useDockAccessories();
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
@@ -723,6 +724,7 @@ function AppContent() {
               onGeometry: setSettingsGeometry,
               onTargets: setSettingsTargets,
               onError: onSettingsError,
+              exportProfileRef,
             }}
             ref={settingsOverlaysRef}
             settings={settings}

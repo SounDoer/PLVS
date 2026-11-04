@@ -167,7 +167,7 @@ async fn capture_webview_screenshot(
           request.rect.height,
           matches!(
             request.window_label.as_str(),
-            "dock-header" | "dock-editor" | "dock-update" | "dock-settings"
+            "dock-header" | "dock-editor" | "dock-update" | "dock-settings" | "dock-authoring"
           ),
           path.as_ptr(),
           path.len(),

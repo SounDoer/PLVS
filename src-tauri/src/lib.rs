@@ -280,6 +280,7 @@ pub fn run() {
       dock_accessories::set_dock_update_window,
       dock_accessories::prepare_dock_update_window,
       dock_accessories::prepare_dock_settings_window,
+      dock_accessories::destroy_dock_settings_window,
       dock_accessories::set_dock_settings_window,
       dock_accessories::settings_file_dialog,
       dock_accessories::prepare_dock_accessories,

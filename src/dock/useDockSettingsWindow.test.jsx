@@ -62,7 +62,7 @@ beforeEach(() => {
 
 afterEach(() => vi.useRealTimers());
 
-function setup() {
+function setup(surface = "dock-settings") {
   const exported = vi.fn().mockResolvedValue("done");
   const reset = vi.fn();
   let navigation;
@@ -72,6 +72,7 @@ function setup() {
     const [autostartEnabled, setAutostartEnabled] = useState(false);
     navigation = useUiNavigation();
     useDockSettingsWindow({
+      surface,
       enabled: true,
       active: open,
       session: `${view}-session`,
@@ -111,7 +112,7 @@ function setup() {
     <BlockingEditorsProvider>
       <UiNavigationProvider>
         <Owner />
-        <DockSettingsApp />
+        <DockSettingsApp surface={surface} />
       </UiNavigationProvider>
     </BlockingEditorsProvider>
   );
@@ -215,4 +216,32 @@ describe("Settings owner and accessory integration", () => {
     );
     expect(view.reset).not.toHaveBeenCalled();
   });
+});
+
+it("destroys an idle authoring host only after its ordered business operations complete", async () => {
+  const view = setup("dock-authoring");
+  let finish;
+  view.exported.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }));
+  await screen.findByRole("dialog", { name: "Settings" });
+  fireEvent.click(screen.getByRole("button", { name: "Export complete setup" }));
+  await waitFor(() => expect(view.exported).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+  expect(bus.invoke.mock.calls.some(([name]) => name === "destroy_dock_settings_window")).toBe(
+    false
+  );
+  await act(async () => {
+    finish("cancelled");
+  });
+  await waitFor(() =>
+    expect(bus.invoke).toHaveBeenCalledWith("destroy_dock_settings_window", {
+      surface: "dock-authoring",
+    })
+  );
+  expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();
 });

@@ -10,6 +10,7 @@ pub const DOCK_EDITOR_LABEL: &str = "dock-editor";
 pub const DOCK_UPDATE_LABEL: &str = "dock-update";
 pub const DOCK_IMPORT_LABEL: &str = "dock-import";
 pub const DOCK_SETTINGS_LABEL: &str = "dock-settings";
+pub const DOCK_AUTHORING_LABEL: &str = "dock-authoring";
 
 fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   manager: &'a M,
@@ -22,11 +23,13 @@ fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
     label,
     WebviewUrl::App(format!("index.html?surface={label}").into()),
   )
-  .title(if label == DOCK_SETTINGS_LABEL {
-    "PLVS — Settings"
-  } else {
-    "PLVS"
-  })
+  .title(
+    if matches!(label, DOCK_SETTINGS_LABEL | DOCK_AUTHORING_LABEL) {
+      "PLVS — Settings"
+    } else {
+      "PLVS"
+    },
+  )
   .inner_size(1.0, 1.0)
   .initialization_script(init_script)
   .visible(false)
@@ -69,16 +72,34 @@ fn ensure_accessory<R: tauri::Runtime>(
   let window = accessory_builder(app, label, &init_script)
     .build()
     .map_err(|error| format!("{label} window: {error}"))?;
-  if label == DOCK_SETTINGS_LABEL {
+  if matches!(label, DOCK_SETTINGS_LABEL | DOCK_AUTHORING_LABEL) {
     let owner = app.clone();
+    let label = label.to_owned();
     window.on_window_event(move |event| {
+      if label == DOCK_AUTHORING_LABEL {
+        if let Ok(mut saved) = AUTHORING_BOUNDS.lock() {
+          if let Some((bounds, false)) = saved.as_mut() {
+            match event {
+              tauri::WindowEvent::Moved(position) => {
+                bounds.x = position.x;
+                bounds.y = position.y;
+              }
+              tauri::WindowEvent::Resized(size) => {
+                bounds.width = size.width;
+                bounds.height = size.height;
+              }
+              _ => {}
+            }
+          }
+        }
+      }
       if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         api.prevent_close();
         let _ = owner.emit_to(
-          DOCK_SETTINGS_LABEL,
+          &label,
           "dock-accessory://action",
           serde_json::json!({
-            "surface": DOCK_SETTINGS_LABEL, "type": "settings-dismiss", "payload": {}
+            "surface": label, "type": "settings-dismiss", "payload": {}
           }),
         );
       }
@@ -88,7 +109,7 @@ fn ensure_accessory<R: tauri::Runtime>(
   crate::macos_dock_window::configure_accessory(&window)?;
   // Subclassing must happen on the thread that owns the window; this command runs elsewhere.
   #[cfg(target_os = "windows")]
-  {
+  if label != DOCK_AUTHORING_LABEL {
     let pinned = window.clone();
     window
       .run_on_main_thread(move || {
@@ -151,7 +172,9 @@ fn set_rect<R: tauri::Runtime>(
   rect: WindowBounds,
 ) -> Result<(), String> {
   #[cfg(target_os = "windows")]
-  crate::accessory_pin::pin(window, rect);
+  if window.label() != DOCK_AUTHORING_LABEL {
+    crate::accessory_pin::pin(window, rect);
+  }
   window
     .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
     .map_err(|e| format!("{} size: {e}", window.label()))?;
@@ -242,6 +265,7 @@ pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     DOCK_UPDATE_LABEL,
     DOCK_IMPORT_LABEL,
     DOCK_SETTINGS_LABEL,
+    DOCK_AUTHORING_LABEL,
   ] {
     if let Some(window) = app.get_webview_window(label) {
       let _ = show_or_hide(&window, false, false);
@@ -411,6 +435,7 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
 #[tauri::command]
 pub async fn prepare_dock_settings_window<R: tauri::Runtime>(
   window: WebviewWindow<R>,
+  surface: String,
 ) -> Result<(), String> {
   if window.label() != "main" {
     return Err("Only main owns Settings presentation.".into());
@@ -418,22 +443,38 @@ pub async fn prepare_dock_settings_window<R: tauri::Runtime>(
   if !cfg!(any(target_os = "windows", target_os = "macos")) {
     return Err("Dock is unavailable on this platform.".into());
   }
-  ensure_accessory(window.app_handle(), DOCK_SETTINGS_LABEL)
+  validate_settings_surface(&surface)?;
+  ensure_accessory(window.app_handle(), &surface)
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsWindowLayout {
+  logical_width: f64,
+  logical_height: f64,
+  preview: bool,
 }
 
 #[tauri::command]
 pub fn set_dock_settings_window<R: tauri::Runtime>(
   window: WebviewWindow<R>,
+  surface: String,
   visible: bool,
   edge: DockEdge,
   webview_scale: f64,
   focus: bool,
-  logical_width: f64,
+  layout: SettingsWindowLayout,
 ) -> Result<Option<WindowBounds>, String> {
   if window.label() != "main" {
     return Err("Only main owns Settings presentation.".into());
   }
-  let Some(settings) = window.app_handle().get_webview_window(DOCK_SETTINGS_LABEL) else {
+  let SettingsWindowLayout {
+    logical_width,
+    logical_height,
+    preview,
+  } = layout;
+  validate_settings_surface(&surface)?;
+  let Some(settings) = window.app_handle().get_webview_window(&surface) else {
     return if visible {
       Err("Dock Settings window unavailable.".into())
     } else {
@@ -451,7 +492,25 @@ pub fn set_dock_settings_window<R: tauri::Runtime>(
   if !logical_width.is_finite() || logical_width <= 0.0 {
     return Err("Invalid Settings window width.".into());
   }
-  let rect = settings_window_bounds(monitor, strip, edge, webview_scale, logical_width);
+  if !logical_height.is_finite() || logical_height <= 0.0 {
+    return Err("Invalid Settings window height.".into());
+  }
+  let rect = if surface == DOCK_AUTHORING_LABEL {
+    authoring_window_bounds(
+      &settings,
+      monitor,
+      strip,
+      edge,
+      webview_scale,
+      SettingsWindowLayout {
+        logical_width,
+        logical_height,
+        preview,
+      },
+    )?
+  } else {
+    settings_window_bounds(monitor, strip, edge, webview_scale, logical_width)
+  };
   set_rect(&settings, rect)?;
   show_or_hide(&settings, true, true)?;
   if focus {
@@ -537,15 +596,21 @@ pub async fn settings_file_dialog<R: tauri::Runtime>(
     return Err("Only main owns Settings file operations.".into());
   }
   let app = window.app_handle();
-  let parent = app
-    .get_webview_window(DOCK_SETTINGS_LABEL)
-    .filter(|candidate| candidate.is_visible().unwrap_or(false))
-    .unwrap_or(window.clone());
+  let docked = app
+    .try_state::<crate::dock::DockedFlag>()
+    .is_some_and(|state| state.0.load(std::sync::atomic::Ordering::Acquire));
+  let parent = [DOCK_AUTHORING_LABEL, DOCK_SETTINGS_LABEL]
+    .iter()
+    .filter_map(|label| app.get_webview_window(label))
+    .find(|candidate| candidate.is_visible().unwrap_or(false))
+    .or_else(|| (!docked).then(|| window.clone()));
   let extension_refs: Vec<_> = extensions.iter().map(String::as_str).collect();
   let mut builder = app.dialog().file().add_filter(filter_name, &extension_refs);
   #[cfg(any(target_os = "windows", target_os = "macos"))]
   {
-    builder = builder.set_parent(&parent);
+    if let Some(parent) = &parent {
+      builder = builder.set_parent(parent);
+    }
   }
   #[cfg(not(any(target_os = "windows", target_os = "macos")))]
   let _ = parent;
@@ -582,4 +647,119 @@ pub async fn settings_file_dialog<R: tauri::Runtime>(
   })
   .await
   .map_err(|error| error.to_string())?
+}
+
+fn validate_settings_surface(surface: &str) -> Result<(), String> {
+  if matches!(surface, DOCK_SETTINGS_LABEL | DOCK_AUTHORING_LABEL) {
+    Ok(())
+  } else {
+    Err("Unknown Settings presentation host.".into())
+  }
+}
+
+// Positions live only for this process and remain physical pixels. Preview temporarily expands
+// around the editor, then restores its base position, including a user-dragged position.
+static AUTHORING_BOUNDS: Mutex<Option<(WindowBounds, bool)>> = Mutex::new(None);
+fn authoring_window_bounds<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  mut monitor: MonitorRect,
+  strip: WindowBounds,
+  edge: DockEdge,
+  scale: f64,
+  layout: SettingsWindowLayout,
+) -> Result<WindowBounds, String> {
+  let SettingsWindowLayout {
+    logical_width: width,
+    logical_height: height,
+    preview,
+  } = layout;
+  let mut saved = *AUTHORING_BOUNDS
+    .lock()
+    .unwrap_or_else(|error| error.into_inner());
+  if let Some((base, _)) = saved {
+    if let Ok(monitors) = window.available_monitors() {
+      if let Some(candidate) = monitors.iter().find(|candidate| {
+        let position = candidate.position();
+        let size = candidate.size();
+        base.x >= position.x
+          && base.x < position.x + size.width as i32
+          && base.y >= position.y
+          && base.y < position.y + size.height as i32
+      }) {
+        monitor = MonitorRect {
+          x: candidate.position().x,
+          y: candidate.position().y,
+          width: candidate.size().width,
+          height: candidate.size().height,
+        };
+      }
+    }
+  }
+  let mut rect = settings_window_bounds(monitor, strip, edge, scale, width);
+  rect.height = ((height * scale).round() as u32)
+    .min(monitor.height.saturating_sub((16.0 * scale) as u32))
+    .max(1);
+  let visible = window.is_visible().unwrap_or(false);
+  if visible {
+    let position = window.outer_position().map_err(|error| error.to_string())?;
+    let size = window.inner_size().map_err(|error| error.to_string())?;
+    let current = WindowBounds {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height,
+      is_maximized: false,
+    };
+    let was_preview = saved.as_ref().is_some_and(|(_, expanded)| *expanded);
+    if !was_preview {
+      saved = Some((current, preview));
+    }
+    if preview && !was_preview {
+      rect.x = current.x - (rect.width as i32 - current.width as i32) / 2;
+      rect.y = current.y - (rect.height as i32 - current.height as i32) / 2;
+    } else if !preview && was_preview {
+      if let Some((base, _)) = saved {
+        rect.x = base.x;
+        rect.y = base.y;
+      }
+    } else {
+      rect.x = current.x;
+      rect.y = current.y;
+    }
+  } else if let Some((base, _)) = saved {
+    rect.x = base.x;
+    rect.y = base.y;
+  }
+  rect.x = rect.x.clamp(
+    monitor.x,
+    monitor.x + monitor.width.saturating_sub(rect.width) as i32,
+  );
+  rect.y = rect.y.clamp(
+    monitor.y,
+    monitor.y + monitor.height.saturating_sub(rect.height) as i32,
+  );
+  if !preview {
+    saved = Some((rect, false));
+  } else if let Some((base, _)) = saved {
+    saved = Some((base, true));
+  }
+  *AUTHORING_BOUNDS
+    .lock()
+    .unwrap_or_else(|error| error.into_inner()) = saved;
+  Ok(rect)
+}
+
+#[tauri::command]
+pub fn destroy_dock_settings_window<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+  surface: String,
+) -> Result<(), String> {
+  if window.label() != "main" {
+    return Err("Only main owns Settings presentation.".into());
+  }
+  validate_settings_surface(&surface)?;
+  if let Some(host) = window.app_handle().get_webview_window(&surface) {
+    host.destroy().map_err(|error| error.to_string())?;
+  }
+  Ok(())
 }

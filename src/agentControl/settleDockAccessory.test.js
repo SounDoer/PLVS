@@ -36,3 +36,24 @@ describe("settleDockAccessory", () => {
     ).rejects.toMatchObject({ reason: "revisionConflict" });
   });
 });
+
+it("settles an authoring presentation using its actual window and WebView scale", async () => {
+  const settled = await settleDockAccessory(
+    { kind: "dockSettings" },
+    {
+      accessoryGeometry: {
+        dockSettings: {
+          visible: true,
+          windowLabel: "dock-authoring",
+          width: 432,
+          height: 388,
+          devicePixelRatio: 1.25,
+        },
+      },
+    },
+    options()
+  );
+  expect(settled.windowLabel).toBe("dock-authoring");
+  expect(settled.devicePixelRatio).toBe(1.25);
+  expect(settled.viewport).toEqual({ width: 432, height: 388 });
+});

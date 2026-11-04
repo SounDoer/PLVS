@@ -37,6 +37,9 @@ red — but Stats still judges it.
 Select, create, rename, reorder, and delete profiles from the Loudness Profile menu. A new
 installation starts with the editable **PLVS Default** profile described in
 [Getting Started](getting-started.md); edit or delete it freely.
-In Dock mode, the Dock toolbar can switch the active profile.
+In Dock mode, the Dock toolbar offers the same profile management, including Add Profile and each
+profile's Edit, Export, and Delete actions. Editing opens a draggable window with the same fields,
+preview, Save, Cancel, and unsaved-change confirmation. Switching between Dock and the normal window
+keeps the draft open.
 
 Profiles can be exported and imported from [System Settings](system-settings.md).

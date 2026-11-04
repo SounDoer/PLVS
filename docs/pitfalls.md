@@ -163,9 +163,10 @@ on 2026-10-20 a run each:
 
 ## Scene operations and draft editors
 
-Preset apply, save, and update plus dock entry are scene operations. They must call
-`assertSceneOperationAllowed` in the business function before any mutation so UI, tray, dock, and
-Agent Control entry points share the same refusal.
+Preset apply, save, and update plus dock entry consult `assertSceneOperationAllowed` in the business
+function before any mutation. Editors with shared normal/Dock presentation explicitly register Dock
+transferability; only Dock entry can pass those registrations. Unknown editors and every preset
+operation remain blocked. Agent Control planning reads the same live blocker policy.
 
 Blocking is based on a draft-style editor being open, not on whether it is currently dirty. Scene
 replacement destroys the editing context, and a clean draft can become dirty between a check and a

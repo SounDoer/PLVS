@@ -59,6 +59,8 @@ const CORE_COLORS = [
  *   onCore: (key: string, css: string) => void,
  *   onResetCore: () => void,
  *   onPaletteColor: (palette: string, key: string, css: string) => void,
+ *   previewOpen?: boolean,
+ *   onPreviewOpenChange?: (...args: any[]) => any,
  *   onIntensityStop: (index: number, css: string) => void,
  *   onIntensityStops: (stops: object[]) => void,
  *   onApplyPreset: (palette: string, presetId: string) => void,
@@ -86,6 +88,8 @@ const CORE_COLORS = [
  *   onCore: (...args: any[]) => any,
  *   onResetCore?: (...args: any[]) => any,
  *   onPaletteColor: (...args: any[]) => any,
+ *   previewOpen?: boolean,
+ *   onPreviewOpenChange?: (...args: any[]) => any,
  *   onIntensityStop: (...args: any[]) => any,
  *   onIntensityStops: (...args: any[]) => any,
  *   onApplyPreset: (...args: any[]) => any,
@@ -119,6 +123,8 @@ export function ThemeEditor({
   onCore,
   onResetCore = () => {},
   onPaletteColor,
+  previewOpen: controlledPreviewOpen,
+  onPreviewOpenChange,
   onIntensityStop,
   onIntensityStops,
   onApplyPreset,
@@ -156,7 +162,9 @@ export function ThemeEditor({
     },
     [controlledPage, onPageChange]
   );
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [localPreviewOpen, setLocalPreviewOpen] = useState(false);
+  const previewOpen = controlledPreviewOpen ?? localPreviewOpen;
+  const setPreviewOpen = onPreviewOpenChange ?? setLocalPreviewOpen;
   const [focusTarget, setFocusTarget] = useState(null);
   const builtinCore = BUILTIN_THEMES_V2[`plvs-${draft.colorScheme}`].core;
   const coreIsDefault = Object.keys(builtinCore).every(
