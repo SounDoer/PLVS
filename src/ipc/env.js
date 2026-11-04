@@ -10,6 +10,8 @@ export function isTauri() {
  * Throws when the page runs inside a Tauri webview but was served without the Tauri build
  * environment (for example a separately started `npm run dev`). `isTauri()` would otherwise be
  * false and the app would silently run in browser mode inside the native window.
+ *
+ * @param {{ __TAURI_INTERNALS__?: unknown } | undefined} [win]
  */
 export function assertTauriBuildEnvironment(win = globalThis.window) {
   if (win?.__TAURI_INTERNALS__ && !isTauri()) {
