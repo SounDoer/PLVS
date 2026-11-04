@@ -12,7 +12,7 @@ export function ThemeVisualReview({ warnings, onJump }) {
           </h2>
         </div>
         <p className="mt-1 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-          Recommended targets stay visible for review but never block saving or publication.
+          Recommendations don’t block saving.
         </p>
       </div>
       {warnings.length ? (

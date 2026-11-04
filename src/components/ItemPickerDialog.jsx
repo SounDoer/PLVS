@@ -208,14 +208,14 @@ export function ItemPickerDialog({
         ref={contentRef}
         centered={!pos}
         overlayProps={{ onClick: handleDismiss }}
+        {...(mode === "pick" ? { "aria-describedby": undefined } : {})}
         style={pos ? { left: pos.x, top: pos.y } : undefined}
       >
         <div data-testid="item-picker-drag-handle" {...dragHandlers} className="cursor-move">
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {mode === "pick"
-              ? `Choose which ${label.toLowerCase()} to export.`
-              : mode === "complete"
+          {mode !== "pick" ? (
+            <DialogDescription>
+              {mode === "complete"
                 ? singleCompletion
                   ? `${review.itemPlan[0].name} is now in your library.`
                   : `The ${label.toLowerCase()} are now in your library.`
@@ -224,7 +224,8 @@ export function ItemPickerDialog({
                     ? "This item is already in your library."
                     : "These items are already in your library."
                   : `Review what will be added to your library.`}
-          </DialogDescription>
+            </DialogDescription>
+          ) : null}
         </div>
 
         <div className="my-3 min-h-0 flex-1 overflow-y-auto">

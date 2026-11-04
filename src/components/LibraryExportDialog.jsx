@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 import { MenuRow } from "@/components/ui/row";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
@@ -85,9 +79,8 @@ export function LibraryExportDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : close())}>
-      <DialogContent overlayProps={{ onClick: close }}>
+      <DialogContent overlayProps={{ onClick: close }} aria-describedby={undefined}>
         <DialogTitle>Export Saved Items</DialogTitle>
-        <DialogDescription>Choose a type, then select the items to export.</DialogDescription>
 
         <div className="my-3 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
           {LIBRARY_TYPES.map(({ type, label }) => {

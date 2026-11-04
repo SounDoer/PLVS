@@ -282,8 +282,7 @@ replacing shared data; the workbench where you chose Import receives the instanc
 **Reset PLVS to Default** uses the same coordinated restart and restores a fresh installation.
 
 For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
-The Settings **Saved Items** exporter retains multi-select export for sharing several Items of one
-type together.
+In the Settings **Saved Items** exporter, choose a type, then select the Items to export together.
 
 If storage fails or PLVS exits during that replacement, the incomplete import is rolled back. A
 recovery journal completes that rollback automatically the next time the target workbench opens,

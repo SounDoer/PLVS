@@ -120,16 +120,15 @@ export function UpdateSetupContent({
 }) {
   return (
     <>
-      <p className="mb-3 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-        Change anytime in Settings.
-      </p>
-      <UpdatePreferencesControls
-        preferences={preferences}
-        onChange={onChange}
-        installationSupported={installationSupported}
-        installationUnavailableReason={installationUnavailableReason}
-        disabled={busy}
-      />
+      <div className="mt-3">
+        <UpdatePreferencesControls
+          preferences={preferences}
+          onChange={onChange}
+          installationSupported={installationSupported}
+          installationUnavailableReason={installationUnavailableReason}
+          disabled={busy}
+        />
+      </div>
       {error ? (
         <p role="alert" className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">
           {error}

@@ -382,7 +382,7 @@ export function ThemeEditor({
                   />
                 </div>
                 <p className="mt-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-                  Six choices shape the whole theme. Related colors are generated automatically.
+                  Related colors are generated automatically.
                 </p>
               </div>
               {CORE_COLORS.map(({ key, label, description }) => (
