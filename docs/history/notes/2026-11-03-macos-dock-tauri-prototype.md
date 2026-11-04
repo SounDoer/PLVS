@@ -36,6 +36,8 @@ The experiment adds no public Agent Control method or macOS Above Full Screen UI
    `python3 scripts/prototypes/macos-dock/stage-app.py`, and serve the frontend with
    `TAURI_ENV_PLATFORM=darwin TAURI_DEBUG=true npm run dev`. Launch the emitted temporary
    `PLVS Panel Probe.app`. The bundle carries the opt-in environment variable.
+   Keep both variables on the `npm run dev` command: without `TAURI_ENV_PLATFORM` the frontend
+   now refuses to boot inside the native window instead of running in browser mode.
 4. Use `npm run desktop:control -- capabilities --json`, then inspect and retain the revision.
    Enter Dock with `dock enter --edge bottom --reserve-space false --expected-revision <n> --json`.
    Keep reservation off so this investigation does not move external application windows.

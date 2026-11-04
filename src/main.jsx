@@ -22,6 +22,16 @@ import { DOCK_ACCESSORY_SURFACES } from "./dock/accessoryProtocol.js";
 import { migrateDialogueVadEngine } from "./persistence/migrateDialogueVadEngine.js";
 import { AppCrashBoundary } from "./components/AppCrashBoundary.jsx";
 import { installKeyboardNavigationTracking } from "./lib/keyboardNavigation.js";
+import { assertTauriBuildEnvironment } from "./ipc/env.js";
+
+// Stop before any migration or persistence write: a browser-mode build inside the native window
+// must fail visibly instead of booting with no engine.
+try {
+  assertTauriBuildEnvironment();
+} catch (error) {
+  document.getElementById("root").textContent = error.message;
+  throw error;
+}
 
 const surface = applyDocumentSurface(window.location.search);
 
