@@ -141,6 +141,8 @@ describe("visual control contract", () => {
         defaultAudioSource: "measuredSource",
         cursorModes: ["none", "visible"],
         defaultCursorMode: "none",
+        indicatorModes: ["visible", "hidden"],
+        defaultIndicatorMode: "visible",
         defaultFps: 30,
         supportedFps: [15, 30, 60],
         defaultMaxDurationSeconds: 60,
@@ -179,6 +181,8 @@ describe("visual control contract", () => {
         audioSources: [],
         cursorModes: [],
         defaultCursorMode: "none",
+        indicatorModes: ["visible", "hidden"],
+        defaultIndicatorMode: "visible",
       },
       runtime: { availableScreenshotTargets: [], availableAudioSources: [] },
     });

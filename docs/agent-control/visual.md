@@ -35,8 +35,9 @@ artifact. `recording.unavailable` is `null` while recording is available; otherw
   Linux does not advertise it and refuses it with `targetUnavailable`.
 
 Capture preserves actual rendered pixels. Open menus, PLVS-rendered cursors, hover state, selection
-hints, overlays, and the recording indicator remain visible when they intersect the target. There
-is no clean-UI mode. Target bounds settle across the font and paint barrier before capture, and
+hints, and overlays remain visible when they intersect the target. The recording indicator is
+visible by default and can be hidden for an individual recording with `--indicator hidden`. There
+is no general clean-UI mode. Target bounds settle across the font and paint barrier before capture, and
 screenshot metadata reports the actual output width and height after device/WebView scaling.
 
 On macOS, screenshots use WebKit's app-owned snapshot path. They do not request Screen Recording
@@ -109,7 +110,10 @@ plvs-cli visual recording start --target workspace --cursor visible --json
 The initial target fixes the encoded canvas size. Later target resizing is aspect-fitted with
 letterboxing; a temporary target loss holds the last frame, while permanent window loss finalizes
 the recording. App mutations remain allowed and visible during recording. The recording indicator
-is inside `main` and outside `workspace`.
+is inside `main` and outside `workspace` by default. Pass `--indicator hidden` for a clean guide
+recording, or `--indicator visible` explicitly. This per-recording option hides only the PLVS dot
+in normal, Fullscreen, and Dock views; it does not affect recording state, inspect, wait, or stop.
+It is not saved as a preference, and the next recording defaults to visible.
 
 Frame rate defaults to 30 and accepts 15, 30, or 60. Duration defaults to 60 seconds, accepts 1
 through 1800 seconds, and is capped at 30 minutes. The hard artifact limit is 2 GiB. Duration or

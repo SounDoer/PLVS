@@ -154,6 +154,7 @@ async function startRecording(ctx) {
       startedAt: new Date().toISOString(),
       unsubscribe: null,
       audio,
+      indicator: request.params.indicator ?? "visible",
     };
     visual.recordings.set(recording.recordingId, metadata);
     metadata.unsubscribe = visualControl.subscribe?.(
@@ -170,7 +171,7 @@ async function startRecording(ctx) {
       },
       { signal: controller.signal }
     );
-    visualControl.setRecordingState?.(recording.state);
+    visualControl.setRecordingState?.(metadata?.indicator === "hidden" ? null : recording.state);
     void (async () => {
       while (visual.recordings.has(recording.recordingId)) {
         await new Promise((resolve) => setTimeout(resolve, 250));
@@ -182,7 +183,7 @@ async function startRecording(ctx) {
             visualControl.setRecordingState?.(null);
             return;
           }
-          visualControl.setRecordingState?.(latest.state);
+          visualControl.setRecordingState?.(metadata.indicator === "hidden" ? null : latest.state);
         } catch {
           return;
         }
@@ -195,6 +196,7 @@ async function startRecording(ctx) {
         recording: {
           ...publicRecording(recording),
           target: request.params.target,
+          indicator: metadata.indicator,
           startedAt: metadata.startedAt,
           startedRevision: settled.revision,
         },
@@ -223,10 +225,11 @@ async function inspectWaitOrStopRecording(ctx) {
       if (metadata) metadata.unsubscribe = null;
       visualControl.setRecordingState?.(null);
     } else {
-      visualControl.setRecordingState?.(recording.state);
+      visualControl.setRecordingState?.(metadata?.indicator === "hidden" ? null : recording.state);
     }
     return {
       ...publicRecording(recording),
+      ...(metadata?.indicator ? { indicator: metadata.indicator } : {}),
       ...(metadata?.target ? { target: metadata.target } : {}),
       ...(metadata?.startedAt ? { startedAt: metadata.startedAt } : {}),
       ...(Number.isSafeInteger(metadata?.startedRevision)

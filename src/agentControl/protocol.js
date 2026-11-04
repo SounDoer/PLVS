@@ -686,7 +686,15 @@ export function normalizeAgentControlRequest(input) {
   if (input.method === "visual.recording.start") {
     const field = unknownField(
       input.params,
-      new Set(["target", "audio", "cursor", "fps", "maxDurationSeconds", "expectedRevision"])
+      new Set([
+        "target",
+        "audio",
+        "cursor",
+        "indicator",
+        "fps",
+        "maxDurationSeconds",
+        "expectedRevision",
+      ])
     );
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     const normalizedTarget = normalizeVisualTarget(input.params.target);
@@ -708,6 +716,10 @@ export function normalizeAgentControlRequest(input) {
     const cursor = input.params.cursor ?? "none";
     if (!["none", "visible"].includes(cursor)) {
       return invalidParams("$.params.cursor", "cursor must be none or visible.");
+    }
+    const indicator = input.params.indicator ?? "visible";
+    if (!["visible", "hidden"].includes(indicator)) {
+      return invalidParams("$.params.indicator", "indicator must be visible or hidden.");
     }
     const fps = input.params.fps ?? 30;
     if (![15, 30, 60].includes(fps)) {
@@ -742,6 +754,7 @@ export function normalizeAgentControlRequest(input) {
           target: normalizedTarget.target,
           ...(input.params.audio !== undefined ? { audio: input.params.audio } : {}),
           cursor,
+          indicator,
           fps,
           maxDurationSeconds,
           ...(input.params.expectedRevision !== undefined

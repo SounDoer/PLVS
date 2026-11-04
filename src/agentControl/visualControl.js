@@ -181,6 +181,8 @@ export function buildVisualDescription({ revision, platform, runtime }) {
       defaultAudioSource,
       cursorModes,
       defaultCursorMode: "none",
+      indicatorModes: ["visible", "hidden"],
+      defaultIndicatorMode: "visible",
       defaultFps: 30,
       supportedFps: [...SUPPORTED_FPS],
       defaultMaxDurationSeconds: 60,

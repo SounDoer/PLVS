@@ -1585,6 +1585,62 @@ describe("useAgentControlBridge", () => {
       expect(visual.setRecordingState).toHaveBeenCalledWith("recording");
     });
 
+    it("keeps a hidden indicator suppressed through polling, inspect and stop, then defaults back to visible", async () => {
+      const visual = visualControl({
+        platformCapabilities: {
+          platform: "windows",
+          screenshot: { available: true, targets: ["main"] },
+          recording: {
+            available: true,
+            targets: ["main"],
+            audioSources: ["none", "measuredSource"],
+            cursorModes: ["none", "visible"],
+          },
+        },
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+      const started = await send(
+        request(
+          "visual.recording.start",
+          {
+            target: { kind: "main" },
+            indicator: "hidden",
+          },
+          "hidden-start"
+        )
+      );
+      expect(started.result.recording).toMatchObject({ state: "recording", indicator: "hidden" });
+      const recordingId = started.result.recording.recordingId;
+      await waitFor(() => expect(visual.inspectRecording).toHaveBeenCalled());
+      const inspected = await send(
+        request("visual.recording.inspect", { recordingId }, "hidden-inspect")
+      );
+      expect(inspected.result.recording).toMatchObject({ state: "recording", indicator: "hidden" });
+      visual.inspectRecording.mockResolvedValue({
+        recordingId,
+        state: "completed",
+        durationMs: 100,
+        capturedFrames: 3,
+        droppedFrames: 0,
+        bytes: 1000,
+      });
+      const stopped = await send(request("visual.recording.stop", { recordingId }, "hidden-stop"));
+      expect(stopped.result.recording).toMatchObject({ state: "completed", indicator: "hidden" });
+      expect(visual.setRecordingState.mock.calls.every(([state]) => state === null)).toBe(true);
+      const next = await send(
+        request(
+          "visual.recording.start",
+          {
+            target: { kind: "main" },
+          },
+          "visible-next"
+        )
+      );
+      expect(next.result.recording.indicator).toBe("visible");
+      expect(visual.setRecordingState).toHaveBeenLastCalledWith("recording");
+    });
+
     it("defaults File recording to none and rejects explicit measured-source audio", async () => {
       const visual = visualControl({
         platformCapabilities: {

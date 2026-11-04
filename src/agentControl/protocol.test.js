@@ -395,6 +395,7 @@ describe("normalizeAgentControlRequest", () => {
             params: {
               target: { kind },
               cursor: "none",
+              indicator: "visible",
               fps: 30,
               maxDurationSeconds: 60,
             },
@@ -411,6 +412,14 @@ describe("normalizeAgentControlRequest", () => {
       ).toBe(audio);
     });
 
+    it.each(["visible", "hidden"])("preserves explicit %s indicator mode", (indicator) => {
+      expect(
+        normalizeAgentControlRequest(
+          request("visual.recording.start", { target: { kind: "main" }, indicator })
+        ).request.params.indicator
+      ).toBe(indicator);
+    });
+
     it.each(["none", "visible"])("preserves explicit %s cursor mode", (cursor) => {
       expect(
         normalizeAgentControlRequest(
@@ -423,6 +432,7 @@ describe("normalizeAgentControlRequest", () => {
       [{ target: { kind: "panel", panelId: "peak-1" } }, "$.params.target.kind"],
       [{ target: { kind: "main" }, audio: "microphone" }, "$.params.audio"],
       [{ target: { kind: "main" }, cursor: "crosshair" }, "$.params.cursor"],
+      [{ target: { kind: "main" }, indicator: "auto" }, "$.params.indicator"],
       [{ target: { kind: "main" }, fps: 24 }, "$.params.fps"],
       [{ target: { kind: "main" }, maxDurationSeconds: 0 }, "$.params.maxDurationSeconds"],
       [{ target: { kind: "main" }, out: "capture.mp4" }, "$.params.out"],

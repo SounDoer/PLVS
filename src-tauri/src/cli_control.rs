@@ -395,6 +395,7 @@ pub enum ControlCommand {
     target: String,
     audio: Option<String>,
     cursor: String,
+    indicator: String,
     fps: u32,
     max_duration_seconds: u32,
     expected_revision: Option<u64>,
@@ -1610,7 +1611,7 @@ fn valid_recording_id(value: &str) -> bool {
 }
 
 fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
+  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--indicator <visible|hidden>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
   let Some(action) = args.first().map(String::as_str) else {
     return Err(USAGE.to_string());
   };
@@ -1621,6 +1622,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
   let mut target = None;
   let mut audio = None;
   let mut cursor = "none".to_string();
+  let mut indicator = "visible".to_string();
   let mut fps = 30_u32;
   let mut max_duration_seconds = 60_u32;
   let mut expected_revision = None;
@@ -1644,6 +1646,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
       "--target"
         | "--audio"
         | "--cursor"
+        | "--indicator"
         | "--fps"
         | "--max-duration-seconds"
         | "--expected-revision"
@@ -1672,6 +1675,12 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
             "visible" => "visible".to_string(),
             _ => return Err("The --cursor value must be none or visible.".to_string()),
           }
+        }
+        "--indicator" => {
+          indicator = match value.as_str() {
+            "visible" | "hidden" => value.clone(),
+            _ => return Err("The --indicator value must be visible or hidden.".to_string()),
+          };
         }
         "--fps" => {
           fps = value
@@ -1738,6 +1747,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
       target,
       audio,
       cursor,
+      indicator,
       fps,
       max_duration_seconds,
       expected_revision,
@@ -1750,6 +1760,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
   if expected_revision.is_some()
     || audio.is_some()
     || seen.contains("--cursor")
+    || seen.contains("--indicator")
     || seen.contains("--fps")
     || seen.contains("--max-duration-seconds")
   {
@@ -4591,6 +4602,7 @@ fn request_for_command<R: Read>(
       target,
       audio,
       cursor,
+      indicator,
       fps,
       max_duration_seconds,
       expected_revision,
@@ -4598,6 +4610,7 @@ fn request_for_command<R: Read>(
       let mut params = serde_json::Map::from_iter([
         ("target".to_string(), serde_json::json!({ "kind": target })),
         ("cursor".to_string(), Value::String(cursor.clone())),
+        ("indicator".to_string(), Value::String(indicator.clone())),
         ("fps".to_string(), Value::from(*fps)),
         (
           "maxDurationSeconds".to_string(),
@@ -9538,6 +9551,7 @@ mod tests {
           "target": { "kind": target },
           "audio": "measuredSource",
           "cursor": "visible",
+          "indicator": "visible",
           "fps": 60,
           "maxDurationSeconds": 90,
           "expectedRevision": 42
@@ -9618,6 +9632,88 @@ mod tests {
         .method,
       "visual.recording.stop"
     );
+  }
+
+  #[test]
+  fn recording_indicator_is_per_start_and_validated() {
+    for indicator in ["visible", "hidden"] {
+      let command = parse_control_args(&args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--indicator",
+        indicator,
+        "--json",
+      ]))
+      .unwrap();
+      assert_eq!(
+        request_for_command(&command, &mut Cursor::new([]))
+          .unwrap()
+          .params["indicator"],
+        indicator
+      );
+    }
+    let command = parse_control_args(&args(&[
+      "visual",
+      "recording",
+      "start",
+      "--target",
+      "main",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&command, &mut Cursor::new([]))
+        .unwrap()
+        .params["indicator"],
+      "visible"
+    );
+    for invalid in [
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--indicator",
+        "auto",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--indicator",
+        "hidden",
+        "--indicator",
+        "visible",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--indicator",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "inspect",
+        "rec-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "--indicator",
+        "hidden",
+        "--json",
+      ]),
+    ] {
+      assert!(parse_control_args(&invalid).is_err());
+    }
   }
 
   #[test]

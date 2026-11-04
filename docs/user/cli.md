@@ -351,11 +351,15 @@ desktop visible behind transparent surfaces:
 ```powershell
 plvs-cli visual describe --json
 plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
-plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
+plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--indicator <visible|hidden>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json
 plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 ```
+
+The recording indicator defaults to visible. For guide videos, pass `--indicator hidden` to hide
+the PLVS recording dot for that recording only, including normal, Fullscreen, and Dock views.
+This does not change recording status or stop/wait control; the next recording defaults to visible.
 
 Live recordings default to the measured source; File recordings default to `none`, and an explicit
 File `measured-source` request fails. Linux advertises only `--cursor none`; its measured-source
