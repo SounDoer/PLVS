@@ -1211,5 +1211,8 @@ it("shows transfer progress, cached readiness and replacement failure in the exi
       updateActivity={{ readyVersion: "2.0.0", downloadError: "Disk full" }}
     />
   );
-  expect(screen.getByText("Update Ready · Download Failed").title).toBe("Disk full");
+  const status = screen.getByText("Update Ready · Download Failed");
+  expect(status.title).toBe("");
+  fireEvent.mouseEnter(status);
+  expect(screen.getByRole("tooltip").textContent).toBe("Disk full");
 });

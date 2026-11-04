@@ -52,7 +52,7 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
         aria-label={`${ariaLabel} text`}
         aria-readonly="true"
         tabIndex={0}
-        className="whitespace-pre-wrap break-words font-mono text-[length:var(--ui-fs-axis)] leading-relaxed text-foreground outline-none selection:bg-primary/30"
+        className="whitespace-pre-wrap break-words font-mono text-[length:var(--ui-fs-axis)] leading-relaxed text-foreground outline-none"
       >
         {value}
       </div>

@@ -205,6 +205,20 @@ html[data-surface="dock-editor"] #root {
   }
 }
 
+/* Native scrollbars and text selection otherwise follow only `color-scheme`, so a custom theme's
+   surfaces would sit beside Chromium's stock dark or light chrome. Layered, so a component can
+   still override them. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+}
+
 /* The one focus ring. It appears only while the user is navigating with Tab -- the attribute is
    kept by src/lib/keyboardNavigation.js -- so shortcuts and pointer use never raise it. Unlayered,
    so it outranks the suppression above. */

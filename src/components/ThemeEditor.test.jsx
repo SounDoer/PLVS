@@ -379,6 +379,15 @@ describe("ThemeEditor", () => {
     ).toBe(true);
   });
 
+  it("names header actions in themed tips instead of native titles", () => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+
+    const rename = screen.getByRole("button", { name: "Rename theme" });
+    expect(rename.title).toBe("");
+    fireEvent.mouseEnter(rename);
+    expect(screen.getByRole("tooltip").textContent).toBe("Rename");
+  });
+
   it("commits a name edit from the confirm button", () => {
     const onName = vi.fn();
     render(<ThemeEditor {...BASE_PROPS} onName={onName} />);

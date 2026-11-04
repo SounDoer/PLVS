@@ -156,6 +156,24 @@ describe("LevelMeterPanel", () => {
     expect(screen.getByText("-9.9")).toBeTruthy();
   });
 
+  it("shows a clipped channel name in a themed tip, never a native title", () => {
+    const { container } = renderPanel({
+      showAxes: true,
+      panelControls: { levelMeterMode: "peak" },
+    });
+    const label = /** @type {HTMLElement} */ (container.querySelector("[data-peak-channel-label]"));
+    expect(label.title).toBe("");
+
+    fireEvent.mouseEnter(label);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.mouseLeave(label);
+
+    Object.defineProperty(label, "scrollWidth", { configurable: true, value: 40 });
+    Object.defineProperty(label, "clientWidth", { configurable: true, value: 10 });
+    fireEvent.mouseEnter(label);
+    expect(screen.getByRole("tooltip").textContent).toBe("L");
+  });
+
   it("renders Momentary LUFS in Level Meter mode", () => {
     settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const { container } = renderPanel({

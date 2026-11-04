@@ -232,8 +232,6 @@ function PanelHelp({ items, panelId }) {
         updatePositionStrategy="always"
         style={{
           scrollbarGutter: "stable",
-          scrollbarWidth: "thin",
-          scrollbarColor: "var(--muted-foreground) var(--popover)",
         }}
         onOpenAutoFocus={(event) => {
           event.preventDefault();

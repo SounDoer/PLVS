@@ -51,7 +51,3 @@
 .dock-transport .dock-transport-action {
   height: 100%;
 }
-
-.dock-panel-viewport {
-  scrollbar-width: thin;
-}

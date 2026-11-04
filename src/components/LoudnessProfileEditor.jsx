@@ -4,7 +4,7 @@ import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/AddButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
-import { useTruncationTip } from "@/components/HoverTip";
+import { HoverTip, useTruncationTip } from "@/components/HoverTip";
 import {
   Select,
   SelectContent,
@@ -507,15 +507,16 @@ export function LoudnessProfileEditor({
                   <span className="text-muted-foreground">Untitled</span>
                 )}
               </span>
-              <IconAction
-                aria-label="Rename profile"
-                title="Rename"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={startRename}
-                className="shrink-0"
-              >
-                <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-              </IconAction>
+              <HoverTip tip="Rename" className="shrink-0">
+                <IconAction
+                  aria-label="Rename profile"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={startRename}
+                  className="shrink-0"
+                >
+                  <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+                </IconAction>
+              </HoverTip>
             </>
           )}
         </div>

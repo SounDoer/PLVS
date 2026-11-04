@@ -19,6 +19,7 @@ import { resolvePanelDisplayName } from "./panelInstances.js";
 import { workspaceUsesDefaults } from "./constants.js";
 import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
 import { DragHandle } from "@/components/ui/drag-handle";
+import { HoverTip } from "@/components/HoverTip";
 import { RowAction } from "@/components/ui/row";
 
 function PanelRow({ panelId }) {
@@ -122,11 +123,12 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
         <span className="min-w-0 flex-1 truncate">{title}</span>
       </RowAction>
       <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
-        <DragHandle
-          aria-label={`Drag ${title} to place`}
-          title="Drag to place"
-          onMouseDown={(e) => onCreateMouseDown(e, id)}
-        />
+        <HoverTip tip="Drag to place">
+          <DragHandle
+            aria-label={`Drag ${title} to place`}
+            onMouseDown={(e) => onCreateMouseDown(e, id)}
+          />
+        </HoverTip>
       </span>
     </div>
   );

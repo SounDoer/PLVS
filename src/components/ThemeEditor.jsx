@@ -11,6 +11,7 @@ import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { HoverTip } from "@/components/HoverTip";
 import { IconAction } from "@/components/ui/icon-action";
 import { TabButton } from "@/components/ui/tab-button";
 
@@ -308,35 +309,38 @@ export function ThemeEditor({
                   </button>
                 ))}
               </div>
-              <IconAction
-                aria-label="Undo theme change"
-                title="Undo"
-                disabled={!canUndo}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={onUndo}
-                className="shrink-0 disabled:opacity-50"
-              >
-                <Undo2 className="size-[length:var(--ui-icon-management-action)]" />
-              </IconAction>
-              <IconAction
-                aria-label="Redo theme change"
-                title="Redo"
-                disabled={!canRedo}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={onRedo}
-                className="shrink-0 disabled:opacity-50"
-              >
-                <Redo2 className="size-[length:var(--ui-icon-management-action)]" />
-              </IconAction>
-              <IconAction
-                aria-label="Rename theme"
-                title="Rename"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={startRename}
-                className="shrink-0"
-              >
-                <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-              </IconAction>
+              <HoverTip tip="Undo" className="shrink-0">
+                <IconAction
+                  aria-label="Undo theme change"
+                  disabled={!canUndo}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={onUndo}
+                  className="shrink-0 disabled:opacity-50"
+                >
+                  <Undo2 className="size-[length:var(--ui-icon-management-action)]" />
+                </IconAction>
+              </HoverTip>
+              <HoverTip tip="Redo" className="shrink-0">
+                <IconAction
+                  aria-label="Redo theme change"
+                  disabled={!canRedo}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={onRedo}
+                  className="shrink-0 disabled:opacity-50"
+                >
+                  <Redo2 className="size-[length:var(--ui-icon-management-action)]" />
+                </IconAction>
+              </HoverTip>
+              <HoverTip tip="Rename" className="shrink-0">
+                <IconAction
+                  aria-label="Rename theme"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={startRename}
+                  className="shrink-0"
+                >
+                  <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+                </IconAction>
+              </HoverTip>
             </>
           )}
         </div>

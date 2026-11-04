@@ -3,7 +3,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useState } 
 import { useFrameData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useHoverTip } from "@/components/HoverTip";
+import { useHoverTip, useTruncationTip } from "@/components/HoverTip";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
 import {
   LOUDNESS_DB_MAX,
@@ -58,6 +58,29 @@ const LEVEL_METER_CHANNEL_LABEL =
   "min-w-0 truncate font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-fs-axis)] leading-none text-[color:var(--ui-text-annotation)]";
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
+
+/**
+ * A channel name, with a themed tip carrying the full name only when the column clips it.
+ *
+ * @param {{ label: string, className?: string } & Record<string, unknown>} props
+ */
+function ChannelLabel({ label, className, ...props }) {
+  const { anchorRef, showIfClipped, hideTip, tipNode } = useTruncationTip({ tip: label });
+  return (
+    <>
+      <span
+        {...props}
+        ref={anchorRef}
+        onMouseEnter={() => showIfClipped()}
+        onMouseLeave={hideTip}
+        className={cn(LEVEL_METER_CHANNEL_LABEL, className)}
+      >
+        {label}
+      </span>
+      {tipNode}
+    </>
+  );
+}
 
 /**
  * @param {string} position
@@ -651,14 +674,12 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
               style={{ gap: LEVEL_METER_CHANNEL_GAP }}
             >
               {channels.map((channel, index) => (
-                <div
+                <ChannelLabel
                   key={index}
                   data-peak-channel-label
-                  title={channel.label}
-                  className={cn(LEVEL_METER_CHANNEL_LABEL, "text-center")}
-                >
-                  {channel.label}
-                </div>
+                  label={channel.label}
+                  className="text-center"
+                />
               ))}
             </div>
           )}
@@ -788,14 +809,11 @@ function HorizontalLevelMeter({
             <div className="flex min-w-0 items-center justify-end">
               {showAxes && (
                 <span data-level-meter-channel-axis>
-                  <span
+                  <ChannelLabel
                     data-peak-channel-label={isPeakFamily ? "" : undefined}
                     data-level-mode-label={!isPeakFamily ? "" : undefined}
-                    title={row.label}
-                    className={LEVEL_METER_CHANNEL_LABEL}
-                  >
-                    {row.label}
-                  </span>
+                    label={row.label}
+                  />
                 </span>
               )}
             </div>

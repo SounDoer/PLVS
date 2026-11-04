@@ -1066,15 +1066,20 @@ export function SettingsPanel({
                           v{appVersion}
                         </span>
                         <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                        <span
-                          title={updateActivity?.downloadError ?? undefined}
-                          className={cn(
-                            "truncate",
-                            hasUpdate ? "text-primary" : "text-muted-foreground"
-                          )}
+                        <HoverTip
+                          tip={updateActivity?.downloadError ?? undefined}
+                          side="top"
+                          className="min-w-0"
                         >
-                          {updateStatusText}
-                        </span>
+                          <span
+                            className={cn(
+                              "block truncate",
+                              hasUpdate ? "text-primary" : "text-muted-foreground"
+                            )}
+                          >
+                            {updateStatusText}
+                          </span>
+                        </HoverTip>
                         <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <LinkButton
                           className={FOOTER_LINK_CLASS}
