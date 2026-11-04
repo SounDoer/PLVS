@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
+import { useModalBackdropElement } from "../../hooks/FloatingPanelHostContext.jsx";
 import { cn } from "@/lib/utils";
 import { LAYER_FLOATING } from "./layers.js";
 import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "./surfaceStyles.js";
@@ -13,6 +14,37 @@ const DIALOG_WIDTH_CLASS = {
   lg: "w-[min(34rem,calc(100vw-2rem))]",
   custom: "",
 };
+
+function useBackdropClip(getElement) {
+  const [clipPath, setClipPath] = React.useState(getElement ? "inset(50%)" : undefined);
+  React.useLayoutEffect(() => {
+    if (!getElement) return undefined;
+    const element = getElement();
+    if (!element) return undefined;
+    const measure = () => {
+      const rect = element.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        setClipPath("inset(50%)");
+        return;
+      }
+      const top = Math.max(0, rect.top);
+      const right = Math.max(0, window.innerWidth - rect.right);
+      const bottom = Math.max(0, window.innerHeight - rect.bottom);
+      const left = Math.max(0, rect.left);
+      const radius = getComputedStyle(element).borderRadius || "0px";
+      setClipPath(`inset(${top}px ${right}px ${bottom}px ${left}px round ${radius})`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    observer?.observe(element);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [getElement]);
+  return clipPath;
+}
 
 /**
  * The one modal shell: scrim, stacking layer, placement, surface, radius and padding.
@@ -35,10 +67,14 @@ const DialogContent = React.forwardRef(function DialogContent(
   },
   ref
 ) {
+  const backdropElement = useModalBackdropElement();
+  const clipPath = useBackdropClip(backdropElement);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         {...overlayProps}
+        data-modal-backdrop-scope={backdropElement ? "panel" : "viewport"}
+        style={clipPath ? { ...overlayProps?.style, clipPath } : overlayProps?.style}
         className={cn(SCRIM_CLASS, layer, overlayProps?.className)}
       />
       <DialogPrimitive.Content

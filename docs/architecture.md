@@ -700,6 +700,10 @@ individual editor controls contain no Dock routing. Authoring geometry uses its 
 physical positions, and the monitor containing the editor. Theme Preview is the ordinary modal
 component: the host expands temporarily and restores its base bounds when the preview closes.
 
+Modal backdrops in a transparent authoring host are clipped to the floating editor surface through
+the host context. Viewport-wide dimming would otherwise darken unrelated desktop applications
+behind the expanded preview window. Ordinary application dialogs keep their viewport backdrop.
+
 Authoring drafts, preview-open state, validation, and file operations remain in main. An inactive
 authoring client acknowledges receipt/completion of its outstanding operations before declaring
 itself idle; main then destroys that WebView. Reopening creates a fresh renderer and readiness

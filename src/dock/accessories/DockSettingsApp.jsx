@@ -356,11 +356,16 @@ function SettingsSession({ surface, payload, model, send: sendToMain, onError })
       window.removeEventListener("paste", onPaste);
     };
   }, [model, payload.view, send]);
+  const getModalBackdropElement = useCallback(
+    () => document.querySelector("[data-settings-editor]"),
+    []
+  );
   // The session key resets local expansion and focus only when the owning flow changes.
   return (
     <UiSurfaceRegistryProvider registry={registry}>
       <EditorDraftRegistryProvider registry={draftRegistry}>
         <FloatingPanelHostProvider
+          getModalBackdropElement={surface === "dock-authoring" ? getModalBackdropElement : null}
           startDragging={
             surface === "dock-authoring"
               ? () =>

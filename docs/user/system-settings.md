@@ -14,6 +14,8 @@ a separate, draggable authoring window with their ordinary rounded surfaces and 
 Closing an authoring flow destroys its native window after the existing save/cancel decision settles.
 Theme Preview remains the same modal preview as in the normal window: opening it temporarily expands
 the authoring window, and closing it restores the editor's size and position. It adds no extra WebView.
+In the transparent authoring window, modal dimming covers only the editor surface; it does not darken
+other applications visible behind the expanded window.
 Switching between Dock and the normal window preserves the open editor, unsaved draft, and Theme
 Preview. Clicking another application leaves authoring open; Close or Escape uses the
 current surface's normal close or cancel rules, including unsaved-draft confirmation. Updates and
