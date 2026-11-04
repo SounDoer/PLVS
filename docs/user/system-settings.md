@@ -18,8 +18,8 @@ application viewport in the normal window and the editor's monitor in Dock. Long
 inside the editor while its title, tabs, and Save / Cancel controls remain visible.
 Theme Preview remains the same modal preview as in the normal window: opening it temporarily expands
 the authoring window, and closing it restores the editor's size and position. It adds no extra WebView.
-In the transparent authoring window, modal dimming covers only the editor surface; it does not darken
-other applications visible behind the expanded window.
+In the transparent authoring window, modal dimming stays attached to the editor surface as the
+window expands or recenters; it does not darken other applications visible behind the window.
 Switching between Dock and the normal window preserves the open editor, unsaved draft, and Theme
 Preview. Clicking another application leaves authoring open; Close or Escape uses the
 current surface's normal close or cancel rules, including unsaved-draft confirmation. Updates and

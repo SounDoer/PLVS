@@ -707,8 +707,9 @@ hosts budget against their monitor using the frontend WebView scale. The native 
 80% of its own changing viewport, which would recursively shrink the editor. The host adds its
 transparent frame gutter outside the panel budget. Theme Preview retains its separate viewport.
 
-Modal backdrops in a transparent authoring host are clipped to the floating editor surface through
-the host context. Viewport-wide dimming would otherwise darken unrelated desktop applications
+Modal backdrops in a transparent authoring host are portalled into the floating editor surface
+through the host context. An absolute inset overlay follows its actual containing block, including
+position-only changes when Preview expands the native viewport; no cached clipping rectangle is used. Viewport-wide dimming would otherwise darken unrelated desktop applications
 behind the expanded preview window. Ordinary application dialogs keep their viewport backdrop.
 
 Authoring drafts, preview-open state, validation, and file operations remain in main. An inactive
