@@ -245,3 +245,42 @@ it("destroys an idle authoring host only after its ordered business operations c
   );
   expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();
 });
+
+it("resizes an authoring host using its reported scale without stealing focus again", async () => {
+  setup("dock-authoring");
+  fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }));
+  await screen.findByRole("dialog", { name: "Settings" });
+  await waitFor(() =>
+    expect(
+      bus.invoke.mock.calls.some(
+        ([name, value]) => name === "set_dock_settings_window" && value.visible && value.focus
+      )
+    ).toBe(true)
+  );
+  await act(async () => {
+    for (const callback of [...bus.action])
+      callback({
+        surface: "dock-authoring",
+        type: "settings-layout",
+        payload: {
+          session: "settings-session",
+          width: 432,
+          height: 500,
+          preview: false,
+          webviewScale: 1.25,
+        },
+      });
+  });
+  await waitFor(() =>
+    expect(bus.invoke).toHaveBeenCalledWith(
+      "set_dock_settings_window",
+      expect.objectContaining({
+        surface: "dock-authoring",
+        visible: true,
+        focus: false,
+        webviewScale: 1.25,
+        layout: { logicalWidth: 432, logicalHeight: 500, preview: false },
+      })
+    )
+  );
+});

@@ -212,9 +212,11 @@ fn show_or_hide<R: tauri::Runtime>(
     let was_visible = window
       .is_visible()
       .map_err(|e| format!("{} visibility: {e}", window.label()))?;
-    window
-      .show()
-      .map_err(|e| format!("{} show: {e}", window.label()))?;
+    if !was_visible {
+      window
+        .show()
+        .map_err(|e| format!("{} show: {e}", window.label()))?;
+    }
     if focus_on_show && !was_visible {
       focus_window(window)?;
     }

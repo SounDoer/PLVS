@@ -39,6 +39,7 @@ export function useDockSettingsWindow(options) {
   const revision = useRef(0);
   const clientReady = useRef(false);
   const readySession = useRef(null);
+  const focusedPresentation = useRef(null);
   const pending = useRef(new Map());
   const serial = useRef(0);
   const registrations = useRef([]);
@@ -366,16 +367,19 @@ export function useDockSettingsWindow(options) {
   useEffect(() => {
     if (!isTauri()) return undefined;
     let canceled = false;
+    const focusKey = `${options.session}:${options.focusEpoch ?? 0}`;
+    const focus = visible && focusedPresentation.current !== focusKey;
     void invoke("set_dock_settings_window", {
       surface,
       visible,
       layout: { logicalWidth, logicalHeight, preview },
       edge: options.edge ?? "top",
       webviewScale,
-      focus: visible,
+      focus,
     })
       .then((rect) => {
         if (canceled) return;
+        focusedPresentation.current = visible ? focusKey : null;
         readySession.current = visible ? latest.current.session : null;
         mirrorRegistry(visible ? remoteRegistry.current : null);
         latest.current.onReady?.(visible ? latest.current.session : null);
