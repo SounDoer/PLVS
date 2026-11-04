@@ -362,6 +362,7 @@ export function useDockSettingsWindow(options) {
       : preferences.layout.drawer.preferredWidthPx;
   const logicalHeight = surface === "dock-authoring" ? (reportedLayout?.height ?? 400) : 800;
   const preview = reportedLayout?.preview ?? false;
+  const { maxHeightPx, maxViewportFraction } = preferences.layout.editor;
   const webviewScale = reportedLayout?.webviewScale ?? window.devicePixelRatio;
   const visible = needed && !options.suspended && ready === options.session;
   useEffect(() => {
@@ -372,7 +373,14 @@ export function useDockSettingsWindow(options) {
     void invoke("set_dock_settings_window", {
       surface,
       visible,
-      layout: { logicalWidth, logicalHeight, preview },
+      layout: {
+        logicalWidth,
+        logicalHeight,
+        preview,
+        ...(["theme", "profile"].includes(options.view)
+          ? { editorHeightPolicy: { maxHeightPx, maxViewportFraction } }
+          : {}),
+      },
       edge: options.edge ?? "top",
       webviewScale,
       focus,
@@ -409,6 +417,9 @@ export function useDockSettingsWindow(options) {
     geometryEpoch,
     logicalWidth,
     logicalHeight,
+    maxHeightPx,
+    maxViewportFraction,
+    options.view,
     webviewScale,
     preview,
     surface,

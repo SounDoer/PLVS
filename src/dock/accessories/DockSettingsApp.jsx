@@ -260,7 +260,7 @@ function SettingsSession({ surface, payload, model, send: sendToMain, onError })
   );
   const action = useCallback((type, values = {}) => send(type, values), [send]);
   useAccessoryTargetReport(action);
-  useAuthoringLayout(surface === "dock-authoring", payload.interfaceSize, action);
+  useAuthoringLayout(surface === "dock-authoring", payload.interfaceSize, action, payload.view);
   useAccessoryKeyboardShortcuts(payload.keyboard, action);
   useLayoutEffect(() => {
     report();

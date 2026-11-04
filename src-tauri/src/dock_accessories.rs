@@ -451,10 +451,18 @@ pub async fn prepare_dock_settings_window<R: tauri::Runtime>(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorHeightPolicy {
+  max_height_px: f64,
+  max_viewport_fraction: f64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SettingsWindowLayout {
   logical_width: f64,
   logical_height: f64,
   preview: bool,
+  editor_height_policy: Option<EditorHeightPolicy>,
 }
 
 #[tauri::command]
@@ -474,6 +482,7 @@ pub fn set_dock_settings_window<R: tauri::Runtime>(
     logical_width,
     logical_height,
     preview,
+    editor_height_policy,
   } = layout;
   validate_settings_surface(&surface)?;
   let Some(settings) = window.app_handle().get_webview_window(&surface) else {
@@ -508,6 +517,7 @@ pub fn set_dock_settings_window<R: tauri::Runtime>(
         logical_width,
         logical_height,
         preview,
+        editor_height_policy,
       },
     )?
   } else {
@@ -674,6 +684,7 @@ fn authoring_window_bounds<R: tauri::Runtime>(
     logical_width: width,
     logical_height: height,
     preview,
+    editor_height_policy,
   } = layout;
   let mut saved = *AUTHORING_BOUNDS
     .lock()
@@ -698,9 +709,13 @@ fn authoring_window_bounds<R: tauri::Runtime>(
     }
   }
   let mut rect = settings_window_bounds(monitor, strip, edge, scale, width);
-  rect.height = ((height * scale).round() as u32)
-    .min(monitor.height.saturating_sub((16.0 * scale) as u32))
-    .max(1);
+  rect.height = authoring_height(
+    height,
+    scale,
+    monitor.height,
+    preview,
+    editor_height_policy.as_ref(),
+  )?;
   let visible = window.is_visible().unwrap_or(false);
   if visible {
     let position = window.outer_position().map_err(|error| error.to_string())?;
@@ -764,4 +779,60 @@ pub fn destroy_dock_settings_window<R: tauri::Runtime>(
     host.destroy().map_err(|error| error.to_string())?;
   }
   Ok(())
+}
+
+fn authoring_height(
+  height: f64,
+  scale: f64,
+  monitor_height: u32,
+  preview: bool,
+  policy: Option<&EditorHeightPolicy>,
+) -> Result<u32, String> {
+  let gutter = (16.0 * scale).round() as u32;
+  let mut limit = monitor_height.saturating_sub(gutter).max(1);
+  if !preview {
+    if let Some(policy) = policy {
+      if !policy.max_height_px.is_finite()
+        || policy.max_height_px <= 0.0
+        || !policy.max_viewport_fraction.is_finite()
+        || policy.max_viewport_fraction <= 0.0
+        || policy.max_viewport_fraction > 1.0
+      {
+        return Err("Invalid editor height policy.".into());
+      }
+      let editor_limit = (policy.max_height_px * scale)
+        .min(f64::from(monitor_height) * policy.max_viewport_fraction)
+        .round() as u32;
+      limit = limit.min(editor_limit.saturating_add(gutter));
+    }
+  }
+  Ok(((height * scale).round() as u32).min(limit).max(1))
+}
+
+#[cfg(test)]
+mod authoring_height_tests {
+  use super::*;
+  #[test]
+  fn long_pages_use_the_shared_cap_and_small_monitors_use_the_viewport_fraction() {
+    let policy = EditorHeightPolicy {
+      max_height_px: 600.0,
+      max_viewport_fraction: 0.8,
+    };
+    assert_eq!(
+      authoring_height(1200.0, 2.0, 2160, false, Some(&policy)).unwrap(),
+      1232
+    );
+    assert_eq!(
+      authoring_height(1200.0, 2.0, 800, false, Some(&policy)).unwrap(),
+      672
+    );
+    assert_eq!(
+      authoring_height(388.0, 2.0, 2160, false, Some(&policy)).unwrap(),
+      776
+    );
+    assert_eq!(
+      authoring_height(800.0, 2.0, 2160, true, Some(&policy)).unwrap(),
+      1600
+    );
+  }
 }

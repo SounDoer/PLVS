@@ -82,13 +82,13 @@ Extra Large, and nothing warns you.
 
 The rule: **if a box's job is to hold text, size it in units that scale with that text.**
 
-| Situation                    | Use                                                                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Column holding a known label | `w-[calc(<label>em + <padding>rem)]` — the em share covers the text and any icon, the rem share the padding and gaps |
-| Numeric field                | `w-[7ch]` — `ch` follows the font                                                                                    |
-| Column holding a short unit  | `w-[3.2em]`                                                                                                          |
-| Chart axis rail              | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does                     |
-| Floating editor panel        | `--ui-editor-w`, which the Interface Size profiles set alongside `--ui-drawer-w`                                     |
+| Situation                    | Use                                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column holding a known label | `w-[calc(<label>em + <padding>rem)]` — the em share covers the text and any icon, the rem share the padding and gaps                                  |
+| Numeric field                | `w-[7ch]` — `ch` follows the font                                                                                                                     |
+| Column holding a short unit  | `w-[3.2em]`                                                                                                                                           |
+| Chart axis rail              | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does                                                      |
+| Floating editor panel        | `--ui-editor-w`, set by Interface Size; `--ui-editor-height-cap` (600px) and `--ui-editor-max-h` (at most 80vh) share the Theme/Profile height policy |
 
 Heights follow the same rule through one token: every form control is `--ui-control-h` tall, which
 the Interface Size profiles set alongside the type scale. See Control Height.

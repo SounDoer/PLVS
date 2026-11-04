@@ -1,4 +1,4 @@
-import { FLOATING_WINDOW_CLASS } from "@/components/ui/surfaceStyles.js";
+import { FLOATING_EDITOR_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useEffect, useRef, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -451,7 +451,7 @@ export function LoudnessProfileEditor({
         role="dialog"
         data-settings-editor
         aria-label="Loudness Profile editor"
-        className={`${FLOATING_WINDOW_CLASS} max-h-[80vh] w-[var(--ui-editor-w)] gap-2`}
+        className={`${FLOATING_EDITOR_CLASS} gap-2`}
         style={{ left: pos.x, top: pos.y }}
       >
         <div
@@ -529,7 +529,10 @@ export function LoudnessProfileEditor({
           </p>
         ) : null}
 
-        <div data-settings-editor-body className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
+        <div
+          data-settings-editor-body
+          className="flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-1"
+        >
           {/* Reference is the profile's anchor, not a rule -- it can never be dragged, so it is its
               own grid instance rather than sharing a container with the reorderable rule list below
               (see GRID_TEMPLATE_CLASS for why every column but the flexible one still lines up). It

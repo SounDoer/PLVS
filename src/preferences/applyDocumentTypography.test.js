@@ -81,3 +81,13 @@ describe("normal-mode typography variables", () => {
     );
   });
 });
+
+it("publishes the shared editor height policy for ordinary floating frames", () => {
+  applyLayoutToDocument(UI_PREFERENCES);
+  expect(document.documentElement.style.getPropertyValue("--ui-editor-height-cap")).toBe(
+    `${UI_PREFERENCES.layout.editor.maxHeightPx}px`
+  );
+  expect(document.documentElement.style.getPropertyValue("--ui-editor-max-h")).toBe(
+    `min(var(--ui-editor-height-cap), ${UI_PREFERENCES.layout.editor.maxViewportFraction * 100}vh)`
+  );
+});

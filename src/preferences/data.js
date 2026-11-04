@@ -28,9 +28,11 @@ export const UI_PREFERENCES = {
     control: {
       heightPx: 24,
     },
-    /** Floating editors: theme and loudness profile. Both scale with Interface Size. */
+    /** Theme/Profile editors: Interface Size controls width; both forms share the height policy. */
     editor: {
       preferredWidthPx: 416,
+      maxHeightPx: 600,
+      maxViewportFraction: 0.8,
     },
     drawer: {
       preferredWidthPx: 320,

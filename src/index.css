@@ -441,3 +441,13 @@ html[data-surface="dock-authoring"] [data-settings-editor] {
   max-width: 100%;
   max-height: calc(100vh - 16px) !important;
 }
+
+/* Editor chrome remains visible when a long page fills the shared height budget. */
+.floating-editor > :not([data-settings-editor-body]) {
+  flex-shrink: 0;
+}
+
+/* A native host budgets against its monitor, rather than recursively against its own window. */
+html[data-surface="dock-authoring"] .floating-editor {
+  max-height: min(var(--ui-editor-height-cap), calc(100vh - 16px)) !important;
+}

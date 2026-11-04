@@ -12,6 +12,10 @@ leaving Dock or restarting capture. Its width follows the same Interface Size se
 drawer. Saved Items export uses that window. Theme and Loudness Profile editors and Feedback open in
 a separate, draggable authoring window with their ordinary rounded surfaces and content sizes.
 Closing an authoring flow destroys its native window after the existing save/cancel decision settles.
+In both modes, Theme and Loudness Profile editors keep short pages compact and limit long pages to
+600 CSS pixels or 80% of the available height, whichever is smaller. Available height means the
+application viewport in the normal window and the editor's monitor in Dock. Long content scrolls
+inside the editor while its title, tabs, and Save / Cancel controls remain visible.
 Theme Preview remains the same modal preview as in the normal window: opening it temporarily expands
 the authoring window, and closing it restores the editor's size and position. It adds no extra WebView.
 In the transparent authoring window, modal dimming covers only the editor surface; it does not darken

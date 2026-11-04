@@ -700,6 +700,13 @@ individual editor controls contain no Dock routing. Authoring geometry uses its 
 physical positions, and the monitor containing the editor. Theme Preview is the ordinary modal
 component: the host expands temporarily and restores its base bounds when the preview closes.
 
+Theme/Profile editors share the `UI_PREFERENCES.layout.editor` height policy: at most 600 CSS px
+and 80% of the available height, with compact intrinsic sizing for short pages and internal body
+scrolling for long pages. Ordinary editors budget against the application viewport; native authoring
+hosts budget against their monitor using the frontend WebView scale. The native host must not use
+80% of its own changing viewport, which would recursively shrink the editor. The host adds its
+transparent frame gutter outside the panel budget. Theme Preview retains its separate viewport.
+
 Modal backdrops in a transparent authoring host are clipped to the floating editor surface through
 the host context. Viewport-wide dimming would otherwise darken unrelated desktop applications
 behind the expanded preview window. Ordinary application dialogs keep their viewport backdrop.

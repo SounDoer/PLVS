@@ -1,7 +1,8 @@
 import { useEffect } from "react";
+import { deriveAuthoringLayout } from "../authoringLayout.js";
 
 /** Native geometry belongs to the host; shared editors keep their ordinary intrinsic layout. */
-export function useAuthoringLayout(active, interfaceSize, action) {
+export function useAuthoringLayout(active, interfaceSize, action, view) {
   useEffect(() => {
     if (!active) return undefined;
     let frame = 0;
@@ -12,22 +13,17 @@ export function useAuthoringLayout(active, interfaceSize, action) {
       if (!editor) return;
       const preview = Boolean(document.querySelector('[aria-label="Theme preview"]'));
       const rect = editor.getBoundingClientRect();
-      const width = Math.ceil(rect.width);
-      const layout = {
-        width: preview ? Math.max(816, width + 16) : width + 16,
-        height: preview
-          ? 800
-          : Math.ceil(
-              rect.height +
-                Math.max(
-                  0,
-                  (editor.querySelector("[data-settings-editor-body]")?.scrollHeight ?? 0) -
-                    (editor.querySelector("[data-settings-editor-body]")?.clientHeight ?? 0)
-                )
-            ) + 16,
+      const body = editor.querySelector("[data-settings-editor-body]");
+      const layout = deriveAuthoringLayout({
+        width: rect.width,
+        height: rect.height,
+        bodyScrollHeight: body?.scrollHeight,
+        bodyClientHeight: body?.clientHeight,
         preview,
+        view,
+        interfaceSize,
         webviewScale: window.devicePixelRatio || 1,
-      };
+      });
       const key = JSON.stringify(layout);
       if (key !== previous) {
         previous = key;
@@ -50,5 +46,5 @@ export function useAuthoringLayout(active, interfaceSize, action) {
       resizes?.disconnect();
       window.removeEventListener("resize", schedule);
     };
-  }, [active, interfaceSize, action]);
+  }, [active, interfaceSize, action, view]);
 }

@@ -29,3 +29,6 @@ export const MODAL_SURFACE_CLASS = `border ${MODAL_SURFACE_BASE_CLASS}`;
 
 /** A draggable, non-modal window: the editors and the feedback form. Callers add width and height. */
 export const FLOATING_WINDOW_CLASS = `fixed ${LAYER_FLOATING} flex flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`;
+
+/** Theme and Profile share one bounded frame; only their middle content scrolls. */
+export const FLOATING_EDITOR_CLASS = `${FLOATING_WINDOW_CLASS} floating-editor max-h-[var(--ui-editor-max-h)] w-[var(--ui-editor-w)]`;

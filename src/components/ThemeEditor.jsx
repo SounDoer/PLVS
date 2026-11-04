@@ -1,4 +1,4 @@
-import { FLOATING_WINDOW_CLASS } from "@/components/ui/surfaceStyles.js";
+import { FLOATING_EDITOR_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -243,7 +243,7 @@ export function ThemeEditor({
         role="dialog"
         data-settings-editor
         aria-label="Theme editor"
-        className={`${FLOATING_WINDOW_CLASS} max-h-[80vh] w-[var(--ui-editor-w)]`}
+        className={FLOATING_EDITOR_CLASS}
         style={{ left: pos.x, top: pos.y }}
       >
         <div
@@ -377,7 +377,10 @@ export function ThemeEditor({
           ))}
         </div>
 
-        <div data-settings-editor-body className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
+        <div
+          data-settings-editor-body
+          className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3 py-2"
+        >
           {page === "core" ? (
             <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
               <div>
