@@ -68,7 +68,9 @@ export function AnalysisSessionProvider({ children }) {
   const { setSelectedOffset } = useMeterDisplayState();
   const { routing } = useMeterRuntimeAssembly();
   const { ingestingIntakes } = routing;
-  const { channelCount } = useDisplaySnapshot();
+  const { channelCount, displayAudio } = useDisplaySnapshot();
+  const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
+  const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
   const { fileSession, dialogueGating } = useSourceActions();
   const { docked, layout: dockLayout } = useDock();
   const {
@@ -105,8 +107,8 @@ export function AnalysisSessionProvider({ children }) {
   }, [historyRetentionSec, setSelectedOffset]);
 
   const channelLabelRuntime = useMemo(
-    () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides }),
-    [channelCount, channelLabelOverrides]
+    () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides, autoChannelRoles }),
+    [channelCount, channelLabelOverrides, autoChannelRoles]
   );
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 

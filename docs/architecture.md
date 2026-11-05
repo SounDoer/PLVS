@@ -345,6 +345,16 @@ feeding either side of that path. The detector resampler consumes the same compl
 block, so callback cadence, decoder read size, partial packets, and resampler batching cannot move
 evidence into an adjacent loudness block. A coherent reset discards both sides' partial block.
 
+Live native speaker roles are session metadata, refreshed on the PCM consumer thread once per
+second. Windows device capture reads the exact WASAPI endpoint's mix-format speaker mask; macOS
+reads the captured single-stream device's preferred layout (descriptions, tag or bitmap), with a
+preferred stereo-pair fallback. A device-wide mapping is not applied to one stream of a multi-stream
+device. Complete native roles supply weights; partial roles supply labels and dialogue roles while
+retaining the unknown-layout channels 1/2 loudness fallback. Manual roles win. Without native roles,
+count-based detection remains limited to eight channels for both loudness and dialogue. Frames and
+history carry native roles independently of persisted manual selections. See
+[ADR 0052](adr/0052-native-speaker-roles-are-session-metadata.md).
+
 Multichannel detection uses the versioned `center-priority-fallback-v1` policy. Each non-LFE
 channel has independent detector state, so opposite phase and an LFE-heavy mix cannot cancel or
 dilute the detector input. In a layout with a known centre, centre speech is accepted directly;

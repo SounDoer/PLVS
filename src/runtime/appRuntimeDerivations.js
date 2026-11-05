@@ -32,21 +32,35 @@ export function deriveBackendAnalysisRequests(requests) {
   };
 }
 
-export function deriveChannelLabelRuntime({ channelCount, channelLabelOverrides }) {
+export function deriveChannelLabelRuntime({
+  channelCount,
+  channelLabelOverrides,
+  autoChannelRoles = null,
+}) {
   const channelLabelOverride =
     channelCount > 0 ? (channelLabelOverrides[channelCount] ?? null) : null;
   const overrideLabels = channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null;
-  const autoLayoutId = channelCount > 0 ? standardLayoutIdForCount(channelCount) : null;
+  const nativeRoles =
+    Array.isArray(autoChannelRoles) && autoChannelRoles.length === channelCount
+      ? autoChannelRoles
+      : null;
+  const nativeLabels = nativeRoles ? roleTokensToLabels(nativeRoles) : null;
+  const autoLayoutId = nativeRoles
+    ? layoutIdForRoles(nativeRoles)
+    : channelCount > 0
+      ? standardLayoutIdForCount(channelCount)
+      : null;
   // Panels keep a two-channel placeholder before capture reports a real topology. Label that
   // assumed topology as stereo; a detected but unidentified topology must still use Ch N labels.
   const displayLayoutId = channelCount === 0 ? "stereo" : autoLayoutId;
   const channelAutoLabels =
-    channelCount > 0
+    nativeLabels ??
+    (channelCount > 0
       ? getPeakMeterChannelLabels(channelCount, {
           formatId: autoLayoutId ?? undefined,
           resolvedLayout: autoLayoutId ? undefined : "unknown",
         })
-      : [];
+      : []);
 
   return {
     channelLabelOverride,
@@ -61,7 +75,7 @@ export function deriveChannelLabelRuntime({ channelCount, channelLabelOverrides 
       /** @type {import("../math/peakMeterChannelLabels.js").PeakMeterChannelLabelsContext} */ ({
         formatId: displayLayoutId ?? undefined,
         resolvedLayout: displayLayoutId ? undefined : "unknown",
-        overrideLabels,
+        overrideLabels: overrideLabels ?? nativeLabels,
       }),
   };
 }

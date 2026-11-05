@@ -92,3 +92,15 @@ describe("liveMeasurementOwner", () => {
     ]);
   });
 });
+
+it("keeps a copied native role mapping on the same semantic sample as its peaks", () => {
+  const owner = createLiveMeasurementOwner();
+  const roles = ["R", "L", "generic"];
+  owner.capture({ seq: 1 }, { peakDb: [-2, -3, -4], autoChannelRoles: roles });
+  roles[0] = "C";
+  const sample = owner.read().record.audio;
+  expect(sample.autoChannelRoles).toEqual(["R", "L", "generic"]);
+  expect(Object.isFrozen(sample.autoChannelRoles)).toBe(true);
+  owner.capture({ seq: 2 }, { peakDb: [-2] });
+  expect(owner.read().record.audio.autoChannelRoles).toBeNull();
+});

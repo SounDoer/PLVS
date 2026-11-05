@@ -617,3 +617,70 @@ void macos_tap_destroy(void *opaque, void **out_pcm_userdata) {
   }
   free(h);
 }
+
+// Read-only speaker metadata for the same first stream the device-specific tap captures.
+// Device layouts index all output channels, so reject multi-stream devices rather than
+// applying device-wide indices to a stream-local PCM buffer.
+int macos_output_channel_labels(const char *uid_utf8, uint32_t channels, uint32_t *labels) {
+  if (!uid_utf8 || !labels || channels == 0 || channels > 64) return -1;
+  CFStringRef uid = cfstr_from_cstr(uid_utf8);
+  if (!uid) return -1;
+  AudioDeviceID device = kAudioObjectUnknown;
+  AudioObjectPropertyAddress address = {kAudioHardwarePropertyTranslateUIDToDevice,
+      kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
+  UInt32 size = sizeof(device);
+  OSStatus status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, sizeof(uid), &uid,
+                                               &size, &device);
+  CFRelease(uid);
+  if (status != noErr || device == kAudioObjectUnknown) return -1;
+  address.mSelector = kAudioDevicePropertyStreams;
+  address.mScope = kAudioDevicePropertyScopeOutput;
+  size = 0;
+  if (AudioObjectGetPropertyDataSize(device, &address, 0, NULL, &size) != noErr ||
+      size != sizeof(AudioStreamID) || output_channel_count(device) != channels) return -1;
+  for (UInt32 i = 0; i < channels; i++) labels[i] = kAudioChannelLabel_Unknown;
+
+  address.mSelector = kAudioDevicePropertyPreferredChannelLayout;
+  size = 0;
+  if (AudioObjectGetPropertyDataSize(device, &address, 0, NULL, &size) == noErr &&
+      size >= offsetof(AudioChannelLayout, mChannelDescriptions) && size < 65536) {
+    AudioChannelLayout *layout = calloc(1, size);
+    if (!layout) return -1;
+    status = AudioObjectGetPropertyData(device, &address, 0, NULL, &size, layout);
+    if (status == noErr && layout->mChannelLayoutTag != kAudioChannelLayoutTag_UseChannelDescriptions) {
+      AudioFormatPropertyID property = layout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelBitmap
+          ? kAudioFormatProperty_ChannelLayoutForBitmap : kAudioFormatProperty_ChannelLayoutForTag;
+      UInt32 specifier = layout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelBitmap
+          ? layout->mChannelBitmap : layout->mChannelLayoutTag;
+      UInt32 expandedSize = 0;
+      if (AudioFormatGetPropertyInfo(property, sizeof(specifier), &specifier, &expandedSize) == noErr &&
+          expandedSize >= offsetof(AudioChannelLayout, mChannelDescriptions) && expandedSize < 65536) {
+        AudioChannelLayout *expanded = calloc(1, expandedSize);
+        if (expanded && AudioFormatGetProperty(property, sizeof(specifier), &specifier,
+                                               &expandedSize, expanded) == noErr) {
+          free(layout);
+          layout = expanded;
+          size = expandedSize;
+        } else { free(expanded); status = -1; }
+      } else { status = -1; }
+    }
+    if (status == noErr && layout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelDescriptions &&
+        layout->mNumberChannelDescriptions == channels &&
+        size >= offsetof(AudioChannelLayout, mChannelDescriptions) + channels * sizeof(AudioChannelDescription)) {
+      for (UInt32 i = 0; i < channels; i++) labels[i] = layout->mChannelDescriptions[i].mChannelLabel;
+      free(layout);
+      return 0;
+    }
+    free(layout);
+  }
+  // A preferred stereo pair is partial metadata, never proof that the remaining tracks are unused.
+  address.mSelector = kAudioDevicePropertyPreferredChannelsForStereo;
+  UInt32 stereo[2] = {0, 0};
+  size = sizeof(stereo);
+  if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, stereo) != noErr ||
+      stereo[0] == 0 || stereo[1] == 0 || stereo[0] > channels || stereo[1] > channels ||
+      stereo[0] == stereo[1]) return -1;
+  labels[stereo[0] - 1] = kAudioChannelLabel_Left;
+  labels[stereo[1] - 1] = kAudioChannelLabel_Right;
+  return 0;
+}

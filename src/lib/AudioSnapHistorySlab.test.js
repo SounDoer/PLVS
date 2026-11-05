@@ -192,3 +192,16 @@ describe("AudioSnapHistorySlab", () => {
     expect(row.peakDb).toEqual(channels);
   });
 });
+
+it("retains native role mappings per historical sample and frozen snapshot", () => {
+  const slab = new AudioSnapHistorySlab(8);
+  const roles = ["L", "R", "generic", "LFE"];
+  slab.push(snap({ autoChannelRoles: roles }), 100);
+  roles[0] = "C";
+  slab.push(snap({ autoChannelRoles: roles }), 200);
+  const frozen = slab.freeze();
+  slab.push(snap(), 300);
+  expect(frozen.at(0).autoChannelRoles).toEqual(["L", "R", "generic", "LFE"]);
+  expect(frozen.at(1).autoChannelRoles).toEqual(["C", "R", "generic", "LFE"]);
+  expect(slab.at(2).autoChannelRoles).toBeNull();
+});

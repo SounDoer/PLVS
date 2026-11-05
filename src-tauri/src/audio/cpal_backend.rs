@@ -768,6 +768,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   publish_measured_pcm: bool,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
+  mut layout_reader: Option<super::source_layout::LayoutReader>,
 ) {
   let dropped_worker = dropped_chunks.clone();
   // Shared UI ack counter (see AppState::frame_ack_seq). Cloned once so the loop only does an
@@ -788,8 +789,15 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   let mut dropped_frames: u64 = 0;
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
   pipeline.enable_async_dialogue();
+  let mut layout_refresh = Instant::now() - std::time::Duration::from_secs(2);
   let mut recv_tick: u32 = 0;
   while let Some((floats, arrived_at)) = delivery.pop_until_stopped_with_arrival() {
+    if layout_refresh.elapsed() >= std::time::Duration::from_secs(1) {
+      if let Some(reader) = layout_reader.as_mut() {
+        pipeline.set_source_channel_roles(reader());
+      }
+      layout_refresh = Instant::now();
+    }
     recv_tick = recv_tick.wrapping_add(1);
     if recv_tick.is_multiple_of(480) {
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
@@ -1110,6 +1118,10 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     stream_error,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
+  #[cfg(target_os = "windows")]
+  let layout_reader = super::windows_layout::reader(&device, channels);
+  #[cfg(not(target_os = "windows"))]
+  let layout_reader = None;
   #[cfg(target_os = "linux")]
   let reader_measured_pcm = measured_pcm.clone();
 
@@ -1142,6 +1154,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
         !cfg!(target_os = "linux"),
         bridge_dropped,
         pool,
+        layout_reader,
       );
     },
   )

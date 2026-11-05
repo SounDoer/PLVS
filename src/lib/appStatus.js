@@ -4,11 +4,12 @@ import { describeAudioDrop } from "./captureHealth.js";
 
 /**
  * Current conditions, rather than a history of old notifications.
- * @param {{ notice?: {kind?: string, text: string, details?: string, requiresAttention?: boolean}, layoutUnknown?: boolean, audioDrop?: {chunks: number, since: number}, update?: {phase: string, text: string, action?: string} }} input
+ * @param {{ notice?: {kind?: string, text: string, details?: string, requiresAttention?: boolean}, layoutUnknown?: boolean, autoChannelRoles?: string[], audioDrop?: {chunks: number, since: number}, update?: {phase: string, text: string, action?: string} }} input
  */
 export function buildAppStatusItems({
   notice = null,
   layoutUnknown = false,
+  autoChannelRoles = null,
   audioDrop = null,
   update = null,
 } = {}) {
@@ -35,7 +36,10 @@ export function buildAppStatusItems({
       kind: "warning",
       text: "Channel Layout Unknown",
       details:
-        "Channel layout is not recognized. Loudness uses channels 1–2 only. Set the channel layout in Settings.",
+        (Array.isArray(autoChannelRoles) && autoChannelRoles.some((role) => role !== "generic")
+          ? `The system identifies some roles in the ${autoChannelRoles.length}-channel stream: ${autoChannelRoles.flatMap((role, index) => (role !== "generic" ? [`${index + 1}=${role}`] : [])).join(", ")}. Other channel roles remain unknown. `
+          : "Channel layout is not recognized. ") +
+        "Loudness uses channels 1–2 only. True Peak Max covers every channel. Set the channel layout in Settings.",
       action: "settings",
     });
   if (update)

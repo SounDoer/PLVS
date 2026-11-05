@@ -342,6 +342,7 @@ export function DockAccessoriesProvider({ children }) {
       : buildAppStatusItems({
           notice,
           layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
+          autoChannelRoles: displayAudio?.autoChannelRoles,
           audioDrop: sourceMode === "live" ? liveAudioDrop : null,
           update: dockUpdate,
         })

@@ -23,6 +23,9 @@ function freezeAudio(audio) {
   const frozen = {
     peakDb: Object.freeze(Array.from(audio?.peakDb ?? [])),
     rmsDb: Object.freeze(Array.from(audio?.rmsDb ?? [])),
+    autoChannelRoles: Array.isArray(audio?.autoChannelRoles)
+      ? Object.freeze([...audio.autoChannelRoles])
+      : null,
   };
   for (const field of AUDIO_FIELDS) frozen[field] = audio?.[field];
   return Object.freeze(frozen);

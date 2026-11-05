@@ -29,6 +29,7 @@ use pcm_shim::PcmBridgeCtx;
 
 #[link(name = "tap_bridge", kind = "static")]
 unsafe extern "C" {
+  fn macos_output_channel_labels(uid: *const c_char, channels: u32, labels: *mut u32) -> c_int;
   fn macos_uid_for_output_name(
     name_utf8: *const c_char,
     out_uid: *mut c_char,
@@ -208,6 +209,18 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   let clear_for_thread = clear_peak_history.clone();
   let reset_tp_max_for_thread = reset_tp_max.clone();
   let dropped_for_thread = dropped_chunks.clone();
+  let layout_uid = CString::new(uid.clone()).map_err(|_| "device UID contains NUL")?;
+  let layout_reader: super::source_layout::LayoutReader = Box::new(move || {
+    let mut labels = vec![u32::MAX; usize::from(channels)];
+    let status = unsafe {
+      macos_output_channel_labels(
+        layout_uid.as_ptr(),
+        u32::from(channels),
+        labels.as_mut_ptr(),
+      )
+    };
+    (status == 0).then(|| super::source_layout::apple_roles(&labels))
+  });
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
       consumer_delivery,
@@ -224,6 +237,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
       true,
       dropped_for_thread,
       bridge_pool,
+      Some(layout_reader),
     );
   });
 

@@ -193,6 +193,8 @@ pub struct MeterHistoryEntry {
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.
   pub loudness_layout_known: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub auto_channel_roles: Option<Vec<String>>,
   /// Per-channel linear amplitude minimum over this ~100ms history window. Length == channel count.
   pub waveform_min: Vec<f32>,
   /// Per-channel linear amplitude maximum over this ~100ms history window. Length == channel count.
@@ -292,6 +294,9 @@ pub struct AudioFramePayload {
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.
   pub loudness_layout_known: bool,
+  /// Native roles for Auto labels, independent of persisted user overrides.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub auto_channel_roles: Option<Vec<String>>,
   pub timestamp_ms: u64,
   /// Identifies the log-frequency grid every band row on this frame is sampled on -- Spectrum's
   /// and Stereo Map's alike, which sit on the same grid by construction (pinned by

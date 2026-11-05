@@ -90,6 +90,8 @@ struct WireFrame<'a> {
   stereo_map_results_by_key: BTreeMap<&'a str, WireStereoMapRows>,
   loudness_layout: &'a str,
   loudness_layout_known: bool,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  auto_channel_roles: &'a Option<Vec<String>>,
   timestamp_ms: u64,
   band_grid_id: u64,
   #[serde(skip_serializing_if = "<[f64]>::is_empty")]
@@ -215,6 +217,7 @@ pub fn encode_audio_frame(frame: &AudioFramePayload) -> Result<Vec<u8>, serde_js
     stereo_map_results_by_key,
     loudness_layout: &frame.loudness_layout,
     loudness_layout_known: frame.loudness_layout_known,
+    auto_channel_roles: &frame.auto_channel_roles,
     timestamp_ms: frame.timestamp_ms,
     band_grid_id: frame.band_grid_id,
     band_grid_centers_hz: &frame.band_grid_centers_hz,
@@ -265,6 +268,7 @@ mod tests {
       stereo_map_results_by_key: HashMap::new(),
       loudness_layout: "stereo".to_string(),
       loudness_layout_known: true,
+      auto_channel_roles: Some(vec!["L".into(), "R".into()]),
       timestamp_ms: 1_000,
       band_grid_id: 3,
       band_grid_centers_hz: vec![20.0, 40.0],

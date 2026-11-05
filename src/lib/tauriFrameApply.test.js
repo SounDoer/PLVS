@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as tauriFrameApply from "./tauriFrameApply.js";
 
 import { standIn } from "../testing/standIn.js";
-const { buildTauriFrameApply } = tauriFrameApply;
+const { buildTauriFrameApply, reduceMeterAudioFrame } = tauriFrameApply;
 
 function makeOptions(overrides = {}) {
   return {
@@ -339,4 +339,11 @@ describe("buildTauriFrameApply", () => {
     });
     expect(audioState.spectrumResultsByKey).toEqual({});
   });
+});
+
+it("clears source roles when the next session has no native metadata", () => {
+  const roles = ["R", "L"];
+  const state = reduceMeterAudioFrame({}, { autoChannelRoles: roles });
+  expect(state.autoChannelRoles).toEqual(roles);
+  expect(reduceMeterAudioFrame(state, {}).autoChannelRoles).toBeNull();
 });

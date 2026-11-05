@@ -231,3 +231,32 @@ describe("app runtime derivations", () => {
     ).toEqual({ dialogueGating: true });
   });
 });
+
+it("uses native partial roles for labels without persisting a manual selection", () => {
+  const runtime = deriveChannelLabelRuntime({
+    channelCount: 4,
+    channelLabelOverrides: {},
+    autoChannelRoles: ["R", "L", "generic", "generic"],
+  });
+  expect(runtime.channelAutoLabels).toEqual(["R", "L", "Ch 3", "Ch 4"]);
+  expect(runtime.peakLabelContext.overrideLabels).toEqual(runtime.channelAutoLabels);
+  expect(runtime.channelRoles).toBeNull();
+  expect(runtime.selectedLayoutId).toBeNull();
+});
+
+it("keeps user overrides ahead of system labels and rejects stale native topology", () => {
+  const runtime = deriveChannelLabelRuntime({
+    channelCount: 2,
+    channelLabelOverrides: { 2: ["L", "R"] },
+    autoChannelRoles: ["R", "L"],
+  });
+  expect(runtime.channelRoles).toEqual(["L", "R"]);
+  expect(runtime.peakLabelContext.overrideLabels).toEqual(["L", "R"]);
+  expect(
+    deriveChannelLabelRuntime({
+      channelCount: 2,
+      channelLabelOverrides: {},
+      autoChannelRoles: ["C"],
+    }).channelAutoLabels
+  ).toEqual(["L", "R"]);
+});

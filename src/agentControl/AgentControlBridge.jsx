@@ -16,8 +16,7 @@ import { useDisplaySnapshot } from "../runtime/DisplaySnapshotContext.jsx";
 import { useSceneGuard } from "../hooks/SceneGuardContext.jsx";
 import { firstHistoryTimestampMs, latestHistoryTimestampMs } from "../lib/historyTimestamps.js";
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
-import { roleTokensToLabels } from "../math/channelRoles.js";
-import { standardLayoutIdForCount } from "../math/channelLayoutTable.js";
+import { deriveChannelLabelRuntime } from "../runtime/appRuntimeDerivations.js";
 import { isDockSupported } from "../lib/platform.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
@@ -529,13 +528,12 @@ export function AgentControlBridge() {
     (record) => {
       const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
       if (count <= 0) return [];
-      const override = channelLabelOverrides[count];
-      const autoLayoutId = standardLayoutIdForCount(count);
-      return getPeakMeterChannelLabels(count, {
-        formatId: autoLayoutId ?? undefined,
-        resolvedLayout: autoLayoutId ? undefined : "unknown",
-        overrideLabels: override ? roleTokensToLabels(override) : null,
+      const runtime = deriveChannelLabelRuntime({
+        channelCount: count,
+        channelLabelOverrides,
+        autoChannelRoles: record?.audio?.autoChannelRoles ?? null,
       });
+      return getPeakMeterChannelLabels(count, runtime.peakLabelContext);
     },
     [channelLabelOverrides]
   );

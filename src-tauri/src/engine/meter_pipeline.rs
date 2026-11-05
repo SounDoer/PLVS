@@ -3,7 +3,6 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
-use crate::dsp::channel_layouts::first_layout_for_channel_count;
 use crate::dsp::channel_weights::standard_layout_name;
 use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::peak::{
@@ -51,12 +50,26 @@ const RMS_WINDOW_MS: u32 = 400;
 fn loudness_layout_meta(channels: u16, selection: Option<&ChannelSelection>) -> (String, bool) {
   let ch = channels.max(1);
   match selection {
-    Some(selection) if selection.roles.len() == ch as usize => (selection.layout.to_string(), true),
+    Some(selection) if selection.roles.len() == ch as usize => {
+      (selection.layout.to_string(), selection.layout != "unknown")
+    }
     _ => match standard_layout_name(ch) {
       Some(name) => (name.to_string(), true),
       None => ("unknown".to_string(), false),
     },
   }
+}
+
+fn resolved_dialogue_roles(
+  channels: u16,
+  selection: Option<&ChannelSelection>,
+) -> Option<&[String]> {
+  selection
+    .filter(|selection| selection.roles.len() == usize::from(channels))
+    .map(|selection| selection.roles.as_slice())
+    .or_else(|| {
+      standard_layout_name(channels).and_then(crate::dsp::channel_layouts::roles_for_layout)
+    })
 }
 
 /// The DSP works in `f64`; the payload carries `f32`. See [`SpectrumFrameResult`] for why that is
@@ -160,6 +173,7 @@ pub struct MeterPipeline {
   /// supplies them, so Stats and the scalar history read a real value in any layout.
   scalar_vectorscope: VectorscopeMeter,
   last_channel_selection: Option<ChannelSelection>,
+  source_channel_roles: Option<Vec<String>>,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
   st_max: f64,
@@ -225,6 +239,7 @@ impl MeterPipeline {
       vectorscope_by_key: HashMap::new(),
       scalar_vectorscope: VectorscopeMeter::new(),
       last_channel_selection: None,
+      source_channel_roles: None,
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
       st_max: f64::NEG_INFINITY,
@@ -387,6 +402,29 @@ impl MeterPipeline {
     }
   }
 
+  pub(crate) fn set_source_channel_roles(&mut self, roles: Option<Vec<String>>) {
+    self.source_channel_roles = roles.filter(|roles| {
+      roles.len() == usize::from(self.channels)
+        && roles
+          .iter()
+          .all(|role| crate::dsp::channel_layouts::role_weight(role).is_some())
+    });
+  }
+
+  fn source_selection(&self) -> Option<ChannelSelection> {
+    let roles = self.source_channel_roles.as_ref()?;
+    let mut selection = ChannelSelection::from_roles(roles.clone())?;
+    if roles.iter().any(|role| role == "generic") {
+      // A known stereo pair does not identify the other tracks or authorize summing them.
+      selection.layout = "unknown";
+      selection.weights.fill(0.0);
+      for weight in selection.weights.iter_mut().take(2) {
+        *weight = 1.0;
+      }
+    }
+    Some(selection)
+  }
+
   pub fn push_pcm_f32_with_requests(
     &mut self,
     interleaved: &[f32],
@@ -402,6 +440,9 @@ impl MeterPipeline {
       .map(SpectralDspTime::as_seconds)
       .unwrap_or(now_sec);
     let ch = self.channels.max(1);
+    let channel_selection = channel_selection
+      .filter(|selection| selection.roles.len() == usize::from(ch))
+      .or_else(|| self.source_selection());
     // The weights the DSP applies to this push: the selection's, when it covers every channel.
     let selected_weights = channel_selection
       .as_ref()
@@ -818,13 +859,7 @@ impl MeterPipeline {
   ) -> Option<AudioFramePayload> {
     let now_sec = self.spectral_now_sec();
     let ch = self.channels.max(1);
-    let dialogue_channel_roles = channel_selection
-      .as_ref()
-      .filter(|selection| selection.roles.len() == ch as usize)
-      .map(|selection| selection.roles.as_slice())
-      .or_else(|| {
-        first_layout_for_channel_count(ch as usize).map(|layout| layout.roles.as_slice())
-      });
+    let dialogue_channel_roles = resolved_dialogue_roles(ch, channel_selection.as_ref());
     let (pair_x, pair_y) = vectorscope_summary
       .map(|(x, y, _, _)| (x, y))
       .unwrap_or((0, 1));
@@ -1021,6 +1056,7 @@ impl MeterPipeline {
         vectorscope_pair_y: pair_y,
         loudness_layout: loudness_layout.clone(),
         loudness_layout_known,
+        auto_channel_roles: self.source_channel_roles.clone(),
         waveform_min: waveform.min,
         waveform_max: waveform.max,
         waveform_sub_pairs: waveform.sub_pairs,
@@ -1098,6 +1134,7 @@ impl MeterPipeline {
             vectorscope_pair_y: pair_y,
             loudness_layout: loudness_layout.clone(),
             loudness_layout_known,
+            auto_channel_roles: self.source_channel_roles.clone(),
             waveform_min: checkpoint.waveform.min,
             waveform_max: checkpoint.waveform.max,
             waveform_sub_pairs: checkpoint.waveform.sub_pairs,
@@ -1159,6 +1196,7 @@ impl MeterPipeline {
       stereo_map_results_by_key: HashMap::new(),
       loudness_layout,
       loudness_layout_known,
+      auto_channel_roles: self.source_channel_roles.clone(),
       timestamp_ms: emit_timestamp_ms,
       // Assigned by the capture bridge when the frame is actually sent (see run_meter_pipeline_bridge_thread).
       seq: 0,
@@ -4152,6 +4190,98 @@ mod tests {
     assert_eq!(
       loudness_layout_meta(8, Some(&selection)),
       ("7.1".to_string(), true)
+    );
+  }
+
+  #[test]
+  fn partial_native_layout_keeps_all_tracks_and_the_safe_loudness_scope() {
+    let mut pipeline = MeterPipeline::new(48_000, 16);
+    let mut roles = vec!["generic".to_string(); 16];
+    roles[0] = "L".to_string();
+    roles[1] = "R".to_string();
+    pipeline.set_source_channel_roles(Some(roles.clone()));
+    let selection = pipeline.source_selection().unwrap();
+    assert_eq!(
+      loudness_layout_meta(16, Some(&selection)),
+      ("unknown".to_string(), false)
+    );
+    assert_eq!(&selection.weights[..2], &[1.0, 1.0]);
+    assert!(selection.weights[2..].iter().all(|w| *w == 0.0));
+    let pcm: Vec<f32> = (0..4_800)
+      .flat_map(|_| {
+        let mut frame = [0.0; 16];
+        frame[2] = 0.5;
+        frame
+      })
+      .collect();
+    let frame = push_without_requests(&mut pipeline, &pcm);
+    assert_eq!(frame.peak_db.len(), 16);
+    assert!(frame.peak_db[2] > -7.0);
+    assert!(frame.true_peak_max_dbtp > -7.0);
+    assert_eq!(frame.auto_channel_roles.as_ref(), Some(&roles));
+    assert!(!frame.loudness_layout_known);
+    assert!(!frame.lufs_momentary.is_finite());
+    if let Some(history) = frame.loudness_hist_tick {
+      assert_eq!(history.auto_channel_roles, Some(roles));
+    }
+  }
+
+  #[test]
+  fn native_layout_preserves_channel_order_and_user_selection_wins() {
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.set_source_channel_roles(Some(vec!["R".into(), "L".into()]));
+    assert_eq!(pipeline.source_selection().unwrap().roles, ["R", "L"]);
+    let manual = ChannelSelection::from_roles(vec!["L".into(), "R".into()]).unwrap();
+    push_pcm_no_requests(
+      &mut pipeline,
+      &vec![0.0; 9_600],
+      Some(manual.clone()),
+      false,
+    );
+    assert_eq!(pipeline.last_channel_selection, Some(manual));
+    pipeline.set_source_channel_roles(Some(vec!["C".into()]));
+    assert!(pipeline.source_selection().is_none());
+    pipeline.set_source_channel_roles(Some(vec!["invalid".into(), "L".into()]));
+    assert!(pipeline.source_selection().is_none());
+  }
+
+  #[test]
+  fn native_stereo_metadata_preserves_loudness_and_true_peak() {
+    let mut automatic = MeterPipeline::new(48_000, 2);
+    let mut native = MeterPipeline::new(48_000, 2);
+    native.set_source_channel_roles(Some(vec!["L".into(), "R".into()]));
+    let pcm: Vec<f32> = (0..4_800)
+      .flat_map(|i| {
+        let sample = (2.0 * std::f64::consts::PI * 1_000.0 * i as f64 / 48_000.0).sin() as f32;
+        [sample * 0.125, sample * 0.0625]
+      })
+      .collect();
+    for _ in 0..40 {
+      push_pcm_no_requests(&mut automatic, &pcm, None, false);
+      push_pcm_no_requests(&mut native, &pcm, None, false);
+    }
+    let expected = automatic.summary_metrics();
+    let actual = native.summary_metrics();
+    assert!((actual.integrated_lufs - expected.integrated_lufs).abs() < 1e-9);
+    assert!((actual.true_peak_max_dbtp - expected.true_peak_max_dbtp).abs() < 1e-9);
+    assert_eq!(actual.loudness_layout, "stereo");
+    assert!(actual.loudness_layout_known);
+  }
+
+  #[test]
+  fn complete_native_layout_uses_roles_instead_of_channel_count_weights() {
+    let mut pipeline = MeterPipeline::new(48_000, 4);
+    pipeline.set_source_channel_roles(Some(vec!["LFE".into(), "R".into(), "L".into(), "C".into()]));
+    let selection = pipeline.source_selection().unwrap();
+    assert_eq!(selection.weights, [0.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+      loudness_layout_meta(4, Some(&selection)),
+      ("custom".into(), true)
+    );
+    assert!(resolved_dialogue_roles(16, None).is_none());
+    assert_eq!(
+      resolved_dialogue_roles(4, Some(&selection)),
+      Some(selection.roles.as_slice())
     );
   }
 

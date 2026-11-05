@@ -110,6 +110,7 @@ function buildAudioSnap(row) {
     dialoguePercent: Number.isFinite(row.dialoguePercent) ? row.dialoguePercent : null,
     dialogueActiveNow: !!row.dialogueActiveNow,
     loudnessLayoutKnown: row.loudnessLayoutKnown !== false,
+    autoChannelRoles: Array.isArray(row.autoChannelRoles) ? row.autoChannelRoles : null,
     truePeakL: Number.isFinite(row.truePeakL) ? row.truePeakL : -Infinity,
     truePeakR: Number.isFinite(row.truePeakR) ? row.truePeakR : -Infinity,
     tpMax: Number.isFinite(row.truePeakMaxDbtp) ? row.truePeakMaxDbtp : -Infinity,

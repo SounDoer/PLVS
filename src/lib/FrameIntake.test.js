@@ -1585,3 +1585,12 @@ describe("FrameIntake packed loudness column", () => {
     expect(intake.getLoudnessHistory().rowAt(0).waveformMin[0]).toBeCloseTo(-0.5, 4);
   });
 });
+
+it("carries native roles from wire history ticks into Snapshot audio", () => {
+  const intake = new FrameIntake();
+  intake.pushHistRow(
+    { timestampMs: 0, peakDb: [-10, -11, -12], autoChannelRoles: ["R", "L", "generic"] },
+    10
+  );
+  expect(intake.getAudioSnap().at(0).autoChannelRoles).toEqual(["R", "L", "generic"]);
+});

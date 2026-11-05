@@ -60,6 +60,7 @@ export function reduceMeterAudioFrame(previous, frame) {
     dialogueActiveNow: !!frame.dialogueActiveNow,
     dialogueDetectionError:
       typeof frame.dialogueDetectionError === "string" ? frame.dialogueDetectionError : null,
+    autoChannelRoles: Array.isArray(frame.autoChannelRoles) ? frame.autoChannelRoles : null,
     loudnessLayoutKnown:
       typeof frame.loudnessLayoutKnown === "boolean"
         ? frame.loudnessLayoutKnown

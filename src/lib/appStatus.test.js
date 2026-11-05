@@ -35,3 +35,14 @@ describe("current app status", () => {
     expect(items.some((item) => item.requiresAttention)).toBe(false);
   });
 });
+
+it("explains partial native roles without claiming the extra tracks are unused", () => {
+  const [item] = buildAppStatusItems({
+    layoutUnknown: true,
+    autoChannelRoles: ["L", "R", "generic", "generic"],
+  });
+  expect(item.details).toContain("4-channel stream: 1=L, 2=R");
+  expect(item.details).toContain("Other channel roles remain unknown");
+  expect(item.details).toContain("channels 1–2 only");
+  expect(item.details).toContain("True Peak Max covers every channel");
+});

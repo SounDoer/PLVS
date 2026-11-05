@@ -422,6 +422,7 @@ pub fn start_process_session(
           true,
           bridge_dropped,
           bridge_pool,
+          None,
         );
         cleanup_delivery.consumer_finished(&cleanup_pool);
       });

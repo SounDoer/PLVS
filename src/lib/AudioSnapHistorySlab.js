@@ -1,5 +1,6 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 import { ChunkedHistorySlab, FrozenChunkedHistory, baseChunk } from "./ChunkedHistorySlab.js";
+import { CHANNEL_ROLES } from "../math/channelLayoutTable.js";
 import { RaggedFloatColumn } from "./RaggedFloatColumn.js";
 
 /** Plain numeric fields of one audio snap, one Float32 column each. */
@@ -29,6 +30,7 @@ const SCALAR_FIELDS = [
 ];
 /** Per-channel fields, whose length follows the device and so is stored ragged. */
 const CHANNEL_FIELDS = ["peakDb", "rmsDb"];
+const ROLE_INDEX = new Map(CHANNEL_ROLES.map((role, index) => [role.id, index]));
 
 function createChunk(sequenceStart) {
   const chunk = baseChunk(sequenceStart);
@@ -37,6 +39,7 @@ function createChunk(sequenceStart) {
   chunk.dialoguePercent = new Float32Array(VISUAL_HISTORY_CHUNK_ROWS);
   chunk.dialogueActiveNow = new Uint8Array(VISUAL_HISTORY_CHUNK_ROWS);
   chunk.loudnessLayoutKnown = new Uint8Array(VISUAL_HISTORY_CHUNK_ROWS);
+  chunk.autoChannelRoles = new RaggedFloatColumn(VISUAL_HISTORY_CHUNK_ROWS, 2, 0);
   for (const field of CHANNEL_FIELDS) {
     // Both are dB: silence arrives as -Infinity and must read back as -Infinity, not 0 dBFS.
     chunk[field] = new RaggedFloatColumn(VISUAL_HISTORY_CHUNK_ROWS, 2, -Infinity);
@@ -53,6 +56,7 @@ function cloneChunk(chunk) {
     dialoguePercent: chunk.dialoguePercent.slice(0, chunk.rowCount),
     dialogueActiveNow: chunk.dialogueActiveNow.slice(0, chunk.rowCount),
     loudnessLayoutKnown: chunk.loudnessLayoutKnown.slice(0, chunk.rowCount),
+    autoChannelRoles: chunk.autoChannelRoles.clone(),
   };
   for (const field of SCALAR_FIELDS) copy[field] = chunk[field].slice(0, chunk.rowCount);
   for (const field of CHANNEL_FIELDS) copy[field] = chunk[field].clone();
@@ -64,7 +68,8 @@ function payloadBytes(chunk) {
     chunk.timestamps.byteLength +
     chunk.dialoguePercent.byteLength +
     chunk.dialogueActiveNow.byteLength +
-    chunk.loudnessLayoutKnown.byteLength;
+    chunk.loudnessLayoutKnown.byteLength +
+    chunk.autoChannelRoles.byteLength;
   for (const field of SCALAR_FIELDS) bytes += chunk[field].byteLength;
   for (const field of CHANNEL_FIELDS) bytes += chunk[field].byteLength;
   return bytes;
@@ -82,6 +87,9 @@ function rowFrom(chunk, row) {
   result.dialoguePercent = Number.isNaN(percent) ? null : percent;
   result.dialogueActiveNow = chunk.dialogueActiveNow[row] === 1;
   result.loudnessLayoutKnown = chunk.loudnessLayoutKnown[row] === 1;
+  const roles = chunk.autoChannelRoles.at(row);
+  result.autoChannelRoles =
+    roles.length > 0 ? Array.from(roles, (index) => CHANNEL_ROLES[index]?.id ?? "generic") : null;
   // Materialise as a plain Array, not the Float32Array subarray RaggedFloatColumn.at() returns:
   // buildAudioSnap's peakDb/rmsDb are plain Arrays, and several downstream readers (App.jsx,
   // peakChannelMath.js, VectorscopePanel.jsx, statsCatalog.js) gate on Array.isArray. This
@@ -131,6 +139,9 @@ export class AudioSnapHistorySlab extends ChunkedHistorySlab {
           : Number.NaN;
         chunk.dialogueActiveNow[row] = snap?.dialogueActiveNow ? 1 : 0;
         chunk.loudnessLayoutKnown[row] = snap?.loudnessLayoutKnown === false ? 0 : 1;
+        chunk.autoChannelRoles.append(
+          snap?.autoChannelRoles?.map((role) => ROLE_INDEX.get(role) ?? 0) ?? []
+        );
         for (const field of CHANNEL_FIELDS) chunk[field].append(snap?.[field]);
       }
     );
