@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
   normalizeKeyboardShortcuts,
@@ -49,7 +50,6 @@ export async function saveKeyboardShortcutPrefsForControl(shortcuts) {
   const normalized = normalizeKeyboardShortcuts(shortcuts);
   if (transactionalBoot()) {
     const metadata = window.__PLVS_INITIAL_STATE__.multiInstancePersistence;
-    const { invoke } = await import("@tauri-apps/api/core");
     const revisions = await invoke("persistence_save_global_preferences", {
       values: { [SHORTCUTS_KEY]: normalized },
       expectedRevisions: {

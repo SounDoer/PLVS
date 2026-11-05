@@ -2,6 +2,7 @@
  * Persist last capture device id: Tauri uses `tauri-plugin-store` (app data dir);
  * browser / dev uses localStorage only.
  */
+import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "./env.js";
 
 // The one store file, same as `pluginStoreBackend.js` -- it holds all four domains, not just
@@ -68,7 +69,6 @@ export async function loadCaptureDeviceId() {
 export async function saveCaptureDeviceId(id) {
   const v = validateId(id);
   if (isTauri() && transactionalBoot()) {
-    const { invoke } = await import("@tauri-apps/api/core");
     await invoke("persistence_save_workspace_value", { key: STORE_KEY, value: v });
     window.__PLVS_INITIAL_STATE__.captureDeviceId = v;
     return;
