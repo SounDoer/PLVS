@@ -26,6 +26,11 @@ ASIO drivers bypass the Windows audio mixer, so loopback cannot hear them. Set y
 system to WASAPI, or route an ASIO setup through a virtual audio cable such as VB-Cable to a
 WASAPI-visible device.
 
+System output monitoring follows the system's speaker configuration: Stereo shows and measures two
+channels, while 5.1 shows and measures six, even if the interface exposes additional device tracks.
+All panels and measured-source recordings use that same signal. Changing the system speaker
+configuration starts a fresh measurement. See [Multichannel](multichannel.md).
+
 ## Physical input
 
 Monitor a microphone or line input directly.

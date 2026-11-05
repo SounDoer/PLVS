@@ -36,6 +36,12 @@ struct BufferAttr {
   fragsize: u32,
 }
 
+#[repr(C)]
+struct ChannelMap {
+  channels: u8,
+  positions: [i32; 32],
+}
+
 type SimpleNew = unsafe extern "C" fn(
   *const c_char,
   *const c_char,
@@ -121,11 +127,21 @@ where
     stop_rx,
     dropped_chunks,
     measured_pcm,
+    monitoring_plan,
     ..
   } = args;
   let source_id = device.id().map_err(|error| error.to_string())?;
   let source = CString::new(source_id.id())
     .map_err(|_| "Linux capture source id contains a NUL byte.".to_string())?;
+  let positions = super::linux_layout::positions(source_id.id(), channels)?;
+  let mut channel_map = ChannelMap {
+    channels: channels as u8,
+    positions: [0; 32],
+  };
+  for (index, position) in positions.iter().enumerate() {
+    channel_map.positions[index] = *position as i32;
+  }
+  let mut measured_scratch = Vec::new();
   let application = CString::new("PLVS").expect("literal has no NUL");
   let stream_name = CString::new("Live Metering").expect("literal has no NUL");
   let api = PulseApi::load()?;
@@ -162,7 +178,7 @@ where
       source.as_ptr(),
       stream_name.as_ptr(),
       &spec,
-      std::ptr::null(),
+      (&channel_map as *const ChannelMap).cast(),
       &attr,
       &mut error,
     )
@@ -210,7 +226,11 @@ where
       break Err(api.error("Linux PulseAudio capture failed", error));
     }
     if let Some(measured_pcm) = measured_pcm.as_ref() {
-      measured_pcm.publish(&pcm, sample_rate, channels);
+      let (samples, monitored_channels) = match monitoring_plan.as_ref() {
+        Some(plan) => (plan.pcm(&pcm, &mut measured_scratch), plan.channels()),
+        None => (pcm.as_slice(), channels),
+      };
+      measured_pcm.publish(samples, sample_rate, monitored_channels);
     }
     meter_pcm.extend_from_slice(&pcm);
     if meter_pcm.len() >= meter_samples_per_chunk {

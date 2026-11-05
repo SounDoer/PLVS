@@ -74,7 +74,9 @@ export function SourceProvider({ children }) {
       return defaultOutputFormatSig || "";
     }
     const d = audioDevices.find((x) => x.id === captureDeviceId);
-    return d ? `${d.channels}:${d.defaultSampleRate}` : "";
+    return d
+      ? `${d.channels}:${d.defaultSampleRate}${d.monitorSignature ? `|${d.monitorSignature}` : ""}`
+      : "";
   }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
 
   const selectedSource = useMemo(() => {

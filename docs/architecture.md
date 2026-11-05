@@ -345,15 +345,24 @@ feeding either side of that path. The detector resampler consumes the same compl
 block, so callback cadence, decoder read size, partial packets, and resampler batching cannot move
 evidence into an adjacent loudness block. A coherent reset discards both sides' partial block.
 
-Live native speaker roles are session metadata, refreshed on the PCM consumer thread once per
-second. Windows device capture reads the exact WASAPI endpoint's mix-format speaker mask; macOS
-reads the captured single-stream device's preferred layout (descriptions, tag or bitmap), with a
-preferred stereo-pair fallback. A device-wide mapping is not applied to one stream of a multi-stream
-device. Complete native roles supply weights; partial roles supply labels and dialogue roles while
-retaining the unknown-layout channels 1/2 loudness fallback. Manual roles win. Without native roles,
-count-based detection remains limited to eight channels for both loudness and dialogue. Frames and
-history carry native roles independently of persisted manual selections. See
-[ADR 0052](adr/0052-native-speaker-roles-are-session-metadata.md).
+System output monitoring extracts the configured speaker channels before PCM enters any analysis or
+measured-source subscription. Windows reads the exact WASAPI endpoint mix-format speaker mask;
+macOS expands the captured single-stream device's preferred speaker layout; Linux matches the
+sink's channel map to its monitor source and requests the source's explicit map from libpulse-simple.
+Recognised layouts are gathered into the shared table's standard order, without downmixing. Device
+inventory and Automatic preview report the monitored count; a private mapping fingerprint participates
+in the existing two-second device watch and capture-format restart signature. Same-count routing
+changes therefore start a fresh session instead of mixing accumulation across scopes.
+
+The plan is resolved once per capture session on an ordinary worker. Realtime callbacks remain
+unchanged and enqueue native PCM. The consumer projects it before metering and recording; Linux's
+20 ms recorder publisher uses the same plan as the batched meter consumer. The capture summary
+harness projects the same way before measurement and evidence recording. Inputs and file decoding
+retain their own topology. An unavailable or invalid system speaker mapping refuses capture; an
+unsupported role inside a valid scope remains unknown and retains the channels 1/2 loudness fallback.
+Manual roles apply within the monitored scope. Native roles stay out of persisted manual selections
+and travel with frames/history. See
+[ADR 0053](adr/0053-system-output-monitoring-follows-configured-speakers.md).
 
 Multichannel detection uses the versioned `center-priority-fallback-v1` policy. Each non-LFE
 channel has independent detector state, so opposite phase and an LFE-heavy mix cannot cancel or

@@ -71,6 +71,26 @@ fn uid_for_default_output() -> Result<String, String> {
   Ok(String::from_utf8_lossy(&buf[..n]).into_owned())
 }
 
+pub(crate) fn device_layout(
+  device: &cpal::Device,
+  channels: u16,
+  output: bool,
+) -> Option<super::source_layout::NativeLayout> {
+  if !output {
+    return None;
+  }
+  let uid = uid_for_output_name(&device_id_key(device).ok()?)?;
+  layout_for_uid(&uid, channels)
+}
+
+fn layout_for_uid(uid: &str, channels: u16) -> Option<super::source_layout::NativeLayout> {
+  let uid = CString::new(uid).ok()?;
+  let mut labels = vec![u32::MAX; usize::from(channels)];
+  let status =
+    unsafe { macos_output_channel_labels(uid.as_ptr(), u32::from(channels), labels.as_mut_ptr()) };
+  (status >= 0).then(|| super::source_layout::apple_layout(&labels, status == 0))
+}
+
 /// Loopback rows only (same ordering and `lb-*` ids as [`super::cpal_backend::build_device_list`] on Windows).
 fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
   let mut out = Vec::new();
@@ -80,13 +100,15 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
     let label = device_list_label(&device)?;
     let core_uid = uid_for_output_name(&key);
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
+    let plan = super::source_layout::device_plan(&device, cfg.channels(), true);
     out.push(DeviceInfo {
       id,
       label,
       is_system_output_monitor: true,
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
-      channels: cfg.channels(),
+      channels: plan.channels(),
+      monitor_signature: Some(plan.signature()),
       core_audio_output_uid: core_uid,
     });
   }
@@ -209,18 +231,9 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   let clear_for_thread = clear_peak_history.clone();
   let reset_tp_max_for_thread = reset_tp_max.clone();
   let dropped_for_thread = dropped_chunks.clone();
-  let layout_uid = CString::new(uid.clone()).map_err(|_| "device UID contains NUL")?;
-  let layout_reader: super::source_layout::LayoutReader = Box::new(move || {
-    let mut labels = vec![u32::MAX; usize::from(channels)];
-    let status = unsafe {
-      macos_output_channel_labels(
-        layout_uid.as_ptr(),
-        u32::from(channels),
-        labels.as_mut_ptr(),
-      )
-    };
-    (status == 0).then(|| super::source_layout::apple_roles(&labels))
-  });
+  let native_layout = layout_for_uid(&uid, channels);
+  super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
+  let layout_reader: super::source_layout::LayoutReader = Box::new(move || native_layout.clone());
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
       consumer_delivery,

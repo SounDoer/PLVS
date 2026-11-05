@@ -150,9 +150,18 @@ pub fn list_capture_applications() -> Result<Vec<serde_json::Value>, String> {
 
 #[tauri::command]
 pub fn preview_audio_device(device_id: String) -> Result<AudioDevicePreview, String> {
-  let (label, _id_key, sample_rate_hz, channels) = cpal_backend::preview_device(&device_id)?;
+  let (device, supported) = crate::audio::device_enum::resolve_device(&device_id)?;
+  let label = crate::audio::device_enum::device_list_label(&device)?;
+  let output = device_id.is_empty()
+    || device_id == "default"
+    || crate::audio::device_id::is_stable_loopback_id(&device_id)
+    || crate::audio::device_id::parse_legacy_output_index(&device_id).is_some();
+  let plan = crate::audio::source_layout::device_plan(&device, supported.channels(), output);
+  let sample_rate_hz = supported.sample_rate();
+  let channels = plan.channels();
   Ok(AudioDevicePreview {
     label,
+    monitor_signature: output.then(|| plan.signature()),
     sample_rate_hz,
     channels,
   })

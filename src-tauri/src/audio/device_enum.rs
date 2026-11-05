@@ -161,13 +161,15 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
     let key = device_id_key(&device)?;
     let label = device_list_label(&device)?;
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
+    let plan = super::source_layout::device_plan(&device, cfg.channels(), true);
     out.push(DeviceInfo {
       id,
       label,
       is_system_output_monitor: true,
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
-      channels: cfg.channels(),
+      channels: plan.channels(),
+      monitor_signature: Some(plan.signature()),
       core_audio_output_uid: None,
     });
   }
@@ -191,6 +193,7 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
       is_loopback,
       default_sample_rate: cfg.sample_rate(),
       channels: cfg.channels(),
+      monitor_signature: None,
       core_audio_output_uid: None,
     });
   }
@@ -351,8 +354,13 @@ pub(crate) fn resolve_device(
 
 /// Default `(sample_rate_hz, channels)` for a device id (UI hints).
 pub fn device_default_format(device_id: &str) -> Result<(u32, u16), String> {
-  let (_, supported) = resolve_device(device_id)?;
-  Ok((supported.sample_rate(), supported.channels()))
+  let (device, supported) = resolve_device(device_id)?;
+  let output = device_id.is_empty()
+    || device_id == "default"
+    || device_id::is_stable_loopback_id(device_id)
+    || device_id::parse_legacy_output_index(device_id).is_some();
+  let plan = super::source_layout::device_plan(&device, supported.channels(), output);
+  Ok((supported.sample_rate(), plan.channels()))
 }
 
 /// Human-readable label, stable id key, and format for a capture target.
@@ -475,6 +483,7 @@ mod substring_tests {
       is_loopback: false,
       default_sample_rate: 48000,
       channels: 2,
+      monitor_signature: None,
       core_audio_output_uid: None,
     }
   }

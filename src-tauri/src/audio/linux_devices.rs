@@ -50,7 +50,7 @@ fn with_pulse_host<T>(
 
 /// Bound discovery waits and prevent repeated timeouts from spawning unbounded workers.
 /// All server queries and allocation run outside the realtime capture callback.
-fn query<T: Send + 'static>(
+pub(crate) fn query<T: Send + 'static>(
   operation: impl FnOnce(pulseaudio::Client) -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
   let waiting = Instant::now();

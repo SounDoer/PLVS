@@ -787,17 +787,26 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     .unwrap_or_else(|| Arc::new(Mutex::new(AnalysisRequests::default())));
   let mut sent_seq: u64 = 0;
   let mut dropped_frames: u64 = 0;
+  let native = layout_reader
+    .as_mut()
+    .and_then(|reader| reader())
+    .or_else(|| {
+      layout_reader
+        .is_some()
+        .then(|| super::source_layout::NativeLayout {
+          roles: vec!["generic".into(); usize::from(channels)],
+          speakers: None,
+        })
+    });
+  let plan = super::source_layout::MonitoringPlan::new(channels, native);
+  let channels = plan.channels();
+  let mut projected = Vec::new();
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
+  pipeline.set_source_channel_roles(plan.roles.clone());
   pipeline.enable_async_dialogue();
-  let mut layout_refresh = Instant::now() - std::time::Duration::from_secs(2);
   let mut recv_tick: u32 = 0;
   while let Some((floats, arrived_at)) = delivery.pop_until_stopped_with_arrival() {
-    if layout_refresh.elapsed() >= std::time::Duration::from_secs(1) {
-      if let Some(reader) = layout_reader.as_mut() {
-        pipeline.set_source_channel_roles(reader());
-      }
-      layout_refresh = Instant::now();
-    }
+    let samples = plan.pcm(&floats, &mut projected);
     recv_tick = recv_tick.wrapping_add(1);
     if recv_tick.is_multiple_of(480) {
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
@@ -827,7 +836,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       pipeline.reset_true_peak_max();
     }
     if publish_measured_pcm {
-      measured_pcm.publish_arrived_at(&floats, sample_rate, channels, arrived_at);
+      measured_pcm.publish_arrived_at(samples, sample_rate, channels, arrived_at);
     }
     let requests = analysis_requests
       .lock()
@@ -837,7 +846,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
     let dialogue_vad_engine = dialogue_vad_engine.lock().map(|g| *g).unwrap_or_default();
     let frame = pipeline.push_pcm_f32_with_requests(
-      &floats,
+      samples,
       &requests,
       channel_selection,
       dialogue_gating,
@@ -957,6 +966,8 @@ pub(crate) struct CaptureStreamArgs {
   pub(crate) stream_error: Option<Arc<AtomicU8>>,
   #[cfg(target_os = "linux")]
   pub(crate) measured_pcm: Option<Arc<MeasuredPcmSubscriptions>>,
+  #[cfg(target_os = "linux")]
+  pub(crate) monitoring_plan: Option<super::source_layout::MonitoringPlan>,
 }
 
 /// Device-facing half of live capture, free of Tauri. Opens the stream, feeds
@@ -1118,10 +1129,18 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     stream_error,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
-  #[cfg(target_os = "windows")]
-  let layout_reader = super::windows_layout::reader(&device, channels);
-  #[cfg(not(target_os = "windows"))]
-  let layout_reader = None;
+  let output = device_id.is_empty()
+    || device_id == "default"
+    || super::device_id::is_stable_loopback_id(&device_id)
+    || super::device_id::parse_legacy_output_index(&device_id).is_some();
+  let native_layout = super::source_layout::device_layout(&device, channels, output);
+  if output {
+    super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
+  }
+  let bridge_layout = native_layout.clone();
+  let layout_reader: Option<super::source_layout::LayoutReader> = (output
+    || native_layout.is_some())
+  .then(|| Box::new(move || bridge_layout.clone()) as super::source_layout::LayoutReader);
   #[cfg(target_os = "linux")]
   let reader_measured_pcm = measured_pcm.clone();
 
@@ -1137,6 +1156,11 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       stream_error: Some(stream_error),
       #[cfg(target_os = "linux")]
       measured_pcm: Some(reader_measured_pcm),
+      #[cfg(target_os = "linux")]
+      monitoring_plan: Some(super::source_layout::MonitoringPlan::new(
+        channels,
+        native_layout,
+      )),
     },
     move |audio_rx, pool, sample_rate, channels| {
       run_meter_pipeline_bridge_thread(

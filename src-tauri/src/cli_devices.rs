@@ -158,6 +158,7 @@ mod tests {
         is_loopback: false,
         default_sample_rate: 48_000,
         channels: 2,
+        monitor_signature: None,
         core_audio_output_uid: None,
       },
       DeviceInfo {
@@ -167,6 +168,7 @@ mod tests {
         is_loopback: false,
         default_sample_rate: 44_100,
         channels: 1,
+        monitor_signature: None,
         core_audio_output_uid: None,
       },
     ]);

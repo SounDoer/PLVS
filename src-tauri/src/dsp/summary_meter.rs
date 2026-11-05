@@ -78,6 +78,28 @@ impl SummaryMeter {
     Ok(Self::build(sample_rate, channels, Some((weights, layout))))
   }
 
+  pub fn new_with_roles(sample_rate: u32, channels: u16, roles: &[String]) -> Result<Self, String> {
+    if roles.len() != usize::from(channels) {
+      return Err("channel roles do not match the capture scope".into());
+    }
+    let mut weights = weights_for_roles(roles).ok_or("invalid channel role")?;
+    let unknown = roles.iter().any(|role| role == "generic");
+    let layout = if unknown {
+      "unknown"
+    } else {
+      layout_id_for_roles(roles).unwrap_or("custom")
+    };
+    if unknown {
+      weights.fill(0.0);
+      for weight in weights.iter_mut().take(2) {
+        *weight = 1.0;
+      }
+    }
+    let mut meter = Self::build(sample_rate, channels, Some((weights, layout)));
+    meter.loudness_layout_known = !unknown;
+    Ok(meter)
+  }
+
   fn build(sample_rate: u32, channels: u16, selection: Option<(Vec<f64>, &'static str)>) -> Self {
     let sample_rate = sample_rate as f64;
     let (tp_t, tp_p, tp_ph) = init_true_peak_filters();

@@ -59,12 +59,26 @@ pub fn capture_device_to_summary_with_layout(
   let (device, supported) = resolve_device(device_id)?;
   let device_label = device_list_label(&device)?;
   let sample_rate = supported.sample_rate();
-  let channels = supported.channels();
+  let raw_channels = supported.channels();
+  let output = device_id.is_empty()
+    || device_id == "default"
+    || super::device_id::is_stable_loopback_id(device_id)
+    || super::device_id::parse_legacy_output_index(device_id).is_some();
+  let native_layout = super::source_layout::device_layout(&device, raw_channels, output);
+  let plan = if output {
+    super::source_layout::MonitoringPlan::require_system_scope(raw_channels, native_layout)?
+  } else {
+    super::source_layout::MonitoringPlan::new(raw_channels, native_layout)
+  };
+  let channels = plan.channels();
   #[cfg(feature = "capture-harness")]
   let evidence = super::capture_evidence::EvidenceRecorder::from_env(sample_rate, channels)?;
   let meter = match layout_id {
     Some(layout_id) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
-    None => SummaryMeter::new(sample_rate, channels),
+    None => match plan.roles.as_ref() {
+      Some(roles) => SummaryMeter::new_with_roles(sample_rate, channels, roles)?,
+      None => SummaryMeter::new(sample_rate, channels),
+    },
   };
   // A zero interval would pin every reading at t=0 and emit one per chunk.
   let every = every.filter(|interval| *interval > 0);
@@ -79,6 +93,7 @@ pub fn capture_device_to_summary_with_layout(
   let consumer =
     move |delivery: PcmDeliveryQueue, pool: PcmBufferPool, _sample_rate: u32, _channels: u16| {
       let mut meter = meter;
+      let mut projected = Vec::new();
       #[cfg(feature = "capture-harness")]
       let mut evidence = evidence;
       #[cfg(feature = "capture-harness")]
@@ -87,13 +102,14 @@ pub fn capture_device_to_summary_with_layout(
       let started = std::time::Instant::now();
 
       while let Some(pcm) = delivery.pop_until_stopped() {
-        meter.push_interleaved(&pcm);
+        let samples = plan.pcm(&pcm, &mut projected);
+        meter.push_interleaved(samples);
         #[cfg(feature = "capture-harness")]
         if evidence_error.is_none() {
           if let Some(recorder) = evidence.as_mut() {
             evidence_error = recorder
               .observe(
-                &pcm,
+                samples,
                 meter.evidence_true_peak_max(),
                 started.elapsed().as_secs_f64(),
               )
@@ -140,12 +156,14 @@ pub fn capture_device_to_summary_with_layout(
     device,
     supported,
     sample_rate,
-    channels,
+    channels: raw_channels,
     stop_rx,
     dropped_chunks,
     stream_error: None,
     #[cfg(target_os = "linux")]
     measured_pcm: None,
+    #[cfg(target_os = "linux")]
+    monitoring_plan: None,
   };
 
   let capture_thread = std::thread::spawn(move || run_capture_stream(stream_args, consumer));

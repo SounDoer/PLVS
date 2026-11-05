@@ -357,3 +357,26 @@ describe("useAudioDevices", () => {
     expect(mocks.unlisten).toHaveBeenCalledOnce();
   });
 });
+
+it("changes the capture signature when Stereo moves to another physical pair", async () => {
+  mocks.previewAudioDevice.mockResolvedValue({
+    label: "Speakers",
+    channels: 2,
+    sampleRateHz: 48000,
+    monitorSignature: "[0,1]:L,R",
+  });
+  const { result } = renderHook(() => useAudioDevices());
+  await waitFor(() => expect(result.current.defaultOutputFormatSig).toContain("[0,1]"));
+  const before = result.current.defaultOutputFormatSig;
+  mocks.previewAudioDevice.mockResolvedValue({
+    label: "Speakers",
+    channels: 2,
+    sampleRateHz: 48000,
+    monitorSignature: "[2,3]:L,R",
+  });
+  await act(async () =>
+    mocks.deviceListHandler([{ ...device(LB, "Speakers", true), monitorSignature: "[2,3]:L,R" }])
+  );
+  await waitFor(() => expect(result.current.defaultOutputFormatSig).not.toBe(before));
+  expect(result.current.audioDevices[0].monitorSignature).toBe("[2,3]:L,R");
+});

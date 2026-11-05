@@ -12,6 +12,8 @@ pub mod device_id;
 mod linux_capture;
 #[cfg(target_os = "linux")]
 mod linux_devices;
+#[cfg(target_os = "linux")]
+mod linux_layout;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "macos")]

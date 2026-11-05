@@ -25,6 +25,9 @@ function normalizeDevice(device) {
     loopback: systemOutput || device.isLoopback === true,
     sampleRateHz: positiveIntegerOrNull(device.defaultSampleRate),
     channelCount: positiveIntegerOrNull(device.channels),
+    ...(typeof device.monitorSignature === "string"
+      ? { monitorSignature: device.monitorSignature }
+      : {}),
   };
 }
 
@@ -44,6 +47,9 @@ function normalizeAutomatic(preview) {
           label: boundedLabel(preview.label),
           sampleRateHz: positiveIntegerOrNull(preview.sampleRateHz),
           channelCount: positiveIntegerOrNull(preview.channels),
+          ...(typeof preview.monitorSignature === "string"
+            ? { monitorSignature: preview.monitorSignature }
+            : {}),
         }
       : null,
   };
@@ -228,8 +234,19 @@ export function buildDeviceList(snapshot) {
   return {
     generation: snapshot.generation,
     observedAt: snapshot.observedAt,
-    automatic: snapshot.automatic,
-    devices: snapshot.devices,
+    automatic: {
+      ...snapshot.automatic,
+      resolved: snapshot.automatic.resolved
+        ? Object.fromEntries(
+            Object.entries(snapshot.automatic.resolved).filter(
+              ([key]) => key !== "monitorSignature"
+            )
+          )
+        : null,
+    },
+    devices: snapshot.devices.map((device) =>
+      Object.fromEntries(Object.entries(device).filter(([key]) => key !== "monitorSignature"))
+    ),
     truncated: snapshot.truncated,
   };
 }

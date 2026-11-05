@@ -682,5 +682,5 @@ int macos_output_channel_labels(const char *uid_utf8, uint32_t channels, uint32_
       stereo[0] == stereo[1]) return -1;
   labels[stereo[0] - 1] = kAudioChannelLabel_Left;
   labels[stereo[1] - 1] = kAudioChannelLabel_Right;
-  return 0;
+  return 1;
 }

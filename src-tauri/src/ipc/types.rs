@@ -125,6 +125,8 @@ pub struct UiFrameDiagnostics {
 #[serde(rename_all = "camelCase")]
 pub struct AudioDevicePreview {
   pub label: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub monitor_signature: Option<String>,
   pub sample_rate_hz: u32,
   pub channels: u16,
 }

@@ -249,3 +249,20 @@ describe("Device Control selection planner", () => {
     ).toEqual({ code: "transitionInProgress", state: "restarting" });
   });
 });
+
+it("restarts inventory for same-count speaker routing changes without exposing fingerprints", () => {
+  const before = inventory({
+    devices: [{ ...rows()[0], monitorSignature: "[0,1]:L,R" }],
+    preview: { label: "Speakers", channels: 2, sampleRateHz: 48000, monitorSignature: "[0,1]:L,R" },
+  });
+  const after = inventory({
+    previous: before,
+    devices: [{ ...rows()[0], monitorSignature: "[2,3]:L,R" }],
+    preview: { label: "Speakers", channels: 2, sampleRateHz: 48000, monitorSignature: "[2,3]:L,R" },
+  });
+  expect(after.generation).toBe(before.generation + 1);
+  expect(JSON.stringify(buildDeviceList(after))).not.toContain("monitorSignature");
+  expect(
+    buildDeviceInspection({ ...after, requestedId: "default" }).selection.resolved.channelCount
+  ).toBe(2);
+});
