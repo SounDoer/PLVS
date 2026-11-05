@@ -243,8 +243,7 @@ export async function runDockPlatformContract(run, platform) {
     String(inspected.revision),
     "--json",
   ];
-  if (platform.os === "linux") {
-    if (described.supported !== false) throw new Error("Linux must declare Dock unsupported.");
+  if (platform.os === "linux" && described.supported === false) {
     const outcome = await run(args, { allowFailure: true });
     if (!outcome?.failed) throw new Error("Linux Dock dry-run unexpectedly succeeded.");
     const reason = outcome.envelope?.error?.details?.reason ?? outcome.envelope?.error?.code;

@@ -3,10 +3,10 @@ use std::sync::{
   Arc,
 };
 
-#[cfg(any(target_os = "windows", target_os = "macos", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
 use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
-#[cfg(any(target_os = "windows", target_os = "macos", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
 use std::{
   fs::{File, OpenOptions},
   path::Path,
@@ -33,7 +33,10 @@ pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 80.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_HEIGHT: f64 = 640.0;
 pub const DOCK_EDITOR_LOGICAL_INSET: f64 = 8.0;
 
-pub const fn is_supported_platform() -> bool {
+pub fn is_supported_platform() -> bool {
+  #[cfg(target_os = "linux")]
+  return crate::linux_dock::supported();
+  #[cfg(not(target_os = "linux"))]
   cfg!(any(target_os = "windows", target_os = "macos"))
 }
 
@@ -92,7 +95,11 @@ impl DockStateRecord {
   }
 
   pub(crate) fn normalize_for_platform(self) -> Self {
-    self.with_reserve_space_support(cfg!(any(target_os = "windows", target_os = "macos")))
+    let mut state = self.with_reserve_space_support(is_supported_platform());
+    if cfg!(target_os = "linux") {
+      state.above_full_screen = false;
+    }
+    state
   }
 }
 
@@ -240,7 +247,7 @@ pub struct DockedFlag(pub Arc<AtomicBool>);
 /// until this becomes true.
 pub struct DockBootReady(pub Arc<AtomicBool>);
 
-#[cfg(any(target_os = "windows", target_os = "macos", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
 #[derive(Debug)]
 struct HeldDockReservation {
   key: String,
@@ -251,11 +258,12 @@ struct HeldDockReservation {
 /// The lock handle is released by the OS after a crash, so another live workbench can recover it.
 #[derive(Debug, Default)]
 pub struct DockReservationLease(
-  #[cfg(any(target_os = "windows", target_os = "macos", test))] Mutex<Option<HeldDockReservation>>,
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
+  Mutex<Option<HeldDockReservation>>,
 );
 
 impl DockReservationLease {
-  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
   pub fn acquire(
     &self,
     identity_root: &Path,
@@ -291,7 +299,7 @@ impl DockReservationLease {
   }
 
   pub fn release(&self) {
-    #[cfg(any(target_os = "windows", target_os = "macos", test))]
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
     {
       let mut held = self.0.lock().expect("dock reservation lease poisoned");
       if let Some(lease) = held.take() {
@@ -302,7 +310,7 @@ impl DockReservationLease {
 }
 
 impl DockEdge {
-  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
   fn as_key(self) -> &'static str {
     match self {
       Self::Top => "top",
@@ -311,7 +319,7 @@ impl DockEdge {
   }
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
 pub(crate) fn reservation_path(
   identity_root: &Path,
   monitor: &str,
@@ -324,7 +332,7 @@ pub(crate) fn reservation_path(
     .join(format!("{:016x}.lock", stable_key_hash(key.as_bytes())))
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos", test))]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", test))]
 fn stable_key_hash(bytes: &[u8]) -> u64 {
   bytes.iter().fold(0xcbf29ce484222325_u64, |hash, byte| {
     (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
@@ -377,35 +385,40 @@ fn work_area_and_scale<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   monitor_name: Option<&str>,
 ) -> Result<(MonitorRect, f64, Option<String>), String> {
-  let monitors = window
-    .available_monitors()
-    .map_err(|e| format!("monitors: {e}"))?;
-  let by_name = monitor_name.and_then(|n| {
-    monitors
-      .iter()
-      .find(|m| m.name().map(|s| s.as_str()) == Some(n))
-      .cloned()
-  });
-  let monitor = by_name
-    .or_else(|| window.current_monitor().ok().flatten())
-    .or_else(|| window.primary_monitor().ok().flatten())
-    .ok_or_else(|| "no monitor available".to_string())?;
-  let wa = monitor.work_area();
-  #[cfg(target_os = "windows")]
-  let (restored_height, restored_top) =
-    crate::appbar::own_reserved_height(window, monitor.name().map(String::as_str));
-  #[cfg(not(target_os = "windows"))]
-  let (restored_height, restored_top) = (0, 0);
-  Ok((
-    MonitorRect {
-      x: wa.position.x,
-      y: wa.position.y - restored_top,
-      width: wa.size.width,
-      height: wa.size.height.saturating_add(restored_height),
-    },
-    monitor.scale_factor(),
-    monitor.name().cloned(),
-  ))
+  #[cfg(target_os = "linux")]
+  return crate::linux_dock::work_area(window, monitor_name);
+  #[cfg(not(target_os = "linux"))]
+  {
+    let monitors = window
+      .available_monitors()
+      .map_err(|e| format!("monitors: {e}"))?;
+    let by_name = monitor_name.and_then(|n| {
+      monitors
+        .iter()
+        .find(|m| m.name().map(|s| s.as_str()) == Some(n))
+        .cloned()
+    });
+    let monitor = by_name
+      .or_else(|| window.current_monitor().ok().flatten())
+      .or_else(|| window.primary_monitor().ok().flatten())
+      .ok_or_else(|| "no monitor available".to_string())?;
+    let wa = monitor.work_area();
+    #[cfg(target_os = "windows")]
+    let (restored_height, restored_top) =
+      crate::appbar::own_reserved_height(window, monitor.name().map(String::as_str));
+    #[cfg(not(target_os = "windows"))]
+    let (restored_height, restored_top) = (0, 0);
+    Ok((
+      MonitorRect {
+        x: wa.position.x,
+        y: wa.position.y - restored_top,
+        width: wa.size.width,
+        height: wa.size.height.saturating_add(restored_height),
+      },
+      monitor.scale_factor(),
+      monitor.name().cloned(),
+    ))
+  }
 }
 
 #[derive(Clone, Copy)]
@@ -521,7 +534,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     window
       .set_always_on_top(true)
       .map_err(|e| format!("always on top: {e}"))?;
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     window
       .set_resizable(false)
       .map_err(|e| format!("resizable: {e}"))?;
@@ -578,7 +591,7 @@ fn enter_dock_inner<R: tauri::Runtime>(
             .map(|state| state.reserve_space)
             .unwrap_or_else(default_reserve_space)
         }),
-        cfg!(any(target_os = "windows", target_os = "macos")),
+        is_supported_platform(),
       );
       let above_full_screen = above_full_screen.unwrap_or_else(|| {
         previous
@@ -586,6 +599,7 @@ fn enter_dock_inner<R: tauri::Runtime>(
           .map(|state| state.above_full_screen)
           .unwrap_or_else(default_above_full_screen)
       });
+      let above_full_screen = !cfg!(target_os = "linux") && above_full_screen;
       let height = fitted_height(
         &window,
         monitor.as_deref(),
@@ -613,8 +627,13 @@ fn enter_dock_inner<R: tauri::Runtime>(
         }
         let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, previous_shadow)?;
         let reserve_space = requested_reserve_space;
-        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
         let mut reserve_space = reserve_space;
+        #[cfg(target_os = "linux")]
+        {
+          reserve_space =
+            crate::linux_dock::configure(&window, edge, height, reserve_space, monitor.as_deref())?;
+        }
         #[cfg(target_os = "windows")]
         if reserve_space {
           let monitor_key = monitor.as_deref().unwrap_or("primary");
@@ -670,6 +689,19 @@ fn enter_dock_inner<R: tauri::Runtime>(
       let (monitor, reserve_space) = match transition {
         Ok(result) => result,
         Err(error) => {
+          #[cfg(target_os = "linux")]
+          {
+            let _ = crate::linux_dock::clear(&window, !was_docked);
+            if let Some(previous) = previous.as_ref().filter(|_| was_docked) {
+              let _ = crate::linux_dock::configure(
+                &window,
+                previous.edge,
+                previous.height,
+                previous.reserve_space,
+                previous.monitor.as_deref(),
+              );
+            }
+          }
           flag.0.store(was_docked, Ordering::Relaxed);
           restore_window_form(&window, previous_form);
           #[cfg(target_os = "macos")]
@@ -738,6 +770,8 @@ fn exit_dock_inner<R: tauri::Runtime>(
     false,
     || {
       crate::dock_accessories::hide_all(window.app_handle());
+      #[cfg(target_os = "linux")]
+      crate::linux_dock::clear(&window, true)?;
       #[cfg(target_os = "macos")]
       crate::macos_dock::stop()?;
       // Also stops the AppKit presentation owner before the class is restored.
@@ -884,6 +918,20 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
         return Err("window is not docked".into());
       }
 
+      #[cfg(target_os = "linux")]
+      {
+        let previous = read_dock_state(window.app_handle()).ok_or("Dock state is unavailable.")?;
+        if !crate::linux_dock::configure(
+          &window,
+          edge,
+          previous.height,
+          enabled,
+          previous.monitor.as_deref(),
+        )? && enabled
+        {
+          return Err("Another PLVS instance already reserves this screen edge.".into());
+        }
+      }
       #[cfg(target_os = "windows")]
       {
         let previous = read_dock_state(window.app_handle());
@@ -941,7 +989,7 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
           return Err("Another PLVS instance already reserves this display.".into());
         }
       }
-      #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+      #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
       if enabled {
         return Err("reserve screen space is only available on Windows".into());
       }
@@ -981,8 +1029,8 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
   )
 }
 
-/// Change Above Full Screen while docked. Platforms without the native
-/// behaviour store the value so Presets round-trip.
+/// Change Above Full Screen while docked. Linux refuses this control; saved Preset documents
+/// retain their portable setting independently of the live Dock state.
 #[tauri::command]
 pub fn set_dock_above_full_screen<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
@@ -990,6 +1038,9 @@ pub fn set_dock_above_full_screen<R: tauri::Runtime>(
   enabled: bool,
   origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
+  if cfg!(target_os = "linux") {
+    return Err("Above Full Screen is unavailable on Linux.".into());
+  }
   crate::feedback_diagnostics::observe(
     &window,
     "dock.aboveFullScreen",
@@ -1047,6 +1098,8 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
 
       if suspended {
         crate::dock_accessories::hide_all(window.app_handle());
+        #[cfg(target_os = "linux")]
+        crate::linux_dock::clear(&window, false)?;
         #[cfg(target_os = "macos")]
         crate::macos_dock::stop()?;
         #[cfg(target_os = "windows")]
@@ -1077,6 +1130,16 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         state.height,
         false,
       )?;
+      #[cfg(target_os = "linux")]
+      {
+        state.reserve_space = crate::linux_dock::configure(
+          &window,
+          state.edge,
+          state.height,
+          state.reserve_space,
+          state.monitor.as_deref(),
+        )?;
+      }
       #[cfg(target_os = "windows")]
       if state.reserve_space
         && crate::appbar::set_reserved(&window, true, state.edge, state.height).is_err()
@@ -1163,6 +1226,34 @@ pub fn set_dock_height<R: tauri::Runtime>(
         work_area_and_scale(&window, previous.monitor.as_deref())?;
       let height = fit_dock_height(height, work_area.height, scale);
 
+      #[cfg(target_os = "linux")]
+      {
+        apply_dock_form(
+          &window,
+          previous.edge,
+          previous.monitor.as_deref(),
+          height,
+          false,
+        )?;
+        // Preview only moves the strip. Reserve the final size on commit/cancel, matching Windows.
+        if persist {
+          crate::linux_dock::configure(
+            &window,
+            previous.edge,
+            height,
+            previous.reserve_space,
+            previous.monitor.as_deref(),
+          )?;
+        } else {
+          crate::linux_dock::preview_height(
+            &window,
+            previous.edge,
+            height,
+            previous.monitor.as_deref(),
+          )?;
+        }
+      }
+
       #[cfg(target_os = "windows")]
       if previous.reserve_space {
         if persist {
@@ -1220,6 +1311,9 @@ mod tests {
 
   #[test]
   fn dock_support_matches_the_native_platform_contract() {
+    #[cfg(target_os = "linux")]
+    assert_eq!(is_supported_platform(), crate::linux_dock::supported());
+    #[cfg(not(target_os = "linux"))]
     assert_eq!(
       is_supported_platform(),
       cfg!(any(target_os = "windows", target_os = "macos"))

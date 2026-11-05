@@ -617,8 +617,11 @@ export function buildDockDescription(dock, context = {}) {
   return {
     supported: dock.supported === true,
     reserveSpace: {
-      writable: dock.supported === true && ["windows", "macos"].includes(context.platform),
-      reason: ["windows", "macos"].includes(context.platform) ? null : "platformUnsupported",
+      writable: dock.supported === true && ["windows", "macos", "linux"].includes(context.platform),
+      reason:
+        dock.supported === true && ["windows", "macos", "linux"].includes(context.platform)
+          ? null
+          : "platformUnsupported",
     },
     aboveFullScreen: {
       writable: dock.supported === true && ["windows", "macos"].includes(context.platform),
@@ -710,7 +713,10 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
       issues: [],
       refusal: { code: "transitionInProgress" },
     };
-  if (params.reserveSpace !== undefined && !["windows", "macos"].includes(context.platform))
+  if (
+    params.reserveSpace !== undefined &&
+    !["windows", "macos", "linux"].includes(context.platform)
+  )
     return {
       dock,
       changed: [],
@@ -721,7 +727,7 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
         issue(
           "controlUnavailable",
           "$.reserveSpace",
-          "reserveSpace is available only on Windows and macOS."
+          "reserveSpace requires a supported Dock window backend."
         ),
       ],
     };

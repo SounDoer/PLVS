@@ -11,12 +11,15 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
-import { isDockSupported, isWindows, isMacOS } from "../lib/platform.js";
+import {
+  isDockSupported,
+  isDockReserveSpaceSupported as supportsDockReserveSpace,
+  isMacOS,
+  isDockAboveFullScreenSupported,
+  isWindows,
+} from "../lib/platform.js";
 import { updateDiagnosticDock } from "../lib/feedbackDiagnostics.js";
-
-function supportsDockReserveSpace() {
-  return isWindows() || isMacOS();
-}
+import { onDockNativeGeometryChanged } from "../ipc/events.js";
 
 function normalizeDockState(raw) {
   // No stored form (first run): the tuned first-run Dock sits on the top edge. Rust always writes an
@@ -29,9 +32,9 @@ function normalizeDockState(raw) {
     monitor,
     reserveSpace:
       supportsDockReserveSpace() &&
-      (isMacOS() ? raw?.reserveSpace === true : raw?.reserveSpace !== false),
+      (isWindows() ? raw?.reserveSpace !== false : raw?.reserveSpace === true),
     height: clampDockHeight(raw?.height),
-    aboveFullScreen: raw?.aboveFullScreen !== false,
+    aboveFullScreen: isDockAboveFullScreenSupported() && raw?.aboveFullScreen !== false,
   };
 }
 
@@ -112,8 +115,18 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
         .catch(() => {});
     };
     reconcile();
+    let stopGeometry;
+    if (!isWindows() && !isMacOS() && isDockSupported()) {
+      void onDockNativeGeometryChanged(reconcile)
+        .then((stop) => {
+          if (cancelled) stop();
+          else stopGeometry = stop;
+        })
+        .catch(() => {});
+    }
     return () => {
       cancelled = true;
+      stopGeometry?.();
       if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
   }, [commitDock]);

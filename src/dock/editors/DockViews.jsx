@@ -4,7 +4,7 @@ import { RangeInput } from "../../components/ui/range-input.jsx";
 import { useState } from "react";
 import { SettingsSelect } from "../../components/panel-settings/SettingsWidgets.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
-import { isDockSupported } from "../../lib/platform.js";
+import { isDockReserveSpaceSupported, isDockAboveFullScreenSupported } from "../../lib/platform.js";
 
 export function DockViews({ state, onAction }) {
   const [positionOpen, setPositionOpen] = useState(false);
@@ -14,7 +14,7 @@ export function DockViews({ state, onAction }) {
     { key: "bottom", label: "Bottom" },
   ];
   const opacity = Number.isFinite(state.dockSurfaceOpacity) ? state.dockSurfaceOpacity : 100;
-  const supportsReservation = /Win|Mac/i.test(navigator.platform || navigator.userAgent || "");
+  const supportsReservation = isDockReserveSpaceSupported();
   return (
     <DockEditorShell title="Views">
       <div className="grid gap-1 p-1">
@@ -42,7 +42,7 @@ export function DockViews({ state, onAction }) {
             onCheckedChange={() => onAction("toggle-reserve-space")}
           />
         )}
-        {isDockSupported() && (
+        {isDockAboveFullScreenSupported() && (
           <FocusSwitch
             id="dock-above-full-screen"
             label="Above Full Screen"

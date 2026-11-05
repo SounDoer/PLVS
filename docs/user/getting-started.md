@@ -53,8 +53,9 @@ final manual `.deb` update: earlier versions lack the component, and 0.23.0 cann
 installation. Your settings are kept.
 Remove PLVS with `sudo apt remove plvs`; removing the package preserves user settings.
 
-Dock and per-application capture are not available on Linux. See
-[Signal Source](signal-source.md) for the Linux capture scope.
+Dock is available with an EWMH-capable X11 or XWayland window backend, including XWayland inside a
+GNOME Wayland session. Native Wayland Dock and per-application capture are unavailable. See
+[Dock](workspace.md#dock) and [Signal Source](signal-source.md) for platform scope.
 
 ## Preview builds
 

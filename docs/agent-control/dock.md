@@ -45,8 +45,16 @@ internal legacy `modules`/control records are not writable public state.
 
 ## Enter and exit
 
-Dock control is supported on Windows and macOS. Linux reports `supported: false`, and Dock entry is
-refused with `controlUnavailable`. On macOS, reservation is
+`app.capabilities.features.dock` advertises the startup backend's `supported`, `reserveSpace`, and
+`aboveFullScreen` capabilities. `dock.describe` additionally reflects whether the live controls
+are writable; query it before mutation.
+
+Dock control is supported on Windows, macOS, and EWMH-capable X11/XWayland backends on Linux.
+Linux availability follows the actual GTK window backend, not the desktop session type.
+Native Wayland backends report `supported: false` and refuse entry with `controlUnavailable`.
+Linux supports `reserveSpace` through EWMH struts, including GNOME's work area for native Wayland
+applications. Vertically interior display edges cannot reserve space and require overlay mode.
+On macOS, reservation is
 opt-in AX window avoidance and requires Accessibility permission under the running PLVS identity.
 It adjusts settled foreground standard windows, skips full-screen/minimized/unsupported windows,
 and respects application minimum sizes. It does not register a system work area. Dry runs validate
@@ -61,11 +69,12 @@ display edge; `false` makes it step aside for them as the taskbar does. It is wr
 and macOS. On macOS, it overlays native full-screen Spaces; `false` hides Dock there until returning
 to a desktop Space. It does not resize full-screen applications or require Accessibility permission.
 On unsupported platforms `describe` reports
-it unavailable, supplying it fails with `controlUnavailable`, and the stored value is kept for
-Presets without native effect. Entering an enabled Dock with only this option changed updates it.
+it unavailable and supplying it fails with `controlUnavailable`. Preset documents retain the field
+for portability; Linux's live Dock state reports `false`. On supported platforms, entering an
+enabled Dock with only this option changed updates it.
 
 On macOS, only one workbench can own avoidance on a display, even on opposite edges. A competing
-entry resolves to an overlay and reports the ordinary reservation fallback warning. Windows retains
+entry resolves to an overlay and reports the ordinary reservation fallback warning. Windows and Linux retain
 independent top and bottom edge ownership.
 
 `dock enter` uses saved values for omitted options. Submitted edge is exactly `top` or `bottom`.

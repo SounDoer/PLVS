@@ -1,5 +1,5 @@
 import { normalizePanelPresentation } from "./lib/panelPresentation.js";
-import { isDockSupported } from "./lib/platform.js";
+import { isDockSupported, isWindows, isMacOS } from "./lib/platform.js";
 import { QuickTour } from "./onboarding/QuickTour.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
@@ -681,7 +681,7 @@ function AppContent() {
         sourceMode={sourceMode}
         docked={docked}
         dockSupported={isTauri() && isDockSupported()}
-        applicationsSupported={isTauri() && isDockSupported()}
+        applicationsSupported={isTauri() && (isWindows() || isMacOS())}
         settingsOpen={settings.settingsOpen}
         updateSetupPending={
           isTauri() &&

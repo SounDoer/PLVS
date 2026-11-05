@@ -34,6 +34,7 @@ const READERS = {
   "ipc/capturePrefs.js": ["captureDeviceId", "multiInstancePersistence"],
   "lib/shortcutPrefs.js": ["globalPreferences", "multiInstancePersistence"],
   "lib/runtimeRole.js": ["isCoordinator"],
+  "lib/platform.js": ["agentControl"],
   "persistence/starterItemsSeed.js": ["globalPreferences", "multiInstancePersistence"],
   "persistence/index.js": ["multiInstancePersistence"],
   "persistence/multiInstanceBackend.js": [

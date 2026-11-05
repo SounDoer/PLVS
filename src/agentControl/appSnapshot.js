@@ -76,6 +76,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
     appVersion: String(runtime.appVersion),
     protocolVersion: 1,
     features: {
+      ...(runtime.dockCapabilities ? { dock: runtime.dockCapabilities } : {}),
       ...(hasMethod("editorDraft.describe")
         ? {
             editorDraft: {
@@ -271,5 +272,6 @@ export function readAgentControlRuntime() {
     appVersion: injected.appVersion,
     identifier: injected.identifier,
     platform: injected.platform,
+    dockCapabilities: injected.dockCapabilities,
   };
 }

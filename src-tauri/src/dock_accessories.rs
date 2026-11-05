@@ -44,8 +44,12 @@ fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   // solely to activate the destination window on macOS.
   #[cfg(target_os = "macos")]
   let builder = builder.accept_first_mouse(true);
-  #[cfg(any(target_os = "windows", target_os = "macos"))]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   let builder = builder.transparent(true);
+  // GTK's non-resizable WebKit natural minimum is taller than the Dock toolbar. The native
+  // Linux adapter locks the requested dimensions with geometry hints instead.
+  #[cfg(target_os = "linux")]
+  let builder = builder.resizable(true);
   builder
 }
 
@@ -79,6 +83,8 @@ fn ensure_accessory<R: tauri::Runtime>(
   let window = accessory_builder(app, label, &init_script)
     .build()
     .map_err(|error| format!("{label} window: {error}"))?;
+  #[cfg(target_os = "linux")]
+  crate::linux_dock::prepare_accessory(&window)?;
   if matches!(label, DOCK_SETTINGS_LABEL | DOCK_AUTHORING_LABEL) {
     let owner = app.clone();
     let label = label.to_owned();
@@ -226,6 +232,8 @@ fn set_rect<R: tauri::Runtime>(
   window
     .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
     .map_err(|e| format!("{} position: {e}", window.label()))?;
+  #[cfg(target_os = "linux")]
+  crate::linux_dock::position_accessory(window, rect)?;
   Ok(())
 }
 
@@ -487,7 +495,7 @@ pub async fn prepare_dock_settings_window<R: tauri::Runtime>(
   if window.label() != "main" {
     return Err("Only main owns Settings presentation.".into());
   }
-  if !cfg!(any(target_os = "windows", target_os = "macos")) {
+  if !crate::dock::is_supported_platform() {
     return Err("Dock is unavailable on this platform.".into());
   }
   validate_settings_surface(&surface)?;

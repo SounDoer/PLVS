@@ -31,6 +31,8 @@ mod glass_effect;
 pub mod harness_main;
 mod ipc;
 #[cfg(target_os = "linux")]
+mod linux_dock;
+#[cfg(target_os = "linux")]
 mod linux_update;
 #[cfg(target_os = "macos")]
 mod macos_dock;
@@ -328,6 +330,8 @@ pub fn run() {
       ipc::commands::read_feedback_diagnostics,
     ])
     .setup(|app| {
+      #[cfg(target_os = "linux")]
+      linux_dock::initialize();
       let launch_args: Vec<String> = std::env::args().skip(1).collect();
       let isolated_app_data = test_app_data_root(&launch_args)?;
       let app_data_dir = match isolated_app_data.as_ref() {
@@ -477,6 +481,11 @@ pub fn run() {
         "appVersion": env!("CARGO_PKG_VERSION"),
         "identifier": env!("PLVS_APP_ID"),
         "platform": std::env::consts::OS,
+        "dockCapabilities": {
+          "supported": dock::is_supported_platform(),
+          "reserveSpace": dock::is_supported_platform(),
+          "aboveFullScreen": cfg!(any(target_os = "windows", target_os = "macos")),
+        },
       });
       let mut dock_state: Option<dock::DockStateRecord> =
         serde_json::from_value(hydrated.dock_state)
@@ -554,7 +563,7 @@ pub fn run() {
       // must activate its control as well as its window (including Hide Toolbar).
       #[cfg(target_os = "macos")]
       let builder = builder.accept_first_mouse(true);
-      #[cfg(any(target_os = "windows", target_os = "macos"))]
+      #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
       let builder = builder.transparent(true);
 
       let window = builder
@@ -712,6 +721,37 @@ pub fn run() {
       #[cfg(target_os = "windows")]
       appbar::install_window_subclass(&window).map_err(|e| format!("appbar subclass: {e}"))?;
 
+      #[cfg(target_os = "linux")]
+      if app
+        .state::<dock::DockedFlag>()
+        .0
+        .load(std::sync::atomic::Ordering::Relaxed)
+      {
+        if let Some(state) = boot_dock.as_mut() {
+          match linux_dock::configure(
+            &window,
+            state.edge,
+            state.height,
+            state.reserve_space,
+            state.monitor.as_deref(),
+          ) {
+            Ok(reserved) => state.reserve_space = reserved,
+            Err(error) => {
+              log::warn!("Dock reservation failed; continuing as overlay: {error}");
+              state.reserve_space = false;
+              linux_dock::configure(
+                &window,
+                state.edge,
+                state.height,
+                false,
+                state.monitor.as_deref(),
+              )?;
+            }
+          }
+          dock::write_dock_state(window.app_handle(), state);
+        }
+      }
+
       #[cfg(target_os = "windows")]
       if app
         .state::<dock::DockedFlag>()
@@ -761,6 +801,8 @@ pub fn run() {
         .store(true, std::sync::atomic::Ordering::Release);
 
       feedback_diagnostics::watch_environment(window.clone());
+      #[cfg(target_os = "linux")]
+      linux_dock::watch(&window)?;
 
       // Persist geometry on move/resize, debounced via a dirty flag + short flush thread.
       use std::sync::atomic::{AtomicBool, Ordering};

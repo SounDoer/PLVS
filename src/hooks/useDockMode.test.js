@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
+  onGeometry: vi.fn(async (_callback) => () => {}),
 }));
 
 vi.mock("../ipc/commands.js", () => ({
@@ -23,6 +24,7 @@ vi.mock("../ipc/commands.js", () => ({
   setDockSuspended: mocks.setDockSuspended,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
+vi.mock("../ipc/events.js", () => ({ onDockNativeGeometryChanged: mocks.onGeometry }));
 import { createElement } from "react";
 import { settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
@@ -56,6 +58,7 @@ describe("useDockMode", () => {
     mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
     mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
+    mocks.onGeometry.mockClear();
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     delete window.__PLVS_INITIAL_STATE__;
   });
@@ -86,10 +89,55 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(false);
   });
 
+  it("enables Linux Dock only with native backend capability and exposes reservation", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Linux x86_64" });
+    window.__PLVS_INITIAL_STATE__ = {
+      agentControl: {
+        dockCapabilities: { supported: true, reserveSpace: true, aboveFullScreen: false },
+      },
+      dockState: { enabled: true, edge: "bottom", reserveSpace: true, aboveFullScreen: true },
+    };
+    const { result } = renderHook(() => useDockMode());
+    expect(result.current.dockEnabled).toBe(true);
+    expect(result.current.reserveSpace).toBe(true);
+    expect(result.current.aboveFullScreen).toBe(false);
+    await act(async () => {
+      await result.current.setReserveSpace(false);
+    });
+    expect(mocks.setDockReserveSpace).toHaveBeenCalledWith({ enabled: false, edge: "bottom" });
+    expect(result.current.reserveSpace).toBe(false);
+  });
+
   it("normalizes a missing aboveFullScreen to true", () => {
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
     const { result } = renderHook(() => useDockMode());
     expect(result.current.aboveFullScreen).toBe(true);
+  });
+
+  it("reconciles Linux monitor and fitted height after native display changes", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Linux x86_64" });
+    window.__PLVS_INITIAL_STATE__ = {
+      agentControl: { dockCapabilities: { supported: true } },
+      dockState: { enabled: true, edge: "bottom", height: 150, monitor: "removed" },
+    };
+    const { result } = renderHook(() => useDockMode());
+    await waitFor(() => expect(mocks.onGeometry).toHaveBeenCalledOnce());
+    mocks.getDockState.mockResolvedValue({
+      ready: true,
+      state: {
+        enabled: true,
+        edge: "bottom",
+        height: 90,
+        monitor: "replacement",
+        reserveSpace: false,
+      },
+    });
+    await act(async () => {
+      mocks.onGeometry.mock.calls[0][0]();
+    });
+    await waitFor(() => expect(result.current.dockMonitor).toBe("replacement"));
+    expect(result.current.dockHeight).toBe(90);
+    expect(result.current.reserveSpace).toBe(false);
   });
 
   it("keeps a stored aboveFullScreen false", () => {

@@ -192,7 +192,7 @@ async function apply(ctx) {
     loudnessProfiles,
     dockSupported: dock.supported === true,
     reserveSpaceSupported:
-      dock.supported === true && ["windows", "macos"].includes(dockContext.platform),
+      dock.supported === true && ["windows", "macos", "linux"].includes(dockContext.platform),
     glassSupported: viewContext.platform === "macos",
     channelCount: analysisContext.channelCount,
     channelLabels: analysisContext.channelLabels,

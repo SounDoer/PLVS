@@ -660,6 +660,24 @@ Declared exceptions (device px on purpose):
 
 ### Dock three-window boundary
 
+Linux Dock uses the actual GTK backend and EWMH capability discovery at startup. An XWayland
+client is supported even inside a Wayland session; a native Wayland client is not. `linux_dock.rs`
+owns GTK/GDK access on the UI thread, Dock window hints, and `_NET_WM_STRUT_PARTIAL` reservation.
+The main strip alone reserves space; accessories are overlay Dock windows that can take keyboard
+focus. Boot capabilities are shared by the main and accessory renderers. Leaving Dock restores the
+normal window type; suspension removes the strut, and the window manager removes it on process
+death. Linux does not expose Above Full Screen. See
+[ADR 0054](adr/0054-linux-dock-uses-ewmh-on-the-actual-x11-backend.md).
+
+GTK keeps the WebKit natural/default height as a minimum when a window is non-resizable. Linux
+therefore uses explicit equal min/max geometry hints on resizable native windows for the strip and
+accessories, and clears those hints on normal-window restoration. This permits the toolbar and
+compact strip to shrink below WebKit's natural height. Display geometry/scale changes remove stale
+struts before fitting the strip to the new display and notifying the frontend owner.
+Linux native windows and WebViews use RGBA transparency so an accessory's empty viewport does not
+become an opaque rectangle and Surface Opacity can reveal the desktop. WebKit's transparent
+screenshot option alone does not verify the native window visual.
+
 The Dock form consists of three native windows: `main` is the meter strip, at least 68 logical px
 and 180 px by default, limited by the display work area with accessory space reserved; `dock-header` is a full-width 36 logical px toolbar, shown when the user opens it
 from the strip's entry, while an editor is open, or while an error notice stands; `dock-editor` is a

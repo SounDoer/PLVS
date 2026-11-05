@@ -88,6 +88,25 @@ one-minute Settings and toolbar/panel retirement intervals, and verifies recreat
 owned process and retains commands, native logs, build fingerprints, and results. Preview pixels,
 dirty-draft behavior, focus, full-screen Spaces, and restart persistence still require native UI review.
 
+## Linux Dock verification
+
+After building the dev app, run `node scripts/smoke-linux-dock.mjs [dev-executable] [output-directory]`
+on an unlocked, single-monitor desktop at 1x display scale with `xprop` and `xwininfo` (`x11-utils`)
+installed. A debug executable
+needs its Vite server running with `TAURI_ENV_PLATFORM=linux`; `npm run desktop:dev` configures that
+environment normally. The smoke launches its own isolated dev instance through X11/XWayland and
+does not change an existing workbench or use the capture rig.
+
+It checks top/bottom reservation, repeated height changes and screenshot dimensions, toolbar and
+Settings presentation, native RGBA visuals and input-focus hints, suspension/resume, exit,
+persisted restart, and abnormal process cleanup.
+If the session also offers native Wayland, a second isolated instance verifies that Dock is refused.
+Screenshots, command responses, executable checksum, session information and `result.json` are saved
+under `artifacts/linux-dock-smoke/` by default. This is development evidence, not release acceptance.
+Review screenshots as well as the report. Multi-monitor hotplug, mixed scale factors, keyboard
+interaction and full-screen stacking still need native desktop review; record whether the session
+is local or reached through RDP.
+
 ## Experimental Linux capture verification
 
 Use `npm run desktop:linux` to launch the dev app with its dev identity. This

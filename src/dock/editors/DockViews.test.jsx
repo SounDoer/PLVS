@@ -34,6 +34,20 @@ describe("Dock Views", () => {
     expect(onAction).toHaveBeenCalledWith("set-dock-surface-opacity", { value: 35 });
   });
 
+  it("offers EWMH reservation on Linux without claiming full-screen support", () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Linux x86_64" });
+    window.__PLVS_INITIAL_STATE__ = { agentControl: { dockCapabilities: { supported: true } } };
+    try {
+      render(<DockViews state={{ edge: "bottom", reserveSpace: true }} onAction={vi.fn()} />);
+      expect(
+        screen.getByRole("switch", { name: "Reserve Space" }).getAttribute("aria-checked")
+      ).toBe("true");
+      expect(screen.queryByRole("switch", { name: "Above Full Screen" })).toBeNull();
+    } finally {
+      delete window.__PLVS_INITIAL_STATE__;
+    }
+  });
+
   it.each(["Win32", "MacIntel"])(
     "shows Above Full Screen on %s and sends toggle-above-full-screen",
     (platform) => {

@@ -185,6 +185,24 @@ describe("Dock Control", () => {
     ]);
   });
 
+  it("allows Linux EWMH reservation while keeping full-screen control unavailable", () => {
+    const current = { ...dock, enabled: false, reserveSpace: false, aboveFullScreen: false };
+    const context = { platform: "linux", sourceMode: "live" };
+    const plan = planDockFormMutation(current, "dock.enter", { reserveSpace: true }, context);
+    expect(plan.issues).toEqual([]);
+    expect(plan.dock.reserveSpace).toBe(true);
+    expect(buildDockDescription(current, context).reserveSpace.writable).toBe(true);
+    expect(buildDockDescription(current, context).aboveFullScreen.writable).toBe(false);
+    const unsupported = planDockFormMutation(
+      { ...current, supported: false },
+      "dock.enter",
+      {},
+      context
+    );
+    expect(unsupported.refusal).toEqual({ code: "controlUnavailable" });
+    expect(unsupported.changed).toEqual([]);
+  });
+
   it("allows macOS overlay entry and explicit opt-in reservation", () => {
     const current = { ...dock, enabled: false, reserveSpace: false };
     const context = { platform: "macos", sourceMode: "live" };

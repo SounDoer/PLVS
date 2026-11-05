@@ -64,24 +64,27 @@ describe("Dock platform acceptance", () => {
     ]);
   });
 
-  it("requires supported platforms to accept a guarded dry-run", async () => {
-    const run = vi.fn(async (args) => {
-      if (args[1] === "describe") return { supported: true };
-      if (args[1] === "inspect") return { revision: 9 };
-      return { changed: false };
-    });
-    await expect(runDockPlatformContract(run, { os: "windows" })).resolves.toEqual([
-      expect.stringContaining("guarded dry-run"),
-    ]);
-    expect(run).toHaveBeenLastCalledWith([
-      "dock",
-      "enter",
-      "--dry-run",
-      "--expected-revision",
-      "9",
-      "--json",
-    ]);
-  });
+  it.each(["windows", "linux"])(
+    "requires supported %s backends to accept a guarded dry-run",
+    async (os) => {
+      const run = vi.fn(async (args) => {
+        if (args[1] === "describe") return { supported: true };
+        if (args[1] === "inspect") return { revision: 9 };
+        return { changed: false };
+      });
+      await expect(runDockPlatformContract(run, { os })).resolves.toEqual([
+        expect.stringContaining("guarded dry-run"),
+      ]);
+      expect(run).toHaveBeenLastCalledWith([
+        "dock",
+        "enter",
+        "--dry-run",
+        "--expected-revision",
+        "9",
+        "--json",
+      ]);
+    }
+  );
 });
 
 describe("live read acceptance", () => {

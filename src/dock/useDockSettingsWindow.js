@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isLinux } from "../lib/platform.js";
 import { flushSync } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { UI_PREFERENCES, resolveInterfacePreferences } from "../uiPreferences.js";
@@ -458,7 +459,8 @@ export function useDockSettingsWindow(options) {
           if (!UI_SETTINGS_SECTIONS.includes(section))
             throw createUiNavigationError("uiTargetNotFound", { kind: "settings", section });
           latest.current.openSection(section);
-          const deadline = Date.now() + 3000;
+          // A cold WebKitGTK renderer can take longer to hydrate the hidden settings host.
+          const deadline = Date.now() + (isLinux() ? 8000 : 3000);
           while (!readySession.current || latest.current.view !== "settings") {
             if (Date.now() >= deadline)
               throw Object.assign(new Error("Settings did not become visible."), {

@@ -16,7 +16,7 @@ import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 import { DEFAULT_PRESET_NAME } from "../lib/defaultPreset.js";
 import { presetDiverges } from "../lib/presetDivergence.js";
-import { isMacOS, isWindows } from "../lib/platform.js";
+import { isWindows, isDockReserveSpaceSupported } from "../lib/platform.js";
 import { normalizeSurfaceOpacity } from "../settings/defaults.js";
 
 const EMPTY_PRESETS = { list: [], activeId: null };
@@ -284,7 +284,7 @@ export function usePresets({
         activePreset,
         { ...scene, windowBounds },
         {
-          dockReserveSpaceSupported: isWindows() || isMacOS(),
+          dockReserveSpaceSupported: isDockReserveSpaceSupported(),
           dockAboveFullScreenSupported: isWindows(),
           normalizeLoudnessProfileActive,
         }

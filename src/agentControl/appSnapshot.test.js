@@ -310,6 +310,27 @@ describe("agent-control app snapshots", () => {
     expect(readAgentControlRuntime()).toMatchObject({ available: true, enabled: false });
   });
 
+  it("publishes Linux backend Dock capabilities without inferring them from the session", () => {
+    const runtime = {
+      available: true,
+      appVersion: "0.24.1",
+      platform: "linux",
+      dockCapabilities: { supported: true, reserveSpace: true, aboveFullScreen: false },
+    };
+    expect(buildAgentControlCapabilities(runtime, 2).features.dock).toEqual(
+      runtime.dockCapabilities
+    );
+    expect(
+      buildAgentControlCapabilities(
+        {
+          ...runtime,
+          dockCapabilities: { supported: false, reserveSpace: false, aboveFullScreen: false },
+        },
+        2
+      ).features.dock.supported
+    ).toBe(false);
+  });
+
   it("advertises the library transfer methods", () => {
     const capabilities = buildAgentControlCapabilities(
       {
