@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { prepareDockAccessories, setDockAccessories } from "../ipc/commands.js";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  destroyDockAccessories,
+  prepareDockAccessories,
+  setDockAccessories,
+} from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { onDockInteractionElsewhere, onDockNativeGeometryChanged } from "../ipc/events.js";
 import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
+export const DOCK_ACCESSORY_IDLE_RETIRE_MS = 60_000;
 const ACCESSORY_READY_RETRY_MS = 50;
 const ACCESSORY_READY_ATTEMPTS = 4;
 // Focus hops between the strip, the header and the editor pass through a moment where none of
@@ -119,29 +124,83 @@ export function useDockAccessoryVisibility({
     accessoryUpdaterRef.current = createLatestDockAccessoryUpdater();
   }
   const accessoriesPreparedRef = useRef(false);
+  const editorPreparedRef = useRef(false);
+  const preparingRef = useRef(null);
+  const preparationFailureRef = useRef(null);
+  const activeRef = useRef(active);
+  const [retiringAccessories, setRetiringAccessories] = useState(false);
+  const [preparedHeaderId, setPreparedHeaderId] = useState(-1);
+  const [lifecycleEpoch, setLifecycleEpoch] = useState(0);
+  useLayoutEffect(() => {
+    activeRef.current = active;
+  }, [active]);
   const onErrorRef = useRef(onError);
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
 
-  // The windows are created on the first entry into Dock (or a docked boot) and kept afterwards.
-  // Neither shows before it exists: the header waits for its ready acknowledgement and the editor
-  // for its measured size, both of which only a running window sends.
+  const needsEditor = editorView !== null;
+  // Serialize preparation with retirement. If a panel opens during toolbar creation, retry after
+  // that preparation completes rather than dropping the panel request or racing native creation.
   useEffect(() => {
-    if (!isTauri() || !active || accessoriesPreparedRef.current) return;
-    let cancelled = false;
-    prepareDockAccessories().then(
-      () => {
+    if (!active) {
+      preparationFailureRef.current = null;
+      return;
+    }
+    const attempt = String(needsEditor);
+    if (
+      !isTauri() ||
+      retiringAccessories ||
+      preparingRef.current ||
+      preparationFailureRef.current === attempt ||
+      (accessoriesPreparedRef.current && (!needsEditor || editorPreparedRef.current))
+    )
+      return;
+    const operation = prepareDockAccessories({ editor: needsEditor });
+    preparingRef.current = operation;
+    void operation
+      .then(() => {
         accessoriesPreparedRef.current = true;
-      },
-      (error) => {
-        if (!cancelled) onErrorRef.current?.(error);
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [active]);
+        if (needsEditor) editorPreparedRef.current = true;
+      })
+      .catch((error) => {
+        preparationFailureRef.current = attempt;
+        onErrorRef.current?.(error);
+      })
+      .finally(() => {
+        preparingRef.current = null;
+        setLifecycleEpoch((value) => value + 1);
+      });
+  }, [active, needsEditor, retiringAccessories, lifecycleEpoch]);
+
+  useEffect(() => {
+    if (
+      !isTauri() ||
+      active ||
+      retiringAccessories ||
+      (!accessoriesPreparedRef.current && !preparingRef.current)
+    )
+      return undefined;
+    const timer = setTimeout(() => {
+      if (activeRef.current) return;
+      setRetiringAccessories(true);
+      void (async () => {
+        await preparingRef.current?.catch(() => {});
+        if (activeRef.current) return;
+        if (await destroyDockAccessories()) {
+          accessoriesPreparedRef.current = false;
+          editorPreparedRef.current = false;
+          setPreparedHeaderId(-1);
+        }
+      })()
+        .catch((error) => onErrorRef.current?.(error))
+        .finally(() => {
+          setRetiringAccessories(false);
+          setLifecycleEpoch((value) => value + 1);
+        });
+    }, DOCK_ACCESSORY_IDLE_RETIRE_MS);
+    return () => clearTimeout(timer);
+  }, [active, retiringAccessories, lifecycleEpoch]);
 
   const headerVisible =
     active &&
@@ -158,7 +217,6 @@ export function useDockAccessoryVisibility({
   if (presentation.key !== presentationKey) {
     setPresentation({ key: presentationKey, id: presentation.id + 1 });
   }
-  const [preparedHeaderId, setPreparedHeaderId] = useState(-1);
   const confirmHeaderReady = useCallback((id) => {
     if (Number.isSafeInteger(id)) setPreparedHeaderId((current) => Math.max(current, id));
   }, []);
@@ -344,7 +402,7 @@ export function useDockAccessoryVisibility({
   }, [headerVisible]);
 
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isTauri() || retiringAccessories) return;
     accessoryUpdaterRef.current.update(
       {
         edge,
@@ -358,6 +416,7 @@ export function useDockAccessoryVisibility({
     );
   }, [
     active,
+    retiringAccessories,
     edge,
     editorSize,
     editorAnchorX,

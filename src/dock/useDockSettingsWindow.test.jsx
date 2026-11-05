@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useDockSettingsWindow } from "./useDockSettingsWindow.js";
+import { SETTINGS_IDLE_RETIRE_MS, useDockSettingsWindow } from "./useDockSettingsWindow.js";
 import { DockSettingsApp } from "./accessories/DockSettingsApp.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
@@ -244,6 +244,75 @@ it("destroys an idle authoring host only after its ordered business operations c
     })
   );
   expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull();
+});
+
+it("keeps Settings warm for one minute after the final operation acknowledges, then retires it", async () => {
+  const view = setup();
+  let finish;
+  view.exported.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }));
+  await screen.findByRole("dialog", { name: "Settings" });
+  fireEvent.click(screen.getByRole("button", { name: "Export complete setup" }));
+  await waitFor(() => expect(view.exported).toHaveBeenCalledOnce());
+  vi.useFakeTimers();
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Close settings" })));
+  await act(async () => vi.advanceTimersByTimeAsync(SETTINGS_IDLE_RETIRE_MS));
+  expect(bus.invoke.mock.calls.some(([name]) => name === "destroy_dock_settings_window")).toBe(
+    false
+  );
+  await act(async () => finish("cancelled"));
+  await act(async () => vi.advanceTimersByTimeAsync(SETTINGS_IDLE_RETIRE_MS - 1));
+  expect(bus.invoke.mock.calls.some(([name]) => name === "destroy_dock_settings_window")).toBe(
+    false
+  );
+  await act(async () => vi.advanceTimersByTimeAsync(1));
+  expect(bus.invoke).toHaveBeenCalledWith("destroy_dock_settings_window", {
+    surface: "dock-settings",
+  });
+});
+
+it("cancels Settings retirement when reopened before its idle deadline", async () => {
+  setup();
+  fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }));
+  await screen.findByRole("dialog", { name: "Settings" });
+  vi.useFakeTimers();
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Close settings" })));
+  await act(async () => vi.advanceTimersByTimeAsync(30000));
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }))
+  );
+  await act(async () => vi.advanceTimersByTimeAsync(SETTINGS_IDLE_RETIRE_MS));
+  expect(bus.invoke.mock.calls.some(([name]) => name === "destroy_dock_settings_window")).toBe(
+    false
+  );
+  expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
+});
+
+it("creates a fresh Settings host after retirement and waits for its ready acknowledgement", async () => {
+  setup();
+  fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }));
+  await screen.findByRole("dialog", { name: "Settings" });
+  vi.useFakeTimers();
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Close settings" })));
+  await act(async () => vi.advanceTimersByTimeAsync(SETTINGS_IDLE_RETIRE_MS));
+  expect(bus.invoke).toHaveBeenCalledWith("destroy_dock_settings_window", {
+    surface: "dock-settings",
+  });
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Open Test Settings" }))
+  );
+  expect(
+    bus.invoke.mock.calls.filter(([name]) => name === "prepare_dock_settings_window")
+  ).toHaveLength(2);
+  await act(async () => {
+    for (const callback of bus.ready) callback({ surface: "dock-settings" });
+  });
+  expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
 });
 
 it("resizes an authoring host using its reported scale without stealing focus again", async () => {

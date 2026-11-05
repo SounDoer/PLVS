@@ -124,21 +124,59 @@ fn ensure_accessory<R: tauri::Runtime>(
   Ok(())
 }
 
-/// Create the toolbar and editor accessories when the main window enters or boots into Dock, so
-/// sessions that never dock never pay for them. They are kept after Dock exits: an editor draft
-/// must survive, and re-entering Dock should not wait for new WebViews. A new accessory announces
-/// readiness, which republishes the current state to it before it is shown.
+/// Prepare the toolbar on Dock entry, and the shared panel host only when it is needed.
 /// Async: building a window from a synchronous command can deadlock on Windows.
 #[tauri::command]
 pub async fn prepare_dock_accessories<R: tauri::Runtime>(
   window: WebviewWindow<R>,
+  editor: bool,
 ) -> Result<(), String> {
   if window.label() != "main" {
     return Err("Only the main window owns Dock accessories.".into());
   }
   let app = window.app_handle();
   ensure_accessory(app, DOCK_HEADER_LABEL)?;
-  ensure_accessory(app, DOCK_EDITOR_LABEL)
+  if editor {
+    ensure_accessory(app, DOCK_EDITOR_LABEL)?;
+  }
+  Ok(())
+}
+
+/// Check the actual form and retire both idle accessories in one UI-thread operation, so a
+/// queued retirement cannot destroy accessories after a native Dock re-entry has completed.
+#[tauri::command]
+pub async fn destroy_dock_accessories<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+) -> Result<bool, String> {
+  if window.label() != "main" {
+    return Err("Only the main window owns Dock accessories.".into());
+  }
+  let app = window.app_handle().clone();
+  let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+  window
+    .run_on_main_thread(move || {
+      let result = (|| {
+        if app
+          .state::<crate::dock::DockedFlag>()
+          .0
+          .load(std::sync::atomic::Ordering::Relaxed)
+        {
+          return Ok(false);
+        }
+        for label in [DOCK_EDITOR_LABEL, DOCK_HEADER_LABEL] {
+          if let Some(host) = app.get_webview_window(label) {
+            host.destroy().map_err(|error| error.to_string())?;
+          }
+        }
+        Ok(true)
+      })();
+      let _ = sender.send(result);
+    })
+    .map_err(|error| error.to_string())?;
+  tauri::async_runtime::spawn_blocking(move || receiver.recv())
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())?
 }
 
 /// Create the update accessory only when Dock may need it. The main window calls this as soon

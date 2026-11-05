@@ -126,6 +126,11 @@ Space** and **Above Full Screen** where supported, and ends with how it looks, *
 and **Surface Opacity**. Select **Off** to restore the normal window. Sources and Views open beside the strip;
 opening either does not restart capture. Panel settings remain accessible through the panel editor.
 
+The toolbar is prepared when Dock starts; its shared panel window is created when first needed.
+Returning to the normal window keeps these windows ready for one minute, then releases them. A quick
+return to Dock reuses them. Capture, history, and open Theme/Profile drafts remain in the main
+application throughout.
+
 On Windows and macOS, Dock parks a slim, always-on-top meter strip against the top or bottom edge of
 the screen, so the meters stay visible while you work in another app. A narrow column at the right
 end of the strip holds three buttons, top to bottom: Start/Stop (Return to Live during a Snapshot),

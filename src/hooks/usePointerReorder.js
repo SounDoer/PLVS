@@ -52,6 +52,13 @@ export function usePointerReorder(ids, onReorder) {
       parkedIdsRef.current = ids;
       return undefined;
     }
+    // Callers may recreate an equivalent array during any render. Synchronizing by identity
+    // alone would schedule another render, which creates another array and never settles.
+    if (
+      ids.length === orderedIdsRef.current.length &&
+      ids.every((id, index) => id === orderedIdsRef.current[index])
+    )
+      return undefined;
     // Deferred a tick so a drag's own onReorder round-trip (store write -> new `ids` prop)
     // lands after the state the drag just produced, instead of visibly snapping back first.
     const timer = setTimeout(() => {

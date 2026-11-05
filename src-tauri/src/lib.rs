@@ -284,6 +284,7 @@ pub fn run() {
       dock_accessories::set_dock_settings_window,
       dock_accessories::settings_file_dialog,
       dock_accessories::prepare_dock_accessories,
+      dock_accessories::destroy_dock_accessories,
       update_runtime::update_check,
       update_runtime::update_download,
       update_runtime::update_cancel,

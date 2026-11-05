@@ -685,13 +685,21 @@ raises the header while the strip is hidden: it is opened only from the strip's 
 full-screen window taking the foreground closes a toolbar that was already open, through the same
 focus rule that closes it when the user clicks another application.
 
-None of the accessory windows exists at startup; each WebView renderer costs about 33 MB private and
-70 MB working set on Windows. `useDockAccessoryVisibility` creates `dock-header` and `dock-editor`
-through `prepare_dock_accessories` the first time Dock becomes active, including a docked boot, and
-they are kept after Dock exits so an editor draft survives and re-entry does not wait for new
-WebViews. A new accessory announces readiness and receives the current state before it can show:
-the header only after acknowledging its render, the editor only after reporting its measured size.
-Hiding an accessory that does not exist yet is a no-op; a failed creation exits Dock with a notice.
+Dock accessories are created on demand. `useDockAccessoryVisibility` prepares `dock-header` on the
+first Dock entry (including a docked boot), and `dock-editor` only when a toolbar panel is first
+requested. The shared panel host stays reusable while Dock is active. After leaving Dock, both hosts
+stay warm for 60 seconds, then retire. A quick return cancels that timer. Preparation and retirement
+are serialized; completion triggers any newly requested preparation. Native retirement checks the
+actual Dock flag and destroys the hosts together on the UI thread, refusing a stale retirement after
+Dock re-entry. Each recreated accessory announces readiness and receives current main-owned state
+before showing: the header acknowledges its render and the editor reports its measured size.
+Hiding an absent accessory is a no-op; a failed creation reports an error without a retry loop.
+
+A closed `dock-settings` host remains warm for 60 seconds after its final business action has
+acknowledged and its client reports idle. Reopening cancels retirement. After retirement, opening
+Settings creates a fresh renderer and readiness handshake. Authoring retains immediate retirement
+after the same ordered idle acknowledgement. See
+[ADR 0051](adr/0051-dock-accessories-use-bounded-idle-retention.md).
 
 Settings uses a narrow `dock-settings` host, following the ordinary drawer's Interface Size width.
 Theme/Profile/Feedback use the separate `dock-authoring` host, with the shared floating frame's

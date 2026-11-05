@@ -1,8 +1,13 @@
 /** @vitest-environment jsdom */
 import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { prepareDockAccessories, setDockAccessories } from "../ipc/commands.js";
 import {
+  destroyDockAccessories,
+  prepareDockAccessories,
+  setDockAccessories,
+} from "../ipc/commands.js";
+import {
+  DOCK_ACCESSORY_IDLE_RETIRE_MS,
   createLatestDockAccessoryUpdater,
   setDockAccessoriesWhenReady,
   useDockAccessoryVisibility,
@@ -29,6 +34,7 @@ vi.mock("../ipc/events.js", () => ({
 vi.mock("../ipc/commands.js", () => ({
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
   prepareDockAccessories: vi.fn().mockResolvedValue(undefined),
+  destroyDockAccessories: vi.fn().mockResolvedValue(true),
 }));
 
 function renderVisibility(initialProps = {}) {
@@ -450,6 +456,88 @@ describe("useDockAccessoryVisibility", () => {
     expect(prepareDockAccessories).toHaveBeenCalledTimes(1);
   });
 
+  it("prepares only the toolbar on entry and creates the panel host on first use", async () => {
+    const { result } = renderVisibility();
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenLastCalledWith({ editor: false });
+    act(() => result.current.openEditor("device"));
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenLastCalledWith({ editor: true });
+    act(() => result.current.closeEditor());
+    act(() => result.current.openEditor("views"));
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(2);
+  });
+
+  it("reclaims idle accessories after leaving Dock and prepares them again on re-entry", async () => {
+    const { rerender } = renderVisibility();
+    await act(async () => {});
+    rerender({ active: false });
+    await act(async () => vi.advanceTimersByTimeAsync(DOCK_ACCESSORY_IDLE_RETIRE_MS - 1));
+    expect(destroyDockAccessories).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(destroyDockAccessories).toHaveBeenCalledOnce();
+    rerender({ active: true });
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves a panel request made while toolbar creation is still in flight", async () => {
+    let finish;
+    vi.mocked(prepareDockAccessories).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const { result } = renderVisibility();
+    act(() => result.current.openEditor("device"));
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(1);
+    await act(async () => finish());
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(2);
+    expect(prepareDockAccessories).toHaveBeenLastCalledWith({ editor: true });
+  });
+
+  it("cancels idle retirement when Dock is re-entered during its warm interval", async () => {
+    const { rerender } = renderVisibility();
+    await act(async () => {});
+    rerender({ active: false });
+    await act(async () => vi.advanceTimersByTimeAsync(30000));
+    rerender({ active: true });
+    await act(async () => vi.advanceTimersByTimeAsync(DOCK_ACCESSORY_IDLE_RETIRE_MS));
+    expect(destroyDockAccessories).not.toHaveBeenCalled();
+    expect(prepareDockAccessories).toHaveBeenCalledOnce();
+  });
+
+  it("recreates accessories if re-entry overlaps an already started retirement", async () => {
+    let finish;
+    vi.mocked(destroyDockAccessories).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const { rerender } = renderVisibility();
+    await act(async () => {});
+    rerender({ active: false });
+    await act(async () => vi.advanceTimersByTimeAsync(DOCK_ACCESSORY_IDLE_RETIRE_MS));
+    rerender({ active: true });
+    expect(prepareDockAccessories).toHaveBeenCalledOnce();
+    await act(async () => finish(true));
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(2);
+  });
+
+  it("honors the native refusal to retire after a form change", async () => {
+    vi.mocked(destroyDockAccessories).mockResolvedValueOnce(false);
+    const { rerender } = renderVisibility();
+    await act(async () => {});
+    rerender({ active: false });
+    await act(async () => vi.advanceTimersByTimeAsync(DOCK_ACCESSORY_IDLE_RETIRE_MS));
+    rerender({ active: true });
+    await act(async () => {});
+    expect(prepareDockAccessories).toHaveBeenCalledOnce();
+  });
+
   it("reports a failed creation and tries again on the next activation", async () => {
     const onError = vi.fn();
     const failure = new Error("WebView unavailable");
@@ -457,6 +545,8 @@ describe("useDockAccessoryVisibility", () => {
     const { rerender } = renderVisibility({ onError });
     await act(async () => {});
     expect(onError).toHaveBeenCalledWith(failure);
+    await act(async () => vi.advanceTimersByTimeAsync(1000));
+    expect(prepareDockAccessories).toHaveBeenCalledTimes(1);
 
     rerender({ onError, active: false });
     rerender({ onError, active: true });

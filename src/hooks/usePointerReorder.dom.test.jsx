@@ -30,6 +30,41 @@ function dispatch(type, init) {
 }
 
 describe("usePointerReorder", () => {
+  it("settles after an unrelated render when the caller recreates equivalent ids", async () => {
+    vi.useFakeTimers();
+    let renders = 0;
+    const onReorder = vi.fn();
+    const view = renderHook(() => {
+      renders += 1;
+      return usePointerReorder(["a", "b", "c"], onReorder);
+    });
+    try {
+      view.rerender();
+      await act(async () => vi.runOnlyPendingTimers());
+      expect(renders).toBe(2);
+      expect(vi.getTimerCount()).toBe(0);
+      expect(onReorder).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("resynchronizes positional ids after a commit so the next drag starts in canonical order", async () => {
+    const { view, onReorder } = setup(["0", "1", "2"]);
+    act(() => view.result.current.startDrag("2", pointerEvent("pointerdown")));
+    dispatch("pointermove", { clientY: 10 });
+    dispatch("pointerup", { clientY: 10 });
+    expect(onReorder).toHaveBeenLastCalledWith(["2", "0", "1"]);
+    view.rerender({ ids: ["0", "1", "2"] });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 5)));
+    expect(view.result.current.orderedIds).toEqual(["0", "1", "2"]);
+    act(() => view.result.current.startDrag("0", pointerEvent("pointerdown")));
+    dispatch("pointermove", { clientY: 110 });
+    dispatch("pointerup", { clientY: 110 });
+    expect(onReorder).toHaveBeenLastCalledWith(["1", "2", "0"]);
+  });
+
   it("commits a drag released away from the drag handle", () => {
     const { view, onReorder } = setup(["a", "b", "c"]);
     act(() => view.result.current.startDrag("c", pointerEvent("pointerdown")));

@@ -28,6 +28,8 @@ const REMOTE_KINDS = new Set([
   "libraryPicker",
 ]);
 
+export const SETTINGS_IDLE_RETIRE_MS = 60_000;
+
 /** Main owns every operation. Only presentation data and explicitly named actions cross WebViews.
  * @param {any} options
  */
@@ -48,6 +50,7 @@ export function useDockSettingsWindow(options) {
   const [destroying, setDestroying] = useState(false);
   const [layout, setLayout] = useState(null);
   const retiring = useRef(false);
+  const idleTimer = useRef(null);
   const [geometryEpoch, setGeometryEpoch] = useState(0);
   const [ready, setReady] = useState(null);
   const [error, setError] = useState("");
@@ -55,6 +58,10 @@ export function useDockSettingsWindow(options) {
   const [reply, setReply] = useState(null);
   useLayoutEffect(() => {
     latest.current = options;
+    if (options.enabled && options.active && idleTimer.current !== null) {
+      clearTimeout(idleTimer.current);
+      idleTimer.current = null;
+    }
   });
 
   const reportError = useCallback((cause) => {
@@ -171,6 +178,34 @@ export function useDockSettingsWindow(options) {
     const result = (value) => {
       if (!disposed) flushSync(() => setReply(value));
     };
+    const retireIdleHost = () => {
+      if (
+        disposed ||
+        (latest.current.enabled && latest.current.active) ||
+        retiring.current ||
+        !clientReady.current
+      )
+        return;
+      retiring.current = true;
+      clientReady.current = false;
+      readySession.current = null;
+      clearRegistry();
+      setReady(null);
+      setDestroying(true);
+      void invoke("destroy_dock_settings_window", { surface })
+        .then(() => {
+          setPrepared(false);
+          remoteRegistry.current = null;
+        })
+        .catch((error) => {
+          clientReady.current = true;
+          reportError(error);
+        })
+        .finally(() => {
+          retiring.current = false;
+          setDestroying(false);
+        });
+    };
     void Promise.allSettled([
       listenDockAccessoryReady((event) => {
         if (event?.surface !== surface) return;
@@ -182,32 +217,18 @@ export function useDockSettingsWindow(options) {
         if (action?.surface !== surface) return;
         const value = action.payload;
         if (action.type === "settings-idle") {
-          if (surface !== "dock-authoring") return;
           if (
             (latest.current.enabled && latest.current.active) ||
             retiring.current ||
             !clientReady.current
           )
             return;
-          retiring.current = true;
-          clientReady.current = false;
-          readySession.current = null;
-          clearRegistry();
-          setReady(null);
-          setDestroying(true);
-          void invoke("destroy_dock_settings_window", { surface })
-            .then(() => {
-              setPrepared(false);
-              remoteRegistry.current = null;
-            })
-            .catch((error) => {
-              clientReady.current = true;
-              reportError(error);
-            })
-            .finally(() => {
-              retiring.current = false;
-              setDestroying(false);
-            });
+          if (surface === "dock-authoring") retireIdleHost();
+          else if (idleTimer.current === null)
+            idleTimer.current = setTimeout(() => {
+              idleTimer.current = null;
+              retireIdleHost();
+            }, SETTINGS_IDLE_RETIRE_MS);
           return;
         }
 
@@ -291,6 +312,8 @@ export function useDockSettingsWindow(options) {
     });
     return () => {
       disposed = true;
+      clearTimeout(idleTimer.current);
+      idleTimer.current = null;
       disposers.forEach((dispose) => dispose());
       for (const request of requests.values()) {
         clearTimeout(request.timeout);

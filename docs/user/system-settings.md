@@ -9,7 +9,8 @@ dialogs retain their full outlines and shadows.
 
 In Dock, **Settings** in the expanded toolbar opens the same controls in a separate window without
 leaving Dock or restarting capture. Its width follows the same Interface Size setting as the normal
-drawer. Saved Items export uses that window. Theme and Loudness Profile editors and Feedback open in
+drawer. After closing, its window stays ready for one minute after pending operations finish, then
+releases its resources. Reopening within that minute reuses it. Saved Items export uses that window. Theme and Loudness Profile editors and Feedback open in
 a separate, draggable authoring window with their ordinary rounded surfaces and content sizes.
 Closing an authoring flow destroys its native window after the existing save/cancel decision settles.
 In both modes, Theme and Loudness Profile editors keep short pages compact and limit long pages to
