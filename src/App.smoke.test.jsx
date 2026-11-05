@@ -80,6 +80,7 @@ vi.mock("./ipc/commands.js", () => ({
   setDockSuspended: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
   prepareDockAccessories: vi.fn().mockResolvedValue(undefined),
+  destroyDockAccessories: vi.fn().mockResolvedValue(true),
   getVisualCaptureCapabilities: vi.fn().mockResolvedValue({
     platform: "windows",
     screenshot: { available: true, targets: ["main", "workspace", "panel"] },
@@ -1023,6 +1024,7 @@ describe("App smoke", () => {
     };
     render(<App />);
     await waitFor(() => expect(prepareDockAccessories).toHaveBeenCalled());
+    expect(prepareDockAccessories).toHaveBeenCalledWith({ editor: false });
   });
 
   it("lists Stereo Map immediately after Waveform in Add Panel, and adds it independently", async () => {
