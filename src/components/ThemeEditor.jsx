@@ -1,5 +1,5 @@
 import { FLOATING_EDITOR_CLASS } from "@/components/ui/surfaceStyles.js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -235,6 +235,42 @@ export function ThemeEditor({
 
   const ref = useRef(null);
   const dragHandlers = useFloatingPanelDrag(ref, onMove);
+  const previewScroll = useRef(null);
+  useLayoutEffect(() => {
+    const body = ref.current?.querySelector("[data-settings-editor-body]");
+    if (!body) return undefined;
+    if (previewOpen) {
+      previewScroll.current ??= {
+        page,
+        top: body.scrollTop,
+        width: body.clientWidth,
+        height: body.clientHeight,
+      };
+      return undefined;
+    }
+    const saved = previewScroll.current;
+    if (!saved || saved.page !== page) {
+      previewScroll.current = null;
+      return undefined;
+    }
+    // The hidden editor still lays out when Dock Preview expands its native host. At the end
+    // of a long page this clamps scrollTop. Restore again when the host shrinks back, rather
+    // than treating the first (still expanded) close render as the final editor geometry.
+    let observer;
+    const restore = () => {
+      body.scrollTop = saved.top;
+      if (body.clientWidth === saved.width && body.clientHeight === saved.height) {
+        previewScroll.current = null;
+        observer?.disconnect();
+      }
+    };
+    if (typeof ResizeObserver === "function") {
+      observer = new ResizeObserver(restore);
+      observer.observe(body);
+    }
+    restore();
+    return () => observer?.disconnect();
+  }, [previewOpen, page]);
 
   return (
     <>
@@ -469,6 +505,8 @@ export function ThemeEditor({
           draft={draft}
           onClose={() => setPreviewOpen(false)}
           onJump={(target) => {
+            // An explicit finding jump owns the destination, even when it stays on this page.
+            previewScroll.current = null;
             setPreviewOpen(false);
             setPage(target.page);
             setFocusTarget(target);

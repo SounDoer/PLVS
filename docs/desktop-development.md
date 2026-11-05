@@ -79,6 +79,15 @@ Ordinary hosted CI runs the protocol and orchestration tests; it does not certif
 capture. Native capture still needs validation on each desktop
 platform; Linux validation must use an unlocked real GNOME Wayland session with the window visible.
 
+After macOS Dock window-lifecycle changes, build the packaged dev app with
+`npm run desktop:dev-optimized -- --bundles app`, then run
+`node scripts/smoke-macos-dock-lifecycle.mjs [app-executable] [evidence-directory]` in an unlocked
+desktop session. It launches only its own isolated dev profile, repeatedly cancels Theme/Profile/Feedback
+editors on both edges, transfers an editor through both window forms, waits through the real
+one-minute Settings and toolbar/panel retirement intervals, and verifies recreation. It stops its
+owned process and retains commands, native logs, build fingerprints, and results. Preview pixels,
+dirty-draft behavior, focus, full-screen Spaces, and restart persistence still require native UI review.
+
 ## Experimental Linux capture verification
 
 Use `npm run desktop:linux` to launch the dev app with its dev identity. This

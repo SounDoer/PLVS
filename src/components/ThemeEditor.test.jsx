@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ThemeEditor } from "./ThemeEditor.jsx";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
@@ -350,6 +350,85 @@ describe("ThemeEditor", () => {
     );
     expect(onSave).not.toHaveBeenCalled();
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("restores a clamped scroll position after the native Preview host shrinks", () => {
+    const observers = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback) {
+          this.callback = callback;
+          this.disconnect = vi.fn();
+          observers.push(this);
+        }
+        observe() {}
+      }
+    );
+    try {
+      const { unmount } = render(<ThemeEditor {...BASE_PROPS} />);
+      fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
+      const body = screen
+        .getByRole("dialog", { name: "Theme editor" })
+        .querySelector("[data-settings-editor-body]");
+      let height = 458;
+      let top = 800;
+      Object.defineProperties(body, {
+        clientWidth: { configurable: true, get: () => 400 },
+        clientHeight: { configurable: true, get: () => height },
+        scrollTop: {
+          configurable: true,
+          get: () => top,
+          set: (value) => {
+            top = Math.min(value, 1258 - height);
+          },
+        },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
+      height = 482;
+      body.scrollTop = top; // Browser clamps the hidden editor during native expansion.
+      expect(body.scrollTop).toBe(776);
+      fireEvent.click(screen.getByRole("button", { name: "Close theme preview" }));
+      expect(body.scrollTop).toBe(776); // The asynchronous host resize has not arrived yet.
+      const observer = observers.at(-1);
+      expect(observer.disconnect).not.toHaveBeenCalled();
+      height = 458;
+      act(() => observer.callback());
+      expect(body.scrollTop).toBe(800);
+      expect(observer.disconnect).toHaveBeenCalledOnce();
+      unmount();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not restore an old offset over a Visual Review jump on the same page", () => {
+    const resizeObserver = vi.fn(function () {
+      this.observe = vi.fn();
+      this.disconnect = vi.fn();
+    });
+    vi.stubGlobal("ResizeObserver", resizeObserver);
+    try {
+      const draft = structuredClone(DRAFT);
+      draft.overrides["interface.surface.control"] = { kind: "color", value: "#222222" };
+      draft.overrides["interface.surface.muted"] = { kind: "color", value: "#222222" };
+      render(<ThemeEditor {...BASE_PROPS} draft={draft} page="advanced" />);
+      const body = screen
+        .getByRole("dialog", { name: "Theme editor" })
+        .querySelector("[data-settings-editor-body]");
+      body.scrollTop = 240;
+      fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
+      body.scrollTop = 216;
+      fireEvent.click(screen.getByRole("tab", { name: "Visual Review" }));
+      fireEvent.click(screen.getByRole("button", { name: "Review interface.surface.muted" }));
+      expect(resizeObserver).not.toHaveBeenCalled();
+      expect(body.scrollTop).toBe(216);
+      expect(screen.getByRole("tab", { name: "Advanced" }).getAttribute("aria-selected")).toBe(
+        "true"
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("keeps visual findings in Preview and jumps back to the related role", async () => {

@@ -56,6 +56,13 @@ pub struct AccessoryInitScript(pub String);
 /// still in flight, so two concurrent requests would each create a window and leak a renderer.
 static ACCESSORY_CREATION: Mutex<()> = Mutex::new(());
 
+fn destroy_accessory<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+  #[cfg(target_os = "macos")]
+  return crate::macos_dock_window::destroy_accessory(window);
+  #[cfg(not(target_os = "macos"))]
+  window.destroy().map_err(|error| error.to_string())
+}
+
 /// Build an accessory unless it already exists. Each one costs a WebView renderer (about 33 MB
 /// private, 70 MB working set measured on Windows), so none is created at startup.
 fn ensure_accessory<R: tauri::Runtime>(
@@ -165,7 +172,7 @@ pub async fn destroy_dock_accessories<R: tauri::Runtime>(
         }
         for label in [DOCK_EDITOR_LABEL, DOCK_HEADER_LABEL] {
           if let Some(host) = app.get_webview_window(label) {
-            host.destroy().map_err(|error| error.to_string())?;
+            destroy_accessory(&host)?;
           }
         }
         Ok(true)
@@ -814,7 +821,7 @@ pub fn destroy_dock_settings_window<R: tauri::Runtime>(
   }
   validate_settings_surface(&surface)?;
   if let Some(host) = window.app_handle().get_webview_window(&surface) {
-    host.destroy().map_err(|error| error.to_string())?;
+    destroy_accessory(&host)?;
   }
   Ok(())
 }

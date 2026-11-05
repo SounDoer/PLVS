@@ -32,6 +32,7 @@ unsafe extern "C" {
     report: extern "C" fn(i32),
   ) -> i32;
   fn plvs_macos_dock_accessory_configure(window: *mut std::ffi::c_void, role: i32) -> i32;
+  fn plvs_macos_dock_accessory_forget(window: *mut std::ffi::c_void);
   fn plvs_macos_dock_window_present(window: *mut std::ffi::c_void, visible: bool, focus: bool);
   fn plvs_macos_dock_window_reveal(window: *mut std::ffi::c_void);
   fn plvs_macos_dock_window_normal(window: *mut std::ffi::c_void);
@@ -230,6 +231,21 @@ pub fn configure_accessory<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Resu
     } else {
       Err("The macOS accessory requires the PLVS Panel window host.".into())
     }
+  })
+}
+
+/// WebKit registered window observers before Panel conversion. Restore that original host
+/// before Tao detaches the WebView, so KVO removes them from the class that registered them.
+pub fn destroy_accessory<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+  let target = window.clone();
+  on_main(window, move |raw| {
+    unsafe { plvs_macos_dock_accessory_forget(raw as *mut _) };
+    if let Ok(panel) = target.app_handle().get_webview_panel(target.label()) {
+      panel
+        .to_window()
+        .ok_or("Unable to restore the macOS accessory host for destruction.")?;
+    }
+    target.destroy().map_err(|error| error.to_string())
   })
 }
 

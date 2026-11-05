@@ -22,6 +22,8 @@ background. Closing Preview restores the editor with its draft, selected page, s
 position intact. In Dock, Preview temporarily expands the same authoring window and closing it
 restores the editor's window bounds; it adds no extra WebView. Preview remains modal. Unsaved-change
 confirmation dialogs retain their usual dimming.
+Scroll restoration also waits for the Dock window to finish returning from Preview size, including
+when the editor was scrolled to the end of a long page.
 Switching between Dock and the normal window preserves the open editor, unsaved draft, and Theme
 Preview. Clicking another application leaves authoring open; Close or Escape uses the
 current surface's normal close or cancel rules, including unsaved-draft confirmation. Updates and

@@ -227,6 +227,15 @@ void plvs_macos_dock_window_present(void *raw, bool visible, bool focus) {
   [state present:window focus:focus]; [state syncOutsideWatch];
 }
 
+void plvs_macos_dock_accessory_forget(void *raw) {
+  NSWindow *window = (__bridge NSWindow *)raw;
+  PLVSDockWindows *state = windows();
+  [window orderOut:nil];
+  [state.members removeObject:window];
+  objc_setAssociatedObject(window, &desiredKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  [state syncOutsideWatch];
+}
+
 void plvs_macos_dock_window_normal(void *raw) {
   NSWindow *window = (__bridge NSWindow *)raw;
   [NSApp unhideWithoutActivation]; [NSApp activate]; [window makeKeyAndOrderFront:nil];
