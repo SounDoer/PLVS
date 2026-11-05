@@ -233,7 +233,6 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   let dropped_for_thread = dropped_chunks.clone();
   let native_layout = layout_for_uid(&uid, channels);
   super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
-  let layout_reader: super::source_layout::LayoutReader = Box::new(move || native_layout.clone());
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
       consumer_delivery,
@@ -250,7 +249,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
       true,
       dropped_for_thread,
       bridge_pool,
-      Some(layout_reader),
+      native_layout,
     );
   });
 

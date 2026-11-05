@@ -22,7 +22,9 @@ Resolve the system's configured speaker tracks and gather those PCM channels bef
 measured-source recording. Standard layouts use the shared table's standard order. This is channel
 selection and reordering, not a stereo downmix: a 5.1 source remains six distinct channels.
 
-Windows uses the captured endpoint's mix-format speaker mask; zero-mask direct streams retain their
+Windows maps `PKEY_AudioEndpoint_PhysicalSpeakers` onto the captured endpoint's mix-format speaker
+positions, including the legacy 5.1 side/back convention. A missing configured property falls back
+to the actual mix-format mask; an incompatible mapping refuses capture. Zero-mask direct streams retain their
 configured channel count with unknown positions. macOS uses explicit speaker layout descriptions,
 expanded tags or bitmaps for the captured single-stream device. Unknown/unused device slots are
 outside that explicit speaker configuration. A mere preferred stereo pair is sufficient only when
@@ -49,3 +51,9 @@ extra hardware tracks become part of system output monitoring.
 - Physical input and file monitoring remain distinct from the system-output speaker scope.
 - An optional all-device-output monitoring mode requires an explicit product selection; it must not
   be inferred from a manual role edit or from the interface's maximum channel count.
+
+## References
+
+- [Windows endpoint speaker configuration](https://learn.microsoft.com/en-us/windows/win32/coreaudio/pkey-audioendpoint-physicalspeakers)
+- [Windows stream-to-speaker mapping and legacy 5.1 convention](https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/mapping-stream-formats-to-speaker-configurations)
+- [PulseAudio channel maps](https://www.freedesktop.org/software/pulseaudio/doxygen/channelmap.html)

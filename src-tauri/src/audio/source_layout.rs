@@ -1,5 +1,5 @@
 //! Native speaker metadata, kept separate from user selections and physical channel counts.
-//! Queries run on the consumer thread, never on an audio callback.
+//! Queries and channel projection run on ordinary workers, never on an audio callback.
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NativeLayout {
@@ -7,8 +7,6 @@ pub(crate) struct NativeLayout {
   /// Physical stream indices assigned to system speakers. None means no reliable speaker scope.
   pub speakers: Option<Vec<usize>>,
 }
-
-pub(crate) type LayoutReader = Box<dyn FnMut() -> Option<NativeLayout> + Send>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct MonitoringPlan {
@@ -232,6 +230,62 @@ pub(crate) fn wave_roles(mask: u32, channels: u16) -> Option<Vec<String>> {
   Some(roles)
 }
 
+/// Map the configured device speakers to positions in the actual mix stream. Windows' legacy
+/// 5.1 back mask denotes the side pair by convention, including when the mix stream is 7.1.
+#[cfg(any(target_os = "windows", test))]
+pub(crate) fn wave_layout(
+  stream_mask: u32,
+  channels: u16,
+  configured_mask: Option<u32>,
+  output: bool,
+) -> Option<NativeLayout> {
+  let mut roles = if stream_mask == 0 {
+    vec!["generic".into(); usize::from(channels)]
+  } else {
+    wave_roles(stream_mask, channels)?
+  };
+  if !output {
+    return Some(NativeLayout {
+      roles,
+      speakers: None,
+    });
+  }
+  let stream_positions = |mask: u32| -> Vec<u32> {
+    (0..32)
+      .filter(|bit| mask & (1 << bit) != 0)
+      .map(|bit| {
+        if mask == 0x3f && bit >= 4 {
+          bit + 5
+        } else {
+          bit
+        }
+      })
+      .collect()
+  };
+  let speakers = match configured_mask.filter(|mask| *mask != 0) {
+    Some(configured) if stream_mask == 0 && configured.count_ones() == u32::from(channels) => {
+      roles = wave_roles(configured, channels)?;
+      Some((0..usize::from(channels)).collect())
+    }
+    Some(configured) => {
+      let positions = stream_positions(stream_mask);
+      stream_positions(configured)
+        .iter()
+        .map(|position| positions.iter().position(|p| p == position))
+        .collect::<Option<Vec<_>>>()
+    }
+    None => Some(
+      (0..if stream_mask == 0 {
+        usize::from(channels)
+      } else {
+        stream_mask.count_ones() as usize
+      })
+        .collect(),
+    ),
+  };
+  Some(NativeLayout { roles, speakers })
+}
+
 #[cfg(any(target_os = "linux", test))]
 pub(crate) fn pulse_roles(positions: &[u32]) -> Vec<String> {
   let has_sides = positions.iter().any(|p| matches!(p, 10 | 11));
@@ -330,6 +384,25 @@ mod tests {
     let right = MonitoringPlan::new(4, Some(apple_layout(&[u32::MAX, u32::MAX, 1, 2], true)));
     assert_ne!(left.signature(), right.signature());
     assert_eq!(left.channels(), right.channels());
+  }
+
+  #[test]
+  fn windows_speaker_configuration_is_independent_of_mix_stream_width() {
+    let stereo =
+      MonitoringPlan::require_system_scope(8, wave_layout(0x63f, 8, Some(3), true)).unwrap();
+    assert_eq!(stereo.indices, [0, 1]);
+    assert_eq!(stereo.roles.unwrap(), ["L", "R"]);
+    let surround =
+      MonitoringPlan::require_system_scope(8, wave_layout(0x63f, 8, Some(0x3f), true)).unwrap();
+    assert_eq!(surround.indices, [0, 1, 2, 3, 6, 7]);
+    assert_eq!(surround.roles.unwrap(), ["L", "R", "C", "LFE", "Ls", "Rs"]);
+    assert!(
+      MonitoringPlan::require_system_scope(6, wave_layout(0x3f, 6, Some(0x63f), true)).is_err()
+    );
+    assert_eq!(
+      MonitoringPlan::new(8, wave_layout(0x63f, 8, Some(3), false)).channels(),
+      8
+    );
   }
 
   #[test]

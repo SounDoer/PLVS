@@ -768,7 +768,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   publish_measured_pcm: bool,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
-  mut layout_reader: Option<super::source_layout::LayoutReader>,
+  native_layout: Option<super::source_layout::NativeLayout>,
 ) {
   let dropped_worker = dropped_chunks.clone();
   // Shared UI ack counter (see AppState::frame_ack_seq). Cloned once so the loop only does an
@@ -787,18 +787,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     .unwrap_or_else(|| Arc::new(Mutex::new(AnalysisRequests::default())));
   let mut sent_seq: u64 = 0;
   let mut dropped_frames: u64 = 0;
-  let native = layout_reader
-    .as_mut()
-    .and_then(|reader| reader())
-    .or_else(|| {
-      layout_reader
-        .is_some()
-        .then(|| super::source_layout::NativeLayout {
-          roles: vec!["generic".into(); usize::from(channels)],
-          speakers: None,
-        })
-    });
-  let plan = super::source_layout::MonitoringPlan::new(channels, native);
+  let plan = super::source_layout::MonitoringPlan::new(channels, native_layout);
   let channels = plan.channels();
   let mut projected = Vec::new();
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
@@ -1138,9 +1127,6 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
   }
   let bridge_layout = native_layout.clone();
-  let layout_reader: Option<super::source_layout::LayoutReader> = (output
-    || native_layout.is_some())
-  .then(|| Box::new(move || bridge_layout.clone()) as super::source_layout::LayoutReader);
   #[cfg(target_os = "linux")]
   let reader_measured_pcm = measured_pcm.clone();
 
@@ -1178,7 +1164,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
         !cfg!(target_os = "linux"),
         bridge_dropped,
         pool,
-        layout_reader,
+        bridge_layout,
       );
     },
   )

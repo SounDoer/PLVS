@@ -346,7 +346,7 @@ block, so callback cadence, decoder read size, partial packets, and resampler ba
 evidence into an adjacent loudness block. A coherent reset discards both sides' partial block.
 
 System output monitoring extracts the configured speaker channels before PCM enters any analysis or
-measured-source subscription. Windows reads the exact WASAPI endpoint mix-format speaker mask;
+measured-source subscription. Windows maps the endpoint's configured speaker property onto its WASAPI mix-format speaker mask;
 macOS expands the captured single-stream device's preferred speaker layout; Linux matches the
 sink's channel map to its monitor source and requests the source's explicit map from libpulse-simple.
 Recognised layouts are gathered into the shared table's standard order, without downmixing. Device
