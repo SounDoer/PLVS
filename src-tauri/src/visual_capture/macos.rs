@@ -267,7 +267,7 @@ mod tests {
   fn macos_capabilities_expose_measured_source_window_and_dock_recording() {
     let capabilities = MacOsPlatform.capabilities();
     assert!(capabilities.screenshot.available);
-    assert_eq!(capabilities.screenshot.targets.len(), 6);
+    assert_eq!(capabilities.screenshot.targets.len(), 7);
     assert!(capabilities.recording.available);
     assert_eq!(
       capabilities.recording.targets,
