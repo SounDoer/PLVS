@@ -45,6 +45,26 @@ function props() {
 }
 
 describe("shared Settings content", () => {
+  it.each([
+    ["normal", SettingsSheetFrame],
+    ["Dock", SettingsWindowFrame],
+  ])("uses the themed update-error tip in the %s frame", (_name, Frame) => {
+    render(
+      <SettingsContent
+        {...props()}
+        Frame={Frame}
+        updateStatus="ok"
+        hasUpdate
+        latestVersion="2.0.0"
+        updateActivity={{ readyVersion: "2.0.0", downloadError: "Disk full" }}
+      />
+    );
+    const status = screen.getByText("Update Ready · Download Failed");
+    expect(status.getAttribute("title")).toBeNull();
+    fireEvent.mouseEnter(status);
+    expect(screen.getByRole("tooltip").textContent).toBe("Disk full");
+  });
+
   it("renders identical settings sections and controls through both frames", () => {
     const values = props();
     const view = render(<SettingsContent {...values} Frame={SettingsSheetFrame} />);
