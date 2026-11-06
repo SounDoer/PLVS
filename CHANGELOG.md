@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-07
+
+### Added
+
+- Linux Dock is available on supported X11 and XWayland window backends, including XWayland in a
+  GNOME Wayland session. It supports top and bottom placement and screen-space reservation at outer
+  display edges. Native Wayland Dock and Above Full Screen on Linux remain unavailable.
+- Dock Settings opens beside the strip without leaving Dock or interrupting capture. Theme,
+  Loudness Profile and Feedback authoring use separate draggable windows; open Theme/Profile drafts
+  and Theme Preview survive switching between Dock and the normal window. The Dock Loudness Profile
+  menu includes creation, editing, export and deletion.
+- Agent Control can capture the Dock Settings window and hide the recording indicator for an
+  individual recording with `--indicator hidden`.
+
+### Changed
+
+- System output monitoring follows the configured speakers on Windows, macOS and Linux rather than
+  every exposed interface track. Panels, loudness, dialogue analysis, True Peak, measured-source
+  recording and session exports use the same selected channels. Recognised layouts retain their
+  separate channels in standard order; this does not downmix surround to stereo. Physical inputs
+  and files retain their own channel topology.
+- Native speaker roles supply channel labels and measurement interpretation. System speaker mapping
+  changes start a fresh measurement, while Snapshots retain their recorded labels. Unsafe mappings
+  report a capture error rather than silently selecting unrelated tracks.
+- Theme Preview temporarily replaces its editor without dimming the background, then restores the
+  draft, page, scroll position and window bounds. Long Theme and Loudness Profile pages scroll
+  within a bounded height while their controls remain visible.
+- Scrollbars, text selection and truncated channel-name tips follow the current theme. Idle
+  Loudness Profile rendering is reduced, and unused Dock windows release their resources.
+
+### Fixed
+
+- On macOS, closing Dock accessory windows no longer crashes the app, and returning from Theme
+  Preview restores scrolling even at the end of a long page.
+- Dock editor confirmation backdrops stay within their owning surface, and content resizing no
+  longer repeatedly takes focus from another application. Closing Settings respects pending edits.
+- On Windows, speaker configuration is resolved independently of stream width. Complete L/R stereo
+  mixes remain usable when the output retains a compatible surround configuration, including during
+  spatial sound changes; PLVS measures the supplied mix rather than reconstructing surround tracks.
+- A Tauri window whose native IPC probe fails no longer silently starts in browser mode.
+
 ## [0.24.1] - 2026-11-03
 
 ### Added

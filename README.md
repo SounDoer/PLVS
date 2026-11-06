@@ -48,7 +48,8 @@ Get the latest version from [**GitHub Releases**](https://github.com/SounDoer/PL
 
 Windows builds are not code-signed yet; choose **More info** → **Run anyway** if SmartScreen warns.
 macOS builds are Developer ID signed and Apple-notarized for normal Gatekeeper verification. On
-Linux, Dock and single-application capture are not available. See
+Linux, Dock requires an EWMH-capable X11 or XWayland window backend; native Wayland Dock and
+single-application capture are not available. See
 [Getting Started](docs/user/getting-started.md) for details.
 
 ## Documentation
