@@ -1122,7 +1122,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     || device_id == "default"
     || super::device_id::is_stable_loopback_id(&device_id)
     || super::device_id::parse_legacy_output_index(&device_id).is_some();
-  let native_layout = super::source_layout::device_layout(&device, channels, output);
+  let native_layout = super::source_layout::capture_device_layout(&device, channels, output);
   if output {
     super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
   }

@@ -31,6 +31,10 @@ channels, while 5.1 shows and measures six, even if the interface exposes additi
 All panels and measured-source recordings use that same signal. Changing the system speaker
 configuration starts a fresh measurement. See [Multichannel](multichannel.md).
 
+On Windows, a complete L/R stereo mix supplied by the audio engine can be monitored even when
+the output retains a surround configuration that includes L/R, such as during spatial sound
+changes. PLVS measures the supplied mix rather than reconstructing separate surround channels.
+
 ## Physical input
 
 Monitor a microphone or line input directly.

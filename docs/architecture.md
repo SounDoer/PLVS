@@ -347,6 +347,10 @@ evidence into an adjacent loudness block. A coherent reset discards both sides' 
 
 System output monitoring extracts the configured speaker channels before PCM enters any analysis or
 measured-source subscription. Windows maps the endpoint's configured speaker property onto its WASAPI mix-format speaker mask;
+an exact two-channel L/R mix is also a complete scope when the configured mask contains L/R,
+even if it retains additional surround positions. This exception never selects a pair from a wider
+stream or infers roles from channel count. Capture startup logs the endpoint, requested and mix
+channel counts, both masks and the resolved mapping outside the realtime callback.
 macOS expands the captured single-stream device's preferred speaker layout; Linux matches the
 sink's channel map to its monitor source and requests the source's explicit map from libpulse-simple.
 Recognised layouts are gathered into the shared table's standard order, without downmixing. Device
@@ -362,7 +366,8 @@ retain their own topology. An unavailable or invalid system speaker mapping refu
 unsupported role inside a valid scope remains unknown and retains the channels 1/2 loudness fallback.
 Manual roles apply within the monitored scope. Native roles stay out of persisted manual selections
 and travel with frames/history. See
-[ADR 0053](adr/0053-system-output-monitoring-follows-configured-speakers.md).
+[ADR 0053](adr/0053-system-output-monitoring-follows-configured-speakers.md) and its Windows stereo
+scope amendment in [ADR 0055](adr/0055-windows-complete-stereo-mix-is-a-safe-monitoring-scope.md).
 
 Multichannel detection uses the versioned `center-priority-fallback-v1` policy. Each non-LFE
 channel has independent detector state, so opposite phase and an LFE-heavy mix cannot cancel or

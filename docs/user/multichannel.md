@@ -14,6 +14,12 @@ only the assigned speaker channels and places recognised layouts in standard cha
 mixing them together. For example, a 16-channel interface configured as Stereo produces **L** and
 **R**, even when the system assigns those speakers to device channels 3 and 4.
 
+On Windows, if the audio engine supplies a complete, explicitly mapped L/R stereo stream while
+the output retains a surround speaker configuration that includes L/R, PLVS monitors that stereo
+stream. This can occur when changing spatial sound settings. It measures the supplied stereo mix,
+not separate surround channels or spatial audio objects. This does not select the first two
+channels of a wider device stream.
+
 Every panel, loudness and dialogue analysis, True Peak Max, measured-source recording and exported
 session data use this same monitored signal. Screen recordings retain their stereo AAC encoding
 from the monitored source. True Peak Max covers every monitored channel, including

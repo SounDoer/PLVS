@@ -18,7 +18,15 @@ pub(crate) fn read_device(
   channels: u16,
   output: bool,
 ) -> Option<NativeLayout> {
-  read_roles(device.id().ok()?.id(), channels, output)
+  read_roles(device.id().ok()?.id(), channels, output, false)
+}
+
+pub(crate) fn read_capture_device(
+  device: &cpal::Device,
+  channels: u16,
+  output: bool,
+) -> Option<NativeLayout> {
+  read_roles(device.id().ok()?.id(), channels, output, true)
 }
 
 // CPAL initializes STA on the calling thread. Reuse that apartment instead of treating the
@@ -34,7 +42,12 @@ fn initialize_com() -> Option<bool> {
   }
 }
 
-fn read_roles(endpoint: &str, channels: u16, output: bool) -> Option<NativeLayout> {
+fn read_roles(
+  endpoint: &str,
+  channels: u16,
+  output: bool,
+  diagnostics: bool,
+) -> Option<NativeLayout> {
   // Called on an ordinary discovery/capture worker. COM must be initialized on that thread.
   unsafe {
     let uninitialize = initialize_com()?;
@@ -61,23 +74,28 @@ fn read_roles(endpoint: &str, channels: u16, output: bool) -> Option<NativeLayou
       if format.is_null() {
         return None;
       }
-      let roles = if (*format).nChannels != channels {
-        None
-      } else if (*format).wFormatTag == 0xfffe
+      let mask = if (*format).wFormatTag == 0xfffe
         && usize::from((*format).cbSize)
           >= std::mem::size_of::<WAVEFORMATEXTENSIBLE>() - std::mem::size_of_val(&*format)
       {
         let extended = format.cast::<WAVEFORMATEXTENSIBLE>();
-        let mask = std::ptr::addr_of!((*extended).dwChannelMask).read_unaligned();
-        wave_layout(mask, channels, configured_mask, output)
+        std::ptr::addr_of!((*extended).dwChannelMask).read_unaligned()
       } else {
-        let mask = match channels {
+        match (*format).nChannels {
           1 => 4,
           2 => 3,
           _ => 0,
-        };
-        wave_layout(mask, channels, configured_mask, output)
+        }
       };
+      let mix_channels = (*format).nChannels;
+      let roles = (mix_channels == channels)
+        .then(|| wave_layout(mask, channels, configured_mask, output))
+        .flatten();
+      if diagnostics {
+        log::info!(
+          "Windows capture layout endpoint={endpoint} output={output} requested_channels={channels} mix_channels={mix_channels} mix_mask={mask:#x} configured_mask={configured_mask:?} resolved={roles:?}"
+        );
+      }
       CoTaskMemFree(Some(format.cast()));
       roles
     })();

@@ -149,6 +149,22 @@ pub(crate) fn device_plan(device: &cpal::Device, channels: u16, output: bool) ->
   MonitoringPlan::new(channels, layout)
 }
 
+/// Capture-only diagnostics avoid logging every device inventory poll.
+pub(crate) fn capture_device_layout(
+  device: &cpal::Device,
+  channels: u16,
+  output: bool,
+) -> Option<NativeLayout> {
+  #[cfg(target_os = "windows")]
+  {
+    super::windows_layout::read_capture_device(device, channels, output)
+  }
+  #[cfg(not(target_os = "windows"))]
+  {
+    device_layout(device, channels, output)
+  }
+}
+
 #[cfg(any(target_os = "macos", test))]
 pub(crate) fn apple_layout(labels: &[u32], explicit_layout: bool) -> NativeLayout {
   let roles = apple_roles(labels);
@@ -263,6 +279,12 @@ pub(crate) fn wave_layout(
       .collect()
   };
   let speakers = match configured_mask.filter(|mask| *mask != 0) {
+    // A complete stereo engine mix has no spare hardware tracks to accidentally include.
+    // Spatial rendering can expose this mix while the endpoint retains a surround setting.
+    // Never apply this exception to the first pair of a wider or unlabelled stream.
+    Some(configured) if channels == 2 && stream_mask == 3 && configured & 3 == 3 => {
+      Some(vec![0, 1])
+    }
     Some(configured) if stream_mask == 0 && configured.count_ones() == u32::from(channels) => {
       roles = wave_roles(configured, channels)?;
       Some((0..usize::from(channels)).collect())
@@ -402,6 +424,45 @@ mod tests {
     assert_eq!(
       MonitoringPlan::new(8, wave_layout(0x63f, 8, Some(3), false)).channels(),
       8
+    );
+  }
+
+  #[test]
+  fn windows_complete_stereo_mix_survives_a_retained_surround_configuration() {
+    for configured in [0x3f, 0x60f, 0x63f] {
+      let plan =
+        MonitoringPlan::require_system_scope(2, wave_layout(3, 2, Some(configured), true)).unwrap();
+      assert_eq!(plan.indices, [0, 1]);
+      assert_eq!(plan.roles.as_ref().unwrap(), &["L", "R"]);
+      assert_eq!(
+        plan.pcm(&[0.25, -0.5, 0.5, -0.25], &mut Vec::new()),
+        [0.25, -0.5, 0.5, -0.25]
+      );
+    }
+  }
+
+  #[test]
+  fn windows_stereo_exception_does_not_admit_spare_or_unmapped_tracks() {
+    for (mask, channels, configured) in [
+      (3, 4, 0x63f),    // Stereo labels on a wider hardware stream are insufficient.
+      (0, 2, 0x63f),    // Channel count alone does not establish L/R.
+      (0xc, 2, 0x63f),  // Two channels can represent C/LFE instead of L/R.
+      (3, 2, 0xc),      // The configured scope does not include L/R.
+      (0x3f, 6, 0x63f), // Other incompatible layouts still refuse capture.
+    ] {
+      assert!(MonitoringPlan::require_system_scope(
+        channels,
+        wave_layout(mask, channels, Some(configured), true)
+      )
+      .is_err());
+    }
+    let plan =
+      MonitoringPlan::require_system_scope(8, wave_layout(0x63f, 8, Some(3), true)).unwrap();
+    assert_eq!(plan.indices, [0, 1]);
+    let mut scratch = Vec::new();
+    assert_eq!(
+      plan.pcm(&[0.25, -0.5, 1., 1., 1., 1., 1., 1.], &mut scratch),
+      [0.25, -0.5]
     );
   }
 
