@@ -1,8 +1,8 @@
 {
   "version": 2,
   "method": "Rendered by scripts/marketing/render-homepage-images.mjs: the app's own panels fed by committed fixtures that the production meter pipeline measured offline, in headless Chromium.",
-  "renderedAt": "2026-11-01T12:28:14.974Z",
-  "commit": "002c8cb81b8ee2d07482e4fa504fbb9438c157b9",
+  "renderedAt": "2026-11-06T16:39:53.281Z",
+  "commit": "00997bff023f153ee9195460a3ec1cbce0ae70d0",
   "chromium": "156.0.8078.4",
   "recipe": "scripts/marketing/recipes/homepage-images.json",
   "recipeSha256": "de02bbae8610ea93f96bc087efa03d77d1f9adbb99740761c08e8a537987f9b5",
@@ -52,7 +52,7 @@
       "interfaceSize": "default",
       "width": 560,
       "height": 500,
-      "rawSha256": "19232a21b0c062ea154479f1e728d638e9d7a70feb21f9a02e7ebe88160cff3a"
+      "rawSha256": "50fbb5181a1f5030646941a948aca2b4d62b0a0c3192cd94e92e8f19aabde525"
     }
   }
 }
