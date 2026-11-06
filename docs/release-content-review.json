@@ -1,49 +1,49 @@
 {
   "schemaVersion": 1,
-  "version": "0.24.1",
-  "baselineTag": "v0.24.0",
-  "baselineRevision": "3ffe6f859fafd2affaeae592f96cfbef8a43e018",
-  "candidateRevision": "f94a18fa1f0c555672625db7871bb364973c4d96",
-  "contentSha256": "4dacc5145e62ccf8cd973e6b4be5cb5d96d858c584a46aa17495768154ed3be8",
+  "version": "0.25.0",
+  "baselineTag": "v0.24.1",
+  "baselineRevision": "d89d3826170204250830246bfa4a6082b7187162",
+  "candidateRevision": "b51abfe3deac2b7d0a0f5db4ecade7bda2a60f13",
+  "contentSha256": "39792349ee26c1bdbb9cb835f3215abbf177ebca93b5f199b6edc201467dd07b",
   "reviews": {
     "userGuide": {
       "status": "unchanged",
-      "rationale": "Reviewed the complete v0.24.0-to-candidate range against the 0.24.1 notes. The guide was already updated in the feature commits: docs/user/workspace.md describes Above Full Screen on Windows and macOS, the Dock's own Surface Opacity and the Dock Views order; docs/user/faq.md describes the macOS full-screen Space overlay and Reserve Space boundaries; docs/user/cli.md covers Dock surface opacity. Status notice placement and the removed hover tip are not documented behaviour. No promise or non-goal changed, so docs/prd.md is unchanged. No further edit was needed in the release commit. Renewed over 331c898b..f94a18fa: 86f598c8 adds the transport pill and read-only Source, Loudness and Preset context to the expanded Dock toolbar, and docs/user/workspace.md describes it in the same commit; cf3b3789 adds soak baseline fixtures only.",
+      "rationale": "Reviewed the complete v0.24.1-to-b51abfe3 candidate against the 0.25.0 CHANGELOG. Feature commits already updated the guide: Dock Settings and draggable authoring preserve drafts across hosts; Theme Preview restores its editor and scroll; bounded editors keep controls visible; Linux Dock requires supported X11/XWayland, has no Above Full Screen and reserves only outer display edges; system output follows configured speakers with conservative mapping errors and the Windows complete-stereo-mix exception; CLI documents dock-settings screenshots and per-recording indicator control. docs/prd.md already records the changed system-output scope. No further guide edit is needed.",
       "evidence": [
-        "git diff v0.24.0..a8eb2c81 -- docs/user/workspace.md docs/user/faq.md docs/user/cli.md compared with CHANGELOG.md 0.24.1",
-        "src/dock/editors/DockViews.jsx, src/hooks/useDockMode.js and src/hooks/useViewSettings.js compared with docs/user/workspace.md Dock section",
-        "src/agentControl/handlers/dock.js and src/agentControl/viewControl.js compared with docs/user/cli.md and docs/agent-control/",
-        "git diff 331c898b..f94a18fa -- docs/user/workspace.md src/dock/accessories/DockHeader.jsx src/dock/DockAccessoriesContext.jsx compared with CHANGELOG.md 0.24.1"
+        "git diff v0.24.1..b51abfe3 -- docs/user/cli.md docs/user/system-settings.md docs/user/loudness-profiles.md docs/user/workspace.md docs/user/multichannel.md docs/user/signal-source.md docs/user/getting-started.md docs/prd.md compared with CHANGELOG.md 0.25.0",
+        "docs/adr/0052-native-speaker-roles-are-session-metadata.md, 0053-system-output-monitoring-follows-configured-speakers.md, 0054-linux-dock-uses-ewmh-on-the-actual-x11-backend.md and 0055-windows-complete-stereo-mix-is-a-safe-monitoring-scope.md compared with src-tauri/src/audio/source_layout.rs, windows_layout.rs and linux_dock.rs",
+        "src/components/LoudnessProfileEditor.jsx, src/preferences/data.js and src/index.css compared with the editor-height and Preview descriptions in docs/user/system-settings.md"
       ]
     },
     "readme": {
-      "status": "unchanged",
-      "rationale": "README summarises Dock mode and its platform limits in one line; Above Full Screen and Dock Surface Opacity extend Dock without contradicting that summary or the Linux limitation. No product claim, download name or documentation link changed.",
+      "status": "updated",
+      "rationale": "Replaced the obsolete claim that Linux has no Dock with the actual EWMH-capable X11/XWayland requirement. Native Wayland Dock and single-application capture remain unavailable. Product highlights, package names and installation guidance still match the code and guide. The shared hero was re-rendered and has identical pixels.",
       "evidence": [
-        "README.md What is PLVS, Download and platform limitations read against the full v0.24.0..a8eb2c81 range",
-        "grep of README.md for Dock and full-screen claims",
-        "Renewed over 331c898b..f94a18fa: the Dock toolbar context and soak fixtures change no README claim"
+        "README.md Download platform limitations changed in 00997bff; compared with docs/user/getting-started.md, docs/user/workspace.md and src-tauri/src/linux_dock.rs",
+        "README.md What is PLVS and Download reviewed against CHANGELOG.md 0.25.0; current Linux update documentation remains applicable",
+        "artifacts/marketing/homepage-render-2026-11-06T16-38-41-270Z/report.json and decoded RGBA comparison: landing-hero has zero changed pixels"
       ]
     },
     "website": {
-      "status": "unchanged",
-      "rationale": "Homepage copy makes no claim about full-screen windows or Dock opacity; its Dock section shows the default and custom strips, which remain accurate. Generated Docs pick up the already-updated guide chapters at deployment. Sharesets pages will render Requires PLVS 0.24.1+ for Items using dockAboveFullScreen or dockSurfaceOpacity, now registered at 0.24.1. Privacy impact over baseline 3ffe6f859fafd2affaeae592f96cfbef8a43e018 to candidate a8eb2c81c7b13e5a4810a0121d4f8b751deba00f: the new Preset and Dock fields are stored locally and exported only in user-initiated portable Presets; full-screen detection uses local Windows Shell, taskbar and WinEvent/mouse hooks to decide strip placement and keeps nothing; the macOS tauri-nspanel plugin is a local window class with no network use. No change to collection, consent, upload payloads, recipients, providers, storage outside the profile, retention or deletion. Feedback, crash reporting, newsletter and update-service code and configuration are unchanged; the policy text and its effective date are retained. Renewed over 331c898b..f94a18fa: the Dock toolbar shows local session names already shown in the normal footer; no data leaves the app, no privacy impact.",
+      "status": "updated",
+      "rationale": "Homepage product copy remains accurate; generated Docs include the guide updates. Updated the Profile editor feature image to the current layout. Privacy review covers baseline d89d3826170204250830246bfa4a6082b7187162 through candidate b51abfe3deac2b7d0a0f5db4ecade7bda2a60f13: speaker assignments and selected PCM affect local session metadata, history, explicit exports and recordings, without adding collection or network transmission; retention and deletion paths are unchanged. Feedback draft ownership moved into useFeedbackDraft and local Dock transport, retaining explicit submission, optional diagnostics defaulting off, and the same payload fields and recipient. Settings and authoring windows call existing business callbacks through a local allowlisted IPC bridge. Per-recording indicator visibility changes only the local presentation, not recording consent or destinations. Update, crash-report, newsletter, feedback transport, policy and service/workflow source are unchanged. No changed service behavior requires a live-configuration assumption. No new provider, upload trigger, consent, storage location, retention or deletion rule was found. Policy text and Effective date are retained; this source review does not claim a new audit of deployed service configuration.",
       "evidence": [
-        "website/index.html product copy compared with CHANGELOG.md 0.24.1 and git diff v0.24.0..a8eb2c81",
-        "git diff v0.24.0..a8eb2c81 -- website/privacy docs/privacy-review.json src-tauri/src/update_runtime.rs is empty; tauri.conf.json changed only its version; node scripts/privacy-review.mjs check passed",
-        "git diff v0.24.0..a8eb2c81 -- src/transfer src/persistence/profileShape.js scripts/sharesets-app-compatibility.mjs: local Preset fields and Sharesets minimum versions only",
-        "Commit bodies of 14993516, fc8520f3, cb78176d and af88e20e: Shell, taskbar, hooks and NSPanel used only for local window placement",
-        "git diff --stat 331c898b..f94a18fa: no website, privacy, update or service files changed"
+        "git diff v0.24.1..b51abfe3 -- website: only the reviewed generated marketing image and provenance updates",
+        "git diff v0.24.1..b51abfe3 -- src/components/FeedbackDialog.jsx src/hooks/useFeedbackDraft.js src/dock/settingsTransport.js src/dock/accessoryProtocol.js; reviewed the extracted submission and diagnostics paths and local action allowlist",
+        "git diff v0.24.1..b51abfe3 -- src/lib/feedback.js src/lib/crashReporting.js src/lib/updateCheck.js src-tauri/src/feedback_diagnostics.rs src-tauri/src/update_runtime.rs website/privacy/index.html .github/workflows/: empty",
+        "git diff v0.24.1..b51abfe3 -- src/lib/AudioSnapHistorySlab.js src/lib/FrameIntake.js src/runtime/SourceContext.jsx src-tauri/src/cli_control.rs src-tauri/src/visual_capture/mod.rs; session-local roles, mapping restart identity and explicit screenshot/recording controls",
+        "node scripts/privacy-review.mjs check passed; npm run website:verify passed 37 HTML pages and 116 tests; artifacts/marketing/release-025-responsive/review.json records the current image hash and no horizontal overflow at 1440, 820 and 390 px"
       ]
     },
     "screenshots": {
-      "status": "unchanged",
-      "rationale": "The homepage images are recipe renders of app panels from measured fixtures. No panel renderer, theme or layout code changed in the range. The only shared CSS change routes the Dock fill through --dock-surface-opacity, which defaults to 100% like the previous --surface-opacity, and clears the body fill under a docked strip, so the rendered Default and Custom Dock and the hero are unchanged. Status notice placement and Dock Views order appear in no published image. Renewed over 331c898b..f94a18fa: the new context appears only in the expanded Dock toolbar, which no published image shows; no panel renderer changed.",
+      "status": "updated",
+      "rationale": "Used the current recipe renderer from a clean committed candidate, following docs/marketing-screenshots.md, rather than the retired native-capture recipe. All eight images rendered without page errors at their published sizes. Initial decoded-pixel comparison found identical hero, Dock pair, history, frequency pair and multichannel images; only rules-editor changed (44101 of 280000 pixels) because the shared bounded editor height policy changes title/body/footer placement. Visually inspected old and new rules-editor images: the same seven limits, values, reference and Save/Cancel remain readable. Published the clean rerender with the standard script, preserving unchanged image bytes and updating provenance. Reviewed hero and monitoring sections at 1440, 820 and 390 px, and the responsive Dock-pair contract. These fixture-rendered images do not claim native desktop or capture acceptance.",
       "evidence": [
-        "git diff --name-only v0.24.0..a8eb2c81 -- src: no files under src/panels, src/theme or scripts/marketing",
-        "git diff v0.24.0..a8eb2c81 -- src/index.css: --dock-surface-opacity defaults to 100% and the docked body fill is transparent",
-        "website/assets/landing-hero.webp, landing-dock.webp and landing-dock-custom.webp are referenced by website/index.html and README shares the hero; none shows the toolbar status area or Dock Views editor",
-        "git diff --stat 331c898b..f94a18fa: no files under src/panels, src/theme, scripts/marketing or website/assets"
+        "docs/marketing-screenshots.md and scripts/marketing/recipes/homepage-images.json; clean render artifacts/marketing/homepage-render-2026-11-06T16-39-53-279Z/report.json and comparison.html at 00997bff",
+        "Visual comparison of website/assets/raw/homepage-rendered/rules-editor.png before publication against artifacts/marketing/homepage-render-2026-11-06T16-38-41-270Z/rules-editor.png; decoded RGBA comparison of all eight images",
+        "node scripts/marketing/publish-homepage-images.mjs artifacts/marketing/homepage-render-2026-11-06T16-39-53-279Z; resulting tracked image/provenance update committed as b51abfe3",
+        "artifacts/marketing/release-025-responsive/hero-{1440,820,390}.png and monitoring-{1440,820,390}.png inspected; review.json confirms current rules.webp bytes and no page overflow",
+        "node scripts/marketing/review-dock-pair.mjs: three viewports passed; screenshots in artifacts/marketing/homepage-dock-review-1793983275846"
       ]
     }
   }
