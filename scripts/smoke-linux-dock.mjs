@@ -15,9 +15,10 @@ mkdirSync(output, { recursive: true });
 const data = mkdtempSync(join(output, "app-data-"));
 let env = {
   ...process.env,
-  GDK_BACKEND: "x11",
   PLVS_TEST_IDENTITY_ROOT: join(data, "multi-instance"),
 };
+// Exercise the same backend selection as a desktop launcher, even if the invoking shell forces X11.
+delete env.GDK_BACKEND;
 const log = openSync(join(output, "app.log"), "wx");
 let child = spawn(executable, ["--plvs-test-app-data-root", data], {
   env,
@@ -114,7 +115,10 @@ function nav(args) {
   ]);
 }
 const screenshot = (name, target = "main") =>
-  call(["visual", "screenshot", "--target", target, "--out", join(output, `${name}.png`)]);
+  until(
+    () => call(["visual", "screenshot", "--target", target, "--out", join(output, `${name}.png`)]),
+    `${target} screenshot readiness`
+  );
 let failure;
 const baseline = workArea();
 try {
@@ -144,7 +148,10 @@ try {
       surface.surfaceId,
     ]);
   }
-  screenshot("normal-before");
+  await screenshot("normal-before");
+  const normalViews = nav(["ui", "show", "toolbar-menu", "--menu", "views"]);
+  await screenshot("normal-views");
+  nav(["ui", "close", normalViews.surface.surfaceId]);
   for (const edge of ["top", "bottom"]) {
     let firstArea;
     for (const height of [90, 150, 90]) {
@@ -170,7 +177,7 @@ try {
       observations.push({ edge, height, area, dock });
       assert.equal(dock.reserveSpace, true);
       assert.equal(dock.height, height);
-      screenshot(`${edge}-${height}-${observations.length}`);
+      await screenshot(`${edge}-${height}-${observations.length}`);
       const png = readFileSync(join(output, `${edge}-${height}-${observations.length}.png`));
       assert.equal(
         png.readUInt32BE(20),
@@ -179,16 +186,16 @@ try {
       );
     }
     nav(["ui", "show", "dock-toolbar"]);
-    screenshot(`${edge}-toolbar`, "dock-header");
+    await screenshot(`${edge}-toolbar`, "dock-header");
     const views = nav(["ui", "show", "toolbar-menu", "--menu", "views"]);
-    screenshot(`${edge}-views`, "dock-editor");
+    await screenshot(`${edge}-views`, "dock-editor");
     nav(["ui", "close", views.surface.surfaceId]);
     const level = call(["dock", "inspect"]).panels.find((panel) => panel.moduleId === "levelMeter");
     const panel = nav(["ui", "show", "panel-settings", "--panel-id", level.id]);
-    screenshot(`${edge}-panel-editor`, "dock-editor");
+    await screenshot(`${edge}-panel-editor`, "dock-editor");
     nav(["ui", "close", panel.surface.surfaceId]);
     const settings = nav(["ui", "show", "settings", "--section", "appearance"]);
-    screenshot(`${edge}-settings`, "dock-settings");
+    await screenshot(`${edge}-settings`, "dock-settings");
     const visuals = nativeVisuals();
     assert.ok(visuals.length >= 3, "Main and accessory X11 windows must be present.");
     for (const visual of visuals) {
@@ -207,7 +214,7 @@ try {
   mutate(["dock", "enter", "--edge", "bottom", "--reserve-space", "false"]);
   await until(() => workArea() === baseline, "overlay reserves nothing");
   mutate(["dock", "exit"]);
-  screenshot("normal-after");
+  await screenshot("normal-after");
   // A fresh process must restore the actual Dock, not just the frontend's saved flag.
   mutate(["dock", "enter", "--edge", "bottom", "--height", "90", "--reserve-space", "true"]);
   await until(() => workArea() !== baseline, "pre-restart reservation");
@@ -219,7 +226,7 @@ try {
   });
   await until(() => call(["dock", "inspect"]).enabled === true, "persisted Dock restoration");
   await until(() => workArea() !== baseline, "restored native reservation");
-  screenshot("restarted-dock");
+  await screenshot("restarted-dock");
   await stop("SIGKILL");
   for (let attempt = 0; attempt < 20 && workArea() !== baseline; attempt += 1) await pause(100);
   assert.equal(workArea(), baseline, "A dead X client must release its strut.");
@@ -287,7 +294,7 @@ try {
         session: {
           type: process.env.XDG_SESSION_TYPE,
           desktop: process.env.XDG_CURRENT_DESKTOP,
-          backend: "x11",
+          backend: "default (no GDK_BACKEND override)",
         },
         sourceHead: git(["rev-parse", "HEAD"]).trim(),
         sourceStatus: git(["status", "--short"]),

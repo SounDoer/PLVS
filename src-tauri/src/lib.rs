@@ -176,6 +176,12 @@ fn initial_state_script(initial: InitialStateValues<'_>) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  // Prefer the backend that supports Dock, including inside a Wayland session. GDK keeps an
+  // explicit GDK_BACKEND override authoritative and falls back when X11 is unavailable.
+  // This must precede Tauri/GTK initialization; setup is already too late to choose a backend.
+  #[cfg(target_os = "linux")]
+  gtk::gdk::set_allowed_backends("x11,wayland,*");
+
   let startup_args: Vec<String> = std::env::args().skip(1).collect();
   let startup_test_root =
     test_app_data_root(&startup_args).unwrap_or_else(|error| panic!("{error}"));

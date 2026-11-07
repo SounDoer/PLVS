@@ -94,10 +94,11 @@ After building the dev app, run `node scripts/smoke-linux-dock.mjs [dev-executab
 on an unlocked, single-monitor desktop at 1x display scale with `xprop` and `xwininfo` (`x11-utils`)
 installed. A debug executable
 needs its Vite server running with `TAURI_ENV_PLATFORM=linux`; `npm run desktop:dev` configures that
-environment normally. The smoke launches its own isolated dev instance through X11/XWayland and
+environment normally. The smoke launches its own isolated dev instance without a `GDK_BACKEND`
+override, verifies that the default selects X11/XWayland, and
 does not change an existing workbench or use the capture rig.
 
-It checks top/bottom reservation, repeated height changes and screenshot dimensions, toolbar and
+It captures the normal Views menu and checks top/bottom reservation, repeated height changes and screenshot dimensions, toolbar and
 Settings presentation, native RGBA visuals and input-focus hints, suspension/resume, exit,
 persisted restart, and abnormal process cleanup.
 If the session also offers native Wayland, a second isolated instance verifies that Dock is refused.

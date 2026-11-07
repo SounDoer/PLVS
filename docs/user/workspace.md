@@ -153,14 +153,16 @@ stays open until the error clears. On macOS, controls respond to the first click
 between the strip, toolbar, and editor windows, including the arrow that closes the toolbar.
 On Linux, Dock is available when PLVS uses an X11 or XWayland window backend and the window manager
 supports EWMH Dock windows and screen-space reservation. This includes XWayland in a GNOME Wayland
-session. Native Wayland windows are not supported; the Dock selector is hidden on unsupported
+session. PLVS tries X11/XWayland first by default and falls back to Wayland when it is unavailable.
+Native Wayland windows are not supported; the Dock selector is hidden on unsupported
 backends. **Reserve Space** uses the system work area, including for native Wayland applications on
 GNOME. Reservation requires an outer top or bottom display edge; use overlay mode on interior edges
 in vertically stacked monitor layouts. **Above Full Screen** is unavailable on Linux, and full-screen
 applications may cover the strip. Per-application capture remains unavailable on Linux.
-To use Dock when GNOME starts PLVS with its native Wayland backend, quit PLVS and launch
-`GDK_BACKEND=x11 plvs` from a terminal. This changes PLVS's window backend without changing the
-desktop session and requires XWayland to be available.
+An explicit `GDK_BACKEND` setting takes precedence over this default. If Dock is missing because
+your environment forces native Wayland, quit PLVS and launch `GDK_BACKEND=x11 plvs` from a terminal.
+This changes PLVS's window backend without changing the desktop session and requires XWayland to
+be available.
 On Windows, the strip can also reserve its screen space so
 maximised windows do not cover it. On macOS, it starts as an overlay within the monitor work area,
 leaving room for the menu bar and system Dock. Enable **Reserve Space** in Dock **Views**
