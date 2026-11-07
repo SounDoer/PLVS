@@ -46,12 +46,19 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 Agent Control is the supported way for agents and automation to inspect or change the state visible
 in a running PLVS window. Windows uses a current-user named pipe; macOS uses a private Unix socket.
 
+- Use Agent Control first for PLVS state, UI navigation, and visual review (`visual screenshot`).
+  Use computer use only to test actual input behavior (hover, scrolling, dragging, focus), interact
+  with system UI or external apps, or handle a confirmed capability gap; state the specific reason.
+  Diagnose CLI failures (identity, instance, version, availability) before falling back. Never use
+  computer use to bypass Agent Control permission or user-only boundaries.
 - Start the dev app with `npm run desktop:dev`, then use a second terminal for commands such as
   `npm run desktop:control -- inspect --json`. The wrapper builds `plvs-cli` with `dev-identity` and
   targets only the dev app; it neither starts the GUI nor controls an installed stable PLVS.
-- Discover the live surface with `capabilities`, then `inspect` and retain its global revision.
-  Mutations require `--expected-revision`; after a conflict, inspect and reconcile instead of
-  retrying blindly. Use `--dry-run` where the command supports it.
+- Quick workflow: `capabilities` → `inspect` + `ui inspect` → the owning command family (use
+  `schema get` / family `describe` as needed) → `visual screenshot` for visual verification.
+  Retain `revision` and `uiGeneration`; mutations require `--expected-revision`, and UI navigation
+  also requires `--expected-ui-generation`. After a conflict, inspect and reconcile instead of
+  retrying blindly. Use `--dry-run` where supported. See [CLI workflow](docs/user/cli.md#agent-workflow).
 - Live mutations must pass through the running React application's existing business functions,
   safety guards, native integrations, and persistence paths. Do not mutate stores or native state
   directly to add a CLI shortcut.
