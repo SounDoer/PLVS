@@ -49,7 +49,9 @@ export function buildAppStatusItems({
       text: update.text,
       details:
         update.phase === "error"
-          ? "The update could not be completed. Open update details to review or retry. Metering is unaffected."
+          ? update.action === "check-update"
+            ? "PLVS could not check for updates. Retry the update check. Your installed version and metering are unaffected."
+            : "The update could not be completed. Open update details to review or retry. Metering is unaffected."
           : update.text,
       phase: update.phase,
       action: update.action ?? "update",

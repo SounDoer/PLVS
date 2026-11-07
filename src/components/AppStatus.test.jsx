@@ -3,8 +3,33 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AppStatusPopover, AppStatusList } from "./AppStatus.jsx";
 import { buildAppStatusItems } from "../lib/appStatus.js";
+import { dockUpdateStatus } from "../dock/dockUpdateStatus.js";
 
 describe("status details", () => {
+  it("offers a check retry without a target and disappears once the check recovers", () => {
+    const onAction = vi.fn();
+    const items = buildAppStatusItems({
+      update: dockUpdateStatus({
+        updateInfo: { status: "unavailable", hasUpdate: false },
+      }),
+    });
+    const { rerender } = render(<AppStatusPopover items={items} onAction={onAction} />);
+    fireEvent.click(screen.getByRole("button", { name: "status: Update Check Failed" }));
+    expect(screen.queryByRole("button", { name: "View Update Details" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Check Again" }));
+    expect(onAction).toHaveBeenCalledWith("check-update");
+    expect(screen.queryByRole("region", { name: "status details" })).toBeNull();
+    rerender(
+      <AppStatusPopover
+        items={buildAppStatusItems({
+          update: dockUpdateStatus({ updateInfo: { status: "ok", hasUpdate: false } }),
+        })}
+        onAction={onAction}
+      />
+    );
+    expect(screen.queryByRole("button", { name: /status:/ })).toBeNull();
+  });
+
   it("opens the complete list from a counted summary, routes actions, and closes on Escape", () => {
     const onAction = vi.fn();
     const items = buildAppStatusItems({

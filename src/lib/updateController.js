@@ -162,14 +162,11 @@ export function createUpdateController({
       ) {
         await download(candidate, true);
       }
-    } catch (error) {
+    } catch {
       if (!automatic || requestGeneration === generation) {
-        // A cached package remains installable offline. Background feed availability
-        // must not overwrite the frozen dialog's install/recovery error state.
-        emit({
-          checkStatus: "unavailable",
-          ...(!automatic || !state.details?.staged ? { error: String(error) } : {}),
-        });
+        // Feed availability is independent of download/installation errors. Keeping it in
+        // checkStatus also lets a successful retry resolve it without erasing recovery errors.
+        emit({ checkStatus: "unavailable" });
       }
     } finally {
       checking = false;

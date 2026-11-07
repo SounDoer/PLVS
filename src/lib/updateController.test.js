@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createUpdateController, releaseUrlForVersion } from "./updateController.js";
+import { dockUpdateStatus } from "../dock/dockUpdateStatus.js";
+import { buildAppStatusItems } from "./appStatus.js";
 
 const a = { id: "a", version: "2.0.0", manifest: { notes: "A" } };
 const b = { id: "b", version: "3.0.0", manifest: { notes: "B" } };
@@ -49,6 +51,81 @@ function setup(overrides = {}) {
 }
 
 describe("shared update controller", () => {
+  function statusItem(controller) {
+    const state = controller.getSnapshot();
+    const target = state.ready ?? state.candidate;
+    return buildAppStatusItems({
+      update: dockUpdateStatus({
+        ...state,
+        updateInfo: {
+          status: state.checkStatus,
+          hasUpdate: Boolean(target),
+          latestVersion: target?.version,
+        },
+      }),
+    })[0];
+  }
+
+  it.each([true, false])(
+    "does not report a completed installation as failed when a check is offline (automatic=%s)",
+    async (automatic) => {
+      const { controller, invoke } = setup();
+      await controller.setPreferences(prefs);
+      invoke.mockResolvedValueOnce({
+        enabled: true,
+        installationSupported: true,
+        freshSession: true,
+        ready: null,
+        attempt: { version: "0.25.0", phase: "finished", error: null },
+      });
+      await controller.initialize();
+      invoke.mockRejectedValueOnce(new Error("Feed offline"));
+      await controller.check(automatic);
+      expect(controller.getSnapshot().error).toBeNull();
+      expect(statusItem(controller)).toMatchObject({
+        text: "Update Check Failed",
+        action: "check-update",
+      });
+      expect(statusItem(controller).details).toContain(
+        "installed version and metering are unaffected"
+      );
+      invoke.mockResolvedValueOnce(null);
+      await controller.check(false);
+      expect(controller.getSnapshot()).toMatchObject({ checkStatus: "ok", error: null });
+      expect(statusItem(controller)).toBeUndefined();
+    }
+  );
+
+  it("keeps a known candidate available after a check failure and successful retry", async () => {
+    const { controller, invoke } = setup();
+    await controller.initialize();
+    await controller.check();
+    invoke.mockRejectedValueOnce(new Error("Feed offline"));
+    await controller.check();
+    expect(statusItem(controller)).toMatchObject({ phase: "available", action: "update" });
+    await controller.check();
+    expect(controller.getSnapshot().error).toBeNull();
+    expect(statusItem(controller)).toMatchObject({ phase: "available" });
+  });
+
+  it("preserves an actual installation failure across failed and successful checks", async () => {
+    const { controller, invoke } = setup();
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      ready: null,
+      attempt: { version: a.version, phase: "failed", error: "Installer failed" },
+    });
+    await controller.initialize();
+    invoke.mockRejectedValueOnce(new Error("Feed offline"));
+    await controller.check();
+    expect(statusItem(controller)).toMatchObject({ text: "Update Failed", action: "update" });
+    invoke.mockResolvedValueOnce(null);
+    await controller.check();
+    expect(controller.getSnapshot().error).toBe("Installer failed");
+    expect(statusItem(controller)).toMatchObject({ text: "Update Failed" });
+  });
+
   it("keeps a staged startup offer installable when the background feed is offline", async () => {
     const { controller, invoke } = setup();
     await controller.setPreferences(prefs);

@@ -143,6 +143,10 @@ confirmation fails safely and asks you to reopen details. A previously downloade
 installed without another network check.
 If a background check fails while those cached details are open, the offline installation remains
 available; the check failure does not replace the installation status in the dialog.
+An unavailable update feed does not mean installation failed. With no known update, Status shows
+**Update Check Failed** and offers a check retry; a successful check clears that condition. A known
+update remains available when a later check fails. Download and installation failures retain their
+own recovery status.
 
 The startup offer never stops another workbench to gain permission: if a peer starts before you
 confirm, installation is deferred. A manual update still uses the workbench-wide save and editor

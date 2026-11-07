@@ -8,6 +8,8 @@
  */
 export function dockUpdateStatus(updates) {
   if (!updates) return null;
+  if (updates.error || updates.updateInfo?.activity?.downloadError)
+    return { phase: "error", label: "Update Failed", text: "Update Failed" };
   if (updates.updateInfo?.status === "unavailable" && !updates.updateInfo?.hasUpdate)
     return {
       phase: "error",
@@ -15,11 +17,8 @@ export function dockUpdateStatus(updates) {
       text: "Update Check Failed",
       action: "check-update",
     };
-  if (updates.error || updates.updateInfo?.activity?.downloadError)
-    return { phase: "error", label: "Update Failed", text: "Update Failed" };
   if (!updates.updateInfo?.hasUpdate) return null;
   const version = updates.updateInfo.latestVersion ? ` · v${updates.updateInfo.latestVersion}` : "";
-  if (updates.error) return { phase: "error", label: "Update Failed", text: "Update Failed" };
   if (updates.downloading) {
     const progress = updates.downloadProgress;
     const percent = Number.isFinite(progress) ? ` · ${Math.round(progress * 100)}%` : "";
