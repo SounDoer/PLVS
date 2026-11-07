@@ -10,6 +10,29 @@ vi.mock("./useAccessoryClient.js", () => ({
 }));
 
 describe("DockHeaderApp", () => {
+  it.each(["hover", "focus"])(
+    "clears a %s tip across a toolbar presentation without native leave or blur events",
+    (trigger) => {
+      client.payload = { visible: true, presentationId: 10 };
+      const { rerender } = render(<DockHeaderApp />);
+      const settings = screen.getByRole("button", { name: "Settings" });
+      if (trigger === "hover") fireEvent.mouseEnter(settings);
+      else act(() => settings.focus());
+      expect(screen.getByRole("tooltip").textContent).toBe("Settings");
+
+      client.payload = { ...client.payload, visible: false, presentationId: 11 };
+      rerender(<DockHeaderApp />);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+
+      client.payload = { ...client.payload, visible: true, presentationId: 12 };
+      rerender(<DockHeaderApp />);
+      expect(screen.queryByRole("tooltip")).toBeNull();
+      fireEvent.mouseEnter(screen.getByRole("button", { name: "Panels" }));
+      expect(screen.getByRole("tooltip").textContent).toBe("Panels");
+      client.payload = null;
+    }
+  );
+
   it("reports where each editor button is whenever the toolbar is shown", () => {
     const rect = vi
       .spyOn(HTMLElement.prototype, "getBoundingClientRect")

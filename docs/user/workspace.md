@@ -55,6 +55,8 @@ toolbar to see the summary, then click it for the same list in a floating window
 of the screen. Capture interruptions and failures of enabled dialogue detection show the toolbar
 automatically. Channel-layout limits, screen-space reservation failures and update state do not.
 Opening Settings from the list opens the Dock Settings window and keeps Dock active.
+Toolbar hover tips clear when the toolbar loses focus or hides; reopening it starts with no retained
+tip from the previous presentation.
 
 An unknown channel layout means loudness uses channels 1–2 only until you set a layout in Settings.
 This condition and **Audio Dropped** appear in the shared status list rather than inside individual

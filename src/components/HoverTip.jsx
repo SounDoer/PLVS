@@ -111,14 +111,17 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
     if (!open) return undefined;
 
     updatePosition();
+    // Native accessory windows can lose focus without sending the anchor a mouseleave.
+    window.addEventListener("blur", hideTip);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
 
     return () => {
+      window.removeEventListener("blur", hideTip);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open, updatePosition]);
+  }, [open, updatePosition, hideTip]);
 
   useLayoutEffect(() => {
     if (!open) return;

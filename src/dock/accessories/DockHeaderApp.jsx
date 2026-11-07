@@ -58,5 +58,7 @@ export function DockHeaderApp() {
     return () => window.removeEventListener("blur", onBlur);
   }, []);
 
-  return <DockHeader state={visiblePayload} onAction={action} />;
+  // Native hide/show can omit both mouseleave and blur. Keep the frozen content, but start
+  // each presentation with fresh hover/focus state before acknowledging header-ready.
+  return <DockHeader key={payload?.presentationId} state={visiblePayload} onAction={action} />;
 }

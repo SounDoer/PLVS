@@ -4,6 +4,24 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { HoverTip } from "./HoverTip.jsx";
 
 describe("HoverTip", () => {
+  it("drops a mouse-only tip on window blur without requiring an anchor leave event", () => {
+    render(
+      <HoverTip tip="Explain me">
+        <button type="button">Child</button>
+      </HoverTip>
+    );
+    const child = screen.getByRole("button", { name: "Child" });
+    fireEvent.mouseEnter(child);
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    fireEvent.blur(window);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.focus(window);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.mouseEnter(child);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+  });
+
   it("renders children and reveals the tip on hover", () => {
     render(
       <HoverTip tip="Explain me">
