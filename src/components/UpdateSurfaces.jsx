@@ -14,16 +14,19 @@ import { useDockUpdateWindow } from "../dock/useDockUpdateWindow.js";
 import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
+import { INTERFACE_SIZE_OPTIONS } from "../preferences/interfaceSize.js";
 
 const DEFAULT_SETUP_DRAFT = Object.freeze({ autoCheck: true, autoDownload: false });
+const WELCOME_WIDTHS = Object.freeze({ small: 288, default: 320, large: 368, "extra-large": 416 });
 
 export function UpdateSurfaces({ currentVersion }) {
-  const { updateControls: updates } = useAppLifecycle();
+  const { updateControls: updates, crashReportSetting } = useAppLifecycle();
   const settings = useAppSettings();
   const { docked, dockEdge, dockSuspended, exitDockRestoringAttributes } = useDock();
   const coordinator = useCoordinatorRole();
   const { setUpdateGeometry } = useDockAccessories();
   const [draft, setDraft] = useState(DEFAULT_SETUP_DRAFT);
+  const [askToSendCrashReports, setAskToSendCrashReports] = useState(crashReportSetting.enabled);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // A development fixture shows the first-run dialog without clearing the persisted choice.
@@ -31,12 +34,23 @@ export function UpdateSurfaces({ currentVersion }) {
   const firstRunSetup = coordinator && updates.enabled && !settings.updatePreferences.choiceMade;
   const setup = firstRunSetup || setupFixtureId !== null;
   useBlockingEditor("updatePreferences", setup);
-  async function save(skip = false) {
+  function changeAppearance(value) {
+    if (busy) return;
+    if (value === "system") settings.setAppearanceMode("system");
+    else if (["plvs-light", "plvs-dark"].includes(value)) settings.setFixedThemeIdFromPicker(value);
+  }
+  function changeInterfaceSize(value) {
+    if (!busy && INTERFACE_SIZE_OPTIONS.some((option) => option.id === value))
+      settings.setInterfaceSize(value);
+  }
+  async function save() {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await settings.setUpdatePreferences(skip ? { autoCheck: false, autoDownload: false } : draft);
+      // Settle the native crash preference before enabling any automatic update requests.
+      await crashReportSetting.setEnabled(askToSendCrashReports);
+      await settings.setUpdatePreferences(draft);
       setSetupFixtureId(null);
     } catch (error) {
       setError(String(error));
@@ -53,6 +67,8 @@ export function UpdateSurfaces({ currentVersion }) {
         : null,
     kind: setup ? "setup" : "details",
     preferences: draft,
+    appearance: settings.appearance === "system" ? "system" : settings.resolvedThemeId,
+    askToSendCrashReports,
     interfaceSize: settings.interfaceSize,
     installationSupported: updates.installationSupported,
     busy: busy || ["installing", "restarting"].includes(updates.installStatus),
@@ -83,6 +99,10 @@ export function UpdateSurfaces({ currentVersion }) {
       if (type === "update-link" && typeof payload.url === "string")
         void openExternalUrl(payload.url);
       if (!setup || busy) return;
+      if (type === "welcome-appearance-change") changeAppearance(payload.value);
+      if (type === "welcome-interface-size-change") changeInterfaceSize(payload.value);
+      if (type === "welcome-crash-report-change" && typeof payload.value === "boolean")
+        setAskToSendCrashReports(payload.value);
       if (type === "update-preferences-change") {
         const patch = payload.patch;
         if (typeof patch?.autoCheck === "boolean")
@@ -98,7 +118,6 @@ export function UpdateSurfaces({ currentVersion }) {
           }));
       }
       if (type === "update-preferences-save") void save();
-      if (type === "update-preferences-skip") void save(true);
     },
   });
   useEffect(() => {
@@ -115,10 +134,12 @@ export function UpdateSurfaces({ currentVersion }) {
     developmentFixture: "update-preferences.pending",
     blocking: true,
     busy,
-    dismissible: !busy,
-    supportedActions: busy ? [] : ["cancel"],
+    dismissible: !firstRunSetup && !busy,
+    supportedActions: firstRunSetup || busy ? [] : ["cancel"],
     target: { phase: "preferences" },
-    onCancel: () => (firstRunSetup ? save(true) : setSetupFixtureId(null)),
+    onCancel: () => {
+      if (!firstRunSetup && !busy) setSetupFixtureId(null);
+    },
   });
   useUiSurface({
     active: docked && Boolean(updates.details),
@@ -147,6 +168,7 @@ export function UpdateSurfaces({ currentVersion }) {
   useDevelopmentEventFixtureAdapter("update-preferences.pending", {
     establish: (id) => {
       setDraft(DEFAULT_SETUP_DRAFT);
+      setAskToSendCrashReports(crashReportSetting.enabled);
       setError(null);
       setSetupFixtureId(id);
     },
@@ -164,16 +186,23 @@ export function UpdateSurfaces({ currentVersion }) {
       <Dialog open={setup}>
         <DialogContent
           size="custom"
-          className="w-max max-w-[min(24rem,calc(100vw-2rem))]"
+          className="max-w-[calc(100vw-2rem)] overflow-y-auto"
+          style={{ width: WELCOME_WIDTHS[settings.interfaceSize] ?? WELCOME_WIDTHS.default }}
+          aria-describedby={undefined}
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <DialogTitle>Update Preferences</DialogTitle>
+          <DialogTitle>Welcome to PLVS</DialogTitle>
           <UpdateSetupContent
             preferences={draft}
+            appearance={payload.appearance}
+            interfaceSize={settings.interfaceSize}
+            askToSendCrashReports={askToSendCrashReports}
+            onAppearanceChange={changeAppearance}
+            onInterfaceSizeChange={changeInterfaceSize}
+            onCrashReportChange={setAskToSendCrashReports}
             onChange={(patch) => setDraft((previous) => ({ ...previous, ...patch }))}
             onSave={() => void save()}
-            onSkip={() => void save(true)}
             installationSupported={updates.installationSupported}
             installationUnavailableReason={updates.installationUnavailableReason}
             busy={busy}

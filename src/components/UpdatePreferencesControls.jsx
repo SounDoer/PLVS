@@ -6,6 +6,8 @@ import { LinkButton } from "./ui/link-button";
 import { IconAction } from "./ui/icon-action";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { INTERFACE_SIZE_OPTIONS } from "../preferences/interfaceSize.js";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "./ui/controlStyles.js";
 
 export function UpdatePreferencesControls({
@@ -109,9 +111,14 @@ export function UpdatePreferencesSettings({
 
 export function UpdateSetupContent({
   preferences,
+  appearance,
+  interfaceSize,
+  askToSendCrashReports,
+  onAppearanceChange,
+  onInterfaceSizeChange,
+  onCrashReportChange,
   onChange,
   onSave,
-  onSkip,
   installationSupported,
   installationUnavailableReason = null,
   onPrivacy = () => openExternalUrl(PRIVACY_POLICY_URL),
@@ -120,7 +127,36 @@ export function UpdateSetupContent({
 }) {
   return (
     <>
-      <div className="mt-3">
+      <div className="mt-3 flex flex-col gap-[var(--ui-drawer-row-gap)] text-[length:var(--ui-fs-control)]">
+        <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
+          <span>Appearance</span>
+          <Select value={appearance} onValueChange={onAppearanceChange} disabled={busy}>
+            <SelectTrigger aria-label="appearance" variant="flush">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" variant="flush">
+              <SelectItem value="system">Follow System</SelectItem>
+              <SelectItem value="plvs-light">Light</SelectItem>
+              <SelectItem value="plvs-dark">Dark</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
+          <span>Interface Size</span>
+          <Select value={interfaceSize} onValueChange={onInterfaceSizeChange} disabled={busy}>
+            <SelectTrigger aria-label="interface size" variant="flush">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" variant="flush">
+              {INTERFACE_SIZE_OPTIONS.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="my-1 border-t border-border" />
         <UpdatePreferencesControls
           preferences={preferences}
           onChange={onChange}
@@ -128,6 +164,29 @@ export function UpdateSetupContent({
           installationUnavailableReason={installationUnavailableReason}
           disabled={busy}
         />
+        <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <span>Crash Report Prompt</span>
+            <HoverTip
+              tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
+              side="top"
+              className="inline-flex shrink-0"
+              tipClassName="w-max max-w-[18rem] whitespace-normal"
+            >
+              <IconAction aria-label="crash report prompt help" className="p-1">
+                <CircleHelp className="size-[1em]" aria-hidden />
+              </IconAction>
+            </HoverTip>
+          </div>
+          <Switch
+            className={COMPACT_SWITCH_CLASS}
+            thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
+            aria-label="ask to send crash reports"
+            checked={askToSendCrashReports}
+            disabled={busy}
+            onCheckedChange={onCrashReportChange}
+          />
+        </div>
       </div>
       {error ? (
         <p role="alert" className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">
@@ -140,11 +199,8 @@ export function UpdateSetupContent({
         </LinkButton>
       </p>
       <div className="mt-3 flex justify-end gap-2">
-        <Button variant="ghost" disabled={busy} onClick={onSkip}>
-          Skip
-        </Button>
         <Button disabled={busy} onClick={onSave}>
-          Save
+          Continue
         </Button>
       </div>
     </>

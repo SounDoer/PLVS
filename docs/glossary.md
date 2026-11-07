@@ -68,7 +68,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Quick Tour             | The ten-step introduction offered after first launch and from Settings                              | 快速导览         | onboarding, tutorial        |
 | Settings               | Application preferences                                                                             | 设置             |                             |
 | Portable               | The Windows ZIP package that runs without installation                                              | 便携版           |                             |
-| Update Preferences     | The first-launch choice of automatic update checking and downloading                                | 更新偏好         |                             |
+| Welcome to PLVS        | The first-launch choice of appearance, interface size, updates, and crash-report prompting          | 欢迎使用 PLVS    |                             |
 | Auto Check for Updates | The Settings option that checks for updates at startup and every 12 hours                           | 自动检查更新     |                             |
 | Auto Download Updates  | The Settings option that downloads and verifies an update in the background                         | 自动下载更新     |                             |
 | View Update Details    | Opens the release notes, download progress and installation for an update                           | 查看更新详情     |                             |

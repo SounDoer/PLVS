@@ -20,6 +20,46 @@ beforeEach(() => {
   };
 });
 describe("Dock update details", () => {
+  it("shows the welcome preferences and sends changes through the owner without dismissing", () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    client.payload = {
+      ...client.payload,
+      key: "setup",
+      kind: "setup",
+      appearance: "system",
+      interfaceSize: "default",
+      askToSendCrashReports: true,
+      preferences: { autoCheck: true, autoDownload: false },
+    };
+    render(<DockUpdateApp />);
+    expect(screen.getByRole("heading", { name: "Welcome to PLVS" })).toBeTruthy();
+    client.action.mockClear();
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.blur(window);
+    expect(client.action).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "appearance" }), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "Light" }));
+    expect(client.action).toHaveBeenCalledWith("welcome-appearance-change", {
+      key: "setup",
+      value: "plvs-light",
+    });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "interface size" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Large" }));
+    expect(client.action).toHaveBeenCalledWith("welcome-interface-size-change", {
+      key: "setup",
+      value: "large",
+    });
+    fireEvent.click(screen.getByRole("switch", { name: "ask to send crash reports" }));
+    expect(client.action).toHaveBeenCalledWith("welcome-crash-report-change", {
+      key: "setup",
+      value: false,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(client.action).toHaveBeenCalledWith("update-preferences-save", { key: "setup" });
+    expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
+  });
   it("acknowledges rendered content and confirms only its frozen target", () => {
     render(<DockUpdateApp />);
     expect(screen.getByText("v2.0.0 · What's new since v1.0.0")).toBeTruthy();

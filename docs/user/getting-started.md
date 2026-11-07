@@ -91,7 +91,7 @@ stable packages install side by side with Preview.
 
 ### Quick Tour
 
-After the first-launch update preferences are settled, **Quick Tour** offers a short introduction
+After the first-launch preferences are settled, **Quick Tour** offers a short introduction
 to Start, Sources, Loudness Profile, Panels, Views, Presets, Panel Settings, Snapshot, and
 Clear, and Settings in ten steps. Choose **Start Tour** or **Not Now**. You can also close it at any time.
 
@@ -111,7 +111,7 @@ Your choice is stored locally for the application identity, with no tour telemet
 again, open **Settings** and choose **Quick Tour** beside **Docs** and **Feedback** at the bottom.
 Reopening starts from the first step while keeping your measurement and settings.
 
-### Initial Workspace and Update Preferences
+### Initial Workspace and Welcome Preferences
 
 A new installation opens with a starter workspace and a starter Loudness Profile. The workspace is
 saved as the **PLVS Default** Preset, while the Profile is also named **PLVS Default**. The Preset lets you
@@ -122,11 +122,16 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 **Reset PLVS to Default** brings them back. PLVS never starts capturing audio on its own: pick a
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
-On a fresh first launch, **Update Preferences** offers automatic checking and automatic downloading.
-The prompt presents the update switches directly below its title and links to the privacy policy.
-Checking starts selected; downloading starts off. No automatic request is made before you save a
-choice. **Skip** turns both off. Existing users retain checking on and downloading off without a
-first-launch prompt. These preferences can be changed in Settings.
+On a fresh first launch, **Welcome to PLVS** offers five preferences: **Appearance**,
+**Interface Size**, **Auto Check for Updates**, **Auto Download Updates**, and **Crash Report Prompt**.
+Appearance starts at **Follow System**, Interface Size at **Default**, automatic checking on,
+automatic downloading off, and crash-report prompting on. Appearance and Interface Size apply
+immediately so you can see their effect. Crash Report Prompt controls whether PLVS asks before
+sending a report after a crash; it does not send reports automatically. The prompt links to the
+privacy policy and has a single **Continue** button to save your choices and proceed to the Quick
+Tour invitation. Escape and clicking outside do not dismiss it. No automatic update request is
+made before confirmation. Existing users do not see this prompt on upgrade and keep their saved
+preferences. All five preferences can be changed later in Settings.
 
 When checking is enabled, PLVS checks at startup and every 12 hours. Manual checks remain available
 with automatic checking off. Update state appears in the toolbar's shared status area. Open its

@@ -91,9 +91,14 @@ it("opens privacy only on an explicit action without saving update preferences",
   render(
     <UpdateSetupContent
       preferences={{ autoCheck: true, autoDownload: false }}
+      appearance="system"
+      interfaceSize="default"
+      askToSendCrashReports={true}
+      onAppearanceChange={vi.fn()}
+      onInterfaceSizeChange={vi.fn()}
+      onCrashReportChange={vi.fn()}
       onChange={onChange}
       onSave={onSave}
-      onSkip={vi.fn()}
       onPrivacy={onPrivacy}
       installationSupported
       busy={false}

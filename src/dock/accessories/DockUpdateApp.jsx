@@ -49,7 +49,7 @@ export function DockUpdateApp() {
         data-dock-update
       >
         {payload.kind === "setup" ? (
-          <h1 className="font-semibold">Update Preferences</h1>
+          <h1 className="font-semibold">Welcome to PLVS</h1>
         ) : (
           <UpdateDetailsHeader
             accessory
@@ -61,6 +61,12 @@ export function DockUpdateApp() {
         {payload.kind === "setup" ? (
           <UpdateSetupContent
             preferences={payload.preferences}
+            appearance={payload.appearance}
+            interfaceSize={payload.interfaceSize}
+            askToSendCrashReports={payload.askToSendCrashReports}
+            onAppearanceChange={(value) => send("welcome-appearance-change", { value })}
+            onInterfaceSizeChange={(value) => send("welcome-interface-size-change", { value })}
+            onCrashReportChange={(value) => send("welcome-crash-report-change", { value })}
             installationUnavailableReason={payload.installationUnavailableReason}
             onPrivacy={() => send("update-link", { url: PRIVACY_POLICY_URL })}
             installationSupported={payload.installationSupported}
@@ -68,7 +74,6 @@ export function DockUpdateApp() {
             error={payload.error}
             onChange={(patch) => send("update-preferences-change", { patch })}
             onSave={() => send("update-preferences-save")}
-            onSkip={() => send("update-preferences-skip")}
           />
         ) : (
           <UpdateDetailsContent
