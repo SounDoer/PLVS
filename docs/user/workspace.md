@@ -57,6 +57,8 @@ automatically. Channel-layout limits, screen-space reservation failures and upda
 Opening Settings from the list opens the Dock Settings window and keeps Dock active.
 Toolbar hover tips clear when the toolbar loses focus or hides; reopening it starts with no retained
 tip from the previous presentation.
+On macOS, button hover tips are available as soon as the Dock toolbar opens, without an initial
+click inside it.
 
 An unknown channel layout means loudness uses channels 1–2 only until you set a layout in Settings.
 This condition and **Audio Dropped** appear in the shared status list rather than inside individual

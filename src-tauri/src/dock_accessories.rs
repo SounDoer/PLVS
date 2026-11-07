@@ -467,7 +467,10 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     // Created on first use, so it may appear after the strip began refusing activation.
     #[cfg(target_os = "windows")]
     let _ = header.set_focusable(!crate::appbar::dock_refuses_activation());
-    show_or_hide(header, header_visible, false)?;
+    // WKWebView suppresses hover in a non-key macOS window. The nonactivating Panel can
+    // become key without activating PLVS or leaving the current full-screen Space. Only
+    // take focus on first show; content/geometry updates must not steal it from an editor.
+    show_or_hide(header, header_visible, cfg!(target_os = "macos"))?;
   }
   #[cfg(target_os = "windows")]
   crate::appbar::set_dock_toolbar_visible(&main, header_visible);

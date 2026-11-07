@@ -795,7 +795,9 @@ settle on the main queue before conversion. Private restore metadata in the exis
 preserves the actual pre-Dock content/title-bar policy across restarts; that policy is restored before
 bounds, followed by the existing WebView size synchronization. Dock and its accessories are nonactivating
 floating Panels that can accept editor keyboard input in another application's native full-screen
-Space. A transparent ordinary-window probe's public Space membership gates **Above Full Screen**
+Space. The toolbar becomes key on its initial show so WKWebView delivers hover before the first
+click, using the nonactivating Panel path. Updates to an already visible toolbar do not refocus it
+or take focus from an editor. A transparent ordinary-window probe's public Space membership gates **Above Full Screen**
 off without replacing WebViews. Desktop geometry uses the work area; full-screen geometry uses the
 safe display frame. Notifications, bounded retries and a one-second fallback while wanted reconcile
 Space/display changes; suspend and exit stop polling. Accessory-only mouse/application observation

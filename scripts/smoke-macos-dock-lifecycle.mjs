@@ -17,6 +17,30 @@ const output = process.argv[3]
   ? resolve(process.argv[3])
   : mkdtempSync(join(tmpdir(), "plvs-dock-lifecycle-"));
 mkdirSync(output, { recursive: true });
+const hoverProbe = join(output, "dock-toolbar-hover-probe");
+for (const [command, args] of [
+  [
+    "xcrun",
+    [
+      "clang",
+      "-fobjc-arc",
+      "-framework",
+      "AppKit",
+      "-framework",
+      "WebKit",
+      join(root, "scripts/macos/dock-toolbar-hover-probe.m"),
+      "-o",
+      hoverProbe,
+    ],
+  ],
+  [hoverProbe, []],
+]) {
+  const response = spawnSync(command, args, { encoding: "utf8", timeout: 20000 });
+  assert.equal(response.status, 0, response.error?.message ?? response.stderr + response.stdout);
+  if (command === hoverProbe) {
+    writeFileSync(join(output, "native-hover.json"), response.stdout);
+  }
+}
 // Even an existing evidence directory gets a fresh root; never inherit a user's editors.
 const data = mkdtempSync(join(output, "app-data-"));
 const env = { ...process.env, PLVS_TEST_IDENTITY_ROOT: join(data, "multi-instance") };
@@ -27,7 +51,7 @@ const child = spawn(
   ["-ApplePersistenceIgnoreState", "YES", "--plvs-test-app-data-root", data],
   { env, stdio: ["ignore", logfile, logfile] }
 );
-const results = [];
+const results = [{ scenario: "toolbar-hover-before-first-click", passed: true }];
 const commands = [];
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 function call(args) {
