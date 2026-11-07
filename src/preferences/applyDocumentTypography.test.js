@@ -3,6 +3,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { UI_PREFERENCES } from "./data.js";
 import { applyLayoutToDocument } from "./applyDocumentTheme.js";
+import {
+  resolveInterfacePreferences,
+  resolveInterfacePreferencesForSurface,
+} from "./interfaceSize.js";
 
 const TYPOGRAPHY_VARS = {
   "--ui-fs-caption": "10px",
@@ -90,4 +94,25 @@ it("publishes the shared editor height policy for ordinary floating frames", () 
   expect(document.documentElement.style.getPropertyValue("--ui-editor-max-h")).toBe(
     `min(var(--ui-editor-height-cap), ${UI_PREFERENCES.layout.editor.maxViewportFraction * 100}vh)`
   );
+});
+
+it("publishes the same text-surface widths in normal and compact Dock hosts", () => {
+  const sizes = ["small", "default", "large", "extra-large"];
+  const widths = { compact: [], dialog: [], wide: [], status: [] };
+  for (const size of sizes) {
+    const normal = resolveInterfacePreferences(UI_PREFERENCES, size);
+    for (const surface of [null, "dock-editor", "dock-update", "dock-import", "dock-authoring"]) {
+      applyLayoutToDocument(resolveInterfacePreferencesForSurface(UI_PREFERENCES, size, surface));
+      for (const kind of Object.keys(widths)) {
+        expect(document.documentElement.style.getPropertyValue(`--ui-surface-${kind}-w`)).toBe(
+          `${normal.layout.surfaces[`${kind}WidthPx`]}px`
+        );
+      }
+    }
+    for (const kind of Object.keys(widths))
+      widths[kind].push(normal.layout.surfaces[`${kind}WidthPx`]);
+  }
+  expect(widths.compact).toEqual([288, 320, 368, 416]);
+  for (const values of Object.values(widths))
+    expect(values.every((width, i) => i === 0 || width > values[i - 1])).toBe(true);
 });

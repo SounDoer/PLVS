@@ -28,7 +28,8 @@ pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 150;
 pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = u32::MAX;
 pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 36.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_WIDTH: f64 = 176.0;
-pub const DOCK_EDITOR_MAX_LOGICAL_WIDTH: f64 = 400.0;
+// Menus remain content-sized; event dialogs also use this host and grow with Interface Size.
+pub const DOCK_EDITOR_MAX_LOGICAL_WIDTH: f64 = 768.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 80.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_HEIGHT: f64 = 640.0;
 pub const DOCK_EDITOR_LOGICAL_INSET: f64 = 8.0;
@@ -1606,6 +1607,18 @@ mod tests {
     assert_eq!((rects.header.y, rects.header.height), (152, 36));
     assert_eq!((rects.editor.x, rects.editor.y), (18, 20));
     assert_eq!((rects.editor.width, rects.editor.height), (304, 132));
+  }
+
+  #[test]
+  fn text_surfaces_grow_beyond_the_former_menu_cap_and_stay_on_the_monitor() {
+    let monitor = wa();
+    let strip = dock_strip_rect(monitor, DockEdge::Top, 72);
+    let large = dock_accessory_rects(monitor, strip, DockEdge::Top, 1.5, 672.0, 300.0, None);
+    assert_eq!(large.editor.width, 1008);
+    assert!(large.editor.x >= monitor.x);
+    assert!(large.editor.x + large.editor.width as i32 <= monitor.x + monitor.width as i32);
+    let oversized = dock_accessory_rects(monitor, strip, DockEdge::Top, 4.0, 672.0, 300.0, None);
+    assert_eq!(oversized.editor.width, monitor.width - 64);
   }
 }
 

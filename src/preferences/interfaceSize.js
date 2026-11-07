@@ -14,6 +14,7 @@ const PROFILES = Object.freeze({
     controlHeightPx: 24,
     drawerWidthPx: 336,
     editorWidthPx: 416,
+    surfaces: { compactWidthPx: 320, dialogWidthPx: 448, wideWidthPx: 544, statusWidthPx: 384 },
     typography: {
       caption: 11,
       axis: 12,
@@ -36,6 +37,7 @@ const PROFILES = Object.freeze({
     controlHeightPx: 28,
     drawerWidthPx: 368,
     editorWidthPx: 448,
+    surfaces: { compactWidthPx: 368, dialogWidthPx: 512, wideWidthPx: 608, statusWidthPx: 432 },
     typography: {
       caption: 12,
       axis: 14,
@@ -58,6 +60,7 @@ const PROFILES = Object.freeze({
     controlHeightPx: 32,
     drawerWidthPx: 400,
     editorWidthPx: 480,
+    surfaces: { compactWidthPx: 416, dialogWidthPx: 576, wideWidthPx: 672, statusWidthPx: 480 },
     typography: {
       caption: 14,
       axis: 16,
@@ -93,6 +96,7 @@ export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
     ...prefs,
     layout: {
       ...prefs.layout,
+      surfaces: profile.surfaces,
       control: {
         ...prefs.layout.control,
         heightPx: profile.controlHeightPx,
@@ -125,6 +129,15 @@ export function resolveInterfacePreferencesForSurface(prefs, rawSize, surface) {
   const resolved = resolveInterfacePreferences(prefs, rawSize);
   // Native accessory geometry stays compact; text uses the same roles as the main window.
   return isDockAccessorySurface(surface) && !["dock-settings", "dock-authoring"].includes(surface)
-    ? { ...prefs, typography: resolved.typography }
+    ? {
+        ...prefs,
+        layout: { ...prefs.layout, surfaces: resolved.layout.surfaces },
+        typography: resolved.typography,
+      }
     : resolved;
+}
+
+/** Shared CSS-pixel widths for both the web surfaces and their native Dock hosts. */
+export function resolveSurfaceWidths(rawSize) {
+  return resolveInterfacePreferences(UI_PREFERENCES, rawSize).layout.surfaces;
 }

@@ -17,7 +17,6 @@ import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixtur
 import { INTERFACE_SIZE_OPTIONS } from "../preferences/interfaceSize.js";
 
 const DEFAULT_SETUP_DRAFT = Object.freeze({ autoCheck: true, autoDownload: false });
-const WELCOME_WIDTHS = Object.freeze({ small: 288, default: 320, large: 368, "extra-large": 416 });
 
 export function UpdateSurfaces({ currentVersion }) {
   const { updateControls: updates, crashReportSetting } = useAppLifecycle();
@@ -185,9 +184,8 @@ export function UpdateSurfaces({ currentVersion }) {
     <>
       <Dialog open={setup}>
         <DialogContent
-          size="custom"
-          className="max-w-[calc(100vw-2rem)] overflow-y-auto"
-          style={{ width: WELCOME_WIDTHS[settings.interfaceSize] ?? WELCOME_WIDTHS.default }}
+          size="sm"
+          className="overflow-y-auto"
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}

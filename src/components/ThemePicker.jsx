@@ -145,7 +145,10 @@ export function ThemePicker({
       {/* Sized to the names it holds, capped at the width it used to be fixed at:
           three short built-in names left a gap between them and the row actions
           wide enough to read as two separate columns. Long names still truncate. */}
-      <PopoverContent align="end" className="w-auto max-w-72 min-w-44 p-1">
+      <PopoverContent
+        align="end"
+        className="w-auto min-w-[12em] max-w-[min(var(--ui-surface-compact-w),calc(100vw-1rem))] p-1 text-[length:var(--ui-fs-control)]"
+      >
         <div className="px-2 py-1 text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
           Built-in
         </div>

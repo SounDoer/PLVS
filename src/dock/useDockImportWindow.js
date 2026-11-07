@@ -8,6 +8,7 @@ import {
 } from "../ipc/dockAccessoryEvents.js";
 import { createAccessorySnapshot, normalizeAccessoryAction } from "./accessoryProtocol.js";
 import { createThemePublication, themeRuntime } from "../theme/themeRuntime.js";
+import { resolveSurfaceWidths } from "../preferences/interfaceSize.js";
 
 /**
  * The native window is created on demand only when an import needs presentation.
@@ -27,6 +28,7 @@ export function useDockImportWindow({
   const [error, setError] = useState(null);
   const [prepared, setPrepared] = useState(false);
   const serializedPayload = JSON.stringify(payload);
+  const contentWidth = resolveSurfaceWidths(payload.interfaceSize).dialogWidthPx;
   useLayoutEffect(() => {
     latest.current = { payload, onAction };
   }, [payload, onAction]);
@@ -121,6 +123,7 @@ export function useDockImportWindow({
       edge,
       webviewScale: window.devicePixelRatio,
       contentHeight: contentSize.key === payload.key ? contentSize.height : 240,
+      contentWidth,
     })
       .then((rect) => {
         if (!cancelled)
@@ -140,6 +143,6 @@ export function useDockImportWindow({
     return () => {
       cancelled = true;
     };
-  }, [active, edge, payload.key, readyKey, contentSize, onGeometry]);
+  }, [active, edge, payload.key, readyKey, contentSize, contentWidth, onGeometry]);
   return { error, clearError: () => setError(null) };
 }

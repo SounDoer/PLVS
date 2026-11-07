@@ -140,7 +140,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
           <ChevronDown className="size-[1em] text-muted-foreground" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-48 p-1">
+      <PopoverContent align="end" sideOffset={6} className="w-max max-w-[calc(100vw-1rem)] p-1">
         <MenuItem onClick={() => choose(() => onExportReport?.("markdown"))}>
           Export Markdown…
         </MenuItem>

@@ -73,10 +73,10 @@ export function CloseConfirmDialog({
         if (!v) handleCancel();
       }}
     >
-      <DialogContent size="custom" className="inline-flex">
+      <DialogContent size="sm" className="overflow-y-auto">
         <DialogTitle className="sr-only">Close PLVS</DialogTitle>
         {error ? (
-          <div className="mb-3 max-w-80 px-2 text-[length:var(--ui-fs-control)] text-destructive">
+          <div className="mb-3 px-2 text-[length:var(--ui-fs-control)] text-destructive">
             {error}
           </div>
         ) : null}

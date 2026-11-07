@@ -85,7 +85,11 @@ export function FileAnalysisHistoryMenu({
           ) : null}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-80 max-w-[92vw] p-1">
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="w-[var(--ui-surface-compact-w)] max-w-[92vw] p-1"
+      >
         <div className="flex items-center justify-between gap-2 px-2 py-1">
           <p className={POPOVER_TITLE_CLASS}>File History</p>
           <button

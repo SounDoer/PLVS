@@ -8,6 +8,7 @@ import {
 } from "../ipc/dockAccessoryEvents.js";
 import { createAccessorySnapshot, normalizeAccessoryAction } from "./accessoryProtocol.js";
 import { createThemePublication, themeRuntime } from "../theme/themeRuntime.js";
+import { resolveSurfaceWidths } from "../preferences/interfaceSize.js";
 
 /**
  * The native window is created on demand (`prepare`): before a click whenever an update or setup
@@ -28,6 +29,8 @@ export function useDockUpdateWindow({
   const [error, setError] = useState(null);
   const [prepared, setPrepared] = useState(false);
   const serializedPayload = JSON.stringify(payload);
+  const widths = resolveSurfaceWidths(payload.interfaceSize);
+  const contentWidth = payload.kind === "setup" ? widths.compactWidthPx : widths.wideWidthPx;
   useLayoutEffect(() => {
     latest.current = { payload, onAction };
   }, [payload, onAction]);
@@ -117,6 +120,7 @@ export function useDockUpdateWindow({
       edge,
       webviewScale: window.devicePixelRatio,
       contentHeight: contentSize.key === payload.key ? contentSize.height : 240,
+      contentWidth,
     })
       .then((rect) => {
         if (!cancelled)
@@ -136,6 +140,6 @@ export function useDockUpdateWindow({
     return () => {
       cancelled = true;
     };
-  }, [active, edge, payload.key, readyKey, contentSize, onGeometry]);
+  }, [active, edge, payload.key, readyKey, contentSize, contentWidth, onGeometry]);
   return { error };
 }

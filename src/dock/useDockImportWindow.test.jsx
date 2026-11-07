@@ -27,6 +27,25 @@ const options = {
   onAction: vi.fn(),
   onGeometry: vi.fn(),
 };
+
+it("resizes the native import host when Interface Size changes without changing the review", async () => {
+  const { rerender } = renderHook((props) => useDockImportWindow(props), {
+    initialProps: { ...options, payload: { key: "review:a", interfaceSize: "small" } },
+  });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenCalledWith(
+      "set_dock_import_window",
+      expect.objectContaining({ contentWidth: 384 })
+    )
+  );
+  rerender({ ...options, payload: { key: "review:a", interfaceSize: "extra-large" } });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenLastCalledWith(
+      "set_dock_import_window",
+      expect.objectContaining({ contentWidth: 576 })
+    )
+  );
+});
 beforeEach(() => {
   vi.resetAllMocks();
   mock.invoke.mockResolvedValue(null);

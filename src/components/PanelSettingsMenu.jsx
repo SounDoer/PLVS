@@ -93,7 +93,7 @@ export function PanelSettingsMenu({
           if (/** @type {Element} */ (event.target).closest?.("[data-settings-select-menu]"))
             event.preventDefault();
         }}
-        className="flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1"
+        className="flex max-h-[var(--radix-popover-content-available-height)] max-w-[calc(100vw-1rem)] w-auto flex-col overflow-hidden p-1"
       >
         <PanelSettingsHeader
           title={title}

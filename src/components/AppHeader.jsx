@@ -22,7 +22,8 @@ import { SHELL_HEADER, SHELL_HEADER_ACTIONS, SHELL_HEADER_OVERLAY } from "@/lib/
 import { cn } from "@/lib/utils";
 import { AppStatusPopover } from "./AppStatus.jsx";
 
-const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
+const TOOLBAR_POPOVER_CLASS =
+  "w-max min-w-[12em] max-w-[min(var(--ui-surface-compact-w),92vw)] p-1 text-[length:var(--ui-fs-control)]";
 const SOURCES_POPOVER_CLASS =
   "flex max-h-[var(--radix-popover-content-available-height)] w-max min-w-[calc(10em+2rem)] max-w-[min(calc(24em+1.5rem),92vw)] flex-col overflow-hidden p-1 text-[length:var(--ui-fs-control)]";
 // Matches DockHeader's pressed-while-open treatment for its editor triggers: the trigger's `span`

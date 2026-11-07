@@ -191,7 +191,10 @@ On Windows 11, the outer system window outline follows the window chrome: it is 
 and hidden in chromeless views. Native shadows, rounded corners, and window resizing remain
 available in normal windows. Older Windows versions keep their default outline behaviour.
 
-**Interface Size** scales the whole interface. **Appearance** follows the system theme by default or
+**Interface Size** scales the whole interface. Settings, editors, confirmation and import/export
+dialogs, feedback, update details, and status lists adjust their widths with the selected size.
+Menus fit their content within size-aware limits. Dock windows follow the same widths and remain
+bounded by their monitor; the Dock strip layout remains independent. **Appearance** follows the system theme by default or
 uses a fixed theme. Light and Dark ship built in, and the theme editor lets you build and save your
 own themes. PLVS bundles Inter for interface text and JetBrains Mono for changing numeric readouts,
 so their layout does not depend on fonts installed on the computer. A custom theme keeps its Dark

@@ -336,6 +336,7 @@ pub fn set_dock_update_window<R: tauri::Runtime>(
   edge: DockEdge,
   webview_scale: f64,
   content_height: f64,
+  content_width: f64,
 ) -> Result<Option<WindowBounds>, String> {
   if window.label() != "main" {
     return Err("Only the main window owns update presentation.".into());
@@ -360,12 +361,15 @@ pub fn set_dock_update_window<R: tauri::Runtime>(
   if !content_height.is_finite() || content_height <= 0.0 {
     return Err("Invalid update content height.".into());
   }
+  if !content_width.is_finite() || content_width <= 0.0 {
+    return Err("Invalid update content width.".into());
+  }
   let rects = dock_accessory_rects(
     monitor,
     strip,
     edge,
     webview_scale,
-    480.0,
+    content_width,
     content_height.min(2000.0),
     None,
   );
@@ -381,6 +385,7 @@ pub fn set_dock_import_window<R: tauri::Runtime>(
   edge: DockEdge,
   webview_scale: f64,
   content_height: f64,
+  content_width: f64,
 ) -> Result<Option<WindowBounds>, String> {
   if window.label() != "main" {
     return Err("Only the main window owns import presentation.".into());
@@ -405,12 +410,15 @@ pub fn set_dock_import_window<R: tauri::Runtime>(
   if !content_height.is_finite() || content_height <= 0.0 {
     return Err("Invalid import content height.".into());
   }
+  if !content_width.is_finite() || content_width <= 0.0 {
+    return Err("Invalid import content width.".into());
+  }
   let rects = dock_accessory_rects(
     monitor,
     strip,
     edge,
     webview_scale,
-    480.0,
+    content_width,
     content_height.min(2000.0),
     None,
   );

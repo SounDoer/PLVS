@@ -28,7 +28,7 @@ export function AppStatusList({ items, onAction = () => {}, accessory = false, s
       aria-label="status details"
       className={cn(
         "overflow-y-auto p-3 text-[length:var(--ui-fs-control)]",
-        accessory ? "max-h-screen w-[22rem] max-w-full" : "max-h-[min(28rem,80vh)]"
+        accessory ? "max-h-screen w-full" : "max-h-[min(28rem,80vh)]"
       )}
     >
       {showTitle ? <h2 className="mb-2 font-semibold">Status</h2> : null}
@@ -125,7 +125,10 @@ export function AppStatusPopover({ items, onAction, onOpenChange, requestedOpen 
       <PopoverTrigger asChild>
         <AppStatusSummary data-ui-target="toolbar:status" items={items} />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 max-w-[calc(100vw-1rem)] p-0">
+      <PopoverContent
+        align="end"
+        className="w-[var(--ui-surface-status-w)] max-w-[calc(100vw-1rem)] p-0"
+      >
         <AppStatusList
           items={items}
           onAction={(action) => {

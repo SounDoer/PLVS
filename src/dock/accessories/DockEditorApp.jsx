@@ -208,14 +208,14 @@ export function DockEditorApp() {
         payload.edge === "bottom" && "fixed bottom-0 left-0",
         POPOVER_SURFACE_CLASS,
         payload.view?.startsWith("module:") && "p-1",
-        // Presets owns a minimum width that follows Interface Size; the other library menus grow
-        // to fit their rows up to the shared 18rem cap. No cap here is viewport-relative: this
+        // Library menus grow with their rows and Interface Size. No cap here is viewport-relative: this
         // window is resized to what is measured, so a `vw` cap would feed back into itself.
-        payload.view === "presets"
-          ? "w-max min-w-40 max-w-[400px]"
+        "text-[length:var(--ui-fs-control)]",
+        payload.view === "status"
+          ? "w-[var(--ui-surface-status-w)]"
           : payload.view === "loudness-profile" || payload.view === "modules"
-            ? "w-max min-w-40 max-w-[18rem]"
-            : "w-max min-w-48 max-w-[400px]"
+            ? "w-max min-w-[12em] max-w-[var(--ui-surface-compact-w)]"
+            : "w-max min-w-[12em] max-w-[var(--ui-surface-dialog-w)]"
       )}
     >
       {payload.view === "status" ? (

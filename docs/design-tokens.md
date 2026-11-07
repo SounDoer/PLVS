@@ -93,6 +93,24 @@ The rule: **if a box's job is to hold text, size it in units that scale with tha
 Heights follow the same rule through one token: every form control is `--ui-control-h` tall, which
 the Interface Size profiles set alongside the type scale. See Control Height.
 
+Text surfaces use shared preferred widths in CSS pixels. All widths are bounded by the available
+viewport (or the monitor for native Dock hosts); menus retain intrinsic widths rather than filling
+their maximum. `layout.surfaces` in the Interface Size profiles owns these values:
+
+| Token                    | Small | Default | Large | Extra Large | Used by                                                               |
+| ------------------------ | ----: | ------: | ----: | ----------: | --------------------------------------------------------------------- |
+| `--ui-surface-compact-w` |   288 |     320 |   368 |         416 | Welcome, confirmation dialogs, Feedback, library menu limits          |
+| `--ui-surface-dialog-w`  |   384 |     448 |   512 |         576 | Import/export, saved-item selection, save conflicts, Dock menu limits |
+| `--ui-surface-wide-w`    |   480 |     544 |   608 |         672 | Update details and crash reports                                      |
+| `--ui-surface-status-w`  |   320 |     384 |   432 |         480 | Status lists                                                          |
+
+Settings keeps `--ui-drawer-w` (320 / 336 / 368 / 400), and Theme/Profile editors keep
+`--ui-editor-w` (416 / 416 / 448 / 480). Quick Tour uses `25em`; Theme Preview uses the available
+space. Native Dock content receives the same surface widths even where its chrome stays compact.
+Intrinsic Dock menus must not use viewport-relative width limits, since the native host follows
+their measurement. Authoring windows request their profile's preferred width rather than their
+currently clipped content width, so forms can both grow with Interface Size and fit a small monitor.
+
 ## Grid Lines
 
 Every optional panel Grid and every always-visible Vectorscope guide resolves from `data.grid`.

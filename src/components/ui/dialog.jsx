@@ -9,9 +9,9 @@ import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "./surfaceStyles.js";
 const Dialog = DialogPrimitive.Root;
 
 const DIALOG_WIDTH_CLASS = {
-  sm: "w-[min(20rem,calc(100vw-2rem))]",
-  md: "w-[min(28rem,calc(100vw-2rem))]",
-  lg: "w-[min(34rem,calc(100vw-2rem))]",
+  sm: "w-[min(var(--ui-surface-compact-w),calc(100vw-2rem))]",
+  md: "w-[min(var(--ui-surface-dialog-w),calc(100vw-2rem))]",
+  lg: "w-[min(var(--ui-surface-wide-w),calc(100vw-2rem))]",
   custom: "",
 };
 

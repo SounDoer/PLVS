@@ -40,6 +40,12 @@ export const UI_PREFERENCES = {
       sectionGapRem: 0.75,
       rowGapRem: 0.25,
     },
+    surfaces: {
+      compactWidthPx: 288,
+      dialogWidthPx: 384,
+      wideWidthPx: 480,
+      statusWidthPx: 320,
+    },
     articlePadding: {
       defaultXRem: 0.25,
       defaultYRem: 0.25,

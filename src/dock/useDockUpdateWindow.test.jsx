@@ -27,6 +27,35 @@ const options = {
   onAction: vi.fn(),
   onGeometry: vi.fn(),
 };
+
+it("resizes the native host when the same setup or details changes Interface Size", async () => {
+  const { rerender } = renderHook((props) => useDockUpdateWindow(props), {
+    initialProps: { ...options, payload: { key: "setup", kind: "setup", interfaceSize: "small" } },
+  });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenCalledWith(
+      "set_dock_update_window",
+      expect.objectContaining({ contentWidth: 288 })
+    )
+  );
+  rerender({ ...options, payload: { key: "setup", kind: "setup", interfaceSize: "extra-large" } });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenLastCalledWith(
+      "set_dock_update_window",
+      expect.objectContaining({ contentWidth: 416 })
+    )
+  );
+  rerender({
+    ...options,
+    payload: { key: "details:a", kind: "details", interfaceSize: "extra-large" },
+  });
+  await waitFor(() =>
+    expect(mock.invoke).toHaveBeenLastCalledWith(
+      "set_dock_update_window",
+      expect.objectContaining({ contentWidth: 672 })
+    )
+  );
+});
 beforeEach(() => {
   vi.resetAllMocks();
   mock.invoke.mockResolvedValue(null);

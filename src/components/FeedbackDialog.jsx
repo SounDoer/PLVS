@@ -57,7 +57,7 @@ export function FeedbackContent({
       role="dialog"
       data-settings-editor
       aria-label="Send feedback"
-      className={`${FLOATING_WINDOW_CLASS} w-80 gap-2`}
+      className={`${FLOATING_WINDOW_CLASS} w-[var(--ui-surface-compact-w)] max-w-[calc(100vw-2rem)] gap-2`}
       style={{ left: pos.x, top: pos.y, maxHeight: `calc(100vh - ${pos.y + 12}px)` }}
     >
       <div

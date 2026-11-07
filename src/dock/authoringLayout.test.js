@@ -37,3 +37,18 @@ it("retains the separate preview viewport and the Feedback sizing behavior", () 
   ).toMatchObject({ width: 816, height: 800, preview: true });
   expect(deriveAuthoringLayout({ ...content, view: "feedback", height: 700 }).height).toBe(716);
 });
+
+it("grows and shrinks authoring windows independently of their currently clipped contents", () => {
+  for (const [view, small, large] of [
+    ["feedback", 304, 432],
+    ["theme", 432, 496],
+    ["profile", 432, 496],
+  ]) {
+    expect(
+      deriveAuthoringLayout({ ...content, view, interfaceSize: "extra-large", width: 250 }).width
+    ).toBe(large);
+    expect(
+      deriveAuthoringLayout({ ...content, view, interfaceSize: "small", width: 700 }).width
+    ).toBe(small);
+  }
+});

@@ -88,7 +88,7 @@ export function CrashReportDialog({
         role="dialog"
         aria-modal="true"
         aria-label="PLVS Quit Unexpectedly"
-        className={`flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`}
+        className={`flex max-h-[90vh] w-full max-w-[var(--ui-surface-wide-w)] flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`}
       >
         <header className="border-b border-border px-4 py-3">
           <h2 className="text-[length:var(--ui-fs-panel-title)] font-semibold">

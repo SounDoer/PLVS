@@ -93,6 +93,11 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   const drawer = prefs.layout.drawer;
   setCssVar("--ui-drawer-w", `${drawer.preferredWidthPx}px`);
   setCssVar("--ui-editor-w", `${prefs.layout.editor.preferredWidthPx}px`);
+  const surfaces = prefs.layout.surfaces;
+  setCssVar("--ui-surface-compact-w", `${surfaces.compactWidthPx}px`);
+  setCssVar("--ui-surface-dialog-w", `${surfaces.dialogWidthPx}px`);
+  setCssVar("--ui-surface-wide-w", `${surfaces.wideWidthPx}px`);
+  setCssVar("--ui-surface-status-w", `${surfaces.statusWidthPx}px`);
   setCssVar("--ui-editor-height-cap", `${prefs.layout.editor.maxHeightPx}px`);
   setCssVar(
     "--ui-editor-max-h",

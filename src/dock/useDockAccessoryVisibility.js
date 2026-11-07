@@ -267,7 +267,7 @@ export function useDockAccessoryVisibility({
     if (!view || editorViewRef.current !== view) return;
     if (!Number.isFinite(width) || !Number.isFinite(height)) return;
     const next = {
-      width: Math.max(176, Math.min(400, Math.ceil(width))),
+      width: Math.max(176, Math.min(768, Math.ceil(width))),
       height: Math.max(80, Math.min(640, Math.ceil(height))),
     };
     setEditorSize((current) =>

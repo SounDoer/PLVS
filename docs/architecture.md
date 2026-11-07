@@ -595,8 +595,8 @@ opacity changes alone do not. Marker fading remains separate from axis-label sel
 Every visual size PLVS specifies (stroke-width tokens such as `--ui-spectrum-stroke-width`, grid
 and guide lines, point radii, paddings) is **CSS px, meaning the final size on screen**. It must
 look the same at any `devicePixelRatio`. `devicePixelRatio` combines the display scale and, in
-WebView2, the Windows text scale. Interface Size swaps typography and iconography tokens only; it
-changes neither DPR nor line widths.
+WebView2, the Windows text scale. Interface Size selects typography, iconography, control dimensions,
+and text-surface widths; it changes neither DPR nor chart line widths.
 
 How each renderer meets the rule:
 
