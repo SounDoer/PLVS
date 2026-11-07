@@ -230,7 +230,7 @@ One-time setup for the release-package smoke, beyond the table above:
 - **Windows:** the package smoke needs an active desktop session for recording. Keep the session
   unlocked and locally active while a release runs: locking it or disconnecting Remote Desktop can
   leave Media Foundation with no frames and error `0xC00D4A44`. The window opens on that desktop for
-  about a minute.
+  about a minute. For unattended operation, use the console handoff and reboot setup below.
 - **macOS:** grant **Screen & System Audio Recording** permission to the Terminal that launches the
   runner. Without it, package-smoke recording fails with `screenCapturePermissionRequired`. After
   granting the permission, fully quit Terminal, reopen it, and restart the runner before testing.
@@ -245,6 +245,67 @@ One-time setup for the release-package smoke, beyond the table above:
   unit's environment the app gets a private one from `dbus-run-session` (package `dbus`). The
   rig's `/usr/bin/ffmpeg` must include libx264 and AAC (Ubuntu's `ffmpeg` package does): the
   packaged app records with it, and the smoke exits 2 when recording is unavailable.
+
+### Windows unattended desktop runner
+
+Runner connectivity, an awake computer, and a usable desktop are separate requirements. An HDMI
+dummy plug supplies a display output but does not return a disconnected Remote Desktop (RDP)
+session to the local console. Disable automatic sleep and display-off on the rig's operating power
+source; on a laptop, also configure closing the lid to do nothing. Keep the desktop unlocked for
+visual tests. The runner can remain online and run capture smoke while package recording receives
+no frames, so runner status and capture smoke alone do not validate this setup.
+
+[Microsoft's UI testing guidance](https://learn.microsoft.com/en-us/azure/devops/pipelines/test/ui-testing-considerations?view=azure-devops)
+uses an interactive user-session agent and `tscon` to preserve the desktop when leaving RDP. From
+an elevated terminal, discover the current session with `query user`, then use its actual ID:
+
+```powershell
+tscon <session-id> /dest:console
+```
+
+This disconnects RDP and transfers that user session to the local console; session IDs must not be
+hard-coded. The Windows rig automates the handoff with the local scheduled task
+`PLVS Restore Console After RDP`. Its `RemoteDisconnect` trigger is restricted to the runner user,
+and it runs with that user's elevated interactive token, without a task password. The script
+checks its identity and session state, handles only its own disconnected session, and rechecks
+before calling `tscon` so a quick reconnect is left alone. This event-driven adaptation has been
+verified on the rig; the Microsoft example performs the handoff before the user leaves RDP.
+The task does not unlock a desktop that the user explicitly locks.
+
+The elevated script and its log live under `C:\Program Files\PLVS Runner Maintenance\`; only
+Administrators and SYSTEM may modify that directory. Verification scripts and results live under
+`C:\actions-runner-plvs\maintenance-verification\`. These are machine-local installations, not
+scripts provisioned by the repository or workflows. Do not put scheduled-task scripts in an
+AppData path written from an MSIX application container: the apparent path can resolve to that
+app's private `LocalCache`, while Task Scheduler sees no file. On this rig that caused the
+verification task to exit `0xFFFD0000` before its script ran. Verify paths by launching the actual
+scheduled task, not only by reading them from the configuring app.
+
+For recovery after reboot, enable automatic console login with the signed Microsoft
+[Sysinternals Autologon](https://learn.microsoft.com/en-us/sysinternals/downloads/autologon) GUI.
+Enter the Windows account password in that GUI, never in chat, scripts, command arguments or
+repository files. Autologon stores an LSA secret that administrators can recover, and the machine
+boots into an unlocked user desktop; use this configuration only on a suitably protected rig.
+The existing Startup-folder launcher then starts `run.cmd` in that session. Autologon does not
+validate credentials when enabled: a registry flag alone is not reboot evidence.
+
+Validate both paths independently:
+
+1. Disconnect RDP and confirm the task restores the runner user's session to `console`. Run the
+   existing release-package smoke and evidence verifier for an exact candidate commit, using
+   `--wait` for a busy rig lease. Require screenshots, recording and live audio to pass without
+   reconnecting RDP during the test.
+2. Reboot and leave RDP disconnected until verification completes. Confirm a local logon and
+   `Runner.Listener` startup precede any remote connection, and that package smoke passes on the
+   console. A manually triggered test after reconnecting is evidence for that test, not for the
+   boot trigger. The rig's one-shot `PLVS Verify Next Boot Recovery` task waits 45 seconds after
+   logon, saves `boot-verification.json` and package evidence in the verification directory, then
+   disables itself; explicitly re-enable it when another reboot needs acceptance.
+
+Inspect the task result and console-handoff log when diagnosing failures. To undo the setup,
+disable `PLVS Restore Console After RDP` and any pending boot-verification task, then use
+Autologon's **Disable** button to remove automatic login. The runner still requires a logged-in
+interactive desktop afterwards.
 
 ### Linux update acceptance runner
 
