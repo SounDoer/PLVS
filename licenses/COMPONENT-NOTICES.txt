@@ -2382,9 +2382,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:framer-motion@14.9.0
+npm:framer-motion@14.10.1
 Declared license: MIT
-Source: https://registry.npmjs.org/framer-motion/-/framer-motion-14.9.0.tgz
+Source: https://registry.npmjs.org/framer-motion/-/framer-motion-14.10.1.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
@@ -2713,9 +2713,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:lucide-react@1.65.0
+npm:lucide-react@1.70.0
 Declared license: ISC
-Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.65.0.tgz
+Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.70.0.tgz
 
 --- LICENSE ---
 ISC License
@@ -3635,9 +3635,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:motion-dom@14.9.0
+npm:motion-dom@14.10.1
 Declared license: MIT
-Source: https://registry.npmjs.org/motion-dom/-/motion-dom-14.9.0.tgz
+Source: https://registry.npmjs.org/motion-dom/-/motion-dom-14.10.1.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
@@ -4341,9 +4341,9 @@ SOFTWARE.
 
 
 ========================================================================
-npm:tailwindcss@4.3.3
+npm:tailwindcss@4.3.5
 Declared license: MIT
-Source: https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.3.tgz
+Source: https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.5.tgz
 
 --- LICENSE ---
 MIT License
@@ -48843,9 +48843,9 @@ DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-rust:log@0.4.34
+rust:log@0.4.35
 Declared license: MIT OR Apache-2.0
-Source: https://crates.io/api/v1/crates/log/0.4.34/download
+Source: https://crates.io/api/v1/crates/log/0.4.35/download
 
 --- LICENSE-APACHE ---
                               Apache License
