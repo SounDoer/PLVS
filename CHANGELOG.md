@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-11-08
+
+### Changed
+
+- First-launch preferences now include Appearance, Interface Size and Crash Report Prompt alongside
+  automatic update checking and downloading. Appearance and size changes preview immediately;
+  Continue saves the choices before the Quick Tour invitation. Existing installations keep their
+  preferences and do not see the welcome prompt again.
+
+### Fixed
+
+- Dialogs, editors, status lists and menus adjust their widths with Interface Size, including their
+  Dock windows, while remaining bounded by the screen.
+- On macOS, Dock toolbar hover tips work as soon as the toolbar opens, without an initial click.
+  Tips clear when the toolbar hides or loses focus instead of remaining visible when it reopens.
+- Linux prefers X11/XWayland by default so Dock is available on supported desktops, with Wayland
+  as a fallback. An explicit GDK_BACKEND setting still takes precedence.
+- Failed update checks no longer appear as installation failures. A successful check retry clears
+  the check warning, while known updates and actual download or installation errors retain their
+  own status and recovery actions.
+
 ## [0.25.0] - 2026-11-07
 
 ### Added
