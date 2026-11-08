@@ -1,49 +1,46 @@
 {
   "schemaVersion": 1,
-  "version": "0.25.0",
-  "baselineTag": "v0.24.1",
-  "baselineRevision": "d89d3826170204250830246bfa4a6082b7187162",
-  "candidateRevision": "b51abfe3deac2b7d0a0f5db4ecade7bda2a60f13",
-  "contentSha256": "39792349ee26c1bdbb9cb835f3215abbf177ebca93b5f199b6edc201467dd07b",
+  "version": "0.25.1",
+  "baselineTag": "v0.25.0",
+  "baselineRevision": "c84cf59bfb4ecc3b019b25d44c9552b11fb28225",
+  "candidateRevision": "ecf1afe4fe7b28cdaad82f4ee7304beda99a6c99",
+  "contentSha256": "f38e8355f3d20dd90b5118b29c85a17db58b7da8c7add78a19db2f61a4544e76",
   "reviews": {
     "userGuide": {
       "status": "unchanged",
-      "rationale": "Reviewed the complete v0.24.1-to-b51abfe3 candidate against the 0.25.0 CHANGELOG. Feature commits already updated the guide: Dock Settings and draggable authoring preserve drafts across hosts; Theme Preview restores its editor and scroll; bounded editors keep controls visible; Linux Dock requires supported X11/XWayland, has no Above Full Screen and reserves only outer display edges; system output follows configured speakers with conservative mapping errors and the Windows complete-stereo-mix exception; CLI documents dock-settings screenshots and per-recording indicator control. docs/prd.md already records the changed system-output scope. No further guide edit is needed.",
+      "rationale": "Reviewed the complete v0.25.0-to-ecf1afe4 range against the 0.25.1 CHANGELOG. The feature and fix commits already describe Welcome preferences, immediate Appearance/Interface Size preview, explicit Continue before update requests, existing-installation preservation, size-aware text surfaces, macOS first-hover/reset behavior and Linux backend preference. No changed promise or non-goal requires a PRD edit.",
       "evidence": [
-        "git diff v0.24.1..b51abfe3 -- docs/user/cli.md docs/user/system-settings.md docs/user/loudness-profiles.md docs/user/workspace.md docs/user/multichannel.md docs/user/signal-source.md docs/user/getting-started.md docs/prd.md compared with CHANGELOG.md 0.25.0",
-        "docs/adr/0052-native-speaker-roles-are-session-metadata.md, 0053-system-output-monitoring-follows-configured-speakers.md, 0054-linux-dock-uses-ewmh-on-the-actual-x11-backend.md and 0055-windows-complete-stereo-mix-is-a-safe-monitoring-scope.md compared with src-tauri/src/audio/source_layout.rs, windows_layout.rs and linux_dock.rs",
-        "src/components/LoudnessProfileEditor.jsx, src/preferences/data.js and src/index.css compared with the editor-height and Preview descriptions in docs/user/system-settings.md"
+        "docs/user/getting-started.md, system-settings.md and workspace.md compared with src/components/UpdateSurfaces.jsx, UpdatePreferencesControls.jsx, src/preferences/interfaceSize.js, src/dock/authoringLayout.js and src-tauri/src/lib.rs",
+        "src/lib/updateController.js and src/dock/dockUpdateStatus.js compared with the update-recovery chapter and regression tests",
+        "CHANGELOG.md 0.25.1 and git diff v0.25.0..ecf1afe4 -- docs/user docs/prd.md"
       ]
     },
     "readme": {
-      "status": "updated",
-      "rationale": "Replaced the obsolete claim that Linux has no Dock with the actual EWMH-capable X11/XWayland requirement. Native Wayland Dock and single-application capture remain unavailable. Product highlights, package names and installation guidance still match the code and guide. The shared hero was re-rendered and has identical pixels.",
+      "status": "unchanged",
+      "rationale": "Product highlights, platform/package scope, privacy summary and shared hero still match the candidate. Linux already states the X11/XWayland requirement; preferring that backend does not change its supported platform scope. Welcome settings do not require a new product highlight. The shared hero re-render has identical decoded pixels.",
       "evidence": [
-        "README.md Download platform limitations changed in 00997bff; compared with docs/user/getting-started.md, docs/user/workspace.md and src-tauri/src/linux_dock.rs",
-        "README.md What is PLVS and Download reviewed against CHANGELOG.md 0.25.0; current Linux update documentation remains applicable",
-        "artifacts/marketing/homepage-render-2026-11-06T16-38-41-270Z/report.json and decoded RGBA comparison: landing-hero has zero changed pixels"
+        "README.md What is PLVS and Download compared with CHANGELOG.md 0.25.1 and docs/user/getting-started.md",
+        "artifacts/marketing/homepage-render-2026-11-08T13-23-25-012Z/pixel-comparison.json: landing-hero has zero changed pixels"
       ]
     },
     "website": {
-      "status": "updated",
-      "rationale": "Homepage product copy remains accurate; generated Docs include the guide updates. Updated the Profile editor feature image to the current layout. Privacy review covers baseline d89d3826170204250830246bfa4a6082b7187162 through candidate b51abfe3deac2b7d0a0f5db4ecade7bda2a60f13: speaker assignments and selected PCM affect local session metadata, history, explicit exports and recordings, without adding collection or network transmission; retention and deletion paths are unchanged. Feedback draft ownership moved into useFeedbackDraft and local Dock transport, retaining explicit submission, optional diagnostics defaulting off, and the same payload fields and recipient. Settings and authoring windows call existing business callbacks through a local allowlisted IPC bridge. Per-recording indicator visibility changes only the local presentation, not recording consent or destinations. Update, crash-report, newsletter, feedback transport, policy and service/workflow source are unchanged. No changed service behavior requires a live-configuration assumption. No new provider, upload trigger, consent, storage location, retention or deletion rule was found. Policy text and Effective date are retained; this source review does not claim a new audit of deployed service configuration.",
+      "status": "unchanged",
+      "rationale": "Reviewed homepage selling points, image references and generated-guide sources against the full release range. No homepage claim or public image needs updating; the guide already contains the shipping behavior and will deploy from the release tag. Privacy review baseline c84cf59bfb4ecc3b019b25d44c9552b11fb28225 through candidate ecf1afe4fe7b28cdaad82f4ee7304beda99a6c99: Welcome adds a UI for the existing local crash-prompt preference. It calls the existing native preference setter before enabling update checks; saving does not send a report. Reports still require explicit Send. Appearance and Interface Size persist locally through existing owners. Update-check error separation changes status/recovery presentation, not requests, payloads, destinations or staging/retention. Dock local IPC adds only allowlisted preference actions. No new collection, upload trigger, provider, storage location, retention or deletion rule was found; backend crash-report/feedback/update transports, policy and workflow/service sources are unchanged. No changed service behavior introduces a live-configuration uncertainty. Policy wording and Effective date are retained; this is a source review, not a renewed audit of deployed service configuration.",
       "evidence": [
-        "git diff v0.24.1..b51abfe3 -- website: only the reviewed generated marketing image and provenance updates",
-        "git diff v0.24.1..b51abfe3 -- src/components/FeedbackDialog.jsx src/hooks/useFeedbackDraft.js src/dock/settingsTransport.js src/dock/accessoryProtocol.js; reviewed the extracted submission and diagnostics paths and local action allowlist",
-        "git diff v0.24.1..b51abfe3 -- src/lib/feedback.js src/lib/crashReporting.js src/lib/updateCheck.js src-tauri/src/feedback_diagnostics.rs src-tauri/src/update_runtime.rs website/privacy/index.html .github/workflows/: empty",
-        "git diff v0.24.1..b51abfe3 -- src/lib/AudioSnapHistorySlab.js src/lib/FrameIntake.js src/runtime/SourceContext.jsx src-tauri/src/cli_control.rs src-tauri/src/visual_capture/mod.rs; session-local roles, mapping restart identity and explicit screenshot/recording controls",
-        "node scripts/privacy-review.mjs check passed; npm run website:verify passed 37 HTML pages and 116 tests; artifacts/marketing/release-025-responsive/review.json records the current image hash and no horizontal overflow at 1440, 820 and 390 px"
+        "website/index.html product sections, website/privacy/index.html Update Checks and Downloads and Crash Reports compared with candidate behavior",
+        "src/components/UpdateSurfaces.jsx save ordering, src/hooks/useCrashReportSetting.js, src/hooks/useCrashReporting.js, src/components/CrashReportDialog.jsx and src/dock/accessoryProtocol.js reviewed",
+        "git diff v0.25.0..ecf1afe4 -- src/lib/crashReporting.js src/hooks/useCrashReportSetting.js src/hooks/useCrashReporting.js src-tauri/src/crash_report.rs src/lib/feedback.js src-tauri/src/update_runtime.rs website/privacy/index.html .github/workflows/: empty",
+        "node scripts/privacy-review.mjs check passed; full release preflight also verifies the generated guide, website and privacy contracts"
       ]
     },
     "screenshots": {
-      "status": "updated",
-      "rationale": "Used the current recipe renderer from a clean committed candidate, following docs/marketing-screenshots.md, rather than the retired native-capture recipe. All eight images rendered without page errors at their published sizes. Initial decoded-pixel comparison found identical hero, Dock pair, history, frequency pair and multichannel images; only rules-editor changed (44101 of 280000 pixels) because the shared bounded editor height policy changes title/body/footer placement. Visually inspected old and new rules-editor images: the same seven limits, values, reference and Save/Cancel remain readable. Published the clean rerender with the standard script, preserving unchanged image bytes and updating provenance. Reviewed hero and monitoring sections at 1440, 820 and 390 px, and the responsive Dock-pair contract. These fixture-rendered images do not claim native desktop or capture acceptance.",
+      "status": "unchanged",
+      "rationale": "Re-rendered every homepage image from the clean committed candidate with the documented recipe renderer. All eight images have the expected sizes, no page errors and zero changed decoded RGBA pixels compared with their tracked originals. Visually reviewed the hero, rules editor and contact sheet covering both Dock strips, history, both frequency views and multichannel; composition/readability remain applicable. Welcome and status dialogs are not shown in these images. Existing theme/Sharesets tiles have no changed theme, panel or fixture inputs. No publication or provenance rewrite is needed for identical images. These fixture-rendered images do not substitute for native/package acceptance.",
       "evidence": [
-        "docs/marketing-screenshots.md and scripts/marketing/recipes/homepage-images.json; clean render artifacts/marketing/homepage-render-2026-11-06T16-39-53-279Z/report.json and comparison.html at 00997bff",
-        "Visual comparison of website/assets/raw/homepage-rendered/rules-editor.png before publication against artifacts/marketing/homepage-render-2026-11-06T16-38-41-270Z/rules-editor.png; decoded RGBA comparison of all eight images",
-        "node scripts/marketing/publish-homepage-images.mjs artifacts/marketing/homepage-render-2026-11-06T16-39-53-279Z; resulting tracked image/provenance update committed as b51abfe3",
-        "artifacts/marketing/release-025-responsive/hero-{1440,820,390}.png and monitoring-{1440,820,390}.png inspected; review.json confirms current rules.webp bytes and no page overflow",
-        "node scripts/marketing/review-dock-pair.mjs: three viewports passed; screenshots in artifacts/marketing/homepage-dock-review-1793983275846"
+        "docs/marketing-screenshots.md and scripts/marketing/recipes/homepage-images.json",
+        "artifacts/marketing/homepage-render-2026-11-08T13-23-25-012Z/report.json: clean ecf1afe4 candidate, expected dimensions and no page errors",
+        "artifacts/marketing/homepage-render-2026-11-08T13-23-25-012Z/pixel-comparison.json: zero changed pixels for all eight images",
+        "Visual inspection of landing-hero.png, rules-editor.png and review-contact.png in the same run directory"
       ]
     }
   }
