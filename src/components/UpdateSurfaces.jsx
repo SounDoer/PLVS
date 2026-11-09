@@ -58,6 +58,9 @@ export function UpdateSurfaces({ currentVersion }) {
     }
   }
   const releaseNotes = sliceChangelogSince(updates.details?.target.manifest?.notes, currentVersion);
+  // A tutorial preview shows what an installed copy offers; the fixture refuses installing anyway.
+  const installationShown =
+    updates.details?.target.preview === true ? true : updates.installationSupported;
   const payload = {
     key: setup
       ? "setup"
@@ -69,7 +72,7 @@ export function UpdateSurfaces({ currentVersion }) {
     appearance: settings.appearance === "system" ? "system" : settings.resolvedThemeId,
     askToSendCrashReports,
     interfaceSize: settings.interfaceSize,
-    installationSupported: updates.installationSupported,
+    installationSupported: installationShown,
     busy: busy || ["installing", "restarting"].includes(updates.installStatus),
     error: setup ? error : updates.error,
     targetId: updates.details?.target.id,
@@ -244,7 +247,7 @@ export function UpdateSurfaces({ currentVersion }) {
         onConfirm={() => void updates.confirmInstall()}
         onCancel={updates.dismissDetails}
         onRestart={() => void updates.confirmInstall()}
-        installationSupported={updates.installationSupported}
+        installationSupported={installationShown}
         error={updates.error}
         openExternalUrl={openExternalUrl}
       />

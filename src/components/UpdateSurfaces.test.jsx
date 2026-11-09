@@ -23,6 +23,7 @@ const mock = vi.hoisted(() => ({
   registry: null,
   adapters: new Map(),
   surfaces: [],
+  updateControls: null,
 }));
 vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
   useDevelopmentEventFixtureAdapter: (name, adapter) => mock.adapters.set(name, adapter),
@@ -36,7 +37,7 @@ vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
   useAppLifecycle: () => ({
     crashReportSetting: mock.crashReportSetting,
-    updateControls: {
+    updateControls: mock.updateControls ?? {
       enabled: true,
       installationSupported: true,
       details: null,
@@ -80,6 +81,7 @@ beforeEach(() => {
   mock.docked = false;
   mock.windowError = null;
   mock.exitDock.mockClear();
+  mock.updateControls = null;
 });
 describe("first-launch update choice", () => {
   it("applies appearance and size immediately without confirming updates", () => {
@@ -315,4 +317,36 @@ describe("update preferences development fixture", () => {
     );
     expect(mock.adapters.get("update-preferences.pending").canEstablish()).toBe(false);
   });
+});
+
+it("shows a tutorial preview as an installed copy would, under its own fixture name", () => {
+  mock.settings.updatePreferences = { choiceMade: true };
+  mock.updateControls = {
+    enabled: true,
+    installationSupported: false,
+    details: {
+      origin: "fixture",
+      staged: false,
+      target: {
+        id: "fixture-t",
+        version: "0.21.1",
+        preview: true,
+        manifest: { notes: "- Fixes." },
+      },
+    },
+    installStatus: "idle",
+    dismissDetails: vi.fn(),
+    confirmInstall: vi.fn(),
+  };
+  render(
+    <BlockingEditorsProvider>
+      <Harness />
+    </BlockingEditorsProvider>
+  );
+  expect(screen.getByRole("button", { name: "Update and Restart" })).toBeTruthy();
+  expect(
+    mock.surfaces.some(
+      (surface) => surface.active && surface.developmentFixture === "tutorial.update-available"
+    )
+  ).toBe(true);
 });
