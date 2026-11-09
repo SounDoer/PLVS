@@ -1,6 +1,16 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  parse,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
 
@@ -97,9 +107,7 @@ export async function validateWebsite(directory) {
   const files = await walkFiles(root);
   const leaked = files
     .map((path) => relative(root, path))
-    .filter((path) =>
-      /(^|[\\/])template\.html$|\.test\.[^\\/]+$|^assets[\\/]raw[\\/]/i.test(path)
-    );
+    .filter((path) => /(^|[\\/])template\.html$|\.test\.[^\\/]+$|^assets[\\/]raw[\\/]/i.test(path));
   if (leaked.length > 0) {
     throw new Error(`Website output contains source-only files: ${leaked.join(", ")}`);
   }
@@ -109,8 +117,14 @@ export async function validateWebsite(directory) {
   for (const htmlPath of htmlFiles) {
     const html = await readFile(htmlPath, "utf8");
     const document = new JSDOM(html).window.document;
-    const references = [...document.querySelectorAll("[href], [src]")].flatMap((element) =>
-      [element.getAttribute("href"), element.getAttribute("src")].filter(Boolean)
+    const references = [...document.querySelectorAll("[href], [src], [srcset]")].flatMap(
+      (element) => [
+        ...[element.getAttribute("href"), element.getAttribute("src")].filter(Boolean),
+        ...(element.getAttribute("srcset") ?? "")
+          .split(",")
+          .map((candidate) => candidate.trim().split(/\s+/)[0])
+          .filter(Boolean),
+      ]
     );
     for (const rawTarget of references) {
       const target = localTarget(root, htmlPath, rawTarget);

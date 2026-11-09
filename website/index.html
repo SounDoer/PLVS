@@ -728,7 +728,20 @@
             </div>
           </div>
           <figure class="shot hero-shot has-image">
-            <img src="assets/landing-hero.webp" alt="PLVS workspace with live metering panels." />
+            <img
+              src="assets/landing-hero.webp"
+              srcset="
+                assets/responsive/landing-hero-480.webp   480w,
+                assets/responsive/landing-hero-800.webp   800w,
+                assets/responsive/landing-hero-1200.webp 1200w,
+                assets/landing-hero.webp                 1600w
+              "
+              sizes="(max-width: 1199px) calc(100vw - 48px), 669px"
+              width="1600"
+              height="1000"
+              fetchpriority="high"
+              alt="PLVS workspace with live metering panels."
+            />
           </figure>
         </section>
 
@@ -744,6 +757,13 @@
               <figure>
                 <img
                   src="assets/homepage/spectral.webp"
+                  srcset="
+                    assets/responsive/spectral-480.webp   480w,
+                    assets/responsive/spectral-800.webp   800w,
+                    assets/responsive/spectral-1200.webp 1200w,
+                    assets/homepage/spectral.webp        1280w
+                  "
+                  sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 96px) / 3), 378px"
                   alt="Spectral Inspection preset with full spectrum, low-end detail, spectral history and waveform."
                   width="1280"
                   height="720"
@@ -754,6 +774,13 @@
               <figure>
                 <img
                   src="assets/homepage/stereo.webp"
+                  srcset="
+                    assets/responsive/stereo-480.webp   480w,
+                    assets/responsive/stereo-800.webp   800w,
+                    assets/responsive/stereo-1200.webp 1200w,
+                    assets/homepage/stereo.webp        1280w
+                  "
+                  sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 96px) / 3), 378px"
                   alt="Stereo Field Check preset with mid/side spectrum, polar vectorscope, correlation and mono loss views."
                   width="1280"
                   height="720"
@@ -764,6 +791,13 @@
               <figure>
                 <img
                   src="assets/homepage/meter-bridge.webp"
+                  srcset="
+                    assets/responsive/meter-bridge-480.webp   480w,
+                    assets/responsive/meter-bridge-800.webp   800w,
+                    assets/responsive/meter-bridge-1200.webp 1200w,
+                    assets/homepage/meter-bridge.webp        1280w
+                  "
+                  sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 96px) / 3), 378px"
                   alt="Meter Bridge preset with 5.1 waveforms, horizontal Peak and RMS meters, and vertical Momentary and Short-term meters."
                   width="1280"
                   height="720"
@@ -810,6 +844,13 @@
                 <div class="feature-visual">
                   <img
                     src="assets/homepage/frequency.webp"
+                    srcset="
+                      assets/responsive/frequency-480.webp   480w,
+                      assets/responsive/frequency-800.webp   800w,
+                      assets/responsive/frequency-1200.webp 1200w,
+                      assets/homepage/frequency.webp        1590w
+                    "
+                    sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 72px) / 2), 578px"
                     alt="The same selected signal shown across 20 Hz–20 kHz and zoomed into 20–250 Hz, with frequency peak labels."
                     width="1590"
                     height="892"
@@ -822,6 +863,13 @@
                 <div class="feature-visual">
                   <img
                     src="assets/homepage/history.webp"
+                    srcset="
+                      assets/responsive/history-480.webp   480w,
+                      assets/responsive/history-800.webp   800w,
+                      assets/responsive/history-1200.webp 1200w,
+                      assets/homepage/history.webp        1590w
+                    "
+                    sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 72px) / 2), 578px"
                     alt="Loudness and Waveform share a selected point 22 seconds back, while Spectrum displays that same moment."
                     width="1590"
                     height="880"
@@ -843,6 +891,8 @@
                   <img
                     class="rules-image"
                     src="assets/homepage/rules.webp"
+                    srcset="assets/responsive/rules-480.webp 480w, assets/homepage/rules.webp 560w"
+                    sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 72px) * 0.36), 417px"
                     alt="My Delivery Profile with seven limits for Integrated, True Peak Max, Short-term Max, Momentary Max, Loudness Range and dynamics; the same Profile is applied in the adjacent multichannel workspace."
                     width="560"
                     height="500"
@@ -855,6 +905,13 @@
                 <div class="feature-visual">
                   <img
                     src="assets/homepage/multichannel.webp"
+                    srcset="
+                      assets/responsive/multichannel-480.webp   480w,
+                      assets/responsive/multichannel-800.webp   800w,
+                      assets/responsive/multichannel-1200.webp 1200w,
+                      assets/homepage/multichannel.webp        1590w
+                    "
+                    sizes="(max-width: 920px) calc(100vw - 48px), (max-width: 1228px) calc((100vw - 72px) * 0.64), 740px"
                     alt="A 7.1.4 workspace with twelve level meters, waveforms and nine Stats metrics. Integrated and True Peak Max fail the adjacent Profile; Momentary Max, Short-term Max and Integrated Dynamics show warnings."
                     width="1590"
                     height="795"
@@ -876,6 +933,13 @@
               <figure>
                 <img
                   src="assets/homepage/amber.webp"
+                  srcset="
+                    assets/responsive/amber-480.webp   480w,
+                    assets/responsive/amber-800.webp   800w,
+                    assets/responsive/amber-1200.webp 1200w,
+                    assets/homepage/amber.webp        1280w
+                  "
+                  sizes="(max-width: 620px) calc(100vw - 48px), (max-width: 920px) calc((100vw - 72px) / 2), (max-width: 1228px) calc((100vw - 120px) / 4), 277px"
                   alt="Control Room Amber theme with graphite surfaces, brass meters and verdigris traces."
                   width="1280"
                   height="800"
@@ -886,6 +950,13 @@
               <figure>
                 <img
                   src="assets/homepage/night.webp"
+                  srcset="
+                    assets/responsive/night-480.webp   480w,
+                    assets/responsive/night-800.webp   800w,
+                    assets/responsive/night-1200.webp 1200w,
+                    assets/homepage/night.webp        1280w
+                  "
+                  sizes="(max-width: 620px) calc(100vw - 48px), (max-width: 920px) calc((100vw - 72px) / 2), (max-width: 1228px) calc((100vw - 120px) / 4), 277px"
                   alt="Night Circuit theme with deep indigo surfaces, cyan traces and violet accents."
                   width="1280"
                   height="800"
@@ -896,6 +967,13 @@
               <figure>
                 <img
                   src="assets/homepage/graphite.webp"
+                  srcset="
+                    assets/responsive/graphite-480.webp   480w,
+                    assets/responsive/graphite-800.webp   800w,
+                    assets/responsive/graphite-1200.webp 1200w,
+                    assets/homepage/graphite.webp        1280w
+                  "
+                  sizes="(max-width: 620px) calc(100vw - 48px), (max-width: 920px) calc((100vw - 72px) / 2), (max-width: 1228px) calc((100vw - 120px) / 4), 277px"
                   alt="Graphite Monitor theme with graphite surfaces, warm white traces and signal-red accents."
                   width="1280"
                   height="800"
@@ -906,6 +984,13 @@
               <figure>
                 <img
                   src="assets/homepage/paper.webp"
+                  srcset="
+                    assets/responsive/paper-480.webp   480w,
+                    assets/responsive/paper-800.webp   800w,
+                    assets/responsive/paper-1200.webp 1200w,
+                    assets/homepage/paper.webp        1280w
+                  "
+                  sizes="(max-width: 620px) calc(100vw - 48px), (max-width: 920px) calc((100vw - 72px) / 2), (max-width: 1228px) calc((100vw - 120px) / 4), 277px"
                   alt="Paper Console theme with warm paper surfaces, field green data and red-pencil accents."
                   width="1280"
                   height="800"

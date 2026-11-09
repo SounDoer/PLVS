@@ -72,6 +72,12 @@ After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepar
 to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
 published resource and its latest preview revision from the validated Catalogue; they do not read
 fixed `v1` screenshot paths. This is an explicit preparation step, not part of every website build.
+The same command generates 480, 800 and 1200 px wide WebP candidates under
+`website/assets/responsive/`, only where smaller than the source, directly from original pixels.
+The homepage uses `srcset` and layout-specific `sizes` so mobile and high-density displays can
+select an appropriate candidate. Keep the full-size fallback and its width descriptor in sync
+when source dimensions change. Dock strips retain their full-size images for horizontal reading
+on small screens. Non-hero screenshots remain lazy-loaded.
 The script also encodes the rendered feature originals in the raw directory named by
 `scripts/marketing/recipes/homepage-images.json`. Refresh those, the shared homepage/README hero and
 the Dock pair with `scripts/marketing/render-homepage-images.mjs` and

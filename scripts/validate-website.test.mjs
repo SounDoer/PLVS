@@ -64,6 +64,18 @@ describe("assembled website validation", () => {
     await expect(validateWebsite(root)).rejects.toThrow("index.html -> /assets/missing.png");
   });
 
+  it("checks each responsive candidate, including picture sources", async () => {
+    const root = fixture();
+    writeFileSync(join(root, "assets", "small.webp"), "");
+    writeFileSync(
+      join(root, "index.html"),
+      '<picture><source srcset="/assets/small.webp 480w, /assets/large.webp 800w"><img src="/assets/small.webp"></picture>'
+    );
+    await expect(validateWebsite(root)).rejects.toThrow("index.html -> /assets/large.webp");
+    writeFileSync(join(root, "assets", "large.webp"), "");
+    await expect(validateWebsite(root)).resolves.toMatchObject({ htmlPageCount: 4 });
+  });
+
   it("rejects source-only files", async () => {
     const root = fixture();
     writeFileSync(join(root, "docs", "template.html"), "template");
