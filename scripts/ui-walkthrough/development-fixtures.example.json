@@ -29,6 +29,22 @@
       "touches": []
     },
     {
+      "id": "tutorial-update-status",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "tutorial.update-available",
+        "surfaceKind": "status",
+        "phase": "update",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "tutorial-update-status.png"
+      },
+      "touches": []
+    },
+    {
       "id": "update-preferences",
       "durable": [],
       "ui": {
