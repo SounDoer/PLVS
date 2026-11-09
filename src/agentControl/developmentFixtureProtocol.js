@@ -14,6 +14,7 @@ export const DEVELOPMENT_EVENT_FIXTURE_NAMES = Object.freeze([
   "crash-report.pending",
   "close-confirmation.requested",
   "library-conflict.pending",
+  "tutorial.update-available",
 ]);
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);

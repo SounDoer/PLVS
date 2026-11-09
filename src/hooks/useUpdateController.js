@@ -91,6 +91,8 @@ export function useUpdateController({ preferences, startupEligible }) {
     refreshUpdateCheck: () => controller.check(false),
     openDetails: controller.openDetails,
     openFixture: controller.openFixture,
+    previewUpdate: controller.previewUpdate,
+    clearPreview: controller.clearPreview,
     dismissDetails: controller.dismissDetails,
     confirmInstall: controller.confirmInstall,
     // Legacy presentation adapters remain while fixture-driven dialogs use the same button API.

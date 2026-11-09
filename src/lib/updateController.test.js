@@ -412,3 +412,50 @@ it("keeps a failed replacement download separate from a usable cached update", a
   await controller.setPreferences({ ...prefs, autoDownload: false });
   expect(controller.getSnapshot()).toMatchObject({ ready: null, downloadError: null });
 });
+
+describe("tutorial update preview", () => {
+  async function ready() {
+    const context = setup();
+    await context.controller.setPreferences({ ...prefs, autoCheck: false, autoDownload: false });
+    await context.controller.initialize();
+    return context;
+  }
+
+  it("reports the next patch as an ordinary candidate that the real status entry shows", async () => {
+    const { controller } = await ready();
+    expect(controller.previewUpdate("fixture-1", "0.25.1")).toBe(true);
+    expect(controller.getSnapshot().candidate).toEqual({
+      id: "fixture-1",
+      version: "0.25.2",
+      manifest: { notes: "- Improvements and fixes." },
+      preview: true,
+    });
+    expect(controller.previewUpdate("fixture-2", "0.25.1")).toBe(false);
+  });
+
+  it("opens the real details as a fixture that never downloads or installs", async () => {
+    const { controller, invoke, prepare } = await ready();
+    controller.previewUpdate("fixture-1", "0.25.1");
+    controller.openDetails();
+    expect(controller.getSnapshot().details).toMatchObject({
+      origin: "fixture",
+      target: { id: "fixture-1", version: "0.25.2" },
+    });
+    await controller.confirmInstall();
+    expect(controller.getSnapshot().error).toMatch(/cannot install/);
+    expect(prepare).not.toHaveBeenCalled();
+    const commands = invoke.mock.calls.map(([command]) => command);
+    expect(commands).not.toContain("update_download");
+    expect(commands).not.toContain("update_prepare_install");
+  });
+
+  it("clears only its own candidate and details", async () => {
+    const { controller } = await ready();
+    controller.previewUpdate("fixture-1", "0.25.1");
+    controller.openDetails();
+    controller.clearPreview("other");
+    expect(controller.getSnapshot().candidate?.id).toBe("fixture-1");
+    controller.clearPreview("fixture-1");
+    expect(controller.getSnapshot()).toMatchObject({ candidate: null, details: null });
+  });
+});

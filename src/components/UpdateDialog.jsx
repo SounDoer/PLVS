@@ -2,8 +2,14 @@ import { UpdateDetailsContent, UpdateDetailsHeader } from "./UpdateDetailsConten
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
+const DETAILS_FIXTURES = {
+  event: "update.available",
+  tutorial: "tutorial.update-available",
+};
+
 export function UpdateDialog({
   open,
+  tutorialPreview = false,
   currentVersion,
   targetVersion = null,
   manualDownloadUrl = null,
@@ -28,7 +34,7 @@ export function UpdateDialog({
     active: open,
     kind: "update",
     origin: "event",
-    developmentFixture: "update.available",
+    developmentFixture: DETAILS_FIXTURES[tutorialPreview ? "tutorial" : "event"],
     blocking: false,
     busy,
     dismissible: !busy,

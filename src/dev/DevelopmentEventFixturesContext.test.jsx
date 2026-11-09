@@ -1,10 +1,14 @@
 /** @vitest-environment jsdom */
 
 import { act, renderHook } from "@testing-library/react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
-import { UiNavigationProvider, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import {
+  UiNavigationProvider,
+  useUiStatusReport,
+  useUiSurface,
+} from "../uiNavigation/UiNavigationContext.jsx";
 import {
   DevelopmentEventFixturesProvider,
   useDevelopmentEventFixtureAdapter,
@@ -76,7 +80,51 @@ function useUnsettledFixtureHarness() {
   return { fixtures: useDevelopmentEventFixtures(), fixtureId, reset };
 }
 
+function useStatusFixtureHarness() {
+  const [fixtureId, setFixtureId] = useState(null);
+  useDevelopmentEventFixtureAdapter("tutorial.update-available", {
+    establish: setFixtureId,
+    reset: () => setFixtureId(null),
+    matches: (id) => fixtureId === id,
+    settled: (inspection) => inspection.status?.find((item) => item.id === "update"),
+  });
+  const items = useMemo(
+    () => (fixtureId ? [{ id: "update", kind: "update", text: "Update Available" }] : []),
+    [fixtureId]
+  );
+  useUiStatusReport(items);
+  return { fixtures: useDevelopmentEventFixtures() };
+}
+
 describe("development event fixture controller", () => {
+  it("settles a fixture that shows a status notice rather than a surface", async () => {
+    const { result } = renderHook(useStatusFixtureHarness, { wrapper });
+    let pending;
+    await act(async () => {
+      pending = result.current.fixtures.establish({
+        name: "tutorial.update-available",
+        expectedRevision: 4,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    const established = await /** @type {Promise<any>} */ (pending);
+    expect(established).toMatchObject({
+      changed: true,
+      surface: { id: "update", kind: "update" },
+    });
+    let reset;
+    await act(async () => {
+      reset = result.current.fixtures.reset({
+        fixtureId: established.fixtureId,
+        expectedRevision: 4,
+        expectedUiGeneration: established.uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    expect(await reset).toMatchObject({ changed: true, committed: true });
+  });
+
   it("establishes one exact fixture, settles on the production surface, and is idempotent", async () => {
     const { result } = renderHook(useCloseFixtureHarness, { wrapper });
     let pending;

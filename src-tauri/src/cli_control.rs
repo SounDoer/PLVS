@@ -891,6 +891,7 @@ fn parse_development_fixture_args(args: &[String]) -> Result<ControlCommand, Str
         | "crash-report.pending"
         | "close-confirmation.requested"
         | "library-conflict.pending"
+        | "tutorial.update-available"
     ) {
       return Err("Unknown development event fixture.".to_string());
     }

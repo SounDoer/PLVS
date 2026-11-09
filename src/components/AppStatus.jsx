@@ -56,6 +56,7 @@ export function AppStatusList({ items, onAction = () => {}, accessory = false, s
                 {item.action ? (
                   <LinkButton
                     type="button"
+                    data-ui-target={`status-action:${item.id}`}
                     onClick={() => onAction(item.action)}
                     className="mt-1 text-primary hover:underline"
                   >

@@ -38,6 +38,13 @@ function surfaceMatches(surface, expected) {
   );
 }
 
+// What shows that a fixture is on screen: its surface, or for a fixture that opens none (a status
+// notice), the adapter's own `settled(inspection)` result.
+function shownBy(adapter, inspection) {
+  if (adapter.settled) return adapter.settled(inspection) || null;
+  return inspection.surfaces.find((surface) => surfaceMatches(surface, adapter.surface)) ?? null;
+}
+
 export function DevelopmentEventFixturesProvider({
   children,
   enabled = false,
@@ -115,9 +122,7 @@ export function DevelopmentEventFixturesProvider({
           }
           const activeAdapter = active.adapterRef.current;
           const inspection = uiNavigation.inspectUi();
-          const surface = inspection.surfaces.find((candidate) =>
-            surfaceMatches(candidate, activeAdapter.surface)
-          );
+          const surface = shownBy(activeAdapter, inspection);
           if (!surface) {
             throw fixtureError("uiNotSettled", {
               fixtureId: active.fixtureId,
@@ -154,11 +159,11 @@ export function DevelopmentEventFixturesProvider({
         await adapter.establish(id);
         activeRef.current = { name: params.name, fixtureId: id, adapterRef };
         try {
-          const settled = await waitFor(
-            (inspection) =>
-              inspection.surfaces.find((surface) => surfaceMatches(surface, adapter.surface)),
-            { name: params.name, fixtureId: id, committed: true }
-          );
+          const settled = await waitFor((inspection) => shownBy(adapter, inspection), {
+            name: params.name,
+            fixtureId: id,
+            committed: true,
+          });
           return {
             changed: true,
             committed: true,
@@ -203,10 +208,7 @@ export function DevelopmentEventFixturesProvider({
         await adapter.reset(active.fixtureId);
         try {
           const settled = await waitFor(
-            (inspection) =>
-              inspection.surfaces.some((surface) => surfaceMatches(surface, adapter.surface))
-                ? null
-                : true,
+            (inspection) => (shownBy(adapter, inspection) ? null : true),
             { fixtureId: active.fixtureId, committed: true }
           );
           activeRef.current = null;

@@ -87,6 +87,8 @@ export const EVENT_FIXTURES = Object.freeze({
     phase: "decision",
     action: "reset",
   },
+  // Shows a status notice, not a surface: the details dialog opens only from View Update Details.
+  "tutorial.update-available": { surfaceKind: "status", phase: "update", action: "reset" },
 });
 
 function plain(value) {

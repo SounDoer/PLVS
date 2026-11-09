@@ -164,6 +164,24 @@ export function UpdateSurfaces({ currentVersion }) {
     canReset: () => !payload.busy,
     surface: { kind: "update", target: { phase: "idle" } },
   });
+  // Tutorial recording: the status entry reports an ordinary-looking update, and View Update Details
+  // opens the real dialog for it; installing is refused like any fixture.
+  useDevelopmentEventFixtureAdapter("tutorial.update-available", {
+    establish: (id) => updates.previewUpdate(id, currentVersion),
+    matches: (id) => updates.candidate?.preview === true && updates.candidate.id === id,
+    reset: (id) => updates.clearPreview(id),
+    canEstablish: () =>
+      coordinator &&
+      updates.enabled &&
+      !updates.candidate &&
+      !updates.ready &&
+      !updates.details &&
+      !payload.busy &&
+      !setup,
+    canReset: () => !payload.busy,
+    settled: (inspection) =>
+      inspection.status?.find((item) => item.id === "update" && item.kind === "update"),
+  });
   useDevelopmentEventFixtureAdapter("update-preferences.pending", {
     establish: (id) => {
       setDraft(DEFAULT_SETUP_DRAFT);
@@ -210,6 +228,7 @@ export function UpdateSurfaces({ currentVersion }) {
       </Dialog>
       <UpdateDialog
         open={Boolean(updates.details)}
+        tutorialPreview={updates.details?.target.preview === true}
         currentVersion={currentVersion}
         targetVersion={updates.details?.target.version}
         manualDownloadUrl={

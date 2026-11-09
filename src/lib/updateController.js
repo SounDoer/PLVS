@@ -1,5 +1,9 @@
 import { normalizeUpdatePreferences } from "./updatePreferences.js";
-import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
+import {
+  DEVELOPMENT_UPDATE,
+  TUTORIAL_UPDATE_NOTES,
+  tutorialUpdateVersion,
+} from "../dev/developmentEventFixtureData.js";
 
 export const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases/latest";
 const RELEASE_TAGS_URL = "https://github.com/SounDoer/PLVS/releases/tag";
@@ -112,7 +116,7 @@ export function createUpdateController({
   }
 
   async function download(target, automatic) {
-    if (transfer || !available || !state.installationSupported) return null;
+    if (target?.preview || transfer || !available || !state.installationSupported) return null;
     if (automatic && !preferences.autoDownload) return null;
     const job = { automatic, generation };
     transfer = job;
@@ -187,7 +191,8 @@ export function createUpdateController({
     emit({
       details: {
         target,
-        origin,
+        // A tutorial preview opens through the real status entry but stays a fixture.
+        origin: target.preview ? "fixture" : origin,
         staged: target.id === state.ready?.id,
         presentation: ++presentation,
       },
@@ -267,6 +272,31 @@ export function createUpdateController({
         },
         installStatus: "idle",
         error: null,
+      });
+    },
+    // Tutorial recording: an update candidate as a real check would report it, never installable.
+    previewUpdate: (fixtureId, currentVersion) => {
+      const version = tutorialUpdateVersion(currentVersion);
+      if (busy() || !available || !version || state.candidate || state.ready || state.details)
+        return false;
+      emit({
+        candidate: {
+          id: fixtureId,
+          version,
+          manifest: { notes: TUTORIAL_UPDATE_NOTES },
+          preview: true,
+        },
+        checkStatus: "ok",
+      });
+      return true;
+    },
+    clearPreview: (fixtureId) => {
+      if (busy()) return;
+      emit({
+        ...(state.candidate?.id === fixtureId ? { candidate: null } : {}),
+        ...(state.details?.target.id === fixtureId
+          ? { details: null, installStatus: "idle", error: null }
+          : {}),
       });
     },
     setPreferences,

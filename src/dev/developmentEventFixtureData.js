@@ -13,6 +13,16 @@ export const DEVELOPMENT_CRASH_REPORT = Object.freeze({
   logs: ["development fixture: deterministic crash report preview"],
 });
 
+/**
+ * Tutorial recording shows an update that looks like a real one, unlike DEVELOPMENT_UPDATE, whose
+ * obviously fake values keep developer screenshots unmistakable: the next patch of this build.
+ */
+export const TUTORIAL_UPDATE_NOTES = "- Improvements and fixes.";
+export function tutorialUpdateVersion(version = packageInfo.version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+  return match ? `${match[1]}.${match[2]}.${Number(match[3]) + 1}` : null;
+}
+
 export const DEVELOPMENT_UPDATE = Object.freeze({
   releaseNotes:
     "### Development fixture\n\n- Safer UI navigation\n- Deterministic screenshot review",
