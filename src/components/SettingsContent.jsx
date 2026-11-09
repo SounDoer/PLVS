@@ -368,13 +368,40 @@ export function SettingsContent({
     },
     []
   );
-  const focusSection = useCallback((section) => {
-    const node = sectionNodesRef.current.get(section);
-    if (!node) return false;
-    node.scrollIntoView({ block: "start" });
-    node.focus({ preventScroll: true });
-    return true;
+  const releaseSectionAnchorRef = useRef(() => {});
+  // Rows above a requested section can still change height just after Settings opens (the Agent
+  // Control status loads on open), which would leave the section short of the top. Keep it there
+  // while the content settles, and stop at the user's first scroll, key or pointer input.
+  const anchorSection = useCallback((node) => {
+    releaseSectionAnchorRef.current();
+    const scroller = node.closest("[data-settings-scroll]");
+    const content = scroller?.firstElementChild;
+    if (!content || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => node.scrollIntoView({ block: "start" }));
+    const inputs = ["wheel", "pointerdown", "keydown", "touchstart"];
+    const release = () => {
+      observer.disconnect();
+      clearTimeout(timer);
+      for (const input of inputs) scroller.removeEventListener(input, release);
+      releaseSectionAnchorRef.current = () => {};
+    };
+    const timer = setTimeout(release, 1000);
+    for (const input of inputs) scroller.addEventListener(input, release, { passive: true });
+    observer.observe(content);
+    releaseSectionAnchorRef.current = release;
   }, []);
+  useEffect(() => () => releaseSectionAnchorRef.current(), []);
+  const focusSection = useCallback(
+    (section) => {
+      const node = sectionNodesRef.current.get(section);
+      if (!node) return false;
+      node.scrollIntoView({ block: "start" });
+      node.focus({ preventScroll: true });
+      anchorSection(node);
+      return true;
+    },
+    [anchorSection]
+  );
 
   const settlePendingSection = useCallback(() => {
     const pending = pendingSectionRef.current;

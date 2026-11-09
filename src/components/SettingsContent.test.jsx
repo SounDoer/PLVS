@@ -140,4 +140,64 @@ describe("shared Settings content", () => {
     await pending;
     expect(document.activeElement?.getAttribute("data-settings-section-id")).toBe("analysis");
   });
+  it("keeps a requested section in view while the content settles, until the user scrolls", async () => {
+    const observers = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback) {
+          this.callback = callback;
+          this.disconnected = false;
+          observers.push(this);
+        }
+        observe() {}
+        disconnect() {
+          this.disconnected = true;
+        }
+      }
+    );
+    const scrolls = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrolls;
+    let navigation;
+    function Host() {
+      navigation = useUiNavigation();
+      const [open, setOpen] = useState(false);
+      return (
+        <SettingsContent
+          {...props()}
+          Frame={SettingsWindowFrame}
+          settingsOpen={open}
+          setSettingsOpen={setOpen}
+        />
+      );
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 4}>
+          <Host />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    let pending;
+    await act(async () => {
+      pending = navigation.showSettings({
+        section: "about",
+        expectedRevision: 4,
+        expectedUiGeneration: navigation.inspectUi().uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    await pending;
+    const about = document.querySelector('[data-settings-section-id="about"]');
+    expect(scrolls.mock.contexts.at(-1)).toBe(about);
+    const count = scrolls.mock.calls.length;
+    // Content above the section changes height after opening (an asynchronous status row).
+    act(() => observers.filter((o) => !o.disconnected).forEach((o) => o.callback([])));
+    expect(scrolls.mock.calls.length).toBe(count + 1);
+    expect(scrolls.mock.contexts.at(-1)).toBe(about);
+    fireEvent.wheel(document.querySelector("[data-settings-scroll]"));
+    act(() => observers.filter((o) => !o.disconnected).forEach((o) => o.callback([])));
+    expect(scrolls.mock.calls.length).toBe(count + 1);
+    expect(observers.every((observer) => observer.disconnected)).toBe(true);
+  });
 });
