@@ -37,6 +37,8 @@ describe("ordinary CI lanes", () => {
   });
 
   it("puts the cheap license gate ahead of every expensive lane", () => {
+    expect(workflow.jobs.licenses.needs).toBe("scope");
+    expect(workflow.jobs.licenses.if).toBe("needs.scope.outputs.scope != 'website'");
     for (const name of [
       "contracts",
       "frontend",
@@ -58,6 +60,15 @@ describe("ordinary CI lanes", () => {
       macos: "${{ needs.scope.outputs.package_macos == 'true' }}",
       linux: "${{ needs.scope.outputs.package_linux == 'true' }}",
     });
+  });
+
+  it("supplies branch identity for a detached first hotfix push and always verifies the website", () => {
+    const classify = workflow.jobs.scope.steps.find((step) => step.id === "changes");
+    expect(classify.env.BRANCH_NAME).toBe("${{ github.head_ref || github.ref_name }}");
+    expect(classify.run).toContain('--branch "$BRANCH_NAME"');
+    expect(workflow.jobs.website.if).toBeUndefined();
+    expect(commands(workflow.jobs.website)).toContain("npm run website:verify");
+    expect(commands(workflow.jobs.website)).not.toContain("cargo");
   });
 
   it("uses the reviewed decoder sidecar for tests without an apt FFmpeg download", () => {

@@ -72,6 +72,14 @@ Checks happen in three phases:
 A successful `check:changes` remains valid while `HEAD`, the index and the worktree are unchanged.
 A rebase, amended commit, generated-file update or edit invalidates it; otherwise do not repeat it.
 
+On a release-based `website-hotfix/**` branch, the local classifier and first-push CI use the unique
+fork point with `origin/main`. They still inspect all branch commits, including reverted changes;
+the local gate also includes staged, unstaged and untracked files. Later CI pushes compare against
+the previous pushed SHA. Known website-only inputs run `website:verify`; desktop code, shared
+dependencies and the classifier itself retain their broader checks. Missing or ambiguous ancestry
+uses the full gate. Older release checkouts must carry the current gate as described in
+[`docs/website-and-sharesets.md`](docs/website-and-sharesets.md#website-hotfix-from-a-release).
+
 **Changelist (CL) descriptions**—the full narrative in a pull request body (or any equivalent review “description” field)—must also be **English** (what changed, why, risks or follow-ups in clear technical prose).
 
 ## Release operations

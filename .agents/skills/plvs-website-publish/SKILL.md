@@ -14,6 +14,11 @@ and marker recovery. This skill coordinates those commands; it does not replace 
   produce installers, create tags, or invoke `plvs-release` for a website-only publication.
 - Inspect the complete pending change range. Run `npm run check:changes`; it selects the website
   gate only for known website inputs and falls back to the full gate for mixed/unknown changes.
+  For release-based `website-hotfix/**` branches, the classifier uses the unique fork point with
+  refreshed `origin/main` locally and on the first CI push. Check the reported base and file list;
+  pure website work runs `website:verify` without desktop or native-license jobs. A later push
+  still checks every commit since the previous pushed SHA. See the hotfix instructions for
+  carrying the gate into an older release checkout; changing the gate itself needs full checks.
   Do not shorten its comparison range or manually skip a selected gate to save time.
 - For rendering changes, compare before/after browser screenshots at desktop, tablet and mobile
   widths. Use the local complete-site server, `npm run website:dev`. App Agent Control is for the

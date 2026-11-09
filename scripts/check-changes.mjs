@@ -19,6 +19,12 @@ const websiteScripts = new Set([
   "preset-presentation.mjs",
   "preset-presentation.test.js",
   "websiteReleaseLinks.test.js",
+  "marketing/prepare-homepage-assets.mjs",
+]);
+const websiteDocs = new Set([
+  "docs/website-and-sharesets.md",
+  "docs/website-design.md",
+  "docs/marketing-screenshots.md",
 ]);
 
 const frontendFiles = new Set([
@@ -98,6 +104,7 @@ function isWebsitePath(path) {
       !path.split("/").some((part) => part.startsWith(".")) &&
       /\.(?:html|css|js|json|svg|png|webp|jpg|jpeg|gif|ico|woff2?|txt)$/.test(path)) ||
     /^docs\/user\/.+\.md$/.test(path) ||
+    websiteDocs.has(path) ||
     (path.startsWith("scripts/") && websiteScripts.has(path.slice(8)))
   );
 }
@@ -203,12 +210,36 @@ export function classifyPaths(paths) {
   };
 }
 
-export function inspectChanges({ base, head = "HEAD", working = true, cwd = process.cwd() }) {
+export function inspectChanges({
+  base,
+  head = "HEAD",
+  branch,
+  working = true,
+  cwd = process.cwd(),
+}) {
   const git = (...args) =>
     execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   try {
-    const baseSha = git("rev-parse", "--verify", `${base}^{commit}`).trim();
     const headSha = git("rev-parse", "--verify", `${head}^{commit}`).trim();
+    let baseSha;
+    let baseReason;
+    const currentBranch = branch ?? git("branch", "--show-current").trim();
+    if (
+      currentBranch.startsWith("website-hotfix/") &&
+      (base === "origin/main" || base === "0".repeat(40))
+    ) {
+      // A first push has no previous SHA; a release-based hotfix can also diverge from main.
+      // Inspect every commit after their verified fork point, never just HEAD's last commit.
+      const ancestors = git("merge-base", "--all", "origin/main", headSha)
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (ancestors.length !== 1) throw new Error("No unique website hotfix fork point.");
+      [baseSha] = ancestors;
+      baseReason = "Website hotfix fork point with origin/main";
+    } else {
+      baseSha = git("rev-parse", "--verify", `${base}^{commit}`).trim();
+    }
     git("merge-base", "--is-ancestor", baseSha, headSha);
     const files = git("diff", "--name-only", "--no-renames", "-z", baseSha, headSha).split("\0");
     // Include every pending commit, including changes subsequently reverted within the push.
@@ -238,7 +269,12 @@ export function inspectChanges({ base, head = "HEAD", working = true, cwd = proc
       files.push(...git("diff", "--name-only", "--no-renames", "-z").split("\0"));
       files.push(...git("ls-files", "--others", "--exclude-standard", "-z").split("\0"));
     }
-    return { ...classifyPaths(files.filter(Boolean)), base: baseSha, head: headSha };
+    return {
+      ...classifyPaths(files.filter(Boolean)),
+      base: baseSha,
+      head: headSha,
+      ...(baseReason ? { baseReason } : {}),
+    };
   } catch (error) {
     return {
       scope: "native",
@@ -253,11 +289,13 @@ export function inspectChanges({ base, head = "HEAD", working = true, cwd = proc
 function main(args) {
   let base;
   let head = "HEAD";
+  let branch;
   let working = true;
   let run = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--base") base = args[++i];
     else if (args[i] === "--head") head = args[++i];
+    else if (args[i] === "--branch") branch = args[++i];
     else if (args[i] === "--committed-only") working = false;
     else if (args[i] === "--run") run = true;
     else throw new Error(`Unknown argument: ${args[i]}`);
@@ -275,7 +313,7 @@ function main(args) {
       };
     }
   }
-  result ??= inspectChanges({ base, head, working });
+  result ??= inspectChanges({ base, head, branch, working });
   console.log(JSON.stringify(result, null, 2));
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `scope=${result.scope}\n`);

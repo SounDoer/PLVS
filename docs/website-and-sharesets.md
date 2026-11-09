@@ -86,6 +86,10 @@ review the resulting homepage. Publishing updates tracked image files, not the d
 
 Follow the phase-specific checks in [CONTRIBUTING.md](../CONTRIBUTING.md#git-commits-and-prs).
 Website-only work is classified to `website:verify`; mixed changes keep the broader gate.
+The website lane includes homepage image preparation and website maintenance documentation.
+CI runs scope classification and website validation for that lane; desktop frontend, Rust,
+installer and native-license jobs are skipped. Shared dependency changes and changes to the
+classifier still select broader checks.
 
 `website:verify` assembles and validates the complete site and runs website, guide, and deployment
 contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
@@ -120,8 +124,8 @@ and guide; only what is copied into it changes. Push CI runs for branches named
 git worktree add .claude/worktrees/website-hotfix-<topic> -b website-hotfix/<date>-<topic> v<latest>
 # In the worktree: npm run worktree:setup, then copy only what should ship, for example
 git checkout main -- website/assets sharesets/catalogue
-# A release tag older than this procedure lacks the CI trigger; carry it along:
-git checkout main -- .github/workflows/ci.yml scripts/ciWorkflowContract.test.js
+# If the release predates the current change gate, carry its implementation and tests together:
+git checkout main -- .github/workflows/ci.yml scripts/ciWorkflowContract.test.js scripts/check-changes.mjs scripts/check-changes.test.js
 npm run website:check
 git commit -m "fix(website): ..."
 npm run website:review -- (git rev-parse HEAD)
@@ -134,7 +138,16 @@ git push -u origin website-hotfix/<date>-<topic>
 - Carry the current `sharesets/catalogue` from `main` whenever it is ahead of the live Catalogue:
   publication validates the branch's content against live history and rejects older content.
 - `npm run website:check` builds the complete site from the branch, so a copied file that depends
-  on unreleased code fails there rather than live. Push CI on the branch runs the full gate.
+  on unreleased code fails there rather than live. Before pushing, run `npm run check:changes`
+  after the final commit. For a release-based hotfix, both the local command and first-push CI
+  use its unique common ancestor with `origin/main`, then inspect every branch commit plus local
+  pending changes where applicable. Subsequent CI pushes use the previous pushed SHA. A branch
+  name alone never skips desktop checks: native, shared-dependency or classifier edits still
+  select the broader lanes, including changes reverted within the same push. Missing or ambiguous
+  ancestry falls back to the full gate.
+- An older release without this gate needs the workflow, classifier and tests copied together.
+  That adoption is a tooling change and runs the full gate once; releases containing the gate
+  need no such copy for an image-only hotfix.
 - After that run succeeds, dispatch `deploy-website.yml` with the branch commit's full SHA and
   verify as below. Everything copied already exists on `main`, so nothing merges back.
 - After the deployment is verified, tag the deployed commit and push the tag, then delete the
