@@ -199,7 +199,7 @@ export function UpdateSetupContent({
         </LinkButton>
       </p>
       <div className="mt-3 flex justify-end gap-2">
-        <Button disabled={busy} onClick={onSave}>
+        <Button disabled={busy} data-ui-target="welcome:continue" onClick={onSave}>
           Continue
         </Button>
       </div>

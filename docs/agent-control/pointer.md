@@ -26,6 +26,7 @@ rectangle in CSS pixels relative to the main WebView; see [UI Navigation](ui.md)
 | `settings-section`, `setting`               | One per Settings section; `setting:<id>` uses the Settings control catalogue ids, such as `setting:appearance.interfaceSize`     |
 | `file-report`                               | `export`                                                                                                                         |
 | `quick-tour`                                | `primary` (Start Tour, Next or Finish), `back`, `close`, `dismiss` (Not Now)                                                     |
+| `welcome`                                   | `continue` on the first-launch Welcome to PLVS dialog                                                                            |
 | `dock`                                      | `transport`, `toolbar`, `restore` in the strip's right control column                                                            |
 | `dock-toolbar`                              | `clear`, `sources`, `loudness-profile`, `panels`, `views`, `presets`, `status` in the Dock toolbar                               |
 

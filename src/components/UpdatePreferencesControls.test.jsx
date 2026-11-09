@@ -111,3 +111,25 @@ it("opens privacy only on an explicit action without saving update preferences",
   expect(onSave).not.toHaveBeenCalled();
   expect(onChange).not.toHaveBeenCalled();
 });
+it("names Continue as a pointer target that only locates the button", () => {
+  const onSave = vi.fn();
+  render(
+    <UpdateSetupContent
+      preferences={{ autoCheck: true, autoDownload: false }}
+      appearance="system"
+      interfaceSize="default"
+      askToSendCrashReports={true}
+      onAppearanceChange={vi.fn()}
+      onInterfaceSizeChange={vi.fn()}
+      onCrashReportChange={vi.fn()}
+      onChange={vi.fn()}
+      onSave={onSave}
+      installationSupported
+      busy={false}
+      error={null}
+    />
+  );
+  const target = document.querySelector('[data-ui-target="welcome:continue"]');
+  expect(target).toBe(screen.getByRole("button", { name: "Continue" }));
+  expect(onSave).not.toHaveBeenCalled();
+});
