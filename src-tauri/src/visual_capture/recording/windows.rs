@@ -6,7 +6,7 @@ mod windows_backend {
   use std::path::PathBuf;
   use std::ptr;
   use std::sync::atomic::{AtomicBool, Ordering};
-  use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
+  use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
   use std::sync::{Arc, Mutex};
   use std::time::SystemTime;
   use std::time::{Duration, Instant};
@@ -39,6 +39,7 @@ mod windows_backend {
     MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE,
     MF_TRANSCODE_CONTAINERTYPE, MF_VERSION,
   };
+  use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
   use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
   use windows_capture::frame::Frame;
   use windows_capture::graphics_capture_api::InternalCaptureControl;
@@ -62,6 +63,7 @@ mod windows_backend {
   use super::super::state::{
     RecordingAudioSource, RecordingCursorMode, RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES,
   };
+  use super::super::video::VideoTimeline;
   use crate::audio::MeasuredPcmReceiver;
 
   #[derive(Clone, Debug)]
@@ -630,6 +632,37 @@ mod windows_backend {
     }
   }
 
+  #[derive(Clone, Copy)]
+  struct CaptureClock {
+    system_origin_100ns: i64,
+  }
+
+  impl CaptureClock {
+    fn new(origin: Instant) -> Result<Self, windows::core::Error> {
+      let mut frequency = 0_i64;
+      let mut counter = 0_i64;
+      unsafe {
+        QueryPerformanceFrequency(&mut frequency)?;
+        QueryPerformanceCounter(&mut counter)?;
+      }
+      let now_100ns = i128::from(counter) * 10_000_000 / i128::from(frequency);
+      let elapsed_100ns = origin.elapsed().as_nanos() / 100;
+      Ok(Self {
+        system_origin_100ns: (now_100ns - elapsed_100ns as i128) as i64,
+      })
+    }
+
+    fn captured_ns(&self, frame: &Frame) -> Result<u64, windows::core::Error> {
+      let captured = frame.timestamp()?.Duration;
+      Ok(captured.saturating_sub(self.system_origin_100ns).max(0) as u64 * 100)
+    }
+  }
+
+  struct CapturedFrame {
+    captured_ns: u64,
+    pixels: Vec<u8>,
+  }
+
   struct ProductionSettings {
     recording_id: String,
     output_width: u32,
@@ -637,7 +670,8 @@ mod windows_backend {
     registry: RecordingRegistry,
     geometry: Arc<Mutex<RecordingGeometry>>,
     stop_reason: Arc<Mutex<Option<StopReason>>>,
-    frames: SyncSender<Vec<u8>>,
+    frames: SyncSender<CapturedFrame>,
+    clock: CaptureClock,
     hwnd: usize,
     monitor: Option<usize>,
   }
@@ -647,7 +681,8 @@ mod windows_backend {
     registry: RecordingRegistry,
     geometry: Arc<Mutex<RecordingGeometry>>,
     stop_reason: Arc<Mutex<Option<StopReason>>>,
-    frames: SyncSender<Vec<u8>>,
+    frames: SyncSender<CapturedFrame>,
+    clock: CaptureClock,
     output_width: u32,
     output_height: u32,
     hwnd: usize,
@@ -667,6 +702,7 @@ mod windows_backend {
         geometry: settings.geometry,
         stop_reason: settings.stop_reason,
         frames: settings.frames,
+        clock: settings.clock,
         output_width: settings.output_width,
         output_height: settings.output_height,
         hwnd: settings.hwnd,
@@ -680,6 +716,7 @@ mod windows_backend {
       frame: &mut Frame,
       _capture_control: InternalCaptureControl,
     ) -> Result<(), Self::Error> {
+      let captured_ns = self.clock.captured_ns(frame)?;
       let geometry = *self
         .geometry
         .lock()
@@ -698,14 +735,17 @@ mod windows_backend {
         &mut self.scratch,
       )?;
       let frame_bytes = std::mem::take(&mut self.scratch);
-      match self.frames.try_send(frame_bytes) {
+      match self.frames.try_send(CapturedFrame {
+        captured_ns,
+        pixels: frame_bytes,
+      }) {
         Ok(()) => {}
         Err(TrySendError::Full(frame_bytes)) => {
-          self.scratch = frame_bytes;
+          self.scratch = frame_bytes.pixels;
           self.registry.add_dropped_frames(&self.recording_id, 1);
         }
         Err(TrySendError::Disconnected(frame_bytes)) => {
-          self.scratch = frame_bytes;
+          self.scratch = frame_bytes.pixels;
         }
       }
       Ok(())
@@ -730,10 +770,11 @@ mod windows_backend {
     registry: RecordingRegistry,
     stop_reason: Arc<Mutex<Option<StopReason>>>,
     finished: Arc<AtomicBool>,
-    frames: Receiver<Vec<u8>>,
+    frames: Receiver<CapturedFrame>,
     initialized: SyncSender<Result<(), String>>,
     audio_source: RecordingAudioSource,
     audio_origin_ns: u64,
+    clock_origin: Instant,
     audio_receiver: Option<MeasuredPcmReceiver>,
     audio_silence_reason: Arc<Mutex<SilenceReason>>,
   ) {
@@ -756,10 +797,8 @@ mod windows_backend {
     registry.mark_recording(&recording_id);
     let _ = initialized.send(Ok(()));
 
-    let frame_interval = Duration::from_secs_f64(1.0 / f64::from(fps));
-    let mut next_frame = Instant::now();
-    let mut latest = None;
-    let mut frame_index = 0_u64;
+    let mut video_timeline = VideoTimeline::new(fps);
+    let black_frame = vec![0_u8; output_width as usize * output_height as usize * 4];
     let mut failure = None;
     let mut audio_timeline = (audio_source == RecordingAudioSource::MeasuredSource)
       .then(|| AudioTimeline::new(audio_origin_ns));
@@ -768,93 +807,85 @@ mod windows_backend {
       if stop_reason.lock().ok().and_then(|reason| *reason).is_some() {
         break;
       }
-      let timeout = next_frame.saturating_duration_since(Instant::now());
+      let deadline = clock_origin + Duration::from_nanos(video_timeline.next_deadline_ns());
+      let timeout = deadline.saturating_duration_since(Instant::now());
       match frames.recv_timeout(timeout) {
         Ok(frame) => {
-          latest = Some(frame);
-          loop {
-            match frames.try_recv() {
-              Ok(frame) => {
-                latest = Some(frame);
-                registry.add_dropped_frames(&recording_id, 1);
-              }
-              Err(TryRecvError::Empty) => break,
-              Err(TryRecvError::Disconnected) => break,
-            }
+          video_timeline.push(frame.captured_ns, frame.pixels);
+          while let Ok(frame) = frames.try_recv() {
+            video_timeline.push(frame.captured_ns, frame.pixels);
           }
         }
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-          if let Some(frame) = latest.as_deref() {
-            if let Err(error) = encoder.write_frame(frame, frame_index) {
-              failure = Some(format!("Media Foundation video write failed: {error}"));
-              if let Ok(mut reason) = stop_reason.lock() {
-                reason.get_or_insert(StopReason::CaptureFailure);
-              }
-              break;
-            }
-            frame_index = frame_index.saturating_add(1);
-            let bytes = std::fs::metadata(pending.path())
-              .map(|metadata| metadata.len())
-              .unwrap_or(0);
-            registry.add_frame(&recording_id, bytes, 0);
-            if bytes >= MAX_ARTIFACT_BYTES {
-              if let Ok(mut reason) = stop_reason.lock() {
-                reason.get_or_insert(StopReason::SizeLimit);
-              }
-            }
-          }
-          if let (Some(receiver), Some(timeline)) =
-            (audio_receiver.as_ref(), audio_timeline.as_mut())
-          {
-            let reason = audio_silence_reason
-              .lock()
-              .map(|reason| *reason)
-              .unwrap_or(SilenceReason::LiveRestart);
-            let video_audio_frames =
-              frame_index.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps);
-            let settled_audio_frames = video_audio_frames.saturating_sub(4_800);
-            if let Err(error) = drain_audio_until(
-              receiver,
-              &mut deferred_audio,
-              timeline,
-              &encoder,
-              reason,
-              settled_audio_frames,
-            ) {
-              failure = Some(format!("Media Foundation audio write failed: {error}"));
-              if let Ok(mut stop) = stop_reason.lock() {
-                stop.get_or_insert(StopReason::CaptureFailure);
-              }
-              break;
-            }
-            if let Err(error) = write_audio_packets(
-              &encoder,
-              timeline.insert_silence_to(settled_audio_frames, reason),
-            ) {
-              failure = Some(format!("Media Foundation audio write failed: {error}"));
-              if let Ok(mut stop) = stop_reason.lock() {
-                stop.get_or_insert(StopReason::CaptureFailure);
-              }
-              break;
-            }
-            registry.update_audio(
-              &recording_id,
-              timeline.silent_duration_ms(),
-              timeline.interruptions().to_vec(),
-            );
-          }
-          next_frame += frame_interval;
-          if next_frame < Instant::now() {
-            next_frame = Instant::now();
-            registry.add_dropped_frames(&recording_id, 1);
-          }
-        }
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
           if let Ok(mut reason) = stop_reason.lock() {
             reason.get_or_insert(StopReason::WindowLost);
           }
           break;
         }
+      }
+      let elapsed_ns = clock_origin.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+      while let Some((frame_index, frame)) = video_timeline.next_due(elapsed_ns) {
+        let frame = frame.map(Vec::as_slice).unwrap_or(&black_frame);
+        if let Err(error) = encoder.write_frame(frame, frame_index) {
+          failure = Some(format!("Media Foundation video write failed: {error}"));
+          if let Ok(mut reason) = stop_reason.lock() {
+            reason.get_or_insert(StopReason::CaptureFailure);
+          }
+          break;
+        }
+
+        let bytes = std::fs::metadata(pending.path())
+          .map(|metadata| metadata.len())
+          .unwrap_or(0);
+        registry.add_frame(&recording_id, bytes, 0);
+        if bytes >= MAX_ARTIFACT_BYTES {
+          if let Ok(mut reason) = stop_reason.lock() {
+            reason.get_or_insert(StopReason::SizeLimit);
+          }
+        }
+        if let (Some(receiver), Some(timeline)) = (audio_receiver.as_ref(), audio_timeline.as_mut())
+        {
+          let reason = audio_silence_reason
+            .lock()
+            .map(|reason| *reason)
+            .unwrap_or(SilenceReason::LiveRestart);
+          let video_audio_frames =
+            (frame_index + 1).saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps);
+          let settled_audio_frames = video_audio_frames.saturating_sub(4_800);
+          if let Err(error) = drain_audio_until(
+            receiver,
+            &mut deferred_audio,
+            timeline,
+            &encoder,
+            reason,
+            settled_audio_frames,
+          ) {
+            failure = Some(format!("Media Foundation audio write failed: {error}"));
+            if let Ok(mut stop) = stop_reason.lock() {
+              stop.get_or_insert(StopReason::CaptureFailure);
+            }
+            break;
+          }
+          if let Err(error) = write_audio_packets(
+            &encoder,
+            timeline.insert_silence_to(settled_audio_frames, reason),
+          ) {
+            failure = Some(format!("Media Foundation audio write failed: {error}"));
+            if let Ok(mut stop) = stop_reason.lock() {
+              stop.get_or_insert(StopReason::CaptureFailure);
+            }
+            break;
+          }
+          registry.update_audio(
+            &recording_id,
+            timeline.silent_duration_ms(),
+            timeline.interruptions().to_vec(),
+          );
+        }
+      }
+      if failure.is_some() {
+        break;
       }
     }
 
@@ -867,8 +898,10 @@ mod windows_backend {
         .lock()
         .map(|reason| *reason)
         .unwrap_or(SilenceReason::LiveRestart);
-      let video_audio_frames =
-        frame_index.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps);
+      let video_audio_frames = video_timeline
+        .frame_count()
+        .saturating_mul(u64::from(OUTPUT_SAMPLE_RATE))
+        / u64::from(fps);
       if let Err(error) = drain_audio_until(
         receiver,
         &mut deferred_audio,
@@ -1131,11 +1164,14 @@ mod windows_backend {
     audio_source: RecordingAudioSource,
     cursor: RecordingCursorMode,
     audio_origin_ns: u64,
+    clock_origin: Instant,
     audio_receiver: Option<MeasuredPcmReceiver>,
     initial_audio_silence_reason: SilenceReason,
     screen_region: bool,
   ) -> Result<RecordingSession, String> {
     validate_geometry(geometry).map_err(str::to_owned)?;
+    let clock = CaptureClock::new(clock_origin)
+      .map_err(|error| format!("Recording clock unavailable: {error}"))?;
     let stop_reason = Arc::new(Mutex::new(None));
     let geometry = Arc::new(Mutex::new(geometry));
     let finished = Arc::new(AtomicBool::new(false));
@@ -1171,6 +1207,7 @@ mod windows_backend {
           initialized_sender,
           audio_source,
           audio_origin_ns,
+          clock_origin,
           audio_receiver,
           encoder_audio_silence_reason,
         );
@@ -1194,6 +1231,7 @@ mod windows_backend {
       geometry,
       stop_reason: Arc::clone(&stop_reason),
       frames: frame_sender,
+      clock,
       hwnd: hwnd as usize,
       monitor,
     };

@@ -359,6 +359,10 @@ plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--ou
 plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 ```
 
+Windows recordings keep video and measured-source audio on the same monotonic timeline,
+including startup and encoding delays. A short black lead may appear before the first captured
+picture is available; it preserves elapsed time rather than advancing later pictures.
+
 The recording indicator defaults to visible. For guide videos, pass `--indicator hidden` to hide
 the PLVS recording dot for that recording only, including normal, Fullscreen, and Dock views.
 This does not change recording status or stop/wait control; the next recording defaults to visible.

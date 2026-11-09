@@ -326,6 +326,7 @@ pub async fn visual_recording_start(
     let fps = request.fps;
     let max_duration_seconds = request.max_duration_seconds;
     let measured_pcm = _engine_state.inner().measured_pcm.clone();
+    let clock_origin = std::time::Instant::now();
     let audio_origin_ns = measured_pcm.timestamp_ns();
     let audio_receiver = if audio_source == RecordingAudioSource::MeasuredSource {
       // Windows devices may deliver one-millisecond buffers while the encoder drains on the video
@@ -361,6 +362,7 @@ pub async fn visual_recording_start(
         audio_source,
         request.cursor,
         audio_origin_ns,
+        clock_origin,
         audio_receiver,
         request.audio_state.silence_reason(),
         request.screen_region,

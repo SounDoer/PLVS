@@ -6,6 +6,8 @@ pub mod macos;
 pub mod session;
 pub mod state;
 pub mod system_ffmpeg;
+#[cfg(any(test, target_os = "windows"))]
+pub(crate) mod video;
 pub mod windows;
 
 use std::collections::HashMap;

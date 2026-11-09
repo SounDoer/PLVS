@@ -115,6 +115,11 @@ recording, or `--indicator visible` explicitly. This per-recording option hides 
 in normal, Fullscreen, and Dock views; it does not affect recording state, inspect, wait, or stop.
 It is not saved as a preference, and the next recording defaults to visible.
 
+On Windows, video capture timestamps and measured-source PCM share one monotonic time origin.
+Waiting for the first picture or a delayed encoder does not shorten the video timeline. Frames
+before the first available capture are black; later unchanged slots retain the most recent
+picture captured at or before that slot. Future frames are not moved into earlier time slots.
+
 Frame rate defaults to 30 and accepts 15, 30, or 60. Duration defaults to 60 seconds, accepts 1
 through 1800 seconds, and is capped at 30 minutes. The hard artifact limit is 2 GiB. Duration or
 size exhaustion performs normal finalization with `durationLimit` or `sizeLimit`.
