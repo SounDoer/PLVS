@@ -79,6 +79,24 @@ describe("Transport Control", () => {
     expect(JSON.stringify(snapshot)).not.toContain("intake");
   });
 
+  it("separates attempt errors from retained result provenance without exposing its buffers", () => {
+    const previous = runtime.fileSessions[0];
+    const session = {
+      ...previous,
+      state: "error",
+      analyzedAt: 99,
+      successfulResult: { ...previous, intake: { privateHistory: true } },
+    };
+    const snapshot = buildTransportSnapshot({ ...runtime, fileSessions: [session] }, context);
+    expect(snapshot.files.sessions[0]).toMatchObject({
+      state: "error",
+      resultAvailable: true,
+      analyzedAt: previous.analyzedAt,
+      summary: previous.summary,
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("privateHistory");
+  });
+
   it("does not revise for progress but revises for lifecycle and selection", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     const progressed = structuredClone(snapshot);

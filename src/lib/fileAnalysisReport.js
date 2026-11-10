@@ -1,5 +1,6 @@
 import { isRuleEmpty } from "./loudnessProfileCatalog.js";
 import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
+import { getSuccessfulFileSession } from "./fileAnalysisSessionRegistry.js";
 
 const REPORT_SCHEMA_VERSION = 2;
 const REPORT_TYPE = "fileAnalysis";
@@ -95,6 +96,7 @@ function buildLoudnessProfileBlock(profile, summary) {
 }
 
 export function buildFileAnalysisReport(fileSession, options = {}) {
+  fileSession = getSuccessfulFileSession(fileSession);
   if (fileSession?.state !== "complete" || !fileSession.summary) {
     throw new Error("A completed file analysis is required to export a report.");
   }

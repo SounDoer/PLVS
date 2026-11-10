@@ -27,13 +27,17 @@ export function useIntakeRouting({
   const emptyFileIntakeRef = useRef(null);
   if (emptyFileIntakeRef.current === null) emptyFileIntakeRef.current = new FrameIntake();
   const fileDisplayIntake = activeFileSession?.intake ?? emptyFileIntakeRef.current;
-  const fileAnalysisIntake = analyzingFileSession?.intake ?? emptyFileIntakeRef.current;
+  const fileAnalysisIntake =
+    analyzingFileSession?.attempt?.intake ??
+    analyzingFileSession?.intake ??
+    emptyFileIntakeRef.current;
 
   const fileDisplayActiveRef = useRef(false);
   fileDisplayActiveRef.current =
     sourceMode === "file" &&
     fileHistory.analyzingFileId != null &&
-    fileHistory.analyzingFileId === fileHistory.activeFileId;
+    fileHistory.analyzingFileId === fileHistory.activeFileId &&
+    !activeFileSession?.successfulResult;
 
   const intakeRef = useRef(liveIntake);
   intakeRef.current = sourceMode === "file" ? fileDisplayIntake : liveIntake;

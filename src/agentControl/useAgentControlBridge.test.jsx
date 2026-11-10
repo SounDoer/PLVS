@@ -6829,4 +6829,20 @@ describe("File analysis report", () => {
       expect(after.result.revision).toBe(0);
     }
   );
+
+  it.each(["analyzing", "error"])(
+    "reports a retained successful result during %s",
+    async (state) => {
+      const session = { ...completeSession, state, resultAvailable: true };
+      mount({ agentTransport: reportTransport([session]) });
+      await waitUntilReady();
+      const response = await send(
+        request("transport.file.report", { sessionId: session.id }, `file-retained-${state}`)
+      );
+      expect(response.error).toBeUndefined();
+      expect(response.result.report.summary.integratedLufs).toBe(
+        completeSession.summary.integratedLufs
+      );
+    }
+  );
 });

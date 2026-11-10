@@ -86,4 +86,24 @@ describe("useIntakeRouting", () => {
     expect(result.current.ingestingIntakes).toEqual([liveIntake, analyzingFileIntake]);
     expect(result.current.ingestingIntakes).not.toContain(result.current.intakeRef.current);
   });
+
+  it("stages replacement frames without driving or replacing the successful display", () => {
+    const oldIntake = new FrameIntake();
+    const nextIntake = new FrameIntake();
+    const session = {
+      intake: oldIntake,
+      successfulResult: { summary: {} },
+      attempt: { intake: nextIntake },
+    };
+    const { result } = run({
+      sourceMode: "file",
+      fileHistory: { analyzingFileId: "a", activeFileId: "a" },
+      activeFileSession: session,
+      analyzingFileSession: session,
+      liveIntake: new FrameIntake(),
+    });
+    expect(result.current.fileDisplayIntake).toBe(oldIntake);
+    expect(result.current.fileAnalysisIntake).toBe(nextIntake);
+    expect(result.current.fileDisplayActiveRef.current).toBe(false);
+  });
 });

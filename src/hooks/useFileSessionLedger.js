@@ -82,7 +82,10 @@ export function useFileSessionLedger() {
   const rerun = useCallback((/** @type {string} */ entryId, path, analysisSettings) => {
     const runId = fileEntrySeqRef.current + 1;
     fileEntrySeqRef.current = runId;
-    setFileHistory((history) => startFileAnalysisEntry(history, entryId, { analysisSettings }));
+    const intake = new FrameIntake();
+    setFileHistory((history) =>
+      startFileAnalysisEntry(history, entryId, { analysisSettings, intake })
+    );
     setFileRunRequest({ sessionId: entryId, filePath: path, runId });
   }, []);
 
@@ -93,8 +96,9 @@ export function useFileSessionLedger() {
       if (history.analyzingFileId !== sessionId) return history;
       const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
         ...entry,
-        state: "ready",
+        state: entry.successfulResult ? "complete" : "ready",
         error: null,
+        attempt: null,
       }));
       return { ...updatedHistory, analyzingFileId: null };
     });

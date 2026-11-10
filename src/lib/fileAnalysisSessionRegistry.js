@@ -19,6 +19,8 @@ const ANALYSIS_COMPLETE_STATES = new Set(["complete", "error", "ready"]);
  *   decodedFrames: number,
  *   runId: number,
  *   analysisSettings: any,
+ *   successfulResult?: any,
+ *   attempt?: any,
  * }} FileSession
  */
 
@@ -155,9 +157,43 @@ export function selectFileEntry(history, id) {
 export function updateFileEntry(history, id, updater) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
-  const updatedEntry = updater(entry);
+  let updatedEntry = updater(entry);
   if (!updatedEntry || updatedEntry === entry) return history;
+  if (updatedEntry.state === "complete" && updatedEntry.summary) {
+    const attempt = updatedEntry.attempt;
+    updatedEntry = {
+      ...updatedEntry,
+      metadata: attempt?.metadata ?? updatedEntry.metadata,
+      analysisSettings: attempt?.analysisSettings ?? updatedEntry.analysisSettings,
+      intake: attempt?.intake ?? updatedEntry.intake,
+      attempt: null,
+    };
+    updatedEntry.successfulResult = captureSuccessfulResult(updatedEntry);
+  } else if (updatedEntry.state === "error") {
+    updatedEntry = { ...updatedEntry, attempt: null };
+  }
   return replaceEntry(history, id, updatedEntry);
+}
+
+function captureSuccessfulResult(entry) {
+  return {
+    path: entry.path,
+    fileName: entry.fileName,
+    metadata: entry.metadata,
+    summary: entry.summary,
+    analysisSettings: entry.analysisSettings,
+    analyzedAt: entry.analyzedAt,
+    decodedFrames: entry.decodedFrames,
+    intake: entry.intake,
+    audio: entry.audio,
+  };
+}
+
+/** A stable completed-result view, independent of a replacement attempt's lifecycle. */
+export function getSuccessfulFileSession(entry) {
+  if (!entry) return null;
+  if (entry.successfulResult) return { ...entry, ...entry.successfulResult, state: "complete" };
+  return entry.state === "complete" && entry.summary ? entry : null;
 }
 
 /**
@@ -166,17 +202,28 @@ export function updateFileEntry(history, id, updater) {
 export function startFileAnalysisEntry(history, id, options = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
+  const successful = getSuccessfulFileSession(entry);
+  const successfulResult = successful ? captureSuccessfulResult(successful) : null;
+  const analysisSettings = options.analysisSettings ?? entry.analysisSettings ?? null;
+  const attempt = {
+    runId: (entry.runId ?? 0) + 1,
+    metadata: null,
+    analysisSettings,
+    intake: options.intake ?? entry.intake,
+  };
   return createHistory({
     ...replaceEntry(history, id, {
       ...entry,
       state: "analyzing",
       progress: 0,
       error: null,
-      summary: null,
-      analyzedAt: null,
-      decodedFrames: 0,
-      runId: (entry.runId ?? 0) + 1,
-      analysisSettings: options.analysisSettings ?? entry.analysisSettings ?? null,
+      summary: successfulResult?.summary ?? null,
+      analyzedAt: successfulResult?.analyzedAt ?? null,
+      decodedFrames: successfulResult?.decodedFrames ?? 0,
+      runId: attempt.runId,
+      analysisSettings: successfulResult?.analysisSettings ?? analysisSettings,
+      successfulResult,
+      attempt,
     }),
     activeFileId: id,
     analyzingFileId: id,

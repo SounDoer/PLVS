@@ -27,7 +27,7 @@ const DisplaySnapshotContext = createContext(/** @type {DisplaySnapshot | null} 
  */
 export function DisplaySnapshotProvider({ children }) {
   const { display, routing } = useMeterRuntimeAssembly();
-  const { sourceMode, running, analyzingFileSession } = useMeterRuntime();
+  const { sourceMode, running, analyzingFileSession, activeFileSession } = useMeterRuntime();
   const { selectedOffset, selectedSnapshotTimeMs } = useMeterDisplayState();
   const { fileSession } = useSourceActions();
   const { audio } = display;
@@ -36,7 +36,10 @@ export function DisplaySnapshotProvider({ children }) {
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
     intake: routing.intakeRef.current,
-    audio,
+    audio:
+      sourceMode === "file" && activeFileSession?.successfulResult?.audio
+        ? activeFileSession.successfulResult.audio
+        : audio,
   });
   const { displayAudio, histSourceList, targetTimestampMs } = snapshot;
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;

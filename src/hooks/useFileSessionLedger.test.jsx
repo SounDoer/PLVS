@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useFileSessionLedger } from "./useFileSessionLedger.js";
+import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
 
 function mount() {
   return renderHook(() => useFileSessionLedger());
@@ -83,5 +84,84 @@ describe("useFileSessionLedger", () => {
     act(() => result.current.clearAll());
     expect(result.current.fileSessions).toHaveLength(0);
     expect(result.current.validRunRequest).toBe(null);
+  });
+
+  it.each(["cancel", "error"])(
+    "retains successful data and export after replacement %s",
+    (outcome) => {
+      const { result } = mount();
+      act(() =>
+        result.current.beginRun("C:/a.wav", { dialogue: { enabled: true, engine: "firered" } })
+      );
+      const id = result.current.activeFileSession.id;
+      const summary = { integratedLufs: -23, channels: 2, sampleRateHz: 48000 };
+      act(() => {
+        result.current.updateSession(id, (entry) => ({
+          ...entry,
+          state: "complete",
+          summary,
+          analyzedAt: 10,
+        }));
+        result.current.setAnalyzingFileId(null);
+      });
+      const oldIntake = result.current.activeFileSession.intake;
+      act(() =>
+        result.current.rerun(id, "C:/a.wav", { dialogue: { enabled: true, engine: "silero" } })
+      );
+      expect(result.current.activeFileSession.intake).toBe(oldIntake);
+      expect(result.current.activeFileSession.attempt.intake).not.toBe(oldIntake);
+      expect(
+        buildFileAnalysisReport(result.current.activeFileSession).analysis.dialogue.engine
+      ).toBe("firered");
+      if (outcome === "cancel") {
+        act(() => result.current.markStopped(id));
+      } else {
+        act(() =>
+          result.current.updateSession(id, (entry) => ({
+            ...entry,
+            state: "error",
+            error: "decode failed",
+            analyzedAt: 20,
+          }))
+        );
+      }
+      expect(buildFileAnalysisReport(result.current.activeFileSession).summary.integratedLufs).toBe(
+        -23
+      );
+      expect(buildFileAnalysisReport(result.current.activeFileSession).analysis.analyzedAt).toBe(
+        new Date(10).toISOString()
+      );
+      expect(result.current.activeFileSession.intake).toBe(oldIntake);
+    }
+  );
+
+  it("publishes replacement history, conditions and summary together only on success", () => {
+    const { result } = mount();
+    act(() => result.current.beginRun("C:/a.wav", { dialogue: { enabled: false } }));
+    const id = result.current.activeFileSession.id;
+    act(() => {
+      result.current.updateSession(id, (entry) => ({
+        ...entry,
+        state: "complete",
+        summary: { integratedLufs: -23 },
+      }));
+      result.current.setAnalyzingFileId(null);
+    });
+    const old = result.current.activeFileSession.successfulResult;
+    const nextSettings = { dialogue: { enabled: true, engine: "silero" } };
+    act(() => result.current.rerun(id, "C:/a.wav", nextSettings));
+    const nextIntake = result.current.activeFileSession.attempt.intake;
+    expect(result.current.activeFileSession.summary).toBe(old.summary);
+    act(() =>
+      result.current.updateSession(id, (entry) => ({
+        ...entry,
+        state: "complete",
+        summary: { integratedLufs: -20 },
+      }))
+    );
+    expect(result.current.activeFileSession.attempt).toBeNull();
+    expect(result.current.activeFileSession.intake).toBe(nextIntake);
+    expect(result.current.activeFileSession.analysisSettings).toBe(nextSettings);
+    expect(result.current.activeFileSession.successfulResult.summary.integratedLufs).toBe(-20);
   });
 });

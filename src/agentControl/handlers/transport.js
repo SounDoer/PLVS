@@ -74,7 +74,7 @@ async function fileReport(ctx) {
       { sessionId: request.params.sessionId }
     );
   }
-  if (session.state !== "complete") {
+  if (session.state !== "complete" && !(session.resultAvailable === true && session.summary)) {
     throw semanticFailure(
       "fileAnalysisNotComplete",
       "$.params.sessionId",
@@ -89,7 +89,7 @@ async function fileReport(ctx) {
   };
   // The public snapshot names the probe `probe`; the GUI builder reads `metadata`.
   const report = buildFileAnalysisReport(
-    { ...session, metadata: session.probe },
+    { ...session, state: "complete", metadata: session.probe },
     {
       appVersion: String(runtime.appVersion),
       loudnessProfile: describeActiveLoudnessProfile({

@@ -7,6 +7,7 @@ import { SHELL_SURFACE_BASE } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
 import { MenuRow } from "@/components/ui/row";
 import { Button } from "@/components/ui/button";
+import { getSuccessfulFileSession } from "@/lib/fileAnalysisSessionRegistry.js";
 
 // Metrics come from the authoritative completion summary payload (fileSession.summary), not the
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
@@ -53,7 +54,7 @@ export function FileAnalysisSummary({
 
   const summary = fileSession?.summary ?? {};
   const fileName = fileSession?.fileName || "No file";
-  const isComplete = fileSession?.state === "complete";
+  const isComplete = Boolean(getSuccessfulFileSession(fileSession));
 
   return (
     <section

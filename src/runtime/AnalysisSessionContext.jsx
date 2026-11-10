@@ -98,7 +98,7 @@ export function AnalysisSessionProvider({ children }) {
     setHistoryOffsetSec(0);
     setSelectedOffset(-1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceMode, fileSession.id, fileSession.state, fileDurationMs]);
+  }, [sourceMode, fileSession.id, fileDurationMs]);
 
   const previousHistoryRetentionSecRef = useRef(historyRetentionSec);
   useEffect(() => {

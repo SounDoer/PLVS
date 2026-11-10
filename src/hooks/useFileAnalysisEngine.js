@@ -7,6 +7,7 @@ import {
 } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
+import { INITIAL_METER_AUDIO } from "./useMeterDisplay.js";
 
 // File display history is independent of the Live History Length preference. The native worker
 // adapts checkpoint cadence to keep the whole known duration inside these fixed four-hour-at-base-
@@ -73,6 +74,7 @@ export function useFileAnalysisEngine({
 
     let mounted = true;
     const unsubs = [];
+    const attemptAudioRef = { current: { ...INITIAL_METER_AUDIO } };
 
     const run = async () => {
       let stage = "probe";
@@ -91,11 +93,12 @@ export function useFileAnalysisEngine({
           state: "analyzing",
           path: filePath,
           fileName: metadata.fileName,
-          metadata,
+          metadata: current.successfulResult ? current.metadata : metadata,
+          attempt: current.attempt ? { ...current.attempt, metadata } : current.attempt,
           progress: 0,
           error: undefined,
           dialogueDetectionError: undefined,
-          summary: undefined,
+          summary: current.successfulResult?.summary,
         }));
 
         unsubs.push(
@@ -117,6 +120,7 @@ export function useFileAnalysisEngine({
               progress: 1,
               decodedFrames: payload.decodedFrames,
               summary: payload.summary,
+              audio: attemptAudioRef.current,
               dialogueDetectionError: payload.summary?.dialogueDetectionError,
               analyzedAt: Date.now(),
             }));
@@ -146,10 +150,14 @@ export function useFileAnalysisEngine({
           intake,
           frameRef,
           defaultSampleRateRef,
-          setAudio,
-          latestAudioRef,
+          setAudio: (next) => {
+            if (!shouldDriveDisplay() || selectedOffsetRef.current >= 0) return;
+            latestAudioRef.current = next;
+            setAudio(next);
+          },
+          latestAudioRef: attemptAudioRef,
           ackFrames: () => {},
-          shouldDriveDisplay,
+          shouldDriveDisplay: () => true,
           shouldPublishDisplay: () => selectedOffsetRef.current < 0,
           onDialogueDetectionError: (code, message) => {
             updateFileSession(sessionId, (current) => ({

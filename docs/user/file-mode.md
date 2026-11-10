@@ -19,6 +19,10 @@ Changing the Dialogue Detection engine in Settings also preserves File entries a
 running analysis continues with the detector selected when its worker started. Reanalyze the file
 to use a different detector. Live measurements retain their existing reset behavior.
 
+Reanalysis retains the previous completed result and its browsing history until the replacement
+succeeds. You can continue inspecting and exporting that result while the new run is in progress.
+Cancelling or failing a replacement does not discard the previous successful result.
+
 ## Reports
 
 When analysis completes, the summary can be exported as a report: **Export Markdown**,

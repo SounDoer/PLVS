@@ -29,8 +29,16 @@ button. Snapshot selection is available in Dock and normal mode, does not stop L
 survives Dock entry and exit. FILE source entry remains unavailable while docked.
 
 FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and starts a new
-session; reanalyze retains the session identity; stop retains partial results; select chooses an
+session; reanalyze retains the session identity and preceding successful result until replacement
+succeeds; stop retains partial results when no prior success exists and otherwise retains that
+successful result; select chooses an
 existing result; remove deletes one session; and clear deletes the complete FILE session ledger.
+
+While a replacement attempt is running or has failed, an entry with a retained successful result
+exposes `resultAvailable: true`. Its summary, probe, analysis settings, decoded count and analysis
+time describe that successful result; lifecycle/progress/error describe the attempt. `file report`
+can export that retained result without waiting for the replacement. A partial first run cannot be
+reported merely because it has emitted measurement frames.
 
 There is no context-sensitive generic start, stop, or clear command. The GUI's changing primary
 button is appropriate for a visible human surface, while explicit LIVE and FILE verbs prevent an

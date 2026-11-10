@@ -9,6 +9,7 @@ import {
   stringifyFileAnalysisReport,
 } from "../lib/fileAnalysisReport.js";
 import { renderFileAnalysisReportMarkdown } from "../lib/fileAnalysisReportMarkdown.js";
+import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 
 const REPORT_FORMATS = {
   json: { extension: "json", mediaType: "application/json", render: stringifyFileAnalysisReport },
@@ -38,7 +39,7 @@ export function useFileAnalysisReportExport({
 
   const exportFileAnalysisReport = useCallback(
     async (format = "json") => {
-      if (fileSession.state !== "complete") {
+      if (!getSuccessfulFileSession(fileSession)) {
         raiseNotice("guard", "Choose a completed file analysis to export");
         return;
       }
@@ -70,7 +71,7 @@ export function useFileAnalysisReportExport({
 
   /// Resolves true once the Markdown is on the clipboard, so the caller can confirm it.
   const copyFileAnalysisReportMarkdown = useCallback(async () => {
-    if (fileSession.state !== "complete") {
+    if (!getSuccessfulFileSession(fileSession)) {
       raiseNotice("guard", "Choose a completed file analysis to copy");
       return false;
     }

@@ -93,4 +93,33 @@ describe("DisplaySnapshotProvider", () => {
       "useDisplaySnapshot must be used inside DisplaySnapshotProvider"
     );
   });
+
+  it("keeps displaying the successful audio while a replacement is staged, then swaps on completion", () => {
+    const seen = mount();
+    act(() => seen.runtime.switchSource("file"));
+    act(() => seen.runtime.beginFileAnalysis("C:/mix.wav", {}));
+    const id = seen.runtime.activeFileId;
+    act(() => {
+      seen.assembly.ledger.updateSession(id, (entry) => ({
+        ...entry,
+        state: "complete",
+        summary: { integratedLufs: -23 },
+        audio: { peakDb: [-3, -4], integrated: -23 },
+      }));
+      seen.assembly.ledger.setAnalyzingFileId(null);
+    });
+    act(() => seen.runtime.reanalyzeFile(id, {}));
+    act(() => seen.assembly.display.setAudio((audio) => ({ ...audio, integrated: -8 })));
+    expect(seen.snapshot.displayAudio.integrated).toBe(-23);
+    act(() =>
+      seen.assembly.ledger.updateSession(id, (entry) => ({
+        ...entry,
+        state: "complete",
+        summary: { integratedLufs: -20 },
+        audio: { peakDb: [-1, -2], integrated: -20 },
+      }))
+    );
+    expect(seen.snapshot.displayAudio.integrated).toBe(-20);
+    expect(seen.snapshot.displayAudio.peakDb).toEqual([-1, -2]);
+  });
 });

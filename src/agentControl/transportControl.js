@@ -1,3 +1,5 @@
+import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
+
 function cloneJson(value) {
   if (value == null) return value ?? null;
   return JSON.parse(JSON.stringify(value));
@@ -18,19 +20,21 @@ function publicFileState(state) {
 }
 
 function serializeFileSession(session) {
+  const result = getSuccessfulFileSession(session) ?? session;
   return {
     id: session.id,
     path: session.path,
     fileName: session.fileName,
     state: publicFileState(session.state),
     progress: Number.isFinite(session.progress) ? Math.max(0, Math.min(1, session.progress)) : 0,
-    probe: cloneJson(session.metadata),
-    summary: cloneJson(session.summary),
+    probe: cloneJson(result.metadata),
+    summary: cloneJson(result.summary),
     createdAt: session.createdAt ?? null,
-    analyzedAt: session.analyzedAt ?? null,
-    decodedFrames: Number.isFinite(session.decodedFrames) ? session.decodedFrames : 0,
-    analysisSettings: cloneJson(session.analysisSettings),
+    analyzedAt: result.analyzedAt ?? null,
+    decodedFrames: Number.isFinite(result.decodedFrames) ? result.decodedFrames : 0,
+    analysisSettings: cloneJson(result.analysisSettings),
     error: compactError(session.error),
+    ...(session.successfulResult && session.state !== "complete" ? { resultAvailable: true } : {}),
   };
 }
 

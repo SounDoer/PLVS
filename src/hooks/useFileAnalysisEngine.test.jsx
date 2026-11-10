@@ -228,8 +228,8 @@ describe("useFileAnalysisEngine", () => {
     const options = vi.mocked(buildTauriFrameApply).mock.calls[0][0];
     expect(options.histMaxSamples).toBe(FILE_LOUDNESS_HISTORY_MAX_SAMPLES);
     expect(options.visualMaxSamples).toBe(FILE_VISUAL_HISTORY_MAX_SAMPLES);
-    expect(options.shouldDriveDisplay).toBe(shouldDriveDisplay);
-    expect(options.latestAudioRef).toEqual(expect.objectContaining({ current: { peakDb: [] } }));
+    expect(options.shouldDriveDisplay()).toBe(true);
+    expect(options.latestAudioRef.current.peakDb).toEqual([]);
     expect(options.shouldPublishDisplay()).toBe(true);
     /** @type {HarnessWindow} */ (window).__selectedOffsetRef.current = 0;
     expect(options.shouldPublishDisplay()).toBe(false);
