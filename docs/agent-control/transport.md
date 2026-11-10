@@ -112,6 +112,11 @@ available while the active FILE result has retained history.
 
 ## FILE reports
 
+File results expose the optional maximum-location metadata documented in
+[File Mode](../user/file-mode.md#maximum-locations). `file report` preserves these coordinates
+and per-channel associations in JSON and Markdown. This is File-only metadata: no Live
+Measurement Control fields or subscriptions change.
+
 Completed file summaries and JSON/Markdown reports include whole-file Sample Peak Max and True
 Peak Max for every decoded channel. `summary.channelPeaks` is ordered by zero-based `channelIndex`;
 Markdown labels these Ch1, Ch2, and so on, without inferring speaker roles from channel count.

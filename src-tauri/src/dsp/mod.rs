@@ -12,6 +12,7 @@ mod ffmpeg_reference;
 pub mod filters;
 pub mod gating;
 pub mod loudness;
+pub mod max_locations;
 pub mod meter;
 pub mod peak;
 pub mod shared_spectral_engine;

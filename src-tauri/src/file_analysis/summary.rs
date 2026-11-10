@@ -143,6 +143,7 @@ pub fn analyze_file_track_to_summary_with_layout(
     Some(layout_id) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
     None => SummaryMeter::new(sample_rate, channels),
   };
+  meter.enable_file_locations();
   let mut pcm_chunker = SummaryPcmChunker::new(sample_rate, channels);
   let mut carry: Vec<u8> = Vec::new();
   let mut pcm: Vec<f32> = Vec::new();
@@ -189,6 +190,7 @@ pub fn analyze_file_track_to_summary_with_layout(
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_db: metrics.sample_peak_max_db,
     channel_peaks: metrics.channel_peaks,
+    maxima_locations: metrics.maxima_locations,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     loudness_layout: metrics.loudness_layout.to_string(),

@@ -282,11 +282,29 @@ describe("useFileAnalysisEngine", () => {
 
     await waitFor(() => expect(eventCallbacks.completed).toEqual(expect.any(Function)));
 
+    const summary = {
+      durationMs: 3_600_000,
+      channelPeaks: [
+        {
+          channelIndex: 0,
+          samplePeakMaxDb: -2,
+          truePeakMaxDbtp: -1,
+          samplePeakMaxLocation: { framePosition: 12, timeSeconds: 12 / 48000 },
+          truePeakMaxLocation: { framePosition: 12.375, timeSeconds: 12.375 / 48000 },
+        },
+      ],
+      maximaLocations: {
+        samplePeakMax: { channelIndex: 0, framePosition: 12, timeSeconds: 12 / 48000 },
+        truePeakMax: null,
+        mMaxWindowEnd: null,
+        stMaxWindowEnd: null,
+      },
+    };
     act(() => {
       eventCallbacks.completed({
         path: "C:/mix/final.wav",
         decodedFrames: 4096,
-        summary: { durationMs: 3_600_000 },
+        summary,
       });
     });
 
@@ -295,7 +313,7 @@ describe("useFileAnalysisEngine", () => {
       state: "complete",
       progress: 1,
       decodedFrames: 4096,
-      summary: { durationMs: 3_600_000 },
+      summary,
       analyzedAt: expect.any(Number),
     });
     expect(setAnalyzingFileId).toHaveBeenLastCalledWith(expect.any(Function));

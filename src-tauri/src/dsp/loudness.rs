@@ -38,6 +38,7 @@ pub struct LoudnessMeter {
   tp_wp: Vec<usize>,
   sample_peaks: Vec<f64>,
   true_peaks: Vec<f64>,
+  file_locations: Option<Box<super::max_locations::PeakLocationTracker>>,
   pending_block: Option<LoudnessBlock>,
   /// Detector and dialogue integrator, run inline; lazily built on the first gated push.
   dialogue: Option<DialogueSession>,
@@ -85,6 +86,7 @@ impl LoudnessMeter {
       tp_wp: vec![0; 2],
       sample_peaks: vec![0.0; 2],
       true_peaks: vec![0.0; 2],
+      file_locations: None,
       pending_block: None,
       dialogue: None,
       dialogue_worker: None,
@@ -114,7 +116,14 @@ impl LoudnessMeter {
   pub fn reset(&mut self) {
     let sr = self.sample_rate;
     let async_dialogue = self.async_dialogue;
+    let file_channels = self
+      .file_locations
+      .as_ref()
+      .map(|locations| locations.channels());
     *self = LoudnessMeter::new(sr);
+    if let Some(channels) = file_channels {
+      self.enable_file_locations(channels);
+    }
     self.async_dialogue = async_dialogue;
   }
 
@@ -127,11 +136,16 @@ impl LoudnessMeter {
     self.speech_now = false;
   }
 
-  fn tp_sample(&mut self, x: f64, ch: usize) -> f64 {
+  fn tp_sample<const TRACK: bool>(&mut self, x: f64, ch: usize) -> f64 {
     let t = self.tp_t;
     let wp = self.tp_wp[ch];
     self.tp_h[ch][wp] = x;
     self.tp_wp[ch] = if wp + 1 == t { 0 } else { wp + 1 };
+    if TRACK {
+      if let Some(locations) = self.file_locations.as_mut() {
+        locations.sample(ch, x);
+      }
+    }
     let mut mx = x.abs();
     for p in 1..self.tp_p {
       let ph = &self.tp_ph[p];
@@ -140,6 +154,11 @@ impl LoudnessMeter {
         // A branch, not `%`: the runtime-divisor modulo dominated this loop at 8–16 channels.
         let idx = if tt <= wp { wp - tt } else { wp + t - tt };
         y += coeff * self.tp_h[ch][idx];
+      }
+      if TRACK {
+        if let Some(locations) = self.file_locations.as_mut() {
+          locations.interpolated(ch, y, p, self.tp_t, self.tp_p);
+        }
       }
       let ay = y.abs();
       if ay > mx {
@@ -157,7 +176,25 @@ impl LoudnessMeter {
     let mut peaks = self.true_peaks.clone();
     samples.resize(count, 0.0);
     peaks.resize(count, 0.0);
-    super::summary_meter::channel_peak_maxima(&samples, &peaks)
+    let mut peaks = super::summary_meter::channel_peak_maxima(&samples, &peaks);
+    if let Some(locations) = self.file_locations.as_ref() {
+      locations.annotate(&mut peaks, self.sample_rate);
+    }
+    peaks
+  }
+
+  pub(crate) fn enable_file_locations(&mut self, channels: u16) {
+    self.file_locations = Some(Box::new(super::max_locations::PeakLocationTracker::new(
+      channels,
+    )));
+    self.sliding.enable_locations();
+  }
+
+  pub(crate) fn maxima_locations(&self) -> Option<super::max_locations::MaximaLocations> {
+    self
+      .file_locations
+      .as_ref()
+      .map(|locations| locations.maxima(self.sample_rate, self.sliding.maximum_locations()))
   }
 
   fn ensure_true_peak_channels(&mut self, channels: usize) {
@@ -192,6 +229,17 @@ impl LoudnessMeter {
 
   /// Stereo samples interleaved L,R,... Returns `Some` each ~100ms with block loudness.
   pub fn push_interleaved(&mut self, interleaved_lr: &[f32]) -> Option<LoudnessBlock> {
+    if self.file_locations.is_some() {
+      self.push_interleaved_mode::<true>(interleaved_lr)
+    } else {
+      self.push_interleaved_mode::<false>(interleaved_lr)
+    }
+  }
+
+  fn push_interleaved_mode<const TRACK: bool>(
+    &mut self,
+    interleaved_lr: &[f32],
+  ) -> Option<LoudnessBlock> {
     let mut out = None;
     let frames = interleaved_lr.len() / 2;
     for i in 0..frames {
@@ -200,9 +248,9 @@ impl LoudnessMeter {
       let (kwl, kwr) = self.kf.tick_lr(xl, xr);
       self.ba[0] += kwl * kwl;
       self.ba[1] += kwr * kwr;
-      self.sliding.push(kwl * kwl + kwr * kwr);
-      let tp0 = self.tp_sample(xl, 0);
-      let tp1 = self.tp_sample(xr, 1);
+      self.sliding.push_mode::<TRACK>(kwl * kwl + kwr * kwr);
+      let tp0 = self.tp_sample::<TRACK>(xl, 0);
+      let tp1 = self.tp_sample::<TRACK>(xr, 1);
       if tp0 > self.tp_block {
         self.tp_block = tp0;
       }
@@ -214,6 +262,11 @@ impl LoudnessMeter {
       }
       if tp1 > self.tp_block_ch[1] {
         self.tp_block_ch[1] = tp1;
+      }
+      if TRACK {
+        if let Some(locations) = self.file_locations.as_mut() {
+          locations.end_frame();
+        }
       }
       self.bn += 1;
       if self.bn >= self.bsz {
@@ -278,6 +331,19 @@ impl LoudnessMeter {
     channels: u16,
     weights: &[f64],
   ) -> Option<LoudnessBlock> {
+    if self.file_locations.is_some() {
+      self.push_interleaved_weighted_mode::<true>(interleaved, channels, weights)
+    } else {
+      self.push_interleaved_weighted_mode::<false>(interleaved, channels, weights)
+    }
+  }
+
+  fn push_interleaved_weighted_mode<const TRACK: bool>(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    weights: &[f64],
+  ) -> Option<LoudnessBlock> {
     let ch = channels.max(1) as usize;
     if weights.len() != ch {
       return self.push_interleaved_multichannel(interleaved, channels);
@@ -310,16 +376,21 @@ impl LoudnessMeter {
       }
       self.ba[0] += sum_ms;
       self.ba[1] += 0.0;
-      self.sliding.push(sum_ms);
+      self.sliding.push_mode::<TRACK>(sum_ms);
 
       // True Peak Max covers every channel; the L/R readouts stay Ch1/Ch2.
       for ci in 0..ch {
-        let tp = self.tp_sample(interleaved[base + ci] as f64, ci);
+        let tp = self.tp_sample::<TRACK>(interleaved[base + ci] as f64, ci);
         if tp > self.tp_block {
           self.tp_block = tp;
         }
         if ci < 2 && tp > self.tp_block_ch[ci] {
           self.tp_block_ch[ci] = tp;
+        }
+      }
+      if TRACK {
+        if let Some(locations) = self.file_locations.as_mut() {
+          locations.end_frame();
         }
       }
       self.bn += 1;
@@ -498,7 +569,14 @@ impl Meter for LoudnessMeter {
 
   fn reset(&mut self) {
     let sr = self.sample_rate;
+    let file_channels = self
+      .file_locations
+      .as_ref()
+      .map(|locations| locations.channels());
     *self = LoudnessMeter::new(sr);
+    if let Some(channels) = file_channels {
+      self.enable_file_locations(channels);
+    }
   }
 }
 
@@ -1626,5 +1704,51 @@ mod tests {
     let mut stereo_path = LoudnessMeter::new(48_000.0);
     let stereo_block = stereo_path.push_interleaved(&stereo).expect("stereo block");
     assert!((wide_block.momentary - stereo_block.momentary).abs() < 1e-9);
+  }
+}
+
+#[cfg(test)]
+mod file_location_tests {
+  use super::*;
+
+  #[test]
+  fn live_blocks_remain_bit_identical_with_file_location_tracking_enabled() {
+    for channels in [1_u16, 2, 8, 10] {
+      let mut live = LoudnessMeter::new(48_000.0);
+      let mut file = LoudnessMeter::new(48_000.0);
+      file.enable_file_locations(channels);
+      for block in 0..4 {
+        let pcm: Vec<f32> = (0..4_800)
+          .flat_map(|n| {
+            (0..channels).map(move |ch| {
+              ((n as f64 * 0.13 + f64::from(ch)).sin() * (block + 1) as f64 * 0.125) as f32
+            })
+          })
+          .collect();
+        let a = live.push_interleaved_multichannel(&pcm, channels).unwrap();
+        let b = file.push_interleaved_multichannel(&pcm, channels).unwrap();
+        for (a, b) in [
+          (a.integrated, b.integrated),
+          (a.lra, b.lra),
+          (a.momentary, b.momentary),
+          (a.short_term, b.short_term),
+          (a.momentary_max, b.momentary_max),
+          (a.short_term_max, b.short_term_max),
+          (a.true_peak, b.true_peak),
+          (a.true_peak_l, b.true_peak_l),
+          (a.true_peak_r, b.true_peak_r),
+        ] {
+          assert_eq!(a.to_bits(), b.to_bits());
+        }
+      }
+      assert!(live.file_locations.is_none());
+      assert!(live.maxima_locations().is_none());
+      file.reset();
+      let empty = file.maxima_locations().unwrap();
+      assert_eq!(empty.sample_peak_max, None);
+      assert_eq!(empty.m_max_window_end, None);
+      Meter::reset(&mut file);
+      assert!(file.maxima_locations().is_some());
+    }
   }
 }

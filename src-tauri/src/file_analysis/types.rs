@@ -53,6 +53,7 @@ pub struct FileAnalysisSummaryMetrics {
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_db: f64,
   pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
+  pub maxima_locations: Option<crate::dsp::max_locations::MaximaLocations>,
   /// Compatibility fields: Ch1/Ch2, with Ch1 duplicated for mono; not speaker roles.
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,

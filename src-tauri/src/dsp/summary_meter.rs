@@ -2,6 +2,7 @@ use crate::dsp::channel_layouts::{layout_id_for_roles, roles_for_layout, weights
 use crate::dsp::channel_weights::{standard_layout_name, standard_loudness_weights};
 use crate::dsp::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use crate::dsp::gating::{lufs_from_mean_squares, IntegratedAccumulator, LraAccumulator};
+use crate::dsp::max_locations::{MaximaLocations, MetricLocation, PeakLocationTracker};
 use crate::dsp::sliding_window::{SlidingWindowMax, S_BLOCKS};
 
 fn db_from_linear(value: f64) -> f64 {
@@ -19,6 +20,8 @@ pub struct ChannelPeakMax {
   pub channel_index: u16,
   pub sample_peak_max_db: Option<f64>,
   pub true_peak_max_dbtp: Option<f64>,
+  pub sample_peak_max_location: Option<MetricLocation>,
+  pub true_peak_max_location: Option<MetricLocation>,
 }
 
 pub(crate) fn channel_peak_maxima(samples: &[f64], peaks: &[f64]) -> Vec<ChannelPeakMax> {
@@ -33,6 +36,8 @@ pub(crate) fn channel_peak_maxima(samples: &[f64], peaks: &[f64]) -> Vec<Channel
         channel_index: index as u16,
         sample_peak_max_db: sample.is_finite().then_some(sample),
         true_peak_max_dbtp: tp.is_finite().then_some(tp),
+        sample_peak_max_location: None,
+        true_peak_max_location: None,
       }
     })
     .collect()
@@ -47,6 +52,7 @@ pub struct SummaryMetrics {
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_db: f64,
   pub channel_peaks: Vec<ChannelPeakMax>,
+  pub maxima_locations: Option<MaximaLocations>,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   /// `standard_layout_name` for the channel count, or `"unknown"` (Ch1/Ch2 stereo loudness).
@@ -72,6 +78,7 @@ pub struct SummaryMeter {
   m_max_lufs: f64,
   st_max_lufs: f64,
   true_peak_max: f64,
+  file_locations: Option<Box<PeakLocationTracker>>,
   sample_peaks: Vec<f64>,
   true_peaks: Vec<f64>,
   sample_peak_max_l: f64,
@@ -172,6 +179,7 @@ impl SummaryMeter {
       m_max_lufs: f64::NEG_INFINITY,
       st_max_lufs: f64::NEG_INFINITY,
       true_peak_max: 0.0,
+      file_locations: None,
       sample_peaks: vec![0.0; channels.max(1) as usize],
       true_peaks: vec![0.0; channels.max(1) as usize],
       sample_peak_max_l: 0.0,
@@ -187,7 +195,21 @@ impl SummaryMeter {
     }
   }
 
+  /// File-only opt-in, called before the first sample; Live constructors leave it disabled.
+  pub(crate) fn enable_file_locations(&mut self) {
+    self.file_locations = Some(Box::new(PeakLocationTracker::new(self.channels)));
+    self.sliding.enable_locations();
+  }
+
   pub fn push_interleaved(&mut self, interleaved: &[f32]) {
+    if self.file_locations.is_some() {
+      self.push_interleaved_mode::<true>(interleaved);
+    } else {
+      self.push_interleaved_mode::<false>(interleaved);
+    }
+  }
+
+  fn push_interleaved_mode<const TRACK: bool>(&mut self, interleaved: &[f32]) {
     let channels = self.channels.max(1) as usize;
     let frames = interleaved.len() / channels;
     // Taken out and put back so the loop can borrow the filters mutably.
@@ -218,8 +240,8 @@ impl SummaryMeter {
       };
 
       self.block_sum[0] += sum_ms;
-      self.sliding.push(sum_ms);
-      self.update_peaks(&interleaved[base..base + channels]);
+      self.sliding.push_mode::<TRACK>(sum_ms);
+      self.update_peaks::<TRACK>(&interleaved[base..base + channels]);
       self.block_frames += 1;
       if self.block_frames >= self.block_size {
         self.close_block();
@@ -236,6 +258,10 @@ impl SummaryMeter {
   pub fn finish(&self) -> SummaryMetrics {
     // Windows ending in the last, partial block are complete windows too.
     let (tail_m, tail_s) = self.sliding.peek_block_max();
+    let mut channel_peaks = channel_peak_maxima(&self.sample_peaks, &self.true_peaks);
+    if let Some(locations) = self.file_locations.as_ref() {
+      locations.annotate(&mut channel_peaks, self.sample_rate);
+    }
     SummaryMetrics {
       integrated_lufs: self.integrated_accumulator.value(),
       lra: self.lra_accumulator.value(),
@@ -243,7 +269,11 @@ impl SummaryMeter {
       st_max_lufs: self.st_max_lufs.max(tail_s),
       true_peak_max_dbtp: db_from_linear(self.true_peak_max),
       sample_peak_max_db: db_from_linear(self.sample_peaks.iter().copied().fold(0.0, f64::max)),
-      channel_peaks: channel_peak_maxima(&self.sample_peaks, &self.true_peaks),
+      channel_peaks,
+      maxima_locations: self
+        .file_locations
+        .as_ref()
+        .map(|locations| locations.maxima(self.sample_rate, self.sliding.maximum_locations())),
       sample_peak_max_l_db: db_from_linear(self.sample_peak_max_l),
       sample_peak_max_r_db: db_from_linear(self.sample_peak_max_r),
       loudness_layout: self.loudness_layout,
@@ -260,7 +290,7 @@ impl SummaryMeter {
   }
 
   /// Compatibility L/R fields stay Ch1/Ch2 (mono duplicates Ch1).
-  fn update_peaks(&mut self, frame: &[f32]) {
+  fn update_peaks<const TRACK: bool>(&mut self, frame: &[f32]) {
     let left = frame[0] as f64;
     let right = if frame.len() > 1 {
       frame[1] as f64
@@ -270,14 +300,19 @@ impl SummaryMeter {
     self.sample_peak_max_l = self.sample_peak_max_l.max(left.abs());
     self.sample_peak_max_r = self.sample_peak_max_r.max(right.abs());
     for (channel, sample) in frame.iter().enumerate() {
-      let tp = self.tp_sample(*sample as f64, channel);
+      let tp = self.tp_sample::<TRACK>(*sample as f64, channel);
       self.true_peak_max = self.true_peak_max.max(tp);
       self.sample_peaks[channel] = self.sample_peaks[channel].max((*sample as f64).abs());
       self.true_peaks[channel] = self.true_peaks[channel].max(tp);
     }
+    if TRACK {
+      if let Some(locations) = self.file_locations.as_mut() {
+        locations.end_frame();
+      }
+    }
   }
 
-  fn tp_sample(&mut self, sample: f64, channel: usize) -> f64 {
+  fn tp_sample<const TRACK: bool>(&mut self, sample: f64, channel: usize) -> f64 {
     let write_pos = self.tp_wp[channel];
     self.tp_h[channel][write_pos] = sample;
     self.tp_wp[channel] = if write_pos + 1 == self.tp_t {
@@ -285,6 +320,11 @@ impl SummaryMeter {
     } else {
       write_pos + 1
     };
+    if TRACK {
+      if let Some(locations) = self.file_locations.as_mut() {
+        locations.sample(channel, sample);
+      }
+    }
     let mut max = sample.abs();
     for phase in 1..self.tp_p {
       let mut y = 0.0;
@@ -298,6 +338,11 @@ impl SummaryMeter {
         y += coeff * self.tp_h[channel][index];
       }
       max = max.max(y.abs());
+      if TRACK {
+        if let Some(locations) = self.file_locations.as_mut() {
+          locations.interpolated(channel, y, phase, self.tp_t, self.tp_p);
+        }
+      }
     }
     max
   }
@@ -415,5 +460,105 @@ mod tests {
       side.integrated_lufs,
       back.integrated_lufs
     );
+  }
+}
+
+#[cfg(test)]
+mod location_tests {
+  use super::*;
+
+  #[test]
+  fn file_opt_in_leaves_live_summary_values_bit_identical() {
+    for channels in [1_u16, 2, 8, 10] {
+      let mut live = SummaryMeter::new(48_000, channels);
+      let mut file = SummaryMeter::new(48_000, channels);
+      file.enable_file_locations();
+      let pcm: Vec<f32> = (0..50_403)
+        .flat_map(|frame| {
+          (0..channels).map(move |ch| {
+            ((frame as f64 * 0.13 + f64::from(ch)).sin()
+              * if frame < 48_000 { 0.125 } else { 0.75 }) as f32
+          })
+        })
+        .collect();
+      for chunk in pcm.chunks(997 * usize::from(channels)) {
+        live.push_interleaved(chunk);
+        file.push_interleaved(chunk);
+      }
+      let a = live.finish();
+      let b = file.finish();
+      assert!(a.maxima_locations.is_none());
+      assert!(live.file_locations.is_none());
+      for (a, b) in [
+        (a.integrated_lufs, b.integrated_lufs),
+        (a.lra, b.lra),
+        (a.m_max_lufs, b.m_max_lufs),
+        (a.st_max_lufs, b.st_max_lufs),
+        (a.true_peak_max_dbtp, b.true_peak_max_dbtp),
+        (a.sample_peak_max_db, b.sample_peak_max_db),
+        (a.sample_peak_max_l_db, b.sample_peak_max_l_db),
+        (a.sample_peak_max_r_db, b.sample_peak_max_r_db),
+      ] {
+        assert_eq!(a.to_bits(), b.to_bits());
+      }
+      for (a, b) in a.channel_peaks.iter().zip(&b.channel_peaks) {
+        assert_eq!(a.sample_peak_max_db, b.sample_peak_max_db);
+        assert_eq!(a.true_peak_max_dbtp, b.true_peak_max_dbtp);
+        assert_eq!(a.sample_peak_max_location, None);
+        assert_eq!(a.true_peak_max_location, None);
+      }
+    }
+  }
+
+  /// Brute-force convolution in source coordinates, independent of the circular FIR intake.
+  #[test]
+  fn true_peak_locations_match_offline_convolution_including_start_and_tail() {
+    let (_, phases, coefficients) = crate::dsp::filters::init_true_peak_filters();
+    for pcm in [
+      vec![1.0_f32, -1.0, 1.0, -1.0, 0.0, 0.0],
+      (0..129)
+        .map(|n| (0.75 * (n as f64 * 0.7 + 0.2).sin()) as f32)
+        .collect(),
+      vec![0.0, 0.0, 0.0, 0.75],
+    ] {
+      let mut meter = SummaryMeter::new(48_000, 1);
+      meter.enable_file_locations();
+      meter.push_interleaved(&pcm);
+      let mut candidates = Vec::new();
+      for (n, &sample) in pcm.iter().enumerate() {
+        candidates.push((f64::from(sample).abs(), n as f64));
+        for (phase, taps) in coefficients.iter().enumerate().skip(1) {
+          let value: f64 = taps
+            .iter()
+            .enumerate()
+            .map(|(k, c)| {
+              if k <= n {
+                c * f64::from(pcm[n - k])
+              } else {
+                0.0
+              }
+            })
+            .sum();
+          candidates.push((
+            value.abs(),
+            n as f64 + phase as f64 / phases as f64 - 15.875,
+          ));
+        }
+      }
+      candidates.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1.total_cmp(&b.1)));
+      let result = meter.finish();
+      assert_eq!(
+        result.channel_peaks[0]
+          .true_peak_max_location
+          .as_ref()
+          .unwrap()
+          .frame_position,
+        candidates[0].1
+      );
+      assert_eq!(
+        result.true_peak_max_dbtp.to_bits(),
+        (20.0 * candidates[0].0.log10()).to_bits()
+      );
+    }
   }
 }

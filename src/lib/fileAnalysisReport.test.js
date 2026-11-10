@@ -346,8 +346,16 @@ describe("whole-file channel peaks", () => {
     });
     expect(report.summary.samplePeakMaxDb).toBe(-2);
     expect(report.summary.channelPeaks).toEqual([
-      ...channelPeaks.slice(0, 3),
-      { channelIndex: 3, samplePeakMaxDb: null, truePeakMaxDbtp: null },
+      ...channelPeaks
+        .slice(0, 3)
+        .map((peak) => ({ ...peak, samplePeakMaxLocation: null, truePeakMaxLocation: null })),
+      {
+        channelIndex: 3,
+        samplePeakMaxDb: null,
+        truePeakMaxDbtp: null,
+        samplePeakMaxLocation: null,
+        truePeakMaxLocation: null,
+      },
     ]);
     expect(JSON.parse(stringifyFileAnalysisReport(report)).summary.channelPeaks).toEqual(
       report.summary.channelPeaks
@@ -376,4 +384,35 @@ describe("whole-file channel peaks", () => {
     });
     expect(report.summary.samplePeakMaxDb).toBeNull();
   });
+});
+
+it("preserves exact source positions, fractional negative True Peak positions and explicit missing locations", () => {
+  const sample = { framePosition: 48000, timeSeconds: 1 };
+  const tp = { framePosition: -0.125, timeSeconds: -0.125 / 48000 };
+  const report = buildFileAnalysisReport({
+    ...COMPLETE_SESSION,
+    summary: {
+      ...COMPLETE_SESSION.summary,
+      channelPeaks: [
+        {
+          channelIndex: 0,
+          samplePeakMaxDb: -2,
+          truePeakMaxDbtp: -1,
+          samplePeakMaxLocation: sample,
+          truePeakMaxLocation: tp,
+        },
+      ],
+      maximaLocations: {
+        samplePeakMax: { channelIndex: 0, ...sample },
+        truePeakMax: { channelIndex: 0, ...tp },
+        mMaxWindowEnd: { framePosition: 48001, timeSeconds: 48001 / 48000 },
+        stMaxWindowEnd: { framePosition: NaN, timeSeconds: Infinity },
+      },
+    },
+  });
+  expect(report.summary.channelPeaks[0].samplePeakMaxLocation).toEqual(sample);
+  expect(report.summary.channelPeaks[0].truePeakMaxLocation).toEqual(tp);
+  expect(report.summary.maximaLocations.stMaxWindowEnd).toBeNull();
+  expect(report.summary.maximaLocations.truePeakMax).toEqual({ channelIndex: 0, ...tp });
+  expect(buildFileAnalysisReport(COMPLETE_SESSION).summary.maximaLocations).toBeNull();
 });

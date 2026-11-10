@@ -19,6 +19,37 @@ use super::gating::lufs_from_mean_squares;
 pub(crate) const M_BLOCKS: usize = 4;
 pub(crate) const S_BLOCKS: usize = 30;
 
+struct WindowLocations {
+  frames: u64,
+  m_frame: Option<u64>,
+  s_frame: Option<u64>,
+  m_global: (f64, Option<u64>),
+  s_global: (f64, Option<u64>),
+}
+
+impl Default for WindowLocations {
+  fn default() -> Self {
+    Self {
+      frames: 0,
+      m_frame: None,
+      s_frame: None,
+      m_global: (f64::NEG_INFINITY, None),
+      s_global: (f64::NEG_INFINITY, None),
+    }
+  }
+}
+
+fn earliest_max(old: (f64, Option<u64>), new: (f64, Option<u64>)) -> (f64, Option<u64>) {
+  if new.0.is_nan() || new.0 == f64::NEG_INFINITY {
+    return old;
+  }
+  if new.0 > old.0 || (new.0 == old.0 && new.1 < old.1) {
+    new
+  } else {
+    old
+  }
+}
+
 pub(crate) struct SlidingWindowMax {
   /// Per-frame weighted power for the last `s_len` frames. Allocated once, at construction.
   ring: Vec<f64>,
@@ -30,6 +61,7 @@ pub(crate) struct SlidingWindowMax {
   /// Largest window sum seen since the last `take_block_max`, or a negative value for none.
   m_max_sum: f64,
   s_max_sum: f64,
+  locations: Option<Box<WindowLocations>>,
 }
 
 impl SlidingWindowMax {
@@ -45,11 +77,21 @@ impl SlidingWindowMax {
       s_sum: 0.0,
       m_max_sum: -1.0,
       s_max_sum: -1.0,
+      locations: None,
     }
   }
 
   /// One frame's channel-weighted K-weighted power (the sum over channels of weight · y²).
+  #[cfg(test)]
   pub(crate) fn push(&mut self, power: f64) {
+    if self.locations.is_some() {
+      self.push_mode::<true>(power);
+    } else {
+      self.push_mode::<false>(power);
+    }
+  }
+
+  pub(crate) fn push_mode<const TRACK: bool>(&mut self, power: f64) {
     // The ring starts zeroed: until a window has seen its full length of input, the frame leaving
     // it is the silence before the meter started.
     let leaving_m = self.ring[(self.head + self.s_len - self.m_len) % self.s_len];
@@ -63,10 +105,42 @@ impl SlidingWindowMax {
     }
     if self.m_sum > self.m_max_sum {
       self.m_max_sum = self.m_sum;
+      if TRACK {
+        if let Some(locations) = self.locations.as_mut() {
+          locations.m_frame = Some(locations.frames + 1);
+        }
+      }
     }
     if self.s_sum > self.s_max_sum {
       self.s_max_sum = self.s_sum;
+      if TRACK {
+        if let Some(locations) = self.locations.as_mut() {
+          locations.s_frame = Some(locations.frames + 1);
+        }
+      }
     }
+    if TRACK {
+      if let Some(locations) = self.locations.as_mut() {
+        locations.frames += 1;
+      }
+    }
+  }
+
+  pub(crate) fn enable_locations(&mut self) {
+    self.locations = Some(Box::new(WindowLocations::default()));
+  }
+
+  pub(crate) fn maximum_locations(&self) -> (Option<u64>, Option<u64>) {
+    let Some(locations) = self.locations.as_ref() else {
+      return (None, None);
+    };
+    let (m, s) = self.peek_block_max();
+    let m = earliest_max(locations.m_global, (m, locations.m_frame));
+    let s = earliest_max(locations.s_global, (s, locations.s_frame));
+    (
+      if m.0.is_finite() { m.1 } else { None },
+      if s.0.is_finite() { s.1 } else { None },
+    )
   }
 
   /// `(max M, max S)` in LUFS over the windows that ended since the last call, `-inf` if no frame
@@ -74,6 +148,12 @@ impl SlidingWindowMax {
   /// so the running sums carry no rounding drift from one block to the next.
   pub(crate) fn take_block_max(&mut self) -> (f64, f64) {
     let max = self.peek_block_max();
+    if let Some(locations) = self.locations.as_mut() {
+      locations.m_global = earliest_max(locations.m_global, (max.0, locations.m_frame));
+      locations.s_global = earliest_max(locations.s_global, (max.1, locations.s_frame));
+      locations.m_frame = None;
+      locations.s_frame = None;
+    }
     self.m_max_sum = -1.0;
     self.s_max_sum = -1.0;
     self.resync();
@@ -210,5 +290,62 @@ mod tests {
       sliding.take_block_max(),
       (f64::NEG_INFINITY, f64::NEG_INFINITY)
     );
+  }
+}
+
+#[cfg(test)]
+mod location_tests {
+  use super::*;
+
+  #[test]
+  fn window_ends_are_exclusive_and_ties_keep_first_across_blocks() {
+    let mut meter = SlidingWindowMax::new(1);
+    meter.enable_locations();
+    for i in 0..160 {
+      meter.push(if (0..33).contains(&i) || (100..133).contains(&i) {
+        1.0
+      } else {
+        0.0
+      });
+      meter.take_block_max();
+    }
+    assert_eq!(meter.maximum_locations(), (Some(4), Some(30)));
+  }
+
+  #[test]
+  fn tail_and_zero_padded_short_windows_have_locations_but_silence_does_not() {
+    let mut meter = SlidingWindowMax::new(10);
+    assert!(meter.locations.is_none());
+    meter.enable_locations();
+    meter.push(0.0);
+    assert_eq!(meter.maximum_locations(), (None, None));
+    for i in 1..23 {
+      meter.push(if i >= 20 { 1.0 } else { 0.0 });
+      if (i + 1) % 10 == 0 {
+        meter.take_block_max();
+      }
+    }
+    assert_eq!(meter.maximum_locations(), (Some(23), Some(23)));
+  }
+
+  #[test]
+  fn opt_in_metadata_leaves_shared_live_arithmetic_bit_identical() {
+    let mut live = SlidingWindowMax::new(10);
+    let mut file = SlidingWindowMax::new(10);
+    file.enable_locations();
+    let mut seed = 0x12345678_u64;
+    for i in 0..5_003 {
+      seed ^= seed << 13;
+      seed ^= seed >> 7;
+      seed ^= seed << 17;
+      let power = (seed % 1000) as f64 / 1000.0;
+      live.push(power);
+      file.push(power);
+      if (i + 1) % 10 == 0 {
+        assert_eq!(live.take_block_max(), file.take_block_max());
+      }
+    }
+    assert_eq!(live.peek_block_max(), file.peek_block_max());
+    assert!(live.locations.is_none());
   }
 }

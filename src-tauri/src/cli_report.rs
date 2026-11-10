@@ -45,12 +45,28 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
         format_dbtp(summary.true_peak_max_dbtp),
         format_dbfs(summary.sample_peak_max_db),
       );
+      let locations = summary.maxima_locations.as_ref();
+      output.push_str(&format!("Sample Peak Max Location: {}\nTrue Peak Max Location: {}\nMomentary Max Window End: {}\nShort-term Max Window End: {}\n",
+        format_channel_location(locations.and_then(|l| l.sample_peak_max.as_ref())),
+        format_channel_location(locations.and_then(|l| l.true_peak_max.as_ref())),
+        format_location(locations.and_then(|l| l.m_max_window_end.as_ref())),
+        format_location(locations.and_then(|l| l.st_max_window_end.as_ref())),
+      ));
       for peak in &summary.channel_peaks {
         output.push_str(&format!(
           "Ch{}: Sample Peak Max {}, True Peak Max {}\n",
           peak.channel_index + 1,
           format_dbfs(peak.sample_peak_max_db),
           format_dbtp(peak.true_peak_max_dbtp)
+        ));
+      }
+      for peak in &summary.channel_peaks {
+        output.push_str(&format!(
+          "Ch{} Sample Peak Max Location: {}\nCh{} True Peak Max Location: {}\n",
+          peak.channel_index + 1,
+          format_location(peak.sample_peak_max_location.as_ref()),
+          peak.channel_index + 1,
+          format_location(peak.true_peak_max_location.as_ref()),
         ));
       }
       if report.analysis.dialogue.enabled {
@@ -105,6 +121,37 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
       output
     }
   }
+}
+
+fn format_location(location: Option<&crate::dsp::max_locations::MetricLocation>) -> String {
+  match location {
+    Some(location) => format!(
+      "{:.9} s (Frame {}{})",
+      location.time_seconds,
+      location.frame_position,
+      if location.frame_position < 0.0 {
+        "; Before Start"
+      } else {
+        ""
+      }
+    ),
+    None => "-".to_string(),
+  }
+}
+
+fn format_channel_location(
+  location: Option<&crate::dsp::max_locations::ChannelPeakLocation>,
+) -> String {
+  location.map_or_else(
+    || "-".to_string(),
+    |location| {
+      format!(
+        "Ch{} · {}",
+        location.channel_index + 1,
+        format_location(Some(&location.location))
+      )
+    },
+  )
 }
 
 fn doctor_status_label(status: DoctorStatus) -> &'static str {
@@ -248,6 +295,7 @@ mod tests {
       sample_peak_max_r_db: Some(-4.0),
       sample_peak_max_db: Some(-3.0),
       channel_peaks: vec![],
+      maxima_locations: None,
       dialogue_loudness_lufs: None,
       loudness_to_dialogue_ratio_lu: None,
       dialogue_coverage_percent: None,
@@ -298,11 +346,38 @@ mod tests {
     let mut report = sample_success_report();
     report.summary.channel_peaks = vec![crate::dsp::summary_meter::ChannelPeakMax {
       channel_index: 2,
+      sample_peak_max_location: None,
+      true_peak_max_location: None,
       sample_peak_max_db: None,
       true_peak_max_dbtp: Some(-0.5),
     }];
     let text = render_analyze_text(&CliAnalyzeReport::Success(Box::new(report)));
     assert!(text.contains("Ch3: Sample Peak Max -, True Peak Max -0.5 dBTP"));
+  }
+
+  #[test]
+  fn analyze_text_preserves_exact_locations_and_marks_padding_and_missing_values() {
+    use crate::dsp::max_locations::{ChannelPeakLocation, MaximaLocations, MetricLocation};
+    let mut report = sample_success_report();
+    report.summary.maxima_locations = Some(MaximaLocations {
+      sample_peak_max: Some(ChannelPeakLocation {
+        channel_index: 2,
+        location: MetricLocation::from_frame(48_000.0, 48_000.0),
+      }),
+      true_peak_max: Some(ChannelPeakLocation {
+        channel_index: 2,
+        location: MetricLocation::from_frame(-0.125, 48_000.0),
+      }),
+      m_max_window_end: Some(MetricLocation::from_frame(48_001.0, 48_000.0)),
+      st_max_window_end: None,
+    });
+    let text = render_analyze_text(&CliAnalyzeReport::Success(Box::new(report)));
+    assert!(text.contains("Sample Peak Max Location: Ch3 · 1.000000000 s (Frame 48000)"));
+    assert!(
+      text.contains("True Peak Max Location: Ch3 · -0.000002604 s (Frame -0.125; Before Start)")
+    );
+    assert!(text.contains("Momentary Max Window End: 1.000020833 s (Frame 48001)"));
+    assert!(text.contains("Short-term Max Window End: -"));
   }
 
   #[test]

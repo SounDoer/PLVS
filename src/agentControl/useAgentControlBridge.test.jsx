@@ -6651,9 +6651,27 @@ describe("File analysis report", () => {
       samplePeakMaxLDb: -1.5,
       samplePeakMaxRDb: -1.75,
       samplePeakMaxDb: -1.5,
+      maximaLocations: {
+        samplePeakMax: { channelIndex: 0, framePosition: 48000, timeSeconds: 1 },
+        truePeakMax: null,
+        mMaxWindowEnd: { framePosition: 48001, timeSeconds: 48001 / 48000 },
+        stMaxWindowEnd: null,
+      },
       channelPeaks: [
-        { channelIndex: 0, samplePeakMaxDb: -1.5, truePeakMaxDbtp: -1.2 },
-        { channelIndex: 1, samplePeakMaxDb: -1.75, truePeakMaxDbtp: -1.4 },
+        {
+          channelIndex: 0,
+          samplePeakMaxDb: -1.5,
+          truePeakMaxDbtp: -1.2,
+          samplePeakMaxLocation: { framePosition: 48000, timeSeconds: 1 },
+          truePeakMaxLocation: { framePosition: 48000.375, timeSeconds: 48000.375 / 48000 },
+        },
+        {
+          channelIndex: 1,
+          samplePeakMaxDb: -1.75,
+          truePeakMaxDbtp: -1.4,
+          samplePeakMaxLocation: null,
+          truePeakMaxLocation: null,
+        },
       ],
       dialogueIntegrated: null,
       dialogueLra: 0,
@@ -6768,6 +6786,7 @@ describe("File analysis report", () => {
         integratedLufs: -23.1,
         samplePeakMaxDb: -1.5,
         channelPeaks: completeSession.summary.channelPeaks,
+        maximaLocations: completeSession.summary.maximaLocations,
       },
     });
     const after = await send(request("transport.inspect", {}, "file-report-after"));

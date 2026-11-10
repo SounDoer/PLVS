@@ -35,3 +35,29 @@ Markdown labels these Ch1, Ch2, and so on, without inferring speaker roles from 
 outside the loudness layout. Unavailable values (including digital silence) are JSON `null` and
 shown as a dash in text. The compatibility fields `samplePeakMaxLDb` and `samplePeakMaxRDb` mean
 decoded channels 1 and 2; mono duplicates channel 1 in both. Additive fields retain schema version 2.
+
+### Maximum locations
+
+File analysis opts into location tracking; Live keeps it disabled and exposes no new measurement
+fields. `summary.maximaLocations` contains `samplePeakMax`, `truePeakMax`, `mMaxWindowEnd`, and
+`stMaxWindowEnd`. Every available location has `framePosition` and `timeSeconds`, relative to the
+start of the decoded audio track at its analysis sample rate. Global peak locations also carry
+zero-based `channelIndex`. Each `channelPeaks` entry has `samplePeakMaxLocation` and
+`truePeakMaxLocation`. Missing locations, including silence and older results, are JSON `null` and
+a dash in Markdown/text. Integrated, LRA and dialogue metrics do not have locations.
+
+Sample Peak uses its zero-based sample frame index. Momentary/Short-term Max uses the exclusive
+**Window End**: after the first decoded sample this is frame 1, at `1 / sampleRateHz` seconds.
+The existing full-length windows and silence before the track start are unchanged. Equal maxima
+keep the earliest source position; global peak ties at the same position use the lowest channel
+index. Locations identify maxima at the meter's internal precision, before report rounding.
+
+True Peak preserves the existing comparison of direct samples and FIR-interpolated candidates.
+For interpolation phase `p` (1, 2 or 3) evaluated while processing source frame `n`, the source coordinate is
+`n + p / 4 - 15.875` frames (4×, 32-tap-per-phase FIR). The original direct-sample candidate uses
+`n`. Locations therefore have eighth-frame precision. A delayed candidate can tie an already
+processed direct sample but still occur earlier in source time. Negative coordinates in the
+existing start-padding region are retained and labelled **Before Start**, never clamped to zero.
+The existing algorithm does not flush an extra zero-padded FIR tail after end-of-file; adding
+locations does not introduce new candidates or change the measured maximum. Near the end, locations
+refer to the direct samples and delayed interpolation candidates the meter actually evaluated.

@@ -70,6 +70,16 @@ function stringOrDash(value) {
   return typeof value === "string" && value ? value : MISSING;
 }
 
+function locationText(location) {
+  if (!Number.isFinite(location?.timeSeconds) || !Number.isFinite(location?.framePosition))
+    return MISSING;
+  const channel = Number.isInteger(location.channelIndex)
+    ? `Ch${location.channelIndex + 1} · `
+    : "";
+  const boundary = location.framePosition < 0 ? "; Before Start" : "";
+  return `${channel}${location.timeSeconds.toFixed(9)} s (Frame ${location.framePosition}${boundary})`;
+}
+
 function samplePeak(summary) {
   const max = fixed(summary.samplePeakMaxDb);
   if (max == null) return MISSING;
@@ -166,12 +176,30 @@ export function renderFileAnalysisReportMarkdown(report) {
     item(STATS_META.shortTermMax.label, metricValue("shortTermMax", summary)),
     item(STATS_META.truePeak.label, metricValue("truePeak", summary)),
     item("Sample Peak Max", samplePeak(summary)),
+    item("Sample Peak Max Location", locationText(summary.maximaLocations?.samplePeakMax)),
+    item("True Peak Max Location", locationText(summary.maximaLocations?.truePeakMax)),
+    item("Momentary Max Window End", locationText(summary.maximaLocations?.mMaxWindowEnd)),
+    item("Short-term Max Window End", locationText(summary.maximaLocations?.stMaxWindowEnd)),
   ];
   for (const peak of summary.channelPeaks ?? []) {
     lines.push(
       item(
         `Ch${peak.channelIndex + 1}`,
         `Sample Peak Max ${withUnit(fixed(peak.samplePeakMaxDb), "dBFS")} · True Peak Max ${withUnit(fixed(peak.truePeakMaxDbtp), "dBTP")}`
+      )
+    );
+  }
+  for (const peak of summary.channelPeaks ?? []) {
+    lines.push(
+      item(
+        `Ch${peak.channelIndex + 1} Sample Peak Max Location`,
+        locationText(peak.samplePeakMaxLocation)
+      )
+    );
+    lines.push(
+      item(
+        `Ch${peak.channelIndex + 1} True Peak Max Location`,
+        locationText(peak.truePeakMaxLocation)
       )
     );
   }

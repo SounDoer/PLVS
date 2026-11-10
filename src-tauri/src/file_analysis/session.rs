@@ -456,6 +456,7 @@ pub(crate) fn analyze_file_core(
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_db: metrics.sample_peak_max_db,
     channel_peaks: metrics.channel_peaks,
+    maxima_locations: metrics.maxima_locations,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     loudness_layout: metrics.loudness_layout,
@@ -1104,6 +1105,7 @@ mod tests {
     use crate::file_analysis::summary::SummaryPcmChunker;
 
     let mut meter = SummaryMeter::new(sr, channels);
+    meter.enable_file_locations();
     let mut chunker = SummaryPcmChunker::new(sr, channels);
     for chunk in pcm.chunks(read_samples.max(1)) {
       chunker.push_pcm(&mut meter, chunk);
@@ -1121,6 +1123,7 @@ mod tests {
       true_peak_max_dbtp: metrics.true_peak_max_dbtp,
       sample_peak_max_db: metrics.sample_peak_max_db,
       channel_peaks: metrics.channel_peaks,
+      maxima_locations: metrics.maxima_locations,
       sample_peak_max_l_db: metrics.sample_peak_max_l_db,
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
       loudness_layout: metrics.loudness_layout.to_string(),
@@ -1168,6 +1171,7 @@ mod tests {
       true_peak_max_dbtp: metrics.true_peak_max_dbtp,
       sample_peak_max_db: metrics.sample_peak_max_db,
       channel_peaks: metrics.channel_peaks,
+      maxima_locations: metrics.maxima_locations,
       sample_peak_max_l_db: metrics.sample_peak_max_l_db,
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
       loudness_layout: metrics.loudness_layout,
@@ -1324,6 +1328,7 @@ mod tests {
         let cli = run_summary_path(&pcm, 48_000, channels, 16_384);
         let gui = run_session_path(&pcm, 48_000, channels, 997);
         assert_eq!(cli.channel_peaks, gui.channel_peaks);
+        assert_eq!(cli.maxima_locations, gui.maxima_locations);
         assert_eq!(cli.sample_peak_max_db, gui.sample_peak_max_db);
         assert_eq!(cli.channel_peaks.len(), usize::from(channels));
         for (index, peak) in cli.channel_peaks.iter().enumerate() {
@@ -1403,6 +1408,10 @@ mod tests {
         );
       }
       assert_eq!(cli.channel_peaks, gui.channel_peaks, "{channels} ch peaks");
+      assert_eq!(
+        cli.maxima_locations, gui.maxima_locations,
+        "{channels} ch locations"
+      );
       assert_eq!(cli.sample_peak_max_db, gui.sample_peak_max_db);
       assert_eq!(cli.loudness_layout, gui.loudness_layout, "{channels} ch");
       assert_eq!(
@@ -1504,6 +1513,19 @@ mod tests {
       .unwrap()
       .summary;
     assert_eq!(gui.channel_peaks, cli.channel_peaks);
+    assert_eq!(gui.maxima_locations, cli.maxima_locations);
+    assert_eq!(
+      gui
+        .maxima_locations
+        .as_ref()
+        .unwrap()
+        .sample_peak_max
+        .as_ref()
+        .unwrap()
+        .location
+        .frame_position,
+      50_400.0
+    );
     assert_eq!(gui.sample_peak_max_db, cli.sample_peak_max_db);
     assert_eq!(gui.channel_peaks.len(), 8);
     assert!(gui.channel_peaks[..7]

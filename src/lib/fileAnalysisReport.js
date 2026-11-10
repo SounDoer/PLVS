@@ -19,6 +19,18 @@ export const REPORT_PROFILE_METRIC_FIELDS = Object.freeze({
   dialogueRange: "dialogueRangeLu",
 });
 
+function locationOrNull(value) {
+  if (!Number.isFinite(value?.framePosition) || !Number.isFinite(value?.timeSeconds)) return null;
+  return { framePosition: value.framePosition, timeSeconds: value.timeSeconds };
+}
+
+function channelLocationOrNull(value) {
+  const location = locationOrNull(value);
+  return location && Number.isInteger(value.channelIndex) && value.channelIndex >= 0
+    ? { channelIndex: value.channelIndex, ...location }
+    : null;
+}
+
 function finiteOrNull(value) {
   return Number.isFinite(value) ? value : null;
 }
@@ -126,7 +138,18 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
       channelIndex: peak.channelIndex,
       samplePeakMaxDb: finiteOrNull(peak.samplePeakMaxDb),
       truePeakMaxDbtp: finiteOrNull(peak.truePeakMaxDbtp),
+      samplePeakMaxLocation: locationOrNull(peak.samplePeakMaxLocation),
+      truePeakMaxLocation: locationOrNull(peak.truePeakMaxLocation),
     })),
+    maximaLocations:
+      summary.maximaLocations == null
+        ? null
+        : {
+            samplePeakMax: channelLocationOrNull(summary.maximaLocations.samplePeakMax),
+            truePeakMax: channelLocationOrNull(summary.maximaLocations.truePeakMax),
+            mMaxWindowEnd: locationOrNull(summary.maximaLocations.mMaxWindowEnd),
+            stMaxWindowEnd: locationOrNull(summary.maximaLocations.stMaxWindowEnd),
+          },
     dialogueLoudnessLufs: dialogueMeasured ? summary.dialogueIntegrated : null,
     loudnessToDialogueRatioLu: ldr,
     dialogueCoveragePercent: dialogueEnabled ? finiteOrNull(summary.dialoguePercent) : null,

@@ -240,3 +240,24 @@ it("renders per-channel peaks without inventing speaker roles", () => {
   expect(text).toContain("- Ch3: Sample Peak Max -2.0 dBFS · True Peak Max -0.5 dBTP\n");
   expect(text).not.toContain("(L ");
 });
+
+it("renders exact peak positions, corrected padding coordinates and explicit unavailable window ends", () => {
+  const text = render({
+    ...SESSION,
+    summary: {
+      ...SESSION.summary,
+      maximaLocations: {
+        samplePeakMax: { channelIndex: 2, framePosition: 48000, timeSeconds: 1 },
+        truePeakMax: { channelIndex: 2, framePosition: -0.125, timeSeconds: -0.125 / 48000 },
+        mMaxWindowEnd: { framePosition: 48001, timeSeconds: 48001 / 48000 },
+        stMaxWindowEnd: null,
+      },
+    },
+  });
+  expect(text).toContain("- Sample Peak Max Location: Ch3 · 1.000000000 s (Frame 48000)");
+  expect(text).toContain(
+    "- True Peak Max Location: Ch3 · -0.000002604 s (Frame -0.125; Before Start)"
+  );
+  expect(text).toContain("- Momentary Max Window End: 1.000020833 s (Frame 48001)");
+  expect(text).toContain("- Short-term Max Window End: —");
+});

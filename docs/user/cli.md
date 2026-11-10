@@ -784,3 +784,7 @@ The internal offline `analyze` summary also includes `channelPeaks`, ordered by 
 `channelIndex`, with per-channel `samplePeakMaxDb` and `truePeakMaxDbtp`. Its global peak fields
 cover every decoded channel. Text output labels channels Ch1, Ch2, etc.; unavailable values are
 JSON `null` or a dash in text. See [File Mode reports](file-mode.md#reports) for compatibility fields.
+
+Offline `analyze` also preserves File Mode [maximum locations](file-mode.md#maximum-locations)
+in its JSON summary and text report, including the channel for each global peak. Live `capture`
+and Measurement Control do not enable or expose this position tracking.

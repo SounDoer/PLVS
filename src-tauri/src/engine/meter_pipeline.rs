@@ -216,6 +216,7 @@ pub struct PipelineSummary {
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_db: f64,
   pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
+  pub maxima_locations: Option<crate::dsp::max_locations::MaximaLocations>,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   pub dialogue_integrated: f64,
@@ -328,6 +329,7 @@ impl MeterPipeline {
     duration_ms: Option<u64>,
   ) -> Self {
     let mut pipeline = Self::new(sample_rate, channels);
+    pipeline.loudness.enable_file_locations(channels);
     let cadence = |base_ms: u64, max_rows: u64| {
       duration_ms
         // Reserve one row for the forced end-of-file checkpoint so the frontend's bounded store
@@ -399,6 +401,7 @@ impl MeterPipeline {
         .filter_map(|p| p.sample_peak_max_db)
         .fold(f64::NEG_INFINITY, f64::max),
       channel_peaks,
+      maxima_locations: self.loudness.maxima_locations(),
       sample_peak_max_l_db: self.sample_peak_max_l,
       sample_peak_max_r_db: self.sample_peak_max_r,
       dialogue_integrated,
@@ -4796,5 +4799,22 @@ mod tests {
       loudness_layout_meta(6, Some(&selection)),
       ("5.1".to_string(), true)
     );
+  }
+}
+
+#[cfg(test)]
+mod file_location_mode_tests {
+  use super::*;
+
+  #[test]
+  fn live_never_enables_locations_and_file_resets_preserve_opt_in() {
+    let mut live = MeterPipeline::new(48_000, 2);
+    let mut file = MeterPipeline::new_for_file(48_000, 2);
+    assert!(live.summary_metrics().maxima_locations.is_none());
+    assert!(file.summary_metrics().maxima_locations.is_some());
+    live.clear_peak_and_history();
+    file.clear_peak_and_history();
+    assert!(live.summary_metrics().maxima_locations.is_none());
+    assert!(file.summary_metrics().maxima_locations.is_some());
   }
 }

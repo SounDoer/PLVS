@@ -156,6 +156,7 @@ pub struct CliAnalyzeSummary {
   pub sample_peak_max_r_db: Option<f64>,
   pub sample_peak_max_db: Option<f64>,
   pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
+  pub maxima_locations: Option<crate::dsp::max_locations::MaximaLocations>,
   pub dialogue_loudness_lufs: Option<f64>,
   pub loudness_to_dialogue_ratio_lu: Option<f64>,
   pub dialogue_coverage_percent: Option<f64>,
@@ -351,6 +352,7 @@ fn summary_from_metrics(
     sample_peak_max_r_db,
     sample_peak_max_db: finite_or_none(summary.sample_peak_max_db),
     channel_peaks: summary.channel_peaks,
+    maxima_locations: summary.maxima_locations,
     dialogue_loudness_lufs: if dialogue_enabled {
       finite_or_none(summary.dialogue_integrated)
     } else {
@@ -465,6 +467,7 @@ mod tests {
       true_peak_max_dbtp: f64::NEG_INFINITY,
       sample_peak_max_db: left.max(right),
       channel_peaks: vec![],
+      maxima_locations: None,
       sample_peak_max_l_db: left,
       sample_peak_max_r_db: right,
       loudness_layout: "stereo".to_string(),
@@ -494,11 +497,22 @@ mod tests {
   fn summary_preserves_all_channel_peaks_and_global_maximum() {
     use crate::dsp::summary_meter::ChannelPeakMax;
     let mut metrics = summary_with_peaks(-12.0, -9.0);
+    metrics.maxima_locations = Some(crate::dsp::max_locations::MaximaLocations {
+      sample_peak_max: Some(crate::dsp::max_locations::ChannelPeakLocation {
+        channel_index: 2,
+        location: crate::dsp::max_locations::MetricLocation::from_frame(48_000.0, 48_000.0),
+      }),
+      true_peak_max: None,
+      m_max_window_end: None,
+      st_max_window_end: None,
+    });
     metrics.channels = 3;
     metrics.sample_peak_max_db = -2.0;
     metrics.true_peak_max_dbtp = -0.5;
     metrics.channel_peaks = vec![ChannelPeakMax {
       channel_index: 2,
+      sample_peak_max_location: None,
+      true_peak_max_location: None,
       sample_peak_max_db: Some(-2.0),
       true_peak_max_dbtp: Some(-0.5),
     }];
@@ -507,6 +521,12 @@ mod tests {
     let json = serde_json::to_value(summary).unwrap();
     assert_eq!(json["channelPeaks"][0]["channelIndex"], 2);
     assert_eq!(json["channelPeaks"][0]["truePeakMaxDbtp"], -0.5);
+    assert_eq!(
+      json["maximaLocations"]["samplePeakMax"]["framePosition"],
+      48_000.0
+    );
+    assert_eq!(json["maximaLocations"]["samplePeakMax"]["channelIndex"], 2);
+    assert!(json["maximaLocations"]["truePeakMax"].is_null());
   }
 
   #[test]
