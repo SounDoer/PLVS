@@ -527,7 +527,17 @@ export function playerArgs(
     return [...common, "--aout=mmdevice", `--mmdevice-audio-device=${playerTarget}`, wavPath];
   }
   if (platform === "darwin") {
-    return [...common, "--aout=auhal", `--auhal-audio-device=${playerTarget}`, wavPath];
+    // The app launcher reads vlcrc by default. A saved auhal-volume changes the
+    // signal before capture; isolate this test player without rewriting daily preferences.
+    return [
+      ...common,
+      "--ignore-config",
+      "--no-volume-save",
+      "--auhal-volume=256",
+      "--aout=auhal",
+      `--auhal-audio-device=${playerTarget}`,
+      wavPath,
+    ];
   }
   throw new RigError(`The live-capture player is not supported on ${platform}.`);
 }

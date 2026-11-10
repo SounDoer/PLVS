@@ -277,6 +277,23 @@ describe("cross-platform capture route", () => {
     expect(captureRig.playerArgs("target", "signal.wav", platform)).toContain("--loop");
   });
 
+  it.each([true, false])(
+    "isolates macOS playback gain from saved VLC preferences (loop=%s)",
+    (loop) => {
+      const args = captureRig.playerArgs("121", "/tmp/rig signal.wav", "darwin", { loop });
+      expect(args).toEqual(
+        expect.arrayContaining([
+          "--ignore-config",
+          "--no-volume-save",
+          "--auhal-volume=256",
+          "--aout=auhal",
+          "--auhal-audio-device=121",
+        ])
+      );
+      expect(args.at(-1)).toBe("/tmp/rig signal.wav");
+    }
+  );
+
   it("normalizes a macOS route from harness and Core Audio discovery", () => {
     const run = vi.fn(() => ({
       status: 0,
