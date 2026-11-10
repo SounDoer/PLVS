@@ -25,7 +25,8 @@ alone makes them wrong, so they are updated in the same commit as the change.
 Keep this group small. Every file added here is one more thing that can go stale.
 
 [Marketing screenshots](marketing-screenshots.md) documents how the homepage images are rendered
-from fixtures, reviewed and published, and the archived music sources behind them.
+from fixtures, reviewed and published, the archived music sources behind them, and the self-contained
+press kit export (`npm run presskit`).
 
 Video production — the capture, editing, validation and archive workflow, its tools and the promo
 film's source — lives in the maintainer's private `PLVS-Promo` repository, together with the

@@ -12,6 +12,34 @@ outside them. The rendered images replace the earlier rule that the hero must co
 Windows app. Native screenshots can be reviewed separately when needed; the retired capture
 scripts are not part of the image generation or publication workflow.
 
+## Export a press kit
+
+Run `npm run presskit` to export the currently published website and Catalogue versions. The
+script reads the live publication marker and extracts tracked media from each exact Git commit,
+fetching missing commits from origin. It never packages dirty working-tree images or requires
+another repository, NAS, desktop app or capture rig. For an explicitly selected offline version,
+use `npm run presskit -- --ref <commit>`; the export records that choice instead of claiming to
+represent the current website.
+
+Each export creates a new directory and ZIP under `artifacts/presskit/`, without overwriting an
+earlier kit. It contains color, black and white app icons in SVG and transparent PNG; two website
+QR variants in SVG and high-resolution PNG; full-size homepage WebP images and PNG compatibility
+copies; original PNG screenshots; and the current published Catalogue previews' latest revisions.
+Responsive image duplicates and superseded previews are omitted. Website and content commits can
+differ after a content-only publication and are recorded separately.
+
+Both QR variants target `https://plvs.soundoer.com/` without tracking, include their background and
+four-module quiet zone, and must decode before export succeeds. Black-on-white is the recommended
+general-purpose code; white-on-dark is provided for dark artwork. Every kit includes an English
+README, an offline `index.html` image browser and a manifest with source commits, dimensions,
+processing and SHA-256 hashes. The script verifies the ZIP contents before reporting success.
+
+The generator lives in `scripts/marketing/build-presskit.mjs`; its focused tests run with
+`npm run test:marketing -- scripts/marketing/build-presskit.test.js`. The repository skill
+`.agents/skills/plvs-presskit/SKILL.md` owns the agent export/review/delivery workflow. Exporting
+media does not deploy the website or require desktop platform builds. Changes to the export
+tooling or dependencies still follow the normal repository checks before push.
+
 ## Files maintained in Git
 
 - `assets/marketing/audio/full-band-crescendo/`: the
