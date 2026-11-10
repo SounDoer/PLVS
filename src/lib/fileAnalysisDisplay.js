@@ -84,15 +84,10 @@ export function formatSampleRate(sampleRateHz) {
   return `${Number.isInteger(khz) ? khz.toFixed(0) : khz.toFixed(1)} kHz`;
 }
 
-export function formatChannelLayout(channels) {
+export function formatChannelLayout(channels, layout = null) {
   if (!Number.isFinite(channels)) return null;
-  const layouts = {
-    1: "Mono",
-    2: "Stereo",
-    6: "5.1",
-    8: "7.1",
-  };
-  return layouts[channels] ?? `${channels} ch`;
+  if (layout && layout !== "unknown") return { mono: "Mono", stereo: "Stereo" }[layout] ?? layout;
+  return `${channels} ch`;
 }
 
 export function formatTrackLabel(track) {
@@ -102,7 +97,7 @@ export function formatTrackLabel(track) {
     formatLanguage(track.language),
     formatCodec(track.codec),
     formatSampleRate(track.sampleRateHz),
-    formatChannelLayout(track.channels),
+    formatChannelLayout(track.channels, track.channelLayout),
   ]);
 }
 
@@ -114,7 +109,11 @@ export function formatSessionMetadataLine(session) {
   const durationMs = session?.summary?.durationMs ?? metadata?.durationMs;
   return joinParts([
     formatContainer(metadata?.container),
-    formatTrackLabel(track),
+    formatTrackLabel(
+      track
+        ? { ...track, channelLayout: session?.summary?.loudnessLayout ?? track.channelLayout }
+        : track
+    ),
     Number.isFinite(durationMs) ? formatClock(durationMs) : null,
   ]);
 }
@@ -127,7 +126,7 @@ export function formatCompactSessionMetadata(session) {
   return joinParts([
     formatContainer(metadata?.container),
     formatCodec(track?.codec),
-    formatChannelLayout(track?.channels),
+    formatChannelLayout(track?.channels, session?.summary?.loudnessLayout ?? track?.channelLayout),
   ]);
 }
 

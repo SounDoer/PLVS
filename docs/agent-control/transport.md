@@ -29,10 +29,15 @@ button. Snapshot selection is available in Dock and normal mode, does not stop L
 survives Dock entry and exit. FILE source entry remains unavailable while docked.
 
 FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and starts a new
-session; reanalyze retains the session identity and preceding successful result until replacement
+session; reanalyze retains the selected track and preceding successful result until replacement
 succeeds; stop retains partial results when no prior success exists and otherwise retains that
 successful result; select chooses an
 existing result; remove deletes one session; and clear deletes the complete FILE session ledger.
+
+Reanalyze keeps the session identity for an unchanged source. If its content fingerprint changed,
+it creates another entry and returns that entry's session ID, retaining the original result.
+Callers must use the returned identity and inspect after completion rather than assuming the
+requested session was overwritten. Unavailable original tracks or sources leave the old result intact.
 
 While a replacement attempt is running or has failed, an entry with a retained successful result
 exposes `resultAvailable: true`. Its summary, probe, analysis settings, decoded count and analysis

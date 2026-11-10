@@ -7,6 +7,8 @@ import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useFileAnalysisReportExport } from "../hooks/useFileAnalysisReportExport.js";
 import { useSourceTransportActions } from "../hooks/useSourceTransportActions.js";
 import { useDialogueEngineRestart } from "../hooks/useDialogueEngineRestart.js";
+import { useFileImport } from "../hooks/useFileImport.js";
+import { FileAudioTrackDialog } from "../components/FileAudioTrackDialog.jsx";
 import { deriveDialogueRuntime } from "./appRuntimeDerivations.js";
 import {
   useMeterDisplayState,
@@ -31,6 +33,7 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
  *   copyFileAnalysisReportMarkdown: (...args: any[]) => any,
  *   vectorscopeResetEpoch: number,
  *   stereoMapResetEpoch: number,
+ *   fileImport: ReturnType<typeof useFileImport>,
  * }} SourceActions
  */
 const SourceActionsContext = createContext(/** @type {SourceActions | null} */ (null));
@@ -49,6 +52,8 @@ export function SourceActionsProvider({ children }) {
     running,
     liveLifecycle,
     activeFileSession,
+    fileSessions,
+    analyzingFileId,
     startLive,
     stopLive,
     switchSource,
@@ -91,6 +96,14 @@ export function SourceActionsProvider({ children }) {
     raiseNotice,
     loudnessProfile,
   });
+  const fileImport = useFileImport({
+    files: fileSessions,
+    busy: Boolean(analyzingFileId),
+    getSettings: currentFileAnalysisSettings,
+    begin: beginRuntimeFileAnalysis,
+    select: selectFile,
+    raiseNotice,
+  });
   const actions = useSourceTransportActions({
     sourceMode,
     running,
@@ -107,6 +120,7 @@ export function SourceActionsProvider({ children }) {
     switchSource,
     clearActiveSource,
     beginRuntimeFileAnalysis,
+    importFile: fileImport.importFile,
     reanalyzeFile,
     selectFile,
     removeFile,
@@ -132,6 +146,7 @@ export function SourceActionsProvider({ children }) {
     <SourceActionsContext.Provider
       value={{
         ...actions,
+        fileImport,
         fileSession,
         dialogueGating,
         currentFileAnalysisSettings,
@@ -141,6 +156,11 @@ export function SourceActionsProvider({ children }) {
         stereoMapResetEpoch,
       }}
     >
+      <FileAudioTrackDialog
+        selection={fileImport.selection}
+        onConfirm={fileImport.confirm}
+        onCancel={fileImport.cancel}
+      />
       {children}
     </SourceActionsContext.Provider>
   );

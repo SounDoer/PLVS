@@ -249,10 +249,10 @@ export function AgentControlBridge() {
       }
       if (method === "transport.file.reanalyze") {
         switchSource("file");
-        const run = reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
+        const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
         if (!run) throw new Error("FILE reanalysis was not accepted.");
         await run.accepted;
-        return { sessionId: params.sessionId };
+        return { sessionId: run.sessionId };
       }
       if (method === "transport.file.stop") {
         await stopFileAnalysis(params.sessionId);

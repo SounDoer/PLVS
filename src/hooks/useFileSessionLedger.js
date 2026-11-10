@@ -57,11 +57,12 @@ export function useFileSessionLedger() {
   }, []);
 
   /** Mint a new session for `path` and mark it analyzing. Returns the session id. */
-  const beginRun = useCallback((path, analysisSettings) => {
+  const beginRun = useCallback((path, analysisSettings, probe = null, onCreated = null) => {
     analysisSettings = structuredClone(analysisSettings ?? {});
     const runId = fileEntrySeqRef.current + 1;
     fileEntrySeqRef.current = runId;
     const sessionId = `file-analysis-${Date.now()}-${runId}`;
+    onCreated?.(sessionId);
     const intake = new FrameIntake();
     setFileHistory((history) =>
       startFileAnalysisEntry(
@@ -70,26 +71,30 @@ export function useFileSessionLedger() {
           path,
           intake,
           analysisSettings,
+          metadata: probe,
         }),
         sessionId,
         { analysisSettings }
       )
     );
-    setFileRunRequest({ sessionId, filePath: path, runId, analysisSettings });
+    setFileRunRequest({ sessionId, filePath: path, runId, analysisSettings, probe });
     return sessionId;
   }, []);
 
   /** Re-analyze an existing entry with fresh settings. */
-  const rerun = useCallback((/** @type {string} */ entryId, path, analysisSettings) => {
-    analysisSettings = structuredClone(analysisSettings ?? {});
-    const runId = fileEntrySeqRef.current + 1;
-    fileEntrySeqRef.current = runId;
-    const intake = new FrameIntake();
-    setFileHistory((history) =>
-      startFileAnalysisEntry(history, entryId, { analysisSettings, intake })
-    );
-    setFileRunRequest({ sessionId: entryId, filePath: path, runId, analysisSettings });
-  }, []);
+  const rerun = useCallback(
+    (/** @type {string} */ entryId, path, analysisSettings, probe = null) => {
+      analysisSettings = structuredClone(analysisSettings ?? {});
+      const runId = fileEntrySeqRef.current + 1;
+      fileEntrySeqRef.current = runId;
+      const intake = new FrameIntake();
+      setFileHistory((history) =>
+        startFileAnalysisEntry(history, entryId, { analysisSettings, intake })
+      );
+      setFileRunRequest({ sessionId: entryId, filePath: path, runId, analysisSettings, probe });
+    },
+    []
+  );
 
   /** Record that `sessionId`'s run stopped: entry back to ready, no analyzing id, no run request. */
   const markStopped = useCallback((/** @type {string} */ sessionId) => {

@@ -30,6 +30,7 @@ export const UI_SURFACE_KINDS = Object.freeze([
   "libraryConflict",
   "confirmation",
   "libraryExport",
+  "fileAudioTrack",
   "importReview",
   "importComplete",
   "status",

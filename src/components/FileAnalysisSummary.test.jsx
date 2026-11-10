@@ -99,7 +99,7 @@ describe("FileAnalysisSummary", () => {
     expect(screen.getByText("-1.0 dBTP")).toBeTruthy();
     expect(screen.queryByText("Sample Peak Max")).toBeNull();
     expect(
-      screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - Stereo - 00:03:00")
+      screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - 2 ch - 00:03:00")
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Export" }));

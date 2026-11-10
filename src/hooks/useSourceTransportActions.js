@@ -27,6 +27,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   activeFileSession: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView | null,
  *   getFileAnalysisSettings: (...args: any[]) => any,
  *   onClearSucceeded: (...args: any[]) => any,
+ *   importFile?: (...args: any[]) => any,
  * }} options
  */
 export function useSourceTransportActions({
@@ -53,6 +54,7 @@ export function useSourceTransportActions({
   activeFileSession,
   getFileAnalysisSettings,
   onClearSucceeded,
+  importFile,
 }) {
   const resetHistoryViewport = useCallback(() => {
     setHistoryOffsetSec(0);
@@ -69,9 +71,10 @@ export function useSourceTransportActions({
 
   const beginFileAnalysis = useCallback(
     (path) => {
-      beginRuntimeFileAnalysis(path, getFileAnalysisSettings());
+      if (importFile) return importFile(path);
+      return beginRuntimeFileAnalysis(path, getFileAnalysisSettings());
     },
-    [beginRuntimeFileAnalysis, getFileAnalysisSettings]
+    [beginRuntimeFileAnalysis, getFileAnalysisSettings, importFile]
   );
 
   const reanalyzeActiveFile = useCallback(

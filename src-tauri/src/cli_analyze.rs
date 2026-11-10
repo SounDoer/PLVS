@@ -610,7 +610,9 @@ mod tests {
           sample_rate_hz: Some(48_000),
           channels: Some(2),
           language: None,
+          ..Default::default()
         },
+        ..Default::default()
       },
       decoded_frames: 48_000,
       summary: summary_with_peaks(-3.0, -4.0),
@@ -651,7 +653,9 @@ mod tests {
           sample_rate_hz: Some(48_000),
           channels: Some(2),
           language: None,
+          ..Default::default()
         },
+        ..Default::default()
       },
       decoded_frames: 48_000,
       summary,
@@ -699,7 +703,9 @@ mod tests {
           sample_rate_hz: Some(48_000),
           channels: Some(2),
           language: None,
+          ..Default::default()
         },
+        ..Default::default()
       },
       decoded_frames: 48_000,
       summary,

@@ -75,7 +75,9 @@ describe("MeterRuntimeProvider", () => {
     act(() => result.current.beginFileAnalysis("C:\\first.wav", firstSettings));
     const sessionId = result.current.activeFileSession.id;
     await act(() => result.current.stopFileAnalysis());
-    act(() => result.current.reanalyzeFile(sessionId, nextSettings));
+    await act(async () => {
+      await result.current.reanalyzeFile(sessionId, nextSettings);
+    });
 
     expect(result.current.fileSessions).toHaveLength(1);
     expect(result.current.analyzingFileId).toBe(sessionId);

@@ -94,7 +94,7 @@ describe("DisplaySnapshotProvider", () => {
     );
   });
 
-  it("keeps displaying the successful audio while a replacement is staged, then swaps on completion", () => {
+  it("keeps displaying the successful audio while a replacement is staged, then swaps on completion", async () => {
     const seen = mount();
     act(() => seen.runtime.switchSource("file"));
     act(() => seen.runtime.beginFileAnalysis("C:/mix.wav", {}));
@@ -108,7 +108,9 @@ describe("DisplaySnapshotProvider", () => {
       }));
       seen.assembly.ledger.setAnalyzingFileId(null);
     });
-    act(() => seen.runtime.reanalyzeFile(id, {}));
+    await act(async () => {
+      await seen.runtime.reanalyzeFile(id, {});
+    });
     act(() => seen.assembly.display.setAudio((audio) => ({ ...audio, integrated: -8 })));
     expect(seen.snapshot.displayAudio.integrated).toBe(-23);
     act(() =>

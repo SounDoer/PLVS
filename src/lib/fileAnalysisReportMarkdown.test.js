@@ -90,7 +90,7 @@ describe("renderFileAnalysisReportMarkdown", () => {
       "- Path: `C:\\mixes\\final_mix.wav`",
       "- Container: WAV",
       "- Duration: 00:00:10",
-      "- Track: Audio track 0 - English - PCM s16le - 48 kHz - Stereo",
+      "- Track: Audio track 0 - English - PCM s16le - 48 kHz - 2 ch",
       "- Integrated: -23.1 LUFS",
       "- Loudness Range: 4.2 LU",
       "- Momentary Max: -18.5 LUFS",

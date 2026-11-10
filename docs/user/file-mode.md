@@ -7,6 +7,16 @@ Inspect a local audio file offline, using the same meter panels as live monitori
 Drop an audio file onto the window, or choose **Open file** in the toolbar. PLVS reads the file's
 metadata with ffprobe and decodes it with a bundled FFmpeg — no external tools to install.
 
+When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
+**Analyze**. The default-marked track is selected initially. Cancelling leaves the current file
+and result unchanged. To choose another track, open or drop the file again; each track has its own
+analysis entry. Reopening an unchanged file and track selects its existing entry without rerunning.
+Reanalyze keeps the original track. If the source contents changed, reanalysis creates a new entry
+and preserves the old result. Missing sources do not remove results or reports already in memory.
+
+Source versions use a content fingerprint checked before and after offline decoding. Completed
+duration comes from decoded audio frames; container duration is only a progress estimate.
+
 ## Scrubbing
 
 Move through the file's timeline and every panel updates to match, exactly like live monitoring.

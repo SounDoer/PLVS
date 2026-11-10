@@ -674,8 +674,10 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, String> {
-  crate::file_analysis::probe::probe_file(path)
+pub async fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, String> {
+  tauri::async_runtime::spawn_blocking(move || crate::file_analysis::probe::probe_file(path))
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]

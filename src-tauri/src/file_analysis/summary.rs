@@ -107,15 +107,17 @@ pub fn analyze_file_track_to_summary_with_layout(
     container: media_probe.container,
     duration_ms: media_probe.duration_ms,
     selected_track,
+    audio_tracks: media_probe.audio_tracks,
+    source_version: media_probe.source_version,
   };
   let track = &probe.selected_track;
+  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
   let sample_rate = track
     .sample_rate_hz
     .ok_or_else(|| "Selected audio track has no sample rate".to_string())?;
   let channels = track
     .channels
     .ok_or_else(|| "Selected audio track has no channel count".to_string())?;
-  let duration_ms = probe.duration_ms;
 
   let ffmpeg = locate_sidecar("ffmpeg");
   let args = build_decode_args(path, track.index, channels, sample_rate);
@@ -179,8 +181,11 @@ pub fn analyze_file_track_to_summary_with_layout(
   pcm_chunker.flush(&mut meter);
 
   let metrics = meter.finish();
+  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
   let summary = FileAnalysisSummaryMetrics {
-    duration_ms,
+    duration_ms: Some(
+      ((pcm_chunker.decoded_frames() as f64 / sample_rate as f64) * 1000.0).round() as u64,
+    ),
     sample_rate_hz: sample_rate,
     channels,
     integrated_lufs: metrics.integrated_lufs,

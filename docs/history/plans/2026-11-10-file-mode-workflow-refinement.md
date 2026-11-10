@@ -1,12 +1,25 @@
 # File Mode Workflow Refinement Implementation Plan
 
 **Date:** 2026-11-10  
-**Status:** Ready for implementation; this plan does not start implementation  
+**Status:** Implementation in progress  
 **Spec:** [Final design](../specs/2026-11-10-file-mode-workflow-refinement-design.md)  
 **Audit:** [Implementation findings](../notes/2026-11-10-file-mode-implementation-audit.md)  
 **Starting revision:** `e5a312aca944c5497d4ef5588b1b537a4452df52`  
 **Existing worktree:** `C:\Users\shenxichen\repos\PLVS\.codex\worktrees\file-mode-review-20261110`  
 **Existing branch:** `codex/file-mode-review-20261110`
+
+## Implementation progress
+
+| Stage                                      | State                          | Evidence                                                                                                                                                                                             |
+| ------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Live/File reset isolation               | Implemented in `1dd9f2fa`      | Provider regressions, settings tests, typecheck and lint passed                                                                                                                                      |
+| 2. Successful result / replacement staging | Core implemented in `fb7f29b1` | Retained result/export, history routing and coherent display replacement tests passed; desktop acceptance remains                                                                                    |
+| 3. Frozen conditions / attempt isolation   | Implemented in `3dd923ef`      | Deferred probe cancellation, stale same-path events, final-frame settlement, stop failure and request snapshot tests passed; native validation test and compile passed                               |
+| 4. Source/track identity and metadata      | Core implemented               | Track picker/import/replacement regressions passed (59 frontend tests), typecheck passed, real FFmpeg file-analysis smoke passed (28 native tests); fingerprint timing and desktop acceptance remain |
+| 5–9                                        | Pending                        | No completion claim                                                                                                                                                                                  |
+
+Execution resumed after the host restart. Stage 4 integration and focused verification completed;
+stage 5 memory accounting and history restoration are next. No push or merge has been performed.
 
 ## Execution rules
 

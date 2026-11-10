@@ -19,7 +19,7 @@ pub struct FileAnalysisDialogueSettings {
 }
 
 /// One audio track discovered in a local media file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileAudioTrackMetadata {
   pub index: u32,
@@ -28,10 +28,28 @@ pub struct FileAudioTrackMetadata {
   pub channels: Option<u16>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub language: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub title: Option<String>,
+  #[serde(default)]
+  pub default_track: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub channel_layout: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub bits_per_sample: Option<u32>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub sample_format: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileSourceVersion {
+  pub canonical_path: String,
+  pub byte_length: u64,
+  pub sha256: String,
 }
 
 /// Metadata returned before starting full offline analysis.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileAnalysisProbeResult {
   pub path: String,
@@ -41,6 +59,10 @@ pub struct FileAnalysisProbeResult {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub duration_ms: Option<u64>,
   pub selected_track: FileAudioTrackMetadata,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub audio_tracks: Vec<FileAudioTrackMetadata>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub source_version: Option<FileSourceVersion>,
 }
 
 /// Complete media metadata used by CLI discovery before selecting an audio track.
@@ -54,6 +76,8 @@ pub struct FileAnalysisMediaProbeResult {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub duration_ms: Option<u64>,
   pub audio_tracks: Vec<FileAudioTrackMetadata>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub source_version: Option<FileSourceVersion>,
 }
 
 /// Authoritative whole-file delivery metrics, read from the final pipeline state on completion.

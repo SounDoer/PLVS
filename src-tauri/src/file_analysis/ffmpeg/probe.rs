@@ -22,6 +22,22 @@ struct ProbeStream {
   channels: Option<u16>,
   #[serde(default)]
   tags: Option<ProbeTags>,
+  #[serde(default)]
+  disposition: Option<ProbeDisposition>,
+  #[serde(default)]
+  channel_layout: Option<String>,
+  #[serde(default)]
+  bits_per_sample: Option<u32>,
+  #[serde(default)]
+  bits_per_raw_sample: Option<String>,
+  #[serde(default)]
+  sample_fmt: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ProbeDisposition {
+  #[serde(default)]
+  default: u32,
 }
 
 #[derive(Deserialize, Default)]
@@ -36,6 +52,8 @@ struct ProbeFormat {
 struct ProbeTags {
   #[serde(default)]
   language: Option<String>,
+  #[serde(default)]
+  title: Option<String>,
 }
 
 /// Parse all audio streams from `ffprobe -show_streams -show_format` output.
@@ -60,6 +78,16 @@ pub fn parse_ffprobe_media_json(
         .and_then(|sample_rate| sample_rate.parse::<u32>().ok()),
       channels: audio.channels,
       language: audio.tags.as_ref().and_then(|tags| tags.language.clone()),
+      title: audio.tags.as_ref().and_then(|tags| tags.title.clone()),
+      default_track: audio.disposition.as_ref().is_some_and(|d| d.default != 0),
+      channel_layout: audio.channel_layout.clone(),
+      bits_per_sample: audio
+        .bits_per_raw_sample
+        .as_ref()
+        .and_then(|v| v.parse().ok())
+        .filter(|value| *value > 0)
+        .or(audio.bits_per_sample.filter(|value| *value > 0)),
+      sample_format: audio.sample_fmt.clone(),
     })
     .collect();
   if audio_tracks.is_empty() {
@@ -85,6 +113,7 @@ pub fn parse_ffprobe_media_json(
     container,
     duration_ms,
     audio_tracks,
+    source_version: None,
   })
 }
 
@@ -140,5 +169,28 @@ mod tests {
     assert_eq!(result.audio_tracks[0].index, 1);
     assert_eq!(result.audio_tracks[1].index, 3);
     assert_eq!(result.audio_tracks[1].language.as_deref(), Some("jpn"));
+  }
+
+  #[test]
+  fn preserves_track_identity_source_depth_and_layout_without_guessing() {
+    let media = parse_ffprobe_media_json(
+      r#"{"streams":[
+      {"index":2,"codec_type":"audio","codec_name":"pcm_s24le","sample_rate":"48000",
+       "channels":6,"channel_layout":"5.1(side)","sample_fmt":"s32","bits_per_raw_sample":"24",
+       "disposition":{"default":1},"tags":{"language":"eng","title":"Main Mix"}},
+      {"index":3,"codec_type":"audio","codec_name":"aac","channels":6}
+    ],"format":{}}"#,
+      "x.mkv",
+      "x.mkv",
+    )
+    .unwrap();
+    let track = &media.audio_tracks[0];
+    assert_eq!(track.title.as_deref(), Some("Main Mix"));
+    assert!(track.default_track);
+    assert_eq!(track.bits_per_sample, Some(24));
+    assert_eq!(track.sample_format.as_deref(), Some("s32"));
+    assert_eq!(track.channel_layout.as_deref(), Some("5.1(side)"));
+    assert_eq!(media.audio_tracks[1].channel_layout, None);
+    assert_eq!(media.audio_tracks[1].bits_per_sample, None);
   }
 }

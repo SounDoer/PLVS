@@ -3,7 +3,8 @@ import { useCaptureTransport } from "../hooks/useCaptureTransport.js";
 import { useFileSessionLedger } from "../hooks/useFileSessionLedger.js";
 import { useIntakeRouting } from "../hooks/useIntakeRouting.js";
 import { useMeterDisplay } from "../hooks/useMeterDisplay.js";
-import { clearAudioHistory } from "../ipc/commands.js";
+import { clearAudioHistory, probeFileAnalysis } from "../ipc/commands.js";
+import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 import { isTauri } from "../ipc/env.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
 import { createLiveMeasurementOwner } from "./liveMeasurementOwner.js";
@@ -150,7 +151,7 @@ export function MeterRuntimeProvider({ children }) {
 
     return clearLiveSource();
   };
-  const beginFileAnalysis = (path, analysisSettings) => {
+  const beginFileAnalysis = (path, analysisSettings, probe = null) => {
     if (!path) return null;
     display.clearNotice();
     if (fileHistory.analyzingFileId || taskSessionRef.current) {
@@ -160,7 +161,7 @@ export function MeterRuntimeProvider({ children }) {
 
     display.setSelectedOffset(-1);
     display.selectedOffsetRef.current = -1;
-    const sessionId = ledger.beginRun(path, analysisSettings);
+    const sessionId = ledger.beginRun(path, analysisSettings, probe);
     taskSessionRef.current = sessionId;
     return sessionId;
   };
@@ -172,7 +173,8 @@ export function MeterRuntimeProvider({ children }) {
     });
     return { sessionId, accepted };
   };
-  const reanalyzeFile = (sessionId, analysisSettings) => {
+  const reanalyzeFile = async (sessionId, analysisSettings, onPrepared = null) => {
+    analysisSettings = structuredClone(analysisSettings ?? {});
     display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
     if (!entry?.id || !entry.path) {
@@ -184,18 +186,47 @@ export function MeterRuntimeProvider({ children }) {
       return false;
     }
 
-    display.setSelectedOffset(-1);
-    display.selectedOffsetRef.current = -1;
     taskSessionRef.current = entry.id;
-    ledger.rerun(entry.id, entry.path, analysisSettings);
-    return true;
+    let probe = entry.metadata;
+    try {
+      if (isTauri()) {
+        const discovered = await probeFileAnalysis(entry.path);
+        probe = withSelectedAudioTrack(
+          discovered,
+          entry.metadata?.selectedTrack?.index ?? discovered.selectedTrack.index
+        );
+        if (
+          entry.metadata?.sourceVersion &&
+          !sameFileSourceVersion(entry.metadata.sourceVersion, probe.sourceVersion)
+        ) {
+          const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared);
+          taskSessionRef.current = newId;
+          return newId;
+        }
+      }
+      display.setSelectedOffset(-1);
+      display.selectedOffsetRef.current = -1;
+      onPrepared?.(entry.id);
+      ledger.rerun(entry.id, entry.path, analysisSettings, probe);
+      return entry.id;
+    } catch (error) {
+      taskSessionRef.current = null;
+      display.raiseNotice("error", `Error: ${error?.message || "File is unavailable"}`, undefined, {
+        requiresAttention: true,
+      });
+      return null;
+    }
   };
-  const reanalyzeFileForControl = (sessionId, analysisSettings) => {
-    if (!reanalyzeFile(sessionId, analysisSettings)) return null;
+  const reanalyzeFileForControl = async (sessionId, analysisSettings) => {
+    let acceptance;
     const accepted = new Promise((resolve, reject) => {
-      fileAnalysisAcceptanceRef.current.set(sessionId, { resolve, reject });
+      acceptance = { resolve, reject };
     });
-    return { sessionId, accepted };
+    const resultId = await reanalyzeFile(sessionId, analysisSettings, (id) => {
+      fileAnalysisAcceptanceRef.current.set(id, acceptance);
+    });
+    if (!resultId) return null;
+    return { sessionId: resultId, accepted };
   };
   const selectFile = (sessionId) => {
     display.clearNotice();

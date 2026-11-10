@@ -23,7 +23,9 @@ pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, Str
   let media = probe_media_file(path)?;
   let selected_track = media
     .audio_tracks
-    .first()
+    .iter()
+    .find(|track| track.default_track)
+    .or_else(|| media.audio_tracks.first())
     .cloned()
     .ok_or_else(|| "No audio track found in media file".to_string())?;
   Ok(FileAnalysisProbeResult {
@@ -32,11 +34,14 @@ pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, Str
     container: media.container,
     duration_ms: media.duration_ms,
     selected_track,
+    audio_tracks: media.audio_tracks,
+    source_version: media.source_version,
   })
 }
 
 pub fn probe_media_file(path: impl AsRef<Path>) -> Result<FileAnalysisMediaProbeResult, String> {
   let path = path.as_ref();
+  let source_version = super::source_identity::identify_source(path)?;
   let path_str = path.to_string_lossy().to_string();
   let ffprobe = locate_sidecar("ffprobe");
 
@@ -65,5 +70,7 @@ pub fn probe_media_file(path: impl AsRef<Path>) -> Result<FileAnalysisMediaProbe
   }
 
   let json = String::from_utf8_lossy(&output.stdout);
-  parse_ffprobe_media_json(&json, &path_str, &file_name_from_path(path))
+  let mut media = parse_ffprobe_media_json(&json, &path_str, &file_name_from_path(path))?;
+  media.source_version = Some(source_version);
+  Ok(media)
 }

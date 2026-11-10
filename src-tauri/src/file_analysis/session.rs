@@ -324,6 +324,8 @@ pub fn analyze_file_track_with_dialogue_and_layout(
     container: media_probe.container,
     duration_ms: media_probe.duration_ms,
     selected_track,
+    audio_tracks: media_probe.audio_tracks,
+    source_version: media_probe.source_version,
   };
   let channel_selection = match layout_id {
     Some(layout_id) => {
@@ -385,6 +387,7 @@ pub(crate) fn analyze_file_core(
     _ => probe_file(Path::new(path))?,
   };
   let track = &probe.selected_track;
+  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
   let sample_rate = track
     .sample_rate_hz
     .ok_or_else(|| "Selected audio track has no sample rate".to_string())?;
@@ -492,8 +495,11 @@ pub(crate) fn analyze_file_core(
   }
 
   let metrics = pipeline.summary_metrics();
+  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
   let summary = FileAnalysisSummaryMetrics {
-    duration_ms,
+    duration_ms: Some(
+      ((pcm_chunker.decoded_frames() as f64 / sample_rate as f64) * 1000.0).round() as u64,
+    ),
     sample_rate_hz: sample_rate,
     channels,
     integrated_lufs: metrics.integrated_lufs,
@@ -1533,6 +1539,33 @@ mod tests {
   }
 
   #[test]
+  fn completed_duration_uses_decoded_audio_instead_of_declared_container_duration() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      return;
+    }
+    let fixture = TempWav::new(
+      "declared-duration",
+      48_000,
+      2,
+      &sine_stereo(48_000, 50_401, 0.5, 1_000.0),
+    );
+    let mut probe = probe_file(&fixture.path).unwrap();
+    probe.duration_ms = Some(99_000);
+    let (frames, summary) = analyze_file_core(
+      &fixture.path_str(),
+      Some(&probe),
+      &default_config(),
+      |_| Ok(()),
+      |_| {},
+      || false,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(frames, 50_401);
+    assert_eq!(summary.duration_ms, Some(1_050));
+  }
+
+  #[test]
   fn analyzes_wav_fixture_to_summary() {
     if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
       eprintln!("skipping: ffmpeg sidecar not present");
@@ -1652,9 +1685,6 @@ mod tests {
       || false,
     )
     .expect_err("missing file should error");
-    assert!(
-      err.contains("Unsupported or unreadable media file") || err.contains("No audio track"),
-      "got: {err}"
-    );
+    assert!(err.starts_with("Source file unavailable:"), "got: {err}");
   }
 }

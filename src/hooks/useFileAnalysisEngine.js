@@ -37,6 +37,7 @@ export function useFileAnalysisEngine({
   filePath,
   runId,
   settings,
+  probe = null,
   audioRef,
   defaultSampleRateRef,
   intake,
@@ -129,7 +130,7 @@ export function useFileAnalysisEngine({
         selectedOffsetRef.current = -1;
         setSelectedOffset(-1);
         setAnalyzingFileId(sessionId);
-        const metadata = await probeFileAnalysis(filePath);
+        const metadata = probe ?? (await probeFileAnalysis(filePath));
         if (!active()) return;
         defaultSampleRateRef.current = metadata.selectedTrack?.sampleRateHz || 48000;
         updateFileSession(sessionId, (current) => ({
