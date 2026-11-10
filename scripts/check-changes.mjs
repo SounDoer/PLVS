@@ -40,7 +40,8 @@ const frontendFiles = new Set([
   "vitest.setup.js",
 ]);
 const sharedDependencyFiles = new Set(["package.json", "package-lock.json"]);
-const nativeFiles = new Set(["rust-toolchain.toml"]);
+// Exercise the native jobs when their owning CI workflow changes.
+const nativeFiles = new Set(["rust-toolchain.toml", ".github/workflows/ci.yml"]);
 const classifierFiles = new Set(["scripts/check-changes.mjs", "scripts/check-changes.test.js"]);
 const sharedPackageFiles = new Set([
   "package.json",

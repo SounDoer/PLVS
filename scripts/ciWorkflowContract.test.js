@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(cwd(), ".github", "workflows", "ci.yml"), "utf8");
 const workflow = parse(source);
+const packageWorkflow = parse(
+  readFileSync(join(cwd(), ".github", "workflows", "package-check.yml"), "utf8")
+);
 
 function commands(job) {
   return (job.steps ?? [])
@@ -97,5 +100,17 @@ describe("ordinary CI lanes", () => {
     expect(workflow.jobs.rust["timeout-minutes"]).toBe(35);
     expect(workflow.jobs["rust-windows"]["timeout-minutes"]).toBe(30);
     expect(workflow.jobs["rust-macos"]["timeout-minutes"]).toBe(30);
+  });
+
+  it("bypasses the slow Azure mirror before bounded Linux dependency installs", () => {
+    for (const job of [workflow.jobs.rust, packageWorkflow.jobs.linux]) {
+      const install = job.steps.find((step) => step.run?.includes("sudo apt-get"));
+      expect(install["timeout-minutes"]).toBe(10);
+      expect(install.run).toContain(
+        "sudo sed -i '/azure\\.archive\\.ubuntu\\.com/d' /etc/apt/apt-mirrors.txt"
+      );
+      expect(install.run.indexOf("sudo sed")).toBeLessThan(install.run.indexOf("sudo apt-get"));
+      expect(install.run).toContain("Acquire::Retries=3");
+    }
   });
 });

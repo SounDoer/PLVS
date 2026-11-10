@@ -69,6 +69,13 @@ describe("change scope", () => {
     });
   });
 
+  it("exercises native jobs when the owning CI workflow changes", () => {
+    expect(classifyPaths([".github/workflows/ci.yml"])).toMatchObject({
+      scope: "native",
+      lanes: { contracts: true, native: true },
+    });
+  });
+
   it("selects package checks symmetrically and by platform", () => {
     for (const file of [
       "package-lock.json",
