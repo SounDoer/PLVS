@@ -32,15 +32,15 @@ const eventCallbacks = {
 
 vi.mock("../ipc/events.js", () => ({
   onFileAnalysisProgress: vi.fn(async (callback) => {
-    eventCallbacks.progress = callback;
+    eventCallbacks.progress = (payload) => callback({ runId: "session-a:1", ...payload });
     return vi.fn();
   }),
   onFileAnalysisCompleted: vi.fn(async (callback) => {
-    eventCallbacks.completed = callback;
+    eventCallbacks.completed = (payload) => callback({ runId: "session-a:1", ...payload });
     return vi.fn();
   }),
   onFileAnalysisError: vi.fn(async (callback) => {
-    eventCallbacks.error = callback;
+    eventCallbacks.error = (payload) => callback({ runId: "session-a:1", ...payload });
     return vi.fn();
   }),
 }));
@@ -78,6 +78,7 @@ import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
  *   shouldDriveDisplay?: (...args: any[]) => any,
  *   selectedOffset?: number,
  *   fileAnalysisAcceptanceRef?: { current: any },
+ *   settings?: any,
  * }} props
  */
 function Harness({
@@ -93,6 +94,7 @@ function Harness({
   shouldDriveDisplay = () => true,
   selectedOffset = -1,
   fileAnalysisAcceptanceRef = { current: new Map() },
+  settings = { dialogue: { enabled: true, engine: "firered" } },
 }) {
   const audioRef = useRef(null);
   const selectedOffsetRef = useRef(selectedOffset);
@@ -122,6 +124,7 @@ function Harness({
       },
       shouldDriveDisplay,
       fileAnalysisAcceptanceRef,
+      settings,
     })
   );
 
@@ -404,5 +407,58 @@ describe("useFileAnalysisEngine", () => {
       "error",
       "Error: File analysis runs in the desktop app"
     );
+  });
+
+  it("does not start after a probe resolves following cancellation", async () => {
+    let finishProbe;
+    vi.mocked(probeFileAnalysis).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishProbe = resolve;
+        })
+    );
+    renderHarness();
+    await act(async () => {
+      await /** @type {HarnessWindow} */ (window).__fileApi.stop();
+    });
+    await act(async () =>
+      finishProbe({ path: "C:/mix/final.wav", selectedTrack: { sampleRateHz: 48000, channels: 2 } })
+    );
+    expect(startFileAnalysis).not.toHaveBeenCalled();
+  });
+
+  it("ignores same-path messages from a different attempt", async () => {
+    const { updateFileSession } = renderHarness();
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+    const before = updateFileSession.mock.calls.length;
+    act(() => {
+      eventCallbacks.progress({ runId: "session-a:0", path: "C:/mix/final.wav", progress: 0.9 });
+      eventCallbacks.completed({ runId: "session-a:0", path: "C:/mix/final.wav", summary: {} });
+      eventCallbacks.error({ runId: "session-a:0", path: "C:/mix/final.wav", message: "old" });
+    });
+    expect(updateFileSession).toHaveBeenCalledTimes(before);
+  });
+
+  it("waits for the final frame sequence before publishing completion", async () => {
+    const { updateFileSession } = renderHarness();
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+    const onFrame = vi.mocked(startFileAnalysis).mock.calls[0][0].onFrame;
+    const before = updateFileSession.mock.calls.length;
+    act(() =>
+      eventCallbacks.completed({
+        path: "C:/mix/final.wav",
+        finalSequence: 2,
+        decodedFrames: 48000,
+        summary: { integratedLufs: -23 },
+      })
+    );
+    expect(updateFileSession).toHaveBeenCalledTimes(before);
+    act(() => onFrame({ seq: 2 }));
+    expect(applySessionUpdater(updateFileSession).state).toBe("complete");
+    const completedCalls = updateFileSession.mock.calls.length;
+    act(() =>
+      eventCallbacks.completed({ path: "C:/mix/final.wav", finalSequence: 2, summary: {} })
+    );
+    expect(updateFileSession).toHaveBeenCalledTimes(completedCalls);
   });
 });

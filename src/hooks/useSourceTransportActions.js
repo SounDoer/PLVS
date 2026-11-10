@@ -96,7 +96,7 @@ export function useSourceTransportActions({
 
   const onStopFile = useCallback(
     (id) => {
-      void stopFileAnalysis(id);
+      void stopFileAnalysis(id).catch(() => {});
     },
     [stopFileAnalysis]
   );
@@ -186,7 +186,7 @@ export function useSourceTransportActions({
         return;
       }
       if (actionKind === "stopFileAnalysis") {
-        void stopFileAnalysis();
+        await stopFileAnalysis().catch(() => {});
       }
     },
     [

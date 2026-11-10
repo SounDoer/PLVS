@@ -63,6 +63,11 @@ export function MeterRuntimeProvider({ children }) {
   const defaultSampleRateRef = useRef(48000);
   const stopFileAnalysisRef = useRef(async () => {});
   const fileAnalysisAcceptanceRef = useRef(new Map());
+  const fileConditionsRef = useRef(null);
+  const taskSessionRef = useRef(null);
+  useEffect(() => {
+    taskSessionRef.current = fileHistory.analyzingFileId;
+  }, [fileHistory.analyzingFileId]);
   const stopFileAnalysis = async (expectedSessionId) => {
     const sessionId = fileHistory.analyzingFileId;
     if (!sessionId) return;
@@ -70,10 +75,18 @@ export function MeterRuntimeProvider({ children }) {
 
     try {
       await stopFileAnalysisRef.current();
-    } finally {
-      ledger.markStopped(sessionId);
-      display.clearNotice();
+    } catch (error) {
+      display.raiseNotice(
+        "error",
+        `Error: ${error?.message || "Could not stop File analysis"}`,
+        undefined,
+        { requiresAttention: true }
+      );
+      throw error;
     }
+    ledger.markStopped(sessionId);
+    taskSessionRef.current = null;
+    display.clearNotice();
   };
   const switchSource = (/** @type {string} */ nextMode) => {
     if (nextMode === sourceMode) return;
@@ -92,7 +105,7 @@ export function MeterRuntimeProvider({ children }) {
     }
 
     if (fileHistory.analyzingFileId) {
-      void stopFileAnalysis();
+      void stopFileAnalysis().catch(() => {});
     }
     setSourceMode("live");
   };
@@ -140,14 +153,16 @@ export function MeterRuntimeProvider({ children }) {
   const beginFileAnalysis = (path, analysisSettings) => {
     if (!path) return null;
     display.clearNotice();
-    if (fileHistory.analyzingFileId) {
+    if (fileHistory.analyzingFileId || taskSessionRef.current) {
       display.raiseNotice("guard", "File analysis already in progress");
       return null;
     }
 
     display.setSelectedOffset(-1);
     display.selectedOffsetRef.current = -1;
-    return ledger.beginRun(path, analysisSettings);
+    const sessionId = ledger.beginRun(path, analysisSettings);
+    taskSessionRef.current = sessionId;
+    return sessionId;
   };
   const beginFileAnalysisForControl = (path, analysisSettings) => {
     const sessionId = beginFileAnalysis(path, analysisSettings);
@@ -164,13 +179,14 @@ export function MeterRuntimeProvider({ children }) {
       display.raiseNotice("guard", "Choose a file to analyze");
       return false;
     }
-    if (fileHistory.analyzingFileId) {
+    if (fileHistory.analyzingFileId || taskSessionRef.current) {
       display.raiseNotice("guard", "File analysis already in progress");
       return false;
     }
 
     display.setSelectedOffset(-1);
     display.selectedOffsetRef.current = -1;
+    taskSessionRef.current = entry.id;
     ledger.rerun(entry.id, entry.path, analysisSettings);
     return true;
   };
@@ -331,6 +347,7 @@ export function MeterRuntimeProvider({ children }) {
     defaultSampleRateRef,
     stopFileAnalysisRef,
     fileAnalysisAcceptanceRef,
+    fileConditionsRef,
   };
 
   const displayState = useMemo(

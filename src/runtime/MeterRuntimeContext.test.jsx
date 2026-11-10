@@ -153,4 +153,32 @@ describe("MeterRuntimeProvider", () => {
       "useMeterDisplayState must be used inside MeterRuntimeProvider"
     );
   });
+
+  it("reserves the File task before another action can use a stale render", () => {
+    const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+    act(() => {
+      result.current.beginFileAnalysis("C:/a.wav", {});
+      result.current.beginFileAnalysis("C:/b.wav", {});
+    });
+    expect(result.current.fileSessions).toHaveLength(1);
+    expect(result.current.activeFileSession.path).toBe("C:/a.wav");
+  });
+
+  it("keeps a task reserved when native stop fails", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+    act(() => result.current.runtime.beginFileAnalysis("C:/a.wav", {}));
+    const id = result.current.runtime.activeFileId;
+    result.current.assembly.stopFileAnalysisRef.current = async () => {
+      throw new Error("stop failed");
+    };
+    await act(async () => {
+      await expect(result.current.runtime.stopFileAnalysis()).rejects.toThrow("stop failed");
+    });
+    act(() => result.current.runtime.beginFileAnalysis("C:/b.wav", {}));
+    expect(result.current.runtime.analyzingFileId).toBe(id);
+    expect(result.current.runtime.fileSessions).toHaveLength(1);
+  });
 });

@@ -26,6 +26,14 @@ describe("useFileSessionLedger", () => {
     });
   });
 
+  it("freezes request settings independently of later caller mutations", () => {
+    const { result } = mount();
+    const settings = { dialogue: { enabled: true, engine: "firered" } };
+    act(() => result.current.beginRun("C:/a.wav", settings));
+    settings.dialogue.engine = "silero";
+    expect(result.current.validRunRequest.analysisSettings.dialogue.engine).toBe("firered");
+  });
+
   it("markStopped retains partial progress and clears the run request", () => {
     const { result } = mount();
     let sessionId;
@@ -161,7 +169,7 @@ describe("useFileSessionLedger", () => {
     );
     expect(result.current.activeFileSession.attempt).toBeNull();
     expect(result.current.activeFileSession.intake).toBe(nextIntake);
-    expect(result.current.activeFileSession.analysisSettings).toBe(nextSettings);
+    expect(result.current.activeFileSession.analysisSettings).toEqual(nextSettings);
     expect(result.current.activeFileSession.successfulResult.summary.integratedLufs).toBe(-20);
   });
 });

@@ -683,9 +683,14 @@ pub fn file_analysis_start(
   app: AppHandle,
   path: String,
   probe: Option<FileAnalysisProbeResult>,
+  run_id: Option<String>,
+  settings: Option<crate::file_analysis::types::FileAnalysisRunSettings>,
   on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  if let Some(settings) = settings.as_ref() {
+    crate::file_analysis::session::validate_run_settings(settings)?;
+  }
   {
     // Stop any active source (live or a previous file run) before starting a new file analysis.
     let mut source = state
@@ -715,7 +720,9 @@ pub fn file_analysis_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *slot = Some(pool.clone());
   }
-  let session = crate::file_analysis::session::FileAnalysisSession::start(path, probe, pool, app)?;
+  let session = crate::file_analysis::session::FileAnalysisSession::start(
+    path, probe, run_id, settings, pool, app,
+  )?;
   let mut source = state
     .inner()
     .source

@@ -40,6 +40,11 @@ time describe that successful result; lifecycle/progress/error describe the atte
 can export that retained result without waiting for the replacement. A partial first run cannot be
 reported merely because it has emitted measurement frames.
 
+File attempts use immutable requested analysis conditions and per-attempt identities internally.
+Cancelling during metadata discovery prevents later worker startup; a stop failure leaves the task
+busy instead of acknowledging cancellation. Completion is published after its final frame sequence
+has reached the frontend, so the successful summary and browsable history refer to the same run.
+
 There is no context-sensitive generic start, stop, or clear command. The GUI's changing primary
 button is appropriate for a visible human surface, while explicit LIVE and FILE verbs prevent an
 agent from applying the current mode's destructive meaning by accident.

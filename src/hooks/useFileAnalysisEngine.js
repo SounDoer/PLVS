@@ -36,6 +36,7 @@ export function useFileAnalysisEngine({
   enabled,
   filePath,
   runId,
+  settings,
   audioRef,
   defaultSampleRateRef,
   intake,
@@ -48,11 +49,20 @@ export function useFileAnalysisEngine({
 }) {
   const { frameRef, selectedOffsetRef, latestAudioRef, setAudio, setSelectedOffset, raiseNotice } =
     display;
-  const activePathRef = useRef(null);
+  const activeRunRef = useRef(null);
 
   const stop = useCallback(async () => {
-    await stopFileAnalysis();
-  }, []);
+    const run = activeRunRef.current;
+    if (!run) return;
+    run.cancelled = true;
+    if (run.startPromise) {
+      await run.startPromise.catch(() => {});
+      await stopFileAnalysis();
+    }
+    const acceptance = fileAnalysisAcceptanceRef?.current.get(run.sessionId);
+    fileAnalysisAcceptanceRef?.current.delete(run.sessionId);
+    acceptance?.reject(new Error("File analysis was cancelled before acceptance"));
+  }, [fileAnalysisAcceptanceRef]);
 
   useEffect(() => {
     if (!enabled || !sessionId || !filePath || runId <= 0) return;
@@ -73,20 +83,54 @@ export function useFileAnalysisEngine({
     }
 
     let mounted = true;
+    const token = `${sessionId}:${runId}`;
+    const task = { cancelled: false, startPromise: null, sessionId };
+    activeRunRef.current = task;
+    const active = () => mounted && !task.cancelled && activeRunRef.current === task;
     const unsubs = [];
     const attemptAudioRef = { current: { ...INITIAL_METER_AUDIO } };
+    let completed = null;
+    let receivedSequence = 0;
+    let terminal = false;
+    const publishCompletion = () => {
+      if (!active() || terminal || !completed) return;
+      if (Number.isFinite(completed.finalSequence) && receivedSequence < completed.finalSequence)
+        return;
+      terminal = true;
+      const payload = completed;
+      updateFileSession(sessionId, (current) => ({
+        ...current,
+        state: "complete",
+        progress: 1,
+        decodedFrames: payload.decodedFrames,
+        summary: payload.summary,
+        audio: attemptAudioRef.current,
+        dialogueDetectionError: payload.summary?.dialogueDetectionError,
+        analyzedAt: Date.now(),
+      }));
+      setAnalyzingFileId((current) => (current === sessionId ? null : current));
+      const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
+      fileAnalysisAcceptanceRef?.current.delete(sessionId);
+      acceptance?.resolve();
+    };
+    const accepts = (payload) =>
+      active() && !terminal && payload?.runId === token && payload.path === filePath;
+    const listen = async (registration) => {
+      const unsubscribe = await registration;
+      if (active()) unsubs.push(unsubscribe);
+      else unsubscribe?.();
+    };
 
     const run = async () => {
       let stage = "probe";
       try {
-        activePathRef.current = filePath;
         intake.reset();
         frameRef.current = 0;
         selectedOffsetRef.current = -1;
         setSelectedOffset(-1);
         setAnalyzingFileId(sessionId);
         const metadata = await probeFileAnalysis(filePath);
-        if (!mounted) return;
+        if (!active()) return;
         defaultSampleRateRef.current = metadata.selectedTrack?.sampleRateHz || 48000;
         updateFileSession(sessionId, (current) => ({
           ...current,
@@ -101,9 +145,9 @@ export function useFileAnalysisEngine({
           summary: current.successfulResult?.summary,
         }));
 
-        unsubs.push(
-          await onFileAnalysisProgress((payload) => {
-            if (payload?.path !== activePathRef.current) return;
+        await listen(
+          onFileAnalysisProgress((payload) => {
+            if (!accepts(payload)) return;
             updateFileSession(sessionId, (current) => ({
               ...current,
               state: "analyzing",
@@ -111,25 +155,20 @@ export function useFileAnalysisEngine({
             }));
           })
         );
-        unsubs.push(
-          await onFileAnalysisCompleted((payload) => {
-            if (payload?.path !== activePathRef.current) return;
-            updateFileSession(sessionId, (current) => ({
-              ...current,
-              state: "complete",
-              progress: 1,
-              decodedFrames: payload.decodedFrames,
-              summary: payload.summary,
-              audio: attemptAudioRef.current,
-              dialogueDetectionError: payload.summary?.dialogueDetectionError,
-              analyzedAt: Date.now(),
-            }));
-            setAnalyzingFileId((current) => (current === sessionId ? null : current));
+        await listen(
+          onFileAnalysisCompleted((payload) => {
+            if (!accepts(payload)) return;
+            completed = payload;
+            publishCompletion();
           })
         );
-        unsubs.push(
-          await onFileAnalysisError((payload) => {
-            if (payload?.path !== activePathRef.current) return;
+        await listen(
+          onFileAnalysisError((payload) => {
+            if (!accepts(payload)) return;
+            terminal = true;
+            const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
+            fileAnalysisAcceptanceRef?.current.delete(sessionId);
+            acceptance?.reject(new Error(payload.message));
             updateFileSession(sessionId, (current) => ({
               ...current,
               state: "error",
@@ -142,6 +181,7 @@ export function useFileAnalysisEngine({
             });
           })
         );
+        if (!active()) return;
 
         const historyCapacities = fileHistoryCapacities(metadata.durationMs);
         const { applyFrame } = buildTauriFrameApply({
@@ -168,19 +208,28 @@ export function useFileAnalysisEngine({
           },
         });
         stage = "start";
-        const channel = await startFileAnalysis({
+        task.startPromise = startFileAnalysis({
           path: filePath,
           probe: metadata,
+          runId: token,
+          settings,
           onFrame: (frame) => {
-            if (mounted) applyFrame(frame);
+            if (!active() || terminal) return;
+            applyFrame(frame);
+            if (Number.isFinite(frame.seq))
+              receivedSequence = Math.max(receivedSequence, frame.seq);
+            publishCompletion();
           },
         });
+        const channel = await task.startPromise;
+        if (!active()) return;
         audioRef.current = { mode: "file", channel, unsubs };
         const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
         fileAnalysisAcceptanceRef?.current.delete(sessionId);
         acceptance?.resolve();
       } catch (err) {
-        if (!mounted) return;
+        if (!active() || terminal) return;
+        terminal = true;
         const message = err?.message || "File analysis unavailable";
         updateFileSession(sessionId, (current) => ({
           ...current,
@@ -207,6 +256,7 @@ export function useFileAnalysisEngine({
     run();
     return () => {
       mounted = false;
+      task.cancelled = true;
       for (const unsub of unsubs) {
         try {
           unsub?.();

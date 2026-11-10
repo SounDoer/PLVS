@@ -16,7 +16,8 @@ remaining navigable from beginning to end.
 
 Changing Live History Length does not reset the File timeline's zoom, scroll, or selected time.
 Changing the Dialogue Detection engine in Settings also preserves File entries and results; a
-running analysis continues with the detector selected when its worker started. Reanalyze the file
+running analysis continues with the conditions captured when the run was requested, including
+while file metadata is being read. Reanalyze the file
 to use a different detector. Live measurements retain their existing reset behavior.
 
 Reanalysis retains the previous completed result and its browsing history until the replacement

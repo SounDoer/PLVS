@@ -67,7 +67,7 @@ export function AnalysisSessionProvider({ children }) {
   const { setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   const { sourceMode } = useMeterRuntime();
   const { setSelectedOffset } = useMeterDisplayState();
-  const { routing } = useMeterRuntimeAssembly();
+  const { routing, fileConditionsRef } = useMeterRuntimeAssembly();
   const { ingestingIntakes } = routing;
   const { channelCount, displayAudio } = useDisplaySnapshot();
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
@@ -172,6 +172,9 @@ export function AnalysisSessionProvider({ children }) {
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
     [derivedAnalysisRequests]
   );
+  useEffect(() => {
+    fileConditionsRef.current = analysisRequests;
+  }, [fileConditionsRef, analysisRequests]);
   // Which histories survive is a different question from what Rust computes, so this is derived
   // from the open panels rather than from `analysisRequests` -- and deliberately without `docked`,
   // because AppShell renders the strip or the panels and whichever is hidden comes back intact.

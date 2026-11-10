@@ -33,6 +33,7 @@ export function MeterRuntimeEngines({
     sessionId: validRunRequest?.sessionId ?? null,
     filePath: validRunRequest?.filePath ?? "",
     runId: validRunRequest?.runId ?? 0,
+    settings: validRunRequest?.analysisSettings,
     audioRef,
     defaultSampleRateRef,
     intake: fileAnalysisIntake,

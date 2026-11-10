@@ -1,5 +1,23 @@
 use serde::{Deserialize, Serialize};
 
+/// Immutable inputs supplied by the application before probing/starting an offline run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisRunSettings {
+  #[serde(default)]
+  pub requests: crate::ipc::types::AnalysisRequests,
+  #[serde(default)]
+  pub channel_roles_by_count: std::collections::HashMap<String, Vec<String>>,
+  pub dialogue: FileAnalysisDialogueSettings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisDialogueSettings {
+  pub enabled: bool,
+  pub engine: Option<String>,
+}
+
 /// One audio track discovered in a local media file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

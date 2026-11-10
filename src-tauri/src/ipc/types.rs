@@ -134,6 +134,8 @@ pub struct AudioDevicePreview {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileAnalysisProgressPayload {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub run_id: Option<String>,
   pub path: String,
   pub decoded_frames: u64,
   /// Total decodable frames for the selected track, when known from the container.
@@ -147,6 +149,9 @@ pub struct FileAnalysisProgressPayload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileAnalysisCompletedPayload {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub run_id: Option<String>,
+  pub final_sequence: u64,
   pub path: String,
   pub decoded_frames: u64,
   pub summary: FileAnalysisSummaryMetrics,
@@ -155,6 +160,8 @@ pub struct FileAnalysisCompletedPayload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileAnalysisErrorPayload {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub run_id: Option<String>,
   pub path: String,
   pub message: String,
 }

@@ -17,7 +17,9 @@ use crate::file_analysis::ffmpeg::decode::{
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::probe::{probe_file, probe_media_file};
 use crate::file_analysis::summary::FileAnalysisSummaryRun;
-use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
+use crate::file_analysis::types::{
+  FileAnalysisProbeResult, FileAnalysisRunSettings, FileAnalysisSummaryMetrics,
+};
 use crate::ipc::commands::ChannelSelection;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
@@ -181,6 +183,19 @@ pub struct FileAnalysisSession {
   worker: Option<JoinHandle<()>>,
 }
 
+pub(crate) fn validate_run_settings(settings: &FileAnalysisRunSettings) -> Result<(), String> {
+  let engine = settings.dialogue.engine.as_deref().unwrap_or("firered");
+  VadEngineKind::from_key(engine).ok_or_else(|| format!("unknown VAD engine: {engine}"))?;
+  for (count, roles) in &settings.channel_roles_by_count {
+    if count.parse::<usize>().ok() != Some(roles.len())
+      || ChannelSelection::from_roles(roles.clone()).is_none()
+    {
+      return Err(format!("Invalid File channel roles for {count} channels"));
+    }
+  }
+  Ok(())
+}
+
 impl FileAnalysisSession {
   pub fn new(stop_tx: Sender<()>, worker: JoinHandle<()>) -> Self {
     Self {
@@ -192,11 +207,39 @@ impl FileAnalysisSession {
   pub fn start(
     path: String,
     probe: Option<FileAnalysisProbeResult>,
+    run_id: Option<String>,
+    settings: Option<FileAnalysisRunSettings>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
   ) -> Result<Self, String> {
     // The frontend normally passes the just-probed metadata so the worker can start ffmpeg without
     // launching ffprobe a second time. If unavailable or stale, the worker falls back internally.
+    let config = match settings {
+      Some(settings) => {
+        let engine = settings.dialogue.engine.as_deref().unwrap_or("firered");
+        let dialogue_vad_engine =
+          VadEngineKind::from_key(engine).ok_or_else(|| format!("unknown VAD engine: {engine}"))?;
+        let roles = probe
+          .as_ref()
+          .and_then(|probe| probe.selected_track.channels)
+          .and_then(|channels| settings.channel_roles_by_count.get(&channels.to_string()));
+        let channel_selection = match roles {
+          Some(roles) => Some(
+            ChannelSelection::from_roles(roles.clone())
+              .ok_or_else(|| "Invalid File channel roles".to_string())?,
+          ),
+          None => None,
+        };
+        WorkerConfig {
+          requests: settings.requests,
+          channel_selection,
+          dialogue_gating: settings.dialogue.enabled,
+          dialogue_vad_engine,
+          deterministic_spectral_time: false,
+        }
+      }
+      None => snapshot_config(&app),
+    };
     let (stop_tx, stop_rx) = mpsc::channel();
     let worker_path = path.clone();
     let worker = thread::Builder::new()
@@ -208,10 +251,13 @@ impl FileAnalysisSession {
           frame_subscribers,
           app.clone(),
           stop_rx,
+          run_id.clone(),
+          config,
         ) {
           let _ = app.emit(
             "file-analysis-error",
             FileAnalysisErrorPayload {
+              run_id,
               path: worker_path,
               message,
             },
@@ -422,6 +468,7 @@ pub(crate) fn analyze_file_core(
         .filter(|d| *d > 0)
         .map(|d| ((out_us as f64 / 1000.0) / d as f64).clamp(0.0, 1.0));
       on_progress(FileAnalysisProgressPayload {
+        run_id: None,
         path: path.to_string(),
         decoded_frames: pcm_chunker.decoded_frames(),
         total_frames: None,
@@ -475,8 +522,9 @@ fn run_file_worker(
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
   stop_rx: Receiver<()>,
+  run_id: Option<String>,
+  config: WorkerConfig,
 ) -> Result<(), String> {
-  let config = snapshot_config(&app);
   let mut seq = 0_u64;
   let outcome = analyze_file_core(
     &path,
@@ -487,7 +535,8 @@ fn run_file_worker(
       frame.seq = seq;
       send_frame(&frame_subscribers, frame)
     },
-    |progress| {
+    |mut progress| {
+      progress.run_id = run_id.clone();
       let _ = app.emit("file-analysis-progress", progress);
     },
     || stop_rx.try_recv().is_ok(),
@@ -497,6 +546,8 @@ fn run_file_worker(
     let _ = app.emit(
       "file-analysis-completed",
       FileAnalysisCompletedPayload {
+        run_id,
+        final_sequence: seq,
         path,
         decoded_frames,
         summary,
@@ -509,6 +560,23 @@ fn run_file_worker(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn validates_frozen_file_conditions_before_starting_a_worker() {
+    let mut settings: FileAnalysisRunSettings = serde_json::from_value(serde_json::json!({
+      "dialogue": {"enabled": true, "engine": "firered"},
+      "channelRolesByCount": {"2": ["L", "R"]}
+    }))
+    .unwrap();
+    assert!(validate_run_settings(&settings).is_ok());
+    settings.dialogue.engine = Some("unsupported".into());
+    assert!(validate_run_settings(&settings).is_err());
+    settings.dialogue.engine = Some("silero".into());
+    settings
+      .channel_roles_by_count
+      .insert("2".into(), vec!["L".into()]);
+    assert!(validate_run_settings(&settings).is_err());
+  }
   use crate::file_analysis::summary::analyze_file_track_to_summary_with_layout;
   use std::f64::consts::PI;
   use std::sync::atomic::{AtomicU32, Ordering};

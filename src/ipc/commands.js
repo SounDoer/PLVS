@@ -334,14 +334,14 @@ export function probeFileAnalysis(path) {
   return invoke("file_analysis_probe", { path });
 }
 
-/** @param {{ path: string; probe: object; onFrame: (payload: object) => void }} opts */
-export async function startFileAnalysis({ path, probe, onFrame }) {
+/** @param {{ path: string; probe: object; runId?: string; settings?: object; onFrame: (payload: object) => void }} opts */
+export async function startFileAnalysis({ path, probe, runId, settings, onFrame }) {
   const onAudio = new Channel();
   onAudio.onmessage = (msg) => {
     const frame = frameFromChannelMessage(msg);
     if (frame) onFrame(frame);
   };
-  await invoke("file_analysis_start", { path, probe, onFrame: onAudio });
+  await invoke("file_analysis_start", { path, probe, runId, settings, onFrame: onAudio });
   return onAudio;
 }
 

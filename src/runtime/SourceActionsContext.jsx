@@ -60,7 +60,7 @@ export function SourceActionsProvider({ children }) {
     clearFiles,
     stopFileAnalysis,
   } = useMeterRuntime();
-  const { liveIntakeRef } = useMeterRuntimeAssembly();
+  const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
   const { selectedOffset, setSelectedOffset, selectSnapshot, clearSnapshot, raiseNotice } =
     useMeterDisplayState();
   const settings = useAppSettings();
@@ -74,6 +74,8 @@ export function SourceActionsProvider({ children }) {
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const currentFileAnalysisSettings = useCallback(
     () => ({
+      ...(fileConditionsRef.current ? { requests: fileConditionsRef.current } : {}),
+      channelRolesByCount: settings.channelLabelOverrides,
       dialogue: {
         enabled: dialogueGating,
         engine: dialogueGating ? settings.dialogueVadEngine : null,
@@ -81,7 +83,7 @@ export function SourceActionsProvider({ children }) {
         multichannelFusion: dialogueGating ? "center-priority-fallback-v1" : null,
       },
     }),
-    [dialogueGating, settings.dialogueVadEngine]
+    [dialogueGating, settings.dialogueVadEngine, settings.channelLabelOverrides, fileConditionsRef]
   );
   const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({
     fileSession,

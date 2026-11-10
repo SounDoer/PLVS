@@ -58,6 +58,7 @@ export function useFileSessionLedger() {
 
   /** Mint a new session for `path` and mark it analyzing. Returns the session id. */
   const beginRun = useCallback((path, analysisSettings) => {
+    analysisSettings = structuredClone(analysisSettings ?? {});
     const runId = fileEntrySeqRef.current + 1;
     fileEntrySeqRef.current = runId;
     const sessionId = `file-analysis-${Date.now()}-${runId}`;
@@ -74,19 +75,20 @@ export function useFileSessionLedger() {
         { analysisSettings }
       )
     );
-    setFileRunRequest({ sessionId, filePath: path, runId });
+    setFileRunRequest({ sessionId, filePath: path, runId, analysisSettings });
     return sessionId;
   }, []);
 
   /** Re-analyze an existing entry with fresh settings. */
   const rerun = useCallback((/** @type {string} */ entryId, path, analysisSettings) => {
+    analysisSettings = structuredClone(analysisSettings ?? {});
     const runId = fileEntrySeqRef.current + 1;
     fileEntrySeqRef.current = runId;
     const intake = new FrameIntake();
     setFileHistory((history) =>
       startFileAnalysisEntry(history, entryId, { analysisSettings, intake })
     );
-    setFileRunRequest({ sessionId: entryId, filePath: path, runId });
+    setFileRunRequest({ sessionId: entryId, filePath: path, runId, analysisSettings });
   }, []);
 
   /** Record that `sessionId`'s run stopped: entry back to ready, no analyzing id, no run request. */
