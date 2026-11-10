@@ -50,6 +50,7 @@ mod windows_backend {
   };
   use windows_capture::window::Window;
   use windows_sys::Win32::Foundation::{POINT, RECT as SysRect};
+  use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
   use windows_sys::Win32::Graphics::Gdi::{
     ClientToScreen, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
   };
@@ -1018,6 +1019,9 @@ mod windows_backend {
     Ok(())
   }
 
+  /// Windows.Graphics.Capture sizes a window frame to the visible window bounds
+  /// (`DWMWA_EXTENDED_FRAME_BOUNDS`), not to `GetWindowRect`, which on Windows 10/11 also spans the
+  /// invisible resize borders. The client area is therefore located relative to the visible bounds.
   fn window_client_crop(
     hwnd: usize,
     frame_width: u32,
@@ -1034,20 +1038,54 @@ mod windows_backend {
     {
       return Err("The PLVS client-area geometry is unavailable.".into());
     }
-    let window_width = f64::from(window.right - window.left);
-    let window_height = f64::from(window.bottom - window.top);
+    let mut visible = SysRect::default();
+    let visible = (unsafe {
+      DwmGetWindowAttribute(
+        hwnd,
+        DWMWA_EXTENDED_FRAME_BOUNDS as u32,
+        (&mut visible as *mut SysRect).cast(),
+        std::mem::size_of::<SysRect>() as u32,
+      )
+    } == 0)
+      .then_some(visible);
+    client_crop_in_window_capture(
+      frame_width,
+      frame_height,
+      window,
+      visible,
+      client_origin,
+      client,
+      geometry,
+    )
+  }
+
+  /// Locates the client area in a window capture frame from screen rectangles: the frame covers the
+  /// visible bounds when DWM reports them, otherwise the window rectangle.
+  fn client_crop_in_window_capture(
+    frame_width: u32,
+    frame_height: u32,
+    window: SysRect,
+    visible: Option<SysRect>,
+    client_origin: POINT,
+    client: SysRect,
+    geometry: RecordingGeometry,
+  ) -> Result<PixelCrop, Box<dyn Error + Send + Sync>> {
+    let visible = visible.unwrap_or(window);
+    let visible_width = f64::from(visible.right - visible.left);
+    let visible_height = f64::from(visible.bottom - visible.top);
     let client_width = f64::from(client.right - client.left);
     let client_height = f64::from(client.bottom - client.top);
-    if window_width <= 0.0 || window_height <= 0.0 || client_width <= 0.0 || client_height <= 0.0 {
+    if visible_width <= 0.0 || visible_height <= 0.0 || client_width <= 0.0 || client_height <= 0.0
+    {
       return Err("The PLVS client area is empty.".into());
     }
     pixel_crop_for_client(
       frame_width,
       frame_height,
-      (window_width, window_height),
+      (visible_width, visible_height),
       (
-        f64::from(client_origin.x - window.left),
-        f64::from(client_origin.y - window.top),
+        f64::from(client_origin.x - visible.left),
+        f64::from(client_origin.y - visible.top),
         client_width,
         client_height,
       ),
@@ -1124,14 +1162,16 @@ mod windows_backend {
     )
   }
 
+  /// `visible_size` is the window's visible bounds in physical pixels, which the capture frame
+  /// covers; `client_bounds` is the client rectangle relative to those bounds.
   fn pixel_crop_for_client(
     frame_width: u32,
     frame_height: u32,
-    window_size: (f64, f64),
+    visible_size: (f64, f64),
     client_bounds: (f64, f64, f64, f64),
     geometry: RecordingGeometry,
   ) -> Result<PixelCrop, super::super::super::platform::CaptureError> {
-    let (window_width, window_height) = window_size;
+    let (visible_width, visible_height) = visible_size;
     let (offset_x, offset_y, client_width, client_height) = client_bounds;
     let translated = CssRect {
       x: offset_x + geometry.rect.x * client_width / geometry.viewport.width,
@@ -1143,8 +1183,8 @@ mod windows_backend {
       frame_width,
       frame_height,
       CssViewport {
-        width: window_width,
-        height: window_height,
+        width: visible_width,
+        height: visible_height,
       },
       translated,
     )
@@ -1331,6 +1371,85 @@ mod windows_backend {
           y: 90,
           width: 200,
           height: 100
+        }
+      );
+    }
+
+    #[test]
+    fn client_crop_is_one_to_one_beside_windows_11_invisible_borders() {
+      // Measured on Windows 11: GetWindowRect includes 8 px invisible resize borders, while
+      // Windows.Graphics.Capture delivers the visible bounds (1602x1039). The 1600x1000 client sits
+      // 1 px inside the visible border, below a 37 px native caption.
+      let rect = |left, top, right, bottom| SysRect {
+        left,
+        top,
+        right,
+        bottom,
+      };
+      let window = rect(471, 166, 2089, 1213);
+      let visible = rect(479, 166, 2081, 1205);
+      let client_origin = POINT { x: 480, y: 204 };
+      let client = rect(0, 0, 1600, 1000);
+      let geometry = RecordingGeometry {
+        rect: CssRect {
+          x: 0.0,
+          y: 0.0,
+          width: 1600.0 / 1.5,
+          height: 1000.0 / 1.5,
+        },
+        viewport: CssViewport {
+          width: 1600.0 / 1.5,
+          height: 1000.0 / 1.5,
+        },
+      };
+      let crop = client_crop_in_window_capture(
+        1602,
+        1039,
+        window,
+        Some(visible),
+        client_origin,
+        client,
+        geometry,
+      )
+      .unwrap();
+      assert_eq!(
+        crop,
+        PixelCrop {
+          x: 1,
+          y: 38,
+          width: 1600,
+          height: 1000
+        }
+      );
+      // Maximized: the window rectangle overhangs the monitor; the visible bounds do not.
+      let crop = client_crop_in_window_capture(
+        2560,
+        1380,
+        rect(-9, -9, 2569, 1389),
+        Some(rect(0, 0, 2560, 1380)),
+        POINT { x: 0, y: 29 },
+        rect(0, 0, 2560, 1351),
+        RecordingGeometry {
+          rect: CssRect {
+            x: 0.0,
+            y: 0.0,
+            width: 2048.0,
+            height: 1080.8,
+          },
+          viewport: CssViewport {
+            width: 2048.0,
+            height: 1080.8,
+          },
+        },
+      )
+      .unwrap();
+      assert_eq!(
+        crop,
+        PixelCrop {
+          x: 0,
+          y: 29,
+          width: 2560,
+          height: 1351
         }
       );
     }
