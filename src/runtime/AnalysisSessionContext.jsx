@@ -32,6 +32,7 @@ import {
 import { useSourceActions } from "./SourceActionsContext.jsx";
 import { useDisplaySnapshot } from "./DisplaySnapshotContext.jsx";
 import { useRuntimeBackendSync } from "./useRuntimeBackendSync.js";
+import { UI_PREFERENCES } from "../uiPreferences.js";
 
 /**
  * @typedef {ReturnType<typeof useRuntimeBackendSync> & {
@@ -90,21 +91,24 @@ export function AnalysisSessionProvider({ children }) {
     if (sourceMode !== "file") return;
     if (fileSession.state !== "analyzing" && fileSession.state !== "complete") return;
     setHistoryWindowSec(
-      Number.isFinite(fileDurationMs) ? fileDurationMs / 1000 : historyRetentionSec
+      Number.isFinite(fileDurationMs)
+        ? fileDurationMs / 1000
+        : UI_PREFERENCES.modules.loudness.history.defaultWindowSec
     );
     setHistoryOffsetSec(0);
     setSelectedOffset(-1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceMode, fileSession.state, fileDurationMs, historyRetentionSec]);
+  }, [sourceMode, fileSession.id, fileSession.state, fileDurationMs]);
 
   const previousHistoryRetentionSecRef = useRef(historyRetentionSec);
   useEffect(() => {
     if (previousHistoryRetentionSecRef.current === historyRetentionSec) return;
     previousHistoryRetentionSecRef.current = historyRetentionSec;
+    if (sourceMode !== "live") return;
     setSelectedOffset(-1);
     // Each panel clamps the persisted viewport against the new retention at render time. Keep the
     // stored shared and dormant local values intact so increasing retention can reveal them again.
-  }, [historyRetentionSec, setSelectedOffset]);
+  }, [historyRetentionSec, sourceMode, setSelectedOffset]);
 
   const channelLabelRuntime = useMemo(
     () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides, autoChannelRoles }),

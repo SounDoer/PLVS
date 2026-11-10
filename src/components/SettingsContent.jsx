@@ -742,7 +742,7 @@ export function SettingsContent({
             labelNode={
               <SettingsLabelWithTip
                 label="Dialogue Detection"
-                tip="The detector behind the Stats dialogue metrics. Showing one of those metrics is what switches it on; changing the detector restarts the measurement."
+                tip="The detector used for dialogue measurements. Changing it resets Live measurements; File results keep the detector used for their analysis."
               />
             }
           >

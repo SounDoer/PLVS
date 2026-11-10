@@ -124,7 +124,7 @@ export function SourceActionsProvider({ children }) {
     if (actionId === "clear") return actions.clearAll();
   };
   onHistoryRetentionChangeRef.current = sourceMode === "live" ? actions.clearAll : async () => true;
-  useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);
+  useDialogueEngineRestart(dialogueVadEngine, sourceMode === "live" && dialogueGating, onClearRef);
 
   return (
     <SourceActionsContext.Provider

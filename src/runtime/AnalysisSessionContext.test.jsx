@@ -10,7 +10,12 @@ import { SceneGuardProvider } from "../hooks/SceneGuardContext.jsx";
 import { DockProvider } from "../dock/DockContext.jsx";
 import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
 import { stubMatchMedia } from "../testing/matchMedia.js";
-import { MeterRuntimeProvider, useMeterRuntimeAssembly } from "./MeterRuntimeContext.jsx";
+import {
+  MeterRuntimeProvider,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "./MeterRuntimeContext.jsx";
+import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
 import { SourceActionsProvider } from "./SourceActionsContext.jsx";
 import { DisplaySnapshotProvider } from "./DisplaySnapshotContext.jsx";
 import { AnalysisSessionProvider, useAnalysisSession } from "./AnalysisSessionContext.jsx";
@@ -50,12 +55,16 @@ function mount() {
     assembly: /** @type {ReturnType<typeof useMeterRuntimeAssembly>} */ (null),
     settings: /** @type {ReturnType<typeof useAppSettings>} */ (null),
     workspace: /** @type {ReturnType<typeof useWorkspaceStore>} */ (null),
+    runtime: /** @type {ReturnType<typeof useMeterRuntime>} */ (null),
+    viewport: /** @type {ReturnType<typeof useSharedTimeViewport>} */ (null),
   };
   function Probe() {
     seen.workspace = useWorkspaceStore();
     seen.session = useAnalysisSession();
     seen.assembly = useMeterRuntimeAssembly();
     seen.settings = useAppSettings();
+    seen.runtime = useMeterRuntime();
+    seen.viewport = useSharedTimeViewport();
     return null;
   }
   function SessionOnly() {
@@ -170,5 +179,38 @@ describe("AnalysisSessionProvider", () => {
     expect(() => renderHook(() => useAnalysisSession())).toThrow(
       "useAnalysisSession must be used inside AnalysisSessionProvider"
     );
+  });
+
+  it.each([120_000, undefined])(
+    "preserves File inspection when Live retention changes (duration %s)",
+    async (durationMs) => {
+      const seen = mount();
+      act(() => seen.runtime.switchSource("file"));
+      act(() => seen.runtime.beginFileAnalysis("C:/mix.wav", {}));
+      act(() => {
+        seen.assembly.ledger.updateSession(seen.runtime.activeFileId, (entry) => ({
+          ...entry,
+          state: "complete",
+          summary: { durationMs },
+        }));
+        seen.assembly.ledger.setAnalyzingFileId(null);
+      });
+      act(() => {
+        seen.viewport.setHistoryWindowSec(25);
+        seen.viewport.setHistoryOffsetSec(7);
+        seen.assembly.display.setSelectedOffset(2);
+      });
+      await act(async () => seen.settings.setHistoryRetentionSec(7200));
+      expect(seen.assembly.display.selectedOffset).toBe(2);
+      expect(seen.viewport.sharedTimeViewport.windowSec).toBe(25);
+      expect(seen.viewport.sharedTimeViewport.offsetSec).toBe(7);
+    }
+  );
+
+  it("still exits Live Snapshot when Live retention changes", async () => {
+    const seen = mount();
+    act(() => seen.assembly.display.setSelectedOffset(2));
+    await act(async () => seen.settings.setHistoryRetentionSec(7200));
+    expect(seen.assembly.display.selectedOffset).toBe(-1);
   });
 });

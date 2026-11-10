@@ -8,7 +8,11 @@ import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { SettingsProvider, useAppSettings } from "../settings/SettingsContext.jsx";
 import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
 import { stubMatchMedia } from "../testing/matchMedia.js";
-import { MeterRuntimeProvider, useMeterRuntime } from "./MeterRuntimeContext.jsx";
+import {
+  MeterRuntimeProvider,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "./MeterRuntimeContext.jsx";
 import { SourceActionsProvider, useSourceActions } from "./SourceActionsContext.jsx";
 
 function wrapper({ children }) {
@@ -86,6 +90,55 @@ describe("SourceActionsProvider", () => {
     expect(dialogue.multichannelFusion).toBe(
       result.current.dialogueGating ? "center-priority-fallback-v1" : null
     );
+  });
+
+  it.each(["analyzing", "complete"])(
+    "preserves a %s File entry when the detector changes",
+    async (state) => {
+      const { result } = renderHook(
+        () => ({
+          runtime: useMeterRuntime(),
+          assembly: useMeterRuntimeAssembly(),
+          settings: useAppSettings(),
+        }),
+        { wrapper }
+      );
+      act(() => result.current.runtime.switchSource("file"));
+      act(() => result.current.runtime.beginFileAnalysis("C:/mix.wav", {}));
+      const id = result.current.runtime.activeFileId;
+      const summary = { integratedLufs: -23 };
+      if (state === "complete") {
+        act(() => {
+          result.current.assembly.ledger.updateSession(id, (entry) => ({
+            ...entry,
+            state: "complete",
+            summary,
+          }));
+          result.current.assembly.ledger.setAnalyzingFileId(null);
+        });
+      }
+      const intake = result.current.runtime.activeFileSession.intake;
+      await act(async () => result.current.settings.setDialogueVadEngine("silero"));
+      expect(result.current.runtime.fileSessions).toHaveLength(1);
+      expect(result.current.runtime.activeFileId).toBe(id);
+      expect(result.current.runtime.activeFileSession.state).toBe(state);
+      expect(result.current.runtime.activeFileSession.intake).toBe(intake);
+      if (state === "complete") {
+        expect(result.current.runtime.activeFileSession.summary).toBe(summary);
+      } else {
+        expect(result.current.runtime.analyzingFileId).toBe(id);
+      }
+    }
+  );
+
+  it("still clears Live readings when the detector changes", async () => {
+    const { result } = renderHook(
+      () => ({ assembly: useMeterRuntimeAssembly(), settings: useAppSettings() }),
+      { wrapper }
+    );
+    act(() => result.current.assembly.display.setAudio((audio) => ({ ...audio, integrated: -23 })));
+    await act(async () => result.current.settings.setDialogueVadEngine("silero"));
+    expect(result.current.assembly.display.audio.integrated).toBe(-Infinity);
   });
 
   it("refuses the hook outside the provider", () => {

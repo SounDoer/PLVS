@@ -14,6 +14,11 @@ Analysis stays read-only and local to the current session. File history covers t
 does not use the Live **History Length** setting. Long files use fewer display checkpoints while
 remaining navigable from beginning to end.
 
+Changing Live History Length does not reset the File timeline's zoom, scroll, or selected time.
+Changing the Dialogue Detection engine in Settings also preserves File entries and results; a
+running analysis continues with the detector selected when its worker started. Reanalyze the file
+to use a different detector. Live measurements retain their existing reset behavior.
+
 ## Reports
 
 When analysis completes, the summary can be exported as a report: **Export Markdown**,
