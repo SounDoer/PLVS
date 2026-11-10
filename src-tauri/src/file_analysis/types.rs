@@ -51,6 +51,9 @@ pub struct FileAnalysisSummaryMetrics {
   pub m_max_lufs: f64,
   pub st_max_lufs: f64,
   pub true_peak_max_dbtp: f64,
+  pub sample_peak_max_db: f64,
+  pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
+  /// Compatibility fields: Ch1/Ch2, with Ch1 duplicated for mono; not speaker roles.
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   /// Loudness layout the summary was measured with (`stereo`, `7.1`, `custom`, `unknown`, ...).

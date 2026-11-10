@@ -454,6 +454,8 @@ pub(crate) fn analyze_file_core(
     m_max_lufs: metrics.m_max_lufs,
     st_max_lufs: metrics.st_max_lufs,
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+    sample_peak_max_db: metrics.sample_peak_max_db,
+    channel_peaks: metrics.channel_peaks,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     loudness_layout: metrics.loudness_layout,
@@ -1117,6 +1119,8 @@ mod tests {
       m_max_lufs: metrics.m_max_lufs,
       st_max_lufs: metrics.st_max_lufs,
       true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+      sample_peak_max_db: metrics.sample_peak_max_db,
+      channel_peaks: metrics.channel_peaks,
       sample_peak_max_l_db: metrics.sample_peak_max_l_db,
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
       loudness_layout: metrics.loudness_layout.to_string(),
@@ -1162,6 +1166,8 @@ mod tests {
       m_max_lufs: metrics.m_max_lufs,
       st_max_lufs: metrics.st_max_lufs,
       true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+      sample_peak_max_db: metrics.sample_peak_max_db,
+      channel_peaks: metrics.channel_peaks,
       sample_peak_max_l_db: metrics.sample_peak_max_l_db,
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
       loudness_layout: metrics.loudness_layout,
@@ -1299,6 +1305,54 @@ mod tests {
     }
   }
 
+  #[test]
+  fn channel_peaks_cover_mono_silence_and_multichannel_tail_on_both_paths() {
+    for channels in [1_u16, 2, 8, 10] {
+      for silent in [true, false] {
+        // The only signal is on the final channel, in an incomplete 100 ms block.
+        let mut pcm = vec![0.0_f32; 50_401 * usize::from(channels)];
+        if !silent {
+          let start = 49_200 * usize::from(channels);
+          for (i, frame) in pcm[start..]
+            .chunks_exact_mut(usize::from(channels))
+            .enumerate()
+          {
+            frame[usize::from(channels) - 1] =
+              (0.75 * (PI * i as f64 / 2.0 + PI / 4.0).sin()) as f32;
+          }
+        }
+        let cli = run_summary_path(&pcm, 48_000, channels, 16_384);
+        let gui = run_session_path(&pcm, 48_000, channels, 997);
+        assert_eq!(cli.channel_peaks, gui.channel_peaks);
+        assert_eq!(cli.sample_peak_max_db, gui.sample_peak_max_db);
+        assert_eq!(cli.channel_peaks.len(), usize::from(channels));
+        for (index, peak) in cli.channel_peaks.iter().enumerate() {
+          assert_eq!(usize::from(peak.channel_index), index);
+          if silent || index + 1 < usize::from(channels) {
+            assert_eq!(peak.sample_peak_max_db, None);
+            assert_eq!(peak.true_peak_max_dbtp, None);
+          } else {
+            assert_eq!(peak.sample_peak_max_db, Some(cli.sample_peak_max_db));
+            assert_eq!(peak.true_peak_max_dbtp, Some(cli.true_peak_max_dbtp));
+            assert!(
+              (peak.sample_peak_max_db.unwrap() - 20.0 * (0.75_f64 / 2.0_f64.sqrt()).log10()).abs()
+                < 0.001
+            );
+            assert!((peak.true_peak_max_dbtp.unwrap() - 20.0 * 0.75_f64.log10()).abs() < 0.25);
+          }
+        }
+        let json = serde_json::to_value(&cli).unwrap();
+        assert_eq!(
+          json["channelPeaks"].as_array().unwrap().len(),
+          usize::from(channels)
+        );
+        if silent {
+          assert!(json["samplePeakMaxDb"].is_null());
+        }
+      }
+    }
+  }
+
   /// BS.1770 discards an incomplete gating block, so a file shorter than 400 ms has no Integrated.
   #[test]
   fn a_file_shorter_than_one_gating_block_has_no_integrated_loudness() {
@@ -1348,6 +1402,8 @@ mod tests {
           "{channels} ch {name}: cli {a} vs gui {b}"
         );
       }
+      assert_eq!(cli.channel_peaks, gui.channel_peaks, "{channels} ch peaks");
+      assert_eq!(cli.sample_peak_max_db, gui.sample_peak_max_db);
       assert_eq!(cli.loudness_layout, gui.loudness_layout, "{channels} ch");
       assert_eq!(
         cli.loudness_layout_known, gui.loudness_layout_known,
@@ -1421,6 +1477,47 @@ mod tests {
     assert_eq!(result.summary.sample_rate_hz, sr);
     assert_eq!(result.summary.channels, 2);
     assert_eq!(result.summary.duration_ms, Some(1_000));
+  }
+
+  #[test]
+  fn multichannel_wav_completion_preserves_channel_peaks_on_both_decode_paths() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      eprintln!("skipping: ffmpeg sidecar not present");
+      return;
+    }
+    let channels = 8_u16;
+    let mut pcm = vec![0_i16; 50_401 * usize::from(channels)];
+    // A late final-channel impulse must survive decoding and both completion mappings.
+    *pcm.last_mut().unwrap() = 16_384;
+    let fixture = TempWav::new("channel-peaks", 48_000, channels, &pcm);
+    let (_, gui) = analyze_file_core(
+      &fixture.path_str(),
+      None,
+      &default_config(),
+      |_| Ok(()),
+      |_| {},
+      || false,
+    )
+    .unwrap()
+    .unwrap();
+    let cli = analyze_file_track_to_summary_with_layout(&fixture.path_str(), None, None)
+      .unwrap()
+      .summary;
+    assert_eq!(gui.channel_peaks, cli.channel_peaks);
+    assert_eq!(gui.sample_peak_max_db, cli.sample_peak_max_db);
+    assert_eq!(gui.channel_peaks.len(), 8);
+    assert!(gui.channel_peaks[..7]
+      .iter()
+      .all(|peak| peak.sample_peak_max_db.is_none() && peak.true_peak_max_dbtp.is_none()));
+    assert!((gui.sample_peak_max_db - 20.0 * 0.5_f64.log10()).abs() < 1e-9);
+    assert_eq!(
+      gui.channel_peaks[7].sample_peak_max_db,
+      Some(gui.sample_peak_max_db)
+    );
+    assert_eq!(
+      gui.channel_peaks[7].true_peak_max_dbtp,
+      Some(gui.true_peak_max_dbtp)
+    );
   }
 
   #[test]

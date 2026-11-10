@@ -97,7 +97,7 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     dialogueMeasured && Number.isFinite(summary.integratedLufs)
       ? summary.integratedLufs - summary.dialogueIntegrated
       : null;
-  const samplePeakMaxDb = Math.max(
+  const legacySamplePeakMaxDb = Math.max(
     Number.isFinite(summary.samplePeakMaxLDb) ? summary.samplePeakMaxLDb : -Infinity,
     Number.isFinite(summary.samplePeakMaxRDb) ? summary.samplePeakMaxRDb : -Infinity
   );
@@ -115,7 +115,18 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     truePeakMaxDbtp: finiteOrNull(summary.truePeakMaxDbtp),
     samplePeakMaxLDb: finiteOrNull(summary.samplePeakMaxLDb),
     samplePeakMaxRDb: finiteOrNull(summary.samplePeakMaxRDb),
-    samplePeakMaxDb: finiteOrNull(samplePeakMaxDb),
+    samplePeakMaxDb: finiteOrNull(
+      Object.hasOwn(summary, "samplePeakMaxDb")
+        ? summary.samplePeakMaxDb
+        : (summary.channelCount ?? summary.channels) <= 2
+          ? legacySamplePeakMaxDb
+          : null
+    ),
+    channelPeaks: (summary.channelPeaks ?? []).map((peak) => ({
+      channelIndex: peak.channelIndex,
+      samplePeakMaxDb: finiteOrNull(peak.samplePeakMaxDb),
+      truePeakMaxDbtp: finiteOrNull(peak.truePeakMaxDbtp),
+    })),
     dialogueLoudnessLufs: dialogueMeasured ? summary.dialogueIntegrated : null,
     loudnessToDialogueRatioLu: ldr,
     dialogueCoveragePercent: dialogueEnabled ? finiteOrNull(summary.dialoguePercent) : null,

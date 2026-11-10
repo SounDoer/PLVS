@@ -12,6 +12,32 @@ fn db_from_linear(value: f64) -> f64 {
   }
 }
 
+/// Whole-file peaks in decoded order. Indices are zero-based, independent of speaker layout.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelPeakMax {
+  pub channel_index: u16,
+  pub sample_peak_max_db: Option<f64>,
+  pub true_peak_max_dbtp: Option<f64>,
+}
+
+pub(crate) fn channel_peak_maxima(samples: &[f64], peaks: &[f64]) -> Vec<ChannelPeakMax> {
+  samples
+    .iter()
+    .zip(peaks)
+    .enumerate()
+    .map(|(index, (&sample, &tp))| {
+      let sample = db_from_linear(sample);
+      let tp = db_from_linear(tp);
+      ChannelPeakMax {
+        channel_index: index as u16,
+        sample_peak_max_db: sample.is_finite().then_some(sample),
+        true_peak_max_dbtp: tp.is_finite().then_some(tp),
+      }
+    })
+    .collect()
+}
+
 #[derive(Debug, Clone)]
 pub struct SummaryMetrics {
   pub integrated_lufs: f64,
@@ -19,6 +45,8 @@ pub struct SummaryMetrics {
   pub m_max_lufs: f64,
   pub st_max_lufs: f64,
   pub true_peak_max_dbtp: f64,
+  pub sample_peak_max_db: f64,
+  pub channel_peaks: Vec<ChannelPeakMax>,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   /// `standard_layout_name` for the channel count, or `"unknown"` (Ch1/Ch2 stereo loudness).
@@ -44,6 +72,8 @@ pub struct SummaryMeter {
   m_max_lufs: f64,
   st_max_lufs: f64,
   true_peak_max: f64,
+  sample_peaks: Vec<f64>,
+  true_peaks: Vec<f64>,
   sample_peak_max_l: f64,
   sample_peak_max_r: f64,
   tp_t: usize,
@@ -142,6 +172,8 @@ impl SummaryMeter {
       m_max_lufs: f64::NEG_INFINITY,
       st_max_lufs: f64::NEG_INFINITY,
       true_peak_max: 0.0,
+      sample_peaks: vec![0.0; channels.max(1) as usize],
+      true_peaks: vec![0.0; channels.max(1) as usize],
       sample_peak_max_l: 0.0,
       sample_peak_max_r: 0.0,
       tp_t,
@@ -210,6 +242,8 @@ impl SummaryMeter {
       m_max_lufs: self.m_max_lufs.max(tail_m),
       st_max_lufs: self.st_max_lufs.max(tail_s),
       true_peak_max_dbtp: db_from_linear(self.true_peak_max),
+      sample_peak_max_db: db_from_linear(self.sample_peaks.iter().copied().fold(0.0, f64::max)),
+      channel_peaks: channel_peak_maxima(&self.sample_peaks, &self.true_peaks),
       sample_peak_max_l_db: db_from_linear(self.sample_peak_max_l),
       sample_peak_max_r_db: db_from_linear(self.sample_peak_max_r),
       loudness_layout: self.loudness_layout,
@@ -225,7 +259,7 @@ impl SummaryMeter {
     }
   }
 
-  /// Sample peaks stay Ch1/Ch2; True Peak Max covers every channel.
+  /// Compatibility L/R fields stay Ch1/Ch2 (mono duplicates Ch1).
   fn update_peaks(&mut self, frame: &[f32]) {
     let left = frame[0] as f64;
     let right = if frame.len() > 1 {
@@ -238,6 +272,8 @@ impl SummaryMeter {
     for (channel, sample) in frame.iter().enumerate() {
       let tp = self.tp_sample(*sample as f64, channel);
       self.true_peak_max = self.true_peak_max.max(tp);
+      self.sample_peaks[channel] = self.sample_peaks[channel].max((*sample as f64).abs());
+      self.true_peaks[channel] = self.true_peaks[channel].max(tp);
     }
   }
 
@@ -331,6 +367,18 @@ mod tests {
       metrics.true_peak_max_dbtp
     );
     assert!(!metrics.sample_peak_max_l_db.is_finite());
+  }
+
+  #[test]
+  fn empty_input_preserves_channel_identity_with_null_peaks() {
+    let metrics = run(10, &[]);
+    assert_eq!(metrics.channel_peaks.len(), 10);
+    assert_eq!(metrics.sample_peak_max_db, f64::NEG_INFINITY);
+    for (index, peak) in metrics.channel_peaks.iter().enumerate() {
+      assert_eq!(usize::from(peak.channel_index), index);
+      assert_eq!(peak.sample_peak_max_db, None);
+      assert_eq!(peak.true_peak_max_dbtp, None);
+    }
   }
 
   #[test]

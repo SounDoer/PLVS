@@ -112,6 +112,14 @@ available while the active FILE result has retained history.
 
 ## FILE reports
 
+Completed file summaries and JSON/Markdown reports include whole-file Sample Peak Max and True
+Peak Max for every decoded channel. `summary.channelPeaks` is ordered by zero-based `channelIndex`;
+Markdown labels these Ch1, Ch2, and so on, without inferring speaker roles from channel count.
+`samplePeakMaxDb` and `truePeakMaxDbtp` are the maxima across **all** channels, including channels
+outside the loudness layout. Unavailable values (including digital silence) are JSON `null` and
+shown as a dash in text. The compatibility fields `samplePeakMaxLDb` and `samplePeakMaxRDb` mean
+decoded channels 1 and 2; mono duplicates channel 1 in both. Additive fields retain schema version 2.
+
 `transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]` returns the same versioned `fileAnalysis`
 report that the GUI's Export button saves, built by the same frontend builder. It is a read: it never
 selects the session, changes the source, starts or stops analysis, or increments revision, and it
@@ -124,7 +132,7 @@ file, and the report schema has no field that marks a partial report.
 
 The success result is `{ revision, sessionId, report }`. `--out` moves the report into a file and
 replaces `result.report` with `result.out`, exactly as library and configuration export do; see
-[Output Files](../user/cli.md#output-files). `fileAnalysis` schema version 1 is the only public
+[Output Files](../user/cli.md#output-files). `fileAnalysis` schema version 2 is the current public
 file-analysis report format; the internal capture harness output is not a public contract.
 
 `--report-format markdown` returns `{ revision, sessionId, markdown }` instead: the same report

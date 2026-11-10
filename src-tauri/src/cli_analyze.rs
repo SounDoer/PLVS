@@ -155,6 +155,7 @@ pub struct CliAnalyzeSummary {
   pub sample_peak_max_l_db: Option<f64>,
   pub sample_peak_max_r_db: Option<f64>,
   pub sample_peak_max_db: Option<f64>,
+  pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
   pub dialogue_loudness_lufs: Option<f64>,
   pub loudness_to_dialogue_ratio_lu: Option<f64>,
   pub dialogue_coverage_percent: Option<f64>,
@@ -348,7 +349,8 @@ fn summary_from_metrics(
     true_peak_max_dbtp: finite_or_none(summary.true_peak_max_dbtp),
     sample_peak_max_l_db,
     sample_peak_max_r_db,
-    sample_peak_max_db: max_optional(sample_peak_max_l_db, sample_peak_max_r_db),
+    sample_peak_max_db: finite_or_none(summary.sample_peak_max_db),
+    channel_peaks: summary.channel_peaks,
     dialogue_loudness_lufs: if dialogue_enabled {
       finite_or_none(summary.dialogue_integrated)
     } else {
@@ -380,15 +382,6 @@ fn finite_or_none(value: f64) -> Option<f64> {
     Some(value)
   } else {
     None
-  }
-}
-
-fn max_optional(a: Option<f64>, b: Option<f64>) -> Option<f64> {
-  match (a, b) {
-    (Some(a), Some(b)) => Some(a.max(b)),
-    (Some(a), None) => Some(a),
-    (None, Some(b)) => Some(b),
-    (None, None) => None,
   }
 }
 
@@ -470,6 +463,8 @@ mod tests {
       m_max_lufs: -15.0,
       st_max_lufs: -14.0,
       true_peak_max_dbtp: f64::NEG_INFINITY,
+      sample_peak_max_db: left.max(right),
+      channel_peaks: vec![],
       sample_peak_max_l_db: left,
       sample_peak_max_r_db: right,
       loudness_layout: "stereo".to_string(),
@@ -493,6 +488,25 @@ mod tests {
     assert_eq!(summary.loudness_to_dialogue_ratio_lu, None);
     assert_eq!(summary.dialogue_coverage_percent, None);
     assert_eq!(summary.dialogue_range_lu, None);
+  }
+
+  #[test]
+  fn summary_preserves_all_channel_peaks_and_global_maximum() {
+    use crate::dsp::summary_meter::ChannelPeakMax;
+    let mut metrics = summary_with_peaks(-12.0, -9.0);
+    metrics.channels = 3;
+    metrics.sample_peak_max_db = -2.0;
+    metrics.true_peak_max_dbtp = -0.5;
+    metrics.channel_peaks = vec![ChannelPeakMax {
+      channel_index: 2,
+      sample_peak_max_db: Some(-2.0),
+      true_peak_max_dbtp: Some(-0.5),
+    }];
+    let summary = summary_from_metrics(metrics, false);
+    assert_eq!(summary.sample_peak_max_db, Some(-2.0));
+    let json = serde_json::to_value(summary).unwrap();
+    assert_eq!(json["channelPeaks"][0]["channelIndex"], 2);
+    assert_eq!(json["channelPeaks"][0]["truePeakMaxDbtp"], -0.5);
   }
 
   #[test]

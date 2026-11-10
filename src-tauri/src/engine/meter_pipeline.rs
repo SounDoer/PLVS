@@ -214,6 +214,8 @@ pub struct PipelineSummary {
   pub m_max_lufs: f64,
   pub st_max_lufs: f64,
   pub true_peak_max_dbtp: f64,
+  pub sample_peak_max_db: f64,
+  pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   pub dialogue_integrated: f64,
@@ -385,12 +387,18 @@ impl MeterPipeline {
         ),
         None => (f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY, 0.0, 0.0),
       };
+    let channel_peaks = self.loudness.channel_peaks(self.channels);
     PipelineSummary {
       integrated_lufs,
       lra,
       m_max_lufs: self.m_max,
       st_max_lufs: self.st_max,
       true_peak_max_dbtp: self.tp_max_db,
+      sample_peak_max_db: channel_peaks
+        .iter()
+        .filter_map(|p| p.sample_peak_max_db)
+        .fold(f64::NEG_INFINITY, f64::max),
+      channel_peaks,
       sample_peak_max_l_db: self.sample_peak_max_l,
       sample_peak_max_r_db: self.sample_peak_max_r,
       dialogue_integrated,

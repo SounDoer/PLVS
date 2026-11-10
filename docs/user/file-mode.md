@@ -27,3 +27,11 @@ failure code and keeps the affected dialogue values unavailable while retaining 
 
 Integrated, Loudness Range, Max, and dialogue results in the report are calculated from the complete
 decoded audio track, independently of the display checkpoints used for scrubbing.
+
+Completed file summaries and JSON/Markdown reports include whole-file Sample Peak Max and True
+Peak Max for every decoded channel. `summary.channelPeaks` is ordered by zero-based `channelIndex`;
+Markdown labels these Ch1, Ch2, and so on, without inferring speaker roles from channel count.
+`samplePeakMaxDb` and `truePeakMaxDbtp` are the maxima across **all** channels, including channels
+outside the loudness layout. Unavailable values (including digital silence) are JSON `null` and
+shown as a dash in text. The compatibility fields `samplePeakMaxLDb` and `samplePeakMaxRDb` mean
+decoded channels 1 and 2; mono duplicates channel 1 in both. Additive fields retain schema version 2.

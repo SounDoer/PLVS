@@ -45,6 +45,14 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
         format_dbtp(summary.true_peak_max_dbtp),
         format_dbfs(summary.sample_peak_max_db),
       );
+      for peak in &summary.channel_peaks {
+        output.push_str(&format!(
+          "Ch{}: Sample Peak Max {}, True Peak Max {}\n",
+          peak.channel_index + 1,
+          format_dbfs(peak.sample_peak_max_db),
+          format_dbtp(peak.true_peak_max_dbtp)
+        ));
+      }
       if report.analysis.dialogue.enabled {
         output.push_str(&format!(
           "Dialogue Loudness ({}): {}\nLDR: {}\nDialogue Coverage: {}\nDialogue Range: {}\n",
@@ -239,6 +247,7 @@ mod tests {
       sample_peak_max_l_db: Some(-3.0),
       sample_peak_max_r_db: Some(-4.0),
       sample_peak_max_db: Some(-3.0),
+      channel_peaks: vec![],
       dialogue_loudness_lufs: None,
       loudness_to_dialogue_ratio_lu: None,
       dialogue_coverage_percent: None,
@@ -282,6 +291,18 @@ mod tests {
         true_peak_max_dbtp: None,
       },
     }
+  }
+
+  #[test]
+  fn analyze_text_renders_channel_identity_and_unavailable_values() {
+    let mut report = sample_success_report();
+    report.summary.channel_peaks = vec![crate::dsp::summary_meter::ChannelPeakMax {
+      channel_index: 2,
+      sample_peak_max_db: None,
+      true_peak_max_dbtp: Some(-0.5),
+    }];
+    let text = render_analyze_text(&CliAnalyzeReport::Success(Box::new(report)));
+    assert!(text.contains("Ch3: Sample Peak Max -, True Peak Max -0.5 dBTP"));
   }
 
   #[test]

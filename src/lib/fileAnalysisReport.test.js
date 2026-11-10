@@ -325,3 +325,55 @@ describe("fileAnalysisReport", () => {
     expect(report.summary.loudnessLayoutKnown).toBeNull();
   });
 });
+
+describe("whole-file channel peaks", () => {
+  it("uses the authoritative all-channel maximum and preserves decoded channel identity", () => {
+    const channelPeaks = [
+      { channelIndex: 0, samplePeakMaxDb: -12, truePeakMaxDbtp: -11 },
+      { channelIndex: 1, samplePeakMaxDb: -9, truePeakMaxDbtp: -8 },
+      { channelIndex: 2, samplePeakMaxDb: -2, truePeakMaxDbtp: -0.5 },
+      { channelIndex: 3, samplePeakMaxDb: -Infinity, truePeakMaxDbtp: NaN },
+    ];
+    const report = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      summary: {
+        ...COMPLETE_SESSION.summary,
+        channels: 4,
+        samplePeakMaxDb: -2,
+        truePeakMaxDbtp: -0.5,
+        channelPeaks,
+      },
+    });
+    expect(report.summary.samplePeakMaxDb).toBe(-2);
+    expect(report.summary.channelPeaks).toEqual([
+      ...channelPeaks.slice(0, 3),
+      { channelIndex: 3, samplePeakMaxDb: null, truePeakMaxDbtp: null },
+    ]);
+    expect(JSON.parse(stringifyFileAnalysisReport(report)).summary.channelPeaks).toEqual(
+      report.summary.channelPeaks
+    );
+  });
+
+  it("does not call a legacy multichannel first-pair peak the all-channel maximum", () => {
+    const report = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      summary: {
+        ...COMPLETE_SESSION.summary,
+        channels: 8,
+      },
+    });
+    expect(report.summary.samplePeakMaxDb).toBeNull();
+    expect(report.summary.channelPeaks).toEqual([]);
+  });
+
+  it("preserves an unavailable authoritative maximum instead of falling back to compatibility fields", () => {
+    const report = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      summary: {
+        ...COMPLETE_SESSION.summary,
+        samplePeakMaxDb: null,
+      },
+    });
+    expect(report.summary.samplePeakMaxDb).toBeNull();
+  });
+});

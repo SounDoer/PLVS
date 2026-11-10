@@ -36,6 +36,8 @@ pub struct LoudnessMeter {
   /// resized per sample.
   tp_h: Vec<Vec<f64>>,
   tp_wp: Vec<usize>,
+  sample_peaks: Vec<f64>,
+  true_peaks: Vec<f64>,
   pending_block: Option<LoudnessBlock>,
   /// Detector and dialogue integrator, run inline; lazily built on the first gated push.
   dialogue: Option<DialogueSession>,
@@ -81,6 +83,8 @@ impl LoudnessMeter {
       tp_ph,
       tp_h,
       tp_wp: vec![0; 2],
+      sample_peaks: vec![0.0; 2],
+      true_peaks: vec![0.0; 2],
       pending_block: None,
       dialogue: None,
       dialogue_worker: None,
@@ -142,13 +146,26 @@ impl LoudnessMeter {
         mx = ay;
       }
     }
+    self.sample_peaks[ch] = self.sample_peaks[ch].max(x.abs());
+    self.true_peaks[ch] = self.true_peaks[ch].max(mx);
     mx
+  }
+
+  pub(crate) fn channel_peaks(&self, channels: u16) -> Vec<super::summary_meter::ChannelPeakMax> {
+    let count = usize::from(channels.max(1));
+    let mut samples = self.sample_peaks.clone();
+    let mut peaks = self.true_peaks.clone();
+    samples.resize(count, 0.0);
+    peaks.resize(count, 0.0);
+    super::summary_meter::channel_peak_maxima(&samples, &peaks)
   }
 
   fn ensure_true_peak_channels(&mut self, channels: usize) {
     if self.tp_h.len() < channels {
       self.tp_h.resize(channels, vec![0.0_f64; self.tp_t]);
       self.tp_wp.resize(channels, 0);
+      self.sample_peaks.resize(channels, 0.0);
+      self.true_peaks.resize(channels, 0.0);
     }
   }
 

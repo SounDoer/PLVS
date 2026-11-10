@@ -6650,6 +6650,11 @@ describe("File analysis report", () => {
       truePeakMaxDbtp: -1.2,
       samplePeakMaxLDb: -1.5,
       samplePeakMaxRDb: -1.75,
+      samplePeakMaxDb: -1.5,
+      channelPeaks: [
+        { channelIndex: 0, samplePeakMaxDb: -1.5, truePeakMaxDbtp: -1.2 },
+        { channelIndex: 1, samplePeakMaxDb: -1.75, truePeakMaxDbtp: -1.4 },
+      ],
       dialogueIntegrated: null,
       dialogueLra: 0,
     },
@@ -6732,6 +6737,9 @@ describe("File analysis report", () => {
     expect(response.result.markdown.startsWith("# PLVS Loudness Report\n")).toBe(true);
     expect(response.result.markdown).toContain("\n**mix.wav**\n");
     expect(response.result.markdown).toContain("\n- Integrated: -23.1 LUFS\n");
+    expect(response.result.markdown).toContain(
+      "- Ch2: Sample Peak Max -1.8 dBFS · True Peak Max -1.4 dBTP"
+    );
   });
 
   it("returns the GUI export document for a completed session without changing state", async () => {
@@ -6756,7 +6764,11 @@ describe("File analysis report", () => {
       reportType: "fileAnalysis",
       app: { version: runtime.appVersion },
       source: { fileName: "mix.wav", container: "wav" },
-      summary: { integratedLufs: -23.1, samplePeakMaxDb: -1.5 },
+      summary: {
+        integratedLufs: -23.1,
+        samplePeakMaxDb: -1.5,
+        channelPeaks: completeSession.summary.channelPeaks,
+      },
     });
     const after = await send(request("transport.inspect", {}, "file-report-after"));
     expect(after.result).toEqual({ revision: 0, ...snapshot });

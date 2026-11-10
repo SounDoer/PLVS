@@ -96,7 +96,7 @@ describe("renderFileAnalysisReportMarkdown", () => {
       "- Momentary Max: -18.5 LUFS",
       "- Short-term Max: -20.2 LUFS",
       "- True Peak Max: -1.0 dBTP",
-      "- Sample Peak Max: -2.1 dBFS (L -2.4 · R -2.1)",
+      "- Sample Peak Max: -2.1 dBFS (Ch1 -2.4 · Ch2 -2.1)",
       "- Engine: firered",
       "- Dialogue Loudness: -24.0 LUFS",
       "- Loudness-to-Dialogue Ratio: 0.9 LU",
@@ -217,4 +217,26 @@ describe("renderFileAnalysisReportMarkdown", () => {
     expect(lines).toContain("- Path: —");
     expect(lines).toContain("- Momentary Max: —");
   });
+});
+
+it("renders per-channel peaks without inventing speaker roles", () => {
+  const text = render({
+    ...SESSION,
+    summary: {
+      ...SESSION.summary,
+      channels: 3,
+      samplePeakMaxDb: -2,
+      truePeakMaxDbtp: -0.5,
+      loudnessLayoutKnown: false,
+      channelPeaks: [
+        { channelIndex: 0, samplePeakMaxDb: null, truePeakMaxDbtp: null },
+        { channelIndex: 1, samplePeakMaxDb: null, truePeakMaxDbtp: null },
+        { channelIndex: 2, samplePeakMaxDb: -2, truePeakMaxDbtp: -0.5 },
+      ],
+    },
+  });
+  expect(text).toContain("- Sample Peak Max: -2.0 dBFS\n");
+  expect(text).toContain("- Ch1: Sample Peak Max — · True Peak Max —\n");
+  expect(text).toContain("- Ch3: Sample Peak Max -2.0 dBFS · True Peak Max -0.5 dBTP\n");
+  expect(text).not.toContain("(L ");
 });

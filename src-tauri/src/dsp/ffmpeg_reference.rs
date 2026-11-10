@@ -202,9 +202,8 @@ fn plvs_meters_agree_with_ffmpeg_ebur128() {
       .iter()
       .map(|(_, b)| b.true_peak)
       .fold(f64::NEG_INFINITY, f64::max);
-    // PLVS reports sample peak for Ch1/Ch2; `ebur128` over every channel. The programme's
-    // loudest sample sits in the front pair, so both read the same maximum.
-    let file_sample_peak = file.sample_peak_max_l_db.max(file.sample_peak_max_r_db);
+    // Both PLVS and ebur128 measure the sample peak across every decoded channel.
+    let file_sample_peak = file.sample_peak_max_db;
 
     let label = format!("{name} @ {sr} Hz");
     println!(

@@ -187,6 +187,8 @@ pub fn analyze_file_track_to_summary_with_layout(
     m_max_lufs: metrics.m_max_lufs,
     st_max_lufs: metrics.st_max_lufs,
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+    sample_peak_max_db: metrics.sample_peak_max_db,
+    channel_peaks: metrics.channel_peaks,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     loudness_layout: metrics.loudness_layout.to_string(),

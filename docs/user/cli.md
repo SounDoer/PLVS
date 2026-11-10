@@ -779,3 +779,8 @@ the app.
 Dock monitor discovery and entry, and Preset application, read the current monitor inventory on
 each request, including dry-run. Hot-plugging a monitor does not require restarting PLVS. A failed
 inventory read refuses the request without mutation; the next request retries the read.
+
+The internal offline `analyze` summary also includes `channelPeaks`, ordered by zero-based
+`channelIndex`, with per-channel `samplePeakMaxDb` and `truePeakMaxDbtp`. Its global peak fields
+cover every decoded channel. Text output labels channels Ch1, Ch2, etc.; unavailable values are
+JSON `null` or a dash in text. See [File Mode reports](file-mode.md#reports) for compatibility fields.

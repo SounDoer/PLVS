@@ -75,7 +75,9 @@ function samplePeak(summary) {
   if (max == null) return MISSING;
   const left = fixed(summary.samplePeakMaxLDb);
   const right = fixed(summary.samplePeakMaxRDb);
-  return left != null && right != null ? `${max} dBFS (L ${left} · R ${right})` : `${max} dBFS`;
+  return !summary.channelPeaks?.length && left != null && right != null
+    ? `${max} dBFS (Ch1 ${left} · Ch2 ${right})`
+    : `${max} dBFS`;
 }
 
 /// One metric's rules as one phrase: same severity joins with `or`, severities with `;`.
@@ -165,6 +167,14 @@ export function renderFileAnalysisReportMarkdown(report) {
     item(STATS_META.truePeak.label, metricValue("truePeak", summary)),
     item("Sample Peak Max", samplePeak(summary)),
   ];
+  for (const peak of summary.channelPeaks ?? []) {
+    lines.push(
+      item(
+        `Ch${peak.channelIndex + 1}`,
+        `Sample Peak Max ${withUnit(fixed(peak.samplePeakMaxDb), "dBFS")} · True Peak Max ${withUnit(fixed(peak.truePeakMaxDbtp), "dBTP")}`
+      )
+    );
+  }
   const layout = loudnessLayout(summary);
   if (layout != null) lines.push(item("Loudness Layout", layout));
   if (dialogue.enabled) {
