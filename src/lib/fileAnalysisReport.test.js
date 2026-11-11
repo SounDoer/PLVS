@@ -61,6 +61,86 @@ const BROADCAST = {
 };
 
 describe("fileAnalysisReport", () => {
+  it.each([
+    [[], "notEvaluated", { ok: 0, warn: 0, fail: 0, notEvaluated: 0 }],
+    [
+      [{ metricId: "integrated", op: ">", value: -23, severity: "fail" }],
+      "ok",
+      { ok: 1, warn: 0, fail: 0, notEvaluated: 0 },
+    ],
+    [
+      [{ metricId: "psr", op: "<", value: 8, severity: "warn" }],
+      "notFullyEvaluated",
+      { ok: 0, warn: 0, fail: 0, notEvaluated: 1 },
+    ],
+    [
+      [
+        { metricId: "integrated", op: ">", value: -24, severity: "warn" },
+        { metricId: "psr", op: "<", value: 8, severity: "warn" },
+      ],
+      "warn",
+      { ok: 0, warn: 1, fail: 0, notEvaluated: 1 },
+    ],
+    [
+      [
+        { metricId: "integrated", op: ">", value: -24, severity: "warn" },
+        { metricId: "integrated", op: ">", value: -23.11, severity: "fail" },
+      ],
+      "fail",
+      { ok: 0, warn: 0, fail: 1, notEvaluated: 0 },
+    ],
+  ])("counts configured metrics once at raw precision (%#)", (rules, overall, counts) => {
+    const report = buildFileAnalysisReport(COMPLETE_SESSION, {
+      loudnessProfile: { ...BROADCAST, document: { ...BROADCAST.document, rules } },
+    });
+    expect(report.loudnessProfile).toMatchObject({ overall, counts });
+  });
+
+  it("exports actual duration and content identity without private paths", () => {
+    const result = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      metadata: {
+        ...COMPLETE_SESSION.metadata,
+        path: "C:/private/mix.wav",
+        durationMs: 15000,
+        sourceVersion: {
+          canonicalPath: "C:/private/mix.wav",
+          sha256: "identity",
+          byteLength: 1000,
+        },
+      },
+    });
+    expect(result.source).toMatchObject({
+      durationMs: 10000,
+      declaredDurationMs: 15000,
+      version: { sha256: "identity", byteLength: 1000 },
+    });
+    expect(stringifyFileAnalysisReport(result)).not.toMatch(/private|canonicalPath|mixes/);
+  });
+
+  it("distinguishes no speech, detector failure, silence and insufficient duration", () => {
+    const noSpeech = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      summary: { ...COMPLETE_SESSION.summary, dialogueIntegrated: null, dialoguePercent: 0 },
+    });
+    expect(noSpeech.unavailableReasons.dialogueLoudnessLufs).toBe("noDialogue");
+    expect(noSpeech.summary.dialogueCoveragePercent).toBe(0);
+    const failed = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      summary: { ...COMPLETE_SESSION.summary, dialogueDetectionError: "runtimeFailed" },
+    });
+    expect(failed.unavailableReasons.dialogueCoveragePercent).toBe("detectorFailed");
+    expect(failed.summary.dialogueCoveragePercent).toBeNull();
+    const silence = buildFileAnalysisReport({
+      ...COMPLETE_SESSION,
+      decodedFrames: 48000,
+      summary: { ...COMPLETE_SESSION.summary, integratedLufs: null, stMaxLufs: null },
+    });
+    expect(silence.unavailableReasons).toMatchObject({
+      integratedLufs: "belowMeasurementFloor",
+      stMaxLufs: "insufficientData",
+    });
+  });
   it("builds a stable JSON report from a completed file session", () => {
     const report = buildFileAnalysisReport(COMPLETE_SESSION, {
       appVersion: "0.6.4",
@@ -68,12 +148,11 @@ describe("fileAnalysisReport", () => {
     });
 
     expect(report).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       reportType: "fileAnalysis",
       exportedAt: "2026-07-06T12:30:00.000Z",
       app: { name: "PLVS", version: "0.6.4" },
       source: {
-        path: "C:\\mixes\\final_mix.wav",
         fileName: "final_mix.wav",
         container: "wav",
         durationMs: 10_000,
@@ -190,6 +269,9 @@ describe("fileAnalysisReport", () => {
       name: null,
       rules: [],
       byMetric: {},
+      referenceLufs: null,
+      overall: "notEvaluated",
+      counts: { ok: 0, warn: 0, fail: 0, notEvaluated: 0 },
     });
   });
 
@@ -210,6 +292,9 @@ describe("fileAnalysisReport", () => {
         { metricId: "psr", op: "<", value: 8, severity: "warn" },
       ],
       byMetric: { integrated: "ok", truePeak: "fail", psr: "notEvaluated" },
+      referenceLufs: -23,
+      overall: "fail",
+      counts: { ok: 1, warn: 0, fail: 1, notEvaluated: 1 },
     });
   });
 
@@ -345,7 +430,7 @@ describe("whole-file channel peaks", () => {
       },
     });
     expect(report.summary.samplePeakMaxDb).toBe(-2);
-    expect(report.summary.channelPeaks).toEqual([
+    expect(report.summary.channelPeaks).toMatchObject([
       ...channelPeaks
         .slice(0, 3)
         .map((peak) => ({ ...peak, samplePeakMaxLocation: null, truePeakMaxLocation: null })),

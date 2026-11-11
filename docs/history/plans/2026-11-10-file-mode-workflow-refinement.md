@@ -17,7 +17,8 @@
 | 3. Frozen conditions / attempt isolation   | Implemented in `3dd923ef`      | Deferred probe cancellation, stale same-path events, final-frame settlement, stop failure and request snapshot tests passed; native validation test and compile passed                               |
 | 4. Source/track identity and metadata      | Core implemented               | Track picker/import/replacement regressions passed (59 frontend tests), typecheck passed, real FFmpeg file-analysis smoke passed (28 native tests); fingerprint timing and desktop acceptance remain |
 | 5. History accounting and restore          | Core implemented               | 483 focused frontend tests, typecheck and native CLI parsing passed; memory baseline recorded and Windows File decode verified. Real desktop eviction/restore and process memory acceptance remain.  |
-| 6–9                                        | Pending                        | No completion claim                                                                                                                                                                                  |
+| 6. Complete reports and Profile evaluation | Core implemented               | 263 focused frontend/contract tests and typecheck passed; 159 native CLI tests passed. Version 3 removes paths and adds measurement reasons.                                                         |
+| 7–9                                        | Pending                        | No completion claim                                                                                                                                                                                  |
 
 Stage 4 integration and focused verification completed in `86c861e7`. Stage 5 retains all results
 and implements the measured File-only history target and explicit restore. See the

@@ -6715,12 +6715,14 @@ describe("File analysis report", () => {
       request("transport.file.report", { sessionId: completeSession.id }, "file-report-profile")
     );
 
-    expect(response.result.report.loudnessProfile).toEqual({
+    expect(response.result.report.loudnessProfile).toMatchObject({
       mode: "saved",
       id: "p1",
       name: "Broadcast",
       rules: broadcast.rules,
       byMetric: { integrated: "ok" },
+      overall: "ok",
+      counts: { ok: 1, warn: 0, fail: 0, notEvaluated: 0 },
     });
   });
 
@@ -6778,7 +6780,7 @@ describe("File analysis report", () => {
       ),
     });
     expect(response.result.report).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       reportType: "fileAnalysis",
       app: { version: runtime.appVersion },
       source: { fileName: "mix.wav", container: "wav" },

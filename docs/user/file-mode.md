@@ -51,21 +51,29 @@ When analysis completes, the summary can be exported as a report: **Export Markd
 **Export JSON**, or **Copy as Markdown**. Reports include the channel layout and the verdicts of the
 active [Loudness Profile](loudness-profiles.md).
 
-JSON report schema version 2 names Dialogue Loudness, LDR, Dialogue Coverage, and Dialogue Range
-explicitly and records the dialogue metric algorithm version, detector configuration, and
-multichannel fusion identity used for the run. If Dialogue Detection fails, the report records the
-failure code and keeps the affected dialogue values unavailable while retaining programme results.
+Markdown has five chapters: **Summary**, **File**, **Measurements**, **Loudness Profile**, and
+**Analysis Details**. Reports always include the whole track's measurements, independent of the
+visible summary. They evaluate the Loudness Profile active at export, including an unsaved preview,
+and count each configured metric once at its worst verdict. Fail takes precedence over Warn, then
+Not Fully Evaluated, then OK. An off or empty Profile is Not Evaluated.
+
+JSON report schema version 3 removes `source.path`. Use `source.fileName`, `source.version` and
+the selected track to identify the result. `source.durationMs` describes decoded audio;
+`source.declaredDurationMs` preserves the container estimate separately. Reports omit full local
+paths and retain the run's original analysis conditions, regardless of later setting changes.
+Unavailable values are `null` with codes in `unavailableReasons`; Markdown groups shared causes.
+Detector failures leave the affected dialogue values unavailable while retaining programme results.
 
 Integrated, Loudness Range, Max, and dialogue results in the report are calculated from the complete
 decoded audio track, independently of the display checkpoints used for scrubbing.
 
 Completed file summaries and JSON/Markdown reports include whole-file Sample Peak Max and True
 Peak Max for every decoded channel. `summary.channelPeaks` is ordered by zero-based `channelIndex`;
-Markdown labels these Ch1, Ch2, and so on, without inferring speaker roles from channel count.
+Each entry carries its result-bound channel label, with generic labels for unknown layouts.
 `samplePeakMaxDb` and `truePeakMaxDbtp` are the maxima across **all** channels, including channels
 outside the loudness layout. Unavailable values (including digital silence) are JSON `null` and
 shown as a dash in text. The compatibility fields `samplePeakMaxLDb` and `samplePeakMaxRDb` mean
-decoded channels 1 and 2; mono duplicates channel 1 in both. Additive fields retain schema version 2.
+decoded channels 1 and 2; mono duplicates channel 1 in both.
 
 ### Maximum locations
 

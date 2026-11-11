@@ -28,7 +28,7 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
     CliAnalyzeReport::Error(report) => {
       format!(
         "PLVS analysis error\nFile: {}\n{}\n",
-        report.source.path, report.error.message
+        report.source.file_name, report.error.message
       )
     }
     CliAnalyzeReport::Success(report) => {
@@ -46,6 +46,13 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
         format_dbfs(summary.sample_peak_max_db),
       );
       let locations = summary.maxima_locations.as_ref();
+      output.push_str(&format!(
+        "Momentary Max: {}\nShort-term Max: {}\nDuration: {} ms\nLoudness Layout: {}\n",
+        format_number(summary.m_max_lufs, 1, " LUFS"),
+        format_number(summary.st_max_lufs, 1, " LUFS"),
+        format_optional_integer(summary.duration_ms),
+        summary.loudness_layout
+      ));
       output.push_str(&format!("Sample Peak Max Location: {}\nTrue Peak Max Location: {}\nMomentary Max Window End: {}\nShort-term Max Window End: {}\n",
         format_channel_location(locations.and_then(|l| l.sample_peak_max.as_ref())),
         format_channel_location(locations.and_then(|l| l.true_peak_max.as_ref())),
@@ -53,6 +60,7 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
         format_location(locations.and_then(|l| l.st_max_window_end.as_ref())),
       ));
       for peak in &summary.channel_peaks {
+        let peak = &peak.peak;
         output.push_str(&format!(
           "Ch{}: Sample Peak Max {}, True Peak Max {}\n",
           peak.channel_index + 1,
@@ -61,6 +69,7 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
         ));
       }
       for peak in &summary.channel_peaks {
+        let peak = &peak.peak;
         output.push_str(&format!(
           "Ch{} Sample Peak Max Location: {}\nCh{} True Peak Max Location: {}\n",
           peak.channel_index + 1,
@@ -116,6 +125,12 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
             check.target,
             format_dbtp(check.measured),
           ));
+        }
+      }
+      if !report.unavailable_reasons.is_empty() {
+        output.push_str("Unavailable Measurements:\n");
+        for (field, reason) in &report.unavailable_reasons {
+          output.push_str(&format!("- {field}: {reason}\n"));
         }
       }
       output
@@ -276,6 +291,7 @@ mod tests {
       sample_rate_hz: Some(48_000),
       channels: Some(2),
       language: None,
+      ..Default::default()
     }
   }
 
@@ -306,7 +322,7 @@ mod tests {
 
   fn sample_success_report() -> CliAnalyzeSuccessReport {
     CliAnalyzeSuccessReport {
-      schema_version: 2,
+      schema_version: 3,
       command: "analyze".to_string(),
       status: crate::cli_analyze::CliAnalyzeStatus::Ok,
       app: crate::cli_analyze::CliAnalyzeApp {
@@ -314,14 +330,16 @@ mod tests {
         version: "1.2.3".to_string(),
       },
       source: crate::cli_analyze::CliAnalyzeSource {
-        path: "mix.wav".to_string(),
         file_name: "mix.wav".to_string(),
         container: Some("wav".to_string()),
         duration_ms: Some(1000),
+        declared_duration_ms: Some(1000),
+        version: None,
         selected_track: sample_track(),
       },
       analysis: crate::cli_analyze::CliAnalyzeMetadata {
         decoded_frames: 48_000,
+        channel_roles: None,
         dialogue: crate::cli_analyze::CliAnalyzeDialogue {
           enabled: false,
           engine: None,
@@ -333,6 +351,7 @@ mod tests {
         reference_lufs: None,
       },
       summary: sample_summary(),
+      unavailable_reasons: Default::default(),
       quality_control: crate::cli_analyze::CliAnalyzeQualityControl {
         status: CliQualityControlStatus::NotEvaluated,
         integrated_lufs: None,
@@ -344,12 +363,17 @@ mod tests {
   #[test]
   fn analyze_text_renders_channel_identity_and_unavailable_values() {
     let mut report = sample_success_report();
-    report.summary.channel_peaks = vec![crate::dsp::summary_meter::ChannelPeakMax {
-      channel_index: 2,
-      sample_peak_max_location: None,
-      true_peak_max_location: None,
-      sample_peak_max_db: None,
-      true_peak_max_dbtp: Some(-0.5),
+    report.summary.channel_peaks = vec![crate::cli_analyze::CliAnalyzeChannelPeak {
+      label: "Ch 3".into(),
+      sample_peak_max_unavailable_reason: Some("belowMeasurementFloor"),
+      true_peak_max_unavailable_reason: None,
+      peak: crate::dsp::summary_meter::ChannelPeakMax {
+        channel_index: 2,
+        sample_peak_max_location: None,
+        true_peak_max_location: None,
+        sample_peak_max_db: None,
+        true_peak_max_dbtp: Some(-0.5),
+      },
     }];
     let text = render_analyze_text(&CliAnalyzeReport::Success(Box::new(report)));
     assert!(text.contains("Ch3: Sample Peak Max -, True Peak Max -0.5 dBTP"));
@@ -381,9 +405,9 @@ mod tests {
   }
 
   #[test]
-  fn analyze_text_error_report_renders_path_and_message() {
+  fn analyze_text_error_report_renders_file_name_and_message() {
     let report = CliAnalyzeReport::Error(Box::new(crate::cli_analyze::CliAnalyzeErrorReport {
-      schema_version: 2,
+      schema_version: 3,
       command: "analyze".to_string(),
       status: crate::cli_analyze::CliAnalyzeStatus::Error,
       app: crate::cli_analyze::CliAnalyzeApp {
@@ -391,7 +415,7 @@ mod tests {
         version: "1.2.3".to_string(),
       },
       source: crate::cli_analyze::CliAnalyzeErrorSource {
-        path: "missing.wav".to_string(),
+        file_name: "missing.wav".to_string(),
       },
       error: crate::cli_analyze::CliAnalyzeError {
         message: "no such file".to_string(),

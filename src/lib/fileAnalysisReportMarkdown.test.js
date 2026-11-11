@@ -82,12 +82,11 @@ describe("renderFileAnalysisReportMarkdown", () => {
     expect(lines.slice(0, 5)).toEqual([
       "# PLVS Loudness Report",
       "",
-      "**final_mix.wav**",
+      "**final\\_mix.wav**",
       "",
       "Exported 2026-07-06 20:30 (UTC+08:00) · PLVS 0.6.4",
     ]);
     for (const line of [
-      "- Path: `C:\\mixes\\final_mix.wav`",
       "- Container: WAV",
       "- Duration: 00:00:10",
       "- Track: Audio track 0 - English - PCM s16le - 48 kHz - 2 ch",
@@ -109,14 +108,30 @@ describe("renderFileAnalysisReportMarkdown", () => {
 
   it("orders the sections and ends with a newline", () => {
     const markdown = render();
-    const order = ["## File", "## Loudness", "## Dialogue", "## Loudness Profile: Broadcast"].map(
-      (heading) => markdown.indexOf(`\n${heading}\n`)
-    );
+    const order = [
+      "## Summary",
+      "## File",
+      "## Measurements",
+      "## Loudness Profile",
+      "## Analysis Details",
+    ].map((heading) => markdown.indexOf(`\n${heading}\n`));
 
     expect(order.every((index) => index > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(markdown.endsWith("\n")).toBe(true);
     expect(markdown.endsWith("\n\n")).toBe(false);
+  });
+
+  it("keeps untrusted names in the document text and excludes paths", () => {
+    const text = render(
+      { ...SESSION, fileName: "Mix [A] | <tag>\n## Injected.wav" },
+      { ...profile(BROADCAST_RULES), name: "Name\n## Surprise" }
+    );
+    expect(text).not.toContain("\n## Injected");
+    expect(text).not.toContain("\n## Surprise");
+    expect(text).not.toContain("<tag>");
+    expect(text).not.toContain("mixes");
+    expect(text.split("\n").filter((line) => line.startsWith("## "))).toHaveLength(5);
   });
 
   it("renders one padded table row per judged metric", () => {
@@ -129,7 +144,7 @@ describe("renderFileAnalysisReportMarkdown", () => {
     expect(table.slice(2).map(cells)).toEqual([
       ["Integrated", "fail if > -22.5 or < -23.5 LUFS", "-23.1 LUFS", "OK"],
       ["True Peak Max", "fail if > -2.0 dBTP", "-1.0 dBTP", "Fail"],
-      ["Short-term Dynamics", "warn if < 8.0 dB", "—", "Not evaluated"],
+      ["Short-term Dynamics", "warn if < 8.0 dB", "—", "Not Evaluated"],
     ]);
     expect(new Set(table.map((line) => line.length)).size).toBe(1);
   });
@@ -158,14 +173,15 @@ describe("renderFileAnalysisReportMarkdown", () => {
     expect(render(SESSION, profile([]))).toContain("\nNo rules are set.\n");
   });
 
-  it("omits the profile when off and dialogue when disabled", () => {
+  it("keeps five chapters and explains disabled measurements", () => {
     const markdown = render(
       { ...SESSION, analysisSettings: { dialogue: standIn({ enabled: false }) } },
       null
     );
 
-    expect(markdown).not.toContain("## Loudness Profile");
-    expect(markdown).not.toContain("## Dialogue");
+    expect(markdown).toContain("## Loudness Profile\n\nLoudness Profile is off.");
+    expect(markdown).toContain("### Dialogue");
+    expect(markdown.match(/Dialogue Detection was off\./g)).toHaveLength(1);
   });
 
   it("explains an explicit dialogue detector failure", () => {
@@ -214,7 +230,7 @@ describe("renderFileAnalysisReportMarkdown", () => {
       summary: { ...SESSION.summary, mMaxLufs: -Infinity },
     }).split("\n");
 
-    expect(lines).toContain("- Path: —");
+    expect(lines.some((line) => line.startsWith("- Path:"))).toBe(false);
     expect(lines).toContain("- Momentary Max: —");
   });
 });

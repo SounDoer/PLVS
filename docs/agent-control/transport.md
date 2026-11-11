@@ -140,11 +140,11 @@ Measurement Control fields or subscriptions change.
 
 Completed file summaries and JSON/Markdown reports include whole-file Sample Peak Max and True
 Peak Max for every decoded channel. `summary.channelPeaks` is ordered by zero-based `channelIndex`;
-Markdown labels these Ch1, Ch2, and so on, without inferring speaker roles from channel count.
+Each entry carries its result-bound channel label, with generic labels for unknown layouts.
 `samplePeakMaxDb` and `truePeakMaxDbtp` are the maxima across **all** channels, including channels
 outside the loudness layout. Unavailable values (including digital silence) are JSON `null` and
 shown as a dash in text. The compatibility fields `samplePeakMaxLDb` and `samplePeakMaxRDb` mean
-decoded channels 1 and 2; mono duplicates channel 1 in both. Additive fields retain schema version 2.
+decoded channels 1 and 2; mono duplicates channel 1 in both.
 
 `transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]` returns the same versioned `fileAnalysis`
 report that the GUI's Export button saves, built by the same frontend builder. It is a read: it never
@@ -158,19 +158,23 @@ fails with `fileSessionNotFound`; an entry without a successful result fails wit
 
 The success result is `{ revision, sessionId, report }`. `--out` moves the report into a file and
 replaces `result.report` with `result.out`, exactly as library and configuration export do; see
-[Output Files](../user/cli.md#output-files). `fileAnalysis` schema version 2 is the current public
-file-analysis report format; the internal capture harness output is not a public contract.
+[Output Files](../user/cli.md#output-files). `fileAnalysis` schema version 3 removes `source.path`,
+reports actual duration in `source.durationMs`, preserves the estimate as `source.declaredDurationMs`,
+and adds path-free source version identity and explicit `unavailableReasons`. Consumers migrating
+from version 2 should identify files using `source.fileName`, `source.version` and track metadata.
+The internal capture harness output is a separate contract.
 
 `--report-format markdown` returns `{ revision, sessionId, markdown }` instead: the same report
 rendered by the function behind the GUI's Export Markdown and Copy as Markdown, so all three are
-identical. `--out` then writes that text verbatim. `json`, the default, is unchanged.
+identical. `--out` then writes that text verbatim. JSON remains the default format.
 
 The report's `loudnessProfile` block records the Loudness Profile in force at export: `mode` is
 `off`, `saved`, or `preview` (an open editor's draft), `rules` holds its filled rules, and
 `byMetric` gives each judged metric `ok`, `warn`, `fail`, or `notEvaluated`. Only whole-file
 readings are judged; a rule on a momentary or derived metric, or on a reading the file does not
-have, is `notEvaluated`. Adding optional fields such as this block does not change
-`schemaVersion`; consumers ignore fields they do not know.
+have, is `notEvaluated`. `counts` counts configured metrics once at their worst verdict, and
+`overall` is `notEvaluated` when off/empty; otherwise `fail`, `warn`, `notFullyEvaluated` or `ok`
+in precedence order.
 
 ## Paced scrubbing
 

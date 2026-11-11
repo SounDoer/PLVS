@@ -3,13 +3,29 @@ import { formatContainer, formatTrackLabel } from "./fileAnalysisDisplay.js";
 import { REPORT_PROFILE_METRIC_FIELDS } from "./fileAnalysisReport.js";
 import { dialogueDetectionErrorMessage } from "./dialogueDetectionError.js";
 import { STATS_META, statDecimals } from "./statsCatalog.js";
+import { FILE_METRICS, FILE_UNAVAILABLE_EXPLANATIONS } from "./fileAnalysisMeasurements.js";
 
 /// Renders a `fileAnalysis` report as Markdown that also reads cleanly unrendered: headed lists for
 /// measurements, one padded table for the profile. It reads only the report, so the file export,
 /// the clipboard, and the CLI all produce the same text from the same JSON.
 
 const MISSING = "—";
-const RESULT_LABELS = { ok: "OK", warn: "Warn", fail: "Fail", notEvaluated: "Not evaluated" };
+const RESULT_LABELS = {
+  ok: "OK",
+  warn: "Warn",
+  fail: "Fail",
+  notEvaluated: "Not Evaluated",
+  notFullyEvaluated: "Not Fully Evaluated",
+};
+
+function plainText(value) {
+  return String(value ?? MISSING)
+    .replace(/\s+/g, " ")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/[\\`*_\[\]#|]/g, "\\$&");
+}
 
 function fixed(value, decimals = 1) {
   return Number.isFinite(value) ? value.toFixed(decimals) : null;
@@ -100,7 +116,10 @@ function ruleText(metricId, rules) {
       group = { severity: rule.severity, conditions: [] };
       groups.push(group);
     }
-    group.conditions.push(`${rule.op} ${rule.value.toFixed(decimals)}`);
+    const formatted = rule.value.toFixed(decimals);
+    group.conditions.push(
+      `${rule.op} ${Number(formatted) === rule.value ? formatted : rule.value}`
+    );
   }
   const text = groups
     .map(({ severity, conditions }) => `${severity} if ${conditions.join(" or ")}`)
@@ -120,8 +139,13 @@ function table(header, rows) {
 }
 
 function profileSection(profile, summary) {
-  if (!profile || profile.mode === "off") return [];
-  const lines = [`## Loudness Profile: ${profile.name ?? "Untitled"}`, ""];
+  const lines = ["## Loudness Profile", ""];
+  if (!profile || profile.mode === "off") return [...lines, "Loudness Profile is off."];
+  lines.push(
+    item("Profile", plainText(profile.name ?? "Untitled")),
+    item("Mode", profile.mode === "preview" ? "Preview" : "Saved"),
+    ""
+  );
   if (profile.mode === "preview") {
     lines.push("Unsaved draft — rules may change before they are saved.", "");
   }
@@ -146,45 +170,95 @@ function profileSection(profile, summary) {
   return lines;
 }
 
+function groupedUnavailable(report) {
+  const groups = new Map();
+  function add(reason, label) {
+    if (!reason) return;
+    if (!groups.has(reason)) groups.set(reason, []);
+    groups.get(reason).push(label);
+  }
+  for (const metric of FILE_METRICS) add(report.unavailableReasons?.[metric.field], metric.label);
+  for (const peak of report.summary?.channelPeaks ?? []) {
+    add(peak.samplePeakMaxUnavailableReason, `Ch${peak.channelIndex + 1} Sample Peak Max`);
+    add(peak.truePeakMaxUnavailableReason, `Ch${peak.channelIndex + 1} True Peak Max`);
+  }
+  return groups.size
+    ? [
+        "",
+        "### Unavailable Measurements",
+        "",
+        ...Array.from(groups, ([reason, labels]) =>
+          item(labels.join(", "), FILE_UNAVAILABLE_EXPLANATIONS[reason] ?? reason)
+        ),
+      ]
+    : [];
+}
+
 export function renderFileAnalysisReportMarkdown(report) {
   const source = report.source ?? {};
   const summary = report.summary ?? {};
   const dialogue = report.analysis?.dialogue ?? {};
   const track = source.selectedTrack;
   const hasTrack = track != null && Object.values(track).some((value) => value != null);
+  const profile = report.loudnessProfile;
+  const counts = profile?.counts ?? {};
 
   const lines = [
     "# PLVS Loudness Report",
     "",
-    `**${source.fileName ?? "Unknown file"}**`,
+    `**${plainText(source.fileName ?? "Unknown file")}**`,
     "",
-    `Exported ${formatExportedAt(report.exportedAt)} · PLVS ${report.app?.version ?? MISSING}`,
+    `Exported ${formatExportedAt(report.exportedAt)} · PLVS ${plainText(report.app?.version)}`,
+    "",
+    "## Summary",
+    "",
+    item(
+      "Loudness Profile",
+      profile?.mode === "off" || !profile
+        ? "Off"
+        : `${plainText(profile.name ?? "Untitled")} (${profile.mode === "preview" ? "Preview" : "Saved"})`
+    ),
+    item("Overall", RESULT_LABELS[profile?.overall ?? "notEvaluated"]),
+    item(
+      "Metric Counts",
+      `${counts.ok ?? 0} OK · ${counts.warn ?? 0} Warn · ${counts.fail ?? 0} Fail · ${counts.notEvaluated ?? 0} Not Evaluated`
+    ),
     "",
     "## File",
     "",
-    // Inline code keeps Windows backslashes and underscores from being read as Markdown.
-    item("Path", source.path ? `\`${source.path}\`` : MISSING),
-    item("Container", formatContainer(source.container) ?? MISSING),
+    item("Container", plainText(formatContainer(source.container))),
     item("Duration", Number.isFinite(source.durationMs) ? formatClock(source.durationMs) : MISSING),
-    item("Track", hasTrack ? formatTrackLabel(track) : MISSING),
+    item("Track", hasTrack ? plainText(formatTrackLabel(track)) : MISSING),
+    ...(track?.title ? [item("Track Name", plainText(track.title))] : []),
+    item(
+      "Source Bit Depth",
+      Number.isFinite(track?.bitsPerSample) ? `${track.bitsPerSample} bit` : MISSING
+    ),
+    ...(track?.sampleFormat ? [item("Sample Format", plainText(track.sampleFormat))] : []),
+    ...(source.version?.sha256 ? [item("Source SHA-256", plainText(source.version.sha256))] : []),
     "",
-    "## Loudness",
+    "## Measurements",
+    "",
+    "### Loudness",
     "",
     item(STATS_META.integrated.label, metricValue("integrated", summary)),
     item(STATS_META.lra.label, metricValue("lra", summary)),
     item(STATS_META.momentaryMax.label, metricValue("momentaryMax", summary)),
     item(STATS_META.shortTermMax.label, metricValue("shortTermMax", summary)),
+    item("Momentary Max Window End", locationText(summary.maximaLocations?.mMaxWindowEnd)),
+    item("Short-term Max Window End", locationText(summary.maximaLocations?.stMaxWindowEnd)),
+    "",
+    "### Peaks",
+    "",
     item(STATS_META.truePeak.label, metricValue("truePeak", summary)),
     item("Sample Peak Max", samplePeak(summary)),
     item("Sample Peak Max Location", locationText(summary.maximaLocations?.samplePeakMax)),
     item("True Peak Max Location", locationText(summary.maximaLocations?.truePeakMax)),
-    item("Momentary Max Window End", locationText(summary.maximaLocations?.mMaxWindowEnd)),
-    item("Short-term Max Window End", locationText(summary.maximaLocations?.stMaxWindowEnd)),
   ];
   for (const peak of summary.channelPeaks ?? []) {
     lines.push(
       item(
-        `Ch${peak.channelIndex + 1}`,
+        `Ch${peak.channelIndex + 1}${peak.label && peak.label !== `Ch ${peak.channelIndex + 1}` ? ` (${plainText(peak.label)})` : ""}`,
         `Sample Peak Max ${withUnit(fixed(peak.samplePeakMaxDb), "dBFS")} · True Peak Max ${withUnit(fixed(peak.truePeakMaxDbtp), "dBTP")}`
       )
     );
@@ -203,27 +277,52 @@ export function renderFileAnalysisReportMarkdown(report) {
       )
     );
   }
+  lines.push(
+    "",
+    "### Dialogue",
+    "",
+    item(STATS_META.dialogueIntegrated.label, metricValue("dialogueIntegrated", summary)),
+    item(STATS_META.loudnessToDialogueRatio.label, metricValue("loudnessToDialogueRatio", summary)),
+    item(STATS_META.dialogueCoverage.label, metricValue("dialogueCoverage", summary)),
+    item(STATS_META.dialogueRange.label, metricValue("dialogueRange", summary))
+  );
+  lines.push(
+    ...groupedUnavailable(report),
+    "",
+    ...profileSection(profile, summary),
+    "",
+    "## Analysis Details",
+    "",
+    item(
+      "Analyzed",
+      report.analysis?.analyzedAt ? formatExportedAt(report.analysis.analyzedAt) : MISSING
+    ),
+    item(
+      "Decoded Frames",
+      Number.isFinite(report.analysis?.decodedFrames)
+        ? String(report.analysis.decodedFrames)
+        : MISSING
+    ),
+    item("Engine", plainText(dialogue.engine)),
+    item("Dialogue Algorithm Version", plainText(dialogue.metricAlgorithmVersion)),
+    item("Detector Configuration", plainText(dialogue.engineConfiguration)),
+    item("Multichannel Fusion", plainText(dialogue.multichannelFusion))
+  );
   const layout = loudnessLayout(summary);
-  if (layout != null) lines.push(item("Loudness Layout", layout));
-  if (dialogue.enabled) {
-    lines.push(
-      "",
-      "## Dialogue",
-      "",
-      item("Engine", dialogue.engine ?? MISSING),
-      item(STATS_META.dialogueIntegrated.label, metricValue("dialogueIntegrated", summary)),
-      item(
-        STATS_META.loudnessToDialogueRatio.label,
-        metricValue("loudnessToDialogueRatio", summary)
-      ),
-      item(STATS_META.dialogueCoverage.label, metricValue("dialogueCoverage", summary)),
-      item(STATS_META.dialogueRange.label, metricValue("dialogueRange", summary))
-    );
-    if (dialogue.error) {
-      lines.push(item("Detection Error", dialogueDetectionErrorMessage(dialogue.error)));
-    }
+  if (layout != null) lines.push(item("Loudness Layout", plainText(layout)));
+  if (report.analysis?.channelRoles?.length)
+    lines.push(item("Channel Roles", plainText(report.analysis.channelRoles.join(", "))));
+  if (dialogue.error)
+    lines.push(item("Detection Error", dialogueDetectionErrorMessage(dialogue.error)));
+  const requests = report.analysis?.requests;
+  if (requests) {
+    const keys = [
+      requests.spectralWaveform && "Spectral Waveform",
+      ...(requests.spectrum ?? []).map(({ key }) => key),
+      ...(requests.vectorscope ?? []).map(({ key }) => key),
+      ...(requests.stereoMap ?? []).map(({ key }) => key),
+    ].filter(Boolean);
+    if (keys.length) lines.push(item("Computed Views", plainText(keys.join(", "))));
   }
-  const profile = profileSection(report.loudnessProfile, summary);
-  if (profile.length > 0) lines.push("", ...profile);
   return `${lines.join("\n")}\n`;
 }

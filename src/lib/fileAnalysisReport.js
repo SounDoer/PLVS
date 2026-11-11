@@ -1,8 +1,9 @@
 import { isRuleEmpty } from "./loudnessProfileCatalog.js";
 import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
 import { getSuccessfulFileSession } from "./fileAnalysisSessionRegistry.js";
+import { fileChannelLabels, fileUnavailableReasons } from "./fileAnalysisMeasurements.js";
 
-const REPORT_SCHEMA_VERSION = 2;
+const REPORT_SCHEMA_VERSION = 3;
 const REPORT_TYPE = "fileAnalysis";
 
 /// The Loudness Profile metrics a whole-file report can judge, keyed to the `summary` field that
@@ -68,7 +69,16 @@ export function defaultFileAnalysisReportName(fileSession, extension = "json") {
 /// `profile` is `describeActiveLoudnessProfile`'s result, or null when no profile is in force.
 function buildLoudnessProfileBlock(profile, summary) {
   if (!profile?.document) {
-    return { mode: "off", id: null, name: null, rules: [], byMetric: {} };
+    return {
+      mode: "off",
+      id: null,
+      name: null,
+      referenceLufs: null,
+      rules: [],
+      byMetric: {},
+      overall: "notEvaluated",
+      counts: { ok: 0, warn: 0, fail: 0, notEvaluated: 0 },
+    };
   }
   const rules = (profile.document.rules ?? [])
     .filter((rule) => !isRuleEmpty(rule))
@@ -77,21 +87,32 @@ function buildLoudnessProfileBlock(profile, summary) {
   for (const [metricId, field] of Object.entries(REPORT_PROFILE_METRIC_FIELDS)) {
     if (Number.isFinite(summary[field])) values[metricId] = summary[field];
   }
-  const statuses = loudnessProfileEvaluate(
-    { rules },
-    { values, integratedReady: Number.isFinite(values.integrated) }
-  );
+  const statuses = loudnessProfileEvaluate({ rules }, { values, integratedReady: true });
   const byMetric = {};
+  const counts = { ok: 0, warn: 0, fail: 0, notEvaluated: 0 };
   for (const [metricId, status] of Object.entries(statuses)) {
     // `pending` means "no reading yet"; a completed analysis will never produce one.
     byMetric[metricId] = status === "pending" ? "notEvaluated" : status;
+    counts[byMetric[metricId]] += 1;
   }
+  const overall = !rules.length
+    ? "notEvaluated"
+    : counts.fail
+      ? "fail"
+      : counts.warn
+        ? "warn"
+        : counts.notEvaluated
+          ? "notFullyEvaluated"
+          : "ok";
   return {
     mode: profile.mode === "preview" ? "preview" : "saved",
     id: profile.id ?? null,
     name: profile.name ?? null,
+    referenceLufs: finiteOrNull(profile.document.referenceLufs),
     rules,
     byMetric,
+    counts,
+    overall,
   };
 }
 
@@ -106,7 +127,12 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
   const selectedTrack = metadata.selectedTrack ?? {};
   const dialogue = fileSession.analysisSettings?.dialogue ?? {};
   const dialogueEnabled = dialogue.enabled === true;
-  const dialogueMeasured = dialogueEnabled && Number.isFinite(summary.dialogueIntegrated);
+  const dialogueError = dialogueEnabled ? stringOrNull(summary.dialogueDetectionError) : null;
+  const dialogueMeasured =
+    dialogueEnabled && !dialogueError && Number.isFinite(summary.dialogueIntegrated);
+  const channelCount = finiteOrNull(summary.channelCount ?? summary.channels);
+  const roles = fileSession.analysisSettings?.channelRolesByCount?.[channelCount] ?? null;
+  const channelLabels = fileChannelLabels(summary, roles);
   const ldr =
     dialogueMeasured && Number.isFinite(summary.integratedLufs)
       ? summary.integratedLufs - summary.dialogueIntegrated
@@ -118,7 +144,7 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
   const reportSummary = {
     durationMs: finiteOrNull(summary.durationMs),
     sampleRateHz: finiteOrNull(summary.sampleRateHz),
-    channelCount: finiteOrNull(summary.channelCount ?? summary.channels),
+    channelCount,
     loudnessLayout: stringOrNull(summary.loudnessLayout),
     loudnessLayoutKnown:
       typeof summary.loudnessLayoutKnown === "boolean" ? summary.loudnessLayoutKnown : null,
@@ -138,8 +164,19 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     ),
     channelPeaks: (summary.channelPeaks ?? []).map((peak) => ({
       channelIndex: peak.channelIndex,
+      label: channelLabels[peak.channelIndex] ?? `Ch ${peak.channelIndex + 1}`,
       samplePeakMaxDb: finiteOrNull(peak.samplePeakMaxDb),
       truePeakMaxDbtp: finiteOrNull(peak.truePeakMaxDbtp),
+      samplePeakMaxUnavailableReason: Number.isFinite(peak.samplePeakMaxDb)
+        ? null
+        : fileSession.decodedFrames > 0
+          ? "belowMeasurementFloor"
+          : "insufficientData",
+      truePeakMaxUnavailableReason: Number.isFinite(peak.truePeakMaxDbtp)
+        ? null
+        : fileSession.decodedFrames > 0
+          ? "belowMeasurementFloor"
+          : "insufficientData",
       samplePeakMaxLocation: locationOrNull(peak.samplePeakMaxLocation),
       truePeakMaxLocation: locationOrNull(peak.truePeakMaxLocation),
     })),
@@ -154,9 +191,11 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
           },
     dialogueLoudnessLufs: dialogueMeasured ? summary.dialogueIntegrated : null,
     loudnessToDialogueRatioLu: ldr,
-    dialogueCoveragePercent: dialogueEnabled ? finiteOrNull(summary.dialoguePercent) : null,
+    dialogueCoveragePercent:
+      dialogueEnabled && !dialogueError ? finiteOrNull(summary.dialoguePercent) : null,
     dialogueRangeLu: dialogueMeasured ? finiteOrNull(summary.dialogueLra) : null,
   };
+  const sourceVersion = metadata.sourceVersion;
 
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
@@ -167,16 +206,26 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
       version: options.appVersion ?? null,
     },
     source: {
-      path: stringOrNull(fileSession.path ?? metadata.path),
       fileName: stringOrNull(fileSession.fileName ?? metadata.fileName),
       container: stringOrNull(metadata.container),
-      durationMs: finiteOrNull(metadata.durationMs ?? summary.durationMs),
+      durationMs: finiteOrNull(summary.durationMs),
+      declaredDurationMs: finiteOrNull(metadata.durationMs),
+      version: sourceVersion
+        ? {
+            sha256: stringOrNull(sourceVersion.sha256),
+            byteLength: finiteOrNull(sourceVersion.byteLength),
+          }
+        : null,
       selectedTrack: {
         index: Number.isInteger(selectedTrack.index) ? selectedTrack.index : null,
         codec: stringOrNull(selectedTrack.codec),
         sampleRateHz: finiteOrNull(selectedTrack.sampleRateHz),
         channels: finiteOrNull(selectedTrack.channels),
         language: stringOrNull(selectedTrack.language),
+        title: stringOrNull(selectedTrack.title),
+        channelLayout: stringOrNull(selectedTrack.channelLayout),
+        bitsPerSample: finiteOrNull(selectedTrack.bitsPerSample),
+        sampleFormat: stringOrNull(selectedTrack.sampleFormat),
       },
     },
     analysis: {
@@ -184,18 +233,23 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
         ? new Date(fileSession.analyzedAt).toISOString()
         : (options.analyzedAt ?? null),
       decodedFrames: finiteOrNull(fileSession.decodedFrames),
+      channelRoles: roles ?? (summary.loudnessLayoutKnown ? channelLabels : null),
+      requests: fileSession.analysisSettings?.requests ?? null,
       dialogue: {
         enabled: dialogueEnabled,
         engine: dialogueEnabled ? stringOrNull(dialogue.engine) : null,
         metricAlgorithmVersion: dialogueEnabled ? 1 : null,
         engineConfiguration: dialogueEnabled ? stringOrNull(dialogue.engineConfiguration) : null,
         multichannelFusion: dialogueEnabled ? stringOrNull(dialogue.multichannelFusion) : null,
-        error: dialogueEnabled
-          ? stringOrNull(summary.dialogueDetectionError ?? fileSession.dialogueDetectionError)
-          : null,
+        error: dialogueError,
       },
     },
     summary: reportSummary,
+    unavailableReasons: fileUnavailableReasons(
+      reportSummary,
+      { enabled: dialogueEnabled, error: dialogueError },
+      fileSession.decodedFrames
+    ),
     history: {
       completeTimeline: true,
     },

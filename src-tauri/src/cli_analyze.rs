@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 use crate::dsp::speech::{VadEngineKind, MULTICHANNEL_FUSION_POLICY};
 use crate::file_analysis::session::analyze_file_track_with_dialogue_and_layout;
@@ -72,6 +73,7 @@ pub struct CliAnalyzeSuccessReport {
   pub source: CliAnalyzeSource,
   pub analysis: CliAnalyzeMetadata,
   pub summary: CliAnalyzeSummary,
+  pub unavailable_reasons: BTreeMap<&'static str, &'static str>,
   pub quality_control: CliAnalyzeQualityControl,
 }
 
@@ -96,20 +98,28 @@ pub struct CliAnalyzeApp {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliAnalyzeSource {
-  pub path: String,
   pub file_name: String,
   pub container: Option<String>,
   pub duration_ms: Option<u64>,
+  pub declared_duration_ms: Option<u64>,
+  pub version: Option<CliAnalyzeSourceVersion>,
   pub selected_track: CliAnalyzeTrack,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CliAnalyzeErrorSource {
-  pub path: String,
+pub struct CliAnalyzeSourceVersion {
+  pub byte_length: u64,
+  pub sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CliAnalyzeErrorSource {
+  pub file_name: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliAnalyzeTrack {
   pub index: u32,
@@ -117,12 +127,17 @@ pub struct CliAnalyzeTrack {
   pub sample_rate_hz: Option<u32>,
   pub channels: Option<u16>,
   pub language: Option<String>,
+  pub title: Option<String>,
+  pub channel_layout: Option<String>,
+  pub bits_per_sample: Option<u32>,
+  pub sample_format: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliAnalyzeMetadata {
   pub decoded_frames: u64,
+  pub channel_roles: Option<Vec<String>>,
   pub dialogue: CliAnalyzeDialogue,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub reference_lufs: Option<f64>,
@@ -155,7 +170,7 @@ pub struct CliAnalyzeSummary {
   pub sample_peak_max_l_db: Option<f64>,
   pub sample_peak_max_r_db: Option<f64>,
   pub sample_peak_max_db: Option<f64>,
-  pub channel_peaks: Vec<crate::dsp::summary_meter::ChannelPeakMax>,
+  pub channel_peaks: Vec<CliAnalyzeChannelPeak>,
   pub maxima_locations: Option<crate::dsp::max_locations::MaximaLocations>,
   pub dialogue_loudness_lufs: Option<f64>,
   pub loudness_to_dialogue_ratio_lu: Option<f64>,
@@ -163,6 +178,16 @@ pub struct CliAnalyzeSummary {
   pub dialogue_range_lu: Option<f64>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub dialogue_offset_from_reference_lu: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CliAnalyzeChannelPeak {
+  #[serde(flatten)]
+  pub peak: crate::dsp::summary_meter::ChannelPeakMax,
+  pub label: String,
+  pub sample_peak_max_unavailable_reason: Option<&'static str>,
+  pub true_peak_max_unavailable_reason: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -260,7 +285,8 @@ fn success_report(
   let dialogue_error = dialogue_enabled
     .then(|| result.summary.dialogue_detection_error.clone())
     .flatten();
-  let mut summary = summary_from_metrics(result.summary, dialogue_enabled);
+  let mut summary =
+    summary_from_metrics(result.summary, dialogue_enabled && dialogue_error.is_none());
   if let (Some(dialogue), Some(reference)) = (
     summary.dialogue_loudness_lufs,
     options.dialogue.reference_lufs,
@@ -268,14 +294,23 @@ fn success_report(
     summary.dialogue_offset_from_reference_lu = Some(dialogue - reference);
   }
   let quality_control = evaluate_quality_control(&summary, options.quality_control);
+  let unavailable_reasons = unavailable_reasons(
+    &summary,
+    result.decoded_frames,
+    dialogue_enabled,
+    dialogue_error.is_some(),
+  );
+  let channel_roles = crate::dsp::channel_layouts::roles_for_layout(&summary.loudness_layout)
+    .map(|roles| roles.to_vec());
   CliAnalyzeSuccessReport {
-    schema_version: 2,
+    schema_version: 3,
     command: "analyze".to_string(),
     status: CliAnalyzeStatus::Ok,
     app: app_info(),
-    source: source_from_probe(result.probe),
+    source: source_from_probe(result.probe, summary.duration_ms),
     analysis: CliAnalyzeMetadata {
       decoded_frames: result.decoded_frames,
+      channel_roles,
       dialogue: CliAnalyzeDialogue {
         enabled: dialogue_enabled,
         engine: dialogue_engine,
@@ -287,19 +322,28 @@ fn success_report(
       reference_lufs: options.dialogue.reference_lufs,
     },
     summary,
+    unavailable_reasons,
     quality_control,
   }
 }
 
 fn error_report(path: &str, message: String) -> CliAnalyzeErrorReport {
+  let file_name = path
+    .rsplit(['/', '\\'])
+    .next()
+    .unwrap_or_default()
+    .to_string();
+  let message = if path.is_empty() {
+    message
+  } else {
+    message.replace(path, &file_name)
+  };
   CliAnalyzeErrorReport {
-    schema_version: 2,
+    schema_version: 3,
     command: "analyze".to_string(),
     status: CliAnalyzeStatus::Error,
     app: app_info(),
-    source: CliAnalyzeErrorSource {
-      path: path.to_string(),
-    },
+    source: CliAnalyzeErrorSource { file_name },
     error: CliAnalyzeError { message },
   }
 }
@@ -311,12 +355,16 @@ fn app_info() -> CliAnalyzeApp {
   }
 }
 
-fn source_from_probe(probe: FileAnalysisProbeResult) -> CliAnalyzeSource {
+fn source_from_probe(probe: FileAnalysisProbeResult, duration_ms: Option<u64>) -> CliAnalyzeSource {
   CliAnalyzeSource {
-    path: probe.path,
     file_name: probe.file_name,
     container: probe.container,
-    duration_ms: probe.duration_ms,
+    duration_ms,
+    declared_duration_ms: probe.duration_ms,
+    version: probe.source_version.map(|version| CliAnalyzeSourceVersion {
+      byte_length: version.byte_length,
+      sha256: version.sha256,
+    }),
     selected_track: track_from_metadata(probe.selected_track),
   }
 }
@@ -328,7 +376,82 @@ fn track_from_metadata(track: FileAudioTrackMetadata) -> CliAnalyzeTrack {
     sample_rate_hz: track.sample_rate_hz,
     channels: track.channels,
     language: track.language,
+    title: track.title,
+    channel_layout: track.channel_layout,
+    bits_per_sample: track.bits_per_sample,
+    sample_format: track.sample_format,
   }
+}
+
+fn unavailable_reasons(
+  summary: &CliAnalyzeSummary,
+  frames: u64,
+  dialogue_enabled: bool,
+  dialogue_error: bool,
+) -> BTreeMap<&'static str, &'static str> {
+  let mut reasons = BTreeMap::new();
+  let elapsed = frames as f64 / f64::from(summary.sample_rate_hz.max(1));
+  for (field, value, needed) in [
+    ("integratedLufs", summary.integrated_lufs, 0.4),
+    ("mMaxLufs", summary.m_max_lufs, 0.4),
+    ("stMaxLufs", summary.st_max_lufs, 3.0),
+    ("lra", summary.lra, 3.0),
+  ] {
+    if value.is_none() {
+      reasons.insert(
+        field,
+        if elapsed < needed || (field == "lra" && summary.integrated_lufs.is_some()) {
+          "insufficientData"
+        } else {
+          "belowMeasurementFloor"
+        },
+      );
+    }
+  }
+  for (field, value) in [
+    ("samplePeakMaxDb", summary.sample_peak_max_db),
+    ("truePeakMaxDbtp", summary.true_peak_max_dbtp),
+  ] {
+    if value.is_none() {
+      reasons.insert(
+        field,
+        if frames == 0 {
+          "insufficientData"
+        } else if summary.channel_peaks.is_empty() {
+          "unavailable"
+        } else {
+          "belowMeasurementFloor"
+        },
+      );
+    }
+  }
+  for (field, value) in [
+    ("dialogueLoudnessLufs", summary.dialogue_loudness_lufs),
+    (
+      "loudnessToDialogueRatioLu",
+      summary.loudness_to_dialogue_ratio_lu,
+    ),
+    ("dialogueCoveragePercent", summary.dialogue_coverage_percent),
+    ("dialogueRangeLu", summary.dialogue_range_lu),
+  ] {
+    if value.is_none() {
+      reasons.insert(
+        field,
+        if !dialogue_enabled {
+          "notEnabled"
+        } else if dialogue_error {
+          "detectorFailed"
+        } else if field != "dialogueCoveragePercent"
+          && summary.dialogue_coverage_percent == Some(0.0)
+        {
+          "noDialogue"
+        } else {
+          "insufficientData"
+        },
+      );
+    }
+  }
+  reasons
 }
 
 fn summary_from_metrics(
@@ -351,7 +474,27 @@ fn summary_from_metrics(
     sample_peak_max_l_db,
     sample_peak_max_r_db,
     sample_peak_max_db: finite_or_none(summary.sample_peak_max_db),
-    channel_peaks: summary.channel_peaks,
+    channel_peaks: summary
+      .channel_peaks
+      .into_iter()
+      .map(|peak| {
+        let label = crate::dsp::channel_layouts::roles_for_layout(&summary.loudness_layout)
+          .and_then(|roles| roles.get(peak.channel_index as usize))
+          .cloned()
+          .unwrap_or_else(|| format!("Ch {}", peak.channel_index + 1));
+        let reason = if summary.duration_ms == Some(0) {
+          "insufficientData"
+        } else {
+          "belowMeasurementFloor"
+        };
+        CliAnalyzeChannelPeak {
+          label,
+          sample_peak_max_unavailable_reason: peak.sample_peak_max_db.is_none().then_some(reason),
+          true_peak_max_unavailable_reason: peak.true_peak_max_dbtp.is_none().then_some(reason),
+          peak,
+        }
+      })
+      .collect(),
     maxima_locations: summary.maxima_locations,
     dialogue_loudness_lufs: if dialogue_enabled {
       finite_or_none(summary.dialogue_integrated)
@@ -558,10 +701,11 @@ mod tests {
 
     assert_eq!(report.status(), CliAnalyzeStatus::Error);
     let json = serde_json::to_value(report).expect("serialize");
-    assert_eq!(json["schemaVersion"], 2);
+    assert_eq!(json["schemaVersion"], 3);
     assert_eq!(json["command"], "analyze");
     assert_eq!(json["status"], "error");
-    assert_eq!(json["source"]["path"], "missing.wav");
+    assert_eq!(json["source"]["fileName"], "missing.wav");
+    assert!(json["source"].get("path").is_none());
     assert_eq!(json["error"]["message"], "nope");
   }
 
@@ -676,7 +820,7 @@ mod tests {
     assert_eq!(json["analysis"]["dialogue"]["enabled"], true);
     assert_eq!(json["analysis"]["dialogue"]["engine"], "firered");
     assert_eq!(json["analysis"]["referenceLufs"], -16.0);
-    assert_eq!(json["schemaVersion"], 2);
+    assert_eq!(json["schemaVersion"], 3);
     assert_eq!(json["analysis"]["dialogue"]["metricAlgorithmVersion"], 1);
     assert_eq!(
       json["analysis"]["dialogue"]["multichannelFusion"],

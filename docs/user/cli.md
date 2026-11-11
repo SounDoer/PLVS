@@ -602,7 +602,7 @@ is an array of public path strings.
 
 ### Actions
 
-Transport start/stop and file analyze/reanalyze/stop are actions rather than state mutations.
+Transport start/stop and file analyze/reanalyze/restore/stop are actions rather than state mutations.
 Actions require `--expected-revision`, do not accept `--dry-run`, and return `action`, `status`, the
 latest revision, and final state:
 
@@ -784,6 +784,12 @@ The internal offline `analyze` summary also includes `channelPeaks`, ordered by 
 `channelIndex`, with per-channel `samplePeakMaxDb` and `truePeakMaxDbtp`. Its global peak fields
 cover every decoded channel. Text output labels channels Ch1, Ch2, etc.; unavailable values are
 JSON `null` or a dash in text. See [File Mode reports](file-mode.md#reports) for compatibility fields.
+
+Offline `analyze` schema version 3 omits `source.path` in both success and error documents. Success
+uses `source.fileName`, `source.version` and selected track metadata for identity and records
+decoded duration separately from the declared container estimate. `unavailableReasons` explains
+missing measurements. Offline analysis retains its explicit CLI quality-control thresholds;
+`transport file report` uses the running app's effective Loudness Profile.
 
 Offline `analyze` also preserves File Mode [maximum locations](file-mode.md#maximum-locations)
 in its JSON summary and text report, including the channel for each global peak. Live `capture`
