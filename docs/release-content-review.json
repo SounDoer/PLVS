@@ -1,46 +1,45 @@
 {
   "schemaVersion": 1,
-  "version": "0.25.1",
-  "baselineTag": "v0.25.0",
-  "baselineRevision": "c84cf59bfb4ecc3b019b25d44c9552b11fb28225",
-  "candidateRevision": "ecf1afe4fe7b28cdaad82f4ee7304beda99a6c99",
-  "contentSha256": "f38e8355f3d20dd90b5118b29c85a17db58b7da8c7add78a19db2f61a4544e76",
+  "version": "0.26.0",
+  "baselineTag": "v0.25.1",
+  "baselineRevision": "d831228a7418688989080a038b37fee7ef6186fb",
+  "candidateRevision": "f767f6025bb3e9c1e0a23b82f0a9817099820fb3",
+  "contentSha256": "5dda57a6e56cec25fd30faf3f3cfb0f673c20f7a9879c90de58a1752ef493ec8",
   "reviews": {
     "userGuide": {
-      "status": "unchanged",
-      "rationale": "Reviewed the complete v0.25.0-to-ecf1afe4 range against the 0.25.1 CHANGELOG. The feature and fix commits already describe Welcome preferences, immediate Appearance/Interface Size preview, explicit Continue before update requests, existing-installation preservation, size-aware text surfaces, macOS first-hover/reset behavior and Linux backend preference. No changed promise or non-goal requires a PRD edit.",
+      "status": "updated",
+      "rationale": "The File Mode and CLI chapters already document track selection, saved results and history restoration, exports, peak locations and the File transport. The dialogue and system settings chapters describe the effect of changes on ongoing File and Live measurements.",
       "evidence": [
-        "docs/user/getting-started.md, system-settings.md and workspace.md compared with src/components/UpdateSurfaces.jsx, UpdatePreferencesControls.jsx, src/preferences/interfaceSize.js, src/dock/authoringLayout.js and src-tauri/src/lib.rs",
-        "src/lib/updateController.js and src/dock/dockUpdateStatus.js compared with the update-recovery chapter and regression tests",
-        "CHANGELOG.md 0.25.1 and git diff v0.25.0..ecf1afe4 -- docs/user docs/prd.md"
+        "docs/user/file-mode.md compared with src/hooks/useFileAnalysisReportExport.js and src/lib/fileAnalysisReport.js",
+        "docs/user/cli.md compared with src-tauri/src/cli_analyze.rs and src-tauri/src/cli_control.rs",
+        "docs/user/dialogue-gated-loudness.md and docs/user/system-settings.md compared with File reanalysis and Live reset behavior"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "Product highlights, platform/package scope, privacy summary and shared hero still match the candidate. Linux already states the X11/XWayland requirement; preferring that backend does not change its supported platform scope. Welcome settings do not require a new product highlight. The shared hero re-render has identical decoded pixels.",
+      "rationale": "The existing File Mode highlight describes local analysis and remains accurate as track selection, inspection and export expand. Download and platform scope remain applicable. The shared hero rendered with the same bytes.",
       "evidence": [
-        "README.md What is PLVS and Download compared with CHANGELOG.md 0.25.1 and docs/user/getting-started.md",
-        "artifacts/marketing/homepage-render-2026-11-08T13-23-25-012Z/pixel-comparison.json: landing-hero has zero changed pixels"
+        "README.md What is PLVS and Download compared with CHANGELOG.md 0.26.0",
+        "Homepage recipe report for landing-hero.png"
       ]
     },
     "website": {
-      "status": "unchanged",
-      "rationale": "Reviewed homepage selling points, image references and generated-guide sources against the full release range. No homepage claim or public image needs updating; the guide already contains the shipping behavior and will deploy from the release tag. Privacy review baseline c84cf59bfb4ecc3b019b25d44c9552b11fb28225 through candidate ecf1afe4fe7b28cdaad82f4ee7304beda99a6c99: Welcome adds a UI for the existing local crash-prompt preference. It calls the existing native preference setter before enabling update checks; saving does not send a report. Reports still require explicit Send. Appearance and Interface Size persist locally through existing owners. Update-check error separation changes status/recovery presentation, not requests, payloads, destinations or staging/retention. Dock local IPC adds only allowlisted preference actions. No new collection, upload trigger, provider, storage location, retention or deletion rule was found; backend crash-report/feedback/update transports, policy and workflow/service sources are unchanged. No changed service behavior introduces a live-configuration uncertainty. Policy wording and Effective date are retained; this is a source review, not a renewed audit of deployed service configuration.",
+      "status": "updated",
+      "rationale": "The homepage uses responsive image variants and the generated guide includes the updated File Mode and CLI chapters. Privacy review from d831228a7418688989080a038b37fee7ef6186fb to f767f6025bb3e9c1e0a23b82f0a9817099820fb3: track selection and source fingerprints are local, and File results stay in session memory until the user exports or copies them. Export payloads add measurements, track and profile metadata, omit full local paths, and go to the selected local file or clipboard. Windows recording timing and crop fixes keep the existing local recording path. Startup preference ordering and the synthetic update preview preserve the existing update and crash-report consent and service endpoints. Update acceptance cleanup removes CI evidence after upload and affects test data only. No changes to production recipients, providers, upload payloads or triggers, or retention and deletion rules were found. The policy text and Effective date remain applicable.",
       "evidence": [
-        "website/index.html product sections, website/privacy/index.html Update Checks and Downloads and Crash Reports compared with candidate behavior",
-        "src/components/UpdateSurfaces.jsx save ordering, src/hooks/useCrashReportSetting.js, src/hooks/useCrashReporting.js, src/components/CrashReportDialog.jsx and src/dock/accessoryProtocol.js reviewed",
-        "git diff v0.25.0..ecf1afe4 -- src/lib/crashReporting.js src/hooks/useCrashReportSetting.js src/hooks/useCrashReporting.js src-tauri/src/crash_report.rs src/lib/feedback.js src-tauri/src/update_runtime.rs website/privacy/index.html .github/workflows/: empty",
-        "node scripts/privacy-review.mjs check passed; full release preflight also verifies the generated guide, website and privacy contracts"
+        "website/index.html and docs/user/file-mode.md compared with the 0.26.0 CHANGELOG",
+        "src-tauri/src/file_analysis/source_identity.rs, src/lib/fileAnalysisReport.js, src/lib/fileAnalysisReportMarkdown.js and src/hooks/useFileAnalysisReportExport.js",
+        "src-tauri/src/visual_capture/recording/windows.rs, src/components/UpdateSurfaces.jsx and src/lib/updateController.js",
+        "website/privacy/index.html and production crash-report, feedback and updater native transport sources compared across the release range"
       ]
     },
     "screenshots": {
-      "status": "unchanged",
-      "rationale": "Re-rendered every homepage image from the clean committed candidate with the documented recipe renderer. All eight images have the expected sizes, no page errors and zero changed decoded RGBA pixels compared with their tracked originals. Visually reviewed the hero, rules editor and contact sheet covering both Dock strips, history, both frequency views and multichannel; composition/readability remain applicable. Welcome and status dialogs are not shown in these images. Existing theme/Sharesets tiles have no changed theme, panel or fixture inputs. No publication or provenance rewrite is needed for identical images. These fixture-rendered images do not substitute for native/package acceptance.",
+      "status": "updated",
+      "rationale": "The homepage adds responsive derivatives. All eight documented homepage images rendered on the clean candidate with expected sizes, no page errors and matching SHA-256 hashes against the tracked originals. The visual review covered the hero, both Dock strips, history, both frequency panels, multichannel and the rules editor. The current images remain applicable.",
       "evidence": [
-        "docs/marketing-screenshots.md and scripts/marketing/recipes/homepage-images.json",
-        "artifacts/marketing/homepage-render-2026-11-08T13-23-25-012Z/report.json: clean ecf1afe4 candidate, expected dimensions and no page errors",
-        "artifacts/marketing/homepage-render-2026-11-08T13-23-25-012Z/pixel-comparison.json: zero changed pixels for all eight images",
-        "Visual inspection of landing-hero.png, rules-editor.png and review-contact.png in the same run directory"
+        "artifacts/marketing/homepage-render-2026-11-11T16-42-19-353Z/report.json",
+        "artifacts/marketing/homepage-render-2026-11-11T16-42-19-353Z/review-contact.png",
+        "website/index.html responsive references and website/assets/responsive"
       ]
     }
   }
