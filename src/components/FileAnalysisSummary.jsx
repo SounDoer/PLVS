@@ -3,6 +3,7 @@ import { CircleAlert, Info, LoaderCircle, SlidersHorizontal } from "lucide-react
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { Button } from "./ui/button.jsx";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
+import { HoverTip } from "./HoverTip.jsx";
 import { FileDetailPopover } from "./FileDetailPopover.jsx";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
 import { SortableStatsList } from "./panel-settings/StatsSettings.jsx";
@@ -271,7 +272,7 @@ function SummaryMetrics({ preferences, onChange, report }) {
           <Popover {...overflow.rootProps}>
             <PopoverTrigger asChild>
               <Button
-                variant="secondary"
+                variant="quiet"
                 size="icon"
                 {...overflow.triggerProps}
                 aria-label={hidden.length + " more summary metrics"}
@@ -291,17 +292,21 @@ function SummaryMetrics({ preferences, onChange, report }) {
         ) : null}
       </div>
       <Popover {...options.rootProps}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            {...options.triggerProps}
-            aria-label="summary metrics"
-            title="Summary Metrics"
-          >
-            <SlidersHorizontal className={icon} />
-          </Button>
-        </PopoverTrigger>
+        <HoverTip tip={options.rootProps.open ? "" : "Summary Metrics"} className="shrink-0">
+          <PopoverTrigger asChild>
+            <Button
+              variant="quiet"
+              size="icon"
+              {...options.triggerProps}
+              aria-label="summary metrics"
+            >
+              <SlidersHorizontal
+                className="size-[length:var(--ui-icon-shell-action)]"
+                aria-hidden="true"
+              />
+            </Button>
+          </PopoverTrigger>
+        </HoverTip>
         <PopoverContent
           align="end"
           className="max-h-[var(--radix-popover-content-available-height)] overflow-auto p-1"

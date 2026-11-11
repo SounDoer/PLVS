@@ -17,6 +17,8 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)] focus-visible:bg-[color:var(--ui-secondary-hover)] active:bg-[color:var(--ui-secondary-hover)]",
         ghost: "hover:bg-ui-hover",
+        quiet:
+          "bg-transparent text-muted-foreground hover:bg-ui-hover hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground data-[state=open]:bg-ui-hover data-[state=open]:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       // One size on purpose: 24px, the height of every form control, so a row of mixed controls
@@ -33,7 +35,7 @@ const buttonVariants = cva(
   }
 );
 
-/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & { variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link", size?: "default" | "icon", asChild?: boolean } & React.RefAttributes<HTMLButtonElement>>} */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & { variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "quiet" | "link", size?: "default" | "icon", asChild?: boolean } & React.RefAttributes<HTMLButtonElement>>} */
 const Button = React.forwardRef(function Button(
   { className, variant, size, asChild = false, type, ...props },
   ref

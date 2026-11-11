@@ -79,15 +79,9 @@ export function FileAnalysisHistoryMenu({
   const close = () => navigation.rootProps.onOpenChange(false);
   return (
     <Popover {...navigation.rootProps}>
-      <HoverTip tip="Files" className="shrink-0">
+      <HoverTip tip={navigation.rootProps.open ? "" : "Files"} className="shrink-0">
         <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            {...navigation.triggerProps}
-            aria-label="files"
-            className="data-[state=open]:bg-ui-hover"
-          >
+          <Button variant="quiet" size="icon" {...navigation.triggerProps} aria-label="files">
             <FileStack className="size-[length:var(--ui-icon-shell-action)]" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
