@@ -76,7 +76,7 @@ describe("SourceTransportCluster", () => {
     expect(source).toContain('style={{ fontSize: "var(--ui-fs-status)" }}');
     expect(source).toContain("px-2");
     expect(source).toContain("pl-1.2 pr-1");
-    expect(source).toContain("w-[calc(4.6em+1.875rem)] rounded-full px-1.5");
+    expect(source).toContain("w-[calc(4.6em+1.875rem)] rounded-full px-1");
     expect(source).toContain("items-center justify-center gap-1");
     expect(source).toContain("px-3");
     expect(source).not.toContain("w-[104px]");

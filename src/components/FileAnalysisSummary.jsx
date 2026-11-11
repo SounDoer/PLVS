@@ -257,7 +257,7 @@ function MetricColumn({ metric, report }) {
   const value = report?.summary[metric.field];
   const available = Number.isFinite(value);
   return (
-    <span className="flex w-max min-w-max flex-col items-start px-[var(--ui-shell-pad)] py-0.5 whitespace-nowrap">
+    <span className="flex w-max min-w-max flex-col items-start -my-1 px-[var(--ui-shell-pad)] py-1 whitespace-nowrap">
       <span className={METRIC_ANNOTATION}>{metric.label}</span>
       <span className="text-[length:var(--ui-fs-metric-value)] leading-normal">
         <span className="font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums text-foreground">

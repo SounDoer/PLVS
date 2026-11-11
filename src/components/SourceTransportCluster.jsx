@@ -88,7 +88,7 @@ export function SourceTransportCluster({
         "flex shrink-0 items-center justify-center gap-1 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
         vertical
           ? "dock-transport-action w-full"
-          : "ml-1 h-full w-[calc(4.6em+1.875rem)] rounded-full px-1.5",
+          : "ml-1 h-full w-[calc(4.6em+1.875rem)] rounded-full px-1",
         chrome.action
       )}
     >
