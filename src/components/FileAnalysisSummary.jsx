@@ -24,7 +24,8 @@ import { formatClock } from "../hooks/useSessionTimer.js";
 import { cn } from "../lib/utils.js";
 
 const DEFAULT_METRICS = normalizeFileSummaryMetrics(null);
-const gap = "gap-[var(--ui-metric-inline-gap)]";
+const inlineGap = "gap-[var(--ui-metric-inline-gap)]";
+const metricGap = "gap-[var(--ui-shell-gap)]";
 const icon = "size-[length:var(--ui-icon-management-action)] shrink-0";
 const detailButton =
   "flex shrink-0 items-center p-1 text-muted-foreground hover:bg-ui-hover hover:text-foreground";
@@ -190,7 +191,7 @@ function MetricColumn({ metric, report }) {
   const value = report?.summary[metric.field];
   const available = Number.isFinite(value);
   return (
-    <span className="flex w-max min-w-max flex-col items-start whitespace-nowrap">
+    <span className="flex w-max min-w-max flex-col items-start px-[var(--ui-shell-pad)] py-0.5 whitespace-nowrap">
       <span className={METRIC_ANNOTATION}>{metric.label}</span>
       <span className="text-[length:var(--ui-fs-metric-value)] leading-normal">
         <span className="font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums text-foreground">
@@ -252,13 +253,16 @@ function SummaryMetrics({ preferences, onChange, report }) {
   const hidden = metrics.slice(visibleCount);
   const overflow = useDropdownNavigation(hidden.length ? "file-summary:overflow" : null);
   return (
-    <div className={cn("flex min-w-0 flex-1 items-center justify-end", gap)}>
-      <div ref={area} className={cn("relative flex min-w-0 flex-1 items-center justify-end", gap)}>
+    <div className="flex min-w-0 flex-1 items-center justify-end gap-[var(--ui-header-action-gap)]">
+      <div
+        ref={area}
+        className={cn("relative flex min-w-0 flex-1 items-center justify-end", metricGap)}
+      >
         <div
           aria-hidden="true"
           className="pointer-events-none invisible absolute right-0 flex w-max flex-col"
         >
-          <div ref={sizing} className={cn("flex w-max", gap)}>
+          <div ref={sizing} className={cn("flex w-max", metricGap)}>
             {metrics.map((metric) => (
               <MetricColumn key={metric.id} metric={metric} report={report} />
             ))}
@@ -383,14 +387,14 @@ export function FileAnalysisSummary({
       aria-label="File Summary"
       className={cn(
         "flex w-full min-w-0 items-center bg-[color:var(--ui-surface-panel)] py-[var(--ui-shell-pad)] text-[length:var(--ui-fs-control)]",
-        gap,
+        inlineGap,
         SHELL_SURFACE_BASE
       )}
     >
       <div
         className={cn(
           "flex w-[min(40%,var(--ui-surface-compact-w))] min-w-0 shrink-0 items-center",
-          gap
+          inlineGap
         )}
       >
         <FileAnalysisHistoryMenu
@@ -410,7 +414,7 @@ export function FileAnalysisSummary({
           }}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className={cn("flex min-h-[var(--ui-control-h)] min-w-0 items-center", gap)}>
+          <div className="flex min-h-[var(--ui-control-h)] min-w-0 items-center">
             <span className="truncate font-semibold text-foreground">{fileName}</span>
             {details.length ? (
               <FileDetailPopover
