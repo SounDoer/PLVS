@@ -49,7 +49,8 @@ Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remain
 At the bottom of the **Files** menu, choose **Export Statistics…**. All successful results are selected by
 default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
 previous successful result remains eligible while it is reanalyzing. The export uses the selected
-successful results and the Loudness Profile active when you choose Export CSV.
+successful results and the Loudness Profile active when you choose Export CSV. The suggested
+filename starts with `plvs-file-statistics-` and includes the UTC export timestamp.
 
 Each row contains one result, with numeric measurements and positions in seconds, plus channel
 columns through the highest selected channel count. A nonexistent channel's columns are empty;
@@ -91,6 +92,7 @@ and creates a new entry when the source changed. Failed or cancelled restoration
 
 ## Reports
 
+Exported report filenames start with `plvs-report-` followed by the audio filename stem.
 When analysis completes, the file's row in the **Files** menu can export a report: **Export Markdown**,
 **Export JSON**, or **Copy as Markdown**. Reports include the channel layout and the verdicts of the
 active [Loudness Profile](loudness-profiles.md).

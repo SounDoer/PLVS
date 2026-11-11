@@ -109,7 +109,7 @@ describe("useFileAnalysisReportExport", () => {
     });
 
     expect(mocks.saveFileAnalysisReportFile).toHaveBeenCalledWith(
-      "final_mix-plvs-report.json",
+      "plvs-report-final_mix.json",
       "json"
     );
     expect(mocks.writeTextFile).toHaveBeenCalledWith(
@@ -161,7 +161,7 @@ describe("useFileAnalysisReportExport", () => {
     });
 
     expect(mocks.saveFileAnalysisReportFile).toHaveBeenCalledWith(
-      "final_mix-plvs-report.md",
+      "plvs-report-final_mix.md",
       "markdown"
     );
     expect(mocks.writeTextFile).toHaveBeenCalledWith(

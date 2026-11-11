@@ -39,11 +39,14 @@ export function useFileStatisticsExport({
     setBusy(true);
     try {
       // Capture every result and the same effective Profile before the native save dialog yields.
+      const exportedAt = new Date().toISOString();
       const contents = buildFileAnalysisStatisticsCsv(entries, {
+        exportedAt,
         appVersion,
         loudnessProfile: describeActiveLoudnessProfile(loudnessProfile),
       });
-      const path = await saveFileAnalysisReportFile("plvs-file-statistics.csv", "csv");
+      const defaultName = `plvs-file-statistics-${exportedAt.replaceAll(":", "-")}.csv`;
+      const path = await saveFileAnalysisReportFile(defaultName, "csv");
       if (!path) return false;
       await writeTextFile(path, contents);
       setOpen(false);

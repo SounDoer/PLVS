@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useFileStatisticsExport } from "./useFileStatisticsExport.js";
 import { saveFileAnalysisReportFile } from "../ipc/fileDialog.js";
 import { writeTextFile } from "../ipc/commands.js";
@@ -16,8 +16,10 @@ const entry = {
 const reportOptions = { loudnessProfile: {}, appVersion: "0.0.0", raiseNotice: vi.fn() };
 
 beforeEach(() => vi.resetAllMocks());
+afterEach(() => vi.useRealTimers());
 
 it("captures the selected success before waiting for the native save dialog", async () => {
+  vi.setSystemTime(new Date("2026-11-11T10:33:00.123Z"));
   let resolve;
   vi.mocked(saveFileAnalysisReportFile).mockReturnValue(
     new Promise((done) => {
@@ -35,12 +37,17 @@ it("captures the selected success before waiting for the native save dialog", as
   act(() => {
     pending = result.current.onExport(["one"]);
   });
+  expect(saveFileAnalysisReportFile).toHaveBeenCalledWith(
+    "plvs-file-statistics-2026-11-11T10-33-00.123Z.csv",
+    "csv"
+  );
   rerender({ fileSessions: [{ ...entry, summary: { channels: 2, integratedLufs: -19 } }] });
   await act(async () => {
     resolve("C:/exports/test.csv");
     await pending;
   });
   expect(writeTextFile).toHaveBeenCalledOnce();
+  expect(vi.mocked(writeTextFile).mock.calls[0][1]).toContain(",2026-11-11T10:33:00.123Z,");
   expect(vi.mocked(writeTextFile).mock.calls[0][1]).toContain(",-23,");
   expect(result.current.open).toBe(false);
 });

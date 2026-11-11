@@ -254,7 +254,7 @@ describe("fileAnalysisReport", () => {
 
   it("builds a safe default report filename", () => {
     expect(defaultFileAnalysisReportName({ fileName: "final:mix?.wav" })).toBe(
-      "final-mix--plvs-report.json"
+      "plvs-report-final-mix-.json"
     );
   });
 
@@ -337,7 +337,7 @@ describe("fileAnalysisReport", () => {
 
   it("names a Markdown report with its own extension", () => {
     expect(defaultFileAnalysisReportName({ fileName: "final_mix.wav" }, "md")).toBe(
-      "final_mix-plvs-report.md"
+      "plvs-report-final_mix.md"
     );
   });
 

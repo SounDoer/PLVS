@@ -45,9 +45,9 @@ function stringOrNull(value) {
 }
 
 function basenameWithoutExtension(fileName) {
-  const raw = String(fileName || "plvs-report").replace(/\\/g, "/");
-  const base = raw.split("/").pop() || "plvs-report";
-  return base.replace(/\.[^.]+$/, "") || "plvs-report";
+  const raw = String(fileName ?? "").replace(/\\/g, "/");
+  const base = raw.split("/").pop() ?? "";
+  return base.replace(/\.[^.]+$/, "");
 }
 
 function safeFileStem(fileName) {
@@ -62,8 +62,8 @@ function safeFileStem(fileName) {
 }
 
 export function defaultFileAnalysisReportName(fileSession, extension = "json") {
-  const stem = safeFileStem(fileSession?.fileName || fileSession?.path || "plvs-report");
-  return `${stem || "plvs-report"}-plvs-report.${extension}`;
+  const stem = safeFileStem(fileSession?.fileName || fileSession?.path);
+  return stem ? `plvs-report-${stem}.${extension}` : `plvs-report.${extension}`;
 }
 
 /// `profile` is `describeActiveLoudnessProfile`'s result, or null when no profile is in force.
