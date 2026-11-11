@@ -9,6 +9,7 @@ import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { PanelDataProviders } from "../workspace/PanelDataProviders.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
 import { RecordingIndicator } from "./RecordingIndicator.jsx";
+import { Button } from "./ui/button.jsx";
 import {
   FOOTER_DIVIDER,
   FOOTER_LABEL,
@@ -34,6 +35,7 @@ import {
  *   shellHandlers: Record<"hideFocusControlsNow" | "hideFocusControlsLater" | "showFocusControls" | "handleWindowDrag" | "releaseFocusControlsHold", (...args: any[]) => any>,
  *   headerProps: Parameters<typeof AppHeader>[0],
  *   showFileAnalysisResult: boolean,
+ *   fileHistoryRestore?: { pending: boolean, disabled: boolean, onRestore: () => void } | null,
  *   fileSummaryProps: Parameters<typeof FileAnalysisSummary>[0] | null,
  *   panelChromeData: Partial<import("../workspace/AudioDataContext.jsx").PanelChromeData>,
  *   footer: { sourceLabel: string, loudnessProfileName: string | null, activePresetName: string | null },
@@ -55,6 +57,7 @@ export function AppShell({
   shellHandlers,
   headerProps,
   showFileAnalysisResult,
+  fileHistoryRestore = null,
   fileSummaryProps,
   panelChromeData,
   footer,
@@ -131,7 +134,29 @@ export function AppShell({
                   </div>
                 ) : null}
 
-                <SplitLayout />
+                {fileHistoryRestore ? (
+                  <main
+                    data-visual-capture-surface="workspace"
+                    data-visual-capture-ready="true"
+                    className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[var(--ui-shell-pad)] px-4 text-center text-[length:var(--ui-fs-body)] text-muted-foreground"
+                  >
+                    <p role="status">
+                      {fileHistoryRestore.pending
+                        ? "Preparing browsing history…"
+                        : "Browsing history was released to free memory. Whole-file results are still available."}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      data-ui-target="file-history:restore"
+                      disabled={fileHistoryRestore.disabled}
+                      onClick={fileHistoryRestore.onRestore}
+                    >
+                      Restore History
+                    </Button>
+                  </main>
+                ) : (
+                  <SplitLayout />
+                )}
 
                 {controlsVisible ? (
                   <footer

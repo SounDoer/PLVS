@@ -137,6 +137,7 @@ describe("agent-control app snapshots", () => {
         "transport.live.clear",
         "transport.file.analyze",
         "transport.file.reanalyze",
+        "transport.file.restore",
         "transport.file.stop",
         "transport.file.select",
         "transport.file.remove",

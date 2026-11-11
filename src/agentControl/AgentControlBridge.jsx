@@ -131,6 +131,7 @@ export function AgentControlBridge() {
   const meterRuntime = useMeterRuntime();
   const {
     analyzingFileId,
+    preparingFileId,
     stopFileAnalysis,
     switchSource,
     stopLiveForControl,
@@ -138,6 +139,7 @@ export function AgentControlBridge() {
     clearLiveForControl,
     beginFileAnalysisForControl,
     reanalyzeFileForControl,
+    restoreFileHistoryForControl,
     selectFile,
     removeFile,
     clearFiles,
@@ -206,8 +208,9 @@ export function AgentControlBridge() {
   );
   const executeAgentControlTransport = useCallback(
     async (/** @type {string} */ method, params) => {
+      const fileTaskId = analyzingFileId ?? preparingFileId;
       if (method === "transport.source.live") {
-        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+        if (fileTaskId) await stopFileAnalysis(fileTaskId);
         switchSource("live");
         return {};
       }
@@ -217,7 +220,7 @@ export function AgentControlBridge() {
         return {};
       }
       if (method === "transport.live.start") {
-        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+        if (fileTaskId) await stopFileAnalysis(fileTaskId);
         switchSource("live");
         await startLiveForControl();
         return {};
@@ -248,9 +251,18 @@ export function AgentControlBridge() {
         return { sessionId };
       }
       if (method === "transport.file.reanalyze") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
         switchSource("file");
         const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
         if (!run) throw new Error("FILE reanalysis was not accepted.");
+        await run.accepted;
+        return { sessionId: run.sessionId };
+      }
+      if (method === "transport.file.restore") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        const run = await restoreFileHistoryForControl(params.sessionId);
+        if (!run) throw new Error("History restoration was not accepted.");
         await run.accepted;
         return { sessionId: run.sessionId };
       }
@@ -276,6 +288,7 @@ export function AgentControlBridge() {
     },
     [
       analyzingFileId,
+      preparingFileId,
       beginFileAnalysisForControl,
       clearFiles,
       clearLiveForControl,
@@ -283,6 +296,7 @@ export function AgentControlBridge() {
       currentFileAnalysisSettings,
       meterRuntime.liveLifecycle,
       reanalyzeFileForControl,
+      restoreFileHistoryForControl,
       removeFile,
       selectFile,
       selectSnapshot,

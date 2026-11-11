@@ -54,6 +54,7 @@ export function SourceActionsProvider({ children }) {
     activeFileSession,
     fileSessions,
     analyzingFileId,
+    fileTaskBusy,
     startLive,
     stopLive,
     switchSource,
@@ -98,7 +99,7 @@ export function SourceActionsProvider({ children }) {
   });
   const fileImport = useFileImport({
     files: fileSessions,
-    busy: Boolean(analyzingFileId),
+    busy: fileTaskBusy,
     getSettings: currentFileAnalysisSettings,
     begin: beginRuntimeFileAnalysis,
     select: selectFile,

@@ -34,6 +34,8 @@ function serializeFileSession(session) {
     decodedFrames: Number.isFinite(result.decodedFrames) ? result.decodedFrames : 0,
     analysisSettings: cloneJson(result.analysisSettings),
     error: compactError(session.error),
+    historyReleased: session.historyReleased === true,
+    historyAvailable: Boolean(session.intake),
     ...(session.successfulResult && session.state !== "complete" ? { resultAvailable: true } : {}),
   };
 }
@@ -61,6 +63,7 @@ export function buildTransportSnapshot(runtime, context = {}) {
     files: {
       activeId: runtime.activeFileId ?? null,
       analyzingId: runtime.analyzingFileId ?? null,
+      preparingId: runtime.preparingFileId ?? null,
       sessions: (runtime.fileSessions ?? []).map(serializeFileSession),
     },
   };
@@ -80,12 +83,14 @@ export function transportLifecycleSignature(snapshot) {
     snapshot: snapshot.snapshot,
     files: {
       activeId: snapshot.files.activeId,
+      preparingId: snapshot.files.preparingId ?? null,
       analyzingId: snapshot.files.analyzingId,
-      sessions: snapshot.files.sessions.map(({ id, path, state, error }) => ({
+      sessions: snapshot.files.sessions.map(({ id, path, state, error, historyReleased }) => ({
         id,
         path,
         state,
         error,
+        historyReleased,
       })),
     },
   });
@@ -160,6 +165,7 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     return result({ refusal: { code: "transitionInProgress", state: "restarting" } });
   }
   const targetId = params.sessionId;
+  const fileTaskId = snapshot.files.analyzingId ?? snapshot.files.preparingId;
   const target = targetId
     ? snapshot.files.sessions.find((session) => session.id === targetId)
     : null;
@@ -183,6 +189,7 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     method === "transport.source.file" ||
     method === "transport.file.analyze" ||
     method === "transport.file.reanalyze" ||
+    method === "transport.file.restore" ||
     method === "transport.file.select";
   if (entersFile && context.docked === true) {
     return result({ refusal: { code: "dockActive" } });
@@ -214,13 +221,13 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
   }
 
   if (method === "transport.source.live") {
-    if (snapshot.source === "live" && snapshot.files.analyzingId === null) return result();
-    if (snapshot.files.analyzingId && params.allowStopFileAnalysis !== true) {
+    if (snapshot.source === "live" && !fileTaskId) return result();
+    if (fileTaskId && params.allowStopFileAnalysis !== true) {
       return result({ confirmation: { requiredFlag: "allowStopFileAnalysis" } });
     }
     return result({
       changed: ["transport.source"],
-      effects: snapshot.files.analyzingId ? ["stopFileAnalysis"] : [],
+      effects: fileTaskId ? ["stopFileAnalysis"] : [],
     });
   }
   if (method === "transport.source.file") {
@@ -235,7 +242,7 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     if (["starting", "stopping"].includes(snapshot.live.state)) {
       return result({ refusal: { code: "transitionInProgress", state: snapshot.live.state } });
     }
-    if (snapshot.files.analyzingId && params.allowStopFileAnalysis !== true) {
+    if (fileTaskId && params.allowStopFileAnalysis !== true) {
       return result({ confirmation: { requiredFlag: "allowStopFileAnalysis" } });
     }
     return result({
@@ -243,7 +250,7 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
         ...(snapshot.source !== "live" ? ["transport.source"] : []),
         "transport.live.state",
       ],
-      effects: snapshot.files.analyzingId ? ["stopFileAnalysis"] : [],
+      effects: fileTaskId ? ["stopFileAnalysis"] : [],
     });
   }
   if (method === "transport.live.stop") {
@@ -257,30 +264,22 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     return result({ changed: ["transport.live.data"], effects: ["clearLiveMeasurement"] });
   }
   if (method === "transport.file.analyze") {
-    if (snapshot.files.analyzingId) {
+    if (snapshot.files.analyzingId || snapshot.files.preparingId) {
       return result({ refusal: { code: "analysisInProgress" } });
-    }
-    const retained = [...snapshot.files.sessions];
-    const evictedSessions = [];
-    while (retained.length >= 5) {
-      const index = retained.findIndex(
-        (session) =>
-          session.id !== snapshot.files.activeId &&
-          session.id !== snapshot.files.analyzingId &&
-          ["complete", "stopped", "error"].includes(session.state)
-      );
-      if (index < 0) break;
-      evictedSessions.push(retained[index]);
-      retained.splice(index, 1);
     }
     return result({
       changed: [...(snapshot.source !== "file" ? ["transport.source"] : []), "transport.files"],
       effects: snapshot.live.state === "running" ? ["stopLiveCapture"] : [],
-      evictedSessions,
     });
   }
-  if (method === "transport.file.reanalyze") {
-    if (snapshot.files.analyzingId) {
+  if (method === "transport.file.reanalyze" || method === "transport.file.restore") {
+    if (
+      method === "transport.file.restore" &&
+      (!target?.historyReleased || !target?.probe?.sourceVersion || !target?.summary)
+    ) {
+      return result({ refusal: { code: "historyUnavailable", sessionId: targetId } });
+    }
+    if (snapshot.files.analyzingId || snapshot.files.preparingId) {
       return result({ refusal: { code: "analysisInProgress" } });
     }
     return result({
@@ -290,7 +289,7 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     });
   }
   if (method === "transport.file.stop") {
-    if (snapshot.files.analyzingId !== targetId) {
+    if (snapshot.files.analyzingId !== targetId && snapshot.files.preparingId !== targetId) {
       return result({ refusal: { code: "fileAnalysisNotActive", sessionId: targetId } });
     }
     return result({

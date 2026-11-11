@@ -6,6 +6,24 @@ import { LoudnessHistorySlab } from "./LoudnessHistorySlab.js";
 const HIST_MAX = 5;
 const SR = 48000;
 
+it("stores unknown-duration File history without preallocating the logical capacity", () => {
+  const intake = new FrameIntake();
+  const capacity = Number.MAX_SAFE_INTEGER;
+  for (let index = 0; index < 3; index++) {
+    const row = {
+      timestampMs: index * 100,
+      waveformMin: [-0.5, -0.25],
+      waveformMax: [0.5, 0.25],
+      lufsMomentary: -23,
+      stereoMapByKey: { map: { bandCentersHz: [1000], pl: [1], pr: [0.5], c: [0.5] } },
+    };
+    intake.pushHistRow(row, capacity);
+    intake.pushVisualHistRow(row, capacity, SR);
+  }
+  expect(intake.getLoudnessHistory().length).toBe(3);
+  expect(intake.getFrequencyChannelMarkers().length).toBe(3);
+});
+
 function makeRow(overrides = {}) {
   return {
     lufsMomentary: -23,

@@ -9,6 +9,64 @@ function mount() {
 }
 
 describe("useFileSessionLedger", () => {
+  it.each(["complete", "cancel", "error"])(
+    "restoration %s preserves original statistics and provenance",
+    (outcome) => {
+      const { result } = renderHook(() => useFileSessionLedger({ budget: 0 }));
+      let id;
+      act(() => {
+        id = result.current.beginRun("C:/a.wav", { dialogue: { engine: "firered" } });
+      });
+      const summary = { integratedLufs: -23 };
+      act(() => {
+        result.current.updateSession(id, (entry) => ({
+          ...entry,
+          state: "complete",
+          summary,
+          analyzedAt: 10,
+        }));
+        result.current.setAnalyzingFileId(null);
+        result.current.beginRun("C:/b.wav", {});
+      });
+      const other = result.current.activeFileSession.id;
+      act(() => result.current.markStopped(other));
+      expect(result.current.fileHistory.sessionsById[id].historyReleased).toBe(true);
+      expect(result.current.fileHistory.sessionsById[id].intake).toBeNull();
+      act(() => result.current.select(id));
+      expect(result.current.validRunRequest).toBeNull();
+      act(() =>
+        result.current.rerun(id, "C:/a.wav", { dialogue: { engine: "firered" } }, null, "restore")
+      );
+      const intake = result.current.activeFileSession.attempt.intake;
+      if (outcome === "complete") {
+        act(() => {
+          result.current.updateSession(id, (entry) => ({
+            ...entry,
+            state: "complete",
+            summary: { integratedLufs: -22 },
+            analyzedAt: 20,
+          }));
+          result.current.setAnalyzingFileId(null);
+        });
+      } else if (outcome === "cancel") {
+        act(() => result.current.markStopped(id));
+      } else {
+        act(() =>
+          result.current.updateSession(id, (entry) => ({
+            ...entry,
+            state: "error",
+            error: "failed",
+          }))
+        );
+      }
+      const file = result.current.activeFileSession;
+      expect(file.successfulResult.summary).toBe(summary);
+      expect(file.successfulResult.analyzedAt).toBe(10);
+      expect(file.historyReleased).toBe(outcome !== "complete");
+      expect(file.intake).toBe(outcome === "complete" ? intake : null);
+    }
+  );
+
   it("beginRun mints a session, marks it analyzing, and issues a valid run request", () => {
     const { result } = mount();
     let sessionId;

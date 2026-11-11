@@ -10,7 +10,7 @@ Command syntax and arguments are in [`generated/commands.md`](generated/commands
 
 All Transport commands except `inspect` and `file report` require `--expected-revision`. `source live`, `source file`,
 `live clear`, `file select`, `file remove`, and `file clear` are state mutations and support
-`--dry-run`. `live start`, `live stop`, `file analyze`, `file reanalyze`, and `file stop` are
+`--dry-run`. `live start`, `live stop`, `file analyze`, `file reanalyze`, `file restore`, and `file stop` are
 actions and reject `--dry-run`.
 
 Source commands change only the selected LIVE/FILE source and never open a native file picker or
@@ -88,32 +88,35 @@ its reason as the last error.
 ## FILE lifecycle
 
 FILE sessions are process-local analysis results and are not persisted across application restarts.
-Each public summary contains immutable session ID, canonical absolute path, file name, lifecycle
-state, progress, public probe metadata, summary, timestamps, decoded frames, history-truncation
-status, compact error, and the analysis-setting snapshot used for that run. Intake buffers and other
+Each public summary contains immutable session ID, absolute path, file name, lifecycle
+state, progress, public probe metadata, summary, timestamps, decoded frames, history availability,
+compact error, and the analysis-setting snapshot used for that run. Intake buffers and other
 implementation objects are never exposed.
 
 The public lifecycle is `probing`, `analyzing`, `complete`, `stopped`, or `error`. `file analyze`
 resolves a relative CLI path before transport, validates/probes it, creates a new ID, selects FILE,
-and returns after Rust accepts analysis; it does not block until completion. Repeating the same path
-creates another session, matching GUI behavior. A failure before acceptance fails the command and
+and returns after Rust accepts analysis; it does not block until completion. Repeating this explicit
+CLI action creates another session; GUI reimport selects an existing unchanged file/track instead.
+A failure before acceptance fails the command and
 leaves an inspectable error session when an ID was already allocated.
 
-Only one file analysis may run. Analyze or reanalyze while another is active fails with
-`analysisInProgress`. Reanalyze preserves ID and path, replaces prior results, snapshots current
-analysis settings, and needs no extra force flag because the verb is explicit. Stop requires the
-expected session ID, retains partial data and last progress, and maps to public `stopped`; an ID that
-is no longer the analyzing one fails without stopping a newer run.
+Only one File task may run. Analyze, reanalyze or restore while another task is active fails with
+`analysisInProgress`. Reanalyze preserves the track and snapshots current analysis settings. It
+replaces a result only on success; changed source content creates a new ID. Stop targets the
+expected session ID, returning to `complete` when a successful result is retained, or `stopped`
+when there is none. An ID that is no longer preparing or analyzing cannot stop a newer run.
 
 Select requires an existing ID, changes the source to FILE, and never reruns it. Remove deletes only
 the named session, stopping it first when necessary; clear stops any run and deletes the entire FILE
 ledger. Their explicit destructive names need no additional force flag. Missing IDs are
 `fileSessionNotFound`, never successful false values.
 
-The current GUI retains at most five FILE sessions and may evict the oldest completed, stopped, or
-error entry that is neither active nor analyzing when a new entry exceeds that limit. Agent Control
-keeps this behavior but never hides it: analyze returns `evictedSessions` summaries after acceptance. Analyze is an action and does not
-support dry-run; `file remove` and `file clear` can preview the sessions they would delete.
+Completed statistics are retained until removed, cleared or the application exits. Browsing history
+is managed independently by resource budget. Inspection exposes `historyReleased`,
+`historyAvailable` and `files.preparingId`. `file restore <session-id>` rebuilds released history
+with the original source version, track and analysis conditions while preserving statistics and
+provenance. Changed or unavailable sources cannot restore the old history. `file remove` and
+`file clear` can preview the sessions they would delete.
 
 Entering FILE by source, analyze, or select is refused while Dock is active; Agent Control never exits
 Dock implicitly. Leaving an active FILE analysis for LIVE requires `--allow-stop-file-analysis` and
@@ -148,10 +151,10 @@ report that the GUI's Export button saves, built by the same frontend builder. I
 selects the session, changes the source, starts or stops analysis, or increments revision, and it
 works in either source mode while the session is retained.
 
-Only `complete` sessions are reported. An unknown ID fails with `fileSessionNotFound`; a `probing`,
-`analyzing`, `stopped`, or `error` session fails with `fileAnalysisNotComplete`, whose details carry
-the session ID and public state. A stopped session's partial summary does not describe the whole
-file, and the report schema has no field that marks a partial report.
+Only successful results are reported. A replacement attempt can have `resultAvailable: true`
+even while running or after failure; the report then uses the previous success. An unknown ID
+fails with `fileSessionNotFound`; an entry without a successful result fails with
+`fileAnalysisNotComplete`, whose details carry the session ID and public state.
 
 The success result is `{ revision, sessionId, report }`. `--out` moves the report into a file and
 replaces `result.report` with `result.out`, exactly as library and configuration export do; see

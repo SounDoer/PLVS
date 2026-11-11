@@ -111,6 +111,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `transport.live.clear` | `transport live clear` | runningApp / mutation | required | yes | none |
 | `transport.file.analyze` | `transport file analyze` | runningApp / action | required | no | none |
 | `transport.file.reanalyze` | `transport file reanalyze` | runningApp / action | required | no | none |
+| `transport.file.restore` | `transport file restore` | runningApp / action | required | no | none |
 | `transport.file.stop` | `transport file stop` | runningApp / action | required | no | none |
 | `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none |
 | `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none |
@@ -2865,6 +2866,33 @@ Reanalyze a file session.
 
 ```text
 plvs-cli transport file reanalyze <session-id> --json --expected-revision <n>
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `session-id` | `sessionId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+
+## `transport.file.restore`
+
+Restore released browsing history using the original analysis conditions.
+
+- CLI path: `transport file restore`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.restore`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport file restore <session-id> --json --expected-revision <n>
 ```
 
 ### Positionals

@@ -932,6 +932,7 @@ describe("normalizeAgentControlRequest", () => {
     ["transport.live.stop", { expectedRevision: 1 }],
     ["transport.file.analyze", { path: "C:\\audio\\mix.wav", expectedRevision: 1 }],
     ["transport.file.reanalyze", { sessionId: "file-1", expectedRevision: 1 }],
+    ["transport.file.restore", { sessionId: "file-1", expectedRevision: 1 }],
     ["transport.file.stop", { sessionId: "file-1", expectedRevision: 1 }],
   ])("normalizes %s action options without dry-run", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({

@@ -23,7 +23,11 @@ function transportMutationMatches(method, params, execution, snapshot) {
     return snapshot.source === "live" && snapshot.live.state === "running";
   }
   if (method === "transport.live.stop") return snapshot.live.state === "stopped";
-  if (method === "transport.file.analyze" || method === "transport.file.reanalyze") {
+  if (
+    method === "transport.file.analyze" ||
+    method === "transport.file.reanalyze" ||
+    method === "transport.file.restore"
+  ) {
     return (
       snapshot.source === "file" &&
       snapshot.files.analyzingId === sessionId &&
@@ -35,8 +39,9 @@ function transportMutationMatches(method, params, execution, snapshot) {
   if (method === "transport.file.stop") {
     return (
       snapshot.files.analyzingId !== sessionId &&
+      snapshot.files.preparingId !== sessionId &&
       snapshot.files.sessions.some(
-        (session) => session.id === sessionId && session.state === "stopped"
+        (session) => session.id === sessionId && ["stopped", "complete"].includes(session.state)
       )
     );
   }
@@ -179,7 +184,8 @@ async function mutate(ctx) {
           action: request.method,
           status:
             request.method === "transport.file.analyze" ||
-            request.method === "transport.file.reanalyze"
+            request.method === "transport.file.reanalyze" ||
+            request.method === "transport.file.restore"
               ? "accepted"
               : "completed",
         }
@@ -256,6 +262,7 @@ export const transportHandlers = {
   "transport.file.analyze": { run: mutate },
   "transport.file.clear": { run: mutate },
   "transport.file.reanalyze": { run: mutate },
+  "transport.file.restore": { run: mutate },
   "transport.file.remove": { run: mutate },
   "transport.file.select": { run: mutate },
   "transport.file.stop": { run: mutate },

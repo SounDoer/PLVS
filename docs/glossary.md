@@ -36,6 +36,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Split                  | Dividing the Workspace into side-by-side or stacked panels by dragging a panel to an edge           | 分屏             |                             |
 | Tab                    | A panel dropped onto another panel's title, sharing its space                                       | 标签页           |                             |
 | Source                 | What PLVS measures: system playback, a physical input, an application, or a file                    | 信号源           | device, input               |
+| Restore History        | Rebuild released File browsing history using the original source, track and analysis conditions     | 恢复浏览历史     |                             |
 | Sources                | The toolbar menu that chooses the Source, in the window and in the Dock                             | 信号源菜单       | Device                      |
 | Automatic              | The Source that follows the default system output                                                   | 自动             |                             |
 | Live                   | Metering the current signal as it arrives                                                           | 实时             |                             |

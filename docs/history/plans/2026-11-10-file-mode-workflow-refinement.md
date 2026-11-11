@@ -16,10 +16,15 @@
 | 2. Successful result / replacement staging | Core implemented in `fb7f29b1` | Retained result/export, history routing and coherent display replacement tests passed; desktop acceptance remains                                                                                    |
 | 3. Frozen conditions / attempt isolation   | Implemented in `3dd923ef`      | Deferred probe cancellation, stale same-path events, final-frame settlement, stop failure and request snapshot tests passed; native validation test and compile passed                               |
 | 4. Source/track identity and metadata      | Core implemented               | Track picker/import/replacement regressions passed (59 frontend tests), typecheck passed, real FFmpeg file-analysis smoke passed (28 native tests); fingerprint timing and desktop acceptance remain |
-| 5–9                                        | Pending                        | No completion claim                                                                                                                                                                                  |
+| 5. History accounting and restore          | Core implemented               | 483 focused frontend tests, typecheck and native CLI parsing passed; memory baseline recorded and Windows File decode verified. Real desktop eviction/restore and process memory acceptance remain.  |
+| 6–9                                        | Pending                        | No completion claim                                                                                                                                                                                  |
 
-Execution resumed after the host restart. Stage 4 integration and focused verification completed;
-stage 5 memory accounting and history restoration are next. No push or merge has been performed.
+Stage 4 integration and focused verification completed in `86c861e7`. Stage 5 retains all results
+and implements the measured File-only history target and explicit restore. See the
+[history validation record](../notes/2026-11-11-file-history-budget-validation.md). Windows dev-app
+baseline captures are in `artifacts/file-mode-history/before-live-ready.png` and
+`artifacts/file-mode-history/before-file-result.png`. The restart acceptance exposed overlapping
+first-run prompts, fixed separately in `5640ebf6`. No push or merge has been performed.
 
 ## Execution rules
 

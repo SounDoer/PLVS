@@ -1,4 +1,5 @@
 import { RingBuffer } from "./RingBuffer.js";
+import { ChunkedSequence } from "./ChunkedSequence.js";
 import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
@@ -152,6 +153,7 @@ export class FrameIntake {
     this._waveformHistoryIndex = new WaveformHistoryIndex(1);
     this._audioSnap = this._scalarHistory.audio;
     this._corrSnap = this._scalarHistory.correlation;
+    /** @type {{ length: number, capacity: number, push: (value: any) => void, at: (index: number) => any, toArray: () => any[], clear: () => void }} */
     this._frequencyChannelMarkers = new RingBuffer(1);
     this._sparseFrequencyChannelMarkers = new SparseHistoryMarkers(1);
     this._channelMetadataSnap = new ChannelMetadataHistory(1);
@@ -180,7 +182,10 @@ export class FrameIntake {
     const scalarHistory = new ScalarHistoryStore(capacity);
     const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
     const waveformHistoryIndex = new WaveformHistoryIndex(capacity);
-    const frequencyChannelMarkers = new RingBuffer(capacity);
+    // Unknown-duration files use an unbounded logical capacity. Avoid preallocating an
+    // impossible JS array while retaining Live's existing small-ring behavior.
+    const frequencyChannelMarkers =
+      capacity > 0xffffffff ? new ChunkedSequence(capacity) : new RingBuffer(capacity);
     const sparseFrequencyChannelMarkers = new SparseHistoryMarkers(capacity);
     const channelMetadataSnap = new ChannelMetadataHistory(capacity);
     this._histCapacity = capacity;

@@ -5550,6 +5550,61 @@
       }
     },
     {
+      "id": "transport.file.restore",
+      "family": "transport",
+      "path": ["transport", "file", "restore"],
+      "usage": "plvs-cli transport file restore <session-id> --json --expected-revision <n>",
+      "summary": "Restore released browsing history using the original analysis conditions.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.restore",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "expectedRevision"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
       "id": "transport.file.stop",
       "family": "transport",
       "path": ["transport", "file", "stop"],

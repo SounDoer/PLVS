@@ -90,6 +90,26 @@ describe("AnalysisSessionProvider", () => {
     presetsStore.reset();
   });
 
+  it("preserves a File attempt's original computed views while current panels differ", () => {
+    const seen = mount();
+    act(() => {
+      seen.runtime.switchSource("file");
+      seen.runtime.beginFileAnalysis("C:/mix.wav", {});
+    });
+    const intake = seen.assembly.routing.fileAnalysisIntake;
+    for (let i = 0; i < 9; i++) {
+      intake.pushVisualHistRow(
+        {
+          timestampMs: i * 1000,
+          spectrumByKey: { "original-file-request": { bandCentersHz: [1000], smoothDb: [-23] } },
+        },
+        100,
+        48000
+      );
+    }
+    expect(intake.getVisualSpectrumHistByKey("original-file-request").length).toBe(9);
+  });
+
   it("offers stereo choices while idle and follows the channel count", () => {
     const seen = mount();
 

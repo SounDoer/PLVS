@@ -67,8 +67,7 @@ export function AnalysisSessionProvider({ children }) {
   const { setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   const { sourceMode } = useMeterRuntime();
   const { setSelectedOffset } = useMeterDisplayState();
-  const { routing, fileConditionsRef } = useMeterRuntimeAssembly();
-  const { ingestingIntakes } = routing;
+  const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
   const { channelCount, displayAudio } = useDisplaySnapshot();
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
   const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
@@ -197,23 +196,12 @@ export function AnalysisSessionProvider({ children }) {
       ),
     [workspaceState, effectiveWorkspace, dockPanelInstances, effectiveDockPanelInstances]
   );
-  // Sweeping runs inside pushVisualHistRow -- i.e. only on the intakes that INGEST frames
-  // (routing's `ingestingIntakes`: live + file-analysis), not on `intakeRef.current`, which is
-  // whichever intake is DISPLAYED. Those differ across a source switch, and `intakeRef` is a
-  // stable ref object, so an effect keyed on it would never re-fire when only its `.current`
-  // changes -- go live, switch to file, edit panels there, switch back, and the live intake is
-  // still holding the key set from before the excursion (switchSource resets its rows but not
-  // `_retainedVisualKeys`). It then ingests under the newly-keyed panel and, a grace period later,
-  // sweeps that panel's history away as unretained. Target the ingesting intakes directly instead,
-  // so the set follows what is actually writing rows. `fileDisplayIntake` needs nothing of its
-  // own: it is either the same object as `fileAnalysisIntake`, or a frozen session that receives
-  // no frames and therefore never sweeps.
+  // Live follows the open panels and its own rolling window even when File is displayed.
+  // A File attempt owns the complete histories of its accepted requests; applying current Live
+  // settings here would silently truncate a long file or discard the very data being restored.
   useEffect(() => {
-    const windowMs = historyRetentionSec * 1000;
-    for (const intake of ingestingIntakes) {
-      intake?.setRetainedVisualKeys(retainedAnalysisKeys, windowMs);
-    }
-  }, [ingestingIntakes, retainedAnalysisKeys, historyRetentionSec]);
+    liveIntakeRef.current?.setRetainedVisualKeys(retainedAnalysisKeys, historyRetentionSec * 1000);
+  }, [liveIntakeRef, retainedAnalysisKeys, historyRetentionSec]);
   const { channelRoles } = channelLabelRuntime;
   useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", onClearRef);
   const {

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FrameIntake } from "../lib/FrameIntake.js";
+import { enforceFileHistoryBudget, FILE_HISTORY_BUDGET_BYTES } from "../lib/fileHistoryBudget.js";
 import {
   addFileEntry,
   clearFileHistory,
@@ -20,10 +21,18 @@ import {
  * same seam style as useCaptureTransport. See
  * docs/history/specs/2026-07-08-c2-app-state-ownership-design.md.
  */
-export function useFileSessionLedger() {
+export function useFileSessionLedger({
+  budget = FILE_HISTORY_BUDGET_BYTES,
+  protectedFileId = null,
+} = {}) {
   const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());
   const [fileRunRequest, setFileRunRequest] = useState(null);
   const fileEntrySeqRef = useRef(0);
+  const lastBudgetCheckRef = useRef(0);
+  const enforce = useCallback(
+    (history) => enforceFileHistoryBudget(history, budget, protectedFileId),
+    [budget, protectedFileId]
+  );
 
   const fileSessions = useMemo(
     () => fileHistory.order.map((id) => fileHistory.sessionsById[id]).filter(Boolean),
@@ -40,80 +49,111 @@ export function useFileSessionLedger() {
       ? fileRunRequest
       : null;
 
-  const updateSession = useCallback((/** @type {string} */ sessionId, updater) => {
-    setFileHistory((history) => updateFileEntry(history, sessionId, updater));
-  }, []);
+  const updateSession = useCallback(
+    (/** @type {string} */ sessionId, updater) => {
+      // Lifecycle/progress updates bound growing protected storage without traversing it per frame.
+      const now = performance.now();
+      const check = now - lastBudgetCheckRef.current >= 1000;
+      if (check) lastBudgetCheckRef.current = now;
+      setFileHistory((history) => {
+        const next = updateFileEntry(history, sessionId, updater);
+        return check ? enforce(next) : next;
+      });
+    },
+    [enforce]
+  );
 
-  const setAnalyzingFileId = useCallback((nextOrUpdater) => {
-    setFileHistory((history) => {
-      const nextId =
-        typeof nextOrUpdater === "function"
-          ? nextOrUpdater(history.analyzingFileId)
-          : nextOrUpdater;
-      const analyzingFileId = nextId && history.sessionsById[nextId] ? nextId : null;
-      if (analyzingFileId === history.analyzingFileId) return history;
-      return { ...history, analyzingFileId };
-    });
-  }, []);
+  const setAnalyzingFileId = useCallback(
+    (nextOrUpdater) => {
+      setFileHistory((history) => {
+        const nextId =
+          typeof nextOrUpdater === "function"
+            ? nextOrUpdater(history.analyzingFileId)
+            : nextOrUpdater;
+        const analyzingFileId = nextId && history.sessionsById[nextId] ? nextId : null;
+        if (analyzingFileId === history.analyzingFileId) return history;
+        return enforce({ ...history, analyzingFileId });
+      });
+    },
+    [enforce]
+  );
 
   /** Mint a new session for `path` and mark it analyzing. Returns the session id. */
-  const beginRun = useCallback((path, analysisSettings, probe = null, onCreated = null) => {
-    analysisSettings = structuredClone(analysisSettings ?? {});
-    const runId = fileEntrySeqRef.current + 1;
-    fileEntrySeqRef.current = runId;
-    const sessionId = `file-analysis-${Date.now()}-${runId}`;
-    onCreated?.(sessionId);
-    const intake = new FrameIntake();
-    setFileHistory((history) =>
-      startFileAnalysisEntry(
-        addFileEntry(history, {
-          id: sessionId,
-          path,
-          intake,
-          analysisSettings,
-          metadata: probe,
-        }),
-        sessionId,
-        { analysisSettings }
-      )
-    );
-    setFileRunRequest({ sessionId, filePath: path, runId, analysisSettings, probe });
-    return sessionId;
-  }, []);
+  const beginRun = useCallback(
+    (path, analysisSettings, probe = null, onCreated = null) => {
+      analysisSettings = structuredClone(analysisSettings ?? {});
+      const runId = fileEntrySeqRef.current + 1;
+      fileEntrySeqRef.current = runId;
+      const sessionId = `file-analysis-${Date.now()}-${runId}`;
+      onCreated?.(sessionId);
+      const intake = new FrameIntake();
+      setFileHistory((history) =>
+        enforce(
+          startFileAnalysisEntry(
+            addFileEntry(history, {
+              id: sessionId,
+              path,
+              intake,
+              analysisSettings,
+              metadata: probe,
+            }),
+            sessionId,
+            { analysisSettings }
+          )
+        )
+      );
+      setFileRunRequest({ sessionId, filePath: path, runId, analysisSettings, probe });
+      return sessionId;
+    },
+    [enforce]
+  );
 
   /** Re-analyze an existing entry with fresh settings. */
   const rerun = useCallback(
-    (/** @type {string} */ entryId, path, analysisSettings, probe = null) => {
+    (/** @type {string} */ entryId, path, analysisSettings, probe = null, kind = "analyze") => {
       analysisSettings = structuredClone(analysisSettings ?? {});
       const runId = fileEntrySeqRef.current + 1;
       fileEntrySeqRef.current = runId;
       const intake = new FrameIntake();
       setFileHistory((history) =>
-        startFileAnalysisEntry(history, entryId, { analysisSettings, intake })
+        enforce(
+          startFileAnalysisEntry(history, entryId, {
+            analysisSettings,
+            intake,
+            kind,
+            preserveSelection: true,
+          })
+        )
       );
       setFileRunRequest({ sessionId: entryId, filePath: path, runId, analysisSettings, probe });
     },
-    []
+    [enforce]
   );
 
   /** Record that `sessionId`'s run stopped: entry back to ready, no analyzing id, no run request. */
-  const markStopped = useCallback((/** @type {string} */ sessionId) => {
-    setFileRunRequest(null);
-    setFileHistory((history) => {
-      if (history.analyzingFileId !== sessionId) return history;
-      const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
-        ...entry,
-        state: entry.successfulResult ? "complete" : "ready",
-        error: null,
-        attempt: null,
-      }));
-      return { ...updatedHistory, analyzingFileId: null };
-    });
-  }, []);
+  const markStopped = useCallback(
+    (/** @type {string} */ sessionId) => {
+      setFileRunRequest(null);
+      setFileHistory((history) => {
+        if (history.analyzingFileId !== sessionId) return history;
+        const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
+          ...entry,
+          state: entry.successfulResult ? "complete" : "ready",
+          error: null,
+          attempt: null,
+        }));
+        return enforce({ ...updatedHistory, analyzingFileId: null });
+      });
+    },
+    [enforce]
+  );
 
-  const select = useCallback((/** @type {string} */ id) => {
-    setFileHistory((history) => selectFileEntry(history, id));
-  }, []);
+  const select = useCallback(
+    (/** @type {string} */ id) => {
+      setFileHistory((history) => enforce(selectFileEntry(history, id)));
+    },
+    [enforce]
+  );
 
   const remove = useCallback((/** @type {string} */ id) => {
     setFileHistory((history) => removeFileEntry(history, id));

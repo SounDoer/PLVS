@@ -34,6 +34,17 @@ Reanalysis retains the previous completed result and its browsing history until 
 succeeds. You can continue inspecting and exporting that result while the new run is in progress.
 Cancelling or failing a replacement does not discard the previous successful result.
 
+Completed statistics remain available for every entry during the session. Browsing histories share
+an internal resource budget; PLVS releases the least recently viewed eligible history first. The
+current file and an active task's previous/staging histories are protected, so this budget is a
+retention target rather than a hard memory ceiling. Live history is managed independently.
+
+When history has been released, selecting the file keeps its statistics and reports available and
+does not start analysis. Choose **Restore History** to rebuild browsing data with the original
+track and analysis conditions. Restoration does not replace the statistical result or its analysis
+time. Missing or changed sources cannot restore the old history; **Reanalyze** uses current settings
+and creates a new entry when the source changed. Failed or cancelled restoration preserves the result.
+
 ## Reports
 
 When analysis completes, the summary can be exported as a report: **Export Markdown**,

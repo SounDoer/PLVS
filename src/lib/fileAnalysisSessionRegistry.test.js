@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FrameIntake } from "./FrameIntake.js";
 import {
-  FILE_ANALYSIS_HISTORY_LIMIT,
   addFileEntry,
   clearFileHistory,
   createInitialFileHistory,
@@ -136,54 +135,19 @@ describe("fileAnalysisSessionRegistry", () => {
     expect(history.activeFileId).toBe("two");
   });
 
-  it("retains at most five entries by evicting the oldest non-active completed/error/ready entry", () => {
+  it("keeps every result regardless of file count and touches recency only on user selection", () => {
     let history = createInitialFileHistory();
-    for (let index = 1; index <= FILE_ANALYSIS_HISTORY_LIMIT; index++) {
+    for (let index = 1; index <= 12; index++) {
       history = makeEntry(history, `entry-${index}`, { createdAt: index });
-      history =
-        index === 2
-          ? markFileAnalysisError(history, `entry-${index}`, { error: "failed", analyzedAt: index })
-          : markFileAnalysisComplete(history, `entry-${index}`, {
-              summary: { durationMs: index },
-              decodedFrames: index,
-              analyzedAt: index,
-            });
+      history = markFileAnalysisComplete(history, `entry-${index}`, {
+        summary: { integratedLufs: -23 },
+        now: 100,
+      });
     }
-
-    history = addFileEntry(history, {
-      id: "entry-6",
-      path: "C:\\mixes\\entry-6.wav",
-      intake: new FrameIntake(),
-      createdAt: 6,
-    });
-
-    expect(history.order).toHaveLength(FILE_ANALYSIS_HISTORY_LIMIT);
-    expect(history.sessionsById["entry-1"]).toBeUndefined();
-    expect(history.sessionsById["entry-2"]).toBeDefined();
-    expect(history.activeFileId).toBe("entry-6");
-  });
-
-  it("leaves history temporarily over limit when only active or analyzing entries are removable", () => {
-    let history = createInitialFileHistory();
-    for (let index = 1; index <= FILE_ANALYSIS_HISTORY_LIMIT; index++) {
-      history = makeEntry(history, `running-${index}`, { createdAt: index });
-      history = updateFileEntry(history, `running-${index}`, (entry) => ({
-        ...entry,
-        state: "analyzing",
-      }));
-    }
-    history = startFileAnalysisEntry(history, "running-1");
-
-    history = addFileEntry(history, {
-      id: "new-active",
-      path: "C:\\mixes\\new-active.wav",
-      intake: new FrameIntake(),
-      createdAt: 6,
-    });
-
-    expect(history.order).toHaveLength(FILE_ANALYSIS_HISTORY_LIMIT + 1);
-    expect(history.activeFileId).toBe("new-active");
-    expect(history.analyzingFileId).toBe("running-1");
+    expect(history.order).toHaveLength(12);
+    expect(history.sessionsById["entry-1"].lastViewedAt).toBe(1);
+    history = selectFileEntry(history, "entry-1", 200);
+    expect(history.sessionsById["entry-1"].lastViewedAt).toBe(200);
   });
 
   it("clears sessions, order, and ids", () => {

@@ -73,3 +73,57 @@ it("preserves results when the source cannot be read", async () => {
   expect(result.current.runtime.activeFileSession.summary.integratedLufs).toBe(-23);
   expect(result.current.runtime.analyzingFileId).toBeNull();
 });
+
+it("cancels preparation without allowing the late probe to start a task", async () => {
+  const { result, id } = mount();
+  let resolve;
+  vi.mocked(probeFileAnalysis).mockReturnValue(
+    new Promise((done) => {
+      resolve = done;
+    })
+  );
+  let pending;
+  act(() => {
+    pending = result.current.runtime.reanalyzeFile(id, {});
+  });
+  expect(result.current.runtime.fileTaskBusy).toBe(true);
+  await act(async () => {
+    await result.current.runtime.stopFileAnalysis(id);
+  });
+  await act(async () => {
+    resolve(probe);
+    await pending;
+  });
+  expect(result.current.runtime.fileTaskBusy).toBe(false);
+  expect(result.current.assembly.ledger.validRunRequest).toBeNull();
+});
+
+it.each([false, true])(
+  "restores original conditions and rejects changed content (%s)",
+  async (changed) => {
+    const { result, id } = mount();
+    act(() =>
+      result.current.assembly.ledger.updateSession(id, (entry) => ({
+        ...entry,
+        intake: null,
+        historyReleased: true,
+        successfulResult: { ...entry.successfulResult, intake: null },
+      }))
+    );
+    vi.mocked(probeFileAnalysis).mockResolvedValue({
+      ...probe,
+      sourceVersion: { ...sourceVersion, sha256: changed ? "new" : "old" },
+    });
+    await act(async () => {
+      await result.current.runtime.restoreFileHistory(id);
+    });
+    if (changed) {
+      expect(result.current.assembly.ledger.validRunRequest).toBeNull();
+      expect(result.current.runtime.fileSessions).toHaveLength(1);
+    } else {
+      expect(result.current.runtime.activeFileSession.attempt.kind).toBe("restore");
+      expect(result.current.assembly.ledger.validRunRequest.analysisSettings).toEqual({});
+    }
+    expect(result.current.runtime.activeFileSession.summary.integratedLufs).toBe(-23);
+  }
+);

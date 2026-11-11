@@ -7,6 +7,7 @@ import { clearAudioHistory, probeFileAnalysis } from "../ipc/commands.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 import { isTauri } from "../ipc/env.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
+import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 import { createLiveMeasurementOwner } from "./liveMeasurementOwner.js";
 
 const MeterRuntimeContext = createContext(null);
@@ -38,7 +39,9 @@ const MeterDisplayStateContext = createContext(/** @type {MeterDisplayState | nu
 export function MeterRuntimeProvider({ children }) {
   const display = useMeterDisplay();
   const [sourceMode, setSourceMode] = useState("live");
-  const ledger = useFileSessionLedger();
+  const [preparingFileId, setPreparingFileId] = useState(null);
+  const preparationRef = useRef(null);
+  const ledger = useFileSessionLedger({ protectedFileId: preparingFileId });
   const { fileHistory, fileSessions, activeFileSession, analyzingFileSession } = ledger;
 
   const liveIntakeRef = useRef(null);
@@ -70,6 +73,14 @@ export function MeterRuntimeProvider({ children }) {
     taskSessionRef.current = fileHistory.analyzingFileId;
   }, [fileHistory.analyzingFileId]);
   const stopFileAnalysis = async (expectedSessionId) => {
+    const preparation = preparationRef.current;
+    if (preparation && (!expectedSessionId || preparation.sessionId === expectedSessionId)) {
+      preparation.cancelled = true;
+      preparationRef.current = null;
+      setPreparingFileId(null);
+      taskSessionRef.current = null;
+      return;
+    }
     const sessionId = fileHistory.analyzingFileId;
     if (!sessionId) return;
     if (expectedSessionId && expectedSessionId !== sessionId) return;
@@ -105,7 +116,7 @@ export function MeterRuntimeProvider({ children }) {
       return;
     }
 
-    if (fileHistory.analyzingFileId) {
+    if (fileHistory.analyzingFileId || preparationRef.current) {
       void stopFileAnalysis().catch(() => {});
     }
     setSourceMode("live");
@@ -137,7 +148,10 @@ export function MeterRuntimeProvider({ children }) {
       const activeId = fileHistory.activeFileId;
       if (!activeId) return false;
       const activeEntry = fileHistory.sessionsById[activeId];
-      if (fileHistory.analyzingFileId === activeId) {
+      if (
+        fileHistory.analyzingFileId === activeId ||
+        preparationRef.current?.sessionId === activeId
+      ) {
         await stopFileAnalysis();
       }
       activeEntry?.intake?.reset?.();
@@ -173,7 +187,12 @@ export function MeterRuntimeProvider({ children }) {
     });
     return { sessionId, accepted };
   };
-  const reanalyzeFile = async (sessionId, analysisSettings, onPrepared = null) => {
+  const reanalyzeFile = async (
+    sessionId,
+    analysisSettings,
+    onPrepared = null,
+    kind = "analyze"
+  ) => {
     analysisSettings = structuredClone(analysisSettings ?? {});
     display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
@@ -186,11 +205,24 @@ export function MeterRuntimeProvider({ children }) {
       return false;
     }
 
+    if (kind === "restore") {
+      const successful = getSuccessfulFileSession(entry);
+      if (!successful || !entry.historyReleased || !successful.metadata?.sourceVersion) {
+        display.raiseNotice("guard", "History cannot be restored for this result");
+        return false;
+      }
+      analysisSettings = structuredClone(successful.analysisSettings ?? {});
+    }
+
     taskSessionRef.current = entry.id;
+    const preparation = { sessionId: entry.id, cancelled: false };
+    preparationRef.current = preparation;
+    setPreparingFileId(entry.id);
     let probe = entry.metadata;
     try {
       if (isTauri()) {
         const discovered = await probeFileAnalysis(entry.path);
+        if (preparation.cancelled) return null;
         probe = withSelectedAudioTrack(
           discovered,
           entry.metadata?.selectedTrack?.index ?? discovered.selectedTrack.index
@@ -199,35 +231,52 @@ export function MeterRuntimeProvider({ children }) {
           entry.metadata?.sourceVersion &&
           !sameFileSourceVersion(entry.metadata.sourceVersion, probe.sourceVersion)
         ) {
+          if (kind === "restore")
+            throw new Error(
+              "Source file changed; the original history cannot be restored. Reanalyze to create a new result."
+            );
           const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared);
           taskSessionRef.current = newId;
           return newId;
         }
       }
-      display.setSelectedOffset(-1);
-      display.selectedOffsetRef.current = -1;
+      if (preparation.cancelled) return null;
       onPrepared?.(entry.id);
-      ledger.rerun(entry.id, entry.path, analysisSettings, probe);
+      ledger.rerun(entry.id, entry.path, analysisSettings, probe, kind);
       return entry.id;
     } catch (error) {
+      if (preparation.cancelled) return null;
       taskSessionRef.current = null;
       display.raiseNotice("error", `Error: ${error?.message || "File is unavailable"}`, undefined, {
         requiresAttention: true,
       });
       return null;
+    } finally {
+      if (preparationRef.current === preparation) {
+        preparationRef.current = null;
+        setPreparingFileId(null);
+      }
     }
   };
-  const reanalyzeFileForControl = async (sessionId, analysisSettings) => {
+  const restoreFileHistory = (sessionId) => reanalyzeFile(sessionId, null, null, "restore");
+  const reanalyzeFileForControl = async (sessionId, analysisSettings, kind = "analyze") => {
     let acceptance;
     const accepted = new Promise((resolve, reject) => {
       acceptance = { resolve, reject };
     });
-    const resultId = await reanalyzeFile(sessionId, analysisSettings, (id) => {
-      fileAnalysisAcceptanceRef.current.set(id, acceptance);
-    });
+    const resultId = await reanalyzeFile(
+      sessionId,
+      analysisSettings,
+      (id) => {
+        fileAnalysisAcceptanceRef.current.set(id, acceptance);
+      },
+      kind
+    );
     if (!resultId) return null;
     return { sessionId: resultId, accepted };
   };
+  const restoreFileHistoryForControl = (sessionId) =>
+    reanalyzeFileForControl(sessionId, null, "restore");
   const selectFile = (sessionId) => {
     display.clearNotice();
     display.setSelectedOffset(-1);
@@ -239,7 +288,8 @@ export function MeterRuntimeProvider({ children }) {
     display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
     if (!entry) return false;
-    const removedAnalyzingFile = fileHistory.analyzingFileId === sessionId;
+    const removedAnalyzingFile =
+      fileHistory.analyzingFileId === sessionId || preparationRef.current?.sessionId === sessionId;
     const clearedDisplay = fileHistory.activeFileId === sessionId || fileHistory.order.length <= 1;
 
     if (removedAnalyzingFile) {
@@ -260,7 +310,7 @@ export function MeterRuntimeProvider({ children }) {
   };
   const clearFiles = async () => {
     display.clearNotice();
-    if (fileHistory.analyzingFileId) {
+    if (fileHistory.analyzingFileId || preparationRef.current) {
       await stopFileAnalysis();
     }
     for (const entry of Object.values(fileHistory.sessionsById)) {
@@ -293,6 +343,8 @@ export function MeterRuntimeProvider({ children }) {
     beginFileAnalysisForControl,
     reanalyzeFile,
     reanalyzeFileForControl,
+    restoreFileHistory,
+    restoreFileHistoryForControl,
     selectFile,
     removeFile,
     clearFiles,
@@ -320,6 +372,8 @@ export function MeterRuntimeProvider({ children }) {
       beginFileAnalysisForControl: forward("beginFileAnalysisForControl"),
       reanalyzeFile: forward("reanalyzeFile"),
       reanalyzeFileForControl: forward("reanalyzeFileForControl"),
+      restoreFileHistory: forward("restoreFileHistory"),
+      restoreFileHistoryForControl: forward("restoreFileHistoryForControl"),
       selectFile: forward("selectFile"),
       removeFile: forward("removeFile"),
       clearFiles: forward("clearFiles"),
@@ -343,6 +397,8 @@ export function MeterRuntimeProvider({ children }) {
       analyzingFileSession,
       activeFileId: fileHistory.activeFileId,
       analyzingFileId: fileHistory.analyzingFileId,
+      preparingFileId,
+      fileTaskBusy: Boolean(preparingFileId || fileHistory.analyzingFileId),
       ...verbs,
     }),
     [
@@ -359,6 +415,7 @@ export function MeterRuntimeProvider({ children }) {
       analyzingFileSession,
       fileHistory.activeFileId,
       fileHistory.analyzingFileId,
+      preparingFileId,
       verbs,
     ]
   );

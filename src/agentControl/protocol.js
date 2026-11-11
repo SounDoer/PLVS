@@ -20,6 +20,7 @@ const TRANSPORT_ACTIONS = new Set([
   "transport.live.stop",
   "transport.file.analyze",
   "transport.file.reanalyze",
+  "transport.file.restore",
   "transport.file.stop",
 ]);
 const LIBRARY_EXPORT_METHODS = new Set(["preset.export", "theme.export", "loudnessProfile.export"]);
@@ -1567,6 +1568,7 @@ export function normalizeAgentControlRequest(input) {
     "transport.snapshot.clear",
     "transport.file.analyze",
     "transport.file.reanalyze",
+    "transport.file.restore",
     "transport.file.stop",
     "transport.file.select",
     "transport.file.remove",
@@ -1578,6 +1580,7 @@ export function normalizeAgentControlRequest(input) {
     const needsOffset = input.method === "transport.snapshot.select";
     const needsSession = [
       "transport.file.reanalyze",
+      "transport.file.restore",
       "transport.file.stop",
       "transport.file.select",
       "transport.file.remove",

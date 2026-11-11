@@ -42,6 +42,29 @@ const context = {
 };
 
 describe("Transport Control", () => {
+  it("allows explicit restoration only for released results and refuses a busy task slot", () => {
+    const snapshot = buildTransportSnapshot(runtime, context);
+    expect(
+      planTransportMutation(snapshot, "transport.file.restore", { sessionId: "file-1" }, context)
+        .refusal.code
+    ).toBe("historyUnavailable");
+    Object.assign(snapshot.files.sessions[0], {
+      historyReleased: true,
+      historyAvailable: false,
+      probe: { sourceVersion: { sha256: "original" } },
+    });
+    expect(
+      planTransportMutation(snapshot, "transport.file.restore", { sessionId: "file-1" }, context)
+        .changed
+    ).toEqual(["transport.files"]);
+    const released = transportLifecycleSignature(snapshot);
+    snapshot.files.sessions[0].historyReleased = false;
+    expect(transportLifecycleSignature(snapshot)).not.toBe(released);
+    snapshot.files.preparingId = "file-1";
+    expect(
+      planTransportMutation(snapshot, "transport.file.analyze", {}, context).refusal.code
+    ).toBe("analysisInProgress");
+  });
   it("serializes lifecycle state without intake objects", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     expect(snapshot).toEqual({
@@ -58,6 +81,7 @@ describe("Transport Control", () => {
       files: {
         activeId: "file-1",
         analyzingId: null,
+        preparingId: null,
         sessions: [
           {
             id: "file-1",
@@ -72,6 +96,8 @@ describe("Transport Control", () => {
             decodedFrames: 48000,
             analysisSettings: { dialogueVadEngine: "firered" },
             error: null,
+            historyReleased: false,
+            historyAvailable: true,
           },
         ],
       },
@@ -220,7 +246,7 @@ describe("Transport Control", () => {
     ).toEqual({ code: "dockActive" });
   });
 
-  it("previews affected and evicted FILE sessions", () => {
+  it("keeps all FILE results when importing another file", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     snapshot.files.sessions = Array.from({ length: 5 }, (_, index) => ({
       ...snapshot.files.sessions[0],
@@ -230,7 +256,7 @@ describe("Transport Control", () => {
     snapshot.files.activeId = "file-5";
     expect(
       planTransportMutation(snapshot, "transport.file.analyze", {}, context).evictedSessions
-    ).toEqual([expect.objectContaining({ id: "file-1" })]);
+    ).toEqual([]);
     expect(
       planTransportMutation(snapshot, "transport.file.remove", { sessionId: "file-2" }, context)
         .affectedSessions

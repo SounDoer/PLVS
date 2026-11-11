@@ -1,7 +1,3 @@
-export const FILE_ANALYSIS_HISTORY_LIMIT = 5;
-
-const ANALYSIS_COMPLETE_STATES = new Set(["complete", "error", "ready"]);
-
 /**
  * One file in the analysis history, from the moment it is added.
  * @typedef {{
@@ -15,6 +11,8 @@ const ANALYSIS_COMPLETE_STATES = new Set(["complete", "error", "ready"]);
  *   error: any,
  *   intake: any,
  *   createdAt: number,
+ *   lastViewedAt?: number,
+ *   historyReleased?: boolean,
  *   analyzedAt: number | null,
  *   decodedFrames: number,
  *   runId: number,
@@ -76,20 +74,6 @@ function removeEntryById(history, id) {
   });
 }
 
-function applyRetention(history) {
-  let nextHistory = history;
-  while (nextHistory.order.length > FILE_ANALYSIS_HISTORY_LIMIT) {
-    const removableId = nextHistory.order.find((id) => {
-      if (id === nextHistory.activeFileId || id === nextHistory.analyzingFileId) return false;
-      const entry = nextHistory.sessionsById[id];
-      return entry && ANALYSIS_COMPLETE_STATES.has(entry.state);
-    });
-    if (!removableId) break;
-    nextHistory = removeEntryById(nextHistory, removableId);
-  }
-  return nextHistory;
-}
-
 export function createInitialFileHistory() {
   return {
     sessionsById: {},
@@ -121,32 +105,36 @@ export function addFileEntry(history, options) {
     error: null,
     intake: options.intake ?? null,
     createdAt: now,
+    lastViewedAt: now,
+    historyReleased: false,
     analyzedAt: null,
     decodedFrames: 0,
     runId: 0,
     analysisSettings: options.analysisSettings ?? null,
   };
 
-  return applyRetention(
-    createHistory({
-      sessionsById: {
-        ...history.sessionsById,
-        [id]: entry,
-      },
-      order: [...history.order, id],
-      activeFileId: id,
-      analyzingFileId: history.analyzingFileId,
-    })
-  );
+  return createHistory({
+    sessionsById: {
+      ...history.sessionsById,
+      [id]: entry,
+    },
+    order: [...history.order, id],
+    activeFileId: id,
+    analyzingFileId: history.analyzingFileId,
+  });
 }
 
 /**
  * @param {string} id
  */
-export function selectFileEntry(history, id) {
+export function selectFileEntry(history, id, now = Date.now()) {
   if (!history.sessionsById[id]) return history;
   return createHistory({
     ...history,
+    sessionsById: {
+      ...history.sessionsById,
+      [id]: { ...history.sessionsById[id], lastViewedAt: now },
+    },
     activeFileId: id,
   });
 }
@@ -161,11 +149,19 @@ export function updateFileEntry(history, id, updater) {
   if (!updatedEntry || updatedEntry === entry) return history;
   if (updatedEntry.state === "complete" && updatedEntry.summary) {
     const attempt = updatedEntry.attempt;
+    const restored = attempt?.kind === "restore" && entry.successfulResult;
     updatedEntry = {
       ...updatedEntry,
-      metadata: attempt?.metadata ?? updatedEntry.metadata,
-      analysisSettings: attempt?.analysisSettings ?? updatedEntry.analysisSettings,
+      ...(restored ? entry.successfulResult : {}),
+      metadata: restored
+        ? entry.successfulResult.metadata
+        : (attempt?.metadata ?? updatedEntry.metadata),
+      analysisSettings: restored
+        ? entry.successfulResult.analysisSettings
+        : (attempt?.analysisSettings ?? updatedEntry.analysisSettings),
       intake: attempt?.intake ?? updatedEntry.intake,
+      audio: restored ? entry.successfulResult.audio : updatedEntry.audio,
+      historyReleased: attempt?.intake ? false : (updatedEntry.historyReleased ?? false),
       attempt: null,
     };
     updatedEntry.successfulResult = captureSuccessfulResult(updatedEntry);
@@ -206,6 +202,7 @@ export function startFileAnalysisEntry(history, id, options = {}) {
   const successfulResult = successful ? captureSuccessfulResult(successful) : null;
   const analysisSettings = options.analysisSettings ?? entry.analysisSettings ?? null;
   const attempt = {
+    kind: options.kind ?? "analyze",
     runId: (entry.runId ?? 0) + 1,
     metadata: null,
     analysisSettings,
@@ -225,7 +222,7 @@ export function startFileAnalysisEntry(history, id, options = {}) {
       successfulResult,
       attempt,
     }),
-    activeFileId: id,
+    activeFileId: options.preserveSelection ? history.activeFileId : id,
     analyzingFileId: id,
   });
 }
@@ -237,7 +234,7 @@ export function markFileAnalysisComplete(history, id, payload = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
   return createHistory({
-    ...replaceEntry(history, id, {
+    ...updateFileEntry(history, id, () => ({
       ...entry,
       state: "complete",
       progress: 1,
@@ -245,7 +242,7 @@ export function markFileAnalysisComplete(history, id, payload = {}) {
       decodedFrames: payload.decodedFrames ?? 0,
       analyzedAt: payload.now ?? payload.analyzedAt ?? Date.now(),
       error: null,
-    }),
+    })),
     analyzingFileId: history.analyzingFileId === id ? null : history.analyzingFileId,
   });
 }
@@ -257,12 +254,12 @@ export function markFileAnalysisError(history, id, payload = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
   return createHistory({
-    ...replaceEntry(history, id, {
+    ...updateFileEntry(history, id, () => ({
       ...entry,
       state: "error",
       error: payload.error ?? null,
       analyzedAt: payload.now ?? payload.analyzedAt ?? Date.now(),
-    }),
+    })),
     analyzingFileId: history.analyzingFileId === id ? null : history.analyzingFileId,
   });
 }

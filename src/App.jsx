@@ -709,6 +709,15 @@ function AppContent() {
         shellHandlers={shellHandlers}
         headerProps={headerProps}
         showFileAnalysisResult={showFileAnalysisResult}
+        fileHistoryRestore={
+          sourceMode === "file" && activeFileSession?.historyReleased
+            ? {
+                pending: activeFileId === (meterRuntime.preparingFileId ?? analyzingFileId),
+                disabled: meterRuntime.fileTaskBusy,
+                onRestore: () => meterRuntime.restoreFileHistory(activeFileId),
+              }
+            : null
+        }
         fileSummaryProps={fileSummaryProps}
         panelChromeData={panelChromeData}
         footer={footer}

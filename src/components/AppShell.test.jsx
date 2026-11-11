@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { standIn } from "../testing/standIn.js";
 import { useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -49,6 +49,27 @@ const baseProps = standIn({
 });
 
 describe("AppShell footer", () => {
+  it("restores released history only when the user asks and disables a duplicate task", () => {
+    const restore = vi.fn();
+    const props = { pending: false, disabled: false, onRestore: restore };
+    const { rerender } = render(
+      <AppShell {...baseProps} footer={baseFooter} fileHistoryRestore={props} />
+    );
+    expect(screen.getByText(/Whole-file results are still available/)).toBeTruthy();
+    expect(restore).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Restore History" }));
+    expect(restore).toHaveBeenCalledOnce();
+    rerender(
+      <AppShell
+        {...baseProps}
+        footer={baseFooter}
+        fileHistoryRestore={{ ...props, pending: true, disabled: true }}
+      />
+    );
+    expect(screen.getByRole("status").textContent).toContain("Preparing browsing history");
+    fireEvent.click(screen.getByRole("button", { name: "Restore History" }));
+    expect(restore).toHaveBeenCalledOnce();
+  });
   it("keeps updates out of the permanent footer", () => {
     render(
       <AppShell

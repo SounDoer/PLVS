@@ -2454,7 +2454,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
       if scope == "file"
         && matches!(
           action.as_str(),
-          "analyze" | "reanalyze" | "stop" | "select" | "remove"
+          "analyze" | "reanalyze" | "restore" | "stop" | "select" | "remove"
         ) =>
     {
       (
@@ -2469,7 +2469,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     _ => {
       return Err(
-        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|snapshot select|snapshot clear|file analyze|file reanalyze|file stop|file select|file remove|file clear|file report> ... --json"
+        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|snapshot select|snapshot clear|file analyze|file reanalyze|file restore|file stop|file select|file remove|file clear|file report> ... --json"
           .to_string(),
       )
     }
@@ -2624,6 +2624,7 @@ fn is_transport_action(method: &str) -> bool {
       | "transport.live.stop"
       | "transport.file.analyze"
       | "transport.file.reanalyze"
+      | "transport.file.restore"
       | "transport.file.stop"
   )
 }
@@ -7360,6 +7361,21 @@ mod tests {
     let request = request_for_command(&select, &mut Cursor::new([])).unwrap();
     assert_eq!(request.method, "transport.file.select");
     assert_eq!(request.params["sessionId"], "session-1");
+
+    let restore = parse_control_args(&args(&[
+      "transport",
+      "file",
+      "restore",
+      "session-1",
+      "--json",
+      "--expected-revision",
+      "4",
+    ]))
+    .unwrap();
+    let request = request_for_command(&restore, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "transport.file.restore");
+    assert_eq!(request.params["sessionId"], "session-1");
+    assert!(request.params.get("dryRun").is_none());
 
     let snapshot = parse_control_args(&args(&[
       "transport",
