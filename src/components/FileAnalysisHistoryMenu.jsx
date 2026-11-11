@@ -131,7 +131,7 @@ export function FileAnalysisHistoryMenu({
                       )}
                     />
                     <span
-                      className="min-w-0 flex-1 truncate font-medium text-foreground"
+                      className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-control)] font-medium text-foreground"
                       title={name}
                     >
                       {name}
@@ -146,7 +146,9 @@ export function FileAnalysisHistoryMenu({
                         <ManagementIconAction
                           label={"cancel analysis of " + name}
                           tip="Cancel"
-                          icon={<Square className={actionSize} />}
+                          icon={
+                            <Square className={cn(actionSize, "scale-85")} aria-hidden="true" />
+                          }
                           onClick={() => onStopFile?.(session.id)}
                         />
                       </>

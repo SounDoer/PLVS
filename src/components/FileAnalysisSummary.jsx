@@ -166,7 +166,7 @@ function MetricDetail({ metric, report }) {
   return (
     <div className="grid gap-[var(--ui-drawer-row-gap)]">
       <p>
-        <span className="font-medium text-foreground">{metric.label}</span>{" "}
+        <span className={cn("font-medium", METRIC_ANNOTATION)}>{metric.label}</span>{" "}
         <DetailReading
           value={Number.isFinite(value) ? metricNumber(metric, value) : null}
           unit={metric.unit}
