@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 
 const files = [
@@ -33,6 +33,21 @@ function open(props = {}) {
 }
 
 describe("File menu", () => {
+  it("clears the list only after confirmation and returns to the list on cancel", () => {
+    const { onClearAllFiles } = open();
+    fireEvent.click(screen.getByRole("button", { name: "Clear All Files…" }));
+    const dialog = () => screen.getByRole("alertdialog", { name: "Clear All Files?" });
+    expect(onClearAllFiles).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog()).getByRole("button", { name: "Cancel" }));
+    expect(onClearAllFiles).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear All Files…" }));
+    fireEvent.click(within(dialog()).getByRole("button", { name: "Clear All Files" }));
+    expect(onClearAllFiles).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Clear All Files…" })).toBeNull();
+  });
+
   it("leaves navigation and target-specific cancellation available during background work", () => {
     const handlers = open({ analyzingFileId: "two" });
     expect(screen.getByText("42%")).toBeTruthy();

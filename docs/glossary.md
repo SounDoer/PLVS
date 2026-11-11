@@ -39,6 +39,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Restore History        | Rebuild released File browsing history using the original source, track and analysis conditions     | 恢复浏览历史     |                             |
 | Select Audio Track     | The picker shown when opening a file containing more than one audio track                           | 选择音轨         |                             |
 | Summary Metrics        | The whole-file readings selected for the File Summary region                                        | 摘要指标         |                             |
+| Clear All Files        | Remove all File list entries and analysis results after confirmation                                | 清空文件列表     |                             |
 | Export Statistics      | Write selected successful File results and their Profile evaluations to one CSV                     | 导出统计数据     |                             |
 | Sources                | The toolbar menu that chooses the Source, in the window and in the Dock                             | 信号源菜单       | Device                      |
 | Automatic              | The Source that follows the default system output                                                   | 自动             |                             |

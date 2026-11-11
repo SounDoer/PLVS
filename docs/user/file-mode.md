@@ -31,6 +31,9 @@ file's row. During reanalysis, the previous result remains visible and you can k
 time point. A successful reanalysis replaces the result. The whole-file metrics on the right stay
 independent of timeline inspection.
 
+Use **Clear All Files…** at the bottom of the **Files** menu to remove all entries and results after
+confirmation. Audio files on disk are kept.
+
 Hover the information, warning, or metric controls for details. Click to keep the same details
 open, and click again, press Escape, or click outside to close them. Peak details include each
 decoded channel's maximum and occurrence time. A settings warning explains which changes need
@@ -42,7 +45,7 @@ Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remain
 
 ## Statistics CSV
 
-From the **Files** menu, choose **Export Statistics…**. All successful results are selected by
+At the bottom of the **Files** menu, choose **Export Statistics…**. All successful results are selected by
 default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
 previous successful result remains eligible while it is reanalyzing. The export uses the selected
 successful results and the Loudness Profile active when you choose Export CSV.
