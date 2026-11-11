@@ -118,14 +118,19 @@ function warningDetails(session, result, settings, activeTask) {
   return details;
 }
 
+const NO_MEASUREMENT = "-";
+const METRIC_ANNOTATION = "text-[length:var(--ui-fs-metric-meta)] text-muted-foreground";
+
+function metricNumber(metric, value) {
+  return value.toFixed(metric.id === "samplePeakMax" ? 1 : statDecimals(metric.id));
+}
+
 function valueText(metric, value) {
-  return Number.isFinite(value)
-    ? value.toFixed(metric.id === "samplePeakMax" ? 1 : statDecimals(metric.id)) + " " + metric.unit
-    : "—";
+  return Number.isFinite(value) ? metricNumber(metric, value) + " " + metric.unit : NO_MEASUREMENT;
 }
 
 function positionText(location) {
-  if (!Number.isFinite(location?.timeSeconds)) return "—";
+  if (!Number.isFinite(location?.timeSeconds)) return NO_MEASUREMENT;
   return (
     location.timeSeconds.toFixed(6) + " s" + (location.framePosition < 0 ? " · Before Start" : "")
   );
@@ -181,13 +186,21 @@ function MetricDetail({ metric, report }) {
 }
 
 function MetricColumn({ metric, report }) {
+  const value = report?.summary[metric.field];
+  const available = Number.isFinite(value);
   return (
     <span className="flex w-max min-w-max flex-col items-start whitespace-nowrap">
-      <span className="text-[length:var(--ui-fs-caption)] text-muted-foreground">
-        {metric.label}
-      </span>
-      <span className="font-semibold tabular-nums text-foreground">
-        {valueText(metric, report?.summary[metric.field])}
+      <span className={METRIC_ANNOTATION}>{metric.label}</span>
+      <span className="text-[length:var(--ui-fs-metric-value)] leading-normal">
+        <span className="font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums text-foreground">
+          {available ? metricNumber(metric, value) : NO_MEASUREMENT}
+        </span>
+        {available && (
+          <>
+            {" "}
+            <span className={METRIC_ANNOTATION}>{metric.unit}</span>
+          </>
+        )}
       </span>
     </span>
   );
