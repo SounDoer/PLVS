@@ -219,6 +219,7 @@ export function startFileAnalysisEntry(history, id, options = {}) {
       decodedFrames: successfulResult?.decodedFrames ?? 0,
       runId: attempt.runId,
       analysisSettings: successfulResult?.analysisSettings ?? analysisSettings,
+      intake: successfulResult ? entry.intake : attempt.intake,
       successfulResult,
       attempt,
     }),

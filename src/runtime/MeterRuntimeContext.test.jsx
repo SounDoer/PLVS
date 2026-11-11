@@ -83,8 +83,12 @@ describe("MeterRuntimeProvider", () => {
     expect(result.current.analyzingFileId).toBe(sessionId);
   });
 
-  it("reopens a canceled entry with a fresh run and selects it", async () => {
-    const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+  it("reopens a canceled entry and displays the fresh run's timeline", async () => {
+    const { result } = renderHook(
+      () => ({ ...useMeterRuntime(), routing: useMeterRuntimeAssembly().routing }),
+      { wrapper }
+    );
+    act(() => result.current.switchSource("file"));
     const path = "C:/first.wav";
     act(() => result.current.beginFileAnalysis(path, {}));
     const first = result.current.activeFileSession;
@@ -102,7 +106,12 @@ describe("MeterRuntimeProvider", () => {
       state: "analyzing",
       progress: 0,
     });
-    expect(result.current.activeFileSession.attempt.intake).not.toBe(first.attempt.intake);
+    const { routing } = result.current;
+    expect(routing.fileAnalysisIntake).not.toBe(first.attempt.intake);
+    expect(routing.intakeRef.current).toBe(routing.fileAnalysisIntake);
+
+    await act(() => result.current.stopFileAnalysis());
+    expect(result.current.routing.intakeRef.current).toBe(routing.fileAnalysisIntake);
   });
 
   it("selects a previous file result", async () => {
