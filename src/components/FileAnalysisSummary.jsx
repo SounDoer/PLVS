@@ -165,7 +165,7 @@ function loudestRange(metricId, position, sampleRateHz) {
         sampleRateHz
       : position.timeSeconds - blocks / 10;
   const start = startSeconds > 0 ? startSeconds.toFixed(6) : "0";
-  return { text: start + "–" + position.timeSeconds.toFixed(6), padded: startSeconds < 0 };
+  return start + "–" + position.timeSeconds.toFixed(6);
 }
 
 function MetricDetail({ metric, report }) {
@@ -173,7 +173,7 @@ function MetricDetail({ metric, report }) {
   const reason = report?.unavailableReasons?.[metric.field];
   const position = metric.location && report?.summary.maximaLocations?.[metric.location];
   const peak = metric.id === "truePeak" || metric.id === "samplePeakMax";
-  const range = !peak && loudestRange(metric.id, position, report?.summary.sampleRateHz);
+  const range = peak ? null : loudestRange(metric.id, position, report?.summary.sampleRateHz);
   const timeKey = metric.id === "truePeak" ? "truePeakMaxLocation" : "samplePeakMaxLocation";
   const reasonKey =
     metric.id === "truePeak" ? "truePeakMaxUnavailableReason" : "samplePeakMaxUnavailableReason";
@@ -200,16 +200,11 @@ function MetricDetail({ metric, report }) {
             {peak ? (
               <DetailPosition location={position} />
             ) : (
-              <DetailReading value={range?.text} unit="s" />
+              <DetailReading value={range} unit="s" />
             )}
           </span>
         </p>
       ) : null}
-      {range?.padded && (
-        <p className={METRIC_ANNOTATION}>
-          The measurement includes silence before the track starts.
-        </p>
-      )}
       {peak && report?.summary.channelPeaks.length ? (
         <table className="w-full text-left tabular-nums">
           <thead>

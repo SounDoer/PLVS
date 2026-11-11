@@ -37,8 +37,7 @@ confirmation. Audio files on disk are kept.
 Hover the information, warning, or metric controls for details. Click to keep the same details
 open, and click again, press Escape, or click outside to close them. Peak details include each
 decoded channel's maximum and occurrence time. **Loudest Range** shows the start and end of the loudest
-Momentary or Short-term window. If it includes silence before the track starts, the range begins at
-zero and the details explain the padding. A settings warning explains which changes need
+Momentary or Short-term window within the track. A settings warning explains which changes need
 reanalyzing without discarding the previous result.
 
 **Summary Metrics** chooses and orders the displayed readings, including no readings at all.
