@@ -6,7 +6,7 @@ description: Build a shareable PLVS press kit ZIP with website screenshots, curr
 # PLVS Press Kit
 
 Run from the PLVS repository. The script and all source media live in this repository; no
-PLVS-Promo checkout, desktop capture rig, NAS or running app is required.
+other checkout, desktop capture rig, NAS or running app is required.
 
 - Run `npm run presskit` for the current published website. It reads the live publication marker
   and takes website and Catalogue files from their exact Git commits, including separate content

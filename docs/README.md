@@ -28,11 +28,6 @@ Keep this group small. Every file added here is one more thing that can go stale
 from fixtures, reviewed and published, the archived music sources behind them, and the self-contained
 press kit export (`npm run presskit`).
 
-Video production — the capture, editing, validation and archive workflow, its tools and the promo
-film's source — lives in the maintainer's private `PLVS-Promo` repository, together with the
-location of the external NAS production archive. Fixture audio locations live in Marketing
-screenshots above.
-
 Maintainer workflows are also current-state documents, but stay separate so that ordinary
 contributors do not have to read low-frequency release and review procedures:
 

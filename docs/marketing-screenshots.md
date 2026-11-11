@@ -120,10 +120,7 @@ npm run sharesets:fixture -- --archive /Volumes/xichen/PLVS/assets/audio
 
 These examples assume the NAS's `xichen` share is mounted at `/Volumes/xichen` on macOS.
 On other machines, pass the local mount path or a restored copy of the `assets/audio/` directory, not
-the SMB URL. The audio library is shared across productions; the NAS `archives/` directory holds completed,
-published production packages, with no working-state backups. Storage and archiving conventions
-are maintained in `PLVS-Promo/docs/storage-and-archiving.md`. The separate promo production archive is documented in
-the maintainer's private `PLVS-Promo` repository.
+the SMB URL. This section owns the archive's location and layout.
 
 `PLVS_AUDIO_ARCHIVE` can stand in for `--archive`. Without `--write` they only check that the
 committed fixtures match; with it they regenerate them. Both commands mix every bed in memory from
