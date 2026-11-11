@@ -165,12 +165,14 @@ function MetricDetail({ metric, report }) {
     metric.id === "truePeak" ? "truePeakMaxUnavailableReason" : "samplePeakMaxUnavailableReason";
   return (
     <div className="grid gap-[var(--ui-drawer-row-gap)]">
-      <p>
+      <p className="flex items-baseline justify-between gap-x-[var(--ui-metric-inline-gap)]">
         <span className={cn("font-medium", METRIC_ANNOTATION)}>{metric.label}</span>{" "}
-        <DetailReading
-          value={Number.isFinite(value) ? metricNumber(metric, value) : null}
-          unit={metric.unit}
-        />
+        <span className="shrink-0 text-right">
+          <DetailReading
+            value={Number.isFinite(value) ? metricNumber(metric, value) : null}
+            unit={metric.unit}
+          />
+        </span>
       </p>
       {!report || reason ? (
         <p className="text-muted-foreground">
@@ -178,9 +180,11 @@ function MetricDetail({ metric, report }) {
         </p>
       ) : null}
       {metric.location ? (
-        <p>
+        <p className="flex items-baseline justify-between gap-x-[var(--ui-metric-inline-gap)]">
           <span className={METRIC_ANNOTATION}>{peak ? "First Maximum" : "Window End"}</span>{" "}
-          <DetailPosition location={position} />
+          <span className="text-right">
+            <DetailPosition location={position} />
+          </span>
         </p>
       ) : null}
       {peak && report?.summary.channelPeaks.length ? (
@@ -356,7 +360,11 @@ function SummaryMetrics({ preferences, onChange, report }) {
         ) : null}
       </div>
       <Popover {...options.rootProps}>
-        <HoverTip tip={options.rootProps.open ? "" : "Summary Metrics"} className="shrink-0">
+        <HoverTip
+          tip={options.rootProps.open ? "" : "Summary Metrics"}
+          showOnFocus={false}
+          className="shrink-0"
+        >
           <PopoverTrigger asChild>
             <Button
               variant="quiet"

@@ -4,6 +4,27 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { HoverTip } from "./HoverTip.jsx";
 
 describe("HoverTip", () => {
+  it("waits for a new hover after a menu suppresses its tip and restores trigger focus", () => {
+    const tip = (text) => (
+      <HoverTip tip={text} showOnFocus={false}>
+        <button type="button">Files</button>
+      </HoverTip>
+    );
+    const { rerender } = render(tip("Open files"));
+    const trigger = screen.getByRole("button", { name: "Files" });
+    fireEvent.mouseEnter(trigger);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+
+    rerender(tip(""));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    rerender(tip("Open files"));
+    fireEvent.focus(trigger);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.mouseLeave(trigger);
+    fireEvent.mouseEnter(trigger);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+  });
+
   it("drops a mouse-only tip on window blur without requiring an anchor leave event", () => {
     render(
       <HoverTip tip="Explain me">

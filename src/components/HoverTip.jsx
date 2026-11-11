@@ -108,6 +108,10 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
   }, []);
 
   useEffect(() => {
+    if (!tip) hideTip();
+  }, [tip, hideTip]);
+
+  useEffect(() => {
     if (!open) return undefined;
 
     updatePosition();
@@ -183,6 +187,7 @@ export function useTruncationTip({ tip, side = "top", align = "start" }) {
  *   side?: "bottom" | "top" | "left" | "right",
  *   align?: "start" | "center" | "end",
  *   children: import("react").ReactNode,
+ *   showOnFocus?: boolean,
  *   className?: string,
  *   tipClassName?: string,
  * }} props
@@ -192,6 +197,7 @@ export function HoverTip({
   side = "bottom",
   align = "center",
   children,
+  showOnFocus = true,
   className,
   tipClassName,
 }) {
@@ -208,7 +214,7 @@ export function HoverTip({
       className={cn("relative", className)}
       onMouseEnter={tip ? showTip : undefined}
       onMouseLeave={tip ? hideTip : undefined}
-      onFocus={tip ? showTip : undefined}
+      onFocus={tip && showOnFocus ? showTip : undefined}
       onBlur={tip ? hideTip : undefined}
     >
       {children}
