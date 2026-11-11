@@ -741,7 +741,7 @@ explicit channel layout instead of detecting it by channel count. Supported ids 
 
 When dialogue analysis is enabled, the internal `analyze` report identifies the detector and
 method and returns Dialogue Loudness, Loudness-to-Dialogue Ratio (LDR), Dialogue Coverage, and the
-PLVS auxiliary Dialogue Range. Its JSON report schema is version 2; unavailable dialogue results
+PLVS auxiliary Dialogue Range. Its JSON report schema is version 3; unavailable dialogue results
 are `null`, not zero.
 
 For installed Windows validation:

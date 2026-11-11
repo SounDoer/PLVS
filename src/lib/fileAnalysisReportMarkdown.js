@@ -24,7 +24,7 @@ function plainText(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/[\\`*_\[\]#|]/g, "\\$&");
+    .replace(/([\\`*_#|]|\[|\])/g, "\\$&");
 }
 
 function fixed(value, decimals = 1) {
