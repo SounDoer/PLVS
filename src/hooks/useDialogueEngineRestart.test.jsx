@@ -8,11 +8,12 @@ import { useChannelRolesRestart, useDialogueEngineRestart } from "./useDialogueE
 describe("useDialogueEngineRestart", () => {
   it("clears when the engine changes while gating is on", () => {
     const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
         const ref = useRef(clearAll);
         ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, ref);
+        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: true } }
     );
@@ -24,11 +25,12 @@ describe("useDialogueEngineRestart", () => {
 
   it("does not clear when the engine changes while gating is off", () => {
     const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
         const ref = useRef(clearAll);
         ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, ref);
+        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: false } }
     );
@@ -39,11 +41,12 @@ describe("useDialogueEngineRestart", () => {
 
   it("does not clear on mount, and not on a re-render with an unchanged engine", () => {
     const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
         const ref = useRef(clearAll);
         ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, ref);
+        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: true } }
     );
@@ -58,11 +61,12 @@ describe("useDialogueEngineRestart", () => {
     // src-tauri/src/dsp/loudness.rs resets the dialogue accumulator itself the next time it sees
     // an engine mismatch while gating is on, so a frontend clear here would be redundant.
     const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
         const ref = useRef(clearAll);
         ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, ref);
+        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: false } }
     );
@@ -73,14 +77,34 @@ describe("useDialogueEngineRestart", () => {
   });
 });
 
+describe("useDialogueEngineRestart while File is shown", () => {
+  it("owes Live a clear instead of clearing the File", () => {
+    const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
+    const { rerender } = renderHook(
+      ({ engine }) => {
+        const ref = useRef(clearAll);
+        ref.current = clearAll;
+        useDialogueEngineRestart(engine, true, false, ref, deferLiveClear);
+      },
+      { initialProps: { engine: "webrtc" } }
+    );
+
+    rerender({ engine: "silero" });
+    expect(clearAll).not.toHaveBeenCalled();
+    expect(deferLiveClear).toHaveBeenCalledOnce();
+  });
+});
+
 describe("useChannelRolesRestart", () => {
   it("clears a Live measurement when the effective role list changes", () => {
     const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ roles, live }) => {
         const ref = useRef(clearAll);
         ref.current = clearAll;
-        useChannelRolesRestart(roles, live, ref);
+        useChannelRolesRestart(roles, live, ref, deferLiveClear);
       },
       { initialProps: { roles: {}, live: true } }
     );
@@ -89,18 +113,20 @@ describe("useChannelRolesRestart", () => {
     expect(clearAll).toHaveBeenCalledOnce();
   });
 
-  it("locks an in-progress File measurement against role-setting changes", () => {
+  it("leaves the File alone and owes Live a clear when roles change while File is shown", () => {
     const clearAll = vi.fn();
+    const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ roles, live }) => {
         const ref = useRef(clearAll);
         ref.current = clearAll;
-        useChannelRolesRestart(roles, live, ref);
+        useChannelRolesRestart(roles, live, ref, deferLiveClear);
       },
       { initialProps: { roles: { 2: ["L", "R"] }, live: false } }
     );
 
     rerender({ roles: { 2: ["M", "M"] }, live: false });
     expect(clearAll).not.toHaveBeenCalled();
+    expect(deferLiveClear).toHaveBeenCalledOnce();
   });
 });

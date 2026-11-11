@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, render, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   MeterRuntimeProvider,
   useMeterDisplayState,
@@ -53,6 +53,30 @@ describe("MeterRuntimeProvider", () => {
 
     expect(result.current.sourceMode).toBe("file");
     expect(result.current.fileSessions).toHaveLength(0);
+  });
+
+  it("runs a Live clear owed by a File-time method change on the return to Live", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+    const settings = { analysisRequests: { spectrum: [], vectorscope: [] } };
+    const liveIntake = result.current.assembly.liveIntakeRef.current;
+    const reset = vi.spyOn(liveIntake, "reset");
+
+    act(() => result.current.runtime.switchSource("file"));
+    act(() => result.current.runtime.beginFileAnalysis("C:\first.wav", settings));
+    await act(() => result.current.runtime.stopFileAnalysis());
+    act(() => result.current.runtime.deferLiveClear());
+    expect(reset).not.toHaveBeenCalled();
+
+    await act(async () => result.current.runtime.switchSource("live"));
+    expect(reset).toHaveBeenCalledOnce();
+    expect(result.current.runtime.fileSessions).toHaveLength(1);
+
+    act(() => result.current.runtime.switchSource("file"));
+    await act(async () => result.current.runtime.switchSource("live"));
+    expect(reset).toHaveBeenCalledOnce();
   });
 
   it("begins one file analysis and rejects a concurrent run", () => {

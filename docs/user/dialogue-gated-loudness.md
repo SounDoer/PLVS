@@ -36,8 +36,9 @@ measurements.
 
 **Dialogue Detection** in [System Settings](system-settings.md) chooses the engine: FireRedVAD (the
 default) or Silero VAD v6.2. Changing the detector clears and restarts the complete Live measurement
-so Programme Loudness and all dialogue values continue to cover the same time span. File Mode locks
-the selected engine when analysis starts.
+so Programme Loudness and all dialogue values continue to cover the same time span; a change made
+while File Mode is shown clears Live when you return to it. File Mode locks the selected engine when
+analysis starts.
 
 In Live, detection runs beside the meters rather than in step with them, so dialogue readouts can
 trail the programme readouts by a fraction of a second; the values themselves are the same. If the

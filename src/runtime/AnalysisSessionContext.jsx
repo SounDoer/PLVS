@@ -65,7 +65,7 @@ const AnalysisSessionContext = createContext(/** @type {AnalysisSession | null} 
 export function AnalysisSessionProvider({ children }) {
   const { state: workspaceState } = useWorkspaceStore();
   const { setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
-  const { sourceMode } = useMeterRuntime();
+  const { sourceMode, deferLiveClear } = useMeterRuntime();
   const { setSelectedOffset } = useMeterDisplayState();
   const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
   const { channelCount, displayAudio } = useDisplaySnapshot();
@@ -203,7 +203,7 @@ export function AnalysisSessionProvider({ children }) {
     liveIntakeRef.current?.setRetainedVisualKeys(retainedAnalysisKeys, historyRetentionSec * 1000);
   }, [liveIntakeRef, retainedAnalysisKeys, historyRetentionSec]);
   const { channelRoles } = channelLabelRuntime;
-  useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", onClearRef);
+  useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", onClearRef, deferLiveClear);
   const {
     channelRolesRef,
     dialogueGatingRef,

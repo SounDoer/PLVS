@@ -60,6 +60,7 @@ export function SourceActionsProvider({ children }) {
     startLive,
     stopLive,
     switchSource,
+    deferLiveClear,
     clearActiveSource,
     beginFileAnalysis: beginRuntimeFileAnalysis,
     reanalyzeFile,
@@ -152,7 +153,13 @@ export function SourceActionsProvider({ children }) {
     if (actionId === "clear") return actions.clearAll();
   };
   onHistoryRetentionChangeRef.current = sourceMode === "live" ? actions.clearAll : async () => true;
-  useDialogueEngineRestart(dialogueVadEngine, sourceMode === "live" && dialogueGating, onClearRef);
+  useDialogueEngineRestart(
+    dialogueVadEngine,
+    dialogueGating,
+    sourceMode === "live",
+    onClearRef,
+    deferLiveClear
+  );
 
   return (
     <SourceActionsContext.Provider

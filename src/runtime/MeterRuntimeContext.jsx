@@ -69,6 +69,7 @@ export function MeterRuntimeProvider({ children }) {
   const fileAnalysisAcceptanceRef = useRef(new Map());
   const fileConditionsRef = useRef(null);
   const taskSessionRef = useRef(null);
+  const liveClearPendingRef = useRef(false);
   const activeFileIdRef = useRef(null);
   useEffect(() => {
     activeFileIdRef.current = fileHistory.activeFileId;
@@ -124,9 +125,17 @@ export function MeterRuntimeProvider({ children }) {
       void stopFileAnalysis().catch(() => {});
     }
     setSourceMode("live");
+    // The Live clear owed by a measurement-method change made while File was shown runs here, in
+    // the business function, because a clear dispatched while File is shown removes the File.
+    if (liveClearPendingRef.current) void clearLiveSource({ live: true }).catch(() => {});
   };
-  /** @param {{ strict?: boolean }} [options] */
-  const clearLiveSource = async ({ strict = false } = {}) => {
+  /** A measurement-method change while File is shown: clear Live once it is shown again. */
+  const deferLiveClear = () => {
+    liveClearPendingRef.current = true;
+  };
+  /** @param {{ strict?: boolean, live?: boolean }} [options] */
+  const clearLiveSource = async ({ strict = false, live = sourceMode === "live" } = {}) => {
+    liveClearPendingRef.current = false;
     if (isTauri()) {
       try {
         await clearAudioHistory();
@@ -137,7 +146,7 @@ export function MeterRuntimeProvider({ children }) {
     liveIntakeRef.current.reset();
     liveMeasurementOwnerRef.current.clear();
     transport.clearAudioDrop();
-    if (sourceMode === "live") {
+    if (live) {
       display.clearAudio();
       display.setSelectedOffset(-1);
       display.clock.resetTimer({ restart: transport.running });
@@ -361,6 +370,7 @@ export function MeterRuntimeProvider({ children }) {
     beginDeviceRestartForControl: transport.beginDeviceRestartForControl,
     stopFileAnalysis,
     switchSource,
+    deferLiveClear,
     clearActiveSource,
     clearLiveForControl,
     beginFileAnalysis,
@@ -390,6 +400,7 @@ export function MeterRuntimeProvider({ children }) {
       beginDeviceRestartForControl: forward("beginDeviceRestartForControl"),
       stopFileAnalysis: forward("stopFileAnalysis"),
       switchSource: forward("switchSource"),
+      deferLiveClear: forward("deferLiveClear"),
       clearActiveSource: forward("clearActiveSource"),
       clearLiveForControl: forward("clearLiveForControl"),
       beginFileAnalysis: forward("beginFileAnalysis"),
