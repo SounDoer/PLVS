@@ -82,6 +82,35 @@ describe("File summary", () => {
     expect(screen.getByRole("cell", { name: "1.000000 s" })).toBeTruthy();
   });
 
+  it.each([
+    ["momentaryMax", "Momentary Max", 24000, "0.100000–0.500000", false],
+    ["shortTermMax", "Short-term Max", 24000, "0–0.500000", true],
+    ["shortTermMax", "Short-term Max", 144000, "0–3.000000", false],
+    ["shortTermMax", "Short-term Max", null, "-", false],
+  ])("shows the %s range (%s, end frame %s)", (id, label, frame, expected, padded) => {
+    const location = frame == null ? null : { framePosition: frame, timeSeconds: frame / 48000 };
+    const session = {
+      ...fileSession,
+      summary: {
+        ...fileSession.summary,
+        mMaxLufs: -12,
+        stMaxLufs: -14,
+        maximaLocations: { mMaxWindowEnd: location, stMaxWindowEnd: location },
+      },
+    };
+    render(
+      <FileAnalysisSummary
+        {...props}
+        fileSession={session}
+        summaryMetrics={{ visible: [id], order: [id] }}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: label + " details" }));
+    const range = screen.getByText("Loudest Range").parentElement;
+    expect(range.textContent).toContain(expected);
+    expect(Boolean(screen.queryByText(/includes silence before the track starts/))).toBe(padded);
+  });
+
   it("keeps successful numbers after settings change and warns only in the details", () => {
     render(
       <FileAnalysisSummary
