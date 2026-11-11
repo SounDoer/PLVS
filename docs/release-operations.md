@@ -67,6 +67,10 @@ the ephemeral private key or build cache, upload it as short-lived Actions artif
 three platform records in one hosted aggregate job. `release.yml` waits for that reusable workflow before
 assembling the Draft, so maintainers never copy acceptance files between machines.
 
+After a successful upload, each platform job removes its local update build directory and exported
+evidence from the runner workspace. If acceptance or upload fails, the local files remain available
+for diagnosis until a later checkout cleans the workspace.
+
 The same workflow also runs weekly on Wednesday at 02:00 Asia/Shanghai (Tuesday 18:00 UTC)
 against the tip of `main`. A scheduled run compares
 with the head commit of the latest successful `update-acceptance.yml` run instead of the last

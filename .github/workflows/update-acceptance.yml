@@ -150,6 +150,11 @@ jobs:
           path: update-evidence/${{ matrix.platform }}/
           if-no-files-found: error
           retention-days: 14
+      - name: Clean up uploaded platform evidence and build files
+        run: |
+          short_sha="${COMMIT_SHA:0:8}"
+          [[ "$short_sha" =~ ^[0-9a-f]{8}$ ]] || exit 1
+          rm -rf -- "artifacts/update-acceptance/$short_sha" "update-evidence/$PLATFORM"
 
   verify:
     needs: [detect, platform]
