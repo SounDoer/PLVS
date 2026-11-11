@@ -61,9 +61,15 @@ an unavailable measurement has an explicit reason. The complete Profile rules an
 are repeated on every row. A metric with no rule is `notApplicable`.
 
 The CSV uses UTF-8 with a byte order mark, comma-separated fields, and quoted multiline text.
-Text that could be interpreted as a spreadsheet formula is prefixed with an apostrophe. Numeric
-cells are unaffected. Full file paths are omitted. This is whole-file statistics; time series are
-not included.
+Text that starts with `=`, `+`, `-`, `@`, a tab or a line break, such as a file named
+`-6dB Mix.wav`, is prefixed with an apostrophe so a spreadsheet shows it as text instead of running
+it as a formula. Scripts that read the CSV see that apostrophe. Numeric cells are unaffected. Full
+file paths are omitted. `result_id` identifies a result only within the session that exported it.
+This is whole-file statistics; time series are not included.
+
+Where the system uses a comma as the decimal separator, double-clicking the CSV can open it in
+Excel as a single column. Import it with **Data › From Text/CSV** and choose comma as the
+delimiter instead.
 
 ## Scrubbing
 

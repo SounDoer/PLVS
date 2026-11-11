@@ -3,7 +3,9 @@
 Date: 2026-11-10
 Baseline: `7bbb03c1` (per-channel whole-file peaks)
 Scope: File-only maximum-location opt-in, completion payloads, JSON/Markdown and CLI reports.
-The implementation is an uncommitted working-tree change on `codex/file-mode-review-20261110`.
+The implementation was an uncommitted working-tree change on `codex/file-mode-review-20261110`
+when this validation ran; it was later committed as
+`feat(file-analysis): report first maximum locations with file-only tracking`.
 
 ## Location contract
 
