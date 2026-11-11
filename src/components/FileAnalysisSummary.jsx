@@ -127,14 +127,31 @@ function metricNumber(metric, value) {
   return value.toFixed(metric.id === "samplePeakMax" ? 1 : statDecimals(metric.id));
 }
 
-function valueText(metric, value) {
-  return Number.isFinite(value) ? metricNumber(metric, value) + " " + metric.unit : NO_MEASUREMENT;
+function DetailReading({ value, unit }) {
+  return (
+    <span className="whitespace-nowrap">
+      <span className="font-[family-name:var(--ui-font-mono)] tabular-nums text-foreground">
+        {value ?? NO_MEASUREMENT}
+      </span>
+      {value != null && (
+        <>
+          {" "}
+          <span className={METRIC_ANNOTATION}>{unit}</span>
+        </>
+      )}
+    </span>
+  );
 }
 
-function positionText(location) {
-  if (!Number.isFinite(location?.timeSeconds)) return NO_MEASUREMENT;
+function DetailPosition({ location }) {
+  const time = Number.isFinite(location?.timeSeconds) ? location.timeSeconds.toFixed(6) : null;
   return (
-    location.timeSeconds.toFixed(6) + " s" + (location.framePosition < 0 ? " · Before Start" : "")
+    <>
+      <DetailReading value={time} unit="s" />
+      {time != null && location.framePosition < 0 && (
+        <span className={METRIC_ANNOTATION}> · Before Start</span>
+      )}
+    </>
   );
 }
 
@@ -148,8 +165,12 @@ function MetricDetail({ metric, report }) {
     metric.id === "truePeak" ? "truePeakMaxUnavailableReason" : "samplePeakMaxUnavailableReason";
   return (
     <div className="grid gap-[var(--ui-drawer-row-gap)]">
-      <p className="font-medium text-foreground">
-        {metric.label}: {valueText(metric, value)}
+      <p>
+        <span className="font-medium text-foreground">{metric.label}</span>{" "}
+        <DetailReading
+          value={Number.isFinite(value) ? metricNumber(metric, value) : null}
+          unit={metric.unit}
+        />
       </p>
       {!report || reason ? (
         <p className="text-muted-foreground">
@@ -157,27 +178,46 @@ function MetricDetail({ metric, report }) {
         </p>
       ) : null}
       {metric.location ? (
-        <p className="text-muted-foreground">
-          {peak ? "First Maximum" : "Window End"}: {positionText(position)}
+        <p>
+          <span className={METRIC_ANNOTATION}>{peak ? "First Maximum" : "Window End"}</span>{" "}
+          <DetailPosition location={position} />
         </p>
       ) : null}
       {peak && report?.summary.channelPeaks.length ? (
         <table className="w-full text-left tabular-nums">
           <thead>
             <tr>
-              <th className="pr-2 font-medium">Channel</th>
-              <th className="pr-2 font-medium">Maximum</th>
-              <th className="font-medium">Time</th>
+              <th scope="col" className={cn("pr-2 font-medium", METRIC_ANNOTATION)}>
+                Channel
+              </th>
+              <th scope="col" className={cn("pr-2 text-right font-medium", METRIC_ANNOTATION)}>
+                Maximum
+              </th>
+              <th scope="col" className={cn("text-right font-medium", METRIC_ANNOTATION)}>
+                Time
+              </th>
             </tr>
           </thead>
           <tbody>
             {report.summary.channelPeaks.map((row) => (
               <tr key={row.channelIndex}>
-                <td className="pr-2">{row.label}</td>
-                <td className="pr-2" title={FILE_UNAVAILABLE_EXPLANATIONS[row[reasonKey]]}>
-                  {valueText(metric, row[metric.field])}
+                <td className="pr-2 text-foreground">{row.label}</td>
+                <td
+                  className="pr-2 text-right"
+                  title={FILE_UNAVAILABLE_EXPLANATIONS[row[reasonKey]]}
+                >
+                  <DetailReading
+                    value={
+                      Number.isFinite(row[metric.field])
+                        ? metricNumber(metric, row[metric.field])
+                        : null
+                    }
+                    unit={metric.unit}
+                  />
                 </td>
-                <td>{positionText(row[timeKey])}</td>
+                <td className="text-right">
+                  <DetailPosition location={row[timeKey]} />
+                </td>
               </tr>
             ))}
           </tbody>
