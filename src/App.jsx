@@ -669,6 +669,11 @@ function AppContent() {
       }
     : null;
 
+  const updateSetupPending =
+    isTauri() &&
+    (!updateControls.initialized ||
+      (updateControls.enabled && !settings.updatePreferences.choiceMade));
+
   return (
     <>
       <AgentControlBridge />
@@ -683,11 +688,7 @@ function AppContent() {
         dockSupported={isTauri() && isDockSupported()}
         applicationsSupported={isTauri() && (isWindows() || isMacOS())}
         settingsOpen={settings.settingsOpen}
-        updateSetupPending={
-          isTauri() &&
-          (!updateControls.initialized ||
-            (updateControls.enabled && !settings.updatePreferences.choiceMade))
-        }
+        updateSetupPending={updateSetupPending}
       />
       <DockImportSurface
         pack={packTransfer}
@@ -714,6 +715,7 @@ function AppContent() {
         recordingState={visualRecordingState}
         settingsOverlays={
           <AppSettingsOverlays
+            updateSetupPending={updateSetupPending}
             presentationEnabled={!docked}
             dockPresentation={{
               edge: dockEdge,

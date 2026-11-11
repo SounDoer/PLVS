@@ -10,6 +10,7 @@ import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { DEVELOPMENT_CRASH_REPORT } from "../dev/developmentEventFixtureData.js";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 
@@ -252,6 +253,24 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
 }
 
 describe("AppSettingsOverlays", () => {
+  it("waits for first-run update preferences before showing a pending crash report", () => {
+    const navigationRef = { current: null };
+    const crashReporting = { pendingReport: DEVELOPMENT_CRASH_REPORT, dismissPending: vi.fn() };
+    const view = renderOverlays(
+      makeSettings(),
+      {},
+      { navigationRef, crashReporting, updateSetupPending: true }
+    );
+    expect(screen.queryByText("PLVS Quit Unexpectedly")).toBeNull();
+    expect(crashReporting.dismissPending).not.toHaveBeenCalled();
+    view.unmount();
+    renderOverlays(
+      makeSettings(),
+      {},
+      { navigationRef, crashReporting, updateSetupPending: false }
+    );
+    expect(screen.getByText("PLVS Quit Unexpectedly")).toBeTruthy();
+  });
   it("keeps append-only import confirmation available while a draft editor is open", () => {
     const confirmImport = vi.fn();
     const packTransfer = {

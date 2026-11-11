@@ -28,6 +28,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 /**
  * @param {{
  *   presentationEnabled?: boolean,
+ *   updateSetupPending?: boolean,
  *   dockPresentation?: any,
  *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
@@ -45,6 +46,7 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  */
 export function AppSettingsOverlays({
   presentationEnabled = true,
+  updateSetupPending = false,
   dockPresentation = null,
   ref,
   settings,
@@ -601,7 +603,7 @@ export function AppSettingsOverlays({
 
       {feedbackOpen ? <FeedbackContent controller={feedback} onClose={cancelFeedback} /> : null}
 
-      {crashReporting.pendingReport ? (
+      {!updateSetupPending && crashReporting.pendingReport ? (
         <CrashReportDialog
           report={crashReporting.pendingReport}
           onClose={crashReporting.dismissPending}
