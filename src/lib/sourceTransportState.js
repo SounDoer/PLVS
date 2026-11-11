@@ -71,7 +71,7 @@ function deriveFileState({
 }) {
   const state = fileSession?.state ?? "empty";
   const busy = fileTaskBusy || Boolean(analyzingFileSession || preparingFileId || fileImportBusy);
-  const base = { sourceLabel: "File", statusMark: null };
+  const base = { sourceLabel: "File" };
   if (selectedOffset >= 0 && Number.isFinite(selectedMediaTimeMs)) {
     return {
       ...base,
@@ -108,7 +108,6 @@ function deriveFileState({
   const durationMs = fileSession?.summary?.durationMs;
   return {
     ...base,
-    statusMark: state === "complete" ? "complete" : null,
     statusLabel:
       state === "complete"
         ? Number.isFinite(durationMs)

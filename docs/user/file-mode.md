@@ -19,7 +19,7 @@ Source versions use a content fingerprint checked before and after offline decod
 duration comes from decoded audio frames; container duration is only a progress estimate.
 
 The pill shows progress and **Cancel** while the current file is working, **Retry** after a
-failure, and the duration with a completion mark after success. **Result** returns from a selected
+failure, and the duration after success. **Result** returns from a selected
 time without resetting zoom or scroll. The toolbar's **Sources** button stays in place and is
 disabled in File Mode. Open and other task starts are disabled while a file task is active.
 

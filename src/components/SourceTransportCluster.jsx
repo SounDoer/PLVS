@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, FolderOpen, Play, Radio, RotateCw, Square } from "lucide-react";
+import { ChevronDown, FolderOpen, Play, Radio, RotateCw, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverTip } from "@/components/HoverTip";
@@ -109,7 +109,7 @@ export function SourceTransportCluster({
         "relative inline-flex max-w-full shrink-0 items-center overflow-hidden",
         vertical
           ? "dock-transport w-full flex-col rounded-md"
-          : "h-[var(--ui-control-h)] w-[calc(13.8em+5rem)] rounded-full leading-none",
+          : "h-[var(--ui-control-h)] w-[calc(12em+5rem)] rounded-full leading-normal",
         chrome.shell
       )}
     >
@@ -166,16 +166,11 @@ export function SourceTransportCluster({
         </Popover>
       )}
       {!vertical && (
-        <span className="flex min-w-0 flex-1 items-center gap-1 pl-1.2 pr-1 font-semibold tabular-nums">
-          {state.statusMark === "complete" && (
-            <Check
-              className="size-[1em] shrink-0 text-[color:var(--ui-interface-success)]"
-              aria-label="analysis complete"
-            />
-          )}
-          <span className="truncate" title={state.statusLabel}>
-            {state.statusLabel}
-          </span>
+        <span
+          className="min-w-0 flex-1 truncate pl-1.2 pr-1 font-semibold tabular-nums"
+          title={state.statusLabel}
+        >
+          {state.statusLabel}
         </span>
       )}
 
