@@ -47,7 +47,6 @@ function renderHeader(overrides = {}) {
     onClear: vi.fn(),
     clearDisabled: false,
     isTauriApp: true,
-    onOpenFile: vi.fn(),
     audioDevices: [
       { id: "out-1", label: "Speakers (Realtek USB Audio)" },
       { id: "in-1", label: "Microphone (USB Interface)" },
@@ -384,13 +383,9 @@ describe("AppHeader", () => {
     expect(screen.getByRole("switch", { name: "Hide Window Frame" })).toBeTruthy();
   });
 
-  it("uses the Sources slot as Open file in File mode", () => {
-    const onOpenFile = vi.fn();
-    renderHeader({ sourceMode: "file", onOpenFile });
-
-    expect(screen.queryByRole("button", { name: "Sources" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Open file" }));
-
-    expect(onOpenFile).toHaveBeenCalledTimes(1);
+  it("keeps the Sources slot visible but disabled in File mode", () => {
+    renderHeader({ sourceMode: "file" });
+    expect(screen.getByRole("button", { name: "Sources" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Open file" })).toBeNull();
   });
 });

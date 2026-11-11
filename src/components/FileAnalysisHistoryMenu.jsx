@@ -1,180 +1,227 @@
-import { FileStack, RefreshCw, Square, Trash2 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
-import { formatCompactSessionMetadata, formatDeliveryTriple } from "@/lib/fileAnalysisDisplay";
-import { cn } from "@/lib/utils";
-import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
-import { formatClock } from "../hooks/useSessionTimer.js";
-import { IconAction } from "@/components/ui/icon-action";
-import { RowAction } from "@/components/ui/row";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, Download, Play, RefreshCw, Square, Trash2 } from "lucide-react";
+import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
+import { POPOVER_TITLE_CLASS } from "./ui/surfaceStyles.js";
+import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
+import { ManagementIconAction } from "./ManagementRow.jsx";
+import { MenuRow, RowAction } from "./ui/row.jsx";
+import { Button } from "./ui/button.jsx";
+import { IconAction } from "./ui/icon-action.jsx";
+import { cn } from "../lib/utils.js";
 
-function statusLabel(session) {
-  if (session?.state === "ready") return "Ready";
-  if (session?.state === "analyzing") {
-    const pct = Number.isFinite(session.progress) ? Math.round(session.progress * 100) : 0;
-    return `${Math.max(0, Math.min(100, pct))}%`;
-  }
-  if (session?.state === "complete") {
-    const durationMs = session.summary?.durationMs ?? session.metadata?.durationMs;
-    return Number.isFinite(durationMs) ? formatClock(durationMs) : "Done";
-  }
-  if (session?.state === "error") return "Error";
-  return "File";
+const actionSize = "size-[length:var(--ui-icon-management-action)]";
+
+function ReportMenu({ session, onExportReport, onCopyReport }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef(null);
+  const navigation = useDropdownNavigation("file-report:" + session.id);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const choose = (action) => {
+    navigation.rootProps.onOpenChange(false);
+    action();
+  };
+  const copy = async () => {
+    if (!(await onCopyReport?.(session))) return;
+    clearTimeout(timer.current);
+    setCopied(true);
+    timer.current = setTimeout(() => setCopied(false), 1500);
+  };
+  const Icon = copied ? Check : Download;
+  return (
+    <Popover {...navigation.rootProps}>
+      <PopoverTrigger asChild>
+        <IconAction
+          {...navigation.triggerProps}
+          aria-label={"export report for " + session.fileName}
+          title={copied ? "Copied" : "Export Report"}
+          className="p-1"
+        >
+          <Icon className={actionSize} aria-hidden="true" />
+        </IconAction>
+      </PopoverTrigger>
+      <PopoverContent align="end" side="right" className="w-max p-1" aria-label="Export Report">
+        <MenuRow
+          className="px-2"
+          onClick={() => choose(() => onExportReport?.("markdown", session))}
+        >
+          Export Markdown…
+        </MenuRow>
+        <MenuRow className="px-2" onClick={() => choose(() => onExportReport?.("json", session))}>
+          Export JSON…
+        </MenuRow>
+        <MenuRow className="px-2" onClick={() => choose(copy)}>
+          Copy as Markdown
+        </MenuRow>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
-function detailLabel(session) {
-  if (session?.state === "complete") {
-    return formatDeliveryTriple(session.summary) ?? formatCompactSessionMetadata(session);
-  }
-  if (session?.state === "error") return session.error || "Analysis failed";
-  return formatCompactSessionMetadata(session);
+function rowName(session, files) {
+  const sameName = files.filter((entry) => entry.fileName === session.fileName);
+  const track = session.metadata?.selectedTrack;
+  const sameTrack = sameName.filter(
+    (entry) => entry.metadata?.selectedTrack?.index === track?.index
+  );
+  const showTrack =
+    track && ((session.metadata?.audioTracks?.length ?? 0) > 1 || sameName.length > 1);
+  return [
+    session.fileName,
+    showTrack && "Track " + track.index + (track.title ? " · " + track.title : ""),
+    sameTrack.length > 1 && "Entry " + (sameTrack.indexOf(session) + 1),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
-/**
- * @param {{
- *   fileSessions?: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[],
- *   activeFileId?: string,
- *   analyzingFileId?: string,
- *   onSelectFile: (...args: any[]) => any,
- *   onReanalyzeFile: (...args: any[]) => any,
- *   onRemoveFile: (...args: any[]) => any,
- *   onClearAllFiles: (...args: any[]) => any,
- *   onStopFile: (...args: any[]) => any,
- * }} props
- */
 export function FileAnalysisHistoryMenu({
   fileSessions = [],
   activeFileId = null,
   analyzingFileId = null,
+  fileTaskBusy = false,
+  fileName = "Files",
   onSelectFile,
   onReanalyzeFile,
   onRemoveFile,
   onClearAllFiles,
   onStopFile,
+  onExportReport = null,
+  onCopyReport = null,
+  onExportStatistics = null,
 }) {
-  const count = fileSessions.length;
-  if (count === 0) return null;
-
-  const countLabel = `${count} ${count === 1 ? "file" : "files"}`;
-  const analyzingSession = analyzingFileId
-    ? fileSessions.find((session) => session.id === analyzingFileId)
-    : null;
-  const analyzingPct =
-    analyzingSession && Number.isFinite(analyzingSession.progress)
-      ? Math.max(0, Math.min(100, Math.round(analyzingSession.progress * 100)))
-      : null;
-
+  const navigation = useDropdownNavigation("file-history:files");
+  if (!fileSessions.length) return null;
+  const close = () => navigation.rootProps.onOpenChange(false);
   return (
-    <Popover>
+    <Popover {...navigation.rootProps}>
       <PopoverTrigger asChild>
-        <Button
-          variant="secondary"
-          aria-label={countLabel}
-          className="border border-border px-2 data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
+        <button
+          type="button"
+          {...navigation.triggerProps}
+          aria-label={"choose file, " + fileName}
+          className="flex min-w-0 items-center gap-[var(--ui-shell-gap)] rounded-xs text-left font-semibold text-foreground hover:bg-ui-hover data-[state=open]:bg-ui-hover"
         >
-          <FileStack className="size-[1.15em]" aria-hidden="true" />
-          <span className="tabular-nums">{count}</span>
-          {analyzingPct != null ? (
-            <span
-              aria-hidden="true"
-              className="text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground"
-            >
-              {`${analyzingPct}%`}
-            </span>
-          ) : null}
-        </Button>
+          <span className="truncate">{fileName}</span>
+          <ChevronDown className="size-[1em] shrink-0 text-muted-foreground" aria-hidden="true" />
+        </button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
-        sideOffset={6}
-        className="w-[var(--ui-surface-compact-w)] max-w-[92vw] p-1"
+        align="start"
+        className="w-[var(--ui-surface-compact-w)] p-1"
+        aria-label="Files"
       >
-        <div className="flex items-center justify-between gap-2 px-2 py-1">
-          <p className={POPOVER_TITLE_CLASS}>File History</p>
-          <button
-            type="button"
-            onClick={() => onClearAllFiles?.()}
-            className="rounded-xs px-2 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground hover:bg-ui-hover hover:text-destructive"
-            aria-label="Clear all file history"
-          >
-            Clear all
-          </button>
-        </div>
-        <div className="grid gap-0">
+        <header className="flex items-center justify-between gap-1 px-2 py-1">
+          <p className={POPOVER_TITLE_CLASS}>Files</p>
+          <div className="flex shrink-0 items-center gap-1">
+            {onExportStatistics ? (
+              <Button
+                variant="ghost"
+                disabled={!fileSessions.some(getSuccessfulFileSession)}
+                onClick={() => {
+                  close();
+                  onExportStatistics();
+                }}
+              >
+                Export Statistics…
+              </Button>
+            ) : null}
+            <ManagementIconAction
+              label="clear all files"
+              tip="Clear All"
+              icon={<Trash2 className={actionSize} />}
+              onClick={() => {
+                close();
+                onClearAllFiles?.();
+              }}
+              className="hover:text-destructive"
+            />
+          </div>
+        </header>
+        <div className="max-h-[min(50dvh,var(--radix-popover-content-available-height))] overflow-auto overscroll-contain">
           {fileSessions.map((session) => {
-            const isActive = session.id === activeFileId;
-            const isAnalyzing = session.id === analyzingFileId;
-            const detail = detailLabel(session);
+            const active = session.id === activeFileId;
+            const running = session.id === analyzingFileId;
+            const successful = Boolean(getSuccessfulFileSession(session));
+            const name = rowName(session, fileSessions);
+            const verb = successful ? "Reanalyze" : "Analyze";
+            const progress =
+              Number.isFinite((session.attempt?.metadata ?? session.metadata)?.durationMs) &&
+              session.state === "analyzing"
+                ? Math.round(Math.min(1, Math.max(0, session.progress ?? 0)) * 100) + "%"
+                : "Working…";
             return (
               <div
                 key={session.id}
-                className="group flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover"
+                className="group flex min-h-[var(--ui-row-h)] min-w-0 items-center gap-1 rounded-xs hover:bg-ui-hover focus-within:bg-ui-hover"
               >
                 <RowAction
-                  onClick={() => onSelectFile?.(session.id)}
-                  aria-label={`Show file ${session.fileName}`}
+                  aria-label={"show file " + name}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => {
+                    close();
+                    if (!active) onSelectFile?.(session.id);
+                  }}
                   className="px-2"
                 >
                   <span
-                    aria-label={isActive ? `Active file ${session.fileName}` : undefined}
+                    aria-hidden="true"
                     className={cn(
                       "size-1.5 shrink-0 rounded-full border",
-                      isActive
-                        ? "border-primary bg-primary"
-                        : "border-muted-foreground bg-transparent"
+                      active ? "border-primary bg-primary" : "border-muted-foreground"
                     )}
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-foreground">
-                      {session.fileName}
-                    </span>
-                    <span className="mt-0 flex min-w-0 items-center gap-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
-                      <span>{statusLabel(session)}</span>
-                    </span>
-                    {detail ? (
-                      <span
-                        className={cn(
-                          "mt-0 block truncate text-[length:var(--ui-fs-caption)] tabular-nums",
-                          session.state === "error"
-                            ? "text-[color:var(--ui-feedback-danger)]"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {detail}
-                      </span>
-                    ) : null}
+                  <span
+                    className="min-w-0 flex-1 truncate font-medium text-foreground"
+                    title={name}
+                  >
+                    {name}
                   </span>
                 </RowAction>
-                <span className="flex shrink-0 items-center gap-0 pr-1">
-                  {isAnalyzing ? (
-                    <IconAction
-                      onClick={() => onStopFile?.(session.id)}
-                      aria-label={`Stop analyzing ${session.fileName}`}
-                      className="p-1 text-[color:var(--ui-activity-live)] hover:bg-ui-hover hover:text-[color:var(--ui-activity-live)]"
-                    >
-                      <Square className="size-[length:var(--ui-icon-management-action)]" />
-                    </IconAction>
+                <div className="flex shrink-0 items-center gap-1 pr-1">
+                  {running ? (
+                    <>
+                      <span className="text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
+                        {progress}
+                      </span>
+                      <ManagementIconAction
+                        label={"cancel analysis of " + name}
+                        tip="Cancel"
+                        icon={<Square className={actionSize} />}
+                        onClick={() => onStopFile?.(session.id)}
+                      />
+                    </>
                   ) : (
-                    // `pr-1` on top of the wrapper's: these have no side padding of their own, unlike
-                    // the filled Stop button they trade places with.
-                    <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-1")}>
-                      <ManagementIconAction
-                        label={`Reanalyze ${session.fileName}`}
-                        icon={
-                          <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
-                        }
-                        onClick={() => onReanalyzeFile?.(session.id)}
-                      />
-                      <ManagementIconAction
-                        label={`Remove ${session.fileName}`}
-                        icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
-                        onClick={() => onRemoveFile?.(session.id)}
-                        className="hover:text-destructive"
-                      />
-                    </span>
+                    <ManagementIconAction
+                      label={verb.toLowerCase() + " " + name}
+                      tip={verb}
+                      icon={
+                        successful ? (
+                          <RefreshCw className={actionSize} />
+                        ) : (
+                          <Play className={actionSize} />
+                        )
+                      }
+                      disabled={fileTaskBusy || Boolean(analyzingFileId)}
+                      onClick={() => onReanalyzeFile?.(session.id)}
+                    />
                   )}
-                </span>
+                  {successful ? (
+                    <ReportMenu
+                      session={session}
+                      onExportReport={onExportReport}
+                      onCopyReport={onCopyReport}
+                    />
+                  ) : null}
+                  <ManagementIconAction
+                    label={"remove " + name}
+                    tip="Remove"
+                    icon={<Trash2 className={actionSize} />}
+                    disabled={running}
+                    onClick={() => onRemoveFile?.(session.id)}
+                    className="hover:text-destructive"
+                  />
+                </div>
               </div>
             );
           })}

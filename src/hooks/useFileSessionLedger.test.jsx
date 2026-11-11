@@ -103,7 +103,7 @@ describe("useFileSessionLedger", () => {
 
     expect(result.current.fileHistory.analyzingFileId).toBe(null);
     expect(result.current.validRunRequest).toBe(null);
-    expect(result.current.fileHistory.sessionsById[sessionId].state).toBe("ready");
+    expect(result.current.fileHistory.sessionsById[sessionId].state).toBe("canceled");
     expect(result.current.fileHistory.sessionsById[sessionId].progress).toBe(0.625);
   });
 

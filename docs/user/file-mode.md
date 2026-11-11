@@ -4,7 +4,7 @@ Inspect a local audio file offline, using the same meter panels as live monitori
 
 ## Opening a file
 
-Drop an audio file onto the window, or choose **Open file** in the toolbar. PLVS reads the file's
+Drop an audio file onto the window, or choose **Open** in the transport pill. PLVS reads the file's
 metadata with ffprobe and decodes it with a bundled FFmpeg — no external tools to install.
 
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
@@ -16,6 +16,26 @@ and preserves the old result. Missing sources do not remove results or reports a
 
 Source versions use a content fingerprint checked before and after offline decoding. Completed
 duration comes from decoded audio frames; container duration is only a progress estimate.
+
+The pill shows progress and **Cancel** while the current file is working, **Retry** after a
+failure, and the duration with a completion mark after success. **Result** returns from a selected
+time without resetting zoom or scroll. The toolbar's **Sources** button stays in place and is
+disabled in File Mode. Open and other task starts are disabled while a file task is active.
+
+## File Summary
+
+Open the file name menu to switch files, analyze again, export a report, or remove an entry. An
+analysis on a different file stays in the background; its progress and cancellation are on that
+file's row. The whole-file metrics on the right stay independent of timeline inspection.
+
+Hover the information, warning, or metric controls for details. Click to keep the same details
+open, and click again, press Escape, or click outside to close them. Peak details include each
+decoded channel's maximum and occurrence time. A settings warning explains which changes need
+reanalyzing without discarding the previous result.
+
+**Summary Metrics** chooses and orders the displayed readings, including no readings at all.
+Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remaining readings under
+**+N**. The choice is a global preference, independent of Presets and the Stats panel.
 
 ## Scrubbing
 
@@ -47,7 +67,7 @@ and creates a new entry when the source changed. Failed or cancelled restoration
 
 ## Reports
 
-When analysis completes, the summary can be exported as a report: **Export Markdown**,
+When analysis completes, the file's row in the file name menu can export a report: **Export Markdown**,
 **Export JSON**, or **Copy as Markdown**. Reports include the channel layout and the verdicts of the
 active [Loudness Profile](loudness-profiles.md).
 

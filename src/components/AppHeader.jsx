@@ -1,14 +1,5 @@
 import { DeviceSelectionContent } from "./DeviceSelectionContent.jsx";
-import {
-  Bookmark,
-  Focus,
-  FolderOpen,
-  Gauge,
-  LayoutGrid,
-  Settings,
-  Trash2,
-  Volume2,
-} from "lucide-react";
+import { Bookmark, Focus, Gauge, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { HoverTip } from "./HoverTip.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { SourceTransportCluster } from "./SourceTransportCluster.jsx";
@@ -53,7 +44,6 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   onClear: (...args: any[]) => any,
  *   clearDisabled: boolean,
  *   isTauriApp: boolean,
- *   onOpenFile: (...args: any[]) => any,
  *   audioDevices: any[],
  *   audioOutputs: any[],
  *   audioInputs: any[],
@@ -103,7 +93,6 @@ export function AppHeader({
   onClear,
   clearDisabled,
   isTauriApp,
-  onOpenFile,
   audioDevices,
   audioOutputs,
   audioInputs,
@@ -197,13 +186,11 @@ export function AppHeader({
         />
         {isTauriApp &&
           (sourceMode === "file" ? (
-            // Reuse the Sources slot (meaningless in File mode) as a re-import affordance,
-            // mirroring the ANALYZE picker without adding a new toolbar control.
             <IconButton
-              icon={<FolderOpen className="size-[length:var(--ui-icon-shell-action)] shrink-0" />}
-              tip="Open file"
-              data-ui-target="toolbar:open-file"
-              onClick={onOpenFile}
+              icon={<Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />}
+              tip="Sources"
+              data-ui-target="toolbar:sources"
+              disabled
             />
           ) : (
             <Popover

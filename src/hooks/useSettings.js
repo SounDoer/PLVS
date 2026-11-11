@@ -11,6 +11,7 @@ import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
 import { useWindowPinnedSetting } from "./useWindowPinnedSetting.js";
 import { useUpdatePreferences } from "./useUpdatePreferences.js";
+import { useFileSummaryMetrics } from "./useFileSummaryMetrics.js";
 
 /** @param {{ shortcutActionRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
 export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } = {}) {
@@ -38,6 +39,7 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
   const viewSettings = useViewSettings();
   const windowPinnedSetting = useWindowPinnedSetting();
   const updatePreferences = useUpdatePreferences();
+  const fileSummary = useFileSummaryMetrics();
 
   return {
     settingsOpen,
@@ -63,6 +65,7 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
     ...viewSettings,
     ...windowPinnedSetting,
     ...updatePreferences,
+    ...fileSummary,
     autostartEnabled,
     setAutostartEnabled,
     setAutostartEnabledForControl,

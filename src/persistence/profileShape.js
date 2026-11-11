@@ -2,6 +2,7 @@ import { normalizeKeyboardShortcuts } from "../data/keyboardShortcutActions.js";
 import { LOUDNESS_PROFILE_OFF, parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
+import { normalizeFileSummaryMetrics } from "../lib/fileSummaryPreferences.js";
 import {
   normalizeSurfaceOpacity,
   normalizeReferenceLufs,
@@ -84,6 +85,8 @@ function normalizeSettings(settings) {
   }
   if ("themeEditorPos" in next) next.themeEditorPos = normalizeThemeEditorPos(next.themeEditorPos);
   if ("interfaceSize" in next) next.interfaceSize = normalizeInterfaceSize(next.interfaceSize);
+  if ("fileSummaryMetrics" in next)
+    next.fileSummaryMetrics = normalizeFileSummaryMetrics(next.fileSummaryMetrics);
   if ("channelLabelOverrides" in next) {
     next.channelLabelOverrides = sanitizeChannelLabelOverrides(next.channelLabelOverrides);
   }

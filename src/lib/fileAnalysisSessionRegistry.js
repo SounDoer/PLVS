@@ -4,7 +4,7 @@
  *   id: string,
  *   path: string,
  *   fileName: string,
- *   state: "ready" | "analyzing" | "complete" | "error",
+ *   state: "ready" | "analyzing" | "complete" | "error" | "canceled",
  *   metadata: any,
  *   summary: any,
  *   progress: number,
@@ -119,7 +119,7 @@ export function addFileEntry(history, options) {
       [id]: entry,
     },
     order: [...history.order, id],
-    activeFileId: id,
+    activeFileId: options.activate === false ? history.activeFileId : id,
     analyzingFileId: history.analyzingFileId,
   });
 }

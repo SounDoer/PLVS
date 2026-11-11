@@ -27,9 +27,16 @@ const DisplaySnapshotContext = createContext(/** @type {DisplaySnapshot | null} 
  */
 export function DisplaySnapshotProvider({ children }) {
   const { display, routing } = useMeterRuntimeAssembly();
-  const { sourceMode, running, analyzingFileSession, activeFileSession } = useMeterRuntime();
+  const {
+    sourceMode,
+    running,
+    analyzingFileSession,
+    activeFileSession,
+    preparingFileId,
+    fileTaskBusy,
+  } = useMeterRuntime();
   const { selectedOffset, selectedSnapshotTimeMs } = useMeterDisplayState();
-  const { fileSession } = useSourceActions();
+  const { fileSession, fileImport } = useSourceActions();
   const { audio } = display;
   const { elapsedMsRef } = display.clock;
   const snapshot = useSnapshot({
@@ -70,6 +77,9 @@ export function DisplaySnapshotProvider({ children }) {
     selectedMediaTimeMs,
     fileSession,
     analyzingFileSession,
+    preparingFileId,
+    fileImportBusy: fileImport.importBusy,
+    fileTaskBusy: fileTaskBusy || Boolean(fileImport.selection),
   });
 
   return (

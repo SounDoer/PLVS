@@ -37,6 +37,8 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Tab                    | A panel dropped onto another panel's title, sharing its space                                       | 标签页           |                             |
 | Source                 | What PLVS measures: system playback, a physical input, an application, or a file                    | 信号源           | device, input               |
 | Restore History        | Rebuild released File browsing history using the original source, track and analysis conditions     | 恢复浏览历史     |                             |
+| Select Audio Track     | The picker shown when opening a file containing more than one audio track                           | 选择音轨         |                             |
+| Summary Metrics        | The whole-file readings selected for the File Summary region                                        | 摘要指标         |                             |
 | Sources                | The toolbar menu that chooses the Source, in the window and in the Dock                             | 信号源菜单       | Device                      |
 | Automatic              | The Source that follows the default system output                                                   | 自动             |                             |
 | Live                   | Metering the current signal as it arrives                                                           | 实时             |                             |

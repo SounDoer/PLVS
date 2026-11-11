@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { UI_PREFERENCES } from "../uiPreferences.js";
 import { pickMediaFile } from "../ipc/fileDialog.js";
 
@@ -28,6 +28,9 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   getFileAnalysisSettings: (...args: any[]) => any,
  *   onClearSucceeded: (...args: any[]) => any,
  *   importFile?: (...args: any[]) => any,
+ *   fileTaskBusy?: boolean,
+ *   fileImportBusy?: boolean,
+ *   cancelFileImport?: () => void,
  * }} options
  */
 export function useSourceTransportActions({
@@ -55,7 +58,11 @@ export function useSourceTransportActions({
   getFileAnalysisSettings,
   onClearSucceeded,
   importFile,
+  fileTaskBusy = false,
+  fileImportBusy = false,
+  cancelFileImport,
 }) {
+  const pickingRef = useRef(false);
   const resetHistoryViewport = useCallback(() => {
     setHistoryOffsetSec(0);
     setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
@@ -85,9 +92,15 @@ export function useSourceTransportActions({
   );
 
   const openFile = useCallback(async () => {
-    const path = await pickMediaFile();
-    if (path) beginFileAnalysis(path);
-  }, [beginFileAnalysis]);
+    if (fileTaskBusy || pickingRef.current) return;
+    pickingRef.current = true;
+    try {
+      const path = await pickMediaFile();
+      if (path) await beginFileAnalysis(path);
+    } finally {
+      pickingRef.current = false;
+    }
+  }, [beginFileAnalysis, fileTaskBusy]);
 
   const onSelectFile = useCallback(
     (id) => {
@@ -106,9 +119,9 @@ export function useSourceTransportActions({
 
   const onReanalyzeFile = useCallback(
     (id) => {
-      reanalyzeFile(id, getFileAnalysisSettings());
+      if (!fileTaskBusy) reanalyzeFile(id, getFileAnalysisSettings());
     },
-    [getFileAnalysisSettings, reanalyzeFile]
+    [fileTaskBusy, getFileAnalysisSettings, reanalyzeFile]
   );
 
   const onRemoveFile = useCallback(
@@ -184,12 +197,13 @@ export function useSourceTransportActions({
         }
         return;
       }
-      if (actionKind === "reanalyzeFile") {
-        reanalyzeActiveFile(activeFileSession);
+      if (actionKind === "reanalyzeFile" || actionKind === "retryFile") {
+        if (!fileTaskBusy) reanalyzeActiveFile(activeFileSession);
         return;
       }
       if (actionKind === "stopFileAnalysis") {
-        await stopFileAnalysis().catch(() => {});
+        if (fileImportBusy) cancelFileImport?.();
+        else await stopFileAnalysis().catch(() => {});
       }
     },
     [
@@ -199,16 +213,20 @@ export function useSourceTransportActions({
       runLiveStartAction,
       clearSnapshot,
       stopFileAnalysis,
+      fileTaskBusy,
+      fileImportBusy,
+      cancelFileImport,
     ]
   );
 
   const onSourceModeChange = useCallback(
     (nextMode) => {
       if (nextMode === sourceMode) return;
+      if (nextMode === "live") cancelFileImport?.();
       resetHistoryViewport();
       switchSource(nextMode);
     },
-    [resetHistoryViewport, sourceMode, switchSource]
+    [cancelFileImport, resetHistoryViewport, sourceMode, switchSource]
   );
 
   return {

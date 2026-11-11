@@ -1,274 +1,99 @@
 /** @vitest-environment jsdom */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
-import { buttonVariants } from "@/components/ui/button";
 
-const currentDir = dirname(fileURLToPath(import.meta.url));
-const source = readFileSync(join(currentDir, "FileAnalysisSummary.jsx"), "utf8");
-
-const menuProps = {
-  fileSessions: /** @type {import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[]} */ ([
-    { id: "one", fileName: "one.wav", state: "complete", summary: { durationMs: 1000 } },
-    { id: "two", fileName: "two.wav", state: "error", error: "Failed" },
-  ]),
+const fileSession = {
+  id: "one",
+  state: /** @type {const} */ ("complete"),
+  fileName: "final.wav",
+  path: "C:/mix/final.wav",
+  metadata: {
+    selectedTrack: {
+      index: 0,
+      codec: "pcm_f32le",
+      channels: 2,
+      sampleRateHz: 48000,
+      bitsPerSample: 32,
+    },
+  },
+  analysisSettings: { dialogue: { enabled: true, engine: "firered" } },
+  summary: {
+    durationMs: 180000,
+    channels: 2,
+    sampleRateHz: 48000,
+    loudnessLayout: "stereo",
+    loudnessLayoutKnown: true,
+    integratedLufs: -16.2,
+    lra: 4.1,
+    truePeakMaxDbtp: -1,
+    channelPeaks: [
+      {
+        channelIndex: 0,
+        truePeakMaxDbtp: -1,
+        truePeakMaxLocation: { framePosition: 48000, timeSeconds: 1 },
+      },
+    ],
+  },
+};
+const props = {
+  fileSession,
+  fileSessions: [fileSession],
   activeFileId: "one",
   analyzingFileId: null,
-  onSelectFile: undefined,
-  onReanalyzeFile: undefined,
-  onRemoveFile: undefined,
-  onClearAllFiles: undefined,
-  onStopFile: undefined,
-  onExportReport: undefined,
-  onCopyReport: undefined,
+  onSelectFile: vi.fn(),
+  onReanalyzeFile: vi.fn(),
+  onRemoveFile: vi.fn(),
+  onClearAllFiles: vi.fn(),
+  onStopFile: vi.fn(),
+  onExportReport: vi.fn(),
+  onCopyReport: vi.fn(),
 };
 
-describe("FileAnalysisSummary", () => {
-  it("routes the file-mode summary shell through surface opacity", () => {
-    expect(source).toContain("var(--ui-surface-panel)");
-    expect(source).not.toContain("var(--border)_var(--surface-opacity)");
-  });
-
-  it("keeps actionable file summary surfaces opaque", () => {
-    const secondary = buttonVariants({ variant: "secondary" });
-    expect(source).toContain('variant="secondary"');
-    expect(secondary).toContain("bg-secondary");
-    expect(secondary).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
-    expect(secondary).toContain("focus-visible:bg-[color:var(--ui-secondary-hover)]");
-    expect(source).toContain("data-[state=open]:bg-[color:var(--ui-secondary-hover)]");
-    expect(source).not.toContain("--panel-opacity");
-  });
-
-  it("renders delivery metrics as text pairs rather than framed chips", () => {
-    expect(source).toContain("function MetricPair");
-    expect(source).toContain("items-baseline gap-x-4 gap-y-1");
-    expect(source).not.toContain("function MetricChip");
-  });
-
-  it("renders completed file metadata and authoritative delivery metrics", () => {
-    const onExportReport = vi.fn();
-    render(
-      <FileAnalysisSummary
-        onExportReport={onExportReport}
-        fileSession={{
-          state: "complete",
-          fileName: "final.wav",
-          metadata: {
-            container: "wav",
-            selectedTrack: {
-              index: 0,
-              codec: "pcm",
-              sampleRateHz: 48000,
-              channels: 2,
-              language: "eng",
-            },
-          },
-          summary: {
-            durationMs: 180000,
-            sampleRateHz: 48000,
-            channels: 2,
-            integratedLufs: -16.2,
-            lra: 4.1,
-            truePeakMaxDbtp: -1.0,
-            samplePeakMaxLDb: -2.1,
-            samplePeakMaxRDb: -2.3,
-            dialogueIntegrated: -Infinity,
-          },
-        }}
-        fileSessions={undefined}
-        activeFileId={undefined}
-        analyzingFileId={undefined}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-        onCopyReport={undefined}
-      />
+describe("File summary", () => {
+  it("keeps authoritative readings in two lines and puts metadata details beside source specs", () => {
+    render(<FileAnalysisSummary {...props} />);
+    expect(screen.getByRole("button", { name: "choose file, final.wav" })).toBeTruthy();
+    expect(screen.getByText("Stereo · 48 kHz · 32-bit Float · 00:03:00")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Integrated details" }).textContent).toContain(
+      "-16.2 LUFS"
     );
-
-    expect(screen.getByText("final.wav")).toBeTruthy();
-    expect(screen.getByText("Integrated")).toBeTruthy();
-    expect(screen.getByText("-16.2 LUFS")).toBeTruthy();
-    expect(screen.getByText("LRA")).toBeTruthy();
-    expect(screen.getByText("4.1 LU")).toBeTruthy();
-    expect(screen.getByText("True Peak Max")).toBeTruthy();
-    expect(screen.getByText("-1.0 dBTP")).toBeTruthy();
-    expect(screen.queryByText("Sample Peak Max")).toBeNull();
-    expect(
-      screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - 2 ch - 00:03:00")
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    fireEvent.click(screen.getByRole("button", { name: "Export Markdown…" }));
-    expect(onExportReport).toHaveBeenCalledWith("markdown");
-  });
-
-  it("exports JSON and copies Markdown from the export menu", async () => {
-    const onExportReport = vi.fn();
-    const onCopyReport = vi.fn(async () => true);
-    render(
-      <FileAnalysisSummary
-        fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
-        onExportReport={onExportReport}
-        onCopyReport={onCopyReport}
-        fileSessions={undefined}
-        activeFileId={undefined}
-        analyzingFileId={undefined}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON…" }));
-    expect(onExportReport).toHaveBeenCalledWith("json");
-
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    fireEvent.click(screen.getByRole("button", { name: "Copy as Markdown" }));
-    expect(onCopyReport).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
-  });
-
-  it("keeps the Export label when the copy fails", async () => {
-    const onCopyReport = vi.fn(async () => false);
-    render(
-      <FileAnalysisSummary
-        fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
-        onCopyReport={onCopyReport}
-        fileSessions={undefined}
-        activeFileId={undefined}
-        analyzingFileId={undefined}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-        onExportReport={undefined}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    fireEvent.click(screen.getByRole("button", { name: "Copy as Markdown" }));
-
-    await waitFor(() => expect(onCopyReport).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Copied" })).toBeNull();
-  });
-
-  it("renders an error session through the normal non-complete summary shell", () => {
-    render(
-      <FileAnalysisSummary
-        fileSession={{ state: "error", fileName: "clip.mov", error: "Unsupported codec" }}
-        fileSessions={undefined}
-        activeFileId={undefined}
-        analyzingFileId={undefined}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-        onExportReport={undefined}
-        onCopyReport={undefined}
-      />
-    );
-
-    expect(screen.getByText("clip.mov")).toBeTruthy();
-    expect(screen.queryByText("File analysis error")).toBeNull();
-    expect(screen.queryByText("Could not analyze clip.mov")).toBeNull();
-    expect(screen.queryByText("Unsupported codec")).toBeNull();
-  });
-
-  it("renders the file history menu in the completed banner", () => {
-    render(
-      <FileAnalysisSummary
-        fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
-        {...menuProps}
-      />
-    );
-
-    expect(screen.getByRole("button", { name: "2 files" })).toBeTruthy();
-  });
-
-  it("renders the file history menu for an error session", () => {
-    render(
-      <FileAnalysisSummary
-        fileSession={{ state: "error", error: "Unsupported codec" }}
-        {...menuProps}
-      />
-    );
-
-    expect(screen.getByRole("button", { name: "2 files" })).toBeTruthy();
-  });
-
-  it("renders a lightweight analyzing banner with selectable history entries", () => {
-    const onSelectFile = vi.fn();
-    render(
-      <FileAnalysisSummary
-        fileSession={{
-          id: "analyzing",
-          state: "analyzing",
-          fileName: "current.wav",
-          progress: 0.25,
-        }}
-        fileSessions={[
-          { id: "analyzing", fileName: "current.wav", state: "analyzing", progress: 0.25 },
-          {
-            id: "complete",
-            fileName: "done.wav",
-            state: "complete",
-            summary: { durationMs: 10_000 },
-          },
-        ]}
-        activeFileId="analyzing"
-        analyzingFileId="analyzing"
-        onSelectFile={onSelectFile}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-        onExportReport={undefined}
-        onCopyReport={undefined}
-      />
-    );
-
-    expect(screen.getByText("current.wav")).toBeTruthy();
-    expect(screen.queryByText("Integrated")).toBeNull();
+    expect(screen.getByRole("button", { name: "LRA details" }).textContent).toContain("4.1 LU");
     expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "2 files" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show file done.wav" }));
-
-    expect(onSelectFile).toHaveBeenCalledWith("complete");
   });
 
-  it("leaves an unrecognized layout warning to the shared status area", () => {
+  it("previews then pins copyable file details and closes with Escape", async () => {
+    render(<FileAnalysisSummary {...props} />);
+    const info = screen.getByRole("button", { name: "file details" });
+    fireEvent.mouseEnter(info);
+    expect(screen.getByText("C:/mix/final.wav")).toBeTruthy();
+    expect(info.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(info);
+    fireEvent.mouseLeave(info);
+    expect(info.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "file details" }), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByText("C:/mix/final.wav")).toBeNull());
+  });
+
+  it("shows original channel peak labels and occurrence time in details", () => {
+    render(<FileAnalysisSummary {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "True Peak Max details" }));
+    expect(screen.getByRole("cell", { name: "L" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "1.000000 s" })).toBeTruthy();
+  });
+
+  it("keeps successful numbers after settings change and warns only in the details", () => {
     render(
       <FileAnalysisSummary
-        {...menuProps}
-        fileSession={{
-          state: "complete",
-          fileName: "stems.wav",
-          metadata: {
-            container: "wav",
-            selectedTrack: { index: 0, codec: "pcm", sampleRateHz: 48000, channels: 12 },
-          },
-          summary: {
-            integratedLufs: -20,
-            lra: 3,
-            truePeakMaxDbtp: -1,
-            loudnessLayout: "unknown",
-            loudnessLayoutKnown: false,
-          },
-        }}
+        {...props}
+        currentSettings={{ dialogue: { enabled: true, engine: "silero" } }}
       />
     );
-    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
+    expect(screen.getByRole("button", { name: "Integrated details" }).textContent).toContain(
+      "-16.2 LUFS"
+    );
+    expect(screen.queryByText(/changed since this result/)).toBeNull();
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "file analysis warning" }));
+    expect(screen.getByText(/Dialogue Detection changed since this result/)).toBeTruthy();
   });
 });

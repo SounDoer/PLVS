@@ -29,25 +29,25 @@ export function useFileAnalysisReportExport({
   loudnessProfile = null,
 }) {
   const buildReport = useCallback(
-    () =>
-      buildFileAnalysisReport(fileSession, {
+    (target) =>
+      buildFileAnalysisReport(target, {
         appVersion,
         loudnessProfile: describeActiveLoudnessProfile(loudnessProfile ?? {}),
       }),
-    [appVersion, fileSession, loudnessProfile]
+    [appVersion, loudnessProfile]
   );
 
   const exportFileAnalysisReport = useCallback(
-    async (format = "json") => {
-      if (!getSuccessfulFileSession(fileSession)) {
+    async (format = "json", target = fileSession) => {
+      if (!getSuccessfulFileSession(target)) {
         raiseNotice("guard", "Choose a completed file analysis to export");
         return;
       }
 
       try {
         const { extension, mediaType, render } = REPORT_FORMATS[format];
-        const contents = render(buildReport());
-        const defaultName = defaultFileAnalysisReportName(fileSession, extension);
+        const contents = render(buildReport(target));
+        const defaultName = defaultFileAnalysisReportName(target, extension);
 
         if (isTauri()) {
           const path = await saveFileAnalysisReportFile(defaultName, format);
@@ -70,19 +70,22 @@ export function useFileAnalysisReportExport({
   );
 
   /// Resolves true once the Markdown is on the clipboard, so the caller can confirm it.
-  const copyFileAnalysisReportMarkdown = useCallback(async () => {
-    if (!getSuccessfulFileSession(fileSession)) {
-      raiseNotice("guard", "Choose a completed file analysis to copy");
-      return false;
-    }
-    try {
-      await navigator.clipboard.writeText(renderFileAnalysisReportMarkdown(buildReport()));
-      return true;
-    } catch (_) {
-      raiseNotice("error", "Copy failed");
-      return false;
-    }
-  }, [buildReport, fileSession, raiseNotice]);
+  const copyFileAnalysisReportMarkdown = useCallback(
+    async (target = fileSession) => {
+      if (!getSuccessfulFileSession(target)) {
+        raiseNotice("guard", "Choose a completed file analysis to copy");
+        return false;
+      }
+      try {
+        await navigator.clipboard.writeText(renderFileAnalysisReportMarkdown(buildReport(target)));
+        return true;
+      } catch (_) {
+        raiseNotice("error", "Copy failed");
+        return false;
+      }
+    },
+    [buildReport, fileSession, raiseNotice]
+  );
 
   return {
     exportFileAnalysisReport,

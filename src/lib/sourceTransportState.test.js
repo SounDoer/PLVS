@@ -107,8 +107,8 @@ describe("deriveSourceTransportState", () => {
       })
     ).toMatchObject({
       sourceLabel: "File",
-      statusLabel: "No file",
-      actionLabel: "ANALYZE",
+      statusLabel: "No File",
+      actionLabel: "OPEN",
       chromeState: "ready",
       actionKind: "chooseFile",
     });
@@ -122,8 +122,8 @@ describe("deriveSourceTransportState", () => {
       })
     ).toMatchObject({
       statusLabel: "Ready",
-      actionLabel: "ANALYZE",
-      actionKind: "analyzeFile",
+      actionLabel: "OPEN",
+      actionKind: "chooseFile",
     });
   });
 
@@ -131,17 +131,22 @@ describe("deriveSourceTransportState", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "file",
-        fileSession: { state: "analyzing", fileName: "final_mix.wav", progress: 0.42 },
+        fileSession: {
+          state: "analyzing",
+          fileName: "final_mix.wav",
+          progress: 0.42,
+          metadata: { durationMs: 5000 },
+        },
       })
     ).toMatchObject({
       statusLabel: "42%",
-      actionLabel: "STOP",
+      actionLabel: "CANCEL",
       chromeState: "live",
       actionKind: "stopFileAnalysis",
     });
   });
 
-  it("reflects the active file (not the background analysis) and disables reanalyze", () => {
+  it("reflects the active file (not the background analysis) and disables Open", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "file",
@@ -159,14 +164,14 @@ describe("deriveSourceTransportState", () => {
     ).toMatchObject({
       sourceLabel: "File",
       statusLabel: "00:02:00",
-      actionLabel: "REANALYZE",
+      actionLabel: "OPEN",
       chromeState: "ready",
-      actionKind: "reanalyzeFile",
+      actionKind: "chooseFile",
       primaryActionDisabled: true,
     });
   });
 
-  it("disables analyze for a ready active file while another file analyzes", () => {
+  it("disables Open for a ready active file while another file analyzes", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "file",
@@ -178,8 +183,8 @@ describe("deriveSourceTransportState", () => {
         },
       })
     ).toMatchObject({
-      actionLabel: "ANALYZE",
-      actionKind: "analyzeFile",
+      actionLabel: "OPEN",
+      actionKind: "chooseFile",
       primaryActionDisabled: true,
     });
   });
@@ -217,8 +222,8 @@ describe("deriveSourceTransportState", () => {
       })
     ).toMatchObject({
       statusLabel: "Done",
-      actionLabel: "REANALYZE",
-      actionKind: "reanalyzeFile",
+      actionLabel: "OPEN",
+      actionKind: "chooseFile",
     });
   });
 
@@ -234,12 +239,12 @@ describe("deriveSourceTransportState", () => {
       })
     ).toMatchObject({
       statusLabel: "00:02:03",
-      actionLabel: "REANALYZE",
-      actionKind: "reanalyzeFile",
+      actionLabel: "OPEN",
+      actionKind: "chooseFile",
     });
   });
 
-  it("falls back to probe metadata duration on the completed state", () => {
+  it("does not present a probe estimate as a measured duration", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "file",
@@ -249,8 +254,22 @@ describe("deriveSourceTransportState", () => {
           metadata: { durationMs: 5_000 },
         },
       }).statusLabel
-    ).toBe("00:00:05");
+    ).toBe("Done");
   });
+
+  it.each([
+    [{ state: "canceled" }, {}, "Canceled", "OPEN"],
+    [{ state: "error" }, {}, "Failed", "RETRY"],
+    [{ state: "analyzing" }, {}, "Working…", "CANCEL"],
+    [{ state: "empty" }, { fileImportBusy: true }, "Working…", "CANCEL"],
+  ])(
+    "keeps the File action aligned with its task state (%#)",
+    (fileSession, options, statusLabel, actionLabel) => {
+      expect(
+        deriveSourceTransportState({ sourceMode: "file", fileSession, ...options })
+      ).toMatchObject({ statusLabel, actionLabel });
+    }
+  );
 
   it("clamps a negative scrub media time is the caller's job; finite values render as a clock", () => {
     expect(

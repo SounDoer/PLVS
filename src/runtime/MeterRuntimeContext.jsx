@@ -69,6 +69,10 @@ export function MeterRuntimeProvider({ children }) {
   const fileAnalysisAcceptanceRef = useRef(new Map());
   const fileConditionsRef = useRef(null);
   const taskSessionRef = useRef(null);
+  const activeFileIdRef = useRef(null);
+  useEffect(() => {
+    activeFileIdRef.current = fileHistory.activeFileId;
+  }, [fileHistory.activeFileId]);
   useEffect(() => {
     taskSessionRef.current = fileHistory.analyzingFileId;
   }, [fileHistory.analyzingFileId]);
@@ -235,7 +239,12 @@ export function MeterRuntimeProvider({ children }) {
             throw new Error(
               "Source file changed; the original history cannot be restored. Reanalyze to create a new result."
             );
-          const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared);
+          const activate = activeFileIdRef.current === entry.id;
+          if (activate) {
+            display.setSelectedOffset(-1);
+            display.selectedOffsetRef.current = -1;
+          }
+          const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared, activate);
           taskSessionRef.current = newId;
           return newId;
         }
@@ -247,6 +256,12 @@ export function MeterRuntimeProvider({ children }) {
     } catch (error) {
       if (preparation.cancelled) return null;
       taskSessionRef.current = null;
+      if (kind === "analyze")
+        ledger.updateSession(entry.id, (current) => ({
+          ...current,
+          state: "error",
+          error: error?.message || "File is unavailable",
+        }));
       display.raiseNotice("error", `Error: ${error?.message || "File is unavailable"}`, undefined, {
         requiresAttention: true,
       });

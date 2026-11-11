@@ -80,7 +80,7 @@ export function useFileSessionLedger({
 
   /** Mint a new session for `path` and mark it analyzing. Returns the session id. */
   const beginRun = useCallback(
-    (path, analysisSettings, probe = null, onCreated = null) => {
+    (path, analysisSettings, probe = null, onCreated = null, activate = true) => {
       analysisSettings = structuredClone(analysisSettings ?? {});
       const runId = fileEntrySeqRef.current + 1;
       fileEntrySeqRef.current = runId;
@@ -96,9 +96,10 @@ export function useFileSessionLedger({
               intake,
               analysisSettings,
               metadata: probe,
+              activate,
             }),
             sessionId,
-            { analysisSettings }
+            { analysisSettings, preserveSelection: !activate }
           )
         )
       );
@@ -130,7 +131,7 @@ export function useFileSessionLedger({
     [enforce]
   );
 
-  /** Record that `sessionId`'s run stopped: entry back to ready, no analyzing id, no run request. */
+  /** Record that `sessionId`'s run stopped: entry canceled or back to its result, no analyzing id, no run request. */
   const markStopped = useCallback(
     (/** @type {string} */ sessionId) => {
       setFileRunRequest(null);
@@ -138,7 +139,7 @@ export function useFileSessionLedger({
         if (history.analyzingFileId !== sessionId) return history;
         const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
           ...entry,
-          state: entry.successfulResult ? "complete" : "ready",
+          state: entry.successfulResult ? "complete" : "canceled",
           error: null,
           attempt: null,
         }));

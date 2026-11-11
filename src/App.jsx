@@ -184,12 +184,13 @@ function AppContent() {
     meterRuntime;
   const {
     fileSession,
+    fileImport,
+    currentFileAnalysisSettings,
     exportFileAnalysisReport,
     copyFileAnalysisReportMarkdown,
     vectorscopeResetEpoch,
     stereoMapResetEpoch,
     clearAll,
-    openFile,
     onSelectFile,
     onStopFile,
     onReanalyzeFile,
@@ -579,7 +580,6 @@ function AppContent() {
     onClear: clearAll,
     clearDisabled: sourceMode === "file" ? !activeFileSession : !running && !showClock,
     isTauriApp: isTauri(),
-    onOpenFile: openFile,
     audioDevices,
     audioOutputs,
     audioInputs,
@@ -616,7 +616,12 @@ function AppContent() {
     fileSession,
     fileSessions,
     activeFileId,
-    analyzingFileId,
+    analyzingFileId: meterRuntime.preparingFileId ?? analyzingFileId,
+    fileTaskBusy:
+      meterRuntime.fileTaskBusy || fileImport.importBusy || Boolean(fileImport.selection),
+    currentSettings: { ...currentFileAnalysisSettings(), requests: analysisRequests },
+    summaryMetrics: settings.fileSummaryMetrics,
+    onSummaryMetricsChange: settings.setFileSummaryMetrics,
     onSelectFile,
     onReanalyzeFile,
     onRemoveFile,
@@ -713,7 +718,10 @@ function AppContent() {
           sourceMode === "file" && activeFileSession?.historyReleased
             ? {
                 pending: activeFileId === (meterRuntime.preparingFileId ?? analyzingFileId),
-                disabled: meterRuntime.fileTaskBusy,
+                disabled:
+                  meterRuntime.fileTaskBusy ||
+                  fileImport.importBusy ||
+                  Boolean(fileImport.selection),
                 onRestore: () => meterRuntime.restoreFileHistory(activeFileId),
               }
             : null

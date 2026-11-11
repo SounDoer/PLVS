@@ -15,7 +15,7 @@ function compactError(error) {
  * @param {string} state
  */
 function publicFileState(state) {
-  if (state === "ready" || state === "empty") return "stopped";
+  if (state === "ready" || state === "canceled" || state === "empty") return "stopped";
   return ["probing", "analyzing", "complete", "stopped", "error"].includes(state) ? state : "error";
 }
 

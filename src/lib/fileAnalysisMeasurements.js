@@ -6,7 +6,7 @@ import { STATS_META } from "./statsCatalog.js";
 export const FILE_METRICS = Object.freeze(
   [
     { id: "integrated", field: "integratedLufs" },
-    { id: "lra", field: "lra" },
+    { id: "lra", field: "lra", label: "LRA" },
     { id: "momentaryMax", field: "mMaxLufs", location: "mMaxWindowEnd" },
     { id: "shortTermMax", field: "stMaxLufs", location: "stMaxWindowEnd" },
     {
@@ -18,7 +18,12 @@ export const FILE_METRICS = Object.freeze(
     },
     { id: "truePeak", field: "truePeakMaxDbtp", location: "truePeakMax" },
     { id: "dialogueIntegrated", field: "dialogueLoudnessLufs", dialogue: true },
-    { id: "loudnessToDialogueRatio", field: "loudnessToDialogueRatioLu", dialogue: true },
+    {
+      id: "loudnessToDialogueRatio",
+      field: "loudnessToDialogueRatioLu",
+      dialogue: true,
+      label: "LDR",
+    },
     { id: "dialogueCoverage", field: "dialogueCoveragePercent", dialogue: true },
     { id: "dialogueRange", field: "dialogueRangeLu", dialogue: true },
   ].map((metric) =>

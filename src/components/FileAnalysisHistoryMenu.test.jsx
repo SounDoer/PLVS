@@ -1,156 +1,74 @@
 /** @vitest-environment jsdom */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
-import { buttonVariants } from "@/components/ui/button";
 
-const currentDir = dirname(fileURLToPath(import.meta.url));
-const source = readFileSync(join(currentDir, "FileAnalysisHistoryMenu.jsx"), "utf8");
-
-/** @type {import("../lib/fileAnalysisSessionRegistry.js").FileSessionView[]} */
-const sessions = [
+const files = [
+  { id: "one", fileName: "final.wav", state: "complete", summary: { durationMs: 5000 } },
   {
-    id: "ready",
-    fileName: "ready.wav",
-    state: "ready",
-  },
-  {
-    id: "analyzing",
-    fileName: "scan.wav",
+    id: "two",
+    fileName: "second.wav",
     state: "analyzing",
     progress: 0.42,
-    metadata: {
-      container: "wav",
-      selectedTrack: { index: 0, codec: "pcm", sampleRateHz: 48000, channels: 2 },
-    },
+    metadata: { durationMs: 10000 },
   },
-  {
-    id: "complete",
-    fileName: "final.mov",
-    state: "complete",
-    metadata: {
-      container: "mov,mp4,m4a,3gp,3g2,mj2",
-      selectedTrack: { index: 1, codec: "ac3", sampleRateHz: 48000, channels: 6 },
-    },
-    summary: { durationMs: 120_000, integratedLufs: -23.1, lra: 5.0, truePeakMaxDbtp: -1.0 },
-  },
-  {
-    id: "error",
-    fileName: "broken.wav",
-    state: "error",
-    error: "Unsupported codec",
-  },
+  { id: "three", fileName: "canceled.wav", state: "canceled" },
 ];
 
-function renderMenu(props = {}) {
+function open(props = {}) {
   const handlers = {
     onSelectFile: vi.fn(),
     onReanalyzeFile: vi.fn(),
     onRemoveFile: vi.fn(),
     onClearAllFiles: vi.fn(),
     onStopFile: vi.fn(),
+    onExportReport: vi.fn(),
+    onCopyReport: vi.fn(),
   };
-
   render(
     <FileAnalysisHistoryMenu
-      fileSessions={sessions}
-      activeFileId="complete"
-      analyzingFileId="analyzing"
+      fileName="final.wav"
+      fileSessions={files}
+      activeFileId="one"
       {...handlers}
       {...props}
     />
   );
-
-  fireEvent.click(screen.getByRole("button", { name: "4 files" }));
+  fireEvent.click(screen.getByRole("button", { name: "choose file, final.wav" }));
   return handlers;
 }
 
-describe("FileAnalysisHistoryMenu", () => {
-  it("keeps the trigger surface opaque", () => {
-    const secondary = buttonVariants({ variant: "secondary" });
-    expect(source).toContain('variant="secondary"');
-    expect(secondary).toContain("bg-secondary");
-    expect(secondary).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
-    expect(secondary).toContain("focus-visible:bg-[color:var(--ui-secondary-hover)]");
-    expect(source).toContain("data-[state=open]:bg-[color:var(--ui-secondary-hover)]");
-    expect(source).not.toContain("--surface-opacity");
-  });
-
-  it("shows a compact trigger count", () => {
-    render(
-      <FileAnalysisHistoryMenu
-        fileSessions={sessions.slice(0, 1)}
-        activeFileId="ready"
-        analyzingFileId={null}
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-      />
-    );
-
-    expect(screen.getByRole("button", { name: "1 file" })).toBeTruthy();
-  });
-
-  it("lists file sessions with status and active/analyzing markers", () => {
-    renderMenu();
-
-    expect(screen.getByText("ready.wav")).toBeTruthy();
-    expect(screen.getByText("Ready")).toBeTruthy();
-    expect(screen.getByText("scan.wav")).toBeTruthy();
-    expect(screen.getAllByText("42%").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("WAV - PCM - Stereo")).toBeTruthy();
-    expect(screen.getByText("final.mov")).toBeTruthy();
-    expect(screen.getByText("00:02:00")).toBeTruthy();
-    expect(screen.getByText("-23.1 LUFS - 5.0 LU - -1.0 dBTP")).toBeTruthy();
-    expect(screen.getByText("broken.wav")).toBeTruthy();
-    expect(screen.getByText("Error")).toBeTruthy();
-    expect(screen.getByText("Unsupported codec")).toBeTruthy();
-    expect(screen.getByLabelText("Active file final.mov")).toBeTruthy();
-  });
-
-  it("calls select, reanalyze, remove, and clear all callbacks", () => {
-    const handlers = renderMenu();
-
-    fireEvent.click(screen.getByRole("button", { name: "Show file ready.wav" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reanalyze ready.wav" }));
-    fireEvent.click(screen.getByRole("button", { name: "Remove ready.wav" }));
-    fireEvent.click(screen.getByRole("button", { name: "Clear all file history" }));
-
-    expect(handlers.onSelectFile).toHaveBeenCalledWith("ready");
-    expect(handlers.onReanalyzeFile).toHaveBeenCalledWith("ready");
-    expect(handlers.onRemoveFile).toHaveBeenCalledWith("ready");
-    expect(handlers.onClearAllFiles).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows a progress indicator on the trigger while a file analyzes", () => {
-    render(
-      <FileAnalysisHistoryMenu
-        fileSessions={sessions}
-        activeFileId="complete"
-        analyzingFileId="analyzing"
-        onSelectFile={undefined}
-        onReanalyzeFile={undefined}
-        onRemoveFile={undefined}
-        onClearAllFiles={undefined}
-        onStopFile={undefined}
-      />
-    );
-
-    // Accessible name stays the plain count; the percentage is decorative.
-    expect(screen.getByRole("button", { name: "4 files" })).toBeTruthy();
+describe("File menu", () => {
+  it("leaves navigation and target-specific cancellation available during background work", () => {
+    const handlers = open({ analyzingFileId: "two" });
     expect(screen.getByText("42%")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "reanalyze final.wav" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    expect(screen.getByRole("button", { name: "analyze canceled.wav" })).toHaveProperty(
+      "disabled",
+      true
+    );
+    fireEvent.click(screen.getByRole("button", { name: "cancel analysis of second.wav" }));
+    expect(handlers.onStopFile).toHaveBeenCalledWith("two");
+    fireEvent.click(screen.getByRole("button", { name: "show file canceled.wav" }));
+    expect(handlers.onSelectFile).toHaveBeenCalledWith("three");
   });
 
-  it("stops the analyzing entry without removing it", () => {
-    const handlers = renderMenu();
+  it("exports a row's successful result without selecting it", () => {
+    const handlers = open({ activeFileId: "three" });
+    fireEvent.click(screen.getByRole("button", { name: "export report for final.wav" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export Markdown…" }));
+    expect(handlers.onExportReport).toHaveBeenCalledWith("markdown", files[0]);
+    expect(handlers.onSelectFile).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Stop analyzing scan.wav" }));
-    expect(handlers.onStopFile).toHaveBeenCalledWith("analyzing");
-    expect(handlers.onRemoveFile).not.toHaveBeenCalled();
+  it("distinguishes analysis from reanalysis and targets the chosen row", () => {
+    const handlers = open();
+    fireEvent.click(screen.getByRole("button", { name: "reanalyze final.wav" }));
+    expect(handlers.onReanalyzeFile).toHaveBeenCalledWith("one");
+    fireEvent.click(screen.getByRole("button", { name: "analyze canceled.wav" }));
+    expect(handlers.onReanalyzeFile).toHaveBeenCalledWith("three");
   });
 });

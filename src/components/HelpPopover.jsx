@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { usePreviewPin } from "../hooks/usePreviewPin.js";
+import { Fragment, useEffect, useRef } from "react";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
@@ -103,12 +104,10 @@ function Operation({ item }) {
 }
 
 function PanelHelp({ items, panelId }) {
-  const [mode, setMode] = useState("closed");
-  const modeRef = useRef("closed");
-  const closeTimer = useRef(null);
+  const { mode, modeRef, returnFocusRef, cancelClose, changeMode, scheduleClose, onEscape } =
+    usePreviewPin();
   const triggerRef = useRef(null);
   const contentRef = useRef(null);
-  const returnFocusRef = useRef(false);
   // Floating UI observes the real trigger and content. The virtual anchor can move a long
   // reference alongside the header, using window space while keeping pin/unpin reachable.
   const virtualAnchor = useRef({
@@ -141,23 +140,6 @@ function PanelHelp({ items, panelId }) {
     },
   });
 
-  const cancelClose = () => clearTimeout(closeTimer.current);
-  const changeMode = (nextMode) => {
-    cancelClose();
-    returnFocusRef.current = modeRef.current === "pinned";
-    modeRef.current = nextMode;
-    setMode(nextMode);
-  };
-  const scheduleClose = () => {
-    cancelClose();
-    closeTimer.current = setTimeout(() => {
-      if (modeRef.current !== "pinned") {
-        modeRef.current = "closed";
-        setMode("closed");
-      }
-    }, 180);
-  };
-  useEffect(() => () => clearTimeout(closeTimer.current), []);
   useEffect(() => {
     if (mode === "pinned") contentRef.current?.focus({ preventScroll: true });
   }, [mode]);
@@ -178,13 +160,6 @@ function PanelHelp({ items, panelId }) {
     target: { panelId },
     onClose: () => changeMode("closed"),
   });
-
-  const onEscape = (event) => {
-    if (event.key !== "Escape" || modeRef.current === "closed") return;
-    event.preventDefault();
-    event.stopPropagation();
-    changeMode("closed");
-  };
 
   return (
     <Popover

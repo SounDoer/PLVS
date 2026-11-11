@@ -55,6 +55,9 @@ function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selected
  *   selectedMediaTimeMs: number,
  *   fileSession?: import("./fileAnalysisSessionRegistry.js").FileSessionView | null,
  *   analyzingFileSession?: import("./fileAnalysisSessionRegistry.js").FileSessionView | null,
+ *   preparingFileId?: string | null,
+ *   fileImportBusy?: boolean,
+ *   fileTaskBusy?: boolean,
  * }} options
  */
 function deriveFileState({
@@ -62,16 +65,16 @@ function deriveFileState({
   selectedMediaTimeMs,
   fileSession = {},
   analyzingFileSession = null,
+  preparingFileId = null,
+  fileImportBusy = false,
+  fileTaskBusy = false,
 }) {
-  const state = fileSession.state ?? "empty";
-  // A background analysis is one running on a file other than the active one.
-  // When the active file is itself analyzing, `state === "analyzing"` covers it below.
-  const backgroundAnalysisActive =
-    analyzingFileSession?.state === "analyzing" && state !== "analyzing";
-
+  const state = fileSession?.state ?? "empty";
+  const busy = fileTaskBusy || Boolean(analyzingFileSession || preparingFileId || fileImportBusy);
+  const base = { sourceLabel: "File", statusMark: null };
   if (selectedOffset >= 0 && Number.isFinite(selectedMediaTimeMs)) {
     return {
-      sourceLabel: "File",
+      ...base,
       statusLabel: formatClock(selectedMediaTimeMs),
       actionLabel: "RESULT",
       chromeState: "snapshot",
@@ -79,48 +82,47 @@ function deriveFileState({
       primaryActionDisabled: false,
     };
   }
-
-  if (state === "analyzing") {
+  const preparing = preparingFileId !== null && preparingFileId === fileSession?.id;
+  if (fileImportBusy || preparing || state === "analyzing") {
+    const metadata = fileSession?.attempt?.metadata ?? fileSession?.metadata;
+    const progressKnown = Number.isFinite(metadata?.durationMs) && !preparing && !fileImportBusy;
     return {
-      sourceLabel: "File",
-      statusLabel: formatProgress(fileSession.progress),
-      actionLabel: "STOP",
+      ...base,
+      statusLabel: progressKnown ? formatProgress(fileSession.progress) : "Working…",
+      actionLabel: "CANCEL",
       chromeState: "live",
       actionKind: "stopFileAnalysis",
       primaryActionDisabled: false,
     };
   }
-
-  if (state === "complete") {
-    const durationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
+  if (state === "error") {
     return {
-      sourceLabel: "File",
-      statusLabel: Number.isFinite(durationMs) ? formatClock(durationMs) : "Done",
-      actionLabel: "REANALYZE",
+      ...base,
+      statusLabel: "Failed",
+      actionLabel: "RETRY",
       chromeState: "ready",
-      actionKind: "reanalyzeFile",
-      primaryActionDisabled: backgroundAnalysisActive,
+      actionKind: "retryFile",
+      primaryActionDisabled: busy,
     };
   }
-
-  if (state === "ready") {
-    return {
-      sourceLabel: "File",
-      statusLabel: "Ready",
-      actionLabel: "ANALYZE",
-      chromeState: "ready",
-      actionKind: "analyzeFile",
-      primaryActionDisabled: backgroundAnalysisActive,
-    };
-  }
-
+  const durationMs = fileSession?.summary?.durationMs;
   return {
-    sourceLabel: "File",
-    statusLabel: "No file",
-    actionLabel: "ANALYZE",
+    ...base,
+    statusMark: state === "complete" ? "complete" : null,
+    statusLabel:
+      state === "complete"
+        ? Number.isFinite(durationMs)
+          ? formatClock(durationMs)
+          : "Done"
+        : state === "canceled"
+          ? "Canceled"
+          : state === "ready"
+            ? "Ready"
+            : "No File",
+    actionLabel: "OPEN",
     chromeState: "ready",
     actionKind: "chooseFile",
-    primaryActionDisabled: backgroundAnalysisActive,
+    primaryActionDisabled: busy,
   };
 }
 

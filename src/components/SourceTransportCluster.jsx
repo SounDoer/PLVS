@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Play, Radio, Square } from "lucide-react";
+import { Check, ChevronDown, FolderOpen, Play, Radio, RotateCw, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverTip } from "@/components/HoverTip";
@@ -40,12 +40,12 @@ const SOURCE_OPTIONS = [
 
 const TRANSPORT_WIDTH_CLASS = {
   live: "w-[calc(12em+5rem)]",
-  file: "w-[calc(15em+5rem)]",
+  file: "w-[calc(13.8em+5rem)]",
 };
 
 const ACTION_WIDTH_CLASS = {
   live: "w-[calc(4.6em+1.875rem)]",
-  file: "w-[calc(7.5em+1.875rem)]",
+  file: "w-[calc(4.6em+1.875rem)]",
 };
 
 /** Dock has no visible label, so its tip spells out the Snapshot action. */
@@ -67,7 +67,12 @@ export function SourceTransportCluster({
   const triggerRef = useRef(null);
   const contentRef = useRef(null);
   const chrome = CHROME[state.chromeState] ?? CHROME.ready;
-  const ActionIcon = chrome.Icon;
+  const ActionIcon =
+    state.actionKind === "chooseFile"
+      ? FolderOpen
+      : state.actionKind === "retryFile"
+        ? RotateCw
+        : chrome.Icon;
   const vertical = presentation === "dock";
 
   useEffect(() => {
@@ -170,7 +175,17 @@ export function SourceTransportCluster({
           </PopoverContent>
         </Popover>
       )}
-      {!vertical ? (
+      {!vertical && state.statusMark === "complete" ? (
+        <span className="flex min-w-0 flex-1 items-center gap-1 pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
+          <Check
+            className="size-[1em] shrink-0 text-[color:var(--ui-interface-success)]"
+            aria-label="analysis complete"
+          />
+          <span className="truncate" title={state.statusLabel}>
+            {state.statusLabel}
+          </span>
+        </span>
+      ) : !vertical ? (
         <span className="min-w-0 flex-1 truncate pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
           {state.statusLabel}
         </span>
