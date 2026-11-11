@@ -38,16 +38,6 @@ const SOURCE_OPTIONS = [
   },
 ];
 
-const TRANSPORT_WIDTH_CLASS = {
-  live: "w-[calc(12em+5rem)]",
-  file: "w-[calc(13.8em+5rem)]",
-};
-
-const ACTION_WIDTH_CLASS = {
-  live: "w-[calc(4.6em+1.875rem)]",
-  file: "w-[calc(4.6em+1.875rem)]",
-};
-
 /** Dock has no visible label, so its tip spells out the Snapshot action. */
 const dockActionTip = ({ actionKind, actionLabel }) =>
   actionKind === "returnToLive"
@@ -96,17 +86,18 @@ export function SourceTransportCluster({
       onClick={() => onPrimaryAction(state.actionKind)}
       className={cn(
         "flex shrink-0 items-center justify-center gap-1 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
-        vertical ? "dock-transport-action w-full" : "ml-1 h-full rounded-full px-3",
-        !vertical && (ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live),
+        vertical
+          ? "dock-transport-action w-full"
+          : "ml-1 h-full w-[calc(4.6em+1.875rem)] rounded-full px-1.5",
         chrome.action
       )}
     >
       {vertical ? (
         <ActionIcon className="size-3.5" absoluteStrokeWidth strokeWidth={1.75} />
       ) : (
-        <ActionIcon className="size-[1em]" />
+        <ActionIcon className="size-[1em] shrink-0" aria-hidden="true" />
       )}
-      <span className={cn("transport-cap-label", vertical && "sr-only")}>{state.actionLabel}</span>
+      <span className={vertical ? "sr-only" : undefined}>{state.actionLabel}</span>
     </button>
   );
 
@@ -118,14 +109,13 @@ export function SourceTransportCluster({
         "relative inline-flex max-w-full shrink-0 items-center overflow-hidden",
         vertical
           ? "dock-transport w-full flex-col rounded-md"
-          : "h-[var(--ui-control-h)] rounded-full",
-        !vertical && (TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live),
+          : "h-[var(--ui-control-h)] w-[calc(13.8em+5rem)] rounded-full leading-none",
         chrome.shell
       )}
     >
       {vertical ? null : sourceLocked ? (
         <span className="flex h-full shrink-0 items-center rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
-          <span className="transport-cap-label">{state.sourceLabel}</span>
+          <span>{state.sourceLabel}</span>
         </span>
       ) : (
         <Popover open={open} onOpenChange={setOpen}>
@@ -136,7 +126,7 @@ export function SourceTransportCluster({
               aria-label={`Source: ${state.sourceLabel}`}
               className="flex h-full shrink-0 items-center gap-1 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] hover:bg-ui-hover"
             >
-              <span className="transport-cap-label">{state.sourceLabel}</span>
+              <span>{state.sourceLabel}</span>
               <ChevronDown className="size-[1em]" />
             </button>
           </PopoverTrigger>
@@ -175,21 +165,19 @@ export function SourceTransportCluster({
           </PopoverContent>
         </Popover>
       )}
-      {!vertical && state.statusMark === "complete" ? (
-        <span className="flex min-w-0 flex-1 items-center gap-1 pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
-          <Check
-            className="size-[1em] shrink-0 text-[color:var(--ui-interface-success)]"
-            aria-label="analysis complete"
-          />
+      {!vertical && (
+        <span className="flex min-w-0 flex-1 items-center gap-1 pl-1.2 pr-1 font-semibold tabular-nums">
+          {state.statusMark === "complete" && (
+            <Check
+              className="size-[1em] shrink-0 text-[color:var(--ui-interface-success)]"
+              aria-label="analysis complete"
+            />
+          )}
           <span className="truncate" title={state.statusLabel}>
             {state.statusLabel}
           </span>
         </span>
-      ) : !vertical ? (
-        <span className="min-w-0 flex-1 truncate pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
-          {state.statusLabel}
-        </span>
-      ) : null}
+      )}
 
       {vertical ? (
         // Dock shows no label; match the hover tips of the neighbouring Dock controls.

@@ -134,13 +134,6 @@ body {
   overflow: hidden;
 }
 
-/* The transport's source and action labels are uppercase indicators beside geometrically centred
- * icons. Trim only those isolated, non-truncating spans to the cap box; applying this to ordinary
- * text would clip descenders and alter rows whose height comes from line metrics. */
-.transport-cap-label {
-  text-box: trim-both cap alphabetic;
-}
-
 .settings-sheet {
   width: min(var(--ui-drawer-w), calc(100vw - 2rem));
   width: min(var(--ui-drawer-w), calc(100dvw - 2rem));

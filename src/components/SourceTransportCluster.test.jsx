@@ -30,13 +30,6 @@ describe("SourceTransportCluster", () => {
     expect(source).not.toContain("text-xs");
   });
 
-  it("centres only the uppercase indicator labels by their cap box", () => {
-    const css = readFileSync(join(currentDir, "../index.css"), "utf8");
-    expect(source.match(/transport-cap-label/g)).toHaveLength(3);
-    expect(css).toContain(".transport-cap-label");
-    expect(css).toContain("text-box: trim-both cap alphabetic");
-  });
-
   it("uses semantic borders instead of hard-coded white tints", () => {
     expect(source).toContain("border-border");
     expect(source).not.toContain("border-white/");
@@ -79,13 +72,11 @@ describe("SourceTransportCluster", () => {
 
   it("uses compact header control sizing", () => {
     expect(source).toContain("h-[var(--ui-control-h)]");
-    expect(source).toContain('live: "w-[calc(12em+5rem)]"');
-    expect(source).toContain('file: "w-[calc(13.8em+5rem)]"');
+    expect(source).toContain("w-[calc(13.8em+5rem)] rounded-full leading-none");
     expect(source).toContain('style={{ fontSize: "var(--ui-fs-status)" }}');
     expect(source).toContain("px-2");
     expect(source).toContain("pl-1.2 pr-1");
-    expect(source).toContain('live: "w-[calc(4.6em+1.875rem)]"');
-    expect(source).toContain('file: "w-[calc(4.6em+1.875rem)]"');
+    expect(source).toContain("w-[calc(4.6em+1.875rem)] rounded-full px-1.5");
     expect(source).toContain("items-center justify-center gap-1");
     expect(source).toContain("px-3");
     expect(source).not.toContain("w-[104px]");
@@ -101,7 +92,7 @@ describe("SourceTransportCluster", () => {
     expect(source).toContain(
       "relative inline-flex max-w-full shrink-0 items-center overflow-hidden"
     );
-    expect(source).toContain("h-[var(--ui-control-h)] rounded-full");
+    expect(source).toContain("h-[var(--ui-control-h)] w-");
     expect(source).toContain("p-1");
     expect(source).toContain("rounded-full px-3");
     expect(source).not.toContain("relative inline-flex items-center gap-1.5");
