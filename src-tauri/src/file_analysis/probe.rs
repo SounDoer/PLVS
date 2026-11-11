@@ -20,7 +20,17 @@ fn file_name_from_path(path: &Path) -> String {
 }
 
 pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, String> {
-  let media = probe_media_file(path)?;
+  probe_file_until(path, || false)?.ok_or_else(|| "File probing was cancelled".to_string())
+}
+
+/// `Ok(None)` when `should_stop` cancels the source fingerprint read.
+pub(crate) fn probe_file_until(
+  path: impl AsRef<Path>,
+  should_stop: impl Fn() -> bool,
+) -> Result<Option<FileAnalysisProbeResult>, String> {
+  let Some(media) = probe_identified_media_file_until(path, should_stop)? else {
+    return Ok(None);
+  };
   let selected_track = media
     .audio_tracks
     .iter()
@@ -28,7 +38,7 @@ pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, Str
     .or_else(|| media.audio_tracks.first())
     .cloned()
     .ok_or_else(|| "No audio track found in media file".to_string())?;
-  Ok(FileAnalysisProbeResult {
+  Ok(Some(FileAnalysisProbeResult {
     path: media.path,
     file_name: media.file_name,
     container: media.container,
@@ -36,12 +46,34 @@ pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, Str
     selected_track,
     audio_tracks: media.audio_tracks,
     source_version: media.source_version,
-  })
+  }))
 }
 
+/// Media metadata plus the full-content source fingerprint that binds a result to its source.
+pub(crate) fn probe_identified_media_file(
+  path: impl AsRef<Path>,
+) -> Result<FileAnalysisMediaProbeResult, String> {
+  probe_identified_media_file_until(path, || false)?
+    .ok_or_else(|| "File probing was cancelled".to_string())
+}
+
+fn probe_identified_media_file_until(
+  path: impl AsRef<Path>,
+  should_stop: impl Fn() -> bool,
+) -> Result<Option<FileAnalysisMediaProbeResult>, String> {
+  let path = path.as_ref();
+  let Some(source_version) = super::source_identity::identify_source_until(path, should_stop)?
+  else {
+    return Ok(None);
+  };
+  let mut media = probe_media_file(path)?;
+  media.source_version = Some(source_version);
+  Ok(Some(media))
+}
+
+/// Metadata only. Discovery (`plvs-cli probe`) does not read the whole file for a fingerprint.
 pub fn probe_media_file(path: impl AsRef<Path>) -> Result<FileAnalysisMediaProbeResult, String> {
   let path = path.as_ref();
-  let source_version = super::source_identity::identify_source(path)?;
   let path_str = path.to_string_lossy().to_string();
   let ffprobe = locate_sidecar("ffprobe");
 
@@ -70,7 +102,5 @@ pub fn probe_media_file(path: impl AsRef<Path>) -> Result<FileAnalysisMediaProbe
   }
 
   let json = String::from_utf8_lossy(&output.stdout);
-  let mut media = parse_ffprobe_media_json(&json, &path_str, &file_name_from_path(path))?;
-  media.source_version = Some(source_version);
-  Ok(media)
+  parse_ffprobe_media_json(&json, &path_str, &file_name_from_path(path))
 }

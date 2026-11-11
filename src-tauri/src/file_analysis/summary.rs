@@ -8,7 +8,7 @@ use std::os::windows::process::CommandExt;
 
 use crate::dsp::summary_meter::SummaryMeter;
 use crate::file_analysis::ffmpeg::decode::{build_decode_args, bytes_to_f32_le_into};
-use crate::file_analysis::probe::probe_media_file;
+use crate::file_analysis::probe::probe_identified_media_file;
 use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
 use crate::sidecar::locate_sidecar;
 
@@ -87,7 +87,7 @@ pub fn analyze_file_track_to_summary_with_layout(
   track_index: Option<u32>,
   layout_id: Option<&str>,
 ) -> Result<FileAnalysisSummaryRun, String> {
-  let media_probe = probe_media_file(Path::new(path))?;
+  let media_probe = probe_identified_media_file(Path::new(path))?;
   let selected_track = match track_index {
     Some(index) => media_probe
       .audio_tracks
@@ -111,7 +111,6 @@ pub fn analyze_file_track_to_summary_with_layout(
     source_version: media_probe.source_version,
   };
   let track = &probe.selected_track;
-  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
   let sample_rate = track
     .sample_rate_hz
     .ok_or_else(|| "Selected audio track has no sample rate".to_string())?;

@@ -15,7 +15,8 @@ completed result, reopening starts a new analysis in the same entry.
 Reanalyze keeps the original track. If the source contents changed, reanalysis creates a new entry
 and preserves the old result. Missing sources do not remove results or reports already in memory.
 
-Source versions use a content fingerprint checked before and after offline decoding. Completed
+Source versions use a content fingerprint taken when the file is opened and checked again after
+decoding; Cancel also stops a fingerprint read in progress. Completed
 duration comes from decoded audio frames; container duration is only a progress estimate.
 
 The pill shows progress and **Cancel** while the current file is working, **Retry** after a

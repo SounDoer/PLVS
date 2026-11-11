@@ -15,7 +15,7 @@ use crate::file_analysis::ffmpeg::decode::{
   build_decode_args, bytes_to_f32_le_into, parse_out_time_us,
 };
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
-use crate::file_analysis::probe::{probe_file, probe_media_file};
+use crate::file_analysis::probe::{probe_file_until, probe_identified_media_file};
 use crate::file_analysis::summary::FileAnalysisSummaryRun;
 use crate::file_analysis::types::{
   FileAnalysisProbeResult, FileAnalysisRunSettings, FileAnalysisSummaryMetrics,
@@ -304,7 +304,7 @@ pub fn analyze_file_track_with_dialogue_and_layout(
   vad_engine: VadEngineKind,
   layout_id: Option<&str>,
 ) -> Result<FileAnalysisSummaryRun, String> {
-  let media_probe = probe_media_file(Path::new(path))?;
+  let media_probe = probe_identified_media_file(Path::new(path))?;
   let selected_track = match track_index {
     Some(index) => media_probe
       .audio_tracks
@@ -384,10 +384,14 @@ pub(crate) fn analyze_file_core(
 ) -> Result<Option<(u64, FileAnalysisSummaryMetrics)>, String> {
   let probe = match probe {
     Some(probe) if probe.path == path => probe.clone(),
-    _ => probe_file(Path::new(path))?,
+    _ => match probe_file_until(Path::new(path), &should_stop)? {
+      Some(probe) => probe,
+      None => return Ok(None),
+    },
   };
+  // The fingerprint is checked once, after decoding, against the probe's. A source replaced
+  // between probe and decode fails there; a second full read up front adds no protection.
   let track = &probe.selected_track;
-  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
   let sample_rate = track
     .sample_rate_hz
     .ok_or_else(|| "Selected audio track has no sample rate".to_string())?;
@@ -495,7 +499,13 @@ pub(crate) fn analyze_file_core(
   }
 
   let metrics = pipeline.summary_metrics();
-  super::source_identity::verify_source(path, probe.source_version.as_ref())?;
+  if !super::source_identity::verify_source_until(
+    path,
+    probe.source_version.as_ref(),
+    &should_stop,
+  )? {
+    return Ok(None);
+  }
   let summary = FileAnalysisSummaryMetrics {
     duration_ms: Some(
       ((pcm_chunker.decoded_frames() as f64 / sample_rate as f64) * 1000.0).round() as u64,
@@ -583,6 +593,7 @@ mod tests {
       .insert("2".into(), vec!["L".into()]);
     assert!(validate_run_settings(&settings).is_err());
   }
+  use crate::file_analysis::probe::probe_file;
   use crate::file_analysis::summary::analyze_file_track_to_summary_with_layout;
   use std::f64::consts::PI;
   use std::sync::atomic::{AtomicU32, Ordering};
@@ -1641,6 +1652,31 @@ mod tests {
       gui.channel_peaks[7].true_peak_max_dbtp,
       Some(gui.true_peak_max_dbtp)
     );
+  }
+
+  #[test]
+  fn a_stop_during_source_identity_cancels_without_decoding() {
+    let fixture = TempWav::new(
+      "identity-stop",
+      48_000,
+      2,
+      &sine_stereo(48_000, 4_800, 0.5, 1_000.0),
+    );
+    let mut frames = 0;
+    let outcome = analyze_file_core(
+      &fixture.path_str(),
+      None,
+      &default_config(),
+      |_| {
+        frames += 1;
+        Ok(())
+      },
+      |_| {},
+      || true,
+    )
+    .unwrap();
+    assert!(outcome.is_none());
+    assert_eq!(frames, 0);
   }
 
   #[test]
