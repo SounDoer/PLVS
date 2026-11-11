@@ -80,12 +80,12 @@ describe("SourceTransportCluster", () => {
   it("uses compact header control sizing", () => {
     expect(source).toContain("h-[var(--ui-control-h)]");
     expect(source).toContain('live: "w-[calc(12em+5rem)]"');
-    expect(source).toContain('file: "w-[calc(15em+5rem)]"');
+    expect(source).toContain('file: "w-[calc(13.8em+5rem)]"');
     expect(source).toContain('style={{ fontSize: "var(--ui-fs-status)" }}');
     expect(source).toContain("px-2");
     expect(source).toContain("pl-1.2 pr-1");
     expect(source).toContain('live: "w-[calc(4.6em+1.875rem)]"');
-    expect(source).toContain('file: "w-[calc(7.5em+1.875rem)]"');
+    expect(source).toContain('file: "w-[calc(4.6em+1.875rem)]"');
     expect(source).toContain("items-center justify-center gap-1");
     expect(source).toContain("px-3");
     expect(source).not.toContain("w-[104px]");

@@ -135,6 +135,7 @@ const groups = [
       "transport.source.file",
       "transport.file.analyze",
       "transport.file.reanalyze",
+      "transport.file.restore",
       "transport.file.stop",
       "transport.file.select",
       "transport.file.remove",

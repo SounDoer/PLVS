@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { usePreviewPin } from "../hooks/usePreviewPin.js";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
+import { Button } from "./ui/button.jsx";
 import { cn } from "../lib/utils.js";
 
 export function FileDetailPopover({ label, target, trigger, children, className }) {
@@ -18,12 +19,16 @@ export function FileDetailPopover({ label, target, trigger, children, className 
   return (
     <Popover {...navigation.rootProps}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           {...navigation.triggerProps}
           aria-label={label}
           aria-pressed={mode === "pinned"}
-          className={cn("rounded-xs", mode === "pinned" && "bg-ui-hover", className)}
+          className={cn(
+            "h-auto rounded-xs p-0 text-[length:inherit] font-normal text-inherit",
+            mode === "pinned" && "bg-ui-hover",
+            className
+          )}
           onMouseEnter={() => {
             cancelClose();
             if (modeRef.current === "closed") changeMode("preview");
@@ -36,7 +41,7 @@ export function FileDetailPopover({ label, target, trigger, children, className 
           }}
         >
           {trigger}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         ref={content}

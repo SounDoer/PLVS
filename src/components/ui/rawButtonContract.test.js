@@ -24,7 +24,6 @@ const KNOWN_RAW_BUTTONS = {
   "components/SourceTransportCluster.jsx": 3,
   // One-off controls, each the only one of its kind.
   "components/ColorControl.jsx": 1, // swatch that opens the colour picker
-  "components/FileAnalysisHistoryMenu.jsx": 1, // caption-sized "Clear all"
   "components/panel-settings/SettingsWidgets.jsx": 1, // disclosure value field
   "components/ThemeEditor.jsx": 1, // Dark / Light segmented choice
   "components/ThemePicker.jsx": 1, // picker trigger styled as a Settings select

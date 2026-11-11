@@ -483,13 +483,13 @@ describe("App smoke", () => {
     expect(screen.queryByText("Speakers (Realtek USB Audio)")).toBeNull();
   });
 
-  it("starts file analysis from the File source action and shows the summary surface", async () => {
+  it("opens a file from the File transport action and shows the summary surface", async () => {
     vi.mocked(pickMediaFile).mockResolvedValue("C:\\mix.wav");
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Source: Live" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "FILE" }));
-    fireEvent.click(screen.getByRole("button", { name: "ANALYZE" }));
+    fireEvent.click(screen.getByRole("button", { name: "OPEN" }));
 
     expect(pickMediaFile).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("mix.wav")).toBeTruthy();

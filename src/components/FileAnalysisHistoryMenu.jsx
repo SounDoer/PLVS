@@ -80,15 +80,15 @@ export function FileAnalysisHistoryMenu({
   return (
     <Popover {...navigation.rootProps}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           {...navigation.triggerProps}
           aria-label={"choose file, " + fileName}
-          className="flex min-w-0 items-center gap-[var(--ui-shell-gap)] rounded-xs text-left font-semibold text-foreground hover:bg-ui-hover data-[state=open]:bg-ui-hover"
+          className="flex h-auto min-w-0 shrink justify-start gap-[var(--ui-shell-gap)] rounded-xs p-0 text-left text-[length:inherit] font-semibold text-foreground data-[state=open]:bg-ui-hover"
         >
           <span className="truncate">{fileName}</span>
           <ChevronDown className="size-[1em] shrink-0 text-muted-foreground" aria-hidden="true" />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
