@@ -143,8 +143,12 @@ function DetailReading({ value, unit }) {
   );
 }
 
+function detailSeconds(seconds) {
+  return seconds.toFixed(3);
+}
+
 function DetailPosition({ location }) {
-  const time = Number.isFinite(location?.timeSeconds) ? location.timeSeconds.toFixed(6) : null;
+  const time = Number.isFinite(location?.timeSeconds) ? detailSeconds(location.timeSeconds) : null;
   return (
     <>
       <DetailReading value={time} unit="s" />
@@ -164,8 +168,8 @@ function loudestRange(metricId, position, sampleRateHz) {
       ? (position.framePosition - blocks * Math.max(1, Math.round(sampleRateHz / 10))) /
         sampleRateHz
       : position.timeSeconds - blocks / 10;
-  const start = startSeconds > 0 ? startSeconds.toFixed(6) : "0";
-  return start + "–" + position.timeSeconds.toFixed(6);
+  const start = detailSeconds(Math.max(0, startSeconds));
+  return start + "–" + detailSeconds(position.timeSeconds);
 }
 
 function MetricDetail({ metric, report }) {

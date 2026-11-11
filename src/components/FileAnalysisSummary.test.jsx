@@ -31,7 +31,7 @@ const fileSession = {
       {
         channelIndex: 0,
         truePeakMaxDbtp: -1,
-        truePeakMaxLocation: { framePosition: 48000, timeSeconds: 1 },
+        truePeakMaxLocation: { framePosition: 48030, timeSeconds: 1.000625 },
       },
     ],
   },
@@ -79,13 +79,13 @@ describe("File summary", () => {
     render(<FileAnalysisSummary {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "True Peak Max details" }));
     expect(screen.getByRole("cell", { name: "L" })).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "1.000000 s" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "1.001 s" })).toBeTruthy();
   });
 
   it.each([
-    ["momentaryMax", "Momentary Max", 24000, "0.100000–0.500000"],
-    ["shortTermMax", "Short-term Max", 24000, "0–0.500000"],
-    ["shortTermMax", "Short-term Max", 144000, "0–3.000000"],
+    ["momentaryMax", "Momentary Max", 24000, "0.100–0.500"],
+    ["shortTermMax", "Short-term Max", 24000, "0.000–0.500"],
+    ["shortTermMax", "Short-term Max", 144000, "0.000–3.000"],
     ["shortTermMax", "Short-term Max", null, "-"],
   ])("shows the %s range (%s, end frame %s)", (id, label, frame, expected) => {
     const location = frame == null ? null : { framePosition: frame, timeSeconds: frame / 48000 };
