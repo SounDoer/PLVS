@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-12
+
+### Added
+
+- Select an audio track when opening a file with multiple tracks. Agent Control follows the same
+  import rules and accepts `--track`.
+- Export selected File results as a single statistics CSV with per-channel measurements and
+  Loudness Profile verdicts.
+- Inspect peak maxima and their positions for every decoded channel, plus the loudest Momentary and
+  Short-term ranges.
+
+### Changed
+
+- File Mode keeps the previous successful result available for inspection and export during
+  reanalysis. Restore History rebuilds released browsing data while preserving the original
+  statistics.
+- The Files menu groups file switching, reanalysis and export. Markdown and JSON reports include
+  Loudness Profile verdicts and omit full local paths. JSON reports now use schema version 3.
+
+### Fixed
+
+- Live measurements reset correctly when the analysis method changes while File Mode is visible.
+- Windows recordings keep audio and video on a shared timeline. On macOS, Quit from the application
+  menu closes all workbenches.
+
 ## [0.25.1] - 2026-11-08
 
 ### Changed
