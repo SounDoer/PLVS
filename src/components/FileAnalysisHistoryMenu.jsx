@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Download, Play, RefreshCw, Square, Trash2 } from "lucide-react";
+import { Check, Download, FileStack, Play, RefreshCw, Square, Trash2 } from "lucide-react";
+import { HoverTip } from "./HoverTip.jsx";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { POPOVER_TITLE_CLASS } from "./ui/surfaceStyles.js";
@@ -64,7 +65,6 @@ export function FileAnalysisHistoryMenu({
   activeFileId = null,
   analyzingFileId = null,
   fileTaskBusy = false,
-  fileName = "Files",
   onSelectFile,
   onReanalyzeFile,
   onRemoveFile,
@@ -79,17 +79,19 @@ export function FileAnalysisHistoryMenu({
   const close = () => navigation.rootProps.onOpenChange(false);
   return (
     <Popover {...navigation.rootProps}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          {...navigation.triggerProps}
-          aria-label={"choose file, " + fileName}
-          className="flex h-auto min-w-0 shrink justify-start gap-[var(--ui-shell-gap)] rounded-xs p-0 text-left text-[length:inherit] font-semibold text-foreground data-[state=open]:bg-ui-hover"
-        >
-          <span className="truncate">{fileName}</span>
-          <ChevronDown className="size-[1em] shrink-0 text-muted-foreground" aria-hidden="true" />
-        </Button>
-      </PopoverTrigger>
+      <HoverTip tip="Files" className="shrink-0">
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            {...navigation.triggerProps}
+            aria-label="files"
+            className="data-[state=open]:bg-ui-hover"
+          >
+            <FileStack className="size-[length:var(--ui-icon-shell-action)]" aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+      </HoverTip>
       <PopoverContent
         align="start"
         className="w-[var(--ui-surface-compact-w)] p-1"

@@ -25,7 +25,7 @@ disabled in File Mode. Open and other task starts are disabled while a file task
 
 ## File Summary
 
-Open the file name menu to switch files, analyze again, export a report, or remove an entry. An
+Open **Files** at the left of the summary bar to switch files, analyze again, export a report, or remove an entry. An
 analysis on a different file stays in the background; its progress and cancellation are on that
 file's row. During reanalysis, the previous result remains visible and you can keep inspecting a
 time point. A successful reanalysis replaces the result. The whole-file metrics on the right stay
@@ -42,7 +42,7 @@ Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remain
 
 ## Statistics CSV
 
-From the file name menu, choose **Export Statistics…**. All successful results are selected by
+From the **Files** menu, choose **Export Statistics…**. All successful results are selected by
 default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
 previous successful result remains eligible while it is reanalyzing. The export uses the selected
 successful results and the Loudness Profile active when you choose Export CSV.
@@ -87,7 +87,7 @@ and creates a new entry when the source changed. Failed or cancelled restoration
 
 ## Reports
 
-When analysis completes, the file's row in the file name menu can export a report: **Export Markdown**,
+When analysis completes, the file's row in the **Files** menu can export a report: **Export Markdown**,
 **Export JSON**, or **Copy as Markdown**. Reports include the channel layout and the verdicts of the
 active [Loudness Profile](loudness-profiles.md).
 

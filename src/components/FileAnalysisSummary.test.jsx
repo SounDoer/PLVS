@@ -53,7 +53,7 @@ const props = {
 describe("File summary", () => {
   it("keeps authoritative readings in two lines and puts metadata details beside source specs", () => {
     render(<FileAnalysisSummary {...props} />);
-    expect(screen.getByRole("button", { name: "choose file, final.wav" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "files" })).toBeTruthy();
     expect(screen.getByText("Stereo · 48 kHz · 32-bit Float · 00:03:00")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Integrated details" }).textContent).toContain(
       "-16.2 LUFS"

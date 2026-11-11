@@ -26,15 +26,9 @@ function open(props = {}) {
     onCopyReport: vi.fn(),
   };
   render(
-    <FileAnalysisHistoryMenu
-      fileName="final.wav"
-      fileSessions={files}
-      activeFileId="one"
-      {...handlers}
-      {...props}
-    />
+    <FileAnalysisHistoryMenu fileSessions={files} activeFileId="one" {...handlers} {...props} />
   );
-  fireEvent.click(screen.getByRole("button", { name: "choose file, final.wav" }));
+  fireEvent.click(screen.getByRole("button", { name: "files" }));
   return handlers;
 }
 

@@ -382,59 +382,65 @@ export function FileAnalysisSummary({
         SHELL_SURFACE_BASE
       )}
     >
-      <div className="flex w-[min(40%,var(--ui-surface-compact-w))] min-w-0 shrink-0 flex-col">
-        <div className={cn("flex min-h-[var(--ui-control-h)] min-w-0 items-center", gap)}>
-          <FileAnalysisHistoryMenu
-            {...{
-              fileName,
-              fileSessions,
-              activeFileId,
-              analyzingFileId,
-              fileTaskBusy,
-              onSelectFile,
-              onReanalyzeFile,
-              onRemoveFile,
-              onClearAllFiles,
-              onStopFile,
-              onExportReport,
-              onCopyReport,
-              onExportStatistics,
-            }}
-          />
-          {!fileSessions.length ? <span className="truncate font-semibold">{fileName}</span> : null}
-          {details.length ? (
+      <div
+        className={cn(
+          "flex w-[min(40%,var(--ui-surface-compact-w))] min-w-0 shrink-0 items-center",
+          gap
+        )}
+      >
+        <FileAnalysisHistoryMenu
+          {...{
+            fileSessions,
+            activeFileId,
+            analyzingFileId,
+            fileTaskBusy,
+            onSelectFile,
+            onReanalyzeFile,
+            onRemoveFile,
+            onClearAllFiles,
+            onStopFile,
+            onExportReport,
+            onCopyReport,
+            onExportStatistics,
+          }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className={cn("flex min-h-[var(--ui-control-h)] min-w-0 items-center", gap)}>
+            <span className="truncate font-semibold text-foreground">{fileName}</span>
+            {details.length ? (
+              <FileDetailPopover
+                label={activityOnly ? "analysis activity" : "file analysis warning"}
+                target="file-summary:warning"
+                className={cn(
+                  detailButton,
+                  !activityOnly && "text-[color:var(--ui-feedback-warning)]"
+                )}
+                trigger={
+                  <WarningIcon
+                    className={cn(icon, activityOnly && "motion-safe:animate-spin")}
+                    aria-hidden="true"
+                  />
+                }
+              >
+                <ul className="grid gap-[var(--ui-drawer-row-gap)]">
+                  {details.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              </FileDetailPopover>
+            ) : null}
+          </div>
+          <div className="flex min-w-0 items-center text-[length:var(--ui-fs-caption)] text-muted-foreground">
+            <span className="truncate">{metadata || "No Media Metadata"}</span>
             <FileDetailPopover
-              label={activityOnly ? "analysis activity" : "file analysis warning"}
-              target="file-summary:warning"
-              className={cn(
-                detailButton,
-                !activityOnly && "text-[color:var(--ui-feedback-warning)]"
-              )}
-              trigger={
-                <WarningIcon
-                  className={cn(icon, activityOnly && "motion-safe:animate-spin")}
-                  aria-hidden="true"
-                />
-              }
+              label="file details"
+              target="file-summary:details"
+              className={detailButton}
+              trigger={<Info className={icon} aria-hidden="true" />}
             >
-              <ul className="grid gap-[var(--ui-drawer-row-gap)]">
-                {details.map((detail) => (
-                  <li key={detail}>{detail}</li>
-                ))}
-              </ul>
+              <FileInfo session={display} />
             </FileDetailPopover>
-          ) : null}
-        </div>
-        <div className="flex min-w-0 items-center text-[length:var(--ui-fs-caption)] text-muted-foreground">
-          <span className="truncate">{metadata || "No Media Metadata"}</span>
-          <FileDetailPopover
-            label="file details"
-            target="file-summary:details"
-            className={detailButton}
-            trigger={<Info className={icon} aria-hidden="true" />}
-          >
-            <FileInfo session={display} />
-          </FileDetailPopover>
+          </div>
         </div>
       </div>
       <SummaryMetrics
