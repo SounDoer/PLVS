@@ -248,13 +248,33 @@ function MetricColumn({ metric, report }) {
   );
 }
 
-function MetricTrigger({ metric, report, suffix = "" }) {
+function MetricTrigger({ metric, report, inOverflow = false }) {
+  const value = report?.summary[metric.field];
+  const available = Number.isFinite(value);
   return (
     <FileDetailPopover
       label={metric.label + " details"}
-      target={"file-metric:" + metric.id + suffix}
-      className="shrink-0 text-left hover:bg-ui-hover"
-      trigger={<MetricColumn metric={metric} report={report} />}
+      target={"file-metric:" + metric.id + (inOverflow ? ":overflow" : "")}
+      className={cn(
+        "shrink-0 text-left hover:bg-ui-hover",
+        inOverflow &&
+          "col-span-3 grid min-h-[var(--ui-control-h)] grid-cols-subgrid items-baseline gap-x-[var(--ui-metric-inline-gap)] px-2"
+      )}
+      trigger={
+        inOverflow ? (
+          <>
+            <span className={cn("min-w-0 truncate", METRIC_ANNOTATION)}>{metric.label}</span>
+            <span className="text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-value)] font-semibold tabular-nums text-foreground">
+              {available ? metricNumber(metric, value) : NO_MEASUREMENT}
+            </span>
+            <span className={cn("text-right", METRIC_ANNOTATION)}>
+              {available ? metric.unit : ""}
+            </span>
+          </>
+        ) : (
+          <MetricColumn metric={metric} report={report} />
+        )
+      }
     >
       <MetricDetail metric={metric} report={report} />
     </FileDetailPopover>
@@ -326,10 +346,10 @@ function SummaryMetrics({ preferences, onChange, report }) {
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="grid w-max max-h-[var(--radix-popover-content-available-height)] gap-1 overflow-auto p-2"
+              className="grid w-max max-h-[var(--radix-popover-content-available-height)] grid-cols-[minmax(0,1fr)_max-content_max-content] gap-x-[var(--ui-metric-inline-gap)] overflow-auto p-1"
             >
               {hidden.map((metric) => (
-                <MetricTrigger key={metric.id} metric={metric} report={report} suffix=":overflow" />
+                <MetricTrigger key={metric.id} metric={metric} report={report} inOverflow />
               ))}
             </PopoverContent>
           </Popover>
@@ -353,7 +373,7 @@ function SummaryMetrics({ preferences, onChange, report }) {
         </HoverTip>
         <PopoverContent
           align="end"
-          className="max-h-[var(--radix-popover-content-available-height)] overflow-auto p-1"
+          className="w-max min-w-[12em] max-w-[min(var(--ui-surface-compact-w),92vw)] max-h-[var(--radix-popover-content-available-height)] overflow-auto p-1 text-[length:var(--ui-fs-control)]"
         >
           <PanelSettingsHeader
             title="Summary Metrics"
