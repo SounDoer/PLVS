@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FrameIntake } from "../lib/FrameIntake.js";
 import { enforceFileHistoryBudget, FILE_HISTORY_BUDGET_BYTES } from "../lib/fileHistoryBudget.js";
 import {
@@ -33,6 +33,21 @@ export function useFileSessionLedger({
     (history) => enforceFileHistoryBudget(history, budget, protectedFileId),
     [budget, protectedFileId]
   );
+
+  // A history the ledger no longer references (released by the budget, removed, cleared, replaced
+  // by a successful rerun, or a discarded attempt) is emptied after commit. Memoized callbacks
+  // elsewhere can still close over an old entry object; emptying the store keeps such a stale
+  // reference from pinning the history's buffers. Restoration always starts a new intake.
+  const ledgerIntakesRef = useRef(new Set());
+  useEffect(() => {
+    const current = new Set();
+    for (const entry of Object.values(fileHistory.sessionsById)) {
+      for (const intake of [entry.intake, entry.successfulResult?.intake, entry.attempt?.intake])
+        if (intake) current.add(intake);
+    }
+    for (const intake of ledgerIntakesRef.current) if (!current.has(intake)) intake.reset?.();
+    ledgerIntakesRef.current = current;
+  }, [fileHistory]);
 
   const fileSessions = useMemo(
     () => fileHistory.order.map((id) => fileHistory.sessionsById[id]).filter(Boolean),

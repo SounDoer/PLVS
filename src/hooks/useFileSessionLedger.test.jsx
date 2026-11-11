@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useFileSessionLedger } from "./useFileSessionLedger.js";
 import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
@@ -66,6 +66,33 @@ describe("useFileSessionLedger", () => {
       expect(file.intake).toBe(outcome === "complete" ? intake : null);
     }
   );
+
+  it("empties a released history so a stale reference cannot pin its buffers", () => {
+    const { result } = renderHook(() => useFileSessionLedger({ budget: 0 }));
+    let id;
+    act(() => {
+      id = result.current.beginRun("C:/a.wav", {});
+    });
+    const released = result.current.fileHistory.sessionsById[id].intake;
+    const reset = vi.spyOn(released, "reset");
+    act(() => {
+      result.current.updateSession(id, (entry) => ({ ...entry, state: "complete", summary: {} }));
+      result.current.setAnalyzingFileId(null);
+    });
+    expect(reset).not.toHaveBeenCalled();
+    let other;
+    act(() => {
+      other = result.current.beginRun("C:/b.wav", {});
+    });
+    const kept = result.current.fileHistory.sessionsById[other].intake;
+    const keptReset = vi.spyOn(kept, "reset");
+    act(() => result.current.markStopped(other));
+    expect(result.current.fileHistory.sessionsById[id].historyReleased).toBe(true);
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(keptReset).not.toHaveBeenCalled();
+    act(() => result.current.remove(other));
+    expect(keptReset).toHaveBeenCalledTimes(1);
+  });
 
   it("beginRun mints a session, marks it analyzing, and issues a valid run request", () => {
     const { result } = mount();

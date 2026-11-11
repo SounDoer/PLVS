@@ -44,10 +44,32 @@ progress updates while histories grow. Do not traverse storage from the frame ca
 uses the shared worker with the original source fingerprint, track and conditions and publishes
 history only; it does not replace the retained statistical result or original analysis timestamp.
 
+## WebView release check, 2026-11-11
+
+Windows dev app, CDP on the main WebView, after three forced collections per reading. The target was
+temporarily lowered to 4 MiB (not committed) so three-minute 48 kHz stereo WAV fixtures trigger
+release; the retention logic is independent of the target size. Each analysis ran through Agent
+Control, with a Snapshot selected on the first file. `backingStorageSize` is the WebView's
+ArrayBuffer storage, which holds the history chunks.
+
+| Step                          | Released entries | Before fix (MiB) | After fix (MiB) |
+| ----------------------------- | ---------------: | ---------------: | --------------: |
+| Startup                       |                0 |             25.7 |            25.7 |
+| First file complete           |                0 |             61.9 |            61.9 |
+| Second file complete          |                1 |             78.3 |            52.4 |
+| Third file complete           |                2 |            104.2 |            52.5 |
+| Fourth file complete          |                3 |            104.3 |            52.6 |
+| Released entry selected (all) |                4 |            103.7 |            26.1 |
+
+Before the fix, released histories stayed reachable through memoized React callbacks whose closure
+scopes held an older entry object (`activeFileSession`, `fileSession`, or the `files` array).
+Removing one such capture only moved the retaining path to another callback. The ledger now empties
+every history it stops referencing after commit, so a stale reference holds an empty store.
+Restore History on a released entry regenerated its history and kept the original analysis time.
+
 ## Remaining acceptance
 
-Observe WebView/process memory with many short files, retained Live history, a protected reanalysis,
-and restore/cancel/fail cycles. Confirm released histories become collectable after selection and
-Snapshot changes; measure source fingerprint and restoration elapsed time. These checks belong to
+Observe WebView/process memory with many long files, retained Live history, a protected reanalysis,
+and restore/cancel/fail cycles; measure source fingerprint and restoration elapsed time. These checks belong to
 the desktop/final integration stage and remain outstanding until recorded here. Tune the internal
 target if those observations show excessive pressure; no user memory setting is introduced.
