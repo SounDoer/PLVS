@@ -50,7 +50,7 @@ At the bottom of the **Files** menu, choose **Export Statistics…**. All succes
 default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
 previous successful result remains eligible while it is reanalyzing. The export uses the selected
 successful results and the Loudness Profile active when you choose Export CSV. The suggested
-filename starts with `plvs-file-statistics-` and includes the UTC export timestamp.
+filename starts with `plvs-file-statistics-` and includes the local export time to the second. The timestamp inside the CSV uses UTC.
 
 Each row contains one result, with numeric measurements and positions in seconds, plus channel
 columns through the highest selected channel count. A nonexistent channel's columns are empty;

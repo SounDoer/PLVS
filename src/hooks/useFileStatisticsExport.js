@@ -6,6 +6,13 @@ import { buildFileAnalysisStatisticsCsv } from "../lib/fileAnalysisStatisticsCsv
 import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 import { formatFileEntryName } from "../lib/fileAnalysisDisplay.js";
 
+function localExportTimestamp(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  const day = [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join("-");
+  const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map(pad).join("-");
+  return day + "_" + time;
+}
+
 export function useFileStatisticsExport({
   fileSessions,
   loudnessProfile,
@@ -39,13 +46,13 @@ export function useFileStatisticsExport({
     setBusy(true);
     try {
       // Capture every result and the same effective Profile before the native save dialog yields.
-      const exportedAt = new Date().toISOString();
+      const exportTime = new Date();
       const contents = buildFileAnalysisStatisticsCsv(entries, {
-        exportedAt,
+        exportedAt: exportTime.toISOString(),
         appVersion,
         loudnessProfile: describeActiveLoudnessProfile(loudnessProfile),
       });
-      const defaultName = `plvs-file-statistics-${exportedAt.replaceAll(":", "-")}.csv`;
+      const defaultName = `plvs-file-statistics-${localExportTimestamp(exportTime)}.csv`;
       const path = await saveFileAnalysisReportFile(defaultName, "csv");
       if (!path) return false;
       await writeTextFile(path, contents);

@@ -19,7 +19,8 @@ beforeEach(() => vi.resetAllMocks());
 afterEach(() => vi.useRealTimers());
 
 it("captures the selected success before waiting for the native save dialog", async () => {
-  vi.setSystemTime(new Date("2026-11-11T10:33:00.123Z"));
+  const exportTime = new Date(2026, 10, 11, 18, 33, 0, 123);
+  vi.setSystemTime(exportTime);
   let resolve;
   vi.mocked(saveFileAnalysisReportFile).mockReturnValue(
     new Promise((done) => {
@@ -38,7 +39,7 @@ it("captures the selected success before waiting for the native save dialog", as
     pending = result.current.onExport(["one"]);
   });
   expect(saveFileAnalysisReportFile).toHaveBeenCalledWith(
-    "plvs-file-statistics-2026-11-11T10-33-00.123Z.csv",
+    "plvs-file-statistics-2026-11-11_18-33-00.csv",
     "csv"
   );
   rerender({ fileSessions: [{ ...entry, summary: { channels: 2, integratedLufs: -19 } }] });
@@ -47,7 +48,7 @@ it("captures the selected success before waiting for the native save dialog", as
     await pending;
   });
   expect(writeTextFile).toHaveBeenCalledOnce();
-  expect(vi.mocked(writeTextFile).mock.calls[0][1]).toContain(",2026-11-11T10:33:00.123Z,");
+  expect(vi.mocked(writeTextFile).mock.calls[0][1]).toContain(`,${exportTime.toISOString()},`);
   expect(vi.mocked(writeTextFile).mock.calls[0][1]).toContain(",-23,");
   expect(result.current.open).toBe(false);
 });
