@@ -20,7 +20,7 @@
 | 6. Complete reports and Profile evaluation | Core implemented               | 263 focused frontend/contract tests and typecheck passed; 159 native CLI tests passed. Version 3 removes paths and adds measurement reasons.                                                         |
 | 7. Pill, file region and summary settings  | Core implemented               | 103 focused tests and typecheck passed; Windows normal and 431 CSS-px captures verified readable columns and +N. Live pill pixels match apart from two subpixel differences.                         |
 | 8. Whole-file statistics CSV               | Core implemented               | 47 focused tests and typecheck passed. Windows native save produced a 90-column mono/stereo CSV; independent Python parsing verified its shape, Profile evidence and path omission.                  |
-| 9. Final integration and acceptance        | In progress                    | Windows screenshots and desktop exports captured; repository gates and hardware checks pending.                                                                                                      |
+| 9. Final integration and acceptance        | Windows desktop checked        | [Desktop validation](../notes/2026-11-11-file-mode-desktop-validation.md) records measured behavior and limits; repository and capture gates are tracked separately.                                 |
 
 Stage 4 integration and focused verification completed in `86c861e7`. Stage 5 retains all results
 and implements the measured File-only history target and explicit restore. See the
