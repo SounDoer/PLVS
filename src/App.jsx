@@ -499,6 +499,7 @@ function AppContent() {
     // The Time Range settings row edits the viewport these describe. It reads the effective values
     // rather than the stored window, because those are what the axis labels are built from.
     sourceMode,
+    fileDisplayIntake: sourceMode === "file" ? routing.fileDisplayIntake : null,
     historyMaxWindowSec: historyRetentionSec,
     historyWindowSec: sharedTimeViewport.windowSec,
     historyOffsetSec: sharedTimeViewport.offsetSec,

@@ -34,6 +34,7 @@ import { createContext, useContext } from "react";
  *   setSelectedOffset: any,
  *   selectSnapshot: any,
  *   sourceMode: any,
+ *   fileDisplayIntake?: import("../lib/FrameIntake.js").FrameIntake | null,
  *   historyMaxWindowSec: any,
  *   historyWindowSec: number,
  *   historyOffsetSec: number,

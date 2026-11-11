@@ -85,7 +85,7 @@ describe("MeterRuntimeProvider", () => {
 
   it("reopens a canceled entry and displays the fresh run's timeline", async () => {
     const { result } = renderHook(
-      () => ({ ...useMeterRuntime(), routing: useMeterRuntimeAssembly().routing }),
+      () => ({ ...useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
       { wrapper }
     );
     act(() => result.current.switchSource("file"));
@@ -97,6 +97,7 @@ describe("MeterRuntimeProvider", () => {
 
     act(() => result.current.beginFileAnalysis("C:/second.wav", {}));
     await act(() => result.current.stopFileAnalysis());
+    act(() => result.current.assembly.display.setAudio({ peakDb: [-10, -20] }));
     act(() => result.current.beginFileAnalysis(path, {}, null, first.id));
 
     expect(result.current.fileSessions).toHaveLength(2);
@@ -106,12 +107,13 @@ describe("MeterRuntimeProvider", () => {
       state: "analyzing",
       progress: 0,
     });
-    const { routing } = result.current;
+    const { routing, display } = result.current.assembly;
+    expect(display.audio.peakDb).toEqual([]);
     expect(routing.fileAnalysisIntake).not.toBe(first.attempt.intake);
     expect(routing.intakeRef.current).toBe(routing.fileAnalysisIntake);
 
     await act(() => result.current.stopFileAnalysis());
-    expect(result.current.routing.intakeRef.current).toBe(routing.fileAnalysisIntake);
+    expect(result.current.assembly.routing.intakeRef.current).toBe(routing.fileAnalysisIntake);
   });
 
   it("selects a previous file result", async () => {

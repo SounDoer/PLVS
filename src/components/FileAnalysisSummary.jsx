@@ -370,7 +370,7 @@ export function FileAnalysisSummary({
       )}
     >
       <div className="flex w-[min(40%,var(--ui-surface-compact-w))] min-w-0 shrink-0 flex-col">
-        <div className={cn("flex min-w-0 items-center", gap)}>
+        <div className={cn("flex min-h-[var(--ui-control-h)] min-w-0 items-center", gap)}>
           <FileAnalysisHistoryMenu
             {...{
               fileName,

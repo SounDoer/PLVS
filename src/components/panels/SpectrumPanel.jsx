@@ -125,6 +125,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
     totalSamples,
     setSelectedOffset,
     captureCurrentSnapshot,
+    fileDisplayIntake = null,
   } = useHistoryData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const normalizedPanelControls = useMemo(
@@ -241,6 +242,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   // A new analysis key means a new band grid, and a hold from one grid means nothing on
   // another; the clear key and the switch itself start a new hold the same way.
   const maxHoldIdentityRef = useRef(null);
+  const maxHoldFileIntakeRef = useRef(null);
   const maxHoldRef = useRef(null);
   const maxHoldRefB = useRef(null);
   const [maxHoldClearKey, setMaxHoldClearKey] = useState(0);
@@ -337,8 +339,12 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   // Reset during render, not in an effect: an effect runs after this render has already folded a
   // frame in, so on mount it would throw away the first frame and leave the hold trailing by one.
   const maxHoldIdentity = `${spectrumKey}|${maxHoldClearKey}|${maxHoldEnabled}`;
-  if (maxHoldIdentityRef.current !== maxHoldIdentity) {
+  if (
+    maxHoldIdentityRef.current !== maxHoldIdentity ||
+    maxHoldFileIntakeRef.current !== fileDisplayIntake
+  ) {
     maxHoldIdentityRef.current = maxHoldIdentity;
+    maxHoldFileIntakeRef.current = fileDisplayIntake;
     maxHoldRef.current = null;
     maxHoldRefB.current = null;
   }

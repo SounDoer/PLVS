@@ -27,7 +27,9 @@ disabled in File Mode. Open and other task starts are disabled while a file task
 
 Open the file name menu to switch files, analyze again, export a report, or remove an entry. An
 analysis on a different file stays in the background; its progress and cancellation are on that
-file's row. The whole-file metrics on the right stay independent of timeline inspection.
+file's row. During reanalysis, the previous result remains visible and you can keep inspecting a
+time point. A successful reanalysis replaces the result. The whole-file metrics on the right stay
+independent of timeline inspection.
 
 Hover the information, warning, or metric controls for details. Click to keep the same details
 open, and click again, press Escape, or click outside to close them. Peak details include each

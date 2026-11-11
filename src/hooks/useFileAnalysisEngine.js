@@ -48,8 +48,7 @@ export function useFileAnalysisEngine({
   shouldDriveDisplay,
   fileAnalysisAcceptanceRef,
 }) {
-  const { frameRef, selectedOffsetRef, latestAudioRef, setAudio, setSelectedOffset, raiseNotice } =
-    display;
+  const { frameRef, selectedOffsetRef, latestAudioRef, setAudio, raiseNotice } = display;
   const activeRunRef = useRef(null);
 
   const stop = useCallback(async () => {
@@ -127,8 +126,6 @@ export function useFileAnalysisEngine({
       try {
         intake.reset();
         frameRef.current = 0;
-        selectedOffsetRef.current = -1;
-        setSelectedOffset(-1);
         setAnalyzingFileId(sessionId);
         const metadata = probe ?? (await probeFileAnalysis(filePath));
         if (!active()) return;
@@ -192,14 +189,13 @@ export function useFileAnalysisEngine({
           frameRef,
           defaultSampleRateRef,
           setAudio: (next) => {
-            if (!shouldDriveDisplay() || selectedOffsetRef.current >= 0) return;
+            if (!shouldDriveDisplay()) return;
             latestAudioRef.current = next;
-            setAudio(next);
+            if (selectedOffsetRef.current < 0) setAudio(next);
           },
           latestAudioRef: attemptAudioRef,
           ackFrames: () => {},
           shouldDriveDisplay: () => true,
-          shouldPublishDisplay: () => selectedOffsetRef.current < 0,
           onDialogueDetectionError: (code, message) => {
             updateFileSession(sessionId, (current) => ({
               ...current,

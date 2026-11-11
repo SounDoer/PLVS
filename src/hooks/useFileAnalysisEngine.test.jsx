@@ -61,7 +61,7 @@ import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
 /**
  * The harness component below publishes the hook result on `window` so a test can drive it.
- * @typedef {Window & { __fileApi?: any, __selectedOffsetRef?: { current: number } }} HarnessWindow
+ * @typedef {Window & { __fileApi?: any, __selectedOffsetRef?: { current: number }, __latestAudioRef?: { current: any }, __setAudio?: ReturnType<typeof vi.fn> }} HarnessWindow
  */
 
 /**
@@ -100,6 +100,7 @@ function Harness({
   const selectedOffsetRef = useRef(selectedOffset);
   const latestAudioRef = useRef({ peakDb: [] });
   const frameRef = useRef(0);
+  const setAudio = vi.fn();
   const defaultSampleRateRef = useRef(48000);
 
   const api = useFileAnalysisEngine(
@@ -118,7 +119,7 @@ function Harness({
         frameRef,
         selectedOffsetRef,
         latestAudioRef,
-        setAudio: vi.fn(),
+        setAudio,
         setSelectedOffset: vi.fn(),
         raiseNotice,
       },
@@ -130,6 +131,8 @@ function Harness({
 
   /** @type {HarnessWindow} */ (window).__fileApi = api;
   /** @type {HarnessWindow} */ (window).__selectedOffsetRef = selectedOffsetRef;
+  /** @type {HarnessWindow} */ (window).__latestAudioRef = latestAudioRef;
+  /** @type {HarnessWindow} */ (window).__setAudio = setAudio;
   return null;
 }
 
@@ -165,6 +168,8 @@ afterEach(() => {
   vi.clearAllMocks();
   delete (/** @type {HarnessWindow} */ (window).__fileApi);
   delete (/** @type {HarnessWindow} */ (window).__selectedOffsetRef);
+  delete (/** @type {HarnessWindow} */ (window).__latestAudioRef);
+  delete (/** @type {HarnessWindow} */ (window).__setAudio);
 });
 
 describe("useFileAnalysisEngine", () => {
@@ -233,9 +238,20 @@ describe("useFileAnalysisEngine", () => {
     expect(options.visualMaxSamples).toBe(FILE_VISUAL_HISTORY_MAX_SAMPLES);
     expect(options.shouldDriveDisplay()).toBe(true);
     expect(options.latestAudioRef.current.peakDb).toEqual([]);
-    expect(options.shouldPublishDisplay()).toBe(true);
-    /** @type {HarnessWindow} */ (window).__selectedOffsetRef.current = 0;
-    expect(options.shouldPublishDisplay()).toBe(false);
+    const harness = /** @type {HarnessWindow} */ (window);
+    const audio = { peakDb: [-10] };
+    harness.__selectedOffsetRef.current = 0;
+    options.setAudio(audio);
+    expect(harness.__latestAudioRef.current).toBe(audio);
+    expect(harness.__setAudio).not.toHaveBeenCalled();
+
+    harness.__selectedOffsetRef.current = -1;
+    options.setAudio(audio);
+    expect(harness.__setAudio).toHaveBeenCalledWith(audio);
+    shouldDriveDisplay.mockReturnValue(false);
+    options.setAudio({ peakDb: [-3] });
+    expect(harness.__latestAudioRef.current).toBe(audio);
+    expect(harness.__setAudio).toHaveBeenCalledTimes(1);
   });
 
   it("updates progress only for the targeted session id", async () => {

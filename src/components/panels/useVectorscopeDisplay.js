@@ -83,6 +83,7 @@ export function useVectorscopeDisplay() {
     historyChartInteractive,
     getVectorscopeHistoryForKey,
     vectorscopeResetEpoch = 0,
+    fileDisplayIntake = null,
   } = useHistoryData();
   const { panelControls, panelVisible } = usePanelInstanceData();
   const panelActive = panelVisible !== false;
@@ -304,6 +305,7 @@ export function useVectorscopeDisplay() {
     normalizedPanelControls,
     maxHoldResetKey,
     vectorscopeResetEpoch,
+    fileDisplayIntake,
     vectorscopeKey,
     px,
     py,

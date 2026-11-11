@@ -108,9 +108,12 @@ describe("DisplaySnapshotProvider", () => {
       }));
       seen.assembly.ledger.setAnalyzingFileId(null);
     });
+    act(() => seen.assembly.display.selectSnapshot(0.1));
     await act(async () => {
       await seen.runtime.reanalyzeFile(id, {});
     });
+    expect(seen.assembly.display.selectedOffset).toBe(0.1);
+    act(() => seen.assembly.display.clearSnapshot());
     act(() => seen.assembly.display.setAudio((audio) => ({ ...audio, integrated: -8 })));
     expect(seen.snapshot.displayAudio.integrated).toBe(-23);
     act(() =>

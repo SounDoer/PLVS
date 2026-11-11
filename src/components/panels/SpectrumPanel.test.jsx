@@ -868,6 +868,24 @@ describe("SpectrumPanel Max", () => {
     expect(fillEdge(container)).toContain(contourFor([-30, -20]));
   });
 
+  it("does not carry Max Hold into a replacement file result", () => {
+    const { container, rerender } = twoFrames("hold", "combined", { fileDisplayIntake: {} });
+    expect(fillEdge(container)).toContain(contourFor([-30, -20]));
+    rerender(
+      spectrumPanelTree({
+        selectedOffset: -1,
+        fileDisplayIntake: {},
+        panelControls: { spectrumMaxMode: "hold", spectrumView: "combined" },
+        displayAudio: {
+          spectrumResultsByKey: {
+            [LIVE_KEY]: liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -35] }),
+          },
+        },
+      })
+    );
+    expect(fillEdge(container)).toContain(contourFor([-40, -35]));
+  });
+
   it("fills to the engine's decaying peak in Decay mode", () => {
     const { container } = twoFrames("decay");
 

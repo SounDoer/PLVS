@@ -51,6 +51,7 @@ export function VectorscopePanel({ compact = false, showAxes: axesOverride, clas
     normalizedPanelControls,
     maxHoldResetKey,
     vectorscopeResetEpoch,
+    fileDisplayIntake,
     vectorscopeKey,
     px,
     py,
@@ -179,6 +180,7 @@ export function VectorscopePanel({ compact = false, showAxes: axesOverride, clas
                       maxHoldResetKey={maxHoldResetKey}
                       persistenceMs={normalizedPanelControls.vectorscopePolarSamplePersistenceMs}
                       resetEpoch={vectorscopeResetEpoch}
+                      fileDisplayIntake={fileDisplayIntake}
                       identityKey={`${vectorscopeKey}:${px}:${py}`}
                       colors={vectorscopeColors}
                       enabled={panelActive}

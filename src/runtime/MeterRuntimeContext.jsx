@@ -177,8 +177,8 @@ export function MeterRuntimeProvider({ children }) {
       return null;
     }
 
-    display.setSelectedOffset(-1);
-    display.selectedOffsetRef.current = -1;
+    display.clearSnapshot();
+    if (sourceMode === "file") display.clearAudio();
     if (existingId && fileHistory.sessionsById[existingId]) {
       ledger.rerun(existingId, path, analysisSettings, probe, "analyze", true);
       taskSessionRef.current = existingId;
@@ -246,8 +246,8 @@ export function MeterRuntimeProvider({ children }) {
             );
           const activate = activeFileIdRef.current === entry.id;
           if (activate) {
-            display.setSelectedOffset(-1);
-            display.selectedOffsetRef.current = -1;
+            display.clearSnapshot();
+            display.clearAudio();
           }
           const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared, activate);
           taskSessionRef.current = newId;
@@ -255,6 +255,10 @@ export function MeterRuntimeProvider({ children }) {
         }
       }
       if (preparation.cancelled) return null;
+      if (activeFileIdRef.current === entry.id && !getSuccessfulFileSession(entry)) {
+        display.clearSnapshot();
+        display.clearAudio();
+      }
       onPrepared?.(entry.id);
       ledger.rerun(entry.id, entry.path, analysisSettings, probe, kind);
       return entry.id;

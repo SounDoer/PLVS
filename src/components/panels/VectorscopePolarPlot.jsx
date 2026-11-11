@@ -165,6 +165,7 @@ export function VectorscopePolarPlot({
   persistenceMs = POLAR_SAMPLE_WINDOW_MS,
   resetEpoch = 0,
   identityKey = "",
+  fileDisplayIntake = null,
   colors: colorsOverride = null,
   enabled = true,
 }) {
@@ -175,6 +176,7 @@ export function VectorscopePolarPlot({
   const maxHoldRef = useRef(null);
   const lastTimestampRef = useRef(null);
   const stateIdentityRef = useRef("");
+  const fileIntakeRef = useRef(null);
   const maxHoldResetKeyRef = useRef(maxHoldResetKey);
   const snapshot = snapshotPairs != null;
   const effectiveRows = useMemo(
@@ -198,8 +200,9 @@ export function VectorscopePolarPlot({
     const { dpr, width, height } = canvasSize;
     if (width <= 0 || height <= 0) return;
 
-    if (stateIdentityRef.current !== stateIdentity) {
+    if (stateIdentityRef.current !== stateIdentity || fileIntakeRef.current !== fileDisplayIntake) {
       stateIdentityRef.current = stateIdentity;
+      fileIntakeRef.current = fileDisplayIntake;
       envelopeRef.current = null;
       maxHoldRef.current = initialMaxHold?.length ? Float64Array.from(initialMaxHold) : null;
       lastTimestampRef.current = null;
@@ -270,6 +273,7 @@ export function VectorscopePolarPlot({
     snapshot,
     snapshotMaxHold,
     stateIdentity,
+    fileDisplayIntake,
   ]);
 
   return (
