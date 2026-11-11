@@ -185,6 +185,7 @@ function AppContent() {
   const {
     fileSession,
     fileImport,
+    onExportFileStatistics,
     currentFileAnalysisSettings,
     exportFileAnalysisReport,
     copyFileAnalysisReportMarkdown,
@@ -629,6 +630,7 @@ function AppContent() {
     onStopFile,
     onExportReport: exportFileAnalysisReport,
     onCopyReport: copyFileAnalysisReportMarkdown,
+    onExportStatistics: onExportFileStatistics,
   };
   const footer = {
     sourceLabel: footerSourceLabel,

@@ -31,6 +31,7 @@ export const UI_SURFACE_KINDS = Object.freeze([
   "confirmation",
   "libraryExport",
   "fileAudioTrack",
+  "fileStatistics",
   "importReview",
   "importComplete",
   "status",

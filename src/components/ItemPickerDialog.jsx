@@ -21,6 +21,9 @@ const EMPTY_MESSAGE = {
 
 const ITEM_PICKER_FIXTURES = {
   pick: { none: "The export item list follows choosing a type in Library Export." },
+  statistics: {
+    none: "The File Statistics picker uses successful analysis results from the session.",
+  },
   review: "import-review.pending",
   complete: "import-complete.pending",
 };
@@ -131,13 +134,21 @@ export function ItemPickerDialog({
   onBack = null,
   onClose = () => {},
 }) {
-  const [selected, setSelected] = useState(() => new Set());
+  const statistics = mode === "pick" && type === "fileStatistics";
+  const [selected, setSelected] = useState(
+    () => new Set(statistics ? items.filter((item) => !item.disabled).map((item) => item.id) : [])
+  );
   // `null` means "still centred". A drag switches to explicit coordinates; reopening resets to
   // `null` so the dialog is centred again next time (see the comment on the component above).
   const [pos, setPos] = useState(null);
   const contentRef = useRef(null);
   const dragHandlers = useFloatingPanelDrag(contentRef, setPos);
-  const { label, itemLabel } = PACK_KINDS[type];
+  const { label, itemLabel } = statistics
+    ? { label: "Statistics", itemLabel: "File" }
+    : PACK_KINDS[type];
+  const selectedIds = statistics
+    ? items.filter((item) => !item.disabled && selected.has(item.id)).map((item) => item.id)
+    : [...selected];
   const pasted = mode === "review" && review?.origin === "clipboard";
   const title =
     mode === "pick"
@@ -184,19 +195,26 @@ export function ItemPickerDialog({
   const warnings = review?.warnings ?? [];
 
   function handleDismiss() {
-    onClose();
+    if (!statistics || !busy) onClose();
   }
 
-  const surfaceKind =
-    mode === "pick" ? "libraryExport" : mode === "review" ? "importReview" : "importComplete";
+  const surfaceKind = statistics
+    ? "fileStatistics"
+    : mode === "pick"
+      ? "libraryExport"
+      : mode === "review"
+        ? "importReview"
+        : "importComplete";
+  const fixtureMode = statistics ? "statistics" : mode;
   useUiSurface({
     active: open,
     kind: surfaceKind,
     origin: "nested",
-    developmentFixture: ITEM_PICKER_FIXTURES[mode],
+    developmentFixture: ITEM_PICKER_FIXTURES[fixtureMode],
     blocking: false,
-    dismissible: true,
-    supportedActions: mode === "complete" ? ["close"] : ["cancel"],
+    busy: statistics && busy,
+    dismissible: !statistics || !busy,
+    supportedActions: statistics && busy ? [] : mode === "complete" ? ["close"] : ["cancel"],
     target: { phase: mode },
     onClose: handleDismiss,
     onCancel: handleDismiss,
@@ -208,12 +226,16 @@ export function ItemPickerDialog({
         ref={contentRef}
         centered={!pos}
         overlayProps={{ onClick: handleDismiss }}
-        {...(mode === "pick" ? { "aria-describedby": undefined } : {})}
+        {...(mode === "pick" && !statistics ? { "aria-describedby": undefined } : {})}
         style={pos ? { left: pos.x, top: pos.y } : undefined}
       >
         <div data-testid="item-picker-drag-handle" {...dragHandlers} className="cursor-move">
           <DialogTitle>{title}</DialogTitle>
-          {mode !== "pick" ? (
+          {statistics ? (
+            <DialogDescription>
+              Choose one or more files to export as a single CSV.
+            </DialogDescription>
+          ) : mode !== "pick" ? (
             <DialogDescription>
               {mode === "complete"
                 ? singleCompletion
@@ -232,7 +254,7 @@ export function ItemPickerDialog({
           {mode === "pick" ? (
             items.length === 0 ? (
               <p className="text-[length:var(--ui-fs-control)] text-muted-foreground">
-                {EMPTY_MESSAGE[type]}
+                {statistics ? "No completed analyses to export." : EMPTY_MESSAGE[type]}
               </p>
             ) : (
               <ul className="flex flex-col gap-0">
@@ -241,10 +263,14 @@ export function ItemPickerDialog({
                     <label className="flex min-h-[var(--ui-row-h)] items-center gap-2 rounded-xs px-1 text-[length:var(--ui-fs-control)] hover:bg-ui-hover">
                       <Checkbox
                         aria-label={item.name}
-                        checked={selected.has(item.id)}
+                        checked={!item.disabled && selected.has(item.id)}
+                        disabled={item.disabled || (statistics && busy)}
                         onChange={() => toggle(item.id)}
                       />
-                      <span className="truncate">{item.name}</span>
+                      <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                      {statistics && item.disabled ? (
+                        <span className="shrink-0 text-muted-foreground">No Result</span>
+                      ) : null}
                     </label>
                   </li>
                 ))}
@@ -301,12 +327,15 @@ export function ItemPickerDialog({
           </p>
         ) : null}
         <DialogFooter divided>
-          <Button variant="ghost" onClick={onBack ?? handleDismiss}>
+          <Button variant="ghost" disabled={statistics && busy} onClick={onBack ?? handleDismiss}>
             {mode === "complete" || allExisting ? "Done" : onBack ? "Back" : "Cancel"}
           </Button>
           {mode === "pick" ? (
-            <Button disabled={selected.size === 0} onClick={() => onExport([...selected])}>
-              Export
+            <Button
+              disabled={selectedIds.length === 0 || (statistics && busy)}
+              onClick={() => onExport(selectedIds)}
+            >
+              {statistics ? "Export CSV…" : "Export"}
             </Button>
           ) : mode === "complete" ? (
             singleCompletion ? (

@@ -39,6 +39,34 @@ const PROFILES = [
 ];
 
 describe("ItemPickerDialog pick mode", () => {
+  it("defaults Statistics to all successful results and allows a single selection", () => {
+    const onExport = vi.fn();
+    render(
+      <ItemPickerDialog
+        open
+        type="fileStatistics"
+        mode="pick"
+        onExport={onExport}
+        items={[
+          { id: "a", name: "a.wav" },
+          { id: "b", name: "b.wav" },
+          { id: "c", name: "c.wav", disabled: true },
+        ]}
+      />
+    );
+    const a = screen.getByRole("checkbox", { name: "a.wav" });
+    const b = screen.getByRole("checkbox", { name: "b.wav" });
+    const c = screen.getByRole("checkbox", { name: "c.wav" });
+    const exportButton = screen.getByRole("button", { name: "Export CSV…" });
+    expect(a).toHaveProperty("checked", true);
+    expect(b).toHaveProperty("checked", true);
+    expect(c).toHaveProperty("disabled", true);
+    fireEvent.click(b);
+    fireEvent.click(exportButton);
+    expect(onExport).toHaveBeenCalledWith(["a"]);
+    fireEvent.click(a);
+    expect(exportButton).toHaveProperty("disabled", true);
+  });
   it("lists the library and exports the checked ids", () => {
     const onExport = vi.fn();
     render(

@@ -121,7 +121,7 @@ Data is **not uploaded by default**; history is **session-scoped**; export (if i
 3. **App store distribution** (short to medium term).
 4. **Monitoring several sources at once / A-B comparison in one app** (short to medium term).
 5. **A general custom user-preference framework** (short to medium term favours **explicit, enumerated persistence** over an open, pluggable preference system).
-6. **General data export for ordinary users** (CSV / history export entry points). Agent Control screenshots and recordings serve automation; they are not a general export, audio recording or desktop capture workflow.
+6. **General time-series or Live data export** remains outside scope. File Mode supports explicit local whole-file reports and statistics CSV for the current session. Agent Control screenshots and recordings serve automation; they are not a general export, audio recording or desktop capture workflow.
 7. **Object / scene-based audio** (ADM BWF, Dolby Atmos objects, Ambisonics). BS.1770-5 Annex 4 requires rendering to a BS.2051 loudspeaker layout before measuring, which needs a built-in renderer; to be evaluated separately.
 8. **One-click diagnostic bundle export** (see 5.9) and **dedicated accessibility work** (see 5.11): neither is a near-term focus.
 9. **MCP integration**: Agent Control uses `plvs-cli` as its only automation entry point; whether to also provide an MCP server is left to a separate product decision.

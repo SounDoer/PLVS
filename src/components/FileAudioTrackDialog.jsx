@@ -29,6 +29,9 @@ function TrackSelection({ selection, onConfirm, onCancel }) {
     active: true,
     kind: "fileAudioTrack",
     origin: "event",
+    developmentFixture: {
+      none: "The audio track picker follows probing a user-selected multitrack file.",
+    },
     blocking: false,
     dismissible: true,
     supportedActions: ["cancel"],

@@ -9,6 +9,8 @@ import { useSourceTransportActions } from "../hooks/useSourceTransportActions.js
 import { useDialogueEngineRestart } from "../hooks/useDialogueEngineRestart.js";
 import { useFileImport } from "../hooks/useFileImport.js";
 import { FileAudioTrackDialog } from "../components/FileAudioTrackDialog.jsx";
+import { ItemPickerDialog } from "../components/ItemPickerDialog.jsx";
+import { useFileStatisticsExport } from "../hooks/useFileStatisticsExport.js";
 import { deriveDialogueRuntime } from "./appRuntimeDerivations.js";
 import {
   useMeterDisplayState,
@@ -34,6 +36,7 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
  *   vectorscopeResetEpoch: number,
  *   stereoMapResetEpoch: number,
  *   fileImport: ReturnType<typeof useFileImport>,
+ *   onExportFileStatistics: () => void,
  * }} SourceActions
  */
 const SourceActionsContext = createContext(/** @type {SourceActions | null} */ (null));
@@ -104,6 +107,12 @@ export function SourceActionsProvider({ children }) {
     select: selectFile,
     raiseNotice,
   });
+  const statistics = useFileStatisticsExport({
+    fileSessions,
+    loudnessProfile,
+    raiseNotice,
+    appVersion: APP_VERSION,
+  });
   const actions = useSourceTransportActions({
     sourceMode,
     running,
@@ -150,6 +159,7 @@ export function SourceActionsProvider({ children }) {
       value={{
         ...actions,
         fileImport,
+        onExportFileStatistics: statistics.onOpen,
         fileSession,
         dialogueGating,
         currentFileAnalysisSettings,
@@ -164,6 +174,17 @@ export function SourceActionsProvider({ children }) {
         onConfirm={fileImport.confirm}
         onCancel={fileImport.cancel}
       />
+      {statistics.open ? (
+        <ItemPickerDialog
+          open
+          type="fileStatistics"
+          mode="pick"
+          items={statistics.items}
+          busy={statistics.busy}
+          onExport={statistics.onExport}
+          onClose={statistics.onClose}
+        />
+      ) : null}
       {children}
     </SourceActionsContext.Provider>
   );

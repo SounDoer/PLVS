@@ -9,6 +9,7 @@ import { MenuRow, RowAction } from "./ui/row.jsx";
 import { Button } from "./ui/button.jsx";
 import { IconAction } from "./ui/icon-action.jsx";
 import { cn } from "../lib/utils.js";
+import { formatFileEntryName } from "../lib/fileAnalysisDisplay.js";
 
 const actionSize = "size-[length:var(--ui-icon-management-action)]";
 
@@ -56,23 +57,6 @@ function ReportMenu({ session, onExportReport, onCopyReport }) {
       </PopoverContent>
     </Popover>
   );
-}
-
-function rowName(session, files) {
-  const sameName = files.filter((entry) => entry.fileName === session.fileName);
-  const track = session.metadata?.selectedTrack;
-  const sameTrack = sameName.filter(
-    (entry) => entry.metadata?.selectedTrack?.index === track?.index
-  );
-  const showTrack =
-    track && ((session.metadata?.audioTracks?.length ?? 0) > 1 || sameName.length > 1);
-  return [
-    session.fileName,
-    showTrack && "Track " + track.index + (track.title ? " · " + track.title : ""),
-    sameTrack.length > 1 && "Entry " + (sameTrack.indexOf(session) + 1),
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }
 
 export function FileAnalysisHistoryMenu({
@@ -143,7 +127,7 @@ export function FileAnalysisHistoryMenu({
             const active = session.id === activeFileId;
             const running = session.id === analyzingFileId;
             const successful = Boolean(getSuccessfulFileSession(session));
-            const name = rowName(session, fileSessions);
+            const name = formatFileEntryName(session, fileSessions);
             const verb = successful ? "Reanalyze" : "Analyze";
             const progress =
               Number.isFinite((session.attempt?.metadata ?? session.metadata)?.durationMs) &&

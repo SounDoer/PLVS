@@ -147,7 +147,7 @@ shown as a dash in text. The compatibility fields `samplePeakMaxLDb` and `sample
 decoded channels 1 and 2; mono duplicates channel 1 in both.
 
 `transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]` returns the same versioned `fileAnalysis`
-report that the GUI's Export button saves, built by the same frontend builder. It is a read: it never
+report that the GUI's file-row Export menu saves, built by the same frontend builder. It is a read: it never
 selects the session, changes the source, starts or stops analysis, or increments revision, and it
 works in either source mode while the session is retained.
 
@@ -175,6 +175,10 @@ readings are judged; a rule on a momentary or derived metric, or on a reading th
 have, is `notEvaluated`. `counts` counts configured metrics once at their worst verdict, and
 `overall` is `notEvaluated` when off/empty; otherwise `fail`, `warn`, `notFullyEvaluated` or `ok`
 in precedence order.
+
+**Export Statistics…** uses the GUI File Statistics picker and native save dialog. The picker
+appears as `fileStatistics` in `ui inspect` and supports cancellation. There is no dedicated CLI CSV
+command; `file report` exposes the same measurements and Profile verdicts for automation.
 
 ## Paced scrubbing
 

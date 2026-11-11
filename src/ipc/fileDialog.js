@@ -26,6 +26,7 @@ const SHARED_ITEM_EXTENSIONS = ["plvsloudness", "plvspreset", "plvstheme"];
 const REPORT_FILTERS = {
   json: { name: "PLVS Report", extensions: ["json"] },
   markdown: { name: "PLVS Report (Markdown)", extensions: ["md"] },
+  csv: { name: "File Statistics (CSV)", extensions: ["csv"] },
 };
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */

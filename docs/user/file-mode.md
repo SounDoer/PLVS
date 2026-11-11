@@ -37,6 +37,23 @@ reanalyzing without discarding the previous result.
 Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remaining readings under
 **+N**. The choice is a global preference, independent of Presets and the Stats panel.
 
+## Statistics CSV
+
+From the file name menu, choose **Export Statistics…**. All successful results are selected by
+default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
+previous successful result remains eligible while it is reanalyzing. The export uses the selected
+successful results and the Loudness Profile active when you choose Export CSV.
+
+Each row contains one result, with numeric measurements and positions in seconds, plus channel
+columns through the highest selected channel count. A nonexistent channel's columns are empty;
+an unavailable measurement has an explicit reason. The complete Profile rules and metric verdicts
+are repeated on every row. A metric with no rule is `notApplicable`.
+
+The CSV uses UTF-8 with a byte order mark, comma-separated fields, and quoted multiline text.
+Text that could be interpreted as a spreadsheet formula is prefixed with an apostrophe. Numeric
+cells are unaffected. Full file paths are omitted. This is whole-file statistics; time series are
+not included.
+
 ## Scrubbing
 
 Move through the file's timeline and every panel updates to match, exactly like live monitoring.
