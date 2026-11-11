@@ -23,6 +23,9 @@ function transportMutationMatches(method, params, execution, snapshot) {
     return snapshot.source === "live" && snapshot.live.state === "running";
   }
   if (method === "transport.live.stop") return snapshot.live.state === "stopped";
+  if (method === "transport.file.analyze" && execution?.reused) {
+    return snapshot.source === "file" && snapshot.files.activeId === sessionId;
+  }
   if (
     method === "transport.file.analyze" ||
     method === "transport.file.reanalyze" ||
@@ -212,6 +215,8 @@ async function mutate(ctx) {
   try {
     execution = await executeTransport(request.method, request.params);
   } catch (error) {
+    // A refusal decided during execution, before any side effect (such as a File track choice).
+    if (typeof error?.reason === "string") throw error;
     throw semanticFailure(
       "applicationFailed",
       "$.params",

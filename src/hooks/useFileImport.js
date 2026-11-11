@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { probeFileAnalysis } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
-import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
+import { withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
+import { fileImportTracks, planFileImport } from "../lib/fileImportPlan.js";
 
 /** Import selection is transient; it never changes an existing result before confirmation. */
 export function useFileImport({ files, busy, getSettings, begin, select, raiseNotice }) {
@@ -18,13 +18,9 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
   }, []);
   const launch = useCallback(
     (probe, settings) => {
-      const existing = files.find(
-        (file) =>
-          file.metadata?.selectedTrack?.index === probe.selectedTrack.index &&
-          sameFileSourceVersion(file.metadata?.sourceVersion, probe.sourceVersion)
-      );
-      if (existing && getSuccessfulFileSession(existing)) select(existing.id);
-      else if (existing) begin(probe.path, settings, probe, existing.id);
+      const plan = planFileImport(files, probe);
+      if (plan.action === "select") select(plan.sessionId);
+      else if (plan.action === "rerun") begin(probe.path, settings, probe, plan.sessionId);
       else begin(probe.path, settings, probe);
       cancel();
     },
@@ -48,8 +44,7 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
       try {
         const probe = await probeFileAnalysis(path);
         if (generation !== generationRef.current) return;
-        const tracks = probe.audioTracks ?? [probe.selectedTrack];
-        if (tracks.length > 1) {
+        if (fileImportTracks(probe).length > 1) {
           const next = { probe, settings };
           pendingRef.current = next;
           setSelection(next);

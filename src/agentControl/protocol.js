@@ -1589,7 +1589,7 @@ export function normalizeAgentControlRequest(input) {
       input.method
     );
     const allowed = new Set([
-      ...(needsPath ? ["path"] : []),
+      ...(needsPath ? ["path", "trackIndex"] : []),
       ...(needsSession ? ["sessionId"] : []),
       ...(needsOffset ? ["offsetSec"] : []),
       ...(allowsStopFileAnalysis ? ["allowStopFileAnalysis"] : []),
@@ -1605,6 +1605,12 @@ export function normalizeAgentControlRequest(input) {
       (typeof input.params[targetKey] !== "string" || input.params[targetKey].trim() === "")
     ) {
       return invalidParams(`$.params.${targetKey}`, `${targetKey} must be a non-empty string.`);
+    }
+    if (
+      input.params.trackIndex !== undefined &&
+      (!Number.isSafeInteger(input.params.trackIndex) || input.params.trackIndex < 0)
+    ) {
+      return invalidParams("$.params.trackIndex", "trackIndex must be a non-negative integer.");
     }
     if (needsOffset && (!Number.isFinite(input.params.offsetSec) || input.params.offsetSec < 0)) {
       return invalidParams("$.params.offsetSec", "offsetSec must be a finite non-negative number.");
@@ -1644,6 +1650,7 @@ export function normalizeAgentControlRequest(input) {
         params: {
           ...(targetKey ? { [targetKey]: input.params[targetKey] } : {}),
           ...(needsOffset ? { offsetSec: input.params.offsetSec } : {}),
+          ...(input.params.trackIndex !== undefined ? { trackIndex: input.params.trackIndex } : {}),
           ...(input.params.expectedRevision !== undefined
             ? { expectedRevision: input.params.expectedRevision }
             : {}),

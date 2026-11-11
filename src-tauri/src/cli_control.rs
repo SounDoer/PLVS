@@ -366,6 +366,7 @@ pub enum ControlCommand {
     target: Option<String>,
     expected_revision: Option<u64>,
     allow_stop_file_analysis: bool,
+    track_index: Option<u32>,
     dry_run: bool,
   },
   DockRead {
@@ -2477,6 +2478,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
   let action = is_transport_action(&method);
   let mut expected_revision = None;
   let mut allow_stop_file_analysis = false;
+  let mut track_index = None;
   let mut dry_run = false;
   let mut json = false;
   let mut index = consumed;
@@ -2505,6 +2507,17 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
         }
         target_key = Some("offsetSec".to_string());
         target = Some(raw.clone());
+        index += 2;
+      }
+      "--track" if method == "transport.file.analyze" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --track.".to_string())?;
+        track_index = Some(
+          raw
+            .parse::<u32>()
+            .map_err(|_| "The --track value must be a non-negative integer.".to_string())?,
+        );
         index += 2;
       }
       "--allow-stop-file-analysis" => {
@@ -2554,6 +2567,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     target,
     expected_revision,
     allow_stop_file_analysis,
+    track_index,
     dry_run,
   })
 }
@@ -3942,6 +3956,7 @@ impl ControlFailure {
         | "fileAnalysisNotComplete"
         | "historyUnavailable"
         | "confirmationRequired"
+        | "fileTrackSelectionRequired"
         | "channelConfigurationChanged"
         | "deviceInventoryChanged"
         | "deviceUnavailable"
@@ -4644,6 +4659,7 @@ fn request_for_command<R: Read>(
       target,
       expected_revision,
       allow_stop_file_analysis,
+      track_index,
       dry_run,
     } => {
       let mut params = serde_json::Map::new();
@@ -4674,6 +4690,9 @@ fn request_for_command<R: Read>(
       }
       if *allow_stop_file_analysis {
         params.insert("allowStopFileAnalysis".to_string(), Value::Bool(true));
+      }
+      if let Some(track) = track_index {
+        params.insert("trackIndex".to_string(), Value::from(*track));
       }
       Value::Object(params)
     }
@@ -7421,6 +7440,28 @@ mod tests {
       args(&["transport", "file", "analyze", "--json"]),
       args(&[
         "transport",
+        "file",
+        "analyze",
+        "mix.wav",
+        "--track",
+        "-1",
+        "--json",
+        "--expected-revision",
+        "0",
+      ]),
+      args(&[
+        "transport",
+        "file",
+        "select",
+        "session-1",
+        "--track",
+        "1",
+        "--json",
+        "--expected-revision",
+        "0",
+      ]),
+      args(&[
+        "transport",
         "snapshot",
         "select",
         "--json",
@@ -7470,6 +7511,7 @@ mod tests {
       target: Some(path.to_string_lossy().into_owned()),
       expected_revision: None,
       allow_stop_file_analysis: false,
+      track_index: None,
       dry_run: false,
     };
     let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
@@ -7478,6 +7520,21 @@ mod tests {
       Path::new(request.params["path"].as_str().unwrap()),
       fs::canonicalize(&path).unwrap()
     );
+    assert!(request.params.get("trackIndex").is_none());
+    let with_track = parse_control_args(&args(&[
+      "transport",
+      "file",
+      "analyze",
+      &path.to_string_lossy(),
+      "--track",
+      "2",
+      "--json",
+      "--expected-revision",
+      "4",
+    ]))
+    .unwrap();
+    let request = request_for_command(&with_track, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.params["trackIndex"], 2);
     fs::remove_file(path).unwrap();
   }
 
@@ -7682,6 +7739,7 @@ mod tests {
       target: Some(missing_path),
       expected_revision: Some(1),
       allow_stop_file_analysis: false,
+      track_index: None,
       dry_run: false,
     };
     let (report, exit) = execute(&missing_audio, &mut Cursor::new([]), &unused_client);
@@ -8064,6 +8122,7 @@ mod tests {
       ("fileAnalysisNotComplete", None, 4),
       ("historyUnavailable", None, 4),
       ("confirmationRequired", None, 4),
+      ("fileTrackSelectionRequired", None, 4),
       ("channelConfigurationChanged", None, 4),
       ("deviceInventoryChanged", None, 4),
       ("deviceUnavailable", None, 4),

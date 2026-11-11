@@ -28,8 +28,8 @@ commands use the same React display operations as clicking a history chart and t
 button. Snapshot selection is available in Dock and normal mode, does not stop LIVE capture, and
 survives Dock entry and exit. FILE source entry remains unavailable while docked.
 
-FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and starts a new
-session; reanalyze retains the selected track and preceding successful result until replacement
+FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and imports the
+file exactly as the GUI does (see FILE lifecycle); reanalyze retains the selected track and preceding successful result until replacement
 succeeds; stop retains partial results when no prior success exists and otherwise retains that
 successful result; select chooses an
 existing result; remove deletes one session; and clear deletes the complete FILE session ledger.
@@ -94,11 +94,16 @@ compact error, and the analysis-setting snapshot used for that run. Intake buffe
 implementation objects are never exposed.
 
 The public lifecycle is `probing`, `analyzing`, `complete`, `stopped`, or `error`. `file analyze`
-resolves a relative CLI path before transport, validates/probes it, creates a new ID, selects FILE,
-and returns after Rust accepts analysis; it does not block until completion. Repeating this explicit
-CLI action creates another session; GUI reimport selects an existing unchanged file/track instead.
-A failure before acceptance fails the command and
-leaves an inspectable error session when an ID was already allocated.
+resolves a relative CLI path before transport and probes it with the GUI's import decision. A file
+with several audio tracks needs `--track <index>`, the track's `index` from the probe; without it
+the command fails side-effect free with `fileTrackSelectionRequired`, whose details list the
+tracks, because automation cannot answer the GUI's track dialog. An unknown index is invalid input.
+An unchanged file and track that already has a successful result is selected rather than
+reanalyzed: the action returns `status: "completed"` with that `sessionId`. An unchanged file and
+track without a result reruns on its existing entry; anything else creates a new ID. A started run
+selects FILE and returns `status: "accepted"` with its `sessionId` after Rust accepts analysis; it
+does not block until completion. A failure before acceptance fails the command and leaves an
+inspectable error session when an ID was already allocated.
 
 Only one File task may run. Analyze, reanalyze or restore while another task is active fails with
 `analysisInProgress`. Reanalyze preserves the track and snapshots current analysis settings. It

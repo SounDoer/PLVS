@@ -3,6 +3,7 @@ import {
   buildTransportSnapshot,
   planTransportMutation,
   projectTransportMutation,
+  selectImportTrack,
   transportLifecycleSignature,
 } from "./transportControl.js";
 
@@ -305,5 +306,44 @@ describe("Transport Control", () => {
     });
     expect(snapshot.source).toBe("file");
     expect(snapshot.files.sessions).toHaveLength(1);
+  });
+});
+
+describe("selectImportTrack", () => {
+  const track = (index, defaultTrack = false) => ({ index, codec: "aac", defaultTrack });
+  const probe = (tracks) => ({
+    path: "C:/movie.mkv",
+    selectedTrack: tracks[0],
+    audioTracks: tracks,
+  });
+  const refusalOf = (run) => {
+    try {
+      run();
+    } catch (error) {
+      return error;
+    }
+    return null;
+  };
+
+  it("takes the only track without an index", () => {
+    expect(selectImportTrack(probe([track(1)])).selectedTrack.index).toBe(1);
+  });
+
+  it("refuses several tracks without an index and lists them", () => {
+    expect(refusalOf(() => selectImportTrack(probe([track(1, true), track(2)])))).toMatchObject({
+      reason: "fileTrackSelectionRequired",
+      path: "$.params.trackIndex",
+      details: { path: "C:/movie.mkv", tracks: [{ index: 1 }, { index: 2 }] },
+    });
+  });
+
+  it("selects the requested track and refuses an unknown one", () => {
+    const tracks = [track(1, true), track(2)];
+    expect(selectImportTrack(probe(tracks), 2).selectedTrack.index).toBe(2);
+    expect(refusalOf(() => selectImportTrack(probe(tracks), 5))).toMatchObject({
+      reason: "invalidTransport",
+      path: "$.params.trackIndex",
+      code: -32602,
+    });
   });
 });

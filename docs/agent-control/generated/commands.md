@@ -2829,7 +2829,7 @@ None.
 
 ## `transport.file.analyze`
 
-Start file analysis.
+Analyze a file, or select its existing result.
 
 - CLI path: `transport file analyze`
 - Execution: `runningApp`; operation: `action`
@@ -2838,7 +2838,7 @@ Start file analysis.
 - Schema references: `agentControl.revision`
 
 ```text
-plvs-cli transport file analyze <path> --json --expected-revision <n>
+plvs-cli transport file analyze <path> --json --expected-revision <n> [--track <index>]
 ```
 
 ### Positionals
@@ -2853,6 +2853,7 @@ plvs-cli transport file analyze <path> --json --expected-revision <n>
 | --- | --- | --- | --- |
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| `--track` | `trackIndex` | no | integer; 0 to inf |
 
 ## `transport.file.reanalyze`
 

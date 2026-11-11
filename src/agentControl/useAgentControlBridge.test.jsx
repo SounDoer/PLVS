@@ -3512,6 +3512,63 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("passes a File track refusal through instead of reporting an execution failure", async () => {
+    const refusal = {
+      reason: "fileTrackSelectionRequired",
+      path: "$.params.trackIndex",
+      message: "The file has several audio tracks; choose one with --track <index>.",
+      code: -32087,
+      details: { path: "C:/movie.mkv", tracks: [{ index: 1 }, { index: 2 }] },
+    };
+    mount({ executeAgentTransport: vi.fn(async () => Promise.reject(refusal)) });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.file.analyze", { path: "C:/movie.mkv", expectedRevision: 0 }, "tracks")
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32087,
+      data: { reason: "fileTrackSelectionRequired", details: refusal.details },
+    });
+    const after = await send(request("transport.inspect", {}, "tracks-after"));
+    expect(after.result.revision).toBe(0);
+  });
+
+  it("completes a File analyze that selects the unchanged file's existing result", async () => {
+    const fileTransport = {
+      ...structuredClone(transport),
+      source: "file",
+      files: {
+        activeId: "file-1",
+        analyzingId: null,
+        sessions: [
+          { id: "file-1", path: "C:/audio.wav", fileName: "audio.wav", state: "complete" },
+        ],
+      },
+    };
+    mount({
+      agentTransport: fileTransport,
+      executeAgentTransport: vi.fn(async () => ({
+        sessionId: "file-1",
+        reused: true,
+        result: { status: "completed", sessionId: "file-1" },
+      })),
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.file.analyze", { path: "C:/audio.wav", expectedRevision: 0 }, "reuse")
+    );
+
+    expect(response.result).toMatchObject({
+      action: "transport.file.analyze",
+      status: "completed",
+      sessionId: "file-1",
+      state: { transport: { files: { activeId: "file-1", analyzingId: null } } },
+    });
+  });
+
   it("updates Settings atomically and returns its final state", async () => {
     const flush = vi.fn(async () => {});
     mount({ flush });

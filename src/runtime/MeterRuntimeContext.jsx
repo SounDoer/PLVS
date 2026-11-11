@@ -197,8 +197,8 @@ export function MeterRuntimeProvider({ children }) {
     taskSessionRef.current = sessionId;
     return sessionId;
   };
-  const beginFileAnalysisForControl = (path, analysisSettings) => {
-    const sessionId = beginFileAnalysis(path, analysisSettings);
+  const beginFileAnalysisForControl = (path, analysisSettings, probe = null, existingId = null) => {
+    const sessionId = beginFileAnalysis(path, analysisSettings, probe, existingId);
     if (!sessionId) return null;
     const accepted = new Promise((resolve, reject) => {
       fileAnalysisAcceptanceRef.current.set(sessionId, { resolve, reject });

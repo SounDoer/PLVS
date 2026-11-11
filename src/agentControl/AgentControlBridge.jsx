@@ -20,7 +20,7 @@ import { deriveChannelLabelRuntime } from "../runtime/appRuntimeDerivations.js";
 import { isDockSupported } from "../lib/platform.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
-import { buildTransportSnapshot } from "./transportControl.js";
+import { buildTransportSnapshot, selectImportTrack } from "./transportControl.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { useAgentControlState } from "./AgentControlStateContext.jsx";
 import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
@@ -32,8 +32,10 @@ import { useDevelopmentPerformance } from "../dev/useDevelopmentPerformance.js";
 import { useEditorDraftRegistry } from "./EditorDraftContext.jsx";
 import { readWindowGeometry } from "../lib/windowGeometry.js";
 import { isTauri } from "../ipc/env.js";
+import { planFileImport } from "../lib/fileImportPlan.js";
 import {
   applyWindowBounds,
+  probeFileAnalysis,
   captureVisualScreenshot,
   movePointer,
   inspectVisualRecording,
@@ -242,13 +244,35 @@ export function AgentControlBridge() {
         return {};
       }
       if (method === "transport.file.analyze") {
+        // Same import decision as the GUI: probe first, choose the track, then reuse an unchanged
+        // file/track entry instead of creating another. A refusal here has no side effects.
+        const settings = currentFileAnalysisSettings();
+        const probe = isTauri()
+          ? selectImportTrack(await probeFileAnalysis(params.path), params.trackIndex)
+          : null;
+        const plan = probe
+          ? planFileImport(meterRuntime.fileSessions, probe)
+          : { action: "analyze", sessionId: null };
         if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
         switchSource("file");
-        const run = beginFileAnalysisForControl(params.path, currentFileAnalysisSettings());
+        if (plan.action === "select") {
+          selectFile(plan.sessionId);
+          return {
+            sessionId: plan.sessionId,
+            reused: true,
+            result: { status: "completed", sessionId: plan.sessionId },
+          };
+        }
+        const run = beginFileAnalysisForControl(
+          params.path,
+          settings,
+          probe,
+          plan.action === "rerun" ? plan.sessionId : null
+        );
         if (!run) throw new Error("FILE analysis was not accepted.");
         await run.accepted;
         const { sessionId } = run;
-        return { sessionId };
+        return { sessionId, result: { sessionId } };
       }
       if (method === "transport.file.reanalyze") {
         if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
@@ -294,6 +318,7 @@ export function AgentControlBridge() {
       clearLiveForControl,
       clearSnapshot,
       currentFileAnalysisSettings,
+      meterRuntime.fileSessions,
       meterRuntime.liveLifecycle,
       reanalyzeFileForControl,
       restoreFileHistoryForControl,

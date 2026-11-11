@@ -1,4 +1,7 @@
 import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
+import { withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
+import { fileImportTracks } from "../lib/fileImportPlan.js";
+import { semanticFailure } from "./bridge/failures.js";
 
 function cloneJson(value) {
   if (value == null) return value ?? null;
@@ -325,4 +328,33 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     });
   }
   return result({ issues: [issue("methodNotFound", "$.method", `Unknown method: ${method}.`)] });
+}
+
+/**
+ * Choose the track `transport file analyze` imports. Automation cannot answer the GUI's track
+ * dialog, so a file with several tracks needs `trackIndex` rather than a silent default.
+ */
+export function selectImportTrack(probe, trackIndex) {
+  const tracks = fileImportTracks(probe);
+  const details = { path: probe.path, tracks: cloneJson(tracks) };
+  if (trackIndex === undefined) {
+    if (tracks.length === 1) return withSelectedAudioTrack(probe, tracks[0].index);
+    throw semanticFailure(
+      "fileTrackSelectionRequired",
+      "$.params.trackIndex",
+      "The file has several audio tracks; choose one with --track <index>.",
+      -32087,
+      details
+    );
+  }
+  if (!tracks.some((track) => track?.index === trackIndex)) {
+    throw semanticFailure(
+      "invalidTransport",
+      "$.params.trackIndex",
+      `The file has no audio track with index ${trackIndex}.`,
+      -32602,
+      details
+    );
+  }
+  return withSelectedAudioTrack(probe, trackIndex);
 }

@@ -5443,8 +5443,8 @@
       "id": "transport.file.analyze",
       "family": "transport",
       "path": ["transport", "file", "analyze"],
-      "usage": "plvs-cli transport file analyze <path> --json --expected-revision <n>",
-      "summary": "Start file analysis.",
+      "usage": "plvs-cli transport file analyze <path> --json --expected-revision <n> [--track <index>]",
+      "summary": "Analyze a file, or select its existing result.",
       "execution": "runningApp",
       "operation": "action",
       "wireMethod": "transport.file.analyze",
@@ -5478,6 +5478,15 @@
             "minimum": 0
           },
           "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--track",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "trackIndex"
         }
       ],
       "wireParams": {
@@ -5490,6 +5499,10 @@
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
+          },
+          "trackIndex": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }
