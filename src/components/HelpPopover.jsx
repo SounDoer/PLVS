@@ -1,5 +1,5 @@
 import { usePreviewPin } from "../hooks/usePreviewPin.js";
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
@@ -106,39 +106,44 @@ function Operation({ item }) {
 function PanelHelp({ items, panelId }) {
   const { mode, modeRef, returnFocusRef, cancelClose, changeMode, scheduleClose, onEscape } =
     usePreviewPin();
-  const triggerRef = useRef(null);
+  const [trigger, setTrigger] = useState(null);
   const contentRef = useRef(null);
   // Floating UI observes the real trigger and content. The virtual anchor can move a long
   // reference alongside the header, using window space while keeping pin/unpin reachable.
-  const virtualAnchor = useRef({
-    contextElement: null,
-    getBoundingClientRect: () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (!rect) return new DOMRect();
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const gap = UI_PREFERENCES.layout.shell.gapRem.base * rem;
-      const margin = UI_PREFERENCES.layout.shell.paddingRem.base * rem * 2;
-      const height = contentRef.current
-        ? contentRef.current.scrollHeight +
-          contentRef.current.offsetHeight -
-          contentRef.current.clientHeight
-        : 0;
-      const width = contentRef.current?.offsetWidth ?? rect.width;
-      const placement = helpPopoverPlacement(
-        rect,
-        width,
-        height,
-        { width: window.innerWidth, height: window.innerHeight },
-        margin,
-        gap
-      );
-      const maxHeight = `${placement.maxHeight}px`;
-      if (contentRef.current?.style.getPropertyValue("--help-available-height") !== maxHeight) {
-        contentRef.current?.style.setProperty("--help-available-height", maxHeight);
-      }
-      return new DOMRect(placement.left, placement.top, width, 0);
-    },
-  });
+  const virtualAnchor = useMemo(
+    () => ({
+      current: {
+        contextElement: trigger,
+        getBoundingClientRect: () => {
+          const rect = trigger?.getBoundingClientRect();
+          if (!rect) return new DOMRect();
+          const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+          const gap = UI_PREFERENCES.layout.shell.gapRem.base * rem;
+          const margin = UI_PREFERENCES.layout.shell.paddingRem.base * rem * 2;
+          const height = contentRef.current
+            ? contentRef.current.scrollHeight +
+              contentRef.current.offsetHeight -
+              contentRef.current.clientHeight
+            : 0;
+          const width = contentRef.current?.offsetWidth ?? rect.width;
+          const placement = helpPopoverPlacement(
+            rect,
+            width,
+            height,
+            { width: window.innerWidth, height: window.innerHeight },
+            margin,
+            gap
+          );
+          const maxHeight = `${placement.maxHeight}px`;
+          if (contentRef.current?.style.getPropertyValue("--help-available-height") !== maxHeight) {
+            contentRef.current?.style.setProperty("--help-available-height", maxHeight);
+          }
+          return new DOMRect(placement.left, placement.top, width, 0);
+        },
+      },
+    }),
+    [trigger]
+  );
 
   useEffect(() => {
     if (mode === "pinned") contentRef.current?.focus({ preventScroll: true });
@@ -170,10 +175,7 @@ function PanelHelp({ items, panelId }) {
     >
       <PopoverTrigger asChild>
         <IconAction
-          ref={(node) => {
-            triggerRef.current = node;
-            virtualAnchor.current.contextElement = node;
-          }}
+          ref={setTrigger}
           className={cn(
             PANEL_HEADER_ACTION_BUTTON,
             mode === "pinned" && "bg-ui-hover text-foreground"
@@ -197,7 +199,7 @@ function PanelHelp({ items, panelId }) {
         </IconAction>
       </PopoverTrigger>
       {/* Register after the trigger so its initial default anchor cannot override this one. */}
-      <PopoverAnchor virtualRef={virtualAnchor} />
+      {trigger && <PopoverAnchor virtualRef={virtualAnchor} />}
       <PopoverContent
         ref={contentRef}
         aria-label="Panel gestures"
