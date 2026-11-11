@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { act, useState } from "react";
 
-const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+const { invoke, listen } = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 const coordination = vi.hoisted(() => ({
   issue: vi.fn(),
   quitAll: vi.fn(),
@@ -30,6 +30,7 @@ const { nativeHandle } = vi.hoisted(() => ({
     }),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+vi.mock("@tauri-apps/api/event", () => ({ listen }));
 vi.mock("../runtime/coordination.js", () => ({
   issueInstanceCommand: (...args) => coordination.issue(...args),
   quitAllInstances: (...args) => coordination.quitAll(...args),
@@ -122,6 +123,7 @@ describe("useTray", () => {
     setCoordinatorRole(undefined);
     vi.clearAllMocks();
     invoke.mockResolvedValue([]);
+    listen.mockResolvedValue(vi.fn());
     coordination.issue.mockResolvedValue();
     coordination.quitAll.mockResolvedValue();
     vi.mocked(isMacOS).mockReturnValue(false);
@@ -133,6 +135,33 @@ describe("useTray", () => {
   });
 
   afterEach(() => vi.clearAllMocks());
+
+  it("routes macOS application Quit through coordinated quit even in a peer workbench", async () => {
+    vi.mocked(isMacOS).mockReturnValue(true);
+    setCoordinatorRole(false);
+    const unlisten = vi.fn();
+    listen.mockResolvedValue(unlisten);
+    const { rerender, unmount } = renderHook(
+      ({ updateBusy }) => useTray({ ...defaultProps, updateBusy }),
+      { initialProps: { updateBusy: true } }
+    );
+    const [event, quit] = listen.mock.calls[0];
+    expect(event).toBe("app-quit-requested");
+    await act(async () => quit());
+    expect(coordination.quitAll).not.toHaveBeenCalled();
+
+    rerender({ updateBusy: false });
+    const pendingQuit = deferred();
+    coordination.quitAll.mockReturnValueOnce(pendingQuit.promise);
+    await act(async () => {
+      void quit();
+      await quit();
+    });
+    expect(coordination.quitAll).toHaveBeenCalledTimes(1);
+    pendingQuit.resolve();
+    await act(async () => unmount());
+    expect(unlisten).toHaveBeenCalledOnce();
+  });
 
   it("creates TrayIcon with the loaded icon (dark theme)", async () => {
     renderHook(() => useTray(defaultProps));

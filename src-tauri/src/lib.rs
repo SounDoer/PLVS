@@ -198,7 +198,40 @@ pub fn run() {
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init());
   #[cfg(target_os = "macos")]
-  let builder = builder.plugin(tauri_nspanel::init());
+  let builder = builder
+    .plugin(tauri_nspanel::init())
+    .menu(|app| {
+      use tauri::menu::{Menu, MenuItem};
+
+      let menu = Menu::default(app)?;
+      // Tauri puts the native Quit item at the end of the first (application) submenu.
+      let menus = menu.items()?;
+      let app_menu = menus[0]
+        .as_submenu()
+        .expect("default macOS application menu");
+      let items = app_menu.items()?;
+      let quit = items
+        .last()
+        .and_then(|item| item.as_predefined_menuitem())
+        .expect("default macOS Quit menu item");
+      let quit_app = MenuItem::with_id(
+        app,
+        "plvs-quit-app",
+        quit.text()?.replace('&', "&&"),
+        true,
+        Some("Command+Q"),
+      )?;
+      app_menu.remove(quit)?;
+      app_menu.append(&quit_app)?;
+      Ok(menu)
+    })
+    .on_menu_event(|app, event| {
+      if event.id() == "plvs-quit-app" {
+        if let Err(error) = app.emit_to("main", "app-quit-requested", ()) {
+          log::warn!("Unable to request PLVS quit: {error}");
+        }
+      }
+    });
   let builder = update_runtime::register_plugin(builder);
 
   builder

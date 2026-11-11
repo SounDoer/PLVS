@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { createNativeTrayMenu } from "../lib/nativeTrayMenu.js";
 import { Image } from "@tauri-apps/api/image";
@@ -391,12 +392,29 @@ export function useTray({
     },
     [stableQuit]
   );
-  const stableQuitAll = useCallback(() => {
-    if (updateBusyRef.current) return;
-    void quitAllInstances().catch((error) =>
-      console.warn("Unable to quit every PLVS workbench", error)
-    );
+  const quittingAllRef = useRef(false);
+  const stableQuitAll = useCallback(async () => {
+    if (updateBusyRef.current || quittingAllRef.current) return;
+    quittingAllRef.current = true;
+    try {
+      await quitAllInstances();
+    } catch (error) {
+      console.warn("Unable to quit every PLVS workbench", error);
+    } finally {
+      quittingAllRef.current = false;
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isTauri() || !isMacOS()) return;
+    const subscription = listen("app-quit-requested", stableQuitAll).catch((error) => {
+      console.warn("Unable to listen for macOS Quit", error);
+      return null;
+    });
+    return () => {
+      void subscription.then((stop) => stop?.());
+    };
+  }, [stableQuitAll]);
 
   useEffect(() => {
     if (!isTauri() || !isCoordinator) {
