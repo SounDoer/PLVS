@@ -83,6 +83,28 @@ describe("MeterRuntimeProvider", () => {
     expect(result.current.analyzingFileId).toBe(sessionId);
   });
 
+  it("reopens a canceled entry with a fresh run and selects it", async () => {
+    const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+    const path = "C:/first.wav";
+    act(() => result.current.beginFileAnalysis(path, {}));
+    const first = result.current.activeFileSession;
+    await act(() => result.current.stopFileAnalysis());
+    expect(result.current.activeFileSession.state).toBe("canceled");
+
+    act(() => result.current.beginFileAnalysis("C:/second.wav", {}));
+    await act(() => result.current.stopFileAnalysis());
+    act(() => result.current.beginFileAnalysis(path, {}, null, first.id));
+
+    expect(result.current.fileSessions).toHaveLength(2);
+    expect(result.current.analyzingFileId).toBe(first.id);
+    expect(result.current.activeFileSession).toMatchObject({
+      id: first.id,
+      state: "analyzing",
+      progress: 0,
+    });
+    expect(result.current.activeFileSession.attempt.intake).not.toBe(first.attempt.intake);
+  });
+
   it("selects a previous file result", async () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
 

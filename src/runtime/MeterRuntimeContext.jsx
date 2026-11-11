@@ -169,7 +169,7 @@ export function MeterRuntimeProvider({ children }) {
 
     return clearLiveSource();
   };
-  const beginFileAnalysis = (path, analysisSettings, probe = null) => {
+  const beginFileAnalysis = (path, analysisSettings, probe = null, existingId = null) => {
     if (!path) return null;
     display.clearNotice();
     if (fileHistory.analyzingFileId || taskSessionRef.current) {
@@ -179,6 +179,11 @@ export function MeterRuntimeProvider({ children }) {
 
     display.setSelectedOffset(-1);
     display.selectedOffsetRef.current = -1;
+    if (existingId && fileHistory.sessionsById[existingId]) {
+      ledger.rerun(existingId, path, analysisSettings, probe, "analyze", true);
+      taskSessionRef.current = existingId;
+      return existingId;
+    }
     const sessionId = ledger.beginRun(path, analysisSettings, probe);
     taskSessionRef.current = sessionId;
     return sessionId;

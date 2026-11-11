@@ -111,7 +111,14 @@ export function useFileSessionLedger({
 
   /** Re-analyze an existing entry with fresh settings. */
   const rerun = useCallback(
-    (/** @type {string} */ entryId, path, analysisSettings, probe = null, kind = "analyze") => {
+    (
+      /** @type {string} */ entryId,
+      path,
+      analysisSettings,
+      probe = null,
+      kind = "analyze",
+      activate = false
+    ) => {
       analysisSettings = structuredClone(analysisSettings ?? {});
       const runId = fileEntrySeqRef.current + 1;
       fileEntrySeqRef.current = runId;
@@ -122,7 +129,7 @@ export function useFileSessionLedger({
             analysisSettings,
             intake,
             kind,
-            preserveSelection: true,
+            preserveSelection: !activate,
           })
         )
       );

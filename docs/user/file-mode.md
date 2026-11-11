@@ -10,7 +10,8 @@ metadata with ffprobe and decodes it with a bundled FFmpeg — no external tools
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
 **Analyze**. The default-marked track is selected initially. Cancelling leaves the current file
 and result unchanged. To choose another track, open or drop the file again; each track has its own
-analysis entry. Reopening an unchanged file and track selects its existing entry without rerunning.
+analysis entry. Reopening an unchanged file and track reuses its existing result. If there is no
+completed result, reopening starts a new analysis in the same entry.
 Reanalyze keeps the original track. If the source contents changed, reanalysis creates a new entry
 and preserves the old result. Missing sources do not remove results or reports already in memory.
 

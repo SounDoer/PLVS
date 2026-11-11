@@ -46,11 +46,21 @@ it("waits for track confirmation and freezes settings before probing", async () 
   );
 });
 it("selects an identical file/track result without recomputation", async () => {
-  const { result, begin, select } = mount([{ id: "old", metadata: probe }]);
+  const { result, begin, select } = mount([
+    { id: "old", metadata: probe, state: "complete", summary: {} },
+  ]);
   await act(async () => result.current.importFile(probe.path));
   act(() => result.current.confirm(1));
   expect(select).toHaveBeenCalledWith("old");
   expect(begin).not.toHaveBeenCalled();
+});
+it.each(["canceled", "error"])("restarts a %s entry without a result on Open", async (state) => {
+  const singleTrack = { ...probe, audioTracks: [track] };
+  vi.mocked(probeFileAnalysis).mockResolvedValue(singleTrack);
+  const { result, begin, select, settings } = mount([{ id: "old", metadata: singleTrack, state }]);
+  await act(async () => result.current.importFile(probe.path));
+  expect(begin).toHaveBeenCalledWith(probe.path, settings, singleTrack, "old");
+  expect(select).not.toHaveBeenCalled();
 });
 it("creates another entry for another track or changed content", async () => {
   const { result, begin, select } = mount([

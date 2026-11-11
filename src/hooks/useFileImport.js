@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { probeFileAnalysis } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 
 /** Import selection is transient; it never changes an existing result before confirmation. */
@@ -22,7 +23,8 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
           file.metadata?.selectedTrack?.index === probe.selectedTrack.index &&
           sameFileSourceVersion(file.metadata?.sourceVersion, probe.sourceVersion)
       );
-      if (existing) select(existing.id);
+      if (existing && getSuccessfulFileSession(existing)) select(existing.id);
+      else if (existing) begin(probe.path, settings, probe, existing.id);
       else begin(probe.path, settings, probe);
       cancel();
     },
