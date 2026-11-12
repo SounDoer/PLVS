@@ -28,6 +28,7 @@ function sampleForProperty(entry, name, schema) {
     range: { minHz: 200, maxHz: 5000 },
     recordingId: `rec-${"a".repeat(32)}`,
     sessionId: "file-1",
+    sessionIds: ["file-1"],
     section: "appearance",
     surfaceId: `ui-${"a".repeat(16)}`,
     target: ["ui.locate", "pointer.move"].includes(entry.id) ? "toolbar:presets" : { kind: "main" },

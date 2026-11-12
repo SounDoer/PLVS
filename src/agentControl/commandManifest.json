@@ -5859,6 +5859,58 @@
       }
     },
     {
+      "id": "transport.file.exportStatistics",
+      "family": "transport",
+      "path": ["transport", "file", "export-statistics"],
+      "usage": "plvs-cli transport file export-statistics <file|-> --out <file> --json",
+      "summary": "Export selected File results as a Statistics CSV.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "transport.file.exportStatistics",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "required",
+      "positionals": [
+        {
+          "name": "file",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--out",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionIds"],
+        "properties": {
+          "sessionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
       "id": "transport.file.wait",
       "family": "transport",
       "path": ["transport", "file", "wait"],

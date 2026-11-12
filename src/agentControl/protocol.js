@@ -1553,6 +1553,24 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "transport.file.exportStatistics") {
+    const field = unknownField(input.params, new Set(["sessionIds"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const { sessionIds } = input.params;
+    if (
+      !Array.isArray(sessionIds) ||
+      sessionIds.length === 0 ||
+      !sessionIds.every((id) => typeof id === "string" && id.trim()) ||
+      new Set(sessionIds).size !== sessionIds.length
+    ) {
+      return invalidParams(
+        "$.params.sessionIds",
+        "sessionIds must contain distinct non-empty session IDs."
+      );
+    }
+    return { ok: true, request: { id: input.id, method: input.method, params: { sessionIds } } };
+  }
+
   if (input.method === "transport.file.report") {
     const field = unknownField(input.params, new Set(["sessionId", "reportFormat"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

@@ -142,6 +142,7 @@ describe("agent-control app snapshots", () => {
         "transport.file.select",
         "transport.file.remove",
         "transport.file.clear",
+        "transport.file.exportStatistics",
         "transport.file.wait",
         "transport.file.report",
         "dock.describe",

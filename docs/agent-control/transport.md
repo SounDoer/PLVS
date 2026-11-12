@@ -8,7 +8,8 @@ than transport playback.
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
-All Transport commands except `inspect`, `file report` and `file wait` require `--expected-revision`. `source live`, `source file`,
+All Transport commands except `inspect`, `file report`, `file wait` and `file export-statistics`
+require `--expected-revision`. `source live`, `source file`,
 `live clear`, `file select`, `file remove`, and `file clear` are state mutations and support
 `--dry-run`. `live start`, `live stop`, `file analyze`, `file reanalyze`, `file restore`, and `file stop` are
 actions and reject `--dry-run`.
@@ -199,9 +200,11 @@ have, is `notEvaluated`. `counts` counts configured metrics once at their worst 
 `overall` is `notEvaluated` when off/empty; otherwise `fail`, `warn`, `notFullyEvaluated` or `ok`
 in precedence order.
 
-**Export Statistics…** uses the GUI File Statistics picker and native save dialog. The picker
-appears as `fileStatistics` in `ui inspect` and supports cancellation. There is no dedicated CLI CSV
-command; `file report` exposes the same measurements and Profile verdicts for automation.
+**Export Statistics…** uses the GUI File Statistics picker and native save dialog. For automation,
+`transport file export-statistics <file|-> --out <file> --json` takes a JSON object with a nonempty
+`sessionIds` array. All IDs must be distinct and have a successful result. Retained results remain
+eligible during reanalysis. Rows follow the supplied order and use the effective Loudness Profile
+at export. The CLI writes the same UTF-8 BOM CSV as the GUI and returns the output path.
 
 ## Paced scrubbing
 

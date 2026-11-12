@@ -116,6 +116,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none |
 | `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none |
 | `transport.file.clear` | `transport file clear` | runningApp / mutation | required | yes | none |
+| `transport.file.exportStatistics` | `transport file export-statistics` | runningApp / query | none | no | required |
 | `transport.file.wait` | `transport file wait` | runningApp / wait | none | no | none |
 | `transport.file.report` | `transport file report` | runningApp / query | none | no | optional |
 | `dock.describe` | `dock describe` | runningApp / query | none | no | none |
@@ -3018,6 +3019,32 @@ None.
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+
+## `transport.file.exportStatistics`
+
+Export selected File results as a Statistics CSV.
+
+- CLI path: `transport file export-statistics`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `required`
+- Wire method: `transport.file.exportStatistics`
+
+```text
+plvs-cli transport file export-statistics <file|-> --out <file> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `file` | local only | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--out` | local only | yes | string |
+| `--json` | local only | yes | boolean |
 
 ## `transport.file.wait`
 

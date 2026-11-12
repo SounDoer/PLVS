@@ -1,5 +1,5 @@
 /**
- * Every user-operable Settings control and the File toolbar preference have explicit owners.
+ * Every user-operable Settings control and public File preference have explicit owners.
  * Settings Control exposes entries owned by `settings`. Other owners point to their existing
  * command family or record why an agent must not operate the control.
  */
@@ -22,6 +22,7 @@ export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
   { id: "analysis.historyRetention", owner: "settings", field: "historyRetentionSec" },
   { id: "analysis.dialogueVadEngine", owner: "settings", field: "dialogueVadEngine" },
   { id: "file.dialogueDetection", owner: "settings", field: "fileDialogueDetection" },
+  { id: "file.summaryMetrics", owner: "settings", field: "fileSummaryMetrics" },
   { id: "analysis.dialogueVadDocumentation", owner: "external" },
   { id: "channels.resetLabels", owner: "settings", field: "channelLabels" },
   { id: "channels.layout", owner: "settings", field: "channelLabels" },

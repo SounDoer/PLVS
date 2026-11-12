@@ -1,6 +1,7 @@
 # Settings Control
 
-Settings Control exposes persistent application preferences from GUI Settings and the File toolbar.
+Settings Control exposes persistent application preferences from GUI Settings, the File toolbar
+and the File summary bar.
 It does not treat every value stored in the settings persistence domain as a public setting.
 
 ## Commands
@@ -27,7 +28,7 @@ runtime state, reported by `settings inspect` rather than documented here.
 
 The public fields correspond to Open at Login, Close Behavior, the configurable keyboard shortcuts,
 Interface Size, History Length, the Dialogue Detection engine, the File toolbar's Dialogue Detection
-switch, and channel-role labels.
+switch, File Summary Metrics, and channel-role labels.
 
 The following are intentionally outside Settings Control:
 
@@ -128,6 +129,14 @@ updated in either source mode. File imports and reanalysis snapshot it when they
 restart measurement, or change an in-progress File attempt. If a successful File result exists,
 changing the switch returns `fileReanalysisRequired`. Use `transport file reanalyze` to apply the
 current preference to an existing result. History restoration uses the original analysis settings.
+
+## File Summary Metrics
+
+`fileSummaryMetrics` controls metric order and visibility in the File summary bar. Patch either
+`order` or `visible` with an array of distinct metric IDs from `settings describe`. Omitted fields
+keep their current values. A partial order puts the supplied IDs first and appends the remaining
+metrics in default order. The returned visibility list follows the effective order. An empty
+`visible` array hides all metrics. Changes apply immediately and persist across restarts.
 
 ## Channel labels
 

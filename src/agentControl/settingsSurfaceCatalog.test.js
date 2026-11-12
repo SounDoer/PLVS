@@ -30,6 +30,7 @@ describe("Settings surface authority catalogue", () => {
       "historyRetentionSec",
       "dialogueVadEngine",
       "fileDialogueDetection",
+      "fileSummaryMetrics",
       "channelLabels",
     ]);
   });

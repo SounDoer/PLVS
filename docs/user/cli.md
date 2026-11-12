@@ -449,6 +449,16 @@ After `transport file analyze` or `transport file reanalyze` accepts a new run, 
 `sessionId` and `runId` to `transport file wait <session-id> --run-id <n> --json` before reading
 the report. Check for `outcome: "complete"`. [Waiting for a File run](../agent-control/transport.md#waiting-for-a-file-run)
 
+To export selected File results as one Statistics CSV, pass their session IDs from
+`transport inspect --json`. For example, in PowerShell:
+
+```powershell
+'{"sessionIds":["<first-id>","<second-id>"]}' | plvs-cli transport file export-statistics - --out statistics.csv --json
+```
+
+To configure the File summary bar, use a Settings patch such as
+`{"fileSummaryMetrics":{"visible":["integrated","truePeak"]}}`.
+
 Detailed payloads and behavior are documented in [Agent Control](../agent-control/README.md).
 
 ## JSON Contract

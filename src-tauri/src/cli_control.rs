@@ -355,6 +355,10 @@ pub enum ControlCommand {
     dry_run: bool,
   },
   TransportInspect,
+  TransportStatisticsExport {
+    input: String,
+    out: String,
+  },
   TransportFileWait {
     session_id: String,
     run_id: u64,
@@ -2437,6 +2441,9 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     if scope == "file" && action == "wait" {
       return parse_transport_file_wait_args(rest);
     }
+    if scope == "file" && action == "export-statistics" {
+      return parse_transport_statistics_export_args(rest);
+    }
   }
   if args.first().map(String::as_str) == Some("file")
     && args.get(1).map(String::as_str) == Some("report")
@@ -2579,6 +2586,29 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     allow_stop_file_analysis,
     track_index,
     dry_run,
+  })
+}
+
+fn parse_transport_statistics_export_args(args: &[String]) -> Result<ControlCommand, String> {
+  let (input, out) = match args {
+    [input, flag, out, json] if flag == "--out" && json == "--json" => (input, out),
+    [input, json, flag, out] if flag == "--out" && json == "--json" => (input, out),
+    _ => {
+      return Err(
+        "Usage: plvs-cli transport file export-statistics <file|-> --out <file> --json".to_string(),
+      )
+    }
+  };
+  if input.trim().is_empty()
+    || input.starts_with("--")
+    || out.trim().is_empty()
+    || out.starts_with("--")
+  {
+    return Err("Statistics export requires an input document and an output path.".to_string());
+  }
+  Ok(ControlCommand::TransportStatisticsExport {
+    input: input.clone(),
+    out: out.clone(),
   })
 }
 
@@ -4132,6 +4162,9 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DeviceRead { method } => method.clone(),
     ControlCommand::DeviceSelect { .. } => "device.select".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
+    ControlCommand::TransportStatisticsExport { .. } => {
+      "transport.file.exportStatistics".to_string()
+    }
     ControlCommand::TransportFileWait { .. } => "transport.file.wait".to_string(),
     ControlCommand::TransportReport { .. } => "transport.file.report".to_string(),
     ControlCommand::TransportMutation { method, .. } => method.clone(),
@@ -4487,6 +4520,21 @@ fn request_for_command<R: Read>(
       timeout_ms,
     } => {
       serde_json::json!({ "sessionId": session_id, "runId": run_id, "timeoutMs": timeout_ms })
+    }
+    ControlCommand::TransportStatisticsExport { input, .. } => {
+      let document = read_json_document(input, stdin, "File Statistics selection")
+        .map_err(ControlFailure::invalid_arguments)?;
+      let Some(object) = document.as_object() else {
+        return Err(ControlFailure::invalid_arguments(
+          "Expected a File Statistics selection object.",
+        ));
+      };
+      if object.len() != 1 || !object.contains_key("sessionIds") {
+        return Err(ControlFailure::invalid_arguments(
+          "The File Statistics selection requires only sessionIds.",
+        ));
+      }
+      document
     }
     ControlCommand::TransportReport {
       session_id,
@@ -5246,6 +5294,9 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
     } => (path, "pack", "pack", false),
     ControlCommand::ConfigExport { out: Some(path) } => {
       (path, "configuration", "configuration", false)
+    }
+    ControlCommand::TransportStatisticsExport { out, .. } => {
+      (out, "csv", "File Statistics CSV", true)
     }
     ControlCommand::TransportReport {
       out: Some(path),
@@ -6605,6 +6656,7 @@ mod tests {
   fn canonical_stdin(method: &str) -> &'static [u8] {
     match method {
       "preset.reorder" => br#"{"presetIds":[]}"#,
+      "transport.file.exportStatistics" => br#"{"sessionIds":["file-1"]}"#,
       "theme.reorder" | "loudnessProfile.reorder" => br#"[]"#,
       _ => br#"{}"#,
     }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalizeFileSummaryMetrics } from "../lib/fileSummaryPreferences.js";
 import {
   buildPublicSettings,
   buildSettingsInspection,
@@ -18,6 +19,7 @@ const current = {
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",
   fileDialogueDetection: false,
+  fileSummaryMetrics: normalizeFileSummaryMetrics(null),
   channelLabels: { channelCount: 2, mode: "auto", layout: "stereo", roles: ["L", "R"] },
 };
 
@@ -32,6 +34,34 @@ const context = {
 };
 
 describe("Settings Control", () => {
+  it("merges File Summary Metrics with the same order and visibility rules as the toolbar", () => {
+    const planned = planSettingsUpdate(
+      current,
+      {
+        fileSummaryMetrics: {
+          order: ["truePeak", "integrated"],
+          visible: ["integrated", "truePeak"],
+        },
+      },
+      context
+    );
+    expect(planned.changed).toEqual(["settings.fileSummaryMetrics"]);
+    expect(planned.settings.fileSummaryMetrics.order.slice(0, 2)).toEqual([
+      "truePeak",
+      "integrated",
+    ]);
+    expect(planned.settings.fileSummaryMetrics.visible).toEqual(["truePeak", "integrated"]);
+    expect(
+      planSettingsUpdate(
+        current,
+        {
+          fileSummaryMetrics: { visible: ["truePeak", "truePeak"], order: ["unknown"] },
+        },
+        context
+      ).issues.map(({ path }) => path)
+    ).toEqual(["$.fileSummaryMetrics.visible", "$.fileSummaryMetrics.order"]);
+  });
+
   it("maps the application hook state into the public Settings shape", () => {
     expect(
       buildPublicSettings(
@@ -59,6 +89,7 @@ describe("Settings Control", () => {
       historyRetentionSec: 7200,
       dialogueVadEngine: "silero",
       fileDialogueDetection: false,
+      fileSummaryMetrics: normalizeFileSummaryMetrics(null),
       channelLabels: {
         channelCount: 2,
         mode: "custom",

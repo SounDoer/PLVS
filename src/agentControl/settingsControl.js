@@ -7,6 +7,8 @@ import {
   normalizeKeyboardShortcuts,
 } from "../data/keyboardShortcutActions.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "../lib/dialogueVadEngines.js";
+import { FILE_METRICS } from "../lib/fileAnalysisMeasurements.js";
+import { normalizeFileSummaryMetrics } from "../lib/fileSummaryPreferences.js";
 import { CHANNEL_ROLE_VOCABULARY, roleTokensToLoudnessWeights } from "../math/channelRoles.js";
 import {
   layoutIdForRoles,
@@ -31,6 +33,7 @@ const CLOSE_BEHAVIORS = CLOSE_ACTION_OPTIONS;
 const INTERFACE_SIZES = INTERFACE_SIZE_OPTIONS.map(({ id }) => id);
 const HISTORY_LENGTHS = HISTORY_RETENTION_OPTIONS_SEC;
 const VAD_ENGINES = DIALOGUE_VAD_ENGINE_OPTIONS.map(({ id }) => id);
+const FILE_METRIC_IDS = FILE_METRICS.map(({ id }) => id);
 const CHANNEL_ROLES = new Set(CHANNEL_ROLE_VOCABULARY.map(({ id }) => id));
 /** @type {Set<string>} */
 const SHORTCUT_ACTION_IDS = new Set(KEYBOARD_SHORTCUT_ACTION_IDS);
@@ -64,6 +67,7 @@ export function buildPublicSettings(settings, context) {
     historyRetentionSec: settings.historyRetentionSec,
     dialogueVadEngine: settings.dialogueVadEngine,
     fileDialogueDetection: settings.fileDialogueDetection === true,
+    fileSummaryMetrics: normalizeFileSummaryMetrics(settings.fileSummaryMetrics),
     channelLabels: {
       channelCount: context.channelCount,
       mode: context.channelLabelMode,
@@ -136,6 +140,20 @@ export function buildSettingsSchema(settings, context) {
       type: "boolean",
       default: false,
       current: settings.fileDialogueDetection,
+    },
+    fileSummaryMetrics: {
+      type: "object",
+      properties: Object.fromEntries(
+        Object.entries(normalizeFileSummaryMetrics(null)).map(([key, value]) => [
+          key,
+          {
+            type: "array",
+            default: value,
+            current: settings.fileSummaryMetrics?.[key],
+            items: { type: "enum", options: FILE_METRIC_IDS },
+          },
+        ])
+      ),
     },
     channelLabels: {
       type: "object",
@@ -333,6 +351,29 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       issue("invalidType", "$.fileDialogueDetection", "fileDialogueDetection must be a boolean.")
     );
   }
+  if ("fileSummaryMetrics" in patch) {
+    const metrics = patch.fileSummaryMetrics;
+    if (!isObject(metrics)) {
+      issues.push(
+        issue("invalidType", "$.fileSummaryMetrics", "fileSummaryMetrics must be an object.")
+      );
+    } else {
+      for (const [key, value] of Object.entries(metrics)) {
+        const path = `$.fileSummaryMetrics.${key}`;
+        if (key !== "order" && key !== "visible") {
+          issues.push(issue("unknownControl", path, "Unknown File Summary Metrics field."));
+        } else if (
+          !Array.isArray(value) ||
+          !value.every((id) => FILE_METRIC_IDS.includes(id)) ||
+          new Set(value).size !== value.length
+        ) {
+          issues.push(
+            issue("invalidOption", path, "Expected an array of distinct File metric IDs.")
+          );
+        }
+      }
+    }
+  }
 
   let nextChannelLabels = current.channelLabels;
   if ("channelLabels" in patch) {
@@ -488,6 +529,14 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     ...(Object.hasOwn(patch, "fileDialogueDetection")
       ? { fileDialogueDetection: patch.fileDialogueDetection }
       : {}),
+    ...(Object.hasOwn(patch, "fileSummaryMetrics")
+      ? {
+          fileSummaryMetrics: normalizeFileSummaryMetrics({
+            ...current.fileSummaryMetrics,
+            ...patch.fileSummaryMetrics,
+          }),
+        }
+      : {}),
     ...(Object.hasOwn(patch, "channelLabels") ? { channelLabels: nextChannelLabels } : {}),
   };
   const changed = [];
@@ -526,6 +575,12 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     "settings.fileDialogueDetection",
     current.fileDialogueDetection,
     settings.fileDialogueDetection
+  );
+  changedValue(
+    changed,
+    "settings.fileSummaryMetrics",
+    current.fileSummaryMetrics,
+    settings.fileSummaryMetrics
   );
 
   const effects = [];

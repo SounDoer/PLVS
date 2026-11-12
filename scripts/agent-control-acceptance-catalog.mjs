@@ -65,6 +65,7 @@ const groups = [
       "device.inspect",
       "transport.inspect",
       "transport.file.report",
+      "transport.file.exportStatistics",
       "editorDraft.describe",
       "editorDraft.inspect",
     ],

@@ -1,6 +1,7 @@
 import { describeActiveLoudnessProfile } from "../../lib/activeLoudnessProfile.js";
 import { buildFileAnalysisReport } from "../../lib/fileAnalysisReport.js";
 import { renderFileAnalysisReportMarkdown } from "../../lib/fileAnalysisReportMarkdown.js";
+import { buildFileAnalysisStatisticsCsv } from "../../lib/fileAnalysisStatisticsCsv.js";
 import { isTransportAction } from "../protocol.js";
 import { planTransportMutation, projectTransportMutation } from "../transportControl.js";
 import { semanticFailure, WAIT_CANCELLED } from "../bridge/failures.js";
@@ -113,45 +114,48 @@ async function fileWait(ctx) {
   return { requestId, result };
 }
 
-/** @param {import("../bridge/types.js").BridgeContext} ctx */
-async function fileReport(ctx) {
-  const { request, requestId, clock, live } = ctx;
-  const { runtime, transport } = ctx.snap;
-  const session = transport.files.sessions.find(({ id }) => id === request.params.sessionId);
+function reportSession(transport, sessionId, paramPath) {
+  const session = transport.files.sessions.find(({ id }) => id === sessionId);
   if (!session) {
     throw semanticFailure(
       "fileSessionNotFound",
-      "$.params.sessionId",
+      paramPath,
       "The FILE session was not found.",
       -32080,
-      { sessionId: request.params.sessionId }
+      { sessionId }
     );
   }
-  if (session.state !== "complete" && !(session.resultAvailable === true && session.summary)) {
+  if (!session.summary || (session.state !== "complete" && session.resultAvailable !== true)) {
     throw semanticFailure(
       "fileAnalysisNotComplete",
-      "$.params.sessionId",
+      paramPath,
       "Only a completed FILE analysis can be reported.",
       -32085,
       { sessionId: session.id, state: session.state }
     );
   }
-  const currentProfile = {
-    active: live().loudnessActive,
-    profile: live().loudnessProfile,
-  };
   // The public snapshot names the probe `probe`; the GUI builder reads `metadata`.
-  const report = buildFileAnalysisReport(
-    { ...session, state: "complete", metadata: session.probe },
-    {
-      appVersion: String(runtime.appVersion),
-      loudnessProfile: describeActiveLoudnessProfile({
-        active: currentProfile.active,
-        document: currentProfile.profile?.document,
-        draft: currentProfile.profile?.draft,
-      }),
-    }
-  );
+  return { ...session, state: "complete", metadata: session.probe };
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+function reportOptions(ctx) {
+  const { loudnessActive, loudnessProfile } = ctx.live();
+  return {
+    appVersion: String(ctx.snap.runtime.appVersion),
+    loudnessProfile: describeActiveLoudnessProfile({
+      active: loudnessActive,
+      document: loudnessProfile?.document,
+      draft: loudnessProfile?.draft,
+    }),
+  };
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+async function fileReport(ctx) {
+  const { request, requestId, clock, snap } = ctx;
+  const session = reportSession(snap.transport, request.params.sessionId, "$.params.sessionId");
+  const report = buildFileAnalysisReport(session, reportOptions(ctx));
   return {
     requestId,
     result: {
@@ -160,6 +164,23 @@ async function fileReport(ctx) {
       ...(request.params.reportFormat === "markdown"
         ? { markdown: renderFileAnalysisReportMarkdown(report) }
         : { report }),
+    },
+  };
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+async function fileExportStatistics(ctx) {
+  const { request, requestId, clock, snap } = ctx;
+  const { sessionIds } = request.params;
+  const sessions = sessionIds.map((id, index) =>
+    reportSession(snap.transport, id, `$.params.sessionIds[${index}]`)
+  );
+  return {
+    requestId,
+    result: {
+      revision: clock.current(),
+      sessionIds,
+      csv: buildFileAnalysisStatisticsCsv(sessions, reportOptions(ctx)),
     },
   };
 }
@@ -315,6 +336,7 @@ async function mutate(ctx) {
 export const transportHandlers = {
   "transport.inspect": { run: inspect },
   "transport.file.report": { run: fileReport },
+  "transport.file.exportStatistics": { run: fileExportStatistics },
   "transport.file.wait": { run: fileWait, lane: "direct" },
   "transport.file.analyze": { run: mutate },
   "transport.file.clear": { run: mutate },

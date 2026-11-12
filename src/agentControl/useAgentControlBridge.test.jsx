@@ -6876,6 +6876,47 @@ describe("File analysis report", () => {
     profiles: [broadcast],
   });
 
+  it("exports selected successful File results in request order using the report profile", async () => {
+    const retained = {
+      ...completeSession,
+      id: "retained",
+      fileName: "=retained.wav",
+      state: "analyzing",
+      resultAvailable: true,
+    };
+    mount({
+      agentTransport: reportTransport([completeSession, retained]),
+      loudnessProfile: profileContext(),
+    });
+    await waitUntilReady();
+
+    const result = await send(
+      request(
+        "transport.file.exportStatistics",
+        {
+          sessionIds: [retained.id, completeSession.id],
+        },
+        "file-export-csv"
+      )
+    );
+    expect(result.result.sessionIds).toEqual([retained.id, completeSession.id]);
+    const [header, first, second] = result.result.csv.split("\r\n");
+    expect(header).toMatch(/^\uFEFFschema_version,/);
+    expect(first).toContain("'=retained.wav");
+    expect(first).toContain("Broadcast");
+    expect(second).toContain(completeSession.fileName);
+    const failed = await send(
+      request(
+        "transport.file.exportStatistics",
+        {
+          sessionIds: [completeSession.id, "missing"],
+        },
+        "file-export-missing"
+      )
+    );
+    expect(failed.error.data).toMatchObject({ reason: "fileSessionNotFound" });
+  });
+
   it("records the Loudness Profile in force when the report is made", async () => {
     mount({
       agentTransport: reportTransport([completeSession]),

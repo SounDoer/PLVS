@@ -492,6 +492,9 @@ export function AgentControlBridge() {
       if (changed.includes("settings.fileDialogueDetection")) {
         settings.setFileDialogueDetection(next.fileDialogueDetection);
       }
+      if (changed.includes("settings.fileSummaryMetrics")) {
+        settings.setFileSummaryMetrics(next.fileSummaryMetrics);
+      }
       if (changed.includes("settings.channelLabels")) {
         settings.setChannelLabelOverrides((current) => {
           const updated = { ...current };
