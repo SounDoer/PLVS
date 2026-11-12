@@ -61,6 +61,7 @@ async function locate(ctx) {
       visible: located.visible,
       rect: located.rect,
       viewport: located.viewport,
+      ...("state" in located && located.state ? { state: located.state } : {}),
     },
   };
 }

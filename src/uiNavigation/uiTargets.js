@@ -49,6 +49,24 @@ function declaredTargets(root) {
   return [...entries, ...panelParts(root)].filter(([id]) => isUiTargetId(id));
 }
 
+/** Reads states exposed by the rendered element through native controls or ARIA. */
+function targetState(element) {
+  const state = {};
+  for (const name of ["pressed", "expanded", "selected", "checked", "disabled"]) {
+    const value = element.getAttribute(`aria-${name}`);
+    if (value === "true" || value === "false") state[name] = value === "true";
+    if (value === "mixed" && (name === "pressed" || name === "checked")) state[name] = value;
+  }
+  if (element.matches("button, input, select, textarea, option, optgroup, fieldset")) {
+    state.disabled = element.matches(":disabled") || state.disabled === true;
+  }
+  if (element.matches('input[type="checkbox"], input[type="radio"]')) {
+    state.checked = element.indeterminate ? "mixed" : element.checked;
+  }
+  if (element.matches("option")) state.selected = element.selected;
+  return Object.keys(state).length ? state : undefined;
+}
+
 /** Every currently visible target, in document order, each id once. */
 export function listUiTargets(root = globalThis.document) {
   const seen = new Set();
@@ -56,7 +74,8 @@ export function listUiTargets(root = globalThis.document) {
   for (const [id, element] of declaredTargets(root)) {
     if (seen.has(id) || !visibleRect(element)) continue;
     seen.add(id);
-    targets.push({ id, kind: id.split(":")[0] });
+    const state = targetState(element);
+    targets.push({ id, kind: id.split(":")[0], ...(state && { state }) });
   }
   return targets;
 }
@@ -93,9 +112,11 @@ export function locateUiTarget(id, root = globalThis.document) {
   for (const [, element] of matches) {
     const rect = visibleRect(element);
     if (rect) {
+      const state = targetState(element);
       return {
         found: true,
         visible: true,
+        ...(state && { state }),
         rect: {
           x: Math.round(rect.left * 100) / 100,
           y: Math.round(rect.top * 100) / 100,

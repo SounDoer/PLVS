@@ -172,6 +172,11 @@ reports whether one is visible and its rectangle in CSS pixels relative to the m
 together with the viewport size. Names are declared by the components that render them; see
 [Pointer Control](pointer.md) for the vocabulary. An undeclared name is `uiTargetNotFound`.
 
+Visible main-window targets include `state` when the rendered element exposes an applicable
+native or ARIA state. Fields are `pressed`, `expanded`, `selected`, `checked`, and `disabled`.
+Values are booleans, with `"mixed"` also possible for `pressed` and `checked`. For example,
+`toolbar:dialogue-detection` reports the pressed state of the rendered File toolbar button.
+
 In File mode, `toolbar:dialogue-detection` identifies the Dialogue Detection switch. Set its value
 through [Settings Control](settings.md#file-dialogue-detection). When present, the summary's
 `file-summary:details` and `file-summary:warning` targets also accept

@@ -489,6 +489,7 @@ export function FileAnalysisSummary({
   return (
     <section
       aria-label="File Summary"
+      data-ui-target="file-summary:bar"
       className={cn(
         "flex w-full min-w-0 items-center bg-[color:var(--ui-surface-panel)] py-[var(--ui-shell-pad)] text-[length:var(--ui-fs-control)]",
         inlineGap,

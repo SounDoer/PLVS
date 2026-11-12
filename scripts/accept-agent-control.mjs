@@ -18,6 +18,7 @@ import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import { runAgentControlSmoke, selectSmokeInstance } from "./smoke-agent-control.mjs";
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
 import { createRunJournalStore } from "./ui-walkthrough/journal.mjs";
+import { runFileDialogueRestart } from "./accept-file-dialogue-restart.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED_SCENARIOS = [
@@ -31,23 +32,28 @@ const REQUIRED_SCENARIOS = [
 export function parseAgentControlAcceptanceArgs(args) {
   let instanceId;
   let outDir;
+  let scenario;
   const seen = new Set();
   for (let index = 0; index < args.length; index += 2) {
     const flag = args[index];
     const value = args[index + 1];
     if (
-      !["--instance", "--out-dir"].includes(flag) ||
+      !["--instance", "--out-dir", "--scenario"].includes(flag) ||
       !value ||
       value.startsWith("--") ||
       seen.has(flag)
     ) {
       throw new Error(
-        "Usage: npm run acceptance:agent-control -- [--instance <id>] [--out-dir <directory>]"
+        "Usage: npm run acceptance:agent-control -- [--instance <id> | --scenario file-dialogue-restart] [--out-dir <directory>]"
       );
     }
     seen.add(flag);
     if (flag === "--instance") instanceId = value;
+    else if (flag === "--scenario") scenario = value;
     else outDir = value;
+  }
+  if (scenario && (scenario !== "file-dialogue-restart" || instanceId)) {
+    throw new Error("The file-dialogue-restart scenario starts its own instance.");
   }
   const stamp = new Date()
     .toISOString()
@@ -55,6 +61,7 @@ export function parseAgentControlAcceptanceArgs(args) {
     .replace(/\.\d{3}Z$/, "Z");
   return {
     instanceId,
+    ...(scenario ? { scenario } : {}),
     outDir: resolve(
       root,
       outDir ?? join("artifacts", "agent-control-acceptance", `${stamp}-${process.platform}`)
@@ -367,6 +374,23 @@ export async function runAgentControlAcceptance({
 
 async function main() {
   const options = parseAgentControlAcceptanceArgs(process.argv.slice(2));
+  if (options.scenario) {
+    const ffmpeg = spawnSync(process.execPath, ["scripts/fetch-ffmpeg-sidecar.mjs"], {
+      cwd: root,
+      stdio: "inherit",
+    });
+    if (ffmpeg.error || ffmpeg.status !== 0) {
+      throw ffmpeg.error ?? new Error("Could not prepare the FFmpeg sidecars.");
+    }
+    const { executable } = buildPlvsCli({ identity: "dev" });
+    const evidencePath = await runFileDialogueRestart({
+      executable,
+      root,
+      outDir: options.outDir,
+    });
+    console.log(`Evidence: ${evidencePath}`);
+    return;
+  }
   const sourceSha = resolveEvidenceSourceSha(root);
   scopeDevCliToWorktree();
   const { executable } = buildPlvsCli({ identity: "dev" });

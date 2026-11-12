@@ -34,11 +34,26 @@ describe("UI targets", () => {
     rect(document.querySelector('[data-ui-part="body"]'), 10, 80, 400, 270);
 
     expect(listUiTargets()).toEqual([
-      { id: "toolbar:presets", kind: "toolbar" },
+      { id: "toolbar:presets", kind: "toolbar", state: { disabled: false } },
       { id: "panel:spectrum", kind: "panel" },
-      { id: "panel:spectrum:settings", kind: "panel" },
+      { id: "panel:spectrum:settings", kind: "panel", state: { disabled: false } },
       { id: "panel:spectrum:body", kind: "panel" },
     ]);
+  });
+
+  it("reads native and ARIA state from the visible element", () => {
+    document.body.innerHTML = `
+      <button data-ui-target="toolbar:dialogue-detection" aria-pressed="true"></button>
+      <button data-ui-target="menu:trigger" aria-expanded="false" disabled></button>
+      <input data-ui-target="setting:checkbox" type="checkbox" checked>
+    `;
+    for (const element of document.querySelectorAll("[data-ui-target]")) rect(element, 10, 10);
+    expect(locateUiTarget("toolbar:dialogue-detection").state).toEqual({
+      pressed: true,
+      disabled: false,
+    });
+    expect(locateUiTarget("menu:trigger").state).toEqual({ expanded: false, disabled: true });
+    expect(locateUiTarget("setting:checkbox").state).toEqual({ checked: true, disabled: false });
   });
 
   it("locates a target in viewport pixels and tells hidden from unknown", () => {

@@ -445,6 +445,10 @@ To enable Dialogue Detection for subsequent File analysis, read the current revi
 Use `false` to turn it off. Existing results keep their original analysis settings until reanalyzed.
 [File Dialogue Detection settings](../agent-control/settings.md#file-dialogue-detection)
 
+After `transport file analyze` or `transport file reanalyze` accepts a new run, pass its returned
+`sessionId` and `runId` to `transport file wait <session-id> --run-id <n> --json` before reading
+the report. Check for `outcome: "complete"`. [Waiting for a File run](../agent-control/transport.md#waiting-for-a-file-run)
+
 Detailed payloads and behavior are documented in [Agent Control](../agent-control/README.md).
 
 ## JSON Contract
@@ -785,6 +789,11 @@ contract. It restores every owned surface, draft, file session and durable setti
 shared acceptance evidence under `artifacts/agent-control-acceptance/`. Capture-rig commands remain
 owned by `smoke:capture`; configuration import remains in update acceptance because it relaunches
 the app.
+
+`npm run acceptance:agent-control -- --scenario file-dialogue-restart` runs the File Dialogue
+Detection regression on its own dev processes and temporary app profile. It checks the toolbar,
+reanalyzes the same session, restarts the app, and verifies that the new process uses the saved
+preference. The run writes a JSON trace, app log, and screenshots to its evidence directory.
 
 Dock monitor discovery and entry, and Preset application, read the current monitor inventory on
 each request, including dry-run. Hot-plugging a monitor does not require restarting PLVS. A failed
