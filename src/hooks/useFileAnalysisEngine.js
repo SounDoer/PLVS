@@ -111,7 +111,7 @@ export function useFileAnalysisEngine({
       setAnalyzingFileId((current) => (current === sessionId ? null : current));
       const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
       fileAnalysisAcceptanceRef?.current.delete(sessionId);
-      acceptance?.resolve();
+      acceptance?.resolve(runId);
     };
     const accepts = (payload) =>
       active() && !terminal && payload?.runId === token && payload.path === filePath;
@@ -223,7 +223,7 @@ export function useFileAnalysisEngine({
         audioRef.current = { mode: "file", channel, unsubs };
         const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
         fileAnalysisAcceptanceRef?.current.delete(sessionId);
-        acceptance?.resolve();
+        acceptance?.resolve(runId);
       } catch (err) {
         if (!active() || terminal) return;
         terminal = true;

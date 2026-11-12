@@ -15,6 +15,7 @@ pub const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Long-poll methods whose frontend budget is set by the caller, not by the default above.
 const APP_WAIT_METHOD: &str = "app.wait";
+const FILE_WAIT_METHOD: &str = "transport.file.wait";
 const MEASUREMENT_WAIT_METHOD: &str = "measurement.wait";
 const MEASUREMENT_WAIT_UNTIL_METHOD: &str = "measurement.waitUntil";
 const VISUAL_RECORDING_WAIT_METHOD: &str = "visual.recording.wait";
@@ -66,6 +67,7 @@ fn extended_budget(request: &JsonRpcRequest) -> Option<Duration> {
   if !matches!(
     request.method.as_str(),
     APP_WAIT_METHOD
+      | FILE_WAIT_METHOD
       | MEASUREMENT_WAIT_METHOD
       | MEASUREMENT_WAIT_UNTIL_METHOD
       | VISUAL_RECORDING_WAIT_METHOD

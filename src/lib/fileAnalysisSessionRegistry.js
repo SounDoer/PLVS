@@ -16,6 +16,7 @@
  *   analyzedAt: number | null,
  *   decodedFrames: number,
  *   runId: number,
+ *   runOutcome?: "complete" | "error" | "stopped" | null,
  *   analysisSettings: any,
  *   successfulResult?: any,
  *   attempt?: any,
@@ -162,11 +163,16 @@ export function updateFileEntry(history, id, updater) {
       intake: attempt?.intake ?? updatedEntry.intake,
       audio: restored ? entry.successfulResult.audio : updatedEntry.audio,
       historyReleased: attempt?.intake ? false : (updatedEntry.historyReleased ?? false),
+      runOutcome: attempt ? "complete" : updatedEntry.runOutcome,
       attempt: null,
     };
     updatedEntry.successfulResult = captureSuccessfulResult(updatedEntry);
   } else if (updatedEntry.state === "error") {
-    updatedEntry = { ...updatedEntry, attempt: null };
+    updatedEntry = {
+      ...updatedEntry,
+      runOutcome: updatedEntry.attempt ? "error" : updatedEntry.runOutcome,
+      attempt: null,
+    };
   }
   return replaceEntry(history, id, updatedEntry);
 }
@@ -203,7 +209,7 @@ export function startFileAnalysisEntry(history, id, options = {}) {
   const analysisSettings = options.analysisSettings ?? entry.analysisSettings ?? null;
   const attempt = {
     kind: options.kind ?? "analyze",
-    runId: (entry.runId ?? 0) + 1,
+    runId: options.runId ?? (entry.runId ?? 0) + 1,
     metadata: null,
     analysisSettings,
     intake: options.intake ?? entry.intake,
@@ -218,6 +224,7 @@ export function startFileAnalysisEntry(history, id, options = {}) {
       analyzedAt: successfulResult?.analyzedAt ?? null,
       decodedFrames: successfulResult?.decodedFrames ?? 0,
       runId: attempt.runId,
+      runOutcome: null,
       analysisSettings: successfulResult?.analysisSettings ?? analysisSettings,
       intake: successfulResult ? entry.intake : attempt.intake,
       successfulResult,

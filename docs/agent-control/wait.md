@@ -27,7 +27,8 @@ cannot block inspect or update. Registration and its initial comparison are race
 Agent Control mutation publishes its revision change and then wakes every matching waiter once.
 
 At most four long-poll requests may be active concurrently across `app.wait`, `measurement.wait`,
-and `measurement.waitUntil`; an additional wait fails immediately with `waitLimitReached`.
+`measurement.waitUntil`, and `transport.file.wait`. An additional wait fails immediately with
+`waitLimitReached`.
 
 A waiter is removed immediately after change, timeout, client disconnect/cancellation, frontend
 unmount, or application shutdown. Returned revision values always come from committed state.

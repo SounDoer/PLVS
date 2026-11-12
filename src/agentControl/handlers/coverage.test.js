@@ -45,7 +45,10 @@ describe("Agent Control handler coverage", () => {
     const expected = Object.keys(METHOD_TABLE)
       .filter(
         (method) =>
-          method === "app.wait" || method.startsWith("measurement.") || method.startsWith("visual.")
+          method === "app.wait" ||
+          method === "transport.file.wait" ||
+          method.startsWith("measurement.") ||
+          method.startsWith("visual.")
       )
       .sort();
     expect(direct).toEqual(expected);

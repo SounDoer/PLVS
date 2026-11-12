@@ -8,7 +8,7 @@ than transport playback.
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
-All Transport commands except `inspect` and `file report` require `--expected-revision`. `source live`, `source file`,
+All Transport commands except `inspect`, `file report` and `file wait` require `--expected-revision`. `source live`, `source file`,
 `live clear`, `file select`, `file remove`, and `file clear` are state mutations and support
 `--dry-run`. `live start`, `live stop`, `file analyze`, `file reanalyze`, `file restore`, and `file stop` are
 actions and reject `--dry-run`.
@@ -138,6 +138,21 @@ and track again can rerun the existing entry when the dialogue conditions differ
 FILE uses the same retained snapshot selection as LIVE. This reflects the existing FILE history
 scrub and Return to File Result behavior; it does not add playback or seek semantics. Selection is
 available while the active FILE result has retained history.
+
+## Waiting for a File run
+
+An accepted analyze, reanalyze or restore returns `sessionId` and `runId`. Pass both to
+`transport file wait <session-id> --run-id <n> --json`. Analyze can also return
+`status: "completed"` when it reuses a successful result. In that case the result is ready to report.
+
+Wait returns `outcome` as `complete`, `error`, or `stopped`. The latest run's identity and
+outcome are also visible as `runId` and `runOutcome` on the session in Transport inspection.
+A newer run on that session yields `superseded` for the older identity. A missing session or
+unknown future run yields `unavailable`. A retained report can coexist with an active, failed, or
+stopped replacement. Use the wait outcome to decide whether the replacement succeeded.
+
+The timeout applies to the wait. Analysis continues until it finishes or is stopped separately.
+Runs are local to the running application and share the Agent Control long-wait limit.
 
 ## FILE reports
 

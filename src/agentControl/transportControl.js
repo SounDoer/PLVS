@@ -29,6 +29,8 @@ function serializeFileSession(session) {
     path: session.path,
     fileName: session.fileName,
     state: publicFileState(session.state),
+    runId: session.runId ?? 0,
+    runOutcome: session.runOutcome ?? null,
     progress: Number.isFinite(session.progress) ? Math.max(0, Math.min(1, session.progress)) : 0,
     probe: cloneJson(result.metadata),
     summary: cloneJson(result.summary),
@@ -88,13 +90,17 @@ export function transportLifecycleSignature(snapshot) {
       activeId: snapshot.files.activeId,
       preparingId: snapshot.files.preparingId ?? null,
       analyzingId: snapshot.files.analyzingId,
-      sessions: snapshot.files.sessions.map(({ id, path, state, error, historyReleased }) => ({
-        id,
-        path,
-        state,
-        error,
-        historyReleased,
-      })),
+      sessions: snapshot.files.sessions.map(
+        ({ id, path, state, runId, runOutcome, error, historyReleased }) => ({
+          id,
+          path,
+          state,
+          runId,
+          runOutcome,
+          error,
+          historyReleased,
+        })
+      ),
     },
   });
 }

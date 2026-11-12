@@ -277,6 +277,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentDevelopmentPerformance?: any,
  *   applyAgentView?: (...args: any[]) => any,
  *   agentTransport?: any,
+ *   controlledAgentTransport?: boolean,
  *   agentDock?: any,
  *   agentDockContext?: any,
  *   executeAgentDock?: (...args: any[]) => any,
@@ -344,6 +345,7 @@ function Harness({
   agentDevelopmentPerformance = null,
   applyAgentView,
   agentTransport = transport,
+  controlledAgentTransport = false,
   agentDock = dock,
   agentDockContext = {},
   executeAgentDock,
@@ -496,6 +498,7 @@ function Harness({
         }));
       } else if (method === "transport.file.analyze" || method === "transport.file.reanalyze") {
         const sessionId = method === "transport.file.analyze" ? "file-new" : params.sessionId;
+        const runId = 2;
         setTransportState((current) => {
           const existing = current.files.sessions.find(({ id }) => id === sessionId);
           const session = {
@@ -505,6 +508,8 @@ function Harness({
               fileName: "test.wav",
             }),
             state: "analyzing",
+            runId,
+            runOutcome: null,
             error: null,
           };
           return {
@@ -517,7 +522,7 @@ function Harness({
             },
           };
         });
-        return { sessionId };
+        return { sessionId, runId };
       }
       return {};
     });
@@ -556,7 +561,7 @@ function Harness({
     editorDraft: agentEditorDraft,
     developmentFixtures: agentDevelopmentFixtures,
     developmentPerformance: agentDevelopmentPerformance,
-    transport: transportState,
+    transport: controlledAgentTransport ? agentTransport : transportState,
     transportContext: {
       docked: dockState.enabled,
       historyAvailable: true,
@@ -3458,6 +3463,53 @@ describe("useAgentControlBridge", () => {
       status: "accepted",
       revision: 1,
       sessionId: "sessionId" in params ? params.sessionId : "file-new",
+      runId: 2,
+    });
+  });
+
+  it("waits for a particular File run even while a previous result is available", async () => {
+    const session = { id: "file-1", runId: 2, runOutcome: null, state: "analyzing" };
+    const snapshot = (run) => ({
+      ...transport,
+      source: "file",
+      files: { ...transport.files, activeId: session.id, sessions: [{ ...session, ...run }] },
+    });
+    const view = mount({
+      agentTransport: snapshot({ resultAvailable: true }),
+      controlledAgentTransport: true,
+    });
+    await waitUntilReady();
+
+    const older = await send(
+      request("transport.file.wait", { sessionId: session.id, runId: 1 }, "old-run")
+    );
+    expect(older.result.outcome).toBe("superseded");
+    const waiting = request(
+      "transport.file.wait",
+      { sessionId: session.id, runId: 2 },
+      "current-run"
+    );
+    await act(async () => adapter.handler(waiting));
+    expect(adapter.responses.some(({ requestId }) => requestId === waiting.id)).toBe(false);
+
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness
+          agentTransport={snapshot({ state: "complete", runOutcome: "stopped" })}
+          controlledAgentTransport
+        />
+      </WorkspaceProvider>
+    );
+    await adapterSettles(
+      () => adapter.responses.some(({ requestId }) => requestId === waiting.id),
+      "stopped file wait"
+    );
+    expect(
+      adapter.responses.find(({ requestId }) => requestId === waiting.id).result
+    ).toMatchObject({
+      sessionId: session.id,
+      runId: 2,
+      outcome: "stopped",
     });
   });
 

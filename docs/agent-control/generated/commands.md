@@ -116,6 +116,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none |
 | `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none |
 | `transport.file.clear` | `transport file clear` | runningApp / mutation | required | yes | none |
+| `transport.file.wait` | `transport file wait` | runningApp / wait | none | no | none |
 | `transport.file.report` | `transport file report` | runningApp / query | none | no | optional |
 | `dock.describe` | `dock describe` | runningApp / query | none | no | none |
 | `dock.inspect` | `dock inspect` | runningApp / query | none | no | none |
@@ -3017,6 +3018,33 @@ None.
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+
+## `transport.file.wait`
+
+Wait for a specific File analysis run.
+
+- CLI path: `transport file wait`
+- Execution: `runningApp`; operation: `wait`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.wait`
+
+```text
+plvs-cli transport file wait <session-id> --run-id <run-id> [--timeout-ms <n>] --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `session-id` | `sessionId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--run-id` | `runId` | yes | integer; 1 to 9007199254740991 |
+| `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
+| `--json` | local only | yes | boolean |
 
 ## `transport.file.report`
 

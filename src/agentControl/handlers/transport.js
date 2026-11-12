@@ -3,7 +3,7 @@ import { buildFileAnalysisReport } from "../../lib/fileAnalysisReport.js";
 import { renderFileAnalysisReportMarkdown } from "../../lib/fileAnalysisReportMarkdown.js";
 import { isTransportAction } from "../protocol.js";
 import { planTransportMutation, projectTransportMutation } from "../transportControl.js";
-import { semanticFailure } from "../bridge/failures.js";
+import { semanticFailure, WAIT_CANCELLED } from "../bridge/failures.js";
 import { paced } from "./paced.js";
 
 /**
@@ -31,6 +31,11 @@ function transportMutationMatches(method, params, execution, snapshot) {
     method === "transport.file.reanalyze" ||
     method === "transport.file.restore"
   ) {
+    if (execution?.runId) {
+      return snapshot.files.sessions.some(
+        (session) => session.id === sessionId && session.runId === execution.runId
+      );
+    }
     return (
       snapshot.source === "file" &&
       snapshot.files.analyzingId === sessionId &&
@@ -66,6 +71,46 @@ async function inspect(ctx) {
     requestId,
     result: { revision: clock.current(), ...transport },
   };
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+async function fileWait(ctx) {
+  const { request, requestId, clock, waiters, live } = ctx;
+  const { sessionId, runId, timeoutMs } = request.params;
+  const read = () => {
+    const session = live().transport.files.sessions.find(({ id }) => id === sessionId);
+    const outcome = !session
+      ? "unavailable"
+      : session.runId > runId
+        ? "superseded"
+        : session.runId < runId
+          ? "unavailable"
+          : session.runOutcome;
+    return outcome ? { revision: clock.current(), sessionId, runId, outcome } : null;
+  };
+  const immediate = read();
+  if (immediate) return { requestId, result: immediate };
+  if (waiters.entries.size >= 4) {
+    throw semanticFailure("waitLimitReached", "$", "Too many long waits are active.", -32070);
+  }
+  const result = await new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      waiters.entries.delete(requestId);
+      resolve(read());
+    }, timeoutMs);
+    waiters.entries.set(requestId, { kind: "file", read, timer, resolve });
+  });
+  if (result === WAIT_CANCELLED) return null;
+  if (!result) {
+    throw semanticFailure(
+      "timeout",
+      "$.params.timeoutMs",
+      "File analysis did not finish before the timeout.",
+      -32071,
+      { sessionId, runId, revision: clock.current() }
+    );
+  }
+  return { requestId, result };
 }
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -251,7 +296,10 @@ async function mutate(ctx) {
   }
   result.state.transport = live().transport;
   if ("status" in result && result.status === "accepted" && execution?.sessionId) {
-    Object.assign(result, { sessionId: execution.sessionId });
+    Object.assign(result, {
+      sessionId: execution.sessionId,
+      ...(execution.runId > 0 ? { runId: execution.runId } : {}),
+    });
   }
   Object.assign(result, execution?.result ?? {});
   if (Array.isArray(execution?.affectedSessions)) {
@@ -267,6 +315,7 @@ async function mutate(ctx) {
 export const transportHandlers = {
   "transport.inspect": { run: inspect },
   "transport.file.report": { run: fileReport },
+  "transport.file.wait": { run: fileWait, lane: "direct" },
   "transport.file.analyze": { run: mutate },
   "transport.file.clear": { run: mutate },
   "transport.file.reanalyze": { run: mutate },

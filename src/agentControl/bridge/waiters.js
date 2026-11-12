@@ -1,4 +1,4 @@
-/** The long-wait registry: `app.wait`, `measurement.wait*` and `visual.recording.wait`. */
+/** Shared long-wait registry. */
 export function createWaiters() {
   /** @type {Map<string, any>} */
   const entries = new Map();
@@ -11,11 +11,16 @@ export function createWaiters() {
      */
     wakeRevision(revision) {
       for (const [id, waiter] of entries) {
-        if (waiter.kind !== "revision") continue;
-        if (revision === waiter.afterRevision) continue;
+        const result =
+          waiter.kind === "revision" && revision !== waiter.afterRevision
+            ? { outcome: "changed", matchedImmediately: false, revision }
+            : waiter.kind === "file"
+              ? waiter.read()
+              : null;
+        if (!result) continue;
         clearTimeout(waiter.timer);
         entries.delete(id);
-        waiter.resolve({ outcome: "changed", matchedImmediately: false, revision });
+        waiter.resolve(result);
       }
     },
   };

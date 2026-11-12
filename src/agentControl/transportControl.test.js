@@ -90,6 +90,8 @@ describe("Transport Control", () => {
             fileName: "mix.wav",
             state: "complete",
             progress: 1,
+            runId: 0,
+            runOutcome: null,
             probe: { durationMs: 1000 },
             summary: { integratedLufs: -23 },
             createdAt: 10,

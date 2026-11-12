@@ -5859,6 +5859,81 @@
       }
     },
     {
+      "id": "transport.file.wait",
+      "family": "transport",
+      "path": ["transport", "file", "wait"],
+      "usage": "plvs-cli transport file wait <session-id> --run-id <run-id> [--timeout-ms <n>] --json",
+      "summary": "Wait for a specific File analysis run.",
+      "execution": "runningApp",
+      "operation": "wait",
+      "wireMethod": "transport.file.wait",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--run-id",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "mapsTo": "runId"
+        },
+        {
+          "name": "--timeout-ms",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
+          },
+          "mapsTo": "timeoutMs"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "runId"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
+          }
+        }
+      }
+    },
+    {
       "id": "transport.file.report",
       "family": "transport",
       "path": ["transport", "file", "report"],

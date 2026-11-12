@@ -271,25 +271,25 @@ export function AgentControlBridge() {
           plan.action === "rerun" ? plan.sessionId : null
         );
         if (!run) throw new Error("FILE analysis was not accepted.");
-        await run.accepted;
+        const runId = await run.accepted;
         const { sessionId } = run;
-        return { sessionId };
+        return { sessionId, runId };
       }
       if (method === "transport.file.reanalyze") {
         if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
         switchSource("file");
         const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
         if (!run) throw new Error("FILE reanalysis was not accepted.");
-        await run.accepted;
-        return { sessionId: run.sessionId };
+        const runId = await run.accepted;
+        return { sessionId: run.sessionId, runId };
       }
       if (method === "transport.file.restore") {
         if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
         switchSource("file");
         const run = await restoreFileHistoryForControl(params.sessionId);
         if (!run) throw new Error("History restoration was not accepted.");
-        await run.accepted;
-        return { sessionId: run.sessionId };
+        const runId = await run.accepted;
+        return { sessionId: run.sessionId, runId };
       }
       if (method === "transport.file.stop") {
         await stopFileAnalysis(params.sessionId);

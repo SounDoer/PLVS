@@ -355,6 +355,11 @@ pub enum ControlCommand {
     dry_run: bool,
   },
   TransportInspect,
+  TransportFileWait {
+    session_id: String,
+    run_id: u64,
+    timeout_ms: u64,
+  },
   TransportReport {
     session_id: String,
     out: Option<String>,
@@ -2428,6 +2433,11 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
       Err("Usage: plvs-cli transport inspect --json".to_string())
     };
   }
+  if let [scope, action, rest @ ..] = args {
+    if scope == "file" && action == "wait" {
+      return parse_transport_file_wait_args(rest);
+    }
+  }
   if args.first().map(String::as_str) == Some("file")
     && args.get(1).map(String::as_str) == Some("report")
   {
@@ -2569,6 +2579,57 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     allow_stop_file_analysis,
     track_index,
     dry_run,
+  })
+}
+
+fn parse_transport_file_wait_args(args: &[String]) -> Result<ControlCommand, String> {
+  let [session_id, rest @ ..] = args else {
+    return Err("File wait requires a session ID.".to_string());
+  };
+  if session_id.trim().is_empty() || session_id.starts_with("--") {
+    return Err("File wait requires a session ID.".to_string());
+  }
+  let mut run_id = None;
+  let mut timeout_ms = 30_000;
+  let mut json = false;
+  let mut remaining = rest;
+  while let [option, tail @ ..] = remaining {
+    if option == "--json" {
+      json = true;
+      remaining = tail;
+      continue;
+    }
+    let [value, tail @ ..] = tail else {
+      return Err(format!("Missing value for {option}."));
+    };
+    match option.as_str() {
+      "--run-id" => {
+        run_id = value
+          .parse::<u64>()
+          .ok()
+          .filter(|id| (1..=MAX_SAFE_REVISION).contains(id));
+        if run_id.is_none() {
+          return Err("--run-id must be a positive safe integer.".to_string());
+        }
+      }
+      "--timeout-ms" => {
+        timeout_ms = value
+          .parse::<u64>()
+          .ok()
+          .filter(|ms| (100..=300_000).contains(ms))
+          .ok_or_else(|| "--timeout-ms must be an integer from 100 to 300000.".to_string())?;
+      }
+      _ => return Err(format!("Unknown file wait option: {option}")),
+    }
+    remaining = tail;
+  }
+  if !json {
+    return Err("File wait requires --json.".to_string());
+  }
+  Ok(ControlCommand::TransportFileWait {
+    session_id: session_id.to_string(),
+    run_id: run_id.ok_or_else(|| "File wait requires --run-id.".to_string())?,
+    timeout_ms,
   })
 }
 
@@ -4071,6 +4132,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DeviceRead { method } => method.clone(),
     ControlCommand::DeviceSelect { .. } => "device.select".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
+    ControlCommand::TransportFileWait { .. } => "transport.file.wait".to_string(),
     ControlCommand::TransportReport { .. } => "transport.file.report".to_string(),
     ControlCommand::TransportMutation { method, .. } => method.clone(),
     ControlCommand::DockRead { method } | ControlCommand::DockCommand { method, .. } => {
@@ -4419,6 +4481,13 @@ fn request_for_command<R: Read>(
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
+    ControlCommand::TransportFileWait {
+      session_id,
+      run_id,
+      timeout_ms,
+    } => {
+      serde_json::json!({ "sessionId": session_id, "runId": run_id, "timeoutMs": timeout_ms })
+    }
     ControlCommand::TransportReport {
       session_id,
       report_format,
@@ -6463,6 +6532,7 @@ mod tests {
       "device-id|default" => "default".to_string(),
       "name" => "Name".to_string(),
       "session-id" => "file-1".to_string(),
+      "run-id" => "1".to_string(),
       "recording-id" => format!("rec-{}", "a".repeat(32)),
       "section" => "appearance".to_string(),
       "sources|loudness-profile|panels|views|presets|status" => "presets".to_string(),

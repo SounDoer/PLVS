@@ -114,7 +114,7 @@ export function useFileSessionLedger({
               activate,
             }),
             sessionId,
-            { analysisSettings, preserveSelection: !activate }
+            { runId, analysisSettings, preserveSelection: !activate }
           )
         )
       );
@@ -141,6 +141,7 @@ export function useFileSessionLedger({
       setFileHistory((history) =>
         enforce(
           startFileAnalysisEntry(history, entryId, {
+            runId,
             analysisSettings,
             intake,
             kind,
@@ -163,6 +164,7 @@ export function useFileSessionLedger({
           ...entry,
           state: entry.successfulResult ? "complete" : "canceled",
           error: null,
+          runOutcome: "stopped",
           attempt: null,
         }));
         return enforce({ ...updatedHistory, analyzingFileId: null });

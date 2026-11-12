@@ -1531,6 +1531,28 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "transport.file.wait") {
+    const field = unknownField(input.params, new Set(["sessionId", "runId", "timeoutMs"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const { sessionId, runId, timeoutMs = 30000 } = input.params;
+    if (typeof sessionId !== "string" || sessionId.trim() === "") {
+      return invalidParams("$.params.sessionId", "sessionId must be a non-empty string.");
+    }
+    if (!Number.isSafeInteger(runId) || runId <= 0) {
+      return invalidParams("$.params.runId", "runId must be a positive safe integer.");
+    }
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) {
+      return invalidParams(
+        "$.params.timeoutMs",
+        "timeoutMs must be an integer from 100 to 300000."
+      );
+    }
+    return {
+      ok: true,
+      request: { id: input.id, method: input.method, params: { sessionId, runId, timeoutMs } },
+    };
+  }
+
   if (input.method === "transport.file.report") {
     const field = unknownField(input.params, new Set(["sessionId", "reportFormat"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
