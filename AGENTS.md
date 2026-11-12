@@ -99,6 +99,9 @@ Only the directories that carry rules are listed; the rest of the tree speaks fo
 
 ## Code style
 
+Before changing desktop UI, check for and reuse applicable PLVS components and design tokens.
+See [Design Token Specification](docs/design-tokens.md) for the detailed rules.
+
 Documentation, comments, commit messages and PRs are in English. String literals that must match localized OS/UI text are the exception.
 Line endings are LF (`.editorconfig`, `.gitattributes`). Formatting and lint are enforced by `npm run check` — no need to memorize the rules.
 UI-visible labels across PLVS default to Title Case unless there's a specific reason not to, e.g. `Max Hold`, `Channel Pair`; `aria-label`s stay lowercase — a separate, non-user-facing convention.
