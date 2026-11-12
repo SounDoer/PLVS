@@ -1,15 +1,45 @@
 # Design Token Specification
 
-PLVS desktop UI token system — established from design review, May 2026.
-Implement via `src/preferences/data.js` + `src/preferences/applyDocumentTheme.js`.  
-Color themes are format- and semantics-versioned authoring documents compiled through
-`src/theme/compileTheme.js`.
+PLVS desktop UI components, Theme bindings, and layout tokens. The
+[website design system](website-design.md) has its own reference.
+
+## Where to start
+
+- For a desktop control or floating surface, start with [Buttons](#buttons), [Selects](#selects),
+  [Tooltips and Popovers](#tooltips-and-popovers), or [Dialogs](#dialogs). Look for an applicable
+  component in `src/components/ui/` or an existing use of the same interaction.
+- For layout and sizing, use [Scaling with Interface Size](#scaling-with-interface-size),
+  [Control Height](#control-height), [Typography Tokens](#typography-tokens), and
+  [Spacing Tokens](#spacing-tokens).
+- For appearance, use [Color Tokens](#color-tokens), [Shadows](#shadows),
+  [Radius Tokens](#radius-tokens), [Focus](#focus), and [Motion](#motion).
+- For specialized surfaces, see [Dock Tokens](#dock-tokens) and
+  [Dataviz Style Tokens](#dataviz-style-tokens).
+
+## Changing desktop UI
+
+1. **Find the closest existing interaction.** Read its caller and the shared component it uses.
+   Reuse the component where its behavior fits. Start with a documented variant, then use
+   caller-owned layout for placement and sizing.
+2. **Change the owner.** A local arrangement belongs in the caller. A change to shared behavior
+   belongs in the component. A Theme role, Interface Size profile, or rendering recipe belongs in
+   the source named under [Architecture](#architecture).
+3. **Verify the states your change affects.** For layout, check the narrowest relevant width,
+   long labels, and larger Interface Size profiles. For appearance, check Light and Dark. For
+   interaction, exercise the relevant pointer and keyboard states, including how an overlay opens
+   and dismisses. Follow the [Agent Control workflow](../AGENTS.md#agent-control) and the
+   [rendering comparison procedure](pitfalls.md#rendering-changes) when reviewing changed pixels.
+
+Keep this reference current with shared UI changes. Use the implementation on `main` for current
+behavior. Document component selection, the source of each shared rule, and any intentional
+exceptions. Update the affected section when its rule changes.
 
 ---
 
 ## Architecture
 
-Three layers. Components consume **Semantic** (shadcn) or **Component** tokens only — never raw palette values.
+Consume resolved semantic tokens, PLVS component tokens, or the resolved renderer bundle.
+Keep raw palette values and color derivation in the Theme compiler.
 
 ```
 Authoring    Six Core Colors, purpose-specific Palettes, and sparse Advanced overrides.
@@ -20,40 +50,24 @@ Resolved     themeRoleRegistry.js defines every meaningful visible role, its val
              produces one complete immutable CSS / Canvas / effect contract. Chart fill opacity
              is fixed product composition in src/lib/chartFill.js (ADR 0019).
 
-Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
-             Theme values are written by themeRuntime; layout and product-tuning tokens by
-             applyLayoutToDocument().
-             Responsive Dock tokens are scoped by src/dock/dockTokens.css because they depend
-             on the Dock window viewport height. Sub-namespaces include typography, spacing,
-             radius, dataviz, and dock.
+Bindings     themeRuntime publishes semantic CSS tokens, component colors, and renderer values.
+             src/preferences/data.js holds the Small layout baseline. interfaceSize.js resolves
+             the selected profile, and applyLayoutToDocument() publishes layout and tuning tokens.
+             index.css derives shared geometry and state styles. src/dock/dockTokens.css owns
+             strip-specific spacing and control geometry.
 ```
 
 ---
 
 ## Focus
 
-PLVS draws one focus ring, and only while the user is navigating with Tab.
+Tab sets `data-keyboard-nav` through `src/lib/keyboardNavigation.js`. The next pointer press clears
+it. `index.css` suppresses the browser's default outline and paints a shared 2px `--ring` outline
+on `:focus-visible` when the attribute is set. The same gate applies to keyboard focus styles
+derived from a button's neutral hover fill or foreground color.
 
-The browser's own outline is cleared by one rule in the `base` layer of `index.css`. Chromium
-paints `outline: auto` in a fixed high-contrast color on any focusable element that defines no
-focus style, and reveals it after any keydown, including a bare modifier. PLVS is driven by
-shortcuts, so that heuristic showed a ring to pointer users who had only pressed Ctrl+K.
-
-`src/lib/keyboardNavigation.js` replaces the heuristic with an explicit state: Tab sets
-`data-keyboard-nav` on the document, and the next pointer press clears it. One unlayered rule in
-`index.css` paints a 2px `--ring` outline on the focused element while that attribute is set.
-Shortcuts, modifiers and pointer use never raise it.
-
-The hover fill and text colour that buttons show on keyboard focus follow the same attribute. A
-button that only received focus back — its popover was closed with Escape by a pointer user, or
-closed by Agent Control with no input — stays at rest. `:focus-visible` on its own matches both
-cases, and whether it does depends on whether the window has had system focus, which made the
-state differ between otherwise identical screenshots.
-
-Components must not add a `focus-visible:ring-*` or `focus-visible:outline-*` of their own; a
-contract test in `src/components/ui/themeColorContract.test.js` fails if one appears. A control
-does not need a focus style at all: the global ring covers every focusable element, including ones
-whose hover treatment is too faint to mark focus.
+Use the shared ring for focus indication. `src/components/ui/themeColorContract.test.js` rejects
+component-local `focus-visible:ring-*` and `focus-visible:outline-*` utilities.
 
 `interface.focusRing` supplies `--ring`. Its automatic value follows the Theme's Interface Accent;
 Theme authors can override it under **Advanced → Interface → Effects → Focus Ring** when the
@@ -76,11 +90,8 @@ if these roles stop being sufficient, add a new role through a separate design d
 
 ## Scaling with Interface Size
 
-Interface Size rewrites the whole `--ui-fs-*` scale (`control` goes 13 → 15 → 17), so anything sized
-in `px` or `rem` stays put while the text inside it grows. A box that fits at Default clips at
-Extra Large, and nothing warns you.
-
-The rule: **if a box's job is to hold text, size it in units that scale with that text.**
+Size text containers using intrinsic layout, font-relative units, or a shared profile width.
+Fixed widths in `px` or `rem` stay constant as Interface Size increases the type scale.
 
 | Situation                    | Use                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -90,8 +101,7 @@ The rule: **if a box's job is to hold text, size it in units that scale with tha
 | Chart axis rail              | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does                                                      |
 | Floating editor panel        | `--ui-editor-w`, set by Interface Size; `--ui-editor-height-cap` (600px) and `--ui-editor-max-h` (at most 80vh) share the Theme/Profile height policy |
 
-Heights follow the same rule through one token: every form control is `--ui-control-h` tall, which
-the Interface Size profiles set alongside the type scale. See Control Height.
+Use [Control Height](#control-height) for fixed-height rows and controls.
 
 Text surfaces use shared preferred widths in CSS pixels. All widths are bounded by the available
 viewport (or the monitor for native Dock hosts); menus retain intrinsic widths rather than filling
@@ -104,9 +114,9 @@ their maximum. `layout.surfaces` in the Interface Size profiles owns these value
 | `--ui-surface-wide-w`    |   480 |     544 |   608 |         672 | Update details and crash reports                                      |
 | `--ui-surface-status-w`  |   320 |     384 |   432 |         480 | Status lists                                                          |
 
-Settings keeps `--ui-drawer-w` (320 / 336 / 368 / 400), and Theme/Profile editors keep
-`--ui-editor-w` (416 / 416 / 448 / 480). Quick Tour uses `25em`; Theme Preview uses the available
-space. Native Dock content receives the same surface widths even where its chrome stays compact.
+Settings uses `--ui-drawer-w`, and Theme/Profile editors use `--ui-editor-w`. See the
+[profile matrix](#interface-size-profiles) for their widths. Native Dock content receives the
+same surface widths even where its chrome stays compact.
 Intrinsic Dock menus must not use viewport-relative width limits, since the native host follows
 their measurement. Authoring windows request their profile's preferred width rather than their
 currently clipped content width, so forms can both grow with Interface Size and fit a small monitor.
@@ -115,22 +125,17 @@ currently clipped content width, so forms can both grow with Interface Size and 
 
 Every optional panel Grid and every always-visible Vectorscope guide resolves from `data.grid`.
 The default recipe mixes the resolved Panel Surface 8% toward white in Dark or black in Light,
-independently from interface Border. The
-renderer paints that opaque result directly: there is no panel-specific opacity multiplier or
-weaker subdivision colour.
-
-A contract test in `src/components/ui/themeColorContract.test.js` rejects the two shapes that
-brought it back: a reference to `--ui-spectrum-grid-opacity`, and a grid stroked from `--border`.
+independently from interface Border. Render the resolved color directly at full opacity.
+`src/components/ui/themeColorContract.test.js` guards this separation.
 
 Optional Grid is available in Loudness (Y axis), Spectrum (X and Y axes), Stereo Map (a separate
 choice for each mode), and the two 3D Spectrogram modes (one shared choice). It defaults off. The
 Vectorscope's orientation geometry is classified as Guides and stays visible. Waveform has neither
-a Grid nor a centre reference line; Stereo Map has no unconditional zero reference line. Dock
-modules do not expose optional Grid.
+a Grid nor a centre reference line. Stereo Map has no unconditional zero reference line.
+Dock's shared Loudness, Spectrum, and Stereo Map panels carry their Grid controls through
+`src/dock/dockModuleControls.js`.
 
-A grid line is 1px. Below that a stroke lands on a fraction of a device pixel and the renderer
-pays for it in alpha, which reads as a colour problem and is not one — the vectorscope's diagonals
-spent a long time at `0.35`.
+Draw grid lines at 1 CSS px to preserve the resolved line weight.
 
 ## Shadows
 
@@ -154,10 +159,11 @@ local to those components.
 
 ## Structural Surface Opacity
 
-`--surface-opacity` is a product-composition input, not a Theme color. It is a percentage and
-defaults to `100%`. Apply it once to the fill at a structural boundary—Workspace, normal shell,
-panel, fullscreen, file-summary shell, or Dock shell—through `--ui-surface-workspace`,
-`--ui-surface-panel`, or `--ui-surface-dock`.
+Surface Opacity controls window composition. `--surface-opacity` drives
+`--ui-surface-workspace` and `--ui-surface-panel` for the normal workspace, shell, panels,
+fullscreen, and File Summary. Dock has its own `--dock-surface-opacity`, consumed by
+`--ui-surface-dock`. Both settings default to `100%`. Apply the resolved fill once at the
+structural boundary.
 Do not apply it to a parent with CSS `opacity`, multiply it by a local fixed alpha, or route borders,
 controls, typography, focus/state marks, Canvas, or SVG measurement data through it. Raised
 overlays and editors remain opaque so their content has a stable reading surface.
@@ -167,21 +173,14 @@ expose the native window compositor without weakening the foreground information
 
 ## Modal Scrim
 
-`SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
-used by dimmed modals and by the file-drop target. Theme Preview uses an unpainted modal overlay
-while temporarily hiding its editor. Callers add only their own layer (see Layers).
-The Settings Sheet adds `backdrop-blur-sm` to that scrim as modal focus feedback; its readable
-drawer remains opaque. Other scrim consumers do not inherit that blur.
-
-The scrim is deliberately not a theme colour. Darkening is a direction, not a hue, and a value
-derived from the theme reverses it: the retired `effect.scrim` role tinted the workspace, which on
-a light theme produced a near-white veil that washed the background out instead of dimming it. If
-this ever needs to follow the theme, the opacity is what varies.
+Dimmed modals and the file-drop target use the shared `SCRIM_CLASS` in
+`src/components/ui/surfaceStyles.js`. It applies 60% black across Themes. The Settings Sheet adds
+`backdrop-blur-sm` to the scrim and keeps the drawer opaque. Theme Preview uses an unpainted modal
+overlay while temporarily hiding its editor. Use the shared [layer constants](#layers).
 
 ## Control Height
 
-Interactive elements come in three heights, 4px apart, and all three follow one token. Interface
-Size sets `--ui-control-h`; `index.css` derives the rest from it.
+Interface Size sets `--ui-control-h`. The other control heights derive from it in `index.css`.
 
 | Token            | Small / Default | Large | Extra Large | Used by                                                                                                                                                                                 |
 | ---------------- | --------------- | ----- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -190,24 +189,18 @@ Size sets `--ui-control-h`; `index.css` derives the rest from it.
 | `--ui-row-h`     | 32px            | 36px  | 40px        | List rows: every row of a menu, picker or managed list, whether the row itself is the click target (`MenuRow`) or holds a `RowAction` beside a handle and trailing actions              |
 | `--ui-switch-h`  | 16px            | 18px  | 22px        | Every switch; its width and thumb are derived from it. Two thirds of the control height, rounded to 2px                                                                                 |
 
-No component sets a height of its own. A row does not get its height from text plus padding,
-which is how six spellings of "a list row" had drifted between 31.5px and 40px.
-
-The control height stays at least one and a half times the largest text a control holds. A fixed
-box would be outgrown by the 17px text of the larger sizes, which is why nothing carries a "grow
-to fit" exception.
-
-Multi-line fields size to their content. `src/components/ui/controlHeightContract.test.js` rejects
+Use these heights for the listed controls. Multiline fields size to their content.
+`src/components/ui/controlHeightContract.test.js` rejects
 a fixed height above 24px written in a class string, and checks that the shared primitives read
 these tokens.
 
 ## Buttons
 
-Buttons come from a primitive; a hand-written `<button>` is not a way to get a different look.
+Choose the primitive by the button's role and placement.
 
 | Primitive    | Where                           | Use                                                                                                                                    |
 | ------------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`     | `components/ui/button.jsx`      | Text actions. One size, the control height, at the Control font size                                                                   |
+| `Button`     | `components/ui/button.jsx`      | Text actions at Control size or square icon actions with `size="icon"`. Both use the control height                                    |
 | `IconButton` | `components/IconButton.jsx`     | Shell-level icon actions with a neutral hover fill and a tooltip                                                                       |
 | `IconAction` | `components/ui/icon-action.jsx` | Icon actions inline in a row or header. Colour change only; panel header actions add a hover fill through `PANEL_HEADER_ACTION_BUTTON` |
 | `LinkButton` | `components/ui/link-button.jsx` | Text that reads as a link: no box, Secondary text that turns Primary on hover                                                          |
@@ -217,8 +210,14 @@ Buttons come from a primitive; a hand-written `<button>` is not a way to get a d
 | `DragHandle` | `components/ui/drag-handle.jsx` | The grip that starts a reorder or placement drag                                                                                       |
 | `AddButton`  | `components/AddButton.jsx`      | The dashed "add a new item" slot                                                                                                       |
 
-`Button` variants are Primary (`default`), `secondary`, `ghost`, `outline`, `destructive` and `link`.
-A dialog's dismissing action is `ghost` and its confirming action is Primary or `destructive`.
+`Button` variants are Primary (`default`), `secondary`, `ghost`, `quiet`, `outline`, `destructive`,
+and `link`. Use `quiet` for low-emphasis controls with muted idle text and a neutral highlight.
+A dialog's dismissing action is `ghost`. Its confirming action is Primary or `destructive`.
+
+The [app header](../src/components/AppHeader.jsx) uses `IconButton` for shell-sized actions with a
+built-in tooltip. The [Files menu](../src/components/FileAnalysisHistoryMenu.jsx) uses
+`Button size="icon"` for its control-sized popover trigger and `IconAction` for a trailing row
+action. Use these placements to choose among the three icon action shapes.
 
 Each primitive owns only what every use shares. Padding, font size and state colours that depend
 on where it sits are passed as `className`.
@@ -243,6 +242,26 @@ All three are transparent at rest and take the neutral hover fill; the shared fi
 `index.css` reveals the border on keyboard focus and while the menu is open. Width, column sizing
 and a surface-specific text colour stay with the caller.
 
+## Tooltips and Popovers
+
+- Use [`HoverTip`](../src/components/HoverTip.jsx) for brief, passive help. Use
+  `useHoverTip` when an existing element needs to be the anchor. Keep the control's accessible
+  name on the control itself. In-app tooltips use this shared themed surface in place of a
+  native `title` tooltip.
+- Use [`TruncatingLabel`](../src/components/TruncatingLabel.jsx) for a single line with an end
+  ellipsis. It reveals the full label on hover only when the text is clipped. For a custom label,
+  `useTruncationTip` can measure the clipping element, or `useHoverTip` can display the result of
+  a custom clipping check.
+- Use [`Popover`, `PopoverTrigger`, and `PopoverContent`](../src/components/ui/popover.jsx) for
+  anchored menus, settings, or details the user can keep open. `PopoverContent` owns the shared
+  surface, layer, and default positioning. File Summary details use
+  [`FileDetailPopover`](../src/components/FileDetailPopover.jsx) for hover preview and click to
+  keep the details open.
+
+When information is needed to identify an item or complete an action, provide a visible or
+keyboard-accessible way to reach it. Use hover for optional help or to reveal text whose full
+content is already available to assistive technology.
+
 ## Layers
 
 Everything that floats above the workspace takes its z-index from a named constant in
@@ -264,9 +283,10 @@ anywhere else.
 ## Dialogs
 
 Modal dialogs render through `DialogContent` in `src/components/ui/dialog.jsx`, which owns the
-scrim, layer, centring, Modal surface, `rounded-xl` and `p-3` padding. Widths come in three sizes:
-`sm` 20rem, `md` 28rem (the default) and `lg` 34rem, each capped to the window; `custom` hands the
-width to the caller for content-sized or sectioned dialogs. `DialogTitle` uses the Control size in
+scrim, layer, centring, Modal surface, `rounded-xl` and `p-3` padding. Width follows Interface Size:
+`sm` uses `--ui-surface-compact-w`, `md` (the default) uses `--ui-surface-dialog-w`, and `lg`
+uses `--ui-surface-wide-w`. These widths leave a 1rem margin on each side of the viewport.
+With `size="custom"`, the caller owns the width and its cap. `DialogTitle` uses the Control size in
 semibold, `DialogDescription` the Metric Annotation size in Secondary text, and `DialogFooter`
 right-aligns actions with a `gap-2`, adding a rule above them when the body scrolls.
 
@@ -298,22 +318,17 @@ hover, and Primary during dragging.
 
 ## Motion
 
-Motion is sorted by what it is for, and only two kinds animate.
+| Kind              | Examples                                                                                   | Rule                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| State feedback    | Hover, press, selection, validity: colour, fill, border, opacity, shadow                   | Instant. No transition                                 |
+| Spatial change    | The Settings drawer sliding in, a menu appearing, a chevron turning, a switch thumb moving | Use the framework default duration for transitions     |
+| Tooltip entry     | The shared tooltip appearing                                                               | `HoverTip` owns its entry delay and opacity transition |
+| Data smoothing    | The Level Meter fill, the correlation marker gliding along its rail                        | Owned by the instrument; not a UI transition           |
+| Looping indicator | The indeterminate update bar                                                               | Keyframes in `index.css`                               |
 
-| Kind              | Examples                                                                                              | Rule                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| State feedback    | Hover, press, selection, validity: colour, fill, border, opacity, shadow                              | Instant. No transition                                               |
-| Spatial change    | The Settings drawer sliding in, a menu or tooltip appearing, a chevron turning, a switch thumb moving | Animates at the framework default (150ms). No per-component duration |
-| Data smoothing    | The Level Meter fill, the correlation marker gliding along its rail                                   | Owned by the instrument; not a UI transition                         |
-| Looping indicator | The indeterminate update bar                                                                          | Keyframes in `index.css`                                             |
-
-A measurement tool answers a pointer at once; a colour that takes 150ms to arrive says nothing the
-instant change does not. Spatial motion stays because it shows where a surface came from.
-
-A system "reduce motion" preference switches every CSS transition and animation off through one
-rule in `index.css`, so no component has to remember it. Hover-intent delays, such as the
-tooltip's, are timing rather than motion and are kept. The Level Meter spring reads the same
-preference itself.
+Reduced motion makes CSS transitions and animations effectively instant in `index.css` and
+disables the indeterminate update animation. Entry delays remain. The Level Meter spring reads
+the system preference separately.
 
 `src/components/ui/motionContract.test.js` rejects `transition-colors`, `transition-all`,
 `transition-shadow`, an opacity transition outside the tooltip, and any `duration-*` utility
@@ -333,8 +348,8 @@ appear only on hover or during dragging. Temporary location/drag rings remain. H
 floating shell variants retain their Raised shadow.
 Inputs retain their existing affordances; no new Input Border editor setting is introduced.
 
-Compact and standard switches share the same state language: Input when unchecked, Primary when
-checked, and an opaque thumb. Inactive selectable marks are opaque hollow `muted-foreground`
+The unchecked switch track uses Input and the thumb stays opaque. See [Highlight States](#highlight-states)
+for checked and hover colors. Inactive selectable marks are opaque hollow `muted-foreground`
 circles; active marks are solid Primary. A no-data state hides only unavailable data markers and
 does not dim the surrounding rail, axis, label, or control.
 
@@ -357,26 +372,25 @@ Values are compiled from the active Theme and are not recorded here. The current
 for both schemes is the reviewed snapshot in `src/theme/__snapshots__/builtinThemesV2.test.js.snap`;
 the authored inputs are in `src/theme/builtinThemesV2.js`.
 
-| Token                      | Role                                                    |
-| -------------------------- | ------------------------------------------------------- |
-| `--background`             | Workspace background                                    |
-| `--foreground`             | Primary text                                            |
-| `--card`                   | Panel surface                                           |
-| `--card-foreground`        | Text on panels                                          |
-| `--popover`                | Raised surface                                          |
-| `--popover-foreground`     | Popover text                                            |
-| `--primary`                | Interface accent                                        |
-| `--primary-foreground`     | Text on primary buttons                                 |
-| `--secondary`              | Control surface                                         |
-| `--secondary-foreground`   | Text on secondary surface                               |
-| `--muted`                  | Muted surface                                           |
-| `--muted-foreground`       | Secondary / muted text                                  |
-| `--border`                 | Borders and dividers                                    |
-| `--input`                  | Shared control border                                   |
-| `--ring`                   | Legacy compatibility token; not painted                 |
-| `--destructive`            | Error / danger state                                    |
-| `--destructive-foreground` | Text on destructive                                     |
-| `--radius`                 | Base border radius; see [Radius Tokens](#radius-tokens) |
+| Token                      | Role                          |
+| -------------------------- | ----------------------------- |
+| `--background`             | Workspace background          |
+| `--foreground`             | Primary text                  |
+| `--card`                   | Panel surface                 |
+| `--card-foreground`        | Text on panels                |
+| `--popover`                | Raised surface                |
+| `--popover-foreground`     | Popover text                  |
+| `--primary`                | Interface accent              |
+| `--primary-foreground`     | Text on primary buttons       |
+| `--secondary`              | Control surface               |
+| `--secondary-foreground`   | Text on secondary surface     |
+| `--muted`                  | Muted surface                 |
+| `--muted-foreground`       | Secondary / muted text        |
+| `--border`                 | Borders and dividers          |
+| `--input`                  | Shared control border         |
+| `--ring`                   | Global keyboard focus outline |
+| `--destructive`            | Error / danger state          |
+| `--destructive-foreground` | Text on destructive           |
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 
@@ -465,7 +479,6 @@ directly. Transport Snapshot reuses the shared History Primary family.
 | Binding family                                                   | Role                                                |
 | ---------------------------------------------------------------- | --------------------------------------------------- |
 | `--ui-level-{safe,warning,critical}`                             | Level Meter Level Zones and profile markers         |
-| `--ui-meter-gradient-{bottom,mid,top}`                           | Level Meter appearance-only Gradient                |
 | `--ui-stats-{warning,critical}-value`                            | Stats and Dock Stats profile values                 |
 | `--ui-vectorscope-correlation-*`                                 | Vectorscope and Dock Vectorscope correlation marker |
 | Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes                       |
@@ -473,21 +486,17 @@ directly. Transport Snapshot reuses the shared History Primary family.
 | `--ui-feedback-{success,warning,danger}`                         | Application feedback on ordinary or tinted surfaces |
 | `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity      |
 
-Feedback and activity colours are foregrounds on the panel. Feedback publishes the Interface
-Palette value unchanged; Live publishes Status Critical; Snapshot publishes History Primary.
-Visual Review reports insufficient contrast without altering those authored relationships
-(ADR 0021).
+Feedback and activity tokens supply foreground colors. Visual Review reports insufficient
+contrast while preserving the authored relationships (ADR 0021).
 
 The retired `--ui-signal-good`, `--ui-signal-warn`, and `--ui-signal-bad` names exist only in the
 frozen V1 migration path and must not be used by runtime consumers.
 
 ### Component: Spectrogram Colormap
 
-The spectrogram uses a per-theme ordered stop list, not a CSS variable.
-The V2 Intensity Palette owns the ordered stops, and
-`src/theme/spectrogramColormap.js` builds the 256-entry LUT consumed by
-`useSpectrogramCanvas()`. The colormap is reserved for area/density visuals; 1D traces keep using
-the instrument tokens above.
+The Theme's Intensity Palette provides ordered stops. `src/theme/spectrogramColormap.js` builds
+the 256-entry LUT used by the Spectrogram renderers. Use it for area and density visuals. Line
+traces use the resolved instrument colors above.
 
 ---
 
@@ -532,12 +541,12 @@ Relative `em` sizes are allowed inside a semantic parent when they express a loc
 Normal application surfaces create icon tokens only for roles with an independent scaling policy.
 Do not introduce a generic icon size scale.
 
-| Role                  | Token                         | Default | Usage                                                   |
-| --------------------- | ----------------------------- | ------: | ------------------------------------------------------- |
-| Panel Action          | `--ui-icon-panel-action`      |    12px | Panel settings, help, pin, fullscreen and close actions |
-| Management Action     | `--ui-icon-management-action` |    14px | Rename, delete, save, cancel and reset actions          |
-| Shell Action          | `--ui-icon-shell-action`      |    14px | Icon-only actions in the normal application header      |
-| Panel Module Identity | `--ui-icon-panel-module`      |    14px | Module identity next to a normal panel title            |
+| Role                  | Token                         | Small baseline | Usage                                                   |
+| --------------------- | ----------------------------- | -------------: | ------------------------------------------------------- |
+| Panel Action          | `--ui-icon-panel-action`      |           12px | Panel settings, help, pin, fullscreen and close actions |
+| Management Action     | `--ui-icon-management-action` |           14px | Rename, delete, save, cancel and reset actions          |
+| Shell Action          | `--ui-icon-shell-action`      |           14px | Icon-only actions in the normal application header      |
+| Panel Module Identity | `--ui-icon-panel-module`      |           14px | Module identity next to a normal panel title            |
 
 Icons paired with text use local `em` sizing instead of global tokens: inline indicators use `1em`,
 button-leading icons use `1.15em`, and module-list icons use `1.25em`. Module definitions own only
@@ -547,10 +556,12 @@ Status dots, switch thumbs, drag handles, resize rails, control containers and d
 are component geometry, not iconography tokens. Dock is excluded and keeps its self-contained
 responsive contract in `src/dock/dockTokens.css`.
 
-### Interface size profiles
+## Interface Size Profiles
 
-The global `settingsStore.interfaceSize` setting selects one of four hand-tuned profiles. Profiles
-write final integer pixel values rather than applying browser zoom or one uniform multiplier.
+The global `settingsStore.interfaceSize` setting selects one of four profiles. The Small
+baseline comes from [data.js](../src/preferences/data.js), with the other profiles defined in
+[interfaceSize.js](../src/preferences/interfaceSize.js). The profiles set individual values for
+text, icons, and geometry. See [Control Height](#control-height) for the row and control heights.
 
 | Role                       | Small | Default | Large | Extra Large |
 | -------------------------- | ----: | ------: | ----: | ----------: |
@@ -564,10 +575,7 @@ write final integer pixel values rather than applying browser zoom or one unifor
 | Management / Shell Icon    |  14px |    15px |  17px |        19px |
 | Panel Module Identity Icon |  14px |    15px |  17px |        19px |
 | Settings Drawer Width      | 320px |   336px | 368px |       400px |
-| Control Height             |  24px |    24px |  28px |        32px |
-| Shell Height               |  28px |    28px |  32px |        36px |
-| List Row Height            |  32px |    32px |  36px |        40px |
-| Switch Height              |  16px |    16px |  18px |        22px |
+| Theme/Profile Editor Width | 416px |   416px | 448px |       480px |
 
 Every document applies the selected typography profile before first render. Dock header and
 editor accessory documents retain compact Small geometry and icons to fit their native windows,
@@ -579,17 +587,14 @@ but receive the selected typography profile at startup and through accessory sta
 
 Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 
-Spacing sits on a 4px grid: every padding, gap and inset below is 0, 4, 8 or 12px (0, 0.25, 0.5 or
-0.75rem). Those are the only steps that are a whole number of device pixels at every display scale
-PLVS runs at, 100%, 125%, 150% and 200%. A value between them, such as the earlier 0.3, 0.35 and
-0.4rem, is exact at one scale and a fraction at the others, where the browser rounds each gap on
-its own and neighbouring gaps end up a pixel apart.
+Keep shared shell and panel padding, gaps, and insets on a 4 CSS px grid. These increments resolve
+to whole device pixels at 100%, 125%, 150%, and 200% scale.
 
 The same grid applies to the padding, margin and gap utilities written in components: `gap-1`,
 `px-2` and `py-1`, never the half steps (`gap-0.5`, `px-1.5`) or a one-pixel gap. Items that sit
 flush, such as the rows of a list or the icon actions of a header, use `gap-0` and carry their own
-padding. `src/components/ui/spacingClassContract.test.js` enforces this everywhere except the Dock
-strip, whose spacing is the responsive set under Dock Tokens.
+padding. `src/components/ui/spacingClassContract.test.js` guards these utilities. The Dock strip
+uses its own [spacing tokens](#strip-geometry).
 
 Form rows, the label-and-control rows of the Settings drawer and the panel settings, are one
 `--ui-shell-h` tall and add no vertical padding of their own.
@@ -674,125 +679,61 @@ so the two bars match although the footer holds only a line of status text.
 
 ```
 --ui-drawer-pad          0.75rem   Inner padding of the settings drawer
---ui-drawer-w            20rem     Preferred Small-profile drawer width
 --ui-drawer-gap          0.75rem   Gap between settings sections
 --ui-drawer-row-gap      0.25rem   Gap between rows within a section
 ```
 
 ## Dock Tokens
 
-Dock shares normal-panel semantic typography and follows **Interface Size**. Window height never
-selects a font size. Live chart readouts use `--ui-fs-display`; Stats values use
-`--ui-fs-metric-value`, with metric names and units using `--ui-fs-metric-meta`, just as in the
-normal Stats panel. Orientation does not change a readout's role. Narrow chart readouts retain
-the shared panel's local fit fallback.
+### Strip geometry
 
-Dock keeps compact spacing and axis visibility appropriate to its window shape. Its minimum and
-default height is 56px; native display fitting determines the upper bound. Responsive spacing
-is owned by `src/dock/dockTokens.css` and scoped to `.dock-strip`.
+[src/dock/dockTokens.css](../src/dock/dockTokens.css) scopes one set of values to the Dock strip at
+every height.
 
-### Responsive density tiers
+| Token                        | Value | Use                     |
+| ---------------------------- | ----: | ----------------------- |
+| `--ui-dock-pad-x`            |   6px | Module horizontal inset |
+| `--ui-dock-pad-y`            |   4px | Module vertical inset   |
+| `--ui-dock-gap-column`       |   4px | Column spacing          |
+| `--ui-dock-gap-row`          |   3px | Row spacing             |
+| `--ui-dock-readout-w`        |   5ch | Numeric readout track   |
+| `--ui-dock-toolbar-toggle-w` |  24px | Control rail width      |
 
-| Role / token           | Compact `56–63px` | Standard `64–119px` | Expanded `120px+` |
-| ---------------------- | ----------------: | ------------------: | ----------------: |
-| `--ui-dock-pad-x`      |               5px |                 6px |               8px |
-| `--ui-dock-pad-y`      |               3px |                 4px |               6px |
-| `--ui-dock-gap-region` |               4px |                 5px |               7px |
-| `--ui-dock-gap-column` |               3px |                 4px |               5px |
-| `--ui-dock-gap-row`    |               2px |                 3px |               5px |
-| `--ui-dock-bar-min-h`  |               4px |                 5px |               6px |
-| `--ui-dock-readout-w`  |               5ch |                 5ch |               5ch |
-
-Height tiers change spacing, not typography. Additional space benefits bars, plots and row
-separation. Stats keeps its adaptive multi-column layout; column widths follow the selected
-metric font size, and row fitting measures actual cell height. A font-size change recalculates
-the grid even if the window dimensions stay unchanged. Overflow remains scrollable.
+The first-run height is 150 CSS px. The stored height has a 68 CSS px lower bound.
+[dockMinHeight()](../src/dock/dockSizing.js) computes the strip's actual resize floor from three
+Stats rows at the selected Interface Size, the shared row gaps, and vertical padding. The strip
+also accounts for its horizontal scrollbar. Native display fitting sets the upper bound.
+Keep the CSS padding and row gap in sync with the constants used for sizing.
 
 ### Typography roles
 
-Use the same semantic role in Dock and normal mode. Do not override normal tokens with Dock-only
-font sizes. Channel readouts and TP Max share Dynamic Display; labels and metric annotations
-retain their semantic roles. Live numbers use the shared mono family and tabular numerals.
-Emphasis comes from color, weight, position or interaction rather than a module-local font size.
-
-Do not append detector names or readout sources after a number. A trailing `M Max` or `RMS Max`
-looks like a unit or a different metric. Detector identity belongs on the leading side of the
-instrument; a non-live source belongs in a caption aligned with the readout column. Live is the
-normal state and needs no caption.
+Use the normal panel's semantic typography in Dock. Interface Size selects the font sizes at
+every strip height. Live chart readouts use Dynamic Display. Stats numbers use Metric Value,
+and their labels use Metric Annotation. Live numbers use the shared mono family and tabular
+numerals. The shared panels retain their local readout fit behavior where space is constrained.
 
 ### Vectorscope readable width
 
-Correlation ticks use the bundled mono font and Axis Annotation size. Reserve five character
-advances (`-1`, `0`, `+1`) plus two 1em gaps. JetBrains Mono 2.304 advances 0.6em per character,
-so the readable rail floor is 5em. Dock adds 16px for the maximum horizontal insets across height
-tiers. The resulting panel minimum follows Interface Size, not Dock height. The rail may be wider
-than a height-limited plot; both stay centered. Saved preferred widths are not rewritten on a
-profile change; runtime layout and resize constraints enforce the active profile's floor.
+With axes visible, the correlation rail reserves five mono glyph advances for `-1`, `0`, and
+`+1`, plus two 1em gaps. JetBrains Mono advances 0.6em per glyph, yielding a 5em floor at the
+Axis Annotation size. With axes hidden, the floor fits three 4px reference dots and two
+axis-font-sized gaps. Both calculations reserve 16 CSS px of horizontal clearance.
+[Dock panel sizing](../src/dock/dockPanelSizing.js) applies the current floor while preserving
+the saved preferred width.
 
-### Responsive rules
+### Shared panels and Stats
 
-- Height selects the spacing tier. Interface Size selects typography; constrained chart readouts
-  may use the same local fit fallback as the normal panel.
-- Additional width belongs to bars, plots, waveforms, and spectra; gaps do not grow with container
-  width. Do not use `vw`, `cqw`, or percentage-based spacing for Dock layout gaps.
-- Multi-row metric grids may reserve the configured `ch` capacity in their visible mono value
-  column when label stability is more important than intrinsic width. A single source rail such as
-  `TP Max` or `PB Max` instead keeps its visible source-and-value group intrinsic and trailing
-  aligned; an invisible sizing layer reserves the complete region without adding visible whitespace.
-- Labels use intrinsic (`max-content`) columns rather than reserving a fixed `ch` width for every
-  abbreviation. A module-level Labels setting may remove optional labels to free more data width.
-- `--ui-dock-bar-min-h` is a floor, not a fixed bar height. Channel rows divide all available Dock
-  height with `minmax(var(--ui-dock-bar-min-h), 1fr)`, and each bar stretches to fill its row.
-- Component-specific structural changes, such as multi-bank layout for high channel counts, may use
-  container queries. They must not redefine the shared type or spacing scale.
+Dock wraps the shared [Level Meter](../src/dock/modules/DockLevel.jsx) and
+[Loudness](../src/dock/modules/DockLoudness.jsx) with Dock sizing and panel controls. Level Meter
+uses the shared orientation, PB Max, and value/TP Max marker controls. Loudness uses the shared
+history chart, Layers, Ref, and axis controls. Use the shared panel for rendering changes that
+apply to both surfaces.
 
-### Reference module grammar
-
-Level Meter is the reference implementation for label/bar/readout modules. Its detector label is
-centered against the meter region only. The meter and readout regions are sibling grids that share
-the same channel-row count but do not share caption layout:
-
-```text
-detector | meter region (channel | minmax(0, 1fr) bar) | readout region
-```
-
-Examples:
-
-```text
-PK   L   ━━━━━━━━━━━━━   -3.1
-     R   ━━━━━━━━━━━━    -4.0
-
-RMS  L   ━━━━━━━━━━━━━   PB Max   -12.2
-     R   ━━━━━━━━━━━━             -10.8
-```
-
-A non-live readout adds one single-line source rail between the meter and value regions. Use
-`TP Max` for true-peak maximum and `PB Max` for playback maximum; do not wrap either label. The rail
-is vertically centered across the complete channel grid and does not participate in its row sizing.
-Values retain the same channel-row alignment in Live and non-live states. Toggling a source rail
-must not change the detector label, channel labels, bar rows, or their available height. Scalar
-modes omit the channel column but keep the same detector → data region → source rail → readout
-ordering.
-
-Other Dock modules map their content onto the same roles:
-
-- Loudness and Stats: metric name → Label; numeric metric → Value.
-- Correlation: primary coefficient → Value.
-- Spectrum and Spectrogram: compact scale annotations → Caption.
-- Transport: timecode → Value.
-- Waveform: necessary lane or channel annotations → Label.
-
-Dock Stats lays selected metrics out from left to right, then top to bottom, using at most three
-rows. Its column count follows the available panel width. Metrics that exceed the current capacity
-are hidden from the end of the user-defined order, so ordering also defines narrow-width visibility
-priority. Stats values do not repeat units in the Dock matrix.
-
-Dock Loudness is the compact form of the normal Loudness panel, not a separate metric selector. Its
-history region fills the available height and retains the normal panel's Momentary, Short-term,
-and Reference layers. Reference uses the same over-reference trace gradients; Dock does not add a
-separate reference line. A content-sized readout rail follows the history region and shows M, ST, and
-I as three aligned Label → Value rows. Its settings reuse the normal panel's Ref, Layers, and
-Y range controls and vocabulary.
+[Dock Stats](../src/dock/modules/DockStats.jsx) fits columns to the measured width and lays out
+selected metrics left to right, then top to bottom. Cell width reserves the measured labels and
+five mono characters for each value. The grid recalculates when the width, labels, or fonts
+change. Values omit units, and rows that exceed the available height remain accessible through
+vertical scrolling.
 
 ---
 
@@ -805,7 +746,7 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 ```
 --ui-loudness-momentary-stroke-width   1.2    Momentary trace stroke width
 --ui-loudness-shortterm-stroke-width   1.2    Short-term trace stroke width
---ui-loudness-selection-stroke-width   1.2    Selection line width in every panel, incl. the 3D scrub marker
+--ui-loudness-selection-stroke-width   1.2    Shared time-selection marker in Loudness, Waveform, and Spectrogram
 ```
 
 ### Vectorscope
@@ -880,38 +821,25 @@ Two rules decide the rung, in this order:
    same value as the surface it sits on. An icon-only action has no box of its own until it is
    hovered or focused, so it takes `xs`, which keeps that small box from reading as a pill.
 
-Surfaces and standard controls deliberately share one value. Elevation is already carried by the
-`background → card → popover → secondary` lightness ladder and by shadow; saying it a third time in
-the corner radius is redundant. Radius only needs to answer two questions: am I on someone else's
-corner, and am I a window.
-
-`rounded` (bare) is banned: Tailwind compiles it to a literal `0.25rem` that ignores `--radius`, so
-it silently opts out of the ladder — and it was the single most used radius in the app before this
-was written down. `rounded-sm` and `rounded-lg` stay defined but unused; deleting the definitions
-would hand those utilities back to Tailwind's defaults, which is worse than leaving them. Hardcoded
-`rounded-[Npx]` is banned for the same reason. `src/components/ui/radiusContract.test.js` enforces
-all of it.
-
-A `var(--ui-*)` that nothing defines fails silently — the declaration is dropped and the property
-falls back to its initial value, with no console warning and no test failure. `--ui-radius-modal`
-sat undefined long enough to square off all three floating panels that asked for it, which is why
-`src/preferences/uiTokenContract.test.js` fails on any dangling reference.
+Use the shared radius utilities. `src/components/ui/radiusContract.test.js` guards against bare
+`rounded`, unused intermediate rungs, and unapproved fixed radii. Keep `rounded-sm` and
+`rounded-lg` defined in CSS so Tailwind's defaults do not replace them.
+`src/preferences/uiTokenContract.test.js` checks for undefined `--ui-*` references.
 
 ---
 
 ## Text Casing Conventions
 
-Displayed UI text follows four casing rules (standardized 2026-06-13). Casing lives in the
-source strings, **not** in CSS `text-transform` — avoid `uppercase`/`capitalize` utility classes,
-which fight the source strings and don't change DOM `textContent`.
+Put the intended casing in the source string. The Source Transport source chip is a specific
+exception. It styles its Title Case source label as uppercase on screen.
 
-| Casing                                  | Used for                                                                                                                                                                               | Examples                                                                                  |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **ALL CAPS**                            | Live state / transport chips only — read as indicator lights                                                                                                                           | The Source Transport's `LIVE` / `FILE` source and its `START` / `STOP` / `ANALYZE` action |
-| **Title Case** (minor words lowercased) | Everything else informational: panel titles, metric names, meter captions, menu section headers, footer labels, settings rows + options, shortcut descriptions, tooltips, placeholders | `TP Max`, `Correlation`, `Open at Login`, `Save as Preset…`                               |
-| **Sentence case**                       | Full sentences / messages: status text, empty states, error & help text, gesture hints                                                                                                 | `Up to date`, `No stats selected`, `Combo unavailable, try another`                       |
-| **Canonical**                           | Acronyms & units keep their standard form                                                                                                                                              | LUFS, LU, dB, %, LRA, PSR, PLR, TP, L/R/C/LFE                                             |
+| Casing                                  | Used for                                                                                                                                                                               | Examples                                                                               |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **ALL CAPS**                            | Live state / transport chips only — read as indicator lights                                                                                                                           | The Source Transport's `LIVE` / `FILE` source and its `START` / `STOP` / `OPEN` action |
+| **Title Case** (minor words lowercased) | Everything else informational: panel titles, metric names, meter captions, menu section headers, footer labels, settings rows + options, shortcut descriptions, tooltips, placeholders | `TP Max`, `Correlation`, `Open at Login`, `Save as Preset…`                            |
+| **Sentence case**                       | Full sentences / messages: status text, empty states, error & help text, gesture hints                                                                                                 | `Up to date`, `No stats selected`, `Combo unavailable, try another`                    |
+| **Canonical**                           | Acronyms & units keep their standard form                                                                                                                                              | LUFS, LU, dB, %, LRA, PSR, PLR, TP, L/R/C/LFE                                          |
 
 Minor words (a, an, the, and, or, at, to, of, on, for, in, by, vs, via…) stay lowercase in Title
-Case unless they are the first or last word. Screen-reader-only `aria-label`s are not "displayed
-text" and are exempt.
+Case unless they are the first or last word. Follow the lowercase `aria-label` convention in
+[`AGENTS.md`](../AGENTS.md#code-style) for screen-reader-only labels.
