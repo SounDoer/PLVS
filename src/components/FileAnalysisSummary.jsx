@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CircleAlert, Info, LoaderCircle, SlidersHorizontal } from "lucide-react";
+import { CircleAlert, SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { Button } from "./ui/button.jsx";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
@@ -95,8 +95,6 @@ function warningDetails(session, result, settings, activeTask) {
       (session.error || "Analysis failed.") +
         (result ? " The previous result is still displayed." : "")
     );
-  if (activeTask && result)
-    details.push("The previous successful result remains available while analysis runs.");
   const previous = result?.analysisSettings;
   if (previous && settings) {
     const count = result.summary.channels ?? result.summary.channelCount;
@@ -129,6 +127,8 @@ function warningDetails(session, result, settings, activeTask) {
       );
     }
   }
+  if (details.length && activeTask && result)
+    details.push("The previous successful result remains available while analysis runs.");
   return details;
 }
 
@@ -471,8 +471,6 @@ export function FileAnalysisSummary({
   const fileName = display?.fileName ?? "No File";
   const activeTask = Boolean(analyzingFileId && analyzingFileId === activeFileId);
   const details = warningDetails(fileSession, result, currentSettings, activeTask);
-  const activityOnly = activeTask && result && details.length === 1;
-  const WarningIcon = activityOnly ? LoaderCircle : CircleAlert;
   const track = display?.metadata?.selectedTrack;
   const summary = display?.summary;
   const duration = summary?.durationMs ?? display?.metadata?.durationMs;
@@ -525,18 +523,10 @@ export function FileAnalysisSummary({
             <MiddleTruncatedText text={fileName} className="font-semibold text-foreground" />
             {details.length ? (
               <FileDetailPopover
-                label={activityOnly ? "analysis activity" : "file analysis warning"}
+                label="file analysis warning"
                 target="file-summary:warning"
-                className={cn(
-                  detailButton,
-                  !activityOnly && "text-[color:var(--ui-feedback-warning)]"
-                )}
-                trigger={
-                  <WarningIcon
-                    className={cn(icon, activityOnly && "motion-safe:animate-spin")}
-                    aria-hidden="true"
-                  />
-                }
+                className={cn(detailButton, "text-[color:var(--ui-feedback-warning)]")}
+                trigger={<CircleAlert className={icon} aria-hidden="true" />}
               >
                 <ul className="grid gap-[var(--ui-drawer-row-gap)]">
                   {details.map((detail) => (
@@ -546,13 +536,12 @@ export function FileAnalysisSummary({
               </FileDetailPopover>
             ) : null}
           </div>
-          <div className="flex min-w-0 items-center text-[length:var(--ui-fs-caption)] text-muted-foreground [contain:inline-size]">
-            <span className="truncate">{metadata || "No Media Metadata"}</span>
+          <div className="min-w-0 text-[length:var(--ui-fs-caption)] text-muted-foreground [contain:inline-size]">
             <FileDetailPopover
               label="file details"
               target="file-summary:details"
-              className={detailButton}
-              trigger={<Info className={icon} aria-hidden="true" />}
+              className="flex w-full min-w-0 justify-start text-left focus-visible:bg-ui-hover"
+              trigger={<span className="truncate">{metadata || "No Media Metadata"}</span>}
             >
               <FileInfo session={display} />
             </FileDetailPopover>

@@ -65,7 +65,10 @@ describe("File summary", () => {
   it("previews then pins copyable file details and closes with Escape", async () => {
     render(<FileAnalysisSummary {...props} />);
     const info = screen.getByRole("button", { name: "file details" });
-    fireEvent.mouseEnter(info);
+    const metadata = screen.getByText("Stereo · 48 kHz · 32-bit Float · 00:03:00");
+    expect(info.contains(metadata)).toBe(true);
+    expect(info.querySelector("svg")).toBeNull();
+    fireEvent.mouseEnter(metadata);
     expect(screen.getByText("C:/mix/final.wav")).toBeTruthy();
     expect(info.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(info);
@@ -123,5 +126,21 @@ describe("File summary", () => {
     expect(screen.queryByText(/changed since this result/)).toBeNull();
     fireEvent.mouseEnter(screen.getByRole("button", { name: "file analysis warning" }));
     expect(screen.getByText(/Dialogue Detection changed since this result/)).toBeTruthy();
+  });
+
+  it("retains the previous result during reanalysis without a separate activity indicator", () => {
+    render(
+      <FileAnalysisSummary
+        {...props}
+        fileSession={{ ...fileSession, state: "analyzing", successfulResult: fileSession }}
+        analyzingFileId="one"
+        currentSettings={fileSession.analysisSettings}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Integrated details" }).textContent).toContain(
+      "-16.2 LUFS"
+    );
+    expect(screen.queryByRole("button", { name: "analysis activity" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "file analysis warning" })).toBeNull();
   });
 });
