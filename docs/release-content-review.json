@@ -1,45 +1,44 @@
 {
   "schemaVersion": 1,
-  "version": "0.26.0",
-  "baselineTag": "v0.25.1",
-  "baselineRevision": "d831228a7418688989080a038b37fee7ef6186fb",
-  "candidateRevision": "f767f6025bb3e9c1e0a23b82f0a9817099820fb3",
-  "contentSha256": "5dda57a6e56cec25fd30faf3f3cfb0f673c20f7a9879c90de58a1752ef493ec8",
+  "version": "0.26.1",
+  "baselineTag": "v0.26.0",
+  "baselineRevision": "abb4e0c7b95fbf88bb2604f5676deefca6b8a437",
+  "candidateRevision": "0cd338728b21bf457e87f464ff0a6b10593b8d39",
+  "contentSha256": "51369d78d36af99a87951ad97b7610c4590637a2e6a9eb790b6cc046b666d464",
+  "websiteSourceSha": "8ff6d4c5cedc193a3ad7fadf5169ff3f6649a87f",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The File Mode and CLI chapters already document track selection, saved results and history restoration, exports, peak locations and the File transport. The dialogue and system settings chapters describe the effect of changes on ongoing File and Live measurements.",
+      "rationale": "The guide covers the File Mode detector default, persistence and reanalysis behavior, summary details and filename shortening, plus the new Agent Control File and screenshot commands.",
       "evidence": [
-        "docs/user/file-mode.md compared with src/hooks/useFileAnalysisReportExport.js and src/lib/fileAnalysisReport.js",
-        "docs/user/cli.md compared with src-tauri/src/cli_analyze.rs and src-tauri/src/cli_control.rs",
-        "docs/user/dialogue-gated-loudness.md and docs/user/system-settings.md compared with File reanalysis and Live reset behavior"
+        "docs/user/file-mode.md, docs/user/dialogue-gated-loudness.md and docs/user/system-settings.md compared with src/components/AppHeader.jsx, src/components/FileAnalysisSummary.jsx and src/runtime/SourceActionsContext.jsx",
+        "docs/user/cli.md compared with src/agentControl/handlers/transport.js and src/agentControl/handlers/visual.js"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "The existing File Mode highlight describes local analysis and remains accurate as track selection, inspection and export expand. Download and platform scope remain applicable. The shared hero rendered with the same bytes.",
+      "rationale": "The local File analysis highlight still describes the expanded File Mode. The README hero depicts the Live workspace, whose visible metering controls and panels are unaffected by the File changes.",
       "evidence": [
-        "README.md What is PLVS and Download compared with CHANGELOG.md 0.26.0",
-        "Homepage recipe report for landing-hero.png"
+        "README.md What is PLVS compared with CHANGELOG.md 0.26.1 and docs/user/file-mode.md",
+        "PLVS-Website website/assets/landing-hero.webp compared with the AppHeader and Live panel diffs"
       ]
     },
     "website": {
       "status": "updated",
-      "rationale": "The homepage uses responsive image variants and the generated guide includes the updated File Mode and CLI chapters. Privacy review from d831228a7418688989080a038b37fee7ef6186fb to f767f6025bb3e9c1e0a23b82f0a9817099820fb3: track selection and source fingerprints are local, and File results stay in session memory until the user exports or copies them. Export payloads add measurements, track and profile metadata, omit full local paths, and go to the selected local file or clipboard. Windows recording timing and crop fixes keep the existing local recording path. Startup preference ordering and the synthetic update preview preserve the existing update and crash-report consent and service endpoints. Update acceptance cleanup removes CI evidence after upload and affects test data only. No changes to production recipients, providers, upload payloads or triggers, or retention and deletion rules were found. The policy text and Effective date remain applicable.",
+      "rationale": "The reviewed renderer continues to describe the Live workspace and builds the updated guide from the tagged product. Across the recorded baseline and candidate, File detection and its preference stay local. Agent Control uses the existing local transport and delivers selected statistics or rendered pixels to the caller for local file output. The independent renderer changes the site build and publish path while preserving the existing production domain, policy body and services. No production data collection, consent, provider, recipient, retention or deletion changes were found. The policy text and Effective date remain applicable.",
       "evidence": [
-        "website/index.html and docs/user/file-mode.md compared with the 0.26.0 CHANGELOG",
-        "src-tauri/src/file_analysis/source_identity.rs, src/lib/fileAnalysisReport.js, src/lib/fileAnalysisReportMarkdown.js and src/hooks/useFileAnalysisReportExport.js",
-        "src-tauri/src/visual_capture/recording/windows.rs, src/components/UpdateSurfaces.jsx and src/lib/updateController.js",
-        "website/privacy/index.html and production crash-report, feedback and updater native transport sources compared across the release range"
+        "PLVS-Website at 8ff6d4c5cedc193a3ad7fadf5169ff3f6649a87f, website/index.html and scripts/build-website.mjs",
+        "src/hooks/useSettings.js, src/runtime/SourceActionsContext.jsx, src/agentControl/handlers/transport.js, src/agentControl/handlers/visual.js and src-tauri/src/cli_control.rs",
+        ".github/workflows/publish-site.yml, scripts/export-website-inputs.mjs, docs/privacy-policy.html and docs/privacy-review.json compared with v0.26.0; privacy-review.mjs check passed"
       ]
     },
     "screenshots": {
-      "status": "updated",
-      "rationale": "The homepage adds responsive derivatives. All eight documented homepage images rendered on the clean candidate with expected sizes, no page errors and matching SHA-256 hashes against the tracked originals. The visual review covered the hero, both Dock strips, history, both frequency panels, multichannel and the rules editor. The current images remain applicable.",
+      "status": "unchanged",
+      "rationale": "The Live hero was visually inspected. The reviewed homepage screenshots cover Live metering, Dock, history, frequency, multichannel and rules, outside the changed File toolbar, summary and drop overlay. The renderer retains the corresponding image assets.",
       "evidence": [
-        "artifacts/marketing/homepage-render-2026-11-11T16-42-19-353Z/report.json",
-        "artifacts/marketing/homepage-render-2026-11-11T16-42-19-353Z/review-contact.png",
-        "website/index.html responsive references and website/assets/responsive"
+        "PLVS-Website website/index.html screenshot references and website/assets/landing-hero.webp",
+        "Git blob comparison of the hero, history and multichannel assets against v0.26.0",
+        "src/components/AppHeader.jsx, src/components/FileAnalysisSummary.jsx and src/components/FileDropOverlay.jsx release diffs"
       ]
     }
   }
